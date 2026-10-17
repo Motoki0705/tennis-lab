@@ -12,6 +12,7 @@ from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig, MDDPretrai
 from src.tasks.ball_detection.models.mdd.pose import PoseTokenizer
 from src.tasks.ball_detection.models.mdd.token_encoder import MDDTokenEncoder
 from src.tasks.ball_detection.preprocessing import RGBToMDD
+from src.tasks.ball_detection.preprocessing.rgb_mdd import build_input_transform
 from src.utils.models.components.ffn_layers import SwiGLU
 from src.utils.models.dpt import DPTDecoder
 
@@ -78,7 +79,7 @@ class MDDDPTDetector(nn.Module):
     def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
         self.config = config
-        self.mdd = RGBToMDD(mdd_a, mdd_b)
+        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b)
         self.encoder = DeepMDDEncoder(config)
         self.decoder = DPTDecoder(encoder_channels=self.encoder.feature_channels,
                                   decoder_channels=config.decoder_channels, reassemble_factors=(1., 1., 1., 1.),
@@ -100,7 +101,7 @@ class DeepMDDQueryDetector(nn.Module):
     def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
         self.config = config
-        self.mdd = RGBToMDD(mdd_a, mdd_b)
+        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b)
         self.encoder = DeepMDDEncoder(config)
         self.projection = nn.Linear(config.mixed_channels[-1], config.dim)
         self.spatial_position = nn.Linear(2, config.dim)
