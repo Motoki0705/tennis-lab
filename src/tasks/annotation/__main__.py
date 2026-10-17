@@ -20,7 +20,7 @@ from src.utils.configuration import (
     PathRole,
 )
 
-from .contracts import CandidateManifest, OperationInput, Runtime
+from .contracts import CandidateManifest, OperationInput, RecoveryInput, Runtime
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="annotation.workflow.cli",
@@ -66,6 +66,13 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
             "state": status["state"],
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
+            "workflow": None
+            if status.get("workflow") is None
+            else {
+                "state": status["workflow"]["state"],
+                "reason": status["workflow"].get("reason"),
+                "learning_state": status["workflow"].get("learning", {}).get("state"),
+            },
             "worker_states": dict(
                 Counter(row["state"] for row in status.get("workers", []))
             ),
@@ -87,6 +94,7 @@ def main() -> None:
     for name in (
         "register",
         "submit",
+        "recover",
         "status",
         "tick",
         "run",
@@ -99,9 +107,10 @@ def main() -> None:
         command.add_argument("--test-root", type=Path)
         if name == "register":
             command.add_argument("--candidates", type=Path, required=True)
-        elif name == "submit":
+        elif name in {"submit", "recover"}:
             command.add_argument("--operation", type=Path, required=True)
-            command.add_argument("--attempt", type=int)
+            if name == "submit":
+                command.add_argument("--attempt", type=int)
         elif name == "run":
             command.add_argument("--max-seconds", type=float, required=True)
         elif name == "status":
@@ -114,6 +123,7 @@ def main() -> None:
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
+    stage.add_argument("--attempt", type=int, required=True)
     stage.add_argument("--test-root", type=Path)
     args = parser.parse_args()
     layout = (
@@ -136,7 +146,7 @@ def main() -> None:
     if args.command == "stage":
         from .operations import execute
 
-        print(execute(layout, ref).model_dump_json())
+        print(execute(layout, ref, attempt=args.attempt).model_dump_json())
         return
     from .controller import Controller
 
@@ -157,6 +167,15 @@ def main() -> None:
             OperationInput,
         )
         result = controller.operation(operation, attempt=args.attempt)
+    elif args.command == "recover":
+        from .recovery import recover
+
+        recovery = read_document(
+            layout,
+            annotation_reference(layout, paths.declared("operation").path),
+            RecoveryInput,
+        )
+        result = recover(controller, recovery).model_dump(mode="json")
     elif args.command == "status":
         result = controller.status()
         if not args.details:
@@ -186,7 +205,8 @@ def main() -> None:
                 print(summary, flush=True)
                 last, printed = summary, time.monotonic()
             if (
-                result["state"] in {"preview_ready", "blocked", "budget_stopped"}
+                result["state"]
+                in {"preview_ready", "complete", "blocked", "budget_stopped"}
                 or time.monotonic() >= deadline
             ):
                 return

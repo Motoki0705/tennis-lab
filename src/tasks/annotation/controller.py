@@ -1,10 +1,10 @@
-"""Resume the new-source preview flow from immutable receipts and shared ledgers."""
+"""Resume annotation campaigns from immutable receipts and shared ledgers."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
@@ -55,21 +55,24 @@ from .contracts import (
 from .operations import preview_input
 from .screening import ScreeningAdapter
 
+if TYPE_CHECKING:
+    from .production import ProductionWorkflow
+
 
 class Controller:
     def __init__(self, layout: AnnotationLayout, runtime: Runtime) -> None:
         self.layout, self.runtime = layout, runtime
         self.plan = load_plan(verify_reference(layout, runtime.plan))
+        if self.plan.phase == "production":
+            from .reviews import require_supported
+
+            require_supported(self.plan)
         self.resources = ResourceManager(layout, runtime.scope)
         self.resources.bind(self.plan)
         self.resources.observe(os.getpid())
         self.collection = Collection(layout, self.plan)
         # Register the prediction receipt table without loading either model.
         Predictions(layout, self.plan)
-        if self.plan.phase != "preview":
-            raise ValueError(
-                "this controller currently implements preview inputs only; production adoption is not enabled"
-            )
         if len({cost.stage for cost in runtime.costs}) != len(runtime.costs):
             raise ValueError("stage costs must be unique")
         declared = {stage.stage: stage for stage in self.plan.resources.stages}
@@ -113,8 +116,28 @@ class Controller:
             );
             """,
         )
+        self.production: ProductionWorkflow | None = None
+        if self.plan.phase == "production":
+            from .production import ProductionWorkflow
+
+            self.production = ProductionWorkflow(
+                layout,
+                runtime,
+                self.plan,
+                self.resources,
+                self.operation,
+                self.receipt,
+                self._services,
+                self.publication_failures,
+            )
 
     def register(self, candidates: CandidateManifest) -> list[dict[str, Any]]:
+        if self.layout.path(
+            "campaigns", self.plan.campaign_id, "workflow", "review.json"
+        ).exists():
+            raise ValueError(
+                "campaign review is closed; register sources in a new campaign"
+            )
         return [
             item.model_dump(mode="json")
             for item in self.collection.register(candidates.candidates)
@@ -128,13 +151,14 @@ class Controller:
                 "operation belongs to another runtime, or has an invalid attempt"
             )
         jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
+        attempts = [
+            int(path.name.rsplit("-", 1)[1])
+            for path in jobs.glob(data.logical_id + "-*")
+        ]
+        latest = max(attempts, default=0)
         if attempt is None:
-            attempts = [
-                int(path.name.rsplit("-", 1)[1])
-                for path in jobs.glob(data.logical_id + "-*")
-            ]
-            attempt = max(attempts, default=1)
-            if attempts:
+            attempt = max(latest, 1)
+            if latest:
                 prior = read_document(
                     self.layout,
                     annotation_reference(
@@ -155,6 +179,26 @@ class Controller:
                 else:
                     # Ordinary resume recovers the pinned retry directive as well.
                     data = prior
+        if attempt not in attempts:
+            if attempt != latest + 1:
+                raise ValueError(
+                    "a new attempt must follow the latest recorded attempt"
+                )
+            if latest:
+                previous = annotation_reference(
+                    layout=self.layout,
+                    path=jobs / f"{data.logical_id}-{latest}" / "launch.json",
+                )
+                previous_state = self.stages.status(previous)
+                if previous_state["state"] not in {
+                    "failed",
+                    "cancelled",
+                    "timed_out",
+                    "interrupted",
+                }:
+                    raise ValueError(
+                        "only a failed or interrupted operation can be retried"
+                    )
         cost = self.runtime.cost(data.stage)
         request_id = f"{data.logical_id}-{attempt}"
         directory = self.layout.path(
@@ -170,6 +214,8 @@ class Controller:
             str(self.layout.artifact_path(reference)),
             "--sha256",
             reference.digest,
+            "--attempt",
+            str(attempt),
         ]
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]
@@ -321,10 +367,13 @@ class Controller:
                 (attempt, service.sha256, encoded),
             )
 
-    def _services(self, request: WorkRequest, row: dict[str, Any]) -> None:
+    def _services(
+        self, request: WorkRequest, row: dict[str, Any], pool: WorkerPool | None = None
+    ) -> None:
         if row["state"] != "running":
             return
-        with self.pool.ledger.registry.transaction() as db:
+        pool = self.pool if pool is None else pool
+        with pool.ledger.registry.transaction() as db:
             raw = db.execute(
                 "SELECT launch FROM worker_attempts WHERE id=?",
                 (row["current_attempt"],),
@@ -455,7 +504,13 @@ class Controller:
                     (self.plan.campaign_id,),
                 )
             ]
-        return [self.pool.reconcile(request) for request in requests]
+        reconciled = []
+        for request in requests:
+            pool = self.pool
+            if request.adapter != ScreeningAdapter.name and self.production is not None:
+                pool = self.production.pool
+            reconciled.append(pool.reconcile(request))
+        return reconciled
 
     def cycle(self) -> dict[str, Any]:
         sample = self.resources.poll()
@@ -509,14 +564,14 @@ class Controller:
             data = read_document(
                 self.layout, annotation_reference(self.layout, path), OperationInput
             )
-            if data.sha256 in seen_operations:
+            if data.logical_id in seen_operations:
                 continue
-            seen_operations.add(data.sha256)
+            seen_operations.add(data.logical_id)
             if isinstance(data.operation, PredictOperation):
                 claimed.update(
                     (data.operation.task, ref.digest) for ref in data.operation.clips
                 )
-                progress[data.sha256] = self.operation(data)
+                progress[data.logical_id] = self.operation(data)
         with self.collection.ledger.registry.transaction() as db:
             pending = [
                 dict(row)
@@ -542,18 +597,23 @@ class Controller:
                         ),
                     ),
                 )
-                progress[data.sha256] = self.operation(data)
+                progress[data.logical_id] = self.operation(data)
+        production = self.production.cycle() if self.production is not None else None
         return {
             "collection": self.collection.ledger.summary(self.plan),
             "progress": progress,
             "resources": sample.model_dump(mode="json"),
+            "workflow": production,
         }
 
     def _stage_states(
         self,
     ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        from src.tasks.base.annotation.learning.contracts import StageInput
+
         jobs: list[dict[str, Any]] = []
-        latest: dict[str, tuple[int, dict[str, Any]]] = {}
+        keys: list[tuple[str, str]] = []
+        latest: dict[tuple[str, str], tuple[int, dict[str, Any]]] = {}
         for path in sorted(
             self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
                 "*/operation.json"
@@ -576,6 +636,7 @@ class Controller:
                 if (
                     launch.input != operation_ref
                     or launch.resource.request_id != path.parent.name
+                    or launch.resource.plan != self.runtime.plan
                 ):
                     raise ValueError("stage launch differs from its operation/attempt")
                 state: dict[str, Any] = self.stages.status(launch_ref)
@@ -589,23 +650,129 @@ class Controller:
                 "operation": operation_ref.model_dump(),
                 "attempt": int(number),
             }
+            key = (identity, "operation")
             jobs.append(state)
-            if identity not in latest or int(number) > latest[identity][0]:
-                latest[identity] = (int(number), state)
+            keys.append(key)
+            if key not in latest or int(number) > latest[key][0]:
+                latest[key] = (int(number), state)
+        for path in sorted(
+            self.layout.path("campaigns", self.plan.campaign_id, "jobs").glob(
+                "*/launch.json"
+            )
+        ):
+            if (path.parent / "operation.json").exists():
+                continue
+            launch_ref = annotation_reference(self.layout, path)
+            launch = read_document(self.layout, launch_ref, StageLaunch)
+            if launch.input is None or launch.resource.plan != self.runtime.plan:
+                raise ValueError("campaign job has no matching input/plan")
+            if not launch.resource.request_id.startswith("learning-"):
+                raise ValueError("operation launch has no immutable operation")
+            request = read_document(self.layout, launch.input, StageInput)
+            if launch.resource.request_id != "learning-" + request.sha256:
+                raise ValueError("learning attempt identity differs from its input")
+            key = (request.intent.digest, request.stage)
+            state = {**self.stages.status(launch_ref), "attempt": request.attempt}
+            jobs.append(state)
+            keys.append(key)
+            if key not in latest or request.attempt > latest[key][0]:
+                latest[key] = (request.attempt, state)
+        for key, state in zip(keys, jobs, strict=True):
+            state["superseded"] = state["attempt"] < latest[key][0]
         return jobs, [state for _, state in latest.values()]
+
+    def publication_failures(self) -> list[dict[str, Any]]:
+        """Match registered inputs to their latest successful producing attempts."""
+        _, latest = self._stage_states()
+        completed: dict[tuple[str, str], set[ArtifactRef]] = {}
+        failures: list[dict[str, Any]] = []
+        for state in latest:
+            if "operation" not in state:
+                continue
+            data = read_document(
+                self.layout,
+                ArtifactRef.model_validate(state["operation"]),
+                OperationInput,
+            )
+            operation = data.operation
+            if not isinstance(
+                operation, (AcquireOperation, PrepareOperation, PredictOperation)
+            ):
+                continue
+            if state["state"] != "succeeded":
+                failures.append(state)
+                continue
+            try:
+                receipt = self.receipt(state)
+                # A verified acquisition exclusion still reconciles its saved
+                # acquisition; preparation exclusions do not complete preparation.
+                if receipt.status != "complete" and not isinstance(
+                    operation, AcquireOperation
+                ):
+                    continue
+                if isinstance(operation, (AcquireOperation, PrepareOperation)):
+                    if len(receipt.results) != 1:
+                        raise ValueError("source stage must return exactly one receipt")
+                    completed.setdefault(
+                        (operation.action, operation.source_id), set()
+                    ).add(receipt.results[0])
+                else:
+                    for reference in receipt.results:
+                        prediction = read_document(
+                            self.layout, reference, PredictionReceipt
+                        )
+                        completed.setdefault(
+                            ("predict:" + operation.task, prediction.context.clip_id),
+                            set(),
+                        ).add(reference)
+            except (ValueError, OSError) as error:
+                failures.append(
+                    {**state, "state": "invalid_receipt", "reason": str(error)}
+                )
+        with self.collection.ledger.registry.transaction() as database:
+            sources = database.execute(
+                "SELECT id,state,acquisition,preparation FROM sources WHERE campaign_id=?",
+                (self.plan.campaign_id,),
+            ).fetchall()
+            predictions = database.execute(
+                "SELECT t.task,t.clip_id,p.receipt FROM annotation_tasks t "
+                "LEFT JOIN annotation_predictions p ON p.task_id=t.id "
+                "WHERE t.campaign_id=? AND t.state IN ('predicted','reviewing','adopted')",
+                (self.plan.campaign_id,),
+            ).fetchall()
+        expected = [
+            (("predict:" + row["task"], row["clip_id"]), row["receipt"])
+            for row in predictions
+        ]
+        for source in sources:
+            if source["acquisition"] is not None or source["state"] == "prepared":
+                expected.append((("acquire", source["id"]), source["acquisition"]))
+            if source["state"] == "prepared":
+                expected.append((("prepare", source["id"]), source["preparation"]))
+        for key, reference in expected:
+            if reference is None or ArtifactRef.model_validate_json(
+                reference
+            ) not in completed.get(key, set()):
+                failures.append(
+                    {
+                        "state": "unreconciled",
+                        "stage": key[0],
+                        "subject_id": key[1],
+                        "reason": "registered artifact lacks a matching successful receipt from its latest stage attempt; recover explicitly",
+                    }
+                )
+        return failures
 
     def status(self) -> dict[str, Any]:
         reconciled = self._reconcile_workers()
         jobs, latest = self._stage_states()
-        completed: set[str] = set()
+        completed: set[ArtifactRef] = set()
         for stage_state in latest:
-            if stage_state["state"] != "succeeded":
+            if stage_state["state"] != "succeeded" or "operation" not in stage_state:
                 continue
             try:
                 receipt = self.receipt(stage_state)
-                completed.update(
-                    ref.canonical_bytes().decode() for ref in receipt.results
-                )
+                completed.update(receipt.results)
             except (ValueError, OSError) as error:
                 stage_state.update(
                     state="invalid_receipt", reason=f"{type(error).__name__}: {error}"
@@ -637,7 +804,8 @@ class Controller:
                 )
             ]
         workers = [
-            {key: row[key] for key in ("id", "state", "reason")} for row in reconciled
+            {key: row[key] for key in ("id", "state", "current_attempt", "reason")}
+            for row in reconciled
         ]
         summary = self.collection.ledger.summary(self.plan)
         source_states = summary["sources_by_state"]
@@ -661,7 +829,7 @@ class Controller:
         )
         ledger_ready = all_sources and bool(tasks) and set(tasks) == {"predicted"}
         if ledger_ready and any(
-            ref is None or ref not in completed
+            ref is None or ArtifactRef.model_validate_json(ref) not in completed
             for ref in (*source_receipts, *prediction_receipts)
         ):
             failures.append(
@@ -687,6 +855,19 @@ class Controller:
             if failures
             else "pending"
         )
+        production = self.production.status() if self.production is not None else None
+        if production is not None:
+            if production["state"] == "complete":
+                failures.extend(self.publication_failures())
+            state = (
+                "blocked"
+                if failures or production["state"] == "blocked"
+                else "running"
+                if live or production["state"] in {"publishing", "learning"}
+                else "complete"
+                if production["state"] == "complete"
+                else "pending"
+            )
         return {
             "state": state,
             "collection": summary,
@@ -695,4 +876,5 @@ class Controller:
             "stages": jobs,
             "failures": failures,
             "preview_adopts_teachers": False,
+            "workflow": production,
         }

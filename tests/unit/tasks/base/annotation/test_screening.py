@@ -40,7 +40,6 @@ from src.tasks.base.annotation.collection.service import Collection, SourceExclu
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import (
     QueueConfiguration,
-    StageExit,
     StageLaunch,
 )
 from src.tasks.base.annotation.media import encode_video, probe_video
@@ -54,7 +53,6 @@ from src.tasks.base.annotation.predictions import (
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
     ResourceManager,
-    ResourceRequest,
 )
 from src.tasks.base.annotation.screening.contracts import (
     ClipDecision,
@@ -77,7 +75,7 @@ from src.tasks.base.annotation.workers.services import (
     ServiceRequest,
     request_service,
 )
-from src.utils.paths import PROJECT_ROOT
+from tests.support.tasks.annotation import record_stage, record_stage_exit
 
 
 @dataclass
@@ -1129,80 +1127,7 @@ def test_controller_recovers_worker_after_source_finalized_before_worker_receipt
     assert restarted.status()["state"] != "running"
 
 
-def record_stage(
-    controller: Controller,
-    data: OperationInput,
-    *,
-    attempt: int = 1,
-    results: tuple[ArtifactRef, ...] | None = None,
-    exited: bool = False,
-    failed: bool = False,
-) -> ArtifactRef:
-    """Publish synthetic supervisor evidence without starting a queue or model."""
-    layout = controller.layout
-    request_id = f"{data.logical_id}-{attempt}"
-    directory = layout.path(
-        "campaigns", controller.plan.campaign_id, "jobs", request_id
-    )
-    operation = write_document(layout, directory / "operation.json", data)
-    cost = controller.runtime.cost(data.stage)
-    launch = write_document(
-        layout,
-        directory / "launch.json",
-        StageLaunch(
-            scope=controller.runtime.scope,
-            resource=ResourceRequest(
-                request_id=request_id,
-                plan=controller.runtime.plan,
-                stage=data.stage,
-                pss_bytes=cost.pss_bytes,
-                storage_bytes=cost.storage_bytes,
-                gpu_seconds=cost.gpu_seconds,
-            ),
-            command=("synthetic-stage",),
-            input=operation,
-            code_root=str(PROJECT_ROOT),
-            timeout_seconds=cost.timeout_seconds,
-            queue=controller.runtime.queue if cost.gpu_seconds else None,
-            test_root=str(layout.root),
-        ),
-    )
-    if results is not None:
-        write_document(
-            layout,
-            directory / "result.json",
-            OperationReceipt(
-                operation=operation,
-                status="complete",
-                results=results,
-                reason=None,
-            ),
-        )
-    if exited:
-        record_stage_exit(layout, launch, failed=failed)
-    return operation
 
-
-def record_stage_exit(
-    layout: AnnotationLayout, launch: ArtifactRef, *, failed: bool = False
-) -> None:
-    directory = layout.artifact_path(launch).parent
-    log = write_asset(layout, directory / "log.txt", b"synthetic supervisor\n")
-    write_document(
-        layout,
-        directory / "exit.json",
-        StageExit(
-            launch=launch,
-            status="failed" if failed else "succeeded",
-            exit_code=1 if failed else 0,
-            started_at="2026-10-16T00:00:00Z",
-            ended_at="2026-10-16T00:00:01Z",
-            elapsed_seconds=1.0,
-            stdout=log,
-            stderr=log,
-            reason="synthetic failure" if failed else None,
-        ),
-    )
 
 
 @pytest.mark.parametrize(
@@ -1474,7 +1399,7 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     # Recover an already-excluded source with the same evidence in a new stage attempt.
     recovery = record_stage(controller, data, attempt=2)
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", recovery.digest)
-    recovered = read_document(layout, execute(layout, recovery), OperationReceipt)
+    recovered = read_document(layout, execute(layout, recovery, attempt=2), OperationReceipt)
     record_stage(controller, data, attempt=2, exited=True)
     assert (recovered.results, recovered.reason) == (receipt.results, receipt.reason)
     assert controller.collection.ledger.source(controller.plan, duplicate.source_id)["preparation"] == row["preparation"]
@@ -1527,7 +1452,10 @@ def test_explicit_acquisition_retry_recovers_failed_preview(
         monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", launch.input.digest)
         failed = False
         try:
-            execute(layout, launch.input)
+            execute(
+                layout, launch.input,
+                attempt=int(launch.command[launch.command.index("--attempt") + 1]),
+            )
         except RuntimeError as error:
             assert str(error) == "synthetic acquisition failure"
             failed = True

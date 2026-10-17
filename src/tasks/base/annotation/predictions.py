@@ -105,6 +105,53 @@ class Predictions:
                 (task_id,),
             )
 
+    def completed(self, adapter: PredictionAdapter) -> tuple[ArtifactRef, ...]:
+        """Verify registered results for this campaign without producing predictions."""
+        task = next(
+            (task for task in self.plan.tasks if task.task == adapter.task), None
+        )
+        if task is None:
+            raise ValueError("prediction task is absent from the frozen campaign")
+        with self.registry.transaction() as database:
+            rows = database.execute(
+                "SELECT t.*,c.manifest,p.receipt FROM annotation_tasks t "
+                "JOIN clips c ON c.id=t.clip_id "
+                "LEFT JOIN annotation_predictions p ON p.task_id=t.id "
+                "WHERE t.campaign_id=? AND t.task=? ORDER BY t.clip_id",
+                (self.plan.campaign_id, task.task),
+            ).fetchall()
+        results = []
+        for row in rows:
+            if row["receipt"] is None:
+                if row["state"] != "pending":
+                    raise ValueError(
+                        "advanced annotation task has no prediction receipt"
+                    )
+                continue
+            if row["state"] not in {"predicted", "reviewing", "adopted"} or (
+                row["model_digest"],
+                row["inference_digest"],
+            ) != (task.model.sha256, task.inference.digest):
+                raise ValueError("prediction ledger differs from the frozen campaign")
+            manifest_ref = ArtifactRef.model_validate_json(row["manifest"])
+            manifest = read_document(self.layout, manifest_ref, ClipManifest)
+            if manifest.clip_id != row["clip_id"]:
+                raise ValueError("registered clip identity differs from its manifest")
+            context = PredictionContext(
+                task=task.task,
+                manifest=manifest_ref,
+                clip_id=manifest.clip_id,
+                model=task.model,
+                configuration=task.inference,
+            )
+            for reference in references(context):
+                verify_reference(self.layout, reference)
+            verify_reference(self.layout, manifest.media)
+            receipt_ref = ArtifactRef.model_validate_json(row["receipt"])
+            self._verify(receipt_ref, context, manifest, adapter)
+            results.append(receipt_ref)
+        return tuple(results)
+
     def run(self, manifest_ref: ArtifactRef, adapter: PredictionAdapter) -> ArtifactRef:
         task = next(
             (task for task in self.plan.tasks if task.task == adapter.task), None
