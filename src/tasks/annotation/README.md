@@ -78,6 +78,8 @@ GPU工程はmain repositoryの共有queueに投入する。queue workerの起動
 10/25/50の並列条件は `benchmark-observe` / `benchmark-report` で既存workerの生存数と
 資源・usageを記録する。固定入力、測定値の意味、未到達・欠測の扱いは
 [並列条件の観測](../base/annotation/benchmarks/README.md)を参照する。
+同じ固定予測を条件別にレビューするball専用の起動・再開経路は
+[benchmark runner](benchmark/README.md)を参照する。
 
 ## 画像確認・公開・学習
 
@@ -138,6 +140,8 @@ predictedの保存後でも終了receiptがなければ完了にしない。未�
 `screen_prepare` の `submit --attempt N` はworker attemptを増やさない。
 quotaによるcampaign全体のworker停止は、原因解消後に同コマンドへ
 `--resume-quota` を付けて明示解除する。通常の `run` / `tick` は失敗workerを再試行しない。
+Controllerは予算停止時とcampaignのquota停止確認時に、選別・review両poolの未起動資源要求を
+[workerの取消契約](../base/annotation/workers/README.md)に従って取り消し、共有待機枠を返す。
 
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。

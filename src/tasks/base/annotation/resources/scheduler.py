@@ -415,10 +415,11 @@ class ResourceManager:
             if row["owner"] is not None
         )
         processes = process_usage(owners, observers)
-        boot, now = (
+        boot, monotonic_ns = (
             Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
-            time.monotonic(),
+            time.monotonic_ns(),
         )
+        now = monotonic_ns / 1e9
         measured_at = datetime.now(UTC).isoformat()
         if (
             not refresh_storage
@@ -433,6 +434,11 @@ class ResourceManager:
                 ),
                 previous.storage_measured_at,
             )
+            storage_monotonic_ns = (
+                previous.storage_measured_monotonic_ns
+                if previous.clock_boot_id == boot
+                else None
+            )
         else:
             if watchdog:
                 raise RuntimeError("watchdog requires an admission-time storage sample")
@@ -442,6 +448,7 @@ class ResourceManager:
                 self.scope.previously_allocated_bytes,
             )
             storage_measured_at = measured_at
+            storage_monotonic_ns = monotonic_ns
         active_seconds = sum(
             max(0.0, now - row["started"])
             for row in rows
@@ -453,6 +460,9 @@ class ResourceManager:
         return ResourceSample(
             measured_at=measured_at,
             storage_measured_at=storage_measured_at,
+            clock_boot_id=boot,
+            measured_monotonic_ns=monotonic_ns,
+            storage_measured_monotonic_ns=storage_monotonic_ns,
             scope_id=self.scope.scope_id,
             storage=storage,
             processes=processes,

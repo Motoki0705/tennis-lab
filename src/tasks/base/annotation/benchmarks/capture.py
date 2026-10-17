@@ -30,6 +30,10 @@ from .contracts import (
 from .validation import ExpectedWork, condition, validate_work
 
 
+class ObservationLimit(ValueError):
+    """The immutable evidence budget cannot accept another observation."""
+
+
 def directory(layout: AnnotationLayout, spec: ConditionSpec) -> Path:
     path: Path = layout.path(
         "campaigns", spec.benchmark_id, "reports", "benchmarks", spec.condition_id
@@ -41,7 +45,7 @@ def _optional(layout: AnnotationLayout, path: Path) -> ArtifactRef | None:
     return annotation_reference(layout, path) if path.exists() else None
 
 
-def _rows(
+def worker_snapshot(
     layout: AnnotationLayout,
     spec: ConditionSpec,
     campaign: str,
@@ -204,7 +208,7 @@ def observe(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
     ):
         existing = sorted((root / "observations").glob("*.json"))
         if len(existing) >= spec.maximum_observations:
-            raise ValueError(
+            raise ObservationLimit(
                 "benchmark observation limit reached; existing evidence is retained"
             )
         for number, path in enumerate(existing, 1):
@@ -221,7 +225,9 @@ def observe(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
         resources.bind(plan)
         resources.observe(os.getpid())
         sample = resources.poll()
-        states, attempts, foreign = _rows(layout, spec, plan.campaign_id, expected)
+        states, attempts, foreign = worker_snapshot(
+            layout, spec, plan.campaign_id, expected
+        )
         workers, cut, first, last = live_workers(layout, attempts)
         result = Observation(
             specification=reference,

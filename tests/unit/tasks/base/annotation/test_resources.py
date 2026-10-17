@@ -305,7 +305,9 @@ def test_real_pss_counts_controller_once_and_rejects_recycled_observer() -> None
 @pytest.mark.parametrize("denied_file", ["smaps_rollup", "io"])
 @pytest.mark.parametrize("after", ["missing", "Z", "X", "recycled", "live"])
 def test_procfs_denial_rechecks_liveness_without_assuming_zero(
-    monkeypatch: pytest.MonkeyPatch, denied_file: str, after: str,
+    monkeypatch: pytest.MonkeyPatch,
+    denied_file: str,
+    after: str,
 ) -> None:
     snapshot = process_snapshot(os.getpid())
     assert snapshot is not None
@@ -332,7 +334,9 @@ def test_procfs_denial_rechecks_liveness_without_assuming_zero(
             raise PermissionError("injected procfs access refusal")
         return original_read(path, *args, **kwargs)
 
-    monkeypatch.setattr("src.tasks.base.annotation.resources.measurements.process_snapshot", current)
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.measurements.process_snapshot", current
+    )
     monkeypatch.setattr(Path, "read_text", read)
     if after == "live":
         with pytest.raises(PermissionError, match="injected procfs"):
@@ -638,3 +642,26 @@ def test_slow_inventory_does_not_block_watchdog_or_release_unmeasured_output(
         )
         with pytest.raises(BudgetStopped):
             waiting.result(timeout=5)
+
+
+def test_samples_retain_monotonic_storage_time_across_wall_clock_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime
+
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    guard = manager(layout, make_plan(layout))
+    first = guard.sample()
+
+    class Clock:
+        @staticmethod
+        def now(_timezone: object) -> datetime:
+            return datetime(2000, 1, 1, tzinfo=UTC)
+
+    monkeypatch.setattr("src.tasks.base.annotation.resources.scheduler.datetime", Clock)
+    second = guard._sample(refresh_storage=False)
+    assert second.measured_at < first.measured_at
+    assert first.measured_monotonic_ns is not None
+    assert second.measured_monotonic_ns >= first.measured_monotonic_ns
+    assert second.storage_measured_monotonic_ns == first.storage_measured_monotonic_ns
+    assert second.clock_boot_id == first.clock_boot_id
