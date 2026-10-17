@@ -78,7 +78,7 @@ def products(
         code_commit="a" * 40,
         code_diff_digest="b" * 64,
         agent_model="gpt-6.1-sol",
-        agent_effort="low",
+        agent_effort="max",
         resources=ResourceBudget(
             codex_workers=1,
             additional_storage_bytes=1024,
