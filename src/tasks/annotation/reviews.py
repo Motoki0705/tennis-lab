@@ -145,12 +145,12 @@ def sources(
         for row in rows
     )
     for row in result:
-        if row.state == "prepared":
-            if row.preparation is None:
-                raise ValueError("prepared source has no preparation receipt")
+        if row.state == "prepared" and row.preparation is None:
+            raise ValueError("prepared source has no preparation receipt")
+        if row.state == "excluded" and not (row.reason or "").strip():
+            raise ValueError("excluded source requires its reason")
+        if row.preparation is not None:
             verify_reference(layout, row.preparation)
-        elif row.preparation is not None or not (row.reason or "").strip():
-            raise ValueError("excluded source requires its reason and no preparation")
     return result
 
 
@@ -247,7 +247,8 @@ def _coverage(
         preparation = read_document(layout, source.preparation, PreparationReceipt)
         if preparation.source_id != source.source_id:
             raise ValueError("source completion names a different preparation")
-        prepared.extend(preparation.clips)
+        if source.state == "prepared":
+            prepared.extend(preparation.clips)
     reviewed = []
     for reference in expected:
         work = read_document(layout, reference, WorkRequest)

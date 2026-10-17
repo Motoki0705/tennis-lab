@@ -7,6 +7,10 @@
 readerにはversion親ではなく、snapshotが指定するframe storeを渡す。
 正式CLI・資源管理付きstageへの接続はcomposition rootが担当する。
 
+data-rootのファイル参照を作る`data_reference`は、共有APIの
+[`src.tasks.base.annotation.artifacts`](../../../../base/annotation/artifacts.py)から
+直接importする。`snapshot.py`はこの共通APIを再exportしない。
+
 ## 入力と教師
 
 - requestは不変campaign plan、product名、digest順の採用receiptを固定する。
