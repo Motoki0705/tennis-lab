@@ -16,6 +16,11 @@ import numpy as np
 
 from src.tasks.ball_detection.data.store import BallFrameStore, Split, shard_name
 from src.tasks.ball_detection.data.teacher_masks import EXPLICIT_MASK_SCHEMA, LEGACY
+from src.tasks.ball_detection.data.video_frames import (
+    VIDEO_FRAME_SCHEMA,
+    VideoFrameStorage,
+    video_name,
+)
 from src.tasks.ball_detection.data.windows.manifest import clip_semantic_digest
 from src.tasks.ball_detection.generate_dataset.frame_store.builder import (
     EncodedClip,
@@ -23,7 +28,9 @@ from src.tasks.ball_detection.generate_dataset.frame_store.builder import (
     encode_clip,
     merge_tables,
 )
+from src.tasks.ball_detection.generate_dataset.frame_store.clip import VideoFrames
 from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
     artifact_lock,
     data_reference,
     read_document,
@@ -42,9 +49,11 @@ from src.tasks.base.annotation.plan import ProductPlan, load_plan
 from src.tasks.base.annotation.registry import Registry
 from src.tasks.base.annotation.storage.catalog import StorageCatalog
 from src.tasks.base.annotation.storage.references import protection
+from src.utils.video.jpeg_source import jpeg_video_runtime
 
 from .adopted import AdoptedClip, load_adopted
 from .contracts import BallPublicationPolicy, BallSnapshot, PublishRequest, SnapshotClip
+from .partition import publication_splits
 from .snapshot import load_snapshot, validate_snapshot
 
 _SCHEMA = """
@@ -193,17 +202,10 @@ class BallPublisher:
             set(added_ids) & (existing_ids | existing_names | canonical_ids)
         ):
             raise ValueError("publication cannot duplicate or change an existing clip")
-        splits: dict[str, Split] = (
-            {c.source_id: c.split for c in base.clips} if base else {}
+        splits = publication_splits(
+            policy, {c.source_id: c.split for c in base.clips} if base else {},
+            {a.source_id for a in additions}, expected_new_sources=plan.counts.videos,
         )
-        for entry in policy.source_splits:
-            if entry.source_id in splits and splits[entry.source_id] != entry.split:
-                raise ValueError(
-                    "publication policy cannot change an existing source split"
-                )
-            splits[entry.source_id] = entry.split
-        if any(a.source_id not in splits for a in additions):
-            raise ValueError("every new source requires an explicit fixed split")
         return Inputs(product, policy, base, store, additions, splits)
 
     def _build(
@@ -214,10 +216,12 @@ class BallPublisher:
         destination: Path,
     ) -> BallSnapshot:
         (directory / "shards").mkdir()
+        (directory / "media").mkdir()
         tables: list[EncodedClip] = []
         clips: list[dict[str, Any]] = []
         heatmaps, coordinates = [], []
         base = inputs.store
+        videos = {key: value.model_dump(mode="json") for key, value in base.video_frames.items()} if base else {}
         if base is not None:
             assert inputs.base is not None
             clips = cast(list[dict[str, Any]], base.metadata["clips"]).copy()
@@ -237,7 +241,7 @@ class BallPublisher:
                 _link_verified(
                     self.layout,
                     identity.shard,
-                    directory / "shards" / shard_name(clip.index),
+                    directory / base.image_path(clip).relative_to(base.directory),
                 )
             heatmaps.append(
                 np.full(len(base), LEGACY, np.uint8)
@@ -252,14 +256,26 @@ class BallPublisher:
         for added in inputs.additions:
             spec, index = added.spec, len(tables)
             shard = directory / "shards" / shard_name(index)
-            tables.append(
-                encode_clip(
-                    spec,
-                    shard,
-                    inputs.policy.jpeg_quality,
-                    StoredSize(spec.width, spec.height),
-                )
+            as_video = inputs.policy.image_storage == "video_q90"
+            if as_video:
+                if not isinstance(spec.media, VideoFrames):
+                    raise ValueError("Video publication requires the prepared native video")
+                shard = directory / "media" / video_name(index)
+                source = annotation_reference(self.layout, spec.media.path)
+                if source.digest != spec.media_sha256:
+                    raise ValueError("Prepared video differs from the adopted media")
+                _link_verified(self.layout, source, shard)
+            table = encode_clip(
+                spec, None if as_video else shard, inputs.policy.jpeg_quality,
+                StoredSize(spec.width, spec.height),
             )
+            tables.append(table)
+            if as_video:
+                videos[spec.clip_id] = VideoFrameStorage(
+                    media_sha256=spec.media_sha256, media_bytes=shard.stat().st_size,
+                    jpeg_quality=inputs.policy.jpeg_quality, runtime=jpeg_video_runtime(),
+                    frame_sha256=table.jpeg_hashes,
+                ).model_dump(mode="json")
             with shard.open("rb") as stored:
                 os.fsync(stored.fileno())
             clips.append(_clip_record(added, index, inputs.splits[added.source_id]))
@@ -291,7 +307,8 @@ class BallPublisher:
         _durable_document(
             directory / "metadata.json",
             dict(
-                schema_version=EXPLICIT_MASK_SCHEMA,
+                schema_version=VIDEO_FRAME_SCHEMA if videos else EXPLICIT_MASK_SCHEMA,
+                **({"video_frames": videos} if videos else {}),
                 version=inputs.product.dataset_version,
                 component="frames",
                 jpeg_quality=inputs.policy.jpeg_quality,
@@ -329,9 +346,7 @@ class BallPublisher:
                     source_id=source_id,
                     split=clip.split,
                     semantic_digest=clip_semantic_digest(store, clip),
-                    shard=final_reference(
-                        directory / "shards" / shard_name(clip.index)
-                    ),
+                    shard=final_reference(store.image_path(clip)),
                 )
             )
         snapshot = BallSnapshot(
@@ -343,6 +358,7 @@ class BallPublisher:
         )
         _durable_document(directory / "snapshot.json", snapshot)
         sync_directory(directory / "shards")
+        sync_directory(directory / "media")
         sync_directory(directory)
         return snapshot
 
@@ -373,6 +389,8 @@ class BallPublisher:
         old_count = len(base.clips) if base else 0
         if base is not None:
             assert inputs.base is not None
+            if any(store.video_frames.get(key) != value for key, value in base.video_frames.items()):
+                raise ValueError("publication changed existing video storage contracts")
             if (
                 cast(list[dict[str, Any]], store.metadata["clips"])[:old_count]
                 != base.metadata["clips"]
@@ -405,6 +423,8 @@ class BallPublisher:
                     raise ValueError("publication changed existing snapshot identities")
         for offset, added in enumerate(inputs.additions, old_count):
             clip, spec = store.clips[offset], added.spec
+            if (clip.clip_id in store.video_frames) != (inputs.policy.image_storage == "video_q90"):
+                raise ValueError("published image storage differs from the planned policy")
             identity = snapshot.clips[offset]
             if (identity.clip_id, identity.source_id) != (
                 spec.clip_id,

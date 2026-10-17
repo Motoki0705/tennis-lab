@@ -8,7 +8,7 @@ import shutil
 from collections.abc import Callable
 from pathlib import Path
 
-from src.tasks.ball_detection.data.store import BallFrameStore, shard_name
+from src.tasks.ball_detection.data.store import BallFrameStore
 from src.utils.checksum import dual_sha256
 
 
@@ -31,14 +31,15 @@ def snapshot_ball_store(
     store = BallFrameStore(source)
     destination.mkdir(parents=True, exist_ok=False)
     (destination / "shards").mkdir()
+    (destination / "media").mkdir()
     for name, expected in source_hashes.items():
         shutil.copyfile(source / name, destination / name)
         if dual_sha256(destination / name) != expected:
             raise ValueError("Source store changed while copying snapshot indexes")
     hashes = {}
     for index, clip in enumerate(store.clips):
-        original = source / "shards" / shard_name(clip.index)
-        target = destination / "shards" / shard_name(clip.index)
+        original = store.image_path(clip)
+        target = destination / original.relative_to(source)
         before = original.stat()
         try:
             os.link(original, target)

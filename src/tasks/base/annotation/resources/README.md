@@ -12,6 +12,13 @@ Codexのsession/logが外部にある場合もrootとして含める。baseline�
 benchmark layoutから開く場合は共有台帳に同一scope参照が登録済みであることを必須とし、
 未登録のscope・台帳を新規作成しない。観測だけの経路にもこの検査を適用する。
 
+`free_space_mounts` は、保存量の走査には加えず空き容量だけを確認するmount pointの一覧。
+たとえばWSLのLinux領域を保持するWindows driveを `/mnt/d` として指定し、Linux内の
+空きとhost側の実空きを両方確認する。`roots` と追加mountの空き容量の最小値を受付と
+watchdogに使う。mount消失やsymlinkへの変更は計測エラーとし、親filesystemへ代替しない。
+この設定もscopeとともに不変保存するため、既存scopeへの追加ではbaselineと累計を保持した
+明示的なscope移行が必要。VHDX自体を保存量のrootへ加えて二重計上しない。
+
 `submit()` は不変planと工程、PSSの予想ピーク、追加保存量、GPU予約時間を固定する。
 同じrequest IDの内容変更や完了後の再実行は拒否する。明示的な再試行には新しいIDが必要。
 待機列、同名工程、Codex合算の枠はcampaign横断で共有し、稼働中planのうち厳しい上限を
@@ -80,3 +87,7 @@ production `WorkerPool` はscopeとPSS/保存予約を必須とし、supervisor�
 GPU処理にはtimeoutに加えて10秒以上の終了処理余裕を予約する。OSの停止遅延などを含め、
 実測で予約を超過した場合も切り詰めず計上する。全工程の接続と実測は #1141 / #1143 で確認する。
 資源テストのGPU予約はsleepだけの合成工程であり、CUDA実測を意味しない。
+GPU累計時間の上限は正の秒数、または明示した `gpu_seconds: null`（上限なし）。
+省略はエラー。上限なしでも工程ごとの予約、経過時間・使用済み累計の記録、
+training queueの排他、保存量・空き容量・PSSの制約を維持する。
+

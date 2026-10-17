@@ -9,7 +9,10 @@ import torch
 from torch.utils.data import DataLoader
 
 from src.tasks.ball_detection.data.augmentation.video import VideoAugmenter
-from src.tasks.ball_detection.evaluation.coordinates import CoordinateMetrics
+from src.tasks.ball_detection.evaluation.coordinates import (
+    CoordinateMetrics,
+    evaluation_cohorts,
+)
 from src.tasks.ball_detection.model_io.predict import predict_coordinates
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.tasks.ball_detection.training.runtime.compilation import (
@@ -29,7 +32,7 @@ def evaluate(model: DeepMDDQueryDetector, loader: DataLoader[Any], device: torch
              frame_steps: tuple[int, ...], precision: str, prefetch: bool,
              augmenter: VideoAugmenter, profile: str, output: Path, preview_clips: int = 3) -> dict[str, Any]:
     model.eval()
-    metrics = CoordinateMetrics(frame_steps)
+    metrics = CoordinateMetrics(frame_steps, evaluation_cohorts(loader.dataset))
     occluded_metrics = CoordinateMetrics(frame_steps)
     owners: dict[tuple[int, str, int], tuple[tuple[float, int], bool]] = {}
     previews: set[str] = set()

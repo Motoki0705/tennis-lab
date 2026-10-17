@@ -19,7 +19,7 @@ from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
-from .adapters import LearningAdapter, NoAdditionalTeachers
+from .adapters import EvaluationResolver, LearningAdapter, NoAdditionalTeachers
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -110,43 +110,6 @@ class Learning:
                 "learning recipe and fixed validation are not configured",
             )
         assert product.publication is not None
-        train = adapter.training_partition(self.layout, publication.snapshot)
-        fixed = read_document(self.layout, task.learning.validation, FixedEvaluation)
-        if (
-            train.manifest != publication.snapshot
-            or train.split != "train"
-            or fixed.task != task.task
-        ):
-            raise ValueError(
-                "training/fixed validation differ from the publication task"
-            )
-        if not set(publication.added_clips).issubset(train.clips):
-            raise ValueError(
-                "new teachers must be in the cumulative training partition"
-            )
-        partitions = (train, fixed.validation, *((fixed.test,) if fixed.test else ()))
-        check_partitions(*partitions)
-        for partition in partitions:
-            verify_reference(self.layout, partition.manifest)
-            adapter.validate_partition(self.layout, partition)
-        intent = LearningIntent(
-            completion=completion_ref,
-            task=task.task,
-            publication=product.publication,
-            train=train,
-            parent=self.models.adopted_state(task.model),
-            recipe=task.learning.recipe,
-            fixed_evaluation=task.learning.validation,
-            selection_policy=task.learning.selection_policy,
-        )
-        verify_inputs(self.layout, intent)
-        eligibility = adapter.validate_intent(self.layout, intent)
-        if isinstance(eligibility, NoAdditionalTeachers):
-            return self._skip(
-                completion_ref, task.task, "no_additional_teachers", eligibility.reason
-            )
-        dependencies = adapter.input_references(self.layout, intent)
-        directory = self._directory(intent)
         with artifact_lock(
             self.layout,
             "learning-register-" + task.task + "-" + product.publication.digest,
@@ -156,9 +119,57 @@ class Learning:
                     "SELECT intent FROM annotation_learning_intents WHERE task=? AND publication=?",
                     (task.task, product.publication.digest),
                 ).fetchone()
-            if old is not None:
-                ref = ArtifactRef.model_validate_json(old["intent"])
-                if read_document(self.layout, ref, LearningIntent) != intent:
+            previous_ref = ArtifactRef.model_validate_json(old["intent"]) if old is not None else None
+            previous = read_document(self.layout, previous_ref, LearningIntent) if previous_ref is not None else None
+            train = adapter.training_partition(self.layout, publication.snapshot)
+            fixed_ref = previous.fixed_evaluation if previous is not None else task.learning.validation
+            if task.learning.evaluation_recipe is not None:
+                if not isinstance(adapter, EvaluationResolver):
+                    raise ValueError("task adapter does not support post-publication evaluation recipes")
+                if previous is None:
+                    fixed_ref = adapter.resolve_evaluation(self.layout, task.learning, product.publication)
+            fixed = read_document(self.layout, fixed_ref, FixedEvaluation)
+            if (
+                train.manifest != publication.snapshot
+                or train.split != "train"
+                or fixed.task != task.task
+            ):
+                raise ValueError(
+                    "training/fixed validation differ from the publication task"
+                )
+            if not set(publication.added_clips).intersection(train.clips):
+                raise ValueError(
+                    "new teachers must include the cumulative training partition"
+                )
+            partitions = (train, fixed.validation, *((fixed.test,) if fixed.test else ()))
+            if not set(publication.added_clips).issubset({clip for part in partitions for clip in part.clips}):
+                raise ValueError("new teachers are missing from the declared train/validation/test partitions")
+            check_partitions(*partitions)
+            for partition in partitions:
+                verify_reference(self.layout, partition.manifest)
+                adapter.validate_partition(self.layout, partition)
+            intent = LearningIntent(
+                completion=completion_ref,
+                task=task.task,
+                publication=product.publication,
+                train=train,
+                parent=self.models.adopted_state(task.model),
+                recipe=task.learning.recipe,
+                fixed_evaluation=fixed_ref,
+                selection_policy=task.learning.selection_policy,
+                evaluation_recipe=task.learning.evaluation_recipe,
+            )
+            verify_inputs(self.layout, intent)
+            eligibility = adapter.validate_intent(self.layout, intent)
+            if isinstance(eligibility, NoAdditionalTeachers):
+                return self._skip(
+                    completion_ref, task.task, "no_additional_teachers", eligibility.reason
+                )
+            dependencies = adapter.input_references(self.layout, intent)
+            directory = self._directory(intent)
+            if previous_ref is not None:
+                ref = previous_ref
+                if previous != intent:
                     raise ValueError(
                         "publication already has a different learning intent"
                     )

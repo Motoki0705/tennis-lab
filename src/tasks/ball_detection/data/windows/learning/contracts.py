@@ -99,3 +99,12 @@ class HoldoutWindows(Document):
     snapshot: ArtifactRef
     manifest: ArtifactRef
     split: Literal["validation", "test"]
+    existing: ArtifactRef | None = None
+
+
+class BallEvaluationRecipe(Document):
+    schema_version: Literal["ball.annotation-evaluation-recipe.v1"] = "ball.annotation-evaluation-recipe.v1"
+    windows: WindowPolicy
+    cohorts: Literal["existing_and_new"] = "existing_and_new"
+    checkpoint_selection: Literal["balanced_validation"] = "balanced_validation"
+    final_comparison: Literal["test_once_after_selection"] = "test_once_after_selection"

@@ -8,11 +8,13 @@ production controllerへの接続は[ワークフロー](../../../annotation/REA
 flowchart LR
     P[公開receiptと累積snapshot] --> I[固定LearningIntent]
     M[前採用MDD全重み] --> I
-    R[合意したrecipeと固定holdout] --> I
+    R[合意したrecipeと元のholdout] --> H[公開後に新旧holdout確定]
+    P --> H
+    H --> I
     I --> W[MDD-only窓と旧・追加clipのcoverage]
-    W --> T[共有queue / train]
+    W --> T[共有queue / 累積train・指定比率のreplay]
     T --> C[完全checkpointと完了根拠]
-    C --> E[共有queue / 同一validationでbaseline比較]
+    C --> E[共有queue / 固定評価でbaseline比較]
     E --> V[taskの採否判定]
     V --> A[共通ModelRegistryの世代照合]
 ```
@@ -22,7 +24,16 @@ flowchart LR
 `BallLearningRecipe`にsampling、augmentation参照、runtime、epoch/update予算と学習率等を明示する。
 数値の学習予算や採用条件の既定値は置かない。32frame・upfront入力照合等の構造条件はschemaで固定する。
 `FixedEvaluation`のvalidation/testは[holdout binding](../../data/windows/learning/README.md)で検証する。
-testはsource/clip重複の検査だけに用い、学習・候補選択では読まない。
+`evaluation_recipe`がある場合、旧・新validationの平均を等重みでまとめてcheckpointを選ぶ。
+学習はtest画像を読み込まない。選んだ一候補だけを旧・新testで現行モデルと比較する。
+recipeがない既存経路はclean Common validationによる選択・比較を維持する。
+
+`BallLearningRecipe.replay`は前モデルの学習manifest参照と未学習分の抽出比率を固定する。
+そのmanifestのhashを初期checkpointと照合し、GT・画像identityが同じclipを学習済み群とする。
+全train窓を候補に残し、FPSごとの均等枠を群別に配分する。各枠の整数quotaを満たさない
+epoch予算や空の群は拒否する。同じ群内では全候補を一巡してから再抽選し、
+各epochの候補数・抽出数・unique窓数を保存する。比率は入力窓数の割合であり、
+全データを各epochに一度ずつ読む保証ではない。学習履歴と今回公開されたかどうかは区別する。
 
 採否時の`retained_references`はvalidation/test双方の`HoldoutWindows`を開き、実際の
 window manifestとsnapshot参照を列挙する。`BallLearningRecipe`、`TrainingWindows`、
@@ -44,7 +55,7 @@ window manifestとsnapshot参照を列挙する。`BallLearningRecipe`、`Traini
 CLIはproduction固定rootを使う。自身でqueue投入やモデル採用を行わない。
 
 重みは`outputs/ball_detection/train/annotation/<intent-sha256>/attempt-<番号>/`へ保存する。
-最終epochと更新回数、bestのCommon指標、親全重みhash、config、source hash、
+最終epochと更新回数、bestの指定validation指標、親全重みhash、config、source hash、
 候補specとcheckpointの一致を確認して`TrainingReceipt`を返す。
 stressを指定したrecipeでは3 profileの保存結果も必要となる。
 
@@ -56,13 +67,16 @@ stressを指定したrecipeでは3 profileの保存結果も必要となる。
 
 ## 比較と採否
 
-同じ固定validation・runtime・モデル構造でbaseline/candidateを比較する。
-全体・Common・各sourceについて、採点FPS/clip/frame集合hash、支持数、有限な誤差と
+同じ固定評価データ・runtime・モデル構造でbaseline/candidateを比較する。
+全体・Common・各source、設定時は既存・新規について、採点FPS/clip/frame集合hash、支持数、有限な誤差と
 macro平均の整合性を検証する。実checkpointのstate hash、学習manifest hash、
 成功した学習工程との対応も`EvaluationReceipt`受理前に確認する。
 
 `BallSelectionPolicy`はCommonの最小支持数・最大誤差・必要改善量、Fullの許容悪化量、
 任意のsource別支持数・許容悪化量を持つ。source条件はFullのsource別macroを使う。
 必要なsource/FPSが欠けていれば不合格。条件はすべて満たす必要があり、境界値は含める。
+`BalancedSelectionPolicy`は最終testの既存・新規を50:50で集計し、平均誤差の厳密な改善と
+既存側の非悪化を要求する。同値の平均は改善と扱わず、クリップ数の多い側で重みを増やさない。
+各集合内はFPS別平均の等重み平均とし、元動画pixel座標の誤差を用いる。
 policy未設定なら共通管理が学習・評価を保存したうえで`not_configured`を返し、現行モデルを保持する。
 合格後の世代照合とpointer切替は共通ModelRegistryの責務。

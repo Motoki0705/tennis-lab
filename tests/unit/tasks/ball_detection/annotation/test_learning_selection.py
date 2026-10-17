@@ -3,8 +3,12 @@ import copy
 import pytest
 import torch
 
-from src.tasks.ball_detection.evaluation.coordinates import CoordinateMetrics
+from src.tasks.ball_detection.evaluation.coordinates import (
+    CoordinateMetrics,
+    selection_score,
+)
 from src.tasks.ball_detection.training.annotation.contracts import (
+    BalancedSelectionPolicy,
     BallSelectionPolicy,
     LearningRuntime,
     SourceRegressionLimit,
@@ -76,3 +80,31 @@ def test_cpu_fixture_runtime_cannot_silently_select_cuda_features(changes: dict)
         cpu_threads=1, compile_mode="off", jpeg_decoder="opencv", image_prefetch=False)
     with pytest.raises(ValueError):
         LearningRuntime(**(values | changes))
+
+
+def cohort_report(existing: float, new: float) -> dict:
+    metrics = CoordinateMetrics((1, 2), {"old": "existing", "new": "new"})
+    for step in (1, 2):
+        for name, error, count in (("old", existing, 32), ("new", new, 8)):
+            metrics.add(dict(clip_id=[name], frame_step=[step], start=[0], common_evaluation=[False],
+                source=["chat_annotation"], frame_indices=torch.arange(count)[None],
+                position_valid=torch.ones(1, count, dtype=torch.bool)), torch.full((1, count), error))
+    return metrics.report()
+
+
+def test_cohorts_have_equal_weight_even_when_sizes_differ() -> None:
+    report = cohort_report(2., 4.)
+    assert selection_score(report, "balanced_existing_new") == 3.
+    assert selection_score(report, "full") == pytest.approx(2.4)
+    assert report["scopes"]["common"]["macro_mean_error_px"] is None
+
+
+@pytest.mark.parametrize("old,new,accepted", [(2., 1., True), (1., 2.5, True), (2., 2., False), (2.1, 0., False)])
+def test_balanced_adoption_requires_strict_improvement_and_no_old_regression(old: float, new: float, accepted: bool) -> None:
+    raw = dict(split="test", test_usage="final_comparison", baseline=dict(evaluation=cohort_report(2., 2.)),
+               candidate=dict(evaluation=cohort_report(old, new)))
+    agreed = BalancedSelectionPolicy(minimum_frames_per_fps=1)
+    assert (not rejection_reasons(raw, agreed)) is accepted
+    raw["split"] = "val"
+    with pytest.raises(ValueError, match="final test comparison"):
+        rejection_reasons(raw, agreed)

@@ -32,13 +32,29 @@ class SourceSplit(Document):
     split: Split
 
 
+class SourcePartition(Document):
+    """Freeze an ID-only allocation rule before collecting replacement sources."""
+
+    method: Literal["ranked_source_hash"] = "ranked_source_hash"
+    seed: str = Field(min_length=1)
+    train_weight: int = Field(gt=0)
+    validation_weight: int = Field(gt=0)
+    test_weight: int = Field(gt=0)
+
+
 class BallPublicationPolicy(Document):
     schema_version: Literal["ball.publication-policy.v1"] = "ball.publication-policy.v1"
     jpeg_quality: int = Field(ge=1, le=100)
+    image_storage: Literal["jpeg", "video_q90"] = "jpeg"
     source_splits: tuple[SourceSplit, ...]
+    source_partition: SourcePartition | None = None
 
     @_after
     def unique_sources(self) -> Self:
+        if self.source_partition is not None and self.source_splits:
+            raise ValueError("Choose explicit source splits or a source partition recipe")
+        if self.image_storage == "video_q90" and self.jpeg_quality != 90:
+            raise ValueError("video_q90 requires the unchanged quality-90 JPEG contract")
         if len({s.source_id for s in self.source_splits}) != len(self.source_splits):
             raise ValueError("publication source splits must be unique")
         return self

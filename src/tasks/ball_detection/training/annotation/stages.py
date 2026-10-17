@@ -45,7 +45,8 @@ from .inputs import initialize_parent, output_reference, resolve_inputs, run_roo
 def stage_request(
     layout: AnnotationLayout, reference: ArtifactRef, result: Path
 ) -> tuple[StageInput, LearningIntent]:
-    return shared_stage_request(layout, reference, result, task="ball")
+    request: tuple[StageInput, LearningIntent] = shared_stage_request(layout, reference, result, task="ball")
+    return request
 
 
 def execute(
@@ -166,6 +167,10 @@ def evaluate(
     validate_training(layout, intent, training)
     inputs = resolve_inputs(layout, intent)
     comparison_path = result.parent / "comparison.json"
+    final_test = inputs.fixed.recipe is not None
+    evaluated_holdout = inputs.test_holdout if final_test else inputs.holdout
+    if evaluated_holdout is None:
+        raise ValueError("Cohort adoption requires a pinned final test holdout")
     if comparison_path.exists():
         # The previous stage may have stopped after persisting metrics. The
         # receipt validator below verifies all identities before recovering it.
@@ -175,13 +180,14 @@ def evaluate(
         comparison = compare_full_models(
             verify_reference(layout, intent.parent.model.inference_weights),
             verify_reference(layout, training.candidate.inference_weights),
-            verify_reference(layout, inputs.holdout.manifest),
+            verify_reference(layout, evaluated_holdout.manifest),
             baseline_sha256=intent.parent.model.inference_weights.digest,
             candidate_sha256=training.candidate.inference_weights.digest,
-            validation_sha256=inputs.holdout.manifest.digest,
+            validation_sha256=evaluated_holdout.manifest.digest,
             runtime=inputs.recipe.runtime.coordinate_runtime(),
             device=torch.device(inputs.recipe.runtime.device),
             batch_size=inputs.recipe.batch_size,
+            split="test" if final_test else "val",
         )
         comparison_ref = write_asset(
             layout, comparison_path, canonical_bytes(comparison) + b"\n"
@@ -190,6 +196,7 @@ def evaluate(
         request=reference,
         validation_manifest=inputs.holdout.manifest,
         comparison=comparison_ref,
+        test_manifest=evaluated_holdout.manifest if final_test else None,
     )
     metrics_ref = write_document(layout, result.parent / "metrics.json", metrics)
     receipt = EvaluationReceipt(
@@ -199,6 +206,7 @@ def evaluate(
         baseline=intent.parent,
         validation=inputs.fixed.validation,
         metrics=metrics_ref,
+        test=inputs.fixed.test if final_test else None,
     )
     validate_evaluation(layout, intent, receipt)
     return write_document(layout, result, receipt)

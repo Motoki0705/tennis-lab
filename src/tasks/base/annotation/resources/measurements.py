@@ -105,7 +105,7 @@ def write_baseline(path: Path, roots: tuple[str, ...]) -> None:
         os.fsync(handle.fileno())
 
 
-def free_bytes(roots: tuple[str, ...]) -> int:
+def free_bytes(roots: tuple[str, ...], *, mounts: tuple[str, ...] = ()) -> int:
     available = []
     for root in roots:
         path = Path(root)
@@ -113,10 +113,24 @@ def free_bytes(roots: tuple[str, ...]) -> int:
             path = path.parent
         stat = os.statvfs(path)
         available.append(stat.f_bavail * stat.f_frsize)
+    for mount in mounts:
+        path = Path(mount)
+        # A detached host volume can leave an ordinary directory behind. Never
+        # measure that directory's parent filesystem as the configured volume.
+        if path.resolve() != path or not path.is_mount():
+            raise ValueError(f"required free-space mount is unavailable: {mount}")
+        stat = os.statvfs(path)
+        available.append(stat.f_bavail * stat.f_frsize)
     return min(available)
 
 
-def storage_usage(roots: tuple[str, ...], baseline: Path, prepaid: int) -> StorageUsage:
+def storage_usage(
+    roots: tuple[str, ...],
+    baseline: Path,
+    prepaid: int,
+    *,
+    free_space_mounts: tuple[str, ...] = (),
+) -> StorageUsage:
     # Keep the original anchor: deleting old files cannot credit new files elsewhere.
     prior: dict[tuple[int, int], tuple[int, str]] = {}
     with baseline.open() as handle:
@@ -146,7 +160,7 @@ def storage_usage(roots: tuple[str, ...], baseline: Path, prepaid: int) -> Stora
         logical_bytes=logical,
         entries=count,
         unique_inodes=len(seen),
-        free_bytes=free_bytes(roots),
+        free_bytes=free_bytes(roots, mounts=free_space_mounts),
     )
 
 

@@ -26,6 +26,7 @@ from src.tasks.base.annotation.artifacts import (
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
 )
+from src.tasks.base.annotation.media import check_clip, decode_range
 from src.tasks.base.annotation.predictions import (
     PredictionContext,
     PredictionReceipt,
@@ -108,6 +109,69 @@ def test_native_pixels_vfr_and_cache_skip_inference(fixture: Fixture) -> None:
         database.execute("UPDATE annotation_tasks SET state='published'")
     assert fixture.service.run(fixture.reference, BallPredictionAdapter()) == result
     assert SpyPredictor.loads == 1
+
+
+@pytest.mark.parametrize("count", [32, 33, 47, 63, 65])
+def test_streamed_windows_match_individual_native_decodes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, count: int
+) -> None:
+    fixture = example(tmp_path, count)
+    video = fixture.layout.artifact_path(fixture.manifest.media)
+    timeline = check_clip(video, fixture.manifest)
+    starts = window_starts(count, 16)
+    expected = [
+        np.stack(
+            [
+                frame.to_ndarray(format="rgb24").transpose(2, 0, 1)
+                for frame in decode_range(video, timeline, start, start + 32)
+            ]
+        )
+        for start in starts
+    ]
+    calls = 0
+    intervals = []
+    decoded_frames = 0
+
+    class PixelPredictor(SpyPredictor):
+        def __call__(
+            self, rgb: NDArray[np.uint8], seconds: NDArray[np.float32]
+        ) -> NDArray[np.float32]:
+            nonlocal calls
+            np.testing.assert_array_equal(rgb, expected[calls])
+            calls += 1
+            return super().__call__(rgb, seconds)
+
+    def counted_decode(path, clock, start, stop):
+        nonlocal decoded_frames
+        intervals.append((start, stop))
+        for frame in decode_range(path, clock, start, stop):
+            decoded_frames += 1
+            yield frame
+
+    monkeypatch.setattr(
+        "src.tasks.ball_detection.annotation.inference.MDDPredictor", PixelPredictor
+    )
+    monkeypatch.setattr(
+        "src.tasks.ball_detection.annotation.inference.decode_range", counted_decode
+    )
+    fixture.service.run(fixture.reference, BallPredictionAdapter())
+    assert calls == len(starts)
+    assert intervals == [(0, count)] and decoded_frames == count
+
+
+def test_decoder_final_validation_precedes_publication(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def invalid_decode(*args):
+        yield from decode_range(*args)
+        raise ValueError("final decoder validation failed")
+
+    monkeypatch.setattr(
+        "src.tasks.ball_detection.annotation.inference.decode_range", invalid_decode
+    )
+    with pytest.raises(ValueError, match="final decoder validation failed"):
+        fixture.service.run(fixture.reference, BallPredictionAdapter())
+    assert not list(fixture.layout.root.rglob("coordinates.json"))
 
 
 def test_prediction_receipt_gap_reuses_coordinates(

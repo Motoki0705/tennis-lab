@@ -56,7 +56,12 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.utils.checksum import dual_sha256
+from src.utils.data.verification import FileVersion, file_version
+from src.utils.video.jpeg_source import read_video_jpegs
+
 from .teacher_masks import EXPLICIT_MASK_SCHEMA, MASK_FIELDS, FrameTeacherMasks
+from .video_frames import VIDEO_FRAME_SCHEMA, VideoFrameStorage, video_name
 
 SCHEMA_VERSION: Final = "ball_detection_frames.v1"
 INDEX_FILE: Final = "index.npz"
@@ -211,25 +216,35 @@ class BallFrameStore:
             raise ValueError(f"Ball store directory must be absolute: {directory}")
         self.directory = directory
         metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
-        if metadata["schema_version"] not in (SCHEMA_VERSION, EXPLICIT_MASK_SCHEMA):
+        if metadata["schema_version"] not in (SCHEMA_VERSION, EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA):
             raise ValueError(
                 f"Unsupported ball store schema {metadata['schema_version']!r}; "
-                f"expected {SCHEMA_VERSION!r} or {EXPLICIT_MASK_SCHEMA!r}"
+                f"expected {SCHEMA_VERSION!r}, {EXPLICIT_MASK_SCHEMA!r} or {VIDEO_FRAME_SCHEMA!r}"
             )
         self.metadata: dict[str, object] = metadata
         self.clips: tuple[ClipRecord, ...] = tuple(_clip_record(clip) for clip in metadata["clips"])
+        self.video_frames: dict[str, VideoFrameStorage] = {}
+        if metadata["schema_version"] == VIDEO_FRAME_SCHEMA:
+            raw = metadata["video_frames"]
+            if not isinstance(raw, dict) or not raw or set(raw) - {c.clip_id for c in self.clips}:
+                raise ValueError("Video storage must identify existing clips explicitly")
+            self.video_frames = {key: VideoFrameStorage.model_validate_json(json.dumps(value))
+                                 for key, value in raw.items()}
+        elif "video_frames" in metadata:
+            raise ValueError("Video storage requires the explicit v3 schema")
         with np.load(directory / INDEX_FILE) as data:
             columns = {name: data[name] for name in data.files}
         self.frames = {name: columns[name] for name in FRAME_FIELDS}
         self.instances = {name: columns[name] for name in (*INSTANCE_FIELDS, INSTANCE_XY)}
         self.clip_start: NDArray[np.int64] = self._validate(columns)
         self.teacher_masks: FrameTeacherMasks | None = None
-        if metadata["schema_version"] == EXPLICIT_MASK_SCHEMA:
+        if metadata["schema_version"] in (EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA):
             self.teacher_masks = FrameTeacherMasks.from_columns(columns, len(self))
             self.teacher_masks.validate(self)
         elif any(name in columns for name in MASK_FIELDS):
             raise ValueError("Ball teacher mask columns require the explicit v2 schema")
         self._shards: dict[int, np.memmap] = {}
+        self._video_versions: dict[str, FileVersion] = {}
 
     def _validate(self, columns: Mapping[str, NDArray[np.generic]]) -> NDArray[np.int64]:
         frame_count = _require_columns(columns, FRAME_FIELDS, extra={}, table="frame")
@@ -296,12 +311,22 @@ class BallFrameStore:
             rows = slice(int(clip_start[clip.index]), int(clip_start[clip.index]) + clip.frame_count)
             if not clip.has_events and (self.frames["event"][rows] != EVENT_CODES["unlabeled"]).any():
                 raise ValueError(f"Clip {clip.clip_id} has events but is declared without them")
-            shard = self.directory / SHARDS_DIR / shard_name(clip.index)
+            shard = self.image_path(clip)
             offsets = self.frames["offset"][rows]
             ends = offsets + self.frames["length"][rows]
             if offsets[0] != 0 or not np.array_equal(offsets[1:], ends[:-1]):
                 raise ValueError(f"Shard of {clip.clip_id} is not contiguous")
-            if not shard.is_file() or int(ends[-1]) != shard.stat().st_size:
+            if (self.frames["length"][rows] <= 0).any():
+                raise ValueError("Every indexed JPEG must have a positive length")
+            video = self.video_frames.get(clip.clip_id)
+            if video is not None and (
+                len(video.frame_sha256) != clip.frame_count
+                or (clip.width, clip.height) != (clip.source_width, clip.source_height)
+                or video.media_sha256 != clip.media_sha256
+            ):
+                raise ValueError("Video storage differs from native clip identity")
+            expected_bytes = video.media_bytes if video else int(ends[-1])
+            if not shard.is_file() or shard.is_symlink() or expected_bytes != shard.stat().st_size:
                 raise ValueError(f"Shard size does not match the index: {shard}")
         return clip_start
 
@@ -362,9 +387,41 @@ class BallFrameStore:
     def read_jpeg(self, row: int) -> NDArray[np.uint8]:
         """The stored JPEG bytes of one frame (a view of the shard)."""
         clip = self.clip_of(row)
+        if clip.clip_id in self.video_frames:
+            return np.frombuffer(self.read_video_window(clip, [int(self.frames["frame_index"][row])])[0], dtype=np.uint8)
         offset = int(self.frames["offset"][row])
         length = int(self.frames["length"][row])
         return np.asarray(self._shard(clip.index)[offset : offset + length])
+
+    def image_path(self, clip: ClipRecord) -> Path:
+        """The one immutable physical image payload of a clip."""
+        if clip.clip_id in self.video_frames:
+            return self.directory / "media" / video_name(clip.index)
+        return self.directory / SHARDS_DIR / shard_name(clip.index)
+
+    def read_video_window(
+        self, clip: ClipRecord, indices: Sequence[int], *, version: FileVersion | None = None,
+    ) -> tuple[bytes, ...]:
+        video = self.video_frames[clip.clip_id]
+        path = self.image_path(clip)
+        if version is None:
+            if clip.clip_id not in self._video_versions:
+                before = file_version(path)
+                if dual_sha256(path) != video.media_sha256 or file_version(path) != before:
+                    raise ValueError("Video payload differs from publication")
+                self._video_versions[clip.clip_id] = before
+            version = self._video_versions[clip.clip_id]
+        rows = self.clip_rows(clip)
+        payloads = read_video_jpegs(
+            path, indices, pts=self.frames["pts"][rows].tolist(),
+            time_base=Fraction(clip.time_base), width=clip.width, height=clip.height,
+            quality=video.jpeg_quality, runtime=video.runtime,
+            frame_hashes=video.frame_sha256, version=version,
+        )
+        if any(len(value) != self.frames["length"][rows[index]]
+               for index, value in zip(indices, payloads, strict=True)):
+            raise ValueError("Regenerated JPEG length differs from its index")
+        return payloads
 
     def read_bgr(self, row: int) -> NDArray[np.uint8]:
         """Decode one stored frame as a BGR ``uint8 (H,W,3)`` image."""
@@ -384,6 +441,7 @@ class BallFrameStore:
         # Memory maps are per process; workers reopen them lazily.
         state = dict(self.__dict__)
         state["_shards"] = {}
+        state["_video_versions"] = {}
         return state
 
     def __setstate__(self, state: dict[str, object]) -> None:

@@ -118,6 +118,7 @@ class Environment:
         dataset_version: str = "fixture",
         video_id: str = "fixture",
         campaign_id: str = "review",
+        actor_attempt: str = "first",
         frame_count: int = 32,
         model: ModelRef | None = None,
         learning: LearningPlan | None = None,
@@ -146,7 +147,7 @@ class Environment:
                     av.VideoFrame.from_ndarray(
                         np.full(
                             (32, 64, 3),
-                            i * 7 + (0 if video_id == "fixture" else 1),
+                            (i * 7 + (0 if video_id == "fixture" else 1 + sum(video_id.encode()) % 16)) % 256,
                             dtype=np.uint8,
                         ),
                         format="rgb24",
@@ -316,7 +317,7 @@ class Environment:
         self.adapter, self.store = BallReviewAdapter(), RevisionStore(self.layout)
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
-        self.actor = self.new_actor("first")
+        self.actor = self.new_actor(actor_attempt)
 
     def _register_source(
         self,

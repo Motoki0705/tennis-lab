@@ -184,6 +184,7 @@ class ResourceManager:
         previously_allocated_bytes: int,
         previously_used_gpu_seconds: float,
         max_pending_per_stage: int,
+        free_space_mounts: tuple[Path, ...] = (),
     ) -> ResourceManager:
         if layout.review_namespace is not None:
             raise ValueError(
@@ -193,6 +194,7 @@ class ResourceManager:
             scope_id=scope_id,
             limits=limits,
             roots=tuple(str(p) for p in roots),
+            free_space_mounts=tuple(str(p) for p in free_space_mounts),
             previously_allocated_bytes=previously_allocated_bytes,
             previously_used_gpu_seconds=previously_used_gpu_seconds,
             max_pending_per_stage=max_pending_per_stage,
@@ -203,6 +205,10 @@ class ResourceManager:
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
+        )
+        free_bytes(
+            tuple(str(root) for root in roots),
+            mounts=tuple(str(path) for path in free_space_mounts),
         )
         if not any(layout.root.is_relative_to(root) for root in roots):
             raise ValueError("storage inventory must include the annotation root")
@@ -470,7 +476,11 @@ class ResourceManager:
             previous = ResourceSample.model_validate_json(cached["sample"])
             storage, storage_measured_at = (
                 previous.storage.model_copy(
-                    update={"free_bytes": free_bytes(self.scope.roots)}
+                    update={
+                        "free_bytes": free_bytes(
+                            self.scope.roots, mounts=self.scope.free_space_mounts
+                        )
+                    }
                 ),
                 previous.storage_measured_at,
             )
@@ -486,6 +496,7 @@ class ResourceManager:
                 self.scope.roots,
                 self._baseline_path(),
                 self.scope.previously_allocated_bytes,
+                free_space_mounts=self.scope.free_space_mounts,
             )
             storage_measured_at = measured_at
             storage_monotonic_ns = monotonic_ns
@@ -540,7 +551,10 @@ class ResourceManager:
             return "free storage is below the required reserve"
         if sample.pss_bytes >= limit.total_pss_bytes:
             return "owned-process PSS budget reached"
-        if sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds:
+        if (
+            limit.gpu_seconds is not None
+            and sample.gpu_charged_seconds + sample.gpu_active_seconds >= limit.gpu_seconds
+        ):
             return "cumulative GPU time budget reached"
         return None
 
@@ -774,7 +788,7 @@ class ResourceManager:
                 < self.scope.limits.minimum_free_bytes
             ):
                 raise CapacityUnavailable("storage reservations do not fit")
-            if (
+            if self.scope.limits.gpu_seconds is not None and (
                 sample.gpu_charged_seconds
                 + sample.gpu_reserved_seconds
                 + request.gpu_seconds

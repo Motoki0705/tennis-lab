@@ -576,8 +576,11 @@ def test_legacy_chat_clip_cannot_be_readopted_under_canonical_id(
     assert not destination(env).exists()
 
 
+@pytest.mark.parametrize("cleanup_target", ["shards", "media"])
 def test_interrupted_staging_cleanup_keeps_owner_and_recovers(
-    setup: tuple[Environment, PublishRequest, Path], monkeypatch: pytest.MonkeyPatch
+    setup: tuple[Environment, PublishRequest, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    cleanup_target: str,
 ) -> None:
     env, request, base = setup
     service = BallPublisher(env.layout)
@@ -594,15 +597,22 @@ def test_interrupted_staging_cleanup_keeps_owner_and_recovers(
     staging = destination(env).with_name(".frames.staging-" + request.sha256)
     owner = staging / "publication-intent.json"
     owner_bytes = owner.read_bytes()
+    original_cleanup = publishing.shutil.rmtree
 
     def interrupted_cleanup(path: Path) -> None:
+        if path != staging and path.name != cleanup_target:
+            original_cleanup(path)
+            return
         # Simulate an interrupted recursive removal, after one entry vanished.
         victim = (
             path / "publication-intent.json"
             if path == staging
-            else next(path.iterdir())
+            else next(path.iterdir(), path)
         )
-        victim.unlink()
+        if victim.is_dir():
+            victim.rmdir()
+        else:
+            victim.unlink()
         raise RuntimeError("cleanup interrupted")
 
     with monkeypatch.context() as faults:
