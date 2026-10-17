@@ -175,6 +175,13 @@ class Adapter:
         ):
             raise ValueError("task teacher-mask validation failed")
 
+    def retained_references(
+        self, layout: AnnotationLayout, context: ReviewContext,
+        revision: ArtifactRef, receipt: AdoptionReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        # Fixture labels contain scalars only; core lineage supplies their files.
+        return ()
+
     def summarize(
         self,
         layout: AnnotationLayout,

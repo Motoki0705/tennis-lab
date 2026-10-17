@@ -7,9 +7,10 @@ log / shard / tracking / pose / snapshot / checkpoint / configuration を区別�
 期限を持つ `mode="expire"` を指定する。登録内容とファイルのhash/sizeは検証され、
 同じpathへの別内容・別保持条件の上書きを拒否する。
 
-この実装は明示的な登録APIとdry-runまでであり、既存writer、dataset reader、worker、
-学習処理からの参照を自動収集するものではない。全参照・実行中ownerの網羅を証明して
-いないため、すべてのplanは `execution_ready=false` となる。削除・移動APIはない。
+所有者・種類・保持期限の登録は明示APIで行う。標準writerのうち、下記の永続成果物は
+業務状態の確定時に保護参照も登録する。保護対象に自動で所有者やTTLを付与しない。
+全参照・実行中ownerの網羅はまだ証明していないため、すべてのplanは
+`execution_ready=false` となる。削除・移動APIはない。
 元データを保持する移行は[migration](migration/README.md)を参照する。
 保存形式・copy/共有・RGB cacheの同入力比較は[comparison](comparison/README.md)を参照する。
 一般GCの実行直前の再検査・実行journalは後続の実装範囲である。
@@ -37,6 +38,49 @@ inventory外の登録済み成果物も保護の起点になる。roleとpathの
 公開receiptなどと保護を原子的に更新する場合、`StorageCatalog` をtransactionの前に
 構築し、`protect(..., database=connection)` を同じ `Registry.transaction()` 内で呼ぶ。
 別registryやtransaction外のconnectionは拒否する。内部で別の書込transactionを開かない。
+
+## 標準writerからの接続
+
+| 確定境界 | 保護する参照 |
+|---|---|
+| `RevisionStore.seal` | 採用receipt、revision全履歴、編集command/payload、context、元動画/clip、予測、方針、taskが列挙する根拠 |
+| ball review adapter | 各版のlabels、画像/描画要求、actor launch、採用proof、保存済みtelemetryのresponse/HTML/image/event/error |
+| ball/playerの既存store固定 | snapshot manifest、index、metadata、全clip shard |
+| `BallPublisher.publish` | 公開receipt、要求、採用receipt、公開snapshotと全ファイル、base snapshotのファイル |
+| `ModelRegistry.bootstrap/select` | 初期モデルの重み/config/根拠、採否判断、比較したモデルの重み、学習・評価の完了記録/receipt/要求/intent、実行receipt/launch/log、campaign完了記録/plan/公開receipt、固定学習・評価入力 |
+
+~~~mermaid
+flowchart LR
+    T["taskの明示参照列挙"] --> P["版付きProtection"]
+    P --> TX["同じRegistry transaction"]
+    B["seal / publication / model pointer"] --> TX
+    TX --> C["業務状態と参照を同時commit"]
+    C --> G["GC dry-runの保護根拠"]
+~~~
+
+seal・publication pointer・model pointerと保護の追加は同じSQLite transactionに入る。
+保護の検証や書込が失敗した場合、業務状態の更新もrollbackする。保存済みファイルは保持し、
+再試行で同じ参照を登録する。既存store固定はmanifestを不変保存してから保護し、途中停止後は
+同じ固定要求を再実行できる。既存writerの再送で過去の正常成果物を再生成しない。
+
+model selectionは従来どおり、判断payloadとpointerを先にcommitし、そのpayloadから
+receiptファイルを保存する。比較重みの保護はpointerと同時に確定し、receiptファイル自身は
+保存後に保護する。commit/file間の停止では同じDB payloadから復元する。
+
+`storage.references` は型付きDocumentの直接参照だけを扱い、物理pathのaliasを重複除外する。
+同じpathに異なるhash/sizeがある場合は拒否する。task固有payloadの内部は
+`ReviewAdapter.retained_references` と `LearningAdapter.retained_references` で明示的に列挙する。
+rendererの依存は[telemetry collector](../telemetry/README.md)、ballの固定入力は
+[学習adapter](../../../ball_detection/training/annotation/README.md)が所有する。JSONやpath文字列を見て未知schemaを
+推測しない。保護IDにはcollector版を含め、再送で対象が変わった場合や明示解放済みIDの再利用を
+拒否する。新writerの導入だけで既存DBを一括backfillしたとは扱わない。
+画像証跡の追加列挙は`adoption-v2`、task学習依存の追加列挙は`model-selection-v3`を使い、
+旧collectorの保護を上書きせず、業務操作の再送時に新しい保護を追加する。
+
+この接続はreader lease、pending/active worker、学習途中のcheckpointや全cacheの
+自動参照収集を完成させるものではない。外部Codex raw rolloutのpathはtelemetryに出典として
+残るが、固定rootのGCが操作する対象ではない。未知の成果物は従来どおり候補化しない。
+削除実行前には、これらの残る参照と全writerの競合を照合する仕組みが必要である。
 
 ## 計測と試算
 

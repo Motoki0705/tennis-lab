@@ -3,11 +3,32 @@
 from __future__ import annotations
 
 from ..artifacts import read_document, verify_reference, write_document
-from ..contracts import ArtifactRef, ModelRef, content_digest
+from ..contracts import (
+    ArtifactRef,
+    Document,
+    ModelRef,
+    PublicationReceipt,
+    content_digest,
+)
+from ..execution.contracts import StageExit, StageLaunch
 from ..paths import AnnotationLayout
-from ..plan import references
+from ..plan import CampaignPlan, references
 from ..registry import Registry
-from .contracts import ModelState, SelectionRecord, SelectionVerdict
+from ..storage.catalog import StorageCatalog
+from ..storage.references import protection
+from .adapters import LearningAdapter
+from .contracts import (
+    CampaignCompletion,
+    CompletedStage,
+    EvaluationReceipt,
+    FixedEvaluation,
+    LearningIntent,
+    ModelState,
+    SelectionRecord,
+    SelectionVerdict,
+    StageInput,
+    TrainingReceipt,
+)
 from .validation import check_evaluation
 
 _SCHEMA = """
@@ -27,11 +48,49 @@ CREATE TABLE IF NOT EXISTS annotation_model_selections (
 """
 
 
+def _selection_documents(
+    layout: AnnotationLayout,
+    verdict: SelectionVerdict,
+    intent: LearningIntent,
+    evaluation: EvaluationReceipt,
+) -> tuple[Document, ...]:
+    """Retain the known evidence graph used by check_evaluation on every replay."""
+    evaluated = read_document(layout, verdict.evaluation, CompletedStage)
+    trained = read_document(layout, evaluation.training, CompletedStage)
+    documents: list[Document] = [intent, evaluation, evaluated, trained]
+    for completed in (evaluated, trained):
+        request = read_document(layout, completed.request, StageInput)
+        execution = read_document(layout, completed.execution, StageExit)
+        launch = read_document(layout, execution.launch, StageLaunch)
+        documents.extend((request, execution, launch))
+    documents.append(read_document(layout, trained.result, TrainingReceipt))
+    completion = read_document(layout, intent.completion, CampaignCompletion)
+    documents.extend(
+        (
+            completion,
+            read_document(layout, completion.plan, CampaignPlan),
+            read_document(layout, intent.fixed_evaluation, FixedEvaluation),
+        )
+    )
+    publications = {intent.publication}
+    publications.update(
+        product.publication
+        for task in completion.tasks
+        for product in task.products
+        if product.publication is not None
+    )
+    documents.extend(
+        read_document(layout, ref, PublicationReceipt) for ref in publications
+    )
+    return tuple(documents)
+
+
 class ModelRegistry:
     def __init__(self, layout: AnnotationLayout) -> None:
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("annotation-learning-models-v1", _SCHEMA)
+        self.catalog = StorageCatalog(layout)
 
     def bootstrap(self, model: ModelRef, evidence: ArtifactRef) -> ModelState:
         """Explicit initial registration, never a newest-file or last lookup."""
@@ -44,9 +103,20 @@ class ModelRegistry:
                 "SELECT request FROM annotation_model_bootstrap WHERE task=?",
                 (model.task,),
             ).fetchone()
+            if old is not None and old["request"] != request:
+                raise ValueError("initial model registration already differs")
+            self.catalog.protect(
+                protection(
+                    self.layout,
+                    identity="model-bootstrap-v1-" + request,
+                    kind="model",
+                    reason="explicit initial model weights, configuration, and evidence",
+                    roots=(evidence,),
+                    documents=(model,),
+                ),
+                database=db,
+            )
             if old is not None:
-                if old["request"] != request:
-                    raise ValueError("initial model registration already differs")
                 return state
             db.execute(
                 "INSERT INTO annotation_model_bootstrap VALUES (?,?,?)",
@@ -85,10 +155,12 @@ class ModelRegistry:
             raise ValueError("model version already identifies different weights")
         return state
 
-    def select(self, verdict_ref: ArtifactRef) -> ArtifactRef:
+    def select(self, verdict_ref: ArtifactRef, adapter: LearningAdapter) -> ArtifactRef:
         """Task judgment is opaque; acceptance still requires an unchanged baseline."""
         verdict = read_document(self.layout, verdict_ref, SelectionVerdict)
         intent, evaluation = check_evaluation(self.layout, verdict.evaluation)
+        if adapter.task != intent.task:
+            raise ValueError("model selection reference adapter task mismatch")
         if intent.selection_policy is None or verdict.policy != intent.selection_policy:
             raise ValueError("model selection requires the frozen adoption policy")
         expected, candidate = evaluation.baseline, evaluation.candidate
@@ -98,6 +170,8 @@ class ModelRegistry:
             verify_reference(self.layout, ref)
         if self.adopted_state(expected.model) != expected:
             raise ValueError("evaluation baseline generation is not the adopted state")
+        evidence = _selection_documents(self.layout, verdict, intent, evaluation)
+        dependencies = adapter.retained_references(self.layout, intent, evaluation)
         # The pointer and complete receipt payload commit together. A crash before
         # the file write is recovered from this exact row, without another CAS.
         with self.registry.transaction() as db:
@@ -157,10 +231,36 @@ class ModelRegistry:
                     "INSERT INTO annotation_model_selections VALUES (?,?)",
                     (verdict_ref.digest, record.model_dump_json()),
                 )
-        return write_document(
+            self.catalog.protect(
+                protection(
+                    self.layout,
+                    identity="model-selection-v3-" + verdict_ref.digest,
+                    kind="model",
+                    reason="model decision, compared weights, and fixed learning inputs",
+                    roots=(verdict_ref,),
+                    documents=(verdict, record, *evidence),
+                    dependencies=dependencies,
+                ),
+                database=db,
+            )
+        reference = write_document(
             self.layout,
             self.layout.path(
                 "models", candidate.task, "selections", verdict_ref.digest + ".json"
             ),
             record,
         )
+        # The model pointer/weights already committed atomically above. Retrying
+        # the commit/file gap materializes and protects this exact stored record.
+        self.catalog.protect(
+            protection(
+                self.layout,
+                identity="model-selection-record-v1-" + verdict_ref.digest,
+                kind="model",
+                reason="materialized model decision receipt",
+                roots=(reference,),
+                documents=(record,),
+            )
+        )
+        result: ArtifactRef = reference
+        return result

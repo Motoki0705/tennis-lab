@@ -60,11 +60,20 @@ class Adapter:
     task = "detector"
     product = "boxes"
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        intent: LearningIntent,
+        evaluation: EvaluationReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        return self.dependencies
+
     def __init__(self) -> None:
         self.accept = True
         self.complete_metrics = True
         self.use_test = False
         self.selections = 0
+        self.dependencies: tuple[ArtifactRef, ...] = ()
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -274,6 +283,11 @@ class Environment:
         self.recipe = write_asset(
             self.layout, self.layout.path("models", "recipe.txt"), b"fresh optimizer"
         )
+        self.adapter.dependencies = (
+            write_asset(
+                self.layout, self.layout.path("models", "nested-input.bin"), b"task input"
+            ),
+        )
         self.runtime = LearningRuntime(
             scope=self.common,
             queue=QueueConfiguration(
@@ -464,6 +478,108 @@ class Environment:
 @pytest.fixture
 def env(tmp_path: Path) -> Environment:
     return Environment(tmp_path / "annotation")
+
+
+def selection_dependencies(
+    env: Environment, intent_ref: ArtifactRef
+) -> tuple[ArtifactRef, ...]:
+    """Expected fixture files needed to revalidate a completed model decision."""
+    intent = read_document(env.layout, intent_ref, LearningIntent)
+    completion = read_document(env.layout, intent.completion, CampaignCompletion)
+    publication = read_document(env.layout, intent.publication, PublicationReceipt)
+    refs = [
+        intent_ref,
+        intent.completion,
+        completion.plan,
+        intent.publication,
+        intent.recipe,
+        intent.fixed_evaluation,
+        intent.train.manifest,
+        env.val.manifest,
+        env.test.manifest,
+        *publication.adoptions,
+        *env.adapter.dependencies,
+    ]
+    directory = env.layout.artifact_path(intent_ref).parent
+    for stage in ("train", "evaluate"):
+        completed_ref = annotation_reference(
+            env.layout, directory / stage / "1" / "completed.json"
+        )
+        completed = read_document(env.layout, completed_ref, CompletedStage)
+        execution = read_document(env.layout, completed.execution, StageExit)
+        refs.extend(
+            (
+                completed_ref,
+                completed.request,
+                completed.result,
+                completed.execution,
+                execution.launch,
+                execution.stdout,
+                execution.stderr,
+            )
+        )
+    training = read_document(
+        env.layout,
+        annotation_reference(env.layout, directory / "train/1/result.json"),
+        TrainingReceipt,
+    )
+    evaluation = read_document(
+        env.layout,
+        annotation_reference(env.layout, directory / "evaluate/1/result.json"),
+        EvaluationReceipt,
+    )
+    refs.extend((training.provenance, evaluation.metrics))
+    return tuple(refs)
+
+
+@pytest.mark.parametrize("accept", [True, False])
+def test_model_decisions_protect_complete_selection_evidence(
+    env: Environment, accept: bool
+) -> None:
+    from src.tasks.base.annotation.plan import references
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    env.adapter.accept = accept
+    intent_ref = env.register()
+    outcome = env.train_and_evaluate(intent_ref)
+    assert outcome.state == ("adopted" if accept else "rejected")
+    assert outcome.selection is not None
+    selection = read_document(env.layout, outcome.selection, SelectionRecord)
+    assert_expired_but_protected(
+        env.layout,
+        (
+            *selection_dependencies(env, intent_ref),
+            outcome.selection,
+            selection.verdict,
+            *references(selection.expected.model),
+            *references(selection.candidate),
+        ),
+        "model",
+    )
+
+
+def test_model_bootstrap_protection_failure_cannot_publish_a_pointer(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.storage.catalog import StorageCatalog
+
+    registry = env.learning.models
+    candidate = env.model.model_copy(update={"task": "another"})
+    original = registry.catalog.protect
+    before = StorageCatalog(env.layout).snapshot().digest
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after model protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(registry.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after model protection"):
+            registry.bootstrap(candidate, env.common)
+    assert StorageCatalog(env.layout).snapshot().digest == before
+    with pytest.raises(ValueError, match="no explicitly adopted"):
+        registry.current("another")
+    assert registry.bootstrap(candidate, env.common).model == candidate
 
 
 @pytest.mark.parametrize(
@@ -752,6 +868,7 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
     env: Environment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from src.tasks.base.annotation.learning import models
+    from tests.support.annotation_storage import assert_expired_but_protected
 
     intent = env.register()
     env.train_and_evaluate(intent, finish_selection=False)
@@ -764,6 +881,9 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
     with pytest.raises(Crash):
         env.learning.tick(intent, env.adapter, env.runtime)
     assert env.learning.models.current("detector").generation == 2
+    assert_expired_but_protected(
+        env.layout, selection_dependencies(env, intent), "model"
+    )
     monkeypatch.setattr(models, "write_document", real_write)
     result = Learning(env.layout, executor=env.executor).tick(
         intent, env.adapter, env.runtime
@@ -778,6 +898,8 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
 def test_parallel_candidates_cannot_overwrite_newer_adopted_model(
     env: Environment,
 ) -> None:
+    from tests.support.annotation_storage import assert_expired_but_protected
+
     first, second = env.register(name="parallel-one"), env.register(name="parallel-two")
     env.train_and_evaluate(first, finish_selection=False)
     env.train_and_evaluate(second, finish_selection=False)
@@ -793,11 +915,46 @@ def test_parallel_candidates_cannot_overwrite_newer_adopted_model(
     assert {r.state for r in results} == {"adopted", "reevaluation_required"}
     assert env.learning.models.current("detector").generation == 2
     for result in results:
+        assert_expired_but_protected(
+            env.layout, selection_dependencies(env, result.intent), "model"
+        )
         assert result.selection is not None
         selection = read_document(env.layout, result.selection, SelectionRecord)
         assert selection.expected.model == env.model
         if result.state == "reevaluation_required":
             assert selection.observed.generation == 2 and selection.adopted is None
+
+
+def test_selection_protection_failure_rolls_back_model_decision(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.annotation_storage import assert_expired_but_protected
+
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    registry = env.learning.models
+    before = registry.catalog.snapshot().digest
+    original = registry.catalog.protect
+
+    def crash(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise RuntimeError("after selection protection")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(registry.catalog, "protect", crash)
+        with pytest.raises(RuntimeError, match="after selection protection"):
+            env.learning.tick(intent, env.adapter, env.runtime)
+    assert registry.current("detector").generation == 1
+    assert registry.catalog.snapshot().digest == before
+    with registry.registry.transaction() as db:
+        assert (
+            db.execute("SELECT * FROM annotation_model_selections").fetchone() is None
+        )
+        assert db.execute("SELECT count(*) FROM annotation_models").fetchone()[0] == 1
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
+    assert_expired_but_protected(
+        env.layout, selection_dependencies(env, intent), "model"
+    )
 
 
 def test_registered_intent_and_runtime_cannot_be_silently_replaced(
@@ -814,6 +971,25 @@ def test_registered_intent_and_runtime_cannot_be_silently_replaced(
         ModelRegistry(env.layout).bootstrap(
             env.model.model_copy(update={"version": "latest"}), env.common
         )
+
+
+def test_missing_task_dependency_rolls_back_model_selection(env: Environment) -> None:
+    intent = env.register()
+    env.train_and_evaluate(intent, finish_selection=False)
+    registry = env.learning.models
+    before = registry.catalog.snapshot().digest
+    dependency = env.adapter.dependencies[0]
+    path = env.layout.artifact_path(dependency)
+    payload = path.read_bytes()
+    path.unlink()
+    with pytest.raises(ValueError, match="missing or size changed"):
+        env.learning.tick(intent, env.adapter, env.runtime)
+    assert registry.current("detector").generation == 1
+    assert registry.catalog.snapshot().digest == before
+    with registry.registry.transaction() as db:
+        assert db.execute("SELECT * FROM annotation_model_selections").fetchone() is None
+    write_asset(env.layout, path, payload)
+    assert env.learning.tick(intent, env.adapter, env.runtime).state == "adopted"
 
 
 def test_real_stage_runner_binds_scope_and_one_queue_registration(
@@ -896,7 +1072,7 @@ def test_direct_selection_still_requires_the_frozen_policy(env: Environment) -> 
         ),
     )
     with pytest.raises(ValueError, match="frozen adoption policy"):
-        env.learning.models.select(verdict)
+        env.learning.models.select(verdict, env.adapter)
     assert env.learning.models.current("detector").generation == 1
 
 

@@ -47,6 +47,10 @@ testを代わりに使うことはできない。test membershipは学習との�
 比較元が変わっていれば `reevaluation_required` を保存し、自動で評価基準を読み替えない。
 
 現行pointerと採用結果の全文はSQLiteの一つのtransactionでcommitする。
+`ModelRegistry.select(verdict, adapter)`は、共通の採否根拠に加えて必須の
+`LearningAdapter.retained_references(layout, intent, evaluation)`が列挙するtask固有の
+固定入力・学習来歴・評価記録の依存参照を同じtransactionで保護する。不採用・再評価要求・
+保存済み判断の再送でも列挙し、参照欠落や保護失敗は判断とpointer更新をrollbackする。
 直後にreceiptファイルの保存が失敗しても、同じDB行から復元でき、採用を二重実行しない。
 進行中campaignのplanを書き換える処理や既存clipを再推論する呼び出しは持たない。
 次campaignの計画作成時に `current(task)` を読み、採用版を新planへ固定する。
