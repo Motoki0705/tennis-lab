@@ -23,6 +23,12 @@ from src.tasks.ball_detection.data.supervision import (
     OBSERVED_ONLY,
     resolve_frame_supervision,
 )
+from src.tasks.ball_detection.data.windows.hybrid import (
+    HYBRID_MANIFEST_SCHEMA,
+    AbsencePolicy,
+    negative_mask,
+    reviewed_empty_evidence,
+)
 from src.tasks.ball_detection.data.windows.manifest import (
     COORDINATE_MANIFEST_SCHEMA,
     clip_semantic_digest,
@@ -43,10 +49,12 @@ from src.utils.data.verification import (
 class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
     """Modality is explicit. MDD-only never opens a pose manifest or artifact."""
 
-    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, jpeg_decoder: str = "opencv") -> None:
+    def __init__(self, manifest: Path, *, split: str, requires_pose: bool, jpeg_decoder: str = "opencv",
+                 verify_empty_annotations: bool = False) -> None:
         if jpeg_decoder not in {"opencv", "nvjpeg"}:
             raise ValueError("JPEG decoder must be explicit: opencv or nvjpeg")
         self.jpeg_decoder = jpeg_decoder
+        self.verify_empty_annotations = verify_empty_annotations
         self._jpeg_reader = FileRangeReader()
         self.manifest = json.loads(manifest.read_text())
         schema = self.manifest.get("schema")
@@ -56,7 +64,7 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
             for record in self.manifest["clips"]:
                 record["windows"] = [dict(start=start, frame_step=1) for start in record["windows"]]
                 record["common_evaluation"] = True
-        elif schema == COORDINATE_MANIFEST_SCHEMA:
+        elif schema in {COORDINATE_MANIFEST_SCHEMA, HYBRID_MANIFEST_SCHEMA}:
             self.input_kind = self.manifest["input_kind"]
             self.frame_steps = TemporalSamplingConfig(tuple(self.manifest["sampling"]["frame_steps"])).frame_steps
             semantics = self.manifest["semantics"]
@@ -82,6 +90,10 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
         self.pose_directory = Path(self.manifest["pose_directory"]) if requires_pose else None
         self.records = [r for r in self.manifest["clips"] if r["clip"]["split"] == split]
         self.windows = [(i, SampledWindow(**window)) for i, record in enumerate(self.records) for window in record["windows"]]
+        self.absence_policy = AbsencePolicy.from_mapping(self.manifest["absence"]) if schema == HYBRID_MANIFEST_SCHEMA else None
+        self.window_sources = [source for r in self.records for source in r["window_sources"]] if self.absence_policy else []
+        if self.absence_policy and any(len(r["windows"]) != len(r["window_sources"]) for r in self.records):
+            raise ValueError("Hybrid window sources must align with windows")
         if not self.windows:
             raise ValueError(f"No accepted windows in {split}")
         if any(window.frame_step not in self.frame_steps for _, window in self.windows):
@@ -96,6 +108,7 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
                 raise ValueError("Frozen video hash differs from its publication contract")
         self._rgb_versions: dict[str, FileVersion] = {}
         self._states: dict[str, AnnotationStates] = {}
+        self._reviewed_empty: dict[str, NDArray[np.bool_]] = {}
         self._pose_clip = ""
         self._pose: dict[str, np.ndarray] = {}
 
@@ -112,8 +125,23 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
             version = self._shared_rgb_verification.verify(path)
             if "semantic_sha256" in record and clip_semantic_digest(self.store, clip) != record["semantic_sha256"]:
                 raise ValueError("Frozen clip GT/geometry identity mismatch")
+            states = annotation_states(self.store, clip)
+            if self.absence_policy:
+                empty = np.zeros(clip.frame_count, dtype=np.bool_)
+                indices = record["reviewed_empty_frames"]
+                if sorted(set(indices)) != indices or any(type(i) is not int or not 0 <= i < clip.frame_count for i in indices):
+                    raise ValueError("Invalid frozen reviewed-empty frame mask")
+                empty[indices] = True
+                if (empty & ~(states.reviewed & states.target & (states.count == 0))).any():
+                    raise ValueError("Frozen reviewed-empty evidence disagrees with normalized labels")
+            elif self.verify_empty_annotations:
+                empty, _ = reviewed_empty_evidence(self.store, clip, states)
+            else:
+                # Historical coordinate consumers do not use absence supervision.
+                empty = states.reviewed & states.target & (states.count == 0)
             self._rgb_versions[clip.clip_id] = version
-            self._states[clip.clip_id] = annotation_states(self.store, clip)
+            self._states[clip.clip_id] = states
+            self._reviewed_empty[clip.clip_id] = empty
         elif self._rgb_versions[clip.clip_id] != version:
             raise ValueError("RGB shard changed during dataset use")
         return self._states[clip.clip_id]
@@ -175,14 +203,33 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
         record = self.records[record_index]
         clip = self.store.clip_by_id(record["clip"]["clip_id"])
         indices = window.indices()
-        if indices[-1] >= clip.frame_count or not any(a <= indices[0] and indices[-1] < b for a, b in record["play"]):
-            raise ValueError("Sampled window leaves its declared play span")
+        spans = record["eligible"] if self.absence_policy else record["play"]
+        if indices[-1] >= clip.frame_count or not any(a <= indices[0] and indices[-1] < b for a, b in spans):
+            raise ValueError("Sampled window leaves its declared play span or eligible span")
         states = self._verify_clip(record, clip)
         position_valid = states.supervision[indices].copy()
         cfg = self.manifest["config"]
-        if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
-                or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
-            raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
+        if self.absence_policy:
+            negative = negative_mask(states, self.absence_policy, self._reviewed_empty[clip.clip_id])[indices]
+            heatmap_valid = position_valid | negative
+            source = self.window_sources[index]
+            in_play = any(a <= indices[0] and indices[-1] < b for a, b in record["play"])
+            intersects_play = any(a <= indices[-1] and indices[0] < b for a, b in record["play"])
+            valid_source = (
+                source == "play" and in_play and position_valid.sum() >= cfg["min_observed_frames"]
+                and states.evidence[indices].mean() >= cfg["min_presence_fraction"]
+            ) or (source == "absent" and negative.all()) or (
+                source == "nonplay" and not intersects_play and heatmap_valid.any() and not negative.all()
+            )
+            if not valid_source or not states.target[indices[0]:indices[-1] + 1].all():
+                raise ValueError("Hybrid window violates its declared supervision source")
+        else:
+            if (not states.target[indices].all() or position_valid.sum() < cfg["min_observed_frames"]
+                    or states.evidence[indices].mean() < cfg["min_presence_fraction"]):
+                raise ValueError("Sampled window no longer satisfies declared teacher/evidence requirements")
+            rows = self.store.clip_rows(clip)
+            heatmap_valid = self._heatmap_supervision[rows[indices]] & states.target[indices] & (states.count[indices] <= 1)
+            heatmap_valid &= (states.count[indices] != 0) | self._reviewed_empty[clip.clip_id][indices]
         images = self._read_images(clip, indices)
         uv: NDArray[np.float32] = np.zeros((32, 2), np.float32)
         denominator = clip.scale * np.asarray((clip.source_width - 1, clip.source_height - 1), np.float32)
@@ -196,7 +243,7 @@ class FrozenBallWindowDataset(Dataset[dict[str, Any]]):
             raise ValueError("Sampled timestamps must be finite and strictly increasing")
         sample = dict(**images, timestamps=torch.from_numpy(seconds), uv=torch.from_numpy(uv),
                       position_valid=torch.from_numpy(position_valid),
-                      heatmap_valid=torch.from_numpy((self._heatmap_supervision[rows[indices]] & states.target[indices] & (states.count[indices] <= 1)).copy()),
+                      heatmap_valid=torch.from_numpy(heatmap_valid.copy()),
                       frame_indices=torch.from_numpy(indices),
                       frame_step=window.frame_step, input_kind=self.input_kind,
                       common_evaluation=bool(record["common_evaluation"]),

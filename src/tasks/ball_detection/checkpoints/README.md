@@ -19,3 +19,7 @@ DPT v1 の residual/dense3d 構成もschemaの定義に限定して復元する�
 
 `mdd_coordinates.v4` の圧縮比較モデルは `MDDPoseConfig` と保存済み入力契約を使い、
 このCNN設定の移行対象にはしない。
+
+`mdd_hybrid_training.v1` は新規5chモデル専用で、`input_channels=5` の明示が必須。
+評価・推論・再開・継続学習は同じ `restore_hybrid_model` で検証する。
+queryからの初期化も入力契約を照合し、履歴2chモデルから5chへの転送は拒否する。

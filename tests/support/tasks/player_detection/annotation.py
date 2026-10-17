@@ -65,6 +65,8 @@ from src.tasks.player_detection.annotation.inference import (
 )
 from src.tasks.player_detection.annotation.review.adapter import PlayerReviewAdapter
 from src.tasks.player_detection.annotation.review.contracts import (
+    WORKER_ADAPTER,
+    WORKER_VERSION,
     FrameDecision,
     Note,
     PlayerEdits,
@@ -254,7 +256,7 @@ class Environment:
                     "code_commit": "a" * 40,
                     "code_diff_digest": "b" * 64,
                     "agent_model": "gpt-6.1-sol",
-                    "agent_effort": "high",
+                    "agent_effort": "max",
                     "resources": {
                         "codex_workers": 1,
                         "additional_storage_bytes": 100_000_000,
@@ -368,8 +370,8 @@ class Environment:
             "campaigns", self.plan.campaign_id, "workers", attempt
         )
         request = WorkRequest(
-            adapter="player_bbox_review",
-            adapter_version="v1",
+            adapter=WORKER_ADAPTER,
+            adapter_version=WORKER_VERSION,
             stage="review",
             subject_id=self.manifest.clip_id,
             payload=self.context_ref,

@@ -16,8 +16,8 @@ from numpy.typing import NDArray
 
 from src.tasks.ball_detection.data.store import SHARDS_DIR, BallFrameStore, shard_name
 from src.tasks.player_association.evaluation.labels import ClipLabels
-from src.tasks.player_detection.annotation.player_pose.dataset import PlayerPoseStore
-from src.tasks.player_detection.annotation.player_pose.reviews import validate_and_remap
+from src.tasks.player_detection.annotation.pose.dataset import PlayerPoseStore
+from src.tasks.player_detection.annotation.pose.reviews import validate_and_remap
 from src.tennis_scene.pipeline.storage.codec import unpack_value
 from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,

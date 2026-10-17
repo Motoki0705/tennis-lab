@@ -15,6 +15,7 @@ from src.tasks.base.annotation.plan import (
     load_plan,
     save_plan,
 )
+from src.tasks.base.annotation.worker_decision import load_worker_decision
 
 
 def payload(root: Path) -> dict[str, object]:
@@ -37,7 +38,7 @@ def payload(root: Path) -> dict[str, object]:
         "code_commit": "a" * 40,
         "code_diff_digest": "b" * 64,
         "agent_model": "gpt-6.1-sol",
-        "agent_effort": "high",
+        "agent_effort": "max",
         "resources": {
             "codex_workers": 50,
             "additional_storage_bytes": 30 * 1024**3,
@@ -194,3 +195,90 @@ def test_interrupted_publish_leaves_no_partial_plan(
     directory = layout.path("campaigns", plan.campaign_id)
     assert [p.name for p in directory.iterdir()] == ["plan.lock"]
     assert load_plan(save_plan(layout, plan)) == plan
+
+
+def test_new_plan_uses_recorded_worker_decision(tmp_path: Path) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    raw = payload(layout.root)
+    decision = load_worker_decision()
+    assert (decision.agent_model, decision.agent_effort) == ("gpt-6.1-sol", "max")
+    assert decision.decided_on == "2026-10-16" and "#1233" in decision.source
+    raw.update(agent_model=decision.agent_model, agent_effort=decision.agent_effort)
+    plan = CampaignPlan.model_validate_json(json.dumps(raw))
+    saved = load_plan(save_plan(layout, plan), expected_digest=plan.sha256)
+    assert (saved.agent_model, saved.agent_effort) == ("gpt-6.1-sol", "max")
+
+
+@pytest.mark.parametrize("phase", ["preview", "production", "benchmark"])
+@pytest.mark.parametrize("effort", ["low", "medium", "high", "xhigh", "ultra"])
+def test_new_plan_rejects_undecided_effort_before_writes(
+    tmp_path: Path, phase: str, effort: str
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    raw = payload(layout.root)
+    plan = CampaignPlan.model_validate_json(json.dumps(raw))
+    raw = plan.model_dump(mode="json")
+    raw.update(phase=phase, agent_effort=effort)
+    raw["tasks"][0]["review"] = {
+        key: raw["selection"] for key in ("policy", "preview_evidence", "decision")
+    }
+    plan = CampaignPlan.model_validate_json(json.dumps(raw))
+    with pytest.raises(ValueError, match="user decision.*gpt-6.1-sol/max"):
+        save_plan(layout, plan)
+    assert not layout.root.exists()
+
+
+@pytest.mark.parametrize("field", ["agent_model", "agent_effort"])
+def test_plan_requires_explicit_worker_values(tmp_path: Path, field: str) -> None:
+    raw = payload(tmp_path / "annotation")
+    del raw[field]
+    with pytest.raises(ValidationError, match=field):
+        CampaignPlan.model_validate_json(json.dumps(raw))
+
+
+def test_new_plan_rejects_undecided_model_even_after_unvalidated_copy(
+    tmp_path: Path,
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = CampaignPlan.model_validate_json(json.dumps(payload(layout.root)))
+    plan = plan.model_copy(update={"agent_model": "unapproved-model"})
+    with pytest.raises(ValidationError, match="agent_model"):
+        save_plan(layout, plan)
+    assert not layout.root.exists()
+
+
+@pytest.mark.parametrize("damage", ["missing", "malformed", "incomplete"])
+def test_new_plan_never_falls_back_when_decision_is_unavailable(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = CampaignPlan.model_validate_json(json.dumps(payload(layout.root)))
+    path = tmp_path / "decision.toml"
+    if damage != "missing":
+        path.write_text("[" if damage == "malformed" else 'agent_effort = "max"')
+    monkeypatch.setattr("src.tasks.base.annotation.worker_decision.DECISION_PATH", path)
+    with pytest.raises((FileNotFoundError, ValueError)):
+        save_plan(layout, plan)
+    assert not layout.root.exists()
+
+
+def test_existing_plan_retains_bytes_hash_and_effort(tmp_path: Path) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    raw = payload(layout.root)
+    raw["agent_effort"] = "high"
+    original = CampaignPlan.model_validate_json(json.dumps(raw))
+    path = layout.path("campaigns", original.campaign_id, "plan.json")
+    path.parent.mkdir(parents=True)
+    # Simulate a plan frozen before the operational decision was enforced.
+    before = json.dumps(raw, indent=2).encode() + b"\n"
+    path.write_bytes(before)
+    inode = path.stat().st_ino
+    assert load_plan(path, expected_digest=original.sha256) == original
+    assert save_plan(layout, original) == path
+    with pytest.raises(ValueError, match="hash mismatch"):
+        save_plan(layout, original.model_copy(update={"agent_effort": "max"}))
+    with pytest.raises(ValueError, match="user decision"):
+        save_plan(layout, original.model_copy(update={"campaign_id": "new-campaign"}))
+    assert path.stat().st_ino == inode
+    assert hashlib.sha256(path.read_bytes()).digest() == hashlib.sha256(before).digest()
+    assert path.read_bytes() == before

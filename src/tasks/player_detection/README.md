@@ -12,7 +12,7 @@ chat-annotation の処理済み player ラベルから、テニスプレーヤ�
 pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使えます。
 
 新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
-修正bboxからの[追跡・ID・pose](annotation/player_pose/README.md)と、
+修正bboxからの[追跡・ID・pose](annotation/pose/README.md)と、
 確認済み負例を含む[累積bbox公開](generate_dataset/publishing/README.md)を接続しています。
 追加学習前の既存データ固定とvalidation/testの支持対象は
 [snapshot・固定partition](data/snapshots/README.md)で管理します。

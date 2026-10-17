@@ -5,19 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.tennis_scene.chat_annotation.layout import published_video_path
-from src.tennis_scene.chat_annotation.manifests import (
-    load_prepared_manifests,
-    require_regular_path,
-)
-from src.tennis_scene.chat_annotation.runtime.contracts import (
+from src.tasks.annotation.migration.legacy_format.contracts import (
     ClipManifest,
     PlayerAnnotation,
     parse_annotation,
     read_json,
     sha256_file,
 )
-from src.tennis_scene.chat_annotation.runtime.validation import validate_annotation
+from src.tasks.annotation.migration.legacy_format.layout import published_video_path
+from src.tasks.annotation.migration.legacy_format.manifests import (
+    load_prepared_manifests,
+    require_regular_path,
+)
+from src.tasks.annotation.migration.legacy_format.validation import validate_annotation
 
 PROCESSED_PLAYER_DIR = Path("annotated/processed/player")
 
