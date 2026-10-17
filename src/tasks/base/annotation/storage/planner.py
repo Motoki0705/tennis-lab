@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -37,20 +38,28 @@ def _unchanged(entry: InventoryEntry) -> bool:
 
 
 def plan_gc(
-    catalog: StorageCatalog, observed: Inventory, *, now_ns: int | None = None
+    catalog: StorageCatalog,
+    observed: Inventory,
+    *,
+    now_ns: int | None = None,
+    database: sqlite3.Connection | None = None,
 ) -> GCPlan:
     """An explicit expiry is necessary, but never sufficient to authorize removal."""
     now = time.time_ns() if now_ns is None else now_ns
     if now < observed.created_at_ns:
         raise ValueError("GC decision cannot predate its inventory")
-    snapshot = catalog.snapshot()
+    snapshot = catalog.snapshot(database=database)
     entries = {item.path: item for item in observed.entries}
     if len(entries) != len(observed.entries):
         raise ValueError("inventory contains duplicate paths")
     edges: dict[str, tuple[str, ...]] = {}
     incoming: dict[str, int] = defaultdict(int)
     reasons: dict[str, set[str]] = defaultdict(set)
+    retired = set(snapshot.retired)
     for path, registered in snapshot.artifacts.items():
+        if path in retired:
+            reasons[path].add("gc:retired")
+            continue
         dependencies = tuple(catalog.key(item) for item in registered.dependencies)
         edges[path] = dependencies
         for target in dependencies:
@@ -188,8 +197,8 @@ def save_dry_run(
 ) -> tuple[ArtifactRef, ArtifactRef]:
     if plan.inventory_digest != observed.sha256:
         raise ValueError("GC plan and inventory do not match")
-    # This is only an evidence save. Fresh inventory/reference/owner checks and
-    # a separate execution protocol will be required before any future removal.
+    # Evidence saving never executes collection. GCStore rechecks this evidence
+    # under the reference transaction after an explicit, separate GCRequest.
     inventory_ref = write_document(
         catalog.layout,
         catalog.layout.path("storage_inventories", observed.sha256 + ".json"),

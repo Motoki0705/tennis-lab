@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -125,6 +127,114 @@ def test_seal_and_reference_protection_roll_back_together(
     first = StorageCatalog(env.layout).snapshot().digest
     env.store.seal(env.head(), adopted, env.adapter)
     assert StorageCatalog(env.layout).snapshot().digest == first
+
+
+@pytest.mark.parametrize("kind", [BallTeacherMask, ReviewEvidence, AdoptionReceipt])
+@pytest.mark.parametrize("after_write", [False, True])
+def test_adoption_artifact_boundaries_recover_identical_receipt(
+    env: Environment, monkeypatch: pytest.MonkeyPatch, kind: type, after_write: bool
+) -> None:
+    from src.tasks.ball_detection.annotation.review import adapter
+
+    image = env.page((1,))
+    env.apply(BallEdits(
+        operations=(env.replace(1, image, observations=(visible(),)),), images=(image,),
+    ))
+    telemetry = (env.telemetry((image,)),)
+    head = env.head()
+    write = adapter.write_document
+
+    def interrupted(layout, path, document):
+        if isinstance(document, kind) and not after_write:
+            raise RuntimeError("before adoption artifact")
+        result = write(layout, path, document)
+        if isinstance(document, kind) and after_write:
+            raise RuntimeError("after adoption artifact")
+        return result
+
+    def prepare():
+        return env.adapter.prepare_adoption(
+            env.layout, env.context, env.manifest, head, telemetry,
+            reason="recover immutable adoption evidence",
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(adapter, "write_document", interrupted)
+        with pytest.raises(RuntimeError, match="adoption artifact"):
+            prepare()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        recovered = list(pool.map(lambda _: prepare(), range(2)))
+    assert recovered[0] == recovered[1] == prepare()
+    assert env.store.seal(head, recovered[0], env.adapter) == recovered[0]
+
+
+def test_seal_response_loss_after_commit_keeps_adoption_and_protection(
+    env: Environment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.base.annotation.storage import StorageCatalog
+
+    image = env.page((1,))
+    env.apply(BallEdits(
+        operations=(env.replace(1, image, observations=(visible(),)),), images=(image,),
+    ))
+    head = env.head()
+    adopted = env.adapter.prepare_adoption(
+        env.layout, env.context, env.manifest, head, (env.telemetry((image,)),),
+        reason="recover seal commit",
+    )
+    transaction = env.store.registry.transaction
+
+    @contextmanager
+    def interrupted():
+        with transaction() as db:
+            yield db
+            committed_adoption = db.total_changes > 0 and db.execute(
+                "SELECT adoption FROM annotation_revision_heads"
+            ).fetchone()[0] is not None
+        if committed_adoption:
+            raise RuntimeError("seal committed, response lost")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(env.store.registry, "transaction", interrupted)
+        with pytest.raises(RuntimeError, match="seal committed"):
+            env.store.seal(head, adopted, env.adapter)
+    snapshot = StorageCatalog(env.layout).snapshot().digest
+    assert env.store.seal(head, adopted, env.adapter) == adopted
+    assert StorageCatalog(env.layout).snapshot().digest == snapshot
+
+
+@pytest.mark.parametrize("different", [False, True])
+def test_parallel_seal_preserves_one_adoption(
+    env: Environment, different: bool
+) -> None:
+    image = env.page((1,))
+    env.apply(BallEdits(
+        operations=(env.replace(1, image, observations=(visible(),)),), images=(image,),
+    ))
+    head = env.head()
+    telemetry = (env.telemetry((image,)),)
+    receipts = [env.adapter.prepare_adoption(
+        env.layout, env.context, env.manifest, head, telemetry,
+        reason="competing decision" if different and index else "first decision",
+    ) for index in range(2)]
+
+    def seal(receipt):
+        try:
+            return env.store.seal(head, receipt, env.adapter)
+        except (BlockingIOError, RevisionConflict):
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(seal, receipts))
+    winners = {result for result in results if result is not None}
+    assert len(winners) == 1
+    winner = winners.pop()
+    for receipt in receipts:
+        if receipt == winner:
+            assert env.store.seal(head, receipt, env.adapter) == winner
+        else:
+            with pytest.raises(RevisionConflict):
+                env.store.seal(head, receipt, env.adapter)
 
 
 def test_initial_labels_preserve_all_native_pts_without_copying_proposals(
