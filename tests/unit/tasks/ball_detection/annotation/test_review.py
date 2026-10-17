@@ -52,6 +52,47 @@ def visible(x: float = 16.0, *, track: str = "ball") -> BallObservation:
     )
 
 
+@pytest.mark.parametrize("orphan", [False, True])
+def test_adoption_retains_render_requests_for_uncited_telemetry_images(
+    env: Environment, orphan: bool,
+) -> None:
+    from src.tasks.base.annotation.images import contracts as image_contracts
+    from src.tasks.base.annotation.images import read_rendered
+    from src.tasks.base.annotation.plan import references
+    from src.tasks.base.annotation.telemetry.contracts import TelemetryReport
+    from tests.support.annotation_storage import (
+        assert_expired_but_protected,
+        reference_document_types,
+    )
+
+    cited = env.page((1,))
+    browsed = env.page((2,), revision=env.initial)
+    env.apply(BallEdits(
+        operations=(env.replace(1, cited, observations=(visible(),)),), images=(cited,),
+    ))
+    assert browsed not in env.labels().images
+    telemetry = env.telemetry(
+        (cited, browsed),
+        shown=(cited,) if orphan else (cited, browsed),
+        orphaned=(browsed,) if orphan else (),
+    )
+    report = read_document(env.layout, telemetry, TelemetryReport)
+    assert report.orphan_output_count == int(orphan)
+    adopted = env.adapter.prepare_adoption(
+        env.layout, env.context, env.manifest, env.head(), (telemetry,),
+        reason="retain browsed but uncited image evidence",
+    )
+    env.store.seal(env.head(), adopted, env.adapter)
+    request, receipt = read_rendered(env.layout, browsed)
+    assert {type(request), type(receipt)} == reference_document_types(image_contracts)
+    assert_expired_but_protected(
+        env.layout,
+        (browsed.image, browsed.metadata, *references(receipt), *references(request)),
+        "adoption",
+    )
+    env.store.seal(env.head(), adopted, env.adapter)
+
+
 def test_seal_and_reference_protection_roll_back_together(
     env: Environment, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

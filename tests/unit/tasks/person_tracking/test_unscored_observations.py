@@ -130,7 +130,7 @@ def test_invalid_unscored_noise_rule_is_rejected(scale: float) -> None:
         StrongSortConfig(unscored_measurement_noise_scale=scale)
 
 
-def test_archive_preserves_mixed_score_origins_and_reads_v2_as_legacy(
+def test_archive_preserves_mixed_score_origins_and_rejects_v2_until_migrated(
     tmp_path: Path,
 ) -> None:
     original = mixed()
@@ -153,9 +153,10 @@ def test_archive_preserves_mixed_score_origins_and_reads_v2_as_legacy(
     del arrays["score_origin"]
     legacy = tmp_path / "legacy.npz"
     np.savez_compressed(legacy, **arrays)
-    loaded, _ = load_features(legacy)
-    assert loaded[0].score_at(1) == 0.0
-    assert loaded[0].score_origins().tolist() == [ScoreOrigin.LEGACY] * 2
+    with pytest.raises(ValueError, match="requires explicit migration") as error:
+        load_features(legacy)
+    assert str(legacy) in str(error.value)
+    assert "src.tasks.person_tracking.scripts.migrate_features" in str(error.value)
     metadata["schema"] = "person_detection_features_v3"
     arrays["metadata"] = np.asarray(json.dumps(metadata))
     broken = tmp_path / "missing-origin.npz"

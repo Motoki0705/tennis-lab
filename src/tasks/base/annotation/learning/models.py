@@ -16,6 +16,7 @@ from ..plan import CampaignPlan, references
 from ..registry import Registry
 from ..storage.catalog import StorageCatalog
 from ..storage.references import protection
+from .adapters import LearningAdapter
 from .contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -158,10 +159,12 @@ class ModelRegistry:
             raise ValueError("model version already identifies different weights")
         return state
 
-    def select(self, verdict_ref: ArtifactRef) -> ArtifactRef:
+    def select(self, verdict_ref: ArtifactRef, adapter: LearningAdapter) -> ArtifactRef:
         """Task judgment is opaque; acceptance still requires an unchanged baseline."""
         verdict = read_document(self.layout, verdict_ref, SelectionVerdict)
         intent, evaluation = check_evaluation(self.layout, verdict.evaluation)
+        if adapter.task != intent.task:
+            raise ValueError("model selection reference adapter task mismatch")
         if intent.selection_policy is None or verdict.policy != intent.selection_policy:
             raise ValueError("model selection requires the frozen adoption policy")
         expected, candidate = evaluation.baseline, evaluation.candidate
@@ -172,6 +175,7 @@ class ModelRegistry:
         if self.adopted_state(expected.model) != expected:
             raise ValueError("evaluation baseline generation is not the adopted state")
         evidence = _selection_documents(self.layout, verdict, intent, evaluation)
+        dependencies = adapter.retained_references(self.layout, intent, evaluation)
         # The pointer and complete receipt payload commit together. A crash before
         # the file write is recovered from this exact row, without another CAS.
         with self.registry.transaction() as db:
@@ -234,11 +238,12 @@ class ModelRegistry:
             self.catalog.protect(
                 protection(
                     self.layout,
-                    identity="model-selection-v2-" + verdict_ref.digest,
+                    identity="model-selection-v3-" + verdict_ref.digest,
                     kind="model",
                     reason="model decision, compared weights, and fixed learning inputs",
                     roots=(verdict_ref,),
                     documents=(verdict, record, *evidence),
+                    dependencies=dependencies,
                 ),
                 database=db,
             )
