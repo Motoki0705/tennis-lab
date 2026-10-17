@@ -43,7 +43,7 @@ from src.tasks.base.annotation.execution.contracts import (
     StageExit,
     StageLaunch,
 )
-from src.tasks.base.annotation.media import encode_video
+from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
 from src.tasks.base.annotation.predictions import (
@@ -205,6 +205,7 @@ def setup(
     seconds: int = 32,
     *,
     fps: int | Fraction = 10,
+    frame_count: int | None = None,
     timestamps_ms: tuple[int, ...] | None = None,
     acquire: bool = True,
     videos_per_channel: int = 1,
@@ -317,7 +318,9 @@ def setup(
     media_path = inputs / "video.mp4"
     if timestamps_ms is None:
         time_base = 1 / Fraction(fps)
-        timestamps = tuple(range(math.ceil(seconds * fps)))
+        timestamps = tuple(
+            range(math.ceil(seconds * fps) if frame_count is None else frame_count)
+        )
         end_pts = len(timestamps)
     else:
         time_base = Fraction(1, 1000)
@@ -436,6 +439,45 @@ def test_real_timeline_selection_and_resume(
     )
     prepared = example.screening.collection.prepare(example.source.source_id)
     assert prepared.size_bytes > 0
+
+
+def test_rounded_source_end_finalizes_and_prepares_last_frame(tmp_path: Path) -> None:
+    layout, screening, source = setup(tmp_path, fps=30, frame_count=500)
+    ref = screening.request(
+        screening.prepare(source.source_id),
+        layout.path(
+            "campaigns",
+            screening.plan.campaign_id,
+            "workers",
+            source.source_id,
+            "attempt-1",
+        ),
+    )
+    request = read_document(layout, ref, ScreeningRequest)
+    timeline = probe_video(layout.artifact_path(request.source.media))
+    assert len(timeline.pts) == 500
+    assert timeline.boundary(500) == Fraction(50, 3)
+    assert Fraction(str(request.source_duration)) > timeline.boundary(500)
+    stop = request.source_duration
+    start = stop - 15.0
+    detail_ref = request_preview(layout, request, start=start, stop=stop, step=0.5)
+    detail = read_document(layout, detail_ref, PreviewReceipt)
+    example = Example(layout, screening, source, ref, request, detail_ref, detail)
+    decision = example.decision()
+    clip = decision.clips[0].model_copy(update={"start": start, "stop": stop})
+    selection_ref = example.finish(
+        decision=decision.model_copy(update={"clips": (clip,)})
+    )
+    selection = read_document(layout, selection_ref, SelectionReceipt)
+    assert selection.windows[0].stop == stop
+    prepared_ref = screening.collection.prepare(source.source_id)
+    prepared = read_document(layout, prepared_ref, PreparationReceipt)
+    manifest = read_document(layout, prepared.clips[0], ClipManifest)
+    assert manifest.source_range.stop == 500
+    assert manifest.frames[-1].source_frame_index == 499
+    assert manifest.frames[-1].source_pts == timeline.pts[-1]
+    assert manifest.frames[-1].duration_pts == timeline.durations[-1]
+    assert screening.collection.prepare(source.source_id) == prepared_ref
 
 
 @pytest.mark.parametrize("fps", [25, Fraction(30000, 1001)], ids=["25fps", "29.97fps"])
@@ -1345,7 +1387,9 @@ def finish_preview(controller: Controller, example: Example) -> None:
 )
 @pytest.mark.parametrize("exclusion_stage", ["acquire", "prepare"])
 def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str | None,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid: str | None,
     exclusion_stage: str,
 ) -> None:
     from src.tasks.annotation.operations import execute
@@ -1372,19 +1416,26 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
         # Different source bytes, but identical decoded frames in the selected clip.
         media_path = layout.path("campaigns", "inputs", "overlapping-source.mp4")
         encode_video(
-            media_path, width=64, height=32, time_base=Fraction(1, 10),
+            media_path,
+            width=64,
+            height=32,
+            time_base=Fraction(1, 10),
             rate=Fraction(10),
             frames=(
                 (
                     av.VideoFrame.from_ndarray(
-                        np.full((32, 64, 3), (i if i < 160 else i + 100) % 255, np.uint8),
+                        np.full(
+                            (32, 64, 3), (i if i < 160 else i + 100) % 255, np.uint8
+                        ),
                         format="rgb24",
                     ),
-                    i, 1,
+                    i,
+                    1,
                 )
                 for i in range(320)
             ),
-            crf=25, preset="ultrafast",
+            crf=25,
+            preset="ultrafast",
         )
         duplicate = duplicate.model_copy(
             update={"local_media": annotation_reference(layout, media_path)}
@@ -1398,7 +1449,8 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
                 plan=controller.runtime.plan,
                 operation=AcquireOperation(source_id=duplicate.source_id),
             ),
-            results=(duplicate_acquisition,), exited=True,
+            results=(duplicate_acquisition,),
+            exited=True,
         )
         make_example(layout, screening, duplicate).finish(name="duplicate")
     data = OperationInput(
@@ -1422,11 +1474,15 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     if exclusion_stage == "acquire":
         assert receipt.reason == f"duplicate content of {source.source_id}"
     else:
-        assert receipt.reason is not None and receipt.reason.startswith("duplicate clip content")
+        assert receipt.reason is not None and receipt.reason.startswith(
+            "duplicate clip content"
+        )
         assert row["preparation"] is not None
         # The excluded clip's preparation remains evidence, not completed work.
         read_document(
-            layout, ArtifactRef.model_validate_json(row["preparation"]), PreparationReceipt
+            layout,
+            ArtifactRef.model_validate_json(row["preparation"]),
+            PreparationReceipt,
         )
     assert receipt.results == (ArtifactRef.model_validate_json(row["acquisition"]),)
     # Recover an already-excluded source with the same evidence in a new stage attempt.
@@ -1435,7 +1491,12 @@ def test_preview_accepts_duplicate_exclusion_with_verified_acquisition(
     recovered = read_document(layout, execute(layout, recovery), OperationReceipt)
     record_stage(controller, data, attempt=2, exited=True)
     assert (recovered.results, recovered.reason) == (receipt.results, receipt.reason)
-    assert controller.collection.ledger.source(controller.plan, duplicate.source_id)["preparation"] == row["preparation"]
+    assert (
+        controller.collection.ledger.source(controller.plan, duplicate.source_id)[
+            "preparation"
+        ]
+        == row["preparation"]
+    )
     assert restarted.status()["state"] == "preview_ready"
     if invalid is not None:
         # A successful supervisor cannot make mismatched exclusion evidence valid.
