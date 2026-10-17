@@ -21,11 +21,8 @@ from src.tasks.player_detection.configuration import (
     FrameSelectionConfig,
     InputSizeConfig,
 )
-from src.tasks.player_detection.data.store import (
-    BBOX_SOURCE_CODES,
-    PlayerFrameStore,
-    Split,
-)
+from src.tasks.player_detection.data.selection import frame_eligibility
+from src.tasks.player_detection.data.store import PlayerFrameStore, Split
 
 # Fine-tuned checkpoints reuse the COCO person logit for "tennis player" so the
 # exported weights are a drop-in replacement for DinoPersonDetector.
@@ -41,21 +38,6 @@ class FrameSelection:
     stats: dict[str, int]
 
 
-def visible_boxes(
-    boxes_xyxy: NDArray[np.float32], *, width: int, height: int, min_side_px: float
-) -> tuple[NDArray[np.float32], int]:
-    """Clip amodal boxes to the image; drop those thinner than ``min_side_px``.
-
-    Returns the kept boxes and the number dropped as (almost) out of frame.
-    """
-    clipped = boxes_xyxy.copy()
-    clipped[:, [0, 2]] = clipped[:, [0, 2]].clip(0.0, float(width))
-    clipped[:, [1, 3]] = clipped[:, [1, 3]].clip(0.0, float(height))
-    sides = np.minimum(clipped[:, 2] - clipped[:, 0], clipped[:, 3] - clipped[:, 1])
-    keep = sides >= min_side_px
-    return clipped[keep], int((~keep).sum())
-
-
 def select_detection_frames(
     store: PlayerFrameStore,
     split: Split,
@@ -64,10 +46,14 @@ def select_detection_frames(
     frame_stride: int,
 ) -> FrameSelection:
     """Choose detection frames of one split and their image-clipped GT boxes."""
+    if frame_stride < 1:
+        raise ValueError("detection frame stride must be positive")
     rows = store.split_frames(split)
     stats = {
         "split_frames": int(rows.size),
         "dropped_unreviewed": 0,
+        "dropped_context": 0,
+        "dropped_unconfirmed_empty": 0,
         "dropped_unresolved_player": 0,
         "dropped_no_visible_box": 0,
         "dropped_by_stride": 0,
@@ -76,35 +62,21 @@ def select_detection_frames(
     }
     eligible: list[int] = []
     eligible_boxes: list[NDArray[np.float32]] = []
-    unresolved_code = BBOX_SOURCE_CODES["unresolved"]
     for row in rows.tolist():
-        if selection.require_reviewed and not bool(store.frames["reviewed"][row]):
-            stats["dropped_unreviewed"] += 1
-            continue
-        instances = store.instances_of(row)
-        unresolved = instances.bbox_source == unresolved_code
-        if selection.require_located_players and unresolved.any():
-            stats["dropped_unresolved_player"] += 1
-            continue
-        clip = store.clip_of(row)
-        boxes, dropped = visible_boxes(
-            instances.boxes_xyxy[~unresolved],
-            width=clip.width,
-            height=clip.height,
-            min_side_px=selection.min_visible_box_px,
-        )
-        if boxes.shape[0] == 0:
-            stats["dropped_no_visible_box"] += 1
+        selected = frame_eligibility(store, row, selection)
+        stats["dropped_small_instances"] += selected.dropped_small_instances
+        if selected.reason != "eligible":
+            stats["dropped_" + selected.reason] += 1
             continue
         eligible.append(row)
-        eligible_boxes.append(boxes)
-        stats["dropped_small_instances"] += dropped
+        eligible_boxes.append(selected.boxes_xyxy)
     kept = list(range(0, len(eligible), frame_stride))
     stats["dropped_by_stride"] = len(eligible) - len(kept)
     frames = np.asarray([eligible[i] for i in kept], dtype=np.int64)
     boxes_tuple = tuple(eligible_boxes[i] for i in kept)
     stats["frames"] = int(frames.size)
     stats["instances"] = int(sum(box.shape[0] for box in boxes_tuple))
+    stats["negative_frames"] = sum(box.shape[0] == 0 for box in boxes_tuple)
     if frames.size == 0:
         raise ValueError(f"No {split} detection frames remain after selection: {stats}")
     return FrameSelection(frames, boxes_tuple, stats)

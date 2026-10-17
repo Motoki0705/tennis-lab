@@ -96,8 +96,8 @@ def test_nsa_covariance_gives_high_confidence_measurement_more_weight() -> None:
     low, high = MotionState.initiate(box), MotionState.initiate(box)
     low.predict()
     high.predict()
-    low.update(box + 5, .1)
-    high.update(box + 5, .9)
+    low.update(box + 5, measurement_noise_scale=1 - .1)
+    high.update(box + 5, measurement_noise_scale=1 - .9)
     assert high.mean[0] > low.mean[0]
     assert np.linalg.eigvalsh(high.covariance).min() > 0
 

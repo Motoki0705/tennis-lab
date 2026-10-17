@@ -7,9 +7,9 @@ import hashlib
 import json
 import os
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Protocol, Self, TypeVar, cast
 
 from pydantic import Field
 
@@ -24,6 +24,15 @@ from .contracts import (
 )
 from .paths import AnnotationLayout
 
+_M = TypeVar("_M")
+
+
+class _Validator(Protocol):
+    def __call__(self, function: Callable[[_M], _M]) -> Callable[[_M], _M]: ...
+
+
+_after = cast(_Validator, after_validator)
+
 
 class CollectionCounts(Document):
     channels: PositiveInt
@@ -32,11 +41,13 @@ class CollectionCounts(Document):
 
     @property
     def videos(self) -> int:
-        return self.channels * self.videos_per_channel
+        result: int = self.channels * self.videos_per_channel
+        return result
 
     @property
     def max_clips(self) -> int:
-        return self.videos * self.max_clips_per_video
+        result: int = self.videos * self.max_clips_per_video
+        return result
 
 
 class StageCapacity(Document):
@@ -51,10 +62,10 @@ class ResourceBudget(Document):
     additional_storage_bytes: PositiveInt
     minimum_free_bytes: PositiveInt
     total_pss_bytes: PositiveInt
-    gpu_seconds: PositiveInt
+    gpu_seconds: PositiveInt | None
     stages: tuple[StageCapacity, ...] = Field(min_length=1)
 
-    @after_validator
+    @_after
     def bounded_stages(self) -> Self:
         if len({s.stage for s in self.stages}) != len(self.stages):
             raise ValueError("stage names must be unique")
@@ -76,6 +87,7 @@ class LearningPlan(Document):
     recipe: ArtifactRef
     validation: ArtifactRef
     selection_policy: ArtifactRef | None
+    evaluation_recipe: ArtifactRef | None = None
 
 
 class ProductPlan(Document):
@@ -95,7 +107,7 @@ class TaskPlan(Document):
     learning: LearningPlan | None
     products: tuple[ProductPlan, ...] = Field(min_length=1)
 
-    @after_validator
+    @_after
     def identities(self) -> Self:
         if self.task != self.model.task:
             raise ValueError("model task differs from its campaign task")
@@ -107,7 +119,7 @@ class TaskPlan(Document):
 class CampaignPlan(Document):
     schema_version: Literal["annotation.plan.v1"] = "annotation.plan.v1"
     campaign_id: Identifier
-    phase: Literal["preview", "production"]
+    phase: Literal["preview", "production", "benchmark"]
     annotation_root: str
     counts: CollectionCounts
     selection: ArtifactRef
@@ -119,7 +131,7 @@ class CampaignPlan(Document):
     resources: ResourceBudget
     tasks: tuple[TaskPlan, ...] = Field(min_length=1)
 
-    @after_validator
+    @_after
     def consistent(self) -> Self:
         root = Path(self.annotation_root)
         if (
@@ -130,10 +142,12 @@ class CampaignPlan(Document):
             raise ValueError("annotation_root must be a normalized absolute path")
         if len({task.task for task in self.tasks}) != len(self.tasks):
             raise ValueError("campaign task names must be unique")
-        if self.phase == "production" and any(
+        if self.phase in {"production", "benchmark"} and any(
             task.review is None for task in self.tasks
         ):
-            raise ValueError("production requires evidence-backed review policies")
+            raise ValueError(
+                "production/benchmark requires evidence-backed review policies"
+            )
         destinations = [
             (p.dataset_task, p.dataset_version, p.component)
             for task in self.tasks
@@ -145,7 +159,17 @@ class CampaignPlan(Document):
 
     @property
     def allows_adoption(self) -> bool:
-        return self.phase == "production"
+        return self.phase in {"production", "benchmark"}
+
+
+def require_execution_layout(layout: AnnotationLayout, plan: CampaignPlan) -> None:
+    if plan.phase == "benchmark":
+        if layout.review_namespace != plan.campaign_id:
+            raise ValueError(
+                "benchmark review requires its own campaign state namespace"
+            )
+    elif layout.review_namespace is not None:
+        raise ValueError("normal campaigns cannot use benchmark review state")
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -174,7 +198,7 @@ def save_plan(layout: AnnotationLayout, plan: CampaignPlan) -> Path:
     validate_inputs(layout, plan)
     directory = layout.path("campaigns", plan.campaign_id)
     directory.mkdir(parents=True, exist_ok=True)
-    path = layout.path("campaigns", plan.campaign_id, "plan.json")
+    path: Path = layout.path("campaigns", plan.campaign_id, "plan.json")
     lock = layout.path("campaigns", plan.campaign_id, "plan.lock")
     descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
     with os.fdopen(descriptor, "a") as guard:

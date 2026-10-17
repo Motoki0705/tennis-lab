@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable
 from fractions import Fraction
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import av
 import numpy as np
@@ -34,6 +35,7 @@ from src.tasks.base.annotation.artifacts import (
     write_asset,
     write_document,
 )
+from src.tasks.base.annotation.collection.contracts import SourceCandidate
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
     ClipManifest,
@@ -41,6 +43,7 @@ from src.tasks.base.annotation.contracts import (
     FrameRange,
     ModelRef,
     SourceIdentity,
+    SourceProvenance,
     content_digest,
 )
 from src.tasks.base.annotation.editing import (
@@ -51,9 +54,10 @@ from src.tasks.base.annotation.editing import (
 )
 from src.tasks.base.annotation.images import render_page
 from src.tasks.base.annotation.images.contracts import Crop, Point, RenderRequest, Tile
+from src.tasks.base.annotation.jpeg_media import write_jpeg_archive
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, save_plan
+from src.tasks.base.annotation.plan import CampaignPlan, LearningPlan, save_plan
 from src.tasks.base.annotation.predictions import PredictionContext, Predictions
 from src.tasks.base.annotation.telemetry.capture import capture
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
@@ -116,13 +120,21 @@ class Environment:
         dataset_version: str = "fixture",
         video_id: str = "fixture",
         campaign_id: str = "review",
+        actor_attempt: str = "first",
+        frame_count: int = 32,
+        jpeg: bool = False,
+        model: ModelRef | None = None,
+        learning: LearningPlan | None = None,
+        plan_transform: Callable[[CampaignPlan], CampaignPlan] | None = None,
+        collect_source: Callable[[CampaignPlan, SourceCandidate], ArtifactRef]
+        | None = None,
         **policy_changes: Any,
     ) -> None:
         self.layout = AnnotationLayout.testing(root)
         media_path = self.layout.path("clips", video_id, "media.mp4")
         media_path.parent.mkdir(parents=True)
         pts, durations, current = [], [], 0
-        for i in range(32):
+        for i in range(frame_count):
             duration = 3000 if i % 2 == 0 else 6000
             pts.append(current)
             durations.append(duration)
@@ -138,7 +150,15 @@ class Environment:
                     av.VideoFrame.from_ndarray(
                         np.full(
                             (32, 64, 3),
-                            i * 7 + (0 if video_id == "fixture" else 1),
+                            (
+                                i * 7
+                                + (
+                                    0
+                                    if video_id == "fixture"
+                                    else 1 + sum(video_id.encode()) % 16
+                                )
+                            )
+                            % 256,
                             dtype=np.uint8,
                         ),
                         format="rgb24",
@@ -146,7 +166,7 @@ class Environment:
                     pts[i],
                     durations[i],
                 )
-                for i in range(32)
+                for i in range(frame_count)
             ),
             crf=16,
             preset="ultrafast",
@@ -167,8 +187,8 @@ class Environment:
             height=32,
             time_base=str(native.time_base),
             nominal_fps="30",
-            source_range=FrameRange(start=100, stop=132),
-            target_range=FrameRange(start=1, stop=31),
+            source_range=FrameRange(start=100, stop=100 + frame_count),
+            target_range=FrameRange(start=1, stop=frame_count - 1),
             frames=tuple(
                 FrameMap(
                     frame_index=i,
@@ -182,6 +202,20 @@ class Environment:
                 )
             ),
         )
+        if jpeg:
+            assert isinstance(self.manifest.source, SourceIdentity)
+            archive = media_path.with_name("frames.bin")
+            storage = write_jpeg_archive(archive, media_path, native, 0, frame_count)
+            self.manifest = ClipManifest.model_validate(
+                {
+                    **self.manifest.model_dump(),
+                    "schema_version": "annotation.clip.v2",
+                    "source": SourceProvenance.from_source(self.manifest.source),
+                    "media": annotation_reference(self.layout, archive),
+                    "jpeg": storage,
+                }
+            )
+            media_path.unlink()
         self.manifest_ref = self.save(self.manifest)
         self.blob = write_asset(
             self.layout,
@@ -203,9 +237,14 @@ class Environment:
         )
         policy_ref = self.save(self.policy)
         inference = self.save(
-            MDDInferenceConfig(stride=16, device="cpu", precision="float32")
+            MDDInferenceConfig(
+                stride=16,
+                device="cpu",
+                precision="float32",
+                decode="opencv_jpeg_rgb24_native" if jpeg else "pyav_rgb24_native",
+            )
         )
-        model = ModelRef(
+        model = model or ModelRef(
             task="ball",
             version="fixture",
             training_weights=self.blob,
@@ -255,7 +294,7 @@ class Environment:
                                 "preview_evidence": ref,
                                 "decision": ref,
                             },
-                            "learning": None,
+                            "learning": learning.model_dump() if learning else None,
                             "products": [
                                 {
                                     "product": "frames",
@@ -277,45 +316,27 @@ class Environment:
                 }
             )
         )
+        if plan_transform is not None:
+            self.plan = plan_transform(self.plan)
         self.plan_ref = annotation_reference(
             self.layout, save_plan(self.layout, self.plan)
         )
+        candidate = SourceCandidate(
+            provider="local",
+            channel_id=self.manifest.source.channel_id,
+            video_id=self.manifest.source.video_id,
+            title="synthetic review source",
+            origin_url=self.manifest.source.origin_url,
+            selection_reason="synthetic review fixture",
+            evidence=self.plan.selection,
+            local_media=media,
+        )
         predictions = Predictions(self.layout, self.plan)
-        with predictions.registry.transaction() as db:
-            db.execute(
-                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
-                (
-                    self.manifest.source.canonical_id,
-                    "local",
-                    "fixture",
-                    video_id,
-                    campaign_id,
-                    "{}",
-                    "prepared",
-                ),
-            )
-            db.execute(
-                "INSERT INTO clips VALUES (?,?,?,?,?)",
-                (
-                    self.manifest.clip_id,
-                    self.manifest.source.canonical_id,
-                    campaign_id,
-                    self.manifest_ref.canonical_bytes().decode(),
-                    media.digest,
-                ),
-            )
-            db.execute(
-                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
-                (
-                    content_digest(["ball", self.manifest.clip_id]),
-                    campaign_id,
-                    "ball",
-                    self.manifest.clip_id,
-                    model.sha256,
-                    inference.digest,
-                    "pending",
-                ),
-            )
+        if collect_source is not None:
+            self.manifest_ref = collect_source(self.plan, candidate)
+            self.manifest = read_document(self.layout, self.manifest_ref, ClipManifest)
+        else:
+            self._register_source(predictions, candidate, media, model, inference)
         prediction = predictions.run(self.manifest_ref, ProposalFixture())
         self.context = ReviewContext(
             plan=self.plan_ref,
@@ -326,7 +347,51 @@ class Environment:
         self.adapter, self.store = BallReviewAdapter(), RevisionStore(self.layout)
         self.initial = self.store.initialize(self.context, self.adapter)
         self.context_ref = read_document(self.layout, self.initial, Revision).context
-        self.actor = self.new_actor("first")
+        self.actor = self.new_actor(actor_attempt)
+
+    def _register_source(
+        self,
+        predictions: Predictions,
+        candidate: SourceCandidate,
+        media: ArtifactRef,
+        model: ModelRef,
+        inference: ArtifactRef,
+    ) -> None:
+        with predictions.registry.transaction() as db:
+            db.execute(
+                "INSERT INTO sources(id,provider,channel_id,video_id,campaign_id,candidate,state) VALUES (?,?,?,?,?,?,?)",
+                (
+                    self.manifest.source.canonical_id,
+                    "local",
+                    "fixture",
+                    candidate.video_id,
+                    self.plan.campaign_id,
+                    candidate.canonical_bytes().decode(),
+                    "prepared",
+                ),
+            )
+            db.execute(
+                "INSERT INTO clips VALUES (?,?,?,?,?)",
+                (
+                    self.manifest.clip_id,
+                    self.manifest.source.canonical_id,
+                    self.plan.campaign_id,
+                    self.manifest_ref.canonical_bytes().decode(),
+                    media.digest,
+                ),
+            )
+            db.execute(
+                "INSERT INTO annotation_tasks VALUES (?,?,?,?,?,?,?)",
+                (
+                    content_digest(["ball", self.manifest.clip_id]),
+                    self.plan.campaign_id,
+                    "ball",
+                    self.manifest.clip_id,
+                    model.sha256,
+                    inference.digest,
+                    "pending",
+                ),
+            )
 
     def save(self, document: Any) -> ArtifactRef:
         result: ArtifactRef = write_document(
@@ -451,21 +516,28 @@ class Environment:
         catalog: tuple[RenderedImage, ...],
         *,
         shown: tuple[RenderedImage, ...] | None = None,
+        orphaned: tuple[RenderedImage, ...] = (),
         actor: ArtifactRef | None = None,
+        exit_status: Literal[
+            "succeeded", "failed", "quota", "timed_out", "cancelled"
+        ] = "succeeded",
+        evidence_issue: Literal["missing_model", "conflicting_response"] | None = None,
     ) -> ArtifactRef:
         actor = actor or self.actor
         launch = read_document(self.layout, actor, Launch)
         execution = ExitReceipt(
             launch_digest=actor.digest,
-            exit_code=0,
-            status="succeeded",
+            exit_code=0 if exit_status == "succeeded" else 1,
+            status=exit_status,
             started_at="2026-01-01T00:00:00Z",
             ended_at="2026-01-01T00:00:01Z",
             elapsed_seconds=1.0,
             events=self.blob,
             errors=self.blob,
             thread_id="11111111-1111-1111-1111-111111111111",
-            reason=None,
+            reason=None
+            if exit_status == "succeeded"
+            else "synthetic interrupted attempt",
         )
         execution_ref = write_document(
             self.layout, Path(launch.directory) / "exit.json", execution
@@ -488,35 +560,39 @@ class Environment:
             ),
             event("turn_context", model=self.plan.agent_model),
         ]
-        for i, image in enumerate(catalog if shown is None else shown):
-            events.extend(
-                [
-                    event(
-                        "response_item",
-                        type="custom_tool_call",
-                        call_id=f"view-{i}",
-                        name="view_image",
-                        input=json.dumps(
-                            {"path": str(self.layout.artifact_path(image.image))}
+
+        def append_images(images: tuple[RenderedImage, ...], prefix: str) -> None:
+            for i, image in enumerate(images):
+                events.extend(
+                    [
+                        event(
+                            "response_item",
+                            type="custom_tool_call",
+                            call_id=f"{prefix}-{i}",
+                            name="view_image",
+                            input=json.dumps(
+                                {"path": str(self.layout.artifact_path(image.image))}
+                            ),
                         ),
-                    ),
-                    event(
-                        "response_item",
-                        type="custom_tool_call_output",
-                        call_id=f"view-{i}",
-                        output=[
-                            {
-                                "type": "input_image",
-                                "detail": "original",
-                                "image_url": "data:image/jpeg;base64,"
-                                + base64.b64encode(
-                                    self.layout.artifact_path(image.image).read_bytes()
-                                ).decode(),
-                            }
-                        ],
-                    ),
-                ]
-            )
+                        event(
+                            "response_item",
+                            type="custom_tool_call_output",
+                            call_id=f"{prefix}-{i}",
+                            output=[
+                                {
+                                    "type": "input_image",
+                                    "detail": "original",
+                                    "image_url": "data:image/jpeg;base64,"
+                                    + base64.b64encode(
+                                        self.layout.artifact_path(image.image).read_bytes()
+                                    ).decode(),
+                                }
+                            ],
+                        ),
+                    ]
+                )
+
+        append_images(catalog if shown is None else shown, "view")
         events.append(
             event(
                 "token_usage_record",
@@ -524,6 +600,21 @@ class Environment:
                 usage={"input_tokens": 100, "output_tokens": 10, "total_tokens": 110},
             )
         )
+        append_images(orphaned, "orphan")
+        if evidence_issue == "missing_model":
+            events = [event for event in events if event["type"] != "turn_context"]
+        elif evidence_issue == "conflicting_response":
+            events.append(
+                event(
+                    "token_usage_record",
+                    response_id="response-1",
+                    usage={
+                        "input_tokens": 200,
+                        "output_tokens": 10,
+                        "total_tokens": 210,
+                    },
+                )
+            )
         rollout = Path(launch.directory) / "rollout.jsonl"
         rollout.write_text("".join(json.dumps(e) + "\n" for e in events))
         result: ArtifactRef = capture(

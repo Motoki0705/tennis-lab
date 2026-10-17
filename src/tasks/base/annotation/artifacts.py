@@ -8,7 +8,7 @@ import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 from .contracts import ArtifactRef, Document, content_digest
 from .paths import AnnotationLayout
@@ -18,6 +18,7 @@ D = TypeVar("D", bound=Document)
 
 
 def verify_reference(layout: AnnotationLayout, reference: ArtifactRef) -> Path:
+    """Verify a live dependency. Historical media fingerprints are not file references."""
     path: Path = layout.artifact_path(reference)
     if not path.is_file() or path.stat().st_size != reference.size_bytes:
         raise ValueError(f"artifact missing or size changed: {path}")
@@ -27,17 +28,37 @@ def verify_reference(layout: AnnotationLayout, reference: ArtifactRef) -> Path:
 
 
 def annotation_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
-    relative = path.relative_to(layout.root).as_posix()
+    return file_reference(layout, path, role="annotation")
+
+
+def data_reference(layout: AnnotationLayout, path: Path) -> ArtifactRef:
+    """Pin an existing data-root file after validating the path and symlink boundary."""
+    return file_reference(layout, path, role="data")
+
+
+def file_reference(
+    layout: AnnotationLayout,
+    path: Path,
+    *,
+    role: Literal["annotation", "data", "checkpoint", "artifact"],
+) -> ArtifactRef:
+    """Pin a declared role file; the same path resolver governs inputs and outputs."""
+    root = {
+        "annotation": layout.root,
+        "data": layout.repository / "data",
+        "checkpoint": layout.repository / "ckpt",
+        "artifact": layout.repository / "outputs",
+    }[role]
+    relative = path.relative_to(root).as_posix()
     layout.artifact_path(
-        ArtifactRef(role="annotation", path=relative, digest="0" * 64, size_bytes=0)
+        ArtifactRef(role=role, path=relative, digest="0" * 64, size_bytes=0)
     )
-    reference = ArtifactRef(
-        role="annotation",
+    return ArtifactRef(
+        role=role,
         path=relative,
         digest=file_digest(path),
         size_bytes=path.stat().st_size,
     )
-    return reference
 
 
 def read_document(layout: AnnotationLayout, reference: ArtifactRef, kind: type[D]) -> D:

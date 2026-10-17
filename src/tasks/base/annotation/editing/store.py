@@ -18,10 +18,12 @@ from ..contracts import (
     content_digest,
 )
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan, references
+from ..plan import CampaignPlan, load_plan, references, require_execution_layout
 from ..predictions import PredictionReceipt
 from ..registry import Registry
+from ..storage.catalog import StorageCatalog
 from .contracts import EditCommand, EditReceipt, ReviewAdapter, ReviewContext, Revision
+from .storage import retained_adoption
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS annotation_revision_heads (
@@ -43,11 +45,13 @@ class RevisionStore:
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("annotation-revisions-v1", _SCHEMA)
+        self.catalog = StorageCatalog(layout)
 
     def context(
         self, value: ReviewContext, adapter: ReviewAdapter
     ) -> tuple[CampaignPlan, ClipManifest, str]:
         plan = load_plan(verify_reference(self.layout, value.plan))
+        require_execution_layout(self.layout, plan)
         task = next((t for t in plan.tasks if t.task == value.task), None)
         if (
             plan.annotation_root != str(self.layout.root)
@@ -120,6 +124,16 @@ class RevisionStore:
         return ArtifactRef.model_validate_json(
             row["revision"]
         ), ArtifactRef.model_validate_json(row["adoption"]) if row["adoption"] else None
+
+    def bind_context(
+        self, context: ReviewContext, adapter: ReviewAdapter
+    ) -> ArtifactRef:
+        """Pin a canonical request context without initializing or adopting labels."""
+        _, manifest, _ = self.context(context, adapter)
+        result: ArtifactRef = write_document(
+            self.layout, self._directory(context, manifest) / "context.json", context
+        )
+        return result
 
     def initialize(self, context: ReviewContext, adapter: ReviewAdapter) -> ArtifactRef:
         _, manifest, key = self.context(context, adapter)
@@ -297,6 +311,7 @@ class RevisionStore:
         for ref in (*references(receipt), *references(evidence)):
             verify_reference(self.layout, ref)
         adapter.validate_adoption(self.layout, context, manifest, revision_ref, receipt)
+        retained = retained_adoption(self.layout, revision_ref, adoption_ref, adapter)
         with artifact_lock(self.layout, "review-" + key, blocking=False):
             head, old = self._head(key, revision.context)
             if head != revision_ref or (old is not None and old != adoption_ref):
@@ -304,6 +319,7 @@ class RevisionStore:
                     "adoption conflicts with the current revision or receipt"
                 )
             with self.registry.transaction() as db:
+                self.catalog.protect(retained, database=db)
                 db.execute(
                     "UPDATE annotation_revision_heads SET adoption=? WHERE id=?",
                     (adoption_ref.model_dump_json(), key),

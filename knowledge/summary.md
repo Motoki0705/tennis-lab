@@ -1,7 +1,7 @@
-<!-- knowledge-review: df1bcfc8812d20cf8b0f3788179e9ef9a91a5c1e07c1a2bfab452e6e80e0ff04 on 2026-10-14 -->
+<!-- knowledge-review: 3186d483917d1ed1ee9c0a1462ac6595c5b0d582b9c97aa8ad8461bf0ce89ffe on 2026-10-15 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-14（BLCS #1044の10run学習と全長評価を記録。Court #983の比較記録を保持）
+更新日: 2026-10-15（#1088の実clip予測経路を確認。BLCS #1044・Court #983の比較判断を保持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,17 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-15の注釈・追加学習パイプライン（#1088）
+
+[新規1clipのMDD予測](nodes/annotation/000001-run-i1088-ball-prediction-pilot-20261015.md)は、
+正式な素材取得・選別・clip準備後、共通の資源管理とGPU queueを通して保存まで完走した。
+抽出11frameの画像では球近傍の点とずれの両方を確認したが、全対象frameの品質・教師採用・
+追加学習は未確認であり、ball/playerのモデル採用判断は維持する。
+[同じclipのplayer予測](nodes/annotation/000002-run-i1088-player-prediction-pilot-20261015.md)は、
+DINO CUDA拡張をロードできず初期化で停止した。環境整備後の明示retryと両者の画像確認を揃え、
+レビュー範囲・学習条件を合意する。これはモデル品質の比較結果ではない。
+2サイクルの追加学習、10/25/50並列、修正bboxから追跡・pose・累積公開への接続は残っている。
 
 ## 2026-10-05のボール検出用pose蓄積
 

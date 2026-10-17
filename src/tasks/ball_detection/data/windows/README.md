@@ -1,5 +1,8 @@
 # プレイ区間・32frame学習窓のレビュー
 
+公開済みの累積snapshotと固定validation/testを追加学習へ接続するAPIは
+[learning/](learning/README.md)を参照。新規clipの座標教師が不足する場合の停止と被覆記録もここが担当する。
+
 `intervals.py`は注釈からプレイ区間を提案する純粋関数。
 推論時のプレイ検出器ではなく、固定済み学習データの選択にだけ使う。
 設定値の正本は`PlayIntervalConfig`、実行値は生成manifestへ保存する。

@@ -193,6 +193,8 @@ def test_three_five_channel_stages_resume_transfer_evaluate_and_continue(tmp_pat
     frozen = weights(post / "epoch-000.pt")
     assert all(torch.equal(v, frozen["state_dict"][k]) for k, v in initial["state_dict"].items() if k.startswith("encoder."))
     assert parent["recipe"]["data_identity"] == initial["recipe"]["data_identity"]
+    assert parent["recipe"]["initialization"] == dict(mode="encoder", seed=42)
+    assert parent["recipe"]["parent"]["mode"] == "encoder"
     assert parent["recipe"]["parent"]["ancestry"]["data"] == data_identity(manifest)
     # Stage 3 must not open stage 1's DPT, even when its path was valid during stage 2.
     pre.rename(tmp_path / "unavailable_stage_one")

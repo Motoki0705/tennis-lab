@@ -118,13 +118,13 @@ def test_validation_writes_bbox_gif_using_unstored_source_frames(
     batch = next(iter(data.val_dataloader()))
     assert isinstance(batch, DetectionBatch)
     clip = data.store.clip_of(batch.frames[0])
-    assert data.store.frames["frame_index"][data.store.clip_frames(clip)].tolist() == [1, 2, 4]
+    assert data.store.frames["frame_index"][data.store.clip_frames(clip)].tolist() == list(range(FRAMES))
     files = list((Path(logger.log_dir) / "qualitative/epoch_0000").glob("*.gif"))
     assert len(files) == 1  # The same clip selected by two batches is not duplicated.
     assert files[0].name == f"player_clip{clip.index:04d}.gif"
     with Image.open(files[0]) as gif:
         frames = [np.array(frame.convert("RGB")) for frame in ImageSequence.Iterator(gif)]
-    assert len(frames) == FRAMES  # Includes unannotated source frames 0, 3, 5.
+    assert len(frames) == FRAMES  # Includes confirmed player-absence frames 0, 3, 5.
     assert all((frame[40, 24] == [255, 0, 0]).all() for frame in frames)  # Original-pixel bbox.
     assert dino.frame_count == len(data.val_dataloader().dataset) + FRAMES
     assert list(Path(logger.log_dir).glob("events.out.tfevents.*"))

@@ -63,6 +63,14 @@ state = pool.reconcile(request)
   lease取得前に不変launchを保存する。資源受付後・worker台帳登録前に中断したattemptは、
   再開時に台帳へ失敗として回収し、明示retryでは新しいattempt/request IDを発行する。
   まだ資源を取得していないpending要求は同じIDで受付を再試行し、待機枠を重複消費しない。
+  コード更新時は未登録launchも照合し、旧launchを保持した `cancelled` attemptを台帳へ登録する。
+  pending資源要求があれば取消し、未登録の資源要求なら予約を作らない。
+  取消とworker台帳登録の間で中断しても同じ取消理由から回収し、明示retryで次attemptへ進む。
+  benchmarkでも資源要求は共有の資源台帳で照合し、workerの復旧状態は条件別台帳に記録する。
+  終端停止の `stop()` は未起動のpending要求も取り消す。稼働中workerを止めずに
+  未起動要求だけを取り消す場合は `cancel_pending()` を使う。共有資源台帳とworker attemptに
+  `cancelled` と停止理由を保存し、両台帳の更新間で中断しても同じ取消記録を回収する。
+  取消済みattemptは明示retryで新しいattempt/request IDを発行し、通常の容量待ちと区別する。
 
 標準状態は `ready → running → complete`、未回収終了は `exited`（quotaはadmissionでも確定）。
 `failed / quota / timed_out / cancelled / validation_failed / deferred` は理由を保存する。
@@ -75,6 +83,30 @@ state = pool.reconcile(request)
 modelと応答IDを検証してからadapterへ渡す。adapterは `telemetry_images` で描画記録と
 不変画像の対応を返し、`classify_tool` で操作を分類する。`validate` では実提示の証跡と
 レビュー判断を照合する。実Codexの結果receiptにはtelemetry参照が必須である。
+
+`WorkerLedger.history(plan, request)` は登録済みattemptを順に読み、launch・exit・
+結果receipt・telemetryの対応を検証して返す。retryで置き換わる `worker_tasks.result` に
+依存しない。保留済み結果やcancel後の `telemetry.ref.json` も保持し、証拠がないattemptは
+明示的な欠測として返す。別attemptの証拠や壊れたhashを欠測として黙って扱わない。
+taskの操作受付は[review services](review/README.md) を使える。
+
+登録時にplanとwork入力を保存台帳で保護する。opaqueなpayloadの依存はadapterの
+`input_references` が明示列挙する。screeningは元動画・overviewの画像、ball reviewは
+clip/source・固定予測を含む。業務登録と保護は同じSQLite transactionで確定する。
+同じworkの再登録で保護対象を変更したり、明示解放済みの保護を復活させたりしない。
+固定済みのplan保護はcampaignで共有し、保護の再送による追加の全ファイルhash検証を省く。
+plan保存・実入力の読込に元からある検証は維持する。
+
+各attemptではprompt・`PreparedWorker.inputs`・launchをrunning状態と同時に保護する。
+ballの初期handoffはその時点のrevision履歴・編集・画像根拠を列挙する。親やsupervisorの
+終了だけでは解放せず、所有する子孫がなくなり、結果検証または失敗状態の確定後に
+attemptの保護を同じtransactionで解放する。`exited` は結果検証待ちなので保持する。
+解放対象は検証したattempt IDに固定し、transaction内でcurrent attemptと遷移元状態を照合する。
+中断やDB rollback後は、同じ保存済み結果から確定を再開できる。
+
+登録済みworkの入力は、成功・失敗後も再開と後続工程のために保持する。worker終了を
+下流への引渡し完了とは扱わない。この保護の明示的な廃止、実行中に追加された全画像・編集の
+保護、旧attemptの一括backfillは後続範囲であり、GC削除の実行を許可するものではない。
 
 合成workerによる試験では、競合、親終了、supervisor死亡と孤児process、PID再利用、
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。

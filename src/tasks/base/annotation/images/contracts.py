@@ -73,19 +73,20 @@ class Box(Document):
 Primitive = Annotated[Point | Box, Field(discriminator="kind")]
 
 
-class Tile(Document):
+class ImageTile(Document):
     frame_index: int = Field(ge=0)
     crop: Crop
+
+
+class Tile(ImageTile):
     drawings: tuple[Primitive, ...] = Field(default=(), max_length=32)
 
 
-class RenderRequest(Document):
-    manifest: ArtifactRef
-    annotation: ArtifactRef
-    annotation_kind: Literal["prediction", "revision"]
-    drawing: Literal["plain", "prediction", "revision"]
+class PageView(Document):
+    """Caller-selected frames and layout, without caller-authored annotations."""
+
     reason: str = Field(min_length=1, max_length=500)
-    tiles: tuple[Tile, ...] = Field(min_length=1, max_length=16)
+    tiles: tuple[ImageTile, ...] = Field(min_length=1, max_length=16)
     columns: int = Field(ge=1, le=4)
     tile_width: int = Field(ge=32, le=1024)
     tile_height: int = Field(ge=32, le=1024)
@@ -96,10 +97,6 @@ class RenderRequest(Document):
             raise ValueError("page cannot have empty columns")
         if self.width * self.height > MAX_PAGE_PIXELS:
             raise ValueError("rendered page exceeds the pixel budget")
-        if self.drawing == "plain" and any(t.drawings for t in self.tiles):
-            raise ValueError("plain images cannot contain annotation markers")
-        if self.drawing != "plain" and self.drawing != self.annotation_kind:
-            raise ValueError("drawing mode must match its declared annotation kind")
         return self
 
     @property
@@ -110,6 +107,22 @@ class RenderRequest(Document):
     def height(self) -> int:
         rows = (len(self.tiles) + self.columns - 1) // self.columns
         return rows * (self.tile_height + HEADER) + (rows + 1) * GAP
+
+
+class RenderRequest(PageView):
+    manifest: ArtifactRef
+    annotation: ArtifactRef
+    annotation_kind: Literal["prediction", "revision"]
+    drawing: Literal["plain", "prediction", "revision"]
+    tiles: tuple[Tile, ...] = Field(min_length=1, max_length=16)
+
+    @_after
+    def matching_drawing(self) -> Self:
+        if self.drawing == "plain" and any(t.drawings for t in self.tiles):
+            raise ValueError("plain images cannot contain annotation markers")
+        if self.drawing != "plain" and self.drawing != self.annotation_kind:
+            raise ValueError("drawing mode must match its declared annotation kind")
+        return self
 
 
 class ImageRect(Document):

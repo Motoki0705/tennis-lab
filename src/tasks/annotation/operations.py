@@ -7,6 +7,7 @@ from pathlib import Path
 
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
+    artifact_lock,
     read_document,
     verify_reference,
     write_document,
@@ -21,18 +22,31 @@ from src.tasks.base.annotation.screening.contracts import (
     ScreeningPolicy,
     ScreeningRequest,
 )
-from src.tasks.base.annotation.workers.services import ServiceRequest
+from src.tasks.base.annotation.workers.contracts import Launch
+from src.tasks.base.annotation.workers.services import (
+    ServiceRequest,
+    require_active_attempt,
+)
 
 from .contracts import (
     AcquireOperation,
+    BootstrapModelOperation,
+    CompareStorageOperation,
     HistoryManifest,
     HistoryOperation,
+    InspectStorageOperation,
     OperationInput,
     OperationReceipt,
+    PredictionPreviewOperation,
     PredictOperation,
     PrepareOperation,
     PreviewOperation,
+    PublishOperation,
+    RestoreSourceOperation,
+    RetireExcludedOperation,
+    ReviewOperation,
     ScreenOperation,
+    ServiceSessionOperation,
 )
 
 
@@ -77,19 +91,56 @@ def preview_input(
     return request, task, directory
 
 
-def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
+def execute(
+    layout: AnnotationLayout, reference: ArtifactRef, *, attempt: int = 1
+) -> ArtifactRef:
     """The supervisor pins this exact input; direct CLI calls cannot bypass ownership."""
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("operation must be launched by its resource-accounted stage")
     data = read_document(layout, reference, OperationInput)
     plan = load_plan(verify_reference(layout, data.plan))
-    directory = layout.artifact_path(reference).parent
-    expected = layout.path("campaigns", plan.campaign_id, "jobs")
-    if (
-        not directory.is_relative_to(expected)
-        or len(directory.relative_to(expected).parts) != 1
+    if layout.artifact_path(reference).parent.parent != layout.path(
+        "campaigns", plan.campaign_id, "jobs"
     ):
         raise ValueError("operation input must belong to a campaign stage")
+    from .service_completion import execute_and_reply
+
+    return execute_and_reply(
+        layout, reference, lambda: _execute(layout, reference, attempt=attempt)
+    )
+
+
+def _execute(
+    layout: AnnotationLayout,
+    reference: ArtifactRef,
+    *,
+    attempt: int = 1,
+    session: ArtifactRef | None = None,
+) -> ArtifactRef:
+    data = read_document(layout, reference, OperationInput)
+    plan = load_plan(verify_reference(layout, data.plan))
+    if plan.phase == "benchmark" or layout.review_namespace is not None:
+        raise ValueError("benchmark review requires its dedicated operation boundary")
+    directory = layout.artifact_path(reference).parent
+    expected = layout.path("campaigns", plan.campaign_id, "jobs")
+    if session is None:
+        if (
+            not directory.is_relative_to(expected)
+            or len(directory.relative_to(expected).parts) != 1
+        ):
+            raise ValueError("operation input must belong to a campaign stage")
+    else:
+        owner = read_document(layout, session, OperationInput)
+        owner_directory = layout.artifact_path(session).parent
+        if (
+            not isinstance(owner.operation, ServiceSessionOperation)
+            or owner.plan != data.plan
+            or not isinstance(data.operation, (PreviewOperation, ReviewOperation))
+            or os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != session.digest
+            or owner_directory.parent != expected
+            or directory.parent != owner_directory / "services"
+        ):
+            raise ValueError("nested service operation differs from its owning session")
     output = directory / "result.json"
     if output.exists():
         ref = annotation_reference(layout, output)
@@ -122,29 +173,147 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
                 ),
             )
         elif isinstance(op, AcquireOperation):
-            result = (Collection(layout, plan).acquire(op.source_id, retry=op.retry),)
+            if attempt < 1 or directory.name != f"{data.logical_id}-{attempt}":
+                raise ValueError(
+                    "acquisition attempt differs from its pinned operation directory"
+                )
+            result = (
+                Collection(layout, plan).acquire(op.source_id, retry=op.retry or attempt > 1),
+            )
+        elif isinstance(op, RestoreSourceOperation):
+            from src.tasks.base.annotation.collection.restoration import (
+                RestorationReceipt,
+            )
+
+            ref = Collection(layout, plan).restore_source(
+                op.source_id, attempt=op.attempt
+            )
+            restoration = read_document(layout, ref, RestorationReceipt)
+            result = (ref,)
+            if restoration.status != "restored":
+                status, reason = "not_applicable", restoration.reason
         elif isinstance(op, ScreenOperation):
             from src.tasks.base.annotation.screening.service import Screening
 
             result = (Screening(Collection(layout, plan)).prepare(op.source_id),)
         elif isinstance(op, PrepareOperation):
             result = (Collection(layout, plan).prepare(op.source_id),)
+        elif isinstance(op, RetireExcludedOperation):
+            result = (Collection(layout, plan).retire_excluded(op.source_id),)
         elif isinstance(op, PreviewOperation):
             from src.tasks.base.annotation.screening.images import make_sheets
 
-            service, task, attempt = preview_input(layout, op.service_request)
+            service, task, worker_directory = preview_input(layout, op.service_request)
             if task.plan_digest != plan.sha256:
                 raise ValueError("preview request belongs to another campaign")
+            actor = annotation_reference(layout, worker_directory / "launch.json")
+            worker = read_document(layout, actor, Launch)
+            if (
+                Path(worker.directory) != worker_directory
+                or worker.plan != data.plan
+                or worker.request.adapter != "source_screening"
+                or worker.request.payload != task.prepared_input
+            ):
+                raise ValueError("preview differs from its immutable worker attempt")
+            with artifact_lock(layout, "worker-services-" + worker.work_id):
+                require_active_attempt(layout, worker, actor)
+                result = (
+                    make_sheets(
+                        layout,
+                        task.source.media,
+                        worker_directory / "previews",
+                        origin_pts=task.source_origin_pts,
+                        time_base=task.time_base,
+                        **service.parameters,
+                    ),
+                )
+        elif isinstance(op, ServiceSessionOperation):
+            from .service_sessions import execute_session
+
+            result = (execute_session(layout, reference),)
+        elif isinstance(op, ReviewOperation):
+            from src.tasks.ball_detection.annotation.review.worker import (
+                BallReviewServices,
+                BallReviewWorker,
+            )
+            from src.tasks.base.annotation.workers.review.service import (
+                execute_service,
+                service_input,
+            )
+
+            _service, review = service_input(layout, op.service_request)
+            BallReviewWorker.require_work(review.input.work)
             result = (
-                make_sheets(
-                    layout,
-                    task.source.media,
-                    attempt / "previews",
-                    origin_pts=task.source_origin_pts,
-                    time_base=task.time_base,
-                    **service.parameters,
+                execute_service(layout, plan, op.service_request, BallReviewServices()),
+            )
+        elif isinstance(op, PublishOperation):
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+                PublishRequest,
+            )
+            from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
+                BallPublisher,
+            )
+
+            from .reviews import validate_closed
+
+            adoptions = validate_closed(layout, plan, data.plan, op.review)
+            result = (
+                BallPublisher(layout).publish(
+                    PublishRequest(
+                        plan=data.plan, product="frames", adoptions=adoptions
+                    )
                 ),
             )
+        elif isinstance(op, BootstrapModelOperation):
+            from src.tasks.base.annotation.learning.models import ModelRegistry
+
+            if plan.phase != "production":
+                raise ValueError("model bootstrap requires an explicit production plan")
+            model_task = next(
+                (task for task in plan.tasks if task.task == op.task), None
+            )
+            if model_task is None:
+                raise ValueError("model bootstrap task is absent from the frozen plan")
+            state = ModelRegistry(layout).bootstrap(model_task.model, op.evidence)
+            result = (write_document(layout, directory / "model.json", state),)
+        elif isinstance(op, InspectStorageOperation):
+            from src.tasks.base.annotation.storage.comparison.sources import capture
+
+            from .storage_comparison import open_store
+
+            result = (
+                write_document(
+                    layout,
+                    directory / "capture.json",
+                    capture(
+                        layout,
+                        op.specification,
+                        op.limits,
+                        open_store,
+                    ),
+                ),
+            )
+        elif isinstance(op, CompareStorageOperation):
+            from src.tasks.base.annotation.storage.comparison.engine import compare
+
+            from .storage_comparison import open_store
+
+            result = (
+                write_document(
+                    layout,
+                    directory / "comparison.json",
+                    compare(
+                        layout,
+                        op.request,
+                        directory / "comparison",
+                        open_store,
+                    ),
+                ),
+            )
+        elif isinstance(op, PredictionPreviewOperation):
+            from .prediction_preview import preview_prediction
+
+            result = (preview_prediction(layout, plan, op),)
         elif isinstance(op, PredictOperation):
             adapter: PredictionAdapter
             if op.task == "ball":

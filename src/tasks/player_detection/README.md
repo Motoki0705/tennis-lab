@@ -12,20 +12,25 @@ chat-annotation の処理済み player ラベルから、テニスプレーヤ�
 pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使えます。
 
 新規clipへの予測案とレビューの接続は [annotation](annotation/README.md) を参照してください。
+追加学習前の既存データ固定とvalidation/testの支持対象は
+[snapshot・固定partition](data/snapshots/README.md)で管理します。
+公開後の追加学習・中断再開・固定validation比較・モデル採否は
+[annotation learning adapter](training/annotation/README.md)を参照してください。
 
 ## 流れ
 
 1. `scripts.generate_dataset`: `outputs/chat_annotation` の processed player ラベルから
-   `data/player_detection/<version>/` の frame store を作ります。player を含む frame だけを保存し、
-   clip-local の track ID と時刻を残します（将来の ID tracking 用）。
+   `data/player_detection/<version>/` のv2 frame storeを作ります。空frameを含めnative frameを保存し、
+   確認済み不在を`confirmed_empty`で区別します。clip-localのtrack IDと時刻も保持します。
    split の単位は YouTube の source 動画です。同じ version への上書きは拒否します。
    保存形式と読み出し API の正本は [data/store.py](data/store.py) です。
 2. `scripts.review_dataset`: 保存済みRGB、注釈の出自・未解決状態、学習選別をWebで確認します。
    [レビュー画面の使い方とデータ体系](review/README.md)を参照してください。
    `scripts.preview_dataset` は従来のsplitごとの静的frame previewを出力します。
 3. `scripts.train`: Lightning で fine-tune します。frame の選別（未 review、`unresolved` player を含む frame、
-   画面外にほぼ出た box の除外）は [data/detection_dataset.py](data/detection_dataset.py) が所有し、
+   画面外にほぼ出たboxの除外）は[data/selection.py](data/selection.py)が確認画面と共有し、
    除外件数を split ごとに表示します。
+   確認済み不在はbbox/labelが0件の負例です。未確認・context・未解決やclip後のbox消失を負例にはしません。
 4. `scripts.export_checkpoint`: Lightning checkpoint を DINO 形式の `.pth` に変換します。
    変換前に上流 DINO へ strict load して構造を確かめ、出自を `tennis_lab` キーに記録します。
 5. `scripts.evaluate`: COCO 版と export 版など複数の checkpoint を、pipeline と同じ前処理で比較します。
@@ -33,6 +38,25 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
 設定の正本は [configs/](configs/) です。評価の `input_size` と `score_threshold` は、
 pipeline の `people_models.runtime.dino_detector` と一致させる必要があります。
 DINO の denoising は CUDA 前提のため、学習と評価は GPU（training queue 経由）で実行します。
+学習前のLightning sanity checkは部分検証のため、mAPを計算・記録せず評価状態をリセットします。
+validation全体に正例があれば、先頭のsanity対象batchが負例のみでも学習を開始できます。
+本評価（validation/test）のmAPには正例が必要です。負例だけの場合は未定義値を選択指標にせず停止します。
+mixed評価では負例上の検出もFP/APへ反映し、負例画像数とGT instance数を記録します。
+
+通常readerはv2専用です。v2の空frameにはnative JPEGと
+`(0,4)`のbbox・`(0,)`のlabelを使います。schema、確認済み不在フラグの整合性、instance範囲を
+readerで検証します。実DINOのmixed/all-empty loss・勾配確認はGPU受入で実行する項目です。
+
+既存v1 storeを使う場合は、次の明示的な移行を先に実行し、出力されたv2を指定します。
+sourceとdestinationは絶対パスで指定し、destinationはsourceの外にある未作成ディレクトリにします。
+元snapshotは変更せず、split、保存済みframe行・時刻、JPEG bytes、教師を維持します。
+欠落frameは欠落のまま残し、全保存行の`confirmed_empty`はfalseです。負例は追加しません。
+既存destinationや不正なv1は拒否し、v2の検証完了後に新storeを公開します。
+
+```bash
+.venv/bin/python -m src.tasks.player_detection.scripts.migrate_store \
+  /absolute/path/to/v1-store /absolute/path/to/new-v2-store
+```
 
 ```bash
 .venv/bin/python -m src.tasks.player_detection.scripts.generate_dataset

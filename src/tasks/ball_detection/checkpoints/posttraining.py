@@ -10,6 +10,7 @@ from src.tasks.ball_detection.checkpoints.configuration import (
     checkpoint_training_recipe,
 )
 from src.tasks.ball_detection.checkpoints.coordinates import query_checkpoint_config
+from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.utils.checksum import dual_sha256
 
@@ -31,14 +32,16 @@ def resume_posttraining(path: Path, output: Path, model: DeepMDDQueryDetector,
     first_epoch = saved["epoch"] + 1
     if path.name != f"epoch-{saved['epoch']:03d}.pt":
         raise ValueError("Resume checkpoint filename differs from its epoch")
-    if first_epoch >= recipe["epochs"] or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt")):
-        raise ValueError("Resume requires latest completed epoch and remaining budget")
+    if (first_epoch > recipe["epochs"]
+            or (first_epoch == recipe["epochs"] and (output / "COMPLETED.json").exists())
+            or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt"))):
+        raise ValueError("Resume requires latest completed epoch and remaining updates or unfinished finalization")
     best_epoch = int(saved["best_epoch"])
     if not 0 <= best_epoch < first_epoch:
         raise ValueError("Resume best epoch lies outside the completed history")
     best_path = output / f"epoch-{best_epoch:03d}.pt"
     selected = torch.load(best_path, map_location="cpu", weights_only=True)
-    if selected["validation"]["scopes"]["common"]["macro_mean_error_px"] != saved["best_score"]:
+    if selection_score(selected["validation"], recipe["selection_scope"]) != saved["best_score"]:
         raise ValueError("Resume best checkpoint disagrees with its selection score")
     model.load_state_dict(saved["state_dict"], strict=True)
     optimizer.load_state_dict(saved["optimizer"])

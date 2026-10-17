@@ -57,7 +57,7 @@ def transfer_encoder(path: Path, model: DeepMDDQueryDetector) -> dict[str, Any]:
     weights = {k.removeprefix("encoder."): v for k, v in saved["state_dict"].items() if k.startswith("encoder.")}
     model.encoder.load_state_dict(weights, strict=True)
     model.freeze_encoder(True)
-    return dict(checkpoint=str(path), sha256=dual_sha256(path), global_step=saved["global_step"],
+    return dict(mode="encoder", checkpoint=str(path), sha256=dual_sha256(path), global_step=saved["global_step"],
                 input_contract=saved["recipe"]["input_contract"], image_decode=saved["recipe"]["image_decode"],
                 transferred_modules=["encoder"],
                 transferred_parameters=[k for k in model.state_dict() if k.startswith("encoder.")],

@@ -92,6 +92,16 @@ class ChangeResult:
 class ReviewAdapter(Protocol):
     task: str
 
+    def retained_references(
+        self,
+        layout: AnnotationLayout,
+        context: ReviewContext,
+        revision: ArtifactRef,
+        receipt: AdoptionReceipt,
+    ) -> tuple[ArtifactRef, ...]:
+        """Explicitly enumerate task-owned label and evidence dependencies."""
+        ...
+
     def initialize(
         self, layout: AnnotationLayout, context: ReviewContext, manifest: ClipManifest
     ) -> Document: ...
