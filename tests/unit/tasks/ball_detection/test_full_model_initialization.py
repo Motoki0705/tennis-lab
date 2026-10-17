@@ -16,13 +16,21 @@ from tests.support.tasks.ball_detection.learning import (
 )
 
 
-def test_all_adopted_weights_and_input_contract_survive_initialization(tmp_path: Path) -> None:
-    path = full_model_checkpoint(tmp_path / "parent")
+@pytest.mark.parametrize("input_channels,historical", [(2, False), (2, True), (5, False)])
+def test_all_adopted_weights_and_input_contract_survive_initialization(
+    tmp_path: Path, input_channels: int, historical: bool,
+) -> None:
+    path = full_model_checkpoint(tmp_path / "parent", input_channels=input_channels)
     saved = torch.load(path, weights_only=True)
+    if historical:
+        saved["model_config"].pop("input_channels")
+        saved["recipe"]["model"].pop("input_channels")
+        torch.save(saved, path)
     digest = dual_sha256(path)
     model, provenance = initialize_full_model(path, expected_sha256=digest, jpeg_decoder="opencv")
     assert state_dict_sha256(model.state_dict()) == state_dict_sha256(saved["state_dict"])
     assert model.mdd.input_contract() == saved["recipe"]["input_contract"]
+    assert model.config.input_channels == input_channels
     assert provenance["sha256"] == digest
     assert provenance["mode"] == "full_model"
     assert provenance["optimizer_initialization"] == "fresh"
