@@ -119,48 +119,42 @@ class StageRunner:
                     "pid": process.pid,
                 }
 
-    def status(self, ref: ArtifactRef) -> dict[str, Any]:
-        launch = read_document(self.layout, ref, StageLaunch)
-        directory = stage_directory(self.layout, launch)
-        path = directory / "exit.json"
-        if path.exists():
-            exit_ref = annotation_reference(self.layout, path)
-            result = read_document(self.layout, exit_ref, StageExit)
-            if result.launch != ref:
-                raise ValueError("stage result belongs to another launch")
-            for dependency in references(result):
-                verify_reference(self.layout, dependency)
-            try:
-                with artifact_lock(self.layout, stage_lock(launch), blocking=False):
-                    pass
-            except BlockingIOError:
-                return {
-                    "state": "draining",
-                    "launch": ref.model_dump(),
-                    "exit": exit_ref.model_dump(),
-                    "reason": "completion recorded; supervisor still owns its resource lease",
-                }
-            child = self.children.get(ref.digest)
-            if child is not None and child.poll() is not None:
-                child.wait()
-                self.children.pop(ref.digest)
-            return {
-                "state": result.status,
-                "launch": ref.model_dump(),
-                "exit": exit_ref.model_dump(),
-                "reason": result.reason,
-            }
+    def _completion(self, ref: ArtifactRef, path: Path) -> dict[str, Any]:
+        exit_ref = annotation_reference(self.layout, path)
+        result = read_document(self.layout, exit_ref, StageExit)
+        if result.launch != ref:
+            raise ValueError("stage result belongs to another launch")
+        for dependency in references(result):
+            verify_reference(self.layout, dependency)
         child = self.children.get(ref.digest)
         if child is not None and child.poll() is not None:
-            code = child.wait()
+            child.wait()
             self.children.pop(ref.digest)
-            return {
-                "state": "failed",
-                "launch": ref.model_dump(),
-                "reason": f"supervisor exited with code {code} without a completion receipt",
-            }
+        return {
+            "state": result.status,
+            "launch": ref.model_dump(),
+            "exit": exit_ref.model_dump(),
+            "reason": result.reason,
+        }
+
+    def status(self, ref: ArtifactRef) -> dict[str, Any]:
+        launch = read_document(self.layout, ref, StageLaunch)
+        path = stage_directory(self.layout, launch) / "exit.json"
         try:
             with artifact_lock(self.layout, stage_lock(launch), blocking=False):
+                # The supervisor writes its receipt before releasing this lock.
+                # Check it here before declaring a dead child/queue job failed.
+                if path.exists():
+                    return self._completion(ref, path)
+                child = self.children.get(ref.digest)
+                if child is not None and child.poll() is not None:
+                    code = child.wait()
+                    self.children.pop(ref.digest)
+                    return {
+                        "state": "failed",
+                        "launch": ref.model_dump(),
+                        "reason": f"supervisor exited with code {code} without a completion receipt",
+                    }
                 if launch.queue is not None:
                     from .queue import queue_state
 
@@ -189,4 +183,10 @@ class StageRunner:
                     "reason": "no owning supervisor or completion receipt; inspect logs before an explicit new attempt",
                 }
         except BlockingIOError:
+            if path.exists():
+                return {
+                    **self._completion(ref, path),
+                    "state": "draining",
+                    "reason": "completion recorded; supervisor still owns its resource lease",
+                }
             return {"state": "running", "launch": ref.model_dump()}
