@@ -43,6 +43,10 @@ def round_robin(candidates: Iterable[SourceCandidate]) -> list[SourceCandidate]:
 
 class Collection:
     def __init__(self, layout: AnnotationLayout, plan: CampaignPlan) -> None:
+        if plan.phase == "benchmark" or layout.review_namespace is not None:
+            raise ValueError(
+                "benchmark review reuses frozen inputs and cannot collect media"
+            )
         self.layout, self.plan = layout, plan
         self.ledger = CollectionLedger(layout)
         self.ledger.register_campaign(plan)
