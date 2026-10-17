@@ -53,6 +53,10 @@ clipと各taskを1 transactionで段階追加する。
 
 汎用動画I/Oの正本は[media.py](../media.py)。旧Chat注釈の素材処理も同じ関数を参照し、
 旧manifestの検証と画像ラベルだけを旧runtimeに残す。旧運用入口の廃止は統合タスクで行う。
+選別へ公開する全長と準備のmedia/target区間比較は、`Timeline.boundary_seconds()` が
+実PTSから生成する同じfloat秒境界を使う。終端と等しい値は最後の実フレームまで含み、
+それより大きい値は許容誤差で丸めず拒否する。区間の内側に収まる実フレームを採用し、
+動画・manifestのPTSと表示時間は元の整数tickとtime baseのまま保持する。
 
 検証: [test_collection.py](../../../../../tests/unit/tasks/base/annotation/test_collection.py)
 で並行登録、過去素材、同内容、先行制限、実MP4のframe/PTS、公開前/後の障害、再試行を確認する。
