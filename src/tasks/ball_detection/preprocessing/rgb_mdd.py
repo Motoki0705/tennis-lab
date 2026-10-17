@@ -27,8 +27,6 @@ class RGBToRGBMDD(RGBToMDD):
         )
 
     def forward(self, rgb: Tensor) -> Tensor:
-        if rgb.ndim != 5 or rgb.shape[1] != 32:
-            raise ValueError("RGB+MDD requires exactly 32 sampled frames")
         mdd = super().forward(rgb)
         with torch.autocast(device_type=rgb.device.type, enabled=False):
             pixels = rgb.to(torch.float32).transpose(1, 2) / 255

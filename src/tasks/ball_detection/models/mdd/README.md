@@ -23,13 +23,15 @@ RGBは255で割った `[0,1]` のみで、ImageNet正規化を加えない。MDD
 サンプル済みの同じ拡張後RGBから5chを作るため、GTと空間・時刻が一致する。
 窓先頭はMDDの2chだけゼロで、RGBの3chは実画像を保持する。
 
-`MDDPretrainConfig.input_channels=5` が5chを明示する。旧設定の省略値は2chを意味し、
-旧MDD-only DPT/queryのstate_dict名・計算順・入力契約を維持する。
+`MDDPretrainConfig.input_channels` は必須で、5chは`5`、MDD-only比較構成は`2`を明示する。
+設定・checkpointでの省略は拒否し、MDD-only DPT/queryのstate_dict名・計算順は維持する。
 保存した `recipe.input_contract` と設定のチャンネル数を読込・encoder転送時に照合し、
 2ch/5ch間の転送や正規化・順序の読み替えを拒否する。
 RGB特徴の並列branchはない。圧縮比較・pose系は従来の2ch契約のまま。
 mask/実PTSはmetadataであり、pose不要モデルはpose artifactを開かない。court入力なし。
 query-onlyは同時刻MDDへの片方向Cross→query列の時間Self→FFN。poseありの双方向融合は別構造。
+RGBのdtype・shape・32フレーム契約は`model_io`で検証する。DPTの学習・評価もこの境界を通し、
+5ch変換・CNNのforwardには検証分岐を置かない。CNNの入力チャンネル数は設定と固定変換で決まる。
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
 
 DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合して入力1/4のheatmap logitsを出す。
