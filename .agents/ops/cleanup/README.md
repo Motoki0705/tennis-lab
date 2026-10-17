@@ -42,6 +42,9 @@ $PY $C delete 'worktree:/abs/path@0123abcd4567'    # 承認済み worktree を�
   `--state-dir`（既定: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/cleanup`）。
 - ID は `branch:<name>`、`worktree:<abs path>`、または素のbranch名。末尾の `@<sha先頭7文字以上>` で
   承認時の tip（worktree なら HEAD）を固定できる（推奨）。
+- SHA 接尾辞を取り除く前の完全名が既存の branch・worktree に一致する場合は、曖昧な ID として
+  バッチ全体を削除前に拒否する。例えば `feat@abcdef0` が実在するなら、
+  `delete 'branch:feat@abcdef0@<そのbranchのtip>'` のように完全名へ tip を追加する。
 - worktree を消しても branch は残る。merge 済みなら次の `apply-auto` で branch が消える（2段階）。
 - 終了コード: 0 成功 / 1 調査・削除の失敗または拒否 / 2 引数エラー / 3 別の削除系実行がロック中。
   gh・git・queue・設定の失敗は黙って続行せず 1 で止まる（レポートも書かない）。

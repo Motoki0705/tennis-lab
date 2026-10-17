@@ -1,4 +1,4 @@
-"""Pure policy of the cross-review / merge-gate loop (no I/O).
+"""Pure policy of the PR review / merge-gate loop (no I/O).
 
 The rules implemented here are documented in ``README.md`` next to this file, which
 is the canonical description. Keep both in sync when changing behaviour.
@@ -19,10 +19,13 @@ AGENTS = ("claude", "codex")
 BRANCH_PREFIXES: Mapping[str, str] = {"claude/": "claude", "codex/": "codex"}
 AGENT_LABELS: Mapping[str, str] = {"agent:claude": "claude", "agent:codex": "codex"}
 
+# Every agent-authored PR is reviewed by this agent (#1178: Codex only, so reviews do
+# not spend the Claude usage limit). Authorship only decides which PRs are reviewed.
+REVIEWER = "codex"
+
 NEEDS_HUMAN_LABEL = "needs-human"
 CHANGES_REQUESTED_LABEL = "agent-review:changes-requested"
-FOLLOWUP_LABEL = "ai-proposed"
-# Consecutive request_changes by the cross reviewer that hand the PR to a human.
+# Consecutive request_changes by the reviewer that hand the PR to a human.
 ESCALATION_STREAK = 3
 
 
@@ -58,13 +61,6 @@ def detect_author_agent(head_ref: str, labels: Iterable[str]) -> str | None:
             f"branch {head_ref!r} says {by_branch} but label says {label_agent}"
         )
     return by_branch if by_branch is not None else label_agent
-
-
-def reviewer_for(author: str) -> str:
-    """Return the agent that must review a PR written by ``author``."""
-    if author not in AGENTS:
-        raise ValueError(f"unknown author agent: {author!r}")
-    return "codex" if author == "claude" else "claude"
 
 
 # --------------------------------------------------------------------------- path lists
@@ -166,9 +162,10 @@ def shared_path_hits(
 
 # --------------------------------------------------------------------------- review output
 
-VERDICTS = ("approve", "request_changes", "comment")
-SEVERITIES = ("blocker", "major", "minor", "nit")
-BLOCKING_SEVERITIES = frozenset({"blocker", "major"})
+VERDICTS = ("approve", "request_changes")
+# Only merge-blocking findings are reported (#1178); minor / nit are not part of the
+# schema, so nothing below merge-blocking can pile up as issues.
+SEVERITIES = ("blocker", "major")
 _FENCE = re.compile(r"```(?:json)?[ \t]*\n(.*)\n```", re.DOTALL)
 
 
@@ -187,10 +184,9 @@ class Finding:
 
 @dataclass(frozen=True)
 class ReviewOutcome:
-    """What the gate needs from a review: the verdict and its blocker/major count.
+    """What the gate needs from a review: the verdict and its finding count.
 
-    A review passes when it is ``approve`` (never with blocker/major findings), or
-    ``comment`` without blocker/major findings; minor/nit findings do not block.
+    ``approve`` has no findings and passes; ``request_changes`` has at least one.
     """
 
     verdict: str
@@ -202,13 +198,13 @@ class ReviewOutcome:
         if self.blocking < 0:
             raise ValueError(f"negative blocking count: {self.blocking}")
         if self.verdict == "approve" and self.blocking:
-            raise ValueError("approve cannot carry blocker/major findings")
+            raise ValueError("approve cannot carry findings")
         if self.verdict == "request_changes" and not self.blocking:
-            raise ValueError("request_changes needs blocker/major findings")
+            raise ValueError("request_changes needs findings")
 
     @property
     def passed(self) -> bool:
-        return self.verdict != "request_changes" and self.blocking == 0
+        return self.verdict == "approve"
 
 
 @dataclass(frozen=True)
@@ -219,13 +215,7 @@ class Review:
 
     @property
     def outcome(self) -> ReviewOutcome:
-        blocking = sum(f.severity in BLOCKING_SEVERITIES for f in self.findings)
-        return ReviewOutcome(self.verdict, blocking)
-
-    @property
-    def light_findings(self) -> tuple[Finding, ...]:
-        """minor / nit findings: they never block, and become a follow-up issue."""
-        return tuple(f for f in self.findings if f.severity not in BLOCKING_SEVERITIES)
+        return ReviewOutcome(self.verdict, len(self.findings))
 
 
 def _require_str(obj: Mapping[str, Any], key: str, *, where: str) -> str:
@@ -288,15 +278,11 @@ def parse_review(text: str) -> Review:
     if not isinstance(data["findings"], list):
         raise ReviewParseError("findings must be a list")
     findings = tuple(_parse_finding(raw, i) for i, raw in enumerate(data["findings"]))
-    severities = {finding.severity for finding in findings}
-    if verdict == "approve" and severities & {"blocker", "major"}:
-        # The gate trusts the verdict alone, so an approve must not carry merge-blocking
-        # findings.
-        raise ReviewParseError("verdict approve contradicts a blocker/major finding")
-    if verdict == "request_changes" and not severities & {"blocker", "major"}:
-        raise ReviewParseError(
-            "verdict request_changes needs at least one blocker/major finding"
-        )
+    # Every reported finding blocks the merge, so the verdict must agree with them.
+    if verdict == "approve" and findings:
+        raise ReviewParseError("verdict approve must come with no findings")
+    if verdict == "request_changes" and not findings:
+        raise ReviewParseError("verdict request_changes needs at least one finding")
     return Review(
         verdict=verdict,
         summary=_require_str(data, "summary", where="root"),
@@ -309,41 +295,21 @@ def parse_review(text: str) -> Review:
 _SHA = r"[0-9a-f]{40}"
 _DIGEST = r"[0-9a-f]{64}"
 _TARGET = rf"sha=({_SHA}) base=({_SHA}) diff=({_DIGEST})"
+# v4 (#1178): blocker/major only, no minor/nit data line. Earlier versions are not read,
+# so a PR last reviewed under the old rules is reviewed again.
 REVIEW_MARKER_RE = re.compile(
-    rf"<!-- agent-cross-review:v3 {_TARGET} reviewer=(claude|codex) "
-    r"verdict=(approve|request_changes|comment) blocking=(0|[1-9][0-9]*) -->"
+    rf"<!-- agent-cross-review:v4 {_TARGET} reviewer=(claude|codex) "
+    r"verdict=(approve|request_changes) blocking=(0|[1-9][0-9]*) -->"
 )
-# Second line of a review comment: the minor/nit findings as JSON, so a later poll can
-# file the follow-up issue from the comment alone.
-LIGHT_FINDINGS_RE = re.compile(r"<!-- agent-cross-review-light:v1 (\[.*\]) -->")
 GATE_MARKER_RE = re.compile(
     rf"<!-- agent-merge-gate:v2 {_TARGET} decision=(merge|needs_human|blocked) "
     r"reasons=([a-z_,]*) -->"
 )
 ESCALATION_MARKER_RE = re.compile(rf"<!-- agent-review-escalation:v1 {_TARGET} -->")
-FOLLOWUP_MARKER_RE = re.compile(
-    rf"<!-- agent-review-followup:v1 pr=([1-9][0-9]*) sha=({_SHA}) -->"
-)
-# Second line of a follow-up issue: the review links and findings it already holds.
-FOLLOWUP_DATA_RE = re.compile(r"<!-- agent-review-followup-data:v1 (\{.*\}) -->")
-
-
-def _inline_json(obj: Any) -> str:
-    """One-line JSON that cannot open or close an HTML comment."""
-    text = json.dumps(obj, ensure_ascii=False)
-    return text.replace("<", "\\u003c").replace(">", "\\u003e")
 
 
 @dataclass(frozen=True)
 class Comment:
-    author: str
-    body: str
-    url: str
-
-
-@dataclass(frozen=True)
-class Issue:
-    number: int
     author: str
     body: str
     url: str
@@ -371,7 +337,6 @@ class ReviewRecord:
     target: ReviewTarget
     reviewer: str
     outcome: ReviewOutcome
-    light_findings: tuple[Finding, ...]
     url: str | None  # the review comment; None for a dry-run review that was not posted
 
 
@@ -382,19 +347,17 @@ class GateRecord:
     reasons: tuple[str, ...]
 
 
-def review_header(target: ReviewTarget, reviewer: str, review: Review) -> str:
-    """The two marker lines that start a review comment (state for later polls)."""
-    outcome = review.outcome
+def review_marker(target: ReviewTarget, reviewer: str, outcome: ReviewOutcome) -> str:
+    """The marker line that starts a review comment (state for later polls)."""
     marker = (
-        f"<!-- agent-cross-review:v3 {target.marker_fields()} "
+        f"<!-- agent-cross-review:v4 {target.marker_fields()} "
         f"reviewer={reviewer} verdict={outcome.verdict} blocking={outcome.blocking} -->"
     )
     if REVIEW_MARKER_RE.fullmatch(marker) is None:
         raise ValueError(
             f"invalid review marker fields: {target!r} {reviewer!r} {outcome!r}"
         )
-    payload = _inline_json([vars(f) for f in review.light_findings])
-    return f"{marker}\n<!-- agent-cross-review-light:v1 {payload} -->"
+    return marker
 
 
 def gate_marker(target: ReviewTarget, decision: str, reasons: Sequence[str]) -> str:
@@ -413,30 +376,9 @@ def escalation_marker(streak_start: ReviewTarget) -> str:
     return f"<!-- agent-review-escalation:v1 {streak_start.marker_fields()} -->"
 
 
-def followup_marker(pr_number: int, head: str) -> str:
-    marker = f"<!-- agent-review-followup:v1 pr={pr_number} sha={head} -->"
-    if FOLLOWUP_MARKER_RE.fullmatch(marker) is None:
-        raise ValueError(f"invalid follow-up marker fields: {pr_number!r} {head!r}")
-    return marker
-
-
-def _header_line(body: str, index: int = 0) -> str:
-    """Line ``index`` of a comment; markers live in the first lines the caller writes."""
-    lines = body.split("\n", index + 1)
-    return lines[index].rstrip("\r") if len(lines) > index else ""
-
-
-def _light_findings(line: str, *, where: str) -> tuple[Finding, ...]:
-    match = LIGHT_FINDINGS_RE.fullmatch(line)
-    if match is None:
-        raise ValueError(f"{where}: review marker without the findings line")
-    raw = json.loads(match.group(1))
-    if not isinstance(raw, list):
-        raise ValueError(f"{where}: findings line is not a JSON list")
-    findings = tuple(_parse_finding(item, i) for i, item in enumerate(raw))
-    if any(f.severity in BLOCKING_SEVERITIES for f in findings):
-        raise ValueError(f"{where}: findings line contains blocker/major findings")
-    return findings
+def _header_line(body: str) -> str:
+    """First line of a comment; markers live only on the line the caller writes."""
+    return body.split("\n", 1)[0].rstrip("\r")
 
 
 def neutralize_markers(text: str) -> str:
@@ -468,9 +410,6 @@ def review_records(
                     target=ReviewTarget(head, base, diff),
                     reviewer=reviewer,
                     outcome=ReviewOutcome(verdict, int(blocking)),
-                    light_findings=_light_findings(
-                        _header_line(comment.body, 1), where=comment.url
-                    ),
                     url=comment.url,
                 )
             )
@@ -512,70 +451,12 @@ def escalated_streaks(
     return frozenset(started)
 
 
-def followup_issues(
-    issues: Iterable[Issue], *, trusted_login: str
-) -> dict[tuple[int, str], Issue]:
-    """``(PR number, head) -> issue`` for follow-up issues filed by ``trusted_login``."""
-    filed: dict[tuple[int, str], Issue] = {}
-    for issue in issues:
-        if issue.author != trusted_login:
-            continue
-        match = FOLLOWUP_MARKER_RE.fullmatch(_header_line(issue.body))
-        if match is not None:
-            filed.setdefault((int(match.group(1)), match.group(2)), issue)
-    return filed
-
-
-@dataclass(frozen=True)
-class FollowupData:
-    """What a follow-up issue already lists: review comment links and findings."""
-
-    reviews: tuple[str, ...]
-    findings: tuple[Finding, ...]
-
-    def line(self) -> str:
-        payload = _inline_json(
-            {
-                "reviews": list(self.reviews),
-                "findings": [vars(f) for f in self.findings],
-            }
-        )
-        return f"<!-- agent-review-followup-data:v1 {payload} -->"
-
-    def merged_with(self, review_url: str, findings: Iterable[Finding]) -> FollowupData:
-        """Add a review link and the findings not listed yet (order kept)."""
-        new = tuple(dict.fromkeys(f for f in findings if f not in self.findings))
-        reviews = self.reviews + (
-            (review_url,) if review_url not in self.reviews else ()
-        )
-        return FollowupData(reviews, self.findings + new)
-
-
-def parse_followup_data(issue: Issue) -> FollowupData:
-    match = FOLLOWUP_DATA_RE.fullmatch(_header_line(issue.body, 1))
-    if match is None:
-        raise ValueError(f"{issue.url}: follow-up issue without its data line")
-    raw = json.loads(match.group(1))
-    if not isinstance(raw, dict) or set(raw) != {"reviews", "findings"}:
-        raise ValueError(f"{issue.url}: malformed follow-up data")
-    reviews = raw["reviews"]
-    if not isinstance(reviews, list) or not all(isinstance(r, str) for r in reviews):
-        raise ValueError(f"{issue.url}: follow-up reviews must be a list of URLs")
-    findings = raw["findings"]
-    if not isinstance(findings, list):
-        raise ValueError(f"{issue.url}: follow-up findings must be a list")
-    return FollowupData(
-        tuple(reviews), tuple(_parse_finding(f, i) for i, f in enumerate(findings))
-    )
-
-
 def request_changes_streak(
     records: Sequence[ReviewRecord], *, reviewer: str
 ) -> tuple[ReviewRecord, ...]:
     """The current run of consecutive request_changes reviews by ``reviewer``.
 
-    Across head SHAs, in comment order. A passing review resets the run; a ``comment``
-    with blocker/major findings neither extends nor resets it.
+    Across head SHAs, in comment order. An approve resets the run.
     """
     streak: list[ReviewRecord] = []
     for record in records:
@@ -583,7 +464,7 @@ def request_changes_streak(
             continue
         if record.outcome.passed:
             streak = []
-        elif record.outcome.verdict == "request_changes":
+        else:
             streak.append(record)
     return tuple(streak)
 
@@ -750,10 +631,8 @@ def evaluate_gate(gate: GateInput) -> GateResult:
 
     if gate.review is None:
         reasons.append("review_missing")
-    elif gate.review.verdict == "request_changes":
-        reasons.append("review_request_changes")
     elif not gate.review.passed:
-        reasons.append("review_comment_blocking")
+        reasons.append("review_request_changes")
 
     hits = shared_path_hits(gate.changed_paths, gate.shared_patterns)
     if reasons:
