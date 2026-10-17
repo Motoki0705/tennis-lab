@@ -1,8 +1,16 @@
-# クロスレビューと merge gate（`.agents/ops/review/`）
+# PR レビューと merge gate（`.agents/ops/review/`）
 
-open PR を定期的に poll し、PR を作成した agent と**逆の** agent でレビューして結果を PR コメントに残し、
+open PR を定期的に poll し、agent が作成した PR を **Codex** でレビューして結果を PR コメントに残し、
 条件を満たす PR だけを merge する（自動 merge は既定で無効）。#1058 で導入。
 この README が下記規約（作成 agent の判別・レビュー・merge gate）の正本。
+
+当初は作成 agent と逆の agent がレビューする相互レビューだったが、#1178 で次のように変えた。
+
+- レビュー agent は作成 agent によらず常に Codex（Claude の使用枠をレビューで消費しないため）。
+- 報告するのは merge を止める指摘（blocker / major）だけにし、軽微指摘を追補 issue にする仕組みをやめた
+  （軽微指摘の issue が処理より速く溜まったため）。
+
+ファイル名・unit 名の `cross-review` は導入時の名前のまま。
 
 | ファイル | 役割 |
 |---|---|
@@ -18,12 +26,13 @@ open PR を定期的に poll し、PR を作成した agent と**逆の** agent 
 
 ## 作成 agent の判別規約
 
-PR を作る agent は branch 名に自分の prefix を付ける。
+PR を作る agent は branch 名に自分の prefix を付ける。作成 agent はレビュー対象の選別と、
+レビューコメント・プロンプトへの記載にだけ使う（レビュー agent はどちらでも Codex）。
 
-| 作成 agent | branch prefix（主） | ラベル（補助） | レビュー agent |
-|---|---|---|---|
-| Claude | `claude/` | `agent:claude` | Codex |
-| Codex | `codex/` | `agent:codex` | Claude |
+| 作成 agent | branch prefix（主） | ラベル（補助） |
+|---|---|---|
+| Claude | `claude/` | `agent:claude` |
+| Codex | `codex/` | `agent:codex` |
 
 - branch prefix が主。prefix を付けられなかった PR は `agent:<name>` ラベルで作成 agent を示せる。
 - prefix とラベルが食い違う、または両方のラベルが付いている PR はエラー（poll は非ゼロ終了し、その PR には何もしない）。
@@ -42,38 +51,37 @@ PR を作る agent は branch 名に自分の prefix を付ける。
    プロンプトとレビューコメントに明記する。この名前は PR 側のファイルやシンボリックリンクと衝突し得るので、
    既存のものは（リンク先が無いシンボリックリンクも含め）辿らずにエラーにする（`O_EXCL | O_NOFOLLOW`）。
 2. PR head を detached で checkout したレビュー用 worktree（`.claude/worktrees/review-pr<N>-<sha12>`）を作り、
-   `../lib/agent_exec.sh --mode read-only` で逆の agent を起動する。read-only の agent はファイルを読むことしか
-   できない（git・gh も実行できない）ので、判断材料はすべてこのスクリプトが集めてプロンプトか worktree に置く。
-   model・effort は [`../lib/agents.conf`](../lib/agents.conf) で固定される。
+   `../lib/agent_exec.sh --agent codex --profile review --mode read-only` で Codex を起動する。read-only の agent は
+   ファイルを読むことしかできない（git・gh も実行できない）ので、判断材料はすべてこのスクリプトが集めてプロンプトか
+   worktree に置く。model・effort・service tier は [`../lib/agents.conf`](../lib/agents.conf) の `review` プロファイル
+   （`REVIEW_CODEX_*`）で固定される。値が欠けていればエラーになる。
    agent は専用のプロセスグループで起動し、タイムアウト（`--agent-timeout`）時や終了後に
    残った子孫（claude / codex 本体やそのツール）もグループごと終了させる。worktree はレビュー後に必ず削除する。
 3. agent の最終メッセージは JSON 1 つ（`prompt_template.md` のスキーマ。` ```json ` フェンスは可）。
-   `verdict` は `approve` / `request_changes` / `comment`。キーの過不足、未知の値、
-   `request_changes` なのに blocker/major の指摘が無い、`approve` なのに blocker/major がある、はすべてパース失敗で、
+   指摘の `severity` は `blocker` / `major` だけで、`verdict` は指摘が無ければ `approve`、あれば `request_changes`。
+   キーの過不足、未知の値（`minor` / `nit` / `comment` を含む）、`verdict` と指摘の有無の食い違いはすべてパース失敗で、
    その PR には何も投稿せず poll は非ゼロ終了する（次回の poll で再レビューされる）。
 4. 結果を PR コメントとして投稿する。コメント**先頭行**の不可視マーカー
-   `<!-- agent-cross-review:v3 sha=<head> base=<merge-base> diff=<diffのSHA-256> reviewer=<agent> verdict=<verdict> blocking=<blocker+major の件数> -->`
-   と、2 行目の `<!-- agent-cross-review-light:v1 [minor/nit 指摘の JSON] -->` が状態の正本
-   （2 行目は後の poll で追補 issue を起票するため。`<` `>` は JSON エスケープして 1 行に収める）。
-   先頭 2 行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
-   コメントに埋め込むときは `<!--` / `-->` を無害化する。
+   `<!-- agent-cross-review:v4 sha=<head> base=<merge-base> diff=<diffのSHA-256> reviewer=<agent> verdict=<verdict> blocking=<指摘の件数> -->`
+   が状態の正本。先頭行以外のマーカー（要約や指摘に引用されたもの）は読まない。加えて、agent の出力やファイル名を
+   コメントに埋め込むときは `<!--` / `-->` を無害化する。v3 以前のマーカー（軽微指摘を含んでいた旧規約のレビュー）は
+   読まないので、旧規約でレビュー済みの PR も新しい規約でレビューし直される。
 5. gate の直前に、新規レビュー・既存レビューのどちらの場合も PR と CI 状態を取り直す。取り直した PR で
-   作成 agent を判別し直し、判別できない・必要なレビュー agent が変わった（ラベル付け替え等）ときは
-   その poll では gate を判定しない（次の poll で正しい agent がレビューする）。手がかりが食い違えば初回と同じくエラー。
-   head か base が
-   最初の取得から動いていれば対象（head・merge-base・diff）を計算し直し、レビューした対象と違えば
+   作成 agent を判別し直し、判別できなくなった（ラベルを外した等）ときはその poll では gate を判定しない。
+   手がかりが食い違えば初回と同じくエラー。
+   head か base が最初の取得から動いていれば対象（head・merge-base・diff）を計算し直し、レビューした対象と違えば
    その poll では gate を判定しない（次の poll で新しい対象をレビューする）。base branch が進んだだけで
    対象が同じなら、取り直した状態で gate を判定する。
 
 **二重レビューの防止**: poll を実行している gh アカウントが投稿したコメントに、現在のレビュー対象
-（head SHA・merge-base・diff の SHA-256 の組）と期待するレビュー agent のマーカーがあれば再レビューしない。
+（head SHA・merge-base・diff の SHA-256 の組）と Codex のマーカーがあれば再レビューしない。
 他アカウントが書いたマーカーは無視する。新しい commit が push されると head が変わり、base の付け替え
 （未 merge の親 branch から main へ等）では head が同じでも merge-base と diff が変わるので、どちらも再レビューされる。
 base branch が先へ進んだだけなら merge-base と diff は変わらないので既存レビューを使う。
 
 **ラベルの同期**: `agent-review:changes-requested` は毎 poll、現在の対象に対する判定（既存レビューを含む）に
 合わせて付け外しする。レビュー投稿後にラベル操作が失敗しても次の poll で直る。
-下記の追補 issue とエスカレーションも、毎 poll コメント上の記録から判定するので同様に再試行される。
+下記のエスカレーションも、毎 poll コメント上の記録から判定するので同様に再試行される。
 
 ## 共有基盤パス
 
@@ -110,31 +118,16 @@ base branch が先へ進んだだけなら merge-base と diff は変わらな�
   開始時刻が同じ run があって最新が決まらないときは、候補の中で最も悲観的な状態（失敗 > 未完了 > 成功）を採る。
 - `ci_missing_required`: `required_checks.txt` の check が rollup に無い（CI 起動前に labeler 等だけが
   成功して merge される競合を防ぐ。main に branch protection の required checks は無いのでこのファイルで持つ）。
-- `review_missing` / `review_request_changes` / `review_comment_blocking`: 最新の対象への逆 agent の
-  レビューが通過していない。**通過**は `approve`、または blocker/major の指摘を含まない `comment`
-  （minor/nit の指摘だけなら merge を止めない。指摘は下の追補 issue に回す）。
+- `review_missing` / `review_request_changes`: 最新の対象への Codex のレビューが無い、または `approve` でない。
 
 共有基盤に触れる PR は、レビューが通過していても `needs_human` になる。
 
-### 軽微指摘の追補 issue
-
-通過したレビューに minor/nit の指摘があれば、PR head ごとに 1 件、`ai-proposed` ラベルの issue
-`[追補] PR #<N> のレビュー軽微指摘` を起票する（本文に `path:line` 付きの指摘とレビューコメントへのリンク）。
-本文先頭のマーカー `<!-- agent-review-followup:v1 pr=<N> sha=<head> -->` で、poll を実行するアカウントが
-起票した同じ PR・head の issue が（close 済みも含め）あれば再起票しない。同じ head が base の付け替えなどで
-再レビューされたときは、その issue に新しいレビューへのリンクと未掲載の指摘だけを追記する（本文 2 行目の
-`<!-- agent-review-followup-data:v1 ... -->` に掲載済みのレビューと指摘を持ち、指摘は内容が同じものを重複させない。
-2 行目が無い issue はエラー）。gate コメントに issue へのリンクを載せる。
-dry-run では起票しない。起票された追補 issue は [`../followup/`](../followup/README.md) が定期的に処理する
-（このマーカーと 2 行目のデータ行がその入力になる）。
-
 ### request_changes の連続（エスカレーション）
 
-逆 agent のレビュー（poll アカウントのマーカー）を投稿順に見て、head をまたいで連続した `request_changes` が
+Codex のレビュー（poll アカウントのマーカー）を投稿順に見て、head をまたいで連続した `request_changes` が
 3 回に達したら、`needs-human` ラベルを付けて「人間の判断が必要」とコメントする（マーカー
 `<!-- agent-review-escalation:v1 sha=... base=... diff=... -->` は連続の最初のレビューを指し、1 つの連続につき 1 回）。
-gate は `request_changes` のあいだ blocked のまま。通過したレビューで連続は 0 に戻る。blocker/major を含む
-`comment` は連続を伸ばしも戻しもしない。
+gate は `request_changes` のあいだ blocked のまま。`approve` で連続は 0 に戻る。
 
 gate コメントにもマーカー `<!-- agent-merge-gate:v2 sha=... base=... diff=... decision=... reasons=... -->` を付け、
 同じレビュー対象・判定・理由の組では再投稿しない。`blocked` は `ci_failed` か `conflict` を含むときだけコメントする
@@ -165,8 +158,8 @@ worktree を作り、レビューコメントを入力に修正 commit を push 
 .venv/bin/python .agents/ops/review/cross_review.py
 ```
 
-- 必要なラベル: `needs-human`、`agent-review:changes-requested`、`ai-proposed`（判別用に `agent:claude`、`agent:codex` も）。
-  書き込みを伴う実行は前 3 つが repo に無いと開始前にエラーになる。
+- 必要なラベル: `needs-human`、`agent-review:changes-requested`（判別用に `agent:claude`、`agent:codex` も）。
+  書き込みを伴う実行は前 2 つが repo に無いと開始前にエラーになる。
   `gh label create agent-review:changes-requested --color FBCA04 --description "クロスレビューが修正を要求"` 等で作る。
 - ログ・成果物: `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/review/runs/<UTC時刻>-pr<N>-<head12>-<merge-base12>-<一意suffix>/`
   に `prompt.md`、`agent_output.md`（生出力）、`review.json`、`review_comment.md`、agent_exec のログを残す。
