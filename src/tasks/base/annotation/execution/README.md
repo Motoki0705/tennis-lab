@@ -24,6 +24,11 @@ baseからball/playerのモデル・ラベル実装をimportしない。
   lease解放までは `draining` とする。
 - receiptのないsupervisor終了・queue失敗を成功にしない。完了結果は再実行せず回収し、
   失敗後の再実行には新しいrequest IDを要求する。
+- queue状態の走査で複数・欠落を観測した場合は再確認する。`jobs` と `running` の
+  移動（停止時の差し戻しを含む）が続き、3回とも一意に読めなければ理由付きの
+  `unfinished` を返す。永続的な欠落・重複も終了とは断定せず、queue調査を促す。
+  終了判定では工程lockを取得してから完了receiptを確認し、確認中に終了した
+  supervisorのreceiptを取りこぼさない。lockが解放されるまでは `draining` とする。
 
 `src.tasks.base.annotation.execution` CLIはsupervisor用で、継承FDまたはqueue所有権を
 必要とする。ユーザー向けの入口は[composition root](../../../annotation/README.md)。

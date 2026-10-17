@@ -67,7 +67,7 @@ task adapterを選んでbaseへ渡すcomposition rootは、baseの外側に置�
 | `base/annotation/collection`・`screening` | 新規channel/videoの履歴、取得、プレー窓選定、動画準備、段階登録 | 各検出器の前処理・予測 |
 | `base/annotation/ledger`・`workers` | 排他、attempt、停止/再開、gpt-6.1-sol起動、工程制御 | workerへ渡す必須ラベル規則、編集・意味検証 |
 | `base/annotation/images`・`editing`・`handoff` | ページ生成、座標変換、版照合、原子的更新、差分入力/出力 | 探索領域、補間やtrack/event境界、表示内容 |
-| `base/annotation/learning`・`models` | 学習/評価ジョブ、来歴、採用版の競合検出、モデル固定 | 初期重み読込、recipe、export、指標と合否判定 |
+| [`base/annotation/learning`](learning/README.md) | 学習/評価ジョブ、来歴、採用版の競合検出、モデル固定 | 初期重み読込、recipe、export、指標と合否判定 |
 | `base/annotation/resources`・`storage` | 工程枠、予算、参照保護、移行/GC | dataset内部の参照列挙・形式検証 |
 | `base/annotation/telemetry`・`reports` | 応答ID別usage、画像/操作の来歴、時系列索引 | 工程・編集操作の分類 |
 | `ball_detection/annotation` | MDD等の推論adapter、ball schema、レビュー・修正・採用 | 共通の実行・永続化はbaseを利用 |

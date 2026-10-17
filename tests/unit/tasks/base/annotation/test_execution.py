@@ -546,6 +546,155 @@ def test_queue_registration_is_pinned_and_idempotent(
         validate_queue(layout, config)
 
 
+def registered_queue(
+    layout: AnnotationLayout, launch: StageLaunch
+) -> tuple[QueueConfiguration, ArtifactRef]:
+    config = queue_config(layout)
+    ref = write_document(
+        layout, stage_directory(layout, launch) / "launch.json", launch
+    )
+    queue = Path(config.directory)
+    registration = (
+        queue
+        / "control/registrations"
+        / (
+            hashlib.sha256(("annotation-stage:" + ref.digest).encode()).hexdigest()
+            + ".receipt"
+        )
+    )
+    registration.parent.mkdir(parents=True)
+    registration.write_text("a" * 64 + " moving.job\n")
+    for state in ("jobs", "running", "done", "failed", "cancelled"):
+        (queue / state).mkdir()
+    return config, ref
+
+
+@pytest.mark.parametrize(
+    ("transitions", "expected"),
+    [
+        ([("jobs", "running")], "running"),
+        ([("running", "jobs")], "running"),
+        ([("jobs", "running"), ("running", "done")], "failed"),
+    ],
+)
+def test_queue_state_reconciles_job_moves_during_observation(
+    setup: tuple,
+    monkeypatch: pytest.MonkeyPatch,
+    transitions: list[tuple[str, str]],
+    expected: str,
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    queue = Path(config.directory)
+    (queue / transitions[0][0] / "moving.job").write_text("fixture; never executed")
+    real_exists = Path.exists
+    moves: list[str] = []
+
+    def move_after_observation(path: Path) -> bool:
+        exists = real_exists(path)
+        # Model the worker's atomic renames immediately after a positive stat.
+        if exists and len(moves) < len(transitions):
+            source, target = transitions[len(moves)]
+            if path == queue / source / "moving.job":
+                path.rename(queue / target / "moving.job")
+                moves.append(target)
+        return exists
+
+    monkeypatch.setattr(Path, "exists", move_after_observation)
+    result = queue_state(config, ref)
+    assert moves == [target for _source, target in transitions]
+    assert result["state"] == expected
+    if expected == "failed":
+        assert "queue is done" in result["reason"]
+    else:
+        # A single observation may precede the rename; it remains nonterminal.
+        current = "queued" if transitions[-1][1] == "jobs" else "running"
+        assert queue_state(config, ref)["state"] == current
+
+
+def test_queue_state_reports_continuous_moves_as_unfinished(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    queue = Path(config.directory)
+    (queue / "jobs/moving.job").write_text("fixture; never executed")
+    real_exists = Path.exists
+
+    def move_on_every_observation(path: Path) -> bool:
+        exists = real_exists(path)
+        if exists and path in (queue / "jobs/moving.job", queue / "running/moving.job"):
+            target = "running" if path.parent.name == "jobs" else "jobs"
+            path.rename(queue / target / path.name)
+        return exists
+
+    monkeypatch.setattr(Path, "exists", move_on_every_observation)
+    result = queue_state(config, ref)
+    assert result["state"] == "unfinished"
+    assert "no unique lifecycle state" in result["reason"]
+
+
+@pytest.mark.parametrize("states", [(), ("jobs", "running")])
+def test_queue_state_does_not_hide_stable_inconsistency(
+    setup: tuple, states: tuple[str, ...]
+) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    for state in states:
+        (Path(config.directory) / state / "moving.job").write_text("fixture")
+    result = queue_state(config, ref)
+    assert result["state"] == "unfinished"
+    assert "inspect queue if this persists" in result["reason"]
+
+
+def test_stage_status_collects_receipt_published_after_initial_check(
+    setup: tuple, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout, _manager, launch = setup
+    directory = stage_directory(layout, launch)
+    ref = write_document(layout, directory / "launch.json", launch)
+    stdout = write_asset(layout, directory / "stdout.log", b"completed")
+    stderr = write_asset(layout, directory / "stderr.log", b"")
+    receipt = StageExit(
+        launch=ref,
+        status="succeeded",
+        exit_code=0,
+        started_at="2026-01-01T00:00:00Z",
+        ended_at="2026-01-01T00:00:01Z",
+        elapsed_seconds=1.0,
+        stdout=stdout,
+        stderr=stderr,
+        reason=None,
+    )
+    from src.tasks.base.annotation.execution import runner
+
+    real_lock = runner.artifact_lock
+    published = False
+
+    @contextmanager
+    def finish_before_lock(
+        root: AnnotationLayout, name: str, *, blocking: bool = True
+    ) -> Iterator[int]:
+        nonlocal published
+        if name == runner.stage_lock(launch) and not published:
+            published = True
+            write_document(layout, directory / "exit.json", receipt)
+        with real_lock(root, name, blocking=blocking) as descriptor:
+            yield descriptor
+
+    monkeypatch.setattr(runner, "artifact_lock", finish_before_lock)
+    state = StageRunner(layout).status(ref)
+    assert published
+    assert state["state"] == "succeeded"
+    assert (
+        read_document(layout, ArtifactRef.model_validate(state["exit"]), StageExit)
+        == receipt
+    )
+    with real_lock(layout, runner.stage_lock(launch)):
+        assert StageRunner(layout).status(ref)["state"] == "draining"
+    assert StageRunner(layout).status(ref)["state"] == "succeeded"
+
+
 def test_gpu_stage_requires_queue_and_keeps_queue_process_group(
     setup: tuple, monkeypatch: pytest.MonkeyPatch
 ) -> None:
