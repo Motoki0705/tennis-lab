@@ -9,6 +9,7 @@ import torch
 
 from src.tasks.ball_detection.checkpoints.coordinates import restore_coordinate_model
 from src.tasks.ball_detection.checkpoints.posttraining import SCHEMA
+from src.tasks.ball_detection.checkpoints.provenance import parent_provenance
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.tasks.ball_detection.training.runtime.images import jpeg_decoder_contract
 from src.utils.checksum import dual_sha256
@@ -41,5 +42,6 @@ def initialize_full_model(
         input_contract=recipe["input_contract"], image_decode=recipe["image_decode"],
         parent_manifest_sha256=recipe["manifest_sha256"],
         optimizer_initialization="fresh", schedule_initialization="step_zero",
+        ancestry=parent_provenance(saved),
     )
     return model, provenance

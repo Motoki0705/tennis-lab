@@ -9,6 +9,7 @@ from typing import Any
 import torch
 
 from src.tasks.ball_detection.checkpoints.coordinates import query_checkpoint_config
+from src.tasks.ball_detection.checkpoints.provenance import parent_provenance
 from src.tasks.ball_detection.models.mdd import DeepMDDHybridDetector, MDDHybridConfig
 from src.utils.checksum import dual_sha256
 
@@ -54,5 +55,6 @@ def initialize_hybrid_from_query(path: Path, config: MDDHybridConfig) -> tuple[D
         target_model_config=asdict(config), transferred_modules=list(QUERY_TRANSFER_MODULES),
         initialized_modules=list(HYBRID_NEW_MODULES), discarded_modules=["head"],
         transferred_parameters=transferred, initialized_parameters=initialized,
+        ancestry=parent_provenance(saved),
     )
     return model, receipt

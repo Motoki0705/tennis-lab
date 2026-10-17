@@ -126,6 +126,7 @@ class Inputs:
             augmentation_config=verify_reference(layout, self.recipe.augmentation),
             output=output,
             resume=resume,
+            stop_after_epoch=None,
             replay_manifest=(verify_reference(layout, self.recipe.replay.previously_trained_manifest)
                              if self.recipe.replay else None),
             untrained_fraction=self.recipe.replay.untrained_fraction if self.recipe.replay else None,
