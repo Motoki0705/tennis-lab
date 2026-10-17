@@ -52,8 +52,11 @@ from src.tasks.base.annotation.predictions import (
 )
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
+    BudgetStopped,
+    CapacityUnavailable,
     ResourceManager,
 )
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.screening.contracts import (
     ClipDecision,
     Interval,
@@ -156,6 +159,52 @@ class Example:
 
 def controller_for(example: Example) -> Controller:
     return create_controller(example.layout, example.screening.plan)
+
+
+@pytest.mark.parametrize("stop_at", ["budget", "quota_status"])
+def test_controller_stop_cancels_pending_screening(
+    example: Example, monkeypatch: pytest.MonkeyPatch, stop_at: str
+) -> None:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="CPU-only screening fixture",
+        ),
+    )
+    controller = controller_for(example)
+    pool = controller.pool
+    pool.test_command = (sys.executable, "-c", "raise AssertionError('unexpected launch')")
+    pool.worker_pss_bytes = controller.plan.resources.total_pss_bytes + 1
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+        pool.start(request)
+    assert pool.ledger.task(request.work_id)["state"] == "ready"
+    assert controller.resources.status()["requests"][0]["state"] == "pending"
+    reason = "fixture screening stop"
+    if stop_at == "budget":
+        with controller.resources.registry.transaction() as db:
+            db.execute("UPDATE resource_scopes SET stop_reason=?", (reason,))
+        assert controller.resources.sample().stopped_reason == reason
+        with pytest.raises(BudgetStopped, match=reason):
+            controller.cycle()
+    else:
+        pool.ledger.stop_campaign(controller.plan.campaign_id, reason)
+        assert controller.status()["state"] == "blocked"
+    cancelled = controller.resources.status()["requests"][0]
+    assert (cancelled["state"], cancelled["reason"]) == ("cancelled", reason)
+    assert pool.ledger.task(request.work_id)["state"] == "cancelled"
+    assert not pool.children
 
 
 def create_controller(layout: AnnotationLayout, plan: CampaignPlan) -> Controller:

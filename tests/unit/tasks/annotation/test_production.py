@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts 
     SourceSplit,
 )
 from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
     read_document,
     write_document,
 )
@@ -34,12 +36,33 @@ from src.tasks.base.annotation.collection.contracts import (
 from src.tasks.base.annotation.contracts import ArtifactRef, content_digest
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, StageCapacity
+from src.tasks.base.annotation.plan import CampaignPlan, StageCapacity, save_plan
 from src.tasks.base.annotation.predictions import Predictions
-from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
+from src.tasks.base.annotation.resources import (
+    BudgetLimits,
+    BudgetStopped,
+    CapacityUnavailable,
+    ResourceManager,
+    ResourceRequest,
+)
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.workers.contracts import WorkRequest
 from tests.support.tasks.annotation import record_stage
 from tests.support.tasks.ball_detection.review_worker import ReviewSession
+
+
+@pytest.fixture(autouse=True)
+def no_hardware_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="synthetic production tests do not query a GPU",
+        ),
+    )
 
 
 @pytest.fixture
@@ -247,7 +270,7 @@ def finish(session: ReviewSession, *, deferred: bool = False) -> None:
     session.finish(report, status="deferred" if deferred else "complete")
 
 
-def controller_for(session: ReviewSession) -> Controller:
+def controller_for(session: ReviewSession, *, pending_limit: int = 10) -> Controller:
     env = session.env
     scope = ResourceManager.create(
         env.layout,
@@ -256,7 +279,7 @@ def controller_for(session: ReviewSession) -> Controller:
         roots=(env.layout.repository,),
         previously_allocated_bytes=0,
         previously_used_gpu_seconds=0,
-        max_pending_per_stage=10,
+        max_pending_per_stage=pending_limit,
     )
     script = env.layout.repository / "queue.sh"
     script.write_text("# synthetic queue --idempotency-key\n")
@@ -504,6 +527,84 @@ def test_live_input_stage_waits_without_publishing_or_stopping_the_campaign(
     )
     assert controller.production.cycle()["state"] == "reviewing"
     assert controller.status()["state"] == "running"
+
+
+@pytest.mark.parametrize("stop_at", ["budget_poll", "budget_during_cycle", "quota"])
+def test_controller_stop_cancels_pending_workers_and_frees_other_scope(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch, stop_at: str
+) -> None:
+    finish(session, deferred=True)
+    controller = controller_for(session, pending_limit=1)
+    record_input_stages(controller)
+    assert controller.production is not None
+    pool = controller.production.pool
+    assert pool.reconcile(session.request)["state"] == "deferred"
+    # Only admission is exercised; a worker must never start in this test.
+    pool.test_command = (
+        sys.executable,
+        "-c",
+        "raise AssertionError('unexpected launch')",
+    )
+    pool.worker_pss_bytes = controller.plan.resources.total_pss_bytes + 1
+    with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+        pool.start(session.request, retry=True)
+    pending = [
+        r for r in controller.resources.status()["requests"] if r["state"] == "pending"
+    ]
+    assert len(pending) == 1
+    other_plan = controller.plan.model_copy(update={"campaign_id": "other-campaign"})
+    other = ResourceManager.create(
+        controller.layout,
+        scope_id="other-scope",
+        limits=BudgetLimits.from_budget(other_plan.resources),
+        roots=(controller.layout.repository,),
+        previously_allocated_bytes=0,
+        previously_used_gpu_seconds=0,
+        max_pending_per_stage=1,
+    )
+    request = ResourceRequest(
+        request_id="other-review",
+        plan=annotation_reference(
+            controller.layout, save_plan(controller.layout, other_plan)
+        ),
+        stage="review",
+        pss_bytes=1024**2,
+        storage_bytes=0,
+        gpu_seconds=0,
+    )
+    with pytest.raises(CapacityUnavailable, match="backlog is full"):
+        other.submit(request)
+
+    reason = "fixture campaign stop"
+    if stop_at == "quota":
+        pool.ledger.stop_campaign(controller.plan.campaign_id, reason)
+        assert controller.cycle()["workflow"]["state"] == "blocked"
+    else:
+        if stop_at == "budget_poll":
+            with controller.resources.registry.transaction() as db:
+                db.execute(
+                    "UPDATE resource_scopes SET stop_reason=? WHERE id=?",
+                    (reason, controller.resources.scope.scope_id),
+                )
+            # Refresh the shared sample without depending on its two-second TTL.
+            assert controller.resources.sample().stopped_reason == reason
+        else:
+
+            def budget_stop():
+                raise BudgetStopped(reason)
+
+            monkeypatch.setattr(controller.production, "cycle", budget_stop)
+        with pytest.raises(BudgetStopped, match=reason):
+            controller.cycle()
+
+    with other.lease(request):
+        assert other._row(request)["state"] == "running"
+    cancelled = {r["id"]: r for r in controller.resources.status()["requests"]}[
+        pending[0]["id"]
+    ]
+    assert (cancelled["state"], cancelled["reason"]) == ("cancelled", reason)
+    assert pool.ledger.task(session.request.work_id)["state"] == "cancelled"
+    assert not pool.children
 
 
 def test_cached_workflow_completion_does_not_hide_unresolved_stage_failure(
