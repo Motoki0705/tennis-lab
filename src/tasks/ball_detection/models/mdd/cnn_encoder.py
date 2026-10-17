@@ -54,7 +54,7 @@ class DeepMDDEncoder(nn.Module):
         self.activation_checkpointing = config.activation_checkpointing
         widths = (*config.stem_channels, *config.mixed_channels)
         stages: list[nn.Module] = []
-        previous = 2
+        previous = config.input_channels
         residual = {"residual": SpatialResidual, "convnext_v2": ConvNeXtV2Residual,
                     "fasternet": PartialSpatialResidual}[config.encoder_variant]
         for i, (width, depth) in enumerate(zip(widths, config.residual_blocks, strict=True)):
