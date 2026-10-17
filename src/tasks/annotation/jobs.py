@@ -15,6 +15,7 @@ from src.tasks.base.annotation.collection.contracts import (
     SourceCandidate,
 )
 from src.tasks.base.annotation.collection.ledger import CollectionLedger
+from src.tasks.base.annotation.collection.restoration import verify_restoration
 from src.tasks.base.annotation.collection.retirement import verify_acquisition_media
 from src.tasks.base.annotation.contracts import ArtifactRef, ClipManifest
 from src.tasks.base.annotation.execution.contracts import StageLaunch
@@ -39,6 +40,7 @@ from .contracts import (
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
+    RestoreSourceOperation,
     Runtime,
     ScreenOperation,
 )
@@ -249,6 +251,21 @@ class Operations:
                 or receipt.reason != source["reason"]
             ):
                 raise ValueError("source exclusion differs from its registered reason")
+        elif isinstance(operation, RestoreSourceOperation):
+            if len(receipt.results) != 1:
+                raise ValueError("source restoration must return exactly one receipt")
+            restoration = verify_restoration(
+                self.layout, self.plan, operation.source_id,
+                operation.attempt, receipt.results[0],
+            )
+            expected_status = (
+                "complete" if restoration.status == "restored" else "not_applicable"
+            )
+            expected_reason = (
+                None if restoration.status == "restored" else restoration.reason
+            )
+            if (receipt.status, receipt.reason) != (expected_status, expected_reason):
+                raise ValueError("operation result differs from the restoration outcome")
         elif receipt.status == "not_applicable":
             raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):
