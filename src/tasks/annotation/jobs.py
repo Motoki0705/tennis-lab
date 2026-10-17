@@ -160,6 +160,7 @@ class Operations:
             ),
             command=tuple(command),
             input=reference,
+            dependencies=tuple(references(data)),
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             queue=self.runtime.queue if cost.gpu_seconds else None,
@@ -172,14 +173,15 @@ class Operations:
             if existing != launch:
                 raise ValueError("operation resource/command configuration changed")
             state: dict[str, Any] = self.stages.status(launch_ref)
-            # A capacity-limited launch has no owner yet and remains explicitly pending.
+            # Backlog rejection can leave a launch without a resource request.
+            # Both unregistered and pending requests can resume the same attempt.
             with self.resources.registry.transaction() as db:
                 row = db.execute(
                     "SELECT state FROM resource_requests WHERE id=?",
                     (self.resources.key(launch.resource),),
                 ).fetchone()
-            pending = row is not None and row[0] == "pending"
-            if not pending or state["state"] not in {"pending", "interrupted"}:
+            unadmitted = row is None or row[0] == "pending"
+            if not unadmitted or state["state"] not in {"pending", "interrupted"}:
                 return state
         try:
             submitted: dict[str, Any] = self.stages.submit(launch)

@@ -18,6 +18,7 @@ from ..contracts import ArtifactRef, PublicationReceipt
 from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
+from ..plan import references
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
 from .adapters import LearningAdapter, NoAdditionalTeachers
 from .contracts import (
@@ -359,6 +360,7 @@ class Learning:
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
             input=request_ref,
+            dependencies=(*references(intent), *references(request)),
             queue=runtime.queue,
             test_root=str(self.layout.root) if self.layout.mode == "test" else None,
         )

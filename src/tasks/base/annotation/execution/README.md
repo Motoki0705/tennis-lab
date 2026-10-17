@@ -30,6 +30,14 @@ baseからball/playerのモデル・ラベル実装をimportしない。
   終了判定では工程lockを取得してから完了receiptを確認し、確認中に終了した
   supervisorのreceiptを取りこぼさない。lockが解放されるまでは `draining` とする。
 
+launch文書・input・明示した `dependencies` は、CPU起動またはGPU queue登録より前に
+資源要求と同じtransactionで保護する。queue待機中も保護を維持し、終了後も後続工程への
+引継ぎ用の入力保護を残す。processの試行用保護は [resources](../resources/README.md) が
+所有し、StageRunnerの成功表示だけでは解除しない。
+composition rootはoperation、学習はintentとstage input内の直接参照を渡す。参照先文書の
+中身を汎用JSON走査で推測しないため、深い媒体・dataset・checkpoint参照の収集は各taskの
+明示的なcollectorで接続する必要がある。この境界だけでGCを実行可能にはしない。
+
 `src.tasks.base.annotation.execution` CLIはsupervisor用で、継承FDまたはqueue所有権を
 必要とする。ユーザー向けの入口は[composition root](../../../annotation/README.md)。
 合成コマンドによるテストはtimeout・子孫終了・受付枠・queue group・改変検知を確認する。

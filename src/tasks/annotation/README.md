@@ -149,6 +149,8 @@ hashとsourceの対応を検証するが、公開動画数やレビュー対象c
 
 通常の再開は同じruntimeで `tick` または `run` を実行する。完了工程を再実行せず、
 `run --max-seconds` の終了時も受付済みsupervisorは自身のtimeout・資源管理に従う。
+待機列上限で受付を拒否され、launchだけが保存された工程は、枠が空いた後の再送で
+同じattemptの資源要求を登録する。CPU起動・GPU queue登録前の未受付を実行失敗と扱わない。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
 workflowの完了cacheがあっても、最新工程の未解決の失敗をcampaign完了で隠さない。

@@ -10,6 +10,7 @@ from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
+from functools import cached_property
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ from .measurements import (
     storage_usage,
     write_baseline,
 )
+from .storage import ResourceReferences
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS resource_scopes (
@@ -107,6 +109,12 @@ class ResourceManager:
                 "INSERT OR IGNORE INTO resource_scopes(id,reference) VALUES (?,?)",
                 (self.scope.scope_id, encoded),
             )
+
+    @cached_property
+    def storage(self) -> ResourceReferences:
+        # Opening a benchmark scope only verifies existing state. Initialize the
+        # protection tables on its first mutation, outside the caller's transaction.
+        return ResourceReferences(self.layout)
 
     def _require_registered_scope(self) -> None:
         error = "benchmark must reuse an exact registered shared scope"
@@ -292,7 +300,12 @@ class ResourceManager:
             raise ValueError("resource request is missing or was changed")
         return dict(row)
 
-    def submit(self, request: ResourceRequest) -> None:
+    def submit(
+        self,
+        request: ResourceRequest,
+        *,
+        inputs: tuple[ArtifactRef, ...] | None = None,
+    ) -> None:
         plan = load_plan(verify_reference(self.layout, request.plan))
         self.bind(plan)
         stages = [
@@ -305,6 +318,7 @@ class ResourceManager:
             raise ValueError(
                 "GPU stages require a positive time reservation; other stages require zero"
             )
+        storage = self.storage
         with self.registry.transaction() as db:
             row = db.execute(
                 "SELECT request FROM resource_requests WHERE id=?", (self.key(request),)
@@ -314,6 +328,15 @@ class ResourceManager:
                     raise ValueError(
                         "resource request identity was reused with different costs/inputs"
                     )
+                storage.register(
+                    self.key(request),
+                    request.plan,
+                    plan,
+                    self.reference,
+                    self.scope,
+                    inputs,
+                    database=db,
+                )
                 return
             pending = db.execute(
                 "SELECT count(*) FROM resource_requests WHERE stage=? AND state='pending'",
@@ -331,6 +354,15 @@ class ResourceManager:
                     request.stage,
                     stage.kind,
                 ),
+            )
+            storage.register(
+                self.key(request),
+                request.plan,
+                plan,
+                self.reference,
+                self.scope,
+                inputs,
+                database=db,
             )
 
     def request_status(self, request: ResourceRequest) -> tuple[str, str | None]:
@@ -350,43 +382,47 @@ class ResourceManager:
     def _recover(self) -> None:
         for active in self._active():
             try:
-                with (
-                    artifact_lock(
-                        self.layout, "resource-lease-" + active["id"], blocking=False
-                    ),
-                    self.registry.transaction() as db,
+                with artifact_lock(
+                    self.layout, "resource-lease-" + active["id"], blocking=False
                 ):
-                    # finish() can commit after the active snapshot and before
-                    # lease acquisition. Read and settle its latest record atomically.
-                    row = db.execute(
-                        "SELECT * FROM resource_requests WHERE id=?",
-                        (active["id"],),
-                    ).fetchone()
-                    if row is None:
-                        raise ValueError("resource request disappeared during recovery")
-                    if row["state"] not in {"running", "draining"}:
-                        continue
-                    if row["owner"] is not None and owned_members(
-                        ProcessIdentity.from_document(json.loads(row["owner"]))
-                    ):
-                        continue
-                    request = ResourceRequest.model_validate_json(row["request"])
-                    missing = row["state"] == "running"
-                    db.execute(
-                        "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
-                        (
-                            "abandoned" if missing else "complete",
-                            request.gpu_seconds if missing else row["charged"],
-                            "reserved_upper_bound" if missing else row["charge_kind"],
-                            "owner exited without a finish receipt"
-                            if missing
-                            else row["reason"],
-                            row["id"],
-                            row["state"],
-                        ),
-                    )
-                    # Finished output must be measured before releasing its reservation.
-                    db.execute("UPDATE resource_samples SET storage_at=-1")
+                    storage = self.storage
+                    with self.registry.transaction() as db:
+                        # finish() can commit after the active snapshot and before
+                        # lease acquisition. Read and settle its latest record atomically.
+                        row = db.execute(
+                            "SELECT * FROM resource_requests WHERE id=?",
+                            (active["id"],),
+                        ).fetchone()
+                        if row is None:
+                            raise ValueError(
+                                "resource request disappeared during recovery"
+                            )
+                        if row["state"] not in {"running", "draining"}:
+                            continue
+                        if row["owner"] is not None and owned_members(
+                            ProcessIdentity.from_document(json.loads(row["owner"]))
+                        ):
+                            continue
+                        request = ResourceRequest.model_validate_json(row["request"])
+                        missing = row["state"] == "running"
+                        storage.settle(row["id"], database=db)
+                        db.execute(
+                            "UPDATE resource_requests SET state=?,charged=?,charge_kind=?,reason=? WHERE id=? AND state=?",
+                            (
+                                "abandoned" if missing else "complete",
+                                request.gpu_seconds if missing else row["charged"],
+                                "reserved_upper_bound"
+                                if missing
+                                else row["charge_kind"],
+                                "owner exited without a finish receipt"
+                                if missing
+                                else row["reason"],
+                                row["id"],
+                                row["state"],
+                            ),
+                        )
+                        # Finished output must be measured before releasing its reservation.
+                        db.execute("UPDATE resource_samples SET storage_at=-1")
             except BlockingIOError:
                 continue
 
@@ -747,7 +783,9 @@ class ResourceManager:
                 raise CapacityUnavailable(
                     "remaining cumulative GPU budget cannot cover this reservation"
                 )
+            storage = self.storage
             with self.registry.transaction() as db:
+                storage.admit(self.key(request), database=db)
                 db.execute(
                     "UPDATE resource_requests SET state='running' WHERE id=? AND state='pending'",
                     (self.key(request),),

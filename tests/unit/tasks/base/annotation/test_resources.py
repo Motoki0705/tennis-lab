@@ -39,6 +39,14 @@ from src.tasks.base.annotation.resources.measurements import (
     storage_usage,
     write_baseline,
 )
+from src.tasks.base.annotation.storage import (
+    InventoryScope,
+    ManagedArtifact,
+    Retention,
+    StorageCatalog,
+    inventory,
+    plan_gc,
+)
 from src.tasks.base.annotation.workers.processes import (
     ProcessIdentity,
     process_snapshot,
@@ -166,6 +174,146 @@ def request(
         storage_bytes=storage,
         gpu_seconds=gpu,
     )
+
+
+def retained(guard: ResourceManager) -> set[ArtifactRef]:
+    return {
+        reference
+        for record in guard.storage.catalog.snapshot().protections
+        for reference in record.references
+    }
+
+
+def attempt_is_protected(guard: ResourceManager, item: ResourceRequest) -> bool:
+    return any(
+        record.protection_id == "resource-attempt-v1-" + guard.key(item)
+        for record in guard.storage.catalog.snapshot().protections
+    )
+
+
+def test_pending_and_cancelled_requests_retain_inputs_for_handoff(
+    tmp_path: Path,
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout)
+    guard = manager(layout, plan)
+    item = request(layout, plan, "pending")
+    ref = write_asset(layout, layout.path("campaigns", "inputs", "media"), b"media")
+    catalog = guard.storage.catalog
+    catalog.register(
+        ManagedArtifact(
+            reference=ref,
+            owner="fixture",
+            stage="decode",
+            kind="source",
+            regenerable=False,
+            retention=Retention(mode="expire", expires_at_ns=0, reason="fixture TTL"),
+        )
+    )
+
+    def eligible() -> bool:
+        observed = inventory(
+            layout,
+            (InventoryScope(role="annotation", path="campaigns/inputs"),),
+            max_entries=100,
+        )
+        result: bool = next(
+            row.eligible
+            for row in plan_gc(catalog, observed).decisions
+            if row.path == catalog.key(ref)
+        )
+        return result
+
+    assert eligible()
+    guard.submit(item, inputs=(ref,))
+    assert not eligible()
+    assert {
+        item.plan,
+        guard.reference,
+        guard.scope.baseline,
+        plan.selection,
+        ref,
+    } <= retained(guard)
+    guard.cancel_pending(item, reason="deferred until explicit retry")
+    assert not eligible()
+    assert not attempt_is_protected(guard, item)
+
+
+def test_request_input_registration_is_immutable_and_atomic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout)
+    guard = manager(layout, plan)
+    item = request(layout, plan, "pending")
+    ref = write_asset(layout, layout.path("campaigns", "inputs", "media"), b"media")
+    original = StorageCatalog.protect
+
+    def fail(self: StorageCatalog, record: object, **kwargs: object) -> None:
+        original(self, record, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("storage commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(StorageCatalog, "protect", fail)
+        with pytest.raises(RuntimeError, match="storage commit failure"):
+            guard.submit(item, inputs=(ref,))
+    with pytest.raises(ValueError, match="missing"):
+        guard._row(item)
+    assert not retained(guard)
+    guard.submit(item, inputs=(ref,))
+    before = guard.storage.catalog.snapshot().digest
+    guard.submit(item)  # lease/attach may reuse the fixed input set
+    guard.submit(item, inputs=(ref, ref))
+    assert guard.storage.catalog.snapshot().digest == before
+    with pytest.raises(ValueError, match="input references changed"):
+        guard.submit(item, inputs=())
+    assert guard.storage.catalog.snapshot().digest == before
+
+
+def test_failed_admission_and_recovery_keep_state_and_pins_atomic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    plan = make_plan(layout)
+    guard = manager(layout, plan)
+    item = request(layout, plan, "attempt")
+    ref = write_asset(layout, layout.path("campaigns", "inputs", "media"), b"media")
+    guard.submit(item, inputs=(ref,))
+    original_admit = guard.storage.admit
+
+    def fail_admit(*args: object, **kwargs: object) -> None:
+        original_admit(*args, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("admission commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(guard.storage, "admit", fail_admit)
+        with (
+            pytest.raises(RuntimeError, match="admission commit failure"),
+            guard.lease(item),
+        ):
+            pytest.fail("uncommitted admission launched work")
+    assert guard._row(item)["state"] == "pending"
+    assert not attempt_is_protected(guard, item)
+    with guard.lease(item):
+        assert attempt_is_protected(guard, item)
+        guard._recover()
+        assert guard._row(item)["state"] == "running"
+    original_settle = guard.storage.settle
+
+    def fail_settle(*args: object, **kwargs: object) -> None:
+        original_settle(*args, **kwargs)  # type: ignore[arg-type]
+        raise RuntimeError("settlement commit failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(guard.storage, "settle", fail_settle)
+        with pytest.raises(RuntimeError, match="settlement commit failure"):
+            guard._recover()
+    assert guard._row(item)["state"] == "running"
+    assert attempt_is_protected(guard, item)
+    guard._recover()
+    assert guard._row(item)["state"] == "abandoned"
+    assert not attempt_is_protected(guard, item)
+    assert ref in retained(guard)
 
 
 def test_allocated_storage_counts_hardlinks_once_and_never_credits_old_deletion(
@@ -432,10 +580,15 @@ if mode == "coordinated":
 else:
     time.sleep(.1)
 manager.finish(request, reason="fixture completed")
+if mode == "draining":
+    os.close(int(fd))
+    pathlib.Path(root, "finished").write_text("lease released; process remains")
+    while not pathlib.Path(root, "may_exit").exists():
+        time.sleep(.02)
 """
 
 
-@pytest.mark.parametrize("mode", ["normal", "orphan"])
+@pytest.mark.parametrize("mode", ["normal", "orphan", "draining"])
 def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
     tmp_path: Path, mode: str
 ) -> None:
@@ -445,6 +598,7 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
     guard = manager(layout, plan)
     item = request(layout, plan, "gpu-op", stage="gpu", gpu=5.0)
     with guard.lease(item) as fd:
+        assert attempt_is_protected(guard, item)
         child = subprocess.Popen(
             [
                 sys.executable,
@@ -465,14 +619,28 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
             time.sleep(0.02)
         assert (layout.root / "attached").exists()
         assert guard.sample().active_by_stage == {"gpu": 1}
+        if mode == "draining":
+            deadline = time.monotonic() + 5
+            while (
+                not (layout.root / "finished").exists() and time.monotonic() < deadline
+            ):
+                time.sleep(0.02)
+            assert (layout.root / "finished").exists()
+            assert guard.sample().active_by_stage == {"gpu": 1}
+            assert guard._row(item)["state"] == "draining"
+            assert attempt_is_protected(guard, item)
+            (layout.root / "may_exit").touch()
         child.wait(timeout=5)
         if mode == "orphan":
             assert guard.sample().active_by_stage == {"gpu": 1}
+            assert attempt_is_protected(guard, item)
         deadline = time.monotonic() + 5
         while guard.sample().active_by_stage and time.monotonic() < deadline:
             time.sleep(0.02)
         sample = guard.sample()
         assert sample.active_by_stage == {}
+        assert not attempt_is_protected(guard, item)
+        assert item.plan in retained(guard)
         assert 0 < sample.gpu_charged_seconds <= 5
         if mode == "orphan":
             assert sample.gpu_charged_seconds == 5
