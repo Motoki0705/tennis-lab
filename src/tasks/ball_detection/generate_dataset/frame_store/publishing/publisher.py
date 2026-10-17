@@ -40,6 +40,8 @@ from src.tasks.base.annotation.contracts import (
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import ProductPlan, load_plan
 from src.tasks.base.annotation.registry import Registry
+from src.tasks.base.annotation.storage.catalog import StorageCatalog
+from src.tasks.base.annotation.storage.references import protection
 
 from .adopted import AdoptedClip, load_adopted
 from .contracts import BallPublicationPolicy, BallSnapshot, PublishRequest, SnapshotClip
@@ -143,6 +145,7 @@ class BallPublisher:
         self.layout = layout
         self.registry = Registry(layout)
         self.registry.initialize("ball-publications-v1", _SCHEMA)
+        self.catalog = StorageCatalog(layout)
 
     def _inputs(self, request: PublishRequest) -> Inputs:
         plan = load_plan(verify_reference(self.layout, request.plan))
@@ -569,6 +572,22 @@ class BallPublisher:
                     raise ValueError(
                         "registered publication receipt differs from completed data"
                     )
+                self.catalog.protect(
+                    protection(
+                        self.layout,
+                        identity="publication-v1-" + reference.digest,
+                        kind="publication",
+                        reason="published ball snapshot, base files, and adoption receipts",
+                        roots=(reference, intent),
+                        documents=(
+                            receipt,
+                            request,
+                            snapshot,
+                            *((inputs.base,) if inputs.base else ()),
+                        ),
+                    ),
+                    database=db,
+                )
                 db.execute(
                     "UPDATE ball_publications SET receipt=? WHERE request_id=?",
                     (reference.model_dump_json(), request.sha256),
