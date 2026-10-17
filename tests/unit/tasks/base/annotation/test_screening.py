@@ -43,7 +43,7 @@ from src.tasks.base.annotation.execution.contracts import (
     QueueConfiguration,
     StageLaunch,
 )
-from src.tasks.base.annotation.media import encode_video
+from src.tasks.base.annotation.media import encode_video, probe_video
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
 from src.tasks.base.annotation.predictions import (
@@ -53,8 +53,11 @@ from src.tasks.base.annotation.predictions import (
 )
 from src.tasks.base.annotation.resources import (
     BudgetLimits,
+    BudgetStopped,
+    CapacityUnavailable,
     ResourceManager,
 )
+from src.tasks.base.annotation.resources.contracts import GPUUsage
 from src.tasks.base.annotation.screening.contracts import (
     ClipDecision,
     Interval,
@@ -162,6 +165,52 @@ def controller_for(example: Example) -> Controller:
     return create_controller(example.layout, example.screening.plan)
 
 
+@pytest.mark.parametrize("stop_at", ["budget", "quota_status"])
+def test_controller_stop_cancels_pending_screening(
+    example: Example, monkeypatch: pytest.MonkeyPatch, stop_at: str
+) -> None:
+    monkeypatch.setattr(
+        "src.tasks.base.annotation.resources.scheduler.gpu_usage",
+        lambda _pids: GPUUsage(
+            status="unavailable",
+            owned_vram_bytes=None,
+            device_vram_bytes=None,
+            maximum_utilization_percent=None,
+            reason="CPU-only screening fixture",
+        ),
+    )
+    controller = controller_for(example)
+    pool = controller.pool
+    pool.test_command = (sys.executable, "-c", "raise AssertionError('unexpected launch')")
+    pool.worker_pss_bytes = controller.plan.resources.total_pss_bytes + 1
+    request = WorkRequest(
+        adapter="source_screening",
+        adapter_version="v1",
+        stage="screen",
+        subject_id=example.source.source_id,
+        payload=example.request.prepared_input,
+        inputs=(),
+    )
+    with pytest.raises(CapacityUnavailable, match="PSS reservations"):
+        pool.start(request)
+    assert pool.ledger.task(request.work_id)["state"] == "ready"
+    assert controller.resources.status()["requests"][0]["state"] == "pending"
+    reason = "fixture screening stop"
+    if stop_at == "budget":
+        with controller.resources.registry.transaction() as db:
+            db.execute("UPDATE resource_scopes SET stop_reason=?", (reason,))
+        assert controller.resources.sample().stopped_reason == reason
+        with pytest.raises(BudgetStopped, match=reason):
+            controller.cycle()
+    else:
+        pool.ledger.stop_campaign(controller.plan.campaign_id, reason)
+        assert controller.status()["state"] == "blocked"
+    cancelled = controller.resources.status()["requests"][0]
+    assert (cancelled["state"], cancelled["reason"]) == ("cancelled", reason)
+    assert pool.ledger.task(request.work_id)["state"] == "cancelled"
+    assert not pool.children
+
+
 def create_controller(layout: AnnotationLayout, plan: CampaignPlan) -> Controller:
     resources = ResourceManager.create(
         layout,
@@ -207,6 +256,7 @@ def setup(
     seconds: int = 32,
     *,
     fps: int | Fraction = 10,
+    frame_count: int | None = None,
     timestamps_ms: tuple[int, ...] | None = None,
     jpeg: bool = False,
     acquire: bool = True,
@@ -324,7 +374,9 @@ def setup(
     media_path = inputs / "video.mp4"
     if timestamps_ms is None:
         time_base = 1 / Fraction(fps)
-        timestamps = tuple(range(math.ceil(seconds * fps)))
+        timestamps = tuple(
+            range(math.ceil(seconds * fps) if frame_count is None else frame_count)
+        )
         end_pts = len(timestamps)
     else:
         time_base = Fraction(1, 1000)
@@ -443,6 +495,45 @@ def test_real_timeline_selection_and_resume(
     )
     prepared = example.screening.collection.prepare(example.source.source_id)
     assert prepared.size_bytes > 0
+
+
+def test_rounded_source_end_finalizes_and_prepares_last_frame(tmp_path: Path) -> None:
+    layout, screening, source = setup(tmp_path, fps=30, frame_count=500)
+    ref = screening.request(
+        screening.prepare(source.source_id),
+        layout.path(
+            "campaigns",
+            screening.plan.campaign_id,
+            "workers",
+            source.source_id,
+            "attempt-1",
+        ),
+    )
+    request = read_document(layout, ref, ScreeningRequest)
+    timeline = probe_video(layout.artifact_path(request.source.media))
+    assert len(timeline.pts) == 500
+    assert timeline.boundary(500) == Fraction(50, 3)
+    assert Fraction(str(request.source_duration)) > timeline.boundary(500)
+    stop = request.source_duration
+    start = stop - 15.0
+    detail_ref = request_preview(layout, request, start=start, stop=stop, step=0.5)
+    detail = read_document(layout, detail_ref, PreviewReceipt)
+    example = Example(layout, screening, source, ref, request, detail_ref, detail)
+    decision = example.decision()
+    clip = decision.clips[0].model_copy(update={"start": start, "stop": stop})
+    selection_ref = example.finish(
+        decision=decision.model_copy(update={"clips": (clip,)})
+    )
+    selection = read_document(layout, selection_ref, SelectionReceipt)
+    assert selection.windows[0].stop == stop
+    prepared_ref = screening.collection.prepare(source.source_id)
+    prepared = read_document(layout, prepared_ref, PreparationReceipt)
+    manifest = read_document(layout, prepared.clips[0], ClipManifest)
+    assert manifest.source_range.stop == 500
+    assert manifest.frames[-1].source_frame_index == 499
+    assert manifest.frames[-1].source_pts == timeline.pts[-1]
+    assert manifest.frames[-1].duration_pts == timeline.durations[-1]
+    assert screening.collection.prepare(source.source_id) == prepared_ref
 
 
 @pytest.mark.parametrize("fps", [25, Fraction(30000, 1001)], ids=["25fps", "29.97fps"])
