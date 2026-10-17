@@ -19,6 +19,7 @@ from src.tasks.base.annotation.contracts import (
 )
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
 from src.tasks.base.annotation.images.contracts import PageView
+from src.tasks.base.annotation.reproducibility import CodeBoundDocument
 from src.tasks.base.annotation.storage.comparison.contracts import ReadLimits
 
 
@@ -47,7 +48,7 @@ class RuntimeSettings(Document):
         return matching[0]
 
 
-class Runtime(RuntimeSettings):
+class Runtime(RuntimeSettings, CodeBoundDocument):
     schema_version: Literal["annotation.runtime.v1"] = "annotation.runtime.v1"
     plan: ArtifactRef
     scope: ArtifactRef
@@ -219,11 +220,34 @@ class ResumeWorkers(Document):
     action: Literal["resume_workers"] = "resume_workers"
 
 
+class CancelPendingStage(Document):
+    action: Literal["cancel_pending_stage"] = "cancel_pending_stage"
+    launch: ArtifactRef
+
+
+class ReopenScreening(Document):
+    action: Literal["reopen_incomplete_screening"] = "reopen_incomplete_screening"
+    request: ArtifactRef
+    after_attempt: str = Field(min_length=1)
+    selection: ArtifactRef
+
+
+class ObserveHostSpace(Document):
+    action: Literal["observe_host_space"] = "observe_host_space"
+    policy: ArtifactRef
+
+
 class RecoveryInput(Document):
     plan: ArtifactRef
     reason: str = Field(min_length=1)
     operation: Annotated[
-        RetryWorker | RetryLearning | ResumeWorkers, Field(discriminator="action")
+        RetryWorker
+        | RetryLearning
+        | ResumeWorkers
+        | CancelPendingStage
+        | ReopenScreening
+        | ObserveHostSpace,
+        Field(discriminator="action"),
     ]
 
 

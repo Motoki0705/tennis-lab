@@ -19,6 +19,20 @@ watchdogに使う。mount消失やsymlinkへの変更は計測エラーとし、
 この設定もscopeとともに不変保存するため、既存scopeへの追加ではbaselineと累計を保持した
 明示的なscope移行が必要。VHDX自体を保存量のrootへ加えて二重計上しない。
 
+ユーザーが事前確保より実空きの監視を選んだ場合は、`ObservedHostSpacePolicy` を
+認可記録・plan・scopeへ結び、停止・drain後に `observe_host_space` recoveryで適用できる。
+対象は保存rootを含まない間接的なhost mountだけ。WSL内の書き込みが既存VHD領域を再利用する
+場合に備え、このmountから保存予約を控除せず、認可された実空き下限で判定する。
+それ以外のfilesystemの予約控除、追加保存上限、PSS/GPU累計、baselineは維持する。
+同じplanの認可変更は拒否する。次campaignでもscopeを継承する場合は、controllerを停止し、
+scope内のrunning/draining要求がなくなった後、次planの認可を同じrecoveryで追記する。
+認可履歴と現在の認可参照を同じtransactionで更新し、過去planの認可への巻戻しは拒否する。
+旧台帳に履歴がない場合も、現在の認可を履歴に追加してから切り替える。既存ファイルの移行は不要。
+新planの認可はbaseline・GPU累計・永続stopを変更せず、停止解除には従来どおり明示的なresumeが必要。
+policy適用中はwatchdogが停止を検出するとCPU/GPU工程・注釈workerのsupervisorが所有子孫を
+終了させる。約2秒の監視間隔と終了処理の遅延があり、hard quotaの非超過保証ではない。
+`free_space_mount_bytes` に各監視mountの実空きも記録する。
+
 `submit()` は不変planと工程、PSSの予想ピーク、追加保存量、GPU予約時間を固定する。
 同じrequest IDの内容変更や完了後の再実行は拒否する。明示的な再試行には新しいIDが必要。
 待機列、同名工程、Codex合算の枠はcampaign横断で共有し、稼働中planのうち厳しい上限を
@@ -48,6 +62,10 @@ lockだけが消えた場合も、生きた子孫がいる間は枠を保持す�
   開始前inodeの割当を差し引き、正の増分を合算する。古い素材を削除しても、
   別の新規出力を追加した分は相殺しない。論理bytes・entry数・unique inode数も別に残す。
   baselineの元pathは保護する必要があり、移動・削除すると保守的に追加量へ数える。
+- 保存走査のI/O: Linux mount情報で9p上と確認したroot（WSLのWindows driveなど）は、
+  metadata取得とdirectory列挙を最大8並列・待機64件以内で行う。全entryを毎回照合し、
+  symlink非追跡、inode重複排除、baseline anchor、permission/I/Oエラーの扱いは変えない。
+  通常のLinux filesystemは従来の逐次走査を使う。
 - PSS: 所有groupの全processと `observe()` したcontrollerをPID/start-timeで照合し、
   `/proc/PID/smaps_rollup` のPSSを重複なく合算する。RSSへの代替はしない。
   各groupは実測PSSに加え、予想ピークの未使用部分を予約する。

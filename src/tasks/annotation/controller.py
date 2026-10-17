@@ -75,6 +75,7 @@ class Controller:
             resources=self.resources,
             worker_pss_bytes=screen.pss_bytes,
             worker_storage_bytes=screen.storage_bytes,
+            code_revision=runtime.code_revision,
         )
         self.jobs = Operations(layout, runtime, self.plan, self.resources)
         self.stages = self.jobs.stages

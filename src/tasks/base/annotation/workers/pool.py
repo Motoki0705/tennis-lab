@@ -31,7 +31,7 @@ from ..plan import (
     require_execution_layout,
     save_plan,
 )
-from ..reproducibility import require_frozen_code
+from ..reproducibility import CodeRevision, require_frozen_code
 from ..resources import ResourceManager, ResourceRequest
 from ..telemetry.capture import capture, presented_images, verify_report
 from .contracts import (
@@ -65,6 +65,7 @@ class WorkerPool:
         resources: ResourceManager | None = None,
         worker_pss_bytes: int | None = None,
         worker_storage_bytes: int | None = None,
+        code_revision: ArtifactRef | None = None,
     ) -> None:
         require_execution_layout(layout, plan)
         if test_command is not None and layout.mode != "test":
@@ -77,6 +78,7 @@ class WorkerPool:
             if worker_pss_bytes is None or worker_storage_bytes is None:
                 raise ValueError("worker PSS/storage reservations must be explicit")
         self.resources = resources
+        self.code_revision = code_revision
         self.worker_pss_bytes = worker_pss_bytes
         self.worker_storage_bytes = worker_storage_bytes
         self.layout, self.plan = layout, plan
@@ -261,8 +263,35 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
+    def cancel_pending_code_update(self, revision: ArtifactRef) -> None:
+        """Retire unstarted launches before publishing a code-update receipt."""
+        with artifact_lock(self.layout, "worker-admission", blocking=False):
+            with self.ledger.registry.transaction() as database:
+                requests = [
+                    WorkRequest.model_validate_json(row[0])
+                    for row in database.execute(
+                        "SELECT request FROM worker_tasks WHERE campaign=?",
+                        (self.plan.campaign_id,),
+                    )
+                ]
+            for request in requests:
+                if request.adapter not in self.adapters:
+                    continue
+                with (
+                    artifact_lock(
+                        self.layout, "worker-" + request.work_id, blocking=False
+                    ),
+                    artifact_lock(self.layout, "worker-services-" + request.work_id),
+                ):
+                    self._registered_task(request)
+                    self._recover_unregistered_attempt(request, cancel_for=revision)
+
     def _recover_unregistered_attempt(
-        self, request: WorkRequest, *, cancel_reason: str | None = None
+        self,
+        request: WorkRequest,
+        *,
+        cancel_reason: str | None = None,
+        cancel_for: ArtifactRef | None = None,
     ) -> None:
         """Account for a resource admission interrupted before worker registration.
 
@@ -305,21 +334,45 @@ class WorkerPool:
                 "SELECT request,state,reason FROM resource_requests WHERE id=?",
                 (self.resources.key(launch.resource_request),),
             ).fetchone()
-        if resource is None:
-            return
-        if resource["request"] != launch.resource_request.canonical_bytes().decode():
+        if (
+            resource is not None
+            and resource["request"]
+            != launch.resource_request.canonical_bytes().decode()
+        ):
             raise ValueError("unregistered launch has a different resource request")
-        if resource["state"] == "pending":
-            if cancel_reason is None:
+        state = "failed"
+        reason = "resource admission interrupted before worker registration"
+        cancellation = cancel_reason
+        code_update = cancel_for is not None and launch.code_revision != cancel_for
+        if code_update:
+            assert cancel_for is not None
+            update = read_document(self.layout, cancel_for, CodeRevision)
+            if update.plan != launch.plan or update.scope != launch.resource_scope:
+                raise ValueError(
+                    "worker code revision belongs to another plan or scope"
+                )
+            verify_reference(self.layout, update.previous_runtime)
+            verify_reference(self.layout, update.verification)
+            self._require_no_members(path.parent)
+            if resource is not None and resource["state"] in {"running", "draining"}:
+                raise WorkerBusy("stop and drain worker resources before updating code")
+            cancellation = (
+                "unstarted worker cancelled for code revision " + cancel_for.digest
+            )
+        if resource is None:
+            if not code_update:
                 return
-            self.resources.cancel_pending(launch.resource_request, reason=cancel_reason)
-            state, reason = "cancelled", cancel_reason
+            assert cancellation is not None
+            state, reason = "cancelled", cancellation
+        elif resource["state"] == "pending":
+            if cancellation is None:
+                return
+            self.resources.cancel_pending(launch.resource_request, reason=cancellation)
+            state, reason = "cancelled", cancellation
         elif resource["state"] == "cancelled":
-            # Recover a stop interrupted between the shared and worker ledgers.
+            # Recover cancellation between the shared and worker ledgers without
+            # replacing the original reason with a later stop or code update.
             state, reason = "cancelled", resource["reason"]
-        else:
-            state = "failed"
-            reason = "resource admission interrupted before worker registration"
         with self.ledger.registry.transaction() as database:
             database.execute(
                 "INSERT INTO worker_attempts VALUES (?,?,?,?,?,?)",
@@ -344,7 +397,13 @@ class WorkerPool:
         if state["state"] in {"complete", "not_applicable"}:
             return None
         if self.layout.mode == "production":
-            require_frozen_code(PROJECT_ROOT, self.plan)
+            require_frozen_code(
+                PROJECT_ROOT,
+                self.plan,
+                layout=self.layout,
+                revision=self.code_revision,
+                scope=self.resources.reference if self.resources is not None else None,
+            )
         require_process_backend()
         binary = shutil.which(self.binary)
         if self.test_command is None and binary is None:
@@ -358,7 +417,9 @@ class WorkerPool:
                 ) as descriptor,
                 artifact_lock(self.layout, "worker-services-" + request.work_id),
             ):
-                self._recover_unregistered_attempt(request)
+                self._recover_unregistered_attempt(
+                    request, cancel_for=self.code_revision
+                )
                 self._settle_dead_slots()
                 row = self._task(request.work_id)
                 if row["state"] in {"complete", "not_applicable"}:
@@ -467,6 +528,7 @@ class WorkerPool:
                         gpu_seconds=0.0,
                     )
                 launch = Launch(
+                    code_revision=self.code_revision,
                     work_id=request.work_id,
                     attempt=attempt,
                     plan=plan_ref,

@@ -18,6 +18,7 @@ from ..contracts import ArtifactRef, PublicationReceipt
 from ..execution.contracts import StageLaunch
 from ..execution.runner import StageRunner, stage_directory
 from ..paths import AnnotationLayout
+from ..reproducibility import CodeRevision
 from ..resources import BudgetStopped, CapacityUnavailable, ResourceRequest
 from .adapters import EvaluationResolver, LearningAdapter, NoAdditionalTeachers
 from .contracts import (
@@ -247,7 +248,7 @@ class Learning:
             self.layout, "learning-run-" + intent_ref.digest, blocking=False
         ):
             directory = self._directory(intent)
-            write_document(self.layout, directory / "runtime.json", runtime)
+            self._record_runtime(intent, directory, runtime)
             training = self._stage(intent_ref, intent, adapter, runtime, "train", None)
             if isinstance(training, LearningOutcome):
                 return training
@@ -299,6 +300,42 @@ class Learning:
                 evaluation=evaluation,
                 selection=selection_ref,
                 reason=selection.reason,
+            )
+
+    def _record_runtime(
+        self, intent: LearningIntent, directory: Path, runtime: LearningRuntime
+    ) -> None:
+        revision = runtime.code_revision
+        if revision is not None:
+            update = read_document(self.layout, revision, CodeRevision)
+            completion = read_document(
+                self.layout, intent.completion, CampaignCompletion
+            )
+            if update.plan != completion.plan or update.scope != runtime.scope:
+                raise ValueError(
+                    "learning code revision belongs to another plan or scope"
+                )
+            verify_reference(self.layout, update.previous_runtime)
+            verify_reference(self.layout, update.verification)
+            if not update.reason.strip():
+                raise ValueError("learning code revision requires a reason")
+        path = directory / "runtime.json"
+        if path.exists():
+            original = read_document(
+                self.layout, annotation_reference(self.layout, path), LearningRuntime
+            )
+            if original != runtime and (
+                revision is None
+                or original.model_copy(update={"code_revision": revision}) != runtime
+            ):
+                raise ValueError("learning runtime settings are immutable")
+        else:
+            write_document(self.layout, path, runtime)
+        if revision is not None:
+            write_document(
+                self.layout,
+                directory / "code-updates" / revision.digest / "runtime.json",
+                runtime,
             )
 
     def _stage_input(
@@ -363,6 +400,7 @@ class Learning:
         completion = read_document(self.layout, intent.completion, CampaignCompletion)
         cost = runtime.train if request.stage == "train" else runtime.evaluate
         return StageLaunch(
+            code_revision=runtime.code_revision,
             scope=runtime.scope,
             resource=ResourceRequest(
                 request_id="learning-" + request.sha256,
@@ -424,11 +462,28 @@ class Learning:
             )
             return completed_ref
         launch = self._launch(intent, request_ref, request, adapter, runtime, directory)
-        launch_ref = write_document(
-            self.layout, stage_directory(self.layout, launch) / "launch.json", launch
-        )
+        launch_path = stage_directory(self.layout, launch) / "launch.json"
+        if launch_path.exists():
+            launch_ref = annotation_reference(self.layout, launch_path)
+            existing = read_document(self.layout, launch_ref, StageLaunch)
+            rebound = existing.model_copy(
+                update={
+                    "code_revision": runtime.code_revision,
+                    "code_root": launch.code_root,
+                }
+            )
+            if existing.command[0] == existing.code_root + "/.venv/bin/python":
+                rebound = rebound.model_copy(
+                    update={"command": (launch.command[0], *existing.command[1:])}
+                )
+            if existing != launch and (
+                runtime.code_revision is None or rebound != launch
+            ):
+                raise ValueError("learning stage launch configuration is immutable")
+        else:
+            launch_ref = write_document(self.layout, launch_path, launch)
         return self._reconcile_stage(
-            ref, intent, adapter, directory, request_ref, launch_ref, submit=True
+            ref, intent, adapter, directory, request_ref, launch_ref, runtime=runtime
         )
 
     def _reconcile_stage(
@@ -440,7 +495,7 @@ class Learning:
         request_ref: ArtifactRef,
         launch_ref: ArtifactRef,
         *,
-        submit: bool,
+        runtime: LearningRuntime | None,
     ) -> ArtifactRef | LearningOutcome:
         request = read_document(self.layout, request_ref, StageInput)
         launch = read_document(self.layout, launch_ref, StageLaunch)
@@ -462,9 +517,10 @@ class Learning:
         try:
             state = self.executor.status(launch_ref)
             if (
-                submit
+                runtime is not None
                 and failure is None
                 and state["state"] in {"pending", "unregistered"}
+                and launch.code_revision == runtime.code_revision
             ):
                 state = self.executor.submit(launch)
         except (BudgetStopped, CapacityUnavailable, BlockingIOError) as error:
@@ -497,7 +553,11 @@ class Learning:
                     stage=stage,
                     training=training,
                     launch=launch_ref,
-                    reason=state.get("reason"),
+                    reason="old-code learning attempt requires explicit cancellation/retry"
+                    if runtime is not None
+                    and launch.code_revision != runtime.code_revision
+                    and state["state"] in {"pending", "unregistered"}
+                    else state.get("reason"),
                 )
             )
         if state["state"] not in {"succeeded", "failed", "timed_out", "cancelled"}:
@@ -559,7 +619,7 @@ class Learning:
         launch_ref: ArtifactRef,
     ) -> None:
         result = self._reconcile_stage(
-            ref, intent, adapter, directory, request_ref, launch_ref, submit=False
+            ref, intent, adapter, directory, request_ref, launch_ref, runtime=None
         )
         if isinstance(result, ArtifactRef):
             raise ValueError(
