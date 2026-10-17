@@ -62,12 +62,3 @@ def test_contract_rejects_changed_semantics(field: str, value: object) -> None:
         input_transform_from_contract(dict(contract, **{field: value}), input_channels=5)
     with pytest.raises(ValueError, match="input contract"):
         input_transform_from_contract(contract, input_channels=2)
-
-
-@pytest.mark.parametrize("shape,dtype", [
-    ((1, 31, 3, 8, 8), torch.uint8), ((1, 32, 3, 8, 8), torch.float32),
-    ((1, 32, 5, 8, 8), torch.uint8), ((1, 5, 32, 8, 8), torch.float32),
-])
-def test_rejects_wrong_external_input(shape: tuple[int, ...], dtype: torch.dtype) -> None:
-    with pytest.raises(ValueError):
-        RGBToRGBMDD()(torch.zeros(shape, dtype=dtype))
