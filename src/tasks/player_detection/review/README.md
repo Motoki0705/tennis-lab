@@ -8,7 +8,7 @@
 | 系統 | 用途 / 入力と教師 | 出自 / 単位 | splitと現行の扱い |
 |---|---|---|---|
 | `data/player_detection/chat-player-v1` | DINO fine-tuning用。RGB + player bbox・clip-local track ID・時刻 | chat-annotationから作った固定snapshot。bboxは元画像pixelの`xyxy`。`observed / inferred / unresolved`は注釈状態で、モデル確率ではない | YouTube source動画単位のtrain / val / test。現行の学習storeで、この画面の対象 |
-| `outputs/chat_annotation/annotated/processed/player` | store生成に使う上流player JSON | 処理済み注釈。全画素精度の独立検証済みGTとは限らない | 上流の現行入力。既存storeへ自動同期されない。直接のレビューは[Chat Annotation](../../../tennis_scene/chat_annotation/README.md)を参照 |
+| `outputs/chat_annotation/annotated/processed/player` | store生成に使う上流player JSON | 処理済み注釈。全画素精度の独立検証済みGTとは限らない | 既存の読取入力。既存storeへ自動同期されない。[移行reader](../../annotation/migration/README.md)を参照。新規の画像確認・編集は[player review](../annotation/review/README.md)が所有 |
 | Meiji clip配下の`annotations/player_association/labels.json` | 検出器・source比較の評価用部分ラベル | 旧COCO trackerのboxをreviewしたperson単位の参照。未ラベル予測は未知でありFPとは限らない | 学習storeのsplitとは別。固定dev / unseenは保存protocolに従う。この画面へ混ぜず、既存[benchmark](../../../../tests/benchmarks/README.md)と評価readerを使う |
 
 storeのschemaとJPEG shard読出しは[data/store.py](../data/store.py)、学習と画面で共通の選別は

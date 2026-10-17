@@ -36,6 +36,8 @@ service envelopeは32 KiB以内。さらにcampaign runtimeがattemptごとの�
 汎用CLI `python -m src.tasks.base.annotation.workers.review` は固定request/hash、operation、
 own work内のparameters JSONを受け、親の応答を待つ。handoff・変更要約・少数row、または
 `view_image` に渡す画像pathを出力する。直接のrender/edit CLIではない。
+編集・handoffのJSON応答は `operation`・`receipt`・`result` を含み、
+[telemetry](../../telemetry/README.md) が記録時の操作と差分を検証する。
 失敗したrequestを自動で別requestや別revisionへ置き換えない。
 
 taskは `ReviewServiceAdapter` でrow内容と描画を決め、`TaskAdapter.validate()` で

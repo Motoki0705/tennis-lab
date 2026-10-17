@@ -103,7 +103,7 @@ def main() -> None:
         }
     print(
         json.dumps(
-            {"receipt": result.model_dump(mode="json"), "result": value},
+            {"operation": args.operation, "receipt": result.model_dump(mode="json"), "result": value},
             ensure_ascii=False,
         )
     )
