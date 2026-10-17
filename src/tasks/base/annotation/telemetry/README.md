@@ -18,6 +18,13 @@ Codex rolloutを照合する。別threadの最新ログは選ばず、session ID
   境界のない出力、ID欠測直前の出力、compactionで置換されたcontext内の未対応出力は
   orphanとして保持し、後続応答への画像提示を主張しない。分類はversion付きtask adapterが
   所有する。共通層はtask名や編集コマンドを推測しない。
+- task adapterの `tool_evidence()` は観測されたtool出力の操作receiptを検証する。
+  ball/player reviewはCLIが返した `operation`・`receipt`・`result` を照合し、編集commandの
+  actor/context、前後revision、親のcommit済み台帳と一致する編集だけをその応答へ結ぶ。
+  command・変更前後payload・handoffの不変参照も保存/GC対象に含め、応答HTMLから操作結果へ
+  辿れるようにする。遅延したexec出力でも、実際に結果が返った後の応答へ結ぶ。
+  失敗・打切りで完全なreceiptがない出力は理由付きで未対応とし、編集成功と推測しない。
+  古い記録にリンクがない場合も、後日の作業版から補完しない。
 - 画像はtool出力のdata URLに記録された**その時点のbytes**を保存する。
   更新後の作業画像を読み直して代用しない。rendererの不変画像とhash/sizeが完全一致した
   ときだけ、frame/PTS・crop・倍率・tile・描画条件・注釈版を含むmetadataへ結ぶ。
@@ -47,4 +54,5 @@ raw rolloutは移動せず、path/hash/sizeを記録する。共有レポート�
 
 合成rolloutとローカルの偽CLIによる試験は、欠測・重複・画像すり替え・曖昧な対応・
 model/CWD/threadの不一致・再開時の改変検出・ページングを検証する。
-実Codexの収集/レビューと注釈差分の接続は各task adapterおよび #1131 / #1141 の実行で確認する。
+ball/player両adapterの合成試験では、画像提示→編集→handoff→応答の対応、元rollout削除後の
+閲覧、変更前payloadの改変検出も検証する。実Codexでの収集/レビューは実運用で別途確認する。

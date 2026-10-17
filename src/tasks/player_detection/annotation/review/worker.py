@@ -35,7 +35,7 @@ from src.tasks.base.annotation.plan import CampaignPlan, references
 from src.tasks.base.annotation.predictions import PredictionReceipt
 from src.tasks.base.annotation.storage.references import distinct
 from src.tasks.base.annotation.telemetry.capture import presented_images, verify_report
-from src.tasks.base.annotation.telemetry.contracts import RenderedImage
+from src.tasks.base.annotation.telemetry.contracts import RenderedImage, ToolEvidence
 from src.tasks.base.annotation.workers.contracts import (
     ExitReceipt,
     PreparedWorker,
@@ -409,6 +409,15 @@ class PlayerReviewWorker:
             for image in (*labels.images, *image_catalog(layout, attempt))
         }
         return tuple(images.values())
+
+    def tool_evidence(
+        self, layout: AnnotationLayout, launch: ArtifactRef, category: str, text: str
+    ) -> ToolEvidence | None:
+        from src.tasks.base.annotation.workers.review.telemetry import (
+            review_tool_evidence,
+        )
+
+        return review_tool_evidence(layout, launch, category, text)
 
     def classify_tool(self, name: str | None, raw_input: str) -> str:
         if name and "view_image" in name:

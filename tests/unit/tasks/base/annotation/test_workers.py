@@ -148,6 +148,9 @@ class Adapter:
         del layout, plan, request, directory
         return ()
 
+    def tool_evidence(self, *args: Any) -> None:
+        return None
+
     def classify_tool(self, name: str | None, raw_input: str) -> str:
         del name, raw_input
         return "fixture"

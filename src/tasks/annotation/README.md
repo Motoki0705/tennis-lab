@@ -57,6 +57,7 @@ plan・scope・runtimeとその参照を持つreceiptを不変保存する。実
 .venv/bin/python -m src.tasks.annotation register --runtime /absolute/runtime.json --sha256 HASH --candidates /absolute/candidates.json
 .venv/bin/python -m src.tasks.annotation run --runtime /absolute/runtime.json --sha256 HASH --max-seconds 600
 .venv/bin/python -m src.tasks.annotation status --runtime /absolute/runtime.json --sha256 HASH --details
+.venv/bin/python -m src.tasks.annotation report --runtime /absolute/runtime.json --sha256 HASH
 ```
 
 `Configuration` は `plan`（CampaignPlan全文）、`budget`、`runtime`（plan/scope参照以外の
@@ -179,6 +180,18 @@ hashとsourceの対応を検証するが、公開動画数やレビュー対象c
 待機列上限で受付を拒否され、launchだけが保存された工程は、枠が空いた後の再送で
 同じattemptの資源要求を登録する。CPU起動・GPU queue登録前の未受付を実行失敗と扱わない。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
+`status` / `run` の要約も `annotation` と `workflow.learning` を分けて表示する。
+`annotation.products` はplanのtask/productごとに、公開receipt・snapshot・追加/再利用clip数、
+pending / blocked / failed / not_applicableの理由を保持する。未公開の件数はnullであり、0件の
+公開と区別する。previewや完了receipt未保存の状態を注釈完了とは表示しない。
+学習の `not_configured` / `no_additional_teachers` と、実行中・失敗・採用/不採用を区別する。
+要約の失敗一覧は10件までだが、`failure_count` は全件数を返す。
+
+`report` は詳細statusを再照合し、runtime参照とともに
+`campaigns/<campaign>/reports/workflow/<content-hash>.json` へ不変保存してArtifactRefを返す。
+同じ状態の再報告は同じ参照になり、注釈・学習jobを新たに投入しない。
+応答単位のusage・入力画像・編集差分は各workerの
+[telemetry](../base/annotation/telemetry/README.md)で確認する。
 最新attemptに置き換わった古い失敗は `superseded: true` と表示し、現在の失敗と分ける。
 workflowの完了cacheがあっても、最新工程の未解決の失敗をcampaign完了で隠さない。
 `cycle` / `status` はsourceの状態にかかわらず登録済みworkerを照合する。
@@ -248,5 +261,10 @@ controllerと所有jobを停止・終了確認し、修正版をテストしてc
 不変保存し、撤回理由と対応先を台帳に残す。準備済みclipや公開済み教師はこの操作の対象外。
 
 `stage` はsupervisor専用で、固定した入力digestとの対応を要求する。
-置換済みballの旧run/qa/intakeと旧annotateのball注釈・finalize入口は撤去済み。置換先が未実装のplayer用入口は残す。旧形式の読取と保存台帳への登録は
-[migration](migration/README.md)を参照する。
+旧 `src.tennis_scene.chat_annotation` の運用CLI・local_agent・独立QA・kit/REQUEST・
+remote MCP/Tunnel/Docker・旧web UIは撤去済み。互換CLIは提供しない。
+旧形式の読取と保存台帳への登録は [migration](migration/README.md)、既存ball storeからの
+選手IDレビュー・pose生成は [player pose](../player_detection/annotation/pose/README.md) が所有する。
+後者は修正bboxを受け取る新production接続ではない。player bboxの累積publisher、修正bboxから
+tracking/IDレビューへの接続、pose公開receiptとplayer追加学習のcompositionが揃うまで、
+3種公開・両task学習のE2E acceptanceは未達として扱う。

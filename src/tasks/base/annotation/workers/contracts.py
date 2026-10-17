@@ -21,7 +21,7 @@ from ..paths import AnnotationLayout
 from ..plan import CampaignPlan
 from ..reproducibility import CodeBoundDocument
 from ..resources.contracts import ResourceRequest
-from ..telemetry.contracts import RenderedImage
+from ..telemetry.contracts import RenderedImage, ToolEvidence
 
 _M = TypeVar("_M")
 
@@ -202,6 +202,10 @@ class TaskAdapter(Protocol):
     ) -> tuple[RenderedImage, ...]: ...
 
     def classify_tool(self, name: str | None, raw_input: str) -> str: ...
+
+    def tool_evidence(
+        self, layout: AnnotationLayout, launch: ArtifactRef, category: str, text: str
+    ) -> ToolEvidence | None: ...
 
     def validate(
         self,
