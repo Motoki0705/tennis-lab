@@ -7,10 +7,14 @@ from pathlib import Path
 import pytest
 import torch
 
+from src.tasks.ball_detection.data.windows.learning import contracts as window_contracts
+from src.tasks.ball_detection.data.windows.learning.contracts import HoldoutWindows
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
     BallSnapshot,
 )
+from src.tasks.ball_detection.training.annotation import contracts as learning_contracts
 from src.tasks.ball_detection.training.annotation.contracts import (
+    BalancedSelectionPolicy,
     BallEvaluationMetrics,
     BallSelectionPolicy,
     BallTrainingProvenance,
@@ -27,13 +31,77 @@ from src.tasks.base.annotation.artifacts import read_document, write_asset
 from src.tasks.base.annotation.execution.contracts import StageLaunch
 from src.tasks.base.annotation.learning.contracts import (
     EvaluationReceipt,
+    FixedEvaluation,
     StageInput,
     TrainingReceipt,
+)
+from src.tasks.base.annotation.plan import references
+from tests.support.annotation_storage import (
+    assert_expired_but_protected,
+    reference_document_types,
 )
 from tests.support.tasks.ball_detection.learning_pipeline import (
     LearningEnvironment,
     save,
 )
+
+
+def test_model_decision_preserves_ball_fixed_input_dependencies(tmp_path: Path) -> None:
+    env = LearningEnvironment(
+        tmp_path,
+        cohorts=True,
+        selection_policy=BalancedSelectionPolicy(minimum_frames_per_fps=1),
+    )
+    training = read_document(
+        env.layout, env.executor.finish(env.tick().launch), TrainingReceipt
+    )
+    evaluation = read_document(
+        env.layout, env.executor.finish(env.tick().launch), EvaluationReceipt
+    )
+    fixed = read_document(env.layout, env.intent.fixed_evaluation, FixedEvaluation)
+    assert fixed.test is not None
+    validation = read_document(env.layout, fixed.validation.manifest, HoldoutWindows)
+    test = read_document(env.layout, fixed.test.manifest, HoldoutWindows)
+    assert validation.manifest != test.manifest
+    provenance = read_document(env.layout, training.provenance, BallTrainingProvenance)
+    metrics = read_document(env.layout, evaluation.metrics, BallEvaluationMetrics)
+    assert (
+        provenance.validation_manifest
+        == metrics.validation_manifest
+        == validation.manifest
+    )
+    inputs = resolve_inputs(env.layout, env.intent)
+    assert inputs.recipe.replay is not None
+    assert inputs.recipe.replay.previously_trained_manifest in env.learning.storage.inputs(
+        env.intent_ref
+    )
+    documents = (
+        validation,
+        test,
+        provenance,
+        metrics,
+        inputs.prepared,
+        inputs.recipe,
+        inputs.recipe.replay,
+    )
+    assert {type(document) for document in documents} == reference_document_types(
+        window_contracts, learning_contracts
+    )
+    outcome = env.tick()
+    assert outcome.state in {"adopted", "rejected"}
+    assert_expired_but_protected(
+        env.layout, (validation.manifest, test.manifest), "model"
+    )
+    assert_expired_but_protected(
+        env.layout,
+        tuple(
+            reference
+            for document in documents
+            for reference in references(document)
+        ),
+        "model",
+    )
+    assert env.tick() == outcome
 
 
 @pytest.mark.parametrize("configured", [False, True])

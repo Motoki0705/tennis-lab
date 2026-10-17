@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -702,6 +703,28 @@ def test_short_or_outside_windows_do_not_pad_or_publish(
         window_ranges(
             timeline,
             TimeWindow(start=0.15, stop=0.25, target_start=0.15, target_stop=0.25),
+        )
+
+
+@pytest.mark.parametrize("frame_count", [10, 500], ids=["rounded-down", "rounded-up"])
+def test_window_ranges_use_float_pts_boundaries(frame_count: int) -> None:
+    timeline = Timeline(
+        64,
+        32,
+        Fraction(1, 30),
+        Fraction(30),
+        tuple(range(frame_count)),
+        (1,) * frame_count,
+    )
+    start = float(timeline.boundary(1))
+    stop = float(timeline.boundary(frame_count))
+    window = TimeWindow(start=start, stop=stop, target_start=start, target_stop=stop)
+    media, target = window_ranges(timeline, window)
+    assert (media.start, media.stop) == (1, frame_count)
+    assert (target.start, target.stop) == (0, frame_count - 1)
+    with pytest.raises(ValueError, match="beyond"):
+        window_ranges(
+            timeline, window.model_copy(update={"stop": math.nextafter(stop, math.inf)})
         )
 
 

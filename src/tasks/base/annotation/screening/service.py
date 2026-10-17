@@ -132,7 +132,7 @@ class Screening:
         source_path = verify_reference(self.layout, acquired.source.media)
         try:
             timeline = probe_video(source_path)
-            duration = float(timeline.boundary(len(timeline.pts)))
+            duration = timeline.boundary_seconds(len(timeline.pts))
             if (
                 not self.policy.window_seconds
                 <= duration

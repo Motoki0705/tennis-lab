@@ -373,6 +373,11 @@ class ResourceManager:
                 database=db,
             )
 
+    def request_status(self, request: ResourceRequest) -> tuple[str, str | None]:
+        """Read admission state without resampling or changing the reservation."""
+        row = self._row(request)
+        return row["state"], row["reason"]
+
     def _active(self) -> list[dict[str, Any]]:
         with self.registry.transaction() as db:
             return [

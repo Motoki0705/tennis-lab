@@ -29,7 +29,8 @@ conditionにはComparisonSpecが参照するConditionSpecの `condition_id` を�
 受付済みsupervisorは自身のtimeoutと資源監視に従う。親の実行を継続してworkerのservice要求を
 処理する。一部workerが失敗・保留でも、停止理由がなく他workerが待機・稼働・結果回収中なら
 `benchmark-run` はservice処理を継続する。予算停止や観測件数上限では新規受付を止め、
-稼働workerの停止を要求する。
+稼働workerの停止を要求する。当該条件の未起動資源要求も
+[workerの取消契約](../../base/annotation/workers/README.md)に従って取り消し、共有待機枠を返す。
 supervisorが起動途中などでまだ停止確認できないworkerは `stopping` と対象IDを返し、
 次のtickで確認を続ける。supervisor死亡後の所有子プロセスにも停止を試み、未確認の対象を
 残しながら他workerの停止を続ける。停止要求だけで全プロセスが終了したとは報告しない。

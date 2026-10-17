@@ -74,9 +74,13 @@ receiptファイルを保存する。比較重みの保護はpointerと同時に
 
 `storage.references` は型付きDocumentの直接参照だけを扱い、物理pathのaliasを重複除外する。
 同じpathに異なるhash/sizeがある場合は拒否する。task固有payloadの内部は
-`ReviewAdapter.retained_references` で明示的に列挙する。JSONやpath文字列を見て未知schemaを
+`ReviewAdapter.retained_references` と `LearningAdapter.retained_references` で明示的に列挙する。
+rendererの依存は[telemetry collector](../telemetry/README.md)、ballの固定入力は
+[学習adapter](../../../ball_detection/training/annotation/README.md)が所有する。JSONやpath文字列を見て未知schemaを
 推測しない。保護IDにはcollector版を含め、再送で対象が変わった場合や明示解放済みIDの再利用を
 拒否する。新writerの導入だけで既存DBを一括backfillしたとは扱わない。
+画像証跡の追加列挙は`adoption-v2`、task学習依存の追加列挙は`model-selection-v3`を使い、
+旧collectorの保護を上書きせず、業務操作の再送時に新しい保護を追加する。
 
 この接続はreader lease、実行中に追加される全worker artifact、学習途中のcheckpointや全cacheの
 自動参照収集を完成させるものではない。外部Codex raw rolloutのpathはtelemetryに出典として

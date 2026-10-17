@@ -38,7 +38,9 @@ pipeline 側は `people_models.dino_checkpoint` を差し替えるだけで使�
 設定の正本は [configs/](configs/) です。評価の `input_size` と `score_threshold` は、
 pipeline の `people_models.runtime.dino_detector` と一致させる必要があります。
 DINO の denoising は CUDA 前提のため、学習と評価は GPU（training queue 経由）で実行します。
-validation/testのmAPには正例が必要です。負例だけの場合は未定義値を選択指標にせず停止します。
+学習前のLightning sanity checkは部分検証のため、mAPを計算・記録せず評価状態をリセットします。
+validation全体に正例があれば、先頭のsanity対象batchが負例のみでも学習を開始できます。
+本評価（validation/test）のmAPには正例が必要です。負例だけの場合は未定義値を選択指標にせず停止します。
 mixed評価では負例上の検出もFP/APへ反映し、負例画像数とGT instance数を記録します。
 
 通常readerはv2専用です。v2の空frameにはnative JPEGと

@@ -263,11 +263,14 @@ class WorkerPool:
                     "attempt still has owned processes, including orphaned descendants"
                 )
 
-    def _recover_unregistered_attempt(self, request: WorkRequest) -> None:
+    def _recover_unregistered_attempt(
+        self, request: WorkRequest, *, cancel_reason: str | None = None
+    ) -> None:
         """Account for a resource admission interrupted before worker registration.
 
         The caller holds both admission and work locks. Pending requests have never
-        acquired resources and retain their ID for normal backpressure retries.
+        acquired resources and retain their ID for normal backpressure retries,
+        unless a terminal stop explicitly cancels them.
         """
         if self.resources is None:
             return
@@ -301,7 +304,7 @@ class WorkerPool:
             raise ValueError("unregistered launch differs from the worker request")
         with self.resources.registry.transaction() as database:
             resource = database.execute(
-                "SELECT request,state FROM resource_requests WHERE id=?",
+                "SELECT request,state,reason FROM resource_requests WHERE id=?",
                 (self.resources.key(launch.resource_request),),
             ).fetchone()
         if resource is None:
@@ -309,22 +312,31 @@ class WorkerPool:
         if resource["request"] != launch.resource_request.canonical_bytes().decode():
             raise ValueError("unregistered launch has a different resource request")
         if resource["state"] == "pending":
-            return
-        reason = "resource admission interrupted before worker registration"
+            if cancel_reason is None:
+                return
+            self.resources.cancel_pending(launch.resource_request, reason=cancel_reason)
+            state, reason = "cancelled", cancel_reason
+        elif resource["state"] == "cancelled":
+            # Recover a stop interrupted between the shared and worker ledgers.
+            state, reason = "cancelled", resource["reason"]
+        else:
+            state = "failed"
+            reason = "resource admission interrupted before worker registration"
         with self.ledger.registry.transaction() as database:
             database.execute(
-                "INSERT INTO worker_attempts VALUES (?,?,?,'failed',?,?)",
+                "INSERT INTO worker_attempts VALUES (?,?,?,?,?,?)",
                 (
                     attempt,
                     request.work_id,
                     number,
+                    state,
                     ref.canonical_bytes().decode(),
                     reason,
                 ),
             )
             database.execute(
-                "UPDATE worker_tasks SET state='failed',current_attempt=?,reason=?,result=NULL WHERE id=?",
-                (attempt, reason, request.work_id),
+                "UPDATE worker_tasks SET state=?,current_attempt=?,reason=?,result=NULL WHERE id=?",
+                (state, attempt, reason, request.work_id),
             )
 
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
@@ -706,12 +718,30 @@ class WorkerPool:
         )
         return self._task(request.work_id)
 
+    def cancel_pending(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
+        """Cancel an unlaunched resource attempt without stopping active processes."""
+        if not reason.strip():
+            raise ValueError("cancelling requires a reason")
+        row = self._registered_task(request)
+        if self.resources is None:
+            return row
+        with artifact_lock(self.layout, "worker-admission"):
+            # A concurrent start must finish admission before its state is checked.
+            row = self._registered_task(request)
+            if row["state"] in {"running", "exited"}:
+                return row
+            with artifact_lock(self.layout, "worker-" + request.work_id):
+                self._recover_unregistered_attempt(request, cancel_reason=reason)
+                return self._task(request.work_id)
+
     def stop(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:
         if not reason.strip():
             raise ValueError("stop requires a reason")
         row = self._registered_task(request)
         if row["state"] not in {"running", "exited"}:
-            return row
+            row = self.cancel_pending(request, reason=reason)
+            if row["state"] not in {"running", "exited"}:
+                return row
         _ref, launch = self._launch(row)
         owner_path = Path(launch.directory) / "owner.json"
         if not owner_path.exists():
