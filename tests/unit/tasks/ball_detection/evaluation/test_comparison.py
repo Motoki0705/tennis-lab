@@ -1,4 +1,5 @@
 import json
+import sys
 from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
@@ -8,8 +9,9 @@ import pytest
 import torch
 
 from src.tasks.ball_detection.checkpoints.pretraining import SCHEMA
-from src.tasks.ball_detection.evaluation.comparison import (
+from tests.benchmarks.ball_detection.pretraining_comparison import (
     compare_pretraining,
+    main,
 )
 from tests.unit.tasks.ball_detection.models.mdd.test_cnn import small_config
 
@@ -42,7 +44,7 @@ def test_selection_uses_common_then_full_error_and_rejects_budget_or_seed_differ
     def completed(run: Path, manifest: Path) -> tuple[Path, dict]:
         return run / "epoch-000.pt", records[run.name]
 
-    with patch("src.tasks.ball_detection.evaluation.comparison.completed_pretraining", side_effect=completed):
+    with patch("tests.benchmarks.ball_detection.pretraining_comparison.completed_pretraining", side_effect=completed):
         report = compare_pretraining(runs, tmp_path / "manifest")
         assert report["winner"] == "fasternet"
         records["convnext_v2"]["recipe"]["runtime"] = dict(recipe["runtime"], image_prefetch=False)
@@ -56,3 +58,16 @@ def test_selection_uses_common_then_full_error_and_rejects_budget_or_seed_differ
         (runs["fasternet"] / "COMPLETED.json").write_text(json.dumps(dict(global_step=5)))
         with pytest.raises(ValueError, match="budget"):
             compare_pretraining(runs, tmp_path / "manifest")
+
+
+def test_benchmark_cli_writes_the_selected_comparison(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    output = tmp_path / "report" / "comparison.json"
+    manifest = tmp_path / "manifest.json"
+    runs = {name: tmp_path / name for name in ("residual", "convnext_v2", "fasternet")}
+    report = dict(winner="fasternet", ranking=[dict(variant="fasternet", common_error_px=2.)])
+    monkeypatch.setattr(sys, "argv", ["pretraining_comparison", "--manifest", str(manifest),
+        "--output", str(output), *(arg for name, path in runs.items() for arg in (f"--{name.replace('_', '-')}", str(path)))])
+    with patch("tests.benchmarks.ball_detection.pretraining_comparison.compare_pretraining", return_value=report) as compare:
+        main()
+    compare.assert_called_once_with(runs, manifest)
+    assert json.loads(output.read_text()) == report
