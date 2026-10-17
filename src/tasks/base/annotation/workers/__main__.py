@@ -36,6 +36,7 @@ def main() -> None:
     parser.add_argument("--sha256", required=True)
     parser.add_argument("--lock-fd", type=int, required=True)
     parser.add_argument("--test-root", type=Path)
+    parser.add_argument("--resource-fd", type=int)
     args = parser.parse_args()
     layout = (
         AnnotationLayout.production()
@@ -49,6 +50,7 @@ def main() -> None:
             args.sha256,
             args.lock_fd,
             test_root=args.test_root,
+            resource_fd=args.resource_fd,
         )
     )
 
