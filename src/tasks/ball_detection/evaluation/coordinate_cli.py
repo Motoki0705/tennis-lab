@@ -92,6 +92,10 @@ def main() -> None:
     checkpoint_hash = dual_sha256(checkpoint)
     saved = torch.load(checkpoint, map_location="cpu", weights_only=True)
     model, recipe, expected_manifest = restore_coordinate_model(saved)
+    if args.split == "val" and recipe.get("parent", {}).get("mode") == "full_model":
+        # Full-model runs pin validation independently of cumulative training.
+        # The field is mandatory for this mode; never substitute the train hash.
+        expected_manifest = recipe["validation_manifest_sha256"]
     manifest_hash = dual_sha256(manifest)
     if manifest_hash != expected_manifest:
         raise ValueError("Evaluation manifest differs from the checkpoint's frozen data/split identity")

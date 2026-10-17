@@ -11,7 +11,7 @@ RUNTIME_CHOICES = ("precision", "jpeg-decoder", "compile-mode", "input-verificat
 RECIPE_CHOICES = ("epochs", "windows-per-epoch", "learning-rate", "seed", "warmup-updates")
 REQUIRED_CHOICES = [
     (stage, option)
-    for stage in ("scratch", "dpt_pretrain", "encoder")
+    for stage in ("scratch", "dpt_pretrain", "encoder", "full_model")
     for option in (
         *RUNTIME_CHOICES,
         *(RECIPE_CHOICES if stage != "scratch" else ("epochs", "learning-rate", "seed")),
@@ -29,10 +29,15 @@ def test_omitted_choice_fails_before_reading_inputs(
                   epochs="2", **{"windows-per-epoch": "6", "learning-rate": ".001",
                   "seed": "42", "device": "cpu", "precision": "fp32", "jpeg-decoder": "opencv",
                   "compile-mode": "off", "input-verification": "lazy"})
-    if stage == "encoder":
-        selector = ["--stage", "coordinates", "--initialize", "encoder"]
-        values.update({"pretraining-run": str(tmp_path / "pretrained"),
-                       "augmentation-config": str(tmp_path / "augmentation.yaml"), "warmup-updates": "0"})
+    if stage in {"encoder", "full_model"}:
+        selector = ["--stage", "coordinates", "--initialize", stage]
+        values.update({"augmentation-config": str(tmp_path / "augmentation.yaml"), "warmup-updates": "0"})
+        if stage == "encoder":
+            values["pretraining-run"] = str(tmp_path / "pretrained")
+        else:
+            values.update({"validation-manifest": str(tmp_path / "validation.json"),
+                           "initial-checkpoint": str(tmp_path / "initial.pt"),
+                           "initial-checkpoint-sha256": "a" * 64})
     else:
         selector = (["--stage", "coordinates", "--initialize", "scratch"] if stage == "scratch"
                     else ["--stage", "dpt_pretrain"])

@@ -8,8 +8,9 @@
 | `dpt_pretrain` | ランダム初期化、または同run再開 | `dpt_pretrain/`。CNN＋DPT、observed正例と確認済み不在のheatmap教師 |
 | `coordinates` | `--initialize scratch` | `coordinates/scratch.py`。pose32条件/query-only4条件、observed座標、constant LR |
 | `coordinates` | `--initialize encoder` | `coordinates/finetune.py`。完了DPTのCNN転送、query-only、拡張、freeze→joint |
+| `coordinates` | `--initialize full_model` | `coordinates/full_model.py`。採用query checkpointの全重みを転送し、optimizer/scheduleを初期化。累積trainと固定validationを個別指定 |
 
-座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
+encoder/full_modelのrunは`coordinates/joint.py`、座標系のepoch更新は `coordinates/loop.py` と `runtime/execution.py` を共有する。
 JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`、epoch内FPS混合は `sampling.py`。
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
@@ -19,7 +20,7 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
 窓/FPSの仕様と`prepare_data`による凍結手順は[data/windows](../data/windows/README.md)を参照。
 snapshotを共有するrunの開始前に、同READMEの[snapshot運用制約](../data/windows/README.md#snapshotを共有するrunの運用)を確認する。
 以下のartifact/outputは絶対pathで指定する。
-3つのMDD学習経路では`--precision`・`--jpeg-decoder`・`--compile-mode`・`--input-verification`を必ず指定する。
+すべてのMDD学習経路では`--precision`・`--jpeg-decoder`・`--compile-mode`・`--input-verification`を必ず指定する。
 事前/事後学習のseed・warmup、事後学習のepoch数・窓数・学習率も必須で、指定漏れは学習前に拒否する。
 
 ```bash
@@ -53,6 +54,18 @@ OpenCVとnvJPEGには画素差があるため、評価時は保存decoder/API/ve
 
 ## 学習済み重みと再開
 
+追加学習は`--stage coordinates --initialize full_model`を使用し、`--manifest`に累積train、
+`--validation-manifest`に固定validationのwindow manifest、`--initial-checkpoint`に採用済みの
+query posttraining v1、`--initial-checkpoint-sha256`にそのSHA-256を明示する。
+`--augmentation-config`・新しい`--output`と学習予算/runtime引数はencoder初期化と共通。
+親と新しいtrainのmanifestが異なっていてもよい。validationのclip/source groupがtrainに混入した場合、
+またはCommon評価subsetが無い場合はモデル初期化前に停止する。
+
+全パラメータ・bufferの名前/dtype/shape/値を照合し、入力前処理とJPEG decoder契約を継承する。
+親checkpointのoptimizer・epoch・step・bestは使わず、AdamWとscheduleをstep 0から開始する。
+親ファイルhash・全重みhash・train/validation各manifest hashをrecipe/checkpointに保存し、
+両manifestをrunへ複製する。これらの入力はrunの途中では変更できない。
+
 5chの3段目（hybrid）の構造と初期化APIは [models/mdd](../models/mdd/README.md#3段目への重み転送) にある。
 このCLIのstageにはまだ追加していない。#1230で損失配分、checkpoint/resume schema、
 転送receiptの保存、存在閾値の評価方法を定義する。
@@ -62,6 +75,8 @@ stage 3の教師仕様で明示する必要がある。
 既存窓はプレイ区間・最低位置教師数で選別するため、全不在／非プレー窓の供給は別途設計する。
 
 `--resume`は同じrunの最新完了epoch、同じmanifest/recipe/source hashを要求する。
+full_modelでは元の初期checkpoint/hashを指定したまま、当該run内のcheckpointを`--resume`に渡す。
+新しい親モデル・累積データを使う次サイクルと、同一サイクルの中断再開を区別する。
 coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習のcosineでは元の総予算を維持する。
 `--stop-after-epoch`によるDPTの診断停止も元の総予算を変えない。自動で次stageを起動しない。
 
@@ -75,6 +90,7 @@ coordinate v4のconstant LRでは総epochを延長できる。DPT/事後学習�
 位置が既知のobserved GTだけを座標loss/誤差に使う。不明位置には教師を作らない。
 validationは同じclip/frame/FPSを窓中心に近い予測で一度採点し、同距離なら早いstartを使う。
 Commonはpose側とGT/split等のidentityが一致するsubset、Fullは全validation。
+full_modelの単独CLI評価は`--mode coordinates --split val --manifest <固定validation manifest>`を使い、保存済み`validation_manifest_sha256`と照合する。累積trainのmanifestでは代用できない。
 FPSごとの平均source-pixel誤差を等重み平均し、事後学習のbestはclean Commonで選ぶ。testは使わない。
 
 人工遮蔽でも既知GTは維持する。camera拡張はRGBとGTへ同じ2D affineを適用し、画面外GTを除く。
