@@ -71,12 +71,15 @@ def sync_directory(path: Path) -> None:
 def write_document(
     layout: AnnotationLayout, path: Path, document: Document
 ) -> ArtifactRef:
+    return write_asset(layout, path, document.canonical_bytes() + b"\n")
+
+
+def write_asset(layout: AnnotationLayout, path: Path, payload: bytes) -> ArtifactRef:
     """Write once. Same bytes recover; different bytes never replace history."""
     relative = path.relative_to(layout.root).as_posix()
     layout.artifact_path(
         ArtifactRef(role="annotation", path=relative, digest="0" * 64, size_bytes=0)
     )
-    payload = document.canonical_bytes() + b"\n"
     with artifact_lock(layout, "document-" + content_digest(relative)):
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.exists():
