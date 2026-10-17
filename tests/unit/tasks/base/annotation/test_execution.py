@@ -207,16 +207,10 @@ def test_timeout_reaps_all_operation_descendants(setup: tuple) -> None:
 
 def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
     layout, manager, launch = setup
-    ready = layout.repository / "operation-ready"
+    marker = layout.repository / "operation.pid"
+    code = "import os,sys,time;from pathlib import Path;p=Path(sys.argv[1]);t=p.with_suffix('.pending');t.write_text(str(os.getpid()));t.replace(p);time.sleep(60)"
     launch = launch.model_copy(
-        update={
-            "command": (
-                sys.executable,
-                "-c",
-                "import pathlib,sys,time;pathlib.Path(sys.argv[1]).touch();time.sleep(60)",
-                str(ready),
-            )
-        }
+        update={"command": (sys.executable, "-c", code, str(marker))}
     )
     runner = StageRunner(layout)
     first = ArtifactRef.model_validate(runner.submit(launch)["launch"])
@@ -226,19 +220,23 @@ def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
     with pytest.raises(CapacityUnavailable):
         runner.submit(second)
     process = runner.children[first.digest]
-    # owner.json precedes Popen; wait for the command itself before enumerating
-    # processes so SIGKILL cannot race with a newly spawned, unobserved child.
-    wait_for(ready.exists)
     snap = process_snapshot(process.pid)
     assert snap is not None
     from src.tasks.base.annotation.workers.processes import signal_owned
 
-    signal_owned(snap[0], signal.SIGKILL)
-    process.wait(timeout=5)
+    try:
+        # owner.json precedes Popen: wait for the operation itself to acknowledge
+        # startup so the kill snapshot cannot miss a concurrently spawned child.
+        wait_for(marker.exists)
+        operation = process_snapshot(int(marker.read_text()))
+        assert operation is not None and operation[0] in owned_members(snap[0])
+    finally:
+        signal_owned(snap[0], signal.SIGKILL)
+        process.wait(timeout=5)
+    # wait() reaps only the supervisor, not its separately killed child.
     wait_for(lambda: not owned_members(snap[0]))
     assert wait_exit(runner, first)["state"] == "failed"
     assert StageRunner(layout).status(first)["state"] == "interrupted"
-    assert not owned_members(snap[0])
     assert manager.sample().gpu_charged_seconds == 0
 
 
