@@ -40,6 +40,7 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     assert all(int(state["step"]) == 1 for state in first["optimizer"]["state"].values())
     assert first["best_epoch"] == 0 and first["best_score"] >= 0
     recipe = first["recipe"]
+    assert recipe["runtime"]["input_verification"] == "lazy"
     assert recipe["parent"]["mode"] == "full_model"
     assert recipe["parent"]["sha256"] == parent_hash
     assert recipe["initial_state_sha256"] == state_dict_sha256(initial["state_dict"])
