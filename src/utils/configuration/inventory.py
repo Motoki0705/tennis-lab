@@ -305,6 +305,7 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tasks.ball_detection.training.dpt_pretrain.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.coordinates.finetune": ("ball_detection.posttrain_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.coordinates.full_model": ("ball_detection.full_model_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.annotation.__main__": ("ball_detection.annotation_learning", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.visualization.preview.video": ("ball_detection.preview_posttraining_augmentation", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.evaluation.coordinate_cli": (
         "ball_detection.evaluate_mdd_coordinates", "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -820,6 +821,7 @@ _RUNTIME_BOUNDARIES += (
     _non_hydra_boundary("src.tasks.ball_detection.training.dpt_pretrain.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.finetune", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.full_model", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.training.annotation.__main__", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
     _non_hydra_boundary("src.tasks.ball_detection.visualization.preview.video", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
 )
 
