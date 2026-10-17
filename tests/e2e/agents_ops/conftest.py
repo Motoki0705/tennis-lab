@@ -329,7 +329,9 @@ class OpsEnv:
 
     def _cmd(self, args: tuple[str, ...]) -> list[str]:
         cmd = [sys.executable, str(WEEKLY_REPORT), *args]
-        cmd += ["--repo-root", str(self.repo), "--log-dir", str(self.tmp / "logs")]
+        cmd += ["--repo-root", str(self.repo)]
+        if "--log-dir" not in args:
+            cmd += ["--log-dir", str(self.tmp / "logs")]
         if args[0] == "report":
             # Defaults for tests; a test may pass its own --base-ref / --now.
             if "--base-ref" not in args:
@@ -338,9 +340,12 @@ class OpsEnv:
                 cmd += ["--now", NOW]
         return cmd
 
-    def run(self, *args: str, **extra_env: str) -> subprocess.CompletedProcess[str]:
+    def run(
+        self, *args: str, cwd: Path | None = None, **extra_env: str
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             self._cmd(args),
+            cwd=cwd,
             env={**self.env, **extra_env},
             text=True,
             capture_output=True,
