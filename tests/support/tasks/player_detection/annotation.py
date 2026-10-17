@@ -65,6 +65,8 @@ from src.tasks.player_detection.annotation.inference import (
 )
 from src.tasks.player_detection.annotation.review.adapter import PlayerReviewAdapter
 from src.tasks.player_detection.annotation.review.contracts import (
+    WORKER_ADAPTER,
+    WORKER_VERSION,
     FrameDecision,
     Note,
     PlayerEdits,
@@ -368,8 +370,8 @@ class Environment:
             "campaigns", self.plan.campaign_id, "workers", attempt
         )
         request = WorkRequest(
-            adapter="player_bbox_review",
-            adapter_version="v1",
+            adapter=WORKER_ADAPTER,
+            adapter_version=WORKER_VERSION,
             stage="review",
             subject_id=self.manifest.clip_id,
             payload=self.context_ref,
