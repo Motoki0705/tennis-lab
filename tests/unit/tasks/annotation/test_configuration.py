@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -184,6 +185,121 @@ def test_configuration_freezes_inputs_without_launching_or_resetting(
     assert controller.status()["state"] == "pending"
     assert controller.status()["stages"] == []
     assert not (example.layout.repository / ".training_queue").exists()
+
+
+@pytest.mark.parametrize("remove_file", [False, True])
+def test_reuse_retains_file_roots_baseline_and_stop(
+    example: Example, remove_file: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    external = example.layout.repository.with_name(
+        example.layout.repository.name + ".wal"
+    )
+    external.write_bytes(b"original allocation" * 1024)
+    assert isinstance(example.configuration.budget, NewBudget)
+    configured = example.configuration.model_copy(
+        update={
+            "budget": example.configuration.budget.model_copy(
+                update={"roots": (*example.configuration.budget.roots, str(external))}
+            )
+        }
+    )
+    first_ref = configure(example.layout, configured)
+    first = example.receipt(first_ref)
+    resources = ResourceManager(example.layout, first.scope)
+    baseline = resources.scope.baseline
+    inode = example.layout.artifact_path(baseline).stat().st_ino
+    if remove_file:
+        external.unlink()
+    else:
+        with external.open("ab") as handle:
+            handle.write(b"added allocation" * 1024)
+    with resources.registry.transaction() as db:
+        db.execute(
+            "UPDATE resource_scopes SET stop_reason='existing stop' WHERE id='shared'"
+        )
+    # Replaying the original create request must also reuse its existing scope.
+    assert configure(example.layout, configured) == first_ref
+
+    def no_new_baseline(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("scope reuse must not create a new baseline")
+
+    monkeypatch.setattr(ResourceManager, "create", no_new_baseline)
+    second = configured.model_copy(
+        update={
+            "plan": configured.plan.model_copy(update={"campaign_id": "next"}),
+            "budget": ExistingBudget(scope=first.scope),
+        }
+    )
+    receipt = example.receipt(configure(example.layout, second))
+    reused = ResourceManager(example.layout, receipt.scope)
+    assert receipt.scope == first.scope
+    assert reused.scope == resources.scope
+    assert reused.scope.baseline == baseline
+    assert example.layout.artifact_path(baseline).stat().st_ino == inode
+    sample = reused.sample()
+    assert sample.stopped_reason == "existing stop"
+    assert sample.gpu_charged_seconds == 7
+    assert sample.storage.additional_bytes >= 1024
+
+
+@pytest.mark.parametrize("kind", ["missing", "fifo"])
+def test_new_scope_rejects_unmeasurable_roots(example: Example, kind: str) -> None:
+    external = example.layout.repository.with_name(
+        example.layout.repository.name + ".state"
+    )
+    if kind == "fifo":
+        os.mkfifo(external)
+    assert isinstance(example.configuration.budget, NewBudget)
+    configured = example.configuration.model_copy(
+        update={
+            "budget": example.configuration.budget.model_copy(
+                update={"roots": (*example.configuration.budget.roots, str(external))}
+            )
+        }
+    )
+    with pytest.raises(ValueError, match="regular files or directories"):
+        configure(example.layout, configured)
+    assert not example.layout.path("campaigns", "fixture", "configuration").exists()
+
+
+def test_file_inventory_does_not_cover_a_codex_home(example: Example) -> None:
+    external = example.layout.repository.with_name(
+        example.layout.repository.name + ".state"
+    )
+    external.write_text("a file cannot contain Codex state")
+    assert isinstance(example.configuration.budget, NewBudget)
+    configured = example.configuration.model_copy(
+        update={
+            "budget": example.configuration.budget.model_copy(
+                update={"roots": (*example.configuration.budget.roots, str(external))}
+            ),
+            "runtime": example.configuration.runtime.model_copy(
+                update={"codex_home": str(external / "codex")}
+            ),
+        }
+    )
+    with pytest.raises(ValueError, match="inside the resource inventory"):
+        configure(example.layout, configured)
+
+
+def test_existing_scope_mismatch_is_rejected_before_new_campaign_is_saved(
+    example: Example,
+) -> None:
+    configure(example.layout, example.configuration)
+    assert isinstance(example.configuration.budget, NewBudget)
+    changed = example.configuration.model_copy(
+        update={
+            "plan": example.configuration.plan.model_copy(
+                update={"campaign_id": "changed"}
+            ),
+            "budget": example.configuration.budget.model_copy(
+                update={"previously_used_gpu_seconds": 0.0}
+            ),
+        }
+    )
+    with pytest.raises(ValueError, match="existing resource scope differs"):
+        configure(example.layout, changed)
+    assert not example.layout.path("campaigns", "changed").exists()
 
 
 def test_next_campaign_reuses_stopped_scope_and_cumulative_usage(
@@ -381,7 +497,7 @@ def test_scope_input_conflict_allows_corrected_configuration(
             "budget": original.budget.model_copy(update={field: 0}),
         }
     )
-    with pytest.raises(ValueError, match="immutable"):
+    with pytest.raises(ValueError, match="existing resource scope differs"):
         configure(example.layout, conflicting)
     assert not example.layout.path("campaigns", "next").exists()
     corrected = original.model_copy(
