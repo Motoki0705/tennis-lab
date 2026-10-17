@@ -11,6 +11,7 @@ from typing import Any
 import torch
 
 from src.tasks.ball_detection.checkpoints.coordinates import (
+    query_checkpoint_config,
     save_coordinate_checkpoint,
 )
 from src.tasks.ball_detection.checkpoints.posttraining import (
@@ -152,6 +153,9 @@ def run_finetuning(args: argparse.Namespace, *, validation_manifest: Path,
             stream.write(json.dumps(dict(epoch=epoch, global_step=step, train_loss=result.mean_loss, **report)) + "\n")
     if args.stress_evaluation:
         saved = torch.load(args.output / f"epoch-{best_epoch:03d}.pt", map_location="cpu", weights_only=True)
+        saved_config, preprocessing = query_checkpoint_config(saved)
+        if saved_config != model.config or preprocessing.input_contract() != model.mdd.input_contract():
+            raise ValueError("Selected checkpoint model or input contract changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         stress = {profile: evaluate(model, val_loader, device, frame_steps=val.frame_steps, precision=args.precision,
             prefetch=args.image_prefetch, augmenter=augmenter, profile=profile,
