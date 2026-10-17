@@ -4,10 +4,13 @@
 
 ## 最初に読むもの
 
+**作業を始める前に、必ず共有memoryの [.agents/memory/SUMMARY.md](.agents/memory/SUMMARY.md) を読む。** memoryの読み方・書き方・圧縮・削除は [memory skill](.agents/skills/memory/SKILL.md) に従う。memoryは規則ではなく検証待ちの観察で、コードと食い違ったらコードが正しい。
+
+その後に読むもの:
+
 1. このファイル（全作業に効くルール）
 2. [.agents/README.md](.agents/README.md): AI運用の原則、情報の置き場所、GitHub運用ルール
-3. [.agents/memory/INDEX.md](.agents/memory/INDEX.md): 共有memoryの索引。関係するエントリだけを開く。memoryは規則ではなく検証待ちの観察で、コードと食い違ったらコードが正しい
-4. 作業対象ディレクトリの `README.md`
+3. 作業対象ディレクトリの `README.md`
 
 ## プロジェクト概要
 
