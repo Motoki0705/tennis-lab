@@ -30,7 +30,9 @@ flowchart LR
 
 既存のplayer snapshot/partition readerを使い、登録時にtrainの実際の選別結果も固定する。
 登録後にそのmanifestが欠けた場合は再生成せず停止する。追加clipから学習対象frameが
-一つも残らない場合も停止し、旧教師だけの追加学習にしない。空targetはstoreの
+一つも残らない場合は、共通lifecycleに理由付き`no_additional_teachers`を保存し、
+intent・queue jobを作らない。累積train全体に利用可能frameがない場合も同様で、
+旧教師だけの追加学習にしない。空targetはstoreの
 確認済み不在規則に従う。欠測frameや未解決bboxを新たな負例へ変換しない。
 
 validationは累積train storeとは別の固定snapshotから読む。native frame/PTS・教師・
@@ -94,3 +96,10 @@ summary、checkpoint・dataset hashと照合する。frameの欠落・順序違�
 合成CPU試験は小さなDINO代替を使う。実Lightningのstrict初期重み読込、optimizer/schedule、
 best/last、途中再開、exportと共通lifecycleを通すが、実DINOのCUDA loss/勾配・検出品質・
 本番の追加学習2サイクルを検証したことにはならない。
+
+CPUでの学習・採否の接続は
+[`test_annotation_learning.py`](../../../../../tests/integration/tasks/player_detection/test_annotation_learning.py)で
+検証する。採用済み重みからのfresh optimizer/schedule、旧＋新教師と確認済み空targetの
+学習step、exportを使う固定評価と推論decoderの一致、学習/評価失敗・不合格時の現行版維持を
+確認する。空targetの実DINO loss/勾配、実動画のbbox品質、次campaignでの採用版運用は
+GPUと本番入力を用いる受入確認として残る。

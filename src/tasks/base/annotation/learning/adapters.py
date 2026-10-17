@@ -20,7 +20,11 @@ from .contracts import (
 class EvaluationResolver(Protocol):
     def resolve_evaluation(self, layout: AnnotationLayout, plan: LearningPlan,
                            publication: ArtifactRef) -> ArtifactRef:
-        """Freeze post-publication holdouts from a recipe already pinned in the plan."""
+        """Freeze holdouts idempotently for the pinned publication and plan recipe.
+
+        Recovery before intent persistence may call this again; return the same
+        reference and verify existing artifacts rather than replacing them.
+        """
         ...
 
 
@@ -94,7 +98,13 @@ class LearningAdapter(Protocol):
 
     def select(
         self, layout: AnnotationLayout, intent: LearningIntent, evaluation: ArtifactRef
-    ) -> SelectionVerdict: ...
+    ) -> SelectionVerdict:
+        """Return a repeatable judgment from pinned evidence, without running inference.
+
+        The registry recomputes it on adoption and replay to verify the persisted
+        verdict; base never interprets the task's labels or numerical metrics.
+        """
+        ...
 
     def retained_references(
         self,
