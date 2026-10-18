@@ -107,7 +107,7 @@ def _compose_boundary(boundary: RuntimeBoundary, overrides: list[str]) -> DictCo
 # A new contract must declare its expected output kind rather than defaulting to generate.
 _OUTPUT_KIND_CONTRACTS = {
     "train": (
-        "ball_refiner_3d.train", "ball.train", "blcs.train", "court_detection.train",
+        "ball_refiner_3d.train", "ball.train", "ball.hybrid", "blcs.train", "court_detection.train",
         "player_detection.train", "plcs.train", "slcs.train",
     ),
     "generate": (
@@ -176,6 +176,19 @@ def test_all_task_cli_output_contracts(
         ]
     if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
         overrides += ["data.dataset_root=smoke/clips"]
+    if boundary.module == "src.tasks.ball_detection.training.hybrid.runner":
+        overrides += [
+            "manifest=smoke/windows.json", "initialization.mode=query",
+            "initialization.checkpoint=smoke/query.pt", "presence_threshold=0.5",
+            "loss.heatmap_weight=1.0", "loss.presence_weight=1.0",
+            "freeze.encoder_epochs=0", "freeze.query_epochs=0",
+            "absence.negative_kinds=[reviewed_empty,out_of_frame]",
+            "absence.window_weights.play=0.5", "absence.window_weights.absent=0.5",
+            "absence.window_weights.nonplay=0.0", "epochs=1", "windows_per_epoch=4",
+            "learning_rate=0.001", "warmup_updates=0", "seed=42", "device=cpu",
+            "runtime.precision=fp32", "runtime.compile_mode=off",
+            "runtime.jpeg_decoder=opencv", "runtime.input_verification=lazy",
+        ]
     cfg = _compose_boundary(boundary, overrides)
     roots = RuntimePathRoots.from_mapping(
         cast(dict[str, object], OmegaConf.to_container(cfg.paths, resolve=True)),

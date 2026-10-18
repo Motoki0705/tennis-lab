@@ -1,6 +1,7 @@
 """Method-independent input and output; every emitted observation names its detection."""
 
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import Protocol
 
 import numpy as np
@@ -9,16 +10,23 @@ from numpy.typing import NDArray
 from src.tasks.player_association.appearance.parts import NativeParts
 
 
+class ScoreOrigin(IntEnum):
+    MISSING = 0
+    LEGACY = 1  # a score exists, but its source was not declared
+    MODEL = 2
+
+
 @dataclass(frozen=True)
 class DetectionFeatures:
     frame: int
     rows: NDArray[np.int64]  # original, clip-global detection row IDs
     boxes: NDArray[np.float32]  # N,4 source-pixel xyxy
-    scores: NDArray[np.float32]  # N
+    scores: NDArray[np.float32]  # N; missing rows use a masked zero, never a score
     poses: NDArray[np.float32] | None  # None explicitly means no pose was inferred
     embeddings: NDArray[np.float32]  # N,E; zero when appearance_valid is false
     appearance_valid: NDArray[np.bool_]
     parts: NativeParts | None = None
+    score_origin: NDArray[np.uint8] | None = None  # omitted legacy input has known scores
 
     def __post_init__(self) -> None:
         n = len(self.rows)
@@ -39,6 +47,12 @@ class DetectionFeatures:
                 raise ValueError("Feature values must be finite float32")
         if (self.boxes[:, 2:] <= self.boxes[:, :2]).any() or ((self.scores < 0) | (self.scores > 1)).any():
             raise ValueError("Boxes must have positive area and detection scores must be probabilities")
+        if self.score_origin is not None:
+            if self.score_origin.shape != (n,) or self.score_origin.dtype != np.uint8 \
+                    or not np.isin(self.score_origin, [int(origin) for origin in ScoreOrigin]).all():
+                raise ValueError("Score origins must be aligned uint8 values from ScoreOrigin")
+            if (self.scores[self.score_origin == ScoreOrigin.MISSING] != 0).any():
+                raise ValueError("Missing scores require a masked zero, not a copied or invented confidence")
         norms = np.linalg.norm(self.embeddings[self.appearance_valid], axis=1)
         if not np.allclose(norms, 1., atol=1e-4) or (self.embeddings[~self.appearance_valid] != 0).any():
             raise ValueError("Valid embeddings must have unit norm; masked embeddings must be zero")
@@ -47,6 +61,23 @@ class DetectionFeatures:
         if self.poses is None:
             raise ValueError("This tracking method requires inferred pose features")
         return self.poses
+
+    def score_at(self, row: int) -> float | None:
+        if not 0 <= row < len(self.rows):
+            raise IndexError("Score row lies outside the detection axis")
+        if self.score_origin is not None and self.score_origin[row] == ScoreOrigin.MISSING:
+            return None
+        return float(self.scores[row])
+
+    def require_scores(self) -> NDArray[np.float32]:
+        if self.score_origin is not None and (self.score_origin == ScoreOrigin.MISSING).any():
+            raise ValueError("This tracking consumer requires a score for every observation")
+        return self.scores
+
+    def score_origins(self) -> NDArray[np.uint8]:
+        if self.score_origin is None:
+            return np.full(len(self.rows), ScoreOrigin.LEGACY, np.uint8)
+        return self.score_origin
 
 
 @dataclass(frozen=True)

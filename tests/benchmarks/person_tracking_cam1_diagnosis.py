@@ -114,7 +114,7 @@ def diagnose(args: argparse.Namespace) -> None:
                 box = feature.boxes[row]
                 pose = local_pose(box, feature.poses[row])
                 prior = previous.get(unit['person'])
-                item.update(detection_row=source_row, box=box.tolist(), height_px=float(box[3] - box[1]), score=float(feature.scores[row]),
+                item.update(detection_row=source_row, box=box.tolist(), height_px=float(box[3] - box[1]), score=feature.score_at(row),
                             pose_joints_ge03=int((feature.poses[row, :, 2] >= .3).sum()), internal=internal[f].get(source_row),
                             previous_reference_cosine=None if prior is None else float(feature.embeddings[row] @ prior['embedding']),
                             previous_reference_pose_distance=None if prior is None else pose_distance(pose, prior['pose']))

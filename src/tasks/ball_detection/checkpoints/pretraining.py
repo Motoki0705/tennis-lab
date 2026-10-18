@@ -7,9 +7,11 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import checkpoint_model_config
 from src.tasks.ball_detection.checkpoints.coordinates import (
     save_coordinate_checkpoint,
 )
+from src.tasks.ball_detection.checkpoints.provenance import parent_provenance
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDDPTDetector,
@@ -21,25 +23,17 @@ SCHEMA = "mdd_dpt_pretraining.v2"
 
 
 def pretraining_config(saved: dict[str, Any]) -> MDDPretrainConfig:
-    """The v1 schema denotes exactly the original residual/dense3d CNN."""
-    raw = dict(saved["model_config"])
-    expected = set(MDDPretrainConfig.__dataclass_fields__)
-    if saved.get("schema") == "mdd_dpt_pretraining.v1":
-        if set(raw) != expected - {"encoder_variant", "temporal_mixing"}:
-            raise ValueError("Invalid historical v1 pretraining configuration")
-        raw.update(encoder_variant="residual", temporal_mixing="dense3d")
-    elif saved.get("schema") != SCHEMA:
+    """Identify historical CNNs by schema and their exact saved input contract."""
+    if saved.get("schema") not in {"mdd_dpt_pretraining.v1", SCHEMA}:
         raise ValueError("Unsupported pretraining checkpoint schema")
-    if set(raw) != expected:
-        raise ValueError("Incomplete pretraining CNN configuration")
-    for key in ("stem_channels", "mixed_channels", "residual_blocks"):
-        raw[key] = tuple(raw[key])
-    return MDDPretrainConfig(**raw)
+    return checkpoint_model_config(saved)
 
 
 def save_pretraining(path: Path, model: MDDDPTDetector, optimizer: torch.optim.Optimizer,
                      *, epoch: int, step: int, recipe: dict[str, Any], code: dict[str, Any],
                      report: dict[str, Any], best: float, best_epoch: int) -> None:
+    if recipe["input_contract"] != model.mdd.input_contract():
+        raise ValueError("Pretraining recipe input contract differs from the model")
     save_coordinate_checkpoint(dict(schema=SCHEMA, stage="heatmap_pretraining", epoch=epoch, global_step=step,
         model_config=asdict(model.config), state_dict=model.state_dict(), optimizer=optimizer.state_dict(),
         recipe=recipe, code=code, validation=report, best_score=best, best_epoch=best_epoch,
@@ -52,7 +46,7 @@ def transfer_encoder(path: Path, model: DeepMDDQueryDetector) -> dict[str, Any]:
     if saved.get("stage") != "heatmap_pretraining":
         raise ValueError("Expected a DPT pretraining checkpoint")
     previous = pretraining_config(saved)
-    for key in ("encoder_variant", "temporal_mixing"):
+    for key in ("input_channels", "encoder_variant", "temporal_mixing"):
         if getattr(previous, key) != getattr(model.config, key):
             raise ValueError(f"Pretrained encoder topology mismatch: {key}")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
@@ -63,8 +57,12 @@ def transfer_encoder(path: Path, model: DeepMDDQueryDetector) -> dict[str, Any]:
     weights = {k.removeprefix("encoder."): v for k, v in saved["state_dict"].items() if k.startswith("encoder.")}
     model.encoder.load_state_dict(weights, strict=True)
     model.freeze_encoder(True)
-    return dict(checkpoint=str(path), sha256=dual_sha256(path), global_step=saved["global_step"],
-                input_contract=saved["recipe"]["input_contract"], image_decode=saved["recipe"]["image_decode"])
+    return dict(mode="encoder", checkpoint=str(path), sha256=dual_sha256(path), global_step=saved["global_step"],
+                input_contract=saved["recipe"]["input_contract"], image_decode=saved["recipe"]["image_decode"],
+                transferred_modules=["encoder"],
+                transferred_parameters=[k for k in model.state_dict() if k.startswith("encoder.")],
+                initialized_parameters=[k for k in model.state_dict() if not k.startswith("encoder.")],
+                discarded_modules=["decoder", "head"], ancestry=parent_provenance(saved))
 
 
 def completed_pretraining(run: Path, manifest: Path) -> tuple[Path, dict[str, Any]]:

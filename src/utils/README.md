@@ -108,11 +108,13 @@ metadata欠落、不明なidentity、scale/単位不一致はload/resume/evaluat
 - **`prefetch.py`**: イテレータの先読み `PrefetchIterator`。
 - **`video/transforms.py`**: `BgrToTensorTransform` と tensor の ImageNet 正規化。
 - **`encoding.py`**: JPEG エンコードと、選択フレームの JPEG 列挙。
+- **`jpeg_source.py`**: 不変動画から指定PTSの最大32枚を読み、固定codec環境でJPEGへ再生成する。publication時のframe別hashと照合し、画像入力を保持したまま動画を保存元に使う。
 - **`sampling.py`**: 秒指定の parse、time range ベース sampling、uniform sampling。
 - **`types.py`**: `VideoInfo`、`FramePacket`、`TemporalWindow`、`TemporalBatch`。
 - **`youtube.py`**: YouTube ダウンロード済み動画の探索、ダウンロード、H.264 向け encoder args、transcode。
 
 ### `models/`
+- **`state.py`**: dense CPU state_dictの名前・dtype・shape・tensor値からSHA-256を計算する。pickleやstorage IDに依存せず、全重み初期化の一致を検証する。
 - **`__init__.py`**: `__all__`に列挙した高頻度model primitiveのcanonical public API。列挙外の専門APIは責務別sub-packageが公開元となる。
 - **`components/`**: Transformer の基本部品。attention、RoPE、FFN、norm、`TransformerBlock`、`CrossAttnBlock` に加え、fixed-query multi-view modelで共有する`FixedQueryTrackStage`がここにある。このstageはobject streamをviewごとに1 tokenへ圧縮し、`Q+V` spatial attention、query-temporal attention、stage末尾の共有FFNを実行してから、mHC updateをlayer末尾で一度だけwritebackする。3つのattention blockはFFNを持たず、spatial後の追加query FFNも持たない。attention forwardはboundaryで検証済みのsame-device `(B,Q,K)` maskと、`RotaryFrequencyComputer`がconstructor時に固定した`(...,T,1,D/2)` complex RoPEだけを受け取り、rank/dtype/device補完や実装選択を行わない。
 - **`components/ops/`**: compressed time-local attention の CUDA / reference 実装、autograd bridge、extension loader/build。backendはCSWAの構築時に固定する。
