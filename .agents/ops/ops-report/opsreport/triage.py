@@ -30,7 +30,7 @@ from .proposals import (
 )
 from .shell import CommandError
 
-LOG = logging.getLogger("weekly_report.triage")
+LOG = logging.getLogger("ops_report.triage")
 MAX_TITLE = 200
 _ISSUE_URL_RE = re.compile(r"/issues/(\d+)\s*$")
 # ``option`` is the percent-encoded selected option ("" = proposal without options),
@@ -49,7 +49,7 @@ def child_marker(pid: str, report_number: int, option: str | None) -> str:
 
 
 LABEL_SPECS: dict[str, tuple[str, str]] = {
-    REPORT_LABEL: ("0E8A16", "週次運用レポート（.agents/ops/weekly-report）"),
+    REPORT_LABEL: ("0E8A16", "運用レポート（.agents/ops/ops-report）"),
     AI_PROPOSED_LABEL: ("C5DEF5", "AIが起票した提案・派生課題"),
 }
 
@@ -109,7 +109,7 @@ def child_body(prop: ParsedProposal, option: str | None, report_number: int) -> 
     rest = [line[2:] if line.startswith("  ") else line for line in prop.block[1:]]
     lines = [
         child_marker(prop.pid, report_number, option),
-        f"週次運用レポート #{report_number} の提案 `{prop.pid}` から日次triageが起票。",
+        f"運用レポート #{report_number} の提案 `{prop.pid}` から日次triageが起票。",
         "",
         "## 提案",
         "",
@@ -198,6 +198,17 @@ def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
     if not reports:
         LOG.info("no open %s issues", REPORT_LABEL)
         return result
+    # There is no automatic migration from week IDs. Reject mixed operation
+    # before any writes, including children of otherwise valid v2 reports.
+    for report in reports:
+        if report["body"].split("\n", 1)[0].startswith("<!-- ops-report:v1 "):
+            result.errors.append(
+                f"#{report['number']} unsupported ops-report:v1 week format; resolve old reports explicitly before using v2 slots"
+            )
+    if result.errors:
+        for error in result.errors:
+            LOG.error("%s", error)
+        return result
     ensure_labels([AI_PROPOSED_LABEL], repo_root=repo_root, dry_run=dry_run)
     children = existing_children(repo_root)
     for report in sorted(reports, key=lambda r: int(r["number"])):
@@ -218,7 +229,10 @@ def _triage_report(
     dry_run: bool,
 ) -> None:
     number = int(report["number"])
-    _, parsed = parse_report(report["body"])
+    meta, parsed = parse_report(report["body"])
+    if meta.status == "incomplete":
+        LOG.info("#%d: incomplete audit; defer triage until completion", number)
+        return
     # proposal ID -> (child issue, option the child was filed for)
     to_link: dict[str, tuple[int, str | None]] = {}
     for prop in parsed:

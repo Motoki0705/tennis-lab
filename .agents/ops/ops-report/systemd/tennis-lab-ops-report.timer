@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the tennis-lab three-day ops report schedule daily at 08:00 JST
+
+[Timer]
+OnCalendar=*-*-* 08:00:00 Asia/Tokyo
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
