@@ -227,7 +227,7 @@ def test_partial_failures_preserve_last_main_and_recover(
     assert _main_files(ops) == original
     assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
     if failure in {"agent", "publication"}:
-        assert _reports(ops) == []
+        assert len(_reports(ops)) == (1 if failure == "agent" else 0)
         assert ops.state.get("memory_prs", []) == []
         assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
     else:
@@ -448,14 +448,17 @@ def test_path_scope_checks_deleted_and_renamed_sources(memory_env: Any) -> None:
         lambda u: u.update(files={"../SUMMARY.md": "oops"}),
     ],
 )
-def test_invalid_patch_fails_before_publication(memory_env: Any, mutate: Any) -> None:
+def test_invalid_patch_is_incomplete_and_never_persisted(
+    memory_env: Any, mutate: Any
+) -> None:
     ops = memory_env
     payload = json.loads(Path(ops.env["FAKE_AGENT_OUTPUT"]).read_text())
     mutate(payload["memory_update"])
     ops.set_agent_output(payload)
     result = ops.run("report")
     assert result.returncode == 1
-    assert _reports(ops) == [] and not ops.state.get("memory_prs")
+    assert len(_reports(ops)) == 1 and not ops.state.get("memory_prs")
+    assert "status=incomplete" in _reports(ops)[0]["body"].splitlines()[0]
 
 
 def test_patch_requires_explicit_no_change_and_deletion_reason(
@@ -542,3 +545,27 @@ def test_invalid_decision_inlet_fails_before_agent(
     assert result.returncode == 1
     assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
     assert not _reports(ops)
+
+
+def test_incomplete_scout_defers_all_memory_until_same_report_completes(
+    memory_env: Any,
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    partial = ops.run("report", FAKE_AUDIT_FAIL="platform")
+    assert partial.returncode == 1, partial.stderr
+    assert _main_files(ops) == original
+    assert not ops.state.get("memory_prs")
+    assert not (
+        Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    ).exists()
+    number = _reports(ops)[0]["number"]
+    retry = ops.run("report", "--if-due")
+    assert retry.returncode == 0, retry.stderr
+    assert len(_reports(ops)) == 1 and _reports(ops)[0]["number"] == number
+    assert len(ops.state["memory_prs"]) == 1
+    assert _journal(ops)["records"]["20261012"]["state"] == "pending"
+    assert _main_files(ops) == original
+    merged = ops.run("report", "--if-due")
+    assert merged.returncode == 0, merged.stderr
+    assert _journal(ops)["records"]["20261012"]["state"] == "merged"

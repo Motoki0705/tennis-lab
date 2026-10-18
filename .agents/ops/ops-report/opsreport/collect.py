@@ -149,6 +149,12 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
         item["slot"] = meta.slot
         item["period_start"] = meta.since.isoformat()
         item["period_end"] = meta.until.isoformat()
+        item["status"] = meta.status
+        item["base_sha"] = meta.base
+        item["audit"] = meta.audit
+        # The body is compared again under the issue lock before replacing an
+        # incomplete report. Human selections must never be overwritten.
+        item["body"] = row["body"]
         # Proposal status only for the two most recent reports to bound prompt size.
         if i >= len(rows) - 2:
             item["proposals"] = [_proposal_status(p) for p in parsed]
@@ -474,30 +480,36 @@ def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
 
 
 def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
-    mem_dir = cfg.repo_root / MEMORY_DIR
-    if not mem_dir.is_dir():
+    tracked = shell.git(
+        ["ls-tree", "-r", "--name-only", cfg.rev, "--", str(MEMORY_DIR)],
+        cwd=cfg.repo_root,
+    ).splitlines()
+    summary = str(MEMORY_DIR / "SUMMARY.md")
+    if summary not in tracked:
         return {
             "status": "not_installed",
             "note": f"{MEMORY_DIR} が存在しない（共有memory未導入）",
         }
-    summary = mem_dir / "SUMMARY.md"
     entries = []
-    for path in sorted(
-        p
-        for layer in memory.SHARED_LAYERS
-        for p in (mem_dir / layer).glob("*.md")
-        if p.name != "index.md"
-    ):
-        rel = path.relative_to(cfg.repo_root)
-        head = path.read_text(encoding="utf-8").splitlines()[:15]
+    for path in tracked:
+        rel = Path(path)
+        if (
+            rel.parent.name not in memory.SHARED_LAYERS
+            or rel.suffix != ".md"
+            or rel.name == "index.md"
+        ):
+            continue
+        head = shell.git(["show", f"{cfg.rev}:{path}"], cwd=cfg.repo_root).splitlines()[
+            :15
+        ]
         entries.append(
             {"path": str(rel), "last_commit": _last_commit_date(cfg, rel), "head": head}
         )
     return {
         "status": "ok",
-        "summary": _truncate(summary.read_text(encoding="utf-8"))
-        if summary.is_file()
-        else None,
+        "summary": _truncate(
+            shell.git(["show", f"{cfg.rev}:{summary}"], cwd=cfg.repo_root)
+        ),
         "entries": entries[:300],
         "entries_total": len(entries),
     }
@@ -506,8 +518,10 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
 def collect_knowledge(
     cfg: CollectConfig, since: datetime, until: datetime
 ) -> dict[str, Any]:
-    summary = cfg.repo_root / KNOWLEDGE_SUMMARY
-    if not summary.is_file():
+    if not shell.git(
+        ["ls-tree", "--name-only", cfg.rev, "--", str(KNOWLEDGE_SUMMARY)],
+        cwd=cfg.repo_root,
+    ).strip():
         return {"status": "not_found", "note": f"{KNOWLEDGE_SUMMARY} が存在しない"}
     changed = shell.git(
         [
@@ -585,7 +599,10 @@ def collect_meta(
 
 
 def collect_all(
-    cfg: CollectConfig, *, history: dict[str, Any], initial_since: datetime
+    cfg: CollectConfig,
+    *,
+    history: dict[str, Any],
+    initial_since: datetime,
 ) -> dict[str, Any]:
     """Collect the period ``[since, until)``.
 
@@ -593,7 +610,7 @@ def collect_all(
     run starts exactly there (not at the issue's createdAt, which is later than the
     collection), so consecutive reports neither drop nor double-count events.
     """
-    reports = history["reports"]
+    reports = [r for r in history["reports"] if r["status"] == "complete"]
     until = cfg.now
     since = (
         datetime.fromisoformat(reports[-1]["period_end"]).astimezone(cfg.now.tzinfo)
@@ -607,7 +624,12 @@ def collect_all(
         )
     return {
         "meta": collect_meta(cfg, since, until),
-        "previous_reports": history,
+        "previous_reports": {
+            "reports": [
+                {k: v for k, v in row.items() if k != "body"}
+                for row in history["reports"]
+            ]
+        },
         "github": collect_github(cfg, since, until),
         "git": collect_git(cfg, since, until),
         "workspace": collect_workspace(cfg),

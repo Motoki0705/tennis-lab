@@ -192,7 +192,7 @@ if [[ -n "${FAKE_AGENT_FAIL:-}" ]]; then
   echo "fake agent: quota exhausted" >&2
   exit 3
 fi
-cp "$FAKE_AGENT_OUTPUT" "$out"
+"$FAKE_AUDIT_PYTHON" "$FAKE_AUDIT_SCRIPT" "$prompt" "$FAKE_AGENT_OUTPUT" "$out"
 """
 
 AGENT_OUTPUT: dict[str, Any] = {
@@ -442,6 +442,8 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
             "FAKE_AGENT_OUTPUT": str(tmp_path / "agent_output.json"),
             "FAKE_AGENT_PROMPT_COPY": str(tmp_path / "prompt_seen.md"),
             "FAKE_AGENT_USED": str(tmp_path / "agent_used.txt"),
+            "FAKE_AUDIT_SCRIPT": str(Path(__file__).with_name("fake_audit_agent.py")),
+            "FAKE_AUDIT_PYTHON": sys.executable,
             "XDG_STATE_HOME": str(tmp_path / "state"),
             "OPS_REPORT_AGENT_EXEC": str(fake_exec),
             "OPS_REPORT_LOCK_FILE": str(tmp_path / "state" / "ops-report.lock"),

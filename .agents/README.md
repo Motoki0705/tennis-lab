@@ -51,7 +51,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
-| [ops/ops-report/](ops/ops-report/README.md) | 3日周期の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
+| [ops/ops-report/](ops/ops-report/README.md) | 親とnative scoutの並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
 | [ops/review/](ops/review/README.md) | Codex による PR レビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（人間への差し戻し） |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
