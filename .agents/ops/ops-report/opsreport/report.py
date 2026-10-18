@@ -16,7 +16,7 @@ from .proposals import (
     neutralize,
     render_proposals,
     report_marker,
-    week_tag,
+    slot_tag,
 )
 
 # GitHub rejects issue bodies above 65536 characters.
@@ -24,8 +24,7 @@ MAX_BODY_CHARS = 60_000
 
 
 def report_title(day: date) -> str:
-    iso = day.isocalendar()
-    return f"週次運用レポート {iso.year}-W{iso.week:02d}"
+    return f"運用レポート {day.isoformat()}"
 
 
 def stale_prs(collected: dict[str, Any]) -> list[dict[str, Any]]:
@@ -119,21 +118,21 @@ def _observations(c: dict[str, Any]) -> str:
 
 def render_report(
     *,
-    now: datetime,
+    slot: date,
     agent_name: str,
     collected: dict[str, Any],
     analysis: AgentReport,
 ) -> tuple[str, str, list[str]]:
     """Return ``(title, body, proposal_ids)``."""
-    day = now.date()
-    tag = week_tag(day)
+    day = slot
+    tag = slot_tag(day)
     meta = collected["meta"]
     proposals = (
         stale_pr_proposals(collected, analysis.stale_pr_notes) + analysis.proposals
     )
     proposal_md, ids = render_proposals(proposals, tag)
     marker = report_marker(
-        week=tag,
+        slot=tag,
         since=datetime.fromisoformat(meta["period_start"]),
         until=datetime.fromisoformat(meta["period_end"]),
         proposals=len(ids),
@@ -149,6 +148,7 @@ def render_report(
         marker,
         f"# {report_title(day)}",
         "",
+        f"- 予定回: {day.isoformat()} 08:00 JST",
         f"- 生成: {meta['generated_at']} / agent: `{agent_name}` / 対象: `{meta['base_ref']}`"
         f" @ `{meta['base_sha'][:10]}`（{fetched}） / 集計期間: {meta['period_start']} 〜 {meta['period_end']}",
     ]

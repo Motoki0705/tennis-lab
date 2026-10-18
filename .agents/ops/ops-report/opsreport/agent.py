@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +13,7 @@ from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
 
 AGENT_CHOICES = ("claude", "codex", "alternate")
 PROMPT_PLACEHOLDERS = (
-    "{{WEEK}}",
+    "{{SLOT}}",
     "{{CATEGORIES}}",
     "{{STALE_PRS}}",
     "{{COLLECTED_JSON}}",
@@ -26,19 +25,19 @@ class AgentOutputError(ValueError):
     """The agent's final message does not follow the JSON contract in the prompt."""
 
 
-def resolve_agent(setting: str, day: date) -> str:
-    """``claude`` / ``codex`` as-is; ``alternate`` = claude on even ISO weeks, codex on odd."""
+def resolve_agent(setting: str, slot_index: int) -> str:
+    """``claude`` / ``codex`` as-is; ``alternate`` = claude on even slots, codex on odd."""
     if setting not in AGENT_CHOICES:
         raise ValueError(f"agent must be one of {AGENT_CHOICES}, got {setting!r}")
     if setting != "alternate":
         return setting
-    return "claude" if day.isocalendar().week % 2 == 0 else "codex"
+    return "claude" if slot_index % 2 == 0 else "codex"
 
 
 def build_prompt(
     template: str,
     *,
-    week: str,
+    slot: str,
     stale_prs: list[dict[str, Any]],
     collected: dict[str, Any],
 ) -> str:
@@ -54,7 +53,7 @@ def build_prompt(
         or "（なし）"
     )
     prompt = (
-        template.replace("{{WEEK}}", week)
+        template.replace("{{SLOT}}", slot)
         .replace("{{CATEGORIES}}", categories)
         .replace("{{STALE_PRS}}", stale)
         .replace(
