@@ -13,7 +13,18 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import agent, collect, lock, proposals, report, schedule, shell, triage
+from . import (
+    agent,
+    collect,
+    lock,
+    memory,
+    memory_pr,
+    proposals,
+    report,
+    schedule,
+    shell,
+    triage,
+)
 from .shell import CommandError
 
 JST = schedule.JST
@@ -87,6 +98,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="no-op before the first slot or if already published",
     )
+    rep.add_argument(
+        "--memory-decisions",
+        type=Path,
+        default=None,
+        help="JSON decisions from triage (selected/deferred, with reason and source)",
+    )
     sched = sub.add_parser("schedule")
     actions = sched.add_subparsers(dest="action", required=True)
     for name in ("init", "status"):
@@ -152,6 +169,8 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
             state.begin(slot, now)
         try:
             history = collect.collect_report_history(args.repo_root.resolve())
+            store = memory_pr.Store(args.repo_root.resolve())
+            memory_errors = [] if args.dry_run else store.sync(history, run_dir)
             if success and not any(
                 r["slot"]
                 == proposals.slot_tag(schedule.aware_time(success["slot"]).date())
@@ -178,11 +197,12 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
                     state.finish(_now(args), url=published["url"])
                     attempted = False
                 if args.if_due:
-                    return _noop(run_dir, "already_published", slot)
+                    _noop(run_dir, "already_published", slot)
+                    return 1 if memory_errors else 0
                 if not args.dry_run:
                     raise ConfigError(msg + "; use --dry-run to preview")
                 LOG.warning("%s (preview only)", msg)
-            url = _generate_report(
+            url, save_errors = _generate_report(
                 args,
                 run_dir,
                 now,
@@ -190,6 +210,7 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
                 (slot - state.anchor) // schedule.PERIOD,
                 history,
                 state.anchor - schedule.PERIOD,
+                store,
             )
             if attempted:
                 state.finish(_now(args), url=url)
@@ -198,7 +219,7 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
             if attempted:
                 state.finish(_now(args), error=f"{type(exc).__name__}: {exc}")
             raise
-        return 0
+        return 1 if memory_errors or save_errors else 0
 
 
 def _run_schedule(args: argparse.Namespace) -> int:
@@ -223,7 +244,8 @@ def _generate_report(
     slot_index: int,
     history: dict[str, Any],
     initial_since: datetime,
-) -> str | None:
+    store: memory_pr.Store,
+) -> tuple[str | None, list[str]]:
     setting = args.agent or os.environ.get("OPS_REPORT_AGENT") or "codex"
     agent_name = agent.resolve_agent(setting, slot_index)
     cleanup_env = os.environ.get("OPS_REPORT_CLEANUP_CMD")
@@ -250,6 +272,8 @@ def _generate_report(
     )
 
     collected = collect.collect_all(cfg, history=history, initial_since=initial_since)
+    collected["ops_memory"]["persistence"] = store.describe(history)
+    collected["ops_memory"]["decisions"] = memory.load_decisions(args.memory_decisions)
     (run_dir / "collected.json").write_text(
         json.dumps(collected, ensure_ascii=False, indent=1), encoding="utf-8"
     )
@@ -280,6 +304,12 @@ def _generate_report(
         )
     )
     analysis = agent.parse_agent_output(output, {int(pr["number"]) for pr in stale})
+    memory.apply_update(
+        collected["ops_memory"]["files"],
+        analysis.memory_update,
+        source=f"ops-report:{tag}",
+        today=now.date(),
+    )
     title, body, ids = report.render_report(
         slot=slot.date(), agent_name=agent_name, collected=collected, analysis=analysis
     )
@@ -291,7 +321,7 @@ def _generate_report(
         args.output.write_text(body, encoding="utf-8")
     if args.dry_run:
         sys.stdout.write(f"# title: {title}\n\n{body}")
-        return None
+        return None, []
     with _issue_lock():
         fresh = collect.collect_report_history(cfg.repo_root)
         duplicate = next((r for r in fresh["reports"] if r["slot"] == tag), None)
@@ -308,21 +338,41 @@ def _generate_report(
         triage.ensure_labels(
             [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
+        store.prepare(
+            tag, collected["ops_memory"], analysis.memory_update, title=title, body=body
+        )
         url = shell.gh(
             ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
              "--label", collect.REPORT_LABEL],
             cwd=cfg.repo_root,
         ).strip()  # fmt: skip
+        store.record_publication(tag, url)
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
         json.dumps({"title": title, "url": url, "ids": ids}, ensure_ascii=False),
         encoding="utf-8",
     )
     print(url)
-    return url
+    # The schedule records publication success even if memory persistence fails.
+    # A retry recovers via history, without republishing or rerunning the agent.
+    save_errors = store.sync(collect.collect_report_history(cfg.repo_root), run_dir)
+    return url, save_errors
 
 
 def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
+    # Use the report's lock, so CI reconciliation and worktree saves cannot race
+    # a new report's collection. Release it before triage takes the issue lock.
+    memory_errors: list[str] = []
+    if not args.dry_run:
+        with lock.exclusive(
+            schedule.state_dir() / "schedule.lock",
+            timeout=_env_int("OPS_REPORT_LOCK_TIMEOUT", 600),
+        ):
+            store = memory_pr.Store(args.repo_root.resolve())
+            if store.records:
+                memory_errors = store.sync(
+                    collect.collect_report_history(args.repo_root.resolve()), run_dir
+                )
     # Child lookup -> create -> report annotation must not interleave with another run.
     with _issue_lock():
         result = triage.triage(
@@ -332,12 +382,13 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
         "created": result.created,
         "linked_existing": result.linked_existing,
         "errors": result.errors,
+        "memory_errors": memory_errors,
     }
     (run_dir / "result.json").write_text(
         json.dumps(summary, ensure_ascii=False), encoding="utf-8"
     )
     print(json.dumps(summary, ensure_ascii=False))
-    return 1 if result.errors else 0
+    return 1 if result.errors or memory_errors else 0
 
 
 def main(argv: list[str] | None = None) -> int:

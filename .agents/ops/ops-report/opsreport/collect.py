@@ -7,6 +7,7 @@ this data and reads the codebase (read-only) for deeper analysis.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import sys
@@ -17,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import proposals, shell
+from . import memory, proposals, shell
 from .shell import CommandError
 
 REPORT_LABEL = "ops-report"
@@ -129,7 +130,7 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
     rows = shell.gh_list(
         [
             "issue", "list", "--label", REPORT_LABEL, "--state", "all",
-            "--json", "number,title,state,createdAt,body,url",
+            "--json", "number,title,state,createdAt,body,url,author",
         ],
         limit=500,
         cwd=repo_root,
@@ -147,6 +148,8 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
             k: row[k] for k in ("number", "title", "state", "createdAt", "url")
         }
         item["slot"] = meta.slot
+        item["author"] = row["author"]["login"]
+        item["body_sha256"] = hashlib.sha256(row["body"].encode("utf-8")).hexdigest()
         item["period_start"] = meta.since.isoformat()
         item["period_end"] = meta.until.isoformat()
         # Proposal status only for the two most recent reports to bound prompt size.
@@ -482,9 +485,12 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
         }
     summary = mem_dir / "SUMMARY.md"
     entries = []
-    for path in sorted(mem_dir.rglob("*.md")):
-        if path == summary or path.name == "index.md":
-            continue
+    for path in sorted(
+        p
+        for layer in memory.SHARED_LAYERS
+        for p in (mem_dir / layer).glob("*.md")
+        if p.name != "index.md"
+    ):
         rel = path.relative_to(cfg.repo_root)
         head = path.read_text(encoding="utf-8").splitlines()[:15]
         entries.append(
@@ -610,6 +616,7 @@ def collect_all(
         "workspace": collect_workspace(cfg),
         "cleanup": collect_cleanup(cfg),
         "memory": collect_memory(cfg),
+        "ops_memory": memory.collect(cfg.repo_root, cfg.rev),
         "knowledge": collect_knowledge(cfg, since, until),
         "ai_env": collect_ai_env(cfg),
     }
