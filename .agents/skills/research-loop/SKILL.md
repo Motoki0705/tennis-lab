@@ -8,7 +8,7 @@ description: Run an issue-driven research loop - a theme issue with human-agreed
 研究テーマ＝親issue、1サイクル（調査→選定→実験→考察）＝子issue。
 人間が介入するのはテーマ設定だけで、以降はAIが停止条件まで自律で回す。
 起票・進捗記録は[親子issue規約](../../ops/issues/README.md)と共通生成APIに従う。
-途中経過は週次運用レポートで観察される。この手順自体も仮説であり、各サイクルの
+途中経過は運用レポートで観察される。この手順自体も仮説であり、各サイクルの
 「skill改善メモ」をもとに改訂する。
 
 ## 1. テーマを固定する（人間と合意）
