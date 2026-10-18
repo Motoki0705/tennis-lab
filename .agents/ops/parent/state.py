@@ -62,7 +62,14 @@ class Store:
             )
             if set(self.data) != {"version", "parents"} or self.data["version"] != 1:
                 raise ValueError("unknown or malformed parent-session state")
+            parents: dict[str, Any] = {}
             for key, row in object_value(self.data["parents"]).items():
+                canonical = key.casefold()
+                if canonical in parents:
+                    raise ValueError(
+                        f"registry contains a repository alias collision: {canonical}"
+                    )
+                parents[canonical] = row
                 if (
                     not isinstance(row, dict)
                     or not {"session", "status", "generation", "tasks", "reviews"}
@@ -80,13 +87,14 @@ class Store:
                     raise ValueError(f"invalid parent-session data types: {key}")
             owners = [
                 r["session"]
-                for r in self.parents.values()
+                for r in parents.values()
                 if r["status"] in {"active", "handoff_pending"}
             ]
             if len(owners) != len(set(owners)):
                 raise ValueError(
                     "registry contains multiple active parents for one session"
                 )
+            self.data["parents"] = parents
             yield self
 
     @property
