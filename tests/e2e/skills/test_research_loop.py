@@ -221,7 +221,13 @@ def test_aris_derived_parts_carry_mit_notice_and_source_revision() -> None:
         (
             "04_research_theme.md",
             [
-                "問題提起",
+                "目的・背景",
+                "全体のスコープ",
+                "全体方針・合意事項",
+                "全体の完了条件",
+                "子タスクのチェックリスト",
+                "進捗概要",
+                "依存関係・進め方",
                 "目標指標",
                 "評価条件",
                 "停止条件",
@@ -233,6 +239,12 @@ def test_aris_derived_parts_carry_mit_notice_and_source_revision() -> None:
         (
             "05_research_cycle.md",
             [
+                "このタスクの目的",
+                "具体的な変更内容・対象範囲",
+                "対象外",
+                "依存関係",
+                "作業状況・停止事項",
+                "Acceptance checklist",
                 "調査",
                 "選定理由",
                 "実験条件",
@@ -248,8 +260,9 @@ def test_aris_derived_parts_carry_mit_notice_and_source_revision() -> None:
 def test_issue_templates_have_required_sections(name: str, headings: list[str]) -> None:
     path = TEMPLATES / name
     meta = frontmatter(path)
-    assert meta["name"] and meta["about"] and meta["title"].startswith("[研究")
-    assert meta["labels"] == ["research"]
+    assert meta["name"] and meta["about"] and meta["title"].startswith("[")
+    role = "issue:parent" if name == "04_research_theme.md" else "issue:child"
+    assert meta["labels"] == ["research", role]
     found = re.findall(r"^## (.+)$", path.read_text(encoding="utf-8"), re.MULTILINE)
     assert found == headings
 
@@ -356,7 +369,9 @@ def test_openalex_arxiv_id_round_trips_to_pdf(
     payload["results"][0]["ids"]["arxiv"] = f"https://arxiv.org/abs/{arxiv_id}"
     pdf = b"%PDF-1.5\n" + b"0" * ls.MIN_PDF_BYTES
     expected_url = f"https://arxiv.org/pdf/{arxiv_id}"
-    fake = FakeHTTP({ls.OPENALEX_API: [json.dumps(payload).encode()], expected_url: [pdf]})
+    fake = FakeHTTP(
+        {ls.OPENALEX_API: [json.dumps(payload).encode()], expected_url: [pdf]}
+    )
 
     [paper] = ls.search("court", ["openalex"], 1, None, fake)
 
@@ -462,7 +477,17 @@ def test_year_range_parse(
 
 @pytest.mark.parametrize(
     "text",
-    ["", "-", "20", "2021-2019", "2020--2021", "20202021", "2020-21", "2020 2021", "-2020-"],
+    [
+        "",
+        "-",
+        "20",
+        "2021-2019",
+        "2020--2021",
+        "20202021",
+        "2020-21",
+        "2020 2021",
+        "-2020-",
+    ],
 )
 def test_year_range_rejects_invalid(ls: ModuleType, text: str) -> None:
     with pytest.raises(ValueError):
@@ -547,7 +572,7 @@ def test_arxiv_empty_feed_vs_non_atom_response(ls: ModuleType) -> None:
     for body in [
         b"<html><body>Service unavailable</body></html>",
         b'<?xml version="1.0"?><error><message>maintenance</message></error>',
-        b'<feed><entry><id>http://arxiv.org/abs/2008.04524v2</id></entry></feed>',
+        b"<feed><entry><id>http://arxiv.org/abs/2008.04524v2</id></entry></feed>",
     ]:
         with pytest.raises(ls.LitSearchError, match="not an Atom <feed>"):
             ls.search("x", ["arxiv"], 3, None, FakeHTTP({ls.ARXIV_API: [body]}))
