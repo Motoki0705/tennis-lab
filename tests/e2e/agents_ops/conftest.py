@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
-WEEKLY_REPORT = ROOT / ".agents/ops/weekly-report/weekly_report.py"
+OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 FAKE_GH = r"""
@@ -150,7 +150,7 @@ cp "$FAKE_AGENT_OUTPUT" "$out"
 """
 
 AGENT_OUTPUT: dict[str, Any] = {
-    "summary": "- 今週は小さな修正が中心。\n- 放置PRが1件ある。",
+    "summary": "- 今回は小さな修正が中心。\n- 放置PRが1件ある。",
     "proposals": [
         {
             "category": "code-debt",
@@ -162,9 +162,9 @@ AGENT_OUTPUT: dict[str, Any] = {
         {
             "category": "control-rules",
             "priority": "low",
-            "title": "週次レポートのプロンプトを改善する",
+            "title": "運用レポートのプロンプトを改善する",
             "detail": "提案数の目安を見直す。",
-            "evidence": ".agents/ops/weekly-report/prompt.md",
+            "evidence": ".agents/ops/ops-report/prompt.md",
             "options": ["5件に絞る", "上限なし"],
         },
     ],
@@ -328,10 +328,12 @@ class OpsEnv:
         Path(self.env["FAKE_AGENT_OUTPUT"]).write_text(text, encoding="utf-8")
 
     def _cmd(self, args: tuple[str, ...]) -> list[str]:
-        cmd = [sys.executable, str(WEEKLY_REPORT), *args]
+        cmd = [sys.executable, str(OPS_REPORT), *args]
         cmd += ["--repo-root", str(self.repo)]
         if "--log-dir" not in args:
             cmd += ["--log-dir", str(self.tmp / "logs")]
+        if args[0] == "schedule" and "--now" not in args:
+            cmd += ["--now", NOW]
         if args[0] == "report":
             # Defaults for tests; a test may pass its own --base-ref / --now.
             if "--base-ref" not in args:
@@ -383,7 +385,7 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("WEEKLY_REPORT_", "FAKE_"))
+        if not k.startswith(("OPS_REPORT_", "WEEKLY_REPORT_", "FAKE_"))
     }
     env.update(
         {
@@ -393,8 +395,9 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
             "FAKE_AGENT_OUTPUT": str(tmp_path / "agent_output.json"),
             "FAKE_AGENT_PROMPT_COPY": str(tmp_path / "prompt_seen.md"),
             "FAKE_AGENT_USED": str(tmp_path / "agent_used.txt"),
-            "WEEKLY_REPORT_AGENT_EXEC": str(fake_exec),
-            "WEEKLY_REPORT_LOCK_FILE": str(tmp_path / "state" / "weekly-report.lock"),
+            "XDG_STATE_HOME": str(tmp_path / "state"),
+            "OPS_REPORT_AGENT_EXEC": str(fake_exec),
+            "OPS_REPORT_LOCK_FILE": str(tmp_path / "state" / "ops-report.lock"),
         }
     )
     ops = OpsEnv(
@@ -406,4 +409,13 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
     )
     ops.write_state(base_state())
     ops.set_agent_output(AGENT_OUTPUT)
+    init = ops.run(
+        "schedule",
+        "init",
+        "--now",
+        "2026-10-11T12:00:00+09:00",
+        "--log-dir",
+        str(tmp_path / "setup-logs"),
+    )
+    assert init.returncode == 0, init.stderr
     yield ops

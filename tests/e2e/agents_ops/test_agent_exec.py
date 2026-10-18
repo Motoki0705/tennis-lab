@@ -236,8 +236,12 @@ def test_stale_output_is_not_reported_as_success(tmp_path: Path) -> None:
 
 
 def _run_installer(
-    tmp_path: Path, unit_names: list[str], *args: str, systemctl_status: int = 0,
-    script_in_worktree: bool = False, cwd_in_worktree: bool = False,
+    tmp_path: Path,
+    unit_names: list[str],
+    *args: str,
+    systemctl_status: int = 0,
+    script_in_worktree: bool = False,
+    cwd_in_worktree: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     repo = tmp_path / "repo"
     ops = repo / ".agents/ops"
@@ -344,3 +348,53 @@ def test_install_units_uses_main_source_when_cwd_is_linked(tmp_path: Path) -> No
     unit = tmp_path / "config/systemd/user/demo.service"
     assert unit.resolve() == tmp_path / "repo/.agents/ops/demo/systemd/demo.service"
     assert calls.read_text().splitlines() == ["--user daemon-reload"]
+
+
+@pytest.mark.parametrize("dry_run", [False, True])
+@pytest.mark.parametrize(
+    "retired",
+    [
+        "tennis-lab-weekly-report.service",
+        "tennis-lab-weekly-report.timer",
+        "timers.target.wants/tennis-lab-weekly-report.timer",
+    ],
+)
+def test_install_units_rejects_retired_report_links_before_side_effects(
+    tmp_path: Path, retired: str, dry_run: bool
+) -> None:
+    old = tmp_path / "config/systemd/user" / retired
+    old.parent.mkdir(parents=True)
+    old.symlink_to(tmp_path / "removed-checkout/old-unit")
+    args = ("--dry-run",) if dry_run else ()
+    result, calls = _run_installer(tmp_path, ["tennis-lab-ops-report.timer"], *args)
+    assert result.returncode == 2
+    assert "retire tennis-lab-weekly-report" in result.stderr
+    assert old.is_symlink()
+    assert not (old.parent / "tennis-lab-ops-report.timer").exists()
+    assert not calls.exists()
+    assert "link " not in result.stdout
+
+
+def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
+    source = ROOT / ".agents/ops/ops-report/systemd"
+    units = sorted(p.name for p in source.iterdir())
+    assert set(units) == {
+        "tennis-lab-ops-report.service",
+        "tennis-lab-ops-report.timer",
+        "tennis-lab-ops-triage.service",
+        "tennis-lab-ops-triage.timer",
+    }
+    result, calls = _run_installer(tmp_path, units, "--enable")
+    assert result.returncode == 0, result.stderr
+    assert sorted(p.name for p in (tmp_path / "config/systemd/user").iterdir()) == units
+    assert calls.read_text().splitlines() == [
+        "--user daemon-reload",
+        "--user enable --now tennis-lab-ops-report.timer",
+        "--user enable --now tennis-lab-ops-triage.timer",
+    ]
+    service = (source / "tennis-lab-ops-report.service").read_text()
+    timer = (source / "tennis-lab-ops-report.timer").read_text()
+    assert "ops_report.py report --if-due" in service
+    assert "ops-report.env" in service
+    assert "OnCalendar=*-*-* 08:00:00 Asia/Tokyo" in timer
+    assert "Persistent=true" in timer
