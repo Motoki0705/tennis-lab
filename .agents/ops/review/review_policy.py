@@ -1,4 +1,4 @@
-"""Pure policy of the PR review / merge-gate loop (no I/O).
+"""Reusable review parsing and merge policy (no I/O).
 
 The rules implemented here are documented in ``README.md`` next to this file, which
 is the canonical description. Keep both in sync when changing behaviour.
@@ -19,14 +19,10 @@ AGENTS = ("claude", "codex")
 BRANCH_PREFIXES: Mapping[str, str] = {"claude/": "claude", "codex/": "codex"}
 AGENT_LABELS: Mapping[str, str] = {"agent:claude": "claude", "agent:codex": "codex"}
 
-# Every agent-authored PR is reviewed by this agent (#1178: Codex only, so reviews do
-# not spend the Claude usage limit). Authorship only decides which PRs are reviewed.
+# Explicit parent runs always use the review profile with Codex.
 REVIEWER = "codex"
 
 NEEDS_HUMAN_LABEL = "needs-human"
-CHANGES_REQUESTED_LABEL = "agent-review:changes-requested"
-# Consecutive request_changes by the reviewer that hand the PR to a human.
-ESCALATION_STREAK = 3
 
 
 # --------------------------------------------------------------------------- authorship
@@ -225,7 +221,7 @@ def _require_str(obj: Mapping[str, Any], key: str, *, where: str) -> str:
     return value.strip()
 
 
-def _parse_finding(raw: Any, index: int) -> Finding:
+def parse_finding(raw: Any, index: int) -> Finding:
     where = f"findings[{index}]"
     if not isinstance(raw, dict):
         raise ReviewParseError(f"{where} must be an object")
@@ -277,7 +273,7 @@ def parse_review(text: str) -> Review:
         raise ReviewParseError(f"verdict must be one of {VERDICTS}, got {verdict!r}")
     if not isinstance(data["findings"], list):
         raise ReviewParseError("findings must be a list")
-    findings = tuple(_parse_finding(raw, i) for i, raw in enumerate(data["findings"]))
+    findings = tuple(parse_finding(raw, i) for i, raw in enumerate(data["findings"]))
     # Every reported finding blocks the merge, so the verdict must agree with them.
     if verdict == "approve" and findings:
         raise ReviewParseError("verdict approve must come with no findings")
@@ -290,191 +286,9 @@ def parse_review(text: str) -> Review:
     )
 
 
-# --------------------------------------------------------------------------- comment markers
-
-_SHA = r"[0-9a-f]{40}"
-_DIGEST = r"[0-9a-f]{64}"
-_TARGET = rf"sha=({_SHA}) base=({_SHA}) diff=({_DIGEST})"
-# v4 (#1178): blocker/major only, no minor/nit data line. Earlier versions are not read,
-# so a PR last reviewed under the old rules is reviewed again.
-REVIEW_MARKER_RE = re.compile(
-    rf"<!-- agent-cross-review:v4 {_TARGET} reviewer=(claude|codex) "
-    r"verdict=(approve|request_changes) blocking=(0|[1-9][0-9]*) -->"
-)
-GATE_MARKER_RE = re.compile(
-    rf"<!-- agent-merge-gate:v2 {_TARGET} decision=(merge|needs_human|blocked) "
-    r"reasons=([a-z_,]*) -->"
-)
-ESCALATION_MARKER_RE = re.compile(rf"<!-- agent-review-escalation:v1 {_TARGET} -->")
-
-
-@dataclass(frozen=True)
-class Comment:
-    author: str
-    body: str
-    url: str
-
-
-@dataclass(frozen=True)
-class ReviewTarget:
-    """What a review judged: the PR head, its merge-base with the base branch, and the
-    SHA-256 of the ``merge_base..head`` diff given to the reviewer.
-
-    A retargeted base (e.g. from an unmerged parent branch to main) keeps the head but
-    changes the merge-base and the diff, so the earlier review no longer applies.
-    """
-
-    head: str
-    merge_base: str
-    diff_sha256: str
-
-    def marker_fields(self) -> str:
-        return f"sha={self.head} base={self.merge_base} diff={self.diff_sha256}"
-
-
-@dataclass(frozen=True)
-class ReviewRecord:
-    target: ReviewTarget
-    reviewer: str
-    outcome: ReviewOutcome
-    url: str | None  # the review comment; None for a dry-run review that was not posted
-
-
-@dataclass(frozen=True)
-class GateRecord:
-    target: ReviewTarget
-    decision: str
-    reasons: tuple[str, ...]
-
-
-def review_marker(target: ReviewTarget, reviewer: str, outcome: ReviewOutcome) -> str:
-    """The marker line that starts a review comment (state for later polls)."""
-    marker = (
-        f"<!-- agent-cross-review:v4 {target.marker_fields()} "
-        f"reviewer={reviewer} verdict={outcome.verdict} blocking={outcome.blocking} -->"
-    )
-    if REVIEW_MARKER_RE.fullmatch(marker) is None:
-        raise ValueError(
-            f"invalid review marker fields: {target!r} {reviewer!r} {outcome!r}"
-        )
-    return marker
-
-
-def gate_marker(target: ReviewTarget, decision: str, reasons: Sequence[str]) -> str:
-    marker = (
-        f"<!-- agent-merge-gate:v2 {target.marker_fields()} "
-        f"decision={decision} reasons={','.join(reasons)} -->"
-    )
-    if GATE_MARKER_RE.fullmatch(marker) is None:
-        raise ValueError(
-            f"invalid gate marker fields: {target!r} {decision!r} {reasons!r}"
-        )
-    return marker
-
-
-def escalation_marker(streak_start: ReviewTarget) -> str:
-    return f"<!-- agent-review-escalation:v1 {streak_start.marker_fields()} -->"
-
-
-def _header_line(body: str) -> str:
-    """First line of a comment; markers live only on the line the caller writes."""
-    return body.split("\n", 1)[0].rstrip("\r")
-
-
 def neutralize_markers(text: str) -> str:
-    """Make untrusted text (agent output, file names) unable to form an HTML comment.
-
-    Markers are only read from a comment's first line, which the caller writes; this is
-    defence in depth so quoted text can neither look like a marker nor hide content.
-    """
+    """Prevent untrusted agent output and paths from forming HTML comments."""
     return text.replace("<!--", "&lt;!--").replace("-->", "--&gt;")
-
-
-def review_records(
-    comments: Iterable[Comment], *, trusted_login: str
-) -> tuple[ReviewRecord, ...]:
-    """Review markers on the first line of comments by ``trusted_login``.
-
-    Markers from other accounts, and markers anywhere but the first line (e.g. quoted
-    in a review summary), are ignored.
-    """
-    records: list[ReviewRecord] = []
-    for comment in comments:
-        if comment.author != trusted_login:
-            continue
-        match = REVIEW_MARKER_RE.fullmatch(_header_line(comment.body))
-        if match is not None:
-            head, base, diff, reviewer, verdict, blocking = match.groups()
-            records.append(
-                ReviewRecord(
-                    target=ReviewTarget(head, base, diff),
-                    reviewer=reviewer,
-                    outcome=ReviewOutcome(verdict, int(blocking)),
-                    url=comment.url,
-                )
-            )
-    return tuple(records)
-
-
-def gate_records(
-    comments: Iterable[Comment], *, trusted_login: str
-) -> tuple[GateRecord, ...]:
-    """Gate markers on the first line of comments by ``trusted_login``."""
-    records: list[GateRecord] = []
-    for comment in comments:
-        if comment.author != trusted_login:
-            continue
-        match = GATE_MARKER_RE.fullmatch(_header_line(comment.body))
-        if match is not None:
-            head, base, diff, decision, reasons = match.groups()
-            records.append(
-                GateRecord(
-                    target=ReviewTarget(head, base, diff),
-                    decision=decision,
-                    reasons=tuple(r for r in reasons.split(",") if r),
-                )
-            )
-    return tuple(records)
-
-
-def escalated_streaks(
-    comments: Iterable[Comment], *, trusted_login: str
-) -> frozenset[ReviewTarget]:
-    """Streak starts (first request_changes target) that were already escalated."""
-    started: set[ReviewTarget] = set()
-    for comment in comments:
-        if comment.author != trusted_login:
-            continue
-        match = ESCALATION_MARKER_RE.fullmatch(_header_line(comment.body))
-        if match is not None:
-            started.add(ReviewTarget(*match.groups()))
-    return frozenset(started)
-
-
-def request_changes_streak(
-    records: Sequence[ReviewRecord], *, reviewer: str
-) -> tuple[ReviewRecord, ...]:
-    """The current run of consecutive request_changes reviews by ``reviewer``.
-
-    Across head SHAs, in comment order. An approve resets the run.
-    """
-    streak: list[ReviewRecord] = []
-    for record in records:
-        if record.reviewer != reviewer:
-            continue
-        if record.outcome.passed:
-            streak = []
-        else:
-            streak.append(record)
-    return tuple(streak)
-
-
-def latest_review_for(
-    records: Sequence[ReviewRecord], *, target: ReviewTarget, reviewer: str
-) -> ReviewRecord | None:
-    """The last review of exactly ``target`` (head, merge-base and diff) by ``reviewer``."""
-    matching = [r for r in records if r.target == target and r.reviewer == reviewer]
-    return matching[-1] if matching else None
 
 
 # --------------------------------------------------------------------------- CI state
@@ -582,8 +396,7 @@ class GateDecision(StrEnum):
     BLOCKED = "blocked"
 
 
-# Blocked reasons worth a gate comment. Others either resolve on a later poll (CI pending,
-# mergeability unknown, review missing) or already have their own review comment.
+# Reasons worth a gate comment; the caller supplies verified parent-run evidence.
 COMMENT_REASONS = frozenset({"ci_failed", "conflict"})
 
 

@@ -195,7 +195,7 @@ class GitHub:
         payload: object = json.loads(body)
         if status[1] == "404" and result.returncode != 0 and missing_parent:
             error = _object(payload, "parent 404")
-            if error.get("message") == "Not Found":
+            if error.get("message") == "No parent issue found":
                 return None
         if result.returncode or status[1] != "200":
             raise ValueError(
