@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from . import memory, shell
-from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
+from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal, _one_line
 
 AGENT_CHOICES = ("codex",)
 PROMPT_PLACEHOLDERS = (
@@ -185,6 +185,32 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
             )
         if len(options) == 1:
             raise AgentOutputError(f"{where}.options needs 0 or >=2 choices, got 1")
+        if len({_one_line(o) for o in options}) != len(options):
+            raise AgentOutputError(f"{where}.options must be unique after rendering")
+        acceptance = raw.get("acceptance")
+        if (
+            not isinstance(acceptance, list)
+            or not acceptance
+            or not all(isinstance(a, str) and a.strip() for a in acceptance)
+        ):
+            raise AgentOutputError(f"{where}.acceptance must be non-empty text items")
+        related_parent = raw.get("related_parent")
+        if "related_parent" not in raw or (
+            related_parent is not None
+            and (type(related_parent) is not int or related_parent < 1)
+        ):
+            raise AgentOutputError(
+                f"{where}.related_parent must be an issue number or null"
+            )
+        related_issues = raw.get("related_issues")
+        if (
+            not isinstance(related_issues, list)
+            or any(type(n) is not int or n < 1 for n in related_issues)
+            or len(related_issues) != len(set(related_issues))
+        ):
+            raise AgentOutputError(
+                f"{where}.related_issues must be unique issue numbers"
+            )
         props.append(
             Proposal(
                 section=CATEGORIES[category],
@@ -193,6 +219,12 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
                 evidence=_req_str(raw, "evidence", where),
                 priority=priority,
                 options=tuple(options),
+                purpose=_req_str(raw, "purpose", where),
+                scope=_req_str(raw, "scope", where),
+                expected_effect=_req_str(raw, "expected_effect", where),
+                acceptance=tuple(acceptance),
+                related_parent=related_parent,
+                related_issues=tuple(related_issues),
             )
         )
     return AgentReport(

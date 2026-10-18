@@ -128,6 +128,13 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
     report["body"] = report["body"].replace(
         "- [ ] **R-20261012-02**", "- [x] **R-20261012-02**"
     )
+    # A local snapshot cannot invent a human deferral absent from GitHub.
+    head, tail = report["body"].split("**R-20261012-03**", 1)
+    report["body"] = (
+        head
+        + "**R-20261012-03**"
+        + tail.replace("見送り理由: 未記入", "見送り理由: 構成変更まで保留", 1)
+    )
     ops.write_state(state)
     decisions = ops.tmp / "decisions.json"
     decisions.write_text(
@@ -137,7 +144,7 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
                     "proposal_id": "R-20261012-03",
                     "decision": "deferred",
                     "reason": "構成変更まで保留",
-                    "source": "#100 の人間の判断",
+                    "source": "https://github.com/o/r/issues/100 / R-20261012-03",
                 }
             ]
         )
@@ -156,7 +163,12 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
     assert "対策を見送る" in data["ops_memory"]["files"]["ci-wait.md"]
     assert data["ops_memory"]["base_sha"] != checkout
     assert data["ops_memory"]["persistence"][0]["state"] == "merged"
-    assert data["ops_memory"]["decisions"][0]["decision"] == "deferred"
+    assert {
+        d["proposal_id"]: d["decision"] for d in data["ops_memory"]["decisions"]
+    } == {
+        "R-20261012-02": "selected",
+        "R-20261012-03": "deferred",
+    }
     assert (
         data["previous_reports"]["reports"][-1]["proposals"][1]["state"] == "selected"
     )

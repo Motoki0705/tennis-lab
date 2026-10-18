@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 
 ID_PATTERN = r"R-\d{8}-\d{2,3}"
-CHILD_TITLE_RE = re.compile(rf"^\[({ID_PATTERN})\]")
 
 # Agent proposal categories, rendered in this order after the stale-PR section.
 CATEGORIES: dict[str, str] = {
@@ -78,6 +77,12 @@ class Proposal:
     evidence: str = ""
     priority: str | None = None
     options: tuple[str, ...] = ()
+    purpose: str = ""
+    scope: str = ""
+    expected_effect: str = ""
+    acceptance: tuple[str, ...] = ()
+    related_parent: int | None = None
+    related_issues: tuple[int, ...] = ()
 
 
 def neutralize(text: str) -> str:
@@ -106,11 +111,6 @@ def _head_text(text: str) -> str:
     return _ANNOTATION_LIKE_RE.sub(r"→\1\\#", _one_line(text))
 
 
-def unescape_head_text(text: str) -> str:
-    """Inverse of the annotation escape, for plain-text uses (issue titles)."""
-    return re.sub(r"→(\s*)\\#(?=\d)", r"→\1#", text)
-
-
 def render_proposals(proposals: list[Proposal], tag: str) -> tuple[str, list[str]]:
     """Render proposals grouped by section, assigning IDs in rendered order.
 
@@ -136,7 +136,19 @@ def render_proposals(proposals: list[Proposal], tag: str) -> tuple[str, list[str
             prio = f"（優先度: {PRIORITIES[p.priority]}）" if p.priority else ""
             box = "" if p.options else "[ ] "
             out.append(f"- {box}**{pid}** {_head_text(p.title)}{prio}")
-            out.extend(f"  {line}" for line in _plain_lines(p.detail))
+            out.extend(
+                [
+                    f"  - 目的: {_one_line(p.purpose)}",
+                    f"  - 変更範囲: {_one_line(p.scope)}",
+                    f"  - 期待効果: {_one_line(p.expected_effect)}",
+                    f"  - 受入条件: {' / '.join(_one_line(a) for a in p.acceptance)}",
+                    f"  - 関連親issue: {'#' + str(p.related_parent) if p.related_parent else '未指定'}",
+                    f"  - 関連既存issue: {', '.join('#' + str(n) for n in p.related_issues) or 'なし'}",
+                    "  - 見送り理由: 未記入",
+                ]
+            )
+            # Prose cannot impersonate routing or human decision fields.
+            out.extend(f"  > {line}" for line in _plain_lines(p.detail))
             if p.evidence.strip():
                 out.append(f"  - 根拠: {_one_line(p.evidence)}")
             out.extend(f"  - [ ] {_one_line(opt)}" for opt in p.options)
@@ -154,10 +166,63 @@ class ParsedProposal:
     options: list[tuple[str, bool]] = field(default_factory=list)
     block: list[str] = field(default_factory=list)
 
+    def field(self, name: str) -> str:
+        prefix = f"  - {name}: "
+        values = [
+            line[len(prefix) :] for line in self.block[1:] if line.startswith(prefix)
+        ]
+        if len(values) != 1:
+            raise ValueError(f"{self.pid}: requires exactly one {name} field")
+        return values[0].strip()
+
+    def parent(self) -> int | None:
+        value = self.field("関連親issue")
+        if value == "未指定":
+            return None
+        if not re.fullmatch(r"#[1-9][0-9]*", value):
+            raise ValueError(f"{self.pid}: 関連親issue must be #number or 未指定")
+        return int(value[1:])
+
+    def deferred_reason(self) -> str | None:
+        reason = self.field("見送り理由")
+        return None if reason == "未記入" else reason or None
+
+    def requirements(self) -> None:
+        for name in (
+            "目的",
+            "変更範囲",
+            "期待効果",
+            "受入条件",
+            "根拠",
+            "関連既存issue",
+        ):
+            if not self.field(name):
+                raise ValueError(f"{self.pid}: {name} must not be empty")
+        self.parent()
+
+    def snapshot(self) -> dict[str, object]:
+        """Exclude mutable routing/status, while binding adoption to the proposal text."""
+        return {
+            "id": self.pid,
+            "title": self.title,
+            "detail": [
+                line
+                for line in self.block[1:]
+                if not line.startswith(
+                    ("  - 引渡し: ", "  - 見送り理由: ", "  - 関連親issue: ")
+                )
+                and not _OPTION_RE.match(line)
+            ],
+            "options": [label for label, _ in self.options],
+        }
+
     def selection(self) -> tuple[bool, str | None]:
         """Return ``(selected, chosen_option)``; raise on ambiguous checkboxes."""
         if not self.options:
             return self.head_checked, None
+        labels = [label for label, _ in self.options]
+        if len(labels) != len(set(labels)):
+            raise SelectionError(f"{self.pid}: duplicate options")
         chosen = [label for label, checked in self.options if checked]
         if len(chosen) > 1:
             raise SelectionError(
@@ -335,3 +400,16 @@ def annotate_children(body: str, children: dict[str, int]) -> str:
         lines[prop.head_index] = f"{lines[prop.head_index].rstrip()} → #{num}"
     trailing = "\n" if body.endswith("\n") else ""
     return "\n".join(lines) + trailing
+
+
+def annotate_handoffs(body: str, statuses: dict[str, str]) -> str:
+    lines = body.splitlines()
+    for prop in reversed(parse_report(body)[1]):
+        if prop.pid not in statuses:
+            continue
+        start, end = prop.head_index + 1, prop.head_index + len(prop.block)
+        content = [
+            line for line in lines[start:end] if not line.startswith("  - 引渡し: ")
+        ]
+        lines[start:end] = [*content, f"  - 引渡し: {statuses[prop.pid]}"]
+    return "\n".join(lines) + ("\n" if body.endswith("\n") else "")

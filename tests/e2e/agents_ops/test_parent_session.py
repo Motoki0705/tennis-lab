@@ -212,8 +212,43 @@ class ParentEnv:
             "labels": ["ai-proposed"],
         }
         if source:
+            # Report adoption is not the parent's existing requirements agreement.
+            if "90" not in self.state()["issues"]:
+                report_formats = importlib.import_module("opsreport.proposals")
+                proposal = report_formats.Proposal(
+                    section="その他の助言",
+                    title="合意対象の提案",
+                    evidence="fake gh",
+                    purpose="目的",
+                    scope="変更範囲",
+                    expected_effect="効果",
+                    acceptance=("検証できる",),
+                    related_parent=1,
+                )
+                markdown, _ = report_formats.render_proposals([proposal], "20261012")
+                marker = "<!-- ops-report:v2 slot=20261012 since=2026-10-09T00:00:00+00:00 until=2026-10-12T00:00:00+00:00 proposals=1 status=complete -->"
+                state = self.state()
+                state["issues"]["90"] = {
+                    **state["issues"]["1"],
+                    "number": 90,
+                    "id": 10090,
+                    "title": "運用レポート",
+                    "labels": [{"name": "ops-report"}],
+                    "body": marker
+                    + "\n"
+                    + report_formats.PROPOSALS_BEGIN
+                    + "\n"
+                    + markdown.replace("- [ ] **", "- [x] **")
+                    + report_formats.PROPOSALS_END
+                    + "\n",
+                }
+                self.save(state)
+                self.cli(
+                    "receive-proposal", "--report", "90", "--proposal", "R-20261012-01"
+                )
+                self.agreed()
             spec["source"] = {
-                "proposal_id": "R-opaque-01",
+                "proposal_id": "R-20261012-01",
                 "report_number": 90,
                 "option": None,
             }
@@ -556,7 +591,7 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
     assert result["reused"] and result["child"] == 10
     p.child("idempotent", source=True)
     state = p.state()
-    assert len(state["issues"]) == 3 and state["parents"]["10"] == 1
+    assert len(state["issues"]) == 4 and state["parents"]["10"] == 1
     child = state["issues"]["10"]
     assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
     assert {x["name"] for x in child["labels"]} == {"ai-proposed", "issue:child"}
@@ -641,8 +676,8 @@ def test_proposal_identity_prevents_duplicate_under_new_task_key(
     p = parent_env
     p.agreed()
     p.child("original", source=True)
-    p.child("new-key", source=True, ok=False)
-    assert len(p.state()["issues"]) == 3
+    assert json.loads(p.child("new-key", source=True).stdout)["reused"]
+    assert len(p.state()["issues"]) == 4
 
 
 def test_local_identifiers_are_rejected_from_public_notes(

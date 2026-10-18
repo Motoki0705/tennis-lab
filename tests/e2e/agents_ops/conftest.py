@@ -20,7 +20,7 @@ OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 FAKE_GH = r"""
-import json, os, subprocess, sys, time
+import json, os, re, subprocess, sys, time
 
 args = sys.argv[1:]
 with open(os.environ["FAKE_GH_CALLS"], "a", encoding="utf-8") as fh:
@@ -58,7 +58,80 @@ def save():
 
 
 head = args[:2]
-if args == ["api", "user"]:
+if head == ["repo", "view"]:
+    print(json.dumps({"nameWithOwner": "o/r"}))
+elif args[0] == "api" and "--method" in args:
+    method = opt("--method")
+    endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
+    payload = json.load(sys.stdin) if method != "GET" else None
+    api_path, _, query = endpoint.partition("?")
+    def api_emit(value, code=200):
+        if "--include" in args:
+            print(f"HTTP/1.1 {code} {'OK' if code < 300 else 'Not Found'}\n")
+        print(json.dumps(value))
+        sys.exit(0 if code < 300 else 1)
+    def api_issue(row):
+        return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
+                "state_reason": row.get("state_reason"), "repository_url": "https://api.github.com/repos/o/r"}
+    def page(rows):
+        p = int(re.search(r"(?:^|&)page=(\d+)", query)[1]) if "page=" in query else 1
+        return rows[(p-1)*100:p*100]
+    def api_saved(value):
+        # A concurrent human edit after an irreversible write, including a lost response.
+        for old, new in json.loads(os.environ.get("FAKE_GH_API_EDIT", "[]")):
+            for issue in state["issues"]:
+                if "ops-report" in issue["labels"]:
+                    issue["body"] = issue["body"].replace(old, new)
+        save()
+        if os.environ.get("FAKE_GH_API_FAIL_AFTER_SAVE") == api_path:
+            print("injected failure after save", file=sys.stderr)
+            sys.exit(1)
+        api_emit(value, 201)
+    if method != "GET" and os.environ.get("FAKE_GH_API_FAIL") == api_path:
+        print("injected API failure", file=sys.stderr)
+        sys.exit(1)
+    if api_path == "user":
+        api_emit({"login": "bot"})
+    if api_path == "repos/o/r/pulls":
+        api_emit(page(state["prs"]))
+    m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", api_path)
+    assert m, args
+    n, tail = m.groups()
+    if n is None:
+        if method == "GET":
+            api_emit(page([api_issue(i) for i in state["issues"]]))
+        number = state["next_number"]
+        state["next_number"] += 1
+        row = {"number": number, **payload, "state": "OPEN", "state_reason": None,
+               "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
+               "url": f"https://github.com/o/r/issues/{number}"}
+        state["issues"].append(row)
+        api_saved(api_issue(row))
+    row = next((r for r in state["issues"] if r["number"] == int(n)), None)
+    if row is None:
+        api_emit({"message": "Not Found"}, 404)
+    if tail == "parent":
+        parent = state.get("parents", {}).get(n)
+        api_emit(api_issue(next(i for i in state["issues"] if i["number"] == parent)) if parent else {"message": "Not Found"}, 200 if parent else 404)
+    if tail == "sub_issues":
+        if method == "GET":
+            api_emit(page([api_issue(i) for i in state["issues"] if state.get("parents", {}).get(str(i["number"])) == int(n)]))
+        child = next(i for i in state["issues"] if i["number"] + 10000 == payload["sub_issue_id"])
+        assert str(child["number"]) not in state.get("parents", {})
+        state.setdefault("parents", {})[str(child["number"])] = int(n)
+        api_saved(api_issue(child))
+    if tail == "comments":
+        if method == "GET":
+            api_emit(page(state.get("comments", {}).get(n, [])))
+        time.sleep(float(os.environ.get("FAKE_GH_CREATE_DELAY", "0")))
+        comment = {"user": {"login": "bot"}, "body": payload["body"]}
+        state.setdefault("comments", {}).setdefault(n, []).append(comment)
+        api_saved(comment)
+    if method == "PATCH":
+        row.update(payload)
+        api_saved(api_issue(row))
+    api_emit(api_issue(row))
+elif args == ["api", "user"]:
     print(json.dumps({"login": "bot"}))
 elif head == ["issue", "list"]:
     rows = state["issues"]
@@ -213,6 +286,12 @@ AGENT_OUTPUT: dict[str, Any] = {
             "title": "big.py を分割する",
             "detail": "big.py が肥大化している。\n- [ ] これはチェックボックスではなく本文",
             "evidence": "big.py 300行",
+            "purpose": "大きなファイルの変更を容易にする。",
+            "scope": "big.py の責務を分割する。",
+            "expected_effect": "影響範囲が小さくなる。",
+            "acceptance": ["既存のテストが通り、責務を分けられる。"],
+            "related_parent": None,
+            "related_issues": [],
         },
         {
             "category": "control-rules",
@@ -221,6 +300,12 @@ AGENT_OUTPUT: dict[str, Any] = {
             "detail": "提案数の目安を見直す。",
             "evidence": ".agents/ops/ops-report/prompt.md",
             "options": ["5件に絞る", "上限なし"],
+            "purpose": "提案の使いやすさを改善する。",
+            "scope": "運用レポートのプロンプト。",
+            "expected_effect": "人間が提案を判断しやすくなる。",
+            "acceptance": ["採用する提案の範囲を判断できる。"],
+            "related_parent": None,
+            "related_issues": [],
         },
     ],
     "stale_pr_notes": {

@@ -53,6 +53,10 @@ def stale_pr_proposals(
                 detail=detail,
                 evidence=f"親の放置PR確認 / github.open_prs[#{pr['number']}].detail / base={collected['meta']['base_sha']}",
                 options=STALE_PR_OPTIONS,
+                purpose=f"放置PR #{pr['number']} の対応方針を決める。",
+                scope=f"PR #{pr['number']} と関連issue。採用した対応の詳細は担当親と確認する。",
+                expected_effect="放置状態を解消し、継続する作業と終了する作業を明確にする。",
+                acceptance=("選択した対応の結果をPRと関連issueに記録できる。",),
             )
         )
     return props
@@ -203,9 +207,10 @@ def render_report(
         (
             "- 使い方: 未完了のため参考公開。完了までは提案にチェックを付けず、不足担当と統合を再開する。"
             if not audit.complete
-            else "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
-            "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
-            "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。"
+            else "- 使い方: 方向性を採用する提案にチェックを入れる。選択肢は**1つだけ**選ぶ。"
+            "採用は要件合意とは別。日次triageは担当親へ受領待ちとして記録し、親が受領・人間との要件合意を経て子issue化する。"
+            "未割当なら関連親issueを人間が指定し、その親セッションを登録・再開する。"
+            "見送る場合は未チェックのまま該当提案の「見送り理由」を記入する。未記入は未判断。"
         ),
     ]
     body = "\n".join(
