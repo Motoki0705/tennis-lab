@@ -1,6 +1,6 @@
 """Machine-wide lock serializing every issue-writing step of report and triage.
 
-``report`` (same-week check -> create) and ``triage`` (child lookup -> create ->
+``report`` (same-slot check -> create) and ``triage`` (child lookup -> create ->
 body update) are check-then-act sequences against GitHub. Two runs at once (timer
 plus a manual run, or two checkouts) could both decide that nothing exists yet and
 both create it; the lock makes those sequences mutually exclusive.
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from .shell import CommandError
 
-LOG = logging.getLogger("weekly_report.lock")
+LOG = logging.getLogger("ops_report.lock")
 POLL_SECONDS = 0.2
 
 

@@ -1,10 +1,10 @@
 """Proposal model, stable IDs, report rendering and parsing of checked items.
 
 The report issue body is the single source of truth for triage. Its first line is
-a metadata marker (week, collection boundary, number of proposals), and proposals
+a metadata marker (slot, collection boundary, number of proposals), and proposals
 live only between the ``PROPOSALS_BEGIN`` / ``PROPOSALS_END`` marker lines. A
 proposal is a list item whose head line carries a bold stable ID
-(``**R-2026W41-03**``). It is selected either by its own checkbox, or -- for
+(``**R-20261019-03**``). It is selected either by its own checkbox, or -- for
 proposals with options -- by checking exactly one option checkbox. Triage appends
 ``→ #<child>`` to the head line once the child issue exists.
 
@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-ID_PATTERN = r"R-\d{4}W\d{2}-\d{2,3}"
+ID_PATTERN = r"R-\d{8}-\d{2,3}"
 CHILD_TITLE_RE = re.compile(rf"^\[({ID_PATTERN})\]")
 
 # Agent proposal categories, rendered in this order after the stale-PR section.
@@ -48,9 +48,9 @@ _CHILD_RE = re.compile(r"\s→ #(?P<num>\d+)\s*$")
 _ANNOTATION_LIKE_RE = re.compile(r"→(\s*)#(?=\d)")
 _CHECKBOX_IN_TEXT_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.)])) \[[ xX]\] ")
 
-REPORT_MARKER_PREFIX = "<!-- ops-report:v1 "
-_REPORT_MARKER_RE = re.compile(r"^<!-- ops-report:v1 (?P<fields>[^<>]*?) -->$")
-_REQUIRED_META = ("week", "since", "until", "proposals")
+REPORT_MARKER_PREFIX = "<!-- ops-report:v2 "
+_REPORT_MARKER_RE = re.compile(r"^<!-- ops-report:v2 (?P<fields>[^<>]*?) -->$")
+_REQUIRED_META = ("slot", "since", "until", "proposals")
 PROPOSALS_BEGIN = "<!-- ops-report:proposals:begin -->"
 PROPOSALS_END = "<!-- ops-report:proposals:end -->"
 
@@ -59,10 +59,9 @@ class SelectionError(ValueError):
     """A proposal's checkboxes are in an ambiguous state (e.g. two options checked)."""
 
 
-def week_tag(day: date) -> str:
-    """ISO week tag used in IDs and titles, e.g. ``2026W41``."""
-    iso = day.isocalendar()
-    return f"{iso.year}W{iso.week:02d}"
+def slot_tag(day: date) -> str:
+    """Scheduled date used in IDs, e.g. ``20261019``."""
+    return day.strftime("%Y%m%d")
 
 
 def proposal_id(tag: str, index: int) -> str:
@@ -173,20 +172,20 @@ class ParsedProposal:
 class ReportMeta:
     """Metadata from a report body's first line."""
 
-    week: str
+    slot: str
     since: datetime
     until: datetime
     proposal_count: int
 
     def proposal_ids(self) -> set[str]:
-        return {proposal_id(self.week, i) for i in range(1, self.proposal_count + 1)}
+        return {proposal_id(self.slot, i) for i in range(1, self.proposal_count + 1)}
 
 
 def report_marker(
-    *, week: str, since: datetime, until: datetime, proposals: int, **extra: str
+    *, slot: str, since: datetime, until: datetime, proposals: int, **extra: str
 ) -> str:
     fields = {
-        "week": week,
+        "slot": slot,
         "since": since.isoformat(timespec="seconds"),
         "until": until.isoformat(timespec="seconds"),
         "proposals": str(proposals),
@@ -202,20 +201,27 @@ def report_marker(
 
 def parse_report_meta(body: str) -> ReportMeta:
     first = body.split("\n", 1)[0].rstrip("\r")
+    if first.startswith("<!-- ops-report:v1 "):
+        raise ValueError(
+            "unsupported ops-report:v1 week format; resolve old reports explicitly before using v2 slots"
+        )
     m = _REPORT_MARKER_RE.match(first)
     if not m:
-        raise ValueError("report body does not start with an ops-report:v1 marker")
+        raise ValueError("report body does not start with an ops-report:v2 marker")
     fields: dict[str, str] = {}
     for part in m.group("fields").split():
         key, sep, value = part.partition("=")
         if not sep:
             raise ValueError(f"malformed report marker field {part!r}")
+        if key in fields:
+            raise ValueError(f"duplicate report marker field {key!r}")
         fields[key] = value
     missing = [k for k in _REQUIRED_META if k not in fields]
     if missing:
         raise ValueError(f"report marker lacks {missing}")
-    if not re.fullmatch(r"\d{4}W\d{2}", fields["week"]):
-        raise ValueError(f"report marker has invalid week {fields['week']!r}")
+    if "week" in fields or not re.fullmatch(r"[0-9]{8}", fields["slot"]):
+        raise ValueError(f"report marker has invalid slot {fields['slot']!r}")
+    date.fromisoformat(fields["slot"])
     if not fields["proposals"].isdigit():
         raise ValueError(f"report marker has invalid proposals={fields['proposals']!r}")
     since = datetime.fromisoformat(fields["since"])
@@ -223,7 +229,7 @@ def parse_report_meta(body: str) -> ReportMeta:
     if since.tzinfo is None or until.tzinfo is None or since > until:
         raise ValueError(f"report marker has invalid period {since}..{until}")
     return ReportMeta(
-        week=fields["week"],
+        slot=fields["slot"],
         since=since,
         until=until,
         proposal_count=int(fields["proposals"]),
@@ -234,7 +240,7 @@ def parse_report(body: str) -> tuple[ReportMeta, list[ParsedProposal]]:
     """Parse a report body: metadata plus the proposals inside the marked region.
 
     Only the region between ``PROPOSALS_BEGIN`` and ``PROPOSALS_END`` is scanned,
-    and every ID found there must be one the report generated for its week.
+    and every ID found there must be one the report generated for its slot.
     """
     meta = parse_report_meta(body)
     lines = body.splitlines()
@@ -251,7 +257,7 @@ def parse_report(body: str) -> tuple[ReportMeta, list[ParsedProposal]]:
     unknown = [p.pid for p in found if p.pid not in allowed]
     if unknown:
         raise ValueError(
-            f"proposal IDs {unknown} were not generated by the {meta.week} report "
+            f"proposal IDs {unknown} were not generated by the {meta.slot} report "
             f"({meta.proposal_count} proposals)"
         )
     return meta, found
@@ -264,6 +270,8 @@ def _parse_region(lines: list[str], *, offset: int) -> list[ParsedProposal]:
     while i < len(lines):
         m = _HEAD_RE.match(lines[i])
         if not m:
+            if re.match(r"^- (?:\[[ xX]\] )?\*\*R-", lines[i]):
+                raise ValueError(f"invalid proposal ID format: {lines[i]!r}")
             i += 1
             continue
         pid = m.group("id")
