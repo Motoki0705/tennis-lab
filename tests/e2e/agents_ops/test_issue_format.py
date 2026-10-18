@@ -529,7 +529,7 @@ def routes_for(snapshots: dict[int, Any]) -> dict[str, Any]:
         routes[f"{base}/parent"] = (
             {"body": raw[issue.parent]}
             if issue.parent is not None
-            else {"status": 404, "body": {"message": "Not Found"}}
+            else {"status": 404, "body": {"message": "No parent issue found"}}
         )
         for index in range(len(issue.children) // 100 + 1):
             rows = [raw[k] for k in issue.children[index * 100 : (index + 1) * 100]]
@@ -598,7 +598,10 @@ def test_cli_migration_checks_only_the_selected_family(
         ),
         ("10/parent", {"body": None}),
         ("10/parent", {"raw": "not-json"}),
-        ("10/parent", {"omit_headers": True, "body": {"message": "Not Found"}}),
+        ("10/parent", {"omit_headers": True, "body": {"message": "No parent issue found"}}),
+        # GitHub answers a missing parent with "No parent issue found"; a bare
+        # "Not Found" means the issue itself is gone and must not read as no parent.
+        ("10/parent", {"status": 404, "body": {"message": "Not Found"}}),
         (
             "10/sub_issues?per_page=100&page=1",
             {"status": 404, "body": {"message": "Not Found"}},
