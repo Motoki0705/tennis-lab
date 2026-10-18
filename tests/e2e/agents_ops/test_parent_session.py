@@ -57,6 +57,7 @@ if args[:2] == ["pr", "merge"]:
         save()
         fail()
     pr["state"] = "closed"
+    pr["merged"] = True
     pr["merged_at"] = "2026-10-18T03:00:00Z"
     for child in re.findall(r"Closes #(\d+)", pr["body"]):
         if not os.environ.get("PARENT_MERGE_SKIP_CLOSE"):
@@ -65,9 +66,15 @@ if args[:2] == ["pr", "merge"]:
         import subprocess
         subprocess.run(["git", "merge", "--no-edit", "--no-ff", expected], check=True, capture_output=True)
         base = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        pr["merge_commit_sha"] = base
+        if os.environ.get("PARENT_MERGE_UNEXPLAINED_COMMIT"):
+            subprocess.run(["git", "commit", "--allow-empty", "-m", "unexplained base advance"], check=True, capture_output=True)
+            base = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
         for other in state["prs"]:
-            if other["state"] == "open":
-                other["base"]["sha"] = base
+            other["base"]["sha"] = base
+            if other["state"] == "open" and str(other["number"]) == os.environ.get("PARENT_MERGE_FOLLOW_MAIN"):
+                subprocess.run(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "merge", "--no-edit", base], check=True, capture_output=True)
+                other["head"]["sha"] = subprocess.check_output(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "rev-parse", "HEAD"], text=True).strip()
     if os.environ.get("PARENT_MERGE_CI_PENDING"):
         target = int(os.environ["PARENT_MERGE_CI_PENDING"])
         next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []

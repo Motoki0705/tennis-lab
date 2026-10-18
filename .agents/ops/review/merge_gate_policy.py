@@ -19,6 +19,7 @@ from parent.policy import (
     review_state,
 )
 from parent_review_policy import (
+    BaseAdvance,
     evaluate_coverage,
     exact,
     pr_findings,
@@ -226,11 +227,13 @@ class MergeInput:
     current: Sequence[Mapping[str, Any]]
     resolutions: Sequence[Mapping[str, Any]]
     fix_paths: Mapping[int, Sequence[str]]
+    fix_diff_digests: Mapping[int, str]
     changed_paths: tuple[str, ...]
     review_state: str | None
     evidence_errors: tuple[str, ...]
     required_checks: tuple[str, ...]
     shared_patterns: tuple[str, ...]
+    base_advances: Sequence[BaseAdvance] = ()
     permission: Mapping[str, Any] | None = None
     parent_needs_human: bool = False
 
@@ -301,7 +304,12 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             if entry["child_issues"] != sorted(linked):
                 reasons.append("review_child_assignment_changed")
             coverage = evaluate_coverage(
-                result, gate.current, gate.resolutions, gate.fix_paths
+                result,
+                gate.current,
+                gate.resolutions,
+                gate.fix_paths,
+                fix_diff_digests=gate.fix_diff_digests,
+                base_advances=gate.base_advances,
             )
             # Global identity/set errors block all; another PR's coverage/finding does
             # not delay an independently covered PR. Merged targets remain in current.
