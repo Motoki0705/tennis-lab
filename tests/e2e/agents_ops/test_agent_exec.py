@@ -236,8 +236,12 @@ def test_stale_output_is_not_reported_as_success(tmp_path: Path) -> None:
 
 
 def _run_installer(
-    tmp_path: Path, unit_names: list[str], *args: str, systemctl_status: int = 0,
-    script_in_worktree: bool = False, cwd_in_worktree: bool = False,
+    tmp_path: Path,
+    unit_names: list[str],
+    *args: str,
+    systemctl_status: int = 0,
+    script_in_worktree: bool = False,
+    cwd_in_worktree: bool = False,
 ) -> tuple[subprocess.CompletedProcess[str], Path]:
     repo = tmp_path / "repo"
     ops = repo / ".agents/ops"
@@ -344,3 +348,67 @@ def test_install_units_uses_main_source_when_cwd_is_linked(tmp_path: Path) -> No
     unit = tmp_path / "config/systemd/user/demo.service"
     assert unit.resolve() == tmp_path / "repo/.agents/ops/demo/systemd/demo.service"
     assert calls.read_text().splitlines() == ["--user daemon-reload"]
+
+
+@pytest.mark.parametrize(
+    "name", ["tennis-lab-cross-review.service", "tennis-lab-cross-review.timer"]
+)
+@pytest.mark.parametrize("where", ["direct", "dangling", "wants"])
+@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+def test_installer_refuses_retired_review_units_before_side_effects(
+    tmp_path: Path, name: str, where: str, extra: list[str]
+) -> None:
+    directory = tmp_path / "config/systemd/user"
+    if where == "wants":
+        directory /= "timers.target.wants"
+    directory.mkdir(parents=True)
+    old = directory / name
+    if where == "direct":
+        old.write_text("[Unit]\n")
+    else:
+        old.symlink_to(tmp_path / "removed-source" / name)
+    result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], *extra)
+    assert result.returncode != 0
+    assert "retired unit remains" in result.stderr
+    assert ".agents/ops/review/README.md" in result.stderr
+    assert "daemon-reload" in result.stderr
+    assert not calls.exists()
+    assert not (tmp_path / "config/systemd/user/demo.service").exists()
+
+
+@pytest.mark.parametrize(
+    "name", ["tennis-lab-cross-review.service", "tennis-lab-cross-review.timer"]
+)
+def test_installer_never_reintroduces_retired_source(tmp_path: Path, name: str) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.timer", name], "--enable")
+    assert result.returncode != 0 and "retired cross-review source" in result.stderr
+    assert not calls.exists()
+    assert not (tmp_path / "config").exists()
+
+
+def test_installer_reinstall_keeps_report_and_cannot_restore_review(
+    tmp_path: Path,
+) -> None:
+    result, calls = _run_installer(
+        tmp_path, ["tennis-lab-ops-report.timer", "tennis-lab-ops-report.service"]
+    )
+    assert result.returncode == 0, result.stderr
+    installer = tmp_path / "repo/.agents/ops/install_units.sh"
+    env = {
+        **os.environ,
+        "PATH": str(tmp_path / "bin") + os.pathsep + os.environ["PATH"],
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+    }
+    again = subprocess.run(
+        ["bash", str(installer)], env=env, text=True, capture_output=True, check=False
+    )
+    assert again.returncode == 0, again.stderr
+    units = list((tmp_path / "config/systemd/user").glob("*"))
+    assert sorted(p.name for p in units) == [
+        "tennis-lab-ops-report.service",
+        "tennis-lab-ops-report.timer",
+    ]
+    assert calls.read_text().splitlines() == [
+        "--user daemon-reload",
+        "--user daemon-reload",
+    ]
