@@ -4,13 +4,15 @@
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
 入力の正本は [parentのreview-request契約](../parent/README.md#1218へのレビュー要求契約schema-version-1)。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
-この入口はmerge・ラベル操作・子への修正委任を行わない。
+review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
 | ファイル | 責務 |
 |---|---|
 | `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
 | `parent_review_policy.py` | 要求・出力・公開記録の検証とcoverageの純粋関数 |
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
+| `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
+| `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge、共有基盤免除の記録 |
 | `review_policy.py` | blocker/major解析、無害化、CI正規化、required checks・共有パス・競合等のgate判定部品 |
 | `prompt_template.md` | 親の受入条件・個別diff・依存/インターフェースを1実行で確認する指示 |
 | `shared_paths.txt` / `required_checks.txt` | 共有基盤パス / 必須CI check名 |
@@ -174,9 +176,104 @@ gateには全run対象を残し、先行merge済みPRはGitHub上のmerge済みh
 親が理由を付けた新しい明示review要求を作る。retargetや未レビュー差分も同様に停止し、自動再レビューは起動しない。
 
 未知の入力スキーマは例外で拒否する。gateは例外も停止として扱う。
-最新head/CI・必須checks・競合・共有パス・人間判断・依存順の照合とmerge実行は #1219 が接続する。
-この変更ではPR単位Codex承認を前提とする旧gate呼出経路を削除し、`evaluate_gate` 等の純粋部品を残す。
-`AGENT_AUTO_MERGE` の設定・有効化も #1219 の担当。
+最新head/CI・必須checks・競合・共有パス・人間判断・依存順の照合とmerge実行は下記のmerge gateが担う。
+旧PR単位のCodex承認マーカーは使わない。
+
+## merge gate
+
+担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
+timer・poll・hook・agent呼出はない。判定は `merge_gate_policy.evaluate_parent_gate(MergeInput)`、
+I/Oは `merge_gate.py` に分離する。共通引数はサブコマンドより前に置く。
+
+```bash
+# 未設定または0: 判定とJSON表示だけ。GitHubの更新・mergeは行わない
+AGENT_AUTO_MERGE=0 .venv/bin/python .agents/ops/review/merge_gate.py --parent 1216 merge
+
+# 人間の有効化判断後、呼出元の親セッションを起動したローカルshellの環境へ設定
+export AGENT_AUTO_MERGE=1
+.venv/bin/python .agents/ops/review/merge_gate.py --parent 1216 merge
+
+# 停止: 次の明示実行からdry-runに戻す（unsetでも同じ）
+export AGENT_AUTO_MERGE=0
+```
+
+`AGENT_AUTO_MERGE` は未設定/`0`/`1`だけを受け付け、空文字を含む他の値はI/O前にエラーにする。
+このフラグはmergeサブコマンドの制御であり、`shared-permission` は明示的に合意コメントを記録する別操作。
+設定は呼出元環境だけで行い、repo内へ有効値を書き込まない。既に動いているコマンドの停止には、
+そのプロセスを中断する。試行前に保存した記録は残るため、再送でmergeを繰り返さない。
+#1216の人間との追加合意に基づき、#1219のmerge後に親がこの環境変数を`1`へ変更する。
+既存の全体レポートtimerやGitHub標準のAllow auto-mergeとは別の仕組みである。
+
+gateは以下をすべて検査し、各PRを理由コード付きの `merge` / `blocked` / `needs_human` とする。
+
+- 最新の正式な直属子とPRのclosing指示、review対象集合・子の割当、既知の作成agent、
+  open・draft/fork・担当branchの整合。同じ子のopen PRが複数あれば停止する。
+- 最新の親runのローカルresult/request/executionと、同じgh loginによる親result・全対象PRの
+  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/合意との一致が必須。
+  pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
+- 親の公開review状態が `fixes_verified` または `complete`。結果受領だけ・修正中・中断・
+  `needs-human` label（親/子/PR）・子の停止/依存保留ではmergeしない。
+  runの合意digest・担当generationを照合し、無関係な後続の提案合意や同じ合意内容の再記録では
+  既存の確認と共有基盤の許可を失効させない。親全体の明示的な `checking`、合意内容の変更、
+  引継ぎ後は古い確認を流用しない。親issue全体の完了は要求しない。
+- #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
+  他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
+  merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
+  snapshotはレビュー時、gateによるmerge試行済みならその直前の確認時の値を据え置く。
+  resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
+  現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
+- `required_checks.txt` の全必須checkが存在し、rollup全件に失敗・未完了がないこと。
+  CI取得時のheadも一致させる。競合・mergeable不明は停止する。
+- `shared_paths.txt` の一致は既定で `needs_human`。下記の明示合意だけで免除できる。
+- 子本文の最新依存欄を使い、依存先子のPRが実mergeされ、その子がclosed/completedになるまで保留する。
+  循環・親の外への依存も拒否する。状態の正本と停止/再開は [parent](../parent/README.md)。
+
+依存順で判定し、他の独立PRのCI待ちで合格済みPRを止めない。
+実merge直前に全対象のhead/base/merge-base/diff・CI・競合・coverage・親状態を再取得し、
+`gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
+各merge後も残りを再取得する。[先行mergeによるbase前進](#同じrunの先行mergeによるbase先端の前進)を実gitで検証し、
+`BaseAdvance` 列と実fix diff digestをcoverage判定へ渡す。この継承条件を満たさないcoverage不整合は停止し、Codexを自動再実行しない。
+base履歴を検証できないPRには `base_advance_unverified` とcoverageの変更理由、確認済みのmerge済みheadが
+一致しなければ `merged_head_mismatch`（他PRには `pr_<番号>_merged_head_mismatch`）を表示する。
+
+merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate stateへ保存する。
+この試行記録の `snapshot` に確認済みhead/base/merge-base/diff/ref/branchを保存し、次回の明示実行でも保持する。
+同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
+remoteがmerge済みなら二重mergeせず、対象issueのclosing完了を確認する。
+収集・割当照合・完了確認の対象はreview-prepare/collectと同じで、直属子があれば子、
+子のない単独issueではそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+merge直後もremoteのmergeと対象issueのclosed/completedを確認する。子のある親だけ既存の
+`reconcile` / `sync_progress` へ接続し、単独issueの本文を親用進捗へ書き換えない。
+未close・確認不能は `merge_unconfirmed` として残す。親がGitHubとjournalを照合して復旧する。
+旧試行記録を削除しての自動再試行はしない。
+
+JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録、`snapshot` が確認したhead/base/diff。
+共有基盤の一致は `shared_hits`、免除時は `shared_exemption` に人間合意の根拠とコメントURLを表示する。
+`auto_merge` は実効フラグ、`agent_invocations` は常に0。
+終了コードは0=全件merge可/merge確認（dry-runを含む）、1=停止/未完了あり、2=入力・取得・整合エラー。
+2でも成功や再レビューへ置き換えず、stderrのblocked記録を確認する。
+
+### 共有基盤を含めた親mergeへの明示合意
+
+人間がその親の共有基盤変更を含めて親がmergeしてよいと合意済みの場合だけ、担当親がその
+発言と合意コメントURLを証拠ファイルに書き、次を実行する。既存合意の記録形式を移すための再承認は不要。
+
+```bash
+.venv/bin/python .agents/ops/review/merge_gate.py --parent 1216 shared-permission \
+  --allow-shared-foundation --evidence-file tmp/shared-merge-agreement.md
+
+# 許可の取り消しも明示記録する
+.venv/bin/python .agents/ops/review/merge_gate.py --parent 1216 shared-permission \
+  --deny-shared-foundation --evidence-file tmp/shared-merge-revocation.md
+```
+
+親issueにparentと同じ先頭行 `parent-session:v1` マーカーで `event=merge_permission` を記録する。
+キーは `parent,event,review_run_id,request_sha256,generation,agreement_sha256,
+allow_shared_foundation,evidence,revision`。許可フラグは真偽値、証拠は非空文章。
+revisionは正整数の連番。同じ最新許可の再送は再投稿せず、取消後の再許可は新しいrevisionで記録する。
+現在のgh loginによる、同じ親/run/対象digest/担当generation/合意digestの最新記録だけを使う。
+再合意・引継ぎ・新runで失効し、`false` の最新記録も免除しない。
+この操作は共有基盤条件だけの免除であり、CI・レビュー・coverage・依存・人間判断待ちは免除しない。
 
 ## 共有基盤パスとCI部品
 

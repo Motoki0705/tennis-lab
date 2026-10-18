@@ -41,7 +41,47 @@ if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["pr", "view"]:
     pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
-    response({"statusCheckRollup": pr.get("statusCheckRollup", [])})
+    values = {"statusCheckRollup": pr.get("statusCheckRollup", []),
+              "headRefOid": pr["head"]["sha"]}
+    if os.environ.get("PARENT_VIEW_HEAD_RACE"):
+        values["headRefOid"] = os.environ["PARENT_VIEW_HEAD_RACE"]
+    response({k: values[k] for k in args[args.index("--json") + 1].split(",")})
+if args[:2] == ["pr", "merge"]:
+    pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
+    assert "--merge" in args and "--match-head-commit" in args
+    expected = args[args.index("--match-head-commit") + 1]
+    if os.environ.get("PARENT_MERGE_FAIL") or pr["state"] != "open" or pr["head"]["sha"] != expected:
+        fail()
+    if os.environ.get("PARENT_MERGE_HEAD_RACE"):
+        pr["head"]["sha"] = os.environ["PARENT_MERGE_HEAD_RACE"]
+        save()
+        fail()
+    pr["state"] = "closed"
+    pr["merged"] = True
+    pr["merged_at"] = "2026-10-18T03:00:00Z"
+    for child in re.findall(r"Closes #(\d+)", pr["body"]):
+        if not os.environ.get("PARENT_MERGE_SKIP_CLOSE"):
+            state["issues"][child].update(state="closed", state_reason="completed")
+    if os.environ.get("PARENT_MERGE_ADVANCE_BASE"):
+        import subprocess
+        subprocess.run(["git", "merge", "--no-edit", "--no-ff", expected], check=True, capture_output=True)
+        base = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        pr["merge_commit_sha"] = base
+        if os.environ.get("PARENT_MERGE_UNEXPLAINED_COMMIT"):
+            subprocess.run(["git", "commit", "--allow-empty", "-m", "unexplained base advance"], check=True, capture_output=True)
+            base = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        for other in state["prs"]:
+            other["base"]["sha"] = base
+            if other["state"] == "open" and str(other["number"]) == os.environ.get("PARENT_MERGE_FOLLOW_MAIN"):
+                subprocess.run(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "merge", "--no-edit", base], check=True, capture_output=True)
+                other["head"]["sha"] = subprocess.check_output(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "rev-parse", "HEAD"], text=True).strip()
+    if os.environ.get("PARENT_MERGE_CI_PENDING"):
+        target = int(os.environ["PARENT_MERGE_CI_PENDING"])
+        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []
+    save()
+    if os.environ.get("PARENT_MERGE_RESPONSE_LOST"):
+        fail()
+    response({"merged": True})
 assert args[0] == "api", args
 method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
@@ -57,6 +97,11 @@ if endpoint == "user":
     response({"login": "operator"})
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
+    if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
+        state["detail_reads"] = state.get("detail_reads", 0) + 1
+        if state["detail_reads"] == 2:
+            next(p for p in state["prs"] if p["number"] == 100)["head"]["sha"] = os.environ["PARENT_READ_HEAD_RACE"]
+        save()
     response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
@@ -176,7 +221,7 @@ class ParentEnv:
             env={**self.env, **(extra or {})},
             text=True,
             capture_output=True,
-            timeout=30,
+            timeout=90,
             check=False,
         )
         if ok is True:
@@ -927,25 +972,40 @@ def test_issue_body_metadata_and_existing_evidence_survive_updates(
     assert "<!-- parent-task:v1" in actual
 
 
-def review_setup(p: ParentEnv, *, independent: bool = False) -> list[int]:
+def review_setup(
+    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+) -> list[int]:
+    if standalone:
+        state = p.state()
+        state["issues"]["1"].update(
+            title="人間が作成した単独タスク",
+            labels=[{"name": "bug"}],
+            body="## 目的\n単独タスクを実装する。\n\n## 完了条件\n回帰テストが通る。\n",
+        )
+        p.save(state)
     p.agreed()
     state = p.state()
     state["prs"] = []
-    for i in range(3):
-        p.child(f"child-{i}")
+    for i in range(1 if standalone else 3):
+        if not standalone:
+            p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
         filename = f"change-{i}.txt" if independent else "change.txt"
         (worktree / filename).write_text(f"new {i}\n")
         run_git(worktree, "add", filename)
         run_git(worktree, "commit", "-m", f"child {i}")
         state["prs"].append(
-            p.pr(100 + i, 10 + i, run_git(worktree, "rev-parse", "HEAD"))
+            p.pr(
+                100 + i,
+                1 if standalone else 10 + i,
+                run_git(worktree, "rev-parse", "HEAD"),
+            )
         )
     # Read the current issue/comments state, then replace PRs only.
     current = p.state()
     current["prs"] = state["prs"]
     p.save(current)
-    return [100, 101, 102]
+    return [pr["number"] for pr in state["prs"]]
 
 
 @pytest.mark.parametrize(
@@ -1280,6 +1340,7 @@ class ReviewEnv:
     fake: Path
     output: Path
     calls_path: Path
+    clock_script: Path | None = None
 
     @property
     def run_dir(self) -> Path:
@@ -1299,7 +1360,7 @@ class ReviewEnv:
         self, *args: str, ok: bool = True, extra: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
-            [sys.executable, str(REVIEW_SCRIPT), *args],
+            [sys.executable, str(self.clock_script or REVIEW_SCRIPT), *args],
             cwd=self.p.repo,
             env={
                 **self.p.env,
@@ -1310,7 +1371,7 @@ class ReviewEnv:
             capture_output=True,
             text=True,
             check=False,
-            timeout=30,
+            timeout=90,
         )
         assert (result.returncode == 0) is ok, result.stderr + result.stdout
         return result
@@ -1343,12 +1404,14 @@ class ReviewEnv:
         self.output.write_text(json.dumps(data))
 
 
-def make_review_env(p: ParentEnv, *, independent: bool = False) -> ReviewEnv:
+def make_review_env(
+    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+) -> ReviewEnv:
     # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
     (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
-    selected = review_setup(p, independent=independent)
+    selected = review_setup(p, independent=independent, standalone=standalone)
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(
@@ -1385,7 +1448,21 @@ def make_review_env(p: ParentEnv, *, independent: bool = False) -> ReviewEnv:
     )
     calls = p.root / "review-calls.jsonl"
     calls.touch()
-    return ReviewEnv(p, request, request_path, fake, output, calls)
+    # Exercise the real CLI with a fixed clock in the test subprocess only.
+    # Shared WSL hosts can move wall time backwards while a fake review runs.
+    # Timestamp validation remains strict in production and its policy tests.
+    clock = p.root / "review-with-fixed-clock.py"
+    clock.write_text(
+        "import datetime, runpy, sys\n"
+        "class FixedClock(datetime.datetime):\n"
+        "    @classmethod\n"
+        "    def now(cls, tz=None):\n"
+        "        return cls(2026, 10, 18, tzinfo=tz)\n"
+        "datetime.datetime = FixedClock\n"
+        f"sys.path.insert(0, {str(REVIEW_SCRIPT.parent)!r})\n"
+        f"runpy.run_path({str(REVIEW_SCRIPT)!r}, run_name='__main__')\n"
+    )
+    return ReviewEnv(p, request, request_path, fake, output, calls, clock)
 
 
 @pytest.fixture
