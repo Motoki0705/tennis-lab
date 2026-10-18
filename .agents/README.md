@@ -28,7 +28,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [AGENTS.md](../AGENTS.md) | プロジェクト概要、全作業に効く開発ルール | 手順の詳細、観察、実験結果 |
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
-| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない、再利用できる観察（作業のコツ、ユーザー判断、環境の癖、落とし穴、レビュー観点） | コードやREADMEで確認できる事実、作業の進捗 |
+| [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有5層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
 | [.agents/ops/](#自動運用) | 定期実行する自動運用（systemd --user timer、headless agent） | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |
@@ -63,7 +63,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら運用レポートで見直す。
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: CI通過とCodexによるレビュー（作成agentによらずCodexがレビューし、merge を止める指摘だけを報告する）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。
+- **merge**: CI通過とCodexによるレビュー（作成agentによらずCodexがレビューし、merge を止める指摘だけを報告する）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 
 ## 研究ループ（概要）
 

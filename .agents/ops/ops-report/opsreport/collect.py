@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import proposals, shell
+from . import memory, proposals, shell
 from .shell import CommandError
 
 REPORT_LABEL = "ops-report"
@@ -482,9 +482,12 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
         }
     summary = mem_dir / "SUMMARY.md"
     entries = []
-    for path in sorted(mem_dir.rglob("*.md")):
-        if path == summary or path.name == "index.md":
-            continue
+    for path in sorted(
+        p
+        for layer in memory.SHARED_LAYERS
+        for p in (mem_dir / layer).glob("*.md")
+        if p.name != "index.md"
+    ):
         rel = path.relative_to(cfg.repo_root)
         head = path.read_text(encoding="utf-8").splitlines()[:15]
         entries.append(
@@ -610,6 +613,7 @@ def collect_all(
         "workspace": collect_workspace(cfg),
         "cleanup": collect_cleanup(cfg),
         "memory": collect_memory(cfg),
+        "ops_memory": memory.collect(cfg.repo_root, cfg.rev),
         "knowledge": collect_knowledge(cfg, since, until),
         "ai_env": collect_ai_env(cfg),
     }
