@@ -39,6 +39,9 @@ def fail():
     sys.exit(1)
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
+if args[:2] == ["pr", "view"]:
+    pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
+    response({"statusCheckRollup": pr.get("statusCheckRollup", [])})
 assert args[0] == "api", args
 method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
@@ -51,6 +54,16 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
+if pull:
+    response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
+comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
+if comment_edit:
+    assert method == "PATCH"
+    comment = next(c for rows in state["comments"].values() for c in rows if c["id"] == int(comment_edit[1]))
+    comment["body"] = payload["body"]
+    save()
+    response(comment)
 if path == "repos/o/r/pulls":
     if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
         state["pull_reads"] = state.get("pull_reads", 0) + 1
@@ -75,9 +88,9 @@ if n is None:
     if os.environ.get("PARENT_FAIL_AFTER_CREATE"):
         fail()
     response(row, 201)
-if n not in state["issues"]:
+if tail != "comments" and n not in state["issues"]:
     response({"message": "Not Found"}, 404)
-row = state["issues"][n]
+row = state["issues"].get(n)
 if tail == "parent":
     parent = state["parents"].get(n)
     response(state["issues"][str(parent)] if parent else {"message": "Not Found"}, 200 if parent else 404)
@@ -92,7 +105,7 @@ if tail == "sub_issues":
 if tail == "comments":
     if method == "GET":
         response(paged(state["comments"].get(n, [])))
-    comment = {"id": len(state["comments"].get(n, [])) + 1, "user": {"login": "operator"}, "body": payload["body"]}
+    comment = {"id": 1 + max((c["id"] for rows in state["comments"].values() for c in rows), default=0), "user": {"login": "operator"}, "body": payload["body"]}
     state["comments"].setdefault(n, []).append(comment)
     save()
     response(comment, 201)
@@ -239,6 +252,7 @@ class ParentEnv:
     ) -> dict[str, Any]:
         return {
             "number": n,
+            "title": f"子issue #{child} の実装",
             "state": "open",
             "draft": False,
             "body": f"Closes #{child}",
@@ -1101,3 +1115,582 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
     result = json.loads(p.cli("reconcile").stdout)
     assert result["tasks"][1]["state"] == "continue"
     assert result["tasks"][1]["assignment"]["dependencies"] == []
+
+
+# The consumer is tested against the producer's actual public/local contract above.
+REVIEW_SCRIPT = OPS / "review/parent_review.py"
+FAKE_PARENT_REVIEWER = r"""
+import json, os, pathlib, sys, time
+args = sys.argv[1:]
+def opt(name):
+    return args[args.index(name) + 1]
+cwd = pathlib.Path(opt("--cwd"))
+context = json.loads((cwd / "context.json").read_text())
+request = json.loads((cwd / "request.json").read_text())
+call = {"args": args, "cwd": str(cwd), "context": context,
+        "prompt": pathlib.Path(opt("--prompt-file")).read_text(),
+        "diffs": {str(p["number"]): (cwd / f'pr-{p["number"]}.diff').read_text() for p in request["prs"]},
+        "files": {str(p["number"]): sorted(x.name for x in (cwd / f'pr-{p["number"]}').iterdir()) for p in request["prs"]}}
+with open(os.environ["REVIEW_AGENT_CALLS"], "a") as f:
+    f.write(json.dumps(call) + "\n")
+if os.environ.get("REVIEW_AGENT_FAIL"):
+    sys.exit(3)
+if os.environ.get("REVIEW_AGENT_MUTATE"):
+    path = pathlib.Path(os.environ["PARENT_GH_STATE"])
+    state = json.loads(path.read_text())
+    state["prs"][0]["head"]["sha"] = os.environ["REVIEW_AGENT_MUTATE"]
+    path.write_text(json.dumps(state))
+if os.environ.get("REVIEW_STOP_PARENT"):
+    path = pathlib.Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions/registry.json"
+    state = json.loads(path.read_text())
+    state["parents"]["o/r#1"]["status"] = "ended"
+    path.write_text(json.dumps(state))
+pathlib.Path(opt("--out")).write_text(pathlib.Path(os.environ["REVIEW_AGENT_OUTPUT"]).read_text())
+"""
+
+
+@dataclass
+class ReviewEnv:
+    p: ParentEnv
+    request: dict[str, Any]
+    request_path: Path
+    fake: Path
+    output: Path
+    calls_path: Path
+
+    @property
+    def run_dir(self) -> Path:
+        return (
+            Path(self.p.env["XDG_STATE_HOME"])
+            / "tennis-lab-agents/parent-sessions/reviews"
+            / str(self.request["review_run_id"])
+        )
+
+    def calls(self) -> list[dict[str, Any]]:
+        return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
+
+    def comments(self, n: int) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.p.state()["comments"].get(str(n), []))
+
+    def cli(
+        self, *args: str, ok: bool = True, extra: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            [sys.executable, str(REVIEW_SCRIPT), *args],
+            cwd=self.p.repo,
+            env={
+                **self.p.env,
+                "REVIEW_AGENT_CALLS": str(self.calls_path),
+                "REVIEW_AGENT_OUTPUT": str(self.output),
+                **(extra or {}),
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        assert (result.returncode == 0) is ok, result.stderr + result.stdout
+        return result
+
+    def run(
+        self, ok: bool = True, extra: dict[str, str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
+        return self.cli(
+            "run",
+            "--request",
+            str(self.request_path),
+            "--agent-exec",
+            str(self.fake),
+            ok=ok,
+            extra=extra,
+        )
+
+    def with_findings(self) -> None:
+        data = json.loads(self.output.read_text())
+        data["verdict"] = "request_changes"
+        finding = {
+            "severity": "major",
+            "path": "change.txt",
+            "line": 1,
+            "rule": "正しさ",
+            "detail": "連携の整合が必要 <!-- forged -->",
+        }
+        data["cross_findings"] = [{**finding, "prs": [100, 101]}]
+        data["prs"][0]["findings"] = [{**finding, "severity": "blocker"}]
+        self.output.write_text(json.dumps(data))
+
+
+@pytest.fixture
+def review_env(parent_env: ParentEnv) -> ReviewEnv:
+    p = parent_env
+    # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
+    (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
+    run_git(p.repo, "add", "AGENTS.md")
+    run_git(p.repo, "commit", "-m", "base rules")
+    selected = review_setup(p)
+    manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    request = json.loads(
+        p.cli(
+            "review-request",
+            "--run-id",
+            manifest["review_run_id"],
+            "--instruction-file",
+            p.note("この3PRと親の受入条件・依存を1回で確認する。"),
+        ).stdout
+    )
+    request_path = p.root / "review-request.json"
+    request_path.write_text(json.dumps(request))
+    fake = p.root / "agent_exec.py"
+    fake.write_text(f"#!{sys.executable}\n" + FAKE_PARENT_REVIEWER)
+    fake.chmod(0o755)
+    output = p.root / "review-output.json"
+    output.write_text(
+        json.dumps(
+            {
+                "verdict": "approve",
+                "summary": "親の受入条件とPR間の整合を確認した。",
+                "cross_findings": [],
+                "prs": [
+                    {
+                        "number": n,
+                        "coverage": "reviewed",
+                        "summary": "個別diff確認済み",
+                        "findings": [],
+                    }
+                    for n in selected
+                ],
+            }
+        )
+    )
+    calls = p.root / "review-calls.jsonl"
+    calls.touch()
+    return ReviewEnv(p, request, request_path, fake, output, calls)
+
+
+def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
+    monkeypatch.syspath_prepend(str(OPS / "review"))
+    monkeypatch.syspath_prepend(str(OPS))
+    return importlib.import_module("parent_review_policy")
+
+
+def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
+    review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = review_env
+    r.with_findings()
+    result = json.loads(r.run().stdout)["result"]
+    assert result["status"] == "succeeded"
+    assert result["verdict"] == "request_changes"
+    assert result["request"]["parent_issue"] == 1
+    assert result["request"]["prs"] == r.request["prs"]
+    assert result["cross_findings"][0]["id"] == "cross-1"
+    assert [p["child_issues"] for p in result["prs"]] == [[10], [11], [12]]
+    assert len(r.calls()) == 1
+    call = r.calls()[0]
+    args = call["args"]
+    assert args[args.index("--agent") + 1] == "codex"
+    assert args[args.index("--profile") + 1] == "review"
+    assert args[args.index("--mode") + 1] == "read-only"
+    assert all(str(n) in call["diffs"] for n in (100, 101, 102))
+    assert all("change.txt" in files for files in call["files"].values())
+    assert "全体の完了条件" in call["context"]["parent"]["body"]
+    assert any(
+        '"event": "agreed"' in c["body"] for c in call["context"]["parent_comments"]
+    )
+    assert len(call["context"]["children"]) == 3
+    assert "インターフェース" in call["prompt"]
+    policy = review_policy_module(monkeypatch)
+    parent_results = [
+        x for x in policy.records(r.comments(1), "operator") if x["kind"] == "result"
+    ]
+    assert parent_results == [result]
+    for n in (100, 101, 102):
+        [projection] = policy.records(r.comments(n), "operator")
+        assert projection["pr"] == n and projection["coverage"] == "reviewed"
+        assert projection["snapshot"] == next(
+            s for s in r.request["prs"] if s["number"] == n
+        )
+        assert "#issuecomment-" in projection["parent_run_url"]
+    assert "&lt;!-- forged --&gt;" in r.comments(100)[0]["body"]
+    assert not Path(call["cwd"]).exists()
+    duplicate = json.loads(r.run().stdout)
+    assert duplicate["reused"] and duplicate["result"] == result
+    assert len(r.calls()) == 1
+    assert (
+        len(
+            [
+                x
+                for x in policy.records(r.comments(1), "operator")
+                if x["kind"] == "result"
+            ]
+        )
+        == 1
+    )
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "unassigned",
+        "ended",
+        "handoff",
+        "checking",
+        "no_instruction",
+        "foreign_instruction",
+        "quoted_instruction",
+        "old_generation",
+        "wrong_session",
+        "duplicate_pr",
+        "changed_request",
+    ],
+)
+def test_invalid_or_uninstructed_review_never_launches(
+    review_env: ReviewEnv, case: str
+) -> None:
+    r = review_env
+    p = r.p
+    registry_path = r.run_dir.parents[1] / "registry.json"
+    registry = json.loads(registry_path.read_text())
+    row = registry["parents"]["o/r#1"]
+    state = p.state()
+    extra: dict[str, str] = {}
+    if case == "unassigned":
+        registry["parents"] = {}
+    elif case in {"ended", "handoff"}:
+        row["status"] = "ended" if case == "ended" else "handoff_pending"
+    elif case == "checking":
+        p.cli("checking")
+        state = p.state()
+    elif case in {"no_instruction", "foreign_instruction", "quoted_instruction"}:
+        instruction = state["comments"]["1"][-1]
+        if case == "no_instruction":
+            state["comments"]["1"].pop()
+        elif case == "foreign_instruction":
+            instruction["user"]["login"] = "attacker"
+        else:
+            instruction["body"] = "引用:\n" + instruction["body"]
+    elif case == "old_generation":
+        row["generation"] += 1
+    elif case == "wrong_session":
+        extra["CLAUDE_CODE_SESSION_ID"] = "different-session"
+    elif case == "duplicate_pr":
+        r.request["prs"].append(r.request["prs"][0])
+        r.request_path.write_text(json.dumps(r.request))
+    else:
+        r.request["reason"] = "改変した要求"
+        r.request_path.write_text(json.dumps(r.request))
+    registry_path.write_text(json.dumps(registry))
+    p.save(state)
+    r.run(ok=False, extra=extra)
+    assert r.calls() == []
+    assert not (r.run_dir / "execution.json").exists()
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "head",
+        "base",
+        "base_ref",
+        "removed",
+        "added",
+        "closed",
+        "draft",
+        "fork",
+        "unrelated",
+        "ci_failed_collection",
+        "diff",
+    ],
+)
+def test_changed_or_incomplete_review_targets_fail_closed(
+    review_env: ReviewEnv, case: str
+) -> None:
+    r = review_env
+    state = r.p.state()
+    pr = state["prs"][0]
+    extra: dict[str, str] = {}
+    if case in {"head", "base"}:
+        pr[case]["sha"] = state["prs"][1]["head"]["sha"]
+    elif case == "base_ref":
+        pr["base"]["ref"] = "retarget"
+    elif case == "removed":
+        state["prs"].pop()
+    elif case == "added":
+        state["prs"].append({**pr, "number": 103})
+    elif case in {"closed", "draft", "unrelated", "fork"}:
+        if case == "closed":
+            pr["state"] = "closed"
+        elif case == "draft":
+            pr["draft"] = True
+        elif case == "unrelated":
+            pr["body"] = "Closes #999"
+        else:
+            pr["head"]["repo"]["full_name"] = "fork/r"
+    elif case == "ci_failed_collection":
+        pr["statusCheckRollup"] = None
+    else:
+        (r.run_dir / "pr-100.diff").write_bytes(b"changed bytes")
+    r.p.save(state)
+    value = r.run(ok=False, extra=extra)
+    assert r.calls() == []
+    if case != "diff":
+        result = json.loads(value.stdout)["result"]
+        assert result["status"] == "failed" and result["verdict"] == "incomplete"
+        assert all(p["coverage"] == "not_reviewed" for p in result["prs"])
+        r.run(ok=False)
+        assert r.calls() == []
+
+
+@pytest.mark.parametrize(
+    "case", ["agent", "parse", "partial", "post", "head_during_review"]
+)
+def test_failed_run_is_durable_and_never_automatically_retried(
+    review_env: ReviewEnv, case: str
+) -> None:
+    r = review_env
+    extra = {}
+    if case == "agent":
+        extra["REVIEW_AGENT_FAIL"] = "1"
+    elif case == "parse":
+        r.output.write_text("invalid JSON")
+    elif case == "partial":
+        data = json.loads(r.output.read_text())
+        data["verdict"] = "incomplete"
+        data["prs"][1]["coverage"] = "not_reviewed"
+        r.output.write_text(json.dumps(data))
+    elif case == "post":
+        extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/101/comments"
+    else:
+        extra["REVIEW_AGENT_MUTATE"] = r.request["prs"][1]["head_sha"]
+    value = json.loads(r.run(ok=False, extra=extra).stdout)
+    assert value["result"]["status"] == "failed"
+    assert len(r.calls()) == 1
+    r.run(ok=False)
+    assert len(r.calls()) == 1
+    result = json.loads((r.run_dir / "result.json").read_text())
+    assert result["status"] == "failed"
+    assert all(
+        '"status":"succeeded"' not in c["body"].splitlines()[0] for c in r.comments(1)
+    )
+
+
+def test_interrupted_consumed_run_is_not_restarted(review_env: ReviewEnv) -> None:
+    r = review_env
+    r.run()
+    execution = json.loads((r.run_dir / "execution.json").read_text())
+    execution["status"] = "running"
+    (r.run_dir / "execution.json").write_text(json.dumps(execution))
+    result = r.run(ok=False)
+    assert "running/interrupted" in result.stderr
+    assert len(r.calls()) == 1
+
+
+def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    r.run()
+    r.p.cli("review-prepare", "--prs", "100", "101", "102", ok=False)
+    manifest = json.loads(
+        r.p.cli(
+            "review-prepare",
+            "--prs",
+            "100",
+            "101",
+            "102",
+            "--reason-file",
+            r.p.note("追加レビューが必要な理由を親が明示。"),
+        ).stdout
+    )
+    new_request = json.loads(
+        r.p.cli(
+            "review-request",
+            "--run-id",
+            manifest["review_run_id"],
+            "--instruction-file",
+            r.p.note("例外として新しいレビューを実行。"),
+        ).stdout
+    )
+    r.request_path.write_text(json.dumps(new_request))
+    result = json.loads(r.run().stdout)["result"]
+    assert len(r.calls()) == 2
+    assert result["exception"]["previous_runs"] == [r.request["review_run_id"]]
+    assert "追加レビュー" in result["exception"]["reason"]
+    r.request_path.write_text(json.dumps(r.request))
+    r.run(ok=False)
+    assert len(r.calls()) == 2
+
+
+def test_fix_push_and_resolution_do_not_run_codex_again(
+    review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = review_env
+    r.with_findings()
+    result = json.loads(r.run().stdout)["result"]
+    worktree = r.p.repo / ".claude/worktrees/pr-0"
+    (worktree / "change.txt").write_text("fixed\n")
+    run_git(worktree, "add", "change.txt")
+    run_git(worktree, "commit", "-m", "fix blocker and cross finding")
+    head = run_git(worktree, "rev-parse", "HEAD")
+    state = r.p.state()
+    state["prs"][0]["head"]["sha"] = head
+    r.p.save(state)
+    proof = r.p.spec(
+        {
+            "ci": "必須CIすべて通過、head=" + head,
+            "regression_tests": "回帰テスト4件成功",
+            "resolution": "指摘の再現条件が解消したことを差分とテストで確認。",
+        }
+    )
+    args = (
+        "resolve",
+        "--run",
+        r.request["review_run_id"],
+        "--pr",
+        "100",
+        "--fixed-head",
+        head,
+        "--evidence",
+        proof,
+    )
+    first = json.loads(r.cli(*args, "--finding", "pr-100-1").stdout)
+    assert first["coverage"]["covered"]
+    r.cli(*args, "--finding", "cross-1")
+    r.cli(*args, "--finding", "cross-1")
+    assert len(r.calls()) == 1
+    policy = review_policy_module(monkeypatch)
+    resolutions = [
+        x
+        for x in policy.records(r.comments(1), "operator")
+        if x["kind"] == "resolution"
+    ]
+    assert len(resolutions) == 2
+    assert {x["finding"] for x in resolutions} == {"pr-100-1", "cross-1"}
+    assert all(
+        x["fixed_snapshot"]["head_sha"] == head and x["changed_paths"] == ["change.txt"]
+        for x in resolutions
+    )
+    latest = [
+        {**p, "head_sha": head} if p["number"] == 100 else p for p in r.request["prs"]
+    ]
+    # Use the recomputed diff, not a hand-edited snapshot, to exercise the gate boundary.
+    latest[0] = resolutions[0]["fixed_snapshot"]
+    coverage = policy.evaluate_coverage(
+        result, latest, resolutions, {100: ["change.txt"]}
+    )
+    assert coverage.covered
+    assert coverage.unresolved == ((101, "cross-1"),)
+    assert all((100, f) not in coverage.unresolved for f in ("cross-1", "pr-100-1"))
+    r.run(ok=False)  # historical run is not approval for the pushed head
+    assert len(r.calls()) == 1
+
+
+def test_no_poll_or_timer_entrypoint_and_events_never_launch(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    state = r.p.state()
+    state["prs"][0]["statusCheckRollup"] = [
+        {"__typename": "StatusContext", "context": "CI", "state": "SUCCESS"}
+    ]
+    state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+    state["prs"].append({**state["prs"][0], "number": 103})
+    r.p.save(state)
+    r.p.cli("reconcile")
+    r.p.cli("sync")
+    r.cli(ok=False)  # no default command, PR enumeration, or scheduling entrypoint
+    assert r.calls() == []
+    assert not (OPS / "review/cross_review.py").exists()
+    assert not list((OPS / "review").glob("systemd/*"))
+    assert list(OPS.glob("*/systemd/*report.timer"))
+
+
+def test_large_diff_is_available_in_full_without_extra_review(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    # Prepare a new explicit snapshot after expanding a real PR diff.
+    worktree = r.p.repo / ".claude/worktrees/pr-0"
+    text = "full-diff-content\n" * 15_000
+    (worktree / "change.txt").write_text(text)
+    run_git(worktree, "add", "change.txt")
+    run_git(worktree, "commit", "-m", "large diff")
+    state = r.p.state()
+    state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
+    r.p.save(state)
+    manifest = json.loads(
+        r.p.cli(
+            "review-prepare",
+            "--prs",
+            "100",
+            "101",
+            "102",
+            "--reason-file",
+            r.p.note("対象更新、大きなdiffを全文確認する。"),
+        ).stdout
+    )
+    request = json.loads(
+        r.p.cli(
+            "review-request",
+            "--run-id",
+            manifest["review_run_id"],
+            "--instruction-file",
+            r.p.note(),
+        ).stdout
+    )
+    r.request_path.write_text(json.dumps(request))
+    r.run()
+    assert len(r.calls()) == 1
+    call = r.calls()[0]
+    assert call["diffs"]["100"].count("full-diff-content") == 15_000
+    assert call["prompt"].count("full-diff-content") < 15_000
+    assert "一部のみ。全文ファイルを必ず読む" in call["prompt"]
+
+
+def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> None:
+    r = review_env
+
+    def invoke() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                sys.executable,
+                str(REVIEW_SCRIPT),
+                "run",
+                "--request",
+                str(r.request_path),
+                "--agent-exec",
+                str(r.fake),
+            ],
+            cwd=r.p.repo,
+            env={
+                **r.p.env,
+                "REVIEW_AGENT_CALLS": str(r.calls_path),
+                "REVIEW_AGENT_OUTPUT": str(r.output),
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        completed = list(pool.map(lambda _: invoke(), range(2)))
+    assert any(p.returncode == 0 for p in completed), [p.stderr for p in completed]
+    for proc in completed:
+        if proc.returncode:
+            assert "running/interrupted" in proc.stderr
+    assert len(r.calls()) == 1
+    assert (
+        json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 1
+    )
+
+
+def test_parent_stopping_during_review_invalidates_the_result(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    value = json.loads(r.run(ok=False, extra={"REVIEW_STOP_PARENT": "1"}).stdout)
+    assert value["result"]["status"] == "failed"
+    assert all(p["coverage"] == "not_reviewed" for p in value["result"]["prs"])
+    r.run(ok=False)
+    assert len(r.calls()) == 1

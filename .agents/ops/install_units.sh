@@ -29,6 +29,20 @@ main() {
   fi
   unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
+  # Retired units must be removed explicitly on the host, including dangling links
+  # and wants/ aliases. Refuse before installing or reloading anything.
+  local retired found f
+  for retired in tennis-lab-cross-review.service tennis-lab-cross-review.timer; do
+    if [[ -d "$unit_dir" ]]; then
+      found="$(find "$unit_dir" -name "$retired" -print -quit)"
+      if [[ -n "$found" ]]; then
+        echo "install_units: retired unit remains: $found" >&2
+        echo "Stop/disable/unlink it and daemon-reload as documented in .agents/ops/review/README.md, then rerun." >&2
+        exit 2
+      fi
+    fi
+  done
+
   # Enumerate into a file first so a find/sort failure aborts here (pipefail) instead of
   # being lost inside a process substitution and installing a partial set.
   UNIT_LIST="$(mktemp)"
@@ -38,7 +52,14 @@ main() {
   mapfile -d '' -t units <"$UNIT_LIST"
   ((${#units[@]})) || { echo "install_units: no units found under $ops_dir" >&2; exit 1; }
 
-  local f
+  for f in "${units[@]}"; do
+    case "$(basename "$f")" in
+      tennis-lab-cross-review.service|tennis-lab-cross-review.timer)
+        echo "install_units: refusing retired cross-review source unit: $f" >&2
+        exit 2 ;;
+    esac
+  done
+
   ((dry_run)) || mkdir -p "$unit_dir"
   for f in "${units[@]}"; do
     echo "link $(basename "$f") -> $f"

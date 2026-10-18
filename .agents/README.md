@@ -52,7 +52,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
 | [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
-| [ops/review/](ops/review/README.md) | Codex による PR レビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（人間への差し戻し） |
+| [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、CI/gate判定部品、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・合意・子の進捗・明示レビュー要求を管理するCLI。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
@@ -66,7 +66,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **放置PR**: N日動きのないPRは、週次レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: CI通過とCodexによるレビュー（作成agentによらずCodexがレビューし、merge を止める指摘だけを報告する）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。
+- **merge**: CI通過と、親が明示起動した統合Codexレビューを条件とする。blocker/majorの解消は親が修正差分・CI・回帰テストで確認し、自動再レビューを行わない。各PRのcoverage・最新head・依存関係を照合する。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。記録・判定の正本は [review/README.md](ops/review/README.md)。
 
 ## 研究ループ（概要）
 
