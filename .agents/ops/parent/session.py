@@ -56,7 +56,7 @@ class ParentSession:
         self, gh: GitHub, store: Store, parent: int, session: str | None
     ) -> None:
         self.gh, self.store, self.parent, self.session = gh, store, parent, session
-        self.key = f"{gh.repo}#{parent}"
+        self.key = f"{gh.repo.casefold()}#{parent}"
         self.endpoint = f"repos/{gh.repo}/issues/{parent}"
         self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
 
