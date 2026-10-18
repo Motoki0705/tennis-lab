@@ -9,4 +9,5 @@ Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 # Optional overrides (OPS_REPORT_AGENT etc.); see README.md "設定".
 EnvironmentFile=-%h/.config/tennis-lab-agents/ops-report.env
 ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/ops-report/ops_report.py report --if-due
-TimeoutStartSec=2h
+# Completion is based on scout results and parent integration, not elapsed time.
+TimeoutStartSec=infinity

@@ -7,13 +7,26 @@ import json
 import logging
 import os
 import shlex
+import signal
 import sys
 from contextlib import AbstractContextManager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from . import agent, collect, lock, proposals, report, schedule, shell, triage
+from . import (
+    agent,
+    audit,
+    collect,
+    lock,
+    memory,
+    memory_pr,
+    proposals,
+    report,
+    schedule,
+    shell,
+    triage,
+)
 from .shell import CommandError
 
 JST = schedule.JST
@@ -21,6 +34,10 @@ OPS_DIR = Path(__file__).resolve().parents[2]  # .agents/ops
 REPO_ROOT = OPS_DIR.parents[1]
 PROMPT_FILE = OPS_DIR / "ops-report" / "prompt.md"
 LOG = logging.getLogger("ops_report")
+
+
+def _interrupt(signum: int, _frame: Any) -> None:
+    raise KeyboardInterrupt(f"signal {signum}")
 
 
 class ConfigError(ValueError):
@@ -87,6 +104,12 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="no-op before the first slot or if already published",
     )
+    rep.add_argument(
+        "--memory-decisions",
+        type=Path,
+        default=None,
+        help="JSON decisions from triage (selected/deferred, with reason and source)",
+    )
     sched = sub.add_parser("schedule")
     actions = sched.add_subparsers(dest="action", required=True)
     for name in ("init", "status"):
@@ -141,6 +164,36 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
             raise ConfigError(
                 f"first slot is {state.anchor.isoformat()}; report is not due"
             )
+        try:
+            history = collect.collect_report_history(args.repo_root.resolve())
+        except BaseException as exc:
+            if not args.dry_run:
+                previous = state.data["last_attempt"]
+                failed_slot = (
+                    schedule.aware_time(previous["slot"])
+                    if previous and previous.get("incomplete")
+                    else slot
+                )
+                state.begin(failed_slot, now)
+                state.finish(
+                    _now(args),
+                    error=f"{type(exc).__name__}: {exc}",
+                    incomplete=bool(previous and previous.get("incomplete")),
+                    url=previous.get("url")
+                    if previous and previous.get("incomplete")
+                    else None,
+                )
+            raise
+        partials = [r for r in history["reports"] if r["status"] == "incomplete"]
+        if partials:
+            # A published incomplete run is owed work, even across later slots.
+            slot = schedule.aware_time(f"{partials[0]['slot']}T08:00:00+09:00")
+            if (
+                slot > now
+                or slot < state.anchor
+                or (slot - state.anchor) % schedule.PERIOD
+            ):
+                raise ConfigError("incomplete report is outside this schedule")
         previous = state.data["last_attempt"]
         if previous and schedule.aware_time(previous["slot"]) > slot:
             raise ConfigError("clock moved behind the last attempted slot")
@@ -151,10 +204,12 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
         if attempted:
             state.begin(slot, now)
         try:
-            history = collect.collect_report_history(args.repo_root.resolve())
+            store = memory_pr.Store(args.repo_root.resolve())
+            memory_errors = [] if args.dry_run else store.sync(history, run_dir)
             if success and not any(
                 r["slot"]
                 == proposals.slot_tag(schedule.aware_time(success["slot"]).date())
+                and r["status"] == "complete"
                 for r in history["reports"]
             ):
                 raise ConfigError(
@@ -167,38 +222,52 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
                     {
                         schedule.aware_time(f"{r['slot']}T08:00:00+09:00"): r["url"]
                         for r in history["reports"]
+                        if r["status"] == "complete"
                     },
                 )
             tag = proposals.slot_tag(slot.date())
             published = next((r for r in history["reports"] if r["slot"] == tag), None)
-            if published:
+            if published and published["status"] == "complete":
                 msg = f"report for {tag} already exists as #{published['number']}"
                 if attempted:
                     # Recover a crash after gh create but before local commit.
                     state.finish(_now(args), url=published["url"])
                     attempted = False
                 if args.if_due:
-                    return _noop(run_dir, "already_published", slot)
+                    _noop(run_dir, "already_published", slot)
+                    return 1 if memory_errors else 0
                 if not args.dry_run:
                     raise ConfigError(msg + "; use --dry-run to preview")
                 LOG.warning("%s (preview only)", msg)
-            url = _generate_report(
+            url, save_errors, complete = _generate_report(
                 args,
                 run_dir,
                 now,
                 slot,
-                (slot - state.anchor) // schedule.PERIOD,
                 history,
                 state.anchor - schedule.PERIOD,
+                store,
             )
             if attempted:
-                state.finish(_now(args), url=url)
+                state.finish(
+                    _now(args),
+                    url=url,
+                    incomplete=not complete,
+                    error=None
+                    if complete
+                    else f"未完了レポート {url}; report --if-due で不足分を再開",
+                )
                 attempted = False
         except BaseException as exc:
             if attempted:
-                state.finish(_now(args), error=f"{type(exc).__name__}: {exc}")
+                state.finish(
+                    _now(args),
+                    error=f"{type(exc).__name__}: {exc}",
+                    incomplete=bool(partials),
+                    url=partials[0]["url"] if partials else None,
+                )
             raise
-        return 0
+        return 1 if memory_errors or save_errors or not complete else 0
 
 
 def _run_schedule(args: argparse.Namespace) -> int:
@@ -220,18 +289,67 @@ def _generate_report(
     run_dir: Path,
     now: datetime,
     slot: datetime,
-    slot_index: int,
     history: dict[str, Any],
     initial_since: datetime,
-) -> str | None:
+    store: memory_pr.Store,
+) -> tuple[str | None, list[str], bool]:
     setting = args.agent or os.environ.get("OPS_REPORT_AGENT") or "codex"
-    agent_name = agent.resolve_agent(setting, slot_index)
+    agent_name = agent.resolve_agent(setting)
     cleanup_env = os.environ.get("OPS_REPORT_CLEANUP_CMD")
     repo_root = args.repo_root.resolve()
-    base = collect.pin_base(
-        repo_root,
-        args.base_ref or os.environ.get("OPS_REPORT_BASE_REF") or "origin/main",
+    if "OPS_REPORT_AGENT_TIMEOUT" in os.environ:
+        raise ConfigError(
+            "OPS_REPORT_AGENT_TIMEOUT was removed; whole-audit elapsed-time limits are not supported"
+        )
+    tag = proposals.slot_tag(slot.date())
+    checkpoint = schedule.state_dir() / "audit" / f"{tag}.json"
+    published = next(
+        (
+            r
+            for r in history["reports"]
+            if r["slot"] == tag and r["status"] == "incomplete"
+        ),
+        None,
     )
+    previous: dict[str, Any] = {}
+    collected: dict[str, Any] | None = None
+    if checkpoint.exists():
+        collected, previous = audit.load_checkpoint(checkpoint, repo_root)
+        meta = collected["meta"]
+        base = collect.BaseRef(
+            meta["base_ref"], meta["base_sha"], meta["base_fetched_from"]
+        )
+        requested_ref = args.base_ref or os.environ.get("OPS_REPORT_BASE_REF")
+        if requested_ref and requested_ref != base.name:
+            raise ConfigError("cannot change the base ref of a resumable audit")
+    elif published:
+        raise ConfigError(
+            f"incomplete report #{published['number']} has no audit checkpoint {checkpoint}; restore it from collected.json/audit.json logs explicitly"
+        )
+    else:
+        base = collect.pin_base(
+            repo_root,
+            args.base_ref or os.environ.get("OPS_REPORT_BASE_REF") or "origin/main",
+        )
+    if published:
+        if (
+            not collected
+            or published["base_sha"] != base.sha
+            or published["audit"] != collected["audit_input_sha256"]
+        ):
+            raise ConfigError("incomplete report does not match its pinned audit input")
+        if published["state"] != "OPEN":
+            raise ConfigError(
+                "incomplete report is closed; reopen the existing issue before resuming"
+            )
+        _, parsed = proposals.parse_report(published["body"])
+        if any(
+            p.child or p.head_checked or any(checked for _, checked in p.options)
+            for p in parsed
+        ):
+            raise ConfigError(
+                "incomplete report has selections/children; resolve them explicitly before replacing proposals"
+            )
     cfg = collect.CollectConfig(
         repo_root=repo_root,
         now=now,
@@ -249,39 +367,106 @@ def _generate_report(
         args.dry_run,
     )
 
-    collected = collect.collect_all(cfg, history=history, initial_since=initial_since)
+    if collected is None:
+        collected = collect.collect_all(
+            cfg, history=history, initial_since=initial_since
+        )
+        collected["ops_memory"]["persistence"] = store.describe(history)
+        collected["ops_memory"]["decisions"] = memory.load_decisions(
+            args.memory_decisions
+        )
+        collected["audit_plan"] = audit.plan(repo_root, base.sha)
+        collected["audit_input_sha256"] = audit.input_digest(collected)
+    elif args.memory_decisions:
+        raise ConfigError(
+            "cannot replace decisions in a pinned audit; resume with the original inputs"
+        )
+    snapshot_path = audit.worktree_path(repo_root, run_dir.name)
+    with audit.checkout(repo_root, base.sha, snapshot_path) as snapshot:
+        if not args.dry_run:
+            memory_pr._atomic_json(
+                checkpoint, {"version": 1, "collected": collected, "results": previous}
+            )
+        collected["audit_runtime"] = {
+            "checkout": str(snapshot),
+            "requested": audit.requested(previous),
+            "previous_results": previous,
+        }
+        stale = report.stale_prs(collected)
+        prompt = agent.build_prompt(
+            PROMPT_FILE.read_text(encoding="utf-8"),
+            slot=slot.date().isoformat(),
+            stale_prs=stale,
+            collected=collected,
+        )
+        prompt_file = run_dir / "prompt.md"
+        prompt_file.write_text(prompt, encoding="utf-8")
+        exec_path = Path(
+            os.environ.get("OPS_REPORT_AGENT_EXEC") or OPS_DIR / "lib" / "agent_exec.sh"
+        ).resolve()
+        failure = None
+        output = ""
+        try:
+            output = agent.execute(
+                agent.AgentRun(
+                    agent=agent_name,
+                    agent_exec=exec_path,
+                    repo_root=snapshot,
+                    prompt_file=prompt_file,
+                    out_file=run_dir / "agent_output.md",
+                    log_dir=run_dir,
+                )
+            )
+        except (CommandError, KeyboardInterrupt) as exc:
+            failure = f"{type(exc).__name__}: {exc}"
+            LOG.error("audit interrupted/failed: %s", failure)
+        result = audit.integrate(
+            output,
+            collected["audit_plan"],
+            {int(pr["number"]) for pr in stale},
+            previous=previous,
+            failure=failure,
+        )
+        for error in result.errors:
+            LOG.error("audit incomplete: %s", error)
+    (run_dir / "audit.json").write_text(
+        json.dumps(result.record(), ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (run_dir / "audit_plan.json").write_text(
+        json.dumps(collected["audit_plan"], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     (run_dir / "collected.json").write_text(
         json.dumps(collected, ensure_ascii=False, indent=1), encoding="utf-8"
     )
     title = report.report_title(slot.date())
     tag = proposals.slot_tag(slot.date())
 
-    stale = report.stale_prs(collected)
-    prompt = agent.build_prompt(
-        PROMPT_FILE.read_text(encoding="utf-8"),
-        slot=slot.date().isoformat(),
-        stale_prs=stale,
-        collected=collected,
-    )
-    prompt_file = run_dir / "prompt.md"
-    prompt_file.write_text(prompt, encoding="utf-8")
-    exec_path = Path(
-        os.environ.get("OPS_REPORT_AGENT_EXEC") or OPS_DIR / "lib" / "agent_exec.sh"
-    )
-    output = agent.execute(
-        agent.AgentRun(
-            agent=agent_name,
-            agent_exec=exec_path,
-            repo_root=cfg.repo_root,
-            prompt_file=prompt_file,
-            out_file=run_dir / "agent_output.md",
-            log_dir=run_dir,
-            timeout=_env_int("OPS_REPORT_AGENT_TIMEOUT", 5400),
+    analysis = result.analysis
+    try:
+        memory.apply_update(
+            collected["ops_memory"]["files"],
+            analysis.memory_update,
+            source=f"ops-report:{tag}",
+            today=now.date(),
         )
-    )
-    analysis = agent.parse_agent_output(output, {int(pr["number"]) for pr in stale})
+    except ValueError as exc:
+        result.errors.append(f"専用memoryの統合: {exc}")
+        result.complete = False
+        analysis = agent.AgentReport(
+            analysis.summary, analysis.proposals, analysis.stale_pr_notes, None
+        )
+        result.analysis = analysis
+        LOG.error("audit incomplete: %s", result.errors[-1])
+        (run_dir / "audit.json").write_text(
+            json.dumps(result.record(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     title, body, ids = report.render_report(
-        slot=slot.date(), agent_name=agent_name, collected=collected, analysis=analysis
+        slot=slot.date(),
+        agent_name=agent_name,
+        collected=collected,
+        analysis=analysis,
+        audit=result,
     )
     (run_dir / "report.md").write_text(body, encoding="utf-8")
     LOG.info(
@@ -291,16 +476,24 @@ def _generate_report(
         args.output.write_text(body, encoding="utf-8")
     if args.dry_run:
         sys.stdout.write(f"# title: {title}\n\n{body}")
-        return None
+        return None, [], result.complete
+    collected.pop("audit_runtime")
+    memory_pr._atomic_json(
+        checkpoint, {"version": 1, "collected": collected, "results": result.results}
+    )
     with _issue_lock():
         fresh = collect.collect_report_history(cfg.repo_root)
         duplicate = next((r for r in fresh["reports"] if r["slot"] == tag), None)
-        if duplicate:
+        if duplicate and (
+            not published
+            or duplicate["number"] != published["number"]
+            or duplicate["status"] != "incomplete"
+        ):
             raise ConfigError(
                 f"report for {tag} already exists as #{duplicate['number']}"
             )
-        if [(r["slot"], r["period_end"]) for r in fresh["reports"]] != [
-            (r["slot"], r["period_end"]) for r in history["reports"]
+        if [(r["slot"], r["body"]) for r in fresh["reports"]] != [
+            (r["slot"], r["body"]) for r in history["reports"]
         ]:
             raise ConfigError(
                 "report history changed during collection; retry from the latest boundary"
@@ -308,21 +501,72 @@ def _generate_report(
         triage.ensure_labels(
             [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
-        url = shell.gh(
-            ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
-             "--label", collect.REPORT_LABEL],
-            cwd=cfg.repo_root,
-        ).strip()  # fmt: skip
+        if result.complete:
+            store.prepare(
+                tag,
+                collected["ops_memory"],
+                analysis.memory_update,
+                title=title,
+                body=body,
+            )
+            if duplicate:
+                # Pin the edit target even if the edit succeeds but its response is lost.
+                store.record_publication(tag, duplicate["url"])
+        if duplicate:
+            shell.gh(
+                [
+                    "issue",
+                    "edit",
+                    str(duplicate["number"]),
+                    "--title",
+                    title,
+                    "--body-file",
+                    str(run_dir / "report.md"),
+                ],
+                cwd=repo_root,
+            )
+            url = duplicate["url"]
+        else:
+            url = shell.gh(
+                ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
+                 "--label", collect.REPORT_LABEL], cwd=cfg.repo_root,
+            ).strip()  # fmt: skip
+            if result.complete:
+                store.record_publication(tag, url)
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
-        json.dumps({"title": title, "url": url, "ids": ids}, ensure_ascii=False),
+        json.dumps(
+            {
+                "title": title,
+                "url": url,
+                "ids": ids,
+                "status": "complete" if result.complete else "incomplete",
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     print(url)
-    return url
+    # The schedule records publication success even if memory persistence fails.
+    # A retry recovers via history, without republishing or rerunning the agent.
+    save_errors = store.sync(collect.collect_report_history(cfg.repo_root), run_dir)
+    return url, save_errors, result.complete
 
 
 def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
+    # Use the report's lock, so CI reconciliation and worktree saves cannot race
+    # a new report's collection. Release it before triage takes the issue lock.
+    memory_errors: list[str] = []
+    if not args.dry_run:
+        with lock.exclusive(
+            schedule.state_dir() / "schedule.lock",
+            timeout=_env_int("OPS_REPORT_LOCK_TIMEOUT", 600),
+        ):
+            store = memory_pr.Store(args.repo_root.resolve())
+            if store.records:
+                memory_errors = store.sync(
+                    collect.collect_report_history(args.repo_root.resolve()), run_dir
+                )
     # Child lookup -> create -> report annotation must not interleave with another run.
     with _issue_lock():
         result = triage.triage(
@@ -332,16 +576,19 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
         "created": result.created,
         "linked_existing": result.linked_existing,
         "errors": result.errors,
+        "memory_errors": memory_errors,
     }
     (run_dir / "result.json").write_text(
         json.dumps(summary, ensure_ascii=False), encoding="utf-8"
     )
     print(json.dumps(summary, ensure_ascii=False))
-    return 1 if result.errors else 0
+    return 1 if result.errors or memory_errors else 0
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command == "report":
+        signal.signal(signal.SIGTERM, _interrupt)
     log_dir = (args.log_dir or _default_log_dir()).resolve()
     stamp = datetime.now(JST).strftime("%Y%m%dT%H%M%S")
     run_dir = (

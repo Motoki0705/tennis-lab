@@ -59,10 +59,15 @@ def run(
     return proc.stdout
 
 
-def _live_group_members(pgid: int) -> list[int]:
+def _live_group_members(pgid: int, proc_root: Path = Path("/proc")) -> list[int]:
     """PIDs of non-zombie processes in process group ``pgid`` (Linux ``/proc``)."""
     members: list[int] = []
-    for stat_file in Path("/proc").glob("[0-9]*/stat"):
+    # glob("[0-9]*/stat") calls exists() on each stat file *before* yielding it;
+    # a process exiting during that probe can raise ESRCH outside our read guard.
+    for process_dir in proc_root.iterdir():
+        if not process_dir.name.isdigit():
+            continue
+        stat_file = process_dir / "stat"
         try:
             stat = stat_file.read_text(encoding="utf-8", errors="replace")
         except (FileNotFoundError, ProcessLookupError):
@@ -107,7 +112,7 @@ def run_process_group(
     cmd: Sequence[str],
     *,
     cwd: Path,
-    timeout: float,
+    timeout: float | None,
     env: Mapping[str, str] | None = None,
     term_grace: float = DEFAULT_TERM_GRACE_SECONDS,
 ) -> str:

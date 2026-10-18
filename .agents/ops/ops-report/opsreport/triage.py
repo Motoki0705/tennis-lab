@@ -229,7 +229,10 @@ def _triage_report(
     dry_run: bool,
 ) -> None:
     number = int(report["number"])
-    _, parsed = parse_report(report["body"])
+    meta, parsed = parse_report(report["body"])
+    if meta.status == "incomplete":
+        LOG.info("#%d: incomplete audit; defer triage until completion", number)
+        return
     # proposal ID -> (child issue, option the child was filed for)
     to_link: dict[str, tuple[int, str | None]] = {}
     for prop in parsed:
