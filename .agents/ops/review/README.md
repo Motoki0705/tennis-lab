@@ -167,6 +167,7 @@ workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最
 旧 `cross_review.py` と `tennis-lab-cross-review.{service,timer}` は削除済み。
 installerは導入先に残る旧unit（dangling symlink・wants内も含む）を検出すると、
 リンク・daemon-reload・enableより前に撤去手順を示して失敗する。旧source unitも再導入しない。
+旧週次レポートunitも残っている場合は [ops-reportの導入手順](../ops-report/README.md) で撤去する。
 ホストで次を実施し、結果を親issueへ記録する。
 
 ```bash

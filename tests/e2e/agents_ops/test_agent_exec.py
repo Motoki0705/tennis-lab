@@ -350,13 +350,19 @@ def test_install_units_uses_main_source_when_cwd_is_linked(tmp_path: Path) -> No
     assert calls.read_text().splitlines() == ["--user daemon-reload"]
 
 
-@pytest.mark.parametrize(
-    "name", ["tennis-lab-cross-review.service", "tennis-lab-cross-review.timer"]
-)
+RETIRED_UNITS = [
+    ("tennis-lab-cross-review.service", ".agents/ops/review/README.md"),
+    ("tennis-lab-cross-review.timer", ".agents/ops/review/README.md"),
+    ("tennis-lab-weekly-report.service", ".agents/ops/ops-report/README.md"),
+    ("tennis-lab-weekly-report.timer", ".agents/ops/ops-report/README.md"),
+]
+
+
+@pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
 @pytest.mark.parametrize("where", ["direct", "dangling", "wants"])
 @pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
-def test_installer_refuses_retired_review_units_before_side_effects(
-    tmp_path: Path, name: str, where: str, extra: list[str]
+def test_installer_refuses_retired_units_before_side_effects(
+    tmp_path: Path, name: str, readme: str, where: str, extra: list[str]
 ) -> None:
     directory = tmp_path / "config/systemd/user"
     if where == "wants":
@@ -368,22 +374,31 @@ def test_installer_refuses_retired_review_units_before_side_effects(
     else:
         old.symlink_to(tmp_path / "removed-source" / name)
     result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], *extra)
-    assert result.returncode != 0
+    assert result.returncode == 2
     assert "retired unit remains" in result.stderr
-    assert ".agents/ops/review/README.md" in result.stderr
+    assert str(old) in result.stderr
+    assert readme in result.stderr
     assert "daemon-reload" in result.stderr
+    assert old.is_file() if where == "direct" else old.is_symlink()
     assert not calls.exists()
     assert not (tmp_path / "config/systemd/user/demo.service").exists()
+    assert not (tmp_path / "config/systemd/user/demo.timer").exists()
+    assert "link " not in result.stdout
 
 
-@pytest.mark.parametrize(
-    "name", ["tennis-lab-cross-review.service", "tennis-lab-cross-review.timer"]
-)
-def test_installer_never_reintroduces_retired_source(tmp_path: Path, name: str) -> None:
-    result, calls = _run_installer(tmp_path, ["demo.timer", name], "--enable")
-    assert result.returncode != 0 and "retired cross-review source" in result.stderr
+@pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
+@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+def test_installer_never_reintroduces_retired_source(
+    tmp_path: Path, name: str, readme: str, extra: list[str]
+) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.timer", name], *extra)
+    assert result.returncode == 2
+    assert "retired source unit" in result.stderr
+    assert name in result.stderr
+    assert readme in result.stderr
     assert not calls.exists()
     assert not (tmp_path / "config").exists()
+    assert "link " not in result.stdout
 
 
 def test_installer_reinstall_keeps_report_and_cannot_restore_review(
@@ -412,3 +427,28 @@ def test_installer_reinstall_keeps_report_and_cannot_restore_review(
         "--user daemon-reload",
         "--user daemon-reload",
     ]
+
+
+def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
+    source = ROOT / ".agents/ops/ops-report/systemd"
+    units = sorted(p.name for p in source.iterdir())
+    assert set(units) == {
+        "tennis-lab-ops-report.service",
+        "tennis-lab-ops-report.timer",
+        "tennis-lab-ops-triage.service",
+        "tennis-lab-ops-triage.timer",
+    }
+    result, calls = _run_installer(tmp_path, units, "--enable")
+    assert result.returncode == 0, result.stderr
+    assert sorted(p.name for p in (tmp_path / "config/systemd/user").iterdir()) == units
+    assert calls.read_text().splitlines() == [
+        "--user daemon-reload",
+        "--user enable --now tennis-lab-ops-report.timer",
+        "--user enable --now tennis-lab-ops-triage.timer",
+    ]
+    service = (source / "tennis-lab-ops-report.service").read_text()
+    timer = (source / "tennis-lab-ops-report.timer").read_text()
+    assert "ops_report.py report --if-due" in service
+    assert "ops-report.env" in service
+    assert "OnCalendar=*-*-* 08:00:00 Asia/Tokyo" in timer
+    assert "Persistent=true" in timer
