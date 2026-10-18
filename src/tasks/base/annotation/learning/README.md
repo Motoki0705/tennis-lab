@@ -17,6 +17,9 @@ snapshotの内容とmembershipはadapterが検査し、baseが元動画・clip�
 旧・新holdoutを確定する。元の評価参照とrecipeを解決済み `FixedEvaluation` に保存し、
 planを途中で書き換えない。追加clipはtrain/validation/testのいずれかに属し、
 trainに利用可能な追加教師が必要となる。
+追加clipがvalidation/testだけに属する公開も、membershipと元動画分離を検証してから
+`no_additional_teachers`として保存する。未割当clipやsplit重複はこの状態へ読み替えない。
+解決済み評価の元holdout・recipe参照は、intentの保存とqueue受付より前にplanと照合する。
 再登録では同じ公開receiptの登録をロックして既存intentを先に調べ、保存済みの評価参照と
 各partitionを検証する。登録済み入力の欠損・改変を検出した場合は評価の生成処理へ進まない。
 `EvaluationReceipt.validation` は候補選択に使った固定validationと一致させる。
@@ -76,6 +79,9 @@ retry記録やrequestの保存後（保護登録の失敗を含む）に中断�
 
 `ModelRegistry.bootstrap(model, evidence)` で初期モデルを根拠付きで明示登録する。
 最終採用は、task判定、成功した学習・評価、固定validation・policyの参照を再検証してから行う。
+`ModelRegistry.select`の直接呼出し・保存済みverdictからの再開でも、adapterが評価証跡を
+検証して判定を再計算し、保存済みverdict全文と照合する。参照だけが正しい不正な合格判定や、
+不合格から合格へ書き換えられたverdictは採用できない。判定の再計算は推論ジョブを起動しない。
 現行の `ModelState`（モデル全参照と世代）が評価基準と一致するときだけ、新世代へ切り替える。
 比較元が変わっていれば `reevaluation_required` を保存し、自動で評価基準を読み替えない。
 

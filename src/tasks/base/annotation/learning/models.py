@@ -167,6 +167,11 @@ class ModelRegistry:
             raise ValueError("model selection reference adapter task mismatch")
         if intent.selection_policy is None or verdict.policy != intent.selection_policy:
             raise ValueError("model selection requires the frozen adoption policy")
+        # A structurally valid or cached verdict is not proof of task acceptance.
+        # Recompute from pinned evidence on direct calls and recovery alike.
+        adapter.validate_evaluation(self.layout, intent, evaluation)
+        if adapter.select(self.layout, intent, verdict.evaluation) != verdict:
+            raise ValueError("model selection verdict differs from the task's verified judgment")
         expected, candidate = evaluation.baseline, evaluation.candidate
         if expected.model.task != candidate.task or candidate == expected.model:
             raise ValueError("candidate must be a new model of the same task")

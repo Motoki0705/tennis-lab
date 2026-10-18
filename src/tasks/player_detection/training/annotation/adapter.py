@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.tasks.base.annotation.artifacts import read_document, verify_reference
 from src.tasks.base.annotation.contracts import ArtifactRef
+from src.tasks.base.annotation.learning.adapters import NoAdditionalTeachers
 from src.tasks.base.annotation.learning.contracts import (
     DatasetPartition,
     EvaluationReceipt,
@@ -18,7 +19,7 @@ from src.tasks.player_detection.data.snapshots.partitions import validate_partit
 
 from . import checkpoints, evaluation, storage
 from .contracts import PlayerSelectionPolicy
-from .inputs import resolve_inputs, run_root, training_partition
+from .inputs import prepare_inputs, run_root, training_partition
 
 
 class PlayerLearningAdapter:
@@ -31,7 +32,8 @@ class PlayerLearningAdapter:
         intent: LearningIntent,
         evaluation: EvaluationReceipt,
     ) -> tuple[ArtifactRef, ...]:
-        return storage.retained_references(layout, intent, evaluation)
+        dependencies: tuple[ArtifactRef, ...] = storage.retained_references(layout, intent, evaluation)
+        return dependencies
 
     def training_partition(
         self, layout: AnnotationLayout, snapshot: ArtifactRef
@@ -48,10 +50,16 @@ class PlayerLearningAdapter:
         else:
             validate_partition(layout, partition)
 
-    def validate_intent(self, layout: AnnotationLayout, intent: LearningIntent) -> None:
-        resolve_inputs(layout, intent).configuration(
+    def validate_intent(
+        self, layout: AnnotationLayout, intent: LearningIntent
+    ) -> NoAdditionalTeachers | None:
+        inputs = prepare_inputs(layout, intent)
+        if isinstance(inputs, NoAdditionalTeachers):
+            return inputs
+        inputs.configuration(
             layout, intent, run_root(layout, intent) / "attempt-001", None
         )
+        return None
 
     def input_references(
         self, layout: AnnotationLayout, intent: LearningIntent
