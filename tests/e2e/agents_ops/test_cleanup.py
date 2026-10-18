@@ -250,7 +250,6 @@ def lab(tmp_path: Path) -> Lab:
 
 @pytest.fixture
 def background(lab: Lab) -> Iterator[list[subprocess.Popen[bytes]]]:
-    # Hold helper processes until teardown; slow scans must not outlive a timer.
     procs: list[subprocess.Popen[bytes]] = []
     yield procs
     for p in procs:
@@ -735,15 +734,21 @@ def test_protection_conditions(
     lab: Lab, background: list[subprocess.Popen[bytes]]
 ) -> None:
     by_cwd = _merged_worktree(lab, "by-cwd")
-    background.append(subprocess.Popen(["sleep", "infinity"], cwd=by_cwd))
+    # The fixture owns these helpers' lifetimes. A timed sleep can expire before
+    # the later deletion checks when other workers share a busy host.
+    background.append(
+        subprocess.Popen(
+            [sys.executable, "-c", "import signal; signal.pause()"], cwd=by_cwd
+        )
+    )
 
     by_fd = _merged_worktree(lab, "by-fd")
     ready = lab.tmp / "fd-ready"
     holder = (
-        "import sys, threading, pathlib\n"
+        "import sys, signal, pathlib\n"
         "f = open(sys.argv[1] + '/' + sys.argv[3] + '/README')\n"
         "pathlib.Path(sys.argv[2]).touch()\n"
-        "threading.Event().wait()\n"
+        "signal.pause()\n"
     )
     # argv carries the worktree name only as a bare word: only the open fd matches.
     background.append(
@@ -767,7 +772,7 @@ def test_protection_conditions(
             [
                 sys.executable,
                 "-c",
-                "import threading; threading.Event().wait()",
+                "import signal; signal.pause()",
                 f"--out={by_argv}/run",
             ],
             cwd=lab.tmp,
@@ -837,7 +842,7 @@ def test_process_argv_relative_to_its_cwd_protects_worktree(
     by_fragment = _merged_in_repo(lab, "feat/proc-frag")
     by_cwd = _merged_in_repo(lab, "feat/proc-rel")
     lookalike = _merged_in_repo(lab, "feat/proc-rel-x")
-    sleeper = "import threading; threading.Event().wait()"
+    sleeper = "import time; time.sleep(60)"
     # Started from the main checkout; no fd stays open in the worktree.
     background.append(
         subprocess.Popen(
@@ -1042,7 +1047,7 @@ def test_approved_delete_rechecks_each_entry_right_before_deleting(
             return
         # Something starts using `two` while `one` is being removed.
         if change == "process":
-            background.append(subprocess.Popen(["sleep", "infinity"], cwd=two))
+            background.append(subprocess.Popen(["sleep", "60"], cwd=two))
         elif change == "queue":
             (lab.queue / "jobs" / "9_9_late.job").write_text(
                 f"# name: late\ncd {two}\npython train.py\n", encoding="utf-8"
