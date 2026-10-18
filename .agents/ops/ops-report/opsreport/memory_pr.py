@@ -1,12 +1,13 @@
 """Publication journal and a narrow, non-blocking merge path for report memory.
 
-The caller holds schedule.lock (including triage). Only an issue present in the
-published history authorizes git/PR writes. CI is inspected once per invocation;
-no agent or PR-review gate is invoked here.
+The caller holds schedule.lock (including triage). Only a published issue matching
+the prepared report and author authorizes git/PR writes. CI is inspected once per
+invocation; no agent or PR-review gate is invoked here.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -61,7 +62,7 @@ class Store:
                 if (
                     set(data) != {"version", "records"}
                     or type(data["version"]) is not int
-                    or data["version"] != 1
+                    or data["version"] != 2
                 ):
                     raise ValueError("invalid journal schema/version")
                 if not isinstance(data["records"], dict):
@@ -75,6 +76,16 @@ class Store:
                         raise ValueError("invalid journal slot")
                     if row["state"] not in {"prepared", "pending", *TERMINAL}:
                         raise ValueError("invalid journal state")
+                    publication = row["publication"]
+                    if (
+                        set(publication) != {"title", "body_sha256", "author"}
+                        or any(
+                            not isinstance(value, str) or not value
+                            for value in publication.values()
+                        )
+                        or not re.fullmatch(r"[a-f0-9]{64}", publication["body_sha256"])
+                    ):
+                        raise ValueError("invalid journal publication identity")
                     memory.parse_update(row["update"])
                     if row["update"] is not None:
                         if not re.fullmatch(r"[a-f0-9]{40}", row["base_sha"]):
@@ -98,10 +109,16 @@ class Store:
                 ) from exc
 
     def save(self) -> None:
-        _atomic_json(self.path, {"version": 1, "records": self.records})
+        _atomic_json(self.path, {"version": 2, "records": self.records})
 
     def prepare(
-        self, slot: str, dedicated: dict[str, Any], update: dict[str, Any] | None
+        self,
+        slot: str,
+        dedicated: dict[str, Any],
+        update: dict[str, Any] | None,
+        *,
+        title: str,
+        body: str,
     ) -> None:
         old = self.records.get(slot)
         if old and old["state"] != "prepared":
@@ -112,6 +129,9 @@ class Store:
         memory.apply_update(
             dedicated["files"], update, source=f"ops-report:{slot}", today=date.today()
         )
+        author = shell.gh_json(["api", "user"], cwd=self.repo_root)["login"]
+        if not isinstance(author, str) or not author:
+            raise ValueError("publication author must be an authenticated GitHub login")
         self.records[slot] = {
             "state": "prepared",
             "stage": "publication_unconfirmed",
@@ -119,10 +139,27 @@ class Store:
             "base_sha": dedicated.get("base_sha"),
             "files": dedicated["files"],
             "update": update,
+            "publication": {
+                "title": title,
+                "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+                "author": author,
+            },
             "report_url": None,
             "head": None,
             "pr_url": None,
         }
+        self.save()
+
+    def record_publication(self, slot: str, url: str) -> None:
+        """Bind a create response or edit target without confirming publication."""
+        if not re.fullmatch(
+            r"https://github\.com/[^/\s]+/[^/\s]+/issues/[1-9]\d*", url
+        ):
+            raise ValueError("publication requires a valid report issue URL")
+        row = self.records[slot]
+        if row["state"] != "prepared":
+            raise ValueError(f"memory {slot} publication is already confirmed")
+        row["report_url"] = url
         self.save()
 
     def describe(self, history: dict[str, Any]) -> list[dict[str, Any]]:
@@ -151,11 +188,7 @@ class Store:
 
     def sync(self, history: dict[str, Any], run_dir: Path) -> list[str]:
         errors = []
-        published = {
-            r["slot"]: r
-            for r in history["reports"]
-            if r["status"] == "complete"
-        }
+        published = {r["slot"]: r for r in history["reports"]}
         for slot, row in sorted(self.records.items()):
             if row["state"] in TERMINAL:
                 continue
@@ -165,9 +198,26 @@ class Store:
                         f"memory {slot} has no published report; repair explicitly"
                     )
                 continue  # failed publication: never write these observations
-            report_url = published[slot]["url"]
+            published_report = published[slot]
+            report_url = published_report["url"]
             if row["report_url"] and row["report_url"] != report_url:
-                raise ValueError(f"memory {slot} report URL changed")
+                raise ValueError(f"memory {slot} publication URL mismatch")
+            publication = row["publication"]
+            if published_report["author"] != publication["author"]:
+                raise ValueError(f"memory {slot} publication identity/content mismatch")
+            if published_report["status"] != "complete":
+                if row["state"] != "prepared":
+                    raise ValueError(
+                        f"memory {slot} has no published report; repair explicitly"
+                    )
+                # A failed edit may still expose the original incomplete body.
+                continue
+            if row["state"] == "prepared" and any(
+                published_report[key] != publication[key]
+                for key in ("title", "body_sha256")
+            ):
+                raise ValueError(f"memory {slot} publication identity/content mismatch")
+            # Once verified, humans may edit the title and proposal checkboxes.
             row.update(state="pending", report_url=report_url, error=None)
             self.save()
             try:

@@ -49,7 +49,7 @@ def emit(rows):
 
 
 def gh_issue(r):
-    return {**r, "labels": [{"name": n} for n in r["labels"]], "author": {"login": "bot"}}
+    return {**r, "labels": [{"name": n} for n in r["labels"]], "author": r.get("author", {"login": "bot"})}
 
 
 def save():
@@ -58,7 +58,9 @@ def save():
 
 
 head = args[:2]
-if head == ["issue", "list"]:
+if args == ["api", "user"]:
+    print(json.dumps({"login": "bot"}))
+elif head == ["issue", "list"]:
     rows = state["issues"]
     st = opt("--state", "open")
     if st != "all":
@@ -82,6 +84,7 @@ elif head == ["issue", "create"]:
         "number": number, "title": opt("--title"), "body": body, "labels": opts("--label"),
         "state": "OPEN", "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
         "url": f"https://github.com/o/r/issues/{number}",
+        "author": {"login": os.environ.get("FAKE_GH_CREATE_AUTHOR", "bot")},
     })
     # Simulate a human editing report checkboxes while triage is filing children.
     for old, new in json.loads(os.environ.get("FAKE_GH_CREATE_EDIT", "[]")):
@@ -89,12 +92,17 @@ elif head == ["issue", "create"]:
             if "ops-report" in issue["labels"]:
                 issue["body"] = issue["body"].replace(old, new)
     save()
-    print(f"https://github.com/o/r/issues/{number}")
+    print(os.environ.get("FAKE_GH_CREATE_URL", f"https://github.com/o/r/issues/{number}"))
 elif head == ["issue", "edit"]:
     issue = next(r for r in state["issues"] if r["number"] == int(args[2]))
+    if opt("--title") is not None:
+        issue["title"] = opt("--title")
     with open(opt("--body-file"), encoding="utf-8") as fh:
         issue["body"] = fh.read()
     save()
+    if os.environ.get("FAKE_GH_EDIT_FAIL_AFTER_SAVE"):
+        print("fake gh: edit response lost after publication", file=sys.stderr)
+        sys.exit(1)
 elif head == ["pr", "list"]:
     if opt("--head"):
         rows = [r for r in state.get("memory_prs", []) if r["headRefName"] == opt("--head")]
