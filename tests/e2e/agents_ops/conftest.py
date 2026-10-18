@@ -112,7 +112,7 @@ elif args[0] == "api" and "--method" in args:
         api_emit({"message": "Not Found"}, 404)
     if tail == "parent":
         parent = state.get("parents", {}).get(n)
-        api_emit(api_issue(next(i for i in state["issues"] if i["number"] == parent)) if parent else {"message": "Not Found"}, 200 if parent else 404)
+        api_emit(api_issue(next(i for i in state["issues"] if i["number"] == parent)) if parent else {"message": "No parent issue found"}, 200 if parent else 404)
     if tail == "sub_issues":
         if method == "GET":
             api_emit(page([api_issue(i) for i in state["issues"] if state.get("parents", {}).get(str(i["number"])) == int(n)]))
