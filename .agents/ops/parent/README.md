@@ -84,14 +84,22 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 receive-proposal --report 1300 --proposal R-20261019-01
+# 会話でその提案の要件を認識合わせし、人間の合意を得た後
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --report 1300 --proposal R-20261019-01 --spec tmp/proposal-agreement.json
 ```
 
 両イベントは `source: {proposal_id, report_number, option}`、`adoption: selected` と
 `proposal_sha256` を持ち、セッションIDを公開しない。digestは提案の本文・選択肢の定義に結び付け、
 変更可能な引渡し表示と関連親の指定を含めない。受領済みの再送は冪等。
-受領は実装への同意ではなく、新しい提案の受領後は `checking` となり、別途の人間との合意まで
-create-child/delegateを拒否する。既存の親合意を新しい提案へ流用しない。agreeは受領した提案を
-`proposal_receipts` として合意コメントへ結び付ける。受領直後の中断もGitHubコメントから復元する。
+受領は実装への同意ではなく、その提案だけを要件確認待ちにする。親全体のphase・合意と、
+既存の独立作業・レビュー証拠は維持する。親自体が合意済みの状態で、上記の提案指定付き `agree` に
+同じ5キー形式の合意specを渡す。`event: proposal_agreed` に受領時のsource・提案digestと合意内容を記録し、
+その提案由来のcreate-child/delegateだけを許可する。他の受領提案や既存の親合意を流用しない。
+statusの `proposal_receipts` / `proposal_agreements` で未合意と合意済みを照合でき、受領直後の中断も
+GitHubコメントから復元する。明示的な `checking` は親全体と提案別の合意を取り消すため、
+親の `agree` と各提案の合意を再記録するまで、それぞれの実装を拒否する。
+既存提案の合意内容を変更する場合も `checking` で明示的に取り消してから記録する。
+未取消の合意は同じ内容の再送だけを許可し、レビュー後に対象作業の要件だけを黙って差し替えない。
 親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
 採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。
 受領・起票・委任時は、出典がopenで完了済みの `ops-report` issueであることも検査する。

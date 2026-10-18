@@ -49,8 +49,11 @@ def parser() -> argparse.ArgumentParser:
         help="explicit takeover after inspecting an unexpectedly interrupted owner",
     )
     handoff.add_argument("--note-file", required=True)
-    for command in ("agree", "create-child"):
-        commands.add_parser(command).add_argument("--spec", required=True)
+    agree = commands.add_parser("agree")
+    agree.add_argument("--spec", required=True)
+    agree.add_argument("--report", type=int)
+    agree.add_argument("--proposal")
+    commands.add_parser("create-child").add_argument("--spec", required=True)
     receipt = commands.add_parser("receive-proposal")
     receipt.add_argument("--report", type=int, required=True)
     receipt.add_argument("--proposal", required=True)
@@ -110,7 +113,9 @@ def main(argv: list[str] | None = None) -> int:
             elif command == "checking":
                 result = session.checking()
             elif command == "agree":
-                result = session.agree(read_object(args.spec))
+                result = session.agree(
+                    read_object(args.spec), args.report, args.proposal
+                )
             elif command == "release":
                 result = session.lifecycle(
                     "ended" if args.ended else "released", read_text(args.note_file)

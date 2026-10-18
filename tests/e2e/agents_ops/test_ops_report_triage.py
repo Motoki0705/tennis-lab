@@ -73,11 +73,17 @@ def _json(ops: Any, value: Any) -> str:
     return str(path)
 
 
-def _agree(ops: Any) -> None:
-    _parent(ops, "checking")
+def _agree(ops: Any, *, pid: str | None = None, report: int = 100) -> None:
+    if pid is not None:
+        status = json.loads(_parent(ops, "status").stdout)
+        if status["phase"] != "要件合意済み":
+            _agree(ops)
+    else:
+        _parent(ops, "checking")
     _parent(
         ops,
         "agree",
+        *(["--report", str(report), "--proposal", pid] if pid is not None else []),
         "--spec",
         _json(
             ops,
@@ -209,7 +215,7 @@ def test_adoption_receipt_and_agreement_are_three_distinct_states(ops_env: Any) 
         ok=False,
     )
     assert _children(ops) == []
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     created = json.loads(_create(ops).stdout)
     assert created["child"] == 101 and not created["reused"]
     child = _children(ops)[0]
@@ -238,12 +244,146 @@ def test_old_parent_agreement_does_not_authorize_newly_received_proposal(
     _parent(ops, "register")
     _agree(ops)
     _select(ops)
+    agreement = _events(ops, "agreed")[0]["agreement"]
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "agree",
+        "--report",
+        "100",
+        "--proposal",
+        "R-20261012-02",
+        "--spec",
+        _json(ops, agreement),
+        ok=False,
+    )
+    assert "explicit receipt" in rejected.stderr
+    assert ops.state == before
     _create(ops, ok=False)  # No explicit receipt, even with a parent agreement.
     _receive(ops)
     _create(ops, ok=False)
     assert _children(ops) == []
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     _create(ops)
+
+
+def test_pending_proposal_preserves_independent_creation_and_delegation(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _agree(ops)
+    independent = _manifest(key="independent")
+    independent["spec"].pop("source")
+    child = json.loads(_create(ops, manifest=independent).stdout)["child"]
+    _select(ops)
+    _receive(ops)
+    status = json.loads(_parent(ops, "status").stdout)
+    assert status["phase"] == "要件合意済み"
+    assert len(status["proposal_receipts"]) == 1
+    assert status["proposal_agreements"] == []
+    before = ops.state
+    assert "separate human requirements agreement" in _create(ops, ok=False).stderr
+    assert ops.state == before
+    assert json.loads(_create(ops, manifest=independent).stdout)["reused"]
+    worktree = ops.repo / ".claude/worktrees/independent"
+    subprocess.run(
+        ["git", "worktree", "add", "-b", "codex/independent", str(worktree)],
+        cwd=ops.repo,
+        check=True,
+        capture_output=True,
+    )
+    delegated = _parent(
+        ops,
+        "delegate",
+        "--child",
+        str(child),
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/independent",
+        "--worktree",
+        str(worktree),
+    )
+    assert json.loads(delegated.stdout)["action"] == "launch"
+    # An existing child from the pending proposal is guarded before any reservation/write.
+    _edit(
+        ops,
+        lambda body: (
+            "<!-- ops-report-proposal: R-20261012-02 report=#100 option= -->\n" + body
+        ),
+        child,
+    )
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "delegate",
+        "--child",
+        str(child),
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/independent",
+        "--worktree",
+        str(worktree),
+        ok=False,
+    )
+    assert "separate human requirements agreement" in rejected.stderr
+    assert ops.state == before
+
+
+def test_proposal_agreements_are_scoped_and_parent_checking_revokes_them(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _agree(ops)
+    _select(ops)
+    _receive(ops)
+    _edit(ops, lambda b: b.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る"))
+    _receive(ops, "R-20261012-03")
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+    other = _manifest("R-20261012-03", key="other", option="5件に絞る")
+    _create(ops, manifest=other, ok=False)
+    assert len(_children(ops)) == 1
+    assert len(_events(ops, "proposal_agreed")) == 1
+    _agree(ops, pid="R-20261012-02")  # Idempotent without revoking any work.
+    assert len(_events(ops, "proposal_agreed")) == 1
+    changed = dict(_events(ops, "proposal_agreed")[0]["agreement"])
+    changed["scope"] = "既存作業の要件も変更する。"
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "agree",
+        "--report",
+        "100",
+        "--proposal",
+        "R-20261012-02",
+        "--spec",
+        _json(ops, changed),
+        ok=False,
+    )
+    assert "agreement changed" in rejected.stderr
+    assert ops.state == before
+    _agree(ops, pid="R-20261012-03")
+    _create(ops, manifest=other)
+    assert (
+        len(_events(ops, "agreed")) == 1
+    )  # Proposal consent leaves the parent digest intact.
+    _parent(ops, "checking")
+    independent = _manifest(key="independent")
+    independent["spec"].pop("source")
+    _create(ops, manifest=independent, ok=False)
+    _create(ops, ok=False)
+    _agree(ops)
+    _create(ops, manifest=independent)
+    _create(ops, ok=False)  # Re-agreeing the parent never authorizes its proposals.
+    _agree(ops, pid="R-20261012-02")
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert len(_events(ops, "proposal_agreed")) == 3
 
 
 @pytest.mark.parametrize("stopped", [False, True])
@@ -285,7 +425,7 @@ def test_interruptions_never_duplicate_children(ops_env: Any, failure: str) -> N
     _parent(ops, "register")
     _select(ops)
     _receive(ops)
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     if failure == "annotation":
         _create(ops)
         assert (
@@ -340,7 +480,7 @@ def test_option_changes_are_rejected_after_delivery_or_creation(
     _parent(ops, "register")
     _edit(ops, lambda b: b.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る"))
     _receive(ops, "R-20261012-03")
-    _agree(ops)
+    _agree(ops, pid="R-20261012-03")
     manifest = _manifest("R-20261012-03", option="5件に絞る")
     if after_child:
         _create(ops, manifest=manifest)
@@ -382,7 +522,7 @@ def test_renaming_reparenting_and_new_task_key_reuse_metadata_identity(
     _parent(ops, "register")
     _select(ops)
     _receive(ops)
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     _create(ops)
     state = ops.state
     child = next(i for i in state["issues"] if i["number"] == 101)
@@ -403,7 +543,7 @@ def test_duplicate_proposal_metadata_fails_before_writes(ops_env: Any) -> None:
     _parent(ops, "register")
     _select(ops)
     _receive(ops)
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     _create(ops)
     state = ops.state
     child = _children(ops)[0]
@@ -505,7 +645,7 @@ def test_github_decisions_reach_next_report_and_explicit_deferral(ops_env: Any) 
     _parent(ops, "register")
     _select(ops)
     _receive(ops)
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     _create(ops)
     _edit(
         ops,
@@ -563,7 +703,7 @@ def test_adoption_changed_during_creation_is_not_success(ops_env: Any) -> None:
     _parent(ops, "register")
     _select(ops)
     _receive(ops)
-    _agree(ops)
+    _agree(ops, pid="R-20261012-02")
     _create(
         ops,
         ok=False,
@@ -632,7 +772,7 @@ def test_three_slots_in_one_week_keep_distinct_proposal_identity(ops_env: Any) -
             "--proposal",
             pid,
         )
-        _agree(ops)
+        _agree(ops, pid=pid, report=report["number"])
         manifest = _manifest(pid, key=f"split-{day}")
         manifest["spec"]["source"]["report_number"] = report["number"]
         child = json.loads(_create(ops, manifest=manifest).stdout)["child"]
