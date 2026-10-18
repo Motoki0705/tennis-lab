@@ -19,6 +19,8 @@
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
 同じホストの全worktree・Claude/Codexで共有し、state内のflockで登録・起票・更新を直列化する。
 `registry.json` はversion=1、`parents` のキーは `owner/repo#親番号`。
+キーの `owner/repo` は大文字小文字を区別せず、小文字に正規化する。
+既存キーも読込時に正規化し、同じ親の別名レコードが衝突した場合は、統合・上書きせず読込を拒否する。
 各行に `session`（実行環境の識別子）、`status`、`generation`、`tasks`（子番号→担当/branch/worktree/依存/委任予約）、
 `reviews` を持つ。ファイルは0600、ディレクトリは0700で作り、fsyncとrenameで保存する。
 破損・未知version・取得失敗を空の状態に置き換えない。
