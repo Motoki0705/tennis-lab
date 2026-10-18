@@ -5,9 +5,9 @@ accepted court's ``scene_from_court`` and the alignment's metric/NHT
 similarity, i.e. exactly what dataset labels are projected from.
 
 The overlay is drawn on top without a depth test. The NHT depth is an
-alpha-weighted expected depth that haze pulls towards the camera (on B00 it
-lies 5-16 % short along the court lines), so it cannot separate a real
-occluder from a semi-transparent one.
+alpha-weighted expected depth that haze pulls towards the camera, so it
+cannot separate a real occluder from a semi-transparent one. Scene-specific
+measurements are documented in the module README.
 """
 
 from __future__ import annotations
