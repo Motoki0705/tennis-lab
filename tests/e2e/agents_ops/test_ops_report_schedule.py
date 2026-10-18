@@ -181,7 +181,7 @@ def test_failed_slot_can_retry_and_success_is_not_republished(
     assert status["last_attempt"]["error"]
     assert status["pending_slot"] == "2026-10-12T08:00:00+09:00"
     assert status["last_success"] is None
-    assert _reports(ops_env) == []
+    assert len(_reports(ops_env)) == (1 if failure == "agent" else 0)
     retried = ops_env.run("report", "--if-due", "--now", "2026-10-13T12:00:00+09:00")
     assert retried.returncode == 0, retried.stderr
     status = _status(ops_env, "2026-10-13T12:00:00+09:00")
@@ -191,7 +191,12 @@ def test_failed_slot_can_retry_and_success_is_not_republished(
     assert status["next_slot"] == "2026-10-15T08:00:00+09:00"
     assert status["skipped"] == []
     assert _reports(ops_env)[0]["title"] == "運用レポート 2026-10-12"
-    assert "until=2026-10-13T12:00:00+09:00" in _reports(ops_env)[0]["body"]
+    until = (
+        "2026-10-12T08:00:00+09:00"
+        if failure == "agent"
+        else "2026-10-13T12:00:00+09:00"
+    )
+    assert f"until={until}" in _reports(ops_env)[0]["body"]
     assert ops_env.run("report", "--if-due").returncode == 0
     assert len(_reports(ops_env)) == 1
 
@@ -234,7 +239,7 @@ def test_delayed_first_success_covers_from_anchor_and_records_skips(
     ops_env: Any, failed_first: bool
 ) -> None:
     if failed_first:
-        assert ops_env.run("report", "--if-due", FAKE_AGENT_FAIL="1").returncode == 1
+        assert ops_env.run("report", "--if-due", FAKE_GH_FAIL="pr list").returncode == 1
     _no_prs(ops_env)
     result = ops_env.run("report", "--if-due", "--now", "2026-10-21T10:00:00+09:00")
     assert result.returncode == 0, result.stderr

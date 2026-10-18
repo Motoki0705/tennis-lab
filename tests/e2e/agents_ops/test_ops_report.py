@@ -189,17 +189,16 @@ def test_duplicate_ids_in_body_are_rejected() -> None:
         _parse("- [ ] **R-20261012-01** a\n- [ ] **R-20261012-01** b")
 
 
-@pytest.mark.parametrize(
-    ("slot_index", "expected"), [(0, "claude"), (1, "codex"), (2, "claude")]
-)
-def test_alternate_agent_by_slot(slot_index: int, expected: str) -> None:
-    assert agent.resolve_agent("alternate", slot_index) == expected
-    assert agent.resolve_agent("codex", slot_index) == "codex"
+def test_native_scout_parent_is_codex() -> None:
+    assert agent.resolve_agent("codex") == "codex"
+    for unsupported in ("claude", "alternate"):
+        with pytest.raises(ValueError):
+            agent.resolve_agent(unsupported)
 
 
 def test_unknown_agent_setting_rejected() -> None:
     with pytest.raises(ValueError):
-        agent.resolve_agent("gemini", 0)
+        agent.resolve_agent("gemini")
 
 
 def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) -> None:
@@ -233,6 +232,12 @@ def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) ->
             r"unexpected \[999\]",
         ),
         (lambda d: d.update(stale_pr_notes={}), r"missing \[7\]"),
+        (
+            lambda d: d["stale_pr_notes"].update(
+                {"07": {"recommendation": "close", "reason": "alias"}}
+            ),
+            "unique canonical PR numbers",
+        ),
         (lambda d: d.pop("stale_pr_notes"), "must be an object"),
         (
             lambda d: d["stale_pr_notes"].update({"7": "close。古い"}),
@@ -292,7 +297,7 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
     assert "共有memory未導入" in out
     assert "CI（期間内 1 run）: failure 1" in out
     assert _mutating_calls(ops_env.calls()) == []
-    # The default is codex; alternate would choose claude for the anchor slot.
+    # The native scout parent is Codex.
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
 
     (run_dir,) = ops_env.run_dirs()
@@ -525,7 +530,9 @@ def test_checkout_diff_includes_only_nonignored_untracked_files(
     ignored.mkdir()
     (ignored / "local.py").write_text("# ignored\n", encoding="utf-8")
     paths = (
-        [".agents/memory/新規メモ.md", "src/new helper.py"] if include_untracked else []
+        [".agents/memory/gotcha/新規メモ.md", "src/new helper.py"]
+        if include_untracked
+        else []
     )
     for rel in paths:
         path = ops_env.repo / rel
@@ -548,7 +555,9 @@ def test_checkout_diff_includes_only_nonignored_untracked_files(
     if include_untracked:
         assert "未commitの変更 2件" in result.stdout
         assert "2ファイルの内容が異なる" in result.stdout
-        assert collected["memory"]["entries_total"] == 1
+        assert (
+            collected["memory"]["status"] == "not_installed"
+        )  # untracked memory is not part of base
         assert all(path in prompt for path in paths)
 
 
@@ -607,20 +616,18 @@ def _gone_soon(pid: int) -> bool:
     return True
 
 
-def test_agent_timeout_kills_its_descendants(ops_env: Any) -> None:
+def test_removed_agent_timeout_is_rejected(ops_env: Any) -> None:
     pid_file = ops_env.tmp / "agent_child.pid"
 
     result = ops_env.run(
         "report",
         "--dry-run",
-        FAKE_AGENT_SPAWN=str(pid_file),
-        FAKE_AGENT_HANG="1",
         OPS_REPORT_AGENT_TIMEOUT="1",
     )
 
     assert result.returncode == 1
-    assert "timed out after 1s" in result.stderr
-    assert _gone_soon(int(pid_file.read_text()))
+    assert "OPS_REPORT_AGENT_TIMEOUT was removed" in result.stderr
+    assert not pid_file.exists()
 
 
 def test_agent_leftover_descendants_are_killed(ops_env: Any) -> None:
@@ -721,10 +728,14 @@ def test_agent_failure_exits_nonzero_and_keeps_logs(ops_env: Any) -> None:
 
     assert result.returncode == 1
     assert "exited 3" in result.stderr and "quota exhausted" in result.stderr
-    assert _mutating_calls(ops_env.calls()) == []
+    report_issue = next(
+        i for i in ops_env.state["issues"] if "ops-report" in i["labels"]
+    )
+    assert "status=incomplete" in report_issue["body"].splitlines()[0]
+    assert "**未完了**" in report_issue["body"]
     (run_dir,) = ops_env.run_dirs()
     log = (run_dir / "run.log").read_text(encoding="utf-8")
-    assert "report failed" in log
+    assert "audit interrupted/failed" in log
     assert (run_dir / "prompt.md").is_file()
 
 
@@ -735,7 +746,9 @@ def test_malformed_agent_output_exits_nonzero(ops_env: Any) -> None:
 
     assert result.returncode == 1
     assert "JSON" in result.stderr
-    assert _mutating_calls(ops_env.calls()) == []
+    assert "status=incomplete" in next(
+        i["body"] for i in ops_env.state["issues"] if "ops-report" in i["labels"]
+    )
 
 
 @pytest.mark.parametrize("failing", ["pr list", "issue create"])

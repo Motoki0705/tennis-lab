@@ -8,10 +8,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import shell
+from . import memory, shell
 from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
 
-AGENT_CHOICES = ("claude", "codex", "alternate")
+AGENT_CHOICES = ("codex",)
 PROMPT_PLACEHOLDERS = (
     "{{SLOT}}",
     "{{CATEGORIES}}",
@@ -25,13 +25,11 @@ class AgentOutputError(ValueError):
     """The agent's final message does not follow the JSON contract in the prompt."""
 
 
-def resolve_agent(setting: str, slot_index: int) -> str:
-    """``claude`` / ``codex`` as-is; ``alternate`` = claude on even slots, codex on odd."""
+def resolve_agent(setting: str) -> str:
+    """Only the Codex path has the native scout contract required by this job."""
     if setting not in AGENT_CHOICES:
         raise ValueError(f"agent must be one of {AGENT_CHOICES}, got {setting!r}")
-    if setting != "alternate":
-        return setting
-    return "claude" if slot_index % 2 == 0 else "codex"
+    return setting
 
 
 def build_prompt(
@@ -71,11 +69,10 @@ class AgentRun:
     prompt_file: Path
     out_file: Path
     log_dir: Path
-    timeout: float
 
 
 def execute(run: AgentRun) -> str:
-    """Run agent_exec.sh read-only; non-zero status / timeout raises CommandError.
+    """Run agent_exec.sh read-only, without a whole-audit wall-clock limit.
 
     Model and effort come from ``.agents/ops/lib/agents.conf`` (no override here).
     """
@@ -86,9 +83,10 @@ def execute(run: AgentRun) -> str:
         "--prompt-file", str(run.prompt_file),
         "--out", str(run.out_file),
         "--mode", "read-only",
+        "--profile", "ops_report",
         "--log-dir", str(run.log_dir),
     ]  # fmt: skip
-    shell.run_process_group(cmd, cwd=run.repo_root, timeout=run.timeout)
+    shell.run_process_group(cmd, cwd=run.repo_root, timeout=None)
     return run.out_file.read_text(encoding="utf-8")
 
 
@@ -103,6 +101,7 @@ class AgentReport:
     summary: str
     proposals: list[Proposal]
     stale_pr_notes: dict[int, StalePrNote]
+    memory_update: dict[str, Any] | None
 
 
 def _extract_json(text: str) -> Any:
@@ -117,9 +116,18 @@ def _extract_json(text: str) -> Any:
             )
         candidate = fences[0]
     try:
-        return json.loads(candidate)
+        return json.loads(candidate, object_pairs_hook=_unique_keys)
     except json.JSONDecodeError as exc:
         raise AgentOutputError(f"agent output is not valid JSON: {exc}") from exc
+
+
+def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in obj:
+            raise AgentOutputError(f"duplicate JSON key: {key}")
+        obj[key] = value
+    return obj
 
 
 def _req_str(
@@ -135,9 +143,20 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
     data = _extract_json(text)
     if not isinstance(data, dict):
         raise AgentOutputError("top-level JSON must be an object")
-    unknown_keys = set(data) - {"summary", "proposals", "stale_pr_notes"}
+    unknown_keys = set(data) - {
+        "summary",
+        "proposals",
+        "stale_pr_notes",
+        "memory_update",
+    }
     if unknown_keys:
         raise AgentOutputError(f"unexpected top-level keys: {sorted(unknown_keys)}")
+    if "memory_update" not in data:
+        raise AgentOutputError("$.memory_update is required (null for no changes)")
+    try:
+        memory_update = memory.parse_update(data["memory_update"])
+    except ValueError as exc:
+        raise AgentOutputError(str(exc)) from exc
     summary = _req_str(data, "summary", "$")
     raw_props = data.get("proposals")
     if not isinstance(raw_props, list):
@@ -182,6 +201,7 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
         stale_pr_notes=_parse_stale_pr_notes(
             data.get("stale_pr_notes"), stale_pr_numbers
         ),
+        memory_update=memory_update,
     )
 
 
@@ -195,6 +215,10 @@ def _parse_stale_pr_notes(
     if bad_keys:
         raise AgentOutputError(f"$.stale_pr_notes keys must be PR numbers: {bad_keys}")
     keys = {int(k) for k in raw}
+    if len(keys) != len(raw) or any(str(int(k)) != k for k in raw):
+        raise AgentOutputError(
+            "$.stale_pr_notes keys must be unique canonical PR numbers"
+        )
     if keys != stale_pr_numbers:
         raise AgentOutputError(
             "$.stale_pr_notes keys must be exactly the stale PRs "

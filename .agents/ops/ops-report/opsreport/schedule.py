@@ -127,6 +127,12 @@ class Schedule:
                 raise ValueError(f"{key} is outside this schedule")
             aware_time(entry["started_at"])
             status = entry["status"]
+            if "incomplete" in entry and (
+                entry["incomplete"] is not True
+                or status != "failed"
+                or not entry.get("url")
+            ):
+                raise ValueError("invalid incomplete attempt")
             if status not in ("running", "failed", "succeeded") or (
                 key == "last_success" and status != "succeeded"
             ):
@@ -242,14 +248,21 @@ class Schedule:
             self.save()
 
     def finish(
-        self, now: datetime, *, url: str | None = None, error: str | None = None
+        self,
+        now: datetime,
+        *,
+        url: str | None = None,
+        error: str | None = None,
+        incomplete: bool = False,
     ) -> None:
         attempt = {**self.data["last_attempt"], "finished_at": now.isoformat()}
-        if url:
+        if url and not incomplete:
             attempt.update(status="succeeded", url=url)
             self.data["last_success"] = attempt
         else:
             attempt.update(status="failed", error=error)
+            if incomplete:
+                attempt.update(incomplete=True, url=url)
         self.data["last_attempt"] = attempt
         self.save()
 
@@ -262,6 +275,9 @@ class Schedule:
             if latest and (not success or success["slot"] != latest.isoformat())
             else None
         )
+        attempt = self.data["last_attempt"]
+        if attempt and attempt.get("incomplete"):
+            pending = _slot(attempt["slot"])
         return {
             **self.data,
             "now": now.isoformat(),

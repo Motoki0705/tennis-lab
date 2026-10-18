@@ -50,7 +50,7 @@ _CHECKBOX_IN_TEXT_RE = re.compile(r"^(\s*(?:[-*+]|\d+[.)])) \[[ xX]\] ")
 
 REPORT_MARKER_PREFIX = "<!-- ops-report:v2 "
 _REPORT_MARKER_RE = re.compile(r"^<!-- ops-report:v2 (?P<fields>[^<>]*?) -->$")
-_REQUIRED_META = ("slot", "since", "until", "proposals")
+_REQUIRED_META = ("slot", "since", "until", "proposals", "status")
 PROPOSALS_BEGIN = "<!-- ops-report:proposals:begin -->"
 PROPOSALS_END = "<!-- ops-report:proposals:end -->"
 
@@ -176,19 +176,29 @@ class ReportMeta:
     since: datetime
     until: datetime
     proposal_count: int
+    status: str
+    base: str | None
+    audit: str | None
 
     def proposal_ids(self) -> set[str]:
         return {proposal_id(self.slot, i) for i in range(1, self.proposal_count + 1)}
 
 
 def report_marker(
-    *, slot: str, since: datetime, until: datetime, proposals: int, **extra: str
+    *,
+    slot: str,
+    since: datetime,
+    until: datetime,
+    proposals: int,
+    status: str = "complete",
+    **extra: str,
 ) -> str:
     fields = {
         "slot": slot,
         "since": since.isoformat(timespec="seconds"),
         "until": until.isoformat(timespec="seconds"),
         "proposals": str(proposals),
+        "status": status,
         **extra,
     }
     for key, value in fields.items():
@@ -224,6 +234,8 @@ def parse_report_meta(body: str) -> ReportMeta:
     date.fromisoformat(fields["slot"])
     if not fields["proposals"].isdigit():
         raise ValueError(f"report marker has invalid proposals={fields['proposals']!r}")
+    if fields["status"] not in {"complete", "incomplete"}:
+        raise ValueError("report marker has invalid status")
     since = datetime.fromisoformat(fields["since"])
     until = datetime.fromisoformat(fields["until"])
     if since.tzinfo is None or until.tzinfo is None or since > until:
@@ -233,6 +245,9 @@ def parse_report_meta(body: str) -> ReportMeta:
         since=since,
         until=until,
         proposal_count=int(fields["proposals"]),
+        status=fields["status"],
+        base=fields.get("base"),
+        audit=fields.get("audit"),
     )
 
 
