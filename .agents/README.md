@@ -55,15 +55,16 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/review/](ops/review/README.md) | Codex による PR レビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（人間への差し戻し） |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
+| [ops/parent/](ops/parent/README.md) | 親セッションの担当・合意・子の進捗・明示レビュー要求を管理するCLI。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
 
 ## GitHub運用ルール（初版）
 
 - **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `ai-proposed` ラベルを付ける。運用レポートで人間が整理する。
-- **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら運用レポートで見直す。
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
+- **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
 - **merge**: CI通過とCodexによるレビュー（作成agentによらずCodexがレビューし、merge を止める指摘だけを報告する）を条件とする。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。判定の詳細（収束基準を含む）は [review/README.md](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 
