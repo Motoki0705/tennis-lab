@@ -1,4 +1,4 @@
-"""Deterministic data collection for the weekly report.
+"""Deterministic data collection for the ops report.
 
 Everything here is computed from git / gh / the filesystem without an agent, so
 the same repository state always yields the same facts. The agent only interprets
@@ -7,22 +7,22 @@ this data and reads the codebase (read-only) for deeper analysis.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import sys
 import tempfile
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import proposals, shell
+from . import memory, proposals, shell
 from .shell import CommandError
 
 REPORT_LABEL = "ops-report"
 AI_PROPOSED_LABEL = "ai-proposed"
-DEFAULT_PERIOD_DAYS = 7
 CLEANUP_DIR = Path(".agents/ops/cleanup")
 MEMORY_DIR = Path(".agents/memory")
 KNOWLEDGE_SUMMARY = Path("knowledge/summary.md")
@@ -126,14 +126,14 @@ def _days(now: datetime, ts: str) -> int:
     return (now - parse_ts(ts)).days
 
 
-def collect_report_history(cfg: CollectConfig) -> dict[str, Any]:
+def collect_report_history(repo_root: Path) -> dict[str, Any]:
     rows = shell.gh_list(
         [
             "issue", "list", "--label", REPORT_LABEL, "--state", "all",
-            "--json", "number,title,state,createdAt,body,url",
+            "--json", "number,title,state,createdAt,body,url,author",
         ],
         limit=500,
-        cwd=cfg.repo_root,
+        cwd=repo_root,
     )  # fmt: skip
     rows.sort(key=lambda r: parse_ts(r["createdAt"]))
     summarized = []
@@ -147,13 +147,21 @@ def collect_report_history(cfg: CollectConfig) -> dict[str, Any]:
         item: dict[str, Any] = {
             k: row[k] for k in ("number", "title", "state", "createdAt", "url")
         }
-        item["week"] = meta.week
+        item["slot"] = meta.slot
+        item["author"] = row["author"]["login"]
+        item["body_sha256"] = hashlib.sha256(row["body"].encode("utf-8")).hexdigest()
         item["period_start"] = meta.since.isoformat()
         item["period_end"] = meta.until.isoformat()
         # Proposal status only for the two most recent reports to bound prompt size.
         if i >= len(rows) - 2:
             item["proposals"] = [_proposal_status(p) for p in parsed]
         summarized.append(item)
+    slots = [r["slot"] for r in summarized]
+    if len(slots) != len(set(slots)):
+        raise CommandError(
+            "multiple ops-report issues for the same slot; resolve duplicates by hand"
+        )
+    summarized.sort(key=lambda r: parse_ts(r["period_end"]))
     return {"reports": summarized}
 
 
@@ -440,7 +448,7 @@ def _cleanup_command(cfg: CollectConfig) -> tuple[str, ...]:
     if not entry.is_file():
         raise CommandError(
             f"{CLEANUP_DIR} exists but has no cleanup.py; "
-            "set WEEKLY_REPORT_CLEANUP_CMD to a command accepting --report-json FILE"
+            "set OPS_REPORT_CLEANUP_CMD to a command accepting --report-json FILE"
         )
     return (sys.executable, str(entry), "scan")
 
@@ -453,7 +461,7 @@ def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
         }
     # Contract (see .agents/ops/cleanup/README.md): the command writes its report to
     # the file given after --report-json and never deletes anything in scan mode.
-    with tempfile.TemporaryDirectory(prefix="weekly-report-cleanup-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="ops-report-cleanup-") as tmp:
         out = Path(tmp) / "cleanup.json"
         cmd = (*_cleanup_command(cfg), "--report-json", str(out))
         shell.run_process_group(cmd, cwd=cfg.repo_root, timeout=900)
@@ -477,9 +485,12 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
         }
     summary = mem_dir / "SUMMARY.md"
     entries = []
-    for path in sorted(mem_dir.rglob("*.md")):
-        if path == summary or path.name == "index.md":
-            continue
+    for path in sorted(
+        p
+        for layer in memory.SHARED_LAYERS
+        for p in (mem_dir / layer).glob("*.md")
+        if p.name != "index.md"
+    ):
         rel = path.relative_to(cfg.repo_root)
         head = path.read_text(encoding="utf-8").splitlines()[:15]
         entries.append(
@@ -576,20 +587,21 @@ def collect_meta(
     }
 
 
-def collect_all(cfg: CollectConfig) -> dict[str, Any]:
+def collect_all(
+    cfg: CollectConfig, *, history: dict[str, Any], initial_since: datetime
+) -> dict[str, Any]:
     """Collect the period ``[since, until)``.
 
     ``until`` is this run's ``now`` and is stored in the report's marker; the next
     run starts exactly there (not at the issue's createdAt, which is later than the
     collection), so consecutive reports neither drop nor double-count events.
     """
-    history = collect_report_history(cfg)
     reports = history["reports"]
     until = cfg.now
     since = (
         datetime.fromisoformat(reports[-1]["period_end"]).astimezone(cfg.now.tzinfo)
         if reports
-        else until - timedelta(days=DEFAULT_PERIOD_DAYS)
+        else initial_since
     )
     if since > until:
         raise CommandError(
@@ -604,6 +616,7 @@ def collect_all(cfg: CollectConfig) -> dict[str, Any]:
         "workspace": collect_workspace(cfg),
         "cleanup": collect_cleanup(cfg),
         "memory": collect_memory(cfg),
+        "ops_memory": memory.collect(cfg.repo_root, cfg.rev),
         "knowledge": collect_knowledge(cfg, since, until),
         "ai_env": collect_ai_env(cfg),
     }

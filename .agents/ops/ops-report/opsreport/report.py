@@ -16,7 +16,7 @@ from .proposals import (
     neutralize,
     render_proposals,
     report_marker,
-    week_tag,
+    slot_tag,
 )
 
 # GitHub rejects issue bodies above 65536 characters.
@@ -24,8 +24,7 @@ MAX_BODY_CHARS = 60_000
 
 
 def report_title(day: date) -> str:
-    iso = day.isocalendar()
-    return f"週次運用レポート {iso.year}-W{iso.week:02d}"
+    return f"運用レポート {day.isoformat()}"
 
 
 def stale_prs(collected: dict[str, Any]) -> list[dict[str, Any]]:
@@ -117,23 +116,46 @@ def _observations(c: dict[str, Any]) -> str:
     return "\n".join(lines + [""] + detail)
 
 
+def _memory_status(collected: dict[str, Any]) -> list[str]:
+    dedicated = collected["ops_memory"]
+    lines = [
+        f"- 専用memory: `origin/main` @ `{dedicated['base_sha']}`（最後の有効版）"
+        if dedicated["status"] == "ok"
+        else f"- 専用memory: {dedicated['note']}",
+    ]
+    for item in dedicated.get("persistence", []):
+        if item["state"] in {"merged", "unchanged"}:
+            continue
+        detail = neutralize(str(item["error"] or item["stage"] or item["state"]))
+        next_step = (
+            "この更新は再適用せず、次回調査で新しい更新を作る。"
+            if item["state"] == "failed"
+            else "次回report/triageで再確認し、失敗・中断はREADMEの復旧手順に従う。"
+        )
+        lines.append(
+            f"- **専用メモリ未反映**: 予定回 {item['slot']} / {item['pr_url'] or item['report_url'] or '公開未確認'} / {detail}。"
+            f"上記main版を使用。{next_step}"
+        )
+    return lines
+
+
 def render_report(
     *,
-    now: datetime,
+    slot: date,
     agent_name: str,
     collected: dict[str, Any],
     analysis: AgentReport,
 ) -> tuple[str, str, list[str]]:
     """Return ``(title, body, proposal_ids)``."""
-    day = now.date()
-    tag = week_tag(day)
+    day = slot
+    tag = slot_tag(day)
     meta = collected["meta"]
     proposals = (
         stale_pr_proposals(collected, analysis.stale_pr_notes) + analysis.proposals
     )
     proposal_md, ids = render_proposals(proposals, tag)
     marker = report_marker(
-        week=tag,
+        slot=tag,
         since=datetime.fromisoformat(meta["period_start"]),
         until=datetime.fromisoformat(meta["period_end"]),
         proposals=len(ids),
@@ -149,6 +171,7 @@ def render_report(
         marker,
         f"# {report_title(day)}",
         "",
+        f"- 予定回: {day.isoformat()} 08:00 JST",
         f"- 生成: {meta['generated_at']} / agent: `{agent_name}` / 対象: `{meta['base_ref']}`"
         f" @ `{meta['base_sha'][:10]}`（{fetched}） / 集計期間: {meta['period_start']} 〜 {meta['period_end']}",
     ]
@@ -159,6 +182,7 @@ def render_report(
             f" {meta['checkout_diff_files_total']}ファイルの内容が異なる。"
         )
     header += [
+        *_memory_status(collected),
         "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
         "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
         "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。",

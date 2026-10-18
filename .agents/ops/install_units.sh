@@ -29,6 +29,17 @@ main() {
   fi
   unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
+  # Do not install a second report timer alongside the retired schedule. The
+  # operator must stop/disable and unlink these first (ops-report/README.md).
+  local retired
+  for retired in tennis-lab-weekly-report.service tennis-lab-weekly-report.timer; do
+    if [[ -e "$unit_dir/$retired" || -L "$unit_dir/$retired" ||
+          -e "$unit_dir/timers.target.wants/$retired" || -L "$unit_dir/timers.target.wants/$retired" ]]; then
+      echo "install_units: retire $retired before installing; see ops-report/README.md" >&2
+      exit 2
+    fi
+  done
+
   # Enumerate into a file first so a find/sort failure aborts here (pipefail) instead of
   # being lost inside a process substitution and installing a partial set.
   UNIT_LIST="$(mktemp)"

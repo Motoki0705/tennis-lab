@@ -1,4 +1,4 @@
-"""Weekly ops report: rendering, stable IDs, agent contract, and the ``report`` CLI
+"""Ops report: rendering, stable IDs, agent contract, and the ``report`` CLI
 run end-to-end against a fake gh / fake agent_exec."""
 
 from __future__ import annotations
@@ -15,9 +15,7 @@ from typing import Any
 
 import pytest
 
-sys.path.insert(
-    0, str(Path(__file__).resolve().parents[3] / ".agents/ops/weekly-report")
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/ops-report"))
 
 # The ops tooling lives outside src/; import it like other .agents script tests.
 agent: Any = importlib.import_module("opsreport.agent")
@@ -31,7 +29,7 @@ JST = timezone(timedelta(hours=9))
 def _body(region: str, n: int = 3) -> str:
     """A report body: metadata marker, prose and the marked proposal region."""
     marker = proposals.report_marker(
-        week="2026W42",
+        slot="20261012",
         since=datetime(2026, 10, 5, 8, tzinfo=JST),
         until=datetime(2026, 10, 12, 8, tzinfo=JST),
         proposals=n,
@@ -59,23 +57,22 @@ def test_ids_are_sequential_in_rendered_order() -> None:
             section="コード負債", title="a", detail="d", evidence="e", priority="high"
         ),
     ]
-    md, ids = proposals.render_proposals(props, "2026W42")
+    md, ids = proposals.render_proposals(props, "20261012")
 
-    assert ids == ["R-2026W42-01", "R-2026W42-02", "R-2026W42-03"]
+    assert ids == ["R-20261012-01", "R-20261012-02", "R-20261012-03"]
     parsed = _parse(md)
     # Stale PR first, then categories in CATEGORIES order.
     assert [(p.pid, p.title) for p in parsed] == [
-        ("R-2026W42-01", "#7 pr"),
-        ("R-2026W42-02", "a（優先度: 高）"),
-        ("R-2026W42-03", "z"),
+        ("R-20261012-01", "#7 pr"),
+        ("R-20261012-02", "a（優先度: 高）"),
+        ("R-20261012-03", "z"),
     ]
     assert [label for label, _ in parsed[0].options] == list(proposals.STALE_PR_OPTIONS)
     assert all(p.selection() == (False, None) for p in parsed)
 
 
-def test_week_tag_uses_iso_year() -> None:
-    # 2027-01-01 belongs to ISO week 2026-W53.
-    assert proposals.week_tag(date(2027, 1, 1)) == "2026W53"
+def test_slot_tag_uses_calendar_date() -> None:
+    assert proposals.slot_tag(date(2027, 1, 1)) == "20270101"
 
 
 def test_checkboxes_in_free_text_cannot_become_options() -> None:
@@ -85,7 +82,7 @@ def test_checkboxes_in_free_text_cannot_become_options() -> None:
         detail="line\n- [ ] not an option\n\n  - [x] nor this",
         evidence="e",
     )
-    md, _ = proposals.render_proposals([prop], "2026W42")
+    md, _ = proposals.render_proposals([prop], "20261012")
     parsed = _parse(md, 1)
 
     assert parsed[0].options == []
@@ -94,13 +91,13 @@ def test_checkboxes_in_free_text_cannot_become_options() -> None:
 
 def test_neutralize_defuses_checkboxes_and_markers() -> None:
     text = (
-        "- [x] **R-2026W42-01** a\n  * [X] b\n1. [x] c\n"
+        "- [x] **R-20261012-01** a\n  * [X] b\n1. [x] c\n"
         f"{proposals.PROPOSALS_END}\nplain [x] stays"
     )
     out = proposals.neutralize(text)
 
     assert out.splitlines() == [
-        "- **R-2026W42-01** a",
+        "- **R-20261012-01** a",
         "  * b",
         "1. c",
         "&lt;!-- ops-report:proposals:end -->",
@@ -109,9 +106,9 @@ def test_neutralize_defuses_checkboxes_and_markers() -> None:
 
 
 def test_only_the_marked_region_is_parsed() -> None:
-    region = "- [ ] **R-2026W42-01** inside"
+    region = "- [ ] **R-20261012-01** inside"
     body = _body(region, 1).replace(
-        "# report\n", "# report\n- [x] **R-2026W42-01** outside\n"
+        "# report\n", "# report\n- [x] **R-20261012-01** outside\n"
     )
     (parsed,) = proposals.parse_report(body)[1]
 
@@ -122,9 +119,13 @@ def test_only_the_marked_region_is_parsed() -> None:
 @pytest.mark.parametrize(
     ("body", "message"),
     [
-        (_body("- [x] **R-2026W42-04** extra", 3), "not generated"),
-        (_body("- [x] **R-2026W41-01** other week", 3), "not generated"),
-        ("# no marker\n", "ops-report:v1 marker"),
+        (_body("- [x] **R-20261012-04** extra", 3), "not generated"),
+        (_body("- [x] **R-20261005-01** other slot", 3), "not generated"),
+        (
+            _body("- [x] **R-2026W42-01** old ID under v2 metadata", 3),
+            "invalid proposal ID format",
+        ),
+        ("# no marker\n", "ops-report:v2 marker"),
         (_body("x").replace(proposals.PROPOSALS_END, ""), "proposal region"),
         (_body("x") + proposals.PROPOSALS_BEGIN + "\n", "proposal region"),
     ],
@@ -137,9 +138,9 @@ def test_malformed_report_bodies_are_rejected(body: str, message: str) -> None:
 def test_report_marker_round_trips() -> None:
     meta = proposals.parse_report_meta(_body("", 5))
 
-    assert meta.week == "2026W42"
+    assert meta.slot == "20261012"
     assert meta.until == datetime(2026, 10, 12, 8, tzinfo=JST)
-    assert meta.proposal_ids() == {f"R-2026W42-0{i}" for i in range(1, 6)}
+    assert meta.proposal_ids() == {f"R-20261012-0{i}" for i in range(1, 6)}
 
 
 @pytest.mark.parametrize(
@@ -154,7 +155,7 @@ def test_report_marker_round_trips() -> None:
 def test_selection(
     head: str, opts: list[str], expected: tuple[bool, str | None]
 ) -> None:
-    lines = [f"- {head}**R-2026W42-01** title"]
+    lines = [f"- {head}**R-20261012-01** title"]
     lines += [f"  - [{c}] {label}" for c, label in zip(opts, "abc", strict=False)]
     (parsed,) = _parse("\n".join(lines))
     assert parsed.selection() == expected
@@ -163,8 +164,8 @@ def test_selection(
 @pytest.mark.parametrize(
     "body",
     [
-        "- **R-2026W42-01** t\n  - [x] a\n  - [x] b",
-        "- [x] **R-2026W42-01** t\n  - [ ] a\n  - [ ] b",
+        "- **R-20261012-01** t\n  - [x] a\n  - [x] b",
+        "- [x] **R-20261012-01** t\n  - [ ] a\n  - [ ] b",
     ],
 )
 def test_ambiguous_selection_raises(body: str) -> None:
@@ -174,32 +175,31 @@ def test_ambiguous_selection_raises(body: str) -> None:
 
 
 def test_annotate_children_is_idempotent_and_refuses_relink() -> None:
-    body = _body("- [x] **R-2026W42-01** a\n  detail\n- [ ] **R-2026W42-02** b")
-    once = proposals.annotate_children(body, {"R-2026W42-01": 101})
-    assert "- [x] **R-2026W42-01** a → #101\n" in once
-    assert proposals.annotate_children(once, {"R-2026W42-01": 101}) == once
+    body = _body("- [x] **R-20261012-01** a\n  detail\n- [ ] **R-20261012-02** b")
+    once = proposals.annotate_children(body, {"R-20261012-01": 101})
+    assert "- [x] **R-20261012-01** a → #101\n" in once
+    assert proposals.annotate_children(once, {"R-20261012-01": 101}) == once
     assert proposals.parse_report(once)[1][0].child == 101
     with pytest.raises(ValueError, match="refusing to relink"):
-        proposals.annotate_children(once, {"R-2026W42-01": 102})
+        proposals.annotate_children(once, {"R-20261012-01": 102})
 
 
 def test_duplicate_ids_in_body_are_rejected() -> None:
     with pytest.raises(ValueError, match="duplicate"):
-        _parse("- [ ] **R-2026W42-01** a\n- [ ] **R-2026W42-01** b")
+        _parse("- [ ] **R-20261012-01** a\n- [ ] **R-20261012-01** b")
 
 
 @pytest.mark.parametrize(
-    ("day", "expected"),
-    [(date(2026, 10, 12), "claude"), (date(2026, 10, 5), "codex")],  # W42 even, W41 odd
+    ("slot_index", "expected"), [(0, "claude"), (1, "codex"), (2, "claude")]
 )
-def test_alternate_agent_by_iso_week(day: date, expected: str) -> None:
-    assert agent.resolve_agent("alternate", day) == expected
-    assert agent.resolve_agent("codex", day) == "codex"
+def test_alternate_agent_by_slot(slot_index: int, expected: str) -> None:
+    assert agent.resolve_agent("alternate", slot_index) == expected
+    assert agent.resolve_agent("codex", slot_index) == "codex"
 
 
 def test_unknown_agent_setting_rejected() -> None:
     with pytest.raises(ValueError):
-        agent.resolve_agent("gemini", date(2026, 10, 12))
+        agent.resolve_agent("gemini", 0)
 
 
 def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) -> None:
@@ -211,7 +211,7 @@ def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) ->
     parsed = agent.parse_agent_output(text, {7})
     assert [p.title for p in parsed.proposals] == [
         "big.py を分割する",
-        "週次レポートのプロンプトを改善する",
+        "運用レポートのプロンプトを改善する",
     ]
     assert parsed.stale_pr_notes == {
         7: agent.StalePrNote(recommendation="rebaseして仕上げ", reason="差分が小さい。")
@@ -278,22 +278,21 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
 
     assert result.returncode == 0, result.stderr
     out = result.stdout
-    assert out.startswith("# title: 週次運用レポート 2026-W42\n")
+    assert out.startswith("# title: 運用レポート 2026-10-12\n")
     # Stale PR #7 (22 days idle) becomes proposal 01 with the three options; #8 is fresh.
-    assert "- **R-2026W42-01** #7 放置されたPR" in out
+    assert "- **R-20261012-01** #7 放置されたPR" in out
     assert "  - [ ] rebaseして仕上げ" in out
     assert "推奨: **rebaseして仕上げ** — 差分が小さい。" in out
     assert "ローカルref、fetchなし" in out
     assert "#8 新しいPR" not in out
-    assert "- [ ] **R-2026W42-02** big.py を分割する（優先度: 高）" in out
-    assert "- **R-2026W42-03** 週次レポートのプロンプトを改善する（優先度: 低）" in out
+    assert "- [ ] **R-20261012-02** big.py を分割する（優先度: 高）" in out
+    assert "- **R-20261012-03** 運用レポートのプロンプトを改善する（優先度: 低）" in out
     # Missing sibling modules are stated explicitly, never silently omitted.
     assert "掃除モジュール未導入" in out
     assert "共有memory未導入" in out
     assert "CI（期間内 1 run）: failure 1" in out
     assert _mutating_calls(ops_env.calls()) == []
-    # The default agent is codex, whatever the ISO week (week 42 would be claude under
-    # alternate).
+    # The default is codex; alternate would choose claude for the anchor slot.
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
 
     (run_dir,) = ops_env.run_dirs()
@@ -354,7 +353,7 @@ def test_report_creates_issue_and_label(ops_env: Any) -> None:
     state = ops_env.state
     assert "ops-report" in state["labels"]
     issue = next(i for i in state["issues"] if i["number"] == 100)
-    assert issue["title"] == "週次運用レポート 2026-W42"
+    assert issue["title"] == "運用レポート 2026-10-12"
     assert issue["labels"] == ["ops-report"]
     assert "agent: `codex`" in issue["body"]
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
@@ -378,7 +377,7 @@ def test_report_with_relative_log_dir_from_another_directory(ops_env: Any) -> No
     assert not (ops_env.repo / "relative logs").exists()
 
 
-def test_second_report_in_same_week_fails_before_agent(ops_env: Any) -> None:
+def test_second_report_in_same_slot_fails_before_agent(ops_env: Any) -> None:
     assert ops_env.run("report").returncode == 0
     (ops_env.tmp / "agent_used.txt").unlink()
 
@@ -390,7 +389,7 @@ def test_second_report_in_same_week_fails_before_agent(ops_env: Any) -> None:
     assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
 
 
-def test_renamed_report_still_blocks_same_week(ops_env: Any) -> None:
+def test_renamed_report_still_blocks_same_slot(ops_env: Any) -> None:
     assert ops_env.run("report").returncode == 0
     state = ops_env.state
     next(i for i in state["issues"] if i["number"] == 100)["title"] = "renamed"
@@ -399,12 +398,12 @@ def test_renamed_report_still_blocks_same_week(ops_env: Any) -> None:
     result = ops_env.run("report")
 
     assert result.returncode == 1
-    assert "report for 2026W42 already exists as #100" in result.stderr
+    assert "report for 20261012 already exists as #100" in result.stderr
 
 
 def _previous_report(number: int, created_at: str, until: datetime) -> dict[str, Any]:
     marker = proposals.report_marker(
-        week=proposals.week_tag(until.date()),
+        slot=proposals.slot_tag(until.date()),
         since=until - timedelta(days=7),
         until=until,
         proposals=0,
@@ -412,7 +411,7 @@ def _previous_report(number: int, created_at: str, until: datetime) -> dict[str,
     body = f"{marker}\n# old\n\n{proposals.PROPOSALS_BEGIN}\n（提案なし）\n{proposals.PROPOSALS_END}\n"
     return {
         "number": number,
-        "title": "週次運用レポート 2026-W41",
+        "title": "運用レポート 2026-10-05",
         "body": body,
         "labels": ["ops-report"],
         "state": "CLOSED",
@@ -466,10 +465,10 @@ def test_merged_prs_are_searched_by_merge_date(ops_env: Any) -> None:
     merged_calls = [
         c for c in ops_env.calls() if c[:2] == ["pr", "list"] and "merged" in c
     ]
-    # since = 2026-10-05T08:00+09:00 = 2026-10-04T23:00Z
+    # First window starts three days before the anchor: 2026-10-09T08:00+09:00.
     assert len(merged_calls) == 1
     assert (
-        merged_calls[0][merged_calls[0].index("--search") + 1] == "merged:>=2026-10-04"
+        merged_calls[0][merged_calls[0].index("--search") + 1] == "merged:>=2026-10-08"
     )
 
 
@@ -526,7 +525,9 @@ def test_checkout_diff_includes_only_nonignored_untracked_files(
     ignored.mkdir()
     (ignored / "local.py").write_text("# ignored\n", encoding="utf-8")
     paths = (
-        [".agents/memory/新規メモ.md", "src/new helper.py"] if include_untracked else []
+        [".agents/memory/gotcha/新規メモ.md", "src/new helper.py"]
+        if include_untracked
+        else []
     )
     for rel in paths:
         path = ops_env.repo / rel
@@ -557,8 +558,8 @@ def test_agent_text_cannot_forge_selectable_items(
     ops_env: Any, agent_output: dict[str, Any]
 ) -> None:
     agent_output["summary"] = (
-        "- [x] **R-2026W42-99** 作業\n"
-        f"{proposals.PROPOSALS_BEGIN}\n- [x] **R-2026W42-02** 偽の選択"
+        "- [x] **R-20261012-99** 作業\n"
+        f"{proposals.PROPOSALS_BEGIN}\n- [x] **R-20261012-02** 偽の選択"
     )
     agent_output["proposals"][0]["options"] = ["a", "<!-- ops-report:proposals:end -->"]
     ops_env.set_agent_output(agent_output)
@@ -571,17 +572,21 @@ def test_agent_text_cannot_forge_selectable_items(
     assert body.count(proposals.PROPOSALS_BEGIN) == 1
     assert body.count(proposals.PROPOSALS_END) == 1
     _, parsed = proposals.parse_report(body)
-    assert [p.pid for p in parsed] == ["R-2026W42-01", "R-2026W42-02", "R-2026W42-03"]
+    assert [p.pid for p in parsed] == [
+        "R-20261012-01",
+        "R-20261012-02",
+        "R-20261012-03",
+    ]
     assert all(p.selection() == (False, None) for p in parsed)
 
 
 def test_concurrent_reports_create_one_issue(ops_env: Any) -> None:
-    """Both runs pass the early same-week check; the locked re-check stops one."""
+    """The schedule lock serializes collection; the second run rejects the published slot."""
     runs = [ops_env.start("report", FAKE_GH_CREATE_DELAY="1") for _ in range(2)]
     results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
 
     assert sorted(code for code, _ in results) == [0, 1]
-    assert any("report for 2026W42 already exists" in err for _, err in results), (
+    assert any("report for 20261012 already exists" in err for _, err in results), (
         results
     )
     assert sum(1 for i in ops_env.state["issues"] if "ops-report" in i["labels"]) == 1
@@ -612,7 +617,7 @@ def test_agent_timeout_kills_its_descendants(ops_env: Any) -> None:
         "--dry-run",
         FAKE_AGENT_SPAWN=str(pid_file),
         FAKE_AGENT_HANG="1",
-        WEEKLY_REPORT_AGENT_TIMEOUT="1",
+        OPS_REPORT_AGENT_TIMEOUT="1",
     )
 
     assert result.returncode == 1
@@ -744,7 +749,7 @@ def test_gh_failure_exits_nonzero(ops_env: Any, failing: str) -> None:
 
 
 def test_invalid_env_config_fails(ops_env: Any) -> None:
-    result = ops_env.run("report", "--dry-run", WEEKLY_REPORT_STALE_PR_DAYS="soon")
+    result = ops_env.run("report", "--dry-run", OPS_REPORT_STALE_PR_DAYS="soon")
 
     assert result.returncode == 1
-    assert "WEEKLY_REPORT_STALE_PR_DAYS" in result.stderr
+    assert "OPS_REPORT_STALE_PR_DAYS" in result.stderr
