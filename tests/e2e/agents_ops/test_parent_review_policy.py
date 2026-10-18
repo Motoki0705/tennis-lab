@@ -109,6 +109,7 @@ def resolution(
             "ci": "全check成功 headと一致",
             "regression_tests": "境界テスト成功",
             "resolution": "不具合解消",
+            "reviewed_paths": ["a.py"],
         },
     }
 
@@ -206,7 +207,9 @@ def test_partial_output_is_explicit_and_cannot_cover(policy: Any) -> None:
     run = result(policy)
     run["prs"][1]["coverage"] = "not_reviewed"
     run.update(status="failed", verdict="incomplete", error="context不足")
-    coverage = policy.evaluate_coverage(run, request()["prs"], [], {})
+    coverage = policy.evaluate_coverage(
+        run, request()["prs"], [], {}, fix_diff_digests={}
+    )
     assert not coverage.covered
     assert "run_failed_or_incomplete" in coverage.reasons
     assert "pr_101_not_reviewed" in coverage.reasons
@@ -294,7 +297,7 @@ def test_out_of_scope_snapshot_changes_invalidate_coverage(
         current.pop()
     else:
         current = []
-    coverage = policy.evaluate_coverage(run, current, [], {})
+    coverage = policy.evaluate_coverage(run, current, [], {}, fix_diff_digests={})
     assert not coverage.covered
     assert coverage.reasons
 
@@ -302,11 +305,13 @@ def test_out_of_scope_snapshot_changes_invalidate_coverage(
 def test_coverage_and_unresolved_findings_are_distinct(policy: Any) -> None:
     run = result(policy)
     current = copy.deepcopy(run["request"]["prs"])
-    before = policy.evaluate_coverage(run, current, [], {})
+    before = policy.evaluate_coverage(run, current, [], {}, fix_diff_digests={})
     assert before.covered and before.unresolved == ((100, "pr-100-1"),)
     current[0].update(head_sha="d" * 40, diff_sha256="e" * 64)
     proof = resolution(policy, run, current[0])
-    after = policy.evaluate_coverage(run, current, [proof], {100: ["a.py"]})
+    after = policy.evaluate_coverage(
+        run, current, [proof], {100: ["a.py"]}, fix_diff_digests={100: "f" * 64}
+    )
     assert after.covered and not after.unresolved
     assert policy.validate_resolution(proof) == proof
     assert policy.records(
@@ -324,7 +329,8 @@ def test_coverage_and_unresolved_findings_are_distinct(policy: Any) -> None:
         "old_run",
         "unknown_finding",
         "changed_base",
-        "null_path",
+        "missing_diff_digest",
+        "wrong_diff_digest",
     ],
 )
 def test_fix_evidence_does_not_cover_unexpected_changes(policy: Any, case: str) -> None:
@@ -332,12 +338,10 @@ def test_fix_evidence_does_not_cover_unexpected_changes(policy: Any, case: str) 
     current = copy.deepcopy(run["request"]["prs"])
     current[0].update(head_sha="d" * 40, diff_sha256="e" * 64)
     paths = {100: ["a.py"]}
-    if case == "null_path":
-        run["prs"][0]["findings"][0]["path"] = None
     proof = resolution(policy, run, copy.deepcopy(current[0]))
+    digests = {100: "f" * 64}
     if case == "outside_path":
         paths[100].append("unreviewed.py")
-        proof["changed_paths"] = paths[100]
     elif case == "missing_paths":
         paths = {}
     elif case == "stale_head":
@@ -351,7 +355,13 @@ def test_fix_evidence_does_not_cover_unexpected_changes(policy: Any, case: str) 
     elif case == "changed_base":
         current[0]["base_sha"] = "f" * 40
         proof["fixed_snapshot"] = current[0]
-    assert not policy.evaluate_coverage(run, current, [proof], paths).covered
+    elif case == "missing_diff_digest":
+        digests = {}
+    elif case == "wrong_diff_digest":
+        digests[100] = "e" * 64
+    assert not policy.evaluate_coverage(
+        run, current, [proof], paths, fix_diff_digests=digests
+    ).covered
 
 
 def test_duplicate_json_keys_never_hide_findings(policy: Any) -> None:
@@ -396,4 +406,128 @@ def test_resolution_for_another_parent_cannot_cover_this_run(policy: Any) -> Non
     current[0].update(head_sha="d" * 40, diff_sha256="e" * 64)
     proof = resolution(policy, run, current[0])
     proof["parent_issue"] = 2
-    assert not policy.evaluate_coverage(run, current, [proof], {100: ["a.py"]}).covered
+    assert not policy.evaluate_coverage(
+        run, current, [proof], {100: ["a.py"]}, fix_diff_digests={100: "f" * 64}
+    ).covered
+
+
+@pytest.mark.parametrize("finding_path", ["a.py", None])
+def test_parent_confirmed_regression_paths_are_covered(
+    policy: Any, finding_path: str | None
+) -> None:
+    run = result(policy)
+    run["prs"][0]["findings"][0]["path"] = finding_path
+    current = copy.deepcopy(run["request"]["prs"])
+    current[0].update(head_sha="d" * 40, diff_sha256="e" * 64)
+    proof = resolution(policy, run, current[0])
+    paths = ["a.py", "tests/test_a.py"]
+    proof["changed_paths"] = paths
+    proof["evidence"].update(
+        reviewed_paths=paths,
+        resolution="a.pyの境界条件修正とtests/test_a.pyの再現ケースを確認",
+    )
+    coverage = policy.evaluate_coverage(
+        run, current, [proof], {100: paths}, fix_diff_digests={100: "f" * 64}
+    )
+    assert coverage.covered and not coverage.unresolved
+    # Even an otherwise exact record cannot approve an omitted path.
+    proof["evidence"]["reviewed_paths"] = ["a.py"]
+    with pytest.raises(ValueError, match="parent's reviewed paths"):
+        policy.validate_resolution(proof)
+
+
+@pytest.mark.parametrize("bad_paths", [None, "a.py", ["../a.py"], ["a.py", "a.py"]])
+def test_resolution_requires_explicit_valid_reviewed_paths(
+    policy: Any, bad_paths: Any
+) -> None:
+    run = result(policy)
+    proof = resolution(policy, run, run["request"]["prs"][0])
+    proof["evidence"]["reviewed_paths"] = bad_paths
+    with pytest.raises(ValueError):
+        policy.validate_resolution(proof)
+    del proof["evidence"]["reviewed_paths"]
+    with pytest.raises(ValueError):
+        policy.validate_resolution(proof)
+
+
+@pytest.mark.parametrize("fixed", [False, True])
+def test_peer_merge_preserves_reviewed_or_resolved_coverage(
+    policy: Any, fixed: bool
+) -> None:
+    run = result(policy)
+    current = copy.deepcopy(run["request"]["prs"])
+    proofs, paths, digests = [], {}, {}
+    if fixed:
+        current[0].update(head_sha="d" * 40, diff_sha256="e" * 64)
+        proofs = [resolution(policy, run, copy.deepcopy(current[0]))]
+        paths, digests = {100: ["a.py"]}, {100: "f" * 64}
+    # Only PR 101 was merged; retain its verified snapshot in the full run set.
+    for n in (0, 2):
+        current[n]["base_sha"] = "c" * 40
+    advance = policy.BaseAdvance(101, "main", "b" * 40, "c" * 40)
+    coverage = policy.evaluate_coverage(
+        run,
+        current,
+        proofs,
+        paths,
+        fix_diff_digests=digests,
+        base_advances=[advance],
+    )
+    assert coverage.covered
+    assert coverage.unresolved == (() if fixed else ((100, "pr-100-1"),))
+    assert not policy.evaluate_coverage(
+        run, current, proofs, paths, fix_diff_digests=digests
+    ).covered
+
+
+def test_multiple_peer_merges_require_a_complete_base_chain(policy: Any) -> None:
+    run = result(policy)
+    current = copy.deepcopy(run["request"]["prs"])
+    current[0]["base_sha"] = "e" * 40
+    chain = [
+        policy.BaseAdvance(101, "main", "b" * 40, "c" * 40),
+        policy.BaseAdvance(102, "main", "c" * 40, "e" * 40),
+    ]
+    assert policy.evaluate_coverage(
+        run, current, [], {}, fix_diff_digests={}, base_advances=chain
+    ).covered
+    assert not policy.evaluate_coverage(
+        run, current, [], {}, fix_diff_digests={}, base_advances=chain[1:]
+    ).covered
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "foreign_pr",
+        "self_merge",
+        "wrong_base",
+        "retarget",
+        "merge_main",
+        "head",
+        "diff",
+    ],
+)
+def test_peer_merge_proof_never_covers_unreviewed_snapshot_changes(
+    policy: Any, case: str
+) -> None:
+    run = result(policy)
+    current = copy.deepcopy(run["request"]["prs"])
+    current[0]["base_sha"] = "c" * 40
+    advance = policy.BaseAdvance(
+        999 if case == "foreign_pr" else 100 if case == "self_merge" else 101,
+        "other" if case == "wrong_base" else "main",
+        "b" * 40,
+        "c" * 40,
+    )
+    if case == "retarget":
+        current[0]["base_ref"] = "other"
+    elif case == "merge_main":
+        current[0]["merge_base_sha"] = "c" * 40
+    elif case == "head":
+        current[0]["head_sha"] = "d" * 40
+    elif case == "diff":
+        current[0]["diff_sha256"] = "d" * 64
+    assert not policy.evaluate_coverage(
+        run, current, [], {}, fix_diff_digests={}, base_advances=[advance]
+    ).covered

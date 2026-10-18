@@ -31,13 +31,20 @@ main() {
 
   # Retired units must be removed explicitly on the host, including dangling links
   # and wants/ aliases. Refuse before installing or reloading anything.
+  # Keep the destination and source checks on the same retirement list.
+  local -A retired_units=(
+    [tennis-lab-cross-review.service]=.agents/ops/review/README.md
+    [tennis-lab-cross-review.timer]=.agents/ops/review/README.md
+    [tennis-lab-weekly-report.service]=.agents/ops/ops-report/README.md
+    [tennis-lab-weekly-report.timer]=.agents/ops/ops-report/README.md
+  )
   local retired found f
-  for retired in tennis-lab-cross-review.service tennis-lab-cross-review.timer; do
+  for retired in "${!retired_units[@]}"; do
     if [[ -d "$unit_dir" ]]; then
       found="$(find "$unit_dir" -name "$retired" -print -quit)"
       if [[ -n "$found" ]]; then
         echo "install_units: retired unit remains: $found" >&2
-        echo "Stop/disable/unlink it and daemon-reload as documented in .agents/ops/review/README.md, then rerun." >&2
+        echo "Stop/disable/unlink it and daemon-reload as documented in ${retired_units[$retired]}, then rerun." >&2
         exit 2
       fi
     fi
@@ -53,11 +60,12 @@ main() {
   ((${#units[@]})) || { echo "install_units: no units found under $ops_dir" >&2; exit 1; }
 
   for f in "${units[@]}"; do
-    case "$(basename "$f")" in
-      tennis-lab-cross-review.service|tennis-lab-cross-review.timer)
-        echo "install_units: refusing retired cross-review source unit: $f" >&2
-        exit 2 ;;
-    esac
+    retired="$(basename "$f")"
+    if [[ -n "${retired_units[$retired]:-}" ]]; then
+      echo "install_units: refusing retired source unit: $f" >&2
+      echo "Remove the retired source; see ${retired_units[$retired]}." >&2
+      exit 2
+    fi
   done
 
   ((dry_run)) || mkdir -p "$unit_dir"

@@ -32,6 +32,7 @@ from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import authorization, git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
+    BaseAdvance,
     evaluate_coverage,
     evidence,
     hex_value,
@@ -40,6 +41,7 @@ from parent_review_policy import (  # noqa: E402
     parse_output,
     pr_findings,
     request_manifest,
+    validate_resolution,
     validate_result,
 )
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
@@ -47,6 +49,7 @@ from review_workspace import (  # noqa: E402
     build_prompt,
     changed_paths,
     full_diff,
+    verify_base_advances,
     workspace,
 )
 
@@ -497,10 +500,27 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
         if current["head_sha"] != fixed:
             raise ValueError("fixed-head is not the current PR head")
         original = originals[args.pr]
+        if any(
+            original[key] != current[key]
+            for key in ("base_ref", "merge_base_sha", "branch")
+        ):
+            raise ValueError(
+                "base ref/merge-base/branch changed; a new explicit review is required"
+            )
+        advances: tuple[BaseAdvance, ...] = ()
+        if original["base_sha"] != current["base_sha"]:
+            peers = [
+                object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+                for n in originals
+                if n != args.pr
+            ]
+            advances = verify_base_advances(result, [current], peers)
         git("merge-base", "--is-ancestor", original["head_sha"], fixed)
         diff = full_diff(original["head_sha"], fixed)
         paths = changed_paths(original["head_sha"], fixed)
         proof = evidence(read_json(args.evidence))
+        if proof["reviewed_paths"] != paths:
+            raise ValueError("actual fix paths differ from the parent's reviewed paths")
         record = {
             "schema_version": 1,
             "kind": "resolution",
@@ -515,6 +535,7 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
             "changed_paths": paths,
             "evidence": proof,
         }
+        validate_resolution(record)
         key = digest(record)
         record_path = run_dir / f"resolution-{key}.json"
         if record_path.exists():
@@ -550,6 +571,8 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
             [current if p["number"] == args.pr else p for p in request["prs"]],
             resolved,
             {args.pr: paths},
+            fix_diff_digests={args.pr: record["fix_diff_sha256"]},
+            base_advances=advances,
         )
         return {
             "resolution": record,

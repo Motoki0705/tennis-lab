@@ -10,7 +10,7 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 |---|---|
 | `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
 | `parent_review_policy.py` | 要求・出力・公開記録の検証とcoverageの純粋関数 |
-| `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト |
+| `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
 | `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge、共有基盤免除の記録 |
 | `review_policy.py` | blocker/major解析、無害化、CI正規化、required checks・共有パス・競合等のgate判定部品 |
@@ -29,12 +29,16 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
   --fixed-head 40桁SHA --evidence tmp/fix-evidence.json
 ```
 
-`fix-evidence.json` は `ci` / `regression_tests` / `resolution` の3キーだけを持つJSON object。
-すべて非空の文章とし、CIの対象head・結果へのリンク、回帰テストのコマンドと結果、指摘解消の根拠を書く。
+`fix-evidence.json` は `ci` / `regression_tests` / `resolution` / `reviewed_paths` の4キーだけを持つJSON object。
+前3つは非空の文章とし、CIの対象head・結果へのリンク、回帰テストのコマンドと結果、指摘解消と修正範囲の確認理由を書く。
+`reviewed_paths` は、親が差分を確認した全変更パスの重複なし・ソート済み配列。
+指摘のpath以外に必要な回帰テスト・関連ファイルも明示し、レビューheadから現在headまでの実変更パス（renameの旧/新パスを含む）と完全一致させる。
+未記載パス・理由の欠落・旧3キー形式は公開前に拒否する。指摘のpathがnullでも、親による明示確認があれば同じ契約を使える。
 CI・テストの実行と証拠の確認は親の責任。このコマンドはその確認を記録し、修正差分は実gitから取得する。
 resolve出力のcoverageは当該PRの修正確認に関する参考判定。他PRの最新状態は取得しないため、
 gateは必ず全対象の最新スナップショットを別途取得して判定する。
 `--fixed-head` は現在のPR headと一致し、レビューheadの子孫でなければならない。
+base ref・merge-base・branchの変更はresolveでも受理しない。base先端だけの前進は後述の先行merge証拠で検証する。
 修正確認は親と当該PRに公開し、横断指摘は影響するPRごとに確認する。
 
 共通の `--state-dir`（サブコマンドより前）はparent CLIと同じprivate stateを指定する。
@@ -126,21 +130,50 @@ result_sha256,snapshot,coverage,findings,parent_run_url}`。
 `kind=resolution` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,finding,
 reviewed_head,fixed_snapshot,fix_diff_sha256,changed_paths,evidence}`。
 reviewed_headから現在fixed headまでの実diffをhashし、renameは旧/新パスをともに収録する。
-evidenceは実行例の3キー。差分全文はローカル `resolution-<digest>.diff`、
+evidenceは実行例の4キー。`evidence.reviewed_paths` と実git由来の `changed_paths` は完全一致を必要とし、
+親の確認理由・最新headを含むfixed_snapshot・実diff digestに結び付ける。差分全文はローカル `resolution-<digest>.diff`、
 公開済み状態は `resolution-<digest>.json` に保存する。同一証拠の再送は再投稿しない。
 PRへ投稿後に親へ記録する。親に未公開のresolutionはgateへ渡さない。
 
 ## 修正後のcoverageとgate境界
 
-`evaluate_coverage(result, current_snapshots, resolutions, changed_paths)` はI/Oのない純粋関数。
-current_snapshotsは最新PR集合のスナップショット、changed_pathsは**レビューheadから最新headまでの実git差分**を渡す。
+`evaluate_coverage(result, current_snapshots, resolutions, changed_paths, *, fix_diff_digests, base_advances=())` はI/Oのない純粋関数。
+current_snapshotsは全run対象のスナップショット、changed_pathsは**レビューheadから最新headまでの実git差分のパス**を渡す。
+必須keyword引数 `fix_diff_digests` は同じ差分の生バイトSHA-256を `{PR番号: digest}` で渡す。
+`review_workspace.full_diff(reviewed_head, latest_head)` をhashし、公開resolutionのdigestをそのまま転記しない。
+修正のないPRは両mapから省略できるが、修正のあるPRでどちらか欠ければ確認は成立しない。
 返り値は `Coverage(covered, reasons, unresolved)`。unresolvedは `(PR番号, finding ID)` の組。
 
-- failed/incomplete・not_reviewed・PRの追加削除・base先端/base ref/merge-base/branch変更はcoverage不成立。
-- head/diffが変わったPRは、同じrun/result、レビューhead、**現在のスナップショット**に対する修正確認を必要とする。
-  変更パスが指摘に明記されたpathの集合を超える場合も不成立。nullの指摘から修正範囲を推測しない。
+- failed/incomplete・not_reviewed・PRの追加削除・base ref/merge-base/branch変更はcoverage不成立。
+- head/diffが変わったPRは、同じrun/result・レビューheadに対する親の修正確認を必要とする。
+  fixed_snapshotは現在のhead/merge-base/diff/ref/branchと一致し、実fix diff digestと全変更パスも記録と一致しなければならない。
+  親が `reviewed_paths` に明示した回帰テスト等は受理し、記録外のパス・digest不一致・古いheadの証拠は拒否する。
 - 修正が追加pushされたら、以前のheadへの確認を流用せず、現headで各指摘の証拠を再記録する（AI再実行なし）。
 - coverage成立と未解決指摘ゼロは別条件。横断指摘は影響する各PRで確認する。
+
+### 同じrunの先行mergeによるbase先端の前進
+
+base先端だけが進み、head・merge-base・diff digest・base ref・branchがレビュー時またはresolve記録時と同一なら、
+同じrunの**他の対象PR**のmergeで説明できる場合に限りcoverageと解消確認を継承する。指摘ゼロのPRでもresolveや追加Codex実行は不要。
+
+`review_workspace.verify_base_advances(result, current_snapshots, merged_prs)` が正規化証拠
+`BaseAdvance(pr, base_ref, before_sha, after_sha)` のtupleを返す。`pr` はmerge済みの先行対象PR、
+`before_sha → after_sha` は実gitのfirst-parent上の1辺、after_shaはGitHubのmerge commit。
+current_snapshotsは前進を検査する未merge PRの最新snapshot（対象の部分集合でよい）、merged_prsは
+呼出側が同じrepoのGitHub `GET /repos/{repo}/pulls/{n}` から直接得たrun対象PRのraw objectを渡す。
+コメント本文やPRが提供したJSONをGitHub応答として渡さない。`merged is True`・対象番号・head branch・base ref/repo・
+`merge_commit_sha` を照合し、元のbaseから最新baseまでのfirst-parent上の**全commit**をそのmerge commit群で説明する。
+未説明commit、巻き戻し、別base・対象外PR、未merge時のテスト用merge commit、履歴の不足は例外で停止する。
+複数commitのrebase merge等も、全commitをこの証拠で説明できなければ停止する。
+
+gateはこのtupleを `base_advances` に渡す。純粋関数は別対象PRによる連続鎖だけを受理し、
+originalまたはfixed_snapshotから最新baseまで欠けた辺がないことを確かめる。証拠省略時は従来どおりbase先端変更で停止する。
+gateには全run対象を残し、先行merge済みPRはGitHub上のmerge済みheadと確認済みheadの一致を検証してから確認済みsnapshotを据え置く。
+残るPRの最新snapshot・必須CI・競合・依存関係は各merge後に再取得する。merge済みPRを集合から削除したり、
+未merge PRに過去のsnapshotを渡したりしてcoverage判定を迂回しない。
+
+**PR自身へmainをmerge/rebaseしてmerge-baseやdiffを変えた場合は継承しない。** この版ではresolveによる追従承認経路を設けず、
+親が理由を付けた新しい明示review要求を作る。retargetや未レビュー差分も同様に停止し、自動再レビューは起動しない。
 
 未知の入力スキーマは例外で拒否する。gateは例外も停止として扱う。
 最新head/CI・必須checks・競合・共有パス・人間判断・依存順の照合とmerge実行は下記のmerge gateが担う。
@@ -254,6 +287,7 @@ workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最
 旧 `cross_review.py` と `tennis-lab-cross-review.{service,timer}` は削除済み。
 installerは導入先に残る旧unit（dangling symlink・wants内も含む）を検出すると、
 リンク・daemon-reload・enableより前に撤去手順を示して失敗する。旧source unitも再導入しない。
+旧週次レポートunitも残っている場合は [ops-reportの導入手順](../ops-report/README.md) で撤去する。
 ホストで次を実施し、結果を親issueへ記録する。
 
 ```bash
