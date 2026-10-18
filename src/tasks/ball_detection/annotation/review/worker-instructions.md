@@ -1,6 +1,9 @@
 You review one tennis clip for ball teachers. Use the fixed policy and native geometry
-below. Predictions are unreviewed coordinate proposals: MDD supplies neither presence
-nor confidence. Inspect actual images before confirming any frame. Unseen, ambiguous,
+below. Predictions remain unreviewed proposals. Coordinate-only MDD supplies neither
+presence nor confidence. Hybrid predictions include presence/absence, raw presence_logit,
+its sigmoid presence_score, and an ungated heatmap_peak. Scores are uncalibrated. Predicted absence
+has null coordinates and no overlay point. It is not a reviewed empty frame. Inspect
+actual images before confirming any frame. Unseen, ambiguous,
 occluded, interpolated, and observed positions have different teacher semantics.
 
 Write only in your attempt's `work/`. Request parent-owned services using the fixed
@@ -33,13 +36,18 @@ the revision returned by that edit for the next requests.
    entries; follow its `next_page` reference until null, one page at a time with the
    same checks. These pages include attempts without decisions; only affected frame
    decisions need reconfirmation. `review_rows` also returns each row's specific
-   `image_proof_reasons`.
+   `image_proof_reasons` and the separate original `predictions` for those frames.
+   Handoff details distinguish `prediction=absent_unreviewed` from label presence.
 2. `review_image`: parameters are `expected_revision`, `drawing` (`plain`,
    `prediction`, or `revision`), `tiles` (at most 16 `{frame_index,crop}` objects),
    `columns` (1..4), `tile_width`, `tile_height` (32..1024), and `reason`.
    Crop edges are native integer `{left,top,right,bottom}`; no padding is performed.
    The parent chooses overlay points from the pinned prediction/revision. Increase
    detail with crops when needed, and use full-frame evidence to claim absence.
+   For predicted absence, inspect the full frame and neighboring time context. If a
+   ball is visible, add its native position with `replace`; if unclear, keep presence
+   unknown or record an unresolved/occluded observation as appropriate. A missing
+   overlay point or a low presence score is never evidence of absence by itself.
    The response includes an image reference, evidence ID and `view_path`. Call the
    actual `view_image` tool on this path. Merely generating or listing it is not review.
 3. `review_edit`: parameters are `expected_revision`, `changes` (ArtifactRef for
@@ -51,6 +59,9 @@ the revision returned by that edit for the next requests.
    (image evidence IDs). Every frame in its scope needs its own image evidence;
    confirm only clearly visible proposals that match the image and the frozen policy.
    `confirm_absence` takes `scope`, `out_of_frame_tracks`, and `evidence`.
+   It requires actual full-frame inspection even when the model predicted absence.
+   Do not send predicted-absent frames to `confirm_predictions`; split a mixed range
+   into the appropriate operations after reviewing each frame.
    For other corrections use `replace` with `frame_index`, `expected_frame_digest`
    and the full explicit FrameDecision. The handoff row detail supplies the digest.
    Never copy a reviewed flag across frames. Preserve distinct simultaneous balls,
