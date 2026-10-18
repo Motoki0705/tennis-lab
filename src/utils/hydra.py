@@ -8,9 +8,11 @@ wrapper into each script.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import wraps
+from pathlib import Path
 from types import MappingProxyType
 from typing import Any, TypeVar, cast
 
@@ -99,13 +101,24 @@ def validate_boundary(name: str, config: DictConfig) -> None:
 
 
 def hydra_main(
-    *args: Any,
+    *,
+    config_path: str | None,
     validation_boundary: str | None = None,
     **kwargs: Any,
 ) -> Callable[[HydraEntrypoint[R]], HydraCLI[R]]:
-    """Wrap :func:`hydra.main`, optionally validating before the user function."""
+    """Wrap :func:`hydra.main`, optionally validating before the user function.
+
+    A relative ``config_path`` is anchored to the file that defines the entry
+    point. Hydra itself only does that when the entry point runs as
+    ``__main__``; an entry point imported by ``dispatch_cli`` would otherwise be
+    looked up as the ``pkg://`` module of its configs, which our ``configs``
+    directories (no ``__init__.py``) are not.
+    """
 
     def decorate(function: HydraEntrypoint[R]) -> HydraCLI[R]:
+        search_path = config_path
+        if search_path is not None and not search_path.startswith("pkg://"):
+            search_path = str((Path(inspect.getfile(function)).resolve().parent / search_path).resolve())
         target = function
         if validation_boundary is not None:
 
@@ -115,7 +128,7 @@ def hydra_main(
                 return function(config)
 
             target = validated
-        hydra_decorated = hydra.main(*args, **kwargs)(target)
+        hydra_decorated = hydra.main(config_path=search_path, **kwargs)(target)
         return cast(HydraCLI[R], hydra_decorated)
 
     return decorate
