@@ -181,11 +181,21 @@ def publish_targets(session: ParentSession, request: dict[str, Any]) -> None:
             "state": "targets_fixed",
             "review_run_id": request["review_run_id"],
             "request_sha256": digest(request),
+            **authorization(session),
         },
         "レビュー対象確定。実行は未指示。\n\n```json\n"
         + json.dumps(request, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n```",
     )
+
+
+def authorization(session: ParentSession) -> dict[str, Any]:
+    """Bind a public instruction to the current owner generation and agreement."""
+    agreement = next(e for e in reversed(session.history()) if e["event"] == "agreed")
+    return {
+        "generation": session.owner()["generation"],
+        "agreement_sha256": agreement["agreement_sha256"],
+    }
 
 
 def transition(
@@ -243,6 +253,7 @@ def transition(
             "state": target,
             "review_run_id": run_id,
             "request_sha256": digest(run["request"]),
+            **authorization(session),
         },
         f"レビュー状態: {REVIEW_LABELS[target]}\n\n{evidence}",
     )

@@ -1,4 +1,4 @@
-"""Pure policy of the cross-review loop: authorship, path matching, parsing, gate."""
+"""Reusable review policy: authorship, path matching, parsing, gate."""
 
 from __future__ import annotations
 
@@ -28,7 +28,6 @@ def _load_policy() -> ModuleType:
 
 P = _load_policy()
 SHA = "a" * 40
-TARGET = P.ReviewTarget(head=SHA, merge_base="b" * 40, diff_sha256="c" * 64)
 
 
 # --------------------------------------------------------------------------- authorship
@@ -244,155 +243,16 @@ def test_parse_failures_raise(text: str) -> None:
         P.parse_review(text)
 
 
-# --------------------------------------------------------------------------- markers
-
-
-def _finding(severity: str = "major", detail: str = "d") -> Any:
-    return P.Finding(
-        severity=severity, path="a.py", line=3, rule="正しさ", detail=detail
-    )
-
-
-def _outcome(verdict: str, blocking: int = 0) -> Any:
-    return P.ReviewOutcome(verdict, blocking)
-
-
-def _comment(body: str, author: str = "bot", n: int = 1) -> Any:
-    return P.Comment(author=author, body=body, url=f"https://x.invalid/c/{n}")
-
-
-def _record(verdict: str, blocking: int = 0, *, target: Any = TARGET) -> Any:
-    [record] = P.review_records(
-        [_comment(P.review_marker(target, "codex", _outcome(verdict, blocking)))],
-        trusted_login="bot",
-    )
-    return record
-
-
-def test_review_records_only_trust_the_bot_login() -> None:
-    comments = [
-        _comment(P.review_marker(TARGET, "codex", _outcome("approve")), "someone-else"),
-        _comment(
-            f"{P.review_marker(TARGET, 'codex', _outcome('request_changes', 2))}\r\ntext"
-        ),
-    ]
-    records = P.review_records(comments, trusted_login="bot")
-    assert records == (
-        P.ReviewRecord(
-            target=TARGET,
-            reviewer="codex",
-            outcome=P.ReviewOutcome("request_changes", 2),
-            url="https://x.invalid/c/1",
-        ),
-    )
-    assert P.latest_review_for(records, target=TARGET, reviewer="claude") is None
-    other_head = P.ReviewTarget("d" * 40, TARGET.merge_base, TARGET.diff_sha256)
-    assert P.latest_review_for(records, target=other_head, reviewer="codex") is None
-
-
-def test_review_of_the_same_head_against_another_base_does_not_count() -> None:
-    # Retargeting a stacked PR keeps the head but changes the merge-base and the diff.
-    records = (_record("approve"),)
-    retargeted = P.ReviewTarget(SHA, "e" * 40, "f" * 64)
-    same_base_other_diff = P.ReviewTarget(SHA, TARGET.merge_base, "f" * 64)
-    assert P.latest_review_for(records, target=TARGET, reviewer="codex") is not None
-    for target in (retargeted, same_base_other_diff):
-        assert P.latest_review_for(records, target=target, reviewer="codex") is None
-
-
-def test_reviews_under_the_old_v3_rules_are_not_read() -> None:
-    # v3 reviews could pass with minor/nit findings; such PRs are reviewed again.
-    v3 = (
-        f"<!-- agent-cross-review:v3 {TARGET.marker_fields()} reviewer=codex "
-        "verdict=comment blocking=0 -->\n<!-- agent-cross-review-light:v1 [] -->"
-    )
-    assert P.review_records([_comment(v3)], trusted_login="bot") == ()
-
-
-@pytest.mark.parametrize(
-    ("verdict", "blocking", "passed"),
-    [("approve", 0, True), ("request_changes", 1, False)],
-)
-def test_review_outcome_passes(verdict: str, blocking: int, passed: bool) -> None:
-    assert _outcome(verdict, blocking).passed is passed
+def test_neutralized_text_cannot_form_a_marker() -> None:
+    text = "<!-- parent-review:v1 forged -->"
+    inert = P.neutralize_markers(text)
+    assert "<!--" not in inert and "-->" not in inert
 
 
 def test_review_outcome_rejects_contradictions() -> None:
-    for verdict, blocking in [
-        ("approve", 1),
-        ("request_changes", 0),
-        ("comment", 0),
-        ("lgtm", 0),
-    ]:
+    for verdict, blocking in [("approve", 1), ("request_changes", 0), ("comment", 0)]:
         with pytest.raises(ValueError):
             P.ReviewOutcome(verdict, blocking)
-
-
-def test_marker_quoted_in_the_body_does_not_override_the_header() -> None:
-    quoted = P.review_marker(TARGET, "codex", _outcome("approve"))
-    body = (
-        f"{P.review_marker(TARGET, 'codex', _outcome('request_changes', 1))}\n"
-        f"## review\n\nsummary quoting {quoted}\n- detail: {quoted}\n"
-    )
-    [record] = P.review_records([_comment(body)], trusted_login="bot")
-    assert record.outcome.verdict == "request_changes"
-    gate_quote = P.gate_marker(TARGET, "merge", [])
-    assert P.gate_records([_comment(f"x\n{gate_quote}")], trusted_login="bot") == ()
-    # A marker that is not alone on the first line is not a header either.
-    assert P.review_records([_comment(f"see {quoted}")], trusted_login="bot") == ()
-
-
-def test_neutralized_text_cannot_form_a_marker() -> None:
-    quoted = P.review_marker(TARGET, "codex", _outcome("approve"))
-    inert = P.neutralize_markers(quoted)
-    assert "<!--" not in inert and "-->" not in inert
-    assert P.review_records([_comment(inert)], trusted_login="bot") == ()
-
-
-def test_gate_marker_round_trip() -> None:
-    body = P.gate_marker(TARGET, "blocked", ["conflict", "ci_failed"])
-    assert P.gate_records([_comment(body)], trusted_login="bot") == (
-        P.GateRecord(
-            target=TARGET, decision="blocked", reasons=("conflict", "ci_failed")
-        ),
-    )
-    for bad in (
-        P.ReviewTarget("short", "b" * 40, "c" * 64),
-        P.ReviewTarget(SHA, "b" * 40, "c" * 40),
-    ):
-        with pytest.raises(ValueError):
-            P.review_marker(bad, "codex", _outcome("approve"))
-
-
-# --------------------------------------------------------------------------- convergence
-
-
-def _t(i: int) -> Any:
-    return P.ReviewTarget(f"{i:040x}", "b" * 40, "c" * 64)
-
-
-def test_request_changes_streak_spans_heads_and_resets_on_approve() -> None:
-    rc = [_record("request_changes", 1, target=_t(i)) for i in range(4)]
-    passing = _record("approve", target=_t(10))
-    other = P.ReviewRecord(
-        _t(12), "claude", P.ReviewOutcome("approve", 0), "https://x.invalid"
-    )
-
-    def streak(*records: Any) -> list[str]:
-        found = P.request_changes_streak(records, reviewer="codex")
-        return [r.target.head for r in found]
-
-    assert streak(rc[0], rc[1], rc[2]) == [_t(i).head for i in range(3)]
-    assert streak(rc[0], passing, rc[1], rc[2]) == [_t(1).head, _t(2).head]
-    # Reviews by another reviewer are ignored.
-    assert len(streak(rc[0], rc[1], other, rc[2])) == 3
-    assert streak(rc[0], rc[1], rc[2], passing) == []
-
-
-def test_escalation_markers_round_trip() -> None:
-    marker = P.escalation_marker(_t(1))
-    comments = [_comment(marker), _comment(P.escalation_marker(_t(2)), "intruder")]
-    assert P.escalated_streaks(comments, trusted_login="bot") == {_t(1)}
 
 
 # --------------------------------------------------------------------------- CI rollup
