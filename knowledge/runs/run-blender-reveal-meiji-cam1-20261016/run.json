@@ -1,0 +1,16 @@
+{
+  "run_id": "1792129833669238560_1460412_blender-reveal-pr1203-preview",
+  "name": "blender-reveal-pr1203-preview",
+  "command": "env OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe /home/kamimura/.cache/tennis-lab/blender/blender-5.2.1-linux-x64/blender --background --factory-startup --python-exit-code 1 --threads 4 --python scripts/blender/tennis_reveal.py -- --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/blender_export/pr1203-meiji-cam1/bundle --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview --samples 4 --resolution-percentage 50 --frame-step 4 --render && env OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe /home/kamimura/.cache/tennis-lab/blender/blender-5.2.1-linux-x64/blender --background /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/tennis_reveal.blend --python-exit-code 1 --threads 4 --python scripts/blender/validate_reveal.py -- --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/blender_export/pr1203-meiji-cam1/bundle --report /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/validation.json && ffmpeg -v error -framerate 15000/1001 -pattern_type glob -i '/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/frames/*.png' -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/reveal_preview.mp4 && ffprobe -v error -select_streams v:0 -show_entries stream=width,height,r_frame_rate,nb_frames,duration:format=duration,size -of json /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/reveal_preview.mp4 > /home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/video_metadata.json",
+  "provider": "codex",
+  "session": "01a14329-6c48-74f2-ad36-640189a81fcb",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "8549c66c05abd9e2b3f73b785cc6382603cfb7b5",
+  "branch": "codex/blender-scene-reveal",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blender-scene-reveal",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blender-scene-reveal",
+  "captured_at": "2026-10-16T14:50:33+09:00"
+}
