@@ -1,0 +1,27 @@
+{
+  "scene": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store/exports/ce2672d89d42ab612f3943934308ba0d469a4249533065d9b328ec26a368486f/scene.npz",
+    "sha256": "0fc625c82236b10b7b8fcd957ed0bc7b1a1ad3c9f210eef39b03728fc22d2427",
+    "bytes": 154871332
+  },
+  "video": {
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+    "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+    "bytes": 19479451
+  },
+  "bundle_manifest": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/blender_export/pr1203-meiji-cam1/bundle/manifest.json",
+    "sha256": "09390f2778141d4f8df502d9439488463db2be6176671aa15d9892fd0723c63b",
+    "bytes": 11109
+  },
+  "smpl_faces": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/body_models/smplh/neutral/model.npz",
+    "sha256": "a60a7e29d33f09ef1a6352907e2f485e161f471330ca40592764374063e751df",
+    "bytes": 87259106
+  },
+  "smpl_regressor": {
+    "path": "/home/kamimura/projects/tennis-lab/src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt",
+    "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+    "bytes": 662187
+  }
+}
