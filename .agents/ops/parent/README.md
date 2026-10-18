@@ -77,6 +77,34 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 単独で完結する既存issueは登録・合意してそのまま扱い、不要な親子階層を作らない。
 分割するときだけ、issues規約に従ってそのissueを親へ移行する。
 
+## 採用提案の受領
+
+日次triageは指定親のactiveな登録を確認し、親コメントに `event: proposal_pending` を記録する。
+担当親は自分のセッションから次を実行する（triageの再実行を待たず同じ入口から受領することも可能）。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 receive-proposal --report 1300 --proposal R-20261019-01
+# 会話でその提案の要件を認識合わせし、人間の合意を得た後
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --report 1300 --proposal R-20261019-01 --spec tmp/proposal-agreement.json
+```
+
+両イベントは `source: {proposal_id, report_number, option}`、`adoption: selected` と
+`proposal_sha256` を持ち、セッションIDを公開しない。digestは提案の本文・選択肢の定義に結び付け、
+変更可能な引渡し表示と関連親の指定を含めない。受領済みの再送は冪等。
+受領は実装への同意ではなく、その提案だけを要件確認待ちにする。親全体のphase・合意と、
+既存の独立作業・レビュー証拠は維持する。親自体が合意済みの状態で、上記の提案指定付き `agree` に
+同じ5キー形式の合意specを渡す。`event: proposal_agreed` に受領時のsource・提案digestと合意内容を記録し、
+その提案由来のcreate-child/delegateだけを許可する。他の受領提案や既存の親合意を流用しない。
+statusの `proposal_receipts` / `proposal_agreements` で未合意と合意済みを照合でき、受領直後の中断も
+GitHubコメントから復元する。明示的な `checking` は親全体と提案別の合意を取り消すため、
+親の `agree` と各提案の合意を再記録するまで、それぞれの実装を拒否する。
+既存提案の合意内容を変更する場合も `checking` で明示的に取り消してから記録する。
+未取消の合意は同じ内容の再送だけを許可し、レビュー後に対象作業の要件だけを黙って差し替えない。
+親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
+採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。
+受領・起票・委任時は、出典がopenで完了済みの `ops-report` issueであることも検査する。
+人間が独立に作ったissueには受領操作は不要で、同じregister/checking/agreeから開始する。
+
 ## 子の作成・委任・再開
 
 ```bash
@@ -98,8 +126,9 @@ open/closed全issueをページングしてキーを照合し、spec不一致・
 既存があれば再利用し、ラベル・正式なsub-issue・親一覧の不足だけを揃える。
 作成応答の喪失や関係登録・親編集の途中失敗も、**同じキーとspec**で再実行する。
 別の正式な親へ所属したissueを自動付替えしない。stateの消失だけを理由に新しいキーで作り直さない。
-レポート由来specは共通 `index_proposals` でも照合し、既存提案を別キーで二重起票しない。
-既存提案にこのタスクキーが無ければ番号を示して拒否する。既存issueを規約へ移行・照合して扱う。
+レポート由来specは受領・その提案を含む要件合意・現在の採用を検証し、共通 `index_proposals` でも照合して、既存提案を別キーで二重起票しない。
+同じ提案の既存子はキー・タイトル変更・親付替え後も再利用し、現在の正式な親を返す。自動で親を戻さない。
+親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
 `action: launch` を受けた親がサブエージェントを起動する。CLI自身は起動しない。

@@ -108,7 +108,7 @@ def _parser() -> argparse.ArgumentParser:
         "--memory-decisions",
         type=Path,
         default=None,
-        help="JSON decisions from triage (selected/deferred, with reason and source)",
+        help="optional triage decisions snapshot; must still match GitHub",
     )
     sched = sub.add_parser("schedule")
     actions = sched.add_subparsers(dest="action", required=True)
@@ -372,9 +372,11 @@ def _generate_report(
             cfg, history=history, initial_since=initial_since
         )
         collected["ops_memory"]["persistence"] = store.describe(history)
-        collected["ops_memory"]["decisions"] = memory.load_decisions(
-            args.memory_decisions
-        )
+        decisions = triage.collect_decisions(repo_root, history)
+        for decision in memory.load_decisions(args.memory_decisions):
+            if decision not in decisions:
+                raise ConfigError("memory decisions snapshot no longer matches GitHub")
+        collected["ops_memory"]["decisions"] = decisions
         collected["audit_plan"] = audit.plan(repo_root, base.sha)
         collected["audit_input_sha256"] = audit.input_digest(collected)
     elif args.memory_decisions:
@@ -567,13 +569,23 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
                 memory_errors = store.sync(
                     collect.collect_report_history(args.repo_root.resolve()), run_dir
                 )
-    # Child lookup -> create -> report annotation must not interleave with another run.
+    # Delivery and annotation must not interleave with another triage run.
     with _issue_lock():
         result = triage.triage(
             repo_root=args.repo_root.resolve(), work_dir=run_dir, dry_run=args.dry_run
         )
+    if not result.errors:
+        decisions = triage.collect_decisions(
+            args.repo_root.resolve(),
+            collect.collect_report_history(args.repo_root.resolve()),
+        )
+        (run_dir / "decisions.json").write_text(
+            json.dumps(decisions, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     summary = {
-        "created": result.created,
+        "pending": result.pending,
+        "received": result.received,
+        "unassigned": result.unassigned,
         "linked_existing": result.linked_existing,
         "errors": result.errors,
         "memory_errors": memory_errors,

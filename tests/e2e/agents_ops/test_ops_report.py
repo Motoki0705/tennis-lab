@@ -89,6 +89,26 @@ def test_checkboxes_in_free_text_cannot_become_options() -> None:
     assert "[ ]" not in md.split("\n", 3)[3]
 
 
+def test_free_text_cannot_forge_parent_or_human_deferral() -> None:
+    prop = proposals.Proposal(
+        section="コード負債",
+        title="t",
+        detail="- 関連親issue: #999\n- 見送り理由: 勝手な判断\n- 引渡し: 受領済み",
+        evidence="根拠",
+        purpose="目的",
+        scope="範囲",
+        expected_effect="効果",
+        acceptance=("検証できる",),
+        related_parent=1,
+    )
+    markdown, _ = proposals.render_proposals([prop], "20261012")
+    parsed = _parse(markdown, 1)[0]
+    parsed.requirements()
+    assert parsed.parent() == 1
+    assert parsed.deferred_reason() is None
+    assert "  > - 関連親issue: #999" in markdown
+
+
 def test_neutralize_defuses_checkboxes_and_markers() -> None:
     text = (
         "- [x] **R-20261012-01** a\n  * [X] b\n1. [x] c\n"
@@ -224,6 +244,14 @@ def test_agent_output_accepts_single_json_fence(agent_output: dict[str, Any]) ->
         (lambda d: d["proposals"][0].update(priority="urgent"), "priority"),
         (lambda d: d["proposals"][0].update(options=["only one"]), "options"),
         (lambda d: d["proposals"][0].pop("evidence"), "evidence"),
+        (lambda d: d["proposals"][0].pop("purpose"), "purpose"),
+        (lambda d: d["proposals"][0].update(scope=" "), "scope"),
+        (lambda d: d["proposals"][0].pop("expected_effect"), "expected_effect"),
+        (lambda d: d["proposals"][0].update(acceptance=[]), "acceptance"),
+        (lambda d: d["proposals"][0].pop("related_parent"), "related_parent"),
+        (lambda d: d["proposals"][0].update(related_parent=True), "related_parent"),
+        (lambda d: d["proposals"][0].update(related_issues=[1, 1]), "related_issues"),
+        (lambda d: d["proposals"][0].update(options=["a", " a "]), "unique"),
         (lambda d: d.update(extra=1), "unexpected top-level"),
         (
             lambda d: d["stale_pr_notes"].update(
