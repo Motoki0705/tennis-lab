@@ -267,7 +267,8 @@ PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/�
 ## systemd --user への導入（merge後に人間が行う）
 
 旧unitが動いたまま新unitを導入しない。以下は親が実機で行う。installerは旧unit本体またはtimerのwantsリンクが
-残っていれば、リンク作成・daemon-reloadより前にエラーにする（壊れたsymlinkも検出）。
+残っていれば、リンク作成・daemon-reload・enableより前にエラーにする（壊れたsymlinkや他のwants内も検出）。
+旧source unitも再導入しない。旧PR自動レビューunitが残る場合は [reviewの撤去手順](../review/README.md) も先に実施する。
 
 ```bash
 # 旧reportと、切替中に古いCLIを呼び得るtriageを止める
@@ -282,7 +283,7 @@ if [ -f ~/.config/tennis-lab-agents/weekly-report.env ]; then
 fi
 cd ~/projects/tennis-lab
 .agents/ops/install_units.sh --dry-run
-.agents/ops/install_units.sh                    # link + daemon-reload（cross-reviewは別issueの担当）
+.agents/ops/install_units.sh                    # link + daemon-reload
 systemd-analyze --user verify .agents/ops/ops-report/systemd/*.{service,timer}
 # 導入完了後に基準を記録してからtimerを有効化（既存stateがあればinitは繰り返さない）
 .venv/bin/python .agents/ops/ops-report/ops_report.py schedule init

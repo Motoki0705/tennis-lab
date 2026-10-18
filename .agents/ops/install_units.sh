@@ -29,14 +29,24 @@ main() {
   fi
   unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
-  # Do not install a second report timer alongside the retired schedule. The
-  # operator must stop/disable and unlink these first (ops-report/README.md).
-  local retired
-  for retired in tennis-lab-weekly-report.service tennis-lab-weekly-report.timer; do
-    if [[ -e "$unit_dir/$retired" || -L "$unit_dir/$retired" ||
-          -e "$unit_dir/timers.target.wants/$retired" || -L "$unit_dir/timers.target.wants/$retired" ]]; then
-      echo "install_units: retire $retired before installing; see ops-report/README.md" >&2
-      exit 2
+  # Retired units must be removed explicitly on the host, including dangling links
+  # and wants/ aliases. Refuse before installing or reloading anything.
+  # Keep the destination and source checks on the same retirement list.
+  local -A retired_units=(
+    [tennis-lab-cross-review.service]=.agents/ops/review/README.md
+    [tennis-lab-cross-review.timer]=.agents/ops/review/README.md
+    [tennis-lab-weekly-report.service]=.agents/ops/ops-report/README.md
+    [tennis-lab-weekly-report.timer]=.agents/ops/ops-report/README.md
+  )
+  local retired found f
+  for retired in "${!retired_units[@]}"; do
+    if [[ -d "$unit_dir" ]]; then
+      found="$(find "$unit_dir" -name "$retired" -print -quit)"
+      if [[ -n "$found" ]]; then
+        echo "install_units: retired unit remains: $found" >&2
+        echo "Stop/disable/unlink it and daemon-reload as documented in ${retired_units[$retired]}, then rerun." >&2
+        exit 2
+      fi
     fi
   done
 
@@ -49,7 +59,15 @@ main() {
   mapfile -d '' -t units <"$UNIT_LIST"
   ((${#units[@]})) || { echo "install_units: no units found under $ops_dir" >&2; exit 1; }
 
-  local f
+  for f in "${units[@]}"; do
+    retired="$(basename "$f")"
+    if [[ -n "${retired_units[$retired]:-}" ]]; then
+      echo "install_units: refusing retired source unit: $f" >&2
+      echo "Remove the retired source; see ${retired_units[$retired]}." >&2
+      exit 2
+    fi
+  done
+
   ((dry_run)) || mkdir -p "$unit_dir"
   for f in "${units[@]}"; do
     echo "link $(basename "$f") -> $f"

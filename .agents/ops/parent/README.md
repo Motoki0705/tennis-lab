@@ -223,9 +223,12 @@ git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-col
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
 `review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示をコメントへ記録する。
 出力は上記manifestに `"review_state":"instructed"` を追加したJSON。
+reviewイベントには現在の担当 `generation` と最新合意の `agreement_sha256` も記録する。
+公開のmanifestは変更せず、セッションIDを出さずに指示と担当・合意を結び付ける。
 `request_sha256` は `review_state` 追加前のprepare manifestのcanonical JSONに対して計算する。
 **#1218はこのJSONだけで起動せず、親コメントの同じrun ID/request digest/指示済み記録と最新対象を照合し、
 run IDごとの実行を一度だけ受理する責任を持つ。** prepareだけのJSONは実行指示にしない。
+受理・実行・修正確認・結果スキーマは [親レビュー入口](../review/README.md) を参照する。
 同じprepareの再実行は同じrun ID、同じrequestの再送は同じ指示を使う。
 次のrunや対象変更には `review-prepare --reason-file` で新しい理由を必須とする。
 PR open/push/CI完了ではこの入口もレビューも起動しない。

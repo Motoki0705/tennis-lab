@@ -366,29 +366,83 @@ def test_install_units_uses_main_source_when_cwd_is_linked(tmp_path: Path) -> No
     assert calls.read_text().splitlines() == ["--user daemon-reload"]
 
 
-@pytest.mark.parametrize("dry_run", [False, True])
-@pytest.mark.parametrize(
-    "retired",
-    [
-        "tennis-lab-weekly-report.service",
-        "tennis-lab-weekly-report.timer",
-        "timers.target.wants/tennis-lab-weekly-report.timer",
-    ],
-)
-def test_install_units_rejects_retired_report_links_before_side_effects(
-    tmp_path: Path, retired: str, dry_run: bool
+RETIRED_UNITS = [
+    ("tennis-lab-cross-review.service", ".agents/ops/review/README.md"),
+    ("tennis-lab-cross-review.timer", ".agents/ops/review/README.md"),
+    ("tennis-lab-weekly-report.service", ".agents/ops/ops-report/README.md"),
+    ("tennis-lab-weekly-report.timer", ".agents/ops/ops-report/README.md"),
+]
+
+
+@pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
+@pytest.mark.parametrize("where", ["direct", "dangling", "wants"])
+@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+def test_installer_refuses_retired_units_before_side_effects(
+    tmp_path: Path, name: str, readme: str, where: str, extra: list[str]
 ) -> None:
-    old = tmp_path / "config/systemd/user" / retired
-    old.parent.mkdir(parents=True)
-    old.symlink_to(tmp_path / "removed-checkout/old-unit")
-    args = ("--dry-run",) if dry_run else ()
-    result, calls = _run_installer(tmp_path, ["tennis-lab-ops-report.timer"], *args)
+    directory = tmp_path / "config/systemd/user"
+    if where == "wants":
+        directory /= "timers.target.wants"
+    directory.mkdir(parents=True)
+    old = directory / name
+    if where == "direct":
+        old.write_text("[Unit]\n")
+    else:
+        old.symlink_to(tmp_path / "removed-source" / name)
+    result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], *extra)
     assert result.returncode == 2
-    assert "retire tennis-lab-weekly-report" in result.stderr
-    assert old.is_symlink()
-    assert not (old.parent / "tennis-lab-ops-report.timer").exists()
+    assert "retired unit remains" in result.stderr
+    assert str(old) in result.stderr
+    assert readme in result.stderr
+    assert "daemon-reload" in result.stderr
+    assert old.is_file() if where == "direct" else old.is_symlink()
     assert not calls.exists()
+    assert not (tmp_path / "config/systemd/user/demo.service").exists()
+    assert not (tmp_path / "config/systemd/user/demo.timer").exists()
     assert "link " not in result.stdout
+
+
+@pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
+@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+def test_installer_never_reintroduces_retired_source(
+    tmp_path: Path, name: str, readme: str, extra: list[str]
+) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.timer", name], *extra)
+    assert result.returncode == 2
+    assert "retired source unit" in result.stderr
+    assert name in result.stderr
+    assert readme in result.stderr
+    assert not calls.exists()
+    assert not (tmp_path / "config").exists()
+    assert "link " not in result.stdout
+
+
+def test_installer_reinstall_keeps_report_and_cannot_restore_review(
+    tmp_path: Path,
+) -> None:
+    result, calls = _run_installer(
+        tmp_path, ["tennis-lab-ops-report.timer", "tennis-lab-ops-report.service"]
+    )
+    assert result.returncode == 0, result.stderr
+    installer = tmp_path / "repo/.agents/ops/install_units.sh"
+    env = {
+        **os.environ,
+        "PATH": str(tmp_path / "bin") + os.pathsep + os.environ["PATH"],
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
+    }
+    again = subprocess.run(
+        ["bash", str(installer)], env=env, text=True, capture_output=True, check=False
+    )
+    assert again.returncode == 0, again.stderr
+    units = list((tmp_path / "config/systemd/user").glob("*"))
+    assert sorted(p.name for p in units) == [
+        "tennis-lab-ops-report.service",
+        "tennis-lab-ops-report.timer",
+    ]
+    assert calls.read_text().splitlines() == [
+        "--user daemon-reload",
+        "--user daemon-reload",
+    ]
 
 
 def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
