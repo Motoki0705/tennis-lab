@@ -59,7 +59,14 @@ PR群・受入条件・統合上の確認点を明示して `review-request` を
 指摘解消を親が確認し、`parent_review.py resolve` で指摘ごとの修正head・実差分・CI・回帰テスト・
 解消根拠を記録する。coverage不成立・失敗・部分結果を成功にしない。自動再レビューを起動しない。
 障害後の再送でもCodexは再実行しない。追加のレビューが必要なら理由と新しいrun IDの明示指示を残す。
-条件を満たすPRは依存順に進め、親全体の完了まで独立PRをためない。レビュー・merge条件の実行は対応する入口に従う。
+結果を受領した証拠を `review-state --state result_received`、修正差分・CI・回帰テストと指摘解消の確認を
+`review-state --state fixes_verified` へ記録する。指摘なしでも親の確認を記録する。
+続けて [merge gate](../../ops/review/README.md#merge-gate) の `merge_gate.py --parent N merge` を明示実行する。
+既定のdry-runで理由と実効設定を読み、人間が有効化を合意済みならREADMEの環境変数で実mergeする。
+共有基盤を含めた親mergeの合意が既にある場合は、同READMEの `shared-permission` で根拠を記録する。
+条件を満たすPRは依存順に進み、親全体の完了まで独立PRをためない。
+merge後の子の自動closeと親進捗への反映を確認する。停止・未完了や試行済み記録が出たら、
+実状態と保存証拠を照合して復旧し、gateを通すための自動再レビューや同headへの二重mergeを行わない。
 
 全体の受入条件、未解決の停止・人間判断、子の検証・PRの完了を照合する。
 チェック数だけを完了根拠にしない。全体が完了したら親へ証拠と残した改善候補を記録し、
