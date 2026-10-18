@@ -51,7 +51,12 @@ issue公開・proposal採番・メモリの書き込み・実装開始はスク�
   proposals[].sourcesはdecisionと一致させる。failed/interrupted/不正な担当のfindingを採用しない。
 - `github.open_issues.items` で既に扱う事項は新規提案にせず既存issueを参照。
   過去の未選択提案の再掲は新しい根拠があるときだけ。未チェックを人間の見送りとは解釈しない。
-- 各提案は対象、期待効果、完了条件の目安を含め、evidenceで担当の根拠まで追えるようにする。
+- 各提案は purpose（目的）、scope（変更範囲）、expected_effect（期待効果）、acceptance（受入条件の非空配列）、
+  evidence（根拠）、related_parent（担当候補の親issue番号、未指定なら明示的null）、
+  related_issues（関連既存issue番号の配列、無ければ空配列）を必ず返す。
+  既存issueとの重複を調べ、関連親を推測で自動割当しない。提案へのチェックは方向性の採用であり、
+  実装要件への合意ではない。採用後も担当親が人間と別途認識合わせ・合意してから子issue化する。
+  ops_memory.decisions の明示された見送り理由を尊重し、再検証条件や新しい根拠なしに同じ案を繰り返さない。
   選択肢は本質的な場合だけ2個以上。priority=highは次の予定回までに着手すべきものだけ。
 - 未完了なら確認済みの結果だけを統合する。スクリプトが未完了の冒頭表示・メタデータと不足範囲を描画し、
   同じissueで再開する。未完了中のmemory_updateは保存されない。専用memoryは全担当と統合の完了後だけ更新する。
@@ -98,6 +103,12 @@ assignmentsは今回requestedされた担当だけ。previous_resultsは再返�
     "title": "1行の具体的な提案",
     "detail": "何を・なぜ・どうするか、完了条件の目安",
     "evidence": "パス:行/issue/PR/commit等",
+    "purpose": "何のために改善するか",
+    "scope": "変更する対象と範囲",
+    "expected_effect": "期待する効果",
+    "acceptance": ["完了時に真となる条件と確認方法"],
+    "related_parent": null,
+    "related_issues": [],
     "options": []
   }],
   "stale_pr_notes": {"123":{"recommendation":"継続", "reason":"理由"}},

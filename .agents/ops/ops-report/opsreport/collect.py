@@ -174,7 +174,13 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
 def _proposal_status(p: proposals.ParsedProposal) -> dict[str, Any]:
     try:
         selected, option = p.selection()
-        state = "selected" if selected else "unselected"
+        state = (
+            "selected"
+            if selected
+            else "deferred"
+            if p.deferred_reason()
+            else "unselected"
+        )
     except proposals.SelectionError as exc:
         state, option = f"ambiguous: {exc}", None
     return {
@@ -183,6 +189,7 @@ def _proposal_status(p: proposals.ParsedProposal) -> dict[str, Any]:
         "state": state,
         "option": option,
         "child_issue": p.child,
+        "deferred_reason": p.deferred_reason(),
     }
 
 

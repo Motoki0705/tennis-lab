@@ -1,464 +1,785 @@
-"""Daily triage: checked proposals become ``ai-proposed`` child issues exactly once."""
+"""Adoption → explicit receipt → separate agreement → child, with fake gh only."""
 
 from __future__ import annotations
 
 import fcntl
+import importlib
 import json
-import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
+import pytest
 
-def _report_issue(ops_env: Any) -> dict[str, Any]:
-    result = ops_env.run("report")
-    assert result.returncode == 0, result.stderr
-    issue: dict[str, Any] = next(
-        i for i in ops_env.state["issues"] if "ops-report" in i["labels"]
+OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
+sys.path.insert(0, str(OPS))
+formats: Any = importlib.import_module("issues")
+
+
+def _issue(ops: Any, number: int = 100) -> dict[str, Any]:
+    return next(i for i in ops.state["issues"] if i["number"] == number)
+
+
+def _edit(ops: Any, edit: Any, number: int = 100) -> None:
+    state = ops.state
+    row = next(i for i in state["issues"] if i["number"] == number)
+    row["body"] = edit(row["body"])
+    ops.write_state(state)
+
+
+def _parent(
+    ops: Any,
+    *args: str,
+    parent: int = 1,
+    ok: bool = True,
+    extra: dict[str, str] | None = None,
+) -> Any:
+    clean = {
+        k: v
+        for k, v in ops.env.items()
+        if k not in {"CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID"}
+    }
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "parent",
+            "--repo",
+            "o/r",
+            "--parent",
+            str(parent),
+            *args,
+        ],
+        cwd=ops.repo,
+        env={
+            **clean,
+            "PYTHONPATH": str(OPS),
+            "CLAUDE_CODE_SESSION_ID": "private-parent-session",
+            **(extra or {}),
+        },
+        text=True,
+        capture_output=True,
+        timeout=45,
+        check=False,
     )
-    return issue
+    assert (result.returncode == 0) == ok, result.stderr + result.stdout
+    return result
 
 
-def _edit_body(ops_env: Any, number: int, edit: Any) -> None:
-    state = ops_env.state
-    issue = next(i for i in state["issues"] if i["number"] == number)
-    issue["body"] = edit(issue["body"])
-    ops_env.write_state(state)
+def _json(ops: Any, value: Any) -> str:
+    path = ops.tmp / "input.json"
+    path.write_text(json.dumps(value, ensure_ascii=False))
+    return str(path)
 
 
-def _children(ops_env: Any) -> list[dict[str, Any]]:
-    return [i for i in ops_env.state["issues"] if i["title"].startswith("[R-")]
+def _agree(ops: Any, *, pid: str | None = None, report: int = 100) -> None:
+    if pid is not None:
+        status = json.loads(_parent(ops, "status").stdout)
+        if status["phase"] != "要件合意済み":
+            _agree(ops)
+    else:
+        _parent(ops, "checking")
+    _parent(
+        ops,
+        "agree",
+        *(["--report", str(report), "--proposal", pid] if pid is not None else []),
+        "--spec",
+        _json(
+            ops,
+            {
+                "purpose": "採用した改善を具体化する",
+                "scope": "big.pyと関連テスト",
+                "behavior": "合意後に分割する",
+                "acceptance": "fakeと回帰テストで確認する",
+                "human_confirmation": "この目的・範囲・動作・受入条件で合意します。",
+            },
+        ),
+    )
 
 
-def _check(body: str) -> str:
-    """Check proposal 02 and option 'close' of stale-PR proposal 01."""
-    body = body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
-    return body.replace("  - [ ] close", "  - [x] close", 1)
-
-
-def test_three_reports_in_one_iso_week_map_to_distinct_children(ops_env: Any) -> None:
-    report_numbers: dict[str, int] = {}
-    for day in ("12", "15", "18"):
-        result = ops_env.run(
-            "report", "--if-due", "--now", f"2026-10-{day}T08:00:00+09:00"
+def _setup(ops: Any, *, route: bool = True) -> dict[str, Any]:
+    state = ops.state
+    sections = {
+        s: "親の目的と範囲。"
+        for s in formats.PARENT_REQUIRED
+        if s != formats.TASKS_HEADING
+    }
+    template = state["issues"][0]
+    for n in (1, 2):
+        state["issues"].append(
+            {
+                **template,
+                "number": n,
+                "title": f"[改善] 親{n}",
+                "body": formats.render_parent_body(sections, []),
+                "state": "OPEN",
+                "labels": ["issue:parent"],
+                "url": f"https://github.com/o/r/issues/{n}",
+            }
         )
-        assert result.returncode == 0, result.stderr
+    ops.write_state(state)
+    if route:
+        data = json.loads((ops.tmp / "agent_output.json").read_text())
+        for prop in data["proposals"]:
+            prop["related_parent"] = 1
+        ops.set_agent_output(data)
+    generated = ops.run("report")
+    assert generated.returncode == 0, generated.stderr
+    return _issue(ops)
+
+
+def _select(ops: Any, pid: str = "R-20261012-02") -> None:
+    _edit(ops, lambda b: b.replace(f"- [ ] **{pid}**", f"- [x] **{pid}**"))
+
+
+def _receive(ops: Any, pid: str = "R-20261012-02", ok: bool = True, **env: str) -> Any:
+    return _parent(
+        ops, "receive-proposal", "--report", "100", "--proposal", pid, ok=ok, extra=env
+    )
+
+
+def _manifest(
+    pid: str = "R-20261012-02", *, key: str = "split", option: str | None = None
+) -> dict[str, Any]:
+    sections = {s: s + "を実装する。" for s in formats.CHILD_REQUIRED}
+    sections["依存関係"] = "なし。"
+    sections["Acceptance checklist"] = (
+        "- [ ] 責務を分割できる\n  文脈: 保守性。\n  下流への影響: 変更しやすくなる。\n  検証方法・証拠: 回帰テスト。"
+    )
+    return {
+        "key": key,
+        "dependencies": [],
+        "spec": {
+            "role": "child",
+            "summary": "責務を分割する",
+            "parent": {"identifier": "改善", "number": 1},
+            "sections": sections,
+            "source": {"proposal_id": pid, "report_number": 100, "option": option},
+        },
+    }
+
+
+def _create(ops: Any, *, ok: bool = True, manifest: Any = None, **env: str) -> Any:
+    return _parent(
+        ops,
+        "create-child",
+        "--spec",
+        _json(ops, manifest or _manifest()),
+        ok=ok,
+        extra=env,
+    )
+
+
+def _children(ops: Any) -> list[dict[str, Any]]:
+    return [i for i in ops.state["issues"] if "issue:child" in i["labels"]]
+
+
+def _events(ops: Any, kind: str) -> list[dict[str, Any]]:
+    found = []
+    for comment in ops.state.get("comments", {}).get("1", []):
+        first = comment["body"].splitlines()[0]
+        event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
+        if event["event"] == kind:
+            found.append(event)
+    return found
+
+
+def test_adoption_receipt_and_agreement_are_three_distinct_states(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    assert ops.run("triage").returncode == 0
+    assert _events(ops, "proposal_pending") == []
+    _receive(ops, ok=False)
+    _create(ops, ok=False)
+    _select(ops)
+    assert ops.run("triage").returncode == 0
+    assert len(_events(ops, "proposal_pending")) == 1
+    assert "受領待ち" in _issue(ops)["body"]
+    assert _children(ops) == []
+    _create(ops, ok=False)
+    _receive(ops)
+    _create(ops, ok=False)
+    _parent(
+        ops,
+        "delegate",
+        "--child",
+        "101",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/split",
+        "--worktree",
+        str(ops.repo),
+        ok=False,
+    )
+    assert _children(ops) == []
+    _agree(ops, pid="R-20261012-02")
+    created = json.loads(_create(ops).stdout)
+    assert created["child"] == 101 and not created["reused"]
+    child = _children(ops)[0]
+    assert child["title"] == "[改善 #1] 責務を分割する"
+    assert child["body"].startswith(
+        "<!-- ops-report-proposal: R-20261012-02 report=#100 option= -->\n"
+    )
+    assert ops.state["parents"] == {"101": 1}
+    assert "- [ ] #101 責務を分割する" in _issue(ops, 1)["body"]
+    assert ops.run("triage").returncode == 0
+    assert "→ #101" in _issue(ops)["body"]
+    _receive(ops)  # Does not revoke the later agreement.
+    assert json.loads(_create(ops).stdout)["reused"]
+    changed = _manifest()
+    changed["spec"]["sections"]["具体的な変更内容・対象範囲"] += "追加の変更。"
+    _create(ops, manifest=changed, ok=False)
+    assert len(_events(ops, "proposal_received")) == 1
+    assert "private-parent-session" not in json.dumps(ops.state)
+
+
+def test_old_parent_agreement_does_not_authorize_newly_received_proposal(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _agree(ops)
+    _select(ops)
+    agreement = _events(ops, "agreed")[0]["agreement"]
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "agree",
+        "--report",
+        "100",
+        "--proposal",
+        "R-20261012-02",
+        "--spec",
+        _json(ops, agreement),
+        ok=False,
+    )
+    assert "explicit receipt" in rejected.stderr
+    assert ops.state == before
+    _create(ops, ok=False)  # No explicit receipt, even with a parent agreement.
+    _receive(ops)
+    _create(ops, ok=False)
+    assert _children(ops) == []
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+
+
+def test_pending_proposal_preserves_independent_creation_and_delegation(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _agree(ops)
+    independent = _manifest(key="independent")
+    independent["spec"].pop("source")
+    child = json.loads(_create(ops, manifest=independent).stdout)["child"]
+    _select(ops)
+    _receive(ops)
+    status = json.loads(_parent(ops, "status").stdout)
+    assert status["phase"] == "要件合意済み"
+    assert len(status["proposal_receipts"]) == 1
+    assert status["proposal_agreements"] == []
+    before = ops.state
+    assert "separate human requirements agreement" in _create(ops, ok=False).stderr
+    assert ops.state == before
+    assert json.loads(_create(ops, manifest=independent).stdout)["reused"]
+    worktree = ops.repo / ".claude/worktrees/independent"
+    subprocess.run(
+        ["git", "worktree", "add", "-b", "codex/independent", str(worktree)],
+        cwd=ops.repo,
+        check=True,
+        capture_output=True,
+    )
+    delegated = _parent(
+        ops,
+        "delegate",
+        "--child",
+        str(child),
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/independent",
+        "--worktree",
+        str(worktree),
+    )
+    assert json.loads(delegated.stdout)["action"] == "launch"
+    # An existing child from the pending proposal is guarded before any reservation/write.
+    _edit(
+        ops,
+        lambda body: (
+            "<!-- ops-report-proposal: R-20261012-02 report=#100 option= -->\n" + body
+        ),
+        child,
+    )
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "delegate",
+        "--child",
+        str(child),
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/independent",
+        "--worktree",
+        str(worktree),
+        ok=False,
+    )
+    assert "separate human requirements agreement" in rejected.stderr
+    assert ops.state == before
+
+
+def test_proposal_agreements_are_scoped_and_parent_checking_revokes_them(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _agree(ops)
+    _select(ops)
+    _receive(ops)
+    _edit(ops, lambda b: b.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る"))
+    _receive(ops, "R-20261012-03")
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+    other = _manifest("R-20261012-03", key="other", option="5件に絞る")
+    _create(ops, manifest=other, ok=False)
+    assert len(_children(ops)) == 1
+    assert len(_events(ops, "proposal_agreed")) == 1
+    _agree(ops, pid="R-20261012-02")  # Idempotent without revoking any work.
+    assert len(_events(ops, "proposal_agreed")) == 1
+    changed = dict(_events(ops, "proposal_agreed")[0]["agreement"])
+    changed["scope"] = "既存作業の要件も変更する。"
+    before = ops.state
+    rejected = _parent(
+        ops,
+        "agree",
+        "--report",
+        "100",
+        "--proposal",
+        "R-20261012-02",
+        "--spec",
+        _json(ops, changed),
+        ok=False,
+    )
+    assert "agreement changed" in rejected.stderr
+    assert ops.state == before
+    _agree(ops, pid="R-20261012-03")
+    _create(ops, manifest=other)
+    assert (
+        len(_events(ops, "agreed")) == 1
+    )  # Proposal consent leaves the parent digest intact.
+    _parent(ops, "checking")
+    independent = _manifest(key="independent")
+    independent["spec"].pop("source")
+    _create(ops, manifest=independent, ok=False)
+    _create(ops, ok=False)
+    _agree(ops)
+    _create(ops, manifest=independent)
+    _create(ops, ok=False)  # Re-agreeing the parent never authorizes its proposals.
+    _agree(ops, pid="R-20261012-02")
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert len(_events(ops, "proposal_agreed")) == 3
+
+
+@pytest.mark.parametrize("stopped", [False, True])
+def test_unassigned_or_stopped_parent_then_manual_assignment_receives_once(
+    ops_env: Any, stopped: bool
+) -> None:
+    ops = ops_env
+    _setup(ops, route=False)
+    if stopped:
+        _parent(ops, "register")
+        note = ops.tmp / "release.md"
+        note.write_text("手動で再開する。")
+        _parent(ops, "release", "--note-file", str(note))
+        _edit(ops, lambda b: b.replace("関連親issue: 未指定", "関連親issue: #1"))
+    _select(ops)
+    result = ops.run("triage")
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["unassigned"] == ["R-20261012-02"]
+    assert "未割当" in _issue(ops)["body"]
+    assert _events(ops, "proposal_pending") == []
+    _receive(ops, ok=False)
+    _edit(ops, lambda b: b.replace("関連親issue: 未指定", "関連親issue: #1"))
+    _parent(ops, "register")
+    for _ in range(2):
+        assert ops.run("triage").returncode == 0
+        _receive(ops)
+    assert (
+        len(_events(ops, "proposal_pending"))
+        == len(_events(ops, "proposal_received"))
+        == 1
+    )
+    assert _children(ops) == []
+
+
+@pytest.mark.parametrize("failure", ["create", "relation", "progress", "annotation"])
+def test_interruptions_never_duplicate_children(ops_env: Any, failure: str) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    if failure == "annotation":
+        _create(ops)
+        assert (
+            ops.run("triage", FAKE_GH_API_FAIL="repos/o/r/issues/100").returncode == 1
+        )
+    else:
+        env = (
+            {"FAKE_GH_API_FAIL_AFTER_SAVE": "repos/o/r/issues"}
+            if failure == "create"
+            else {
+                "FAKE_GH_API_FAIL": "repos/o/r/issues/1/sub_issues"
+                if failure == "relation"
+                else "repos/o/r/issues/1"
+            }
+        )
+        _create(ops, ok=False, **env)
+    assert len(_children(ops)) == 1
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert ops.run("triage").returncode == 0
+    assert len(_children(ops)) == 1 and "→ #101" in _issue(ops)["body"]
+
+
+def test_pending_and_receipt_response_loss_are_idempotent(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    assert (
+        ops.run(
+            "triage", FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments"
+        ).returncode
+        == 1
+    )
+    assert ops.run("triage").returncode == 0
+    _receive(ops, ok=False, FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments")
+    _create(ops, ok=False)
+    _receive(ops)
+    assert (
+        len(_events(ops, "proposal_pending"))
+        == len(_events(ops, "proposal_received"))
+        == 1
+    )
+    assert _children(ops) == []
+
+
+@pytest.mark.parametrize("after_child", [False, True])
+def test_option_changes_are_rejected_after_delivery_or_creation(
+    ops_env: Any, after_child: bool
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _edit(ops, lambda b: b.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る"))
+    _receive(ops, "R-20261012-03")
+    _agree(ops, pid="R-20261012-03")
+    manifest = _manifest("R-20261012-03", option="5件に絞る")
+    if after_child:
+        _create(ops, manifest=manifest)
+    _edit(
+        ops,
+        lambda b: b.replace("  - [x] 5件に絞る", "  - [ ] 5件に絞る").replace(
+            "  - [ ] 上限なし", "  - [x] 上限なし"
+        ),
+    )
+    result = ops.run("triage")
+    assert result.returncode == 1 and "changed" in result.stderr
+    _create(ops, manifest=manifest, ok=False)
+    assert len(_children(ops)) == int(after_child)
+
+
+def test_selection_changes_during_delivery_preserve_human_edit(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    result = ops.run(
+        "triage",
+        FAKE_GH_API_EDIT=json.dumps(
+            [["- [x] **R-20261012-02**", "- [ ] **R-20261012-02**"]]
+        ),
+    )
+    assert result.returncode == 1
+    assert "not annotated" in result.stderr or "changed" in result.stdout
+    assert "引渡し:" not in _issue(ops)["body"]
+    _receive(ops, ok=False)
+    assert _children(ops) == []
+
+
+def test_renaming_reparenting_and_new_task_key_reuse_metadata_identity(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+    state = ops.state
+    child = next(i for i in state["issues"] if i["number"] == 101)
+    child["title"] = "[改善 #2] 名前を変更した提案"
+    child["body"] = child["body"].replace("親issue: #1", "親issue: #2")
+    state["parents"]["101"] = 2
+    ops.write_state(state)
+    assert ops.run("triage").returncode == 0
+    reused = json.loads(_create(ops, manifest=_manifest(key="renamed")).stdout)
+    assert reused["child"] == 101 and reused["actual_parent"] == 2
+    assert len(_children(ops)) == 1
+    assert ops.state["parents"]["101"] == 2
+
+
+def test_duplicate_proposal_metadata_fails_before_writes(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+    state = ops.state
+    child = _children(ops)[0]
+    state["issues"].append({**child, "number": 102, "title": "改名した別issue"})
+    ops.write_state(state)
+    before = ops.state
+    assert ops.run("triage").returncode == 1
+    _create(ops, ok=False)
+    assert ops.state == before
+
+
+def test_human_issue_uses_same_registration_agreement_and_create_entry(
+    ops_env: Any,
+) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    manifest = _manifest()
+    manifest["spec"].pop("source")
+    _create(ops, ok=False, manifest=manifest)
+    _agree(ops)
+    _create(ops, manifest=manifest)
+    assert ops.state["parents"]["101"] == 1
+
+
+def test_dry_run_relative_logs_and_concurrent_triage(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    before = ops.state
+    caller = ops.tmp / "caller"
+    caller.mkdir()
+    result = ops.run("triage", "--dry-run", "--log-dir", "relative logs", cwd=caller)
+    assert result.returncode == 0 and "would deliver" in result.stderr
+    assert ops.state == before
+    runs = [ops.start("triage", FAKE_GH_CREATE_DELAY="1") for _ in range(2)]
+    results = [p.communicate(timeout=90) + (p.returncode,) for p in runs]
+    assert all(r[2] == 0 for r in results), results
+    assert any("waiting for lock" in r[1] for r in results)
+    assert len(_events(ops, "proposal_pending")) == 1
+    assert _children(ops) == []
+
+
+def test_multiple_options_and_forged_links_fail_closed(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _edit(
+        ops,
+        lambda b: b.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る").replace(
+            "  - [ ] 上限なし", "  - [x] 上限なし"
+        ),
+    )
+    assert ops.run("triage").returncode == 1
+    _edit(
+        ops,
+        lambda b: b.replace("  - [x] 上限なし", "  - [ ] 上限なし").replace(
+            "（優先度: 高）", "（優先度: 高） → #50"
+        ),
+    )
+    assert ops.run("triage").returncode == 1
+    assert _children(ops) == []
+
+
+def test_old_report_version_prevents_all_mutations(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _select(ops)
+    state = ops.state
+    state["issues"].append(
+        {
+            **_issue(ops),
+            "number": 60,
+            "body": _issue(ops)["body"].replace(
+                "ops-report:v2 slot=20261012", "ops-report:v1 week=2026W42"
+            ),
+        }
+    )
+    ops.write_state(state)
+    before = ops.state
+    result = ops.run("triage")
+    assert result.returncode == 1 and "unsupported ops-report:v1" in result.stderr
+    assert ops.state == before
+
+
+def test_triage_lock_failure_is_not_success(ops_env: Any) -> None:
+    path = Path(ops_env.env["OPS_REPORT_LOCK_FILE"])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        result = ops_env.run("triage", OPS_REPORT_LOCK_TIMEOUT="1")
+    assert result.returncode == 1 and "still held" in result.stderr
+
+
+def test_github_decisions_reach_next_report_and_explicit_deferral(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    _create(ops)
+    _edit(
+        ops,
+        lambda b: b.replace(
+            "見送り理由: 未記入", "見送り理由: 次の構成変更まで保留する。", 1
+        ),
+    )
+    # Metadata supplies the child reference even before the next daily annotation.
+    assert "→ #101" not in _issue(ops)["body"]
+    assert ops.run("report", "--now", "2026-10-15T08:00:00+09:00").returncode == 0
+    logs = ops.tmp / "logs"
+    collected = [json.loads(p.read_text()) for p in logs.glob("*/collected.json")]
+    current = next(
+        c for c in collected if c["meta"]["period_end"].startswith("2026-10-15")
+    )
+    decisions = current["ops_memory"]["decisions"]
+    assert {d["proposal_id"]: d["decision"] for d in decisions} == {
+        "R-20261012-01": "deferred",
+        "R-20261012-02": "selected",
+    }
+    assert "次の構成変更" in decisions[0]["reason"]
+    assert "https://github.com/o/r/issues/100" in decisions[1]["source"]
+    assert "子issue #101" in decisions[1]["source"]
+
+
+def test_parent_closed_or_handoff_pending_defers_without_receipt(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    state = ops.state
+    next(i for i in state["issues"] if i["number"] == 1)["state"] = "CLOSED"
+    ops.write_state(state)
+    result = ops.run("triage")
+    assert result.returncode == 0 and "未割当" in _issue(ops)["body"]
+    _receive(ops, ok=False)
+    state = ops.state
+    next(i for i in state["issues"] if i["number"] == 1)["state"] = "OPEN"
+    ops.write_state(state)
+    note = ops.tmp / "handoff.md"
+    note.write_text("次の指定を待つ。")
+    _parent(ops, "handoff", "--note-file", str(note))
+    assert ops.run("triage").returncode == 0
+    _receive(ops, ok=False)
+    assert _events(ops, "proposal_pending") == _events(ops, "proposal_received") == []
+    _parent(ops, "handoff", "--accept", "--note-file", str(note))
+    _receive(ops)
+    assert len(_events(ops, "proposal_received")) == 1
+    assert _children(ops) == []
+
+
+def test_adoption_changed_during_creation_is_not_success(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    _create(
+        ops,
+        ok=False,
+        FAKE_GH_API_EDIT=json.dumps(
+            [["- [x] **R-20261012-02**", "- [ ] **R-20261012-02**"]]
+        ),
+    )
+    assert len(_children(ops)) == 1
+    assert ops.run("triage").returncode == 1
+    assert "→ #101" not in _issue(ops)["body"]
+    _select(ops)
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert len(_children(ops)) == 1
+
+
+def test_stale_local_decision_snapshot_cannot_override_github(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    decisions = _json(
+        ops,
+        [
+            {
+                "proposal_id": "R-20261012-02",
+                "decision": "deferred",
+                "reason": "古い見送り",
+                "source": "https://github.com/o/r/issues/100 / R-20261012-02",
+            }
+        ],
+    )
+    before = ops.state
+    (ops.tmp / "agent_used.txt").unlink()
+    result = ops.run(
+        "report", "--now", "2026-10-15T08:00:00+09:00", "--memory-decisions", decisions
+    )
+    assert result.returncode == 1 and "no longer matches GitHub" in result.stderr
+    assert ops.state == before
+    assert not (ops.tmp / "agent_used.txt").exists()
+
+
+def test_three_slots_in_one_week_keep_distinct_proposal_identity(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    created = []
+    for day in ("12", "15", "18"):
+        if day != "12":
+            result = ops.run("report", "--now", f"2026-10-{day}T08:00:00+09:00")
+            assert result.returncode == 0, result.stderr
         report = next(
             i
-            for i in ops_env.state["issues"]
+            for i in ops.state["issues"]
             if i["title"] == f"運用レポート 2026-10-{day}"
         )
         pid = f"R-202610{day}-02"
-        report_numbers[pid] = report["number"]
-        _edit_body(
-            ops_env,
-            report["number"],
+        _edit(
+            ops,
             lambda b, pid=pid: b.replace(f"- [ ] **{pid}**", f"- [x] **{pid}**"),
+            report["number"],
         )
-        triaged = ops_env.run("triage")
-        assert triaged.returncode == 0, triaged.stderr
-    children = _children(ops_env)
-    assert len(children) == 3
-    for child in children:
-        pid = child["title"].split("]", 1)[0][1:]
-        number = report_numbers[pid]
-        assert (
-            f"ops-report-proposal: {pid} report=#{number} option= -->" in child["body"]
+        assert ops.run("triage").returncode == 0
+        _parent(
+            ops,
+            "receive-proposal",
+            "--report",
+            str(report["number"]),
+            "--proposal",
+            pid,
         )
-        parent = next(i for i in ops_env.state["issues"] if i["number"] == number)
-        assert (
-            f"**{pid}** big.py を分割する（優先度: 高） → #{child['number']}"
-            in parent["body"]
+        _agree(ops, pid=pid, report=report["number"])
+        manifest = _manifest(pid, key=f"split-{day}")
+        manifest["spec"]["source"]["report_number"] = report["number"]
+        child = json.loads(_create(ops, manifest=manifest).stdout)["child"]
+        created.append(child)
+        assert _issue(ops, child)["body"].startswith(
+            f"<!-- ops-report-proposal: {pid} report=#{report['number']} option= -->"
         )
-    assert ops_env.run("triage").returncode == 0
-    assert len(_children(ops_env)) == 3
-
-
-def test_legacy_week_report_blocks_mixed_triage_and_publication(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-    state = ops_env.state
-    legacy = {
-        **report,
-        "number": 60,
-        "title": "legacy report",
-        "body": _check(report["body"])
-        .replace("ops-report:v2 slot=20261012", "ops-report:v1 week=2026W42")
-        .replace("R-20261012-", "R-2026W42-"),
-    }
-    state["issues"].append(legacy)
-    # An old child already exists: never reinterpret its ID as a new proposal.
-    state["issues"].append(
-        {
-            **report,
-            "number": 61,
-            "title": "[R-2026W42-02] old child",
-            "labels": ["ai-proposed"],
-            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#60 option= -->",
-        }
-    )
-    ops_env.write_state(state)
-    before = len(ops_env.calls())
-    result = ops_env.run("triage")
-    assert result.returncode == 1
-    assert "unsupported ops-report:v1 week format" in result.stderr
-    assert len(_children(ops_env)) == 1
-    assert not any(
-        c[:2] in (["issue", "create"], ["issue", "edit"], ["label", "create"])
-        for c in ops_env.calls()[before:]
-    )
-    (ops_env.tmp / "agent_used.txt").unlink()
-    result = ops_env.run("report", "--if-due", "--now", "2026-10-15T08:00:00+09:00")
-    assert result.returncode == 1
-    assert "unsupported ops-report:v1 week format" in result.stderr
-    assert not (ops_env.tmp / "agent_used.txt").exists()
-
-
-def test_checked_proposals_become_children_once(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-
-    first = ops_env.run("triage")
-    assert first.returncode == 0, first.stderr
-
-    children = _children(ops_env)
-    assert sorted(c["title"] for c in children) == [
-        "[R-20261012-01] #7 放置されたPR（選択: close）",
-        "[R-20261012-02] big.py を分割する",
-    ]
-    assert all(c["labels"] == ["ai-proposed"] for c in children)
-    stale_child = next(c for c in children if c["title"].startswith("[R-20261012-01]"))
-    assert f"レポート: #{report['number']}" in stale_child["body"]
-    assert "選択された対応: **close**" in stale_child["body"]
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    nums = {c["title"][1:14]: c["number"] for c in children}
-    assert (
-        f"**R-20261012-02** big.py を分割する（優先度: 高） → #{nums['R-20261012-02']}"
-        in body
-    )
-    assert f"**R-20261012-01** #7 放置されたPR → #{nums['R-20261012-01']}" in body
-    # Unchecked proposal 03 untouched.
-    assert "運用レポートのプロンプトを改善する（優先度: 低）\n" in body
-
-    second = ops_env.run("triage")
-    assert second.returncode == 0, second.stderr
-    assert len(_children(ops_env)) == 2
-    assert json.loads(second.stdout)["created"] == []
-
-
-def test_triage_with_relative_log_dir_from_another_directory(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-    caller = ops_env.tmp / "caller"
-    caller.mkdir()
-
-    result = ops_env.run("triage", "--log-dir", "relative logs", cwd=caller)
-
-    assert result.returncode == 0, result.stderr
-    assert len(_children(ops_env)) == 2
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert len(re.findall(r"→ #\d", body)) == 2
-    (run_dir,) = (caller / "relative logs").iterdir()
-    assert (run_dir / f"report-{report['number']}.md").read_text(
-        encoding="utf-8"
-    ) == body
-    for name in ("run.log", "child-body.md", "result.json"):
-        assert (run_dir / name).is_file(), name
-    assert not (ops_env.repo / "relative logs").exists()
-
-
-def test_crash_between_create_and_annotate_does_not_duplicate(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-
-    crashed = ops_env.run("triage", FAKE_GH_FAIL="issue edit")
-    assert crashed.returncode == 1
-    assert "injected failure" in crashed.stderr
-    assert len(_children(ops_env)) == 2
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert not re.search(r"→ #\d", body)
-
-    recovered = ops_env.run("triage")
-    assert recovered.returncode == 0, recovered.stderr
-    summary = json.loads(recovered.stdout)
-    assert summary["created"] == []
-    assert len(summary["linked_existing"]) == 2
-    assert len(_children(ops_env)) == 2
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert len(re.findall(r"→ #\d", body)) == 2
-
-
-def test_ambiguous_options_fail_but_other_items_proceed(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-
-    def both_options(body: str) -> str:
-        body = body.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る")
-        body = body.replace("  - [ ] 上限なし", "  - [x] 上限なし")
-        return body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
-
-    _edit_body(ops_env, report["number"], both_options)
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert "R-20261012-03: 2 options checked" in result.stderr
-    assert [c["title"] for c in _children(ops_env)] == [
-        "[R-20261012-02] big.py を分割する"
-    ]
-
-
-def test_dry_run_triage_does_not_write(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-    before = ops_env.state
-
-    result = ops_env.run("triage", "--dry-run")
-
-    assert result.returncode == 0, result.stderr
-    assert "would create child issue" in result.stderr
-    assert ops_env.state == before
-
-
-def test_closed_reports_are_not_triaged(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-    state = ops_env.state
-    next(i for i in state["issues"] if i["number"] == report["number"])["state"] = (
-        "CLOSED"
-    )
-    ops_env.write_state(state)
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 0, result.stderr
-    assert _children(ops_env) == []
-
-
-def test_gh_failure_in_triage_exits_nonzero(ops_env: Any) -> None:
-    result = ops_env.run("triage", FAKE_GH_FAIL="issue list")
-
-    assert result.returncode == 1
-    assert "injected failure" in result.stderr
-
-
-def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
-    """An issue whose title claims a proposal ID but whose marker names another
-    report (e.g. a regenerated slot) must not be linked to this report."""
-    state = ops_env.state
-    state["issues"].append(
-        {
-            "number": 60,
-            "title": "[R-20261012-02] 別レポートの提案",
-            "body": "<!-- ops-report-proposal: R-20261012-02 report=#40 option= -->\nold",
-            "labels": ["ai-proposed"],
-            "state": "CLOSED",
-            "createdAt": "2026-10-01T00:00:00Z",
-            "updatedAt": "2026-10-01T00:00:00Z",
-            "url": "https://github.com/o/r/issues/60",
-        }
-    )
-    ops_env.write_state(state)
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check)
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert "existing issue #60 is not this proposal's child" in result.stderr
-    assert "found R-20261012-02 of #40" in result.stderr
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert "→ #60" not in body
-    # The other selected proposal still gets its child.
-    assert [c["title"] for c in _children(ops_env) if c["number"] != 60] == [
-        "[R-20261012-01] #7 放置されたPR（選択: close）"
-    ]
-
-
-def test_malformed_report_body_is_an_error_not_a_skip(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(
-        ops_env,
-        report["number"],
-        lambda b: _check(b).replace("<!-- ops-report:proposals:end -->", ""),
-    )
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert "proposal region" in result.stderr
-    assert _children(ops_env) == []
-
-
-def _check_02(body: str) -> str:
-    return body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
-
-
-def test_concurrent_triage_runs_create_one_child(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _check_02)
-
-    runs = [ops_env.start("triage", FAKE_GH_CREATE_DELAY="1") for _ in range(2)]
-    results = [(p.wait(timeout=120), p.communicate()[1]) for p in runs]
-
-    assert [code for code, _ in results] == [0, 0], results
-    # The runs really overlapped: one of them had to wait for the other.
-    assert any("waiting for lock" in err for _, err in results)
-    assert [c["title"] for c in _children(ops_env)] == [
-        "[R-20261012-02] big.py を分割する"
-    ]
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert len(re.findall(r"→ #\d", body)) == 1
-
-
-def test_triage_fails_when_lock_is_held(ops_env: Any) -> None:
-    lock_path = Path(ops_env.env["OPS_REPORT_LOCK_FILE"])
-    lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with lock_path.open("a") as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
-        result = ops_env.run("triage", OPS_REPORT_LOCK_TIMEOUT="1")
-
-    assert result.returncode == 1
-    assert "still held by another run" in result.stderr
-
-
-def test_annotation_like_pr_title_is_not_a_child_link(ops_env: Any) -> None:
-    state = ops_env.state
-    state["prs"][0]["title"] = "対応を移管 → #123"
-    ops_env.write_state(state)
-    report = _report_issue(ops_env)
-    assert "#7 対応を移管 → \\#123\n" in report["body"]
-    _edit_body(ops_env, report["number"], _check)
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 0, result.stderr
-    titles = sorted(c["title"] for c in _children(ops_env))
-    assert titles == [
-        "[R-20261012-01] #7 対応を移管 → #123（選択: close）",
-        "[R-20261012-02] big.py を分割する",
-    ]
-
-
-def test_forged_child_annotation_is_an_error(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(
-        ops_env,
-        report["number"],
-        lambda b: _check_02(b).replace(
-            "big.py を分割する（優先度: 高）", "big.py を分割する（優先度: 高） → #50"
-        ),
-    )
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert "existing issue #50 is not this proposal's child" in result.stderr
-    assert "found no marker" in result.stderr
-    assert _children(ops_env) == []
-
-
-def test_reused_child_must_match_current_option(ops_env: Any) -> None:
-    """Child created for "close", report edit fails, human switches to "継続":
-    the rerun must not link the "close" child to the new selection."""
-    report = _report_issue(ops_env)
-    _edit_body(
-        ops_env,
-        report["number"],
-        lambda b: b.replace("  - [ ] close", "  - [x] close", 1),
-    )
-    crashed = ops_env.run("triage", FAKE_GH_FAIL="issue edit")
-    assert crashed.returncode == 1
-    (child,) = _children(ops_env)
-    assert child["body"].startswith(
-        "<!-- ops-report-proposal: R-20261012-01 report=#100 option=close -->\n"
-    )
-    _edit_body(
-        ops_env,
-        report["number"],
-        lambda b: b.replace("  - [x] close", "  - [ ] close", 1).replace(
-            "  - [ ] 継続", "  - [x] 継続", 1
-        ),
-    )
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert (
-        f"existing child #{child['number']} was filed for option 'close' "
-        "but the report now selects '継続'" in result.stderr
-    )
-    assert json.loads(result.stdout)["linked_existing"] == []
-    assert len(_children(ops_env)) == 1
-    body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
-        "body"
-    ]
-    assert not re.search(r"→ #\d", body)
-
-
-_SWITCH_TO_CONTINUE = [
-    ["  - [x] close", "  - [ ] close"],
-    ["  - [ ] 継続", "  - [x] 継続"],
-]
-
-
-def _select_close(body: str) -> str:
-    return body.replace("  - [ ] close", "  - [x] close", 1)
-
-
-def _switch_to_continue(body: str) -> str:
-    for old, new in _SWITCH_TO_CONTINUE:
-        body = body.replace(old, new, 1)
-    return body
-
-
-def _report_body(ops_env: Any, number: int) -> str:
-    body: str = next(i for i in ops_env.state["issues"] if i["number"] == number)[
-        "body"
-    ]
-    return body
-
-
-def test_selection_changed_during_triage_is_not_annotated(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _select_close)
-
-    result = ops_env.run("triage", FAKE_GH_CREATE_EDIT=json.dumps(_SWITCH_TO_CONTINUE))
-
-    assert result.returncode == 1
-    (child,) = _children(ops_env)
-    assert child["title"].endswith("（選択: close）")
-    assert (
-        f"existing child #{child['number']} was filed for option 'close' "
-        "but the report now selects '継続'" in result.stderr
-    )
-    body = _report_body(ops_env, report["number"])
-    assert "  - [x] 継続" in body  # the human's edit is kept
-    assert not re.search(r"→ #\d", body)
-
-
-def test_selection_changed_after_link_is_an_error(ops_env: Any) -> None:
-    report = _report_issue(ops_env)
-    _edit_body(ops_env, report["number"], _select_close)
-    assert ops_env.run("triage").returncode == 0
-    (child,) = _children(ops_env)
-    _edit_body(ops_env, report["number"], _switch_to_continue)
-
-    result = ops_env.run("triage")
-
-    assert result.returncode == 1
-    assert (
-        f"existing child #{child['number']} was filed for option 'close' "
-        "but the report now selects '継続'" in result.stderr
-    )
-    assert len(_children(ops_env)) == 1
+    assert ops.run("triage").returncode == 0
+    assert len(set(created)) == len(_children(ops)) == 3
+    assert len(_events(ops, "proposal_received")) == 3
