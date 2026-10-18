@@ -151,11 +151,11 @@ class Store:
         self.save()
 
     def record_publication(self, slot: str, url: str) -> None:
-        """Bind the create response without treating it as verified publication."""
+        """Bind a create response or edit target without confirming publication."""
         if not re.fullmatch(
             r"https://github\.com/[^/\s]+/[^/\s]+/issues/[1-9]\d*", url
         ):
-            raise ValueError("gh issue create printed no report issue URL")
+            raise ValueError("publication requires a valid report issue URL")
         row = self.records[slot]
         if row["state"] != "prepared":
             raise ValueError(f"memory {slot} publication is already confirmed")
@@ -203,12 +203,18 @@ class Store:
             if row["report_url"] and row["report_url"] != report_url:
                 raise ValueError(f"memory {slot} publication URL mismatch")
             publication = row["publication"]
-            if published_report["author"] != publication["author"] or (
-                row["state"] == "prepared"
-                and any(
-                    published_report[key] != publication[key]
-                    for key in ("title", "body_sha256")
-                )
+            if published_report["author"] != publication["author"]:
+                raise ValueError(f"memory {slot} publication identity/content mismatch")
+            if published_report["status"] != "complete":
+                if row["state"] != "prepared":
+                    raise ValueError(
+                        f"memory {slot} has no published report; repair explicitly"
+                    )
+                # A failed edit may still expose the original incomplete body.
+                continue
+            if row["state"] == "prepared" and any(
+                published_report[key] != publication[key]
+                for key in ("title", "body_sha256")
             ):
                 raise ValueError(f"memory {slot} publication identity/content mismatch")
             # Once verified, humans may edit the title and proposal checkboxes.

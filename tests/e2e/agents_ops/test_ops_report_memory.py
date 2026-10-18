@@ -227,7 +227,7 @@ def test_partial_failures_preserve_last_main_and_recover(
     assert _main_files(ops) == original
     assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
     if failure in {"agent", "publication"}:
-        assert _reports(ops) == []
+        assert len(_reports(ops)) == (1 if failure == "agent" else 0)
         assert ops.state.get("memory_prs", []) == []
         assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
     else:
@@ -356,6 +356,124 @@ def test_crash_after_publication_is_recovered_from_verified_history(
     result = ops.run("report", "--if-due")
     assert result.returncode == 0, result.stderr
     assert len(_reports(ops)) == 1 and len(ops.state["memory_prs"]) == 1
+    assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
+
+
+@pytest.mark.parametrize("interruption", ["none", "before_edit", "after_edit"])
+def test_partial_report_completion_binds_verified_publication(
+    memory_env: Any, interruption: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    assert ops.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
+    partial = _reports(ops)[0]
+    journal_path = (
+        Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    )
+    assert not journal_path.exists() and not ops.state.get("memory_prs")
+    # Completion must publish the prepared title, even if the partial was renamed.
+    state = ops.state
+    next(r for r in state["issues"] if r["number"] == partial["number"])["title"] = (
+        "調査再開待ち"
+    )
+    ops.write_state(state)
+    env = {
+        "none": {},
+        "before_edit": {"FAKE_GH_FAIL": "issue edit"},
+        "after_edit": {"FAKE_GH_EDIT_FAIL_AFTER_SAVE": "1"},
+    }[interruption]
+
+    result = ops.run("report", "--if-due", **env)
+
+    assert result.returncode == (0 if interruption == "none" else 1), result.stderr
+    assert _main_files(ops) == original
+    row = _journal(ops)["records"]["20261012"]
+    assert row["report_url"] == partial["url"]
+    if interruption != "none":
+        assert row["state"] == "prepared" and row["head"] is None
+        assert not ops.state.get("memory_prs")
+        if interruption == "before_edit":
+            assert "status=incomplete" in _reports(ops)[0]["body"].splitlines()[0]
+            # Triage leaves a failed edit pending without persisting observations.
+            triaged = ops.run("triage")
+            assert triaged.returncode == 0, triaged.stderr
+            assert _journal(ops)["records"]["20261012"] == row
+            assert not ops.state.get("memory_prs")
+        Path(ops.env["FAKE_AGENT_USED"]).unlink()
+        recovered = ops.run("report", "--if-due")
+        assert recovered.returncode == 0, recovered.stderr
+        if interruption == "after_edit":
+            assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
+
+    complete = _reports(ops)[0]
+    row = _journal(ops)["records"]["20261012"]
+    assert len(_reports(ops)) == 1 and complete["number"] == partial["number"]
+    assert "status=complete" in complete["body"].splitlines()[0]
+    assert row["publication"] == {
+        "title": complete["title"],
+        "body_sha256": hashlib.sha256(complete["body"].encode("utf-8")).hexdigest(),
+        "author": complete["author"]["login"],
+    }
+    assert complete["title"] == "運用レポート 2026-10-12"
+    assert row["state"] == "pending" and row["report_url"] == partial["url"]
+    assert len(ops.state["memory_prs"]) == 1
+    assert sum(c[:2] == ["issue", "create"] for c in ops.calls()) == 1
+    assert sum(c[:2] == ["issue", "edit"] for c in ops.calls()) == (
+        2 if interruption == "before_edit" else 1
+    )
+    merged = ops.run("triage")
+    assert merged.returncode == 0, merged.stderr
+    assert _journal(ops)["records"]["20261012"]["state"] == "merged"
+    entry = _main_files(ops)["ci-wait.md"]
+    assert "検証した観察 1" in entry and partial["url"] in entry
+
+
+@pytest.mark.parametrize("command", ["report", "triage"])
+@pytest.mark.parametrize("mismatch", ["author", "body", "title", "url"])
+def test_failed_completion_rejects_forged_publication(
+    memory_env: Any, command: str, mismatch: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    refs = _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)")
+    assert ops.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
+    failed = ops.run("report", "--if-due", FAKE_GH_FAIL="issue edit")
+    assert failed.returncode == 1, failed.stderr
+    row = _journal(ops)["records"]["20261012"]
+    assert row["state"] == "prepared" and row["report_url"] == _reports(ops)[0]["url"]
+    report_file = next(
+        p
+        for run in ops.run_dirs()
+        if (p := run / "report.md").exists()
+        and "status=complete" in p.read_text().splitlines()[0]
+    )
+    state = ops.state
+    forged = next(r for r in state["issues"] if "ops-report" in r["labels"])
+    forged.update(title=row["publication"]["title"], body=report_file.read_text())
+    if mismatch == "author":
+        forged["author"] = {"login": "another-user"}
+    elif mismatch == "body":
+        forged["body"] += "\n公開予定とは異なる調査結果。\n"
+    elif mismatch == "title":
+        forged["title"] = "同slotの別レポート"
+    else:
+        # All content and the author match, but this is a different issue.
+        forged.update(number=101, url="https://github.com/o/r/issues/101")
+        state["next_number"] = 102
+    ops.write_state(state)
+    Path(ops.env["FAKE_AGENT_USED"]).unlink()
+
+    args = ("report", "--if-due") if command == "report" else ("triage",)
+    result = ops.run(*args)
+
+    assert result.returncode == 1, result.stderr
+    assert "publication" in result.stderr and "mismatch" in result.stderr
+    assert _journal(ops)["records"]["20261012"] == row
+    assert _main_files(ops) == original
+    assert _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)") == refs
+    assert "ops-report-memory/" not in _git(ops.repo, "ls-remote", "--heads", "origin")
+    assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
+    assert not ops.state.get("memory_prs")
     assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
 
 
@@ -558,14 +676,17 @@ def test_path_scope_checks_deleted_and_renamed_sources(memory_env: Any) -> None:
         lambda u: u.update(files={"../SUMMARY.md": "oops"}),
     ],
 )
-def test_invalid_patch_fails_before_publication(memory_env: Any, mutate: Any) -> None:
+def test_invalid_patch_is_incomplete_and_never_persisted(
+    memory_env: Any, mutate: Any
+) -> None:
     ops = memory_env
     payload = json.loads(Path(ops.env["FAKE_AGENT_OUTPUT"]).read_text())
     mutate(payload["memory_update"])
     ops.set_agent_output(payload)
     result = ops.run("report")
     assert result.returncode == 1
-    assert _reports(ops) == [] and not ops.state.get("memory_prs")
+    assert len(_reports(ops)) == 1 and not ops.state.get("memory_prs")
+    assert "status=incomplete" in _reports(ops)[0]["body"].splitlines()[0]
 
 
 def test_patch_requires_explicit_no_change_and_deletion_reason(
@@ -652,3 +773,27 @@ def test_invalid_decision_inlet_fails_before_agent(
     assert result.returncode == 1
     assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
     assert not _reports(ops)
+
+
+def test_incomplete_scout_defers_all_memory_until_same_report_completes(
+    memory_env: Any,
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    partial = ops.run("report", FAKE_AUDIT_FAIL="platform")
+    assert partial.returncode == 1, partial.stderr
+    assert _main_files(ops) == original
+    assert not ops.state.get("memory_prs")
+    assert not (
+        Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    ).exists()
+    number = _reports(ops)[0]["number"]
+    retry = ops.run("report", "--if-due")
+    assert retry.returncode == 0, retry.stderr
+    assert len(_reports(ops)) == 1 and _reports(ops)[0]["number"] == number
+    assert len(ops.state["memory_prs"]) == 1
+    assert _journal(ops)["records"]["20261012"]["state"] == "pending"
+    assert _main_files(ops) == original
+    merged = ops.run("report", "--if-due")
+    assert merged.returncode == 0, merged.stderr
+    assert _journal(ops)["records"]["20261012"]["state"] == "merged"

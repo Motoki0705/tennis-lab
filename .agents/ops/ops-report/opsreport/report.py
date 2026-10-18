@@ -7,6 +7,7 @@ from datetime import date, datetime
 from typing import Any
 
 from .agent import AgentReport, StalePrNote
+from .audit import AREAS, Audit
 from .proposals import (
     PROPOSALS_BEGIN,
     PROPOSALS_END,
@@ -36,18 +37,21 @@ def stale_pr_proposals(
 ) -> list[Proposal]:
     props = []
     for pr in stale_prs(collected):
+        if int(pr["number"]) not in notes:
+            continue  # Unconfirmed stale PRs are listed as audit gaps instead.
         draft = "・draft" if pr["draft"] else ""
         detail = (
             f"`{pr['branch']}`（{pr['author']}{draft}）/ 最終更新 {pr['updated_at'][:10]}"
             f"（{pr['idle_days']}日前）"
         )
-        note = notes[int(pr["number"])]  # parse_agent_output requires every stale PR
+        note = notes[int(pr["number"])]
         detail += f"\n推奨: **{note.recommendation}** — {note.reason}"
         props.append(
             Proposal(
                 section=STALE_PR_SECTION,
                 title=f"#{pr['number']} {pr['title']}",
                 detail=detail,
+                evidence=f"親の放置PR確認 / github.open_prs[#{pr['number']}].detail / base={collected['meta']['base_sha']}",
                 options=STALE_PR_OPTIONS,
             )
         )
@@ -145,6 +149,7 @@ def render_report(
     agent_name: str,
     collected: dict[str, Any],
     analysis: AgentReport,
+    audit: Audit,
 ) -> tuple[str, str, list[str]]:
     """Return ``(title, body, proposal_ids)``."""
     day = slot
@@ -161,6 +166,8 @@ def render_report(
         proposals=len(ids),
         agent=agent_name,
         base=meta["base_sha"],
+        status="complete" if audit.complete else "incomplete",
+        audit=collected["audit_input_sha256"],
     )
     fetched = (
         f"実行時に `{meta['base_fetched_from']}` をfetch"
@@ -169,6 +176,14 @@ def render_report(
     )
     header = [
         marker,
+        *(
+            []
+            if audit.complete
+            else [
+                "**未完了** — 確認済み結果のみを部分公開。予定回は未成功、専用メモリ更新は保留。",
+                "",
+            ]
+        ),
         f"# {report_title(day)}",
         "",
         f"- 予定回: {day.isoformat()} 08:00 JST",
@@ -177,15 +192,21 @@ def render_report(
     ]
     if meta["checkout_diff_files_total"]:
         header.append(
-            f"- **注意**: agentが読んだcheckoutは `{meta['checkout_branch']}` @ `{meta['checkout_sha']}`"
+            f"- **注意**: 呼び出し元checkoutは `{meta['checkout_branch']}` @ `{meta['checkout_sha']}`"
             f"（未commitの変更 {meta['checkout_modified_files']}件）で、`{meta['base_ref']}` と"
             f" {meta['checkout_diff_files_total']}ファイルの内容が異なる。"
+            "調査担当は全員、上記baseの専用read-only checkoutを読んだ。",
         )
     header += [
         *_memory_status(collected),
-        "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
-        "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
-        "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。",
+        f"- 調査対象一覧: `{collected['audit_plan']['inventory_sha256']}` / 入力: `{collected['audit_input_sha256']}`",
+        (
+            "- 使い方: 未完了のため参考公開。完了までは提案にチェックを付けず、不足担当と統合を再開する。"
+            if not audit.complete
+            else "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
+            "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
+            "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。"
+        ),
     ]
     body = "\n".join(
         [
@@ -194,6 +215,10 @@ def render_report(
             "## 概要",
             "",
             neutralize(analysis.summary.strip()),
+            "",
+            "## 調査の分担と統合",
+            "",
+            _coverage(collected, audit),
             "",
             "## 提案",
             "",
@@ -212,3 +237,61 @@ def render_report(
     if len(body) > MAX_BODY_CHARS:
         raise ValueError(f"report body is {len(body)} chars, above {MAX_BODY_CHARS}")
     return report_title(day), body, ids
+
+
+def _coverage(collected: dict[str, Any], audit: Audit) -> str:
+    lines = (
+        [
+            "外部submodule内部は未調査（対象外）。このrepoで固定するgitlinkの版と利用箇所を調査する:",
+            *[
+                f"- `{link['path']}` @ `{link['sha']}`"
+                for link in collected["audit_plan"]["gitlinks"]
+            ],
+            "",
+        ]
+        if collected["audit_plan"]["gitlinks"]
+        else []
+    )
+    for assignment in collected["audit_plan"]["assignments"]:
+        key = assignment["id"]
+        result = audit.results.get(key)
+        lines += [
+            f"### {key}: {AREAS[key]}",
+            "",
+            f"対象: {len(assignment['targets'])}ファイル / 入力: {', '.join(assignment['inputs'])}",
+        ]
+        if result:
+            lines += [
+                neutralize(
+                    f"- {result['status']} / scout {result['agent_id']} / {result['started_at']} 〜 {result['finished_at']}"
+                ),
+                neutralize(result["conclusion"]),
+                *[neutralize(f"- 根拠: {e}") for e in result["evidence"]],
+                *[neutralize(f"- 反証: {e}") for e in result["counterevidence"]],
+                *[
+                    neutralize(
+                        f"- 未調査: {e['scope']} / 理由: {e['reason']} / 再開: {e['resume']}"
+                    )
+                    for e in result["unconfirmed"]
+                ],
+            ]
+        else:
+            lines += ["未調査: 有効な返却なし。再開時にこの担当を再起動する。"]
+        lines += [""]
+    for decision in audit.decisions:
+        lines += [
+            neutralize(
+                f"- 統合 {', '.join(decision['sources'])}: {decision['outcome']} / {decision['reason']} / 根拠: {decision['evidence']}"
+            )
+        ]
+    if not audit.complete:
+        lines += [
+            "",
+            "### 未調査範囲・失敗理由・再開方法",
+            "",
+            *[neutralize(f"- {error}") for error in audit.errors],
+            "",
+            "次回起動または `report --if-due` で同じ予定回を再開する。固定入力と確認済み結果を再利用し、不足担当と親の統合を補ってこのissueを更新する。",
+            "部分公開中の提案は参考情報。完了までチェックを付けない（triageは未完了レポートを処理しない）。",
+        ]
+    return "\n".join(lines)

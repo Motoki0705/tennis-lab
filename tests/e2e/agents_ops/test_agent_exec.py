@@ -170,6 +170,22 @@ def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
     assert "profile=review" in result.stderr
 
 
+def test_audit_profile_enables_native_scouts_and_retains_session_logs(
+    tmp_path: Path,
+) -> None:
+    result = _codex_args(tmp_path, "--profile", "ops_report")
+    assert result.returncode == 0, result.stderr
+    args = (tmp_path / "args.txt").read_text().splitlines()
+    assert args[args.index("--enable") + 1] == "multi_agent"
+    assert "--json" in args and "--ephemeral" not in args
+    assert "agents.max_threads=3" in args and "agents.max_depth=1" in args
+    assert "read-only" in args
+    assert not any("agents.scout" in a for a in args)  # child definition owns its model
+    rejected = _codex_args(tmp_path, "--profile", "ops_report", "--mode", "write")
+    assert rejected.returncode == 2
+    assert "requires codex in read-only mode" in rejected.stderr
+
+
 @pytest.mark.parametrize(
     ("extra", "message"),
     [
