@@ -29,7 +29,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
 | [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない、再利用できる観察（作業のコツ、ユーザー判断、環境の癖、落とし穴、レビュー観点） | コードやREADMEで確認できる事実、作業の進捗 |
-| [.agents/ops/](#自動運用) | 定期実行する自動運用（systemd --user timer、headless agent） | 対話作業の手順 |
+| [.agents/ops/](#自動運用) | 自動運用（systemd --user timer、headless agent）と共通の決定的ツール | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |
 | GitHub issue / PR | 作業の目的・進捗・決定の経緯 | 恒久的な規則（決まったらここか AGENTS.md へ移す） |
@@ -54,11 +54,13 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/weekly-report/](ops/weekly-report/README.md) | 週次の運用レポートissue（逆提案）と、チェックされた提案の日次triage |
 | [ops/review/](ops/review/README.md) | Codex による PR レビュー、merge gate、PR作成agentの判別規約、共有基盤パスの一覧、収束基準（人間への差し戻し） |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
+| [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
 
 ## GitHub運用ルール（初版）
 
+- **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
 - **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `ai-proposed` ラベルを付ける。週次レポートで人間が整理する。
 - **担当の排他**: 仕組みは作らない（衝突は今の痛みではない）。問題が観測されたら週次レポートで見直す。
 - **放置PR**: N日動きのないPRは、週次レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。

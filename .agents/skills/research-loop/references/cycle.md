@@ -1,19 +1,13 @@
 # サイクルの回し方
 
 1サイクル＝1子issue。template: [05_research_cycle.md](../../../../.github/ISSUE_TEMPLATE/05_research_cycle.md)
-（タイトル `[研究サイクル] <テーマ名> #<n>: <今回の焦点>`、ラベル `research`）。
+（共通書式は[親子issue規約](../../../ops/issues/README.md)）。
 状態の正本はissueとknowledgeであり、セッションをまたいで再開できるように書く。
 
 ## 0. 開始
 
 テーマissue本文（固定条件）、過去のサイクルissueの結論、関連knowledgeノードを読む。
-サイクルissueを作り、テーマのsub-issueとして登録する。
-
-```bash
-CHILD=$(gh issue create --title "[研究サイクル] ..." --label research --body-file body.md | grep -o '[0-9]*$')
-gh api -X POST "repos/{owner}/{repo}/issues/$THEME/sub_issues" \
-  -F sub_issue_id="$(gh api "repos/{owner}/{repo}/issues/$CHILD" --jq .id)"
-```
+共通生成APIでサイクルissueを作り、同規約の新規起票手順でテーマと関連付け、整合を検査する。
 
 前サイクルの「次サイクル提案」があれば、それを今回の起点にする。
 

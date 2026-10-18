@@ -734,15 +734,21 @@ def test_protection_conditions(
     lab: Lab, background: list[subprocess.Popen[bytes]]
 ) -> None:
     by_cwd = _merged_worktree(lab, "by-cwd")
-    background.append(subprocess.Popen(["sleep", "60"], cwd=by_cwd))
+    # The fixture owns these helpers' lifetimes. A timed sleep can expire before
+    # the later deletion checks when other workers share a busy host.
+    background.append(
+        subprocess.Popen(
+            [sys.executable, "-c", "import signal; signal.pause()"], cwd=by_cwd
+        )
+    )
 
     by_fd = _merged_worktree(lab, "by-fd")
     ready = lab.tmp / "fd-ready"
     holder = (
-        "import sys, time, pathlib\n"
+        "import sys, signal, pathlib\n"
         "f = open(sys.argv[1] + '/' + sys.argv[3] + '/README')\n"
         "pathlib.Path(sys.argv[2]).touch()\n"
-        "time.sleep(60)\n"
+        "signal.pause()\n"
     )
     # argv carries the worktree name only as a bare word: only the open fd matches.
     background.append(
@@ -766,7 +772,7 @@ def test_protection_conditions(
             [
                 sys.executable,
                 "-c",
-                "import time; time.sleep(60)",
+                "import signal; signal.pause()",
                 f"--out={by_argv}/run",
             ],
             cwd=lab.tmp,
