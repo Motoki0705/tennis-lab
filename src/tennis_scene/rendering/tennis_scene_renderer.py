@@ -27,12 +27,11 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 
 from src.submodules.vendor.gvhmr.body_model import load_smpl_faces
-from src.utils.configuration import SemanticConfigurationError
-from src.utils.geometry.matrices import (
-    axis_angle_to_rotation_matrix,
-    rotation_matrix_z,
-    smpl_y_up_to_court_z_up,
+from src.tennis_scene.rendering.smpl_court import (
+    load_smpl_joint_regressor,
+    smpl_vertices_to_court,
 )
+from src.utils.configuration import SemanticConfigurationError
 from src.utils.rendering.ball_renderer import BallRenderer, BallStyle
 from src.utils.rendering.camera_view import (
     DEFAULT_VIEW_Z_LIMIT,
@@ -171,7 +170,7 @@ class TennisSceneRenderer:
         # still derives joints from SMPL vertices, and must not silently accept an
         # invalid faces/body-model path merely because it does not draw the mesh.
         faces = load_smpl_faces(faces_path)
-        self._smpl_joint_regressor = self._load_smpl_joint_regressor(regressor_path)
+        self._smpl_joint_regressor = load_smpl_joint_regressor(regressor_path)
 
         if self.style.player_representation == "smpl":
             self._mesh_renderer = MeshRenderer(faces)
@@ -191,24 +190,6 @@ class TennisSceneRenderer:
         if not resolved.is_file():
             raise FileNotFoundError(f"{name} not found: {resolved}.")
         return resolved
-
-    def _load_smpl_joint_regressor(
-        self,
-        regressor_path: Path,
-    ) -> NDArray[np.float32]:
-        import torch
-
-        reg = torch.load(regressor_path, map_location="cpu", weights_only=False)
-        if isinstance(reg, torch.Tensor):
-            result = reg.cpu().numpy().astype(np.float32)
-        else:
-            result = np.asarray(reg, dtype=np.float32)
-        if result.ndim != 2:
-            raise ValueError(
-                "SMPL joint-regressor asset must contain a 2D (joints, vertices) "
-                f"array, got shape {result.shape}."
-            )
-        return result
 
     def _player_color(self, player_idx: int) -> str:
         return _DEFAULT_PLAYER_COLORS[player_idx % len(_DEFAULT_PLAYER_COLORS)]
@@ -258,44 +239,13 @@ class TennisSceneRenderer:
         if self._smpl_joint_regressor is None:
             raise RuntimeError("SMPL joint regressor is not loaded.")
 
-        verts_local = np.asarray(scene.smpl_vertices_local, dtype=np.float32)
-        global_orient = np.asarray(scene.smpl_global_orient, dtype=np.float32)
-        players_position = np.asarray(scene.player_position, dtype=np.float32)
-        players_yaw = np.asarray(scene.player_yaw, dtype=np.float32)
-
-        if verts_local.ndim != 4 or verts_local.shape[-1] != 3:
-            raise RuntimeError(
-                "smpl_vertices_local must have shape (P, T, V, 3), "
-                f"got {verts_local.shape}."
-            )
-        if global_orient.shape != verts_local.shape[:2] + (3,):
-            raise RuntimeError(
-                "smpl_global_orient must have shape (P, T, 3), "
-                f"got {global_orient.shape}."
-            )
-        if players_position.shape != verts_local.shape[:2] + (3,):
-            raise RuntimeError(
-                "player_position must have shape (P, T, 3), "
-                f"got {players_position.shape}."
-            )
-        if players_yaw.shape != verts_local.shape[:2]:
-            raise RuntimeError(
-                f"player_yaw must have shape (P, T), got {players_yaw.shape}."
-            )
-
-        roots = np.einsum("jv,ptvc->ptjc", self._smpl_joint_regressor, verts_local)[
-            :, :, 0, :
-        ]
-        verts_centered = verts_local - roots[:, :, None, :]
-
-        orient_rot = axis_angle_to_rotation_matrix(global_orient)
-        verts_pose_local = np.einsum("ptji,ptvj->ptvi", orient_rot, verts_centered)
-
-        verts_court_local = smpl_y_up_to_court_z_up(verts_pose_local)
-        plcs_rot = rotation_matrix_z(players_yaw)
-        verts_court = np.einsum("ptij,ptvj->ptvi", plcs_rot, verts_court_local)
-        verts_court = verts_court + players_position[:, :, None, :]
-        verts_court = cast("NDArray[np.float32]", verts_court.astype(np.float32))
+        verts_court = smpl_vertices_to_court(
+            np.asarray(scene.smpl_vertices_local, dtype=np.float32),
+            np.asarray(scene.smpl_global_orient, dtype=np.float32),
+            np.asarray(scene.player_position, dtype=np.float32),
+            np.asarray(scene.player_yaw, dtype=np.float32),
+            self._smpl_joint_regressor,
+        )
 
         self._scene_vertices_cache[cache_key] = verts_court
         return verts_court

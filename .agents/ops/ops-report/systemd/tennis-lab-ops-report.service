@@ -1,0 +1,12 @@
+[Unit]
+Description=tennis-lab ops report on three-day slots (issue #1220)
+Documentation=file://%h/projects/tennis-lab/.agents/ops/ops-report/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+# Optional overrides (OPS_REPORT_AGENT etc.); see README.md "設定".
+EnvironmentFile=-%h/.config/tennis-lab-agents/ops-report.env
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/ops-report/ops_report.py report --if-due
+TimeoutStartSec=2h

@@ -3,7 +3,7 @@
 ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。日次 timer（`apply-auto`）が
 消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ** で、worktree は決して消さない。
 worktree は人間が承認した `delete worktree:<path>` でのみ、しかも **完全に clean なときだけ** 消す。
-承認待ちは `--report-json` に理由つきで出力し、週次レポート（#1057）が掲載する。
+承認待ちは `--report-json` に理由つきで出力し、運用レポート（#1057）が掲載する。
 
 ## なぜこの範囲か
 
@@ -167,7 +167,7 @@ worktree は clean なものしか消さないので、復元は `git worktree a
 
 ## レポート JSON（schema_version 2）
 
-週次レポート（#1057）はこの形式を読む。互換性のない変更では `schema_version` を上げる
+運用レポート（#1057）はこの形式を読む。互換性のない変更では `schema_version` を上げる
 （v2: worktree を独立 entry にし `kind` を追加、reason kind に `block` を追加、
 `worktree_state` の disposable を1つに統合）。
 

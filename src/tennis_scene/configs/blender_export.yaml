@@ -1,0 +1,23 @@
+defaults:
+  - paths: default
+  - _self_
+assets:
+  smpl_faces: body_models/smplh/neutral/model.npz
+  smpl_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
+input: ???
+camera_id: ???
+output: ${tennis_output:tennis_scene,visualize,blender_export,${tennis_run_id:}}/bundle
+# Presentation-only interpolation limits (frames). Longer gaps stay invalid
+# and are hidden in Blender; filled frames are listed in manifest.json.
+player_max_gap_frames: 12
+ball_max_gap_frames: 3
+# Guard against a camera/scene frame mismatch before anything is written.
+max_ball_reprojection_median_px: 8.0
+sensor_width_mm: 36.0
+plate_jpeg_quality: 95
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,visualize,blender_export,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false
