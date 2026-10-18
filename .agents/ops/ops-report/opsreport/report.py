@@ -116,6 +116,29 @@ def _observations(c: dict[str, Any]) -> str:
     return "\n".join(lines + [""] + detail)
 
 
+def _memory_status(collected: dict[str, Any]) -> list[str]:
+    dedicated = collected["ops_memory"]
+    lines = [
+        f"- 専用memory: `origin/main` @ `{dedicated['base_sha']}`（最後の有効版）"
+        if dedicated["status"] == "ok"
+        else f"- 専用memory: {dedicated['note']}",
+    ]
+    for item in dedicated.get("persistence", []):
+        if item["state"] in {"merged", "unchanged"}:
+            continue
+        detail = neutralize(str(item["error"] or item["stage"] or item["state"]))
+        next_step = (
+            "この更新は再適用せず、次回調査で新しい更新を作る。"
+            if item["state"] == "failed"
+            else "次回report/triageで再確認し、失敗・中断はREADMEの復旧手順に従う。"
+        )
+        lines.append(
+            f"- **専用メモリ未反映**: 予定回 {item['slot']} / {item['pr_url'] or item['report_url'] or '公開未確認'} / {detail}。"
+            f"上記main版を使用。{next_step}"
+        )
+    return lines
+
+
 def render_report(
     *,
     slot: date,
@@ -159,6 +182,7 @@ def render_report(
             f" {meta['checkout_diff_files_total']}ファイルの内容が異なる。"
         )
     header += [
+        *_memory_status(collected),
         "- 使い方: 子issue化したい提案にチェックを入れる。選択肢つきの提案は選択肢を**1つだけ**チェックする。"
         "日次triageが `ai-proposed` の子issueを作成し、該当行の末尾に `→ #番号` を追記する。"
         "不要な提案は放置でよい（このレポートをcloseするとtriage対象外になる）。",
