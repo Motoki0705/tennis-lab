@@ -25,6 +25,7 @@ from issues import (
 )
 from issues.cli import render_spec
 
+from . import proposals
 from .github import GitHub
 from .policy import (
     PHASES,
@@ -80,7 +81,9 @@ class ParentSession:
         raw = self.gh.issue(self.parent)
         if raw["state"] != "open":
             raise ValueError("parent issue is not open")
-        require_agreement(self.history())
+        history = self.history()
+        require_agreement(history)
+        proposals.require_receipts(history)
         return row
 
     def public(self, value: Any) -> None:
@@ -136,6 +139,7 @@ class ParentSession:
             "phase": PHASES[phase(history)],
             "tasks": row.get("tasks", {}),
             "review": self.review_status(history),
+            "proposal_receipts": proposals.receipts(history),
         }
 
     def review_status(self, history: list[dict[str, Any]]) -> Any:
@@ -240,12 +244,15 @@ class ParentSession:
         agreement = {k: nonempty(v, k) for k, v in agreement.items()}
         history = self.history()
         sha = digest(agreement)
+        receipts = proposals.receipts(history)
         last_phase = next(
             (e for e in reversed(history) if e.get("event") in {"agreed", "checking"}),
             {},
         )
         if phase(history) != "checking" and not (
-            phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha
+            phase(history) == "agreed"
+            and last_phase.get("agreement_sha256") == sha
+            and proposals.agreed_receipts(history) == receipts
         ):
             raise ValueError(
                 "run checking and obtain human confirmation before recording agreement"
@@ -267,6 +274,7 @@ class ParentSession:
                 "event": "agreed",
                 "agreement_sha256": sha,
                 "agreement": agreement,
+                "proposal_receipts": receipts,
                 "revision": last_phase.get("revision"),
             },
             text,
@@ -378,10 +386,13 @@ class ParentSession:
         existing = self.gh.issue_rows()
         source = parse_proposal_source(body)
         if source is not None:
-            proposals = index_proposals(
+            proposals.require_source(self, source)
+            proposal_index = index_proposals(
                 [(number(raw["number"]), raw.get("body") or "") for raw in existing]
             )
-            previous_number = proposals.get((source.report_number, source.proposal_id))
+            previous_number = proposal_index.get(
+                (source.report_number, source.proposal_id)
+            )
             if previous_number is not None:
                 previous_body = next(
                     raw["body"] for raw in existing if raw["number"] == previous_number
@@ -390,12 +401,33 @@ class ParentSession:
                     raise ValueError(
                         f"proposal already exists as #{previous_number} with a different option"
                     )
+                markers = list(TASK_MARKER.finditer(previous_body))
+                if len(markers) > 1 or any(
+                    int(m[1]) == self.parent and m[2] == key and m[3] != sha
+                    for m in markers
+                ):
+                    raise ValueError(
+                        "existing task key has a different spec or duplicate metadata"
+                    )
+                previous_parent = self.gh.get(
+                    f"repos/{self.gh.repo}/issues/{previous_number}/parent",
+                    missing_parent=True,
+                )
+                # A renamed/reparented existing proposal remains the same work.
+                # Do not silently move it or recreate it under another task key.
+                if previous_parent is not None:
+                    return {
+                        "child": previous_number,
+                        "reused": True,
+                        "actual_parent": self.gh.identity(previous_parent),
+                        "progress": self.sync_progress(),
+                    }
                 if not any(
-                    m[2] == key and int(m[1]) == self.parent
+                    int(m[1]) == self.parent and m[2] == key
                     for m in TASK_MARKER.finditer(previous_body)
                 ):
                     raise ValueError(
-                        f"proposal already exists as #{previous_number}; reconcile/migrate it instead of creating another key"
+                        f"proposal already exists as #{previous_number}; reconcile/migrate the orphan before retry"
                     )
         for raw in existing:
             matches = list(TASK_MARKER.finditer(raw.get("body") or ""))
@@ -415,6 +447,8 @@ class ParentSession:
             ):
                 raise ValueError("existing child title no longer matches its spec")
         else:
+            if source is not None:
+                proposals.require_source(self, source)
             child = self.gh.write(
                 "POST",
                 f"repos/{self.gh.repo}/issues",
@@ -440,6 +474,8 @@ class ParentSession:
         task["dependencies"] = deps
         self.store.save()
         states = self.sync_progress()
+        if source is not None:
+            proposals.require_source(self, source)
         return {"child": n, "reused": bool(found), "progress": states}
 
     def reconcile(self) -> dict[str, Any]:
@@ -511,6 +547,9 @@ class ParentSession:
         parent, children = self.family()
         if child not in children:
             raise ValueError("delegate requires a direct child of this parent")
+        source = parse_proposal_source(children[child].body)
+        if source is not None:
+            proposals.require_source(self, source)
         if deps is not None:
             if len(deps) != len(set(deps)):
                 raise ValueError("dependencies must be unique")
@@ -556,6 +595,8 @@ class ParentSession:
         }
         if restart:
             task["restart_evidence"] = restart
+        if source is not None:
+            proposals.require_source(self, source)
         # Claim durably before returning permission to launch; crash never causes automatic relaunch.
         self.row["tasks"][str(child)] = task
         self.store.save()

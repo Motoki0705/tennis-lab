@@ -146,7 +146,7 @@ parent_body = render_parent_body(
 `PARENT_LABEL` / `CHILD_LABEL` をimportして付与し、作業種別・起票元ラベルを維持する。
 
 レポート経由でも、親は**レポートissueではなく担当親issue**。採用と要件合意は別に扱い、起票の可否は
-#1223が判定する。書式・重複検出には以下を使う（本変更では既存triageを変更しない）。
+[parent CLI](../parent/README.md#採用提案の受領) が受領・要件合意・現在の採用から判定する。書式・重複検出には以下を使う。
 
 1. `render_child_body(..., source=ProposalSource(proposal_id, report_number, option))` を使う。
    提案IDは周期に依存しない不透明なASCII tokenとして受け取り、ID生成はレポート側に任せる。

@@ -1,7 +1,7 @@
 # ops-report: 運用レポートと逆提案（#1057）
 
 プロジェクト本体とAI制御（AGENTS.md・`.agents/`・skill・memory・GitHub運用・この自動化自体）を
-共同で改善し続けるため、3日おきに「運用レポート」issueを作り、人間がチェックした提案を `ai-proposed` 子issueにする。
+共同で改善し続けるため、3日おきに「運用レポート」issueを作り、人間が方向性を採用した提案を担当親へ戻し、別途の要件合意後に子issueにする。
 設計原則は [../../README.md](../../README.md)、今回の合意事項は親issue #1216 を参照する。
 
 ## 構成
@@ -17,7 +17,7 @@
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
 | `opsreport/memory_pr.py` | 公開確認のjournal、専用worktreeでのcommit/PR、必須CI・パス・HEADを照合する専用マージ処理 |
 | `opsreport/report.py` | issue本文（日本語）の組み立て |
-| `opsreport/triage.py` | チェック済み提案 → 子issue化（重複防止） |
+| `opsreport/triage.py` | 採用提案 → 担当親の受領待ち、既存子issue照合、採否のmemory入力 |
 | `prompt.md` | agentへの依頼文（分析観点・品質基準・出力JSON形式） |
 | `systemd/` | `report --if-due`（毎日 08:00 JST に予定判定）と `triage`（毎日 09:00 JST）の service / timer |
 
@@ -82,20 +82,30 @@ serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。�
   チェックボックス記法とHTMLコメントを無害化してから埋め込むので、選択可能な項目やマーカーを偽造できない。
 - 通常の提案は行頭のチェックボックスで選ぶ。選択肢つきの提案（放置PRの「継続 / rebaseして仕上げ / close」など）は
   **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
-- `triage` は open な `ops-report` issueをすべて走査し、選ばれた提案ごとに
-  タイトル `[<ID>] <提案タイトル>`・ラベル `ai-proposed` の子issueを作り、レポートの該当行末に `→ #番号` を追記する。
-- 重複防止: 作成前に全issue（open/closed）のタイトル先頭 `[<ID>]` を走査する。作成後の本文編集が失敗しても、
-  再実行時は既存の子issueを再利用して追記だけ行う。再利用するのは子issue本文1行目の
-  `<!-- ops-report-proposal: <ID> report=#<レポート番号> option=<選択肢(%エンコード)> -->` が
-  ID・レポート・現在選ばれている選択肢のすべてに一致する場合だけで、一致しなければその提案はエラーにする
-  （例: 子issue作成後に本文追記が失敗し、その間に選択肢が close → 継続 に変わった場合）。
-  `→ #番号` の追記直前にも最新の本文を読み直して同じ照合をし、triage実行中に選択が変わっていれば追記せずエラーにする。
-  追記済みの提案も毎回この照合を行うので、後から選択を変えた場合もエラーとして表に出る。同じIDの子issueが2件見つかった場合は停止する。
-- レポートをcloseするとtriage対象外になる。不要な提案は放置でよい。
-- 同時実行（timerと手動実行など）: `report` の「同slotチェック → issue作成」と `triage` の「子issue走査 → 作成 → 本文追記」は
-  マシン共通のロックファイル（flock）で排他する。`report` は agent 実行前にも同slotチェックをし、ロック内で再確認する。
-- 行末の `→ #番号` はtriageだけが付ける。PRタイトル等に同じ形があれば `→ \#番号` にエスケープして描画する。
-  title走査で見つかった子issueと一致しない `→ #番号` は、子issue本文のマーカーで検証し、不一致ならエラーにする。
+- 提案には目的・根拠・変更範囲・期待効果・受入条件・関連親issue・関連既存issueを描画する。
+  agent出力の必須フィールドと型は `prompt.md` と検証器が定義する。親未指定は `関連親issue: 未指定`。
+  人間が関連親を決めたらこの行を `関連親issue: #番号` に編集する。別セッションを自動選定・起動しない。
+- **チェックは方向性の採用。要件合意ではない。** 日次 `triage` はopenの完了レポートだけを走査し、
+  指定親のactiveな担当が登録済みなら、その親へ「採用済み提案の受領待ち」をコメントする。
+  コメントは [親CLI](../parent/README.md#採用提案の受領) の共通メタデータを使う。
+  親未指定・未登録・停止中はレポートの `引渡し` 行とJSONの `unassigned` に「未割当」を表示する。
+- 親自身が [parent CLI](../parent/README.md#採用提案の受領) の `receive-proposal` で一度だけ受領する。
+  受領は要件確認の対象を登録するだけ。人間との別途の `checking` / `agree` を経て `create-child` する。
+  triageは子を作らず、分割・委任・実装も起動しない。停止・再開後も同じ入口で受領し、再送は冪等。
+- 子の本文1行目の提案メタデータを共通 `index_proposals` で全open/closed issueから索引化する。
+  タイトルprefixに依存しないため、改名・親付替えでも同じ提案を再起票しない。
+  起票は親CLIの共通書式・正式なsub-issue登録を使い、triageは既存子を確認後に `→ #番号` を追記する。
+- 受領待ち・受領・起票と本文追記は別操作なので、中断後は同じ入力で再実行する。
+  既存子の提案ID・レポート・選択肢、受領済みの提案本文、現在の採用を毎回照合し、変更・重複を明示エラーにする。
+  追記直前も最新本文を読み、採用・選択・親・提案の変更時は上書きしない。既存子の親を自動付替えしない。
+  採用取消・選択変更後の過去の受領記録は黙って書換えず、担当親が元の選択へ戻すか別提案として再整理する。
+- 未チェックかつ `見送り理由: 未記入` は未判断。人間が理由を書いたものだけ明示的な見送りとする。
+  採用と見送り理由の併記はエラー。採否と参照の専用memoryへの入力は下記「専用memoryの保存」を参照。
+- レポートをcloseすると日次triage対象外。完了レポートの採否はclose後も次回調査の入力に含める。
+- 同時実行: reportの同slot公開とtriageの引渡し・本文追記を共通issue lockで排他し、
+  親stateの読取とコメントはparent CLIのregistry lockで直列化する。ロックは消して回避しない。
+- `→ #番号` はtriageが検証して付ける。PRタイトル等の同じ形は `→ \#番号` にエスケープし、
+  本文メタデータと一致しないリンクはエラーにする。
 
 ## 予定と状態
 
@@ -128,7 +138,7 @@ cd ~/projects/tennis-lab
 .venv/bin/python .agents/ops/ops-report/ops_report.py report --dry-run --output /tmp/report.md
 # 本番（ops-report ラベルのissueを作成）
 .venv/bin/python .agents/ops/ops-report/ops_report.py report --agent codex
-# チェック済み提案の子issue化（--dry-run で作成予定だけ表示）
+# 採用提案の引渡し（--dry-run で確認、子issueは作成しない）
 .venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
 ```
 
@@ -229,10 +239,13 @@ PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/�
 メモリの成功はjournalの `merged` / 更新不要の `unchanged` で区別する。
 次のレポートは保留/失敗/中断を冒頭に「専用メモリ未反映」と示し、mainの最後の有効版を使う。
 
-採否の入口: 前回2回分の提案チェック状態は `previous_reports` から渡す。チェックなしを見送りとは解釈しない。
-triageが選んだ提案や明示された見送りは、`report --memory-decisions <JSONファイル>` でも渡せる。
-JSONは `[{"proposal_id":"R-20261019-01","decision":"selected|deferred","reason":"判断の理由","source":"#issue/comment等"}]`。
-親子書式とtriageからの本格的な受け渡しは #1223 の担当で、この引数だけでissue化や要件合意を行わない。
+採否の入口: 全履歴の完了レポートをGitHubから読み、採用チェック・明示された見送り理由・親/子issue参照を
+`ops_memory.decisions`（`proposal_id` / `decision: selected|deferred` / `reason` / `source`）へ自動で渡す。
+未チェックだけでは見送りにしない。専用memory更新の親はこの入力を根拠に採否・再検証条件を保存し、
+同じ見送り案を新しい根拠なしに再提案しない。提案本文や進捗は複製せずissue参照を残す。
+日次triageはrun dirの `decisions.json` に同じ契約で出力する。
+`report --memory-decisions <JSONファイル>` は任意の照合用snapshotで、現在のGitHubと一致する行だけを受け付ける。
+古い採否をローカルファイルで上書きしない。未完了レポートの採否は入力に含めず、再開時の固定入力も差し替えない。
 
 復旧は次のように行う（ホスト操作は親が実施）。
 
@@ -298,3 +311,25 @@ unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` �
 - カテゴリを増やす場合は `opsreport/proposals.py` の `CATEGORIES` を変える（プロンプトのカテゴリ一覧は自動で反映される）。
 - 収集項目を増やす場合は `opsreport/collect.py` に決定的な関数を足す。観察データ欄に出したいものは `opsreport/report.py`。
 - 挙動を変えたら `tests/e2e/agents_ops/test_ops_report*.py`（fake gh / fake agent_exec）を更新する。
+
+## 改善ループ全体の実機E2E（親が実施）
+
+#1218 / #1219のmerge後、親が実GitHub・実ホストで1件を最後まで検証する。fakeテストの通過だけで
+この検証を完了扱いにしない。証拠は親issueにリンクをまとめ、子の実装詳細は各子issueへ置く。
+
+1. 完了レポートの提案ID・本文・採用チェックと、未採用時に起票/実装0件である証拠を記録する。
+2. 親未指定/停止中でtriageを実行し、レポート行とJSONに未割当が出ることを確認する。
+   人間が関連親を指定して担当親自身がregister/再開し、triageの受領待ちとreceive-proposalの受領を確認する。
+   再送で受領1回、受領後・要件未合意でcreate-child/delegate拒否、子作成・実装0件を確認する。
+3. 会話の要件合意と人間の確認をagreeへ記録し、追加の分割承認なしで複数子を起票する。
+   正式なsub-issue・本文メタデータ・親一覧を確認し、複数PRと検証結果を各子に記録する。
+4. 親が対象PR群を確定して明示指示し、統合Codexレビューが1回だけ実行される証拠を保存する。
+   未指示時は0回、指摘を担当へ戻して修正・CI/差分確認した後の自動再レビューも0回とする。
+5. #1219のgateでcoverage・最新HEAD/base/diff・個別CI・共有基盤条件・依存関係を照合する。
+   先行依存を先にmergeし、独立PRのCI待ちだけでは合格済みPRを滞留させず順次mergeする。
+   各merge後に残りのcoverageと最新対象を再照合する。
+6. 次回レポートの採否・issue/PR参照、専用memoryのmain反映を確認する。
+   人間が独立に作ったissueでも同じregister/checking/agree入口を確認する。
+7. #1218の導入手順に従い、旧10分周期review timer/serviceの実効停止・無効化・リンク撤去、
+   installer再実行で復活しないこと、PR open/push/CI完了だけではreview呼出0回を確認する。
+   全体レポートtimerは継続する。systemctl実効値・ログ・GitHub URL・review run IDを証拠として残す。
