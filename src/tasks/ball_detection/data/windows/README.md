@@ -1,5 +1,8 @@
 # プレイ区間・32frame学習窓のレビュー
 
+公開済みの累積snapshotと固定validation/testを追加学習へ接続するAPIは
+[learning/](learning/README.md)を参照。新規clipの座標教師が不足する場合の停止と被覆記録もここが担当する。
+
 `intervals.py`は注釈からプレイ区間を提案する純粋関数。
 推論時のプレイ検出器ではなく、固定済み学習データの選択にだけ使う。
 設定値の正本は`PlayIntervalConfig`、実行値は生成manifestへ保存する。
@@ -40,7 +43,9 @@ pose artifact、JPEG shardのhash、学習窓と全除外範囲を固定でき�
 時刻は選んだframeの実PTS秒を使い、一定FPSの時刻を捏造しない。
 
 `dataset.py`は固定manifestからRGB・任意のpose・observed座標と教師maskを同じ32枚で返す。
-RGBを間引いてからモデル内の`RGBToMDD`でMDDを再計算する。native-FPSのMDDを間引かない。
+RGBを間引いてからモデル内でMDDを再計算する。native-FPSのMDDを間引かない。
+5ch構成でもdatasetは同じRGBを渡し、拡張後にモデルがRGBとMDDを結合する。
+入力契約は [models/mdd](../../models/mdd/README.md) を参照。
 crop/resize、時間の反復、欠損位置の補完はしない。
 座標lossは`training/coordinates/objective.py`が担当する。
 

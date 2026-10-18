@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 from src.tasks.ball_detection.data.annotation_states import annotation_states
-from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord, shard_name
+from src.tasks.ball_detection.data.store import BallFrameStore, ClipRecord
 from src.tasks.ball_detection.data.windows.intervals import PlayIntervalConfig
 from src.tasks.ball_detection.data.windows.pose_manifest import load_pose_snapshot
 from src.tasks.ball_detection.data.windows.temporal import (
@@ -30,10 +30,17 @@ def clip_semantic_digest(store: BallFrameStore, clip: ClipRecord) -> str:
     descriptor.pop("index")
     descriptor["track_ids"] = sorted(clip.track_ids)
     digest.update(json.dumps(descriptor, sort_keys=True, separators=(",", ":")).encode())
+    if clip.clip_id in store.video_frames:
+        digest.update(b"video_jpeg_bytes.v1")
+        digest.update(store.video_frames[clip.clip_id].model_dump_json().encode())
     rows = store.clip_rows(clip)
     for name in ("frame_index", "pts", "annotated", "is_target", "segment_break", "event", "inst_count"):
         digest.update(name.encode())
         digest.update(store.frames[name][rows].tobytes())
+    if store.teacher_masks is not None and store.teacher_masks.explicit[rows].any():
+        digest.update(b"adopted_teacher_masks.v1")
+        digest.update(store.teacher_masks.heatmap[rows].tobytes())
+        digest.update(store.teacher_masks.coordinate[rows].tobytes())
     first = int(store.frames["inst_start"][rows[0]])
     last = first + int(store.frames["inst_count"][rows].sum())
     tracks = [clip.track_ids[int(i)] for i in store.instances["track_index"][first:last]]
@@ -116,7 +123,7 @@ def build_coordinate_manifest(
         if not windows:
             skipped.append(dict(clip_id=clip.clip_id, reason="no_eligible_window"))
             continue
-        shard = store.directory / "shards" / shard_name(clip.index)
+        shard = store.image_path(clip)
         digest = shard_hashes[clip.clip_id] if shard_hashes is not None else dual_sha256(shard)
         semantic = clip_semantic_digest(store, clip)
         if clip.clip_id in common_ids:

@@ -32,10 +32,13 @@ class StrongSortConfig:
     appearance_weight: float = .98
     ema_alpha: float = .9
     pose_weight: float = 0.
+    unscored_measurement_noise_scale: float = 1.
 
     def __post_init__(self) -> None:
         if not np.isfinite(self.pose_weight) or not 0 <= self.pose_weight <= 1:
             raise ValueError('StrongSORT pose weight must be finite and in [0, 1]')
+        if not np.isfinite(self.unscored_measurement_noise_scale) or self.unscored_measurement_noise_scale < 0:
+            raise ValueError('Unscored measurement noise scale must be finite and nonnegative')
 
 
 class InvalidPrediction(RuntimeError):
@@ -72,13 +75,15 @@ class MotionState:
         if not np.isfinite(self.mean).all() or not np.isfinite(self.covariance).all():
             raise InvalidPrediction(f'StrongSORT predicted an invalid box: xyah={self.mean[:4].tolist()}')
 
-    def project(self, confidence: float = 0.) -> NDArray[np.float64]:
+    def project(self, *, measurement_noise_scale: float = 1.) -> NDArray[np.float64]:
+        if not np.isfinite(measurement_noise_scale) or measurement_noise_scale < 0:
+            raise ValueError('Measurement noise scale must be finite and nonnegative')
         h = self.mean[3]
         std = np.asarray([h / 20, h / 20, .1, h / 20])
-        return self.covariance[:4, :4] + (1 - confidence) * np.diag(std ** 2)
+        return self.covariance[:4, :4] + measurement_noise_scale * np.diag(std ** 2)
 
-    def update(self, box: NDArray[np.float32], confidence: float) -> None:
-        covariance = self.project(confidence)
+    def update(self, box: NDArray[np.float32], *, measurement_noise_scale: float) -> None:
+        covariance = self.project(measurement_noise_scale=measurement_noise_scale)
         gain = np.linalg.solve(covariance, self.covariance[:4]).T
         self.mean += gain @ (measurement(box) - self.mean[:4])
         self.covariance -= gain @ covariance @ gain.T
@@ -192,7 +197,9 @@ class StrongSort:
         used = {t.identity for t, _ in matched}
         seen = {r for _, r in matched}
         for track, row in matched:
-            track.motion.update(features.boxes[row], float(features.scores[row]))
+            score = features.score_at(row)
+            noise_scale = self.config.unscored_measurement_noise_scale if score is None else 1 - score
+            track.motion.update(features.boxes[row], measurement_noise_scale=noise_scale)
             track.age = 0
             track.hits += 1
             track.confirmed = track.hits >= self.config.n_init

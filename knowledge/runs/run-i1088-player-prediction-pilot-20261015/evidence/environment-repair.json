@@ -1,0 +1,15 @@
+{
+  "code_commit": "d734b1308ed9181e7ed2ffb8d3d8c941f747f590",
+  "created_at": "2026-10-15T03:44:14.994903+00:00",
+  "failed_launch": "8d800c4cf4a4dd634a6add356b75ca0e955bf0eeb349b56177f7cdfcc0182dcb",
+  "installed_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/MultiScaleDeformableAttention.so",
+  "reason": "Explicit environment repair after player attempt 1 failed to import the DINO CUDA extension; only this pilot worktree receives the inspected binary. No shared venv or tracked source change.",
+  "rollback": "Remove only installed_path after confirming the same sha256 and no active pilot stages.",
+  "schema_version": "annotation.pilot-environment.v1",
+  "sha256": "c7fdb45b66ad6d0c5617d02eb9a0f3ade920e38018ee1d47a74f7cbebf0d60d6",
+  "size_bytes": 12097624,
+  "source": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "torch_cuda_version": "13.0",
+  "torch_version": "2.13.0+cu130",
+  "validation": "CPU forward/backward dispatch only; CUDA kernel not yet verified"
+}

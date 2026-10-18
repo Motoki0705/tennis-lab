@@ -85,20 +85,22 @@ class FeatureExtractor:
     def extract(
         self, frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
         boxes: NDArray[np.float32], scores: NDArray[np.float32],
+        *, score_origin: NDArray[np.uint8] | None = None,
     ) -> DetectionFeatures:
         n = len(rows)
         poses: NDArray[np.float32] | None = None if self.pose is None else np.zeros((n, 17, 3), np.float32)
         embeddings: NDArray[np.float32] = np.zeros((n, self.encoder.dimension), np.float32)
         valid: NDArray[np.bool_] = np.zeros(n, bool)
         # Validate before invoking either model, including empty input frames.
-        DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+        DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)
         if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8 or min(image.shape[:2]) < 2:
             raise ValueError("Feature image must be uint8 BGR (H,W,3)")
         if not n:
-            return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+            return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)
         if self.pose is not None:
             poses = infer_poses(frame, image, boxes, self.pose, self.config, rows=rows)
-        return encode_appearance(frame, image, rows, boxes, scores, poses, self.encoder, self.config)
+        return encode_appearance(frame, image, rows, boxes, scores, poses, self.encoder, self.config,
+                                 score_origin=score_origin)
 
 
 def infer_poses(frame: int, image: NDArray[np.uint8], boxes: NDArray[np.float32],
@@ -125,14 +127,15 @@ def infer_poses(frame: int, image: NDArray[np.uint8], boxes: NDArray[np.float32]
 
 def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int64],
                       boxes: NDArray[np.float32], scores: NDArray[np.float32], poses: NDArray[np.float32] | None,
-                      encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG) -> DetectionFeatures:
+                      encoder: DetectionEncoder, config: FeatureConfig = DEFAULT_CONFIG, *,
+                      score_origin: NDArray[np.uint8] | None = None) -> DetectionFeatures:
     """Encode another backbone using the identical saved pose/detection rows."""
     n = len(rows)
     if poses is None and not isinstance(encoder, UnpromptedEncoder):
         raise ValueError("Pose-free appearance requires an explicitly unprompted encoder")
     embeddings: NDArray[np.float32] = np.zeros((n, encoder.dimension), np.float32)
     valid: NDArray[np.bool_] = np.zeros(n, bool)
-    DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+    DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)
     if image.ndim != 3 or image.shape[2] != 3 or image.dtype != np.uint8 or min(image.shape[:2]) < 2:
         raise ValueError("Feature image must be uint8 BGR (H,W,3)")
     height, width = image.shape[:2]
@@ -156,4 +159,4 @@ def encode_appearance(frame: int, image: NDArray[np.uint8], rows: NDArray[np.int
         if encoded.shape != (len(batch), encoder.dimension):
             raise ValueError("Appearance model changed the detection or embedding axis")
         embeddings[batch] = encoded
-    return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid)
+    return DetectionFeatures(frame, rows, boxes, scores, poses, embeddings, valid, score_origin=score_origin)

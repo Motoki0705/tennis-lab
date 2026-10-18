@@ -1,6 +1,12 @@
 # Ball Detection
 
-MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
+RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規CNN構成と旧2ch構成の
+入力仕様は [models/mdd](models/mdd/README.md) を参照。
+既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
+
+モデル事前推論から注釈修正・増分公開・累積追加学習への変更後設計は、
+[注釈・継続学習のアーキテクチャ](../base/annotation/README.md)を参照する。
+実装状況は同資料からリンクしたサブIssueで管理する。
 
 ## 構成と責任
 
@@ -14,9 +20,10 @@ MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契�
 | `preprocessing/mdd.py` | モデルが使う固定FP32 MDDの唯一の実装 |
 | `model_io/` | 入出力の検証、モデル生成、座標/heatmapの別々の契約 |
 | `checkpoints/` | schema別の保存・読込・encoder転送・再現性の照合 |
-| [training/](training/README.md) | 3つの学習系統、共通epoch/runtime、LR、FPS sampler |
+| [training/](training/README.md) | 5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
 | `inference/` | scene向け公開predictorとtrajectory gate |
+| [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
 | [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
 | [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |
 | `generate_dataset/` | 原本から統一frame storeを生成 |
@@ -30,8 +37,8 @@ MDDから2Dボール位置を推定する。既存ConvNeXtのnative heatmap契�
 |---|---|
 | `generate_dataset` | 設定からframe storeを生成 |
 | `prepare_data` | 凍結したプレイ窓・pose/MDD-onlyのmanifestと比較設定を準備 |
-| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates`。座標系は`--initialize scratch\|encoder`も明示 |
-| `evaluate` | `--mode heatmap\|manifest\|coordinates`。保存されたcheckpoint契約で採点 |
+| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid`。座標系は`--initialize scratch\|encoder`も明示 |
+| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画 |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
@@ -71,6 +78,26 @@ patchの画像外部分は0埋め＋`patch_valid=false` で区別する。
 patchをsubpixel座標へ再sampleしないため、中心値は常にscoreと一致する。
 元のdense heatmapも残るので、候補外の情報を使う処理や再抽出が可能。
 pipelineでの座標変換・保存・単一点の受理は[pipelineの契約](../../tennis_scene/pipeline/README.md#ball検出証拠)を参照。
+
+### ハイブリッドの出力契約
+
+5ch query＋DPTは [`model_io/mdd_hybrid.py`](model_io/mdd_hybrid.py) の
+`build_mdd_hybrid_detector` でモデルとadapterを構築する。
+学習済みモデルは同moduleの`load_mdd_hybrid_detector(path)`で、保存された存在閾値とともに復元する。
+`MDDQueryInput`（RGB uint8と実timestamps）を渡し、`BallPrediction`を継承した
+`BallHybridPrediction` を得る。構造・重み転送は [models/mdd](models/mdd/README.md) を参照。
+
+`coords` はnative heatmapのargmax＋任意のlog-parabolic subpixel補正で、
+`x/(W_heatmap−1), y/(H_heatmap−1)`。RGBへ戻すときはRGBの `(W−1,H−1)` を掛ける。
+`presence_logits` と `present`（bool）を追加し、存在確率の閾値 `presence_threshold` は
+呼出側の必須指定とする。`present` はqueryのsigmoid値がこの閾値以上かで決める。
+閾値の較正・heatmapとの複合判定は学習・評価側の判断事項。
+
+不在frameの `coords` はNaN、`confidence` は0、全候補の `valid` / `patch_valid` はfalse、
+候補値は0。下流は必ず `present` で座標を選別し、JSON等へ出す際は不在をnull等で表す。
+`heatmaps` は存在gateを掛けないnative sigmoid値を保持し、存在logitと別々に監査できる。
+全fieldはCPU tensor。既存の座標だけを扱う `predict_coordinates` はこのモデルを拒否する。
+既存scene用ConvNeXt factory／UIへ暗黙に接続せず、hybrid用adapterを明示的に使う。
 
 ## データセットレビュー / 推論UI
 

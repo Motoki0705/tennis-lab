@@ -37,7 +37,7 @@ from src.tasks.player_association.evaluation.labels import (
     ClipLabels,
     LabelledPerson,
 )
-from src.tennis_scene.chat_annotation.player_pose.reviews import validate_and_remap
+from src.tasks.player_detection.annotation.pose.reviews import validate_and_remap
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.utils.checksum import dual_sha256

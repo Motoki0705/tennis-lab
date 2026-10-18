@@ -136,7 +136,8 @@ def camera_features(video: dict[str, Any], detections: DetectionArchive, extract
             old = saved[packet.index]
             if not np.array_equal(old.rows, rows) or not np.array_equal(old.boxes, boxes) or not np.array_equal(old.scores, scores):
                 raise ValueError('Saved pose changed the input detection rows')
-            frame = encode_appearance(packet.index, packet.frame, rows, boxes, scores, old.poses, extractor, config)
+            frame = encode_appearance(packet.index, packet.frame, rows, boxes, scores, old.poses, extractor, config,
+                                      score_origin=old.score_origin)
         frames.append(frame)
     if len(frames) != video['num_frames'] or sum(len(f.rows) for f in frames) != len(detections.scores):
         raise ValueError('Feature extraction did not preserve every input frame/person')

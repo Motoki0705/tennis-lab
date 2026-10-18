@@ -116,6 +116,7 @@ class BotSortPose:
         return [(tracks[t], int(rows[d])) for t, d in zip(ti, di, strict=True) if cost[t, d] < 1e6]
 
     def update(self, features: DetectionFeatures) -> TrackAssignments:
+        scores = features.require_scores()
         features.require_poses()
         if features.parts is not None:
             raise ValueError('BoT-SORT pose has no native part adapter; refusing to discard appearance')
@@ -134,8 +135,8 @@ class BotSortPose:
             if track.last_frame != self.frame - 1:
                 track.mean[6:8] = 0  # BoT-SORT's lost-track width/height velocity policy
             track.mean, track.covariance = self.filter.predict(track.mean, track.covariance)
-        high = np.flatnonzero(features.scores >= cfg.high_score)
-        low = np.flatnonzero((features.scores >= cfg.low_score) & (features.scores < cfg.high_score))
+        high = np.flatnonzero(scores >= cfg.high_score)
+        low = np.flatnonzero((scores >= cfg.low_score) & (scores < cfg.high_score))
         matches = self._match(self.tracks, features, high)
         matched_tracks = {track.identity for track, _ in matches}
         remaining_active = [track for track in self.tracks if track.identity not in matched_tracks and track.last_frame == self.frame - 1]
@@ -149,7 +150,7 @@ class BotSortPose:
             track.last_frame = self.frame
             track.pose = local_pose(features.boxes[row], features.require_poses()[row])
             # Low-confidence observations can keep a track but do not contaminate its appearance EMA.
-            if features.scores[row] >= cfg.high_score and features.appearance_valid[row]:
+            if scores[row] >= cfg.high_score and features.appearance_valid[row]:
                 embedded = features.embeddings[row]
                 updated = embedded.copy() if track.embedding is None else cfg.ema * track.embedding + (1 - cfg.ema) * embedded
                 norm = np.linalg.norm(updated)

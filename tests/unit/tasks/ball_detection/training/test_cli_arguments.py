@@ -11,7 +11,7 @@ RUNTIME_CHOICES = ("precision", "jpeg-decoder", "compile-mode", "input-verificat
 RECIPE_CHOICES = ("epochs", "windows-per-epoch", "learning-rate", "seed", "warmup-updates")
 REQUIRED_CHOICES = [
     (stage, option)
-    for stage in ("scratch", "dpt_pretrain", "encoder")
+    for stage in ("scratch", "dpt_pretrain", "encoder", "full_model")
     for option in (
         *RUNTIME_CHOICES,
         *(RECIPE_CHOICES if stage != "scratch" else ("epochs", "learning-rate", "seed")),
@@ -29,10 +29,15 @@ def test_omitted_choice_fails_before_reading_inputs(
                   epochs="2", **{"windows-per-epoch": "6", "learning-rate": ".001",
                   "seed": "42", "device": "cpu", "precision": "fp32", "jpeg-decoder": "opencv",
                   "compile-mode": "off", "input-verification": "lazy"})
-    if stage == "encoder":
-        selector = ["--stage", "coordinates", "--initialize", "encoder"]
-        values.update({"pretraining-run": str(tmp_path / "pretrained"),
-                       "augmentation-config": str(tmp_path / "augmentation.yaml"), "warmup-updates": "0"})
+    if stage in {"encoder", "full_model"}:
+        selector = ["--stage", "coordinates", "--initialize", stage]
+        values.update({"augmentation-config": str(tmp_path / "augmentation.yaml"), "warmup-updates": "0"})
+        if stage == "encoder":
+            values["pretraining-run"] = str(tmp_path / "pretrained")
+        else:
+            values.update({"validation-manifest": str(tmp_path / "validation.json"),
+                           "initial-checkpoint": str(tmp_path / "initial.pt"),
+                           "initial-checkpoint-sha256": "a" * 64})
     else:
         selector = (["--stage", "coordinates", "--initialize", "scratch"] if stage == "scratch"
                     else ["--stage", "dpt_pretrain"])
@@ -46,4 +51,29 @@ def test_omitted_choice_fails_before_reading_inputs(
         main()
     assert error.value.code == 2
     assert f"the following arguments are required: --{omitted}" in capsys.readouterr().err
+    assert not (tmp_path / "run").exists()
+
+
+@pytest.mark.parametrize("initialization", ["encoder", "full_model"])
+@pytest.mark.parametrize("stop", [-1, 2])
+def test_diagnostic_stop_outside_budget_fails_before_reading_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+    initialization: str, stop: int,
+) -> None:
+    values = dict(manifest=str(tmp_path / "manifest.json"), output=str(tmp_path / "run"),
+        epochs="2", **{"windows-per-epoch": "2", "learning-rate": ".001", "warmup-updates": "0",
+        "seed": "42", "device": "cpu", "precision": "fp32", "jpeg-decoder": "opencv",
+        "compile-mode": "off", "input-verification": "lazy", "stop-after-epoch": str(stop),
+        "augmentation-config": str(tmp_path / "augmentation.yaml")})
+    if initialization == "encoder":
+        values["pretraining-run"] = str(tmp_path / "pretrained")
+    else:
+        values.update({"validation-manifest": str(tmp_path / "validation.json"),
+            "initial-checkpoint": str(tmp_path / "initial.pt"), "initial-checkpoint-sha256": "a" * 64})
+    monkeypatch.setattr(sys, "argv", ["train", "--stage", "coordinates", "--initialize", initialization,
+        *(arg for key, value in values.items() for arg in (f"--{key}", value))])
+    with pytest.raises(SystemExit) as error:
+        main()
+    assert error.value.code == 2
+    assert "Diagnostic stop must lie within the full run budget" in capsys.readouterr().err
     assert not (tmp_path / "run").exists()

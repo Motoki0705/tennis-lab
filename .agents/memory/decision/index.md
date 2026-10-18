@@ -5,3 +5,5 @@
 - [判断を仰ぐときは、既に答えが出ている事項を聞き直さず、各選択肢を説明付きで示す](ask-only-open-decisions.md)
 - [test推論をbackfillできない古いckptは、結果がknowledgeノードにあれば削除してよい（ユーザー判断）](ckpt-force-delete-policy.md)
 - [学習などの長時間ジョブは、定期的な再開ではなくプロセスの監視で待つ](wait-for-long-jobs-by-event.md) (claude)
+- [注釈workerのeffortはmaxに固定する](annotation-worker-effort-max.md)
+- [テスト用の値を本番planに使わない](keep-test-values-out-of-production-plans.md)

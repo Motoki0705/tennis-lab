@@ -1,0 +1,62 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/submodules/models/dino/architecture.py", line 130, in build_dino
+    build_function = load_dino_build_function(repository)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/submodules/models/dino/architecture.py", line 178, in load_dino_build_function
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/__init__.py", line 7, in <module>
+    from .dino import build_dino
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/__init__.py", line 10, in <module>
+    from .dino import build_dino
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/dino.py", line 33, in <module>
+    from .deformable_transformer import build_deformable_transformer
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/deformable_transformer.py", line 23, in <module>
+    from .ops.modules import MSDeformAttn
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/modules/__init__.py", line 9, in <module>
+    from .ms_deform_attn import MSDeformAttn
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/modules/ms_deform_attn.py", line 21, in <module>
+    from ..functions import MSDeformAttnFunction
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/functions/__init__.py", line 9, in <module>
+    from .ms_deform_attn_func import MSDeformAttnFunction
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/functions/ms_deform_attn_func.py", line 18, in <module>
+    import MultiScaleDeformableAttention as MSDA
+ModuleNotFoundError: No module named 'MultiScaleDeformableAttention'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/annotation/__main__.py", line 363, in <module>
+    main()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/annotation/__main__.py", line 231, in main
+    print(execute(layout, ref).model_dump_json())
+          ^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/annotation/operations.py", line 252, in execute
+    result = tuple(predictions.run(clip, adapter) for clip in op.clips)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/annotation/operations.py", line 252, in <genexpr>
+    result = tuple(predictions.run(clip, adapter) for clip in op.clips)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/base/annotation/predictions.py", line 255, in run
+    output = adapter.produce(self.layout, context, manifest, directory)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/player_detection/annotation/inference.py", line 144, in produce
+    self._predictor = DinoPredictor(layout, context, config)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/player_detection/annotation/inference.py", line 87, in __init__
+    self.detector.load()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/submodules/models/_base/inference_model.py", line 56, in load
+    self._load_impl()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/tasks/player_detection/inference/predictor.py", line 25, in _load_impl
+    super()._load_impl()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/submodules/models/dino/person_detector.py", line 83, in _load_impl
+    model, _ = build_dino(
+               ^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/src/submodules/models/dino/architecture.py", line 133, in build_dino
+    raise RuntimeError(
+RuntimeError: DINO CUDA extension is not installed. Run: TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace

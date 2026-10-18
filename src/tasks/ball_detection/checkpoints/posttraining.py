@@ -6,6 +6,11 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.configuration import (
+    checkpoint_training_recipe,
+)
+from src.tasks.ball_detection.checkpoints.coordinates import query_checkpoint_config
+from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.utils.checksum import dual_sha256
 
@@ -17,21 +22,26 @@ def resume_posttraining(path: Path, output: Path, model: DeepMDDQueryDetector,
                         code: dict[str, Any], device: torch.device) -> tuple[int, int, float, int]:
     """Resume the original cosine budget and restore best metadata from its checkpoint."""
     saved = torch.load(path, map_location="cpu", weights_only=True)
-    if path.parent != output or saved.get("schema") != SCHEMA or saved["recipe"] != recipe:
+    config, preprocessing = query_checkpoint_config(saved)
+    if path.parent != output or saved.get("schema") != SCHEMA or checkpoint_training_recipe(saved, config) != recipe:
         raise ValueError("Resume requires identical posttraining recipe and output")
     if saved["code"]["source_sha256"] != code["source_sha256"]:
         raise ValueError("Resume source code changed; use the recorded commit for a historical run")
+    if config != model.config or preprocessing.input_contract() != model.mdd.input_contract():
+        raise ValueError("Resume model configuration or input contract changed")
     first_epoch = saved["epoch"] + 1
     if path.name != f"epoch-{saved['epoch']:03d}.pt":
         raise ValueError("Resume checkpoint filename differs from its epoch")
-    if first_epoch >= recipe["epochs"] or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt")):
-        raise ValueError("Resume requires latest completed epoch and remaining budget")
+    if (first_epoch > recipe["epochs"]
+            or (first_epoch == recipe["epochs"] and (output / "COMPLETED.json").exists())
+            or any(int(p.stem.split("-")[1]) >= first_epoch for p in output.glob("epoch-*.pt"))):
+        raise ValueError("Resume requires latest completed epoch and remaining updates or unfinished finalization")
     best_epoch = int(saved["best_epoch"])
     if not 0 <= best_epoch < first_epoch:
         raise ValueError("Resume best epoch lies outside the completed history")
     best_path = output / f"epoch-{best_epoch:03d}.pt"
     selected = torch.load(best_path, map_location="cpu", weights_only=True)
-    if selected["validation"]["scopes"]["common"]["macro_mean_error_px"] != saved["best_score"]:
+    if selection_score(selected["validation"], recipe["selection_scope"]) != saved["best_score"]:
         raise ValueError("Resume best checkpoint disagrees with its selection score")
     model.load_state_dict(saved["state_dict"], strict=True)
     optimizer.load_state_dict(saved["optimizer"])
