@@ -144,6 +144,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "synthetic.publication_visualization",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "synthetic.scene_pipeline",
     "src.synthetic_data_generation.scripts.visualize_dataset": "synthetic.dataset_visualization",
+    "src.synthetic_data_generation.scripts.visualize_scene_reveal": "synthetic.scene_reveal",
     "src.tasks.ball_detection.evaluation.heatmap_cli": "ball.eval",
     "src.tasks.ball_detection.evaluation.manifest_cli": "ball.evaluate_manifest",
     "src.tasks.ball_detection.scripts.generate_dataset": "ball_detection.generate_dataset",
@@ -197,6 +198,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.synthetic_data_generation.scripts.generate_publication_visualizations": "src.synthetic_data_generation.visualization.publication.configuration.validate_publication_boundary",
     "src.synthetic_data_generation.scripts.run_scene_pipeline": "src.synthetic_data_generation.configuration.validate_scene_pipeline_boundary",
     "src.synthetic_data_generation.scripts.visualize_dataset": "src.synthetic_data_generation.visualization.configuration.validate_dataset_visualization_boundary",
+    "src.synthetic_data_generation.scripts.visualize_scene_reveal": "src.synthetic_data_generation.visualization.reveal.configuration.validate_scene_reveal_boundary",
     "src.tasks.ball_detection.evaluation.heatmap_cli": "src.tasks.ball_detection.configuration.validate_eval",
     "src.tasks.ball_detection.evaluation.manifest_cli": "src.tasks.ball_detection.configuration.validate_manifest_boundary",
     "src.tasks.ball_detection.scripts.generate_dataset": "src.tasks.ball_detection.generate_dataset.frame_store.config.validate_generate_boundary",
@@ -657,6 +659,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary(
         "synthetic_data_generation",
         "src.synthetic_data_generation.scripts.visualize_dataset",
+    ),
+    _runtime_boundary(
+        "synthetic_data_generation",
+        "src.synthetic_data_generation.scripts.visualize_scene_reveal",
     ),
     _runtime_boundary("ball_detection", "src.tasks.ball_detection.evaluation.heatmap_cli", executable_module=False),
     _runtime_boundary(

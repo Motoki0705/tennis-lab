@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import tempfile
@@ -20,6 +21,76 @@ NHT_RENDER_REQUEST_SCHEMA = "nht_render_request_v1"
 NHT_RENDER_RESULT_SCHEMA = "nht_render_result_v1"
 
 _PORTABLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+NHT_SPLAT_ORDER_LARGEST_FIRST = "largest_first"
+
+
+def _unit_interval(value: float, *, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError(f"{name} must be a number.")
+    result = float(value)
+    if not math.isfinite(result) or not 0.0 <= result <= 1.0:
+        raise ValueError(f"{name} must lie in [0, 1].")
+    return result
+
+
+@dataclass(frozen=True, slots=True)
+class NHTAppearancePolicy:
+    """Request-wide staged-appearance parameters of ``nht-render``.
+
+    ``point_radius`` is in canonical NHT scene units. Gaussians grow from this
+    sphere to their learned scale in ``splat_order``; ``splat_stagger`` is the
+    fraction of the global progress over which one Gaussian grows.
+    """
+
+    point_radius: float
+    splat_order: str
+    splat_stagger: float
+
+    def __post_init__(self) -> None:
+        radius = float(self.point_radius)
+        if not math.isfinite(radius) or radius <= 0.0:
+            raise ValueError("point_radius must be positive and finite.")
+        if self.splat_order != NHT_SPLAT_ORDER_LARGEST_FIRST:
+            raise ValueError(f"Unsupported NHT splat_order: {self.splat_order!r}.")
+        stagger = float(self.splat_stagger)
+        if not math.isfinite(stagger) or not 0.0 < stagger <= 1.0:
+            raise ValueError("splat_stagger must lie in (0, 1].")
+        object.__setattr__(self, "point_radius", radius)
+        object.__setattr__(self, "splat_stagger", stagger)
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the public request representation."""
+        return {
+            "point_radius": self.point_radius,
+            "splat_order": self.splat_order,
+            "splat_stagger": self.splat_stagger,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class NHTAppearanceControls:
+    """Per-camera staged-appearance progress; all ones is the learned scene.
+
+    ``splat_progress`` grows every Gaussian (largest first) from an opaque
+    point sphere to its learned scale and opacity; ``view_dependence`` moves the
+    shader's ray input from the optical axis to the true per-pixel ray.
+    """
+
+    splat_progress: float
+    view_dependence: float
+
+    def __post_init__(self) -> None:
+        for name in ("splat_progress", "view_dependence"):
+            object.__setattr__(
+                self, name, _unit_interval(getattr(self, name), name=name)
+            )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return the public request representation."""
+        return {
+            "splat_progress": self.splat_progress,
+            "view_dependence": self.view_dependence,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,8 +102,13 @@ class NHTRenderCamera:
     height: int
     intrinsics: tuple[float, ...]
     camera_to_scene: RigidTransform
+    appearance: NHTAppearanceControls | None = None
 
     def __post_init__(self) -> None:
+        if self.appearance is not None and not isinstance(
+            self.appearance, NHTAppearanceControls
+        ):
+            raise TypeError("appearance must be NHTAppearanceControls or None.")
         validated = SceneCamera(
             camera_id=self.camera_id,
             source_frame_index=0,
@@ -74,7 +150,7 @@ class NHTRenderCamera:
     def to_dict(self) -> dict[str, object]:
         """Return the strict ``nht_render_request_v1`` camera representation."""
         matrix = np.asarray(self.intrinsics, dtype=np.float64).reshape(3, 3)
-        return {
+        payload: dict[str, object] = {
             "camera_id": self.camera_id,
             "width": self.width,
             "height": self.height,
@@ -91,13 +167,21 @@ class NHTRenderCamera:
             },
             "camera_to_scene": self.camera_to_scene.matrix().tolist(),
         }
+        if self.appearance is not None:
+            payload["appearance"] = self.appearance.to_dict()
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
 class NHTRenderRequest:
-    """A strict, non-empty arbitrary-camera request written to JSON."""
+    """A strict, non-empty arbitrary-camera request written to JSON.
+
+    ``appearance_policy`` is required exactly when at least one camera carries
+    staged appearance controls.
+    """
 
     cameras: tuple[NHTRenderCamera, ...]
+    appearance_policy: NHTAppearancePolicy | None = None
 
     def __post_init__(self) -> None:
         cameras = tuple(self.cameras)
@@ -110,14 +194,27 @@ class NHTRenderRequest:
         camera_ids = [camera.camera_id for camera in cameras]
         if len(camera_ids) != len(set(camera_ids)):
             raise ValueError("NHT render request camera IDs must be unique.")
+        staged = any(camera.appearance is not None for camera in cameras)
+        if self.appearance_policy is not None and not isinstance(
+            self.appearance_policy, NHTAppearancePolicy
+        ):
+            raise TypeError("appearance_policy must be NHTAppearancePolicy or None.")
+        if staged != (self.appearance_policy is not None):
+            raise ValueError(
+                "NHT appearance_policy is required exactly when a camera has "
+                "appearance controls."
+            )
         object.__setattr__(self, "cameras", cameras)
 
     def to_dict(self) -> dict[str, object]:
         """Return the canonical public request payload."""
-        return {
+        payload: dict[str, object] = {
             "schema": NHT_RENDER_REQUEST_SCHEMA,
             "cameras": [camera.to_dict() for camera in self.cameras],
         }
+        if self.appearance_policy is not None:
+            payload["appearance_policy"] = self.appearance_policy.to_dict()
+        return payload
 
     def write(self, path: str | Path) -> Path:
         """Atomically replace one ordinary JSON request file."""
@@ -607,6 +704,9 @@ __all__ = [
     "NHT_RENDER_COMMAND",
     "NHT_RENDER_REQUEST_SCHEMA",
     "NHT_RENDER_RESULT_SCHEMA",
+    "NHT_SPLAT_ORDER_LARGEST_FIRST",
+    "NHTAppearanceControls",
+    "NHTAppearancePolicy",
     "NHTRenderArrayMetadata",
     "NHTRenderCamera",
     "NHTRenderCommandRequest",

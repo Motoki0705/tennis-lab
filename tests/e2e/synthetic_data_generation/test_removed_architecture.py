@@ -151,6 +151,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
         "run_appearance_variant.py",
         "run_scene_pipeline.py",
         "visualize_dataset.py",
+        "visualize_scene_reveal.py",
     }
 
 
