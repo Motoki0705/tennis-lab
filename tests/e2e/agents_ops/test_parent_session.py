@@ -1,0 +1,1103 @@
+"""Parent workflow through fake gh, private temporary state and real throwaway git."""
+
+from __future__ import annotations
+
+import hashlib
+import importlib
+import json
+import os
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[3]
+OPS = ROOT / ".agents/ops"
+
+FAKE_GH = r"""
+import json, os, re, sys
+args = sys.argv[1:]
+with open(os.environ["PARENT_GH_CALLS"], "a") as f:
+    f.write(json.dumps(args) + "\n")
+state_path = os.environ["PARENT_GH_STATE"]
+with open(state_path) as f:
+    state = json.load(f)
+def response(value, code=200):
+    if "--include" in args:
+        print(f"HTTP/1.1 {code} {'OK' if code == 200 else 'Not Found'}\n")
+    print(json.dumps(value))
+    sys.exit(0 if code < 300 else 1)
+def save():
+    with open(state_path, "w") as f:
+        json.dump(state, f)
+def fail():
+    print("injected GitHub failure", file=sys.stderr)
+    sys.exit(1)
+if args[:2] == ["repo", "view"]:
+    response({"nameWithOwner": "o/r"})
+assert args[0] == "api", args
+method = args[args.index("--method") + 1]
+endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
+if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET":
+    fail()
+payload = json.load(sys.stdin) if method != "GET" else None
+path, _, query = endpoint.partition("?")
+page = int(re.search(r"(?:^|&)page=(\d+)", query)[1]) if "page=" in query else 1
+def paged(rows):
+    return rows[(page-1)*100:page*100]
+if endpoint == "user":
+    response({"login": "operator"})
+if path == "repos/o/r/pulls":
+    if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
+        state["pull_reads"] = state.get("pull_reads", 0) + 1
+        if state["pull_reads"] == 2:
+            state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+        save()
+    response(paged(state["prs"]))
+match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", path)
+assert match, endpoint
+n, tail = match.groups()
+if n is None:
+    if method == "GET":
+        response(paged(list(state["issues"].values())))
+    assert method == "POST", method
+    n = str(state["next"])
+    state["next"] += 1
+    row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
+           "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
+           "state": "open", "state_reason": None}
+    state["issues"][n] = row
+    save()
+    if os.environ.get("PARENT_FAIL_AFTER_CREATE"):
+        fail()
+    response(row, 201)
+if n not in state["issues"]:
+    response({"message": "Not Found"}, 404)
+row = state["issues"][n]
+if tail == "parent":
+    parent = state["parents"].get(n)
+    response(state["issues"][str(parent)] if parent else {"message": "Not Found"}, 200 if parent else 404)
+if tail == "sub_issues":
+    if method == "GET":
+        response(paged([i for key, i in state["issues"].items() if state["parents"].get(key) == int(n)]))
+    child = next(i for i in state["issues"].values() if i["id"] == payload["sub_issue_id"])
+    assert str(child["number"]) not in state["parents"]
+    state["parents"][str(child["number"])] = int(n)
+    save()
+    response(child, 201)
+if tail == "comments":
+    if method == "GET":
+        response(paged(state["comments"].get(n, [])))
+    comment = {"id": len(state["comments"].get(n, [])) + 1, "user": {"login": "operator"}, "body": payload["body"]}
+    state["comments"].setdefault(n, []).append(comment)
+    save()
+    response(comment, 201)
+if method == "PATCH":
+    for k, v in payload.items():
+        row[k] = [{"name": x} for x in v] if k == "labels" else v
+    save()
+response(row)
+"""
+
+
+def run_git(directory: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=directory, capture_output=True, text=True, check=True
+    )
+    return result.stdout.strip()
+
+
+@dataclass
+class ParentEnv:
+    root: Path
+    repo: Path
+    env: dict[str, str]
+    state_path: Path
+    calls_path: Path
+    formats: Any
+
+    def state(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.state_path.read_text()))
+
+    def save(self, state: dict[str, Any]) -> None:
+        self.state_path.write_text(json.dumps(state, ensure_ascii=False))
+
+    def calls(self) -> list[list[str]]:
+        return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
+
+    def spec(self, value: Any) -> str:
+        path = self.root / "input.json"
+        path.write_text(json.dumps(value, ensure_ascii=False))
+        return str(path)
+
+    def note(self, text: str = "確認済みの証拠・次の操作。") -> str:
+        path = self.root / "note.md"
+        path.write_text(text)
+        return str(path)
+
+    def cli(
+        self,
+        *args: str,
+        parent: str = "1",
+        ok: bool | None = True,
+        extra: dict[str, str] | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "parent",
+                "--repo",
+                "o/r",
+                "--parent",
+                parent,
+                *args,
+            ],
+            cwd=self.repo,
+            env={**self.env, **(extra or {})},
+            text=True,
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        if ok is True:
+            assert result.returncode == 0, result.stderr + result.stdout
+        elif ok is False:
+            assert result.returncode != 0, result.stdout
+        return result
+
+    def agreed(self) -> None:
+        self.cli("register")
+        self.cli("checking")
+        self.cli(
+            "agree",
+            "--spec",
+            self.spec(
+                {
+                    "purpose": "目的を固定する",
+                    "scope": "親と子",
+                    "behavior": "合意後に実装する",
+                    "acceptance": "fakeで検証する",
+                    "human_confirmation": "この目的・範囲・動作・受入条件で進めてください。",
+                }
+            ),
+        )
+
+    def child(
+        self,
+        key: str,
+        deps: list[int] | None = None,
+        source: bool = False,
+        ok: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        sections = {
+            name: name + "について具体的に実装する。"
+            for name in self.formats.CHILD_REQUIRED
+        }
+        sections["依存関係"] = "なし。"
+        sections["Acceptance checklist"] = (
+            "- [ ] 動作する\n  文脈: 親の目的。\n  下流への影響: 誤委任を防ぐ。\n  検証方法・証拠: fake gh。"
+        )
+        spec = {
+            "role": "child",
+            "summary": key,
+            "parent": {"identifier": "開発", "number": 1},
+            "sections": sections,
+            "labels": ["ai-proposed"],
+        }
+        if source:
+            spec["source"] = {
+                "proposal_id": "R-opaque-01",
+                "report_number": 90,
+                "option": None,
+            }
+        manifest = {"key": key, "spec": spec, "dependencies": deps or []}
+        return self.cli("create-child", "--spec", self.spec(manifest), ok=ok)
+
+    def detail(self) -> str:
+        return self.spec(
+            {
+                "reason": "仕様の確認待ち",
+                "facts": "再現ログを確認済み",
+                "impact": "このタスクと依存先",
+                "resume_condition": "判断の合意を記録",
+                "next_action": "確認を得て再開する",
+            }
+        )
+
+    def worktree(self, name: str) -> Path:
+        worktree = self.repo / ".claude/worktrees" / name
+        run_git(self.repo, "worktree", "add", "-b", "codex/" + name, str(worktree))
+        return worktree
+
+    def pr(
+        self, n: int, child: int, head: str | None = None, branch: str | None = None
+    ) -> dict[str, Any]:
+        return {
+            "number": n,
+            "state": "open",
+            "draft": False,
+            "body": f"Closes #{child}",
+            "merged_at": None,
+            "head": {
+                "sha": head or run_git(self.repo, "rev-parse", "HEAD"),
+                "ref": branch or f"codex/child-{child}",
+                "repo": {"full_name": "o/r"},
+            },
+            "base": {
+                "sha": run_git(self.repo, "rev-parse", "main"),
+                "ref": "main",
+                "repo": {"full_name": "o/r"},
+            },
+        }
+
+
+@pytest.fixture
+def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
+    monkeypatch.syspath_prepend(str(OPS))
+    formats = importlib.import_module("issues")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    run_git(repo, "init", "--initial-branch=main")
+    run_git(repo, "config", "user.name", "Test Operator")
+    run_git(repo, "config", "user.email", "test@example.invalid")
+    (repo / "input.txt").write_text("base\n")
+    run_git(repo, "add", "input.txt")
+    run_git(repo, "commit", "-m", "baseline")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    gh = bin_dir / "gh"
+    gh.write_text(f"#!{sys.executable}\n" + FAKE_GH)
+    gh.chmod(0o755)
+    for agent in ("claude", "codex"):
+        path = bin_dir / agent
+        path.write_text(
+            "#!/bin/sh\necho 'a test must never launch an agent' >&2\nexit 97\n"
+        )
+        path.chmod(0o755)
+    sections = {
+        name: "未合意。"
+        for name in formats.PARENT_REQUIRED
+        if name != formats.TASKS_HEADING
+    }
+    body = formats.render_parent_body(sections, [])
+    issues = {
+        str(n): {
+            "id": 10000 + n,
+            "number": n,
+            "repository_url": "https://api.github.com/repos/o/r",
+            "title": f"[開発] 親{n}",
+            "body": body,
+            "labels": [{"name": "issue:parent"}],
+            "state": "open",
+            "state_reason": None,
+        }
+        for n in (1, 2)
+    }
+    state_path = tmp_path / "github.json"
+    state_path.write_text(
+        json.dumps(
+            {"issues": issues, "parents": {}, "comments": {}, "prs": [], "next": 10}
+        )
+    )
+    calls_path = tmp_path / "calls.jsonl"
+    calls_path.touch()
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in {"CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID"}
+    }
+    env.update(
+        PATH=str(bin_dir) + os.pathsep + env["PATH"],
+        PYTHONPATH=str(OPS),
+        PYTHONDONTWRITEBYTECODE="1",
+        XDG_STATE_HOME=str(tmp_path / "private-state"),
+        CLAUDE_CODE_SESSION_ID="private-session-a-unique",
+        PARENT_GH_STATE=str(state_path),
+        PARENT_GH_CALLS=str(calls_path),
+    )
+    return ParentEnv(tmp_path, repo, env, state_path, calls_path, formats)
+
+
+def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> None:
+    p = parent_env
+    assert json.loads(p.cli("status").stdout)["assignment"] == "unassigned"
+    p.cli("register", parent="https://github.com/o/r/issues/1")
+    assert json.loads(p.cli("status").stdout)["phase"] == "担当指定のみ"
+    p.child("forbidden", ok=False)
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(p.root),
+        ok=False,
+    )
+    assert len(p.state()["issues"]) == 2
+    assert not any(
+        "POST" in call and call[-3:] == ["repos/o/r/issues", "--input", "-"]
+        for call in p.calls()
+    )
+    p.cli("checking")
+    assert json.loads(p.cli("status").stdout)["phase"] == "要件確認中"
+    p.child("still-forbidden", ok=False)
+    p.agreed()
+    assert json.loads(p.cli("status").stdout)["phase"] == "要件合意済み"
+    assert (
+        p.state()["comments"]["1"][-1]["body"]
+        .splitlines()[0]
+        .startswith("<!-- parent-session:v1 ")
+    )
+    assert (
+        "> この目的・範囲・動作・受入条件で進めてください。"
+        in p.state()["comments"]["1"][-1]["body"]
+    )
+    # Machine-private IDs never enter comments or issue bodies.
+    assert "private-session-a-unique" not in json.dumps(p.state())
+    p.cli("register", parent="https://github.com/other/repo/issues/1", ok=False)
+
+
+def test_identity_errors_precede_io_and_codex_uses_environment(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    for env in (
+        {"CLAUDE_CODE_SESSION_ID": ""},
+        {"CODEX_SESSION_ID": "also-present"},
+        {"CLAUDE_CODE_SESSION_ID": "", "CODEX_THREAD_ID": "thread-only"},
+        {
+            "CLAUDE_CODE_SESSION_ID": "",
+            "CODEX_SESSION_ID": "parent",
+            "CODEX_THREAD_ID": "child",
+        },
+    ):
+        p.cli("register", ok=False, extra=env)
+    assert p.calls() == []
+    p.cli(
+        "register",
+        extra={
+            "CLAUDE_CODE_SESSION_ID": "",
+            "CODEX_SESSION_ID": "codex-session-private",
+            "CODEX_THREAD_ID": "codex-session-private",
+        },
+    )
+    assert "codex-session-private" not in json.dumps(p.state())
+
+
+def test_exclusive_assignment_release_ended_and_handoff(parent_env: ParentEnv) -> None:
+    p = parent_env
+    p.agreed()
+    assert "o/r#1" in p.cli("register", parent="2", ok=False).stderr
+    second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
+    p.cli("register", ok=False, extra=second)
+    p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
+    p.cli("handoff", "--note-file", p.note())
+    assert json.loads(p.cli("status").stdout)["assignment"] == "handoff_pending"
+    p.child("pending-rejected", ok=False)
+    p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
+    p.cli("checking", ok=False)  # previous session lost ownership
+    p.cli("release", "--ended", "--note-file", p.note(), extra=second)
+    assert json.loads(p.cli("status").stdout)["assignment"] == "ended"
+    p.cli("register", ok=False)
+    p.cli("handoff", "--accept", "--note-file", p.note())
+    p.cli("release", "--note-file", p.note())
+    assert json.loads(p.cli("status").stdout)["assignment"] == "released"
+    p.cli("register", parent="2")
+
+
+@pytest.mark.parametrize("failure", ["after-create", "relation", "progress"])
+def test_child_creation_recovers_partial_failure_without_duplicates(
+    parent_env: ParentEnv, failure: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    if failure == "after-create":
+        p.env["PARENT_FAIL_AFTER_CREATE"] = "1"
+    else:
+        p.env["PARENT_FAIL_PATH"] = (
+            "repos/o/r/issues/1/sub_issues"
+            if failure == "relation"
+            else "repos/o/r/issues/1"
+        )
+    p.child("idempotent", source=True, ok=False)
+    p.env.pop("PARENT_FAIL_PATH", None)
+    p.env.pop("PARENT_FAIL_AFTER_CREATE", None)
+    result = json.loads(p.child("idempotent", source=True).stdout)
+    assert result["reused"] and result["child"] == 10
+    p.child("idempotent", source=True)
+    state = p.state()
+    assert len(state["issues"]) == 3 and state["parents"]["10"] == 1
+    child = state["issues"]["10"]
+    assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
+    assert {x["name"] for x in child["labels"]} == {"ai-proposed", "issue:child"}
+    assert "- [ ] #10 idempotent" in state["issues"]["1"]["body"]
+    assert "private-session-a-unique" not in json.dumps(state)
+
+
+def test_child_key_conflict_and_duplicate_existing_fail_closed(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("one")
+    p.child("two")
+    p.child("one", deps=[11], ok=False)
+    state = p.state()
+    state["issues"]["99"] = {**state["issues"]["10"], "number": 99, "id": 10099}
+    p.save(state)
+    p.child("one", ok=False)
+    assert len(p.state()["issues"]) == 5
+
+
+def test_concurrent_registration_never_owns_two_parents(parent_env: ParentEnv) -> None:
+    p = parent_env
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(
+            pool.map(lambda n: p.cli("register", parent=str(n), ok=None), (1, 2))
+        )
+    assert sorted(r.returncode for r in results) == [0, 2]
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    data = json.loads(registry.read_text())
+    assert len(data["parents"]) == 1
+
+
+def test_rechecking_revokes_agreement_and_missing_confirmation_fails(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("before-change")
+    p.cli("checking")
+    assert json.loads(p.cli("status").stdout)["phase"] == "要件確認中"
+    p.child("cannot-split", ok=False)
+    agreement = {
+        "purpose": "目的",
+        "scope": "範囲",
+        "behavior": "動作",
+        "acceptance": "条件",
+        "human_confirmation": "",
+    }
+    p.cli("agree", "--spec", p.spec(agreement), ok=False)
+    agreement["human_confirmation"] = "この変更した要件で合意します。"
+    p.cli("agree", "--spec", p.spec(agreement))
+    p.child("after-change")
+    assert len(p.state()["issues"]) == 4
+
+
+def test_report_and_human_assignment_share_entry_and_never_imply_consent(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["issues"]["2"]["body"] = (
+        "<!-- ops-report-proposal: R-opaque-2 report=#90 option=none -->\n"
+        + state["issues"]["2"]["body"]
+    )
+    state["issues"]["2"]["labels"].append({"name": "ai-proposed"})
+    p.save(state)
+    for n in (1, 2):
+        result = json.loads(p.cli("register", parent=str(n)).stdout)
+        assert result["phase"] == "担当指定のみ"
+        p.cli("release", "--note-file", p.note(), parent=str(n))
+    assert len(p.state()["issues"]) == 2
+
+
+def test_proposal_identity_prevents_duplicate_under_new_task_key(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("original", source=True)
+    p.child("new-key", source=True, ok=False)
+    assert len(p.state()["issues"]) == 3
+
+
+def test_local_identifiers_are_rejected_from_public_notes(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.cli("register")
+    p.cli("release", "--note-file", p.note(p.env["CLAUDE_CODE_SESSION_ID"]), ok=False)
+    assert "private-session-a-unique" not in json.dumps(p.state())
+    assert json.loads(p.cli("status").stdout)["assignment"] == "active"
+
+
+def test_stop_resume_retries_and_repeated_cycles_keep_distinct_notices(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    for _ in range(2):
+        for action in ("stop", "resume"):
+            p.env["PARENT_FAIL_PATH"] = "repos/o/r/issues/1/comments"
+            p.cli(action, "--child", "10", "--spec", p.detail(), ok=False)
+            p.env.pop("PARENT_FAIL_PATH")
+            p.cli(action, "--child", "10", "--spec", p.detail())
+    comments = p.state()["comments"]["1"]
+    for event in ("child_stopped", "child_resumed"):
+        assert (
+            sum(f'"event": "{event}"' in c["body"].splitlines()[0] for c in comments)
+            == 2
+        )
+    assert p.state()["issues"]["10"]["body"].count("再現ログを確認済み") == 4
+
+
+def test_handoff_retries_do_not_lose_claim_or_repeat_notice(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.cli("handoff", "--note-file", p.note())
+    second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
+    p.env["PARENT_FAIL_PATH"] = "repos/o/r/issues/1/comments"
+    p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
+    p.env.pop("PARENT_FAIL_PATH")
+    p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
+    assert json.loads(p.cli("status", extra=second).stdout)["current_session_is_owner"]
+    assert (
+        sum(
+            '"event": "handoff"' in c["body"].splitlines()[0]
+            for c in p.state()["comments"]["1"]
+        )
+        == 1
+    )
+
+
+def test_partial_stop_dependency_resume_and_improvement_preserve_scope(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b", deps=[10])
+    p.child("c")
+    p.child("d", deps=[11])
+    stopped = json.loads(p.cli("stop", "--child", "10", "--spec", p.detail()).stdout)
+    assert stopped["progress"] == {
+        "10": "stopped",
+        "11": "held",
+        "12": "continue",
+        "13": "held",
+    }
+    state = p.state()
+    body = state["issues"]["10"]["body"]
+    assert all(
+        word in body
+        for word in ("仕様の確認待ち", "再現ログを確認済み", "判断の合意を記録")
+    )
+    notification = state["comments"]["1"][-1]["body"]
+    assert "#10" in notification and "#11" in notification and "#12" in notification
+    assert "再現ログを確認済み" not in notification
+    assert "#11: 依存保留" in state["issues"]["1"]["body"]
+    p.cli(
+        "delegate",
+        "--child",
+        "11",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/b",
+        "--worktree",
+        str(p.root),
+        ok=False,
+    )
+    before = p.formats.parse_sections(state["issues"]["12"]["body"])[
+        "Acceptance checklist"
+    ]
+    improvement = {
+        "purpose": "将来の改善",
+        "evidence": "今回観測した事実",
+        "scope": "次回の変更だけ",
+    }
+    p.cli("improvement", "--child", "12", "--spec", p.spec(improvement))
+    assert (
+        p.formats.parse_sections(p.state()["issues"]["12"]["body"])[
+            "Acceptance checklist"
+        ]
+        == before
+    )
+    p.cli("improvement", "--child", "12", "--spec", p.spec(improvement))
+    assert p.state()["issues"]["12"]["body"].count("将来の改善") == 1
+    resumed = json.loads(p.cli("resume", "--child", "10", "--spec", p.detail()).stdout)
+    assert set(resumed["progress"].values()) == {"continue"}
+
+
+def test_delegation_reconcile_and_completed_tasks_do_not_relaunch(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b")
+    a, b = p.worktree("a"), p.worktree("b")
+    for child, name, path in ((10, "a", a), (11, "b", b)):
+        assert (
+            json.loads(
+                p.cli(
+                    "delegate",
+                    "--child",
+                    str(child),
+                    "--agent",
+                    "codex",
+                    "--branch",
+                    "codex/" + name,
+                    "--worktree",
+                    str(path),
+                ).stdout
+            )["action"]
+            == "launch"
+        )
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(a),
+        ok=False,
+    )
+    result = json.loads(p.cli("reconcile").stdout)
+    assert {t["action"] for t in result["tasks"]} == {"do_not_launch"}
+    state = p.state()
+    state["prs"] = [p.pr(100, 10, branch="codex/a")]
+    p.save(state)
+    p.cli(
+        "record-result",
+        "--child",
+        "10",
+        "--evidence-file",
+        p.note("関連テストが成功した。"),
+    )
+    assert "成果PR: #100" in p.state()["issues"]["10"]["body"]
+    assert "関連テストが成功した。" in p.state()["issues"]["10"]["body"]
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(a),
+        "--restart-evidence-file",
+        p.note(),
+        ok=False,
+    )
+    state = p.state()
+    state["issues"]["10"].update(state="closed", state_reason="completed")
+    p.save(state)
+    p.cli("sync")
+    result = json.loads(p.cli("reconcile").stdout)
+    assert result["tasks"][0]["state"] == "completed"
+    assert result["tasks"][0]["prs"][0]["number"] == 100
+    assert "- [x] #10 a" in p.state()["issues"]["1"]["body"]
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(a),
+        ok=False,
+    )
+
+
+def test_invalid_worktree_and_reused_worker_branch_are_refused(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b")
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(p.repo),
+        ok=False,
+    )
+    worktree = p.worktree("a")
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(worktree),
+    )
+    p.cli(
+        "delegate",
+        "--child",
+        "11",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(worktree),
+        ok=False,
+    )
+
+
+def test_issue_body_metadata_and_existing_evidence_survive_updates(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("keep", source=True)
+    state = p.state()
+    before = state["issues"]["10"]["body"]
+    body = before.replace(
+        "## 対象外",
+        "<!-- retain-this-comment -->\n\n```sh\n## example heading\necho keep\n```\n\n## 対象外",
+    )
+    state["issues"]["10"]["body"] = body
+    p.save(state)
+    p.cli("stop", "--child", "10", "--spec", p.detail())
+    p.cli("resume", "--child", "10", "--spec", p.detail())
+    actual = p.state()["issues"]["10"]["body"]
+    assert (
+        "<!-- retain-this-comment -->\n\n```sh\n## example heading\necho keep\n```"
+        in actual
+    )
+    assert actual.splitlines()[0] == before.splitlines()[0]
+    assert "<!-- parent-task:v1" in actual
+
+
+def review_setup(p: ParentEnv) -> list[int]:
+    p.agreed()
+    state = p.state()
+    state["prs"] = []
+    for i in range(3):
+        p.child(f"child-{i}")
+        worktree = p.worktree(f"pr-{i}")
+        (worktree / "change.txt").write_text(f"new {i}\n")
+        run_git(worktree, "add", "change.txt")
+        run_git(worktree, "commit", "-m", f"child {i}")
+        state["prs"].append(
+            p.pr(100 + i, 10 + i, run_git(worktree, "rev-parse", "HEAD"))
+        )
+    # Read the current issue/comments state, then replace PRs only.
+    current = p.state()
+    current["prs"] = state["prs"]
+    p.save(current)
+    return [100, 101, 102]
+
+
+@pytest.mark.parametrize(
+    "case", ["missing", "duplicate", "closed", "draft", "unrelated", "fork", "quoted"]
+)
+def test_invalid_review_set_has_no_public_request(
+    parent_env: ParentEnv, case: str
+) -> None:
+    p = parent_env
+    selected = review_setup(p)
+    state = p.state()
+    if case == "missing":
+        selected.pop()
+    elif case == "duplicate":
+        selected.append(100)
+    elif case in {"closed", "draft"}:
+        state["prs"][0]["state" if case == "closed" else "draft"] = (
+            "closed" if case == "closed" else True
+        )
+    elif case == "unrelated":
+        state["prs"][0]["body"] = "Closes #999"
+    elif case == "quoted":
+        state["prs"][0]["body"] = "```text\nCloses #10\n```"
+    else:
+        state["prs"][0]["head"]["repo"]["full_name"] = "other/r"
+    p.save(state)
+    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
+
+
+def test_review_snapshot_explicit_once_handoff_and_states(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    selected = review_setup(p)
+    assert json.loads(p.cli("status").stdout)["review"] == "未指示"
+    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    assert request["parent_issue"] == 1 and len(request["prs"]) == 3
+    assert "private-session" not in json.dumps(request)
+    assert (
+        json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+        == request
+    )
+    for pr in request["prs"]:
+        expected = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--binary",
+                "--full-index",
+                "--no-renames",
+                "--no-color",
+                pr["merge_base_sha"],
+                pr["head_sha"],
+                "--",
+            ],
+            cwd=p.repo,
+            capture_output=True,
+            check=True,
+        ).stdout
+        assert hashlib.sha256(expected).hexdigest() == pr["diff_sha256"]
+        assert pr["base_sha"] == run_git(p.repo, "rev-parse", "main")
+    run_id = request["review_run_id"]
+    args = (
+        "review-request",
+        "--run-id",
+        run_id,
+        "--instruction-file",
+        p.note("この3PRをまとめてレビューしてください。"),
+    )
+    handed = json.loads(p.cli(*args).stdout)
+    assert handed["review_state"] == "instructed"
+    p.cli(*args)
+    comments = p.state()["comments"]["1"]
+    assert (
+        sum('"state": "instructed"' in c["body"].splitlines()[0] for c in comments) == 1
+    )
+    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    p.cli(
+        "review-state",
+        "--run-id",
+        run_id,
+        "--state",
+        "complete",
+        "--evidence-file",
+        p.note(),
+        ok=False,
+    )
+    for target in ("result_received", "fixes_verified", "complete"):
+        p.cli(
+            "review-state",
+            "--run-id",
+            run_id,
+            "--state",
+            target,
+            "--evidence-file",
+            p.note(),
+        )
+    for call in p.calls():
+        assert not any(word in call for word in ("merge", "review"))
+
+
+def test_changed_review_target_refuses_instruction(parent_env: ParentEnv) -> None:
+    p = parent_env
+    selected = review_setup(p)
+    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    state = p.state()
+    state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+    p.save(state)
+    p.cli(
+        "review-request",
+        "--run-id",
+        request["review_run_id"],
+        "--instruction-file",
+        p.note(),
+        ok=False,
+    )
+    assert not any(
+        '"state": "instructed"' in c["body"].splitlines()[0]
+        for c in p.state()["comments"]["1"]
+    )
+
+
+def test_snapshot_collection_window_update_is_not_published(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    selected = review_setup(p)
+    p.env["PARENT_CHANGE_PULLS_ON_READ"] = "1"
+    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
+
+
+def test_instruction_recovers_from_public_post_then_local_save_failure(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    selected = review_setup(p)
+    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    run_id = request["review_run_id"]
+    temporary = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json.tmp"
+    )
+    temporary.write_text("simulate interrupted atomic write")
+    args = ("review-request", "--run-id", run_id, "--instruction-file", p.note())
+    p.cli(*args, ok=False)
+    temporary.unlink()
+    p.cli(*args)
+    assert (
+        sum(
+            '"state": "instructed"' in c["body"].splitlines()[0]
+            for c in p.state()["comments"]["1"]
+        )
+        == 1
+    )
+    status = json.loads(p.cli("status").stdout)
+    assert status["review"][0]["state"] == "instructed"
+
+
+def test_cancelled_is_not_success_and_missing_pr_verification_is_rejected(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b", deps=[10])
+    p.cli("record-result", "--child", "10", "--evidence-file", p.note(), ok=False)
+    state = p.state()
+    state["issues"]["10"].update(state="closed", state_reason="not_planned")
+    p.save(state)
+    statuses = json.loads(p.cli("sync").stdout)["progress"]
+    assert statuses == {"10": "cancelled", "11": "held"}
+    assert "- [ ] #10 a（取消）" in p.state()["issues"]["1"]["body"]
+    state["issues"]["10"]["state_reason"] = None
+    p.save(state)
+    p.cli("sync", ok=False)
+
+
+def test_fake_or_quoted_agreement_cannot_unlock_split(parent_env: ParentEnv) -> None:
+    p = parent_env
+    p.cli("register")
+    state = p.state()
+    text = (
+        '<!-- parent-session:v1 {"parent": 1, "event": "agreed", "agreement_sha256": "'
+        + "a" * 64
+        + '"} -->'
+    )
+    state["comments"]["1"].extend(
+        [
+            {"user": {"login": "stranger"}, "body": text},
+            {"user": {"login": "operator"}, "body": "Quoted example\n" + text},
+        ]
+    )
+    p.save(state)
+    p.child("forbidden", ok=False)
+
+
+def test_dependency_cycle_and_unknown_fail_closed(parent_env: ParentEnv) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b", deps=[10])
+    policy = importlib.import_module("parent.policy")
+    state = p.state()
+    original = state["issues"]["10"]["body"]
+    state["issues"]["10"]["body"] = policy.replace_section(
+        original, "依存関係", "- #11"
+    )
+    p.save(state)
+    assert "cyclic" in p.cli("reconcile", ok=False).stderr
+    state["issues"]["10"]["body"] = policy.replace_section(
+        original, "依存関係", "- #999"
+    )
+    p.save(state)
+    assert "outside this parent" in p.cli("reconcile", ok=False).stderr
+
+
+def test_unexpected_interruption_requires_explicit_recovery(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    worktree = p.worktree("a")
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(worktree),
+    )
+    second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
+    p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
+    result = json.loads(
+        p.cli(
+            "handoff",
+            "--accept",
+            "--recover",
+            "--note-file",
+            p.note("旧worker終了と既存worktreeを確認した。"),
+            extra=second,
+        ).stdout
+    )
+    assert result["tasks"][0]["action"] == "do_not_launch"
+    p.cli("checking", ok=False)
+
+
+def test_cli_dependencies_are_published_and_latest_body_controls_resume(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    p.child("b")
+    worktree = p.worktree("b")
+    p.cli(
+        "delegate",
+        "--child",
+        "11",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/b",
+        "--worktree",
+        str(worktree),
+        "--dependencies",
+        "10",
+    )
+    assert (
+        p.formats.parse_sections(p.state()["issues"]["11"]["body"])["依存関係"]
+        == "- #10"
+    )
+    p.cli("checking")
+    p.cli("stop", "--child", "10", "--spec", p.detail())
+    assert json.loads(p.cli("reconcile").stdout)["tasks"][1]["state"] == "held"
+    # Human correction of dependencies takes precedence over the old local cache.
+    state = p.state()
+    policy = importlib.import_module("parent.policy")
+    state["issues"]["11"]["body"] = policy.replace_section(
+        state["issues"]["11"]["body"], "依存関係", "なし。"
+    )
+    p.save(state)
+    result = json.loads(p.cli("reconcile").stdout)
+    assert result["tasks"][1]["state"] == "continue"
+    assert result["tasks"][1]["assignment"]["dependencies"] == []
