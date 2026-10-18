@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Weekly ops report / daily triage entry point. See README.md in this directory."""
+"""Ops report / daily triage entry point. See README.md in this directory."""
 
 from __future__ import annotations
 

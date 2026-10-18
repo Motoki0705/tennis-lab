@@ -31,8 +31,86 @@ def _children(ops_env: Any) -> list[dict[str, Any]]:
 
 def _check(body: str) -> str:
     """Check proposal 02 and option 'close' of stale-PR proposal 01."""
-    body = body.replace("- [ ] **R-2026W42-02**", "- [x] **R-2026W42-02**")
+    body = body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
     return body.replace("  - [ ] close", "  - [x] close", 1)
+
+
+def test_three_reports_in_one_iso_week_map_to_distinct_children(ops_env: Any) -> None:
+    report_numbers: dict[str, int] = {}
+    for day in ("12", "15", "18"):
+        result = ops_env.run(
+            "report", "--if-due", "--now", f"2026-10-{day}T08:00:00+09:00"
+        )
+        assert result.returncode == 0, result.stderr
+        report = next(
+            i
+            for i in ops_env.state["issues"]
+            if i["title"] == f"運用レポート 2026-10-{day}"
+        )
+        pid = f"R-202610{day}-02"
+        report_numbers[pid] = report["number"]
+        _edit_body(
+            ops_env,
+            report["number"],
+            lambda b, pid=pid: b.replace(f"- [ ] **{pid}**", f"- [x] **{pid}**"),
+        )
+        triaged = ops_env.run("triage")
+        assert triaged.returncode == 0, triaged.stderr
+    children = _children(ops_env)
+    assert len(children) == 3
+    for child in children:
+        pid = child["title"].split("]", 1)[0][1:]
+        number = report_numbers[pid]
+        assert (
+            f"ops-report-proposal: {pid} report=#{number} option= -->" in child["body"]
+        )
+        parent = next(i for i in ops_env.state["issues"] if i["number"] == number)
+        assert (
+            f"**{pid}** big.py を分割する（優先度: 高） → #{child['number']}"
+            in parent["body"]
+        )
+    assert ops_env.run("triage").returncode == 0
+    assert len(_children(ops_env)) == 3
+
+
+def test_legacy_week_report_blocks_mixed_triage_and_publication(ops_env: Any) -> None:
+    report = _report_issue(ops_env)
+    _edit_body(ops_env, report["number"], _check)
+    state = ops_env.state
+    legacy = {
+        **report,
+        "number": 60,
+        "title": "legacy report",
+        "body": _check(report["body"])
+        .replace("ops-report:v2 slot=20261012", "ops-report:v1 week=2026W42")
+        .replace("R-20261012-", "R-2026W42-"),
+    }
+    state["issues"].append(legacy)
+    # An old child already exists: never reinterpret its ID as a new proposal.
+    state["issues"].append(
+        {
+            **report,
+            "number": 61,
+            "title": "[R-2026W42-02] old child",
+            "labels": ["ai-proposed"],
+            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#60 option= -->",
+        }
+    )
+    ops_env.write_state(state)
+    before = len(ops_env.calls())
+    result = ops_env.run("triage")
+    assert result.returncode == 1
+    assert "unsupported ops-report:v1 week format" in result.stderr
+    assert len(_children(ops_env)) == 1
+    assert not any(
+        c[:2] in (["issue", "create"], ["issue", "edit"], ["label", "create"])
+        for c in ops_env.calls()[before:]
+    )
+    (ops_env.tmp / "agent_used.txt").unlink()
+    result = ops_env.run("report", "--if-due", "--now", "2026-10-15T08:00:00+09:00")
+    assert result.returncode == 1
+    assert "unsupported ops-report:v1 week format" in result.stderr
+    assert not (ops_env.tmp / "agent_used.txt").exists()
 
 
 def test_checked_proposals_become_children_once(ops_env: Any) -> None:
@@ -44,24 +122,24 @@ def test_checked_proposals_become_children_once(ops_env: Any) -> None:
 
     children = _children(ops_env)
     assert sorted(c["title"] for c in children) == [
-        "[R-2026W42-01] #7 放置されたPR（選択: close）",
-        "[R-2026W42-02] big.py を分割する",
+        "[R-20261012-01] #7 放置されたPR（選択: close）",
+        "[R-20261012-02] big.py を分割する",
     ]
     assert all(c["labels"] == ["ai-proposed"] for c in children)
-    stale_child = next(c for c in children if c["title"].startswith("[R-2026W42-01]"))
+    stale_child = next(c for c in children if c["title"].startswith("[R-20261012-01]"))
     assert f"レポート: #{report['number']}" in stale_child["body"]
     assert "選択された対応: **close**" in stale_child["body"]
     body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
         "body"
     ]
-    nums = {c["title"][1:13]: c["number"] for c in children}
+    nums = {c["title"][1:14]: c["number"] for c in children}
     assert (
-        f"**R-2026W42-02** big.py を分割する（優先度: 高） → #{nums['R-2026W42-02']}"
+        f"**R-20261012-02** big.py を分割する（優先度: 高） → #{nums['R-20261012-02']}"
         in body
     )
-    assert f"**R-2026W42-01** #7 放置されたPR → #{nums['R-2026W42-01']}" in body
+    assert f"**R-20261012-01** #7 放置されたPR → #{nums['R-20261012-01']}" in body
     # Unchecked proposal 03 untouched.
-    assert "週次レポートのプロンプトを改善する（優先度: 低）\n" in body
+    assert "運用レポートのプロンプトを改善する（優先度: 低）\n" in body
 
     second = ops_env.run("triage")
     assert second.returncode == 0, second.stderr
@@ -123,16 +201,16 @@ def test_ambiguous_options_fail_but_other_items_proceed(ops_env: Any) -> None:
     def both_options(body: str) -> str:
         body = body.replace("  - [ ] 5件に絞る", "  - [x] 5件に絞る")
         body = body.replace("  - [ ] 上限なし", "  - [x] 上限なし")
-        return body.replace("- [ ] **R-2026W42-02**", "- [x] **R-2026W42-02**")
+        return body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
 
     _edit_body(ops_env, report["number"], both_options)
 
     result = ops_env.run("triage")
 
     assert result.returncode == 1
-    assert "R-2026W42-03: 2 options checked" in result.stderr
+    assert "R-20261012-03: 2 options checked" in result.stderr
     assert [c["title"] for c in _children(ops_env)] == [
-        "[R-2026W42-02] big.py を分割する"
+        "[R-20261012-02] big.py を分割する"
     ]
 
 
@@ -172,13 +250,13 @@ def test_gh_failure_in_triage_exits_nonzero(ops_env: Any) -> None:
 
 def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
     """An issue whose title claims a proposal ID but whose marker names another
-    report (e.g. a regenerated week) must not be linked to this report."""
+    report (e.g. a regenerated slot) must not be linked to this report."""
     state = ops_env.state
     state["issues"].append(
         {
             "number": 60,
-            "title": "[R-2026W42-02] 別レポートの提案",
-            "body": "<!-- ops-report-proposal: R-2026W42-02 report=#40 option= -->\nold",
+            "title": "[R-20261012-02] 別レポートの提案",
+            "body": "<!-- ops-report-proposal: R-20261012-02 report=#40 option= -->\nold",
             "labels": ["ai-proposed"],
             "state": "CLOSED",
             "createdAt": "2026-10-01T00:00:00Z",
@@ -194,14 +272,14 @@ def test_existing_child_of_another_report_is_not_linked(ops_env: Any) -> None:
 
     assert result.returncode == 1
     assert "existing issue #60 is not this proposal's child" in result.stderr
-    assert "found R-2026W42-02 of #40" in result.stderr
+    assert "found R-20261012-02 of #40" in result.stderr
     body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
         "body"
     ]
     assert "→ #60" not in body
     # The other selected proposal still gets its child.
     assert [c["title"] for c in _children(ops_env) if c["number"] != 60] == [
-        "[R-2026W42-01] #7 放置されたPR（選択: close）"
+        "[R-20261012-01] #7 放置されたPR（選択: close）"
     ]
 
 
@@ -221,7 +299,7 @@ def test_malformed_report_body_is_an_error_not_a_skip(ops_env: Any) -> None:
 
 
 def _check_02(body: str) -> str:
-    return body.replace("- [ ] **R-2026W42-02**", "- [x] **R-2026W42-02**")
+    return body.replace("- [ ] **R-20261012-02**", "- [x] **R-20261012-02**")
 
 
 def test_concurrent_triage_runs_create_one_child(ops_env: Any) -> None:
@@ -235,7 +313,7 @@ def test_concurrent_triage_runs_create_one_child(ops_env: Any) -> None:
     # The runs really overlapped: one of them had to wait for the other.
     assert any("waiting for lock" in err for _, err in results)
     assert [c["title"] for c in _children(ops_env)] == [
-        "[R-2026W42-02] big.py を分割する"
+        "[R-20261012-02] big.py を分割する"
     ]
     body = next(i for i in ops_env.state["issues"] if i["number"] == report["number"])[
         "body"
@@ -244,11 +322,11 @@ def test_concurrent_triage_runs_create_one_child(ops_env: Any) -> None:
 
 
 def test_triage_fails_when_lock_is_held(ops_env: Any) -> None:
-    lock_path = Path(ops_env.env["WEEKLY_REPORT_LOCK_FILE"])
-    lock_path.parent.mkdir(parents=True)
+    lock_path = Path(ops_env.env["OPS_REPORT_LOCK_FILE"])
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     with lock_path.open("a") as fh:
         fcntl.flock(fh, fcntl.LOCK_EX)
-        result = ops_env.run("triage", WEEKLY_REPORT_LOCK_TIMEOUT="1")
+        result = ops_env.run("triage", OPS_REPORT_LOCK_TIMEOUT="1")
 
     assert result.returncode == 1
     assert "still held by another run" in result.stderr
@@ -267,8 +345,8 @@ def test_annotation_like_pr_title_is_not_a_child_link(ops_env: Any) -> None:
     assert result.returncode == 0, result.stderr
     titles = sorted(c["title"] for c in _children(ops_env))
     assert titles == [
-        "[R-2026W42-01] #7 対応を移管 → #123（選択: close）",
-        "[R-2026W42-02] big.py を分割する",
+        "[R-20261012-01] #7 対応を移管 → #123（選択: close）",
+        "[R-20261012-02] big.py を分割する",
     ]
 
 
@@ -303,7 +381,7 @@ def test_reused_child_must_match_current_option(ops_env: Any) -> None:
     assert crashed.returncode == 1
     (child,) = _children(ops_env)
     assert child["body"].startswith(
-        "<!-- ops-report-proposal: R-2026W42-01 report=#100 option=close -->\n"
+        "<!-- ops-report-proposal: R-20261012-01 report=#100 option=close -->\n"
     )
     _edit_body(
         ops_env,
