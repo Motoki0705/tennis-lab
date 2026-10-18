@@ -1,0 +1,19 @@
+{
+  "rendered_frames": 253,
+  "first_source_frame": 0,
+  "last_source_frame": 1008,
+  "frame_step": 4,
+  "mp4_decode_success": true,
+  "video": {
+    "bytes": 7406854,
+    "sha256": "15a31be61c89f324fbce2188c185e1dbfe567aa6207c185c89298531b20d84ba"
+  },
+  "gif": {
+    "path": "assets/tennis_scene/blender_reveal_meiji_cam1.gif",
+    "bytes": 3282075,
+    "sha256": "3c6ad0c30744901b6f86478dcae6ced054622d93908f5e15e6ce25818aab1a77",
+    "fps": 8,
+    "width": 400,
+    "height": 225
+  }
+}

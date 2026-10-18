@@ -1,0 +1,19 @@
+{
+  "renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+  "vendor": "Mesa",
+  "version": "4.5 (Core Profile) Mesa 25.2.8-0ubuntu0.24.04.2",
+  "timings": [
+    {
+      "frame": 200,
+      "seconds": 7.92556245599917
+    },
+    {
+      "frame": 201,
+      "seconds": 8.357364814000903
+    },
+    {
+      "frame": 202,
+      "seconds": 3.9794201490003616
+    }
+  ]
+}
