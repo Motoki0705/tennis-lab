@@ -30,6 +30,8 @@ DOCS = [
     ROOT / "CLAUDE.md",
     AGENTS_README,
     MEMORY_SKILL,
+    ROOT / ".agents/ops/parent/README.md",
+    ROOT / ".agents/skills/parent-session/SKILL.md",
     MEMORY_SUMMARY,
     *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
     MEMORY_DIR / DEDICATED / "SUMMARY.md",
