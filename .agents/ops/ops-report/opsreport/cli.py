@@ -338,12 +338,15 @@ def _generate_report(
         triage.ensure_labels(
             [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
-        store.prepare(tag, collected["ops_memory"], analysis.memory_update)
+        store.prepare(
+            tag, collected["ops_memory"], analysis.memory_update, title=title, body=body
+        )
         url = shell.gh(
             ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
              "--label", collect.REPORT_LABEL],
             cwd=cfg.repo_root,
         ).strip()  # fmt: skip
+        store.record_publication(tag, url)
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
         json.dumps({"title": title, "url": url, "ids": ids}, ensure_ascii=False),

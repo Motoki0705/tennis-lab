@@ -140,8 +140,12 @@ agentはread-onlyのまま、`memory_update`（`summary` / `upsert` / 理由付�
 公開と保存は次の順に進める。
 
 1. agentの更新JSONを検証し、`${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/ops-report/memory.json` に
-   mainの元データと更新案をatomic replaceで記録する。この `prepared` は公開成功でも有効メモリでもない。
-2. レポートissueを公開する。失敗時はメモリをcommit/pushしない。公開後の中断時は、次回GitHubの同slotの履歴で公開を確認して回復する。
+   mainの元データと更新案、公開予定のタイトル・本文SHA-256・認証済みGitHub投稿者をatomic replaceで記録する。
+   この `prepared` は公開成功でも有効メモリでもない。
+2. レポートissueを公開し、作成応答のURLを記録する。失敗時はメモリをcommit/pushしない。
+   通常実行と公開後の中断からの復旧では、同slotの履歴のタイトル・本文ハッシュ・投稿者が準備時の値と一致し、
+   作成応答を記録済みならURLも一致した場合だけ公開確認とする。不一致なら停止する。
+   確認後はURLと投稿者を照合し、タイトル変更や提案チェックの編集を許容する。
 3. 公開を確認した更新だけ、元repoの `.claude/worktrees/ops-report-memory-<slot>` に、入力の `origin/main` SHAから専用branch
    `ops-report-memory/<slot>` を作ってcommitし、originへpush、main向けのメモリ専用PRを作る。メインcheckoutは編集しない。
    `null` は `unchanged` と記録する。ログの `memory_result.json` とjournalに段階・PR・エラーを残す。
@@ -171,7 +175,8 @@ JSONは `[{"proposal_id":"R-20261019-01","decision":"selected|deferred","reason"
 復旧は次のように行う（ホスト操作は親が実施）。
 
 - `run.log` / `memory_result.json` / journalの `stage` と実際のissue・PR・branchを照合する。JSON破損はエラーで止まり、初期化し直さない。
-  journalを手動修復する場合は先に退避する。`prepared` は公開履歴に存在するときだけ再開される。
+  journalを手動修復する場合は先に退避する。`prepared` は準備時の公開情報と履歴が一致するときだけ再開される。
+  公開照合情報を持たない旧journal（version 1）は自動移行せず停止し、公開issueとの明示的な照合・修復を必要とする。
 - push/PR作成/APIの一時失敗は原因を直し、`report --if-due` または `triage` を再実行する。
   commit直後・PR作成直後の記録中断は、期待するcommit内容や既存PRを照合して再利用し、重複公開しない。
 - 保存途中で専用worktreeがdirtyになった場合は自動resetしない。ログと差分を確認し、対象slotの専用worktreeだけを修復する。
