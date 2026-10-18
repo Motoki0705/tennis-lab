@@ -5,6 +5,8 @@ title: "[機能] "
 labels: ["enhancement"]
 ---
 
+<!-- 親子として管理する場合は06_parent/07_childを使い、このテンプレートの機能固有項目を追加する。書式の正本: .agents/ops/issues/README.md -->
+
 ## 概要
 
 <!-- 要望する機能や変更を1〜3行で説明してください。 -->
