@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import subprocess
@@ -14,15 +15,14 @@ import pytest
 
 from tests.e2e.agents_ops.test_parent_session import (
     OPS,
+    ParentEnv,
     ReviewEnv,
+    make_review_env,
     review_policy_module,
     run_git,
 )
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
-)
-from tests.e2e.agents_ops.test_parent_session import (
-    review_env as review_env,
 )
 
 SCRIPT = OPS / "review/merge_gate.py"
@@ -101,10 +101,13 @@ class GateEnv:
 
 @pytest.fixture
 def gate_env(
-    review_env: ReviewEnv,
+    parent_env: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> GateEnv:
+    review_env = make_review_env(
+        parent_env, independent=getattr(request, "param", None) == "independent"
+    )
     p = review_env.p
     policy = review_policy_module(monkeypatch)
     if getattr(request, "param", None) == "shared":
@@ -389,6 +392,7 @@ def test_unset_auto_merge_is_dry_run_without_any_writes(gate_env: GateEnv) -> No
     )
 
 
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
 def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
     policy = importlib.import_module("parent.policy")
@@ -399,7 +403,7 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
     )
     state["prs"][2]["statusCheckRollup"] = []
     p.save(state)
-    rows = g.results(g.cli("merge"))
+    rows = g.results(g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1"))
     assert [c[2] for c in g.merge_calls()] == ["101", "100"]
     for call in g.merge_calls():
         n = int(call[2])
@@ -407,17 +411,122 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
             pr["head_sha"] for pr in g.review.request["prs"] if pr["number"] == n
         )
     assert rows[100]["action"] == rows[101]["action"] == "merged"
+    assert rows[100]["snapshot"]["base_sha"] != g.review.request["prs"][0]["base_sha"]
+    for n in (100, 101):
+        original = next(s for s in g.review.request["prs"] if s["number"] == n)
+        assert all(
+            rows[n]["snapshot"][key] == original[key]
+            for key in ("head_sha", "merge_base_sha", "diff_sha256")
+        )
     assert "ci_missing_required" in rows[102]["reasons"]
+    assert not any("base" in reason for reason in rows[102]["reasons"])
     assert p.state()["issues"]["1"]["state"] == "open"
     assert "#10: 完了" in p.state()["issues"]["1"]["body"]
     assert "#11: 完了" in p.state()["issues"]["1"]["body"]
     # A repeated explicit command confirms existing merges without issuing them again.
-    rows = g.results(g.cli("merge"))
-    assert rows[100]["action"] == rows[101]["action"] == "already_merged"
+    repeated = g.results(g.cli("merge"))
+    assert repeated[100]["action"] == repeated[101]["action"] == "already_merged"
+    assert all(repeated[n]["snapshot"] == rows[n]["snapshot"] for n in (100, 101))
     assert len(g.merge_calls()) == 2
 
 
-@pytest.mark.parametrize("change", ["base", "ci"])
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+@pytest.mark.parametrize("fixed", [False, True])
+def test_all_targets_merge_in_one_run_with_verified_base_advances(
+    gate_env: GateEnv, fixed: bool
+) -> None:
+    g, r, p = gate_env, gate_env.review, gate_env.review.p
+    if fixed:
+
+        def add_finding(result: dict[str, Any]) -> None:
+            result["verdict"] = "request_changes"
+            result["prs"][1]["findings"] = [
+                {
+                    "id": "pr-101-1",
+                    "severity": "major",
+                    "path": "change-1.txt",
+                    "line": 1,
+                    "rule": "境界",
+                    "detail": "回帰テストとともに修正する",
+                }
+            ]
+
+        g.edit_result(add_finding)
+        worktree = p.repo / ".claude/worktrees/pr-1"
+        (worktree / "change-1.txt").write_text("fixed and checked\n")
+        (worktree / "regression.txt").write_text("parent checked regression\n")
+        run_git(worktree, "add", ".")
+        run_git(worktree, "commit", "-m", "fix with regression coverage")
+        head = run_git(worktree, "rev-parse", "HEAD")
+        state = p.state()
+        state["prs"][1]["head"]["sha"] = head
+        p.save(state)
+        r.cli(
+            "resolve",
+            "--run",
+            r.request["review_run_id"],
+            "--pr",
+            "101",
+            "--finding",
+            "pr-101-1",
+            "--fixed-head",
+            head,
+            "--evidence",
+            p.spec(
+                {
+                    "ci": f"CI succeeded for {head}",
+                    "regression_tests": "boundary regression passed",
+                    "resolution": "implementation and its regression checked",
+                    "reviewed_paths": ["change-1.txt", "regression.txt"],
+                }
+            ),
+        )
+    result = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
+    assert result.returncode == 0, result.stderr
+    rows = g.results(result)
+    assert [c[2] for c in g.merge_calls()] == ["100", "101", "102"]
+    assert all(row["action"] == "merged" for row in rows.values())
+    assert len({row["snapshot"]["base_sha"] for row in rows.values()}) == 3
+    for pr in p.state()["prs"]:
+        assert pr["merged"] is True
+        assert (
+            run_git(p.repo, "rev-parse", pr["merge_commit_sha"] + "^2")
+            == pr["head"]["sha"]
+        )
+    repeat = g.cli("merge")
+    assert repeat.returncode == 0, repeat.stderr
+    repeated = g.results(repeat)
+    assert all(row["action"] == "already_merged" for row in repeated.values())
+    assert all(repeated[n]["snapshot"] == rows[n]["snapshot"] for n in rows)
+    assert len(g.merge_calls()) == 3
+    assert len(r.calls()) == 1
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_merged_target_head_mismatch_blocks_remaining_prs(gate_env: GateEnv) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    for pr in state["prs"][1:]:
+        pr["statusCheckRollup"] = []
+    p.save(state)
+    assert (
+        g.results(g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1"))[100]["action"]
+        == "merged"
+    )
+    state = p.state()
+    state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+    state["prs"][1]["statusCheckRollup"] = state["prs"][0]["statusCheckRollup"]
+    p.save(state)
+    result = g.cli("merge")
+    assert result.returncode == 1, result.stderr
+    rows = g.results(result)
+    assert "merged_head_mismatch" in rows[100]["reasons"]
+    assert "pr_100_merged_head_mismatch" in rows[101]["reasons"]
+    assert [c[2] for c in g.merge_calls()] == ["100"]
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+@pytest.mark.parametrize("change", ["base", "ci", "main_follow"])
 def test_remaining_prs_are_recollected_after_each_merge(
     gate_env: GateEnv, change: str
 ) -> None:
@@ -425,16 +534,25 @@ def test_remaining_prs_are_recollected_after_each_merge(
     state = p.state()
     state["prs"][2]["statusCheckRollup"] = []
     p.save(state)
-    env = (
-        {"PARENT_MERGE_ADVANCE_BASE": "1"}
-        if change == "base"
-        else {"PARENT_MERGE_CI_PENDING": "101"}
-    )
+    env = {
+        "base": {"PARENT_MERGE_UNEXPLAINED_COMMIT": "1"},
+        "ci": {"PARENT_MERGE_CI_PENDING": "101"},
+        "main_follow": {
+            "PARENT_MERGE_FOLLOW_MAIN": "101",
+            "PARENT_MERGE_FOLLOW_WORKTREE": str(p.repo / ".claude/worktrees/pr-1"),
+        },
+    }[change]
+    env["PARENT_MERGE_ADVANCE_BASE"] = "1"
     rows = g.results(g.cli("merge", **env))
     assert [c[2] for c in g.merge_calls()] == ["100"]
-    assert (
-        "pr_101_base_sha_changed" if change == "base" else "ci_missing_required"
-    ) in rows[101]["reasons"]
+    expected = {
+        "base": "pr_101_base_sha_changed",
+        "ci": "ci_missing_required",
+        "main_follow": "pr_101_merge_base_sha_changed",
+    }[change]
+    assert expected in rows[101]["reasons"]
+    if change == "base":
+        assert "base_advance_unverified" in rows[101]["reasons"]
 
 
 @pytest.mark.parametrize("failure", ["fail", "head", "response", "close"])
@@ -574,7 +692,9 @@ def test_shared_foundation_needs_explicit_current_parent_permission(
 
 
 @pytest.mark.parametrize("extra_path", [False, True])
-@pytest.mark.parametrize("resolution", ["valid", "stale", "unpublished", "wrong_diff"])
+@pytest.mark.parametrize(
+    "resolution", ["valid", "stale", "unpublished", "wrong_diff", "outside"]
+)
 def test_fix_push_requires_current_published_resolution_and_actual_diff(
     gate_env: GateEnv, extra_path: bool, resolution: str
 ) -> None:
@@ -605,7 +725,7 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
     worktree = p.repo / ".claude/worktrees/pr-0"
     (worktree / "change.txt").write_text("fix checked\n")
     if extra_path:
-        (worktree / "outside.txt").write_text("unreviewed expansion\n")
+        (worktree / "regression.txt").write_text("parent checked regression\n")
     run_git(worktree, "add", ".")
     run_git(worktree, "commit", "-m", "fix finding")
     state = p.state()
@@ -619,6 +739,9 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
             "ci": f"CI succeeded for {fixed}",
             "regression_tests": "boundary regression passed",
             "resolution": "finding fixed",
+            "reviewed_paths": ["change.txt", "regression.txt"]
+            if extra_path
+            else ["change.txt"],
         }
     )
     r.cli(
@@ -640,6 +763,13 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
         state = p.state()
         state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
         p.save(state)
+    elif resolution == "outside":
+        (worktree / "outside.txt").write_text("unreviewed expansion\n")
+        run_git(worktree, "add", "outside.txt")
+        run_git(worktree, "commit", "-m", "change outside confirmed paths")
+        state = p.state()
+        state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
+        p.save(state)
     elif resolution == "unpublished":
         state = p.state()
         state["comments"]["1"] = [
@@ -654,13 +784,15 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
         path = next(r.run_dir.glob("resolution-*.json"))
         saved = json.loads(path.read_text())
         old = saved["record"]
-        saved["record"] = {**old, "fix_diff_sha256": "f" * 64}
+        forged_diff = b"a saved diff that differs from the actual git diff\n"
+        saved["record"] = {
+            **old,
+            "fix_diff_sha256": hashlib.sha256(forged_diff).hexdigest(),
+        }
         replacement = saved["record"]
         new_key = g.policy.digest(replacement)
         (r.run_dir / f"resolution-{new_key}.json").write_text(json.dumps(saved))
-        (r.run_dir / f"resolution-{new_key}.diff").write_bytes(
-            next(r.run_dir.glob("resolution-*.diff")).read_bytes()
-        )
+        (r.run_dir / f"resolution-{new_key}.diff").write_bytes(forged_diff)
         state = p.state()
         for comments in state["comments"].values():
             for comment in comments:
@@ -668,16 +800,20 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
                     comment["body"] = g.policy.marker(replacement)
         p.save(state)
     rows = g.results(g.cli("merge"))
-    if resolution == "valid" and not extra_path:
+    if resolution == "valid":
         assert [c[2] for c in g.merge_calls()] == ["100"]
         assert rows[100]["action"] == "merged"
         assert g.merge_calls()[0][-1] == fixed
+        repeated = g.results(g.cli("merge"))
+        assert repeated[100]["action"] == "already_merged"
+        assert repeated[100]["snapshot"] == rows[100]["snapshot"]
+        assert len(g.merge_calls()) == 1
     else:
         assert g.merge_calls() == []
         assert rows[100]["decision"] == "blocked"
-        assert (
-            "pr_100_outside_finding_paths" if extra_path else "pr_100_unverified_head"
-        ) in rows[100]["reasons"]
+        assert "pr_100_unverified_head" in rows[100]["reasons"]
+        if resolution == "wrong_diff":
+            assert "resolution_fix_diff_mismatch" in rows[100]["reasons"]
 
 
 def test_missing_parent_run_cannot_use_old_pr_approval(gate_env: GateEnv) -> None:

@@ -39,13 +39,19 @@ from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import authorization, git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
+    BaseAdvance,
     load_json,
     records,
     request_manifest,
     validate_result,
 )
+from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
 from review_policy import GateDecision, load_list_file, neutralize_markers  # noqa: E402
-from review_workspace import changed_paths, full_diff  # noqa: E402
+from review_workspace import (  # noqa: E402
+    changed_paths,
+    full_diff,
+    verify_base_advances,
+)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -97,7 +103,33 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
         if raw.get("number") != n:
             raise ValueError("GitHub PR identity mismatch")
         errors[n] = []
-        current, _ = snapshot(raw)
+        if request is not None and n in targets and raw.get("merged_at"):
+            # Recomputing after merge would change merge-base/diff. Preserve the
+            # reviewed snapshot, or the one checked immediately before our merge.
+            current = targets[n]
+            journal = attempt_path(session, n, raw["head"]["sha"])
+            if journal.exists():
+                attempted = read_json(journal)
+                if attempted.get("review_run_id") == request["review_run_id"]:
+                    current = validate_snapshots([attempted["snapshot"]])[0]
+                    if (
+                        current["number"] != n
+                        or current["head_sha"] != attempted["head_sha"]
+                    ):
+                        raise ValueError("merge journal snapshot identity mismatch")
+            if raw["head"]["sha"] != current["head_sha"]:
+                errors[n].append("merged_head_mismatch")
+            if (
+                raw["head"]["ref"] != current["branch"]
+                or raw["base"]["ref"] != current["base_ref"]
+                or raw["base"]["repo"]["full_name"].casefold()
+                != session.gh.repo.casefold()
+                or raw["head"]["repo"]["full_name"].casefold()
+                != session.gh.repo.casefold()
+            ):
+                errors[n].append("merged_snapshot_identity_mismatch")
+        else:
+            current, _ = snapshot(raw)
         snapshots.append(current)
         paths[n] = tuple(changed_paths(current["merge_base_sha"], current["head_sha"]))
         if n in targets:
@@ -210,9 +242,11 @@ def load_evidence(
         ):
             continue
         current = next((p for p in view.snapshots if p["number"] == n), None)
-        if record["fixed_snapshot"] == current and record[
-            "fix_diff_sha256"
-        ] != view.fix_hashes.get(n):
+        if (
+            current
+            and record["fixed_snapshot"]["head_sha"] == current["head_sha"]
+            and record["fix_diff_sha256"] != view.fix_hashes.get(n)
+        ):
             view.errors[n].append("resolution_fix_diff_mismatch")
             continue
         resolutions.append(record)
@@ -225,6 +259,35 @@ def evaluate(
     result, resolutions, state, errors, permission = load_evidence(
         session, request, view
     )
+    advances: set[BaseAdvance] = set()
+    # A merged peer may explain base history only after its confirmed head and
+    # identity have been checked. A mismatch invalidates that evidence for all.
+    errors = (
+        *errors,
+        *(
+            f"pr_{n}_{reason}"
+            for n in view.candidates
+            if view.details[n].get("merged_at")
+            for reason in view.errors[n]
+        ),
+    )
+    if result is not None and not errors:
+        targets = {p["number"]: p for p in result["request"]["prs"]}
+        peers = [
+            view.details[n]
+            for n in view.candidates
+            if n in targets and view.details[n].get("merged_at")
+        ]
+        for current in view.snapshots:
+            n = current["number"]
+            if n not in targets or current["base_sha"] == targets[n]["base_sha"]:
+                continue
+            try:
+                advances.update(verify_base_advances(result, [current], peers))
+            except ValueError:
+                # Keep this PR's failure explicit without blocking an unrelated
+                # eligible PR. Coverage also reports the changed snapshot fields.
+                view.errors[n].append("base_advance_unverified")
     required = load_list_file(HERE / "required_checks.txt")
     patterns = load_list_file(HERE / "shared_paths.txt")
     for n in view.candidates:
@@ -247,11 +310,13 @@ def evaluate(
                 current=view.snapshots,
                 resolutions=resolutions,
                 fix_paths=view.fix_paths,
+                fix_diff_digests=view.fix_hashes,
                 changed_paths=view.paths[n],
                 review_state=state,
                 evidence_errors=(*errors, *view.errors[n]),
                 required_checks=required,
                 shared_patterns=patterns,
+                base_advances=tuple(advances),
                 permission=permission,
                 parent_needs_human="needs-human" in view.parent.labels,
             )
@@ -313,7 +378,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
                 else "blocked",
             }
             if pr.get("merged_at"):
-                errors = completion(session, pr, write=enabled)
+                errors = (*view.errors[n], *completion(session, pr, write=enabled))
                 entry.update(
                     decision="blocked" if errors else "merge",
                     reasons=errors,
@@ -353,6 +418,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
                 "pr": n,
                 "head_sha": current["head_sha"],
                 "review_run_id": request["review_run_id"] if request else None,
+                "snapshot": current,
                 "status": "attempting",
             }
             Store.write_json(journal_path, attempt)

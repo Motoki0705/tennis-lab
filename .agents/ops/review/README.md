@@ -216,7 +216,8 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   再合意（同じ内容でも）・引継ぎ後に古い確認を流用しない。親issue全体の完了は要求しない。
 - #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
   他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
-  merge済み対象も最新スナップショットの集合に残す。
+  merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
+  snapshotはレビュー時、gateによるmerge試行済みならその直前の確認時の値を据え置く。
   resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
   現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
 - `required_checks.txt` の全必須checkが存在し、rollup全件に失敗・未完了がないこと。
@@ -228,9 +229,13 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 依存順で判定し、他の独立PRのCI待ちで合格済みPRを止めない。
 実merge直前に全対象のhead/base/merge-base/diff・CI・競合・coverage・親状態を再取得し、
 `gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
-各merge後も残りを再取得する。base先端を含むcoverage不整合は停止し、Codexを自動再実行しない。
+各merge後も残りを再取得する。[先行mergeによるbase前進](#同じrunの先行mergeによるbase先端の前進)を実gitで検証し、
+`BaseAdvance` 列と実fix diff digestをcoverage判定へ渡す。この継承条件を満たさないcoverage不整合は停止し、Codexを自動再実行しない。
+base履歴を検証できないPRには `base_advance_unverified` とcoverageの変更理由、確認済みのmerge済みheadが
+一致しなければ `merged_head_mismatch`（他PRには `pr_<番号>_merged_head_mismatch`）を表示する。
 
 merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate stateへ保存する。
+この試行記録の `snapshot` に確認済みhead/base/merge-base/diff/ref/branchを保存し、次回の明示実行でも保持する。
 同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
 remoteがmerge済みなら二重mergeせず、子のclosing完了を確認する。
 merge直後もremoteのmergeと子のclosed/completedを確認し、既存の `reconcile` / `sync_progress` へ接続する。
