@@ -76,6 +76,12 @@ main() {
   [[ -f "$conf" ]] || { echo "agent_exec: missing $conf" >&2; exit 2; }
   # shellcheck source=agents.conf
   source "$conf"
+  if [[ "$profile" == ops_report ]]; then
+    [[ "$agent" == codex && "$mode" == read-only ]] || {
+      echo "agent_exec: ops_report requires codex in read-only mode" >&2; exit 2; }
+    [[ "${OPS_REPORT_MAX_THREADS:-}" =~ ^[0-9]+$ ]] && ((10#$OPS_REPORT_MAX_THREADS >= 2)) || {
+      echo "agent_exec: agents.conf must set OPS_REPORT_MAX_THREADS >= 2" >&2; exit 2; }
+  fi
 
   local log_file
   log_file="$log_dir/$(date +%Y%m%dT%H%M%S)-${agent}-$$.log"
@@ -108,6 +114,9 @@ main() {
       tier="$(pin SERVICE_TIER)"
       cmd=(codex exec --cd "$cwd" --output-last-message "$out" --model "$model"
         -c "model_reasoning_effort=\"$effort\"" -c "service_tier=\"$tier\"")
+      if [[ "$profile" == ops_report ]]; then
+        cmd+=(--enable multi_agent --json -c "agents.max_threads=$OPS_REPORT_MAX_THREADS" -c "agents.max_depth=1")
+      fi
       if [[ "$mode" == read-only ]]; then
         cmd+=(--sandbox read-only)
       else

@@ -151,7 +151,11 @@ class Store:
 
     def sync(self, history: dict[str, Any], run_dir: Path) -> list[str]:
         errors = []
-        published = {r["slot"]: r for r in history["reports"]}
+        published = {
+            r["slot"]: r
+            for r in history["reports"]
+            if r["status"] == "complete"
+        }
         for slot, row in sorted(self.records.items()):
             if row["state"] in TERMINAL:
                 continue
