@@ -5,6 +5,8 @@ title: "[調査] "
 labels: ["research"]
 ---
 
+<!-- 単独の調査用。研究ループは04_research_theme/05_research_cycleを使う。その他の親子は06_parent/07_childへ調査固有項目を追加する。書式の正本: .agents/ops/issues/README.md -->
+
 ## 概要
 
 <!-- 調査したい内容を説明してください。 -->
