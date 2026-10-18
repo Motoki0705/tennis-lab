@@ -46,6 +46,7 @@ if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET":
     fail()
 payload = json.load(sys.stdin) if method != "GET" else None
 path, _, query = endpoint.partition("?")
+path = path.casefold()
 page = int(re.search(r"(?:^|&)page=(\d+)", query)[1]) if "page=" in query else 1
 def paged(rows):
     return rows[(page-1)*100:page*100]
@@ -143,6 +144,7 @@ class ParentEnv:
         self,
         *args: str,
         parent: str = "1",
+        repo: str = "o/r",
         ok: bool | None = True,
         extra: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
@@ -152,7 +154,7 @@ class ParentEnv:
                 "-m",
                 "parent",
                 "--repo",
-                "o/r",
+                repo,
                 "--parent",
                 parent,
                 *args,
@@ -411,6 +413,126 @@ def test_exclusive_assignment_release_ended_and_handoff(parent_env: ParentEnv) -
     p.cli("release", "--note-file", p.note())
     assert json.loads(p.cli("status").stdout)["assignment"] == "released"
     p.cli("register", parent="2")
+
+
+@pytest.mark.parametrize(
+    ("first_repo", "second_repo"), [("O/R", "o/r"), ("o/r", "O/R")]
+)
+def test_repository_case_cannot_bypass_assignment(
+    parent_env: ParentEnv, first_repo: str, second_repo: str
+) -> None:
+    p = parent_env
+    p.cli("register", repo=first_repo)
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    before = registry.read_bytes()
+    calls_before = len(p.calls())
+    second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
+    denied = p.cli("register", repo=second_repo, extra=second, ok=False)
+    assert "別セッション担当中" in denied.stderr
+    assert set(json.loads(before)["parents"]) == {"o/r#1"}
+    assert registry.read_bytes() == before
+    assert all("GET" in call for call in p.calls()[calls_before:])
+
+
+@pytest.mark.parametrize("legacy_key", [None, "O/R#1"])
+def test_repository_case_preserves_delegation_reservation(
+    parent_env: ParentEnv, legacy_key: str | None
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("a")
+    args = (
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/a",
+        "--worktree",
+        str(p.worktree("a")),
+    )
+    assert json.loads(p.cli(*args).stdout)["action"] == "launch"
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    if legacy_key:
+        data = json.loads(registry.read_text())
+        data["parents"][legacy_key] = data["parents"].pop("o/r#1")
+        registry.write_text(json.dumps(data))
+    before = registry.read_bytes()
+    calls_before = len(p.calls())
+    second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
+    for repo in ("O/R", "o/r"):
+        denied = p.cli("register", repo=repo, extra=second, ok=False)
+        assert "別セッション担当中" in denied.stderr
+        denied = p.cli(*args, repo=repo, extra=second, ok=False)
+        assert "別セッション" in denied.stderr
+        denied = p.cli(*args, repo=repo, ok=False)
+        assert "already delegated" in denied.stderr
+        status = json.loads(p.cli("status", repo=repo).stdout)
+        assert status["current_session_is_owner"]
+        assert status["tasks"]["10"]["delegated"]
+    assert registry.read_bytes() == before
+    assert all("GET" in call for call in p.calls()[calls_before:])
+
+
+@pytest.mark.parametrize("alias_status", ["active", "released"])
+def test_repository_alias_collision_fails_closed(
+    parent_env: ParentEnv, alias_status: str
+) -> None:
+    p = parent_env
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    registry.parent.mkdir(parents=True)
+    row = {
+        "session": "claude:private-session-a-unique",
+        "status": "active",
+        "generation": 1,
+        "tasks": {"10": {"delegated": True}},
+        "reviews": [],
+    }
+    registry.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "parents": {
+                    "O/R#1": row,
+                    "o/r#1": {
+                        **row,
+                        "session": "claude:private-session-b-unique",
+                        "status": alias_status,
+                    },
+                },
+            }
+        )
+    )
+    before = registry.read_bytes()
+    for args in (
+        ("status",),
+        ("register",),
+        (
+            "delegate",
+            "--child",
+            "10",
+            "--agent",
+            "codex",
+            "--branch",
+            "codex/a",
+            "--worktree",
+            str(p.root),
+        ),
+    ):
+        denied = p.cli(*args, ok=False)
+        assert "repository alias collision" in denied.stderr
+        assert registry.read_bytes() == before
+    assert p.calls() == []
 
 
 @pytest.mark.parametrize("failure", ["after-create", "relation", "progress"])
