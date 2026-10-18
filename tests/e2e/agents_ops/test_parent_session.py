@@ -81,7 +81,7 @@ if n not in state["issues"]:
 row = state["issues"][n]
 if tail == "parent":
     parent = state["parents"].get(n)
-    response(state["issues"][str(parent)] if parent else {"message": "Not Found"}, 200 if parent else 404)
+    response(state["issues"][str(parent)] if parent else {"message": "No parent issue found"}, 200 if parent else 404)
 if tail == "sub_issues":
     if method == "GET":
         response(paged([i for key, i in state["issues"].items() if state["parents"].get(key) == int(n)]))
