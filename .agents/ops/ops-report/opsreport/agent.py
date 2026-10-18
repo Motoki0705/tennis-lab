@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import shell
+from . import memory, shell
 from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
 
 AGENT_CHOICES = ("claude", "codex", "alternate")
@@ -103,6 +103,7 @@ class AgentReport:
     summary: str
     proposals: list[Proposal]
     stale_pr_notes: dict[int, StalePrNote]
+    memory_update: dict[str, Any] | None
 
 
 def _extract_json(text: str) -> Any:
@@ -135,9 +136,20 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
     data = _extract_json(text)
     if not isinstance(data, dict):
         raise AgentOutputError("top-level JSON must be an object")
-    unknown_keys = set(data) - {"summary", "proposals", "stale_pr_notes"}
+    unknown_keys = set(data) - {
+        "summary",
+        "proposals",
+        "stale_pr_notes",
+        "memory_update",
+    }
     if unknown_keys:
         raise AgentOutputError(f"unexpected top-level keys: {sorted(unknown_keys)}")
+    if "memory_update" not in data:
+        raise AgentOutputError("$.memory_update is required (null for no changes)")
+    try:
+        memory_update = memory.parse_update(data["memory_update"])
+    except ValueError as exc:
+        raise AgentOutputError(str(exc)) from exc
     summary = _req_str(data, "summary", "$")
     raw_props = data.get("proposals")
     if not isinstance(raw_props, list):
@@ -182,6 +194,7 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
         stale_pr_notes=_parse_stale_pr_notes(
             data.get("stale_pr_notes"), stale_pr_numbers
         ),
+        memory_update=memory_update,
     )
 
 

@@ -525,7 +525,9 @@ def test_checkout_diff_includes_only_nonignored_untracked_files(
     ignored.mkdir()
     (ignored / "local.py").write_text("# ignored\n", encoding="utf-8")
     paths = (
-        [".agents/memory/新規メモ.md", "src/new helper.py"] if include_untracked else []
+        [".agents/memory/gotcha/新規メモ.md", "src/new helper.py"]
+        if include_untracked
+        else []
     )
     for rel in paths:
         path = ops_env.repo / rel

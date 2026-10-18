@@ -20,7 +20,7 @@ OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 FAKE_GH = r"""
-import json, os, sys, time
+import json, os, subprocess, sys, time
 
 args = sys.argv[1:]
 with open(os.environ["FAKE_GH_CALLS"], "a", encoding="utf-8") as fh:
@@ -49,7 +49,7 @@ def emit(rows):
 
 
 def gh_issue(r):
-    return {**r, "labels": [{"name": n} for n in r["labels"]], "author": {"login": "bot"}}
+    return {**r, "labels": [{"name": n} for n in r["labels"]], "author": r.get("author", {"login": "bot"})}
 
 
 def save():
@@ -58,7 +58,9 @@ def save():
 
 
 head = args[:2]
-if head == ["issue", "list"]:
+if args == ["api", "user"]:
+    print(json.dumps({"login": "bot"}))
+elif head == ["issue", "list"]:
     rows = state["issues"]
     st = opt("--state", "open")
     if st != "all":
@@ -82,6 +84,7 @@ elif head == ["issue", "create"]:
         "number": number, "title": opt("--title"), "body": body, "labels": opts("--label"),
         "state": "OPEN", "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
         "url": f"https://github.com/o/r/issues/{number}",
+        "author": {"login": os.environ.get("FAKE_GH_CREATE_AUTHOR", "bot")},
     })
     # Simulate a human editing report checkboxes while triage is filing children.
     for old, new in json.loads(os.environ.get("FAKE_GH_CREATE_EDIT", "[]")):
@@ -89,14 +92,19 @@ elif head == ["issue", "create"]:
             if "ops-report" in issue["labels"]:
                 issue["body"] = issue["body"].replace(old, new)
     save()
-    print(f"https://github.com/o/r/issues/{number}")
+    print(os.environ.get("FAKE_GH_CREATE_URL", f"https://github.com/o/r/issues/{number}"))
 elif head == ["issue", "edit"]:
     issue = next(r for r in state["issues"] if r["number"] == int(args[2]))
     with open(opt("--body-file"), encoding="utf-8") as fh:
         issue["body"] = fh.read()
     save()
 elif head == ["pr", "list"]:
-    if opt("--state") == "open":
+    if opt("--head"):
+        rows = [r for r in state.get("memory_prs", []) if r["headRefName"] == opt("--head")]
+        if opt("--state") != "all":
+            rows = [r for r in rows if r["state"].lower() == opt("--state")]
+        emit(rows)
+    elif opt("--state") == "open":
         emit(state["prs"])
     else:
         rows = state["merged_prs"]
@@ -106,8 +114,49 @@ elif head == ["pr", "list"]:
             rows = [r for r in rows if r["mergedAt"][:10] >= search[len("merged:>="):]]
         emit(rows)
 elif head == ["pr", "view"]:
-    detail = state["pr_details"][args[2]]
+    memory_pr = next((r for r in state.get("memory_prs", []) if args[2] in [r["url"], str(r["number"])]), None)
+    if memory_pr:
+        detail = memory_pr
+        if detail["state"] == "OPEN":
+            detail["baseRefOid"] = subprocess.check_output(["git", "rev-parse", "origin/main"], text=True).strip()
+            ci = os.environ.get("FAKE_MEMORY_CI", "SUCCESS")
+            detail["statusCheckRollup"] = [] if ci == "MISSING" else [{
+                "__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+                "status": "IN_PROGRESS" if ci == "PENDING" else "COMPLETED",
+                "conclusion": ci if ci != "PENDING" else "",
+                "startedAt": "2026-10-12T00:00:00Z",
+            }]
+            if os.environ.get("FAKE_MEMORY_CHANGE_HEAD"):
+                detail["views"] = detail.get("views", 0) + 1
+                if detail["views"] >= 2:
+                    detail["headRefOid"] = "a" * 40
+            save()
+    else:
+        detail = state["pr_details"][args[2]]
     print(json.dumps({k: detail[k] for k in opt("--json").split(",")}))
+elif head == ["pr", "create"]:
+    branch = opt("--head")
+    sha = subprocess.check_output(["git", "rev-parse", branch], text=True).strip()
+    base = subprocess.check_output(["git", "rev-parse", "origin/main"], text=True).strip()
+    number = state["next_number"]
+    state["next_number"] += 1
+    with open(opt("--body-file"), encoding="utf-8") as fh:
+        body = fh.read()
+    url = f"https://github.com/o/r/pull/{number}"
+    state.setdefault("memory_prs", []).append({
+        "number": number, "url": url, "body": body, "state": "OPEN",
+        "headRefName": branch, "headRefOid": sha, "baseRefName": "main", "baseRefOid": base,
+        "isDraft": False, "isCrossRepository": False, "mergeable": "MERGEABLE", "statusCheckRollup": [],
+    })
+    save()
+    print(url)
+elif head == ["pr", "merge"]:
+    pr = next(r for r in state["memory_prs"] if r["url"] == args[2])
+    assert opt("--match-head-commit") == pr["headRefOid"]
+    upstream = subprocess.check_output(["git", "remote", "get-url", "origin"], text=True).strip()
+    subprocess.run(["git", "--git-dir", upstream, "update-ref", "refs/heads/main", pr["headRefOid"]], check=True)
+    pr["state"] = "MERGED"
+    save()
 elif head == ["run", "list"]:
     emit(state["runs"])
 elif head == ["label", "list"]:
@@ -150,6 +199,7 @@ cp "$FAKE_AGENT_OUTPUT" "$out"
 """
 
 AGENT_OUTPUT: dict[str, Any] = {
+    "memory_update": None,
     "summary": "- 今回は小さな修正が中心。\n- 放置PRが1件ある。",
     "proposals": [
         {
