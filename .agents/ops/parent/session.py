@@ -83,7 +83,6 @@ class ParentSession:
             raise ValueError("parent issue is not open")
         history = self.history()
         require_agreement(history)
-        proposals.require_receipts(history)
         return row
 
     def public(self, value: Any) -> None:
@@ -140,6 +139,7 @@ class ParentSession:
             "tasks": row.get("tasks", {}),
             "review": self.review_status(history),
             "proposal_receipts": proposals.receipts(history),
+            "proposal_agreements": proposals.agreed_receipts(history),
         }
 
     def review_status(self, history: list[dict[str, Any]]) -> Any:
@@ -236,27 +236,53 @@ class ParentSession:
         )
         return self.status()
 
-    def agree(self, agreement: dict[str, Any]) -> dict[str, Any]:
+    def agree(
+        self,
+        agreement: dict[str, Any],
+        report: int | None = None,
+        pid: str | None = None,
+    ) -> dict[str, Any]:
         self.owner()
+        if (report is None) != (pid is None):
+            raise ValueError("proposal agreement requires both --report and --proposal")
         fields = {"purpose", "scope", "behavior", "acceptance", "human_confirmation"}
         if set(agreement) != fields:
             raise ValueError(f"agreement requires exactly {sorted(fields)}")
         agreement = {k: nonempty(v, k) for k, v in agreement.items()}
         history = self.history()
         sha = digest(agreement)
-        receipts = proposals.receipts(history)
         last_phase = next(
             (e for e in reversed(history) if e.get("event") in {"agreed", "checking"}),
             {},
         )
-        if phase(history) != "checking" and not (
-            phase(history) == "agreed"
-            and last_phase.get("agreement_sha256") == sha
-            and proposals.agreed_receipts(history) == receipts
-        ):
-            raise ValueError(
-                "run checking and obtain human confirmation before recording agreement"
-            )
+        if report is not None and pid is not None:
+            self.agreed()
+            source = proposals.selected_source(self, report, pid)
+            receipt = proposals.require_receipt(self, source)
+            if receipt in proposals.agreed_receipts(history):
+                previous = next(
+                    e
+                    for e in reversed(history)
+                    if e.get("event") == "proposal_agreed"
+                    and e.get("source") == receipt["source"]
+                )
+                if previous["agreement_sha256"] != sha:
+                    raise ValueError(
+                        "proposal agreement changed; run checking before revising requirements"
+                    )
+            event = {
+                "event": "proposal_agreed",
+                **receipt,
+                "revision": last_phase.get("revision"),
+            }
+        else:
+            if phase(history) != "checking" and not (
+                phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha
+            ):
+                raise ValueError(
+                    "run checking and obtain human confirmation before recording agreement"
+                )
+            event = {"event": "agreed", "revision": last_phase.get("revision")}
         titles = {
             "purpose": "目的",
             "scope": "範囲",
@@ -269,13 +295,13 @@ class ParentSession:
         text += "\n\n人間の確認（会話からの引用）:\n" + "\n".join(
             "> " + line for line in agreement["human_confirmation"].splitlines()
         )
+        if report is not None:
+            text = f"対象提案: #{report} / `{pid}`\n\n" + text
         self.post(
             {
-                "event": "agreed",
+                **event,
                 "agreement_sha256": sha,
                 "agreement": agreement,
-                "proposal_receipts": receipts,
-                "revision": last_phase.get("revision"),
             },
             text,
         )

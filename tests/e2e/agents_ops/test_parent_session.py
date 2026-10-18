@@ -259,7 +259,23 @@ class ParentEnv:
                 self.cli(
                     "receive-proposal", "--report", "90", "--proposal", "R-20261012-01"
                 )
-                self.agreed()
+                self.cli(
+                    "agree",
+                    "--report",
+                    "90",
+                    "--proposal",
+                    "R-20261012-01",
+                    "--spec",
+                    self.spec(
+                        {
+                            "purpose": "提案の目的を固定する",
+                            "scope": "提案由来の子",
+                            "behavior": "合意後に実装する",
+                            "acceptance": "fakeで検証する",
+                            "human_confirmation": "この提案の要件で合意します。",
+                        }
+                    ),
+                )
             spec["source"] = {
                 "proposal_id": "R-20261012-01",
                 "report_number": 90,
@@ -310,6 +326,7 @@ class ParentEnv:
 @pytest.fixture
 def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     monkeypatch.syspath_prepend(str(OPS))
+    monkeypatch.syspath_prepend(str(OPS / "ops-report"))
     formats = importlib.import_module("issues")
     repo = tmp_path / "repo"
     repo.mkdir()

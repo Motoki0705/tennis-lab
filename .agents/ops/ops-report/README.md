@@ -90,7 +90,8 @@ serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。�
   コメントは [親CLI](../parent/README.md#採用提案の受領) の共通メタデータを使う。
   親未指定・未登録・停止中はレポートの `引渡し` 行とJSONの `unassigned` に「未割当」を表示する。
 - 親自身が [parent CLI](../parent/README.md#採用提案の受領) の `receive-proposal` で一度だけ受領する。
-  受領は要件確認の対象を登録するだけ。人間との別途の `checking` / `agree` を経て `create-child` する。
+  受領は要件確認の対象を登録するだけ。人間との別途の合意を提案指定付き `agree` に記録して `create-child` する。
+  未合意提案の保留はその提案由来の作業だけに適用し、既存の独立作業は継続する。
   triageは子を作らず、分割・委任・実装も起動しない。停止・再開後も同じ入口で受領し、再送は冪等。
 - 子の本文1行目の提案メタデータを共通 `index_proposals` で全open/closed issueから索引化する。
   タイトルprefixに依存しないため、改名・親付替えでも同じ提案を再起票しない。
@@ -322,7 +323,7 @@ unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` �
 2. 親未指定/停止中でtriageを実行し、レポート行とJSONに未割当が出ることを確認する。
    人間が関連親を指定して担当親自身がregister/再開し、triageの受領待ちとreceive-proposalの受領を確認する。
    再送で受領1回、受領後・要件未合意でcreate-child/delegate拒否、子作成・実装0件を確認する。
-3. 会話の要件合意と人間の確認をagreeへ記録し、追加の分割承認なしで複数子を起票する。
+3. 会話の要件合意と人間の確認を提案指定付きagreeへ記録し、追加の分割承認なしで複数子を起票する。
    正式なsub-issue・本文メタデータ・親一覧を確認し、複数PRと検証結果を各子に記録する。
 4. 親が対象PR群を確定して明示指示し、統合Codexレビューが1回だけ実行される証拠を保存する。
    未指示時は0回、指摘を担当へ戻して修正・CI/差分確認した後の自動再レビューも0回とする。

@@ -108,17 +108,21 @@ def deliver(
     return "採用済み提案の受領待ち"
 
 
-def receive(session: ParentSession, report: int, pid: str) -> dict[str, Any]:
-    session.owner()
-    if session.gh.issue(session.parent)["state"].lower() != "open":
-        raise ValueError("cannot receive a proposal for a closed parent")
+def selected_source(session: ParentSession, report: int, pid: str) -> ProposalSource:
     report = number(report)
     raw = session.gh.issue(report)
     _, parsed = parse_report(raw["body"])
     prop = next((p for p in parsed if p.pid == pid), None)
     if prop is None:
         raise ValueError("proposal not found")
-    source = ProposalSource(pid, report, prop.selection()[1])
+    return ProposalSource(pid, report, prop.selection()[1])
+
+
+def receive(session: ParentSession, report: int, pid: str) -> dict[str, Any]:
+    session.owner()
+    if session.gh.issue(session.parent)["state"].lower() != "open":
+        raise ValueError("cannot receive a proposal for a closed parent")
+    source = selected_source(session, report, pid)
     prop = read_proposal(session.gh, source, session.parent)
     expected = record(source, prop)
     found = matching(session.history(), source, expected)
@@ -137,11 +141,6 @@ def receive(session: ParentSession, report: int, pid: str) -> dict[str, Any]:
         )
     if record(source, read_proposal(session.gh, source, session.parent)) != expected:
         raise ValueError("proposal changed during receipt")
-    # Recover a crash after the receipt but before checking, without revoking a
-    # later agreement on an idempotent retry.
-    history = session.history()
-    if receipts(history) != agreed_receipts(history):
-        session.checking()
     return {"parent": session.parent, **expected, "received": True, "reused": reused}
 
 
@@ -161,15 +160,28 @@ def receipts(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def agreed_receipts(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    last = next((e for e in reversed(history) if e.get("event") == "agreed"), {})
-    return list(last.get("proposal_receipts", []))
+    agreed: dict[tuple[int, str], dict[str, Any]] = {}
+    for event in history:
+        if event.get("event") == "checking":
+            agreed.clear()
+        elif event.get("event") == "proposal_agreed":
+            source = event_source(event)
+            value = {
+                key: event[key] for key in ("source", "proposal_sha256", "adoption")
+            }
+            agreed[source_key(source)] = value
+    return [agreed[key] for key in sorted(agreed)]
 
 
-def require_receipts(history: list[dict[str, Any]]) -> None:
-    if receipts(history) != agreed_receipts(history):
+def require_receipt(session: ParentSession, source: ProposalSource) -> dict[str, Any]:
+    value = record(source, read_proposal(session.gh, source, session.parent))
+    history = session.history()
+    matching(history, source, value)
+    if value not in receipts(history):
         raise ValueError(
-            "受領した提案の要件合意がありません。checking / agree が必要です"
+            "proposal requires explicit receipt before requirements agreement"
         )
+    return value
 
 
 def require_source(session: ParentSession, source: ProposalSource) -> ParsedProposal:

@@ -102,7 +102,7 @@ def events(
         event = object_value(json.loads(first[len(PREFIX) : -4]))
         if event.get("parent") != parent:
             raise ValueError("parent-session marker refers to a different parent")
-        if event.get("event") == "agreed":
+        if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {
                 "purpose",
