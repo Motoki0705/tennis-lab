@@ -61,10 +61,10 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 ## GitHub運用ルール（初版）
 
-- **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
 - **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `ai-proposed` ラベルを付ける。運用レポートで人間が整理する。
-- **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
+- **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
+- **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
 - **merge**: CI通過と、親が明示起動した統合Codexレビューを条件とする。blocker/majorの解消は親が修正差分・CI・回帰テストで確認し、自動再レビューを行わない。各PRのcoverage・最新head・依存関係を照合する。タスク内に閉じた変更は自動mergeしてよい。共有基盤に触れる変更は人間が承認する。記録・判定の正本は [review/README.md](ops/review/README.md)。
 
