@@ -28,7 +28,7 @@ from src.tasks.base.annotation.telemetry.capture import (
 from src.tasks.base.annotation.telemetry.contracts import RenderedImage
 from src.tasks.base.annotation.workers.contracts import Launch
 
-from ..contracts import BallPredictions
+from ..contracts import PredictionDocument
 from .contracts import BallFrame, BallLabels, BallReviewPolicy, BallReviewProof
 from .validation import ranges, resolved
 
@@ -86,7 +86,7 @@ def catalog(
     layout: AnnotationLayout,
     context: ReviewContext,
     images: tuple[RenderedImage, ...],
-    predictions: BallPredictions,
+    predictions: PredictionDocument,
     *,
     allowed_revisions: set[ArtifactRef] | None = None,
 ) -> Catalog:
@@ -116,12 +116,13 @@ def catalog(
 
 
 def _drawings(
-    request: RenderRequest, predictions: BallPredictions, labels: BallLabels | None
+    request: RenderRequest, predictions: PredictionDocument, labels: BallLabels | None
 ) -> None:
     for tile in request.tiles:
         index = tile.frame_index
         if labels is None:
-            expected = {(predictions.rows[index].x, predictions.rows[index].y)}
+            center = predictions.rows[index].center
+            expected = {center} if center is not None else set()
         else:
             expected = {
                 o.center
