@@ -7,6 +7,7 @@ this data and reads the codebase (read-only) for deeper analysis.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import sys
@@ -17,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import proposals, shell
+from . import memory, proposals, shell
 from .shell import CommandError
 
 REPORT_LABEL = "ops-report"
@@ -129,7 +130,7 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
     rows = shell.gh_list(
         [
             "issue", "list", "--label", REPORT_LABEL, "--state", "all",
-            "--json", "number,title,state,createdAt,body,url",
+            "--json", "number,title,state,createdAt,body,url,author",
         ],
         limit=500,
         cwd=repo_root,
@@ -147,8 +148,16 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
             k: row[k] for k in ("number", "title", "state", "createdAt", "url")
         }
         item["slot"] = meta.slot
+        item["author"] = row["author"]["login"]
+        item["body_sha256"] = hashlib.sha256(row["body"].encode("utf-8")).hexdigest()
         item["period_start"] = meta.since.isoformat()
         item["period_end"] = meta.until.isoformat()
+        item["status"] = meta.status
+        item["base_sha"] = meta.base
+        item["audit"] = meta.audit
+        # The body is compared again under the issue lock before replacing an
+        # incomplete report. Human selections must never be overwritten.
+        item["body"] = row["body"]
         # Proposal status only for the two most recent reports to bound prompt size.
         if i >= len(rows) - 2:
             item["proposals"] = [_proposal_status(p) for p in parsed]
@@ -474,27 +483,36 @@ def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
 
 
 def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
-    mem_dir = cfg.repo_root / MEMORY_DIR
-    if not mem_dir.is_dir():
+    tracked = shell.git(
+        ["ls-tree", "-r", "--name-only", cfg.rev, "--", str(MEMORY_DIR)],
+        cwd=cfg.repo_root,
+    ).splitlines()
+    summary = str(MEMORY_DIR / "SUMMARY.md")
+    if summary not in tracked:
         return {
             "status": "not_installed",
             "note": f"{MEMORY_DIR} が存在しない（共有memory未導入）",
         }
-    summary = mem_dir / "SUMMARY.md"
     entries = []
-    for path in sorted(mem_dir.rglob("*.md")):
-        if path == summary or path.name == "index.md":
+    for path in tracked:
+        rel = Path(path)
+        if (
+            rel.parent.name not in memory.SHARED_LAYERS
+            or rel.suffix != ".md"
+            or rel.name == "index.md"
+        ):
             continue
-        rel = path.relative_to(cfg.repo_root)
-        head = path.read_text(encoding="utf-8").splitlines()[:15]
+        head = shell.git(["show", f"{cfg.rev}:{path}"], cwd=cfg.repo_root).splitlines()[
+            :15
+        ]
         entries.append(
             {"path": str(rel), "last_commit": _last_commit_date(cfg, rel), "head": head}
         )
     return {
         "status": "ok",
-        "summary": _truncate(summary.read_text(encoding="utf-8"))
-        if summary.is_file()
-        else None,
+        "summary": _truncate(
+            shell.git(["show", f"{cfg.rev}:{summary}"], cwd=cfg.repo_root)
+        ),
         "entries": entries[:300],
         "entries_total": len(entries),
     }
@@ -503,8 +521,10 @@ def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
 def collect_knowledge(
     cfg: CollectConfig, since: datetime, until: datetime
 ) -> dict[str, Any]:
-    summary = cfg.repo_root / KNOWLEDGE_SUMMARY
-    if not summary.is_file():
+    if not shell.git(
+        ["ls-tree", "--name-only", cfg.rev, "--", str(KNOWLEDGE_SUMMARY)],
+        cwd=cfg.repo_root,
+    ).strip():
         return {"status": "not_found", "note": f"{KNOWLEDGE_SUMMARY} が存在しない"}
     changed = shell.git(
         [
@@ -582,7 +602,10 @@ def collect_meta(
 
 
 def collect_all(
-    cfg: CollectConfig, *, history: dict[str, Any], initial_since: datetime
+    cfg: CollectConfig,
+    *,
+    history: dict[str, Any],
+    initial_since: datetime,
 ) -> dict[str, Any]:
     """Collect the period ``[since, until)``.
 
@@ -590,7 +613,7 @@ def collect_all(
     run starts exactly there (not at the issue's createdAt, which is later than the
     collection), so consecutive reports neither drop nor double-count events.
     """
-    reports = history["reports"]
+    reports = [r for r in history["reports"] if r["status"] == "complete"]
     until = cfg.now
     since = (
         datetime.fromisoformat(reports[-1]["period_end"]).astimezone(cfg.now.tzinfo)
@@ -604,12 +627,18 @@ def collect_all(
         )
     return {
         "meta": collect_meta(cfg, since, until),
-        "previous_reports": history,
+        "previous_reports": {
+            "reports": [
+                {k: v for k, v in row.items() if k != "body"}
+                for row in history["reports"]
+            ]
+        },
         "github": collect_github(cfg, since, until),
         "git": collect_git(cfg, since, until),
         "workspace": collect_workspace(cfg),
         "cleanup": collect_cleanup(cfg),
         "memory": collect_memory(cfg),
+        "ops_memory": memory.collect(cfg.repo_root, cfg.rev),
         "knowledge": collect_knowledge(cfg, since, until),
         "ai_env": collect_ai_env(cfg),
     }
