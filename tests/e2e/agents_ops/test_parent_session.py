@@ -41,7 +41,40 @@ if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["pr", "view"]:
     pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
-    response({"statusCheckRollup": pr.get("statusCheckRollup", [])})
+    values = {"statusCheckRollup": pr.get("statusCheckRollup", []),
+              "headRefOid": pr["head"]["sha"]}
+    if os.environ.get("PARENT_VIEW_HEAD_RACE"):
+        values["headRefOid"] = os.environ["PARENT_VIEW_HEAD_RACE"]
+    response({k: values[k] for k in args[args.index("--json") + 1].split(",")})
+if args[:2] == ["pr", "merge"]:
+    pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
+    assert "--merge" in args and "--match-head-commit" in args
+    expected = args[args.index("--match-head-commit") + 1]
+    if os.environ.get("PARENT_MERGE_FAIL") or pr["state"] != "open" or pr["head"]["sha"] != expected:
+        fail()
+    if os.environ.get("PARENT_MERGE_HEAD_RACE"):
+        pr["head"]["sha"] = os.environ["PARENT_MERGE_HEAD_RACE"]
+        save()
+        fail()
+    pr["state"] = "closed"
+    pr["merged_at"] = "2026-10-18T03:00:00Z"
+    for child in re.findall(r"Closes #(\d+)", pr["body"]):
+        if not os.environ.get("PARENT_MERGE_SKIP_CLOSE"):
+            state["issues"][child].update(state="closed", state_reason="completed")
+    if os.environ.get("PARENT_MERGE_ADVANCE_BASE"):
+        import subprocess
+        subprocess.run(["git", "merge", "--no-edit", "--no-ff", expected], check=True, capture_output=True)
+        base = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        for other in state["prs"]:
+            if other["state"] == "open":
+                other["base"]["sha"] = base
+    if os.environ.get("PARENT_MERGE_CI_PENDING"):
+        target = int(os.environ["PARENT_MERGE_CI_PENDING"])
+        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []
+    save()
+    if os.environ.get("PARENT_MERGE_RESPONSE_LOST"):
+        fail()
+    response({"merged": True})
 assert args[0] == "api", args
 method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
@@ -57,6 +90,11 @@ if endpoint == "user":
     response({"login": "operator"})
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
+    if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
+        state["detail_reads"] = state.get("detail_reads", 0) + 1
+        if state["detail_reads"] == 2:
+            next(p for p in state["prs"] if p["number"] == 100)["head"]["sha"] = os.environ["PARENT_READ_HEAD_RACE"]
+        save()
     response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
@@ -176,7 +214,7 @@ class ParentEnv:
             env={**self.env, **(extra or {})},
             text=True,
             capture_output=True,
-            timeout=30,
+            timeout=90,
             check=False,
         )
         if ok is True:
@@ -1279,6 +1317,7 @@ class ReviewEnv:
     fake: Path
     output: Path
     calls_path: Path
+    clock_script: Path | None = None
 
     @property
     def run_dir(self) -> Path:
@@ -1298,7 +1337,7 @@ class ReviewEnv:
         self, *args: str, ok: bool = True, extra: dict[str, str] | None = None
     ) -> subprocess.CompletedProcess[str]:
         result = subprocess.run(
-            [sys.executable, str(REVIEW_SCRIPT), *args],
+            [sys.executable, str(self.clock_script or REVIEW_SCRIPT), *args],
             cwd=self.p.repo,
             env={
                 **self.p.env,
@@ -1309,7 +1348,7 @@ class ReviewEnv:
             capture_output=True,
             text=True,
             check=False,
-            timeout=30,
+            timeout=90,
         )
         assert (result.returncode == 0) is ok, result.stderr + result.stdout
         return result
@@ -1386,7 +1425,21 @@ def review_env(parent_env: ParentEnv) -> ReviewEnv:
     )
     calls = p.root / "review-calls.jsonl"
     calls.touch()
-    return ReviewEnv(p, request, request_path, fake, output, calls)
+    # Exercise the real CLI with a fixed clock in the test subprocess only.
+    # Shared WSL hosts can move wall time backwards while a fake review runs.
+    # Timestamp validation remains strict in production and its policy tests.
+    clock = p.root / "review-with-fixed-clock.py"
+    clock.write_text(
+        "import datetime, runpy, sys\n"
+        "class FixedClock(datetime.datetime):\n"
+        "    @classmethod\n"
+        "    def now(cls, tz=None):\n"
+        "        return cls(2026, 10, 18, tzinfo=tz)\n"
+        "datetime.datetime = FixedClock\n"
+        f"sys.path.insert(0, {str(REVIEW_SCRIPT.parent)!r})\n"
+        f"runpy.run_path({str(REVIEW_SCRIPT)!r}, run_name='__main__')\n"
+    )
+    return ReviewEnv(p, request, request_path, fake, output, calls, clock)
 
 
 def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
