@@ -31,6 +31,7 @@ from src.tasks.base.annotation.execution.contracts import (
 )
 from src.tasks.base.annotation.execution.runner import stage_directory
 from src.tasks.base.annotation.learning import Learning, ModelRegistry
+from src.tasks.base.annotation.learning.adapters import NoAdditionalTeachers
 from src.tasks.base.annotation.learning.contracts import (
     CampaignCompletion,
     CompletedStage,
@@ -48,6 +49,7 @@ from src.tasks.base.annotation.learning.contracts import (
     TaskProducts,
     TrainingReceipt,
 )
+from src.tasks.base.annotation.learning.validation import check_partitions
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import CampaignPlan, file_digest, save_plan
 from src.tasks.base.annotation.resources import BudgetLimits, ResourceManager
@@ -363,6 +365,8 @@ class Environment:
         incomplete: bool = False,
         overlap: str | None = None,
         model: ModelRef | None = None,
+        added_clips: tuple[str, ...] | None = None,
+        evaluation_recipe: ArtifactRef | None = None,
     ) -> ArtifactRef:
         train = self.partition("train", overlap or name)
         ref = self.common.model_dump()
@@ -424,6 +428,7 @@ class Environment:
                             "learning": {
                                 "recipe": self.recipe.model_dump(),
                                 "validation": self.fixed.model_dump(),
+                                "evaluation_recipe": evaluation_recipe.model_dump() if evaluation_recipe else None,
                                 "selection_policy": ref if policy else None,
                             }
                             if configured
@@ -442,8 +447,8 @@ class Environment:
             base_snapshot=None,
             snapshot=train.manifest,
             adoptions=(self.common,) if added else (),
-            added_clips=train.clips if added else (),
-            reused_clips=() if added else train.clips,
+            added_clips=(train.clips if added_clips is None else added_clips) if added else (),
+            reused_clips=() if added and added_clips is None else train.clips,
         )
         publication_ref = write_document(
             self.layout,
@@ -756,6 +761,165 @@ def test_source_and_clip_leakage_is_rejected_before_registration(
     assert env.executor.accepted == []
 
 
+@pytest.mark.parametrize("split", ["validation", "test"])
+@pytest.mark.parametrize("identity", ["sources", "clips"])
+def test_source_and_clip_leakage_are_independently_rejected(
+    env: Environment, split: str, identity: str,
+) -> None:
+    train = env.partition("train", "separate-train")
+    holdout = env.val if split == "validation" else env.test
+    overlapping = holdout.model_copy(update={identity: getattr(train, identity)})
+    with pytest.raises(ValueError, match="overlap"):
+        check_partitions(train, overlapping)
+
+
+@pytest.mark.parametrize("split", ["validation", "test"])
+def test_holdout_only_publication_is_durably_skipped_without_training(
+    env: Environment, split: str,
+) -> None:
+    holdout = env.val if split == "validation" else env.test
+    completion = env.campaign(added_clips=holdout.clips)
+    first = env.learning.register(completion, env.adapter)
+    assert first.status == "no_additional_teachers" and first.intent is None
+    assert "validation/test" in first.reason
+    assert Learning(env.layout, executor=env.executor).register(completion, env.adapter) == first
+    assert env.executor.accepted == []
+    assert not env.layout.path("campaigns", "cycle-one", "learning", "detector", "intent.json").exists()
+    assert env.learning.models.current("detector").model == env.model
+
+
+def test_unassigned_new_clips_are_not_misclassified_as_no_teachers(env: Environment) -> None:
+    completion = env.campaign(added_clips=(content_digest("unassigned"),))
+    with pytest.raises(ValueError, match="missing from the declared"):
+        env.learning.register(completion, env.adapter)
+    assert env.executor.accepted == []
+
+
+def test_task_can_report_no_eligible_new_teachers(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        env.adapter, "validate_intent",
+        lambda *_: NoAdditionalTeachers("all new labels masked by the pinned task recipe"),
+    )
+    completion = env.campaign()
+    for _ in range(2):
+        result = env.learning.register(completion, env.adapter)
+        assert result.status == "no_additional_teachers" and result.intent is None
+        assert "masked" in result.reason
+    assert env.executor.accepted == []
+    assert env.learning.models.current("detector").generation == 1
+
+
+@pytest.mark.parametrize("mismatch", ["recipe", "original", None])
+def test_resolved_holdouts_are_bound_before_registration_and_reused_after_restart(
+    env: Environment, monkeypatch: pytest.MonkeyPatch, mismatch: str | None,
+) -> None:
+    calls = []
+    fixed = FixedEvaluation(
+        task="detector", validation=env.val, test=env.test,
+        recipe=env.recipe if mismatch == "recipe" else env.common,
+        original=env.common if mismatch == "original" else env.fixed,
+    )
+    resolved = write_document(env.layout, env.layout.path("models", "resolved.json"), fixed)
+
+    def resolve(layout, plan, publication):
+        assert plan.validation == env.fixed and plan.evaluation_recipe == env.common
+        calls.append(publication)
+        return resolved
+
+    monkeypatch.setattr(env.adapter, "resolve_evaluation", resolve, raising=False)
+    completion = env.campaign(evaluation_recipe=env.common)
+    if mismatch is not None:
+        with pytest.raises(ValueError, match="planned recipe or original"):
+            env.learning.register(completion, env.adapter)
+        assert not env.layout.path("campaigns", "cycle-one", "learning", "detector", "intent.json").exists()
+    else:
+        first = env.learning.register(completion, env.adapter)
+        assert first.intent is not None
+        intent = read_document(env.layout, first.intent, LearningIntent)
+        assert intent.fixed_evaluation == resolved and intent.evaluation_recipe == env.common
+        assert Learning(env.layout, executor=env.executor).register(completion, env.adapter) == first
+        assert len(calls) == 1
+    assert env.executor.accepted == []
+
+
+def test_resolved_holdouts_recover_stop_before_intent_persistence(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.base.annotation.learning import service
+
+    calls = []
+    fixed = FixedEvaluation(
+        task="detector", validation=env.val, test=env.test,
+        recipe=env.common, original=env.fixed,
+    )
+
+    def resolve(layout, plan, publication):
+        reference = write_document(layout, layout.path("models", "resolved.json"), fixed)
+        calls.append(reference)
+        return reference
+
+    monkeypatch.setattr(env.adapter, "resolve_evaluation", resolve, raising=False)
+    completion = env.campaign(evaluation_recipe=env.common)
+    original = service.write_document
+
+    def interrupt(layout, path, document):
+        if path.name == "intent.json":
+            raise Crash("holdouts saved before intent")
+        return original(layout, path, document)
+
+    with monkeypatch.context() as stop:
+        stop.setattr(service, "write_document", interrupt)
+        with pytest.raises(Crash, match="holdouts saved"):
+            env.learning.register(completion, env.adapter)
+    result = Learning(env.layout, executor=env.executor).register(completion, env.adapter)
+    assert result.intent is not None
+    assert len(calls) == 2 and calls[0] == calls[1]
+    assert read_document(env.layout, result.intent, LearningIntent).fixed_evaluation == calls[0]
+    assert env.executor.accepted == []
+
+
+@pytest.mark.parametrize("entry", ["direct", "cached"])
+def test_forged_passed_verdict_cannot_promote_a_rejected_candidate(
+    env: Environment, entry: str,
+) -> None:
+    env.adapter.accept = False
+    intent_ref = env.register()
+    outcome = env.train_and_evaluate(intent_ref)
+    assert outcome.state == "rejected" and outcome.selection is not None
+    selection = read_document(env.layout, outcome.selection, SelectionRecord)
+    verdict = read_document(env.layout, selection.verdict, SelectionVerdict)
+    forged = verdict.model_copy(update={"status": "passed"})
+    if entry == "direct":
+        ref = write_document(env.layout, env.layout.path("models", "forged.json"), forged)
+        with pytest.raises(ValueError, match="verified judgment"):
+            env.learning.models.select(ref, env.adapter)
+    else:
+        env.layout.artifact_path(selection.verdict).write_bytes(forged.canonical_bytes() + b"\n")
+        with pytest.raises(ValueError, match="verified judgment"):
+            env.learning.tick(intent_ref, env.adapter, env.runtime)
+    assert env.learning.models.current("detector").generation == 1
+    assert len(env.executor.accepted) == 2
+
+
+def test_registry_revalidates_task_metrics_before_replaying_selection(
+    env: Environment, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    env.adapter.accept = False
+    outcome = env.train_and_evaluate(env.register())
+    assert outcome.selection is not None
+    record = read_document(env.layout, outcome.selection, SelectionRecord)
+
+    def invalid(*_):
+        raise ValueError("required task validation metric is missing")
+
+    monkeypatch.setattr(env.adapter, "validate_evaluation", invalid)
+    with pytest.raises(ValueError, match="required task validation metric"):
+        env.learning.models.select(record.verdict, env.adapter)
+    assert env.learning.models.current("detector").generation == 1
+
+
 def test_completion_must_cover_all_products_once(env: Environment) -> None:
     original = env.campaign()
     value = read_document(env.layout, original, CampaignCompletion)
@@ -796,7 +960,7 @@ def test_registration_replay_and_two_generations_preserve_campaign_pin(
     assert (
         replay == result
         and len(env.executor.accepted) == 2
-        and env.adapter.selections == 1
+        and env.adapter.selections == 3
     )
     old = read_document(env.layout, completion, CampaignCompletion)
     plan = read_document(env.layout, old.plan, CampaignPlan)
@@ -1069,7 +1233,7 @@ def test_model_commit_file_gap_recovers_without_second_promotion(
         result.state == "adopted"
         and env.learning.models.current("detector").generation == 2
     )
-    assert len(env.executor.accepted) == 2 and env.adapter.selections == 1
+    assert len(env.executor.accepted) == 2 and env.adapter.selections == 3
 
 
 def test_parallel_candidates_cannot_overwrite_newer_adopted_model(

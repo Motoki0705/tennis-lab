@@ -284,6 +284,9 @@ class Environment:
         self, source: SyntheticRoot, *, policy: PlayerSelectionPolicy | None = None,
         validation_positive_frame: int = 1,
         float_precision: tuple[str, bool] | None = None,
+        added_sources: tuple[str, ...] = ("src_a", "src_b"),
+        train_samples_per_epoch: int = 4,
+        register: bool = True,
     ) -> None:
         for name in ("src_c", "src_d"):
             manifest = write_clip(source.root, name, "f020-026")
@@ -426,7 +429,7 @@ class Environment:
             ),
             batch_size=2,
             evaluation_batch_size=2,
-            train_samples_per_epoch=4,
+            train_samples_per_epoch=train_samples_per_epoch,
             num_workers=0,
             pin_memory=False,
             seed=42,
@@ -448,10 +451,12 @@ class Environment:
             snapshot=self.snapshot,
             adoptions=(blob,),
             added_clips=tuple(
-                item.clip_id for item in snapshot.clips if item.split == "train"
+                item.clip_id for item in snapshot.clips
+                if item.source_id in {content_digest(name) for name in added_sources}
             ),
             reused_clips=tuple(
-                item.clip_id for item in snapshot.clips if item.split != "train"
+                item.clip_id for item in snapshot.clips
+                if item.source_id not in {content_digest(name) for name in added_sources}
             ),
         )
         self.publication = save(self.layout, receipt)
@@ -547,10 +552,12 @@ class Environment:
         self.executor = PlayerExecutor(self.layout)
         self.learning = Learning(self.layout, executor=self.executor)
         self.learning.models.bootstrap(self.parent, blob)
-        registration = self.learning.register(completion, self.adapter)
-        assert registration.intent is not None
-        self.intent_ref = registration.intent
-        self.intent = read_document(self.layout, self.intent_ref, LearningIntent)
+        self.completion = completion
+        if register:
+            registration = self.learning.register(completion, self.adapter)
+            assert registration.intent is not None
+            self.intent_ref = registration.intent
+            self.intent = read_document(self.layout, self.intent_ref, LearningIntent)
         self.runtime = LearningRuntime(
             scope=blob,
             queue=QueueConfiguration(

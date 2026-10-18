@@ -42,6 +42,7 @@ from .storage import LearningReferences
 from .validation import (
     check_completion,
     check_evaluation,
+    check_evaluation_binding,
     check_evaluation_value,
     check_partitions,
     check_training_value,
@@ -138,10 +139,6 @@ class Learning:
                 raise ValueError(
                     "training/fixed validation differ from the publication task"
                 )
-            if not set(publication.added_clips).intersection(train.clips):
-                raise ValueError(
-                    "new teachers must include the cumulative training partition"
-                )
             partitions = (train, fixed.validation, *((fixed.test,) if fixed.test else ()))
             if not set(publication.added_clips).issubset({clip for part in partitions for clip in part.clips}):
                 raise ValueError("new teachers are missing from the declared train/validation/test partitions")
@@ -161,6 +158,12 @@ class Learning:
                 evaluation_recipe=task.learning.evaluation_recipe,
             )
             verify_inputs(self.layout, intent)
+            check_evaluation_binding(self.layout, task.learning, intent)
+            if not set(publication.added_clips).intersection(train.clips):
+                return self._skip(
+                    completion_ref, task.task, "no_additional_teachers",
+                    "publication adds only validation/test clips; no additional training teachers",
+                )
             eligibility = adapter.validate_intent(self.layout, intent)
             if isinstance(eligibility, NoAdditionalTeachers):
                 return self._skip(
