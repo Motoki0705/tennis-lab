@@ -216,9 +216,21 @@ def pr_findings(result: Mapping[str, Any], n: int) -> list[dict[str, Any]]:
     return [*pr["findings"], *(f for f in result["cross_findings"] if n in f["prs"])]
 
 
-def evidence(value: Any) -> dict[str, str]:
-    data = exact(value, {"ci", "regression_tests", "resolution"})
-    return {key: nonempty(text, key) for key, text in data.items()}
+def path_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError("paths must be a list")
+    paths = [path_value(path) for path in value]
+    if paths != sorted(set(paths)):
+        raise ValueError("paths must be unique and sorted")
+    return paths
+
+
+def evidence(value: Any) -> dict[str, Any]:
+    data = exact(value, {"ci", "regression_tests", "resolution", "reviewed_paths"})
+    for key in ("ci", "regression_tests", "resolution"):
+        nonempty(data[key], key)
+    path_list(data["reviewed_paths"])
+    return data
 
 
 def validate_result(value: Any) -> dict[str, Any]:
@@ -347,13 +359,56 @@ def validate_resolution(value: Any) -> dict[str, Any]:
     hex_value(data["reviewed_head"], 40)
     hex_value(data["result_sha256"], 64)
     hex_value(data["fix_diff_sha256"], 64)
-    paths = data["changed_paths"]
-    if not isinstance(paths, list) or paths != sorted(set(paths)):
-        raise ValueError("invalid fix paths")
-    for path in paths:
-        path_value(path)
-    evidence(data["evidence"])
+    paths = path_list(data["changed_paths"])
+    if evidence(data["evidence"])["reviewed_paths"] != paths:
+        raise ValueError("fix paths differ from the parent's reviewed paths")
     return data
+
+
+@dataclass(frozen=True)
+class BaseAdvance:
+    """One first-parent step authenticated by GitHub's merged PR and real git.
+
+    Construct with review_workspace.verify_base_advances, not PR-supplied data.
+    A member of this run must explain *every* step between the two base tips.
+    """
+
+    pr: int
+    base_ref: str
+    before_sha: str
+    after_sha: str
+
+
+def base_advance_covered(
+    original: Mapping[str, Any],
+    latest: Mapping[str, Any],
+    reviewed: Mapping[int, Mapping[str, Any]],
+    advances: Sequence[BaseAdvance],
+) -> bool:
+    if original["base_ref"] != latest["base_ref"]:
+        return False
+    tip = original["base_sha"]
+    seen: set[int] = set()
+    while tip != latest["base_sha"]:
+        steps = {
+            step
+            for step in advances
+            if step.before_sha == tip and step.base_ref == original["base_ref"]
+        }
+        if len(steps) != 1:
+            return False
+        step = steps.pop()
+        if (
+            step.pr == original["number"]
+            or step.pr in seen
+            or step.pr not in reviewed
+            or reviewed[step.pr]["base_ref"] != step.base_ref
+            or step.before_sha == step.after_sha
+        ):
+            return False
+        seen.add(step.pr)
+        tip = step.after_sha
+    return True
 
 
 @dataclass(frozen=True)
@@ -368,17 +423,32 @@ def evaluate_coverage(
     current: Sequence[Mapping[str, Any]],
     resolutions: Sequence[Mapping[str, Any]],
     changed_paths: Mapping[int, Sequence[str]],
+    *,
+    fix_diff_digests: Mapping[int, str],
+    base_advances: Sequence[BaseAdvance] = (),
 ) -> Coverage:
     """Gate boundary: no I/O or reviewer calls. Every deviation fails closed.
 
     changed_paths is the *actual* reviewed-head..current-head git diff (including
-    deletes/rename sources). Resolutions count only for the exact latest snapshot.
-    Unresolved findings are separate from coverage so the gate can report both.
+    deletes/rename sources), and fix_diff_digests hashes that same full binary diff.
+    Only verified peer merges may advance a snapshot's base tip; all other fields
+    must match the reviewed or explicitly resolved snapshot. Unresolved findings
+    are separate from coverage so the gate can report both.
     """
     validate_result(dict(result))
     request = request_manifest(result["request"], instructed=False)
     old = {p["number"]: p for p in request["prs"]}
     now = {p["number"]: p for p in snapshots(list(current))} if current else {}
+    for step in base_advances:
+        number(step.pr)
+        nonempty(step.base_ref, "base_ref")
+        hex_value(step.before_sha, 40)
+        hex_value(step.after_sha, 40)
+    valid_resolutions = [
+        validate_resolution(dict(record))
+        for record in resolutions
+        if record.get("kind") == "resolution"
+    ]
     reasons: list[str] = []
     unresolved: list[tuple[int, str]] = []
     if result.get("status") != "succeeded":
@@ -393,36 +463,34 @@ def evaluate_coverage(
         if n not in now:
             continue
         latest = now[n]
-        for key in ("base_ref", "base_sha", "merge_base_sha", "branch"):
+        for key in ("base_ref", "merge_base_sha", "branch"):
             if original[key] != latest[key]:
                 reasons.append(f"pr_{n}_{key}_changed")
+        if not base_advance_covered(original, latest, old, base_advances):
+            reasons.append(f"pr_{n}_base_sha_changed")
         all_findings = pr_findings(result, n)
         resolved = set()
-        for record in resolutions:
-            if record.get("kind") == "resolution":
-                validate_resolution(dict(record))
+        for record in valid_resolutions:
+            fixed = record["fixed_snapshot"]
             if (
-                record.get("kind") != "resolution"
-                or record.get("review_run_id") != result["review_run_id"]
+                record.get("review_run_id") != result["review_run_id"]
                 or record.get("result_sha256") != digest(result)
                 or record.get("pr") != n
                 or record.get("parent_issue") != request["parent_issue"]
-                or record.get("fixed_snapshot") != latest
+                or any(fixed[k] != latest[k] for k in SNAPSHOT_KEYS - {"base_sha"})
+                or not base_advance_covered(fixed, latest, old, base_advances)
                 or record.get("reviewed_head") != original["head_sha"]
                 or record.get("finding") not in {f["id"] for f in all_findings}
             ):
                 continue
-            evidence(record["evidence"])
             if record.get("changed_paths") != sorted(set(changed_paths.get(n, []))):
                 continue
-            hex_value(record.get("fix_diff_sha256"), 64)
+            if record["fix_diff_sha256"] != fix_diff_digests.get(n):
+                continue
             resolved.add(record["finding"])
         unresolved.extend((n, f["id"]) for f in all_findings if f["id"] not in resolved)
-        if original != latest:
-            if not resolved:
-                reasons.append(f"pr_{n}_unverified_head")
-            allowed = {f["path"] for f in all_findings if f["path"] is not None}
-            paths = changed_paths.get(n)
-            if paths is None or not paths or not set(paths) <= allowed:
-                reasons.append(f"pr_{n}_outside_finding_paths")
+        if not resolved and any(
+            original[k] != latest[k] for k in ("head_sha", "diff_sha256")
+        ):
+            reasons.append(f"pr_{n}_unverified_head")
     return Coverage(not reasons, tuple(reasons), tuple(unresolved))

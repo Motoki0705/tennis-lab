@@ -927,15 +927,16 @@ def test_issue_body_metadata_and_existing_evidence_survive_updates(
     assert "<!-- parent-task:v1" in actual
 
 
-def review_setup(p: ParentEnv) -> list[int]:
+def review_setup(p: ParentEnv, *, independent: bool = False) -> list[int]:
     p.agreed()
     state = p.state()
     state["prs"] = []
     for i in range(3):
         p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
-        (worktree / "change.txt").write_text(f"new {i}\n")
-        run_git(worktree, "add", "change.txt")
+        filename = f"change-{i}.txt" if independent else "change.txt"
+        (worktree / filename).write_text(f"new {i}\n")
+        run_git(worktree, "add", filename)
         run_git(worktree, "commit", "-m", f"child {i}")
         state["prs"].append(
             p.pr(100 + i, 10 + i, run_git(worktree, "rev-parse", "HEAD"))
@@ -1342,14 +1343,12 @@ class ReviewEnv:
         self.output.write_text(json.dumps(data))
 
 
-@pytest.fixture
-def review_env(parent_env: ParentEnv) -> ReviewEnv:
-    p = parent_env
+def make_review_env(p: ParentEnv, *, independent: bool = False) -> ReviewEnv:
     # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
     (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
-    selected = review_setup(p)
+    selected = review_setup(p, independent=independent)
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(
@@ -1387,6 +1386,11 @@ def review_env(parent_env: ParentEnv) -> ReviewEnv:
     calls = p.root / "review-calls.jsonl"
     calls.touch()
     return ReviewEnv(p, request, request_path, fake, output, calls)
+
+
+@pytest.fixture
+def review_env(parent_env: ParentEnv) -> ReviewEnv:
+    return make_review_env(parent_env)
 
 
 def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
@@ -1643,7 +1647,7 @@ def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
     assert len(r.calls()) == 2
 
 
-def test_fix_push_and_resolution_do_not_run_codex_again(
+def test_fix_and_regression_test_push_are_resolved_without_codex_again(
     review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     r = review_env
@@ -1651,7 +1655,12 @@ def test_fix_push_and_resolution_do_not_run_codex_again(
     result = json.loads(r.run().stdout)["result"]
     worktree = r.p.repo / ".claude/worktrees/pr-0"
     (worktree / "change.txt").write_text("fixed\n")
-    run_git(worktree, "add", "change.txt")
+    (worktree / "tests").mkdir()
+    (worktree / "tests/test_change.py").write_text(
+        "# Regression for the boundary condition\n"
+    )
+    paths = ["change.txt", "tests/test_change.py"]
+    run_git(worktree, "add", ".")
     run_git(worktree, "commit", "-m", "fix blocker and cross finding")
     head = run_git(worktree, "rev-parse", "HEAD")
     state = r.p.state()
@@ -1662,6 +1671,7 @@ def test_fix_push_and_resolution_do_not_run_codex_again(
             "ci": "必須CIすべて通過、head=" + head,
             "regression_tests": "回帰テスト4件成功",
             "resolution": "指摘の再現条件が解消したことを差分とテストで確認。",
+            "reviewed_paths": paths,
         }
     )
     args = (
@@ -1689,7 +1699,9 @@ def test_fix_push_and_resolution_do_not_run_codex_again(
     assert len(resolutions) == 2
     assert {x["finding"] for x in resolutions} == {"pr-100-1", "cross-1"}
     assert all(
-        x["fixed_snapshot"]["head_sha"] == head and x["changed_paths"] == ["change.txt"]
+        x["fixed_snapshot"]["head_sha"] == head
+        and x["changed_paths"] == paths
+        and x["evidence"]["reviewed_paths"] == paths
         for x in resolutions
     )
     latest = [
@@ -1697,13 +1709,302 @@ def test_fix_push_and_resolution_do_not_run_codex_again(
     ]
     # Use the recomputed diff, not a hand-edited snapshot, to exercise the gate boundary.
     latest[0] = resolutions[0]["fixed_snapshot"]
+    monkeypatch.chdir(r.p.repo)
+    inputs = importlib.import_module("review_workspace")
+    fix_digest = hashlib.sha256(
+        inputs.full_diff(r.request["prs"][0]["head_sha"], head)
+    ).hexdigest()
+    assert fix_digest == resolutions[0]["fix_diff_sha256"]
     coverage = policy.evaluate_coverage(
-        result, latest, resolutions, {100: ["change.txt"]}
+        result,
+        latest,
+        resolutions,
+        {100: paths},
+        fix_diff_digests={100: fix_digest},
     )
     assert coverage.covered
     assert coverage.unresolved == ((101, "cross-1"),)
     assert all((100, f) not in coverage.unresolved for f in ("cross-1", "pr-100-1"))
     r.run(ok=False)  # historical run is not approval for the pushed head
+    assert len(r.calls()) == 1
+
+
+@pytest.mark.parametrize(
+    "case", ["missing_path", "missing_declaration", "empty_reason"]
+)
+def test_resolve_rejects_unconfirmed_fix_scope_before_publication(
+    review_env: ReviewEnv, case: str
+) -> None:
+    r = review_env
+    r.with_findings()
+    r.run()
+    worktree = r.p.repo / ".claude/worktrees/pr-0"
+    (worktree / "change.txt").write_text("fixed\n")
+    (worktree / "unconfirmed.txt").write_text("extra change\n")
+    run_git(worktree, "add", ".")
+    run_git(worktree, "commit", "-m", "fix with extra file")
+    head = run_git(worktree, "rev-parse", "HEAD")
+    state = r.p.state()
+    state["prs"][0]["head"]["sha"] = head
+    r.p.save(state)
+    proof: dict[str, Any] = {
+        "ci": "CI成功 head=" + head,
+        "regression_tests": "回帰テスト成功",
+        "resolution": "修正差分を確認",
+        "reviewed_paths": ["change.txt", "unconfirmed.txt"],
+    }
+    if case == "missing_path":
+        proof["reviewed_paths"] = ["change.txt"]
+    elif case == "missing_declaration":
+        del proof["reviewed_paths"]
+    else:
+        proof["resolution"] = " "
+    before = r.comments(1), r.comments(100)
+    r.cli(
+        "resolve",
+        "--run",
+        r.request["review_run_id"],
+        "--pr",
+        "100",
+        "--finding",
+        "pr-100-1",
+        "--fixed-head",
+        head,
+        "--evidence",
+        r.p.spec(proof),
+        ok=False,
+    )
+    assert (r.comments(1), r.comments(100)) == before
+    assert not list(r.run_dir.glob("resolution-*.json"))
+    assert len(r.calls()) == 1
+
+
+def test_sequential_peer_merges_reuse_one_review_run(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = make_review_env(parent_env, independent=True)
+    result = json.loads(r.run().stdout)["result"]
+    assert result["verdict"] == "approve"
+    policy = review_policy_module(monkeypatch)
+    inputs = importlib.import_module("review_workspace")
+    snapshot = importlib.import_module("parent.snapshot").snapshot
+    monkeypatch.chdir(r.p.repo)
+    state = r.p.state()
+    merged = []
+    for index in (0, 1):
+        pr = state["prs"][index]
+        run_git(
+            r.p.repo,
+            "merge",
+            "--no-ff",
+            "-m",
+            f"merge PR {pr['number']}",
+            pr["head"]["sha"],
+        )
+        tip = run_git(r.p.repo, "rev-parse", "HEAD")
+        pr.update(state="closed", merged=True, merge_commit_sha=tip)
+        merged.append(pr)
+        remaining = []
+        current = []
+        for i, raw in enumerate(state["prs"]):
+            if i <= index:
+                current.append(r.request["prs"][i])
+            else:
+                raw["base"]["sha"] = tip
+                entry, _ = snapshot(raw)
+                remaining.append(entry)
+                current.append(entry)
+                assert all(
+                    entry[k] == r.request["prs"][i][k]
+                    for k in ("head_sha", "merge_base_sha", "diff_sha256")
+                )
+        advances = inputs.verify_base_advances(result, remaining, merged)
+        assert len(advances) == index + 1
+        coverage = policy.evaluate_coverage(
+            result, current, [], {}, fix_diff_digests={}, base_advances=advances
+        )
+        assert coverage.covered and not coverage.unresolved
+        assert not policy.evaluate_coverage(
+            result, current, [], {}, fix_diff_digests={}
+        ).covered
+    assert len(r.calls()) == 1
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "missing_merge",
+        "unmerged",
+        "foreign_pr",
+        "wrong_base",
+        "wrong_repo",
+        "wrong_branch",
+        "unknown_commit",
+        "rewind",
+    ],
+)
+def test_base_advance_requires_github_merge_and_complete_git_history(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    r = make_review_env(parent_env, independent=True)
+    result = json.loads(r.run().stdout)["result"]
+    review_policy_module(monkeypatch)
+    inputs = importlib.import_module("review_workspace")
+    snapshot = importlib.import_module("parent.snapshot").snapshot
+    monkeypatch.chdir(r.p.repo)
+    state = r.p.state()
+    peer, target = state["prs"][:2]
+    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge PR 100", peer["head"]["sha"])
+    tip = run_git(r.p.repo, "rev-parse", "HEAD")
+    peer.update(state="closed", merged=True, merge_commit_sha=tip)
+    target["base"]["sha"] = tip
+    evidence = [peer]
+    if case == "missing_merge":
+        evidence = []
+    elif case == "unmerged":
+        peer["merged"] = False  # merge_commit_sha alone may be a GitHub test merge.
+    elif case == "foreign_pr":
+        peer["number"] = 999
+    elif case == "wrong_base":
+        peer["base"]["ref"] = "other"
+    elif case == "wrong_repo":
+        peer["base"]["repo"]["full_name"] = "other/repo"
+    elif case == "wrong_branch":
+        peer["head"]["ref"] = "codex/other"
+    elif case == "unknown_commit":
+        (r.p.repo / "unreviewed.txt").write_text("unexpected base change\n")
+        run_git(r.p.repo, "add", "unreviewed.txt")
+        run_git(r.p.repo, "commit", "-m", "unexplained commit after the merge")
+        target["base"]["sha"] = run_git(r.p.repo, "rev-parse", "HEAD")
+    else:
+        target["base"]["sha"] = run_git(
+            r.p.repo, "rev-parse", r.request["prs"][1]["base_sha"] + "^"
+        )
+    current, _ = snapshot(target)
+    with pytest.raises(ValueError):
+        inputs.verify_base_advances(result, [current], evidence)
+    assert len(r.calls()) == 1
+
+
+def test_resolve_after_peer_merge_keeps_explicit_fix_coverage(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    r = make_review_env(parent_env, independent=True)
+    output = json.loads(r.output.read_text())
+    output["verdict"] = "request_changes"
+    output["prs"][1]["findings"] = [
+        {
+            "severity": "major",
+            "path": "change-1.txt",
+            "line": 1,
+            "rule": "境界条件",
+            "detail": "回帰テストを伴う修正が必要",
+        }
+    ]
+    r.output.write_text(json.dumps(output))
+    result = json.loads(r.run().stdout)["result"]
+    state = r.p.state()
+    peer, target = state["prs"][:2]
+    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge PR 100", peer["head"]["sha"])
+    tip = run_git(r.p.repo, "rev-parse", "HEAD")
+    peer.update(state="closed", merged=True, merge_commit_sha=tip)
+    for raw in state["prs"][1:]:
+        raw["base"]["sha"] = tip
+    worktree = r.p.repo / ".claude/worktrees/pr-1"
+    (worktree / "change-1.txt").write_text("fixed boundary\n")
+    (worktree / "test_change.py").write_text("# Boundary regression\n")
+    run_git(worktree, "add", ".")
+    run_git(worktree, "commit", "-m", "fix with regression")
+    head = run_git(worktree, "rev-parse", "HEAD")
+    target["head"]["sha"] = head
+    r.p.save(state)
+    paths = ["change-1.txt", "test_change.py"]
+    proof = r.p.spec(
+        {
+            "ci": "CI成功 head=" + head,
+            "regression_tests": "境界回帰テスト成功",
+            "resolution": "修正と境界回帰テストの差分を確認",
+            "reviewed_paths": paths,
+        }
+    )
+    fixed = json.loads(
+        r.cli(
+            "resolve",
+            "--run",
+            r.request["review_run_id"],
+            "--pr",
+            "101",
+            "--finding",
+            "pr-101-1",
+            "--fixed-head",
+            head,
+            "--evidence",
+            proof,
+        ).stdout
+    )
+    assert fixed["coverage"]["covered"] and not fixed["coverage"]["unresolved"]
+    policy = review_policy_module(monkeypatch)
+    inputs = importlib.import_module("review_workspace")
+    snapshot = importlib.import_module("parent.snapshot").snapshot
+    monkeypatch.chdir(r.p.repo)
+    latest = [r.request["prs"][0], *(snapshot(raw)[0] for raw in state["prs"][1:])]
+    advances = inputs.verify_base_advances(result, latest[1:], [peer])
+    record = fixed["resolution"]
+    actual_digest = hashlib.sha256(
+        inputs.full_diff(record["reviewed_head"], head)
+    ).hexdigest()
+    coverage = policy.evaluate_coverage(
+        result,
+        latest,
+        [record],
+        {101: paths},
+        fix_diff_digests={101: actual_digest},
+        base_advances=advances,
+    )
+    assert coverage.covered and not coverage.unresolved
+    assert len(r.calls()) == 1
+
+
+def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
+    parent_env: ParentEnv,
+) -> None:
+    r = make_review_env(parent_env, independent=True)
+    r.with_findings()
+    r.run()
+    state = r.p.state()
+    peer, target = state["prs"][:2]
+    run_git(r.p.repo, "merge", "--no-ff", "-m", "merge peer", target["head"]["sha"])
+    tip = run_git(r.p.repo, "rev-parse", "HEAD")
+    target.update(state="closed", merged=True, merge_commit_sha=tip)
+    worktree = r.p.repo / ".claude/worktrees/pr-0"
+    run_git(worktree, "merge", "--no-ff", "-m", "follow main", tip)
+    head = run_git(worktree, "rev-parse", "HEAD")
+    peer["head"]["sha"] = head
+    peer["base"]["sha"] = tip
+    r.p.save(state)
+    failure = r.cli(
+        "resolve",
+        "--run",
+        r.request["review_run_id"],
+        "--pr",
+        "100",
+        "--finding",
+        "pr-100-1",
+        "--fixed-head",
+        head,
+        "--evidence",
+        r.p.spec(
+            {
+                "ci": "成功",
+                "regression_tests": "成功",
+                "resolution": "main追従を確認",
+                "reviewed_paths": ["change-1.txt"],
+            }
+        ),
+        ok=False,
+    )
+    assert "a new explicit review is required" in failure.stderr
+    assert not list(r.run_dir.glob("resolution-*.json"))
     assert len(r.calls()) == 1
 
 
