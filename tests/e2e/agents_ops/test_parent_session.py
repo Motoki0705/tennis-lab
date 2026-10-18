@@ -972,25 +972,40 @@ def test_issue_body_metadata_and_existing_evidence_survive_updates(
     assert "<!-- parent-task:v1" in actual
 
 
-def review_setup(p: ParentEnv, *, independent: bool = False) -> list[int]:
+def review_setup(
+    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+) -> list[int]:
+    if standalone:
+        state = p.state()
+        state["issues"]["1"].update(
+            title="人間が作成した単独タスク",
+            labels=[{"name": "bug"}],
+            body="## 目的\n単独タスクを実装する。\n\n## 完了条件\n回帰テストが通る。\n",
+        )
+        p.save(state)
     p.agreed()
     state = p.state()
     state["prs"] = []
-    for i in range(3):
-        p.child(f"child-{i}")
+    for i in range(1 if standalone else 3):
+        if not standalone:
+            p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
         filename = f"change-{i}.txt" if independent else "change.txt"
         (worktree / filename).write_text(f"new {i}\n")
         run_git(worktree, "add", filename)
         run_git(worktree, "commit", "-m", f"child {i}")
         state["prs"].append(
-            p.pr(100 + i, 10 + i, run_git(worktree, "rev-parse", "HEAD"))
+            p.pr(
+                100 + i,
+                1 if standalone else 10 + i,
+                run_git(worktree, "rev-parse", "HEAD"),
+            )
         )
     # Read the current issue/comments state, then replace PRs only.
     current = p.state()
     current["prs"] = state["prs"]
     p.save(current)
-    return [100, 101, 102]
+    return [pr["number"] for pr in state["prs"]]
 
 
 @pytest.mark.parametrize(
@@ -1389,12 +1404,14 @@ class ReviewEnv:
         self.output.write_text(json.dumps(data))
 
 
-def make_review_env(p: ParentEnv, *, independent: bool = False) -> ReviewEnv:
+def make_review_env(
+    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+) -> ReviewEnv:
     # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
     (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
-    selected = review_setup(p, independent=independent)
+    selected = review_setup(p, independent=independent, standalone=standalone)
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(

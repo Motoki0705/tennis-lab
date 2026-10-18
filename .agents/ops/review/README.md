@@ -213,7 +213,9 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
 - 親の公開review状態が `fixes_verified` または `complete`。結果受領だけ・修正中・中断・
   `needs-human` label（親/子/PR）・子の停止/依存保留ではmergeしない。
-  再合意（同じ内容でも）・引継ぎ後に古い確認を流用しない。親issue全体の完了は要求しない。
+  runの合意digest・担当generationを照合し、無関係な後続の提案合意や同じ合意内容の再記録では
+  既存の確認と共有基盤の許可を失効させない。親全体の明示的な `checking`、合意内容の変更、
+  引継ぎ後は古い確認を流用しない。親issue全体の完了は要求しない。
 - #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
   他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
   merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
@@ -237,8 +239,11 @@ base履歴を検証できないPRには `base_advance_unverified` とcoverageの
 merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate stateへ保存する。
 この試行記録の `snapshot` に確認済みhead/base/merge-base/diff/ref/branchを保存し、次回の明示実行でも保持する。
 同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
-remoteがmerge済みなら二重mergeせず、子のclosing完了を確認する。
-merge直後もremoteのmergeと子のclosed/completedを確認し、既存の `reconcile` / `sync_progress` へ接続する。
+remoteがmerge済みなら二重mergeせず、対象issueのclosing完了を確認する。
+収集・割当照合・完了確認の対象はreview-prepare/collectと同じで、直属子があれば子、
+子のない単独issueではそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+merge直後もremoteのmergeと対象issueのclosed/completedを確認する。子のある親だけ既存の
+`reconcile` / `sync_progress` へ接続し、単独issueの本文を親用進捗へ書き換えない。
 未close・確認不能は `merge_unconfirmed` として残す。親がGitHubとjournalを照合して復旧する。
 旧試行記録を削除しての自動再試行はしない。
 
