@@ -20,6 +20,7 @@ from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
     MergeInput,
     MergeResult,
+    authorization_revoked,
     auto_merge,
     confirmed_state,
     dependency_order,
@@ -87,13 +88,14 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
     if len({p["number"] for p in pulls}) != len(pulls):
         raise ValueError("duplicate PR records from GitHub")
     targets = {p["number"]: p for p in request["prs"]} if request else {}
+    issue_targets = set(children) or {parent.number}
     candidates = sorted(
         set(targets)
         | {
             p["number"]
             for p in pulls
             if p["state"] == "open"
-            and closing_issues(p.get("body") or "", session.gh.repo) & set(children)
+            and closing_issues(p.get("body") or "", session.gh.repo) & issue_targets
         }
     )
     details, snapshots, paths, fix_paths, fix_hashes = {}, [], {}, {}, {}
@@ -330,15 +332,16 @@ def completion(
 ) -> tuple[str, ...]:
     if not pr.get("merged_at"):
         return ("merge_not_confirmed",)
-    _, children = session.family()
-    linked = closing_issues(pr.get("body") or "", session.gh.repo) & set(children)
+    parent, children = session.family()
+    issue_targets = set(children) or {parent.number}
+    linked = closing_issues(pr.get("body") or "", session.gh.repo) & issue_targets
     if not linked:
         return ("merged_pr_child_missing",)
     for child in sorted(linked):
         raw = session.gh.issue(child)
         if raw["state"] != "closed" or raw.get("state_reason") != "completed":
             return (f"child_{child}_close_not_confirmed",)
-    if write:
+    if write and children:
         # Parent progress is derived from GitHub, never from the merge command's exit.
         session.reconcile()
         session.sync_progress()
@@ -460,7 +463,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
             # No reuse of the pre-merge collection for any remaining PR.
             if made_progress:
                 break
-        if not made_progress:
+        if not made_progress or not view.children:
             break
     return {
         "parent": session.parent,
@@ -486,8 +489,9 @@ def record_permission(
     history = session.history()
     prior = [e for e in history if e["event"] == "merge_permission"]
     recent: list[dict[str, Any]] = []
+    auth = authorization(session)
     for event in history:
-        if event["event"] in {"checking", "agreed"}:
+        if authorization_revoked(event, auth):
             recent = []
         elif event["event"] == "merge_permission":
             recent.append(event)
@@ -495,7 +499,7 @@ def record_permission(
         "event": "merge_permission",
         "review_run_id": request["review_run_id"],
         "request_sha256": digest(request),
-        **authorization(session),
+        **auth,
         "allow_shared_foundation": allowed,
         "evidence": evidence,
     }

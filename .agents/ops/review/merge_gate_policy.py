@@ -109,16 +109,23 @@ def publication_errors(
     return tuple(errors)
 
 
+def authorization_revoked(event: Mapping[str, Any], auth: Mapping[str, Any]) -> bool:
+    return event.get("event") == "checking" or (
+        event.get("event") == "agreed"
+        and event.get("agreement_sha256") != auth["agreement_sha256"]
+    )
+
+
 def confirmed_state(
     history: Sequence[Mapping[str, Any]],
     request: Mapping[str, Any],
     auth: Mapping[str, Any],
 ) -> str | None:
-    """A new agreement, including one with the same digest, invalidates old evidence."""
-    agreed_at = max(
-        (i for i, e in enumerate(history) if e.get("event") == "agreed"), default=-1
+    """Preserve this run's authorization unless its agreement or owner is revoked."""
+    revoked_at = max(
+        (i for i, e in enumerate(history) if authorization_revoked(e, auth)), default=-1
     )
-    recent = history[agreed_at + 1 :]
+    recent = history[revoked_at + 1 :]
     relevant = [
         e
         for e in recent
@@ -141,7 +148,7 @@ def shared_permission(
     history = events(comments, login, request["parent_issue"])
     latest = None
     for event in history:
-        if event["event"] in {"checking", "agreed"}:
+        if authorization_revoked(event, auth):
             latest = None
         if event["event"] != "merge_permission":
             continue
@@ -260,11 +267,12 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             reasons.append("author_unknown")
     except AuthorConflictError:
         reasons.append("author_conflict")
-    linked = closing_issues(pr.get("body") or "", gate.repo) & set(gate.children)
+    targets = set(gate.children) or {gate.parent_issue}
+    linked = closing_issues(pr.get("body") or "", gate.repo) & targets
     if not linked:
         reasons.append("not_direct_child_pr")
     states = progress(gate.children, gate.tasks)
-    for child in sorted(linked):
+    for child in sorted(linked & set(gate.children)):
         needs_human |= "needs-human" in gate.children[child].labels
         if states[child] != "continue":
             reasons.append(f"child_{child}_{states[child]}")

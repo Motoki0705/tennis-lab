@@ -106,7 +106,9 @@ def gate_env(
     request: pytest.FixtureRequest,
 ) -> GateEnv:
     review_env = make_review_env(
-        parent_env, independent=getattr(request, "param", None) == "independent"
+        parent_env,
+        independent=getattr(request, "param", None) == "independent",
+        standalone=getattr(request, "param", None) == "standalone",
     )
     p = review_env.p
     policy = review_policy_module(monkeypatch)
@@ -164,6 +166,185 @@ def gate_env(
     gate = GateEnv(review_env, policy)
     gate.confirm()
     return gate
+
+
+@pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)
+@pytest.mark.parametrize("close_confirmed", [False, True])
+def test_standalone_issue_review_merge_and_completion(
+    gate_env: GateEnv, close_confirmed: bool
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    body = p.state()["issues"]["1"]["body"]
+    result = json.loads((g.review.run_dir / "result.json").read_text())
+    assert result["prs"][0]["child_issues"] == [1]
+    response = g.cli(
+        "merge", **({} if close_confirmed else {"PARENT_MERGE_SKIP_CLOSE": "1"})
+    )
+    assert response.returncode == (0 if close_confirmed else 1), response.stderr
+    row = g.results(response)[100]
+    assert row["action"] == ("merged" if close_confirmed else "merge_unconfirmed")
+    assert row["reasons"] == (
+        [] if close_confirmed else ["child_1_close_not_confirmed"]
+    )
+    assert p.state()["parents"] == {}
+    assert p.state()["issues"]["1"]["body"] == body
+    assert p.state()["issues"]["1"]["state"] == (
+        "closed" if close_confirmed else "open"
+    )
+    if close_confirmed:
+        assert p.state()["issues"]["1"]["state_reason"] == "completed"
+    g.cli("merge")  # Closed parent or existing merge: never issue a second merge.
+    assert len(g.merge_calls()) == len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)
+def test_unreviewed_standalone_pr_is_collected_and_blocked(gate_env: GateEnv) -> None:
+    g, p = gate_env, gate_env.review.p
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    data = json.loads(registry.read_text())
+    data["parents"]["o/r#1"]["reviews"] = []
+    registry.write_text(json.dumps(data))
+    response = g.cli("merge")
+    assert response.returncode == 1, response.stderr
+    rows = json.loads(response.stdout)["results"]
+    assert [r["pr"] for r in rows] == [100]
+    assert "parent_review_missing" in rows[0]["reasons"]
+    assert g.merge_calls() == []
+
+
+@pytest.mark.parametrize(
+    "change", ["same_agreement", "changed_agreement", "checking", "generation"]
+)
+def test_review_authorization_survives_only_unrelated_agreement_records(
+    gate_env: GateEnv, change: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    policy = importlib.import_module("parent.policy")
+    agreed = next(
+        e
+        for e in policy.events(state["comments"]["1"], "operator", 1)
+        if e["event"] == "agreed"
+    )
+    agreed.pop("body")
+    if change == "changed_agreement":
+        agreed["agreement"]["scope"] = "既存作業にも関係する新しい範囲"
+        agreed["agreement_sha256"] = policy.digest(agreed["agreement"])
+    elif change == "checking":
+        p.agreed()  # Explicit checking revokes old evidence even with the same digest.
+        state = p.state()
+    elif change == "generation":
+        registry = (
+            Path(p.env["XDG_STATE_HOME"])
+            / "tennis-lab-agents/parent-sessions/registry.json"
+        )
+        data = json.loads(registry.read_text())
+        data["parents"]["o/r#1"]["generation"] += 1
+        registry.write_text(json.dumps(data))
+    state["comments"]["1"].append(
+        {"id": 9999, "user": {"login": "operator"}, "body": policy.marker(agreed)}
+    )
+    p.save(state)
+    response = g.cli("merge", AGENT_AUTO_MERGE="0")
+    rows = g.results(response)
+    if change == "same_agreement":
+        assert all(r["decision"] == "merge" for r in rows.values())
+    else:
+        assert all(r["decision"] != "merge" for r in rows.values())
+        assert "parent_review_not_confirmed" in rows[100]["reasons"]
+    assert len(g.review.calls()) == 1
+    assert g.merge_calls() == []
+
+
+@pytest.mark.skipif(
+    not (OPS / "parent/proposals.py").exists(),
+    reason="Proposal delivery is supplied by #1223; exercised when the two branches are integrated.",
+)
+@pytest.mark.parametrize("gate_env", ["shared"], indirect=True)
+@pytest.mark.parametrize("proposal_state", ["pending", "agreed", "parent_checking"])
+def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
+    gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch, proposal_state: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    assert (
+        g.cli(
+            "shared-permission",
+            "--allow-shared-foundation",
+            "--evidence-file",
+            p.note("人間との合意: 既存の共有基盤変更を親がmergeしてよい。"),
+        ).returncode
+        == 0
+    )
+    monkeypatch.syspath_prepend(str(OPS / "ops-report"))
+    proposals = importlib.import_module("opsreport.proposals")
+    prop = proposals.Proposal(
+        section="その他の助言",
+        title="独立した追加提案B",
+        evidence="使用感",
+        purpose="次の改善",
+        scope="既存Aとは独立",
+        expected_effect="保守性",
+        acceptance=("回帰テストで確認",),
+        related_parent=1,
+    )
+    markdown, _ = proposals.render_proposals([prop], "20261012")
+    state = p.state()
+    state["issues"]["90"] = {
+        **state["issues"]["1"],
+        "number": 90,
+        "id": 10090,
+        "title": "運用レポート",
+        "labels": [{"name": "ops-report"}],
+        "body": "<!-- ops-report:v2 slot=20261012 since=2026-10-09T00:00:00+00:00 until=2026-10-12T00:00:00+00:00 proposals=1 status=complete -->\n"
+        + proposals.PROPOSALS_BEGIN
+        + "\n"
+        + markdown.replace("- [ ] **", "- [x] **")
+        + proposals.PROPOSALS_END
+        + "\n",
+    }
+    for pr in state["prs"][1:]:
+        pr["statusCheckRollup"] = []
+    p.save(state)
+    p.cli("receive-proposal", "--report", "90", "--proposal", "R-20261012-01")
+    status = json.loads(p.cli("status").stdout)
+    assert status["phase"] == "要件合意済み"
+    assert status["proposal_agreements"] == []
+    if proposal_state == "agreed":
+        p.cli(
+            "agree",
+            "--report",
+            "90",
+            "--proposal",
+            "R-20261012-01",
+            "--spec",
+            p.spec(
+                {
+                    "purpose": "Bの目的",
+                    "scope": "Aには影響しないBの範囲",
+                    "behavior": "Bの期待動作",
+                    "acceptance": "Bの回帰テスト",
+                    "human_confirmation": "Bの要件で合意します。",
+                }
+            ),
+        )
+        assert len(json.loads(p.cli("status").stdout)["proposal_agreements"]) == 1
+    elif proposal_state == "parent_checking":
+        p.cli("checking")
+    response = g.cli("merge")
+    if proposal_state == "parent_checking":
+        assert response.returncode == 2
+        assert g.merge_calls() == []
+    else:
+        rows = g.results(response)
+        assert rows[100]["action"] == "merged"
+        assert rows[100]["shared_exemption"]["allow_shared_foundation"] is True
+        assert [c[2] for c in g.merge_calls()] == ["100"]
+    assert (
+        len(g.review.calls()) == 1
+    )  # Receive, agreement and merge never launch a review.
 
 
 def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) -> None:
