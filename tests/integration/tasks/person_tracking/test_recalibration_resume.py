@@ -62,6 +62,37 @@ def test_only_committed_whole_cameras_are_reused(resume: ModuleType, tmp_path: P
     assert resume.verify_completed(plan, final, 'new')[0] == records
 
 
+@pytest.mark.parametrize('consumer', ['resume', 'completed'])
+def test_cached_v2_features_require_migration_without_reuse_or_rewrite(
+    resume: ModuleType, tmp_path: Path, consumer: str,
+) -> None:
+    plan, _ = fixture(tmp_path)
+    progress_path = Path(plan['resume']['source_progress']['path'])
+    progress = json.loads(progress_path.read_text())
+    # Pin a new manifest instead of relying on filesystem timestamp granularity
+    # to invalidate the cached identity of an in-place, same-sized JSON edit.
+    progress_path = tmp_path / 'v2-progress.json'
+    feature = Path(progress['records']['complete']['path'])
+    with np.load(feature, allow_pickle=False) as archive:
+        arrays = {name: archive[name] for name in archive.files if name != 'score_origin'}
+    metadata = json.loads(arrays['metadata'].item())
+    metadata['schema'] = 'person_detection_features_v2'
+    arrays['metadata'] = np.asarray(json.dumps(metadata))
+    np.savez_compressed(feature, **arrays)
+    progress['records']['complete'].update(file_identity(feature), bytes=feature.stat().st_size)
+    progress_path.write_text(json.dumps(progress))
+    plan['resume']['source_progress'] = file_identity(progress_path)
+    before = {path: path.read_bytes() for path in tmp_path.iterdir()}
+
+    with pytest.raises(ValueError, match='requires explicit migration'):
+        if consumer == 'resume':
+            resume.resume_records(plan)
+        else:
+            resume.verify_completed(plan, progress, plan['resume']['source_plan']['sha256'])
+
+    assert {path: path.read_bytes() for path in tmp_path.iterdir()} == before
+
+
 @pytest.mark.parametrize('change', ['hash', 'identity', 'list', 'timeline', 'rows', 'provenance'])
 def test_resume_stops_instead_of_recomputing_a_mismatch(resume: ModuleType, tmp_path: Path, change: str) -> None:
     plan, _ = fixture(tmp_path)

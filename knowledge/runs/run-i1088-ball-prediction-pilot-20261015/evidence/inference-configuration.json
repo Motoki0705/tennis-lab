@@ -1,0 +1,1 @@
+{"coordinates":"native_pixel_endpoint","decode":"pyav_rgb24_native","device":"cuda","overlap_policy":"nearest_window_center_then_earliest_start","precision":"bfloat16","schema_version":"ball.annotation-inference.v1","stride":16,"window_frames":32}

@@ -13,18 +13,17 @@ import cv2
 import numpy as np
 from omegaconf import OmegaConf
 
-from src.tasks.ball_detection.generate_dataset.frame_store.config import (
-    FrameStoreBuildConfig,
-)
-from src.tennis_scene.chat_annotation.runtime.contracts import (
+from src.tasks.annotation.migration.legacy_format.contracts import (
     Ball,
     BallAnnotation,
     ClipManifest,
-    make_template,
     sha256_file,
-    write_json,
 )
-from src.tennis_scene.chat_annotation.runtime.media import encode_video
+from src.tasks.ball_detection.generate_dataset.frame_store.config import (
+    FrameStoreBuildConfig,
+)
+from src.tasks.base.annotation.media import encode_video
+from tests.support.legacy_annotations import make_template, write_json
 from tests.support.tasks.player_detection.chat_root import write_clip
 
 TRACKNET_SIZE = (64, 48)  # width, height
@@ -168,7 +167,8 @@ def publish_ball_annotation(root: Path, manifest: ClipManifest, balls: dict[int,
 
 
 def ball(status: str, xy: list[float] | None, track: str = "ball_001") -> Ball:
-    return Ball.model_validate({"track_id": track, "center_px": xy, "status": status, "interpolation_frames": None})
+    value: Ball = Ball.model_validate({"track_id": track, "center_px": xy, "status": status, "interpolation_frames": None})
+    return value
 
 
 def write_chat(root: Path) -> ClipManifest:

@@ -9,6 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .store import POINT_KIND_CODES, POINT_KIND_NAMES, BallFrameStore, ClipRecord
+from .teacher_masks import LEGACY
 
 
 @dataclass(frozen=True)
@@ -26,6 +27,7 @@ class AnnotationStates:
     times: NDArray[np.float64]
     boundaries: NDArray[np.bool_]
     events: NDArray[np.uint8]
+    coordinate_mask: NDArray[np.uint8] | None = None
 
     @property
     def visible_observation(self) -> NDArray[np.bool_]:
@@ -37,7 +39,10 @@ class AnnotationStates:
 
     @property
     def supervision(self) -> NDArray[np.bool_]:
-        return self.visible_observation & self.target
+        result = self.visible_observation & self.target
+        if self.coordinate_mask is not None:
+            result &= (self.coordinate_mask == LEGACY) | (self.coordinate_mask == 1)
+        return result
 
     def review_records(self) -> list[dict[str, Any]]:
         records = []
@@ -89,4 +94,5 @@ def annotation_states(store: BallFrameStore, clip: ClipRecord) -> AnnotationStat
     times = (pts - pts[0]).astype(np.float64) * float(Fraction(clip.time_base))
     return AnnotationStates(store.frames['annotated'][rows].copy(), store.frames['is_target'][rows].copy(),
                             counts, kinds, located, occluded, occluded_located, occluded_unlocated, xy, track, times,
-                            store.frames['segment_break'][rows].copy(), store.frames['event'][rows].copy())
+                            store.frames['segment_break'][rows].copy(), store.frames['event'][rows].copy(),
+                            None if store.teacher_masks is None else store.teacher_masks.coordinate[rows].copy())

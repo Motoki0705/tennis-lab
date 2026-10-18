@@ -11,6 +11,7 @@
 - 判断を仰ぐときは、既に答えが出ている事項を聞き直さない。選択肢には、コードを読まずに判断できる説明を付ける。品質確認は動画で見せる。
 - 長時間ジョブは定期的に起きて確かめず、完了・失敗だけを監視して待つ。
 - 古いckptは、指標がknowledgeにあれば削除してよい。
+- 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
 
 ## [environment](environment/index.md) — 環境の癖
 
@@ -21,6 +22,7 @@
 - `src` はカレントディレクトリから import される。worktreeのコードは、worktreeで実行・enqueueしないと使われない。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
+- submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
 
 ## [review](review/index.md) — マージ可否の判断基準
 

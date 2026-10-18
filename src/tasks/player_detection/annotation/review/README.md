@@ -1,0 +1,82 @@
+# Player bbox のレビューと教師採用
+
+`PlayerReviewAdapter` / `PlayerReviewServices` / `PlayerReviewWorker` は共通の
+[RevisionStore](../../../base/annotation/editing/README.md)、native renderer、worker pool・
+service broker・画像入力 telemetry を使う。work 名は `player_bbox_review / v2 / review`。
+production composition への登録、tracking/ID review、pose、dataset publisher はこのモジュールに含まない。
+実運用のラベル定義・採用値は未設定であり、この実装だけで production を有効にしない。
+
+## 固定方針と状態
+
+`PlayerReviewPolicy` は対象選手の定義、bbox の定義、元予測の一括確認可否、対象 frame の
+確認率・解決率、bbox 詳細画像と全画面画像の最低倍率、`observed_only` / 未確認除外を
+すべて明示入力で受け取る。数値や可視領域/amodal 等の意味を本番用の既定値にしない。
+
+revision は全 native frame/PTS と対象範囲を保持し、初期状態は未確認・coverage 不明。
+検出ゼロを負例にしない。画像確認と対象一覧の完全性を別に保存する。
+
+- 各候補は `player / non_player / duplicate / unresolved`。bbox は実観測・推定・未解決を区別する。
+  duplicate は同 frame の残す player を参照する。元候補は全件、確認後の判断に対応付ける。
+- 元候補の observation ID は変更せず、追加は `manual_observation_id(clip_id, frame, manual_id)`。
+  除去は `non_player` / `duplicate` 等の明示的な判断として残し、追加後の観測 ID も黙って落とさない。
+  元予測・古い revision・解消前の note は不変のまま残る。
+- `model_confirmed` は元の bbox・score と完全一致し、方針が許可した実観測のみ。
+  修正・追加・除去は `manual / score_origin=missing / confidence=0`。
+  このゼロは `ScoreOrigin.MISSING` に対応するマスク値であり、追跡時の検出 score として使わない。
+  元 confidence は prediction の参照先に残り、変更後 bbox へ移さない。
+
+## 編集と画像証拠
+
+`replace` は frame hash と判断全体を明示し、修正・追加・除去・保留・note 解消を行う。
+`confirm_predictions` は全候補が正しい対象選手で漏れもない未確認 frame だけに使う。
+元候補が空の frame は `confirm_empty` で別に確認する。候補がある frame を空にするには
+各候補を明示的に除去する。いずれも batch 全体の検証後に CAS で現行版を更新する。
+
+完全な対象一覧・確認済み空 target には全画面が必要。実観測/推定 bbox と除去する直近 bbox は、
+全体が所定倍率の crop 内に必要。全画面の最低倍率と bbox の最低倍率は独立なので、
+全画面と拡大 crop を併用できる。renderer の clip・予測・revision 履歴・描画 bbox を照合する。
+元候補由来・手動追加のいずれの観測も、除去時は同じ観測 ID の直近 bbox を
+revision と編集履歴から取得し、編集時と採用時に詳細倍率・全域包含を検証する。
+修正・再追加・再除去では新しい bbox を使い、未修正の候補だけ元予測 bbox を使う。
+過去 bbox がない除去は証拠不足として拒否する。別 worker の過去の画像だけでは代用できない。
+画像生成のみでは確認にならず、採用時には各判断をした worker に画像 bytes が実際に入力された
+telemetry を照合する。別 attempt の証拠、未提示画像、他 clip、捏造 overlay、古い head を拒否する。
+過去 attempt のモデル情報欠測・不一致や応答 ID 衝突は、handoff と `review_rows` に
+理由付きの `image_proof=missing` として提示する。その担当者の判断は、新しい worker が
+画像を再確認し `replace` で自分の判断として保存するまで採用できない。再確認後も古い
+telemetry の参照を証拠履歴に保持する。ハッシュ不整合や不正参照、完了する現 attempt 自身の
+モデル/応答情報欠測は拒否する。
+
+## 教師採用と後続への引継ぎ
+
+`teacher_rows()` が frame ごとに `positive / negative / ignore` と観測 ID を導出する。
+対象範囲内で確認済み、対象一覧 complete、未解決・blocking note・推定 bbox がない frame のみ
+教師候補になる。対象選手ゼロは負例、それ以外は採用された実観測 bbox を正例にする。
+未確認・不完全な対象一覧・未解決・推定を含む frame は全体を除外し、漏れを負例化しない。
+前後の context frame も教師から除外する。全対象が除外なら保留し、採用しない。
+
+`prepare_adoption()` は全 attempt の証拠・明示 policy・導出 mask を検証して receipt を保存する。
+`seal()` の前までは同じ観測 ID と期待 revision を指定して bbox を修正できる。
+現 worker は完了時に画像証拠・方針・教師候補 mask を検証し、`freeze_for_id_review()` で
+`IdReviewBinding` を返す。`WorkOutcome.adoption` は空のままで、bbox 教師を seal しない。
+binding は context・revision・検証済み bbox review receipt と、全 frame/PTS・frame hash・
+元候補/追加観測 ID を固定する。bbox review receipt はその版の教師候補であり、採用済みを意味しない。
+binding と revision 履歴・画像・telemetry は、後続へ渡す間も active protection で保持する。
+
+`load_id_review_input()` は現行の未 seal 版との一致と観測対応を検証し、修正 bbox・手動追加・
+missing score を保持した `PlayerLabels` を返す。追跡側はここから入力を作り、観測 ID を保持する。
+後続修正は `PlayerEdits.id_review` に binding を指定し、binding の revision を
+`EditCommand.expected_revision` に指定して、通常の `RevisionStore.apply()` へ渡す。
+画像根拠・frame digest・元観測 ID の検証と CAS は通常の編集と共通で、古い binding や
+改変した ID/frame/PTS を拒否する。適用後の新しい版へ古い ID 判断を再利用しない。
+最終版で証拠を再検証して `prepare_adoption()` / `seal()` を行う。
+修正bboxからの[追跡・ID・pose公開](../pose/README.md)はこのbindingを入力とし、
+`finalize_review()` が最終ID判定と教師を保存して入力revisionをsealする。
+production compositionへの全工程登録と、引継ぎ protection の退役は後続工程の責務である。
+
+操作上限と再試行は共通 [review services](../../../base/annotation/workers/review/README.md)、
+worker の手順は [worker instructions](worker-instructions.md) を参照。
+少数 frame の `review_rows` は現行判断と同じ frame の元候補 ID・bbox・score を返すため、
+修正時に全 clip の予測 JSON を worker へ投入する必要はない。
+CPU 試験は合成 VFR 動画、実 renderer と合成 rollout を使う。実テニス映像の品質や
+実 Codex の確認、production 方針値をこの試験で承認したことにはならない。独立 QA は追加しない。

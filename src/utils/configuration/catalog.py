@@ -23,6 +23,7 @@ _CANONICAL_SYNTHETIC_MODULES = frozenset(
         "src.synthetic_data_generation.scripts.run_scene_pipeline",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations",
         "src.synthetic_data_generation.scripts.visualize_dataset",
+        "src.synthetic_data_generation.scripts.visualize_scene_reveal",
     }
 )
 SOURCE_CONTRACT_DECLARATIONS = discover_contract_declarations(_SOURCE_ROOT)
