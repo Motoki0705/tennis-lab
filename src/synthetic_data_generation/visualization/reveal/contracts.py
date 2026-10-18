@@ -339,6 +339,11 @@ class SceneRevealRequest:
             raise ValueError(
                 "work_directory must stay outside the reconstruction workspace."
             )
+        work_directory = self.work_directory.resolve(strict=False)
+        for name in ("output_video", "metadata_path", "stills_directory"):
+            destination = getattr(self, name).resolve(strict=False)
+            if destination.is_relative_to(work_directory):
+                raise ValueError(f"{name} must stay outside work_directory.")
 
     @property
     def metadata_path(self) -> Path:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +34,9 @@ def _request(overrides: list[str] | None = None) -> SceneRevealRequest:
         config = compose(
             config_name="visualize_scene_reveal", overrides=list(overrides or [])
         )
-    return build_scene_reveal_request(config)
+    request = build_scene_reveal_request(config)
+    assert isinstance(request, SceneRevealRequest)
+    return request
 
 
 def test_production_config_builds_a_complete_request() -> None:
@@ -88,6 +91,56 @@ def test_work_directory_must_stay_outside_the_reconstruction(tmp_path: Path) -> 
 def test_executable_must_be_the_public_command_or_absolute() -> None:
     with pytest.raises(ValueError, match="executable"):
         _request(["reveal.nht.executable=bin/nht-render"])
+
+
+@pytest.mark.parametrize("mode", [RevealMode.VIDEO, RevealMode.STILLS])
+@pytest.mark.parametrize(
+    ("output_video", "work_directory", "destination"),
+    [
+        ("work/result.mp4", "work", "output_video"),
+        ("result.mp4", "result.mp4", "output_video"),
+        ("result.mp4", "result.json", "metadata_path"),
+        ("result.mp4", "result", "stills_directory"),
+    ],
+)
+def test_request_rejects_publication_inside_cleanup_directory(
+    tmp_path: Path,
+    mode: RevealMode,
+    output_video: str,
+    work_directory: str,
+    destination: str,
+) -> None:
+    with pytest.raises(ValueError, match=f"{destination} must stay outside work_directory"):
+        replace(
+            _request(),
+            output_video=tmp_path / output_video,
+            work_directory=tmp_path / work_directory,
+            mode=mode,
+            still_times_seconds=(1.0,) if mode is RevealMode.STILLS else (),
+        )
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_request_resolves_publication_symlinks_before_cleanup_validation(
+    tmp_path: Path,
+) -> None:
+    work = tmp_path / "work"
+    work.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(work, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="output_video must stay outside work_directory"):
+        replace(_request(), output_video=alias / "result.mp4", work_directory=work)
+    assert list(work.iterdir()) == []
+
+
+def test_request_accepts_sibling_publication_and_cleanup_directories(tmp_path: Path) -> None:
+    request = replace(
+        _request(),
+        output_video=tmp_path / "work-results" / "result.mp4",
+        work_directory=tmp_path / "work",
+    )
+    assert request.output_video == tmp_path / "work-results" / "result.mp4"
 
 
 def test_distinct_nht_states_are_ordered_by_first_use() -> None:
