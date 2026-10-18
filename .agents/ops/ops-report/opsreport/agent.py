@@ -5,16 +5,15 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
-from . import shell
+from . import memory, shell
 from .proposals import CATEGORIES, PRIORITIES, STALE_PR_OPTIONS, Proposal
 
 AGENT_CHOICES = ("claude", "codex", "alternate")
 PROMPT_PLACEHOLDERS = (
-    "{{WEEK}}",
+    "{{SLOT}}",
     "{{CATEGORIES}}",
     "{{STALE_PRS}}",
     "{{COLLECTED_JSON}}",
@@ -26,19 +25,19 @@ class AgentOutputError(ValueError):
     """The agent's final message does not follow the JSON contract in the prompt."""
 
 
-def resolve_agent(setting: str, day: date) -> str:
-    """``claude`` / ``codex`` as-is; ``alternate`` = claude on even ISO weeks, codex on odd."""
+def resolve_agent(setting: str, slot_index: int) -> str:
+    """``claude`` / ``codex`` as-is; ``alternate`` = claude on even slots, codex on odd."""
     if setting not in AGENT_CHOICES:
         raise ValueError(f"agent must be one of {AGENT_CHOICES}, got {setting!r}")
     if setting != "alternate":
         return setting
-    return "claude" if day.isocalendar().week % 2 == 0 else "codex"
+    return "claude" if slot_index % 2 == 0 else "codex"
 
 
 def build_prompt(
     template: str,
     *,
-    week: str,
+    slot: str,
     stale_prs: list[dict[str, Any]],
     collected: dict[str, Any],
 ) -> str:
@@ -54,7 +53,7 @@ def build_prompt(
         or "（なし）"
     )
     prompt = (
-        template.replace("{{WEEK}}", week)
+        template.replace("{{SLOT}}", slot)
         .replace("{{CATEGORIES}}", categories)
         .replace("{{STALE_PRS}}", stale)
         .replace(
@@ -104,6 +103,7 @@ class AgentReport:
     summary: str
     proposals: list[Proposal]
     stale_pr_notes: dict[int, StalePrNote]
+    memory_update: dict[str, Any] | None
 
 
 def _extract_json(text: str) -> Any:
@@ -136,9 +136,20 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
     data = _extract_json(text)
     if not isinstance(data, dict):
         raise AgentOutputError("top-level JSON must be an object")
-    unknown_keys = set(data) - {"summary", "proposals", "stale_pr_notes"}
+    unknown_keys = set(data) - {
+        "summary",
+        "proposals",
+        "stale_pr_notes",
+        "memory_update",
+    }
     if unknown_keys:
         raise AgentOutputError(f"unexpected top-level keys: {sorted(unknown_keys)}")
+    if "memory_update" not in data:
+        raise AgentOutputError("$.memory_update is required (null for no changes)")
+    try:
+        memory_update = memory.parse_update(data["memory_update"])
+    except ValueError as exc:
+        raise AgentOutputError(str(exc)) from exc
     summary = _req_str(data, "summary", "$")
     raw_props = data.get("proposals")
     if not isinstance(raw_props, list):
@@ -183,6 +194,7 @@ def parse_agent_output(text: str, stale_pr_numbers: set[int]) -> AgentReport:
         stale_pr_notes=_parse_stale_pr_notes(
             data.get("stale_pr_notes"), stale_pr_numbers
         ),
+        memory_update=memory_update,
     )
 
 
