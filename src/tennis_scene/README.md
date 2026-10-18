@@ -87,6 +87,12 @@ rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌�
 SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
 2D可視性で無効な3Dのweightを復活させません。
 
+## Blenderアニメーション
+
+保存済みSceneResult v2と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
+切り替わるアニメーションを生成できます。書き出し・Blenderでの撮影・動画化は
+[blender_export](blender_export/README.md)を参照してください。
+
 ## 他の入口
 
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
