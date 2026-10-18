@@ -1,0 +1,12 @@
+{
+  "name": "tennis-lab-dsh-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pinned DeepSeek Harness runtime for tennis-lab tooling",
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.2.0-rc.2"
+  }
+}
