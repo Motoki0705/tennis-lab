@@ -48,6 +48,7 @@ _RECORD_KEYS = {
     "alpha_preview",
     "depth",
 }
+_APPEARANCE_RECORD_KEYS = {"policy", "controls"}
 
 
 class NHTRenderClient:
@@ -264,11 +265,30 @@ def _load_render_result(
         zip(raw_records, request.expected_camera_ids, strict=True)
     ):
         name = f"render.renders[{index}]"
-        raw = _mapping(raw_record, keys=_RECORD_KEYS, name=name)
-        _expect(raw["camera_id"], expected_id, name=f"{name}.camera_id")
         expected_source = "observed" if expected_id in observed else "arbitrary"
-        _expect(raw["request_source"], expected_source, name=f"{name}.request_source")
         expected_camera = observed.get(expected_id) or arbitrary[expected_id]
+        expected_appearance = _expected_appearance(request, expected_id)
+        raw = _mapping(
+            raw_record,
+            keys=(
+                _RECORD_KEYS
+                if expected_appearance is None
+                else _RECORD_KEYS | {"appearance"}
+            ),
+            name=name,
+        )
+        _expect(raw["camera_id"], expected_id, name=f"{name}.camera_id")
+        _expect(raw["request_source"], expected_source, name=f"{name}.request_source")
+        if expected_appearance is not None:
+            appearance = _mapping(
+                raw["appearance"],
+                keys=_APPEARANCE_RECORD_KEYS,
+                name=f"{name}.appearance",
+            )
+            if appearance != expected_appearance:
+                raise ValueError(
+                    f"{name}.appearance disagrees with the requested controls."
+                )
         width = _integer(raw["width"], name=f"{name}.width", minimum=1)
         height = _integer(raw["height"], name=f"{name}.height", minimum=1)
         if (width, height) != (expected_camera.width, expected_camera.height):
@@ -345,6 +365,25 @@ def _load_render_result(
         output_directory=output.resolve(strict=True),
         records=tuple(records),
     )
+
+
+def _expected_appearance(
+    request: NHTRenderCommandRequest, camera_id: str
+) -> dict[str, object] | None:
+    """Return the exact appearance echo NHT must publish for one camera."""
+    cameras = request.arbitrary_cameras
+    if cameras is None:
+        return None
+    camera = next(
+        (item for item in cameras.cameras if item.camera_id == camera_id), None
+    )
+    if camera is None or camera.appearance is None:
+        return None
+    assert cameras.appearance_policy is not None
+    return {
+        "policy": cameras.appearance_policy.to_dict(),
+        "controls": camera.appearance.to_dict(),
+    }
 
 
 def _validate_preview(path: Path, *, width: int, height: int, name: str) -> None:

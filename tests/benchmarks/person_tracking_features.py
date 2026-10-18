@@ -106,7 +106,7 @@ def extract(args: argparse.Namespace) -> None:
             manifest['cameras'][camera] = {'path': str(path), 'sha256': dual_sha256(path), 'frames': count,
                 'detections': sum(len(f.rows) for f in frames),
                 'appearance_valid': sum(int(f.appearance_valid.sum()) for f in frames),
-                'pose_score_outside_0_1': sum(int(((f.poses[..., 2] < 0) | (f.poses[..., 2] > 1)).sum()) for f in frames)}
+                'pose_score_outside_0_1': sum(int(((f.require_poses()[..., 2] < 0) | (f.require_poses()[..., 2] > 1)).sum()) for f in frames)}
             write_json_atomic(report / 'features.progress.json', manifest)
     except Exception as error:
         manifest.update(status='failed', error_type=type(error).__name__, error=str(error))
@@ -133,7 +133,7 @@ def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], 
     seen: set[int] = set()
     for packet in OpenCVVideoFrameReader(Path(video['path']), max_frames=len(frames)):
         feature = frames[packet.index]
-        tracks = tracker.update(PersonDetectionResult(feature.boxes, feature.scores), packet.frame)
+        tracks = tracker.update(PersonDetectionResult(feature.boxes, feature.require_scores()), packet.frame)
         seen.update(track['id'] for track in tracks)
         if max_tracks is not None and len(seen) > max_tracks:
             raise TrackCapacityExceeded(f'Ultralytics baseline exceeds cumulative camera cap {max_tracks}')

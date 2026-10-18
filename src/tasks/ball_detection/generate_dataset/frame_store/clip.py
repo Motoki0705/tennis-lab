@@ -23,6 +23,7 @@ from src.tasks.ball_detection.data.store import (
     Source,
     located_codes,
 )
+from src.tasks.base.annotation.jpeg_media import JpegArchive
 
 # Per-frame label columns a source provides (the builder adds the rest).
 LABEL_FRAME_FIELDS: Mapping[str, type[np.generic]] = {
@@ -54,7 +55,9 @@ class BallInstance:
             raise ValueError(f"Unknown point kind {self.point_kind!r}")
         located = POINT_KIND_CODES[self.point_kind] in located_codes()
         if located != (self.xy is not None):
-            raise ValueError(f"{self.point_kind} ball must {'' if located else 'not '}have a position")
+            raise ValueError(
+                f"{self.point_kind} ball must {'' if located else 'not '}have a position"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,14 +89,20 @@ class ClipLabels:
     xy: NDArray[np.float64]
 
     @classmethod
-    def from_frames(cls, labels: list[SourceFrame], *, width: int, height: int) -> ClipLabels:
+    def from_frames(
+        cls, labels: list[SourceFrame], *, width: int, height: int
+    ) -> ClipLabels:
         """Validate and pack per-frame labels; located balls must lie in the image."""
         if not labels:
             raise ValueError("A clip needs at least one frame")
-        track_ids = tuple(sorted({ball.track_id for label in labels for ball in label.balls}))
+        track_ids = tuple(
+            sorted({ball.track_id for label in labels for ball in label.balls})
+        )
         lookup = {track: index for index, track in enumerate(track_ids)}
         frames: dict[str, list[object]] = {name: [] for name in LABEL_FRAME_FIELDS}
-        instances: dict[str, list[object]] = {name: [] for name in LABEL_INSTANCE_FIELDS}
+        instances: dict[str, list[object]] = {
+            name: [] for name in LABEL_INSTANCE_FIELDS
+        }
         xy: list[tuple[float, float]] = []
         for label in labels:
             for name, value in (
@@ -108,19 +117,29 @@ class ClipLabels:
             for ball in label.balls:
                 if ball.xy is not None:
                     x, y = ball.xy
-                    if not (np.isfinite([x, y]).all() and 0 <= x < width and 0 <= y < height):
-                        raise ValueError(f"Ball at {ball.xy} lies outside the {width}x{height} image")
+                    if not (
+                        np.isfinite([x, y]).all() and 0 <= x < width and 0 <= y < height
+                    ):
+                        raise ValueError(
+                            f"Ball at {ball.xy} lies outside the {width}x{height} image"
+                        )
                 instances["track_index"].append(lookup[ball.track_id])
                 instances["point_kind"].append(POINT_KIND_CODES[ball.point_kind])
                 instances["occluded"].append(ball.occluded)
                 xy.append((np.nan, np.nan) if ball.xy is None else ball.xy)
-        packed_frames = {name: np.asarray(frames[name], dtype=dtype) for name, dtype in LABEL_FRAME_FIELDS.items()}
+        packed_frames = {
+            name: np.asarray(frames[name], dtype=dtype)
+            for name, dtype in LABEL_FRAME_FIELDS.items()
+        }
         if (np.diff(packed_frames["pts"]) <= 0).any():
             raise ValueError("Frame pts must strictly increase")
         return cls(
             track_ids=track_ids,
             frames=packed_frames,
-            instances={name: np.asarray(instances[name], dtype=dtype) for name, dtype in LABEL_INSTANCE_FIELDS.items()},
+            instances={
+                name: np.asarray(instances[name], dtype=dtype)
+                for name, dtype in LABEL_INSTANCE_FIELDS.items()
+            },
             xy=np.asarray(xy, dtype=np.float64).reshape(-1, 2),
         )
 
@@ -159,19 +178,28 @@ class VideoFrames:
             stream.codec_context.thread_count = 2
             for frame in container.decode(stream):
                 if index >= len(self.pts):
-                    raise ValueError(f"{self.path}: more frames than the annotation lists")
+                    raise ValueError(
+                        f"{self.path}: more frames than the annotation lists"
+                    )
                 if frame.pts is None or frame.time_base is None:
                     raise ValueError(f"{self.path}: decoded frame {index} has no PTS")
-                if frame.pts * Fraction(frame.time_base) != self.pts[index] * self.time_base:
-                    raise ValueError(f"{self.path}: frame {index} PTS differs from the annotation")
+                if (
+                    frame.pts * Fraction(frame.time_base)
+                    != self.pts[index] * self.time_base
+                ):
+                    raise ValueError(
+                        f"{self.path}: frame {index} PTS differs from the annotation"
+                    )
                 index += 1
-                pixels: NDArray[np.uint8] = np.asarray(frame.to_ndarray(format="bgr24"), dtype=np.uint8)
+                pixels: NDArray[np.uint8] = np.asarray(
+                    frame.to_ndarray(format="bgr24"), dtype=np.uint8
+                )
                 yield pixels
         if index != len(self.pts):
             raise ValueError(f"{self.path}: decoded {index} of {len(self.pts)} frames")
 
 
-FrameMedia = JpegSequence | VideoFrames
+FrameMedia = JpegSequence | VideoFrames | JpegArchive
 
 
 @dataclass(frozen=True, slots=True)
@@ -200,6 +228,10 @@ class ClipSpec:
     def __post_init__(self) -> None:
         events = self.labels.frames["event"]
         if not self.has_events and (events != EVENT_CODES["unlabeled"]).any():
-            raise ValueError(f"{self.clip_id}: events given for a source without event labels")
+            raise ValueError(
+                f"{self.clip_id}: events given for a source without event labels"
+            )
         if self.has_events and (events == EVENT_CODES["unlabeled"]).all():
-            raise ValueError(f"{self.clip_id}: declared with events but every frame is unlabeled")
+            raise ValueError(
+                f"{self.clip_id}: declared with events but every frame is unlabeled"
+            )

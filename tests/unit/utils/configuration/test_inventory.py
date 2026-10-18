@@ -48,6 +48,11 @@ def test_synthetic_inventory_has_only_the_canonical_production_clis() -> None:
             "src.synthetic_data_generation.visualization.configuration."
             "validate_dataset_visualization_boundary",
         ),
+        "src.synthetic_data_generation.scripts.visualize_scene_reveal": (
+            "synthetic.scene_reveal",
+            "src.synthetic_data_generation.visualization.reveal.configuration."
+            "validate_scene_reveal_boundary",
+        ),
     }
 
     assert set(boundaries) == set(expected)

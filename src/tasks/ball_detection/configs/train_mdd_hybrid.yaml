@@ -1,0 +1,58 @@
+defaults:
+  - paths: default
+  - model: mdd_hybrid
+  - _self_
+
+manifest: ??? # Relative to paths.artifact_root; frozen coordinate manifest.
+run:
+  output_dir: ${tennis_output:ball_detection,train,${model.name},${tennis_run_id:}}
+initialization:
+  mode: ??? # query | continual (weights only; optimizer/epoch reset)
+  checkpoint: ??? # Relative to paths.checkpoint_root; stage 2 or adopted hybrid checkpoint.
+resume: null # Relative to paths.output_root; same run, exact recipe/snapshot/source/budget.
+stop_after_epoch: null # Diagnostic stop, zero based; does not change the LR budget.
+
+presence_threshold: ??? # 要決定: candidate 0.5; sigmoid(presence_logit), >= threshold.
+loss:
+  heatmap_weight: ??? # 要決定: candidate 1.0; spatial-mean focal BCE.
+  presence_weight: ??? # 要決定: candidate 1.0; frame-mean BCE, inspect both gradient scales.
+  sigma_ratio: 0.012
+  focal_gamma: 2.0
+freeze:
+  encoder_epochs: ??? # 要決定: candidate 1; 0=joint from start, epochs=always frozen.
+  query_epochs: ??? # 要決定: candidate 1; independent of encoder, same semantics.
+absence:
+  negative_kinds: ??? # 要決定: [reviewed_empty, out_of_frame]; unresolved is never absence.
+  window_weights: # 要決定: window fractions (not frame fractions); must sum to 1.
+    play: ??? # Candidate 0.8: existing play windows, including selected in-window negatives.
+    absent: ??? # Candidate 0.2: all 32 sampled frames have confirmed absence.
+    nonplay: ??? # Candidate 0.0: outside play proposals; supervise known labels only.
+
+epochs: ???
+windows_per_epoch: ???
+batch_size: 1
+learning_rate: ???
+encoder_lr_ratio: 0.1
+query_lr_ratio: 0.1
+warmup_updates: ???
+seed: ???
+selection_scope: common # Same clean, ungated coordinate score as stage 2; presence reported separately.
+device: ???
+runtime:
+  precision: ???
+  num_workers: 8
+  pin_memory: false
+  prefetch_factor: 4
+  cpu_threads: 2
+  compile_mode: ???
+  compile_recompile_limit: 8
+  jpeg_decoder: ???
+  input_verification: ???
+  image_prefetch: false
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

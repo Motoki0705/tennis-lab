@@ -10,13 +10,22 @@ from typing import Any
 
 import torch
 
-from src.tasks.ball_detection.checkpoints.pretraining import SCHEMA, save_pretraining
+from src.tasks.ball_detection.checkpoints.configuration import (
+    checkpoint_training_recipe,
+)
+from src.tasks.ball_detection.checkpoints.pretraining import (
+    SCHEMA,
+    pretraining_config,
+    save_pretraining,
+)
 from src.tasks.ball_detection.checkpoints.provenance import (
+    data_identity,
     source_identity,
 )
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.coordinates import selection_score
 from src.tasks.ball_detection.evaluation.dpt import evaluate
+from src.tasks.ball_detection.model_io.predict import predict_dpt_heatmaps
 from src.tasks.ball_detection.models.mdd import (
     MDDDPTDetector,
     MDDPretrainConfig,
@@ -121,8 +130,8 @@ def main() -> None:
     for name in declared:
         setattr(args, name, paths.declared(name).path)
     config = MDDPretrainConfig.load(args.model_config)
-    data = FrozenBallWindowDataset(args.manifest, split="train", jpeg_decoder=args.jpeg_decoder, requires_pose=False)
-    val = FrozenBallWindowDataset(args.manifest, split="val", jpeg_decoder=args.jpeg_decoder, requires_pose=False)
+    data = FrozenBallWindowDataset(args.manifest, split="train", jpeg_decoder=args.jpeg_decoder, requires_pose=False, verify_empty_annotations=True)
+    val = FrozenBallWindowDataset(args.manifest, split="val", jpeg_decoder=args.jpeg_decoder, requires_pose=False, verify_empty_annotations=True)
     runtime = CoordinateRuntime(args.precision, args.num_workers, args.pin_memory, args.prefetch_factor,
                                 args.cpu_threads, args.compile_mode, 8, args.jpeg_decoder,
                                 args.input_verification, args.image_prefetch)
@@ -142,8 +151,9 @@ def main() -> None:
                   manifest_sha256=dual_sha256(args.manifest), selection_scope=args.selection_scope,
                   selection_metric="macro_mean_error_px", sigma_ratio=args.sigma_ratio, focal_gamma=args.focal_gamma,
                   image_decode=jpeg_decoder_contract(args.jpeg_decoder), input_contract=model.mdd.input_contract(),
-                  supervision="observed positive; reviewed no-instance/out_of_frame negative; uncertain/multiple/reference ignored",
-                  test_usage="none", stage="heatmap_pretraining", automatic_next_stage=False)
+                  supervision="observed positive; reviewed no-instance/out_of_frame negative; Chat empty requires verified note-free annotation; uncertain/multiple/reference ignored",
+                  test_usage="none", stage="heatmap_pretraining", automatic_next_stage=False,
+                  data_identity=data_identity(args.manifest), initialization=dict(mode="scratch", seed=args.seed))
     epoch_start, step, best, best_epoch = 0, 0, float("inf"), -1
     if args.resume is None:
         args.output.mkdir(parents=True, exist_ok=False)
@@ -152,13 +162,16 @@ def main() -> None:
         (args.output / "data_manifest.json").write_bytes(args.manifest.read_bytes())
     else:
         saved = torch.load(args.resume, map_location="cpu", weights_only=True)
-        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or saved["recipe"] != recipe:
+        saved_config = pretraining_config(saved)
+        if args.resume.parent != args.output or saved.get("schema") != SCHEMA or checkpoint_training_recipe(saved, saved_config) != recipe:
             raise ValueError("Resume requires the same output directory, pretraining stage and exact recipe")
         if saved["code"]["source_sha256"] != code["source_sha256"]:
             raise ValueError("Resume implementation changed")
         epoch_start = saved["epoch"] + 1
         if epoch_start >= args.epochs or any(int(p.stem.split("-")[1]) >= epoch_start for p in args.output.glob("epoch-*.pt")):
             raise ValueError("Resume must use the latest completed epoch with remaining budget")
+        if saved_config != config:
+            raise ValueError("Resume pretraining model configuration changed")
         model.load_state_dict(saved["state_dict"], strict=True)
         optimizer.load_state_dict(saved["optimizer"])
         torch.set_rng_state(saved["torch_rng"])
@@ -193,7 +206,7 @@ def main() -> None:
                 context["surface_phase"] = "forward"
                 with coordinate_compile_scope(model):
                     with torch.autocast(device.type, dtype=torch.bfloat16, enabled=args.precision == "bf16"):
-                        logits = model(rgb)
+                        logits = predict_dpt_heatmaps(model, rgb)
                     context["surface_phase"] = "loss"
                     loss, _ = heatmap_objective(logits, batch, sigma_ratio=args.sigma_ratio, gamma=args.focal_gamma)
                     context["surface_phase"] = "backward"

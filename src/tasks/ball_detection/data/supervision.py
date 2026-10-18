@@ -9,8 +9,9 @@ Every ``point_kind`` of the store is assigned exactly one role:
   because its heatmap target would be wrong or unknown (an ``unresolved`` ball
   exists but has no position; an estimated position is not an observation).
 
-A frame is **supervised** iff it is ``annotated`` and none of its instances has
-an ``ignore`` kind. A supervised frame without a positive instance is a
+A legacy frame is **supervised** iff it is ``annotated`` and none of its instances
+has an ``ignore`` kind. An adopted v2 frame must also pass its stored teacher
+mask, which a training policy cannot expand. A supervised frame without a positive instance is a
 negative. An ``unresolved`` ball is never allowed to be ``absent`` or
 ``positive``: it would silently become a negative or a fake peak.
 """
@@ -112,6 +113,10 @@ def resolve_frame_supervision(
     has_ignored[frame_of_instance[ignored]] = True
     supervised = store.frames["annotated"] & ~has_ignored
     positive = np.isin(kinds, policy.codes("positive"))
+    if store.teacher_masks is not None:
+        supervised = store.teacher_masks.restrict_heatmaps(supervised)
+        # A custom training policy may restrict adoption further, never expand it.
+        positive &= supervised[frame_of_instance] | ~store.teacher_masks.explicit[frame_of_instance]
     return FrameSupervision(supervised=supervised, positive=positive)
 
 

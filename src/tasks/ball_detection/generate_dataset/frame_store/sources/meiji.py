@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 
+from src.tasks.annotation.migration.legacy_format.contracts import sha256_file
 from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
@@ -26,7 +27,6 @@ from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     SourceFrame,
     VideoFrames,
 )
-from src.tennis_scene.chat_annotation.runtime.contracts import sha256_file
 
 SCHEMA = "video_ball_annotation.v2"
 DATASET_FILE = "dataset.json"
