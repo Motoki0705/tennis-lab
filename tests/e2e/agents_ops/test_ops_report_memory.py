@@ -359,6 +359,234 @@ def test_crash_after_publication_is_recovered_from_verified_history(
     assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
 
 
+@pytest.mark.parametrize("interruption", ["none", "before_edit", "after_edit"])
+def test_partial_report_completion_binds_verified_publication(
+    memory_env: Any, interruption: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    assert ops.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
+    partial = _reports(ops)[0]
+    journal_path = (
+        Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    )
+    assert not journal_path.exists() and not ops.state.get("memory_prs")
+    # Completion must publish the prepared title, even if the partial was renamed.
+    state = ops.state
+    next(r for r in state["issues"] if r["number"] == partial["number"])["title"] = (
+        "調査再開待ち"
+    )
+    ops.write_state(state)
+    env = {
+        "none": {},
+        "before_edit": {"FAKE_GH_FAIL": "issue edit"},
+        "after_edit": {"FAKE_GH_EDIT_FAIL_AFTER_SAVE": "1"},
+    }[interruption]
+
+    result = ops.run("report", "--if-due", **env)
+
+    assert result.returncode == (0 if interruption == "none" else 1), result.stderr
+    assert _main_files(ops) == original
+    row = _journal(ops)["records"]["20261012"]
+    assert row["report_url"] == partial["url"]
+    if interruption != "none":
+        assert row["state"] == "prepared" and row["head"] is None
+        assert not ops.state.get("memory_prs")
+        if interruption == "before_edit":
+            assert "status=incomplete" in _reports(ops)[0]["body"].splitlines()[0]
+            # Triage leaves a failed edit pending without persisting observations.
+            triaged = ops.run("triage")
+            assert triaged.returncode == 0, triaged.stderr
+            assert _journal(ops)["records"]["20261012"] == row
+            assert not ops.state.get("memory_prs")
+        Path(ops.env["FAKE_AGENT_USED"]).unlink()
+        recovered = ops.run("report", "--if-due")
+        assert recovered.returncode == 0, recovered.stderr
+        if interruption == "after_edit":
+            assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
+
+    complete = _reports(ops)[0]
+    row = _journal(ops)["records"]["20261012"]
+    assert len(_reports(ops)) == 1 and complete["number"] == partial["number"]
+    assert "status=complete" in complete["body"].splitlines()[0]
+    assert row["publication"] == {
+        "title": complete["title"],
+        "body_sha256": hashlib.sha256(complete["body"].encode("utf-8")).hexdigest(),
+        "author": complete["author"]["login"],
+    }
+    assert complete["title"] == "運用レポート 2026-10-12"
+    assert row["state"] == "pending" and row["report_url"] == partial["url"]
+    assert len(ops.state["memory_prs"]) == 1
+    assert sum(c[:2] == ["issue", "create"] for c in ops.calls()) == 1
+    assert sum(c[:2] == ["issue", "edit"] for c in ops.calls()) == (
+        2 if interruption == "before_edit" else 1
+    )
+    merged = ops.run("triage")
+    assert merged.returncode == 0, merged.stderr
+    assert _journal(ops)["records"]["20261012"]["state"] == "merged"
+    entry = _main_files(ops)["ci-wait.md"]
+    assert "検証した観察 1" in entry and partial["url"] in entry
+
+
+@pytest.mark.parametrize("command", ["report", "triage"])
+@pytest.mark.parametrize("mismatch", ["author", "body", "title", "url"])
+def test_failed_completion_rejects_forged_publication(
+    memory_env: Any, command: str, mismatch: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    refs = _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)")
+    assert ops.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
+    failed = ops.run("report", "--if-due", FAKE_GH_FAIL="issue edit")
+    assert failed.returncode == 1, failed.stderr
+    row = _journal(ops)["records"]["20261012"]
+    assert row["state"] == "prepared" and row["report_url"] == _reports(ops)[0]["url"]
+    report_file = next(
+        p
+        for run in ops.run_dirs()
+        if (p := run / "report.md").exists()
+        and "status=complete" in p.read_text().splitlines()[0]
+    )
+    state = ops.state
+    forged = next(r for r in state["issues"] if "ops-report" in r["labels"])
+    forged.update(title=row["publication"]["title"], body=report_file.read_text())
+    if mismatch == "author":
+        forged["author"] = {"login": "another-user"}
+    elif mismatch == "body":
+        forged["body"] += "\n公開予定とは異なる調査結果。\n"
+    elif mismatch == "title":
+        forged["title"] = "同slotの別レポート"
+    else:
+        # All content and the author match, but this is a different issue.
+        forged.update(number=101, url="https://github.com/o/r/issues/101")
+        state["next_number"] = 102
+    ops.write_state(state)
+    Path(ops.env["FAKE_AGENT_USED"]).unlink()
+
+    args = ("report", "--if-due") if command == "report" else ("triage",)
+    result = ops.run(*args)
+
+    assert result.returncode == 1, result.stderr
+    assert "publication" in result.stderr and "mismatch" in result.stderr
+    assert _journal(ops)["records"]["20261012"] == row
+    assert _main_files(ops) == original
+    assert _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)") == refs
+    assert "ops-report-memory/" not in _git(ops.repo, "ls-remote", "--heads", "origin")
+    assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
+    assert not ops.state.get("memory_prs")
+    assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
+
+
+@pytest.mark.parametrize("command", ["report", "triage"])
+@pytest.mark.parametrize("mismatch", ["author", "body", "title"])
+def test_failed_publication_rejects_same_slot_forged_issue(
+    memory_env: Any, command: str, mismatch: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    refs = _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)")
+    assert ops.run("report", FAKE_GH_FAIL="issue create").returncode == 1
+    body = next(
+        p for run in ops.run_dirs() if (p := run / "report.md").exists()
+    ).read_text()
+    assert _journal(ops)["records"]["20261012"]["publication"] == {
+        "title": "運用レポート 2026-10-12",
+        "body_sha256": hashlib.sha256(body.encode("utf-8")).hexdigest(),
+        "author": "bot",
+    }
+    forged: dict[str, Any] = {
+        "number": 100,
+        "title": "運用レポート 2026-10-12",
+        "body": body,
+        "author": {"login": "bot"},
+        "labels": ["ops-report"],
+        "state": "OPEN",
+        "createdAt": "2026-10-12T00:00:00Z",
+        "updatedAt": "2026-10-12T00:00:00Z",
+        "url": "https://github.com/o/r/issues/100",
+    }
+    if mismatch == "author":
+        forged["author"] = {"login": "another-user"}
+    elif mismatch == "body":
+        forged["body"] = body + "\n公開予定とは異なる調査結果。\n"
+    else:
+        forged["title"] = "同slotの別レポート"
+    state = ops.state
+    state["issues"].append(forged)
+    state["next_number"] = 101
+    ops.write_state(state)
+    Path(ops.env["FAKE_AGENT_USED"]).unlink()
+
+    args = ("report", "--if-due") if command == "report" else ("triage",)
+    result = ops.run(*args)
+
+    assert result.returncode == 1, result.stderr
+    assert "publication" in result.stderr and "mismatch" in result.stderr
+    row = _journal(ops)["records"]["20261012"]
+    assert row["state"] == "prepared" and row["report_url"] is None
+    assert row["head"] is None and row["pr_url"] is None
+    assert _main_files(ops) == original
+    assert _git(ops.repo, "for-each-ref", "--format=%(refname) %(objectname)") == refs
+    assert "ops-report-memory/" not in _git(ops.repo, "ls-remote", "--heads", "origin")
+    assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
+    assert not ops.state.get("memory_prs")
+    assert not Path(ops.env["FAKE_AGENT_USED"]).exists()
+
+
+@pytest.mark.parametrize("mismatch", ["url", "body", "author"])
+def test_publication_response_must_match_prepared_report(
+    memory_env: Any, mismatch: str
+) -> None:
+    ops = memory_env
+    original = _main_files(ops)
+    env = {
+        "url": {"FAKE_GH_CREATE_URL": "https://github.com/o/r/issues/999"},
+        "body": {
+            "FAKE_GH_CREATE_EDIT": json.dumps([["今回は", "書き換えられた結果は"]])
+        },
+        "author": {"FAKE_GH_CREATE_AUTHOR": "another-user"},
+    }[mismatch]
+
+    result = ops.run("report", **env)
+
+    assert result.returncode == 1, result.stderr
+    assert "publication" in result.stderr and "mismatch" in result.stderr
+    row = _journal(ops)["records"]["20261012"]
+    assert row["state"] == "prepared" and row["head"] is None
+    assert _main_files(ops) == original
+    assert "ops-report-memory/" not in _git(ops.repo, "ls-remote", "--heads", "origin")
+    assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
+    assert not ops.state.get("memory_prs")
+    # A retry cannot disregard the successful create response or accept the issue.
+    retry = ops.run("report", "--if-due")
+    assert retry.returncode == 1, retry.stderr
+    assert _journal(ops)["records"]["20261012"]["state"] == "prepared"
+    assert not ops.state.get("memory_prs")
+
+
+@pytest.mark.parametrize("change", ["old_version", "missing_identity"])
+def test_unverifiable_publication_journal_fails_closed(
+    memory_env: Any, change: str
+) -> None:
+    ops = memory_env
+    assert ops.run("report", FAKE_GH_FAIL="issue create").returncode == 1
+    path = Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    journal = _journal(ops)
+    if change == "old_version":
+        journal["version"] = 1
+    else:
+        del journal["records"]["20261012"]["publication"]
+    original = json.dumps(journal)
+    path.write_text(original)
+
+    result = ops.run("triage")
+
+    assert result.returncode == 1 and "corrupt memory journal" in result.stderr
+    assert path.read_text() == original
+    assert not _reports(ops) and not ops.state.get("memory_prs")
+    assert "ops-report-memory-20261012" not in _git(ops.repo, "worktree", "list")
+
+
 def test_pr_creation_journal_gap_reuses_existing_pr(memory_env: Any) -> None:
     ops = memory_env
     assert ops.run("report").returncode == 0

@@ -502,13 +502,24 @@ def _generate_report(
             [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
         if result.complete:
-            store.prepare(tag, collected["ops_memory"], analysis.memory_update)
+            store.prepare(
+                tag,
+                collected["ops_memory"],
+                analysis.memory_update,
+                title=title,
+                body=body,
+            )
+            if duplicate:
+                # Pin the edit target even if the edit succeeds but its response is lost.
+                store.record_publication(tag, duplicate["url"])
         if duplicate:
             shell.gh(
                 [
                     "issue",
                     "edit",
                     str(duplicate["number"]),
+                    "--title",
+                    title,
                     "--body-file",
                     str(run_dir / "report.md"),
                 ],
@@ -520,6 +531,8 @@ def _generate_report(
                 ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
                  "--label", collect.REPORT_LABEL], cwd=cfg.repo_root,
             ).strip()  # fmt: skip
+            if result.complete:
+                store.record_publication(tag, url)
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
         json.dumps(

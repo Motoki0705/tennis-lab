@@ -7,6 +7,7 @@ this data and reads the codebase (read-only) for deeper analysis.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shlex
 import sys
@@ -129,7 +130,7 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
     rows = shell.gh_list(
         [
             "issue", "list", "--label", REPORT_LABEL, "--state", "all",
-            "--json", "number,title,state,createdAt,body,url",
+            "--json", "number,title,state,createdAt,body,url,author",
         ],
         limit=500,
         cwd=repo_root,
@@ -147,6 +148,8 @@ def collect_report_history(repo_root: Path) -> dict[str, Any]:
             k: row[k] for k in ("number", "title", "state", "createdAt", "url")
         }
         item["slot"] = meta.slot
+        item["author"] = row["author"]["login"]
+        item["body_sha256"] = hashlib.sha256(row["body"].encode("utf-8")).hexdigest()
         item["period_start"] = meta.since.isoformat()
         item["period_end"] = meta.until.isoformat()
         item["status"] = meta.status
