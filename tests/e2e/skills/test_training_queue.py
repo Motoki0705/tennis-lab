@@ -8,16 +8,19 @@ import hashlib
 import json
 import os
 import re
+import runpy
 import shlex
 import signal
 import subprocess
 import sys
 import time
+from collections import Counter
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TextIO
+from unittest.mock import patch
 
 import pytest
 
@@ -3157,6 +3160,102 @@ def test_interrupted_expiry_resumes_from_tombstone(tmp_path: Path) -> None:
     assert not log.exists()
     assert not (queue_dir / "state" / f"{job[:-4]}.state").exists()
     assert json.loads(path.read_text()) == record
+
+
+def test_collected_tombstones_do_not_add_path_probes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    # Load the real maintenance entry point so filesystem calls can be counted
+    # without timing thresholds or tracing unrelated shell subprocesses.
+    monkeypatch.setattr(sys, "path", sys.path.copy())
+    maintenance = runpy.run_path(str(QUEUE_SCRIPT.with_name("queue_history.py")))
+    monkeypatch.setenv("TRAINING_QUEUE_TEST_NOW_NS", str(END_NS + 8 * DAY_NS))
+    measurements = []
+    for first, stop in ((0, 1), (1, 1024)):
+        for index in range(first, stop):
+            job = f"{END_NS}_{index}_collected.job"
+            _completion(queue_dir, job).write_text(
+                json.dumps(
+                    dict(
+                        version=1,
+                        job=job,
+                        state="done",
+                        finished_at_ns=END_NS,
+                        retention_started_at_ns=END_NS,
+                        time_source="recorded",
+                        expired_at_ns=END_NS + 8 * DAY_NS,
+                    )
+                )
+            )
+        with (
+            patch.object(os, "stat", wraps=os.stat) as stats,
+            patch.object(os, "lstat", wraps=os.lstat) as lstats,
+            patch.object(os, "scandir", wraps=os.scandir) as scans,
+            patch.object(Path, "unlink", autospec=True) as unlinks,
+        ):
+            maintenance["maintain"](queue_dir)
+        scan_counts = Counter(Path(call.args[0]) for call in scans.call_args_list)
+        assert scan_counts and max(scan_counts.values()) == 1
+        assert unlinks.call_count == 0
+        measurements.append((stats.call_count + lstats.call_count, scan_counts))
+    assert measurements[0] == measurements[1]
+
+
+@pytest.mark.parametrize(
+    ("directory", "suffix", "retained"),
+    [
+        ("logs", ".log", False),
+        ("done", ".job", False),
+        ("state", ".state", False),
+        ("state", ".owner", True),
+        ("cancel-requests", ".cancel", False),
+        ("control/external-acks", ".ack", False),
+        ("jobs", ".job", True),
+        ("running", ".job", True),
+        ("failed", ".job", True),
+        ("control/completions", ".json", True),
+    ],
+)
+def test_collected_history_rechecks_reappearing_files(
+    tmp_path: Path, directory: str, suffix: str, retained: bool
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    job = f"{END_NS}_1_collected.job"
+    record = dict(
+        version=1,
+        job=job,
+        state="done",
+        finished_at_ns=END_NS,
+        retention_started_at_ns=END_NS,
+        time_source="recorded",
+        expired_at_ns=END_NS + 8 * DAY_NS,
+    )
+    completion = _completion(queue_dir, job)
+    completion.write_text(json.dumps(record))
+    path = queue_dir / directory / f"{job[:-4]}{suffix}"
+    contents = "reappeared\n"
+    if suffix == ".state":
+        contents = "state=done\n"
+    elif suffix == ".owner":
+        process = Path(f"/proc/{os.getpid()}/stat").read_text().rsplit(")", 1)[1].split()
+        start_time = process[19]
+        contents = f"pid={os.getpid()}\nstart_time={start_time}\njob={job}\n"
+    elif suffix == ".json":
+        contents = "{"
+    path.write_text(contents)
+    result = _queue(
+        queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 9 * DAY_NS
+    )
+    assert path.exists() == retained
+    if retained:
+        assert path.read_text() == contents
+    if directory in {"failed", "control/completions"}:
+        assert "retaining 1 inconsistent jobs" in result.stderr
+    if suffix != ".json":
+        assert json.loads(completion.read_text()) == record
 
 
 def test_legacy_registration_survives_migration_and_history_expiry(

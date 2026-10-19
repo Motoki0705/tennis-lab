@@ -54,10 +54,15 @@ def read_completion(queue: Path, job: str) -> dict[str, Any] | None:
     path = completion_path(queue, job)
     if not regular(path):
         return None
+    return parse_completion(path.read_bytes(), job)
+
+
+def parse_completion(contents: bytes, job: str) -> dict[str, Any]:
+    """Validate record contents after the caller has checked the file's type."""
     try:
-        record = json.loads(path.read_text())
+        record = json.loads(contents)
     except (ValueError, UnicodeError) as exc:
-        raise InvalidQueueRecord(f"invalid queue completion record: {path}") from exc
+        raise InvalidQueueRecord(f"invalid queue completion record: {job}") from exc
     if (
         not isinstance(record, dict)
         or type(record.get("version")) is not int
@@ -87,7 +92,7 @@ def read_completion(queue: Path, job: str) -> dict[str, Any] | None:
             )
         )
     ):
-        raise InvalidQueueRecord(f"invalid queue completion record: {path}")
+        raise InvalidQueueRecord(f"invalid queue completion record: {job}")
     return cast(dict[str, Any], record)
 
 
