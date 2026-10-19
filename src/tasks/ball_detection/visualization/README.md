@@ -108,12 +108,12 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 [データ・checkpointの契約](../README.md#データセットレビュー--推論ui) / [共通画面・HTTP API](../../base/visualization/detection/README.md)
 
-## 発表用の単一パネルGIF
+## 発表用の単一パネルGIF・MP4
 
 既存の `scripts.visualize` で `visualization.layout=overlay` を指定します。
 保存RGBを `visualization.overlay.output_width`（既定960）へ縦横比を保ってresizeし、
 推論位置だけを重ねます。文字・header・補間点は描かず、不可視frameでは元画像だけを表示します。
-点の半径と線幅は幅512を基準に比例させます。モデル入力の解像度は変更しません。
+既定のマーカーは案Aの細い輪＋中心点＋薄いglowです。モデル入力の解像度は変更しません。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
@@ -133,7 +133,7 @@ storeの途中の区間は `visualization.start_frame`（0始まり、既定0）
 ### 元動画の速度とマーカー案の比較
 
 `visualization.fps=null` はstoreに記録された元動画のfpsを使う指定です（overlayのみ）。
-`visualization.overlay.frame_stride` は**推論後の描画だけ**を間引き、GIFのfpsは
+`visualization.overlay.frame_stride` は**推論後の描画だけ**を間引き、GIF・MP4のfpsは
 元動画のfps / strideになります。モデルは選択区間の全frameを、元の順序と時間文脈で推論します。
 たとえば59.94006fpsの1010frameをstride=2にすると、505frame・29.97003fpsで
 約16.85秒の1x再生になります。端数の区間では最後の表示もstride分だけ保持します。
@@ -149,16 +149,17 @@ storeの途中の区間は `visualization.start_frame`（0始まり、既定0）
   'visualization.save=${run.output_dir}/ball_2d.gif'
 ```
 
-`overlay.styles` は `point`（従来の輪）、`ring`（案A）、`trail`（案B）の重複しないリストです。
+`overlay.styles` は `point`（従来の輪）、`ring`（案A、既定）、`trail`（案B）の重複しないリストです。
 複数指定すると、**1回の推論を共有**し、保存先の `ring/ball_2d.gif`、`trail/ball_2d.gif` と
-各 `manifest.json` を出力します。1種類だけの場合は指定したGIFパスへ保存します。
+同名の `.mp4`、各 `manifest.json` を出力します。1種類だけの場合は指定したGIFパスと
+同名の `.mp4` へ保存します。overlayは両形式を必ず出力し、スライドではMP4を使います。
 
 案Aは `overlay.ring` で、半径9・線幅2・中心点半径2・glow半径3・opacity 0.12を明示します。
 案Bは `overlay.trail` で、点半径4・線幅2・長さ8（元動画のframe数）・最大opacity 0.55を明示します。
 マーカー寸法は出力幅960を基準に比例させ、色は共通の `draw.pred_color_rgb` を使います。
 軌跡は古いほど薄く、**予測のない元frameで切ります**。表示を間引いても欠測をまたいで結びません。
 不可視frameではマーカーも軌跡も描かず、文字・補間点は追加しません。
-manifestには全推論frame、表示frame、元fps、描画stride、GIFのfpsとstyleを記録します。
+manifestには全推論frame、表示frame、元fps、描画stride、出力fpsとstyleを記録します。
 
 GPU推論は[共有キュー](../../../../.agents/skills/training-queue/SKILL.md)へ登録して実行してください。
 worktreeでは実データの `paths.data_root` とcheckpointのrootを絶対パスで指定します。
@@ -168,7 +169,10 @@ checkpointは `visualization.checkpoint` の `role`（`artifact` / `checkpoint`�
 overlayではGIFの隣に `manifest.json` を保存します。入力のstore tables・clip payload・checkpointの
 SHA-256、コードのcommitと未コミット変更の有無、解決済みconfig、frame名・frame範囲（stopは含まない）、
 映像と予測の由来区分 `measured` を記録します。予測点は実データへの推論結果であり、GTではありません。
-動画出力はGIFだけです。
+`outputs.gif`・`outputs.mp4` に両ファイルのパスとSHA-256を記録します。
+MP4は共通の `src.utils.video.writer.VideoWriter` で、GIFと同じ描画frame・fpsを
+H.264へエンコードします（writer既定のCRF 17）。GIFの表示時間は共通writerの10ms単位に量子化されます。
+MP4のyuv420p形式には偶数の幅・高さが必要で、不正な寸法はwriterが拒否します。
 
 既定の `visualization.layout=grid_2x2` は従来の4パネル・文字・モデル入力解像度・12fpsを維持します。
 4パネルの装飾設定は `visualization.layout.<項目>` から `visualization.grid.<項目>` へ移しました。

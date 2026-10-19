@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import cast
 from unittest.mock import patch
 
+import av
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
@@ -52,6 +53,7 @@ def test_runtime_config_keeps_resolved_torch_device() -> None:
     assert runtime.grid.background_rgb == (18, 18, 18)
     assert runtime.overlay_output_width == 960
     assert runtime.start_frame == 0
+    assert runtime.overlay_styles == ("ring",)
 
 
 @pytest.mark.parametrize("layout", ["unknown", "", "GRID_2X2"])
@@ -129,7 +131,7 @@ def test_real_cpu_prediction_saves_gif(
     monkeypatch: pytest.MonkeyPatch,
     layout: str,
 ) -> None:
-    """Exercise store -> real checkpoint -> aggregated predictions -> GIF."""
+    """Exercise real inference and exports, including unchanged GIF-only grids."""
     clip_id = "tracknet/game1/Clip1"
     write_store_clip(
         tmp_path / "data/ball_detection/test", clip_id,
@@ -166,9 +168,14 @@ def test_real_cpu_prediction_saves_gif(
             gif.seek(index)
             durations.append(gif.info["duration"])
         assert durations == [80, 90, 80]  # Main's shared cumulative GIF timing.
-    assert not list(runtime.save.parent.glob("*.mp4"))
     manifest_path = runtime.save.parent / "manifest.json"
     if layout == "overlay":
+        with av.open(str(runtime.save.with_suffix(".mp4"))) as container:
+            stream = container.streams.video[0]
+            assert stream.codec_context.name == "h264"
+            assert float(stream.average_rate) == 12
+            assert len(list(container.decode(stream))) == 3
+            assert (stream.width, stream.height) == (320, 180)
         manifest = json.loads(manifest_path.read_text())
         assert manifest["clip_id"] == clip_id
         assert manifest["frame_names"] == [f"{clip_id}:{index}" for index in range(2, 5)]
@@ -176,9 +183,13 @@ def test_real_cpu_prediction_saves_gif(
         assert manifest["config"] == OmegaConf.to_container(config, resolve=True)
         assert manifest["elements"] == {"video": "measured", "predictions": "measured"}
         assert len(manifest["git_commit"]) == 40
-        for entry in [*manifest["inputs"], manifest["checkpoint"]]:
+        assert manifest["overlay_style"] == "ring"
+        assert manifest["outputs"]["gif"]["path"] == str(runtime.save)
+        assert manifest["outputs"]["mp4"]["path"] == str(runtime.save.with_suffix(".mp4"))
+        for entry in [*manifest["inputs"], manifest["checkpoint"], *manifest["outputs"].values()]:
             assert entry["sha256"] == hashlib.sha256(Path(entry["path"]).read_bytes()).hexdigest()
     else:
+        assert not list(runtime.save.parent.glob("*.mp4"))
         assert not manifest_path.exists()
 
 
@@ -229,6 +240,16 @@ def test_both_overlay_styles_share_full_inference_before_stride(
             "source_fps": 30, "frame_stride": 2, "gif_fps": 15,
             "inference_frames": 6, "rendered_frames": 3,
         }
+        with av.open(str(path.with_suffix(".mp4"))) as container:
+            stream = container.streams.video[0]
+            assert float(stream.average_rate) == manifest["playback"]["gif_fps"]
+            assert stream.codec_context.name == "h264"
+            video_frames = list(container.decode(stream))
+            assert len(video_frames) == manifest["playback"]["rendered_frames"]
+            assert len(video_frames) / float(stream.average_rate) == pytest.approx(duration / 1000)
+        assert set(manifest["outputs"]) == {"gif", "mp4"}
+        for entry in manifest["outputs"].values():
+            assert entry["sha256"] == hashlib.sha256(Path(entry["path"]).read_bytes()).hexdigest()
 
 
 def test_runtime_config_rejects_unavailable_cuda_before_predictor_construction(
