@@ -21,7 +21,7 @@ from uuid import uuid4
 
 from tools.dsh import headless_config as config
 from tools.dsh.accounting import usage_record
-from tools.dsh.events import event_prefix
+from tools.dsh.events import event_prefix, truncation_summary
 from tools.dsh.home_policy import remember_home, verify_home
 from tools.dsh.run_process import Interrupt, execute
 from tools.dsh.run_state import (
@@ -111,6 +111,7 @@ def blank_summary() -> dict[str, Any]:
         "usage_missing": True,
         "cost_complete": False,
         "task_success": None,
+        **truncation_summary([]),
         "meaning": "Exit 0 means a completed dsh turn only. The parent must verify the diff and tests to establish task success.",
     }
 
@@ -145,7 +146,7 @@ def inspect_turn(
         return result
     result["session_id"] = identity
     statuses = [event for event in events if event["type"] == "status"]
-    turn_ends = [event for event in statuses if event["phase"] == "turn_end"]
+    turn_ends = [event for event in statuses if event.get("phase") == "turn_end"]
     if len(turn_ends) == 1:
         reason = turn_ends[0].get("reason")
         if (
@@ -163,7 +164,7 @@ def inspect_turn(
             }
         ):
             result["turn_end_reason"] = reason["kind"]
-    if not statuses:
+    if not statuses or any(type(event.get("turn")) is not int for event in statuses):
         return result
     turns = {event["turn"] for event in statuses}
     if len(turns) != 1:
@@ -189,9 +190,9 @@ def inspect_turn(
     if result["turn_end_reason"] in {"blocked", "max-tokens", "interrupted", "forked"}:
         result["result"] = "turn_stopped"
         return result
-    starts = [event["step"] for event in statuses if event["phase"] == "step_start"]
-    ends = [event["step"] for event in statuses if event["phase"] == "step_end"]
-    phases = [event["phase"] for event in statuses]
+    starts = [event["step"] for event in statuses if event.get("phase") == "step_start"]
+    ends = [event["step"] for event in statuses if event.get("phase") == "step_end"]
+    phases = [event.get("phase") for event in statuses]
     if (
         result["turn_end_reason"] != "completed"
         or not starts
@@ -641,10 +642,15 @@ def run(options: argparse.Namespace, interrupt: Interrupt) -> dict[str, Any]:
                 ),
             }
             for turn in sorted(
-                {event["turn"] for event in events if event["type"] == "status"}
+                {
+                    event["turn"]
+                    for event in events
+                    if event["type"] == "status" and type(event.get("turn")) is int
+                }
             )
         ]
         summary.update(
+            **truncation_summary(events),
             usage_totals=usage["totals"],
             observed_token_estimate_range_usd=usage[
                 "observed_token_estimate_range_usd"
@@ -696,7 +702,6 @@ def run(options: argparse.Namespace, interrupt: Interrupt) -> dict[str, Any]:
             ended_utc=now(),
             ndjson_complete=stream_complete,
             interrupted_signal=interrupt.signal,
-            truncated_events=sum(bool(event.get("truncated")) for event in events),
             **summary,
         )
         private_write(

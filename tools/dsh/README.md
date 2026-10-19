@@ -244,6 +244,9 @@ permission preset・過去turn番号を照合する。ログはread handleで読
 stdoutは1行の要約JSONのみ。`exit_code` はwrapperの終了値、`dsh_exit_code` はruntime側の終了値。
 `result`, `session_id`, `turn`, `turn_end_reason`, `records_dir`, `final_path`,
 `diff_summary`, `usage_totals`, `observed_token_estimate_range_usd`, `usage_missing` を含む。
+`truncated_events`（件数）、`truncated_event_types`（種別ごとの件数）、
+`truncated_missing_fields`（短縮イベントで欠けた必須フィールド名ごとの件数）も返し、
+`summary.json` / `metadata.json` に保存する。フィールド名は `tool_call.input` 等の形式。
 生の最終回答・providerのエラーメッセージはstdoutへ出さない。
 **exit 0はdshのターン完了だけを示し、タスク成功を意味しない。** `task_success` は常に `null`。
 親が最終回答・tracked/untracked差分・指定テストを検証し、取り込みを判断する。
@@ -253,7 +256,7 @@ stdoutは1行の要約JSONのみ。`exit_code` はwrapperの終了値、`dsh_exi
 |---|---:|---|
 | `completed` | 0 | 整合したNDJSONとcompleted turn、dsh exit 0 |
 | `api_error` | 10 | terminal turn_endのreasonがerror |
-| `invalid_ndjson` | 11 | 不正JSON・未完の行・session/final/turn/stepの欠落や順序違い |
+| `invalid_ndjson` | 11 | 不正JSON・未完の行・session/final/turn/stepの欠落や順序違い、または短縮で実行状態を確定できない |
 | `dsh_failed` | 12 | dsh/runtimeの非ゼロ終了 |
 | `aborted` | 13 | dshがabortしたturn |
 | `turn_stopped` | 13 | blocked / max-tokens / interrupted / forkedで終了したturn |
@@ -264,8 +267,37 @@ stdoutは1行の要約JSONのみ。`exit_code` はwrapperの終了値、`dsh_exi
 timeout・signal・通常終了のどの経路でも独立process groupと追跡した子孫のgroupへTERM→KILLを送り、
 leader終了後やsetsidで別groupになった子孫もsubreaperで引き受けて停止・回収する。
 打ち切り時も完全に読めたprefixのstep_end usageを保存し、
-欠けた続きがあることを明示する。固定版によるtext/thinking/tool本文の8KiB短縮は
-`truncated_events` に数え、NDJSON途中切れとは区別する。
+欠けた続きがあることを明示する。
+
+### 固定版のイベント短縮
+
+固定版 `dsh-headless` の `lib/json-stream-*.js`（`boundJsonLine` / `projectJsonRun`）と
+`lib/index.js`（`fail`）の出力形式に従う。`final` 以外では、文字列とオブジェクトのキーを
+UTF-8で8KiBに制限し、深さ64以上の配列・オブジェクトを文字列 `[truncated: depth]` にする。
+変更があればイベント直下に **`truncated: true`** を付ける。
+改行込みで32KiBを超える場合は全ての構造化フィールド（配列・オブジェクト）を削除して
+スカラーを残し、それでも超える場合は **`{"type":"...","truncated":true}` だけ**を出す。
+JSONでエスケープが増える文字列では、8KiBに収まっていてもこの最終形になり得る。
+
+| 種別 | 通常のフィールドと短縮時の扱い |
+|---|---|
+| `session` | `sessionId`, `cwd` は文字列。短縮またはtypeのみの形になる |
+| `status` | `phase`, `turn`, stepイベントの `step` はスカラー。`turn_end.reason` と任意の `step_end.usage` は構造化フィールドなので行長超過時に削除される |
+| `tool_call` | `callId`, `tool` は文字列。`input` は任意のJSON値（不正な引数JSONはraw文字列）で、入れ子の短縮や、配列・オブジェクトの場合の削除がある |
+| `tool_result` | `callId`, `status`, `result` は文字列。個別に削除されず、文字列短縮またはtypeのみの形になる |
+| `text`, `thinking` | `text` を短縮、またはtypeのみの形になる |
+| `error` | `message` を短縮、またはtypeのみの形になる。turn外の失敗で、後続finalを保証しない |
+| `final` | `finish()` が直接出力し、本文・行長とも無制限。短縮印は付かない。`final.md` には受信した全文を保存する |
+
+wrapperは短縮印のある正規の省略形を受理して後続イベントを解析する。
+印なしの必須フィールド欠落、不正な印、残存フィールドの型違い、短縮印の付いたfinalは破損として扱う。
+`truncated_missing_fields` で本文の省略を明示し、本文を補完しない。任意のusageが無い場合は、
+短縮前からの欠測と削除を区別できないため、省略フィールド件数には含めず `usage_missing` で示す。
+イベント単位の短縮はNDJSON途中切れと区別し、短縮後も終端まで構文が正しければ
+`metadata.ndjson_complete: true` となる。
+session識別やturn/step、終了理由が失われた場合は `invalid_ndjson` にして完了を推測せず、
+後続のfinalと観測できたusageは保存する。本文だけの短縮はcompleted判定・usage集計を妨げない。
+固定read-onlyスモークは引き続き全ての短縮印を拒否し、tool inputも辞書を必須とする。
 
 ### ローカル記録と使用量の区切り
 
