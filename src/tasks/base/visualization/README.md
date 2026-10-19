@@ -30,6 +30,13 @@
 - `inference_queue.py`: 推論Web UIから共有GPUキューへの接続。
 - `../scripts/inference_worker.py`: キューが起動するCLI。共有要求ディレクトリ内のパスを検証してから推論を実行する。
 
+## GIFの再生時間
+
+`gif.py` の `save_gif()` は Ball・Court Detection、学習中の定性保存、presentation で共有します。
+各 frame の表示終了の累積時刻を GIF の10ms単位に丸め、その差分を表示時間にします。
+15fpsでも60ms・70msを組み合わせて再生し、各時点と総尺の誤差を10ms未満に抑えます。
+Pillowが隣接する同一画像を統合する場合も、表示時間を合算して累積時間を保ちます。
+
 ## 発表用ビジュアル（presentation）
 
 `presentation/` は matplotlib の呼び出し元が所有する Axes に描画し、Agg canvas の

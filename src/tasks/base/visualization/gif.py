@@ -22,6 +22,11 @@ def save_gif(
 ) -> None:
     """Save rendered RGB frames as an animated GIF.
 
+    Cumulative frame endpoints are rounded to GIF's 10 ms time unit, then
+    differenced into individual durations. This bounds timing error below
+    10 ms instead of accumulating it at fractional frame intervals (e.g. 15 fps),
+    including when Pillow combines identical adjacent images.
+
     Args:
         frames_rgb: Sequence of ``(H, W, 3)`` uint8 RGB frames.
         path: Output ``.gif`` path.
@@ -35,7 +40,14 @@ def save_gif(
     if path.suffix.lower() != ".gif":
         raise ValueError(f"Only .gif outputs are supported, got: {path}")
 
-    duration_ms = max(int(round(1000.0 / fps)), 1)
+    # Quantize cumulative endpoints, not each frame's duration: Pillow truncates
+    # millisecond durations to 10 ms units, which otherwise accumulates drift.
+    durations_ms: list[int] = []
+    previous_end_ms = 0
+    for index in range(len(frames_rgb)):
+        end_ms = round((index + 1) * 100 / fps) * 10
+        durations_ms.append(end_ms - previous_end_ms)
+        previous_end_ms = end_ms
     pil_frames = [
         Image.fromarray(frame).convert(
             "P",
@@ -49,7 +61,7 @@ def save_gif(
         path,
         save_all=True,
         append_images=pil_frames[1:],
-        duration=duration_ms,
+        duration=durations_ms,
         loop=loop,
         disposal=2,
         optimize=True,
