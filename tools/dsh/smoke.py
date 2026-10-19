@@ -16,6 +16,9 @@ from typing import Any
 from uuid import uuid4
 
 from tools.dsh import headless_config as config
+from tools.dsh.accounting import usage_record
+from tools.dsh.events import EventError
+from tools.dsh.events import parse_events as parse_headless_events
 
 TASK = """Read README.md with the read tool (first 20 lines only).
 Use no other tools. Do not change files, request escalation, inspect credentials,
@@ -34,31 +37,6 @@ GUIDANCE = {
     + KEY_HINT,
     "PERMISSION_DENIED": "The read-only tool was denied; inspect the private tool result and file access. Do not enable danger-full-access.",
     "TOOL_ERROR": "A read-only tool failed; inspect the private result and file permissions. Do not enable danger-full-access.",
-}
-TOKEN_FIELDS = (
-    "inputTokens",
-    "cacheReadTokens",
-    "cacheWriteTokens",
-    "outputTokens",
-    "totalTokens",
-    "reasoningTokens",
-)
-# Price snapshot for this smoke only; the general runner owns shared accounting.
-PRICE: dict[str, Any] = {
-    "source": "https://api-docs.deepseek.com/quick_start/pricing/",
-    "checked_date": "2026-10-19",
-    "currency": "USD",
-    "model": "deepseek-flash",
-    "per_million_tokens": {
-        "off_peak": {
-            "inputTokens": 0.15,
-            "cacheReadTokens": 0.003,
-            "outputTokens": 0.6,
-        },
-        "peak": {"inputTokens": 0.30, "cacheReadTokens": 0.006, "outputTokens": 1.2},
-    },
-    "formula": "(inputTokens * input_miss_rate + cacheReadTokens * cache_hit_rate + outputTokens * output_rate) / 1000000",
-    "time_basis": "Range across off-peak/peak; request billing time and Chinese public holidays are not resolved.",
 }
 
 
@@ -98,131 +76,10 @@ def git_status(worktree: Path) -> bytes:
     return git(worktree, "status", "--porcelain=v1", "--untracked-files=all", "-z")
 
 
-def usage_record(events: list[dict[str, Any]]) -> dict[str, Any]:
-    steps = [
-        {
-            "turn": event.get("turn"),
-            "step": event.get("step"),
-            "usage": event.get("usage"),
-        }
-        for event in events
-        if event.get("type") == "status" and event.get("phase") == "step_end"
-    ]
-    totals: dict[str, int | None] = {}
-    for field in TOKEN_FIELDS:
-        samples = [
-            step["usage"].get(field) if isinstance(step["usage"], dict) else None
-            for step in steps
-        ]
-        known = [n for n in samples if type(n) is int and n >= 0]
-        totals[field] = sum(known) if samples and len(known) == len(samples) else None
-    missing = [field for field in TOKEN_FIELDS[:4] if totals[field] is None]
-    unaccounted = [
-        "Auxiliary requests (session titles, compaction, etc.) may be absent from headless NDJSON.",
-        "Search/Fetch and other non-token fees are not counted.",
-        "This is an observed-token estimate, not the billed amount; price changes after checked_date are not tracked.",
-    ]
-    estimated_range = None
-    if missing:
-        unaccounted.append("Missing token buckets: " + ", ".join(missing))
-    elif totals["cacheWriteTokens"] != 0:
-        unaccounted.append("Nonzero cacheWriteTokens has no separately verified price.")
-    else:
-        billable = {
-            field: count
-            for field in ("inputTokens", "cacheReadTokens", "outputTokens")
-            if (count := totals[field]) is not None
-        }
-        estimated_range = {
-            period: sum(billable[field] * rate for field, rate in rates.items())
-            / 1_000_000
-            for period, rates in PRICE["per_million_tokens"].items()
-        }
-    return {
-        "scope": "Fresh smoke session; step_end usage for this invocation only. Token buckets are disjoint.",
-        "steps": steps,
-        "totals": totals,
-        "missing_billable_buckets": missing,
-        "observed_token_estimate_range_usd": estimated_range,
-        "billing_total_usd": None,
-        "complete": False,
-        "pricing": PRICE,
-        "unaccounted": unaccounted,
-    }
-
-
 def parse_events(path: Path) -> list[dict[str, Any]]:
     try:
-        text = path.read_text(encoding="utf-8")
-        if not text.endswith("\n"):
-            raise ValueError("incomplete line")
-        events = [json.loads(line) for line in text.splitlines()]
-        allowed = {
-            "session",
-            "status",
-            "text",
-            "thinking",
-            "tool_call",
-            "tool_result",
-            "final",
-            "error",
-        }
-        if not events or any(
-            not isinstance(e, dict)
-            or e.get("type") not in allowed
-            or e.get("truncated")
-            for e in events
-        ):
-            raise ValueError("unexpected event")
-        for event in events:
-            kind = event["type"]
-            if kind == "status" and (
-                event.get("phase")
-                not in {"turn_start", "step_start", "step_end", "turn_end"}
-                or type(event.get("turn")) is not int
-                or event["turn"] != 1
-            ):
-                raise ValueError("invalid fresh-session status")
-            if (
-                kind == "status"
-                and event["phase"] in {"step_start", "step_end"}
-                and (type(event.get("step")) is not int or event["step"] < 1)
-            ):
-                raise ValueError("invalid step")
-            if kind in {"tool_call", "tool_result"} and not isinstance(
-                event.get("callId"), str
-            ):
-                raise ValueError("invalid callId")
-            if kind == "tool_call" and (
-                not isinstance(event.get("tool"), str)
-                or not isinstance(event.get("input"), dict)
-            ):
-                raise ValueError("invalid tool input")
-            if kind == "tool_result" and (
-                not isinstance(event.get("result"), str)
-                or event.get("status") not in {"completed", "error"}
-            ):
-                raise ValueError("invalid tool result")
-            if (
-                kind == "status"
-                and event.get("phase") == "step_end"
-                and "usage" in event
-            ):
-                usage = event["usage"]
-                if (
-                    not isinstance(usage, dict)
-                    or any(
-                        field not in usage for field in ("inputTokens", "outputTokens")
-                    )
-                    or any(
-                        type(usage[field]) is not int or usage[field] < 0
-                        for field in TOKEN_FIELDS
-                        if field in usage
-                    )
-                ):
-                    raise ValueError("invalid usage")
-        return events
-    except (UnicodeError, ValueError, TypeError) as error:
+        return parse_headless_events(path)
+    except EventError as error:
         raise SmokeError(
             "INVALID_NDJSON",
             "Invalid/incomplete smoke NDJSON; inspect the private events/stderr.",

@@ -3,8 +3,8 @@
 `@deepseek-ai/dsh@0.2.0-rc.2` の導入と実行環境の確認を扱う。
 [公式リポジトリ](https://github.com/deepseek-ai/deepseek-harness) は developer preview
 として互換性の破壊を予告しているため、`latest` やglobalの `dsh` は使わない。
-固定runtimeとheadlessのモデル・安全設定、および1回のread-only疎通を扱う。
-任意タスクの実行・継続・差分管理を行う共通wrapperは後続の対象（#1264）。
+固定runtime、headlessのモデル・安全設定、read-only疎通、
+任意タスクの実行・継続・停止と結果記録を行う共通wrapperを扱う。
 
 ## 導入
 
@@ -55,7 +55,7 @@ APIキーの発行・探索・保存、有料API呼び出しはこの手順に�
 `exec` は呼出元のcwd・環境・stdin/stdout/stderrを保持し、dshの終了コードと
 SIGINT/SIGTERM/SIGHUPを伝える。検査の成功メッセージをstdoutへ追加しないので、
 後続wrapperはdshのNDJSONをそのまま取得できる。引数の区切り `--` とdsh引数は必須。
-実タスク用の安全設定・APIキー・ログ設定は下記のheadless設定と後続wrapper側で指定する。
+実タスク用の安全設定・APIキー・ログ設定は下記の共通wrapperが指定する。
 
 Node未対応、未導入、metadataまたは実CLIの版不一致、CLI起動失敗は終了コード1。
 引数の誤りは2で、導入・実行を開始しない。実行時に依存を自動取得しない。
@@ -66,7 +66,7 @@ Node未対応、未導入、metadataまたは実CLIの版不一致、CLI起動�
 
 ```bash
 node "$runtime_owner/tools/dsh/runtime.mjs" check
-# 実タスクでは後続の共通wrapperがこのexec入口を呼ぶ。
+# 実タスクでは下記run.shがこのexec入口を呼ぶ。
 node "$runtime_owner/tools/dsh/runtime.mjs" exec -- -V
 ```
 
@@ -164,15 +164,141 @@ repo rootで次を実行する。API呼び出しは行わない。
 Pythonのimportはrepo rootから行う。実プロセスは引き続き `runtime.mjs exec --` で起動し、
 検査後に別のpatch/profileを追加しない。helperはAPIキーを探索・保存せず、
 呼出側が明示した `source` 環境のキーを実行先へ渡す。
-任意タスク、session継続、汎用timeout、差分保存、run/session単位の課金共通化は#1264の責務。
+共通wrapperは呼出元のキーを除き、専用ファイルの値だけを子環境に加える。
 
-## APIキーとDSH_HOME
+## 共通wrapper: 実行・継続・停止
 
-固定版のキー解決順は、起動環境の **`DEEPSEEK_API_KEY`** →
-`$DSH_HOME/.credentials.yaml` → 起動cwdの `.env` → `$DSH_HOME/.env`。
-キー値をpatchやタスク本文に書かない。repoの `.env` も使用しない。
-推奨はシェルへの一時入力かシークレット管理からの環境変数注入。
-シェル履歴にキーを残さず入力する例（ユーザー自身が実行する）:
+公開入口は **`tools/dsh/run.sh`**。そのworktreeの `.venv/bin/python` と固定runtimeを使う。
+停止管理にはLinuxの `/proc` とchild subreaper (`prctl`) を使い、利用できなければ起動を拒否する。
+起動元cwdに依存せず、task/worktreeの相対パスは呼出元cwdから解決する。
+入力タスクは非空のUTF-8 Markdown (`.md`) で、改行・引用符・長文を変えず
+`runtime.mjs exec -- --profile headless --patch ... --patch ... --json -` のstdinに渡す。
+CLI引数や記録にタスク本文を追加しない（metadataにはbyte数とSHA-256だけ）。
+
+```bash
+runner="$PWD/tools/dsh/run.sh"
+"$runner" --task /path/to/task.md --worktree /path/to/repo/.claude/worktrees/task \
+  --mode workspace-write --timeout 600 > /path/to/private-summary.json
+# 調査だけなら --mode read-only。同じroot・同じmodeの会話を続ける:
+"$runner" --task /path/to/followup.md --worktree /path/to/repo/.claude/worktrees/task \
+  --mode workspace-write --timeout 600 --session-id session-... \
+  > /path/to/private-followup-summary.json
+```
+
+必須引数は `--task`, `--worktree`, `--mode`, `--timeout`。
+タイムアウトは正の有限秒数（小数可）で、実タスクの子プロセス起動から計測する。
+設定dump・session検査は別に各30秒を上限とする。
+メインtree・存在しないパス・root以外・mainの `.claude/worktrees/` 配下でないlinked worktreeを拒否する。
+未許可modeは、引数だけでなく呼出元の `DSH_PERMISSION_MODE` にある場合も拒否する。
+wrapperが付ける `TENNIS_LAB_DSH_ACTIVE`、または固定版がshell toolに付ける
+`DSH_SHELL=1` がある場合は再帰起動を拒否する。
+
+### APIキー: 専用ファイルだけを読む
+
+ユーザーがrepo外の **`~/.config/tennis-lab/deepseek-api-key`** を一度だけ作る。
+以下はユーザー自身が実行し、キー値をシェル履歴・タスク・GitHubに書かない。
+**既存ファイルに `install` を再実行すると内容が空になるため、新規作成時だけ使う。**
+
+```bash
+install -d -m 700 "$HOME/.config/tennis-lab"
+install -m 600 /dev/null "$HOME/.config/tennis-lab/deepseek-api-key"
+# エディタ等で上のファイルを開き、内容をキーのみ（末尾改行可）にする。
+```
+
+場所の変更手段は **`--key-file <external-file>` だけ**。
+通常ファイル・本人所有・0600または0400・非空を確認し、不備ならdshを起動せず作成方法を返す。
+symlink/FIFO/ディレクトリ、権限に余計なbitがあるもの、複数行・空白を含む値も拒否する。
+ファイルの妥当性を設定検査前に確認し、実タスク起動直前にも読み直す。
+キーはその子プロセスの環境の `DEEPSEEK_API_KEY` にだけ入れ、呼出元環境は変更しない。
+**呼出元の同名変数は引き継がず、`.env` や `$DSH_HOME/.credentials.yaml` に切り替えない。**
+固定版ネイティブの解決順は環境 → `.credentials.yaml` → cwd `.env` → home `.env` だが、
+wrapperは有効な専用ファイルを必須とし、home内の資格情報ファイル自体を拒否する。
+stdout/stderrのキー値はpipe境界をまたぐ場合も保存前に伏せる。キー値やキーのhashはmetadataに残さない。
+
+### 永続homeと継続session
+
+wrapper専用の **`~/.local/state/tennis-lab-agents/dsh-home`** (0700) を使う。
+変更手段は `--dsh-home <external-directory>` のみで、呼出元の `DSH_HOME` は使わない。
+home・keyはメインrepoとそのworktreeの外に置く。既存homeの権限が緩い場合は自動修正せず拒否する。
+同じhomeの同時実行は `.runner.lock` で拒否し、終了・timeout・signal後に解放する。
+PATH/HOME/LANG/LC_ALL/TERM以外の呼出元変数はdshへ引き継がず、
+`NODE_OPTIONS`, `NODE_PATH`, `DSH_TOOLS_MODE`, providerの上書き、他のAPIキー、Gitのcwd上書きも除く。
+そのうえでhome・mode・telemetry無効と専用tmpを明示する。
+
+毎回 `check_config` による空homeでの検査と、実行先home/cwdに同じpatchを適用した
+キーなしの `--dump-config` 検査を行う。dumpは `profiles/headless/cordis.yml` を生成・更新するため、
+生成後のprofileの内容hashを `.runner-profile.json` に保存し、次回に照合する。
+資格情報・home patch・旧settings・管理外profileや、その後のprofile改変は拒否する。
+このhomeは対話dshや他のwrapperと共用せず、手動カスタマイズしない。
+
+`--session-id` は `.runner-sessions.json` に記録済みのsessionだけを受け付ける。
+未知ID・cwd不一致はrunの失敗記録を残す。再開前に `session_state.mjs` が同じ固定版の
+persistence backendで圧縮ログを読み、semantic replay、cwd・sandbox mode・approval `ask`・
+permission preset・過去turn番号を照合する。ログはread handleで読み、書き換えない。
+固定版は再開時に保存権限を維持するので、**modeを変える場合は新規sessionを開始する**。
+保存モデルではなく今回の固定 `agentDefaultModel` を新しい呼び出しへ渡す固定版の経路を使う。
+外部で作ったsessionの取り込みや、履歴不整合を無視する再開は行わない。
+
+### 出力と終了値
+
+stdoutは1行の要約JSONのみ。`exit_code` はwrapperの終了値、`dsh_exit_code` はruntime側の終了値。
+`result`, `session_id`, `turn`, `turn_end_reason`, `records_dir`, `final_path`,
+`diff_summary`, `usage_totals`, `observed_token_estimate_range_usd`, `usage_missing` を含む。
+生の最終回答・providerのエラーメッセージはstdoutへ出さない。
+**exit 0はdshのターン完了だけを示し、タスク成功を意味しない。** `task_success` は常に `null`。
+親が最終回答・tracked/untracked差分・指定テストを検証し、取り込みを判断する。
+ツール失敗があってもターンがcompletedで終わることがあるため、親の検証は必要である。
+
+| result | wrapper終了値 | 意味 |
+|---|---:|---|
+| `completed` | 0 | 整合したNDJSONとcompleted turn、dsh exit 0 |
+| `api_error` | 10 | terminal turn_endのreasonがerror |
+| `invalid_ndjson` | 11 | 不正JSON・未完の行・session/final/turn/stepの欠落や順序違い |
+| `dsh_failed` | 12 | dsh/runtimeの非ゼロ終了 |
+| `aborted` | 13 | dshがabortしたturn |
+| `turn_stopped` | 13 | blocked / max-tokens / interrupted / forkedで終了したturn |
+| `timeout` | 124 | 指定秒数を超過 |
+| `interrupted` | 130 / 143 | SIGINT / SIGTERM |
+| `rejected` / `execution_failed` / `recording_failed` | 2 / 3 | 入力・前提の拒否、起動や記録の失敗 |
+
+timeout・signal・通常終了のどの経路でも独立process groupと追跡した子孫のgroupへTERM→KILLを送り、
+leader終了後やsetsidで別groupになった子孫もsubreaperで引き受けて停止・回収する。
+打ち切り時も完全に読めたprefixのstep_end usageを保存し、
+欠けた続きがあることを明示する。固定版によるtext/thinking/tool本文の8KiB短縮は
+`truncated_events` に数え、NDJSON途中切れとは区別する。
+
+### ローカル記録と使用量の区切り
+
+実行先のignore対象 **`.dsh-runs/<UTC>-<id>/`** を必須とする。
+ディレクトリ0700・ファイル0600で作り、公開先へ自動送信しない。
+不正worktree等、記録先を安全に決められない拒否では `records_dir: null` を返す。
+安全なworktree上でのその他の拒否（未知sessionを含む）は空のevents/finalとmetadata/usageも保存する。
+
+| ファイル | 内容 |
+|---|---|
+| `events.ndjson`, `stderr.log`, `final.md` | キー値を伏せたイベント・診断と最終回答 |
+| `metadata.json`, `summary.json` | 起動引数・実行条件・日時・設定・run/session/turn・状態・要約 |
+| `git-before.status`, `git-after.status` | NUL区切りporcelain、tracked/untracked一覧 |
+| `git-before.json`, `git-after.json` | HEAD、各差分パス・status・内容hash |
+| `git-before.diff`, `git-after.diff`, `git-*.index.diff` | HEADからのtracked差分とindex差分（binaryも含む） |
+| `usage.json` | このrunのstep/turn内訳、sessionのrun一覧と別集計、単価・式・欠測・推定範囲 |
+
+既にdirtyなworktreeも受け付け、実行前の差分を保存する。tracked/untrackedの内容hashで、
+status記号が同じまま内容だけ変わった場合も検出する。
+キー以外の機密内容やローカルパスを含みうるため、記録はローカル確認に使い、そのまま公開しない。
+
+`usage.json` のトップレベルtotalsは**今回のrunだけ**。
+`turns` は今回観測したturnごとの集計、`session_runs` は過去runへの対応、
+`session` はそのsessionで観測した全runの別集計で、継続前の使用量を今回のtotalsへ混ぜない。
+`stream_complete` / `usage_complete` / `missing_billable_buckets` で欠測を示す。
+推定単価・時間帯・未計上項目の契約は下記「使用量と推定費用」を参照する。
+
+## APIキー: 固定read-onlyスモーク
+
+以下の旧来スモークは**起動環境のキーのみ必須**とし、既存のDSH_HOMEや資格情報ファイルを探さない。
+共通wrapperの専用ファイル読み取りとは別の、固定タスクの検証入口である。
+既存の受入条件を維持するため、このスモークの引数・キー解決は変更していない。
+ユーザーがシェル履歴にキーを残さず入力する例:
 
 ```bash
 read -r -s -p 'DeepSeek API key: ' DEEPSEEK_API_KEY
@@ -180,22 +306,10 @@ export DEEPSEEK_API_KEY
 printf '\n'
 ```
 
-ネイティブdshは、repo外の専用 `DSH_HOME`（未指定時は `~/.dsh`）の
-`.credentials.yaml` も利用できる。固定版の形式は次のとおりで、実際の値はこのファイルやrepoに書かない。
-保存する場合は親ディレクトリを700、ファイルを600にし、共有しない。
-
-```yaml
-version: 1
-refs:
-  DEEPSEEK_API_KEY: <user-supplied-secret>
-```
-
-以下のスモークは**起動環境のキーのみ必須**とし、既存の `DSH_HOME` や上記ファイルを探さない。
-新規homeをローカル記録先の `home/` に作り、キーの永続保存は行わない。
+新規homeを記録先の `home/` に作り、キーの永続保存は行わない。
 キーなしなら `MISSING_CREDENTIAL` で起動前に停止する。
 `AUTH` / `INVALID_CREDENTIAL` はキー・アカウント設定の確認を案内し、成功扱いしない。
 ツールの権限拒否も、dshがexit 0 / completedを返していてもスモーク失敗とする。
-公開出力に生のエラーメッセージや最終回答を転載しない。
 
 ## ユーザー設定後のread-only実APIスモーク
 
@@ -235,7 +349,7 @@ terminal `final`、READMEを読むツールの正常完了、期待markerと空�
 親はローカルの最終回答・要約内容と記録を確認して実APIの受入条件を確定する。
 このスモークの合格は任意の実装タスクの成功判定には使わない。
 
-### 使用量とスモーク1回分の推定費用
+### 使用量と推定費用
 
 固定版は `status/step_end.usage` に `inputTokens`, `outputTokens` と任意のcache/total/reasoning項目を出す。
 **`inputTokens` は未キャッシュ入力**で、`cacheReadTokens` / `cacheWriteTokens` は別枠。
@@ -243,13 +357,15 @@ stepのusageはdshが報告した試行分の合計であり、NDJSONのtext長�
 不足するbucketやstepは `null` にし、0へ補完しない。reasoningはoutputへ二重加算しない。
 
 単価の正本は[DeepSeek公式価格表](https://api-docs.deepseek.com/quick_start/pricing/)。
-スモーク用の確認日・USD単価・計算式は `smoke.py` の `PRICE` に1つだけ置き、毎回 `usage.json` に保存する。
+確認日・USD単価・計算式は共有 `accounting.py` の `PRICE` に1つだけ置き、
+wrapperとスモークのどちらも毎回 `usage.json` に保存する。2026-10-19に公式表を再確認した。
 課金時刻・中国の休日を解決しないため、取得済みtokenについてoff-peak/peak両方の推定範囲を記録する。
 必要なbucketが欠測、または別単価を確認していないcacheWriteが非ゼロなら推定額も `null`。
 補助リクエスト（session titleやcompaction等）・Search/Fetch・その他の料金は未計上として残す。
 `complete: false` / `billing_total_usd: null` は請求確定額でないことを示す。
 親の実API実行時に公式価格表を再確認し、変更があればこのsnapshotを更新する。
-run/session/turn全体の集計と単価管理の共通化は#1264へ引き継ぐ。
+ピークは中国祝日を除く平日01:00–04:00 / 06:00–10:00 UTC。
+時刻や休日を確定して片側の価格を選ばず、両価格による範囲を出す。
 
 ### headless検証の範囲
 
@@ -258,3 +374,16 @@ patchと有効設定の食い違い、認証エラー、権限拒否、NDJSON異
 git状態変化、ローカル記録の権限・公開要約への秘密情報混入防止を検証する。
 ローカル固定版を導入済みなら、実物のdumpとread-onlyのファイル権限拒否もAPIなしで検証する。
 未導入ならその3ケースだけskipする。実APIスモークは自動テストに含めない。
+
+
+`test_runner.py` はfake CLIと使い捨てlinked worktreeでstdin、キー専用ファイル、
+拒否・失敗状態、継続、権限/履歴の不一致、usage区切り、差分、キー伏せ、記録権限、
+timeout/SIGINT/SIGTERM後の子孫停止を検証する。`test_session_state.py` は導入済みなら
+実backendのzstd fixtureを読み、内容を変更しないことと永続profileの反復dumpをAPIなしで確認する。
+未導入なら実backendの3ケースだけskipする。
+
+```bash
+.venv/bin/python -m pytest -n 4 tests/e2e/dsh/
+bash -n tools/dsh/run.sh
+node --check tools/dsh/session_state.mjs
+```
