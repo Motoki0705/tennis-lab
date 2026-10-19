@@ -38,6 +38,7 @@ def load_clip_sequence(
     imagenet_mean: tuple[float, float, float],
     imagenet_std: tuple[float, float, float],
     render_width: int | None = None,
+    start_frame: int = 0,
 ) -> ClipSequence:
     """Load and preprocess a stored clip for visualization.
 
@@ -52,17 +53,24 @@ def load_clip_sequence(
         imagenet_std: ImageNet std (used when normalizing).
         render_width: Resize stored images to this width, preserving aspect ratio.
             ``None`` keeps render frames at the model input size.
+        start_frame: Zero-based first frame of the selected contiguous interval.
+            ``max_frames`` caps the number of frames after this position.
 
     Returns:
         A :class:`ClipSequence` with render frames and model images.
     """
     if render_width is not None and render_width <= 0:
         raise ValueError("render_width must be positive when set")
+    if start_frame < 0:
+        raise ValueError("start_frame must be nonnegative")
     store = BallFrameStore(store_dir)
     clip = store.clip_by_id(clip_id)
     if max_frames is not None and max_frames <= 0:
         raise ValueError("max_frames must be positive")
     rows = store.clip_rows(clip)
+    if start_frame >= len(rows):
+        raise ValueError(f"start_frame {start_frame} is outside clip {clip_id} ({len(rows)} frames)")
+    rows = rows[start_frame:]
     if max_frames is not None:
         rows = rows[:max_frames]
     if len(rows) < sequence_length:

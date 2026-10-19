@@ -8,6 +8,7 @@ fps: 12
 window_stride: 1
 inference_batch_size: 4
 peak_threshold: ${metrics.peak_threshold}
+start_frame: 0
 max_frames: null
 info: false
 strict: true

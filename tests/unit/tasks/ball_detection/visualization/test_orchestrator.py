@@ -47,6 +47,7 @@ def test_runtime_config_keeps_resolved_torch_device() -> None:
     assert runtime.layout == "grid_2x2"
     assert runtime.grid.background_rgb == (18, 18, 18)
     assert runtime.overlay_output_width == 960
+    assert runtime.start_frame == 0
 
 
 @pytest.mark.parametrize("layout", ["unknown", "", "GRID_2X2"])
@@ -77,6 +78,15 @@ def test_nonpositive_overlay_width_is_rejected(width: int) -> None:
         validate_visualization(config)
 
 
+def test_negative_start_frame_is_rejected_before_loading_data() -> None:
+    config = _visualization_config(device="cpu")
+    config.visualization.start_frame = -1
+    with pytest.raises(ValueError, match="start_frame"):
+        build_runtime_config(config)
+    with pytest.raises(ConfigurationError, match="start_frame"):
+        validate_visualization(config)
+
+
 @pytest.mark.parametrize("layout", ["grid_2x2", "overlay"])
 def test_real_cpu_prediction_saves_gif(
     tmp_path: Path,
@@ -88,7 +98,7 @@ def test_real_cpu_prediction_saves_gif(
     clip_id = "tracknet/game1/Clip1"
     write_store_clip(
         tmp_path / "data/ball_detection/test", clip_id,
-        [frame(index) for index in range(3)], size=(640, 360),
+        [frame(index) for index in range(5)], size=(640, 360),
     )
     make_tiny_checkpoint(tmp_path / "ckpt/ball_detection/tiny.ckpt")
     config = _visualization_config(device="cpu")
@@ -102,6 +112,7 @@ def test_real_cpu_prediction_saves_gif(
     config.visualization.overlay.output_width = 320
     config.visualization.save = "ball_detection/presentation/ball_2d/test/ball_2d.gif"
     config.visualization.max_frames = 3
+    config.visualization.start_frame = 2
     if layout == "overlay":
         def unexpected_mdd(**_kwargs: object) -> None:
             pytest.fail("overlay must not build the unused MDD panel")
@@ -120,7 +131,8 @@ def test_real_cpu_prediction_saves_gif(
     if layout == "overlay":
         manifest = json.loads(manifest_path.read_text())
         assert manifest["clip_id"] == clip_id
-        assert manifest["frame_names"] == [f"{clip_id}:{index}" for index in range(3)]
+        assert manifest["frame_names"] == [f"{clip_id}:{index}" for index in range(2, 5)]
+        assert manifest["frame_range"] == {"start": 2, "stop": 5}
         assert manifest["config"] == OmegaConf.to_container(config, resolve=True)
         assert manifest["elements"] == {"video": "measured", "predictions": "measured"}
         assert len(manifest["git_commit"]) == 40

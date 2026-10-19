@@ -17,6 +17,7 @@ def build_overlay_manifest(
     store_dir: Path,
     clip_id: str,
     frame_names: Sequence[str],
+    start_frame: int,
     checkpoint: Path,
     resolved_config: dict[str, Any],
 ) -> dict[str, Any]:
@@ -38,5 +39,6 @@ def build_overlay_manifest(
         "checkpoint": {"path": str(checkpoint), "sha256": dual_sha256(checkpoint)},
         "clip_id": clip_id,
         "frame_names": list(frame_names),
+        "frame_range": {"start": start_frame, "stop": start_frame + len(frame_names)},
         "elements": {"video": "measured", "predictions": "measured"},
     }
