@@ -139,6 +139,12 @@ unused. A terminal publication after verified process/external teardown records
 the epoch nanosecond end time in `control/completions/<stem>.json`. Registration
 time, job mtime, log mtime and repro capture time never determine retention.
 
+Each sweep scans the relevant directories once and checks entry types. Already
+collected completion records do not cause probes of absent per-job paths or
+repeated deletion attempts. Their contents are still validated; any matching
+file that reappears is inspected again under the same retention and protection
+rules.
+
 Collection removes the matching `logs/<stem>.log`, terminal `.job` in `done/`,
 `failed/` or `cancelled/`, `state/<stem>.state` / `.owner`, cancellation request
 and external acknowledgement. Queued, waiting, running, terminating, ambiguous

@@ -39,6 +39,7 @@ from src.utils.training_queue import (  # noqa: E402
     TERMINAL,
     InvalidQueueRecord,
     completion_path,
+    parse_completion,
     read_completion,
     registration_order,
     regular,
@@ -75,9 +76,11 @@ def valid_pid(value: str) -> bool:
     )
 
 
-def values(path: Path) -> dict[str, str]:
-    if not regular(path):
+def values(entry: os.DirEntry[str] | None) -> dict[str, str]:
+    """Read an optional state/owner file already type-checked by the scan."""
+    if entry is None:
         return {}
+    path = Path(entry.path)
     result = {}
     try:
         lines = path.read_text().splitlines()
@@ -183,8 +186,9 @@ def complete(queue: Path, job: str, state: str) -> None:
         )
 
 
-def protected(queue: Path, job: str, state: str | None) -> bool:
-    owner = values(queue / "state" / f"{job[:-4]}.owner")
+def protected(
+    job: str, state: str | None, owner: dict[str, str], active: bool
+) -> bool:
     owned = False
     if owner:
         if (
@@ -204,11 +208,7 @@ def protected(queue: Path, job: str, state: str | None) -> bool:
             pass
         else:
             owned = process[19] == owner["start_time"]
-    return (
-        owned
-        or (state is not None and state not in TERMINAL)
-        or any((queue / directory / job).exists() for directory in ("jobs", "running"))
-    )
+    return owned or (state is not None and state not in TERMINAL) or active
 
 
 def collection_paths(queue: Path, job: str, state: str) -> list[Path]:
@@ -233,36 +233,81 @@ class HistoryEntry:
     orphaned: bool = False
 
 
-def history_entries(queue: Path) -> Iterator[HistoryEntry]:
-    """Inspect under history_lock; only job-local record errors are recoverable."""
+@dataclass
+class HistoryFiles:
+    files: dict[str, dict[str, os.DirEntry[str]]]
+    terminal: dict[str, list[str]]
+    related: set[str]
+
+
+def scan_history(queue: Path) -> HistoryFiles:
+    """Index each directory once, using entry types rather than candidate stats."""
+    files: dict[str, dict[str, os.DirEntry[str]]] = {}
     terminal: dict[str, list[str]] = {}
-    for state in TERMINAL:
-        for path in (queue / state).glob("*.job"):
-            if not path.name.startswith("."):
-                terminal.setdefault(path.name, []).append(state)
-    jobs = set(terminal)
-    for directory, suffix in (("control/completions", ".json"), ("logs", ".log")):
-        jobs.update(
-            f"{p.stem}.job"
-            for p in (queue / directory).glob(f"*{suffix}")
-            if not p.name.startswith(".")
-        )
+    related: set[str] = set()
+    for directory, suffixes in (
+        ("jobs", (".job",)),
+        ("running", (".job",)),
+        *((state, (".job",)) for state in TERMINAL),
+        ("logs", (".log",)),
+        ("state", (".state", ".owner")),
+        ("cancel-requests", (".cancel",)),
+        ("control/external-acks", (".ack",)),
+        ("control/completions", (".json",)),
+    ):
+        files[directory] = {}
+        with os.scandir(queue / directory) as entries:
+            for entry in entries:
+                if entry.name.startswith(".") or not entry.name.endswith(suffixes):
+                    continue
+                # Validate before inspecting any records. Corrupt job data must
+                # not hide a symlink, directory or special file for that job.
+                if entry.is_symlink() or not entry.is_file(follow_symlinks=False):
+                    raise ValueError(
+                        f"queue history path must be a regular file: {entry.path}"
+                    )
+                files[directory][entry.name] = entry
+                if directory != "control/completions":
+                    job = entry.name.rsplit(".", 1)[0] + ".job"
+                    related.add(job)
+                    if directory in TERMINAL:
+                        terminal.setdefault(job, []).append(directory)
+    return HistoryFiles(files, terminal, related)
+
+
+def history_entries(
+    queue: Path, *, include_expired: bool = True
+) -> Iterator[HistoryEntry]:
+    """Inspect under history_lock; only job-local record errors are recoverable."""
+    snapshot = scan_history(queue)
+    files = snapshot.files
+    jobs = set(snapshot.terminal)
+    jobs.update(name[:-5] + ".job" for name in files["control/completions"])
+    jobs.update(name[:-4] + ".job" for name in files["logs"])
     for job in sorted(jobs):
-        entry = HistoryEntry(job, terminal.get(job, []))
-        # Validate paths before handling data errors. A symlink, directory or
-        # special file must never be hidden by a corrupt record for the same job.
-        for path in [
-            *(queue / state / job for state in ("jobs", "running", *TERMINAL)),
-            *collection_paths(queue, job, "done")[1:],
-            completion_path(queue, job),
-        ]:
-            regular(path)
+        entry = HistoryEntry(job, snapshot.terminal.get(job, []))
         try:
+            completion = files["control/completions"].get(f"{job[:-4]}.json")
+            if completion is not None:
+                entry.record = parse_completion(Path(completion.path).read_bytes(), job)
+            # Retain record validation (including missing unexpired history),
+            # but do no per-job path probes or deletion retries for an already
+            # collected tombstone. Any reappearing related file disables this.
+            if (
+                job not in snapshot.related
+                and entry.record is not None
+                and "expired_at_ns" in entry.record
+            ):
+                if include_expired:
+                    yield entry
+                continue
             if len(entry.directories) > 1:
                 raise InvalidQueueRecord("job appears in multiple terminal directories")
-            state_value = values(queue / "state" / f"{job[:-4]}.state").get("state")
-            entry.record = read_completion(queue, job)
-            entry.protected = protected(queue, job, state_value)
+            state_value = values(files["state"].get(f"{job[:-4]}.state")).get("state")
+            owner = values(files["state"].get(f"{job[:-4]}.owner"))
+            entry.protected = protected(
+                job, state_value, owner, job in files["jobs"] or job in files["running"]
+            )
             terminal_directory = entry.directories[0] if entry.directories else None
             expected = (
                 terminal_directory if entry.record is None else entry.record["state"]
@@ -300,7 +345,7 @@ def maintain(queue: Path) -> None:
     migrated = orphaned = inconsistent = 0
     timestamp = now_ns()
     with history_lock(queue):
-        for entry in history_entries(queue):
+        for entry in history_entries(queue, include_expired=False):
             if entry.problem:
                 inconsistent += 1
                 continue
