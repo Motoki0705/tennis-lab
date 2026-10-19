@@ -68,7 +68,7 @@ def freeze(repo: Path, report: Path, target: Path) -> None:
         'unseen_media_opened': False, 'unseen_labels_opened': False, 'scoring_batches': 0,
         'pipeline_config': OmegaConf.to_container(cfg, resolve=True),
         'person': {
-            'detector': runtime.people.detector, 'detector_runtime': json_value(runtime.people.runtime.dino_detector),
+            'detector': 'dino', 'detector_runtime': json_value(runtime.people.runtime.dino_detector),
             'scope': 'full_frame', 'merge_duplicate_person_boxes': runtime.merge_duplicate_person_boxes,
             'merge_rule': 'greedy_iou_ge_0.8_score_desc_source_row_asc',
             'tracking': runtime.tracking.identity(),

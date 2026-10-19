@@ -15,7 +15,6 @@ AFLinkは論文再実装と公開重みを当面使うが、**重みの独立し
 | `features.py` | 通常profileは検出へViTPoseを適用してpose promptと外観を抽出する。生成専用profileは外観だけを抽出する。crop幾何は後段pose推論と共有 |
 | `archive.py` | 連続frame・一意rowを検証してv3特徴NPZを保存/読込。元検出artifact・重みhashなどの出自は呼び出し側が渡す |
 | `migration.py` / `scripts.migrate_features` | v2特徴NPZを明示的に検証し、全観測のscore由来を`LEGACY`と記録した別のv3へ移行する |
-| `botsort_pose.py` | XYWH Kalman、high/lowの2段対応、外観EMAとpose距離を使う固定camera向けBoT-SORT派生 |
 | `deep_ocsort_pose.py` | 公式Deep OC-SORTのobservation-centric Kalman再更新・方向速度・adaptive appearanceに共通poseコストを加えたadapter。出自・差分は`deep_ocsort_vendor/NOTICE.md` |
 | `strongsort.py` / `strongsort_offline.py` | 論文からのStrongSORT・AFLink・GSI推論再実装。明示的なpose重み（既定0）で共通pose距離を両照合段へ加算できる。GSI補間は別maskで保持。[出自と重みの制約](strongsort_NOTICE.md) |
 | `part_archive.py` | 検証済みKPR native archiveのreader。Deep OC-SORT / StrongSORTへ共通可視partのEuclidean距離を渡す |
@@ -45,7 +44,7 @@ track出力は実観測だけを持ち、Kalman予測boxを実検出とは扱わ
 StrongSORTはscoreなし観測もbox・外観・設定済みposeで対応付ける。Kalman更新の測定ノイズは、
 scoreありなら従来どおり基準ノイズの `1 - score` 倍、scoreなしなら明示設定
 `unscored_measurement_noise_scale` 倍（既定1）とする。この係数は信頼度ではなく、
-`TrackingConfig.identity()` に記録される。BoT-SORT / Deep OC-SORTはscoreなし入力を
+`TrackingConfig.identity()` に記録される。Deep OC-SORTはscoreなし入力を
 状態更新前に拒否する。score順の重複box選別にもscoreなし観測を渡さない。
 
 `TrackingConfig`は採用済み`strongsort_pp_pose`＋CLIPだけを受け付ける。
@@ -72,7 +71,6 @@ v2は明示的な移行を要求するエラーで停止し、キャッシュ再
 読み替えや再生成をしない。v1は受け付けない。
 非有限値はframe・検出row・関節・channel・値を付けて停止する。poseはjoint confidenceを持ち、
 双方の信頼できる4関節以上のbox内正規化距離を照合へ加える。
-BoT-SORT+poseでは外観不一致をhigh/low両段でIoUによって打ち消さない。
 特徴抽出のprompt契約はKPRの入力にも使える。KPR推論portはnative parts/visibilityを保持し、
 共通の単一embeddingへ暗黙変換しない。距離・EMA・区間平均は`player_association/appearance/parts.py`、
 比較の明示的な尺度転用は[run 9 addendum](../../../knowledge/runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)を参照。
@@ -91,17 +89,10 @@ sourceとdestinationは絶対パスとし、destinationは未作成の別ファ�
   /absolute/path/to/v2-features.npz /absolute/path/to/new-v3-features.npz
 ```
 
-[BoT-SORT原論文](https://arxiv.org/abs/2206.14651)と
-[Ultralyticsの実装](https://docs.ultralytics.com/reference/trackers/bot_sort/)を参照した派生方式。
-固定cameraなのでGMCを使わず、pose距離・外観vetoを追加する。high scoreの新規trackを直ちに出し、
-IoUだけで重複trackを削除しない。原論文の追試とは呼ばない。閾値は初期値でMeijiによる選択・調整は未完了。
-
 `Pose2DFrameSequenceRequest`と共通crop処理は#935の`74ac16d6`から取り込んだ。raw動画とJPEG文脈の双方から同じ
 特徴処理を呼べる。#935 branch/worktreeは変更しておらず、積み直し時に同じ修正を重複させない。
 
 単独の実データ実行は`tests/benchmarks/person_tracking_features.py`。GPUでの特徴生成は共有training queueを使う。
 `features` phaseが元検出artifactのhash、ViTPose/CLIP重みのSHA-256、feature config、source動画、出力hashを保存し、
-`track` phaseは同じNPZをCPUで使う。BoT-SORT-style derivativeの結果には必ず
-`--method ultralytics_botsort`の旧実装（同じ#937検出、sparse optical flowあり）を並べる。
-baselineは旧wrapperの観測box/IDを保存し、Kalman更新boxを検出row対応とは称さない。
+`track` phaseは同じNPZをCPUで使い、`--method deep_ocsort_pose`で比較する。
 `--max-frames`を指定したrunはsmokeであり全clipの評価ではない。

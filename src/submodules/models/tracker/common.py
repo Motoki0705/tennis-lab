@@ -7,9 +7,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
 
+import cv2
 import numpy as np
 import torch
 
+from src.submodules.models.dino.person_detector import PersonDetectionResult
 from src.submodules.vendor.gvhmr.utils.net_utils import moving_average_smooth
 from src.submodules.vendor.gvhmr.utils.seq_utils import (
     frame_id_to_mask,
@@ -162,7 +164,7 @@ def stitch_single_subject_tracklets(
     The caller must first constrain detections to an ROI containing one target
     subject.  For every observed frame, the largest remaining person box is
     assigned synthetic ID 0.  This preserves actual detector observations
-    across BoT-SORT ID changes; missing frames are still explicit and are only
+    across track ID changes; missing frames are still explicit and are only
     interpolated later by :func:`build_track_tensor`.
     """
     stitched: list[list[dict]] = []
@@ -232,3 +234,30 @@ def build_track_tensor(
     track = moving_average_smooth(track, window_size=5, dim=0)
     track = moving_average_smooth(track, window_size=5, dim=0)
     return cast(torch.Tensor, track.float())
+
+
+def filter_detections_by_footpoint(
+    detections: PersonDetectionResult,
+    footpoint_polygon_px: tuple[tuple[float, float], ...],
+) -> PersonDetectionResult:
+    """Retain bottom-centre box points within/on the playing-area polygon."""
+    polygon = np.asarray(footpoint_polygon_px, dtype=np.float32)
+    if (
+        polygon.ndim != 2
+        or polygon.shape[1] != 2
+        or len(polygon) < 3
+        or not np.isfinite(polygon).all()
+    ):
+        raise ValueError("footpoint_polygon_px must be a finite polygon")
+    boxes = detections.boxes_xyxy
+    keep = np.array(
+        [
+            cv2.pointPolygonTest(
+                polygon, (float((b[0] + b[2]) / 2), float(b[3])), False
+            )
+            >= 0
+            for b in boxes
+        ],
+        dtype=bool,
+    )
+    return PersonDetectionResult(boxes[keep], detections.scores[keep])

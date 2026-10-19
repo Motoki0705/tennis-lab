@@ -186,6 +186,16 @@ SINGLE_OBJECT_REMOVED_MODULES = (
     "src.tasks.plcs.visualization.rendering.residual_comparison",
 )
 
+PERSON_TRACKING_REMOVED_MODULES = (
+    # Removed detector/tracker comparisons and the single-camera demo have no shims.
+    "src.submodules.models.tracker.dino_tracker",
+    "src.submodules.models.tracker.yolo_tracker",
+    "src.submodules.scripts",
+    "src.submodules.scripts.demo_gvhmr",
+    "src.tasks.person_tracking.all_person",
+    "src.tasks.person_tracking.botsort_pose",
+)
+
 PROHIBITED_SYMBOLS = frozenset(
     {
         "CLIP_MANIFEST_NAME",
@@ -1628,6 +1638,7 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
         *COURT_OFFLINE_TARGET_REMOVED_MODULES,
         *TENNIS_SCENE_REMOVED_MODULES,
         *SINGLE_OBJECT_REMOVED_MODULES,
+        *PERSON_TRACKING_REMOVED_MODULES,
     )
     unexpected = {
         module

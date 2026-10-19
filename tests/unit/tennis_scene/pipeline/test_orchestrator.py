@@ -76,7 +76,7 @@ def test_missing_coco_checkpoint_does_not_select_available_player_weights(tmp_pa
     legacy = cfg.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
     legacy.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_bytes(b"available legacy checkpoint")
-    cfg.people.detector_checkpoint.unlink()
+    cfg.people.dino_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match="checkpoint0029_4scale_swin"):
         standard_definition(cfg, _source(tmp_path), code_identity="test")
 

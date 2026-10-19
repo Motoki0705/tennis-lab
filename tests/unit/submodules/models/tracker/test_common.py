@@ -1,9 +1,11 @@
-"""Tests for src/submodules/models/tracker/yolo_tracker.py (pure helpers)."""
+"""Independent track contracts, interpolation and detection filtering."""
 
 import numpy as np
 import pytest
 import torch
 
+import src.submodules.models.tracker.common as tracker_common
+from src.submodules.models import PersonDetectionResult
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
@@ -137,3 +139,65 @@ def test_requested_track_count_must_be_available() -> None:
             TrackRequest("video.mp4", num_tracks=2, interactive=False),
             num_frames=2,
         )
+
+
+def test_completed_track_interpolates_then_smooths_missing_frames(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    smoothing_inputs: list[torch.Tensor] = []
+
+    def _fake_smooth(
+        track: torch.Tensor, *, window_size: int, dim: int
+    ) -> torch.Tensor:
+        assert window_size == 5
+        assert dim == 0
+        smoothing_inputs.append(track.clone())
+        return track + 0.25
+
+    monkeypatch.setattr(tracker_common, "moving_average_smooth", _fake_smooth)
+    history = [
+        [{"id": 7, "bbx_xyxy": np.array([10, 20, 30, 50], dtype=np.float32)}],
+        [],
+        [{"id": 7, "bbx_xyxy": np.array([14, 24, 34, 54], dtype=np.float32)}],
+    ]
+
+    result = select_and_complete_tracks(
+        history,
+        TrackRequest("camera-near.mp4", num_tracks=1, interactive=False),
+        num_frames=3,
+    )
+
+    interpolated = torch.tensor(
+        [
+            [10.0, 20.0, 30.0, 50.0],
+            [12.0, 22.0, 32.0, 52.0],
+            [14.0, 24.0, 34.0, 54.0],
+        ]
+    )
+    assert result.track_ids == [7]
+    assert result.tracks[7].shape == (3, 4)
+    torch.testing.assert_close(smoothing_inputs[0], interpolated)
+    torch.testing.assert_close(smoothing_inputs[1], interpolated + 0.25)
+    torch.testing.assert_close(result.tracks[7], interpolated + 0.5)
+
+
+def test_playing_area_filters_by_feet_and_preserves_scores() -> None:
+    from src.submodules.models.tracker.common import (
+        filter_detections_by_footpoint,
+    )
+
+    detections = PersonDetectionResult(
+        np.array([[1, -5, 3, 5], [8, 8, 12, 10], [2, 0, 4, 11]], np.float32),
+        np.array([0.8, 0.7, 0.9], np.float32),
+    )
+    polygon = ((0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0))
+    selected = filter_detections_by_footpoint(detections, polygon)
+    np.testing.assert_array_equal(selected.boxes_xyxy, detections.boxes_xyxy[:2])
+    np.testing.assert_array_equal(selected.scores, detections.scores[:2])
+    empty = filter_detections_by_footpoint(
+        PersonDetectionResult(np.empty((0, 4), np.float32), np.empty(0, np.float32)),
+        polygon,
+    )
+    assert empty.boxes_xyxy.shape == (0, 4)
+    with pytest.raises(ValueError, match="finite polygon"):
+        filter_detections_by_footpoint(detections, ((0.0, 0.0), (1.0, 1.0)))
