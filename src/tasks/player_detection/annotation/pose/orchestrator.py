@@ -12,6 +12,8 @@ from pathlib import Path
 from threading import Event
 from typing import Any
 
+from src.utils.training_queue import expired_completion, named_jobs
+
 from .dataset import update_entry
 from .runner import review_worker
 from .selection import load_campaign
@@ -49,17 +51,19 @@ def enqueue_clip(
         ]
     )
     env = dict(os.environ, TRAINING_QUEUE_DIR=config["queue_dir"])
+    key = f"pose:{token}:{stage}:{index}:{attempt}"
+    receipt = Path(config["queue_dir"]) / "control/registrations" / (
+        hashlib.sha256(key.encode()).hexdigest() + ".receipt"
+    )
     with lock(clip_root(campaign, index) / f"{stage}-submit.lock") as fd:
         # Recover the job even if the coordinator died after atomic queue admission
         # but before writing its attempt receipt. The child retains the lock.
-        matches = {
-            p.name
-            for state in ("jobs", "running", "done", "failed", "cancelled")
-            for p in (Path(config["queue_dir"]) / state).glob(f"*_{name}.job")
-        }
+        matches = named_jobs(Path(config["queue_dir"]), name)
         if len(matches) > 1:
             raise RuntimeError(f"Duplicate owned queue jobs: {sorted(matches)}")
-        if matches:
+        # Old keyless attempts recover by immutable identity. Keyed attempts
+        # go through add again so the queue also verifies the request digest.
+        if matches and not receipt.exists() and not receipt.is_symlink():
             return matches.pop()
         result = subprocess.run(
             [
@@ -77,6 +81,8 @@ def enqueue_clip(
                 "988",
                 "--resource",
                 "all",
+                "--idempotency-key",
+                key,
             ],
             cwd=config["project_root"],
             env=env,
@@ -95,6 +101,9 @@ def queue_state(queue: Path, name: str) -> str:
     for state in ("jobs", "running", "done", "failed", "cancelled"):
         if (queue / state / name).exists():
             return state
+    completion = expired_completion(queue, name)
+    if completion is not None:
+        return str(completion["state"])
     raise RuntimeError(f"Owned queue job disappeared: {name}")
 
 

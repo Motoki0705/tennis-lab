@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from src.tasks.person_tracking.strongsort import StrongSort, StrongSortConfig
 from src.tasks.person_tracking.strongsort_offline import AFLink
 from src.tasks.player_detection.annotation.pose import orchestrator, selected_pose
 from src.tasks.player_detection.annotation.pose.reviews import validate_and_remap
+from src.utils.training_queue import RETENTION_NS
 from tests.unit.tasks.player_detection.annotation.pose.test_campaign import (
     decision,
     raw_tracks,
@@ -113,17 +115,38 @@ def test_pose_free_features_and_tracking_never_compute_poses(
         )
 
 
+@pytest.mark.parametrize("expired", [False, True])
+@pytest.mark.parametrize(
+    "prefix", ["123", "0-8207631999999999999_2026-10-19T00-00-00-000000000Z_2"]
+)
 def test_enqueue_recovers_after_admission_before_receipt(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, expired: bool, prefix: str
 ) -> None:
     import hashlib
 
     campaign = tmp_path / "campaign"
     queue = tmp_path / "queue"
     token = hashlib.sha256(str(campaign.resolve()).encode()).hexdigest()[:16]
-    name = f"123_i988-{token}-pose-00003-a0.job"
-    (queue / "done").mkdir(parents=True)
-    (queue / "done" / name).write_text("fixture")
+    name = f"{prefix}_i988-{token}-pose-00003-a0.job"
+    if expired:
+        completion = queue / "control/completions" / f"{name[:-4]}.json"
+        completion.parent.mkdir(parents=True)
+        completion.write_text(
+            json.dumps(
+                dict(
+                    version=1,
+                    job=name,
+                    state="done",
+                    finished_at_ns=1,
+                    retention_started_at_ns=1,
+                    time_source="recorded",
+                    expired_at_ns=RETENTION_NS + 2,
+                )
+            )
+        )
+    else:
+        (queue / "done").mkdir(parents=True)
+        (queue / "done" / name).write_text("fixture")
     config = {
         "assets": {"dino_extension": "/extension.so"},
         "project_root": str(tmp_path),
@@ -136,3 +159,34 @@ def test_enqueue_recovers_after_admission_before_receipt(
         lambda *_a, **_k: pytest.fail("do not enqueue twice"),
     )
     assert orchestrator.enqueue_clip(config, campaign, 3, 0, "pose") == name
+    assert orchestrator.queue_state(queue, name) == "done"
+
+
+def test_new_pose_attempts_use_a_stable_idempotency_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    commands = []
+
+    def register(
+        command: list[str], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "queued: 123_pose.job\n", "")
+
+    monkeypatch.setattr(orchestrator.subprocess, "run", register)
+    config = dict(
+        project_root=str(tmp_path),
+        python="python",
+        queue_dir=str(tmp_path / "queue"),
+        queue_script="fixture.sh",
+        session_id="fixture",
+    )
+    for _ in range(2):
+        assert (
+            orchestrator.enqueue_clip(config, tmp_path / "campaign", 3, 0, "pose")
+            == "123_pose.job"
+        )
+    assert commands[0] == commands[1]
+    assert commands[0][commands[0].index("--idempotency-key") + 1].endswith(":pose:3:0")

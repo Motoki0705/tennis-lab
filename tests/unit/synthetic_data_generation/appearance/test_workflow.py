@@ -537,6 +537,15 @@ def test_finalize_uses_public_import_and_queue_uses_common_root(
     with pytest.raises(ValueError, match="conflicting job states"):
         nht.enqueue_training(variant, retry_failed_job=True)
     running_job.unlink()
+    # Terminal proof remains available after the queue's history collection.
+    from src.utils.training_queue import RETENTION_NS
+
+    completion = tmp_path / "main/.training_queue/control/completions/fixture-2.json"
+    completion.parent.mkdir(parents=True)
+    completion.write_text(json.dumps(dict(version=1, job="fixture-2.job", state=terminal_state,
+                                          finished_at_ns=1, retention_started_at_ns=1,
+                                          time_source="recorded", expired_at_ns=RETENTION_NS + 2)))
+    terminal_job.unlink()
     assert nht.finalize(variant)["status"] == "training"
     nht.enqueue_training(variant, retry_failed_job=True)
     assert load_manifest(variant).status == "finalized"

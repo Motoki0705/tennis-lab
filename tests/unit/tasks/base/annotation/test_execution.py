@@ -56,6 +56,7 @@ from src.tasks.base.annotation.resources import (
 from src.tasks.base.annotation.resources.measurements import process_usage
 from src.tasks.base.annotation.workers.processes import owned_members, process_snapshot
 from src.utils.paths import PROJECT_ROOT
+from src.utils.training_queue import RETENTION_NS
 
 
 @pytest.fixture
@@ -363,7 +364,7 @@ def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
 
 
 def queue_config(layout: AnnotationLayout) -> QueueConfiguration:
-    script = layout.repository / "queue.sh"
+    script = layout.repository / "training_queue.sh"
     script.write_text("# fixture queue protocol --idempotency-key\n")
     return QueueConfiguration(
         script=str(script),
@@ -379,10 +380,15 @@ def live_queue_config(
 ) -> QueueConfiguration:
     config = queue_config(layout)
     script = Path(config.script)
-    script.write_bytes(
-        (
-            PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
-        ).read_bytes()
+    subprocess.run(
+        [
+            "bash",
+            str(PROJECT_ROOT / "scripts/github_actions/install_queue_bundle.sh"),
+            str(script.parent),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     # Keep the real repro capture, but do not scan the developer checkout on
     # every job before the resource-wait assertions can start.
@@ -523,6 +529,13 @@ def test_queued_capacity_wait_reuses_unexecuted_request(
     )
     assert not list((Path(config.directory) / "failed").glob("*.job"))
     assert (stage_directory(layout, launch) / "stdout.log").read_text() == "completed\n"
+    completion = Path(config.directory) / "control/completions" / f"{Path(job).stem}.json"
+    ended = json.loads(completion.read_text())["finished_at_ns"]
+    monkeypatch.setenv("TRAINING_QUEUE_TEST_NOW_NS", str(ended + RETENTION_NS + 1))
+    subprocess.run(["bash", config.script, "status"], cwd=layout.repository,
+                   check=True, capture_output=True, text=True)
+    assert not (Path(config.directory) / "done" / job).exists()
+    assert runner.submit(launch)["state"] == "succeeded"
     repro = json.loads(
         (Path(config.directory) / "repro" / Path(job).stem / "run.json").read_text()
     )
@@ -770,6 +783,21 @@ def registered_queue(
     for state in ("jobs", "running", "done", "failed", "cancelled"):
         (queue / state).mkdir()
     return config, ref
+
+
+@pytest.mark.parametrize("state", ["done", "failed", "cancelled"])
+def test_expired_queue_does_not_claim_stage_success_without_receipt(setup: tuple, state: str) -> None:
+    layout, _manager, launch = setup
+    config, ref = registered_queue(layout, launch)
+    path = Path(config.directory) / "control/completions/moving.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(json.dumps(dict(version=1, job="moving.job", state=state,
+                                   finished_at_ns=1, retention_started_at_ns=1,
+                                   time_source="recorded", expired_at_ns=RETENTION_NS + 2)))
+    result = queue_state(config, ref)
+    assert result["state"] == ("cancelled" if state == "cancelled" else "failed")
+    assert result["history"] == "expired"
+    assert "did not publish completion" in result["reason"]
 
 
 @pytest.mark.parametrize(
