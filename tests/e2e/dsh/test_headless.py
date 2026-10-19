@@ -163,6 +163,8 @@ def owner(tmp_path: Path) -> Path:
         "workspace-write.patch.yml",
         "headless_config.py",
         "smoke.py",
+        "accounting.py",
+        "events.py",
     ):
         shutil.copy2(SOURCE / name, directory / name)
     package = directory / "node_modules/@deepseek-ai/dsh"
