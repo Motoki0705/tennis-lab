@@ -95,7 +95,7 @@ def plan(args: argparse.Namespace) -> None:
     source, records = source_inputs(args.sources)
     cfg = runtime(args.repo)
     detector = source['weights']['coco']['coco']
-    if checked_file(detector).resolve() != cfg.people.detector_checkpoint.resolve() \
+    if checked_file(detector).resolve() != cfg.people.dino_checkpoint.resolve() \
             or cfg.people.runtime.dino_detector.confidence != .3:
         raise ValueError('Source differs from default COCO .30 checkpoint')
     models: dict[str, dict[str, Any]] = {name: {'path': str(encoder_weights(name, checkpoint_root=args.repo / 'ckpt', external_root=args.repo / 'third_party')),

@@ -48,7 +48,7 @@ def draw(image: np.ndarray, box: np.ndarray, text: str, color: tuple[int, int, i
     cv2.putText(image, text, (max(0, x1), max(16, y1 - 3)), cv2.FONT_HERSHEY_SIMPLEX, .43, color, 1, cv2.LINE_AA)
 
 
-def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant: str | None = None,
+def render(report: Path, *, baseline_variant: str = 'old_old', candidate_variant: str | None = None,
            merge_audit: Path | None = None) -> None:
     manifest = json.loads((report / 'comparison.json').read_text())
     chosen = recommendation(manifest['table']) if candidate_variant is None else candidate_variant
@@ -122,7 +122,7 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
                     if (frame - start) % 4 and not merge_event:
                         continue
                     canvas: np.ndarray = np.zeros((800, 1920, 3), np.uint8)
-                    baseline_title = 'COCO .30 + old BoT-SORT/Lab' if baseline_variant == 'new_old' else baseline_variant.replace(CLIP, 'CLIP')
+                    baseline_title = baseline_variant.replace(CLIP, 'CLIP')
                     candidate_title = chosen.replace(CLIP, 'CLIP')
                     if merge_audit is not None:
                         baseline_title, candidate_title = 'StrongSORT++ + pose / CLIP | merge OFF', 'StrongSORT++ + pose / CLIP | merge ON'
@@ -198,7 +198,7 @@ def render(report: Path, *, baseline_variant: str = 'new_old', candidate_variant
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', required=True, type=Path)
-    parser.add_argument('--baseline', default='new_old')
+    parser.add_argument('--baseline', default='old_old')
     parser.add_argument('--candidate')
     parser.add_argument('--merge-audit', type=Path)
     cv2.setNumThreads(1)

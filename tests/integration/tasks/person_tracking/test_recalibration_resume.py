@@ -146,7 +146,7 @@ def test_extraction_skips_reused_camera_and_recomputes_partial(resume: ModuleTyp
     monkeypatch.setattr(module, 'file_identity', lambda _: {})
     plan['models'] = dict.fromkeys(('detector', 'pose', 'clip', 'aflink'), {})
     (report / 'plan.json').write_text(json.dumps(plan))
-    cfg = SimpleNamespace(people=SimpleNamespace(detector_checkpoint=None, vitpose_checkpoint=None,
+    cfg = SimpleNamespace(people=SimpleNamespace(dino_checkpoint=None, vitpose_checkpoint=None,
         runtime=SimpleNamespace(vitpose=SimpleNamespace(flip_test=False, head=None), dino_detector={})),
         tracking_encoder_weights=None, aflink_checkpoint=None, merge_duplicate_person_boxes=False,
         tracking=SimpleNamespace(encoder='synthetic', identity=lambda: plan['production_tracking']))

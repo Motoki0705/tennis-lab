@@ -39,7 +39,7 @@ ball_points＋camera → ball_triangulation
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
-人物検出の既定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
+人物検出はDINOに固定し、標準設定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
 ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`を明示した場合に使用できる。
 指定重みが無い・DINO形式でない場合は停止し、別の重みを選び直さない。

@@ -189,7 +189,6 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
     "src.tennis_scene.scripts.visualize_tasks": "tennis_scene.visualize_tasks",
-    "src.submodules.scripts.demo_gvhmr": "submodules.demo_gvhmr",
 }
 
 _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
@@ -244,7 +243,6 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
     "src.tennis_scene.scripts.visualize_tasks": "src.tennis_scene.configuration.validate_visualize_tasks_boundary",
-    "src.submodules.scripts.demo_gvhmr": "src.submodules.scripts.demo_gvhmr._validate_boundary",
 }
 
 
@@ -742,7 +740,6 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualize_tasks"),
-    _runtime_boundary("submodules", "src.submodules.scripts.demo_gvhmr"),
 )
 
 

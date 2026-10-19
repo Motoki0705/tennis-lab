@@ -17,7 +17,7 @@ class TestBboxMaxSideRatio:
         assert bbox_max_side_ratio(10.0, 80.0, 100.0, 100.0) == pytest.approx(0.8)
 
     def test_normalized_boxes_use_unit_image_size(self) -> None:
-        # YOLO-style normalized w/h: ratio is just max(w, h).
+        # Normalized w/h: ratio is just max(w, h).
         assert bbox_max_side_ratio(0.3, 0.12, 1.0, 1.0) == pytest.approx(0.3)
 
     def test_full_frame_box_is_one(self) -> None:

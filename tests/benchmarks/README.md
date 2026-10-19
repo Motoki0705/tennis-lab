@@ -260,20 +260,18 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   0.01/0.02/0.05/0.1/0.3のcamera×近遠表、共通11件の表、ROI内外人数を`sources.{json,csv}`へ書く。
   参照はCOCO由来の旧boxでCOCOに有利。COCOはROI後しか保存されておらず、ROI外の人数は不明。
   FT/COCOの推論時間は計測範囲が違うためJSONの`runtime_scope`を必ず読む。
-  同じreportで`--phase tracks`はFT base 0.01・COCO・unionをCPU Ultralytics BoT-SORTへ渡す。
-  元scoreは保持し、追跡段の追加score gate/fusionと人物全体の上限は無効。検出row対応を検証し、raw/Kalman両boxを保存する。
+  選別・可視化には保存済みの追跡archiveを使う。追跡の再実行は提供しない。
   `--phase select`は足元の既存校正・領域・presence fractionで選手候補を選び、上限6を適用する。
   既定CLIP-ReIDもCPUで実行し、#933の区間分割・短い曖昧区間除外・handoffを含むcamera間対応を第2確認に使う。
   未決定は理由を残し、成功結果へ戻さない。旧検出＋旧追跡の保存済み出力もbaselineとして同じ選別に通す。
   `--phase video`はunionのdev clip_000から、全人物を灰色、選手を予測identity色で示す12秒3camera動画を作る。
   `--phase report`はidentity/camera別の表と日本語`report.md`を作り、対応後の足元のcamera間距離（z=0）を第2確認として記録する。
-  pipeline既定やencoder比較は変更しない。全人物のpose/外観が未保存のBoT-SORT-style derivativeはこの診断では未評価。
+  pipeline既定やencoder比較は変更しない。
 
 - `person_selection_fullframe.py --phase sources --ft-progress <run3/progress.json> --coco-inference <COCO/inference.json> --report <新規出力先>`
   はFT .01/.02/.05、全画面COCO .05/.10/.30、両者 .30のunionを同じ800/1333・ROI前の条件で比較するCPU診断。
   全24 raw archiveのhash・全12 camera-clip・入力/校正/未見予約の一致を検証する。
-  `--phase tracks --max-cameras 1`は同じscore gateなしBoT-SORTを再生し、camera境界の完了hashから再開する。
-  旧ROI後COCOを補完や代用に使わない。
+  選別・可視化は保存済みの追跡archiveを使い、旧ROI後COCOを補完や代用に使わない。
   `--phase select --repo <元repo> --max-clips 1` はcameraごとにCLIP/選別を保存し、1 source×clipずつ進める。
   `--phase report` は全7×4結果のhash・全選択断片の観測保持・上限を検証して、camera×近遠・identity・wideの表を書く。
   領域/CLIP/fragment/handoffの定義は[`court_linking.py`](../../src/tasks/person_tracking/court_linking.py)を正本とする。

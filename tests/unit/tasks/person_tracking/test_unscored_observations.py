@@ -61,7 +61,7 @@ def test_corrected_observation_cannot_keep_a_model_score() -> None:
         replace(mixed(), scores=np.array([0.9, 0.95], np.float32))
 
 
-@pytest.mark.parametrize("method", ["botsort_pose", "deep_ocsort_pose"])
+@pytest.mark.parametrize("method", ["deep_ocsort_pose"])
 def test_score_threshold_methods_reject_missing_scores_before_mutating_state(
     method: str,
 ) -> None:

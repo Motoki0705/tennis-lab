@@ -1,4 +1,4 @@
-"""CPU matrix governed by the run-8 precommitted protocol, with durable stages."""
+"""CPU Deep OC-SORT comparison against immutable saved baseline results."""
 from __future__ import annotations
 
 import argparse
@@ -20,14 +20,8 @@ from person_selection_cpu import (  # type: ignore[import-not-found]
     dense_tracks,
 )
 
-from src.submodules.models import (
-    BotSortAssociator,
-    TrackRequest,
-    select_and_complete_tracks,
-)
 from src.tasks.person_tracking.appearance_cache import cached_appearance
 from src.tasks.person_tracking.archive import load_features
-from src.tasks.person_tracking.botsort_pose import BotSortPoseConfig
 from src.tasks.person_tracking.court_linking import (
     LinkingConfig,
     exclusive_region,
@@ -53,23 +47,16 @@ from src.tasks.player_association.association.config import load_association_con
 from src.tasks.player_association.evaluation.labels import ClipLabels
 from src.tasks.player_association.evaluation.metrics import CameraPrediction, evaluate
 from src.tasks.player_association.geometry.footpoints import ground_footpoints
-from src.tasks.player_detection.evaluation.far_archive import DetectionArchive
 from src.tasks.player_detection.evaluation.person_sources import DEV_CLIPS, write_csv
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
-from src.tennis_scene.pipeline.components.tracking_identity import (
-    TrackletLinkPolicy,
-    link_tracklets,
-    torso_appearance_lab,
-)
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.utils.checksum import dual_sha256
-from src.utils.video import OpenCVVideoFrameReader
 
 CODE = Path(__file__).resolve().parents[2]
 CLIP = 'clipreid_vitb16_market1501'
 SOLIDER = 'solider_swin_base_msmt17'
-METHODS = ('botsort_pose', 'deep_ocsort_pose')
-VARIANTS = ('old_old', 'new_old', *[f'{m}__{e}' for m in METHODS for e in (CLIP, SOLIDER)])
+METHODS = ('deep_ocsort_pose',)
+VARIANTS = ('old_old', *[f'{m}__{e}' for m in METHODS for e in (CLIP, SOLIDER)])
 PROTOCOL = CODE / 'knowledge/runs/run-i964-tracker-matrix-r8-20260930/protocol.md'
 
 
@@ -100,24 +87,6 @@ def inputs(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any], di
     return plan, features, source
 
 
-def old_replay(record: dict[str, Any], detection: dict[str, Any], camera: Any) -> tuple[CameraTracks, dict[str, Any]]:
-    archive = DetectionArchive.load(detection)
-    checked(record['video'])
-    tracker = BotSortAssociator()
-    history = []
-    for packet in OpenCVVideoFrameReader(Path(record['video']['path'])):
-        tracked = tracker.update(archive.at(packet.index), packet.frame)
-        history.append([{**item, 'appearance_lab': torso_appearance_lab(packet.frame, item['bbx_xyxy'])} for item in tracked])
-    if len(history) != record['video']['num_frames']:
-        raise ValueError('Legacy replay video ended early')
-    linked = link_tracklets(history, TrackletLinkPolicy())
-    result = select_and_complete_tracks(linked.history, TrackRequest(Path(record['video']['path']), None, False), len(history))
-    ids = result.track_ids
-    boxes = np.stack([result.tracks[i].numpy() for i in ids]) if ids else np.zeros((0, len(history), 4), np.float32)
-    observed = np.stack([result.observed_mask(i).numpy() for i in ids]) if ids else np.zeros((0, len(history)), bool)
-    return CameraTracks(camera, (1920, 1080), np.asarray(ids, np.int64), boxes, observed), {'lab_links': json_value(linked.links)}
-
-
 def setup(args: argparse.Namespace, plan: dict[str, Any]) -> dict[str, Any]:
     sides_path = args.repo / 'outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json'
     cfg = load_association_config(CODE / 'src/tasks/player_association/configs/association.yaml', players_per_side=1)
@@ -125,8 +94,8 @@ def setup(args: argparse.Namespace, plan: dict[str, Any]) -> dict[str, Any]:
         'plan': record_file(args.features / 'plan.json'), 'side': record_file(sides_path),
         'code': {str(p.relative_to(CODE)): dual_sha256(p) for p in sorted((CODE / 'src/tasks/person_tracking').rglob('*.py'))},
         'benchmark': record_file(Path(__file__)), 'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=CODE, text=True).strip(),
-        'association': json_value(cfg), 'selection': asdict(LinkingConfig()), 'lab': asdict(TrackletLinkPolicy()),
-        'botsort_pose': asdict(BotSortPoseConfig()), 'deep_ocsort_pose': asdict(DeepOCSortPoseConfig()),
+        'association': json_value(cfg), 'selection': asdict(LinkingConfig()),
+        'deep_ocsort_pose': asdict(DeepOCSortPoseConfig()),
         'versions': {'numpy': np.__version__, 'scipy': scipy.__version__, 'torch': torch.__version__},
         'models': plan['models'], 'seed': 0, 'device': 'cpu'}
     path = args.report / 'identity.json'
@@ -162,9 +131,6 @@ def track(args: argparse.Namespace) -> None:
             try:
                 if variant == 'old_old':
                     tracks, provenance = dense_tracks(source, {}, 'old_pipeline', record, camera, args.repo)
-                    result['legacy'] = provenance
-                elif variant == 'new_old':
-                    tracks, provenance = old_replay(record, source['archives']['coco_fullframe_0.30'][key], camera)
                     result['legacy'] = provenance
                 else:
                     method, encoder = variant.split('__')

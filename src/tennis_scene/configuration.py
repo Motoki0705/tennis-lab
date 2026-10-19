@@ -166,7 +166,7 @@ _COURT_SCHEMA = StrictConfigSchema(
 _PEOPLE_MODELS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.people_models",
     fields={
-        **{name: ConfigField.of(str) for name in ("detector", "gvhmr_checkpoint", "yolo_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
+        **{name: ConfigField.of(str) for name in ("gvhmr_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
         "bundled_assets": ConfigField.mapping(BUNDLED_MODEL_ASSET_SCHEMA),
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
         "merge_duplicate_person_boxes": ConfigField.of(bool),
@@ -333,10 +333,8 @@ class PipelineRuntimeConfig:
         if runtime.device != device:
             raise SemanticConfigurationError("People model device must equal pipeline device")
         people = PeopleModelConfig(
-            detector=cast(str, models["detector"]),
             dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["dino_checkpoint"])),
             dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"])),
-            yolo_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["yolo_checkpoint"])),
             vitpose_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["vitpose_checkpoint"])),
             hmr2_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["hmr2_checkpoint"])),
             gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["gvhmr_checkpoint"])),

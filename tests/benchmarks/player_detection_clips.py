@@ -124,8 +124,6 @@ def main() -> None:
         ("coco_person", [f"people_models.dino_checkpoint={args.legacy_checkpoint}"]), ("player_ft", []),
     ):
         runtime, overrides = compose_detector_runtime(repo, report, args.device, [*args.override, *extra], name)
-        if runtime.people.detector != "dino":
-            raise ValueError("This comparison requires two DINO-format checkpoints")
         metric = PartialDetectionMetrics(args.min_iou, runtime.people.runtime.dino_detector.confidence)
         variant: dict[str, Any] = {"config_overrides": overrides, "clips": {}}
         summary["variants"][name] = variant

@@ -151,9 +151,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     for camera in ids:
         add(f"person_detection/{camera}", PersonDetectionModule(cfg.people, enabled=people_enabled,
             merge_duplicates=cfg.merge_duplicate_person_boxes), PersonDetectionInputAssembler(),
-            {}, lambda: {"detector": cfg.people.detector,
-             "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.detector_checkpoint}),
-             "runtime": cfg.people.runtime.dino_detector, "yolo_confidence": cfg.people.runtime.tracking.yolo_confidence,
+            {}, lambda: {"detector": "dino",
+             "assets": asset_identities(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
+             "runtime": cfg.people.runtime.dino_detector,
              "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
              "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
         add(f"person_tracking/{camera}", PersonTrackingModule(cfg.tracking, people=cfg.people, encoder=tracking_encoder,
@@ -217,7 +217,7 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     return {
         "court": cfg.court_kp.checkpoint,
         "ball": cfg.ball_detection.checkpoint,
-        **({"detector": cfg.people.detector_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
+        **({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),
         **(cfg.people.body_assets() if body else {}),
