@@ -37,6 +37,7 @@ def load_clip_sequence(
     normalize_imagenet: bool,
     imagenet_mean: tuple[float, float, float],
     imagenet_std: tuple[float, float, float],
+    render_width: int | None = None,
 ) -> ClipSequence:
     """Load and preprocess a stored clip for visualization.
 
@@ -44,15 +45,19 @@ def load_clip_sequence(
         store_dir: Absolute path of a ball frame store version.
         clip_id: Exact clip_id from its metadata.
         sequence_length: Model temporal window length (``model.num_frames``).
-        image_size_hw: Target ``(height, width)`` for model/render frames.
+        image_size_hw: Target ``(height, width)`` for model images.
         max_frames: Optional cap on the number of frames.
         normalize_imagenet: Whether to ImageNet-normalize model images.
         imagenet_mean: ImageNet mean (used when normalizing).
         imagenet_std: ImageNet std (used when normalizing).
+        render_width: Resize stored images to this width, preserving aspect ratio.
+            ``None`` keeps render frames at the model input size.
 
     Returns:
-        A :class:`ClipSequence` with render frames, model images and GT labels.
+        A :class:`ClipSequence` with render frames and model images.
     """
+    if render_width is not None and render_width <= 0:
+        raise ValueError("render_width must be positive when set")
     store = BallFrameStore(store_dir)
     clip = store.clip_by_id(clip_id)
     if max_frames is not None and max_frames <= 0:
@@ -76,7 +81,17 @@ def load_clip_sequence(
             interpolation=cv2.INTER_LINEAR,
         )
 
-        render_frames_rgb.append(torch.from_numpy(resized_rgb.copy()).to(torch.uint8))
+        if render_width is None:
+            render_rgb = resized_rgb
+        else:
+            stored_height, stored_width = frame_rgb.shape[:2]
+            render_height = max(1, round(stored_height * render_width / stored_width))
+            render_rgb = cv2.resize(
+                frame_rgb,
+                (render_width, render_height),
+                interpolation=cv2.INTER_LINEAR,
+            )
+        render_frames_rgb.append(torch.from_numpy(render_rgb.copy()).to(torch.uint8))
 
         model_frame = (
             torch.from_numpy(resized_rgb.transpose(2, 0, 1)).to(torch.float32) / 255.0

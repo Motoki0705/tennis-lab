@@ -108,6 +108,36 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 
 [データ・checkpointの契約](../README.md#データセットレビュー--推論ui) / [共通画面・HTTP API](../../base/visualization/detection/README.md)
 
+## 発表用の単一パネルGIF
+
+既存の `scripts.visualize` で `visualization.layout=overlay` を指定します。
+保存RGBを `visualization.overlay.output_width`（既定960）へ縦横比を保ってresizeし、
+推論位置だけを重ねます。文字・header・補間点は描かず、不可視frameでは元画像だけを表示します。
+点の半径と線幅は幅512を基準に比例させます。モデル入力の解像度は変更しません。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
+  visualization.layout=overlay visualization.overlay.output_width=960 \
+  visualization.clip_id=tracknet/game1/Clip1 visualization.max_frames=90 \
+  visualization.fps=15 \
+  'run.output_dir=ball_detection/visualize/presentation/ball_2d/${tennis_run_id:}' \
+  'visualization.save=${run.output_dir}/ball_2d.gif'
+```
+
+GPU推論は[共有キュー](../../../../.agents/skills/training-queue/SKILL.md)へ登録して実行してください。
+worktreeでは実データの `paths.data_root` とcheckpointのrootを絶対パスで指定します。
+checkpointは `visualization.checkpoint` の `role`（`artifact` / `checkpoint`）と `path` で
+保存先を明示します。既定の参照は従来どおりartifact root配下です。
+
+overlayではGIFの隣に `manifest.json` を保存します。入力のstore tables・clip payload・checkpointの
+SHA-256、コードのcommitと未コミット変更の有無、解決済みconfig、frame名、
+映像と予測の由来区分 `measured` を記録します。予測点は実データへの推論結果であり、GTではありません。
+動画出力はGIFだけです。
+
+既定の `visualization.layout=grid_2x2` は従来の4パネル・文字・モデル入力解像度・12fpsを維持します。
+4パネルの装飾設定は `visualization.layout.<項目>` から `visualization.grid.<項目>` へ移しました。
+不明なlayout名は実行前に拒否します。
+
 ## データセット統計
 
 BallのDataset Reviewでdatasetを選び、画面上部の「データセット統計」を開きます。

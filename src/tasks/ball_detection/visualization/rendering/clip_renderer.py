@@ -14,6 +14,7 @@ from src.tasks.base.visualization.layout import (
     label_panel,
     put_text,
 )
+from src.utils.geometry.keypoints import denormalize_grid_keypoints
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,38 @@ class LayoutStyle:
     text_thickness: int
     background_rgb: tuple[int, int, int]
     panel_label_height: int
+
+
+def render_overlay_frames(
+    *,
+    frames_rgb: Sequence[np.ndarray],
+    pred_coords_normalized: Sequence[tuple[float, float]],
+    pred_visibility: Sequence[bool],
+    draw: DrawStyle,
+) -> list[np.ndarray]:
+    """Overlay visible predictions on stored-image renders, without text.
+
+    Coordinates use the native heatmap grid convention, x/(W-1), y/(H-1).
+    Marker dimensions scale from the existing 512px-wide rendering style.
+    """
+    rendered_frames: list[np.ndarray] = []
+    for frame_rgb, coord, visible in zip(
+        frames_rgb, pred_coords_normalized, pred_visibility, strict=True,
+    ):
+        panel = frame_rgb.copy()
+        if visible:
+            height, width = panel.shape[:2]
+            coord_px = denormalize_grid_keypoints(np.asarray(coord), width, height)
+            scale = width / 512
+            _draw_point(
+                panel,
+                coord_px=(float(coord_px[0]), float(coord_px[1])),
+                radius=max(1, round(draw.pred_radius * scale)),
+                color_rgb=draw.pred_color_rgb,
+                thickness=max(1, round(draw.thickness * scale)),
+            )
+        rendered_frames.append(panel)
+    return rendered_frames
 
 
 def render_animation_frames(

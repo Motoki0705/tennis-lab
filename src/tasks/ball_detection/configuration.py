@@ -1020,6 +1020,8 @@ def validate_visualization(config: DictConfig) -> None:
             "weights_only",
             "draw",
             "layout",
+            "grid",
+            "overlay",
             "gif",
         },
     )
@@ -1040,7 +1042,14 @@ def validate_visualization(config: DictConfig) -> None:
     typed(vis, "strict", bool, path="visualization")
     typed(vis, "weights_only", bool, path="visualization")
     _validate_draw_style(vis["draw"], path="visualization.draw")
-    _validate_layout_style(vis["layout"], path="visualization.layout")
+    if typed(vis, "layout", str, path="visualization") not in {"grid_2x2", "overlay"}:
+        raise SemanticConfigurationError("visualization.layout must be 'grid_2x2' or 'overlay'")
+    _validate_layout_style(vis["grid"], path="visualization.grid")
+    overlay = exact_mapping(vis["overlay"], path="visualization.overlay", required={"output_width"})
+    _positive(
+        cast(int, typed(overlay, "output_width", int, path="visualization.overlay")),
+        path="visualization.overlay.output_width",
+    )
     gif = exact_mapping(vis["gif"], path="visualization.gif", required={"loop"})
     _positive(
         cast(int, typed(gif, "loop", int, path="visualization.gif")),
