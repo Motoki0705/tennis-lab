@@ -5,7 +5,7 @@ Camera, theme, layer, HUD, and minimap primitives live in
 :class:`TennisSceneRenderer`.
 """
 
-from src.tennis_scene.rendering.tennis_scene_renderer import (
+from src.tennis_scene.visualization.rendering.tennis_scene_renderer import (
     TennisSceneRenderer,
     TennisSceneStyle,
 )

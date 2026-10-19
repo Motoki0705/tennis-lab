@@ -27,7 +27,7 @@ import numpy as np
 from matplotlib.animation import FuncAnimation
 
 from src.submodules.vendor.gvhmr.body_model import load_smpl_faces
-from src.tennis_scene.rendering.smpl_court import (
+from src.tennis_scene.visualization.rendering.smpl_court import (
     load_smpl_joint_regressor,
     smpl_vertices_to_court,
 )
