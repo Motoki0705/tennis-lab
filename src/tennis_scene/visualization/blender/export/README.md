@@ -5,7 +5,7 @@
 
 ![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
 
-実データでの再生成条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
+実データの過去runの条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
 
 - 書き出し: `python -m src.tennis_scene.scripts.export_blender`（設定 `configs/blender_export.yaml`）
 - 撮影: `src/tennis_scene/visualization/blender/shots/reveal.py`（Blender 5.2同梱Python。repoをimportしない）
@@ -77,13 +77,27 @@ GPUを使うレンダリングは共有training queue経由で実行します。
 Linux版Blenderには通常のLinuxパスを渡します。Windows版BlenderにWSLのパスを渡す場合は`\\wsl.localhost\Ubuntu\...`形式を使います。
 Windowsで作成した`.blend`の外部参照はWindows形式になるため、同じOS側のBlenderで開いてください。
 
+現在の配置での再生成は、repo rootをcwdにして次のコマンドを使います。
+bundleの作り方は[入力と書き出し](#入力と書き出し)を参照してください。
+Meiji cam1の既存bundleは
+`/home/kamimura/projects/tennis-lab/outputs/tennis_scene/visualize/blender_export/pr1203-meiji-cam1/bundle`
+です。`BUNDLE` に入力bundle、`SHOT_DIR` に新しい出力先を指定します。
+既存の出力先は描画前に拒否します。以下の撮影コマンドはtraining queueへ登録してください。
+
 ```bash
+set -euo pipefail
+BUNDLE=/absolute/path/to/bundle
+SHOT_DIR=/absolute/path/to/new-shot-dir
+if [ -e "$SHOT_DIR" ]; then
+  printf 'Output already exists: %s\n' "$SHOT_DIR" >&2
+  exit 1
+fi
 blender --background --factory-startup --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/reveal.py -- \
-  --bundle <bundle> --output <shot_dir> --render
+  --bundle "$BUNDLE" --output "$SHOT_DIR" --render
 # fpsはmanifest.jsonの値に合わせる。例は59.94fpsの入力。
-ffmpeg -framerate 60000/1001 -start_number 0 -i <shot_dir>/frames/%05d.png \
-  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart <shot_dir>/reveal.mp4
+ffmpeg -n -framerate 60000/1001 -start_number 0 -i "$SHOT_DIR/frames/%05d.png" \
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/reveal.mp4"
 ```
 
 `tennis_reveal.blend`には出力先と描画範囲も保存します。`.blend`はbundleのPC2とplate連番を参照するため、
@@ -93,8 +107,8 @@ bundleも一緒に保持してください。`--render`を外すとシーン作�
 `--frame-step 4`なら4frameごとのプレビューになります。動画のFPSを入力の1/4にし、連番をglobで読みます。
 
 ```bash
-ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \
-  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart <shot_dir>/preview.mp4
+ffmpeg -n -framerate 15000/1001 -pattern_type glob -i "$SHOT_DIR/frames/*.png" \
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/preview.mp4"
 ```
 
 色・切り替えのタイミング・カメラ終点は撮影スクリプトの`Shot`にまとまっています。
@@ -103,22 +117,14 @@ ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \
 
 ## 検証
 
+撮影時と同じ `BUNDLE`・`SHOT_DIR` を使います。
+
 ```bash
-blender --background <shot_dir>/tennis_reveal.blend --python-exit-code 1 \
+blender --background "$SHOT_DIR/tennis_reveal.blend" --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/validate_reveal.py -- \
-  --bundle <bundle> --report <shot_dir>/validation.json
+  --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
 ```
 
 Blenderで評価したmesh頂点とPC2、球の位置、全frameの有効性と非表示設定、入力カメラとの投影一致、
 FPSとカメラ移動を検査します。不一致は非ゼロ終了し、成功時にJSONの検証結果を保存します。
 映像側は切り替え前のframeと元動画、切り替え中、自由視点の各場面も確認してください。
-
-Meiji cam1の既存bundleから記録と同じプレビューを再生成する場合は、repoの現在のcheckoutで
-次を実行します。出力先は新しいdirectoryを指定してください。これは現在の手順であり、
-検証記録に残した当時のcommit・実行コマンドは変更しません。
-
-```bash
-# このコマンドをtraining queueへ登録する。
-TENNIS_REPO="$PWD" TENNIS_REVEAL_OUTPUT=<new_shot_dir> \
-  bash knowledge/runs/run-blender-reveal-meiji-cam1-20261016/repro.sh
-```
