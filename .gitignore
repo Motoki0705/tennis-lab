@@ -123,6 +123,11 @@ web/**/node_modules/
 web/**/dist/
 web/**/.vite/
 
+# Keep dsh dependencies local and track the pinned manifests.
+/tools/dsh/node_modules/
+!/tools/dsh/package.json
+!/tools/dsh/package-lock.json
+
 # Package management
 Pipfile.lock
 
