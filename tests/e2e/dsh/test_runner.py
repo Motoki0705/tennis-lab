@@ -686,6 +686,177 @@ def test_legitimate_text_truncation_is_not_stream_corruption(
     )
 
 
+def _turn_events(body: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"type": "session", "sessionId": "__sid__", "cwd": "__cwd__"},
+        {"type": "status", "phase": "turn_start", "turn": 1},
+        {"type": "status", "phase": "step_start", "turn": 1, "step": 1},
+        *body,
+        {
+            "type": "status",
+            "phase": "step_end",
+            "turn": 1,
+            "step": 1,
+            "usage": {
+                "inputTokens": 100,
+                "cacheReadTokens": 40,
+                "cacheWriteTokens": 0,
+                "outputTokens": 10,
+            },
+        },
+        {
+            "type": "status",
+            "phase": "turn_end",
+            "turn": 1,
+            "reason": {"kind": "completed"},
+        },
+        {"type": "final", "text": "Lossless final answer.\n" * 2000},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("body", "types", "missing_fields"),
+    [
+        (
+            [
+                {"type": "tool_call", "callId": "c", "tool": "read", "truncated": True},
+                {
+                    "type": "tool_result",
+                    "callId": "c",
+                    "status": "completed",
+                    "result": "done",
+                },
+            ],
+            {"tool_call": 1},
+            {"tool_call.input": 1},
+        ),
+        (
+            [
+                {"type": "text", "text": "short", "truncated": True},
+                {"type": "text", "text": "short again", "truncated": True},
+                {"type": "thinking", "text": "short", "truncated": True},
+                {
+                    "type": "tool_result",
+                    "callId": "c",
+                    "status": "completed",
+                    "result": "short",
+                    "truncated": True,
+                },
+            ],
+            {"text": 2, "thinking": 1, "tool_result": 1},
+            {},
+        ),
+        (
+            [
+                {"type": kind, "truncated": True}
+                for kind in ("tool_call", "tool_result", "text", "thinking")
+            ],
+            {"tool_call": 1, "tool_result": 1, "text": 1, "thinking": 1},
+            {
+                "tool_call.callId": 1,
+                "tool_call.tool": 1,
+                "tool_call.input": 1,
+                "tool_result.callId": 1,
+                "tool_result.status": 1,
+                "tool_result.result": 1,
+                "text.text": 1,
+                "thinking.text": 1,
+            },
+        ),
+    ],
+    ids=["tool-input-omitted", "strings-shortened", "body-type-only"],
+)
+def test_shortened_body_preserves_completion_final_usage_and_loss_record(
+    fixture: dict[str, Any],
+    body: list[dict[str, Any]],
+    types: dict[str, int],
+    missing_fields: dict[str, int],
+) -> None:
+    events = _turn_events(body)
+    _behavior(fixture, events=events)
+    result, report = _run(fixture)
+    assert result.returncode == 0 and report["result"] == "completed"
+    assert report["turn_end_reason"] == "completed"
+    assert (_records(report) / "final.md").read_text() == events[-1]["text"]
+    usage = json.loads((_records(report) / "usage.json").read_text())
+    assert usage["stream_complete"] is True and usage["usage_complete"] is True
+    assert usage["totals"]["inputTokens"] == 100
+    assert usage["totals"]["cacheReadTokens"] == 40
+    assert usage["totals"]["cacheWriteTokens"] == 0
+    assert usage["totals"]["outputTokens"] == 10
+    assert usage["turns"][0]["usage"]["totals"] == usage["totals"]
+    assert usage["session"]["totals"] == usage["totals"]
+    assert report["usage_missing"] is False
+    assert report["observed_token_estimate_range_usd"] is not None
+    for record in (
+        report,
+        json.loads((_records(report) / "summary.json").read_text()),
+        json.loads((_records(report) / "metadata.json").read_text()),
+    ):
+        assert record["truncated_events"] == sum(types.values())
+        assert record["truncated_event_types"] == types
+        assert record["truncated_missing_fields"] == missing_fields
+
+
+@pytest.mark.parametrize("loss", ["usage", "reason", "status", "session"])
+def test_shortened_status_or_identity_does_not_prevent_reading_later_events(
+    fixture: dict[str, Any], loss: str
+) -> None:
+    events = _turn_events([])
+    if loss == "usage":
+        events[3].pop("usage")
+        events[3]["truncated"] = True
+    elif loss == "reason":
+        events[4].pop("reason")
+        events[4]["truncated"] = True
+    elif loss == "status":
+        events[2] = {"type": "status", "truncated": True}
+    else:
+        events[0] = {"type": "session", "truncated": True}
+    _behavior(fixture, events=events)
+    result, report = _run(fixture)
+    assert result.returncode == (0 if loss == "usage" else 11)
+    assert report["result"] == ("completed" if loss == "usage" else "invalid_ndjson")
+    assert (_records(report) / "final.md").read_text() == events[-1]["text"]
+    metadata = json.loads((_records(report) / "metadata.json").read_text())
+    assert metadata["ndjson_complete"] is True
+    assert report["truncated_events"] == 1
+    assert report["usage_missing"] is True
+    usage = json.loads((_records(report) / "usage.json").read_text())
+    if loss == "usage":
+        assert usage["stream_complete"] is True
+        assert all(value is None for value in usage["totals"].values())
+        # Optional usage could already have been absent before serialization.
+        assert report["truncated_missing_fields"] == {}
+    else:
+        assert usage["totals"]["inputTokens"] == 100
+        assert usage["totals"]["outputTokens"] == 10
+        assert usage["stream_complete"] is False
+        assert report["truncated_missing_fields"]
+
+
+@pytest.mark.parametrize(
+    "failure", ["unmarked-input-loss", "wrong-call-id", "marked-final"]
+)
+def test_truncation_support_does_not_hide_corrupt_streams(
+    fixture: dict[str, Any], failure: str
+) -> None:
+    body: list[dict[str, Any]] = [{"type": "tool_call", "callId": "c", "tool": "read"}]
+    if failure == "wrong-call-id":
+        body[0].update(callId=[], input={}, truncated=True)
+    events = _turn_events(body if failure != "marked-final" else [])
+    if failure == "marked-final":
+        events[-1]["truncated"] = True
+    _behavior(fixture, events=events)
+    result, report = _run(fixture)
+    assert result.returncode == 11 and report["result"] == "invalid_ndjson"
+    assert (_records(report) / "final.md").read_text() == ""
+    assert report["usage_missing"] is True
+    assert report["truncated_events"] == 0
+    metadata = json.loads((_records(report) / "metadata.json").read_text())
+    assert metadata["ndjson_complete"] is False
+
+
 @pytest.mark.parametrize(
     ("field", "value", "expected"),
     [
