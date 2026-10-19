@@ -20,6 +20,7 @@ AGENTS_README = ROOT / ".agents/README.md"
 MEMORY_DIR = ROOT / ".agents/memory"
 MEMORY_SUMMARY = MEMORY_DIR / "SUMMARY.md"
 MEMORY_SKILL = ROOT / ".agents/skills/memory/SKILL.md"
+DSH_SKILL = ROOT / ".agents/skills/deepseek-harness/SKILL.md"
 LAYERS = ("workflow", "decision", "environment", "gotcha", "review")
 DEDICATED = "ops-report"
 AREAS = (*LAYERS, DEDICATED)
@@ -30,6 +31,8 @@ DOCS = [
     ROOT / "CLAUDE.md",
     AGENTS_README,
     MEMORY_SKILL,
+    DSH_SKILL,
+    DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
     MEMORY_SUMMARY,
@@ -167,6 +170,22 @@ def test_entry_chain_from_agents_md_to_memory_summary() -> None:
     assert (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()[
         0
     ] == "@AGENTS.md"
+
+
+def test_deepseek_harness_skill_is_discoverable_from_both_agents() -> None:
+    meta = _frontmatter(DSH_SKILL)
+    name = meta.get("name")
+    assert isinstance(name, str) and re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", name)
+    assert name == DSH_SKILL.parent.name and len(name) <= 64
+    description = meta.get("description")
+    assert isinstance(description, str) and description.strip()
+    assert len(description) <= 1024
+    claude_skills = ROOT / ".claude/skills"
+    assert claude_skills.is_symlink()
+    assert claude_skills.resolve() == DSH_SKILL.parent.parent.resolve()
+    assert (claude_skills / name / "SKILL.md").samefile(DSH_SKILL)
+    agents_targets = {target for _, target, _ in _links(AGENTS_MD)}
+    assert str(DSH_SKILL.relative_to(ROOT)) in agents_targets
 
 
 def test_memory_dir_holds_only_summary_layers_and_dedicated_area() -> None:
