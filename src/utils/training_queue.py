@@ -18,6 +18,14 @@ TERMINAL = ("done", "failed", "cancelled")
 NEW_NAME = re.compile(r"^0-([0-9]{19})_[0-9T.Z-]+_[0-9]+_[A-Za-z0-9._-]+\.job$")
 
 
+class InvalidQueueRecord(ValueError):
+    """A job's record is unreadable; its history must be retained for inspection.
+
+    Unsafe filesystem paths still raise ValueError, so maintenance can isolate
+    bad job data without suppressing structural safety failures.
+    """
+
+
 def registration_order(job: str) -> tuple[int, str]:
     match = NEW_NAME.fullmatch(job)
     # Legacy jobs keep their identity and embedded paths. Small numeric prefixes
@@ -46,14 +54,17 @@ def read_completion(queue: Path, job: str) -> dict[str, Any] | None:
     path = completion_path(queue, job)
     if not regular(path):
         return None
-    record = json.loads(path.read_text())
+    try:
+        record = json.loads(path.read_text())
+    except (ValueError, UnicodeError) as exc:
+        raise InvalidQueueRecord(f"invalid queue completion record: {path}") from exc
     if (
         not isinstance(record, dict)
         or type(record.get("version")) is not int
         or record.get("version") != 1
         or record.get("job") != job
         or record.get("state") not in TERMINAL
-        or record.get("time_source") not in {"recorded", "legacy-observed"}
+        or record.get("time_source") not in ("recorded", "legacy-observed")
         or type(record.get("retention_started_at_ns")) is not int
         or record["retention_started_at_ns"] <= 0
         or (
@@ -76,7 +87,7 @@ def read_completion(queue: Path, job: str) -> dict[str, Any] | None:
             )
         )
     ):
-        raise ValueError(f"invalid queue completion record: {path}")
+        raise InvalidQueueRecord(f"invalid queue completion record: {path}")
     return cast(dict[str, Any], record)
 
 

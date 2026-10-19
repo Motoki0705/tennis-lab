@@ -47,6 +47,12 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
 - main、`.gate`、`.slot-0`、`.slot-1`の4つのGPU lockを
   `tennis-actions`専用として作成する。
 
+queue runtimeの配置は `install_queue_bundle.sh` に集約している。履歴helperや
+共有Python moduleの追加を既存runnerへ反映するには再インストールが必要。
+実行中workerの切替と履歴整理の手順は
+[Training Queue skill](../../.agents/skills/training-queue/SKILL.md#filenames-and-automatic-history-retention)
+を参照し、worker終了後に更新する。
+
 WSLのsystemd serviceだけではWSL instance自体を維持できないため、Windowsログオン時に
 WSLへのhandleを保持するTask Scheduler taskも登録する。
 

@@ -82,6 +82,7 @@ def _add(
     resource: str | None = None,
     require_external_teardown_ack: bool = False,
     system_lock_file: Path | None = None,
+    now_ns: int | None = None,
 ) -> str:
     arguments = ["add", command, "--name", name]
     if resource is not None:
@@ -94,6 +95,7 @@ def _add(
         *arguments,
         cwd=cwd,
         system_lock_file=system_lock_file,
+        now_ns=now_ns,
     )
     return result.stdout.strip().removeprefix("queued: ")
 
@@ -1135,6 +1137,8 @@ def test_legacy_failure_and_worker_term_release_capacity(tmp_path: Path) -> None
         f"#!/usr/bin/env bash\ntouch {tmp_path / 'legacy-finished'}\n",
         encoding="utf-8",
     )
+    # This tests stop/teardown ordering, so pin registration order rather than
+    # relying on a host wall clock that can step backwards (observed on WSL).
     _add(
         queue_dir,
         lock_file,
@@ -1142,6 +1146,7 @@ def test_legacy_failure_and_worker_term_release_capacity(tmp_path: Path) -> None
         cwd=tmp_path,
         name="failure",
         resource="half",
+        now_ns=END_NS,
     )
     started = tmp_path / "term-started"
     _add(
@@ -1151,6 +1156,7 @@ def test_legacy_failure_and_worker_term_release_capacity(tmp_path: Path) -> None
         cwd=tmp_path,
         name="term",
         resource="all",
+        now_ns=END_NS + 1,
     )
     successor = tmp_path / "successor"
     _add(
@@ -1160,6 +1166,7 @@ def test_legacy_failure_and_worker_term_release_capacity(tmp_path: Path) -> None
         cwd=tmp_path,
         name="successor",
         resource="all",
+        now_ns=END_NS + 2,
     )
 
     worker = _serve(queue_dir, lock_file, cwd=tmp_path)
@@ -2843,6 +2850,18 @@ def test_legacy_history_gets_first_observation_grace_without_renaming(
         for state in ("done", "failed", "cancelled")
     )
     assert list((queue_dir / "logs").glob("*.log")) == [orphan]
+    listing = _queue(
+        queue_dir,
+        lock_file,
+        "list",
+        "--include-expired",
+        cwd=tmp_path,
+        now_ns=END_NS + 8 * DAY_NS,
+    )
+    assert (
+        "orphan.job resource=- slot=- pid=- pgid=- state=unknown wait=history-orphaned history=orphaned"
+        in listing.stdout
+    )
 
 
 def test_retention_during_terminal_publication_keeps_live_wrapper_log(
@@ -2914,20 +2933,49 @@ def test_public_queue_commands_trigger_retention(tmp_path: Path, command: str) -
 
 
 @pytest.mark.parametrize(
-    "damage", ["log-symlink", "corrupt-completion", "state-conflict"]
+    "damage",
+    [
+        "log-symlink",
+        "log-directory",
+        "state-symlink",
+        "owner-symlink",
+        "completion-symlink",
+        "job-directory",
+        "ack-fifo",
+        "control-symlink",
+        "corrupt-with-symlink",
+    ],
 )
 def test_retention_fails_closed_on_unsafe_history(tmp_path: Path, damage: str) -> None:
     queue_dir, lock_file, job = _finished_job(tmp_path, "done")
     protected_file = tmp_path / "protected"
     protected_file.write_text("must remain")
     log = queue_dir / "logs" / f"{job[:-4]}.log"
-    if damage == "log-symlink":
+    if damage in {"log-symlink", "corrupt-with-symlink"}:
         log.unlink()
         log.symlink_to(protected_file)
-    elif damage == "corrupt-completion":
-        _completion(queue_dir, job).write_text('{"version": 1}')
+        if damage == "corrupt-with-symlink":
+            _completion(queue_dir, job).write_text("{")
+    elif damage == "log-directory":
+        log.unlink()
+        log.mkdir()
+    elif damage == "job-directory":
+        (queue_dir / "done" / job).unlink()
+        (queue_dir / "done" / job).mkdir()
+    elif damage == "ack-fifo":
+        os.mkfifo(queue_dir / "control/external-acks" / f"{job[:-4]}.ack")
+    elif damage == "control-symlink":
+        control = queue_dir / "control"
+        control.rename(queue_dir / "saved-control")
+        control.symlink_to(queue_dir / "saved-control", target_is_directory=True)
     else:
-        (queue_dir / "state" / f"{job[:-4]}.state").write_text("state=failed\n")
+        path = (
+            _completion(queue_dir, job)
+            if damage == "completion-symlink"
+            else queue_dir / "state" / f"{job[:-4]}.{damage.split('-')[0]}"
+        )
+        path.unlink(missing_ok=True)
+        path.symlink_to(protected_file)
     result = _queue(
         queue_dir,
         lock_file,
@@ -2937,9 +2985,163 @@ def test_retention_fails_closed_on_unsafe_history(tmp_path: Path, damage: str) -
         check=False,
     )
     assert result.returncode == 1
-    assert "error: queue history" in result.stderr
-    assert (queue_dir / "done" / job).is_file()
+    assert "error: queue" in result.stderr
+    assert (queue_dir / "done" / job).exists()
     assert protected_file.read_text() == "must remain"
+
+
+def test_legacy_cancelled_invalid_resource_job_does_not_block_queue(
+    tmp_path: Path,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    job = "1790611056370267633_1076243_i935-context-shard-00124-meiji-r13-20260929.job"
+    terminal = queue_dir / "cancelled" / job
+    terminal.write_text("#!/usr/bin/env bash\ntrue\n")
+    state = queue_dir / "state" / f"{job[:-4]}.state"
+    state.write_text(
+        "state=failed\nresource=invalid\nslot=-\npid=-\npgid=-\nwait=invalid-resource\n"
+    )
+    log = queue_dir / "logs" / f"{job[:-4]}.log"
+    log.write_text("invalid resource in legacy job\n")
+    expected = {path: path.read_bytes() for path in (terminal, state, log)}
+    healthy = "1790611056370267634_1_healthy.job"
+    (queue_dir / "done" / healthy).write_text("true\n")
+    healthy_log = queue_dir / "logs" / f"{healthy[:-4]}.log"
+    healthy_log.write_text("healthy legacy log")
+
+    for timestamp in (END_NS, END_NS + 8 * DAY_NS, END_NS + 30 * DAY_NS):
+        for arguments in (("status",), ("add", "true", "--name", "still-available")):
+            result = _queue(
+                queue_dir, lock_file, *arguments, cwd=tmp_path, now_ns=timestamp
+            )
+            reports = [
+                line
+                for line in result.stderr.splitlines()
+                if "inconsistent jobs" in line
+            ]
+            assert len(reports) == 1
+            assert "retaining 1 inconsistent jobs" in reports[0]
+            assert "list --include-expired" in reports[0]
+        assert {path: path.read_bytes() for path in expected} == expected
+        assert not _completion(queue_dir, job).exists()
+        assert healthy_log.exists() == (timestamp == END_NS)
+        assert (queue_dir / "done" / healthy).exists() == (timestamp == END_NS)
+    listing = _queue(
+        queue_dir,
+        lock_file,
+        "list",
+        "--include-expired",
+        cwd=tmp_path,
+        now_ns=END_NS + 30 * DAY_NS,
+    )
+    detail = next(
+        line
+        for line in listing.stdout.splitlines()
+        if line.startswith(job) and "history=inconsistent" in line
+    )
+    assert "directories=cancelled" in detail
+    assert "state failed disagrees with history cancelled" in detail
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "state-conflict",
+        "completion-conflict",
+        "corrupt-completion",
+        "json-completion",
+        "unicode-completion",
+        "unhashable-completion",
+        "state-syntax",
+        "state-empty",
+        "state-value",
+        "state-pid",
+        "state-resource",
+        "state-unicode",
+        "owner-syntax",
+        "owner-identity",
+        "owner-pid-zero",
+        "owner-pid-huge",
+        "owner-pid-unicode",
+        "missing-terminal",
+        "duplicate-terminal",
+    ],
+)
+def test_inconsistent_jobs_are_reported_and_retained_without_blocking_collection(
+    tmp_path: Path, damage: str
+) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, "done")
+    state = queue_dir / "state" / f"{job[:-4]}.state"
+    owner = queue_dir / "state" / f"{job[:-4]}.owner"
+    terminal = queue_dir / "done" / job
+    record = json.loads(_completion(queue_dir, job).read_text())
+    healthy = f"{END_NS}_1_healthy.job"
+    (queue_dir / "done" / healthy).write_text("true\n")
+    healthy_log = queue_dir / "logs" / f"{healthy[:-4]}.log"
+    healthy_log.write_text("healthy")
+    _completion(queue_dir, healthy).write_text(json.dumps({**record, "job": healthy}))
+    if damage == "corrupt-completion":
+        _completion(queue_dir, job).write_text('{"version": 1}')
+    elif damage == "json-completion":
+        _completion(queue_dir, job).write_text("{")
+    elif damage == "unicode-completion":
+        _completion(queue_dir, job).write_bytes(b"\xff")
+    elif damage == "unhashable-completion":
+        _completion(queue_dir, job).write_text(
+            json.dumps({**record, "time_source": []})
+        )
+    elif damage == "completion-conflict":
+        _completion(queue_dir, job).write_text(
+            json.dumps({**record, "state": "failed"})
+        )
+    elif damage == "state-conflict":
+        state.write_text("state=failed\n")
+    elif damage == "state-syntax":
+        state.write_text("state=done\nstate=failed\n")
+    elif damage == "state-empty":
+        state.write_text("")
+    elif damage == "state-value":
+        state.write_text("state=nonsense\n")
+    elif damage == "state-pid":
+        state.write_text("state=done\npid=nonsense\n")
+    elif damage == "state-resource":
+        state.write_text("state=done\nresource=nonsense\n")
+    elif damage == "state-unicode":
+        state.write_bytes(b"\xff")
+    elif damage == "owner-syntax":
+        owner.write_text("broken\n")
+    elif damage in {"owner-identity", "owner-pid-zero"}:
+        owner.write_text(
+            f"pid={0 if damage == 'owner-pid-zero' else 999999999}\nstart_time=1\njob={job if damage == 'owner-pid-zero' else 'other.job'}\n"
+        )
+    elif damage in {"owner-pid-huge", "owner-pid-unicode"}:
+        pid = "9" * 5000 if damage == "owner-pid-huge" else "\u0661"
+        owner.write_text(f"pid={pid}\nstart_time=1\njob={job}\n")
+    elif damage == "missing-terminal":
+        terminal.unlink()
+    elif damage == "duplicate-terminal":
+        (queue_dir / "cancelled" / job).write_bytes(terminal.read_bytes())
+    files = [path for path in queue_dir.rglob(f"{job[:-4]}.*") if path.is_file()]
+    expected = {path: path.read_bytes() for path in files}
+    for timestamp in (END_NS + DAY_NS, END_NS + 8 * DAY_NS, END_NS + 30 * DAY_NS):
+        result = _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=timestamp)
+        assert "retaining 1 inconsistent jobs" in result.stderr
+        assert {path: path.read_bytes() for path in expected} == expected
+        assert terminal.exists() == (damage != "missing-terminal")
+        assert healthy_log.exists() == (timestamp == END_NS + DAY_NS)
+    listing = _queue(
+        queue_dir,
+        lock_file,
+        "list",
+        "--include-expired",
+        cwd=tmp_path,
+        now_ns=END_NS + 30 * DAY_NS,
+    )
+    assert any(
+        line.startswith(job) and "history=inconsistent" in line and "reason=" in line
+        for line in listing.stdout.splitlines()
+    )
 
 
 def test_interrupted_expiry_resumes_from_tombstone(tmp_path: Path) -> None:
@@ -2996,16 +3198,29 @@ def test_unconfirmed_legacy_terminal_state_stays_protected(tmp_path: Path) -> No
         assert not _completion(queue_dir, job).exists()
 
 
-def test_expired_benchmark_snapshot_reports_expiry_before_collection(tmp_path: Path) -> None:
+def test_expired_benchmark_snapshot_reports_expiry_before_collection(
+    tmp_path: Path,
+) -> None:
     queue_dir, lock_file, job = _finished_job(tmp_path, "failed")
     _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 8 * DAY_NS)
     output = tmp_path / "collection"
     result = subprocess.run(
-        [sys.executable, str(ROOT / "tests/benchmarks/pipeline_stop_collection.py"),
-         "--queue", str(queue_dir), "--report", str(tmp_path / "missing-report"),
-         "--job", job[:-4], "--output", str(output)],
-        cwd=tmp_path, env={**_queue_env(queue_dir, lock_file), "PYTHONPATH": str(ROOT)},
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(ROOT / "tests/benchmarks/pipeline_stop_collection.py"),
+            "--queue",
+            str(queue_dir),
+            "--report",
+            str(tmp_path / "missing-report"),
+            "--job",
+            job[:-4],
+            "--output",
+            str(output),
+        ],
+        cwd=tmp_path,
+        env={**_queue_env(queue_dir, lock_file), "PYTHONPATH": str(ROOT)},
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 1
     assert "Queue history expired" in result.stderr
@@ -3013,7 +3228,9 @@ def test_expired_benchmark_snapshot_reports_expiry_before_collection(tmp_path: P
 
 
 @pytest.mark.parametrize("marker", [None, "wrong-pid reverse-name-v1", "legacy-v0"])
-def test_new_names_cannot_be_added_to_legacy_or_unknown_workers(tmp_path: Path, marker: str | None) -> None:
+def test_new_names_cannot_be_added_to_legacy_or_unknown_workers(
+    tmp_path: Path, marker: str | None
+) -> None:
     queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
     _queue(queue_dir, lock_file, "status", cwd=tmp_path)
     # A live PID models the old worker's liveness protocol without starting one.
