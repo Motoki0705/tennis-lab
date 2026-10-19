@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-full-no-smooth-gap-rgb-val-v2",
+  "files": [
+    {
+      "path": "evaluation/val/detector_gap/eval_arrays.npz",
+      "size_bytes": 4267207,
+      "sha256": "aecac68c879fdd30eececd794cc19bc15657fe984f55a00a56cd06e221881561",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation/val/detector_gap_no_rgb/eval_arrays.npz",
+      "size_bytes": 4265829,
+      "sha256": "d041a046e394d1bc22d04a1466f87fb10ea8e59e910d250595bf9f7449939921",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation/val/full/eval_arrays.npz",
+      "size_bytes": 4257180,
+      "sha256": "ac7c4117fc0677f381e54d180f2edf32fa69764b8dd2df826601ce590c8d8097",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation/val/no_rgb/eval_arrays.npz",
+      "size_bytes": 4254831,
+      "sha256": "e3966044c4bd92c7e570c54f4674bce78b6ce7f815ea4159e33199b65b882f60",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation/val/rgb_only/eval_arrays.npz",
+      "size_bytes": 4225105,
+      "sha256": "b546c2da0a4901343565399b5de995d3bd9e123f92ada2fd8c1f9929a0a2d565",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

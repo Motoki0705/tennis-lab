@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-recalibration-resume-r13-20261001",
+  "files": [
+    {
+      "path": "failed.log",
+      "size_bytes": 1062426,
+      "sha256": "cb1b3bd96b5090ffdbc7fa24840d1e6c4581b7d8b63e49bc5551e9a3d3b47494",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "resume.log",
+      "size_bytes": 748510,
+      "sha256": "e134ed12c870cca66e9f41cd699db4325eb500573f7b920da4b6d1a5677b1d01",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

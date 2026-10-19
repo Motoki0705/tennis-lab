@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i936-triangulation-abc-s936",
+  "files": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 328539,
+      "sha256": "048c9fa89559ba4e20971e07b73c220d3216b6908308b1d76f1690bd187d1bef",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

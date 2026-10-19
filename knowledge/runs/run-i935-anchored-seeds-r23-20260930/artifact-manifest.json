@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-anchored-seeds-r23-20260930",
+  "files": [
+    {
+      "path": "cpu_identity/cpu-before.npz",
+      "size_bytes": 674338,
+      "sha256": "0696351e47c4f03682848320a9020a38fd4ba2f9013b5a2168671da9df4224fd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

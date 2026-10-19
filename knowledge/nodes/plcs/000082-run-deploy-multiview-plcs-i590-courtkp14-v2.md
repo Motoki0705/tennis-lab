@@ -48,7 +48,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-deploy-multiview-plcs-i590-courtkp14-v2
-  predictions: knowledge/runs/run-deploy-multiview-plcs-i590-courtkp14-v2/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-deploy-multiview-plcs-i590-courtkp14-v2/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783986831894575841_1649543_deploy_multiview_plcs_i590_courtkp14_v2.log
   output_dir: outputs/plcs/plcs_multiview_axial_split/logs/version_26
   checkpoint: ckpt/plcs/run-multiview-plcs-i590-courtkp14-epoch197.ckpt

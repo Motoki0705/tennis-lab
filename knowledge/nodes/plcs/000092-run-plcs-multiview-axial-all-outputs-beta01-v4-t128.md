@@ -62,11 +62,11 @@ repro:
     paths.project_root=/home/kamimura/projects/tennis-lab paths.artifact_root=$TENNIS_REPRO_DIR
 artifacts:
   run_dir: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128
-  predictions: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1787847972019077668_797896_plcs-multiview-axial-all-outputs-beta01-v4-t128-bf16-gpu0.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_all_outputs_beta01_v4_t128_bf16_gpu0/logs/version_0
   curves: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/curves.png
-  visualization: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/visualization_scene_000233_position_rotation.mp4
+  visualization: {status: deleted, record: knowledge/runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/artifact-manifest.json#/files/1}
   tb_logdir: outputs/plcs/plcs_multiview_axial_all_outputs_beta01_v4_t128_bf16_gpu0/logs/version_0
 parents: []
 relations:

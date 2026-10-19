@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-source-b-gate-r26-20261001",
+  "files": [
+    {
+      "path": "results/cam0-labels.npz",
+      "size_bytes": 3690,
+      "sha256": "ea205733c02355acbc49666ab0aebfdb8bdfee6d8fbeaf61fb115873b46a3288",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "results/cam1-labels.npz",
+      "size_bytes": 3865,
+      "sha256": "78badd5eac22a004808f4d407b6b2c963c60663164f9c021b395d632b8a8bbdb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "results/cam2-labels.npz",
+      "size_bytes": 3822,
+      "sha256": "473c6fe0818d1da6e03feb2c77d736a4078a882e20e677a585e790a649440274",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/frame-000.jpg",
+      "size_bytes": 618853,
+      "sha256": "fd6bf5a0d34e09f8b77a500ea09fd41186421198e1aa0922b9a4dc0bbc52c584",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/frame-067.jpg",
+      "size_bytes": 571885,
+      "sha256": "7e43fe95a512a479bcb84f0257cb6e845a2187d3d6cf795de5081b5245096aa3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/frame-135.jpg",
+      "size_bytes": 530188,
+      "sha256": "469f478e3112e3f2ab95ec67a5902b81ef79a7e46fc1433b6b36286cfe7ed32c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/frame-202.jpg",
+      "size_bytes": 529086,
+      "sha256": "56abcb54b8dd8295c9b473928d4cdbdaa21afd2b405b74dc2eb6ae88a2704eb4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/frame-269.jpg",
+      "size_bytes": 508849,
+      "sha256": "752a5faeee15b0651bd26c8fa5122b1c9f5a9ca91465c377c4cf69f54730f09d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video/video.json",
+      "size_bytes": 425025,
+      "sha256": "c765aea24dc6688bf2da3c5b627291624b4005d58c651a18398b3f1c6d2f8be1",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

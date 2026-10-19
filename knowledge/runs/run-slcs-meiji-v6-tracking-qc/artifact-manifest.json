@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v6-tracking-qc",
+  "files": [
+    {
+      "path": "clip001_000_selection_review.jpg",
+      "size_bytes": 697245,
+      "sha256": "b51f3793ebf18f96b0da32707f981d00970c45bb6411fb2f44859f80e3ee6869",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip007_old_contact_sheet.jpg",
+      "size_bytes": 878999,
+      "sha256": "6541ad97272209dc51e1555f5991c11e479d4e0516fcb27c78f1c1726355e812",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

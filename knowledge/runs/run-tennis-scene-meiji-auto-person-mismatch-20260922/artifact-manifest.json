@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-tennis-scene-meiji-auto-person-mismatch-20260922",
+  "files": [
+    {
+      "path": "evidence/cam0_identity_issue.jpg",
+      "size_bytes": 924339,
+      "sha256": "2b19e53f2e75963acb1ebdf226b568c27a4b5693a2270ef7378d6ee6f40b1894",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/cam0_new_identity_fields.npz",
+      "size_bytes": 408834,
+      "sha256": "eeb56b7d2d4809ac42845b1598974619aa0549db0337f82ad9a3c1adb435aadb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

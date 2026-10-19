@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i545-s0-h12",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 393130,
+      "sha256": "0cbc559ec2706929807881691fd546087cec75fd84d34161deb83d2ef8cdd684",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

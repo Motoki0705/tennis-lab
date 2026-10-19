@@ -41,7 +41,7 @@ repro:
     training.qualitative_logging.enabled=false run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-bcast-v4-physics
-  predictions: knowledge/runs/run-mono3d-blcs-bcast-v4-physics/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-bcast-v4-physics/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783265179863554457_429668_mono3d_blcs_bcast_v4_physics.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_3
   curves: knowledge/runs/run-mono3d-blcs-bcast-v4-physics/curves.png

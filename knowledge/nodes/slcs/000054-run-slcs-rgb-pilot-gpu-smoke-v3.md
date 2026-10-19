@@ -51,7 +51,7 @@ repro:
     training.trainer.max_epochs=1 training.warmup_steps=0 run.output_dir=slcs/train/real_rgb_pilot_gpu_smoke/s42-003
 artifacts:
   run_dir: knowledge/runs/run-slcs-rgb-pilot-gpu-smoke-v3
-  predictions: knowledge/runs/run-slcs-rgb-pilot-gpu-smoke-v3/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-rgb-pilot-gpu-smoke-v3/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_gpu_smoke/s42-003/logs/version_0
   curves: knowledge/runs/run-slcs-rgb-pilot-gpu-smoke-v3/curves.png
   tb_logdir: outputs/slcs/train/real_rgb_pilot_gpu_smoke/s42-003/logs/version_0

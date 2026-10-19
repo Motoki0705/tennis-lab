@@ -99,13 +99,13 @@ repro:
     training=coordinate_gan_only model.dimensions=3 run.output_dir=ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42
 artifacts:
   run_dir: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4
-  predictions: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791259707774500680_3712409_i1014-rope-3d-gan-only-eventonly-s42-20261006-v4.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0
   config: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/config.yaml
   curves: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/curves.png
   loss_schedule: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/loss-schedule.png
-  last_predictions: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/predictions_last/pred_test.npz
+  last_predictions: {status: deleted, record: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/artifact-manifest.json#/files/1}
   last_diagnostics: knowledge/runs/run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4/predictions_last/diagnostic_metrics.json
   checkpoint: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/best.ckpt
   last_checkpoint: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-3d-gan-only-eventonly/20261006-v4-s42/logs/version_0/checkpoints/last.ckpt

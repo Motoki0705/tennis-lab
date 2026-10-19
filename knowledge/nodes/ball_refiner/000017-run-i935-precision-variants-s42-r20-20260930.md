@@ -27,7 +27,7 @@ tags: []
 ## CPU診断と仮説
 
 [全診断表・曲線](../../runs/run-i935-precision-variants-s42-r20-20260930/diagnosis-tables.md)、
-[母数・source/camera/half・hashのJSON](../../runs/run-i935-precision-variants-s42-r20-20260930/diagnosis.json)、
+[母数・source/camera/half・hashのJSON（削除済み）](../../runs/run-i935-precision-variants-s42-r20-20260930/artifact-manifest.json#/files/0)、
 [再現script](../../runs/run-i935-precision-variants-s42-r20-20260930/diagnose.py)を保存。
 GPUを使わず、r18のobserved条件の280 paired NPZとbest更新時の216 selection NPZ、
 cache manifest・学習曲線等の計501入力のhashを記録した。新旧ともsourceの同じframe/PTS/教師を確認した。

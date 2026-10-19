@@ -86,7 +86,7 @@ repro:
     model.dimensions=2 run.output_dir=ball_refiner/train/rope-2d-gan-eventonly/20261006-v3-s42
 artifacts:
   run_dir: knowledge/runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3
-  predictions: knowledge/runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791248190791221542_3435495_i991-rope-2d-gan-eventonly-s42-20261006-v3.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-eventonly/20261006-v3-s42/logs/version_0
   config: knowledge/runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3/config.yaml

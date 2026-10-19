@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-bcast-v4-physics",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 302596,
+      "sha256": "9b0a6edf382fb183fb7ba7d382e4cca95702cf0606e4d396b6ba5ece03680df9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

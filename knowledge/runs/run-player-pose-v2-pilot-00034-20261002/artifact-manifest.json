@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-player-pose-v2-pilot-00034-20261002",
+  "files": [
+    {
+      "path": "campaign-inputs/plan.json",
+      "size_bytes": 502876,
+      "sha256": "4713045f3cec2eacebf252b24bed027cf7ebf40fe79c9b06e6afff53d59932d0",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

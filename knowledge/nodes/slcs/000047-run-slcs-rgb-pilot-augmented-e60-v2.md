@@ -52,7 +52,7 @@ repro:
     data.augmentation.enabled=true run.output_dir=slcs/train/real_rgb_pilot_augmented/s42-002
 artifacts:
   run_dir: knowledge/runs/run-slcs-rgb-pilot-augmented-e60-v2
-  predictions: knowledge/runs/run-slcs-rgb-pilot-augmented-e60-v2/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-rgb-pilot-augmented-e60-v2/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0
   curves: knowledge/runs/run-slcs-rgb-pilot-augmented-e60-v2/curves.png
   tb_logdir: outputs/slcs/train/real_rgb_pilot_augmented/s42-002/logs/version_0

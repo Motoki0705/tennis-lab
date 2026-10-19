@@ -60,11 +60,11 @@ tags:
 元動画にも会場切替・close-up・doubles・replayが混在する。ball判読性とカメラ静止性を縮小静止画だけでは保証できない。
 学習runではないためTensorBoard曲線はない。
 
-![Torino候補1200秒](../../runs/run-slcs-broadcast-unused-source-inventory-v1/torino_1200.jpg)
+[Torino候補1200秒（削除済み）](../../runs/run-slcs-broadcast-unused-source-inventory-v1/artifact-manifest.json#/files/3)
 
-![Halle候補1685秒](../../runs/run-slcs-broadcast-unused-source-inventory-v1/halle_1685.jpg)
+[Halle候補1685秒（削除済み）](../../runs/run-slcs-broadcast-unused-source-inventory-v1/artifact-manifest.json#/files/0)
 
-![Sydney候補3240秒](../../runs/run-slcs-broadcast-unused-source-inventory-v1/sydney_3240.jpg)
+[Sydney候補3240秒（削除済み）](../../runs/run-slcs-broadcast-unused-source-inventory-v1/artifact-manifest.json#/files/2)
 
 ### アーキテクチャ⇄メトリクスの因果考察
 
@@ -79,7 +79,7 @@ scoutの初報「480〜500秒すべてEastbourne」は親の画像照合で訂�
 Halleがtestと同じ芝であること自体はvenue/recording分離に反しないが、会場の同定と品質確認なしに採用しない。
 現行のtrain/val/testやSLCS held-out予測は一切変更・評価していない。
 
-![480/490秒のval会場と500秒のtest会場](../../runs/run-slcs-broadcast-unused-source-inventory-v1/heldout_overlap_strip.jpg)
+[480/490秒のval会場と500秒のtest会場（削除済み）](../../runs/run-slcs-broadcast-unused-source-inventory-v1/artifact-manifest.json#/files/1)
 
 ### 次に有効な実験
 

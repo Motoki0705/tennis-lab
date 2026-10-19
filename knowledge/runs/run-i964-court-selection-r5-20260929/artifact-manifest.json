@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-court-selection-r5-20260929",
+  "files": [
+    {
+      "path": "adjacent_preview_1.jpg",
+      "size_bytes": 371453,
+      "sha256": "c74fa39ea38e6735dce4d7380e92a1e43121cc67db47bae590dd054ab1f7b101",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "adjacent_preview_2.jpg",
+      "size_bytes": 369885,
+      "sha256": "6b8a5792cd539c5822bc093f68e41aef29292f07bc7367905168d148a2175c9e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "adjacent_preview_3.jpg",
+      "size_bytes": 382969,
+      "sha256": "6a9c347124156c525ef1f799a53407a5f988188e4db6515d87d812fbc852a538",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "adjacent_preview_4.jpg",
+      "size_bytes": 379809,
+      "sha256": "6da9865a6215c1c0d67259f4b79f5c56861038b26f572047701dc7f6fa34e236",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "diagnosis.json",
+      "size_bytes": 286259,
+      "sha256": "01f6a2b43c3621b79649b2d4bb99d60b32cc3d614935fc9b0e51833faa748553",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial_selection.json",
+      "size_bytes": 624753,
+      "sha256": "7fed01a69900b4c55b2b013e1f10d88c6af685f8907b8f6d3e645714e44db9ab",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "selection.json",
+      "size_bytes": 661129,
+      "sha256": "e168b05f102b458fece0ad504cb8d5d6aa7a95c5354e18c6bf71e6411f9a6596",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "selection_units.jsonl.gz",
+      "size_bytes": 723249,
+      "sha256": "249a47308b9c554d666b95ee0280184f393c315e98f78e59d219fc2e51825f5c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "windowed_selection.json",
+      "size_bytes": 687995,
+      "sha256": "15211a2dceb9eb59f07da4155d2bdf5ecda11fa45d4c4bce73505dd92f9c81ce",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -73,7 +73,8 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
         run_metadata
     )
     assert (promoted_dir / "repro.sh").read_text(encoding="utf-8") == repro_script
-    assert (promoted_dir / "pred_test.npz").read_bytes() == b"prediction-fixture"
+    assert not (promoted_dir / "pred_test.npz").exists()
+    assert (predictions_dir / "pred_test.npz").read_bytes() == b"prediction-fixture"
     assert json.loads((promoted_dir / "metrics.json").read_text(encoding="utf-8")) == (
         headline_metrics
     )
@@ -89,6 +90,7 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
     ).read_text(encoding="utf-8")
     frontmatter = yaml.safe_load(node_text.split("---", maxsplit=2)[1])
     assert frontmatter["metrics"] == headline_metrics
+    assert "predictions" not in frontmatter["artifacts"]
     assert not set(diagnostic_metrics) & set(frontmatter["metrics"])
 
 

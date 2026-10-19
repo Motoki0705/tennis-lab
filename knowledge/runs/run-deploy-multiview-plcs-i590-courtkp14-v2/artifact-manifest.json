@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-deploy-multiview-plcs-i590-courtkp14-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 433781,
+      "sha256": "7430cdbf68ed0390cd23101bee89d80c05cd50873de39e52e53d468340d15203",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

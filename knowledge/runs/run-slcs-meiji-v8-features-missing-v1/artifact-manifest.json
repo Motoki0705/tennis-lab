@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v8-features-missing-v1",
+  "files": [
+    {
+      "path": "audit.json",
+      "size_bytes": 342538,
+      "sha256": "7ab1a468ca6adcf61a2d8484ef1a038b02398d7e8d24bdcac2b154b6d7905a3d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

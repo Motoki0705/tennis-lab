@@ -77,7 +77,7 @@ score >= 0.15の肘/手首が少なくとも一つあるframeは901/901、
 最大0.998341。dense分母はframe×累計track×4で未観測slotを含む。
 観測crop×4の分母は44,548。飽和変換を確率較正とは呼ばない。
 
-[5frameの画像](../../runs/run-i935-context-shard-00059-tracknet-r12-20260928/clip-00071-context.jpg)では主コートの両プレーヤーの腕がある一方、周辺スタッフ・観客を多数含む。frame 0 courtは表示線に概ね沿うが、GTとの照合はしていない。全clipの有効肘/手首で24 slotが画像外にあり、有限な画像外座標を切り詰めず保持する既存契約を確認した。
+[5frameの画像（削除済み）](../../runs/run-i935-context-shard-00059-tracknet-r12-20260928/artifact-manifest.json#/files/1)では主コートの両プレーヤーの腕がある一方、周辺スタッフ・観客を多数含む。frame 0 courtは表示線に概ね沿うが、GTとの照合はしていない。全clipの有効肘/手首で24 slotが画像外にあり、有限な画像外座標を切り詰めず保持する既存契約を確認した。
 標本はラベルを参照しない先頭・1/4・中央・3/4・末尾の5frame。
 pose/courtの独立GT精度・文脈による改善・ball refinerのholdout指標は測定していない。
 

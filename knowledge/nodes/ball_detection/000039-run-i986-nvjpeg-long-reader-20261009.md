@@ -48,4 +48,4 @@ tags:
 
 501 clipの事前検証に605.76秒を要した。最長のreader待ちは1.70秒で、100更新ごとの速度も約4.36〜8.43窓/秒へ変動した。入力準備完了待ちと、producer内で測るCPU reader待ちは重なりがあるため加算しない。
 
-[全step](../../runs/run-i986-nvjpeg-long-reader-20261009/report.json)。精度試験ではなく、実行自体は完了したが性能の採用基準は満たさなかった。TensorBoardなし。原scriptと同一YAMLの参照修復を保存した。
+[全step（削除済み）](../../runs/run-i986-nvjpeg-long-reader-20261009/artifact-manifest.json#/files/0)。精度試験ではなく、実行自体は完了したが性能の採用基準は満たさなかった。TensorBoardなし。原scriptと同一YAMLの参照修復を保存した。

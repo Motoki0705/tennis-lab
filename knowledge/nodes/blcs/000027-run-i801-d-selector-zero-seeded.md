@@ -85,7 +85,7 @@ repro:
     run.seed=42 run.fast_dev_run=false run.test_after_fit=true run.output_dir=blcs/norm-v2/issue-801/t128-v4/ablation-d-selector-zero-eb32-seeded-retry4'
 artifacts:
   run_dir: knowledge/runs/run-i801-d-selector-zero-seeded
-  predictions: knowledge/runs/run-i801-d-selector-zero-seeded/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i801-d-selector-zero-seeded/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1787615604815554190_3420855_i801_normv2_camera_view_d_selector_zero_b8_a4_eb32_e100_gpu0_retry4_seeded.log
   output_dir: outputs/blcs/norm-v2/issue-801/t128-v4/ablation-d-selector-zero-eb32-seeded-retry4/logs/version_0
   curves: knowledge/runs/run-i801-d-selector-zero-seeded/curves.png

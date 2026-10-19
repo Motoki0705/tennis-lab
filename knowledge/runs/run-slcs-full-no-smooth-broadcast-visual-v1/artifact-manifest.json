@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-full-no-smooth-broadcast-visual-v1",
+  "files": [
+    {
+      "path": "overlay_contact.png",
+      "size_bytes": 1443193,
+      "sha256": "3394e05fc0d493d4c4583e15fd83183617a604d66d7d74a5728cdc4cee2a63f2",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/comparison.gif",
+      "size_bytes": 2122690,
+      "sha256": "de0892cec23ed3e5fb882a535d6b37a452019cbc62ca72a923f2458a3f2a0632",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/comparison.mp4",
+      "size_bytes": 518989,
+      "sha256": "18829b28d046f8655ab87d09d3449721744ed8ea780acffb311242b301c81f2a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/contact_sheet.png",
+      "size_bytes": 1154730,
+      "sha256": "2416ed496a98de87cf804a50af0878eab08dfe2d4ae211f99abbdc334a6bcf34",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 142857,
+      "sha256": "28691025c9f3e13bcca79121e92a9c415371ef5c51b66882bb001d27cbb41d97",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

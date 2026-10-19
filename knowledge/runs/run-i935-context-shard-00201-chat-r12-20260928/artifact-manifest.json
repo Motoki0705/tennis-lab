@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-context-shard-00201-chat-r12-20260928",
+  "files": [
+    {
+      "path": "clip-00281-context.jpg",
+      "size_bytes": 518293,
+      "sha256": "d640563406843aa8b966d2fad506fa106206d1b7065b0297bf22f0b8a0e0252b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00281.npz",
+      "size_bytes": 1610043,
+      "sha256": "212979b4b2557aebb71099350fd44fd3e2d28a5419addb9548b199ee69731c5c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

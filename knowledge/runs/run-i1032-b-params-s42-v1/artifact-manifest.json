@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1032-b-params-s42-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 3151527,
+      "sha256": "5a6a1becc50f453cb83edca22f1f4b448192dc3d051965cfd4b4eda0a86c4020",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

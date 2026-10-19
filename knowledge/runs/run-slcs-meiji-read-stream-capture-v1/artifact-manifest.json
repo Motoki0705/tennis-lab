@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-read-stream-capture-v1",
+  "files": [
+    {
+      "path": "audit.json",
+      "size_bytes": 2730690,
+      "sha256": "88dc4f6d20fe038e262cd206a97bfdd1971b34e8cf5f24270e50d452cdb4c4d8",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -63,7 +63,7 @@ repro:
     run.fast_dev_run=false run.test_after_fit=true run.output_dir=blcs/norm-v2/issue-786/t128-v4/ablation-b-large-cuda-eb32'
 artifacts:
   run_dir: knowledge/runs/run-i786-normv2-large-cuda-ablation-b-b8-a4-eb32-e100-gpu0
-  predictions: knowledge/runs/run-i786-normv2-large-cuda-ablation-b-b8-a4-eb32-e100-gpu0/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i786-normv2-large-cuda-ablation-b-b8-a4-eb32-e100-gpu0/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1787506200719864547_1359734_i786_normv2_large_cuda_ablation_b_b8_a4_eb32_e100_gpu0.log
   output_dir: outputs/blcs/norm-v2/issue-786/t128-v4/ablation-b-large-cuda-eb32/logs/version_0
   curves: knowledge/runs/run-i786-normv2-large-cuda-ablation-b-b8-a4-eb32-e100-gpu0/curves.png

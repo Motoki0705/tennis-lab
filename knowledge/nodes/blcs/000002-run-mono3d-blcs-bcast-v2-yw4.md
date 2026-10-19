@@ -38,7 +38,7 @@ repro:
     training.position_axis_weights=[1.0,4.0,1.0] run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-bcast-v2-yw4
-  predictions: knowledge/runs/run-mono3d-blcs-bcast-v2-yw4/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-bcast-v2-yw4/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783211749537294235_43817_mono3d_blcs_bcast_v2_yw4.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_1
   curves: knowledge/runs/run-mono3d-blcs-bcast-v2-yw4/curves.png

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i525-asym",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 401401,
+      "sha256": "ae9cd0dd01da9d0d4dd0ceeb4ddda52f4e6547fdb26115c5a3cdccf2c15c12cd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

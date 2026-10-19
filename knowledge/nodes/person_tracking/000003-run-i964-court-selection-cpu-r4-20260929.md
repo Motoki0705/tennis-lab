@@ -83,6 +83,6 @@ FT低閾値は12 camera-clipで累計912 track、COCOは67、unionは111だっ�
 
 通常検証は関連35 tests passに、欠損1080範囲を厳密に拒否する2 caseと対応後地面距離1 caseを追加（追加後のfocused 9 tests pass）。ruff/mypy/hooks成功。12秒・1920×410・20fpsの全240動画frameを読戻し、代表frameも目視した。学習していないためloss曲線は無い。
 
-![3camera選別の代表frame](../../runs/run-i964-court-selection-cpu-r4-20260929/selection_preview.jpg)
+[3camera選別の代表frame（削除済み）](../../runs/run-i964-court-selection-cpu-r4-20260929/artifact-manifest.json#/files/1)
 
 このrunで必要なCPU証拠は揃った。次はユーザーがソース/選別表と動画を確認し、滞在前の短いtrack断片の扱い・プレー領域と隣コートの分離を判断する。既定変更、新しい2–3追跡方式の最終比較、SOLIDER/KPR encoder比較、全pipeline接続とclip_000完走、調整凍結後の未見一回評価は別段階で、未完了のまま保持する。#935 branch/worktreeとmain .venvは変更していない。

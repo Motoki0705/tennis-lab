@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1050-convnext-v2-pretrain-s42",
+  "files": [
+    {
+      "path": "train-summary.jsonl",
+      "size_bytes": 601196,
+      "sha256": "6872eef3cabed8c724d8649ec506c6c4eb27fab5f612c82d5382e033f8cb999c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

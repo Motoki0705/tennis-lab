@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i986-query-cpu-input-20261008",
+  "files": [
+    {
+      "path": "cached-input-workers8.json.gz",
+      "size_bytes": 9821,
+      "sha256": "a134928b9dc99dd0bb23ed031848bf4bef3195b7a9846993725c433dceaf65de",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "normal-workers8.json.gz",
+      "size_bytes": 40067,
+      "sha256": "2bb6664f4414858fbda81cc39744461ad94a453c6effe3c090f625df0ec5279c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "preverified-workers8.json.gz",
+      "size_bytes": 37609,
+      "sha256": "ff3cfd5e22f218ff99c5afc1bd2c9e230d18e0f67a9ed874bcaa3d793c8fc3af",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

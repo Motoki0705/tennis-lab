@@ -22,7 +22,7 @@ metrics:
   real_root_reprojection_px: 89.83115381572857
 artifacts:
   run_dir: knowledge/runs/run-plcs-foot-baseline-epoch29-eval
-  predictions: knowledge/runs/run-plcs-foot-baseline-epoch29-eval/baseline_best_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-foot-baseline-epoch29-eval/artifact-manifest.json#/files/1}
   output_dir: outputs/plcs/foot_residual/comparison
 parents: []
 relations:

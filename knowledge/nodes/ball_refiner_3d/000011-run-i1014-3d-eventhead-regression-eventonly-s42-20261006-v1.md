@@ -75,7 +75,7 @@ repro:
     run.output_dir=ball_refiner_3d/train/rope-regression-eventhead-eventonly/20261006-v1-s42
 artifacts:
   run_dir: knowledge/runs/run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1
-  predictions: knowledge/runs/run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791267710532423200_3920312_i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/train/rope-regression-eventhead-eventonly/20261006-v1-s42/logs/version_0
   checkpoint: /home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/train/rope-regression-eventhead-eventonly/20261006-v1-s42/logs/version_0/checkpoints/best.ckpt

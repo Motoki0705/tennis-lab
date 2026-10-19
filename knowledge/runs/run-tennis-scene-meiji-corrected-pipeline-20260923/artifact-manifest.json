@@ -1,0 +1,195 @@
+{
+  "schema_version": 1,
+  "run_id": "run-tennis-scene-meiji-corrected-pipeline-20260923",
+  "files": [
+    {
+      "path": "evidence/identity/identity_contact_sheet.jpg",
+      "size_bytes": 1312144,
+      "sha256": "3ba79fb1a4651704fe45d61809d49b6324f6c84eaf0e70c429dab21710ba5ed5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_lowest_margins_cam0.jpg",
+      "size_bytes": 799153,
+      "sha256": "7ae5663bdd09140e674c0dea47d4d6727e191eb4f338f212ae94c60ac9c4cf82",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_lowest_margins_cam1.jpg",
+      "size_bytes": 665212,
+      "sha256": "a5bdf0c9b1ed5ee0842876599e8de64b510f0659caf7e86d77c640c42a1f19c4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_lowest_margins_cam2.jpg",
+      "size_bytes": 624149,
+      "sha256": "a4034fed99ad2693c8e2f734ab337994fa07bd866c66a941d038985fba124ab3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_source_crops_cam0.jpg",
+      "size_bytes": 236449,
+      "sha256": "3e1d9e80a758ed660e7b0cf0d55317f785af4fa581a9ad85ba34ebd61cd83568",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_source_crops_cam1.jpg",
+      "size_bytes": 230032,
+      "sha256": "4ba9596fd993e3a3adcc7d48f3041821aea919e71f1e5647e54258523e24db03",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/identity/identity_source_crops_cam2.jpg",
+      "size_bytes": 230197,
+      "sha256": "4c59dee0eb6c2639d3d19404d8cb41c338caad48d156c3616d915c5bc9d94d2c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-ball-max-step-source.jpg",
+      "size_bytes": 779896,
+      "sha256": "4ab48011c3dfde8b1cb0085fae57bfeffa1ca6ed7e729bc46b8b1bb9af71669d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-ball_detection_viz-contact.jpg",
+      "size_bytes": 288523,
+      "sha256": "c4d7971a2adf77be2961be15537b144c5f40f7f9e45f46c38ef0c126ab5d7f91",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-ball_detection_viz-extremes.jpg",
+      "size_bytes": 896908,
+      "sha256": "d11f8313d7eb07fba170ce8d637921a0625b4f972dc2fd584f02d249ef416f57",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-blcs_viz-contact.jpg",
+      "size_bytes": 82739,
+      "sha256": "2a13e9e4734072a7ed4eb92953c9d3e2c5fc124de37f4fb557c2d86922674214",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-blcs_viz-extremes.jpg",
+      "size_bytes": 252389,
+      "sha256": "ac77abef11b5bd4c7b88bb80fc99347f1fd1cd2d954305e3f408c87f11b9609e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-cam0-source-observations.jpg",
+      "size_bytes": 406313,
+      "sha256": "3c32177d0d96a8bd6af6b0aabb605463f2ca54f1229c2a711cf4200accc59798",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-cam1-source-observations.jpg",
+      "size_bytes": 422621,
+      "sha256": "a520e0a48ac7ad15f97a839e8b19f705e4ef6629171a18395325b393fc6676fe",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-cam2-source-observations.jpg",
+      "size_bytes": 313465,
+      "sha256": "5d8879b0e4660c7e804e9d99e638bc9a387c8a6335f01ec9eca30a20185a3fed",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-court_kp_viz-contact.jpg",
+      "size_bytes": 290975,
+      "sha256": "bc3d2838f1cbe67e3ebf5167c00431b09f862751583fb84c3e1e9c478025383d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-court_kp_viz-extremes.jpg",
+      "size_bytes": 904761,
+      "sha256": "649434865ebb34d4e27df25ca1bac11f881b8fbe8bc5e617e42d08067ca74254",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-gvhmr_alignment_viz-contact.jpg",
+      "size_bytes": 151870,
+      "sha256": "6ec4e371a27ec8d8fc67e105f55732eaa3fc0d58de8671031b24456d2aaf88eb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-gvhmr_alignment_viz-extremes.jpg",
+      "size_bytes": 278159,
+      "sha256": "e63e5f97543f353baedcbec9b2f03396d2664682c2df579a26c940a82a7c807a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-gvhmr_viz-contact.jpg",
+      "size_bytes": 289128,
+      "sha256": "c224549f9d9a17676163427ea6637ffecbd1b0a63eb2efbe4e5a32f453d61718",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-gvhmr_viz-extremes.jpg",
+      "size_bytes": 897506,
+      "sha256": "3150801952238d3892f70571fd3e118ce3e70c03291ac7cc34b46870e1841444",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-player-max-step-crops.jpg",
+      "size_bytes": 135153,
+      "sha256": "f328fc36d5447e909bf715e4001d5b1dc592e932a88a3a526db72c5ee71410d0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-player-max-step-source.jpg",
+      "size_bytes": 779388,
+      "sha256": "936fa2a56c542d033524fa1b1cadb7edaeb17c0341e5437798d81fe718c26f29",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-plcs_viz-contact.jpg",
+      "size_bytes": 110937,
+      "sha256": "49203c8d8b2ce7a62ed89229ab7fdc68030b108431c6e476df449e9612e2b2d7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-plcs_viz-extremes.jpg",
+      "size_bytes": 208988,
+      "sha256": "cff8b7f2ecae2141861f1aa5bb74ad1e225f427b581e1a66b6a29550e3df3162",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-scene-contact.jpg",
+      "size_bytes": 85966,
+      "sha256": "91596a92bf266c00ed2b053ff1bcce24425c1694a778e16a02c6b8307a14ca44",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/pipeline-scene-extremes.jpg",
+      "size_bytes": 275940,
+      "sha256": "e64d3ef158117d52bd1ef47e4d06d0d37e551676d23d5e742b491f01531bcfa8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

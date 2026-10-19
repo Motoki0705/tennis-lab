@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-reprojection-s42-u4000",
+  "files": [
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 2471056,
+      "sha256": "79558429a1706c3ccd89b753925f0eb38e5f69c8a37e7a66c1fa052d844ba270",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 37217,
+      "sha256": "2ee81301bd517567fb99ec6ece35b15b88434d82d9d722e34d3b475de3c3033e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

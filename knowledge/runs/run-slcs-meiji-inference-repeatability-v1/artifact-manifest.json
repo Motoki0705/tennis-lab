@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-inference-repeatability-v1",
+  "files": [
+    {
+      "path": "prediction_1.npz",
+      "size_bytes": 138754,
+      "sha256": "0a2bb3152760fdfae865fa58c5ca678c61fa3a47b13057586040d10f8b7c292f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "prediction_2.npz",
+      "size_bytes": 138754,
+      "sha256": "0a2bb3152760fdfae865fa58c5ca678c61fa3a47b13057586040d10f8b7c292f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

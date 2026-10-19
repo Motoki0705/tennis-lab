@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blcs-residual-v2-balanced-s42-resume",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2445204,
+      "sha256": "65f66694b9c5dbbdd1e80e6c512dfa58808821eb91df65be6ffadbb03c97721e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1049-convnext-query-posttrain-s42",
+  "files": [
+    {
+      "path": "train-summary.jsonl",
+      "size_bytes": 371113,
+      "sha256": "c4cedac86e4047077e618e40010713222e8c06a4894d2f5680dc34c00b93e9c0",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

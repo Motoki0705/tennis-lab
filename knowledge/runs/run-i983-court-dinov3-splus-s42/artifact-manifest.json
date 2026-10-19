@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i983-court-dinov3-splus-s42",
+  "files": [
+    {
+      "path": "tensorboard/version_0/events.out.tfevents.1791794354.kamimura.640690.0",
+      "size_bytes": 1613108,
+      "sha256": "912a5d2c0026cee8b39c2a9159e4221a9a68c1a0bcf327902afde45de5fb134c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

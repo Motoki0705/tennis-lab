@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i539-deep16-chunked",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 363893,
+      "sha256": "1e3572486d76ee203714f3ea6d39673bc045b3a5700b4e793a20d0e998fa210d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

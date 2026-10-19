@@ -33,7 +33,7 @@ repro:
     outputs/court-b00-b03-generation/B02-wide-requested.yaml
 artifacts:
   run_dir: knowledge/runs/run-court-b02-wide-no-full
-  log: knowledge/runs/run-court-b02-wide-no-full/run.log
+  log: {status: deleted, record: knowledge/runs/run-court-b02-wide-no-full/artifact-manifest.json#/files/0}
 parents:
 - run-court-b02-narrow-fov
 relations: []

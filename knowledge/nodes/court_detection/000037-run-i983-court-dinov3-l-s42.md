@@ -51,7 +51,7 @@ repro:
     run.artifact_store.sync_interval_seconds=60
 artifacts:
   run_dir: knowledge/runs/run-i983-court-dinov3-l-s42
-  tb_logdir: knowledge/runs/run-i983-court-dinov3-l-s42/tensorboard/version_0
+  tb_logdir: {status: deleted, record: knowledge/runs/run-i983-court-dinov3-l-s42/artifact-manifest.json, path_prefix: tensorboard/version_0/}
   config: knowledge/runs/run-i983-court-dinov3-l-s42/config.yaml
   environment: knowledge/runs/run-i983-court-dinov3-l-s42/environment.json
   first_checkpoint_receipt: knowledge/runs/run-i983-court-dinov3-l-s42/first-checkpoint.json

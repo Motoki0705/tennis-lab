@@ -43,7 +43,7 @@ repro:
     training.trainer.max_epochs=200 run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i541-parameff-deeppose
-  predictions: knowledge/runs/run-i541-parameff-deeppose/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i541-parameff-deeppose/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781927076593996965_760047_i541_parameff_deeppose.log
   curves: knowledge/runs/run-i541-parameff-deeppose/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_2

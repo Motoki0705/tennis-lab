@@ -36,8 +36,8 @@ artifacts:
   run_dir: knowledge/runs/run-i1044-gt-val-preflight
   log: knowledge/runs/run-i1044-gt-val-preflight/queue.log
   output_dir: outputs/blcs/i1044/gt-val-preflight
-  evaluation_json: knowledge/runs/run-i1044-gt-val-preflight/evaluation.json
-  pred_val_npz: knowledge/runs/run-i1044-gt-val-preflight/pred_val.npz
+  evaluation_json: {status: deleted, record: knowledge/runs/run-i1044-gt-val-preflight/artifact-manifest.json#/files/0}
+  pred_val_npz: {status: deleted, record: knowledge/runs/run-i1044-gt-val-preflight/artifact-manifest.json#/files/1}
 parents: []
 relations: []
 papers: []

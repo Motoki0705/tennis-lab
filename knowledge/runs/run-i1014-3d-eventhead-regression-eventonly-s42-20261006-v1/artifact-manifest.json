@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2566980,
+      "sha256": "57d0d30f5251f5cf30e0c4030fafe05702ba6f24d5ea85470a5edb9a64a54e1a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "review/exported-comparison.png",
+      "size_bytes": 1379484,
+      "sha256": "f5e4032ea228b83933ab57ef6ff372de388ac42bf4efb14f5ab48ee613dea296",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

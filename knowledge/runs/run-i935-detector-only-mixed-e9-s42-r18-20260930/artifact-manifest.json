@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-detector-only-mixed-e9-s42-r18-20260930",
+  "files": [
+    {
+      "path": "artifact_hashes.json",
+      "size_bytes": 279641,
+      "sha256": "be222b0e56b457e34053d055be20002591d216814b38d76c5990db8cdf5814a1",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-decoded-frame-164.jpg",
+      "size_bytes": 1051806,
+      "sha256": "13e0d84a2a28cdb160dff3057cb7ad1bc8299a72abc01b84dbc1e37c23aa739a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-frame-080.jpg",
+      "size_bytes": 1101906,
+      "sha256": "8572b4990d63fadf28281791a65f5575d536ed33b4af2d51b1e9e3859310d358",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-frame-240.jpg",
+      "size_bytes": 1105645,
+      "sha256": "c89fd13f035c8c345fdc1a930910caca3a8f97b2405f2eace44a335e58377963",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "paired/metrics.json",
+      "size_bytes": 336844,
+      "sha256": "8299ba989d8e6187cfaab030e4c4c53709dfb48942b82121c62dc1ab2e46ab3f",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "paired_recomputed.json",
+      "size_bytes": 711425,
+      "sha256": "ed043277bc399c33ab6ceb7c017450357c1e07295d01f2ea33635babcb10f074",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

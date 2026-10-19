@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i801-a2-plcs-d-reference",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 923723,
+      "sha256": "a178f5fb62549aed5d6094187cd80695bdc5eb29ff4e3c407a02ad2161b51544",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

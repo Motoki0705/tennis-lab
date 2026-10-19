@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-b02-wide-no-full",
+  "files": [
+    {
+      "path": "run.log",
+      "size_bytes": 874666,
+      "sha256": "7ae6999698372975b8dc04306e4394fee7853dd834dae1f3366a7f308112c8e9",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

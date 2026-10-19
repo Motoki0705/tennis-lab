@@ -46,7 +46,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i576-camtoken-s0-h12
-  predictions: knowledge/runs/run-i576-camtoken-s0-h12/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i576-camtoken-s0-h12/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782529475051150394_2429647_i576_camtoken_s0_h12.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_camtoken/logs/version_0
   curves: knowledge/runs/run-i576-camtoken-s0-h12/curves.png

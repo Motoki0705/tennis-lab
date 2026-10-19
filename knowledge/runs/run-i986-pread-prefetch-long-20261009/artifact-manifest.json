@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i986-pread-prefetch-long-20261009",
+  "files": [
+    {
+      "path": "async-prepared-b1.json",
+      "size_bytes": 327719,
+      "sha256": "cf0be732ffd52c327bb2f34f9d53075829e1820324a4d1b96ae3a1f3c19b2d3c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "async-w4-p8-b1.json",
+      "size_bytes": 328326,
+      "sha256": "e9fffeea842f44fa79897a66c3a7baac50754e440c66d4784f424609ccd47370",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "async-w8-p4-b1.json",
+      "size_bytes": 328817,
+      "sha256": "b75853f9ab8416631858af8375534f64d13723acefd3d0b2ec935b000a9297d4",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

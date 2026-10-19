@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-fta-s03g015",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 285797,
+      "sha256": "90b118cb7fffb23a34365092a1ad3de094d0fe64bb4019ef94a840d4f414daae",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-seed44-retry-r24-20260930",
+  "files": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 565013,
+      "sha256": "08e49ccdccaecc932ff91f2fc5f1b487578cfb39d47a2c4382ec4fffdbde16df",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

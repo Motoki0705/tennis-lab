@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i983-court-dinov3-s-s42",
+  "files": [
+    {
+      "path": "pose-diagnostic/points.json",
+      "size_bytes": 892063,
+      "sha256": "26b51b59666f87c77fa69e694aeaba1183f149bd615a49e7e6bfb9c808565792",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "tensorboard/version_0/events.out.tfevents.1791731491.kamimura.43360.0",
+      "size_bytes": 1613108,
+      "sha256": "157f8e70ff1d6fc12201d3d85e38977498535985281a146b88e7e2ad37c6ab46",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

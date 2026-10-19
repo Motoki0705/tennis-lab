@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-streaming-visual-v1",
+  "files": [
+    {
+      "path": "pr_preview/comparison.gif",
+      "size_bytes": 1968710,
+      "sha256": "92085ba32d3110c78bb1c0af36aaa3c23dde803b8edbf73c2b647bdad31f26b5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/comparison.mp4",
+      "size_bytes": 485583,
+      "sha256": "54e2f640631383560f705d79e67d706b772b77fdea2eaff1f2e9e7cf4a0114a8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/contact_sheet.png",
+      "size_bytes": 1490677,
+      "sha256": "66eec8180aa962e6997ebaa1991c1c69fc6a8dd3a8b654545b75907772232047",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 161844,
+      "sha256": "b6d6657dcf5f73ae95d4f5d6e2f2fa199b2c35ee3fad5dcd7dc513fc2e26edc1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

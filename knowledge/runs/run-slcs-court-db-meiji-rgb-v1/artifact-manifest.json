@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-court-db-meiji-rgb-v1",
+  "files": [
+    {
+      "path": "contact_sheet.jpg",
+      "size_bytes": 741862,
+      "sha256": "63cf28038549d9146526b0c0c7facbd15fe12972f3b6e60af21dfcfef3b7b69a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i991-rope-gan-gpu-preflight-20261006",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 5849549,
+      "sha256": "a5c2fb41019c4771a23b2e6dfa42d7fae05e043c0e2fc47467d06aeefa34d863",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

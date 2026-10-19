@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-blcs-meiji-e60-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 49239,
+      "sha256": "8bef91c2a7bd5c5f747d234229a11f91a060fd2d6bd1aae9185e0c997c0836fa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

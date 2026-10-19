@@ -83,13 +83,13 @@ scoreの1超は25 / 94,472 dense slotで、全てchat（最大1.024473）。
 黄色は平滑化・拡張後のcropとraw track ID、緑は肘/手首と肩からの腕、
 紫はframe 0のcourt KP14。対象人物の手首GTによる精度測定ではない。
 
-- [TrackNetの5frame](../../runs/run-i935-context-fullframe-pilot-r10-20260928/clip-00062-context.jpg):
+- [TrackNetの5frame（削除済み）](../../runs/run-i935-context-fullframe-pilot-r10-20260928/artifact-manifest.json#/files/0):
   手前サーバーと奥のプレーヤーの腕を捉える一方、観客・コート周辺の人物も多数含む。
   courtは表示された主コートの線に概ね沿うが、近側の外側点などに目視のずれがあり、GT精度は未測定。
-- [Meijiの5frame](../../runs/run-i935-context-fullframe-pilot-r10-20260928/clip-00227-context.jpg):
+- [Meijiの5frame（削除済み）](../../runs/run-i935-context-fullframe-pilot-r10-20260928/artifact-manifest.json#/files/1):
   手前と奥の対象に加え左側の隣接コート人物を含む。遠方人物は小さく、
   14点が有効でも対象コート・各点の位置の正しさを保証しない。別GTとの照合は未実施。
-- [chatの5frame](../../runs/run-i935-context-fullframe-pilot-r10-20260928/clip-00266-context.jpg):
+- [chatの5frame（削除済み）](../../runs/run-i935-context-fullframe-pilot-r10-20260928/artifact-manifest.json#/files/2):
   プレー中の人物だけでなく周辺スタッフ・観客にもposeがある。frame間で視点・画角が変化し、
   trackが断片化して累計60に達した。frame 0 court探索は支持領域なしとして明示的に欠損を保存した。
   未実行ではなく、別推定への切替もしていない。このclipはcourt全欠損なので

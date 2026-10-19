@@ -40,7 +40,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-bcast-v3-simfix
-  predictions: knowledge/runs/run-mono3d-blcs-bcast-v3-simfix/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-bcast-v3-simfix/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783252014517687220_346625_mono3d_blcs_bcast_v3_simfix.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_2
   checkpoint: ckpt/blcs/run-mono3d-blcs-bcast-v3-simfix-epoch189.ckpt

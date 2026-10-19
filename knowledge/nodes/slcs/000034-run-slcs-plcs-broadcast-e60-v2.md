@@ -31,7 +31,7 @@ repro:
     -m src.tasks.plcs.scripts.train --config-name train_broadcast_real_rgb run.output_dir=plcs/train/broadcast_real_rgb/s42-002
 artifacts:
   run_dir: knowledge/runs/run-slcs-plcs-broadcast-e60-v2
-  predictions: knowledge/runs/run-slcs-plcs-broadcast-e60-v2/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-plcs-broadcast-e60-v2/artifact-manifest.json#/files/0}
   output_dir: outputs/plcs/train/broadcast_real_rgb/s42-002
   curves: knowledge/runs/run-slcs-plcs-broadcast-e60-v2/curves.png
   tb_logdir: outputs/plcs/train/broadcast_real_rgb/s42-002/logs/version_0

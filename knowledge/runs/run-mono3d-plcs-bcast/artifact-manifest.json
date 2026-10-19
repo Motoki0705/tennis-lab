@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-plcs-bcast",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 471389,
+      "sha256": "11d505c88cd0690a53bb442144235fde72b552e35a09b6ce5a3cba4e79899934",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

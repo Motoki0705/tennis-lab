@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "run_id": "run-b01-court-sfm-bounds-full",
+  "files": [
+    {
+      "path": "full-render-metrics.json",
+      "size_bytes": 743749,
+      "sha256": "14fdfc3d18b4b157feeeaa402404fceb4d56c9a9c6796589a7bf2b532d28c327",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-00.json.gz",
+      "size_bytes": 34917,
+      "sha256": "7d8c3add4fd3e5a69812aaa5874a6680368ab7c51148f455c40ff2e52f2e6894",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-01.json.gz",
+      "size_bytes": 35846,
+      "sha256": "9ce0768edcb1cd5485c4fb81cc1a382ef839a7a6a6577f8330bf1fc2f2eb6f8b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-02.json.gz",
+      "size_bytes": 34916,
+      "sha256": "28b7490b7df68cbba530b67ad9285b23e37dbc90a7eda7fb34554dbb9507aea9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-03.json.gz",
+      "size_bytes": 35696,
+      "sha256": "ebde3230eca6d1f9a75f5f7e20a4c1e89e10c35bdc6216413b6956165fad1818",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-04.json.gz",
+      "size_bytes": 35810,
+      "sha256": "9745e83e97f616cc80b8b876c2d1ca1e5a8280425fa1409774e9d9e5f86f41a2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-05.json.gz",
+      "size_bytes": 35770,
+      "sha256": "7ed9e78fd024d905893f686f142ded22ffd478facae25920180ba63de1badd58",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-06.json.gz",
+      "size_bytes": 35760,
+      "sha256": "8aa807c9bd1135832a315f0760c528dcd8ee4c7e4f52d1a0887885c9ae64576b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-07.json.gz",
+      "size_bytes": 34465,
+      "sha256": "cf4b9c55c0d8ba429f64e72e408056ce0a4011a4954fb63e63f767d9ea424ae2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "request-08.json.gz",
+      "size_bytes": 7860,
+      "sha256": "95f23fa2fdc4b3db086ac2e9acee0bfb4836f6ec1d48dd0a908ab1ecedeb2966",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "sfm_bounded-plan.json.gz",
+      "size_bytes": 434864,
+      "sha256": "77670d7cfb10446af555a0766aa19eff67858b162eade71cb88796faa13fe879",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -25,6 +25,15 @@ One run belongs to one task; link other nodes and papers by ID.
 Edit an existing node directly for corrections; `--force` replaces its content.
 Commit the allocator `.sequence` with new nodes and retain it after deletion.
 
+Apply the [run storage policy](../../../knowledge/README.md#run成果物の保存基準)
+before promoting evidence: keep reproducibility files, small metric summaries and
+figures within the documented limits. Registration never copies prediction arrays;
+it reports that they remain at the source. An oversized bundle fails before copying.
+Never expand the pinned legacy exceptions automatically. For approved deletions,
+preserve each file's path, size, SHA-256, reason and pre-deletion HEAD in the run's
+versioned `artifact-manifest.json`; update artifact/body references to its deletion
+records. Keep historical commands, run metadata and patches intact.
+
 Write Japanese findings that separate observations from hypotheses, explain the
 comparison and its limits, and motivate the next experiment. Unknown evidence may
 remain absent; never invent metrics, dates, sources, or issue numbers to pass CI.
@@ -51,3 +60,6 @@ Fix all ERRORs; WARNs are advisory missing evidence. The review marker covers
 nodes, paper notes, and the summary narrative: rerun this completion step after
 further edits. It records review, not scientific correctness. For branch changes,
 use the README's base-ref check to catch numbering collisions before merge.
+That check also requires records for removed files, verifies their bytes against
+the base Git blobs and preserves existing deletion records. Do not approve a
+deletion using a structure-only check without a base ref.

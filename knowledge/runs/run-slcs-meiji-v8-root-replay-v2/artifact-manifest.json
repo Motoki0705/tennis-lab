@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v8-root-replay-v2",
+  "files": [
+    {
+      "path": "video_000_clip_007.npz",
+      "size_bytes": 29913,
+      "sha256": "8fd682a49849b42840a7544a64d1de4454f20dd2d7715a1597b22d738bc6e4b9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video_000_clip_009.npz",
+      "size_bytes": 34248,
+      "sha256": "895a6472722de878c9611c8d26771e5be47ac7ef97b3c2c326d9184e617ca681",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video_001_clip_000.npz",
+      "size_bytes": 58781,
+      "sha256": "dbd0dba24d68eb5c94c905a297fd66399aca415ff628a5b2541c84a566a85fcb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "video_001_clip_001.npz",
+      "size_bytes": 57798,
+      "sha256": "126e0ad8537bfe7cb31a2320ac150544d73b3c5d37fbaf15af39a92bc54d8ef5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

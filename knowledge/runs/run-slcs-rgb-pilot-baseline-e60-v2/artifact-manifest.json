@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-rgb-pilot-baseline-e60-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 16722,
+      "sha256": "8cd8955e88b295e1c6be14f1ae0d5bca9a7be2a5f8e1ff3522c0e989221be289",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

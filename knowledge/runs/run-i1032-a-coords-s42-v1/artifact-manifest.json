@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1032-a-coords-s42-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2548330,
+      "sha256": "3268a020ef4b80c9cf747717b7406ee4733739afe543665b93e977c67d72d030",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

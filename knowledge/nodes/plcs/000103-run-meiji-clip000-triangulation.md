@@ -30,7 +30,7 @@ repro:
   command: bash knowledge/runs/run-meiji-clip000-triangulation/repro.sh
 artifacts:
   run_dir: knowledge/runs/run-meiji-clip000-triangulation
-  predictions: knowledge/runs/run-meiji-clip000-triangulation/predictions.npz
+  predictions: {status: deleted, record: knowledge/runs/run-meiji-clip000-triangulation/artifact-manifest.json#/files/0}
   metrics: knowledge/runs/run-meiji-clip000-triangulation/metrics.json
   output_dir: /mnt/c/Users/kamim/.codex/visualizations/2026/09/20/01a0bf91-5494-74c0-8793-3424866618ed/meiji-clip000-triangulation
   log: /mnt/c/Users/kamim/.codex/visualizations/2026/09/20/01a0bf91-5494-74c0-8793-3424866618ed/meiji-clip000-triangulation/render.log

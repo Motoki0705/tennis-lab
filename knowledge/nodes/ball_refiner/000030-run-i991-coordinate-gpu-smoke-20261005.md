@@ -37,7 +37,7 @@ repro:
     training.gan_warmup_steps=25
 artifacts:
   run_dir: knowledge/runs/run-i991-coordinate-gpu-smoke-20261005
-  predictions: knowledge/runs/run-i991-coordinate-gpu-smoke-20261005/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i991-coordinate-gpu-smoke-20261005/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791165244385535955_1534041_i991-coordinate-gpu-smoke-20261005.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/coordinates-smoke/gpu-20261005/logs/version_0
 parents: []

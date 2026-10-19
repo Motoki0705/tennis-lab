@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-context-fullframe-pilot-r10-20260928",
+  "files": [
+    {
+      "path": "clip-00062-context.jpg",
+      "size_bytes": 582553,
+      "sha256": "0a6ae12261bbae5c256ed0917b05cf114fa1e264590516ad483a012459697cd2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip-00227-context.jpg",
+      "size_bytes": 749887,
+      "sha256": "51efe2b4c90088d871fe375a2228ee273d48ce565ce4adc05b27409dc069c515",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip-00266-context.jpg",
+      "size_bytes": 844931,
+      "sha256": "a64276e0c039cedf4d41a2ed9268c533d3a26b2d7d57c3cf829110f080752aa6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00062.npz",
+      "size_bytes": 116214,
+      "sha256": "d6c1dbfe15d6a691ab8666cbe4d33744931b88938e29451e22d35eb4e5e7c49c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00227.npz",
+      "size_bytes": 88695,
+      "sha256": "cd02004ee4fd77b7732110a2b6ed3b9eb6528c261e7ca50089bba26959a9ce74",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00266.npz",
+      "size_bytes": 570977,
+      "sha256": "746874a0bafb2b5d79e8feb36d0804e60e8971a0f7d00e6dc181d789746a327b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

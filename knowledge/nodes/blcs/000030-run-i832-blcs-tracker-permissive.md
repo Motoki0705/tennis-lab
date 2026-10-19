@@ -36,7 +36,7 @@ repro:
     data.association.max_missed_frames=8'
 artifacts:
   run_dir: knowledge/runs/run-i832-blcs-tracker-permissive
-  predictions: knowledge/runs/run-i832-blcs-tracker-permissive/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i832-blcs-tracker-permissive/artifact-manifest.json#/files/0}
   output_dir: outputs/blcs/issue-832/tracker-permissive-r3/logs/version_0
   curves: knowledge/runs/run-i832-blcs-tracker-permissive/curves.png
   tb_logdir: outputs/blcs/issue-832/tracker-permissive-r3/logs/version_0

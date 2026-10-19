@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-rollout-velocity-s42-u4000",
+  "files": [
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 2401926,
+      "sha256": "9ce9e5fdd963d971f01313a88a18178f969eb4f3a9b9e28687ced6a1fcfd05f0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 44057,
+      "sha256": "bec18de017069c12a5638ad35fcdf32a817f311fcdd58e82907c9562cc8f8024",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

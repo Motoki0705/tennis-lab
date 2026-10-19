@@ -47,8 +47,8 @@ default・固定Bゲート・共分散倍率1.8125148752087792を維持する。
 | cam2 | 62 | 191 | 10 | 42→60 |
 
 全行の正本は[frames.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/frames.csv)、
-候補の位置・score・順序は[candidates.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/candidates.csv)、
-全成分の平均・weight・anchor slotは[components.csv](../../runs/run-i935-source-tail-audit-r27-20261001/frames/components.csv)。
+候補の位置・score・順序は[candidates.csv（削除済み）](../../runs/run-i935-source-tail-audit-r27-20261001/artifact-manifest.json#/files/3)、
+全成分の平均・weight・anchor slotは[components.csv（削除済み）](../../runs/run-i935-source-tail-audit-r27-20261001/artifact-manifest.json#/files/4)。
 NPZには局所patchと全GMMの基礎fieldも残した。対応判定・無効候補・modelと同点順序の一致を3テストで検証、ruff/mypy成功。
 入力hashを実行前後に照合。GPU未使用、学習を行わないためTensorBoard曲線はない。
 

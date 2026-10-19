@@ -1,0 +1,496 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-final-evaluation",
+  "files": [
+    {
+      "path": "evaluations/collision_crossing/evaluation.json",
+      "size_bytes": 812821,
+      "sha256": "c1aece23973fa08964b7888de1a182565104f137b218678d54f43dc3a9f494c2",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/collision_crossing/pred_test.npz",
+      "size_bytes": 4228211,
+      "sha256": "627758f0e1fcda3bc8ca987e7e6041fb4418c11b9ee5e60b9f85a2fbadcb1519",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/geometry/evaluation.json",
+      "size_bytes": 998925,
+      "sha256": "16e731df280d5fbb01836c731ad7d1fe0ba5bb53630d358a0ce650e0b86bce6a",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/geometry/pred_test.npz",
+      "size_bytes": 3821607,
+      "sha256": "dc272a4b6a767b6f8cee0589717cc30fbbab9eca7a109a556f403a6e0d93e857",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/gt/evaluation.json",
+      "size_bytes": 825518,
+      "sha256": "8929625c7f3d4430db439a603544f48bd03634ecd26e849510076ed321e55d2c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/gt/pred_test.npz",
+      "size_bytes": 4231359,
+      "sha256": "5f8138e6259af991de3d4511448b30c8e196e93ab5c60e2c80d523443db91111",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/historical-u9000/evaluation.json",
+      "size_bytes": 855576,
+      "sha256": "6039263b063d5748c014781cea4fa9b6d34dcbffea35b96d9987d97bb9f2bd5d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/historical-u9000/pred_test.npz",
+      "size_bytes": 3636620,
+      "sha256": "e1d28985f6946e54dc473dc563694d241892fb093bbabb6d419d883c14569090",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/jitter/evaluation.json",
+      "size_bytes": 892001,
+      "sha256": "a35ba754e8d354a0ad2254962c3ceee2c1b6a38a016969b364ff2934bff146e3",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/jitter/pred_test.npz",
+      "size_bytes": 4231361,
+      "sha256": "4ab92f4a486a74f35ecb13cf3980b5ec2273c30fd6fd6e8d0473b94d551947fb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s42-u4000/evaluation.json",
+      "size_bytes": 2716721,
+      "sha256": "861db296e88e8fd7edd9405fd23bc14c934b48cc6bad68c2c13251b64fb1838b",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s42-u4000/pred_test.npz",
+      "size_bytes": 5976103,
+      "sha256": "82ee337469243b5b9f6b81746f02c21f6959de026d9855f0e864e0f8f918c009",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s42-u4000/recomputed.json",
+      "size_bytes": 1825642,
+      "sha256": "08d21444cb5cb942ea0609d3d1a240123037e2ec28fac5295da117ea719f23ec",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s43-u4000/evaluation.json",
+      "size_bytes": 2716634,
+      "sha256": "caba4dce751ca35789e14681d43bde8b307097d6d6d903176a8188a9323cd7c9",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s43-u4000/pred_test.npz",
+      "size_bytes": 5973559,
+      "sha256": "c584310688a9d1f9173ee47aab84241fb34ca7496adfb2d38005e2a118f89e66",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s43-u4000/recomputed.json",
+      "size_bytes": 1825388,
+      "sha256": "2eadd74e2c256f96e3631aea2168da4b18386e328249921f149ae590fb774a31",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s44-u4000/evaluation.json",
+      "size_bytes": 2717200,
+      "sha256": "c2c8d34edd3b2545f476a26a7832df222683b7e8b5b1bbe3d142c6167ddf8400",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s44-u4000/pred_test.npz",
+      "size_bytes": 5973275,
+      "sha256": "c3b3e095341df6c0c592e687a0167fab4de9ed8b9f01ccb3efb2d9317489a61b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/parameters-s44-u4000/recomputed.json",
+      "size_bytes": 1825921,
+      "sha256": "d6751470b1b9c040684374a59c729e7ee80f17f8d28de5106e99a3089dde49fe",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/position-s42-u4000/evaluation.json",
+      "size_bytes": 889442,
+      "sha256": "a1fa95d39bfc5fe088ebcf98de4effe7f14c7a74f1d71fc3e904a3cd15ad72c1",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/position-s42-u4000/pred_test.npz",
+      "size_bytes": 3831649,
+      "sha256": "2279556a758582a8a54bd37975f8c6d5fc1f582481cbd9ed5b813d6ba1d8f535",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s42-u4000/evaluation.json",
+      "size_bytes": 889149,
+      "sha256": "ff1549d5dedba0c005867383f4332d6db73aede2182615f872fdbc77ed4f2af5",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s42-u4000/pred_test.npz",
+      "size_bytes": 3828954,
+      "sha256": "a8ab9db56fa43923b91fc1b854bdf19f78f6807c3f1c7577fcfddd9d433092dc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s43-u4000/evaluation.json",
+      "size_bytes": 889322,
+      "sha256": "0d532fcf3ff12597735e935973856db873a660f061daf3c3fb43d348a1ecdb31",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s43-u4000/pred_test.npz",
+      "size_bytes": 3841873,
+      "sha256": "e0228f69a4bba813bcd7cd245f98c4b9636b7b7a8ac9cf81a0d9b27dc28fab2e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s44-u4000/evaluation.json",
+      "size_bytes": 889142,
+      "sha256": "6759e7fd7122db67a4fbc44c615be48de3008cd14b03457b2fa1c8aeb3fa4ef6",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/reprojection-s44-u4000/pred_test.npz",
+      "size_bytes": 3833630,
+      "sha256": "6345fa958a4464a4ea334d97125d72a81598c92e673ea6b2552ee49a94f90fa2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/rollout_position-s42-u4000/evaluation.json",
+      "size_bytes": 889679,
+      "sha256": "6e83b40323efef1f76218b46d730c9ddbfd68152d0807a83ba65874f97767eaf",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/rollout_position-s42-u4000/pred_test.npz",
+      "size_bytes": 3847104,
+      "sha256": "78eb2158a63cb100c4501eeb5bb321e15b85ce82aeb5002e6114e856908404e4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/rollout_velocity-s42-u4000/evaluation.json",
+      "size_bytes": 889809,
+      "sha256": "cb2440b3610caf0ffd4f6e00beae6acbf52205dc1fa6f159e36b5dcdc77656c2",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/rollout_velocity-s42-u4000/pred_test.npz",
+      "size_bytes": 3846449,
+      "sha256": "5d2a788b0247387c3d7bee6e8d08937477e6c13b8a29aa74249f6a5600bc1223",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/time_shift/evaluation.json",
+      "size_bytes": 891918,
+      "sha256": "d214a0abf20aa55a44d05141f5e0d89cfc4403d88c8b38fbbb01083d5fdd5ecb",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/time_shift/pred_test.npz",
+      "size_bytes": 4231288,
+      "sha256": "a930f6038a2273734d7aabe5dac4b3a05851823898bf55c3a99da02450f52071",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/velocity-s42-u4000/evaluation.json",
+      "size_bytes": 889754,
+      "sha256": "eac4ba22e538c2805e51a002c1dba674b875439d6d4718db63a268b3e79c6d3d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluations/velocity-s42-u4000/pred_test.npz",
+      "size_bytes": 3847382,
+      "sha256": "2a7078afa478a85e6f33ec000adbb1e2ca7788b0cf41cab7f7319c061b6d7c3d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s42-u4000/logs/version_0/events.out.tfevents.1791865890.kamimura.2786063.0",
+      "size_bytes": 315674,
+      "sha256": "1119a3ba16bcd0035e9f243154e205a4e36b97f9b413445addd8ae65b0a52071",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s42-u4000/logs/version_0/events.out.tfevents.1791881578.kamimura.2786063.1",
+      "size_bytes": 26411,
+      "sha256": "f58f1ac8b2a0ffc503ee23b2c66cf85437ad6046eafdf0a1ee98994dd4d4b05a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s43-u4000/logs/version_0/events.out.tfevents.1791913558.kamimura.3045028.0",
+      "size_bytes": 315674,
+      "sha256": "c419130de82285e579945f49a69e0217e44474452b77a7d74b9adb4bae797c87",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s43-u4000/logs/version_0/events.out.tfevents.1791921551.kamimura.3045028.1",
+      "size_bytes": 26411,
+      "sha256": "5db4fd9588475736457b5809a0939d8b9c45da20f6aaadc8cb524c6bfb78c45d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s44-u4000/logs/version_0/events.out.tfevents.1791905553.kamimura.1547197.0",
+      "size_bytes": 315674,
+      "sha256": "ffea3e0af04869a8b670df4a57a789e62e6a3c7dd795c90458601383eb4f7671",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "parameters-s44-u4000/logs/version_0/events.out.tfevents.1791913171.kamimura.1547197.1",
+      "size_bytes": 26411,
+      "sha256": "611067dd28d345dc5306336dd1605d0c35ae961cff0e2afe0946e8589099b15c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "position-s42-u4000/logs/version_0/events.out.tfevents.1791879062.kamimura.3087934.0",
+      "size_bytes": 208476,
+      "sha256": "858f792ccf2a4e504370e72fad7eabba94a5d01275fdc8fef42e29b6223c6b87",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "position-s42-u4000/logs/version_0/events.out.tfevents.1791883974.kamimura.3087934.1",
+      "size_bytes": 26409,
+      "sha256": "a4201dcd6a1d1222ca9c5c3c7e025281bdb344fd54466914e1a1b6011c689677",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 625,
+      "sha256": "af06f86faad7e3d88fbf7951153f99d2b92fceef469afd7a82f0bbe31b2318d0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/geometry/real_predictions.npz",
+      "size_bytes": 20169,
+      "sha256": "ebfecbb023de35bef0e8c248e9407b0b0d2fed4cd5b3bf6ad011ce05c9986f4b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/historical-u9000/real_predictions.npz",
+      "size_bytes": 18149,
+      "sha256": "6dcf3eb5a026713724806d2cf99abdafd1279cd9ae4e756d222f5108e8826d42",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/parameters-s42-u4000/real_predictions.npz",
+      "size_bytes": 35087,
+      "sha256": "51beddf206d5553456a7b54d9a56491ff62713e166b0255b19c27c932480098f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/parameters-s43-u4000/real_predictions.npz",
+      "size_bytes": 35049,
+      "sha256": "71cdbf82f319b6b6189718825c5bd61630a8f89a90ee9fd3c71447f154472a4d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/parameters-s44-u4000/real_predictions.npz",
+      "size_bytes": 34962,
+      "sha256": "9386f1555a46b78f063b27fa5572efb4edbf618571aa6595e26b54ddaa2ce180",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/position-s42-u4000/real_predictions.npz",
+      "size_bytes": 21777,
+      "sha256": "4fc561ca2d0eaa459a73f1b67e5bc0d8bd719bacace2cb57125c2e45a27e49ef",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/reprojection-s42-u4000/real_predictions.npz",
+      "size_bytes": 21957,
+      "sha256": "7bcd399ffd4c6c3c6be4b62b844bbb80971756f474c0e82b806b714ba7cb1868",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/reprojection-s43-u4000/real_predictions.npz",
+      "size_bytes": 21993,
+      "sha256": "4686ac9fbc9f3615f6b5e99c353fb0311ba42b76bb41196b1ef74ce04a5b48e8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/reprojection-s44-u4000/real_predictions.npz",
+      "size_bytes": 21740,
+      "sha256": "111d95a4face91edace5f64d42b6e522b2bf3c4b89f5d4cbd84ff248a5f80a06",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/rollout_position-s42-u4000/real_predictions.npz",
+      "size_bytes": 21999,
+      "sha256": "cfdc0775656d0d5615ff4904441113024b06676f2e6bd41d04322417bde5e167",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/rollout_velocity-s42-u4000/real_predictions.npz",
+      "size_bytes": 22078,
+      "sha256": "e736ea827a0fd333359e645a55a8b8879fcd99927d7e552f35dda4d01fde28bb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real/velocity-s42-u4000/real_predictions.npz",
+      "size_bytes": 22023,
+      "sha256": "4267e1fbcddc0f883a8e9ac1f282d5100b3ef4cba68ec5cbe0059756367efc94",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "report/training_curves.json",
+      "size_bytes": 2151930,
+      "sha256": "e662489e5203d64e6e8834822dd5d8641e1b412b464b42d46f040049acbc79d7",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "report/weighted_output_gradients.png",
+      "size_bytes": 569746,
+      "sha256": "e7af4747a522e208c96bfaa198af84806153bea734a97c676a856e7e60325246",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s42-u4000/logs/version_0/events.out.tfevents.1791884012.kamimura.3304534.0",
+      "size_bytes": 214748,
+      "sha256": "c0cb54a47784ce4fbef80bf835d2934d8445c9671066adf6ca7dfb1a29e32eb7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s42-u4000/logs/version_0/events.out.tfevents.1791891247.kamimura.3304534.1",
+      "size_bytes": 26413,
+      "sha256": "4b937a3283d4e501194f33ad3308c51ea41a7fe7427677330d73ab2aee40cf49",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s43-u4000/logs/version_0/events.out.tfevents.1791891324.kamimura.2704281.0",
+      "size_bytes": 214748,
+      "sha256": "541578971dc169d11445676496ecc8e358274c02bfa72572fc2440d816ecde62",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s43-u4000/logs/version_0/events.out.tfevents.1791900236.kamimura.2704281.1",
+      "size_bytes": 26413,
+      "sha256": "5ef682ed32ecf08f181937539354f9ef0ca67dba323e4654adb2045ac616a8b8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s44-u4000/logs/version_0/events.out.tfevents.1791900277.kamimura.1224346.0",
+      "size_bytes": 214748,
+      "sha256": "80ad0cb691287638a9a2dc97e01e19d3e2cd352efa658461a6f9d6511d4ca7d6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection-s44-u4000/logs/version_0/events.out.tfevents.1791905524.kamimura.1224346.1",
+      "size_bytes": 26413,
+      "sha256": "ece72b3500512a5aa111621f723ca57a50a9db4a301aa93d7dc4266c1124f940",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "rollout_position-s42-u4000/logs/version_0/events.out.tfevents.1791856515.kamimura.2741386.0",
+      "size_bytes": 227288,
+      "sha256": "22ed3771eadd6fa45fdb389dffe2a22c8db0cd6f6413aa629fc33ede7debec30",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "rollout_position-s42-u4000/logs/version_0/events.out.tfevents.1791865528.kamimura.2741386.1",
+      "size_bytes": 26417,
+      "sha256": "6cfd9c7af8027d440ef08d529e2ae57f56b48b3d4a8dbd532e66aa5d4f72be10",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "rollout_velocity-s42-u4000/logs/version_0/events.out.tfevents.1791865890.kamimura.2785997.0",
+      "size_bytes": 233876,
+      "sha256": "7e891127fde5bcf037c48099143d3cd2ee8187c20ef9ee4b98ac28eda53e6748",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "rollout_velocity-s42-u4000/logs/version_0/events.out.tfevents.1791879018.kamimura.2785997.1",
+      "size_bytes": 26417,
+      "sha256": "bd283a7178e181518c5336da2cc105e703db83a5e2c7c70f49f008abfbc69420",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "velocity-s42-u4000/logs/version_0/events.out.tfevents.1791854249.kamimura.1769384.0",
+      "size_bytes": 220692,
+      "sha256": "ca4017e674a07e8a71a552562eb8c93f07f6a188be6c0ce68be49a4d3bc22b6d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "velocity-s42-u4000/logs/version_0/events.out.tfevents.1791862396.kamimura.1769384.1",
+      "size_bytes": 26409,
+      "sha256": "83f6efe192c18f3a5bc504f332e37748c02fc037969b627f7b32045a0147c60e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

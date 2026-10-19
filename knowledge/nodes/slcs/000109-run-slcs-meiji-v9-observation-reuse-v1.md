@@ -28,7 +28,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_observation_reuse/s42-001
-  failure: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1/failure.json
+  failure: {status: deleted, record: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-v9-court-v1
 - run-slcs-meiji-v8-observe-repair-v1

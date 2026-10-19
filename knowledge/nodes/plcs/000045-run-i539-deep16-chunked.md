@@ -45,7 +45,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i539-deep16-chunked
-  predictions: knowledge/runs/run-i539-deep16-chunked/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i539-deep16-chunked/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782037138483198726_185287_i539_deep16_chunked.log
   curves: knowledge/runs/run-i539-deep16-chunked/curves.png
 parents:

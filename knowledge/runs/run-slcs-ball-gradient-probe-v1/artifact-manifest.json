@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-ball-gradient-probe-v1",
+  "files": [
+    {
+      "path": "broadcast_eval.npz",
+      "size_bytes": 17134,
+      "sha256": "0e782eaf78ac06b7b921578a6c3be904f9f7502b2e83ed1977c651a0a98e7b57",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "broadcast_train_dropout.npz",
+      "size_bytes": 17684,
+      "sha256": "11d23c2ca4fad17008a21d094060692345214be4a849b02918219cf16817a2e0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "meiji_eval.npz",
+      "size_bytes": 16695,
+      "sha256": "d11c939d23607c913c63a1ed6e238f410ae78e6269494fd2fcd8208b1bf6164a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "meiji_train_dropout.npz",
+      "size_bytes": 17750,
+      "sha256": "043e394002669ab6346305ada07c5023e6c0828864ddcc3c9ba0abbe1412bf1d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

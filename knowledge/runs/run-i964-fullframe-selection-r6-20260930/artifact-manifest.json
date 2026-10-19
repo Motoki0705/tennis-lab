@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-fullframe-selection-r6-20260930",
+  "files": [
+    {
+      "path": "association.csv",
+      "size_bytes": 1847091,
+      "sha256": "a71aceb776140d84515d6a4de3a00fdc6b3d4e31773b3ffa03214ea9ce50f1b9",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_0.jpg",
+      "size_bytes": 438290,
+      "sha256": "4b17af2e1dba353a4066af113422670e158f08d4cc4659ad5bdb38c0dc4264dc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_1.jpg",
+      "size_bytes": 438021,
+      "sha256": "8e45ece0f0455e8e5d573d88252b4dcd0951d4c68106388f0d313e7fba5aafdf",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_2.jpg",
+      "size_bytes": 441776,
+      "sha256": "a1df3419b956e3c653ed89bdad4fee03b700b316b80f47b36c02eeddb6edde2f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_3.jpg",
+      "size_bytes": 431689,
+      "sha256": "0fb931ae379988ea9fcb8b77d5f85b378eb6a2ef8e3d9cf73f9ee8c4d4335bf8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_4.jpg",
+      "size_bytes": 437926,
+      "sha256": "ca489534562ed25641528a651ad0011f00f8664b7f833b16437d311f8b76b011",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_5.jpg",
+      "size_bytes": 425124,
+      "sha256": "e5871b6f0d8647065d765bb1ea9d3946338c4c26fed2510d19f58397cdc940dd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "best_source_review_3cam_preview_6.jpg",
+      "size_bytes": 444436,
+      "sha256": "6e53e216f980090afd695d013218aa979b25c4df9f8bf1b3a641352c1e494682",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "comparison.json",
+      "size_bytes": 6078658,
+      "sha256": "7dfaba24ad2b377f39c62897b4310a76f8b247aca35246dec595cd913211683b",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

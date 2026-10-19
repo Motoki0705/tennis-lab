@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i786-normv2-large-cuda-ablation-a-b8-a4-eb32-e100-gpu0",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 410973,
+      "sha256": "585d83f5eb9b9253f07ef47b95a81fe2905061a1d28dfea0ad2b7e76feca6c63",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

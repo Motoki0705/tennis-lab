@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-temporal-context-broadcast-visual-v1",
+  "files": [
+    {
+      "path": "pr_preview/comparison.gif",
+      "size_bytes": 2043280,
+      "sha256": "fd98af85ac81eeefbb402a3caf62e81baf15b50ee174917602a5c3c18e58f9c3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/comparison.mp4",
+      "size_bytes": 520340,
+      "sha256": "ae659e2692607a6f5579fc432f7cbc3e2a47f036e72fc179079ce77787a89c46",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/contact_sheet.png",
+      "size_bytes": 1160657,
+      "sha256": "d9f7ce16023ee5ff99d9eaa75d64e3fcb5c1e46e9dcf8d6cca2adcd486ae4fdd",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 142690,
+      "sha256": "906e2fde4ce99d00dc0ecc6e33d3a14d1f0c87bc8c8de3b2ebefdec11057cc15",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i934-meiji-holdout-e0-r7",
+  "files": [
+    {
+      "path": "holdout/ft_e13.npz",
+      "size_bytes": 3139203,
+      "sha256": "c2e6e68681768ee87044ac0e23b1bdc93af989c426b67dcd38d6190e69d7110f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "holdout/mixed_ft.npz",
+      "size_bytes": 3419633,
+      "sha256": "e58e73eaa3e3a0e3bd77a3ae8b3d07995967ca0e04b1e7c6324e316cc158e240",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "holdout/references.npz",
+      "size_bytes": 323293,
+      "sha256": "614a9322798306b7819fdaf8257daaaefa4b15df5a214da43aeeec083d421571",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

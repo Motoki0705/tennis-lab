@@ -50,7 +50,7 @@ repro:
     training.early_stopping.enabled=false camera=broadcast run.gpus=1 run.init_weights=ckpt/plcs/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-mono3d-plcs-ft-s15-safe
-  predictions: knowledge/runs/run-mono3d-plcs-ft-s15-safe/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-plcs-ft-s15-safe/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783274156982033821_497703_mono3d_plcs_ft_s15_safe.log
   output_dir: outputs/plcs/plcs_multiview_axial_split/logs/version_24
   curves: knowledge/runs/run-mono3d-plcs-ft-s15-safe/curves.png

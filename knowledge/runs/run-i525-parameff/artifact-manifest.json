@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i525-parameff",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 451434,
+      "sha256": "63cf9b64fac3b1e3bc2e69c87f9e680ccbc899abecc4352dbc9b9592fddae142",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-rgb-pilot-baseline-selected-conditions-v2",
+  "files": [
+    {
+      "path": "test_detector_gap/eval_arrays.npz",
+      "size_bytes": 35963,
+      "sha256": "c15cdc2e8d0d1331600db6c59c67aa9f176b8c5b32d5fa6e49c928dd625214e7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_full/eval_arrays.npz",
+      "size_bytes": 35913,
+      "sha256": "68967fd743e42677642f476e37a17a78ed019f08856d7e8f6d37c4dbb79db2d0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_no_rgb/eval_arrays.npz",
+      "size_bytes": 35865,
+      "sha256": "17ad5796482d866ed54e6bde385e16cd59f6d379405915ed09ddd7cd7b89a10b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_rgb_only/eval_arrays.npz",
+      "size_bytes": 33912,
+      "sha256": "988de2ec4152a20438b974ab2f48f58fe13f48d68c4713f2c807e438b64f6db8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_detector_gap/eval_arrays.npz",
+      "size_bytes": 556538,
+      "sha256": "f82c2dd995c3e9c35b4b099d60792d4f5144311c70f1a881170fbb883b6f3640",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_full/eval_arrays.npz",
+      "size_bytes": 554134,
+      "sha256": "e7dd21e552b72d419adee03a1beb674cd23d35cfc115cdead41610a852e20c84",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_no_rgb/eval_arrays.npz",
+      "size_bytes": 556884,
+      "sha256": "f602bbaabcf8429689bd32555204e261dc124d5707e38fc1883057163035d5f0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_rgb_only/eval_arrays.npz",
+      "size_bytes": 521170,
+      "sha256": "c856bf5d32d0cc319e3c78e801f707a37be0d274cd1d261c50c79bf0d78822a8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}
