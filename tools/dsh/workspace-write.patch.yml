@@ -1,0 +1,13 @@
+- id: sandbox-policy
+  config:
+    mode: workspace-write
+- id: approval
+  config:
+    policy: ask
+- id: permission
+  config:
+    defaultPreset: workspace-write
+    presets:
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
