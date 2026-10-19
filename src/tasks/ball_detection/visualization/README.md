@@ -124,13 +124,19 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
   'visualization.save=${run.output_dir}/ball_2d.gif'
 ```
 
+storeの途中の区間は `visualization.start_frame`（0始まり、既定0）と
+`visualization.max_frames`（その位置からの最大frame数）で指定します。たとえば
+`visualization.clip_id=meiji/video_000/clip_000/cam1 visualization.start_frame=200 visualization.max_frames=100`
+はframe 200〜299です。負の開始位置・clip末尾以降・モデル窓より短い区間は拒否します。
+モデル入力・MDDの前処理はclip全体と同じ経路です。
+
 GPU推論は[共有キュー](../../../../.agents/skills/training-queue/SKILL.md)へ登録して実行してください。
 worktreeでは実データの `paths.data_root` とcheckpointのrootを絶対パスで指定します。
 checkpointは `visualization.checkpoint` の `role`（`artifact` / `checkpoint`）と `path` で
 保存先を明示します。既定の参照は従来どおりartifact root配下です。
 
 overlayではGIFの隣に `manifest.json` を保存します。入力のstore tables・clip payload・checkpointの
-SHA-256、コードのcommitと未コミット変更の有無、解決済みconfig、frame名、
+SHA-256、コードのcommitと未コミット変更の有無、解決済みconfig、frame名・frame範囲（stopは含まない）、
 映像と予測の由来区分 `measured` を記録します。予測点は実データへの推論結果であり、GTではありません。
 動画出力はGIFだけです。
 

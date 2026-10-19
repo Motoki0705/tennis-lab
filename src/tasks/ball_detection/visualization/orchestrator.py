@@ -57,6 +57,7 @@ class RuntimeConfig:
     sequence_length: int
     image_size_hw: tuple[int, int]
     peak_threshold: float
+    start_frame: int
     max_frames: int | None
     normalize_imagenet: bool
     imagenet_mean: tuple[float, float, float]
@@ -114,6 +115,9 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     max_frames = None if max_frames_raw is None else int(max_frames_raw)
     if max_frames is not None and max_frames <= 0:
         raise ValueError("visualization.max_frames must be positive when set.")
+    start_frame = int(vis.start_frame)
+    if start_frame < 0:
+        raise ValueError("visualization.start_frame must be nonnegative.")
 
     normalize_cfg = data_cfg.augmentation.normalize_imagenet
     normalize_imagenet = bool(normalize_cfg.enabled)
@@ -143,6 +147,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         sequence_length=sequence_length,
         image_size_hw=image_size_hw,
         peak_threshold=float(vis.peak_threshold),
+        start_frame=start_frame,
         max_frames=max_frames,
         normalize_imagenet=normalize_imagenet,
         imagenet_mean=imagenet_mean,
@@ -196,6 +201,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         sequence_length=cfg.sequence_length,
         image_size_hw=cfg.image_size_hw,
         max_frames=cfg.max_frames,
+        start_frame=cfg.start_frame,
         normalize_imagenet=False,
         imagenet_mean=cfg.imagenet_mean,
         imagenet_std=cfg.imagenet_std,
@@ -250,6 +256,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
             store_dir=cfg.store_dir,
             clip_id=cfg.clip_id,
             frame_names=clip.frame_names,
+            start_frame=cfg.start_frame,
             checkpoint=cfg.checkpoint,
             resolved_config=cfg.resolved_config,
         )

@@ -1014,6 +1014,7 @@ def validate_visualization(config: DictConfig) -> None:
             "window_stride",
             "inference_batch_size",
             "peak_threshold",
+            "start_frame",
             "max_frames",
             "info",
             "strict",
@@ -1035,6 +1036,11 @@ def validate_visualization(config: DictConfig) -> None:
             path=f"visualization.{key}",
         )
     _required_number(vis, "peak_threshold", path="visualization")
+    _positive(
+        cast(int, typed(vis, "start_frame", int, path="visualization")),
+        path="visualization.start_frame",
+        allow_zero=True,
+    )
     max_frames = typed(vis, "max_frames", (int, type(None)), path="visualization")
     if max_frames is not None:
         _positive(cast(int, max_frames), path="visualization.max_frames")

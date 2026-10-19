@@ -108,3 +108,38 @@ def test_nonpositive_render_width_fails_before_opening_store(tmp_path: Path) -> 
             image_size_hw=(64, 128), max_frames=2, normalize_imagenet=False,
             imagenet_mean=(0.0, 0.0, 0.0), imagenet_std=(1.0, 1.0, 1.0), render_width=0,
         )
+
+
+@pytest.mark.parametrize("normalize", [False, True])
+def test_interval_preserves_frame_order_and_preprocessing(tmp_path: Path, normalize: bool) -> None:
+    clip_id = "tracknet/game1/Clip1"
+    store_dir = write_store_clip(tmp_path / "store", clip_id, [frame(i) for i in range(6)])
+
+    def load(start: int, count: int | None) -> ClipSequence:
+        return load_clip_sequence(
+            store_dir=store_dir, clip_id=clip_id, sequence_length=2,
+            image_size_hw=(32, 64), max_frames=count, normalize_imagenet=normalize,
+            imagenet_mean=(0.485, 0.456, 0.406), imagenet_std=(0.229, 0.224, 0.225),
+            render_width=80, start_frame=start,
+        )
+
+    full = load(0, None)
+    interval = load(2, 3)
+    assert interval.frame_names == tuple(f"{clip_id}:{i}" for i in range(2, 5))
+    torch.testing.assert_close(interval.model_images, full.model_images[2:5], rtol=0, atol=0)
+    for actual, expected in zip(interval.render_frames_rgb, full.render_frames_rgb[2:5], strict=True):
+        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
+
+
+@pytest.mark.parametrize("start,count,message", [(-1, 2, "nonnegative"), (4, 2, "outside"), (3, 1, "window")])
+def test_unusable_intervals_are_rejected(
+    tmp_path: Path, start: int, count: int, message: str,
+) -> None:
+    clip_id = "tracknet/game1/Clip1"
+    store_dir = write_store_clip(tmp_path / "store", clip_id, [frame(i) for i in range(4)])
+    with pytest.raises(ValueError, match=message):
+        load_clip_sequence(
+            store_dir=store_dir, clip_id=clip_id, sequence_length=2,
+            image_size_hw=(32, 64), max_frames=count, normalize_imagenet=False,
+            imagenet_mean=(0.0, 0.0, 0.0), imagenet_std=(1.0, 1.0, 1.0), start_frame=start,
+        )
