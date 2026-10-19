@@ -19,9 +19,43 @@ from src.tasks.base.visualization.presentation.architecture import (
     BlockState,
     Edge,
     draw_architecture,
+    draw_flow_particles,
 )
 
 pytestmark = pytest.mark.unit
+
+
+def test_flow_particle_moves_by_path_length_and_loops_at_endpoints() -> None:
+    ax = _axes()
+    path = [(0.0, 0.0), (1.0, 0.0), (1.0, 3.0)]
+    draw_flow_particles(ax, path, 0.5, "#4CC9F0")
+    np.testing.assert_allclose(ax.collections[-1].get_offsets()[0], [1.0, 1.0])
+    draw_flow_particles(ax, path, 0.0, "#4CC9F0")
+    start = ax.collections[-1].get_offsets().copy()
+    draw_flow_particles(ax, path, 1.0, "#4CC9F0")
+    np.testing.assert_allclose(ax.collections[-1].get_offsets(), start)
+
+
+@pytest.mark.parametrize(
+    "path,phase",
+    [
+        ([], 0.2),
+        ([(0, 0)], 0.2),
+        ([(0, 0), (0, 0)], 0.2),
+        ([(0, 0), (float("nan"), 1)], 0.2),
+        ([(0, 0), (1, 1)], -0.1),
+        ([(0, 0), (1, 1)], float("inf")),
+        ([(0, 0), (1, 1)], True),
+    ],
+)
+def test_invalid_flow_particles_fail_before_drawing(
+    path: list[tuple[float, float]], phase: float
+) -> None:
+    ax = _axes()
+    with pytest.raises(ValueError):
+        draw_flow_particles(ax, path, phase, style.TRAINING)
+    assert not ax.collections
+
 
 BLOCKS = [
     Block("input", "RGB", (0.2, 0.5), (1.5, 1)),

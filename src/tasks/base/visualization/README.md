@@ -53,6 +53,8 @@ RGB `uint8` 配列を MP4・GIF・静止画へ書き出す共通部品です。t
 - `CurveSeries` / `draw_progressive_curves`: step は昇順の `int64`、値は有限の `float64` 配列。
   カーソル以下の実測値と marker だけを表示します。head と色をそろえる場合は、呼び出し元で
   `ax.set_prop_cycle(color=[...])` を指定します。軸の範囲・ラベルと毎 frame の clear も呼び出し元が担当します。
+- `draw_flow_particles`: 折れ線の弧長に沿って粒子と短い尾を描きます。`phase` は0〜1で1は0に戻ります。
+  呼び出し元が時計・経路・色・教師のゲートを所有します。重複する隣接点・非有限値・区間外のphaseは拒否します。
 - `render_presentation`: 正の偶数サイズの RGB frame を一度ずつ描き、`<name>.mp4`（H.264）、
   `<name>.gif`、`stills/<name>.png`、`manifest.json` を生成します。GIF は時刻に合わせて間引き・resize し、
   静止画は元解像度を維持します。既存の出力先は空でも拒否し、失敗時の部分出力も残します。
