@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from itertools import accumulate
 from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
+from PIL import Image, ImageSequence
 
 from src.tasks.base.visualization.gif import save_gif
 
@@ -50,3 +51,56 @@ def test_creates_parent_directory(tmp_path: Path) -> None:
     out = tmp_path / "a" / "b" / "c.gif"
     save_gif(frames_rgb=[_frame()], path=out, fps=10)
     assert out.parent.is_dir()
+
+
+def _decoded_durations_ms(path: Path) -> list[int]:
+    with Image.open(path) as gif:
+        durations: list[int] = [
+            frame.info["duration"] for frame in ImageSequence.Iterator(gif)
+        ]
+    return durations
+
+
+@pytest.mark.parametrize("fps,frame_count", [(15, 900), (15, 7), (10, 600), (10, 7)])
+def test_decoded_gif_preserves_total_duration_and_frame_times(
+    tmp_path: Path,
+    fps: float,
+    frame_count: int,
+) -> None:
+    out = tmp_path / "timed.gif"
+    frames = [
+        _frame(fill=30 if index % 2 == 0 else 200) for index in range(frame_count)
+    ]
+    save_gif(frames_rgb=frames, path=out, fps=fps)
+
+    durations = _decoded_durations_ms(out)
+    assert len(durations) == frame_count  # Different adjacent images cannot merge.
+    assert abs(sum(durations) - frame_count / fps * 1000) < 10
+    for end_frame, elapsed_ms in enumerate(accumulate(durations), start=1):
+        assert abs(elapsed_ms - end_frame / fps * 1000) < 10
+
+
+@pytest.mark.parametrize("fps", [15, 10])
+@pytest.mark.parametrize("run_lengths", [(4, 4, 4), (900,)])
+def test_merged_identical_frames_preserve_cumulative_duration(
+    tmp_path: Path,
+    fps: float,
+    run_lengths: tuple[int, ...],
+) -> None:
+    out = tmp_path / "merged.gif"
+    frames = [
+        _frame(fill=30 + run_index * 50)
+        for run_index, count in enumerate(run_lengths)
+        for _ in range(count)
+    ]
+    save_gif(frames_rgb=frames, path=out, fps=fps)
+
+    durations = _decoded_durations_ms(out)
+    assert len(durations) == len(run_lengths)  # Pillow actually merged the runs.
+    assert abs(sum(durations) - len(frames) / fps * 1000) < 10
+    for end_frame, elapsed_ms in zip(
+        accumulate(run_lengths),
+        accumulate(durations),
+        strict=True,
+    ):
+        assert abs(elapsed_ms - end_frame / fps * 1000) < 10
