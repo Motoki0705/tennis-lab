@@ -3,7 +3,24 @@
 `third_party/GVHMR` (fork of [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR),
 vendored from `Motoki0705/GVHMR` @ `900e8c4471e80bb6db5cb14c404c1a0766aba5f4`)
 の推論に必要なコードを、メインの `.venv` で動くように移植したパッケージ。
-上流ライセンスは GVHMR リポジトリの LICENSE に従う。
+
+## ライセンス・出典
+
+GVHMR由来のコードは同梱の [LICENSE](LICENSE) に従う。
+教育・研究・非営利目的に限り使用・複製・改変・配布でき、改変物もソース公開と
+商用利用禁止、著作権等の表示の保持が必要になる。ルートのMITの対象には含まれない。
+LICENSEは [zju3dv/GVHMR の固定commit](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/LICENSE)
+から全文を変更せず取得した。
+
+内包する第三者由来部分には、それぞれの条件もある。
+
+- Facebook / QuaterNet由来のquaternion演算: [CC BY-NC 4.0全文](LICENSE.QuaterNet)。
+- OpenMMLab / ViTPose由来部分: [Apache-2.0全文](LICENSE.ViTPose)。
+- HMR2 / 4D-Humans由来部分: [MIT全文](LICENSE.HMR2)。
+
+ViTPoseの一部にはGPL-3.0のViTPose-Pytorch経由の移植があり、扱いは未解決。
+SMPL系の同梱資産についても再配布許諾は確認できていない。
+ファイルごとの出典・条件・未解決事項は [ルートの一覧](../../../../LICENSES.md) を参照する。
 
 ## third_party 版からの主な変更
 

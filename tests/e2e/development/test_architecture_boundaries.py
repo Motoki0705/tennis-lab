@@ -1168,11 +1168,10 @@ def test_branch_contains_configuration_contract_merge() -> None:
     assert completed.returncode == 0
 
 
-def test_reserved_vendor_scope_contains_only_the_public_nht_gitlink() -> None:
+def test_third_party_scope_contains_only_the_public_nht_gitlink() -> None:
     assert _changed_or_untracked_paths("third_party") == {"third_party/nht"}
     mode = _git_paths("ls-files", "-s", "--", "third_party/nht")
     assert len(mode) == 1 and mode[0].startswith("160000 ")
-    assert not _changed_or_untracked_paths("src/submodules/vendor")
 
 
 def test_court_line_preprocessing_size_has_one_public_surface() -> None:

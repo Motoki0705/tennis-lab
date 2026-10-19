@@ -1,4 +1,14 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+# Ported and modified by Tennis-Lab for standalone heatmap decoding.
+# Selected ViTPose evaluation/post-processing functions are collected here,
+# retaining the decoding behavior and omitting unrelated upstream helpers.
+# Direct source: Motoki0705/GVHMR @ 900e8c4471e80bb6db5cb14c404c1a0766aba5f4
+#   hmr4d/utils/kpts/kp2d_utils.py
+# Original sources: ViTAE-Transformer/ViTPose @ c050ed29112da7704797cc1a65af0234b525010d
+#   mmpose/core/evaluation/top_down_eval.py
+#   mmpose/core/post_processing/post_transforms.py
+# Apache-2.0: see ../LICENSE.ViTPose and the repository-root LICENSES.md.
+
 import warnings
 
 import cv2

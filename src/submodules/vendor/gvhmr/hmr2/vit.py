@@ -1,4 +1,14 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+# Ported and modified by Tennis-Lab for shared HMR2/ViTPose inference.
+# Changes: removed the config factory and unused imports, updated timm imports,
+# and modernized Python syntax.
+# Direct source: Motoki0705/GVHMR @ 900e8c4471e80bb6db5cb14c404c1a0766aba5f4
+#   hmr4d/network/hmr2/vit.py
+# That source is identical to shubham-goel/4D-Humans @ efe18deff163b29dff87ddbd575fa29b716a356c
+#   hmr2/models/backbones/vit.py
+# OpenMMLab origin: ViTAE-Transformer/ViTPose @ c050ed29112da7704797cc1a65af0234b525010d
+#   mmpose/models/backbones/vit.py
+# Apache-2.0: see ../LICENSE.ViTPose and the repository-root LICENSES.md.
 
 from functools import partial
 
