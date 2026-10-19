@@ -1,6 +1,9 @@
 """Exercise the annotation adapter against the shipped queue registration protocol."""
 
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from src.tasks.base.annotation.artifacts import write_asset
 from src.tasks.base.annotation.execution.contracts import QueueConfiguration
@@ -10,13 +13,20 @@ from src.tasks.base.annotation.plan import file_digest
 from src.utils.paths import PROJECT_ROOT
 
 
-def test_shipped_queue_registers_annotation_stage_idempotently(tmp_path: Path) -> None:
+def test_shipped_queue_registers_annotation_stage_idempotently(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
-    script = tmp_path / "queue.sh"
-    script.write_bytes(
-        (
-            PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
-        ).read_bytes()
+    script = tmp_path / "queue-runtime/training_queue.sh"
+    subprocess.run(
+        [
+            "bash",
+            str(PROJECT_ROOT / "scripts/github_actions/install_queue_bundle.sh"),
+            str(script.parent),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     config = QueueConfiguration(
         script=str(script),
@@ -25,6 +35,12 @@ def test_shipped_queue_registers_annotation_stage_idempotently(tmp_path: Path) -
         session="synthetic-annotation",
         issue=1088,
     )
+    for name, value in {
+        "TRAINING_QUEUE_DIR": config.directory,
+        "TRAINING_QUEUE_LOCK_FILE": str(tmp_path / "gpu.lock"),
+        "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(tmp_path / "unprovisioned/gpu.lock"),
+    }.items():
+        monkeypatch.setenv(name, value)
     # Registration never starts the queued command or reserves GPU capacity.
     launch = write_asset(layout, layout.path("campaigns", "launch.json"), b"fixture")
     first = enqueue(layout, config, launch, PROJECT_ROOT)

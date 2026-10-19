@@ -137,7 +137,9 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert "- Logical GPU resource: \`$TRAINING_RESOURCE\`" in enqueue
 
 
-def test_installed_queue_runs_outside_repository_with_system_python_only() -> None:
+def test_installed_queue_runs_outside_repository_with_system_python_only(
+    tmp_path: Path,
+) -> None:
     # The installer itself needs root and touches system services. Exercise its
     # exact runtime-copy helper instead, outside Git even with --basetemp in a
     # worktree. No venv, PYTHONPATH, site packages or user Python configuration.
@@ -150,9 +152,9 @@ def test_installed_queue_runs_outside_repository_with_system_python_only() -> No
         environment = {
             "PATH": "/usr/bin:/bin",
             "HOME": str(root),
-            "TRAINING_QUEUE_DIR": str(root / "queue"),
-            "TRAINING_QUEUE_LOCK_FILE": str(root / "gpu.lock"),
-            "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(root / "unprovisioned/gpu.lock"),
+            "TRAINING_QUEUE_DIR": str(tmp_path / "queue"),
+            "TRAINING_QUEUE_LOCK_FILE": str(tmp_path / "gpu.lock"),
+            "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(tmp_path / "unprovisioned/gpu.lock"),
             "GIT_CEILING_DIRECTORIES": str(root),
             "TRAINING_QUEUE_TEST_NOW_NS": "1792368000000000000",
         }
@@ -210,7 +212,7 @@ def test_installed_queue_runs_outside_repository_with_system_python_only() -> No
             )
             assert "queued=1" in run("status")
             assert run("cancel", job).strip() == "cancelled"
-            queue = root / "queue"
+            queue = tmp_path / "queue"
             completion = queue / "control/completions" / f"{job[:-4]}.json"
             record = json.loads(completion.read_text())
             log = queue / "logs" / f"{job[:-4]}.log"
