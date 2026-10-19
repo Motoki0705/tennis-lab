@@ -4,6 +4,25 @@
 source・統合sceneを読み取り専用で表示します。推論・学習・注釈更新は実行しません。
 指定以外のstoreから欠けた結果を補いません。
 
+## Store reader
+
+galleryを生成せずに採用artifactを読む場合は、[store.py](store.py)の
+`StoreReader(index: Path)`へ`scene.json`のパスを渡します。出力先は不要で、
+directory作成・推論・storeへの書き込みは行いません。
+
+| API | 返り値・検証 |
+|---|---|
+| `descriptor(node: str) -> dict[str, Any]` | descriptor。path・checksum・採用indexとの一致を検証 |
+| `payload(node: str) -> tuple[dict[str, Any], dict[str, Any]]` | `(payload, descriptor)`。配列のchecksum・shape・dtypeも検証 |
+| `stale_dependencies(node: str) -> tuple[str, ...]` | 置換済み・不一致・推移的に古い入力依存の理由。現行なら空tuple、循環は例外 |
+
+`node`は`ball_triangulation`や`ball_detection/cam0`のような採用indexのキーです。
+readerは保存schemaを変換せずに返します。利用側で`stale_dependencies`を確認し、
+descriptorの`output_schema`・`output_version`が対応範囲であることを確認してから利用します。
+gallery固有の対応schema判定と描画は[gallery.py](gallery.py)が担当します。
+
+## 起動方法
+
 ```bash
 ROOT=/home/kamimura/projects/tennis-lab
 OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 OPENCV_FFMPEG_CAPTURE_OPTIONS='threads;2' \
@@ -34,7 +53,7 @@ OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 OPENCV_FFMPEG_CAPTURE_OPTIONS='threads;
 
 2Dが存在しても3Dの有効性を復活させません。無効な座標0を原点の観測と扱いません。
 maskだけで人物/球の不在・画面外・遮蔽を推定せず、未知の理由コードは`UNKNOWN_CODE`と表示します。
-現行SceneResult v2のmask・理由・shapeの契約は[../README.md](../README.md)が正本です。
+現行SceneResult v2のmask・理由・shapeの契約は[../../README.md](../../README.md)が正本です。
 
 3Dはモデル推定です。再投影は保存された単一平面pinhole近似で、歪み補正・独立3D GTとの比較ではありません。
 校正のRMSEも保存平面fitの指標です。SMPL meshの詳細レビューはこの統合画面の対象に含めません。

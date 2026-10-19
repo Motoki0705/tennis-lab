@@ -384,6 +384,14 @@ TENNIS_SCENE_REMOVED_MODULES = (
     "src.tennis_scene.scripts.reconstruct_reference_clip",
     "src.tennis_scene.scripts.render_reconstruction_review",
     "src.tennis_scene.scripts.report_slcs_dataset_quality",
+    # Visualization modules moved together; some were added after BASE_REVISION.
+    "src.tennis_scene.rendering",
+    "src.tennis_scene.rendering.smpl_court",
+    "src.tennis_scene.rendering.tennis_scene_renderer",
+    "src.tennis_scene.review",
+    "src.tennis_scene.review.snapshot",
+    "src.tennis_scene.review.trajectory",
+    "src.tennis_scene.review.web",
 )
 ISSUE_695_REMOVAL_PREFIXES = ("src.synthetic_data_generation.",)
 SUPPORTED_TASK_LOCAL_MODULES = frozenset(

@@ -31,7 +31,7 @@ from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.blender_export.camera import PinholeCamera, to_blender_camera
 from src.tennis_scene.blender_export.gaps import fill_short_gaps
 from src.tennis_scene.blender_export.pointcache import write_pc2
-from src.tennis_scene.rendering.smpl_court import (
+from src.tennis_scene.visualization.rendering.smpl_court import (
     load_smpl_joint_regressor,
     smpl_vertices_to_court,
 )

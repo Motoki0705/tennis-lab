@@ -47,7 +47,7 @@ storeの採用済みartifactは、推論もstoreへの書き込みもせずにHT
 ```
 
 source・採用artifactの依存・欠損区間・同frameのRGB/2D/3Dを確認する画面と、
-`--serve --port 8903`での起動方法は[review/README.md](review/README.md)を参照してください。
+`--serve --port 8903`での起動方法は[visualization/review/README.md](visualization/review/README.md)を参照してください。
 
 ## 座標・対応
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.tennis_scene.rendering.smpl_court import smpl_vertices_to_court
+from src.tennis_scene.visualization.rendering.smpl_court import smpl_vertices_to_court
 
 
 def test_root_centering_axis_swap_yaw_and_translation() -> None:
