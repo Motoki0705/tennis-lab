@@ -11,9 +11,9 @@ from typing import Any, Literal, cast
 from omegaconf import DictConfig, OmegaConf
 
 from src.submodules.configuration import (
-    BUNDLED_MODEL_ASSET_SCHEMA,
+    SMPL_ASSET_SCHEMA,
     SUBMODULE_RUNTIME_SCHEMA,
-    BundledModelAssetPaths,
+    SmplAssetPaths,
     SubmoduleRuntimeConfig,
 )
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
@@ -167,7 +167,7 @@ _PEOPLE_MODELS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.people_models",
     fields={
         **{name: ConfigField.of(str) for name in ("gvhmr_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
-        "bundled_assets": ConfigField.mapping(BUNDLED_MODEL_ASSET_SCHEMA),
+        "smpl_assets": ConfigField.mapping(SMPL_ASSET_SCHEMA),
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
         "merge_duplicate_person_boxes": ConfigField.of(bool),
     },
@@ -339,7 +339,7 @@ class PipelineRuntimeConfig:
             hmr2_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["hmr2_checkpoint"])),
             gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["gvhmr_checkpoint"])),
             body_models_dir=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["body_models_dir"])),
-            bundled_assets=BundledModelAssetPaths.from_mapping(_mapping(models["bundled_assets"], name="bundled_assets"), resolver=resolver), runtime=runtime,
+            smpl_assets=SmplAssetPaths.from_mapping(_mapping(models["smpl_assets"], name="smpl_assets"), resolver=resolver), runtime=runtime,
         )
         tracking_section = _mapping(value['person_tracking'], name='person_tracking')
         tracking = TrackingConfig(method=cast(str, tracking_section['method']), encoder=cast(str, tracking_section['encoder']),
@@ -730,7 +730,7 @@ def parse_visualization_config(cfg: DictConfig) -> VisualizationRuntimeConfig:
             PathRole.CHECKPOINT, cast(str, assets["smpl_faces"])
         ),
         smpl_joint_regressor_path=resolver.resolve(
-            PathRole.PROJECT, cast(str, assets["smpl_joint_regressor"])
+            PathRole.CHECKPOINT, cast(str, assets["smpl_joint_regressor"])
         ),
         input_path=resolver.resolve(PathRole.ARTIFACT, cast(str, value["input"])),
         output_path=None
@@ -1074,7 +1074,7 @@ def parse_blender_export_config(cfg: DictConfig) -> BlenderExportRuntimeConfig:
             PathRole.CHECKPOINT, cast(str, assets["smpl_faces"])
         ),
         smpl_joint_regressor_path=resolver.resolve(
-            PathRole.PROJECT, cast(str, assets["smpl_joint_regressor"])
+            PathRole.CHECKPOINT, cast(str, assets["smpl_joint_regressor"])
         ),
         input_path=resolver.resolve(PathRole.ARTIFACT, cast(str, value["input"])),
         output_path=resolver.resolve(PathRole.OUTPUT, cast(str, value["output"])),

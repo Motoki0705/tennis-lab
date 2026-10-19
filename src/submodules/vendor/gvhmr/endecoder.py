@@ -22,7 +22,7 @@ class EnDecoder(nn.Module):
         self,
         body_model_path,
         *,
-        bundled_assets,
+        smpl_assets,
         stats_name="DEFAULT_01",
     ):
         super().__init__()
@@ -35,7 +35,7 @@ class EnDecoder(nn.Module):
         self.smplx_model = make_smplx(
             "supermotion_v437coco17",
             model_path=body_model_path,
-            bundled_assets=bundled_assets,
+            smpl_assets=smpl_assets,
         )
         parents = self.smplx_model.parents[:22]
         self.register_buffer("parents_tensor", parents, False)

@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.submodules.configuration import (
-    BundledModelAssetPaths,
     DinoDetectorRuntimeConfig,
     Hmr2RuntimeConfig,
+    SmplAssetPaths,
     SubmoduleRuntimeConfig,
     TrackingRuntimeConfig,
     ViTPoseRuntimeConfig,
@@ -125,10 +125,10 @@ def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleMod
         vitpose_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "vitpose.pth"),
         hmr2_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "hmr2.ckpt"),
         body_models_dir=resolver.resolve(PathRole.CHECKPOINT, "body_models"),
-        bundled_assets=BundledModelAssetPaths(
-            hmr2_mean_params=resolver.resolve(PathRole.PROJECT, "hmr2_mean.npz"),
-            smplx_to_smpl=resolver.resolve(PathRole.PROJECT, "smplx_to_smpl.pkl"),
-            smpl_coco17_regressor=resolver.resolve(PathRole.PROJECT, "smpl_coco17.npy"),
-            smplx_verts437=resolver.resolve(PathRole.PROJECT, "smplx_verts437.npy"),
-            smpl_neutral_joint_regressor=resolver.resolve(PathRole.PROJECT, "smplx_neutral_joints.npy")),
+        smpl_assets=SmplAssetPaths(
+            hmr2_mean_params=resolver.resolve(PathRole.CHECKPOINT, "hmr2_mean.npz"),
+            smplx_to_smpl=resolver.resolve(PathRole.CHECKPOINT, "smplx_to_smpl.pkl"),
+            smpl_coco17_regressor=resolver.resolve(PathRole.CHECKPOINT, "smpl_coco17.npy"),
+            smplx_verts437=resolver.resolve(PathRole.CHECKPOINT, "smplx_verts437.npy"),
+            smpl_neutral_joint_regressor=resolver.resolve(PathRole.CHECKPOINT, "smplx_neutral_joints.npy")),
         runtime=make_submodule_runtime(dino_confidence=dino_confidence))

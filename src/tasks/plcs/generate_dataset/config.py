@@ -253,7 +253,7 @@ def _resolve_generation_paths(
         path_config.resolver.resolve(PathRole.EXTERNAL_ASSET, smplh_relative)
     )
     resolved.external_assets.coco17_regressor_path = str(
-        path_config.resolver.resolve(PathRole.PROJECT, coco17_regressor_relative)
+        path_config.resolver.resolve(PathRole.EXTERNAL_ASSET, coco17_regressor_relative)
     )
     for category, source in resolved.motion_sources.items():
         source_mapping = as_config_mapping(source, path=f"motion_sources.{category}")

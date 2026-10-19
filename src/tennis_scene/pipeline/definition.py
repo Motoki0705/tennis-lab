@@ -128,6 +128,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
                        'aflink': cfg.aflink_checkpoint}
 
     def body_assets() -> dict[str, Any]:
+        if body_enabled:
+            cfg.people.smpl_assets.require_files()
         return asset_identities(body_enabled, cfg.people.body_assets())
 
     for camera in ids:

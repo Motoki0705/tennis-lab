@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 
 from src.submodules.configuration import (
-    BundledModelAssetPaths,
+    SmplAssetPaths,
     require_absolute_path,
 )
 from src.submodules.models._base.inference_model import BaseInferenceModel
@@ -75,17 +75,17 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         body_models_dir: str | Path,
         *,
         device: str | torch.device,
-        bundled_assets: BundledModelAssetPaths,
+        smpl_assets: SmplAssetPaths,
     ) -> None:
         super().__init__(device)
         self.checkpoint = require_absolute_path(checkpoint, name="GVHMR checkpoint")
         self.body_models_dir = require_absolute_path(
             body_models_dir, name="GVHMR body-model directory"
         )
-        if not isinstance(bundled_assets, BundledModelAssetPaths):
-            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
-        bundled_assets.require_files()
-        self.bundled_assets = bundled_assets
+        if not isinstance(smpl_assets, SmplAssetPaths):
+            raise TypeError("smpl_assets must be SmplAssetPaths.")
+        smpl_assets.require_files()
+        self.smpl_assets = smpl_assets
         self._model: GvhmrDemoModel | None = None
 
     def _load_impl(self) -> None:
@@ -94,7 +94,7 @@ class GvhmrMeshRecovery(BaseInferenceModel[GvhmrRequest, GvhmrResult]):
         model = build_gvhmr_demo_model(
             checkpoint_path=self.checkpoint,
             body_models_dir=self.body_models_dir,
-            bundled_assets=self.bundled_assets,
+            smpl_assets=self.smpl_assets,
         )
         self._model = model.eval().to(self._device)
 
@@ -246,7 +246,7 @@ class SmplVertexReconstructor:
     """Reconstruct SMPL vertices ``(F, 6890, 3)`` from GVHMR SMPL-X params.
 
     Runs the SMPL-X body model and converts vertices to the SMPL topology via
-    the bundled sparse conversion matrix. Requires the licensed
+    the user-acquired sparse conversion matrix. Requires the licensed
     ``SMPLX_NEUTRAL.npz`` (see vendor README).
     """
 
@@ -255,7 +255,7 @@ class SmplVertexReconstructor:
         body_models_dir: str | Path,
         *,
         device: str | torch.device,
-        bundled_assets: BundledModelAssetPaths,
+        smpl_assets: SmplAssetPaths,
     ) -> None:
         from src.utils.device import resolve_device
 
@@ -263,10 +263,10 @@ class SmplVertexReconstructor:
         self._body_models_dir = require_absolute_path(
             body_models_dir, name="SMPL-X body-model directory"
         )
-        if not isinstance(bundled_assets, BundledModelAssetPaths):
-            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
-        bundled_assets.require_files()
-        self._bundled_assets = bundled_assets
+        if not isinstance(smpl_assets, SmplAssetPaths):
+            raise TypeError("smpl_assets must be SmplAssetPaths.")
+        smpl_assets.require_files()
+        self._smpl_assets = smpl_assets
         self._smplx: torch.nn.Module | None = None
         self._smplx2smpl: torch.Tensor | None = None
 
@@ -276,17 +276,17 @@ class SmplVertexReconstructor:
         smplx = make_smplx(
             "supermotion",
             model_path=self._body_models_dir,
-            bundled_assets=self._bundled_assets,
+            smpl_assets=self._smpl_assets,
         )
         self._smplx = smplx.to(self._device).eval()
         smplx2smpl = torch.load(
-            self._bundled_assets.smplx_to_smpl,
+            self._smpl_assets.smplx_to_smpl,
             map_location="cpu",
             weights_only=False,
         )
         if not isinstance(smplx2smpl, torch.Tensor):
             raise TypeError(
-                "Bundled SMPL-X to SMPL conversion asset must contain a tensor."
+                "SMPL-X to SMPL conversion asset must contain a tensor."
             )
         self._smplx2smpl = smplx2smpl.to(device=self._device, dtype=torch.float32)
 
@@ -316,7 +316,7 @@ class SmplCoco17Reconstructor:
     """Reconstruct only COCO-17 joints from GVHMR SMPL-X parameters.
 
     Unlike :class:`SmplVertexReconstructor`, this path evaluates only the 132
-    SMPL-X vertices touched by the bundled COCO-17 regressor. It is therefore
+    SMPL-X vertices touched by the user-acquired COCO-17 regressor. It is therefore
     the canonical boundary for motion datasets that do not need a renderable
     mesh.
     """
@@ -333,7 +333,7 @@ class SmplCoco17Reconstructor:
         body_models_dir: str | Path,
         *,
         device: str | torch.device,
-        bundled_assets: BundledModelAssetPaths,
+        smpl_assets: SmplAssetPaths,
     ) -> None:
         from src.utils.device import resolve_device
 
@@ -341,10 +341,10 @@ class SmplCoco17Reconstructor:
         self._body_models_dir = require_absolute_path(
             body_models_dir, name="SMPL-X body-model directory"
         )
-        if not isinstance(bundled_assets, BundledModelAssetPaths):
-            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
-        bundled_assets.require_files()
-        self._bundled_assets = bundled_assets
+        if not isinstance(smpl_assets, SmplAssetPaths):
+            raise TypeError("smpl_assets must be SmplAssetPaths.")
+        smpl_assets.require_files()
+        self._smpl_assets = smpl_assets
         self._model: torch.nn.Module | None = None
 
     def _ensure_loaded(self) -> None:
@@ -353,7 +353,7 @@ class SmplCoco17Reconstructor:
                 make_smplx(
                     "supermotion_coco17",
                     model_path=self._body_models_dir,
-                    bundled_assets=self._bundled_assets,
+                    smpl_assets=self._smpl_assets,
                 )
                 .to(self._device)
                 .eval()

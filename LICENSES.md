@@ -149,27 +149,47 @@ URLは公式の案内先です。コードのLICENSEと、重み・学習元デ�
 | 比較用SOLIDER-REID・KPR | [SOLIDER公式](https://github.com/tinyvision/SOLIDER-REID/blob/8c08e1c3255e8e1e51e006bf189e52cc57b009ed/README.md)（`8c08e1c3255e8e1e51e006bf189e52cc57b009ed`）、[KPR公式](https://github.com/VlSomers/keypoint_promptable_reidentification/blob/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa/README.md#download-the-pre-trained-models)（`e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa`）。 | repoはそれぞれMIT / HL3-LAW-MEDIA-MIL-SOC-SV。重みを本repoから再配布せず、公式案内・学習元データの条件を確認する。 |
 | 比較用OSNet（MSMT17） | [deep-person-reid公式model zoo](https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO)、[公式repo](https://github.com/KaiyangZhou/deep-person-reid/tree/f8cd150fdf77e8d9e1ed143b7f308c2c609ded50)（確認用 `f8cd150fdf77e8d9e1ed143b7f308c2c609ded50`）。 | repoは [MIT](https://github.com/KaiyangZhou/deep-person-reid/blob/f8cd150fdf77e8d9e1ed143b7f308c2c609ded50/LICENSE)。重み・MSMT17等のデータ条件は元配布に従う。 |
 
-### 現在同梱されているSMPL派生資産
+### 利用者が取得するSMPL補助資産
 
-次の5ファイルはGVHMR forkの `900e8c4471e80bb6db5cb14c404c1a0766aba5f4` からの取得物と
-byte単位で同一です。パスは `src/submodules/vendor/gvhmr/` からの相対パスです。
-**GVHMR経由で公開されている事実と、SMPL権利者による再配布許諾があることは区別します。**
+以下の5点は本repoから配布しません。利用者が
+[GVHMR公式リポジトリ](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)
+の固定commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1` から取得し、
+CHECKPOINT rootの `body_models/gvhmr/` に同じファイル名で置きます。
+[配置・SHA-256検証手順](src/submodules/README.md#smpl補助資産の取得)を使ってください。
+2026-10-19に、この公式配布の5点と旧同梱版がすべてbyte単位で一致することを確認しました。
+取得元・期待するSHA-256の正本は [取得用manifest](src/submodules/smpl_assets.py) です。
 
-| パス | 出典URL（上記commit）・内容 | ライセンス・再配布条件の確認状況 |
-| --- | --- | --- |
-| `body_model/data/smpl_coco17_J_regressor.pt` | [GVHMR元ファイル](https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/utils/body_model/smpl_coco17_J_regressor.pt)。SMPL頂点からCOCO-17関節への回帰行列。 | GVHMRは非商用条件で配布。SMPL派生データとしての個別の再配布許諾・生成履歴は未確認。[SMPL条件](https://smpl.is.tue.mpg.de/modellicense.html) に留意。 |
-| `body_model/data/smpl_neutral_J_regressor.pt` | [GVHMR元ファイル](https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt)。SMPL関節回帰行列。 | GVHMRの非商用表示だけでは [SMPL条件](https://smpl.is.tue.mpg.de/modellicense.html) にある第三者への一部配布の許可を確認できない。個別許諾未確認。 |
-| `body_model/data/smplx2smpl_sparse.pt` | [GVHMR元ファイル](https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/utils/body_model/smplx2smpl_sparse.pt)。SMPL-X頂点からSMPL頂点への疎な変換行列。 | GVHMRの非商用表示。[SMPL](https://smpl.is.tue.mpg.de/modellicense.html)・[SMPL-X条件](https://smpl-x.is.tue.mpg.de/modellicense.html) に照らした、この行列の個別再配布許諾未確認。 |
-| `body_model/data/smplx_verts437.pt` | [GVHMR元ファイル](https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/utils/body_model/smplx_verts437.pt)。SMPL-Xの頂点を選ぶindex。 | GVHMRの非商用表示。indexにどの範囲まで [SMPL-X条件](https://smpl-x.is.tue.mpg.de/modellicense.html) が及ぶか、独立した許諾があるかは未確認。モデル本体と同じ内容とはみなさない。 |
-| `hmr2/smpl_mean_params.npz` | [GVHMR元ファイル](https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/network/hmr2/configs/smpl_mean_params.npz)。平均pose・shape・cameraの初期値。[ViTPose `c050ed29112da7704797cc1a65af0234b525010d` のtest資産](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/tests/data/smpl/smpl_mean_params.npz) ともbyte一致。 | GVHMR・ViTPoseに同じ配布物があるが、元の統計量の生成データと権利者の個別許諾までは確認できていない。HMR2のMIT、ViTPoseのApache-2.0だけで [SMPL条件](https://smpl.is.tue.mpg.de/modellicense.html) の適用を除外したとは扱わない。 |
+| ファイル名（配置先のbasename） | 公式配布元（上記commit）・内容 |
+| --- | --- |
+| `smpl_coco17_J_regressor.pt` | [GVHMR公式ファイル](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_coco17_J_regressor.pt)。SMPL頂点からCOCO-17関節への回帰行列。 |
+| `smpl_neutral_J_regressor.pt` | [GVHMR公式ファイル](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt)。SMPLの24関節回帰行列。 |
+| `smplx2smpl_sparse.pt` | [GVHMR公式ファイル](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx2smpl_sparse.pt)。SMPL-XからSMPLへの疎な頂点変換。 |
+| `smplx_verts437.pt` | [GVHMR公式ファイル](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx_verts437.pt)。SMPL-Xの437頂点を選ぶindex。 |
+| `smpl_mean_params.npz` | [GVHMR公式ファイル](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/network/hmr2/configs/smpl_mean_params.npz)。HMR2の平均pose・shape・camera初期値。 |
 
+[GVHMR公式の導入手順](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md)
+は公式repoのcloneとSMPL/SMPL-Xの登録取得を案内しています。
+GVHMRには [教育・研究・非営利目的の条件](src/submodules/vendor/gvhmr/LICENSE) があり、
+SMPL/SMPL-Xモデルと派生データについては
 [SMPL Model LicenseのLicense Grant / No Distribution](https://smpl.is.tue.mpg.de/modellicense.html) と
-[SMPL-X Model Licenseの同項](https://smpl-x.is.tue.mpg.de/modellicense.html) は、
-第三者への提供について事前の書面許諾を求め、全部・一部の複製・共有・配布等を制限しています。
-これらの資産について、GVHMRのLICENSE以外にその許諾を裏づける一次情報は確認できていません。
-**対応方針（ユーザー判断、2026-10-19）:** 上記5点は同梱をやめ、利用者が公式の配布元から
-取得する経路へ [#1296](https://github.com/Motoki0705/tennis-lab/issues/1296) で切り替えます。
-現時点では同梱されており、削除と取得・生成手順の整備は #1296 で行います。
+[SMPL-X Model Licenseの同項](https://smpl-x.is.tue.mpg.de/modellicense.html) も確認してください。
+両モデルの条件は、第三者への提供について事前の書面許諾を求め、
+全部・一部の複製・共有・配布等を制限しています。
+公式GVHMRでの公開は確認しましたが、SMPL権利者による第三者への再配布の書面許諾、
+各小資産の生成履歴・個別許諾は確認できていません。
+公式配布元から利用者が取得することと、Tennis-Labが再配布できることは区別します。
+indexや平均統計量すべてにモデル本体と同じ条件が及ぶとの断定もしていません。
+取得・生成したファイルを本repoのGitや配布物へ追加しないでください。
+
+代替経路の公開情報も確認しました。
+[SMPL公式](https://smpl.is.tue.mpg.de/) は登録後のneutralモデルを案内し、
+[SMPL-X公式のモデル変換手順](https://github.com/vchoutas/smplx/blob/main/transfer_model/README.md#data)
+は登録後の「Model correspondences」と `smplx2smpl_deftrafo_setup.pkl` を案内しています。
+ただし登録後のアーカイブ内容は閲覧できておらず、これらから今回の `.pt` を生成すれば一致する、
+あるいは5点すべてがその中に含まれる、という推測は取得手順に採用しません。
+[SPIN公式README](https://github.com/nkolot/SPIN#fetch-data)・
+[取得スクリプト](https://github.com/nkolot/SPIN/blob/master/fetch_data.sh) には補助データの取得経路が
+ありますが、今回使う版は上のGVHMR公式ファイルに固定し、別版への置き換えは行いません。
 パイプライン出力への条件の及び方は[パイプライン出力](#パイプライン出力)を参照してください。
 
 ## 第三者のデータ・論文
@@ -296,7 +316,7 @@ license: cc-by-nc-nd-4.0
 ### パイプライン出力
 
 上記の公開条件は、別途使用する第三者資産やパイプライン出力を一括して再許諾するものではありません。
-GVHMR・SMPL・SMPL-X等の取得・利用条件、AFLinkの継続利用判断、SMPL派生資産の同梱をやめる方針は、
+GVHMR・SMPL・SMPL-X等の取得・利用条件、AFLinkの継続利用判断、SMPL補助資産の取得手順は、
 [第三者の重み・body model資産](#第三者の重みbody-model資産)を参照してください。
 
 GVHMRの[LICENSE](src/submodules/vendor/gvhmr/LICENSE)には、推定した数値すべてに同じライセンスを付すという明示規定は確認できません。

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, fields
 from pathlib import Path
 
-from src.submodules.configuration import BundledModelAssetPaths, SubmoduleRuntimeConfig
+from src.submodules.configuration import SmplAssetPaths, SubmoduleRuntimeConfig
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class PeopleModelConfig:
     hmr2_checkpoint: Path
     gvhmr_checkpoint: Path
     body_models_dir: Path
-    bundled_assets: BundledModelAssetPaths
+    smpl_assets: SmplAssetPaths
     runtime: SubmoduleRuntimeConfig
 
     def __post_init__(self) -> None:
@@ -27,5 +27,5 @@ class PeopleModelConfig:
             "hmr2": self.hmr2_checkpoint,
             "gvhmr": self.gvhmr_checkpoint,
             "body_model": self.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
-            **{f"bundled_{field.name}": getattr(self.bundled_assets, field.name) for field in fields(self.bundled_assets)},
+            **{f"smpl_{field.name}": getattr(self.smpl_assets, field.name) for field in fields(self.smpl_assets)},
         }
