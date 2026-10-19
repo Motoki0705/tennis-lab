@@ -7,6 +7,8 @@ consumed by inference and the original RGB frames used for rendering.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
+from math import isfinite
 from pathlib import Path
 
 import cv2
@@ -25,6 +27,7 @@ class ClipSequence:
     frame_names: tuple[str, ...]
     render_frames_rgb: tuple[torch.Tensor, ...]
     model_images: torch.Tensor
+    source_fps: float
 
 
 def load_clip_sequence(
@@ -65,6 +68,9 @@ def load_clip_sequence(
         raise ValueError("start_frame must be nonnegative")
     store = BallFrameStore(store_dir)
     clip = store.clip_by_id(clip_id)
+    source_fps = float(Fraction(clip.fps))
+    if not isfinite(source_fps) or source_fps <= 0:
+        raise ValueError(f"Clip {clip_id} has invalid source fps: {clip.fps}")
     if max_frames is not None and max_frames <= 0:
         raise ValueError("max_frames must be positive")
     rows = store.clip_rows(clip)
@@ -120,4 +126,5 @@ def load_clip_sequence(
         frame_names=tuple(frame_names),
         render_frames_rgb=tuple(render_frames_rgb),
         model_images=model_images,
+        source_fps=source_fps,
     )
