@@ -1,144 +1,70 @@
 # Copyright (c) OpenMMLab. All rights reserved.
-"""Top-down heatmap head (trimmed from ViTPose's TopdownHeatmapSimpleHead).
-
-Only the inference `forward` path is kept; the module layout matches the
-original so released checkpoints load with identical state-dict keys.
-"""
+# SPDX-License-Identifier: Apache-2.0
+# Source: ViTAE-Transformer/ViTPose, commit c050ed29112da7704797cc1a65af0234b525010d
+# https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/mmpose/models/heads/topdown_heatmap_simple_head.py
+# Deconvolution geometry: mmpose/models/heads/topdown_heatmap_base_head.py
+# Modified for tennis-lab: inference only, validated config, native torch layers;
+# no MMCV registry, training losses, input transforms, or optional upsampling.
+# License text: ../LICENSE.ViTPose
+"""Apache ViTPose simple head with the released checkpoint's module names."""
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from src.submodules.configuration import ViTPoseHeadConfig
 
 
 class TopdownHeatmapSimpleHead(nn.Module):
-    """Top-down heatmap simple head, paper ref: Bin Xiao et al. ``Simple
-    Baselines for Human Pose Estimation and Tracking``.
-
-    Consists of (>=0) deconv layers followed by a simple conv2d layer.
-    """
+    """Upsample a single ViT feature map and project it to joint heatmaps."""
 
     def __init__(self, config: ViTPoseHeadConfig) -> None:
         super().__init__()
-
-        self.in_channels = config.in_channels
-
-        if config.num_deconv_layers > 0:
-            self.deconv_layers = self._make_deconv_layer(
-                config.num_deconv_layers,
-                config.num_deconv_filters,
-                config.num_deconv_kernels,
+        channels = config.in_channels
+        upsampling: list[nn.Module] = []
+        # Kernel 3 needs output_padding=1; all supported kernels double H/W.
+        geometry = {2: (0, 0), 3: (1, 1), 4: (1, 0)}
+        for width, kernel in zip(
+            config.num_deconv_filters, config.num_deconv_kernels, strict=True
+        ):
+            padding, output_padding = geometry[kernel]
+            upsampling.extend(
+                (
+                    nn.ConvTranspose2d(
+                        channels, width, kernel, stride=2, padding=padding,
+                        output_padding=output_padding, bias=False,
+                    ),
+                    nn.BatchNorm2d(width),
+                    nn.ReLU(inplace=True),
+                )
             )
-        elif config.num_deconv_layers == 0:
-            self.deconv_layers = nn.Identity()
-        else:
-            raise AssertionError("ViTPoseHeadConfig accepted a negative layer count.")
+            channels = width
+        self.deconv_layers = nn.Sequential(*upsampling) if upsampling else nn.Identity()
 
-        identity_final_layer = config.final_conv_kernel == 0
-        if config.final_conv_kernel == 3:
-            padding = 1
-        else:
-            padding = 0
-        kernel_size = config.final_conv_kernel
-
-        if identity_final_layer:
+        if config.final_conv_kernel == 0:
             self.final_layer = nn.Identity()
         else:
-            conv_channels = (
-                config.num_deconv_filters[-1]
-                if config.num_deconv_layers > 0
-                else self.in_channels
-            )
-
-            layers: list[nn.Module] = []
-            for conv_kernel in config.num_conv_kernels:
-                layers.append(
-                    nn.Conv2d(
-                        in_channels=conv_channels,
-                        out_channels=conv_channels,
-                        kernel_size=conv_kernel,
-                        stride=1,
-                        padding=(conv_kernel - 1) // 2,
+            projection: list[nn.Module] = []
+            for kernel in config.num_conv_kernels:
+                projection.extend(
+                    (
+                        nn.Conv2d(channels, channels, kernel, padding=(kernel - 1) // 2),
+                        nn.BatchNorm2d(channels),
+                        nn.ReLU(inplace=True),
                     )
                 )
-                layers.append(nn.BatchNorm2d(conv_channels))
-                layers.append(nn.ReLU(inplace=True))
-
-            layers.append(
+            projection.append(
                 nn.Conv2d(
-                    in_channels=conv_channels,
-                    out_channels=config.out_channels,
-                    kernel_size=kernel_size,
-                    stride=1,
-                    padding=padding,
+                    channels, config.out_channels, config.final_conv_kernel,
+                    padding=config.final_conv_kernel // 2,
                 )
             )
-
-            if len(layers) > 1:
-                self.final_layer = nn.Sequential(*layers)
-            else:
-                self.final_layer = layers[0]
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward function."""
-        x = self.deconv_layers(x)
-        x = self.final_layer(x)
-        return x
-
-    @staticmethod
-    def _get_deconv_cfg(deconv_kernel: int) -> tuple[int, int, int]:
-        """Get configurations for deconv layers."""
-        if deconv_kernel == 4:
-            padding = 1
-            output_padding = 0
-        elif deconv_kernel == 3:
-            padding = 1
-            output_padding = 1
-        elif deconv_kernel == 2:
-            padding = 0
-            output_padding = 0
-        else:
-            raise ValueError(f"Not supported num_kernels ({deconv_kernel}).")
-
-        return deconv_kernel, padding, output_padding
-
-    def _make_deconv_layer(
-        self,
-        num_layers: int,
-        num_filters: tuple[int, ...],
-        num_kernels: tuple[int, ...],
-    ) -> nn.Sequential:
-        """Make deconv layers."""
-        if num_layers != len(num_filters):
-            raise ValueError(
-                f"num_layers({num_layers}) != length of num_filters({len(num_filters)})"
-            )
-        if num_layers != len(num_kernels):
-            raise ValueError(
-                f"num_layers({num_layers}) != length of num_kernels({len(num_kernels)})"
+            # A lone Conv2d must retain final_layer.weight, without a .0 suffix.
+            self.final_layer = (
+                projection[0] if len(projection) == 1 else nn.Sequential(*projection)
             )
 
-        layers = []
-        for i in range(num_layers):
-            kernel, padding, output_padding = self._get_deconv_cfg(num_kernels[i])
-
-            planes = num_filters[i]
-            layers.append(
-                nn.ConvTranspose2d(
-                    in_channels=self.in_channels,
-                    out_channels=planes,
-                    kernel_size=kernel,
-                    stride=2,
-                    padding=padding,
-                    output_padding=output_padding,
-                    bias=False,
-                )
-            )
-            layers.append(nn.BatchNorm2d(planes))
-            layers.append(nn.ReLU(inplace=True))
-            self.in_channels = planes
-
-        return nn.Sequential(*layers)
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return self.final_layer(self.deconv_layers(features))
 
 
 __all__ = ["TopdownHeatmapSimpleHead", "ViTPoseHeadConfig"]
