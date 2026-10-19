@@ -41,8 +41,10 @@ from src.tasks.base.visualization.orchestrator import (
     parse_rgb as _parse_rgb,
 )
 from src.tasks.base.visualization.orchestrator import resolve_device
+from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.io import save_json
+from src.utils.video.writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 
@@ -209,7 +211,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
-    """Run clip-level visualization and save a GIF."""
+    """Save a clip GIF, with a companion H.264 MP4 for overlays."""
     clip = load_clip_sequence(
         store_dir=cfg.store_dir,
         clip_id=cfg.clip_id,
@@ -293,8 +295,19 @@ def run_visualization(cfg: RuntimeConfig) -> int:
                 frame_stride=cfg.overlay_frame_stride,
             )
             save_gif(frames_rgb=rendered_frames, path=save_path, fps=gif_fps, loop=cfg.gif_loop)
-            save_json({**manifest, "overlay_style": style}, save_path.parent / "manifest.json")
-            logger.info("Saved %s overlay to %s", style, save_path)
+            video_path = save_path.with_suffix(".mp4")
+            with VideoWriter(video_path, fps=gif_fps) as writer:
+                for frame_rgb in rendered_frames:
+                    writer.write_frame(frame_rgb)
+            outputs = {
+                name: {"path": str(path), "sha256": dual_sha256(path)}
+                for name, path in (("gif", save_path), ("mp4", video_path))
+            }
+            save_json(
+                {**manifest, "overlay_style": style, "outputs": outputs},
+                save_path.parent / "manifest.json",
+            )
+            logger.info("Saved %s overlay to %s and %s", style, save_path, video_path)
             del rendered_frames
     else:
         rendered_frames = render_animation_frames(

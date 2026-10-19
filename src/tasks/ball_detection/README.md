@@ -40,7 +40,7 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 | `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid`。座標系は`--initialize scratch\|encoder`も明示 |
 | `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
-| `visualize` | checkpointのclip推論をGIFへ描画 |
+| `visualize` | checkpointのclip推論をGIFへ描画（overlayはMP4も出力） |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
 
 BLCS損失比較の入口もこの`scripts/`配下に集約する。`train_blcs_ablation`は明示した条件・seed・更新数で学習し、`evaluate_blcs_ablation`はcheckpoint／対照を保存評価する。実装と仕様は[BLCS ablation](../blcs/ablation/README.md)に置く。

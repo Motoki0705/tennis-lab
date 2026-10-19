@@ -18,7 +18,7 @@ layout: grid_2x2
 overlay:
   output_width: 960
   frame_stride: 1
-  styles: [point]
+  styles: [ring]
   # Marker sizes below are pixels at output width 960, scaled with the width.
   ring:
     radius: 9
