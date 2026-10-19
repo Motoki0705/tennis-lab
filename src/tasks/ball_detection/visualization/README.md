@@ -1,4 +1,38 @@
-# Ball Detection Web UI 利用ガイド
+# Ball Detection 可視化ガイド
+
+## 学習段階の発表素材
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_learning_stages input_panel=schematic
+```
+
+CPUだけで、事前学習 → 事後学習 → 継続学習の60秒のMP4・GIFと、
+`intro / phase1 / handoff12 / phase2 / phase3` の静止画を出力します。
+設定の正本は [`configs/visualize_learning_stages.yaml`](../configs/visualize_learning_stages.yaml)。
+保存先は `paths.output_root` 配下の
+`ball_detection/visualize/presentation/learning_stages/<tennis_run_id>/` です。
+既存ディレクトリには上書きしません。worktreeから元repoへ素材を保存するときは、
+`paths.output_root=<元repoの絶対パス>/outputs` を明示してください。
+
+`input_panel` は必須です。`schematic` はRGB/MDDの抽象アイコン、`real_clip` は
+`input_clip={store_dir: <data-root相対store>, clip_id: <ID>, frame: <窓の開始frame>}` を指定します。
+別treeのstoreには `paths.data_root=<dataの絶対パス>` も明示します。
+実clipは32frameを読み、保存済み入力契約の `RGBToMDD.from_contract` をCPUで適用し、
+窓内frame 1 / 16 / 31のRGBとMDD（G＝明るくなった画素、R＝暗くなった画素）を表示します。
+入力不備を模式図へ読み替えず、checkpointの重みも開きません。
+
+実測曲線は `runs.pretraining / runs.posttraining` のrepo相対bundleから読みます。
+評価schema、選択checkpointのSHA-256とstep、固定manifest、凍結状態と学習率を検証します。
+横軸は事後学習に事前学習の総更新数を加え、48kの選択checkpointからの引き継ぎを点線で示します。
+学習lossは段階ごとに過去20点の移動平均を独立して正規化し、別々の軸で表示します。
+継続学習には実測値を作らず、破線と「構想」バッジで循環のみを描きます。
+
+`manifest.json` に入力hash・checkpoint hash・git commit・解決済みconfig・最終Common/Full値と
+由来（Phase 1/2＝measured、入力模式図／アーキテクチャ＝schematic、Phase 3＝concept）を記録します。
+生成物はユーザー確認前の候補です。現在の継続学習の実装状況は
+[注釈・継続学習](../../base/annotation/README.md)を参照し、この構想動画を実証結果として扱いません。
+
+## Web UI
 
 保存RGB画像にボール注釈・予測位置とheatmapを重ね、クリップを再生して確認します。
 [共通の実行前確認](../../base/visualization/README.md#実行前確認)を済ませ、コードのあるリポジトリまたはworktreeの直下で実行してください。各ブロックは単独でコピーできます。
