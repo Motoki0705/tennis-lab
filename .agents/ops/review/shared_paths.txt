@@ -34,6 +34,4 @@ pyproject.toml
 uv.lock
 setup.py
 .python-version
-Dockerfile
-.devcontainer
 third_party
