@@ -9,9 +9,8 @@ Official numerical defaults were checked at `dyhBUPT/StrongSORT` commit
 reference outputs were used for interoperability checks. This is not a formal
 legal clean-room certification.
 
-The comparison substitutes the fixed COCO .30 detections and precomputed CLIP
-for YOLOX/BoT, disables ECC on the fixed cameras, and retains detection-row
-identity and real-observation masks. GSI output remains a separate reconstruction;
+The comparison uses fixed COCO .30 detections and precomputed CLIP,
+disables ECC on the fixed cameras, and retains detection-row identity and real-observation masks. GSI output remains a separate reconstruction;
 it is never relabelled as a real detection. The run-9 condition adds no pose cost.
 The optional run-10 hybrid adds this repository's shared pose evidence to both
 association stages; it is an extension, not part of the StrongSORT paper.

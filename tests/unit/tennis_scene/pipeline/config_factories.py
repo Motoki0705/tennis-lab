@@ -49,7 +49,6 @@ def make_submodule_runtime(
     return SubmoduleRuntimeConfig(
         device="cpu",
         tracking=TrackingRuntimeConfig(
-            yolo_confidence=0.25,
             bbox_enlarge=1.2,
         ),
         dino_detector=DinoDetectorRuntimeConfig(
@@ -105,8 +104,6 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
     )
 
 
-
-
 def make_court_kp_config(root: Path) -> CourtKPConfig:
     resolver = make_resolver(root)
     return CourtKPConfig(
@@ -119,17 +116,10 @@ def make_court_kp_config(root: Path) -> CourtKPConfig:
     )
 
 
-
-
-
-
-
-
-def make_people_config(root: Path, *, detector: str = "dino", dino_confidence: float = .35) -> PeopleModelConfig:
+def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleModelConfig:
     resolver = make_resolver(root)
-    return PeopleModelConfig(detector=detector,
+    return PeopleModelConfig(
         gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "gvhmr.ckpt"),
-        yolo_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "yolo.pt"),
         dino_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "dino.pth"),
         dino_repository=resolver.resolve(PathRole.EXTERNAL_ASSET, "DINO"),
         vitpose_checkpoint=resolver.resolve(PathRole.CHECKPOINT, "vitpose.pth"),

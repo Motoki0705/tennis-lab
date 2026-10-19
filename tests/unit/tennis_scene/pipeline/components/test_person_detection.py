@@ -15,9 +15,12 @@ from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
 def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     boxes = np.array([[1, 1, 20, 40], [600, 400, 630, 470]], np.float32)
     calls: list[dict[str, Any]] = []
+    people = make_people_config(tmp_path)
 
     class Detector:
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
+        def __init__(self, checkpoint: Path, repository: Path, **kwargs: Any) -> None:
+            assert checkpoint == people.dino_checkpoint
+            assert repository == people.dino_repository
             calls.append(kwargs)
         def predict(self, request: Any) -> PersonDetectionResult:
             return PersonDetectionResult(boxes, np.array([.31, .95], np.float32))
@@ -27,10 +30,12 @@ def test_full_frame_keeps_off_court_people_without_calibration(tmp_path: Path, m
     monkeypatch.setattr(module, 'DinoPersonDetector', Detector)
     monkeypatch.setattr(module, 'OpenCVVideoFrameReader', lambda *a, **k: [SimpleNamespace(index=0, frame=np.zeros((480, 640, 3), np.uint8))])
     video = SourceVideo('cam2', tmp_path / 'x.mp4', 'hash', 1, 30., 640, 480)
-    result = module.PersonDetectionModule(make_people_config(tmp_path)).process(module.PersonDetectionInput(video))
+    result = module.PersonDetectionModule(people).process(module.PersonDetectionInput(video))
     assert result.frame_offsets.tolist() == [0, 2]
     np.testing.assert_array_equal(result.boxes_xyxy, boxes)
-    assert calls and not module.PersonDetectionModule.io.inputs
+    assert calls == [{'device': people.runtime.device, 'confidence': people.runtime.dino_detector.confidence,
+                      'short_side': people.runtime.dino_detector.short_side, 'max_long_side': people.runtime.dino_detector.max_long_side}]
+    assert not module.PersonDetectionModule.io.inputs
 
 
 def test_optional_merge_records_original_clip_rows_and_roundtrips(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

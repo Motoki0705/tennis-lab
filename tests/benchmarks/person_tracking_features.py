@@ -15,13 +15,10 @@ import numpy as np
 from hydra import compose, initialize_config_dir
 
 from src.submodules.models import (
-    BotSortAssociator,
-    PersonDetectionResult,
     ViTPosePose2D,
 )
 from src.tasks.person_tracking.archive import load_features, save_features
-from src.tasks.person_tracking.botsort_pose import BotSortPoseConfig
-from src.tasks.person_tracking.contracts import DetectionFeatures, TrackCapacityExceeded
+from src.tasks.person_tracking.deep_ocsort_pose import DeepOCSortPoseConfig
 from src.tasks.person_tracking.features import (
     FeatureConfig,
     FeatureExtractor,
@@ -118,33 +115,6 @@ def extract(args: argparse.Namespace) -> None:
     write_json_atomic(report / 'features.json', manifest)
 
 
-def track_baseline(frames: list[DetectionFeatures], provenance: dict[str, Any], max_tracks: int | None) -> dict[str, Any]:
-    """Actual old Ultralytics path, including image-based sparse optical flow.
-
-    Replay exactly the same #937 detections as the derivative. This smoke
-    records the wrapper's observed boxes/IDs; they are Kalman-updated boxes,
-    not falsely claimed as a detection-row mapping or final tracking metrics.
-    """
-    video = provenance['source']
-    if dual_sha256(Path(video['path'])) != video['sha256']:
-        raise ValueError('Baseline video content changed')
-    tracker = BotSortAssociator()
-    observed = []
-    seen: set[int] = set()
-    for packet in OpenCVVideoFrameReader(Path(video['path']), max_frames=len(frames)):
-        feature = frames[packet.index]
-        tracks = tracker.update(PersonDetectionResult(feature.boxes, feature.require_scores()), packet.frame)
-        seen.update(track['id'] for track in tracks)
-        if max_tracks is not None and len(seen) > max_tracks:
-            raise TrackCapacityExceeded(f'Ultralytics baseline exceeds cumulative camera cap {max_tracks}')
-        observed.append({'frame': packet.index, 'tracks': json_value(tracks)})
-    if len(observed) != len(frames):
-        raise ValueError('Baseline video timeline differs from shared features')
-    return {'frames': len(frames), 'track_ids': sorted(seen),
-            'observed_detections': sum(len(item['tracks']) for item in observed),
-            'assignment_schema': 'ultralytics_observed_boxes_not_detection_rows', 'observations': observed}
-
-
 def track(args: argparse.Namespace) -> None:
     report = args.report.resolve()
     target = report / f'tracking.{args.method}.json'
@@ -153,23 +123,15 @@ def track(args: argparse.Namespace) -> None:
     source = json.loads((report / 'features.json').read_text())
     if source['status'] != 'ok':
         raise ValueError('Incomplete features')
-    config = BotSortPoseConfig()
+    config = DeepOCSortPoseConfig()
     result: dict[str, Any] = {'method': args.method, 'config': asdict(config), 'cameras': {},
                                'features_sha256': dual_sha256(report / 'features.json'), 'scope': source['scope']}
-    if args.method == 'ultralytics_botsort':
-        result['config'] = {'backend': 'src.submodules.models.BotSortAssociator',
-                            'with_reid': False, 'gmc_method': 'sparseOptFlow', 'max_tracks': config.max_tracks}
-        result['method_label'] = 'Ultralytics BoT-SORT baseline (same #937 detections)'
-    else:
-        result['method_label'] = 'BoT-SORT-style derivative with appearance and pose'
+    result['method_label'] = 'Deep OC-SORT with appearance and pose'
     for camera, record in source['cameras'].items():
         path = Path(record['path'])
         if dual_sha256(path) != record['sha256']:
             raise ValueError(f'Feature content changed for {camera}')
         frames, provenance = load_features(path)
-        if args.method == 'ultralytics_botsort':
-            result['cameras'][camera] = track_baseline(frames, provenance, config.max_tracks)
-            continue
         method = build_tracker(args.method, fps=float(provenance['source']['fps']), config=config)
         assignments = [method.update(frame) for frame in frames]
         result['cameras'][camera] = {'frames': len(frames),
@@ -188,7 +150,7 @@ def main() -> None:
     parser.add_argument('--report', type=Path, required=True)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--max-frames', type=int)
-    parser.add_argument('--method', default='botsort_pose')
+    parser.add_argument('--method', choices=('deep_ocsort_pose',), default='deep_ocsort_pose')
     args = parser.parse_args()
     if args.max_frames is not None and args.max_frames < 1:
         parser.error('--max-frames must be positive')

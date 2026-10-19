@@ -22,8 +22,6 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 cfg = OmegaConf.load(Path(sys.argv[1]) / "src/tennis_scene/configs/pipeline.yaml")
-if cfg.people_models.detector != "dino":
-    raise ValueError("Comparison requires the pipeline's DINO detector")
 print(cfg.people_models.dino_checkpoint)
 runtime = cfg.people_models.runtime.dino_detector
 print(runtime.short_side)
