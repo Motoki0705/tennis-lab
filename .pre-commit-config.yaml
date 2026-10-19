@@ -7,10 +7,13 @@ repos:
         language: system
         types: [python]
         files: ^(src|tests|\.spin)/
+        # Standalone Blender Python kept outside these hooks before the move.
+        exclude: ^src/tennis_scene/visualization/blender/shots/
       - id: mypy
         name: mypy
         entry: ./scripts/run_in_repo_venv.sh mypy --follow-imports=skip
         language: system
         types: [python]
         files: ^(src|tests|\.spin)/
+        exclude: ^src/tennis_scene/visualization/blender/shots/
         require_serial: true

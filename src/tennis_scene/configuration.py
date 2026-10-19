@@ -30,7 +30,6 @@ from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
 )
 from src.tasks.player_association.association.config import load_association_config
-from src.tennis_scene.blender_export.bundle import BlenderBundleConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -44,6 +43,7 @@ from src.tennis_scene.pipeline.feature_flags import (
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleConfig
 from src.utils.configuration import (
     ConfigField,
     PathResolver,

@@ -1,15 +1,37 @@
-# blender_export
+# Blender export・撮影
 
 保存済みSceneResult v2と元動画から、Blenderで「入力映像 → グリッド → コート → 選手・ボール」へ
 切り替わり、最後にカメラが移動するアニメーションを生成します。
 
-![Meiji cam1の再構成プレビュー](../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
+![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
 
-実データでの再生成条件と検証結果は[検証記録](../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
+実データでの再生成条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
 
 - 書き出し: `python -m src.tennis_scene.scripts.export_blender`（設定 `configs/blender_export.yaml`）
-- 撮影: `scripts/blender/tennis_reveal.py`（Blender 5.2同梱Python。repoをimportしない）
-- Blender上の検証: `scripts/blender/validate_reveal.py`
+- 撮影: `src/tennis_scene/visualization/blender/shots/reveal.py`（Blender 5.2同梱Python。repoをimportしない）
+- Blender上の検証: `src/tennis_scene/visualization/blender/shots/validate_reveal.py`
+
+## shotの共通部品
+
+`../shots/common.py` はBlender同梱Pythonだけで動く部品です。各shotは
+`sys.path.insert(0, str(Path(__file__).parent))` の後に `common` をimportします。
+repo側の `export/` はimportしません。Blenderスクリプトは移動前と同じく
+通常のpre-commitのruff・mypyの対象外とし、Blenderで動作を検証します。
+
+- `Nodes`・`_group_socket`・`_new_material`: shaderと材質の生成。reveal固有の材質の切り替えは `reveal.py` に置きます。
+- `player_shader(n, color)`・`net_shader(n)`・`ball_shader(n, color, *, fade_attribute)`: 選手・ネット・球の共通の見た目。`_new_material` が返す `surface` へ接続して使います。
+- `court_image(court, *, court_color, runoff_color, px_per_m=100)`・`_net_geometry(court)`: court manifestから表面画像とネットの頂点・面・tape属性を生成します。
+- `_disk`・`_dome`・`_grid_lines`・`_distance_fade`: 地面・背景とgridの部品。
+- `_pc2_frame0`・`_write_pc2`: frame 0を原点とするPC2の読み書き。
+- `_look_rotation`・`_key_visibility`: カメラの向きと、frame 0からの有効性maskによる表示キー。
+- `_build_compositor(scene, *, name)`: Bloomのcompositorを設定します。
+
+repo側の `bundle._write_plate(video_path, output_dir, *, frame_range, max_width, quality)` は
+SceneResultに依存しません。`frame_range=range(start, stop)`（stopは含まず、stepは1）で
+指定区間だけを読み、`output_dir/%05d.jpg` に元動画のframe番号で保存します。
+`max_width=None` は元解像度を保ち、正の整数は縦横比を保って幅を制限します（拡大しません）。
+複数カメラでは `output_dir` をカメラごとに指定します。動画とcameraの整合検査・失敗時の
+bundle削除は呼出側の責務です。既存のreveal exporterは全区間・元解像度で呼びます。
 
 ## 入力と書き出し
 
@@ -57,7 +79,7 @@ Windowsで作成した`.blend`の外部参照はWindows形式になるため、�
 
 ```bash
 blender --background --factory-startup --python-exit-code 1 \
-  --python scripts/blender/tennis_reveal.py -- \
+  --python src/tennis_scene/visualization/blender/shots/reveal.py -- \
   --bundle <bundle> --output <shot_dir> --render
 # fpsはmanifest.jsonの値に合わせる。例は59.94fpsの入力。
 ffmpeg -framerate 60000/1001 -start_number 0 -i <shot_dir>/frames/%05d.png \
@@ -83,10 +105,20 @@ ffmpeg -framerate 15000/1001 -pattern_type glob -i '<shot_dir>/frames/*.png' \
 
 ```bash
 blender --background <shot_dir>/tennis_reveal.blend --python-exit-code 1 \
-  --python scripts/blender/validate_reveal.py -- \
+  --python src/tennis_scene/visualization/blender/shots/validate_reveal.py -- \
   --bundle <bundle> --report <shot_dir>/validation.json
 ```
 
 Blenderで評価したmesh頂点とPC2、球の位置、全frameの有効性と非表示設定、入力カメラとの投影一致、
 FPSとカメラ移動を検査します。不一致は非ゼロ終了し、成功時にJSONの検証結果を保存します。
 映像側は切り替え前のframeと元動画、切り替え中、自由視点の各場面も確認してください。
+
+Meiji cam1の既存bundleから記録と同じプレビューを再生成する場合は、repoの現在のcheckoutで
+次を実行します。出力先は新しいdirectoryを指定してください。これは現在の手順であり、
+検証記録に残した当時のcommit・実行コマンドは変更しません。
+
+```bash
+# このコマンドをtraining queueへ登録する。
+TENNIS_REPO="$PWD" TENNIS_REVEAL_OUTPUT=<new_shot_dir> \
+  bash knowledge/runs/run-blender-reveal-meiji-cam1-20261016/repro.sh
+```

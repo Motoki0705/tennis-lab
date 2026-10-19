@@ -347,6 +347,11 @@ COURT_OFFLINE_TARGET_REMOVED_MODULES = (
     "src.tasks.court_detection.data.target_generation.store",
 )
 TENNIS_SCENE_REMOVED_MODULES = (
+    "src.tennis_scene.blender_export",
+    "src.tennis_scene.blender_export.bundle",
+    "src.tennis_scene.blender_export.camera",
+    "src.tennis_scene.blender_export.gaps",
+    "src.tennis_scene.blender_export.pointcache",
     "src.tennis_scene.pipeline.components.blcs",
     "src.tennis_scene.pipeline.components.plcs",
     "src.tennis_scene.pipeline.components.player_association",
@@ -1217,7 +1222,12 @@ def test_library_main_guards_are_absent() -> None:
     for path in _repository_python_files():
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         relative = path.relative_to(REPOSITORY_ROOT)
-        allowed = "scripts" in relative.parts or path.name == "__main__.py"
+        # Shot scripts are entrypoints for Blender's bundled Python, not repo libraries.
+        allowed = (
+            "scripts" in relative.parts
+            or path.name == "__main__.py"
+            or relative.is_relative_to("src/tennis_scene/visualization/blender/shots")
+        )
         for node in ast.walk(tree):
             if isinstance(node, ast.If) and _is_main_guard(node) and not allowed:
                 violations.append(_source_reference(path, node))

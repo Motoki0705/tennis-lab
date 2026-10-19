@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.tennis_scene.blender_export.bundle import court_geometry
-from src.tennis_scene.blender_export.gaps import fill_short_gaps
-from src.tennis_scene.blender_export.pointcache import read_pc2, write_pc2
+from src.tennis_scene.visualization.blender.export.bundle import court_geometry
+from src.tennis_scene.visualization.blender.export.gaps import fill_short_gaps
+from src.tennis_scene.visualization.blender.export.pointcache import read_pc2, write_pc2
 from src.utils.schema.court import X_MAX, X_MIN, Y_MAX, Y_MIN, net_height_at_x
 
 

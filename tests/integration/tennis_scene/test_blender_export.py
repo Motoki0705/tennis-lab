@@ -11,12 +11,12 @@ import pytest
 import torch
 
 from src.tennis_scene.archive import load_scene_result, save_scene_result
-from src.tennis_scene.blender_export.bundle import (
+from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.visualization.blender.export.bundle import (
     BlenderBundleConfig,
     export_blender_bundle,
 )
-from src.tennis_scene.blender_export.pointcache import read_pc2
-from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.utils.video.writer import save_video_rgb
 
 pytestmark = pytest.mark.integration
@@ -169,6 +169,19 @@ def test_rejects_video_fps_mismatch_and_removes_partial_bundle(
     save_scene_result(scene, inputs[0])
     output = tmp_path / "bundle"
     with pytest.raises(ValueError, match="Video FPS"):
+        _export(inputs, output)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("video_frames", [6, 8])
+def test_rejects_video_length_mismatch_and_removes_partial_bundle(
+    inputs: tuple[Path, Path, Path], tmp_path: Path, video_frames: int
+) -> None:
+    scene = load_scene_result(inputs[0])
+    video = Path(scene.metadata["video_paths"][1])
+    save_video_rgb(np.zeros((video_frames, 48, 64, 3), dtype=np.uint8), video, fps=30.0)
+    output = tmp_path / "bundle"
+    with pytest.raises(ValueError, match="scene has 7"):
         _export(inputs, output)
     assert not output.exists()
 
