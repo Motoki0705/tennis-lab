@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {trajectorySegments,frameFromTime,videoTimeForFrame,reasonName,frameRows} from '../../../../src/tennis_scene/review/static/model.mjs';
+import {trajectorySegments,frameFromTime,videoTimeForFrame,reasonName,frameRows} from '../../../../../src/tennis_scene/visualization/review/static/model.mjs';
 
 test('trajectory keeps valid origin, isolated point and source frames',()=>{
   const points=[[0,0],[1,1],[99,99],[3,3],[99,99],[5,5]];

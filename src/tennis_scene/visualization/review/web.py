@@ -13,7 +13,7 @@ import cv2
 from src.utils.checksum import dual_sha256
 
 if TYPE_CHECKING:
-    from src.tennis_scene.scripts.visualize_component_store import Review
+    from src.tennis_scene.visualization.review.gallery import Review
 
 
 def make_server(review: Review, *, port: int) -> ThreadingHTTPServer:
