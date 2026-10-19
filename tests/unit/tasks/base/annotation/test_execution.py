@@ -364,7 +364,7 @@ def test_stage_capacity_and_missing_receipt_are_explicit(setup: tuple) -> None:
 
 
 def queue_config(layout: AnnotationLayout) -> QueueConfiguration:
-    script = layout.repository / "queue.sh"
+    script = layout.repository / "training_queue.sh"
     script.write_text("# fixture queue protocol --idempotency-key\n")
     return QueueConfiguration(
         script=str(script),
@@ -380,13 +380,15 @@ def live_queue_config(
 ) -> QueueConfiguration:
     config = queue_config(layout)
     script = Path(config.script)
-    script.write_bytes(
-        (
-            PROJECT_ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
-        ).read_bytes()
-    )
-    (script.parent / "queue_history.py").symlink_to(
-        PROJECT_ROOT / ".agents/skills/training-queue/scripts/queue_history.py"
+    subprocess.run(
+        [
+            "bash",
+            str(PROJECT_ROOT / "scripts/github_actions/install_queue_bundle.sh"),
+            str(script.parent),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     # Keep the real repro capture, but do not scan the developer checkout on
     # every job before the resource-wait assertions can start.

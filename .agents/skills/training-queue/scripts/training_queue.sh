@@ -462,7 +462,12 @@ _queue_python() {
 }
 
 _history() {
-  python3 -B "$(dirname "$SCRIPT_PATH")/queue_history.py" "$@"
+  local helper="$(dirname "$SCRIPT_PATH")/queue_history.py"
+  if [ ! -f "$helper" ]; then
+    echo "error: required training queue helper is missing: $helper; deploy the complete runtime with scripts/github_actions/install_queue_bundle.sh" >&2
+    return 1
+  fi
+  python3 -B "$helper" "$@"
 }
 
 _maintain_history() {

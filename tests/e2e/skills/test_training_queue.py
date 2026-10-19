@@ -28,6 +28,36 @@ ROOT = Path(__file__).parents[3]
 QUEUE_SCRIPT = ROOT / ".agents/skills/training-queue/scripts/training_queue.sh"
 
 
+@pytest.mark.parametrize("arguments", [("add", "true"), ("status",), ("serve",)])
+def test_standalone_script_fails_with_missing_helper_diagnostic(
+    tmp_path: Path, arguments: tuple[str, ...]
+) -> None:
+    script = tmp_path / "queue.sh"
+    script.write_bytes(QUEUE_SCRIPT.read_bytes())
+    queue_dir = tmp_path / "queue"
+    lock_file = tmp_path / "gpu.lock"
+    result = subprocess.run(
+        ["bash", str(script), *arguments],
+        cwd=tmp_path,
+        env=_queue_env(
+            queue_dir,
+            lock_file,
+            system_lock_file=tmp_path / "unprovisioned/gpu.lock",
+        ),
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "required training queue helper is missing" in result.stderr
+    assert str(script.with_name("queue_history.py")) in result.stderr
+    assert "install_queue_bundle.sh" in result.stderr
+    assert not list(queue_dir.rglob("*.job"))
+    assert not (queue_dir / "worker.pid").exists()
+    assert not any(path.exists() for path in _lock_namespace(lock_file))
+
+
 def _queue_env(
     queue_dir: Path,
     lock_file: Path | None,
