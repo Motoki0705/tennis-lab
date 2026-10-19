@@ -1,48 +1,53 @@
-"""Vendored ViTPose (2D keypoint detector used by GVHMR preprocessing).
+# Copyright (c) OpenMMLab. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+# Source: ViTAE-Transformer/ViTPose, commit c050ed29112da7704797cc1a65af0234b525010d
+# https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/mmpose/models/detectors/top_down.py
+# Model settings: configs/body/2d_kpt_sview_rgb_img/topdown_heatmap/coco/ViTPose_huge_coco_256x192.py
+# Modified for tennis-lab: named torch sequence for TopDown.forward_dummy's
+# backbone -> head path, explicit ViT-H construction and strict checkpoint load.
+# Registry, neck, training, decoding and visualization are omitted.
+# License text: ../LICENSE.ViTPose
+"""ViTPose-H inference assembly from the official Apache-2.0 configuration."""
 
-Only the ``ViTPose_huge_coco_256x192`` variant used by GVHMR is provided; the
-ViT backbone implementation is shared with the vendored HMR2.
-"""
+from collections import OrderedDict
+from pathlib import Path
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from src.submodules.vendor.gvhmr.hmr2.vit import ViT
 
 from .heatmap_head import TopdownHeatmapSimpleHead, ViTPoseHeadConfig
 
 
-class VitPoseModel(nn.Module):
-    def __init__(self, backbone, keypoint_head):
-        super().__init__()
-        self.backbone = backbone
-        self.keypoint_head = keypoint_head
+class VitPoseModel(nn.Sequential):
+    """Backbone followed by heatmap head, with the official checkpoint prefixes."""
 
-    def forward(self, x):
-        x = self.backbone(x)
-        x = self.keypoint_head(x)
-        return x
+    def __init__(self, backbone: nn.Module, keypoint_head: nn.Module) -> None:
+        super().__init__(
+            OrderedDict((("backbone", backbone), ("keypoint_head", keypoint_head)))
+        )
 
 
-def build_vitpose_huge(checkpoint_path, *, head_config: ViTPoseHeadConfig):
-    """Build ViTPose-H (COCO 256x192) and load the released checkpoint."""
-    backbone = ViT(
-        img_size=(256, 192),
-        patch_size=16,
-        embed_dim=1280,
-        depth=32,
-        num_heads=16,
-        ratio=1,
-        use_checkpoint=False,
-        mlp_ratio=4,
-        qkv_bias=True,
-        drop_path_rate=0.55,
+def build_vitpose_huge(
+    checkpoint_path: str | Path, *, head_config: ViTPoseHeadConfig
+) -> VitPoseModel:
+    """Load the released COCO ViTPose-H weights without remapping or omissions."""
+    model = VitPoseModel(
+        backbone=ViT(
+            img_size=(256, 192),
+            patch_size=16,
+            embed_dim=1280,
+            depth=32,
+            num_heads=16,
+            ratio=1,
+            use_checkpoint=False,
+            mlp_ratio=4,
+            qkv_bias=True,
+            drop_path_rate=0.55,
+        ),
+        keypoint_head=TopdownHeatmapSimpleHead(head_config),
     )
-    head = TopdownHeatmapSimpleHead(head_config)
-    pose = VitPoseModel(backbone, head)
-
-    state_dict = torch.load(checkpoint_path, map_location="cpu", weights_only=False)[
-        "state_dict"
-    ]
-    pose.load_state_dict(state_dict, strict=True)
-    return pose
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    model.load_state_dict(checkpoint["state_dict"], strict=True)
+    return model
