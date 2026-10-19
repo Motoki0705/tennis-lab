@@ -10,6 +10,8 @@ import shlex
 import subprocess
 from pathlib import Path
 
+from src.utils.training_queue import expired_completion
+
 from ..artifacts import verify_reference
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
@@ -124,6 +126,14 @@ def queue_state(config: QueueConfiguration, launch: ArtifactRef) -> dict[str, st
         if len(states) == 1:
             break
     else:
+        completion = expired_completion(directory, job)
+        if not states and completion is not None:
+            state = completion["state"]
+            return {
+                "state": "cancelled" if state == "cancelled" else "failed",
+                "reason": f"queue is {state}; history expired but the stage did not publish completion",
+                "history": "expired",
+            }
         return {
             "state": "unfinished",
             "reason": "queue registration has no unique lifecycle state during observation; inspect queue if this persists",

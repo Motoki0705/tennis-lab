@@ -18,7 +18,7 @@
 #   serve [--after-pid PID] [--idle-timeout S]
 #                                   Run the worker in the foreground (systemd).
 #   status                          Show worker state + queued/running/done jobs.
-#   list                            List jobs with resource/allocation state.
+#   list [--include-expired]        List jobs with resource/allocation state.
 #   cancel <job-file>               Cancel one queued/waiting job idempotently.
 #   stop                            Stop after currently active jobs finish.
 #   clear                           Remove all pending (not-yet-started) jobs.
@@ -48,8 +48,10 @@ CANCEL_REQUEST_DIR="$QUEUE_DIR/cancel-requests"
 CONTROL_DIR="$QUEUE_DIR/control"
 EXTERNAL_ACK_DIR="$CONTROL_DIR/external-acks"
 REGISTRATION_DIR="$CONTROL_DIR/registrations"
+COMPLETION_DIR="$CONTROL_DIR/completions"
 WORKER_PID_FILE="$QUEUE_DIR/worker.pid"
 WORKER_LOCK_FILE="$QUEUE_DIR/worker.lock"
+WORKER_PROTOCOL_FILE="$CONTROL_DIR/worker.protocol"
 WORKER_LOG="$QUEUE_DIR/worker.log"
 STOP_FILE="$QUEUE_DIR/stop"
 
@@ -66,16 +68,16 @@ SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 TERM_GRACE_SECONDS=15
 
 _ensure_dirs() {
-  if [ -L "$CONTROL_DIR" ] || [ -L "$EXTERNAL_ACK_DIR" ] || [ -L "$REGISTRATION_DIR" ]; then
+  if [ -L "$CONTROL_DIR" ] || [ -L "$EXTERNAL_ACK_DIR" ] || [ -L "$REGISTRATION_DIR" ] || [ -L "$COMPLETION_DIR" ]; then
     echo "error: queue control directory must not be a symlink" >&2
     return 1
   fi
   mkdir -p \
     "$JOBS_DIR" "$LOGS_DIR" "$DONE_DIR" "$FAILED_DIR" "$RUNNING_DIR" \
     "$CANCELLED_DIR" "$REPRO_DIR" "$STATE_DIR" "$CANCEL_REQUEST_DIR" \
-    "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR" || return 1
+    "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR" "$COMPLETION_DIR" || return 1
   if [ ! -d "$CONTROL_DIR" ] || [ ! -d "$EXTERNAL_ACK_DIR" ] || [ ! -d "$REGISTRATION_DIR" ] \
-    || ! chmod 0700 "$CONTROL_DIR" "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR"; then
+    || ! chmod 0700 "$CONTROL_DIR" "$EXTERNAL_ACK_DIR" "$REGISTRATION_DIR" "$COMPLETION_DIR"; then
     echo "error: queue control directory must be private and owner-writable" >&2
     return 1
   fi
@@ -315,6 +317,7 @@ _finish_waiting_cancellation() {
   rm -f "$(_state_file "$job")" "$(_cancel_request_file "$job")" \
     "$(_owner_file "$job")" "$(_external_ack_file "$job")"
   if [ -f "$CANCELLED_DIR/$job" ]; then
+    _complete_job "$job" cancelled || return 1
     _record_test_teardown_event "$job" terminal-cancelled
   fi
 }
@@ -426,6 +429,17 @@ _worker_running() {
   [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
 }
 
+_require_compatible_worker() {
+  local pid
+  _worker_running || return 0
+  pid="$(cat "$WORKER_PID_FILE")"
+  if [ ! -f "$WORKER_PROTOCOL_FILE" ] || [ -L "$WORKER_PROTOCOL_FILE" ] \
+    || [ "$(cat "$WORKER_PROTOCOL_FILE" 2>/dev/null)" != "$pid reverse-name-v1" ]; then
+    echo "error: incompatible legacy queue worker; let it finish and start the new worker before adding jobs" >&2
+    return 1
+  fi
+}
+
 # Resolve a python that can import numpy (for the post-run ckpt pruner). Prefer
 # an explicit override, then the active venv, then the repo's .venv (resolved via
 # the *main* git dir so it works from a linked worktree too), then python3.
@@ -445,6 +459,22 @@ _queue_python() {
     fi
   fi
   printf 'python3'
+}
+
+_history() {
+  "$(_queue_python)" "$(dirname "$SCRIPT_PATH")/queue_history.py" "$@"
+}
+
+_maintain_history() {
+  _ensure_dirs && _history maintain "$QUEUE_DIR"
+}
+
+_complete_job() {
+  _history complete "$QUEUE_DIR" "$1" "$2"
+}
+
+_fifo_jobs() {
+  _history order "$JOBS_DIR"
 }
 
 # Opt-in post-run hook: when a job was added with --prune-ckpt and succeeded,
@@ -476,7 +506,8 @@ _recover_registration() {
   if [ -L "$record" ] || [ ! -f "$record" ] \
     || ! read -r registered_request job extra < "$record" \
     || [ -n "$extra" ] || ! [[ "$registered_request" =~ ^[a-f0-9]{64}$ ]] \
-    || ! [[ "$job" =~ ^[0-9]+_[0-9]+_[A-Za-z0-9._-]+\.job$ ]]; then
+    || { ! [[ "$job" =~ ^[0-9]+_[0-9]+_[A-Za-z0-9._-]+\.job$ ]] \
+      && ! [[ "$job" =~ ^0-[0-9]{19}_[0-9TZ-]+_[0-9]+_[A-Za-z0-9._-]+\.job$ ]]; }; then
     echo "error: invalid queue registration record: $record" >&2
     return 1
   fi
@@ -500,6 +531,10 @@ _recover_registration() {
       return 0
     fi
   done
+  if _history expired "$QUEUE_DIR" "$job" >/dev/null; then
+    printf 'queued: %s\n' "$job"
+    return 0
+  fi
   echo "error: registered job history missing or transitioning; retry or inspect $job (no job added)" >&2
   return 1
 }
@@ -555,6 +590,7 @@ cmd_add() {
     *) echo "error: --resource must be half or all (got: $resource)" >&2; exit 2 ;;
   esac
   _ensure_dirs || return 1
+  _require_compatible_worker || return 1
   name="${name:-job}"
   # Sanitize name for use in a filename.
   name="$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '_')"
@@ -576,9 +612,10 @@ cmd_add() {
       return $?
     fi
   fi
-  # Nanosecond + PID gives a unique, lexically-sortable (FIFO) job id without
-  # needing a lock for concurrent enqueues from multiple agents.
-  local jobid="$(date +%s%N)_$$_${name}"
+  # Display newest first in name-ascending file explorers. The immutable stem
+  # is also the run id; admission recovers chronological order separately.
+  local jobid
+  jobid="$(_history name "$$" "$name")" || return 1
   local tmp="$JOBS_DIR/.tmp.${jobid}.job"
   local final="$JOBS_DIR/${jobid}.job"
   # Absolute paths so the injected preamble still resolves after the job cd's
@@ -731,6 +768,7 @@ cmd_run_job() {
     echo "error: invalid or duplicate resource or teardown metadata in $job" > "$log"
     mv "$jobfile" "$FAILED_DIR/$job"
     _write_job_state "$job" failed invalid - - invalid-resource
+    _complete_job "$job" failed || return 1
     echo "[worker] $(date -Iseconds) FAILED (invalid metadata): $job"
     return 2
   fi
@@ -742,6 +780,7 @@ cmd_run_job() {
     echo "error: GPU lock namespace is unavailable for $job" > "$log"
     mv "$jobfile" "$FAILED_DIR/$job"
     _write_job_state "$job" failed "$resource" - - lock-namespace
+    _complete_job "$job" failed || return 1
     return 1
   fi
 
@@ -878,6 +917,9 @@ cmd_run_job() {
     _write_job_state \
       "$job" "$terminal_state" "$resource" "$slot" "$last_pid" "$wait_reason" \
       "$last_pgid"
+    _test_transition_barrier "${TRAINING_QUEUE_TEST_PRE_COMPLETE_READY_FILE:-}" \
+      "${TRAINING_QUEUE_TEST_PRE_COMPLETE_BARRIER_FIFO:-}" "$$" || return 1
+    _complete_job "$job" "$terminal_state" || return 1
     _record_test_teardown_event "$job" "terminal-$terminal_state"
     rm -f "$(_cancel_request_file "$job")" "$(_owner_file "$job")" \
       "$(_external_ack_file "$job")"
@@ -890,11 +932,11 @@ cmd_run_job() {
     _wait_for_external_ack
     if [ -f "$(_cancel_request_file "$job")" ]; then
       printf 'exit_code=%s\n' "$terminal_rc" >> "$log"
-      _finalize_terminal cancelled none
+      _finalize_terminal cancelled none || exit 1
       echo "[worker] $(date -Iseconds) cancelled: $job resource=$resource slot=$slot"
     else
       printf 'exit_code=%s\n' "$terminal_rc" >> "$log"
-      _finalize_terminal failed signal
+      _finalize_terminal failed signal || exit 1
       echo "[worker] $(date -Iseconds) FAILED (signal): $job resource=$resource slot=$slot"
     fi
   }
@@ -922,7 +964,7 @@ cmd_run_job() {
           _finish_waiting_cancellation "$job"
         elif [ -f "$RUNNING_DIR/$job" ]; then
           printf 'exit_code=%s\n' "$exit_rc" >> "$log"
-          _finalize_terminal failed signal
+          _finalize_terminal failed signal || exit 1
         elif [ -f "$JOBS_DIR/$job" ]; then
           rm -f "$(_state_file "$job")" "$(_owner_file "$job")"
         fi
@@ -1215,12 +1257,12 @@ cmd_run_job() {
   _wait_for_external_ack
 
   if [ "$rc" -eq 0 ]; then
-    _finalize_terminal done none
+    _finalize_terminal done none || exit 1
     echo "[worker] $(date -Iseconds) done: $job resource=$resource slot=$slot"
     _maybe_prune_ckpt "$job"
   else
     echo "exit_code=$rc" >> "$log"
-    _finalize_terminal failed none
+    _finalize_terminal failed none || exit 1
     echo "[worker] $(date -Iseconds) FAILED (rc=$rc): $job resource=$resource slot=$slot"
   fi
   trap - EXIT TERM INT HUP
@@ -1282,8 +1324,18 @@ cmd_worker() {
     echo "[worker] PID $after_pid finished; starting queue."
   fi
 
-  local idle_elapsed=0
+  local idle_elapsed=0 history_checked_at=$SECONDS
   while [ "$worker_signal" -eq 0 ]; do
+    # A foreground worker may remain in use for weeks. Sweep at most once a
+    # minute, in addition to public command entry, without a separate timer.
+    if [ "$((SECONDS - history_checked_at))" -ge 60 ]; then
+      if ! _maintain_history; then
+        touch "$STOP_FILE"
+        _wait_worker_children
+        return 1
+      fi
+      history_checked_at=$SECONDS
+    fi
     if [ -f "$STOP_FILE" ]; then
       echo "[worker] stop requested; waiting for active jobs."
       _wait_worker_children
@@ -1292,7 +1344,10 @@ cmd_worker() {
     fi
 
     local job active active_pid
-    job="$(find "$JOBS_DIR" -maxdepth 1 -name '*.job' ! -name '.tmp.*' -printf '%f\n' 2>/dev/null | sort | head -1)"
+    job="$(_history order "$JOBS_DIR" first)" || {
+      _wait_worker_children
+      return 1
+    }
     if [ -z "$job" ]; then
       # Keep jobs(1) in a process substitution that inherits this shell's job
       # table. A command-substitution pipeline reports zero and can let an
@@ -1349,13 +1404,19 @@ cmd_serve() {
     exit 1
   fi
 
+  if [ -L "$WORKER_PROTOCOL_FILE" ] || { [ -e "$WORKER_PROTOCOL_FILE" ] && [ ! -f "$WORKER_PROTOCOL_FILE" ]; }; then
+    echo "error: worker protocol path must be a regular file" >&2
+    return 1
+  fi
+  printf '%s reverse-name-v1\n' "$$" > "$CONTROL_DIR/.worker.protocol.$$" || return 1
+  mv -f "$CONTROL_DIR/.worker.protocol.$$" "$WORKER_PROTOCOL_FILE" || return 1
   echo "$$" > "$WORKER_PID_FILE"
   if [ -n "${TRAINING_QUEUE_START_READY_FILE:-}" ]; then
     printf '%s\n' "$$" > "$TRAINING_QUEUE_START_READY_FILE"
   fi
   _cleanup_serve() {
     if [ "$(cat "$WORKER_PID_FILE" 2>/dev/null)" = "$$" ]; then
-      rm -f "$WORKER_PID_FILE"
+      rm -f "$WORKER_PID_FILE" "$WORKER_PROTOCOL_FILE"
     fi
   }
   trap _cleanup_serve EXIT
@@ -1439,29 +1500,36 @@ cmd_status() {
       [ "$index" -eq 0 ] && wait_reason="next"
       _print_job_record "$JOBS_DIR" "$job" queued "$wait_reason" | sed 's/^/  /'
       index=$((index + 1))
-    done < <(find "$JOBS_DIR" -maxdepth 1 -name '*.job' ! -name '.tmp.*' -printf '%f\n' | sort)
+    done < <(_fifo_jobs)
   fi
   if [ "$d" -gt 0 ]; then
     echo "completed (latest 10):"
     while read -r job; do
       [ -n "$job" ] && _print_job_record "$DONE_DIR" "$job" done none | sed 's/^/  /'
-    done < <(find "$DONE_DIR" -maxdepth 1 -name '*.job' -printf '%f\n' | sort | tail -10)
+    done < <(_history order "$DONE_DIR" newest ten)
   fi
   if [ "$f" -gt 0 ]; then
     echo "failed (latest 10):"
     while read -r job; do
       [ -n "$job" ] && _print_job_record "$FAILED_DIR" "$job" failed none | sed 's/^/  /'
-    done < <(find "$FAILED_DIR" -maxdepth 1 -name '*.job' -printf '%f\n' | sort | tail -10)
+    done < <(_history order "$FAILED_DIR" newest ten)
   fi
   if [ "$c" -gt 0 ]; then
     echo "cancelled (latest 10):"
     while read -r job; do
       [ -n "$job" ] && _print_job_record "$CANCELLED_DIR" "$job" cancelled none | sed 's/^/  /'
-    done < <(find "$CANCELLED_DIR" -maxdepth 1 -name '*.job' -printf '%f\n' | sort | tail -10)
+    done < <(_history order "$CANCELLED_DIR" newest ten)
   fi
 }
 
 cmd_list() {
+  local include_expired=0
+  if [ "$#" -eq 1 ] && [ "$1" = "--include-expired" ]; then
+    include_expired=1
+  elif [ "$#" -ne 0 ]; then
+    echo "error: list accepts only --include-expired" >&2
+    return 2
+  fi
   _ensure_dirs || return 1
   local directory state job index=0 wait_reason
   while read -r job; do
@@ -1470,7 +1538,7 @@ cmd_list() {
     [ "$index" -eq 0 ] && wait_reason="next"
     _print_job_record "$JOBS_DIR" "$job" queued "$wait_reason"
     index=$((index + 1))
-  done < <(find "$JOBS_DIR" -maxdepth 1 -name '*.job' ! -name '.tmp.*' -printf '%f\n' 2>/dev/null | sort)
+  done < <(_fifo_jobs)
   for directory in "$RUNNING_DIR" "$DONE_DIR" "$FAILED_DIR" "$CANCELLED_DIR"; do
     case "$directory" in
       "$RUNNING_DIR") state=running ;;
@@ -1482,6 +1550,10 @@ cmd_list() {
       [ -n "$job" ] && _print_job_record "$directory" "$job" "$state" none
     done < <(find "$directory" -maxdepth 1 -name '*.job' -printf '%f\n' 2>/dev/null | sort)
   done
+  if [ "$include_expired" -eq 1 ]; then
+    _history list-expired "$QUEUE_DIR" || return 1
+  fi
+  return 0
 }
 
 cmd_cancel() {
@@ -1496,6 +1568,12 @@ cmd_cancel() {
   fi
   _ensure_dirs || return 1
   marker="$(_cancel_request_file "$job")"
+
+  local expired_state
+  if expired_state="$(_history expired "$QUEUE_DIR" "$job")"; then
+    printf '%s\n' "$expired_state"
+    return 0
+  fi
 
   if [ -f "$CANCELLED_DIR/$job" ]; then
     rm -f "$marker" "$(_owner_file "$job")" "$(_external_ack_file "$job")"
@@ -1522,6 +1600,7 @@ cmd_cancel() {
         # cancellation intent until that wrapper exits.
         rm -f "$(_state_file "$job")" "$marker" "$(_owner_file "$job")" \
           "$(_external_ack_file "$job")"
+        _complete_job "$job" cancelled || return 1
         echo cancelled
         return 0
       fi
@@ -1530,6 +1609,7 @@ cmd_cancel() {
     if [ -f "$CANCELLED_DIR/$job" ]; then
       rm -f "$(_state_file "$job")" "$marker" "$(_owner_file "$job")" \
         "$(_external_ack_file "$job")"
+      _complete_job "$job" cancelled || return 1
       echo cancelled
       return 0
     fi
@@ -1599,6 +1679,7 @@ cmd_clear() {
     # If the worker won the move, leave the already-running job alone.
     if sed -n '/^# idempotency_key_sha256: /p' "$JOBS_DIR/$job" 2>/dev/null | read -r _; then
       mv "$JOBS_DIR/$job" "$CANCELLED_DIR/$job" 2>/dev/null || continue
+      _complete_job "$job" cancelled || return 1
     fi
     rm -f "$JOBS_DIR/$job" "$(_state_file "$job")" \
       "$(_cancel_request_file "$job")" "$(_owner_file "$job")" \
@@ -1610,6 +1691,10 @@ cmd_clear() {
 main() {
   local sub="${1:-}"
   [ $# -gt 0 ] && shift || true
+  case "$sub" in
+    add|start|serve|__worker|status|list|cancel|stop|clear)
+      _maintain_history || return 1 ;;
+  esac
   case "$sub" in
     add)              cmd_add "$@" ;;
     start)            cmd_start "$@" ;;

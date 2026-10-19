@@ -21,11 +21,19 @@ from __future__ import annotations
 import argparse
 import contextlib
 import re
+import sys
 from pathlib import Path
 
-from kg_lib import dump_frontmatter, portable_path, queue_dir
+from kg_lib import dump_frontmatter, portable_path, queue_dir, repo_root
 from kg_schema import PROVIDERS, iso_date
 from kg_storage import save_node
+
+sys.path.insert(0, str(repo_root()))
+from src.utils.training_queue import (  # noqa: E402
+    expired_completion,
+    job_label,
+    latest_named_job,
+)
 
 QUEUE_DIR = queue_dir()
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
@@ -36,20 +44,24 @@ CONFIG_KEYS = ("model", "loss", "data")
 
 def find_by_name(name: str) -> tuple[Path | None, Path | None]:
     job = None
-    for sub in ("running", "done", "failed", "jobs"):
-        hits = sorted((QUEUE_DIR / sub).glob(f"*_{name}.job")) if (QUEUE_DIR / sub).exists() else []
-        if hits:
-            job = hits[-1]
+    filename = latest_named_job(QUEUE_DIR, name)
+    if filename is None:
+        return None, None
+    if expired_completion(QUEUE_DIR, filename) is not None:
+        raise ValueError(f"queue history expired for {filename}; use kg_register.py with the retained repro bundle")
+    for sub in ("running", "done", "failed", "cancelled", "jobs"):
+        candidate = QUEUE_DIR / sub / filename
+        if candidate.is_file():
+            job = candidate
             break
-    log_hits = sorted((QUEUE_DIR / "logs").glob(f"*_{name}.log")) if (QUEUE_DIR / "logs").exists() else []
-    log = log_hits[-1] if log_hits else None
-    return job, log
+    log = QUEUE_DIR / "logs" / f"{filename[:-4]}.log"
+    return job, log if log.is_file() else None
 
 
 def parse_job(job: Path) -> tuple[str, dict, str]:
     text = job.read_text(encoding="utf-8")
     name_m = re.search(r"^#\s*name:\s*(.+)$", text, re.MULTILINE)
-    name = name_m.group(1).strip() if name_m else job.stem.split("_", 2)[-1]
+    name = name_m.group(1).strip() if name_m else job_label(job.stem)
     cmd = next((ln for ln in text.splitlines() if "python" in ln and "-m " in ln), "")
     overrides = dict(OVERRIDE_RE.findall(cmd))
     config = {k: overrides[k] for k in CONFIG_KEYS if k in overrides}
@@ -71,7 +83,7 @@ def status_from_job(job: Path | None) -> str:
     if job is None:
         return "planned"
     parent = job.parent.name
-    return {"failed": "failed", "running": "running", "jobs": "planned"}.get(parent, "done")
+    return {"failed": "failed", "cancelled": "failed", "running": "running", "jobs": "planned"}.get(parent, "done")
 
 
 def main() -> int:
@@ -94,15 +106,22 @@ def main() -> int:
         p.error("issue must be positive")
 
     job, log = args.job, args.log
+    for path in (job, log):
+        if path is not None and not path.exists() and expired_completion(QUEUE_DIR, path.stem + ".job") is not None:
+            p.error("queue history expired; use kg_register.py with the retained repro bundle")
     if args.name and not (job and log):
-        fj, fl = find_by_name(args.name)
+        try:
+            fj, fl = find_by_name(args.name)
+        except ValueError as exc:
+            p.error(str(exc))
         job = job or fj
         log = log or fl
     if job is None and log is None:
         p.error("could not locate a job or log; pass a name or --job/--log")
 
-    name = args.name or (job.stem.split("_", 2)[-1] if job else log.stem.split("_", 2)[-1])
-    config, cmd = {}, ""
+    name = args.name or job_label(job.stem if job else log.stem)
+    config: dict[str, str] = {}
+    cmd = ""
     if job:
         name, config, cmd = parse_job(job)
     metrics = parse_log_metrics(log) if log and log.exists() else {}

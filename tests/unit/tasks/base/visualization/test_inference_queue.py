@@ -14,11 +14,23 @@ import pytest
 from src.tasks.base.scripts import inference_worker
 from src.tasks.base.visualization import inference_queue
 from src.utils.configuration import PathContractError
+from src.utils.training_queue import RETENTION_NS
 
 
 @pytest.mark.parametrize("terminal", ["done", "failed", "cancelled"])
+@pytest.mark.parametrize("expired", [False, True])
+@pytest.mark.parametrize("result_exists", [False, True])
+@pytest.mark.parametrize(
+    "job",
+    ["123.job", "0-8207631999999999999_2026-10-19T00-00-00-000000000Z_2_inference.job"],
+)
 def test_queue_uses_shared_root_and_preserves_request(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, terminal: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    terminal: str,
+    expired: bool,
+    job: str,
+    result_exists: bool,
 ) -> None:
     root = tmp_path / "main repo"
     root.mkdir()
@@ -37,17 +49,37 @@ def test_queue_uses_shared_root_and_preserves_request(
             ]
             source = Path(command[3])
             assert json.loads(source.read_text())["request"] == request
-            (source.parent / "result.bin").write_bytes(b"result")
-            state = root / ".training_queue" / terminal
-            state.mkdir()
-            (state / "123.job").touch()
-            return subprocess.CompletedProcess(args, 0, "queued: 123.job\n", "")
+            if result_exists:
+                (source.parent / "result.bin").write_bytes(b"result")
+            if expired:
+                completion = (
+                    root / ".training_queue/control/completions" / f"{job[:-4]}.json"
+                )
+                completion.parent.mkdir(parents=True)
+                completion.write_text(
+                    json.dumps(
+                        dict(
+                            version=1,
+                            job=job,
+                            state=terminal,
+                            finished_at_ns=1,
+                            retention_started_at_ns=1,
+                            time_source="recorded",
+                            expired_at_ns=RETENTION_NS + 2,
+                        )
+                    )
+                )
+            else:
+                state = root / ".training_queue" / terminal
+                state.mkdir()
+                (state / job).touch()
+            return subprocess.CompletedProcess(args, 0, f"queued: {job}\n", "")
         return subprocess.CompletedProcess(
             args, 1, "", "worker already running (PID 1)."
         )
 
     monkeypatch.setattr(inference_queue.subprocess, "run", run)
-    if terminal == "done":
+    if terminal == "done" and result_exists:
         assert (
             inference_queue.run_queued_inference(
                 "blcs",
@@ -57,7 +89,9 @@ def test_queue_uses_shared_root_and_preserves_request(
             == b"result"
         )
     else:
-        with pytest.raises(RuntimeError, match=terminal):
+        with pytest.raises(
+            RuntimeError, match="history expired" if expired else terminal
+        ):
             inference_queue.run_queued_inference("blcs", service={}, request=request)
     assert seen[0][-2:] == ["--resource", "all"]
     assert seen[1][2] == "start"

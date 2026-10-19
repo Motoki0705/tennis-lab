@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from src.utils.paths import PROJECT_ROOT
+from src.utils.training_queue import expired_completion
 
 from .contracts import Manifest
 from .validation import validate_ready
@@ -176,6 +177,10 @@ def enqueue_training(root: Path, *, retry_failed_job: bool = False) -> dict[str,
                 for state in ("jobs", "running", "done", "failed", "cancelled")
                 if (queue_dir / state / job_name).is_file()
             ]
+            if not states:
+                completion = expired_completion(queue_dir, job_name)
+                if completion is not None:
+                    states = [completion["state"]]
             if not states:
                 raise ValueError(
                     "Queue receipt has no matching job; inspect queue state"

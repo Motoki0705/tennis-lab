@@ -31,6 +31,7 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     read_component_descriptor,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.training_queue import expired_completion
 
 OUTPUT_TYPES: dict[str, type[Any]] = {
     'court_detection': CourtKPModule.io.output_type,
@@ -111,6 +112,8 @@ def audit_person(camera: str, frames: int, outputs: dict[str, Any]) -> dict[str,
 
 
 def collect(report: Path, queue: Path, job: str, output: Path) -> None:
+    if expired_completion(queue, job + '.job') is not None:
+        raise ValueError('Queue history expired; the log/job/state snapshot must be collected within retention')
     executed = json.loads((report / 'execute.json').read_text())
     preflight = json.loads((report / 'preflight.json').read_text())
     run = executed['run']

@@ -13,7 +13,9 @@ capacity). Up to two `half` jobs can overlap. `all` jobs remain exclusive.
 
 ## Script
 
-`scripts/training_queue.sh` — a single self-contained bash script. State lives
+`scripts/training_queue.sh` — the bash entry point. Its stdlib-only
+`scripts/queue_history.py` helper shares identity/history readers with
+`src/utils/training_queue.py`; keep these files together in a checkout. State lives
 under `$TRAINING_QUEUE_DIR` (default `.training_queue/` in the current
 directory): `jobs/` (pending), `running/`, `done/`, `failed/`, `cancelled/`,
 `logs/`, `worker.pid`, `worker.log`.
@@ -47,6 +49,7 @@ bash "$Q" serve --idle-timeout 2147483647
 # 3. Observe / control.
 bash "$Q" status      # worker state + queued/running/done/failed counts
 bash "$Q" list        # all jobs with resource/slot/PID/state/wait fields
+bash "$Q" list --include-expired  # also show compact records after collection
 bash "$Q" cancel <job-file>  # cancel queued/waiting or request running teardown
 bash "$Q" stop        # exit after currently active jobs finish
 bash "$Q" clear       # drop pending (not-yet-started) jobs
@@ -71,9 +74,10 @@ A sub-agent can be told to read this SKILL.md and append jobs:
 > `training_queue.sh add "<cmd>" --name <name>` (one per run). Do not start the
 > worker.
 
-Because enqueue is atomic (unique nanosecond+PID job ids) and lock-free,
-multiple agents can add concurrently; a single worker consumes them in order.
-Keyed registration below uses a per-key lock; unrelated keys remain independent.
+Publication is atomic with unique nanosecond+PID job ids, so multiple agents can
+add concurrently; a single worker consumes them in registration order. History
+maintenance uses a short queue-wide lock. Keyed registration also uses a per-key
+lock; unrelated keys remain independent after maintenance.
 
 ## Resumable registration
 
@@ -94,10 +98,75 @@ A private registration record is written before publishing the complete job.
 After an interrupted `add`, retry the same request: it either publishes the
 original staged job or returns its existing identity. Missing or corrupt
 history fails explicitly instead of re-enqueuing. Keep `control/registrations`
-and terminal job files for as long as campaign retries are possible. `clear`
+and `control/completions` for as long as campaign retries are possible; terminal
+job files can expire under the policy below. `clear`
 moves pending keyed jobs to `cancelled/`, preserving this history; keyless jobs
 are removed as before. These guarantees cover process interruption, not
 filesystem loss or power failure.
+
+## Filenames and automatic history retention
+
+New jobs use the immutable stem
+`0-<19-digit reversed epoch-nanoseconds>_<YYYY-MM-DDTHH-MM-SS-nnnnnnnnnZ>_<PID>_<name>`.
+The reversed value is `9999999999999999999 - registration_epoch_ns`; the UTC
+date and sanitized job name remain readable. Name-ascending explorers therefore
+put newer registrations first without changing VS Code settings. Nanoseconds and
+PID distinguish simultaneous registrations. This stem is the job/run identity
+used unchanged by `.job`, `.log`, state, acknowledgement and repro paths, even
+after lifecycle moves. FIFO admission and the pending CLI list explicitly sort
+by the recovered registration timestamp, including legacy numeric prefixes;
+they do not use the display order. Equal timestamps use the filename as a
+stable tie break.
+
+Upgrade the checkout only after an existing worker has exited; do not overwrite
+a running bash script. An old worker still orders names lexically. `add` fails
+explicitly if a live worker lacks the matching `control/worker.protocol`
+(`PID reverse-name-v1`), so new names cannot enter its FIFO. Let its active work
+finish, then start the new worker. Legacy pending jobs retain their identities
+and are admitted chronologically by the new worker. New workers publish this
+private marker before their PID and remove it on exit.
+
+On entry to `add`, `start`, `serve`, `status`, `list`, `cancel`, `stop` and `clear`,
+the queue automatically collects history **strictly more than 7 × 24 hours after
+completion**. A worker also checks once per minute while it is in use (a blocked
+admission is checked on the next loop). There is no timer while the queue is
+unused. A terminal publication after verified process/external teardown records
+the epoch nanosecond end time in `control/completions/<stem>.json`. Registration
+time, job mtime, log mtime and repro capture time never determine retention.
+
+Collection removes the matching `logs/<stem>.log`, terminal `.job` in `done/`,
+`failed/` or `cancelled/`, `state/<stem>.state` / `.owner`, cancellation request
+and external acknowledgement. Queued, waiting, running, terminating, ambiguous
+or still-owned jobs are protected, including their logs. Unsafe paths or corrupt
+records produce explicit errors and stop collection; they do not authorize a
+rerun. Logs without terminal evidence are retained with a diagnostic for manual
+inspection. `worker.log`, `repro/`, checkpoints and UI request/result files are
+outside this collection policy.
+
+**Existing data:** files are not renamed, so saved job IDs, embedded environment
+variables and consumer paths remain valid. Legacy terminal entries without an
+end time get a `time_source=legacy-observed` record with `finished_at_ns=null`
+and a full seven-day grace period starting at their first safe observation.
+Repeated uses preserve that start time. New filenames sort before ordinary
+legacy epoch-prefixed filenames; legacy entries keep their existing display
+order until collected. A nonterminal state or live wrapper prevents even this
+migration. Unknown end times are never backdated from file metadata.
+
+The small completion record keeps `job`, original terminal `state`,
+`finished_at_ns`, `retention_started_at_ns`, `time_source` and, once collection
+is authorized, `expired_at_ns` (`version=1`). The expiry marker is atomically
+published before deleting large history files; interrupted deletion resumes
+on the next use. These records and registration receipts/locks are retained.
+The same key/request still returns the original `queued:` reply after expiry;
+a changed request is rejected. `list` normally lists retained jobs, while
+`list --include-expired` adds `history=expired wait=history-expired` records with
+the original terminal state. `cancel` on an expired job returns that state.
+Consumers use the shared read-only reader to distinguish intentional expiry
+from missing/unknown history. Annotation still requires its own stage receipt
+before reporting success; inference can recover a retained result; a log-only
+knowledge import reports expiry and directs the caller to the retained repro
+bundle. Knowledge references to queue logs have the same seven-day lifetime;
+promoted repro/prediction artifacts remain available.
 
 ## Reproducibility bundle (auto-saved, issue #533)
 

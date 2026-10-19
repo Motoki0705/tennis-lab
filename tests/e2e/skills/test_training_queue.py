@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import sys
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TextIO
 
@@ -32,11 +34,14 @@ def _queue_env(
     environment = {
         key: value
         for key, value in os.environ.items()
-        if key
-        not in {"TRAINING_QUEUE_LOCK_FILE", "TRAINING_QUEUE_SYSTEM_LOCK_FILE"}
+        if key not in {"TRAINING_QUEUE_LOCK_FILE", "TRAINING_QUEUE_SYSTEM_LOCK_FILE"}
         and not key.startswith("TRAINING_QUEUE_TEST_")
     }
     environment["TRAINING_QUEUE_DIR"] = str(queue_dir)
+    # --basetemp may live inside a linked worktree. Never let a "non-Git"
+    # fixture discover the real repository's shared GPU lock namespace. A
+    # repository explicitly initialized below this ceiling is still visible.
+    environment["GIT_CEILING_DIRECTORIES"] = str(queue_dir.parent.parent.resolve())
     environment["TRAINING_QUEUE_TEST_TERM_GRACE_SECONDS"] = "1"
     if lock_file is not None:
         environment["TRAINING_QUEUE_LOCK_FILE"] = str(lock_file)
@@ -52,15 +57,15 @@ def _queue(
     cwd: Path,
     check: bool = True,
     system_lock_file: Path | None = None,
+    now_ns: int | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    environment = _queue_env(queue_dir, lock_file, system_lock_file=system_lock_file)
+    if now_ns is not None:
+        environment["TRAINING_QUEUE_TEST_NOW_NS"] = str(now_ns)
     return subprocess.run(
         ["bash", str(QUEUE_SCRIPT), *arguments],
         cwd=cwd,
-        env=_queue_env(
-            queue_dir,
-            lock_file,
-            system_lock_file=system_lock_file,
-        ),
+        env=environment,
         check=check,
         capture_output=True,
         text=True,
@@ -771,7 +776,7 @@ def test_half_capacity_status_and_repro_metadata(tmp_path: Path) -> None:
         )
         jobs.append(job)
         job_markers[job] = marker
-    ordered_jobs = sorted(jobs)
+    ordered_jobs = jobs  # Admission order is independent of filename order.
     first_markers = [job_markers[job] for job in ordered_jobs[:2]]
     third_marker = job_markers[ordered_jobs[2]]
 
@@ -1236,7 +1241,7 @@ def test_cooperative_stop_finishes_active_halves_and_leaves_waiter_queued(
             resource="half",
         )
         jobs_and_markers[job] = marker
-    ordered_jobs = sorted(jobs_and_markers)
+    ordered_jobs = list(jobs_and_markers)
     first_markers = [jobs_and_markers[job] for job in ordered_jobs[:2]]
     waiter_marker = jobs_and_markers[ordered_jobs[2]]
 
@@ -2520,3 +2525,509 @@ def test_rejects_symlink_in_shared_lock_namespace(tmp_path: Path) -> None:
     assert "GPU lock namespace is unavailable" in (
         queue_dir / "logs" / job.removesuffix(".job")
     ).with_suffix(".log").read_text(encoding="utf-8")
+
+
+DAY_NS = 24 * 60 * 60 * 10**9
+END_NS = 1_792_368_000 * 10**9
+
+
+def _completion(queue: Path, job: str) -> Path:
+    return queue / "control/completions" / f"{job[:-4]}.json"
+
+
+def _finished_job(tmp_path: Path, state: str) -> tuple[Path, Path, str]:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    job = (
+        _queue(
+            queue_dir,
+            lock_file,
+            "add",
+            "true" if state == "done" else "exit 7",
+            "--name",
+            "history",
+            "--idempotency-key",
+            "history-attempt",
+            cwd=tmp_path,
+            now_ns=END_NS - 20 * DAY_NS,
+        )
+        .stdout.strip()
+        .removeprefix("queued: ")
+    )
+    if state == "cancelled":
+        _queue(queue_dir, lock_file, "cancel", job, cwd=tmp_path, now_ns=END_NS)
+    else:
+        worker = _serve(
+            queue_dir,
+            lock_file,
+            cwd=tmp_path,
+            extra_env={"TRAINING_QUEUE_TEST_NOW_NS": str(END_NS)},
+        )
+        stdout, stderr = worker.communicate(timeout=15)
+        assert worker.returncode == 0, (stdout, stderr)
+    assert (queue_dir / state / job).is_file()
+    return queue_dir, lock_file, job
+
+
+@pytest.mark.parametrize("state", ["done", "failed", "cancelled"])
+@pytest.mark.parametrize("offset_ns", [-1, 0, 1])
+def test_retention_uses_terminal_time_and_strict_seven_day_boundary(
+    tmp_path: Path,
+    state: str,
+    offset_ns: int,
+) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, state)
+    record = json.loads(_completion(queue_dir, job).read_text())
+    assert record["finished_at_ns"] == END_NS
+    assert record["retention_started_at_ns"] == END_NS
+    assert record["time_source"] == "recorded"
+    stem = job[:-4]
+    log = queue_dir / "logs" / f"{stem}.log"
+    log.write_text("terminal log")
+    state_file = queue_dir / "state" / f"{stem}.state"
+    state_file.write_text(f"state={state}\n")
+    owner = queue_dir / "state" / f"{stem}.owner"
+    owner.write_text(f"pid=999999999\nstart_time=1\njob={job}\n")
+    cancel = queue_dir / "cancel-requests" / f"{stem}.cancel"
+    cancel.touch()
+    ack = queue_dir / "control/external-acks" / f"{stem}.ack"
+    ack.write_text(job)
+    repro = queue_dir / "repro" / stem / "predictions" / "proof"
+    repro.parent.mkdir(parents=True, exist_ok=True)
+    repro.write_bytes(b"unchanged reproducibility bundle\x00")
+
+    def repro_hashes() -> dict[str, str]:
+        root = queue_dir / "repro" / stem
+        return {
+            str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in root.rglob("*")
+            if path.is_file()
+        }
+
+    digest = repro_hashes()
+
+    for _ in range(2):
+        _queue(
+            queue_dir,
+            lock_file,
+            "status",
+            cwd=tmp_path,
+            now_ns=END_NS + 7 * DAY_NS + offset_ns,
+        )
+        for path in (queue_dir / state / job, log, state_file, owner, cancel, ack):
+            assert path.exists() == (offset_ns <= 0), path
+        assert repro_hashes() == digest
+    assert ("expired_at_ns" in json.loads(_completion(queue_dir, job).read_text())) == (
+        offset_ns > 0
+    )
+    assert len(list((queue_dir / "control/registrations").glob("*.receipt"))) == 1
+
+
+@pytest.mark.parametrize("state", ["done", "failed", "cancelled"])
+def test_expired_keyed_registration_remains_idempotent_concurrently(
+    tmp_path: Path,
+    state: str,
+) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, state)
+    arguments = (
+        "add",
+        "true" if state == "done" else "exit 7",
+        "--name",
+        "history",
+        "--idempotency-key",
+        "history-attempt",
+    )
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        replies = list(
+            executor.map(
+                lambda _: (
+                    _queue(
+                        queue_dir,
+                        lock_file,
+                        *arguments,
+                        cwd=tmp_path,
+                        now_ns=END_NS + 8 * DAY_NS,
+                    ).stdout
+                ),
+                range(8),
+            )
+        )
+    assert set(replies) == {f"queued: {job}\n"}
+    assert not list((queue_dir / "jobs").glob("*.job"))
+    assert not (queue_dir / state / job).exists()
+    rejected = _queue(
+        queue_dir,
+        lock_file,
+        *arguments,
+        "--resource",
+        "half",
+        cwd=tmp_path,
+        now_ns=END_NS + 8 * DAY_NS,
+        check=False,
+    )
+    assert rejected.returncode == 2
+    assert "different request" in rejected.stderr
+    listing = _queue(
+        queue_dir,
+        lock_file,
+        "list",
+        "--include-expired",
+        cwd=tmp_path,
+        now_ns=END_NS + 8 * DAY_NS,
+    ).stdout
+    assert (
+        f"{job} resource=- slot=- pid=- pgid=- state={state} wait=history-expired history=expired"
+        in listing
+    )
+    assert (
+        _queue(
+            queue_dir,
+            lock_file,
+            "cancel",
+            job,
+            cwd=tmp_path,
+            now_ns=END_NS + 8 * DAY_NS,
+        ).stdout.strip()
+        == state
+    )
+
+
+def test_new_filenames_sort_newest_first_across_dates_and_are_unique(
+    tmp_path: Path,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    midnight = int(datetime(2026, 10, 19, tzinfo=UTC).timestamp()) * 10**9
+    jobs = []
+    for timestamp in (midnight - 1, midnight, midnight + 1):
+        job = (
+            _queue(
+                queue_dir,
+                lock_file,
+                "add",
+                "true",
+                "--name",
+                "readable-name",
+                cwd=tmp_path,
+                now_ns=timestamp,
+            )
+            .stdout.strip()
+            .removeprefix("queued: ")
+        )
+        jobs.append(job)
+    assert sorted(jobs) == jobs[::-1]
+    assert "2026-10-18T23-59-59-999999999Z" in jobs[0]
+    assert "2026-10-19T00-00-00-000000000Z" in jobs[1]
+    assert all(job.endswith("_readable-name.job") for job in jobs)
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        replies = list(
+            executor.map(
+                lambda _: (
+                    _queue(
+                        queue_dir,
+                        lock_file,
+                        "add",
+                        "true",
+                        "--name",
+                        "same-time",
+                        cwd=tmp_path,
+                        now_ns=midnight + 2,
+                    ).stdout
+                ),
+                range(8),
+            )
+        )
+    assert len(set(replies)) == 8
+
+
+def test_fifo_separates_new_display_order_and_mixed_legacy_jobs(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    output = tmp_path / "order"
+    legacy = f"{END_NS - DAY_NS}_1_legacy.job"
+    (queue_dir / "jobs" / legacy).write_text(
+        f"#!/usr/bin/env bash\necho legacy >> {output}\n"
+    )
+    jobs = []
+    for index in range(3):
+        jobs.append(
+            _queue(
+                queue_dir,
+                lock_file,
+                "add",
+                f"echo {index} >> {output}",
+                "--name",
+                str(index),
+                cwd=tmp_path,
+                now_ns=END_NS + index,
+            )
+            .stdout.strip()
+            .removeprefix("queued: ")
+        )
+    assert sorted(jobs) == jobs[::-1]
+    assert all(job < legacy for job in jobs)
+    pending = _queue(queue_dir, lock_file, "list", cwd=tmp_path).stdout.splitlines()
+    assert [line.split()[0] for line in pending] == [legacy, *jobs]
+    worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+    stdout, stderr = worker.communicate(timeout=15)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert output.read_text().splitlines() == ["legacy", "0", "1", "2"]
+    assert sorted(p.name for p in (queue_dir / "done").glob("*.job")) == sorted(
+        [legacy, *jobs]
+    )
+
+
+@pytest.mark.parametrize("state", ["queued", "waiting", "running", "terminating"])
+def test_retention_protects_nonterminal_jobs_and_logs(
+    tmp_path: Path, state: str
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    job = (
+        _queue(
+            queue_dir,
+            lock_file,
+            "add",
+            "true",
+            cwd=tmp_path,
+            now_ns=END_NS - 30 * DAY_NS,
+        )
+        .stdout.strip()
+        .removeprefix("queued: ")
+    )
+    path = queue_dir / "jobs" / job
+    if state in {"running", "terminating"}:
+        path = path.rename(queue_dir / "running" / job)
+    state_file = queue_dir / "state" / f"{job[:-4]}.state"
+    state_file.write_text(f"state={state}\nfinished_at_ns={END_NS - 30 * DAY_NS}\n")
+    log = queue_dir / "logs" / f"{job[:-4]}.log"
+    log.write_text("protected")
+    _queue(queue_dir, lock_file, "list", cwd=tmp_path, now_ns=END_NS)
+    assert path.is_file() and state_file.is_file()
+    assert log.read_text() == "protected"
+    assert not _completion(queue_dir, job).exists()
+
+
+def test_legacy_history_gets_first_observation_grace_without_renaming(
+    tmp_path: Path,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    jobs = []
+    for index, state in enumerate(("done", "failed", "cancelled")):
+        job = f"{END_NS - 100 * DAY_NS}_{index}_legacy.job"
+        jobs.append(job)
+        path = queue_dir / state / job
+        path.write_text("#!/usr/bin/env bash\ntrue\n")
+        os.utime(path, ns=(END_NS - 100 * DAY_NS, END_NS - 100 * DAY_NS))
+        (queue_dir / "logs" / f"{job[:-4]}.log").write_text("old log")
+    orphan = queue_dir / "logs/orphan.log"
+    orphan.write_text("no terminal evidence")
+    observed = _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    assert "3 legacy terminal jobs" in observed.stderr
+    assert "logs without terminal evidence" in observed.stderr
+    for job in jobs:
+        record = json.loads(_completion(queue_dir, job).read_text())
+        assert record["finished_at_ns"] is None
+        assert record["retention_started_at_ns"] == END_NS
+        assert record["time_source"] == "legacy-observed"
+    # Repeated uses do not reset the migration grace period.
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 7 * DAY_NS)
+    assert (
+        sum(
+            len(list((queue_dir / state).glob("*.job")))
+            for state in ("done", "failed", "cancelled")
+        )
+        == 3
+    )
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 7 * DAY_NS + 1)
+    assert all(
+        not list((queue_dir / state).glob("*.job"))
+        for state in ("done", "failed", "cancelled")
+    )
+    assert list((queue_dir / "logs").glob("*.log")) == [orphan]
+
+
+def test_retention_during_terminal_publication_keeps_live_wrapper_log(
+    tmp_path: Path,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    job = (
+        _queue(
+            queue_dir,
+            lock_file,
+            "add",
+            "echo proof",
+            cwd=tmp_path,
+            now_ns=END_NS - 20 * DAY_NS,
+        )
+        .stdout.strip()
+        .removeprefix("queued: ")
+    )
+    ready, barrier = tmp_path / "ready", tmp_path / "barrier"
+    os.mkfifo(barrier)
+    descriptor = os.open(barrier, os.O_RDWR | os.O_NONBLOCK)
+    worker = _serve(
+        queue_dir,
+        lock_file,
+        cwd=tmp_path,
+        extra_env={
+            "TRAINING_QUEUE_TEST_NOW_NS": str(END_NS),
+            "TRAINING_QUEUE_TEST_PRE_COMPLETE_READY_FILE": str(ready),
+            "TRAINING_QUEUE_TEST_PRE_COMPLETE_BARRIER_FIFO": str(barrier),
+        },
+    )
+    try:
+        _wait_for(ready.exists)
+        assert (queue_dir / "done" / job).is_file()
+        # Simulate a consumer accessing the queue while terminal publication is
+        # paused, with the wall clock well beyond the registration timestamp.
+        _queue(
+            queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 30 * DAY_NS
+        )
+        assert (queue_dir / "logs" / f"{job[:-4]}.log").is_file()
+        assert not _completion(queue_dir, job).exists()
+    finally:
+        os.write(descriptor, b"release\n")
+        os.close(descriptor)
+        stdout, stderr = worker.communicate(timeout=10)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert (
+        json.loads(_completion(queue_dir, job).read_text())["finished_at_ns"] == END_NS
+    )
+
+
+@pytest.mark.parametrize(
+    "command", ["add", "status", "list", "cancel", "clear", "stop", "start", "serve"]
+)
+def test_public_queue_commands_trigger_retention(tmp_path: Path, command: str) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, "cancelled")
+    arguments = [command]
+    if command == "add":
+        arguments.append("true")
+    elif command == "cancel":
+        arguments.append(job)
+    elif command in {"start", "serve"}:
+        arguments.extend(["--idle-timeout", "0"])
+    _queue(queue_dir, lock_file, *arguments, cwd=tmp_path, now_ns=END_NS + 8 * DAY_NS)
+    if command == "start":
+        _wait_for(lambda: not (queue_dir / "worker.pid").exists())
+    assert not (queue_dir / "cancelled" / job).exists()
+    assert "expired_at_ns" in json.loads(_completion(queue_dir, job).read_text())
+
+
+@pytest.mark.parametrize(
+    "damage", ["log-symlink", "corrupt-completion", "state-conflict"]
+)
+def test_retention_fails_closed_on_unsafe_history(tmp_path: Path, damage: str) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, "done")
+    protected_file = tmp_path / "protected"
+    protected_file.write_text("must remain")
+    log = queue_dir / "logs" / f"{job[:-4]}.log"
+    if damage == "log-symlink":
+        log.unlink()
+        log.symlink_to(protected_file)
+    elif damage == "corrupt-completion":
+        _completion(queue_dir, job).write_text('{"version": 1}')
+    else:
+        (queue_dir / "state" / f"{job[:-4]}.state").write_text("state=failed\n")
+    result = _queue(
+        queue_dir,
+        lock_file,
+        "status",
+        cwd=tmp_path,
+        now_ns=END_NS + 8 * DAY_NS,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "error: queue history" in result.stderr
+    assert (queue_dir / "done" / job).is_file()
+    assert protected_file.read_text() == "must remain"
+
+
+def test_interrupted_expiry_resumes_from_tombstone(tmp_path: Path) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, "done")
+    path = _completion(queue_dir, job)
+    record = json.loads(path.read_text())
+    record["expired_at_ns"] = END_NS + 8 * DAY_NS
+    path.write_text(json.dumps(record))
+    (queue_dir / "done" / job).unlink()
+    log = queue_dir / "logs" / f"{job[:-4]}.log"
+    assert log.is_file()
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 8 * DAY_NS)
+    assert not log.exists()
+    assert not (queue_dir / "state" / f"{job[:-4]}.state").exists()
+    assert json.loads(path.read_text()) == record
+
+
+def test_legacy_registration_survives_migration_and_history_expiry(
+    tmp_path: Path,
+) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    arguments = ("add", "true", "--name", "old", "--idempotency-key", "legacy")
+    new_job = (
+        _queue(queue_dir, lock_file, *arguments, cwd=tmp_path, now_ns=END_NS)
+        .stdout.strip()
+        .removeprefix("queued: ")
+    )
+    legacy = f"{END_NS - 20 * DAY_NS}_123_old.job"
+    (queue_dir / "jobs" / new_job).rename(queue_dir / "done" / legacy)
+    receipt = next((queue_dir / "control/registrations").glob("*.receipt"))
+    digest, _job = receipt.read_text().split()
+    receipt.write_text(f"{digest} {legacy}\n")
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    result = _queue(
+        queue_dir, lock_file, *arguments, cwd=tmp_path, now_ns=END_NS + 8 * DAY_NS
+    )
+    assert result.stdout == f"queued: {legacy}\n"
+    assert not (queue_dir / "done" / legacy).exists()
+    assert not list((queue_dir / "jobs").glob("*.job"))
+
+
+def test_unconfirmed_legacy_terminal_state_stays_protected(tmp_path: Path) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS)
+    job = f"{END_NS - 50 * DAY_NS}_123_unconfirmed.job"
+    terminal = queue_dir / "done" / job
+    terminal.write_text("#!/usr/bin/env bash\ntrue\n")
+    (queue_dir / "state" / f"{job[:-4]}.state").write_text("state=terminating\n")
+    log = queue_dir / "logs" / f"{job[:-4]}.log"
+    log.write_text("keep")
+    for timestamp in (END_NS, END_NS + 30 * DAY_NS):
+        _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=timestamp)
+        assert terminal.is_file() and log.read_text() == "keep"
+        assert not _completion(queue_dir, job).exists()
+
+
+def test_expired_benchmark_snapshot_reports_expiry_before_collection(tmp_path: Path) -> None:
+    queue_dir, lock_file, job = _finished_job(tmp_path, "failed")
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path, now_ns=END_NS + 8 * DAY_NS)
+    output = tmp_path / "collection"
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "tests/benchmarks/pipeline_stop_collection.py"),
+         "--queue", str(queue_dir), "--report", str(tmp_path / "missing-report"),
+         "--job", job[:-4], "--output", str(output)],
+        cwd=tmp_path, env={**_queue_env(queue_dir, lock_file), "PYTHONPATH": str(ROOT)},
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 1
+    assert "Queue history expired" in result.stderr
+    assert not output.exists()
+
+
+@pytest.mark.parametrize("marker", [None, "wrong-pid reverse-name-v1", "legacy-v0"])
+def test_new_names_cannot_be_added_to_legacy_or_unknown_workers(tmp_path: Path, marker: str | None) -> None:
+    queue_dir, lock_file = tmp_path / "queue", tmp_path / "gpu.lock"
+    _queue(queue_dir, lock_file, "status", cwd=tmp_path)
+    # A live PID models the old worker's liveness protocol without starting one.
+    (queue_dir / "worker.pid").write_text(str(os.getpid()))
+    if marker is not None:
+        (queue_dir / "control/worker.protocol").write_text(marker)
+    rejected = _queue(queue_dir, lock_file, "add", "true", cwd=tmp_path, check=False)
+    assert rejected.returncode == 1
+    assert "incompatible legacy queue worker" in rejected.stderr
+    assert not list((queue_dir / "jobs").glob("*.job"))
+    (queue_dir / "worker.pid").unlink()
+    _queue(queue_dir, lock_file, "add", "true", cwd=tmp_path)
+    worker = _serve(queue_dir, lock_file, cwd=tmp_path)
+    stdout, stderr = worker.communicate(timeout=10)
+    assert worker.returncode == 0, (stdout, stderr)
+    assert len(list((queue_dir / "done").glob("*.job"))) == 1
+    assert not (queue_dir / "control/worker.protocol").exists()
