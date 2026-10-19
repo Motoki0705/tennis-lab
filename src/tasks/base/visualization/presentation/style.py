@@ -12,6 +12,17 @@ FROZEN: Final = "#457B9D"
 NEW: Final = "#8AC926"
 FIXED: Final = "#6C757D"
 
+# Court learning curves and the KP + LINE inference handoff share this palette.
+COURT_HEAD_COLORS: Final = {
+    "kp": "#35B779",  # viridis green
+    "seg": "#B48EF5",
+    "line": "#4CC9F0",
+    "semline": "#FFD166",
+    "pose": "#EF8FB2",
+}
+SYNTHETIC: Final = "#E76F51"
+REAL: Final = "#4CC9F0"
+
 REMOVED_ALPHA: Final = 0.2
 # The state API has no per-block base color. The supported removal use case is
 # a training block; a canonical color also keeps standalone endpoints stable.

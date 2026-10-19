@@ -6,6 +6,7 @@ from src.tasks.base.visualization.presentation.architecture import (
     BlockState,
     Edge,
     draw_architecture,
+    draw_flow_particles,
 )
 from src.tasks.base.visualization.presentation.curves import (
     CurveSeries,
@@ -23,6 +24,7 @@ __all__ = [
     "Segment",
     "StepClock",
     "draw_architecture",
+    "draw_flow_particles",
     "draw_progressive_curves",
     "render_presentation",
 ]

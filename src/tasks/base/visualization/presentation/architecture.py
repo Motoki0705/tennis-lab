@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, get_args
 
+import numpy as np
 from matplotlib.colors import to_rgb
 from matplotlib.patches import Arc, FancyArrowPatch, FancyBboxPatch, Rectangle
 
@@ -17,6 +18,43 @@ if TYPE_CHECKING:
 
 BlockState = Literal["hidden", "fixed", "training", "frozen", "new", "removed"]
 RGB = tuple[float, float, float]
+
+
+def draw_flow_particles(
+    ax: Axes,
+    path_points: Sequence[tuple[float, float]],
+    phase: float,
+    color: str,
+) -> None:
+    """Draw a traveling particle and its short trail on a polyline.
+
+    ``phase`` is in [0, 1]; both endpoints represent the start of the loop.
+    Travel is uniform in path length, including across unequal segments.
+    The caller owns the clock, axes limits and any supervision gates.
+    """
+    points = np.asarray(path_points, dtype=np.float64)
+    if points.ndim != 2 or points.shape[1] != 2 or len(points) < 2:
+        raise ValueError("path_points must contain at least two 2D points")
+    if not np.isfinite(points).all():
+        raise ValueError("path_points must be finite")
+    lengths = np.linalg.norm(np.diff(points, axis=0), axis=1)
+    if np.any(lengths <= 0):
+        raise ValueError("adjacent path_points must be distinct")
+    if isinstance(phase, bool) or not math.isfinite(phase) or not 0 <= phase <= 1:
+        raise ValueError("phase must be finite and in [0, 1]")
+    cumulative = np.r_[0.0, np.cumsum(lengths)]
+    distances = ((phase - np.arange(4) * 0.018) % 1) * cumulative[-1]
+    positions = np.column_stack(
+        [np.interp(distances, cumulative, points[:, axis]) for axis in (0, 1)]
+    )
+    particles = ax.scatter(
+        positions[:, 0],
+        positions[:, 1],
+        s=[30, 19, 11, 5],
+        color=[(*to_rgb(color), opacity) for opacity in (1.0, 0.6, 0.35, 0.15)],
+        zorder=8,
+    )
+    particles.set_gid("flow-particles")
 
 
 @dataclass(frozen=True)

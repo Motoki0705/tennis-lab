@@ -1,7 +1,36 @@
-# Court Detection Web UI 利用ガイド
+# Court Detection 可視化ガイド
 
 原画像にコートのGT・予測KP、seg、line、semantic_lineを重ねて確認します。
 [共通の実行前確認](../../base/visualization/README.md#実行前確認)を済ませ、コードのあるリポジトリまたはworktreeの直下で実行してください。各ブロックは単独でコピーできます。
+
+## 発表用のモデル・学習ビジュアル
+
+```bash
+.venv/bin/python -m src.tasks.court_detection.scripts.visualize_learning_stages
+```
+
+CPUで、左にアーキテクチャ・混合バッチとpose教師の流れ、右に実測の検証4指標・学習loss・
+学習率を描きます。凍結状態、LoRAバッジ、バッチ数、射影段数、後段の容量は保存configから決めます。
+既定は45秒・1920×1080・30fpsのMP4、幅960・15fpsのGIFと、
+`stills/{intro,train,select,handoff}.png`です。解像度・fps・各区間の秒数・tag対応は
+[`configs/visualize_learning_stages.yaml`](../configs/visualize_learning_stages.yaml)で明示します。
+出力は`paths.output_root`配下の`court_detection/visualize/presentation/learning_stages/<run-id>/`で、
+既存の出力先は拒否します。worktreeから共有成果物へ出す場合は`paths.output_root=<元repoの絶対path>/outputs`を指定します。
+
+入力はrepo内の`knowledge/runs/run-i983-court-dinov3-b-s42`です。
+train/valの0始まりevent stepを+1し、更新回数0〜33,160で表示します。
+検証は6点、学習lossは50更新ごとの663点で、lossだけを過去20点の移動平均・対数軸で表示します。
+LRはepoch開始時の実測20点を区間内で保持して描きます。元の派生ログがLRを除外していたため、
+同bundleの`restore_learning_rate.py`でhash検証済み原本から補助eventを追加しました。
+元の派生eventは変更せず、由来を`tensorboard-lr-derivation.json`に記録しています。
+必要tag・件数・step・保存config・checkpoint選択が食い違う場合は停止します。
+
+図と粒子は模式表現、曲線は**#983のB runの実測値**です。pipeline既定のcheckpointとは別runです。
+数値をスライドに記す場合はB runの値であると注記してください。
+`manifest.json`には入力SHA-256、選択checkpointの記録済みSHA-256、実装commit、解決済みconfig、
+全scalar（画面に出さない線種mIoUを含む）、`measured` / `schematic`の区分を保存します。
+checkpoint本体は読みません。最後のKP14・LINEの色は
+[`presentation/style.py`](../../base/visualization/presentation/style.py)が正本です。
 
 ## データセット閲覧
 

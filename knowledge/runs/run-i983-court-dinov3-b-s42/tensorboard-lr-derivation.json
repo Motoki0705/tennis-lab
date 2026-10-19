@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "kind": "restored_learning_rate_scalars",
+  "source_manifest": "tensorboard-sources.json",
+  "source": {
+    "name": "events.out.tfevents.1791801031.b86dcb91a190.9470.0",
+    "role": "training",
+    "bytes": 11160245,
+    "sha256": "df51dc090c641556813afee7379572c0a6252edfdb6ffeb1659dc1f9bc62a4b7",
+    "drive_id": "10DyU1FkGyrtZ5o8FTEQz122KjEqZyMfw"
+  },
+  "tag": "lr-AdamW",
+  "count": 20,
+  "policy": "Retain original tag, step, value and wall_time; no scheduler reconstruction.",
+  "output": "tensorboard/version_0/events.out.tfevents.learning_rate",
+  "sha256": "f2151f1d8eab4d4fef3c6615f282ed936085d94c870bbe5ad82c3bf687aea14c"
+}

@@ -11,6 +11,7 @@ from src.utils.configuration import (
     AuditInventory,
     AuditRule,
 )
+from src.utils.configuration.catalog import BOUNDARY_CONTRACTS
 from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 
 
@@ -138,6 +139,27 @@ def test_mixed_court_training_boundary_remains_explicitly_registered() -> None:
         "src.tasks.court_detection.training.runner.validate_train_boundary"
     )
     assert boundary.executable_module
+
+
+def test_court_learning_presentation_has_an_explicit_hydra_boundary() -> None:
+    boundary = next(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.module
+        == "src.tasks.court_detection.scripts.visualize_learning_stages"
+    )
+    assert boundary.validator_key == "court_detection.learning_stages"
+    assert boundary.validator_callable == (
+        "src.tasks.court_detection.visualization.presentation.configuration."
+        "validate_learning_stages_boundary"
+    )
+    contract = next(
+        contract
+        for contract in BOUNDARY_CONTRACTS
+        if contract.boundary_id == f"{boundary.module}:main"
+    )
+    assert contract.validator_callable == boundary.validator_callable
+    assert any(field.endswith(".run_bundle") for field in contract.field_paths)
 
 
 def test_default_inventory_contains_only_current_policy() -> None:
