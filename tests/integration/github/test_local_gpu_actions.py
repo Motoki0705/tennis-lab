@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any, cast
 
 import yaml
+
+from src.utils.training_queue import RETENTION_NS
 
 ROOT = Path(__file__).parents[3]
 WORKFLOWS = ROOT / ".github/workflows"
@@ -89,14 +94,13 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     bash_scripts = [
         SCRIPTS / "enqueue_training.sh",
         SCRIPTS / "install_self_hosted_runner.sh",
+        SCRIPTS / "install_queue_bundle.sh",
         SCRIPTS / "wsl_keepalive.sh",
     ]
     for script in bash_scripts:
         subprocess.run(["bash", "-n", str(script)], check=True)
 
-    installer = (SCRIPTS / "install_self_hosted_runner.sh").read_text(
-        encoding="utf-8"
-    )
+    installer = (SCRIPTS / "install_self_hosted_runner.sh").read_text(encoding="utf-8")
     assert 'readonly RUNNER_USER="tennis-actions"' in installer
     assert "ProtectHome=true" in installer
     assert "for mount_path in /mnt/?; do" in installer
@@ -112,14 +116,14 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert 'runuser -u "$RUNNER_USER" -- test -w "$lock_path"' in installer
     assert (
         "ReadWritePaths=$RUNNER_HOME $STATE_ROOT/runs $STATE_ROOT/training-queue "
-        "$GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE"
-        in installer
+        "$GPU_LOCK_FILE $GPU_GATE_FILE $GPU_SLOT_0_FILE $GPU_SLOT_1_FILE" in installer
     )
     assert "KillMode=control-group" in installer
     assert "KillSignal=SIGTERM" in installer
     assert "SendSIGKILL=no" in installer
     assert "TimeoutStopSec=infinity" in installer
     assert "sha256sum --check --status" in installer
+    assert 'bash "$SCRIPT_DIR/install_queue_bundle.sh" "$TOOL_ROOT/bin"' in installer
 
     enqueue = (SCRIPTS / "enqueue_training.sh").read_text(encoding="utf-8")
     assert 'TRAINING_QUEUE_DIR="$STATE_ROOT/training-queue"' in enqueue
@@ -130,4 +134,125 @@ def test_runner_scripts_parse_and_install_security_boundaries() -> None:
     assert "TRAINING_RESOURCE must be half or all." in enqueue
     assert 'queue_args+=(--issue "$TRAINING_ISSUE")' in enqueue
     assert '--resource "$TRAINING_RESOURCE"' in enqueue
-    assert '- Logical GPU resource: \`$TRAINING_RESOURCE\`' in enqueue
+    assert "- Logical GPU resource: \`$TRAINING_RESOURCE\`" in enqueue
+
+
+def test_installed_queue_runs_outside_repository_with_system_python_only(
+    tmp_path: Path,
+) -> None:
+    # The installer itself needs root and touches system services. Exercise its
+    # exact runtime-copy helper instead, outside Git even with --basetemp in a
+    # worktree. No venv, PYTHONPATH, site packages or user Python configuration.
+    with tempfile.TemporaryDirectory(
+        prefix="training-queue-install-", dir="/tmp"
+    ) as temporary:
+        root = Path(temporary).resolve()
+        assert not root.is_relative_to(ROOT.resolve())
+        binary_directory = root / "opt/tennis-lab-actions/bin"
+        environment = {
+            "PATH": "/usr/bin:/bin",
+            "HOME": str(root),
+            "TRAINING_QUEUE_DIR": str(tmp_path / "queue"),
+            "TRAINING_QUEUE_LOCK_FILE": str(tmp_path / "gpu.lock"),
+            "TRAINING_QUEUE_SYSTEM_LOCK_FILE": str(tmp_path / "unprovisioned/gpu.lock"),
+            "GIT_CEILING_DIRECTORIES": str(root),
+            "TRAINING_QUEUE_TEST_NOW_NS": "1792368000000000000",
+        }
+        subprocess.run(
+            ["bash", str(SCRIPTS / "install_queue_bundle.sh"), str(binary_directory)],
+            env=environment,
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        def run(*arguments: str) -> str:
+            return subprocess.run(
+                ["bash", str(binary_directory / "training_queue.sh"), *arguments],
+                env=environment,
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+
+        # Disable third-party packages for every helper call, and record which
+        # interpreter was used without depending on the test runner's Python.
+        shim = root / "system-python"
+        shim.mkdir()
+        calls = root / "python-calls"
+        (shim / "python3").write_text(
+            f'#!/bin/sh\necho "$*" >> "{calls}"\nexec /usr/bin/python3 -I -S "$@"\n'
+        )
+        (shim / "python3").chmod(0o755)
+        environment["PATH"] = f"{shim}:/usr/bin:/bin"
+        bundle = {
+            path.relative_to(binary_directory): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
+            for path in binary_directory.rglob("*")
+            if path.is_file()
+        }
+        for path in binary_directory.rglob("*"):
+            path.chmod(0o555 if path.is_dir() else 0o444)
+        binary_directory.chmod(0o555)
+        try:
+            job = (
+                run(
+                    "add",
+                    "true",
+                    "--name",
+                    "installed",
+                    "--idempotency-key",
+                    "installed-attempt",
+                )
+                .strip()
+                .removeprefix("queued: ")
+            )
+            assert "queued=1" in run("status")
+            assert run("cancel", job).strip() == "cancelled"
+            queue = tmp_path / "queue"
+            completion = queue / "control/completions" / f"{job[:-4]}.json"
+            record = json.loads(completion.read_text())
+            log = queue / "logs" / f"{job[:-4]}.log"
+            log.write_text("retained then collected")
+            environment["TRAINING_QUEUE_TEST_NOW_NS"] = str(
+                record["finished_at_ns"] + RETENTION_NS
+            )
+            assert "cancelled=1" in run("status")
+            assert log.exists()
+            environment["TRAINING_QUEUE_TEST_NOW_NS"] = str(
+                record["finished_at_ns"] + RETENTION_NS + 1
+            )
+            assert "cancelled=0" in run("status")
+            assert not log.exists()
+            assert not (queue / "cancelled" / job).exists()
+            assert "history=expired" in run("list", "--include-expired")
+            assert (
+                run(
+                    "add",
+                    "true",
+                    "--name",
+                    "installed",
+                    "--idempotency-key",
+                    "installed-attempt",
+                ).strip()
+                == f"queued: {job}"
+            )
+            assert all(
+                line.startswith("-B ") for line in calls.read_text().splitlines()
+            )
+            assert {
+                path.relative_to(binary_directory): hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+                for path in binary_directory.rglob("*")
+                if path.is_file()
+            } == bundle
+            assert not list(binary_directory.rglob("__pycache__"))
+        finally:
+            for path in binary_directory.rglob("*"):
+                if path.is_dir():
+                    path.chmod(0o755)
+            binary_directory.chmod(0o755)

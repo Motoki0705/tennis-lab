@@ -149,12 +149,7 @@ install -m 0755 "$uv_binary" /usr/local/bin/uv
 install -m 0755 "$uvx_binary" /usr/local/bin/uvx
 echo "Installed uv $uv_tag."
 
-install -m 0755 \
-  "$REPOSITORY_ROOT/.agents/skills/training-queue/scripts/training_queue.sh" \
-  "$TOOL_ROOT/bin/training_queue.sh"
-install -m 0755 \
-  "$REPOSITORY_ROOT/.agents/skills/training-queue/scripts/prune_ckpts.py" \
-  "$TOOL_ROOT/bin/prune_ckpts.py"
+bash "$SCRIPT_DIR/install_queue_bundle.sh" "$TOOL_ROOT/bin"
 install -m 0755 "$SCRIPT_DIR/wsl_keepalive.sh" "$TOOL_ROOT/bin/wsl_keepalive.sh"
 
 source_data="$(printf '%q' "$REPOSITORY_ROOT/data")"

@@ -33,11 +33,15 @@ import contextlib
 import json
 import re
 import shutil
+import sys
 from pathlib import Path
 
 from kg_lib import nodes_dir, portable_path, queue_dir, repo_root
 from kg_schema import PROVIDERS, STATUSES, iso_date
 from kg_storage import check_identity, prepare_node, registration_lock, write_node
+
+sys.path.insert(0, str(repo_root()))
+from src.utils.training_queue import latest_named_job  # noqa: E402
 
 QUEUE_DIR = queue_dir()
 OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
@@ -72,24 +76,14 @@ def portable_output_dir(raw: str, run: dict) -> str:
 
 def find_repro_dir(name: str) -> Path | None:
     """Locate the repro dir for a queue job by name (jobid = job filename stem)."""
-    for sub in ("running", "done", "failed", "jobs"):
-        d = QUEUE_DIR / sub
-        if d.exists():
-            hits = sorted(d.glob(f"*_{name}.job"))
-            if hits:
-                return QUEUE_DIR / "repro" / hits[-1].stem
-    repro_root = QUEUE_DIR / "repro"
-    if repro_root.exists():
-        hits = sorted(repro_root.glob(f"*_{name}"))
-        if hits:
-            return hits[-1]
-    return None
+    job = latest_named_job(QUEUE_DIR, name)
+    return QUEUE_DIR / "repro" / job[:-4] if job else None
 
 
-def find_log(name: str) -> Path | None:
-    d = QUEUE_DIR / "logs"
-    hits = sorted(d.glob(f"*_{name}.log")) if d.exists() else []
-    return hits[-1] if hits else None
+def find_log(name: str, *, run_id: str | None = None) -> Path | None:
+    job = latest_named_job(QUEUE_DIR, name) if run_id is None else run_id + ".job"
+    log = QUEUE_DIR / "logs" / f"{job[:-4]}.log" if job else None
+    return log if log is not None and log.is_file() else None
 
 
 def parse_metrics_from_log(log: Path | None) -> dict[str, float]:
@@ -111,7 +105,7 @@ def load_metrics(repro: Path, name: str) -> dict[str, float]:
             return {k: round(float(v), 6) for k, v in raw.items()}
         except (ValueError, TypeError):
             pass
-    return parse_metrics_from_log(find_log(name))
+    return parse_metrics_from_log(find_log(name, run_id=repro.name))
 
 
 def main() -> int:
@@ -186,7 +180,7 @@ def main() -> int:
         artifacts: dict[str, str] = {"run_dir": str(rel_run_dir)}
         if (run_dir / "pred_test.npz").exists():
             artifacts["predictions"] = str(rel_run_dir / "pred_test.npz")
-        log = find_log(name)
+        log = find_log(name, run_id=repro.name)
         if log and log.exists():
             artifacts["log"] = portable_path(log)
         out_txt = repro / "output_dir.txt"

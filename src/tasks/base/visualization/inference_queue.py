@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from src.utils.paths import PROJECT_ROOT
+from src.utils.training_queue import expired_completion
 
 Task = Literal["blcs", "plcs", "ball_detection", "court_detection", "ball_refiner_3d"]
 SOURCE_ROOT: Path = PROJECT_ROOT
@@ -112,6 +113,12 @@ def run_queued_inference(
             ),
             None,
         )
+        expired = False
+        if terminal is None:
+            completion = expired_completion(queue, job)
+            if completion is not None:
+                terminal = completion["state"]
+                expired = True
         if terminal is not None:
             error_path = directory / "error.json"
             if error_path.exists():
@@ -121,6 +128,8 @@ def run_queued_inference(
                 raise RuntimeError(error["detail"])
             output = directory / "result.bin"
             if terminal != "done" or not output.is_file():
+                if expired:
+                    raise RuntimeError(f"GPU inference {terminal}; queue history expired: {job}")
                 raise RuntimeError(
                     f"GPU inference {terminal}. Queue log: "
                     f"{queue / 'logs' / (job.removesuffix('.job') + '.log')}"
