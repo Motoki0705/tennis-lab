@@ -15,7 +15,12 @@ capacity). Up to two `half` jobs can overlap. `all` jobs remain exclusive.
 
 `scripts/training_queue.sh` — the bash entry point. Its stdlib-only
 `scripts/queue_history.py` helper shares identity/history readers with
-`src/utils/training_queue.py`; keep these files together in a checkout. State lives
+`src/utils/training_queue.py` and runs with `python3 -B`. Keep these files together
+in a checkout. For the standalone Actions runner, the installer uses
+`scripts/github_actions/install_queue_bundle.sh` to copy the complete runtime,
+including the same shared module, into its bin directory. No repository checkout,
+venv, third-party Python packages or writes to the installed runtime are required
+for history maintenance. State lives
 under `$TRAINING_QUEUE_DIR` (default `.training_queue/` in the current
 directory): `jobs/` (pending), `running/`, `done/`, `failed/`, `cancelled/`,
 `logs/`, `worker.pid`, `worker.log`.
@@ -49,7 +54,7 @@ bash "$Q" serve --idle-timeout 2147483647
 # 3. Observe / control.
 bash "$Q" status      # worker state + queued/running/done/failed counts
 bash "$Q" list        # all jobs with resource/slot/PID/state/wait fields
-bash "$Q" list --include-expired  # also show compact records after collection
+bash "$Q" list --include-expired  # also show expired/retained diagnostic records
 bash "$Q" cancel <job-file>  # cancel queued/waiting or request running teardown
 bash "$Q" stop        # exit after currently active jobs finish
 bash "$Q" clear       # drop pending (not-yet-started) jobs
@@ -137,10 +142,21 @@ time, job mtime, log mtime and repro capture time never determine retention.
 Collection removes the matching `logs/<stem>.log`, terminal `.job` in `done/`,
 `failed/` or `cancelled/`, `state/<stem>.state` / `.owner`, cancellation request
 and external acknowledgement. Queued, waiting, running, terminating, ambiguous
-or still-owned jobs are protected, including their logs. Unsafe paths or corrupt
-records produce explicit errors and stop collection; they do not authorize a
-rerun. Logs without terminal evidence are retained with a diagnostic for manual
-inspection. `worker.log`, `repro/`, checkpoints and UI request/result files are
+or still-owned jobs are protected, including their logs. Per-job inconsistencies
+retain that job's files and records unchanged: conflicting terminal state,
+directory/completion disagreement, malformed state/owner/completion records,
+missing terminal history without an expiry marker (even before its deadline),
+and duplicate terminal directories. A one-line stderr diagnostic gives the count
+and inspection command; other jobs' maintenance and the requested command continue.
+Logs without terminal evidence are also retained and reported. To inspect both,
+run `bash "$Q" list --include-expired` and find `history=inconsistent` or
+`history=orphaned`: these extra rows include the job ID, terminal directories and
+reason, including jobs with no remaining terminal file. Correct the underlying
+records only after establishing the actual lifecycle; automatic maintenance does
+not repair them or authorize a rerun. Unsafe filesystem structure, such as a
+symlinked control directory or any non-regular history/deletion path, still fails
+the command explicitly, even if that job also has corrupt records. `worker.log`,
+`repro/`, checkpoints and UI request/result files are
 outside this collection policy.
 
 **Existing data:** files are not renamed, so saved job IDs, embedded environment

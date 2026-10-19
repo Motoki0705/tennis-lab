@@ -17,16 +17,27 @@ import sys
 import tempfile
 import time
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-# The entry point is also called from arbitrary workload CWDs.
-sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+# Checkouts and installed bundles use the same shared source module. Resolve
+# only these explicit layouts, never an unrelated parent checkout or the CWD.
+script_directory = Path(__file__).resolve().parent
+module_root = (
+    script_directory.parents[3]
+    if script_directory.parts[-4:] == (".agents", "skills", "training-queue", "scripts")
+    else script_directory
+)
+if not (module_root / "src/utils/training_queue.py").is_file():
+    raise ImportError(f"training queue shared module is missing under {module_root}")
+sys.path.insert(0, str(module_root))
 from src.utils.training_queue import (  # noqa: E402
     CEILING,
     RETENTION_NS,
     TERMINAL,
+    InvalidQueueRecord,
     completion_path,
     read_completion,
     registration_order,
@@ -54,17 +65,51 @@ def ordered_jobs(directory: Path, newest: bool = False) -> list[str]:
     return sorted(jobs, key=registration_order, reverse=newest)
 
 
+def valid_pid(value: str) -> bool:
+    return (
+        value.isascii()
+        and value.isdigit()
+        and len(value) <= 10
+        and not value.startswith("0")
+        and int(value) <= 2**31 - 1
+    )
+
+
 def values(path: Path) -> dict[str, str]:
     if not regular(path):
         return {}
     result = {}
-    for line in path.read_text().splitlines():
+    try:
+        lines = path.read_text().splitlines()
+    except UnicodeError as exc:
+        raise InvalidQueueRecord(f"invalid queue state/owner record: {path}") from exc
+    for line in lines:
         key, separator, value = line.partition("=")
         if not separator or not key or key in result:
-            raise ValueError(f"invalid queue state/owner record: {path}")
+            raise InvalidQueueRecord(f"invalid queue state/owner record: {path}")
         result[key] = value
     if not result:
-        raise ValueError(f"empty queue state/owner record: {path}")
+        raise InvalidQueueRecord(f"empty queue state/owner record: {path}")
+    if path.suffix == ".state" and result.get("state") not in (
+        "queued",
+        "waiting",
+        "running",
+        "terminating",
+        *TERMINAL,
+    ):
+        raise InvalidQueueRecord(f"invalid queue lifecycle state: {path}")
+    if path.suffix == ".state":
+        for key, allowed in (
+            ("resource", ("half", "all", "invalid")),
+            ("slot", ("-", "0", "1", "all")),
+        ):
+            if key in result and result[key] not in allowed:
+                raise InvalidQueueRecord(f"invalid queue state {key}: {path}")
+        for key in ("pid", "pgid"):
+            if key in result and result[key] != "-" and not valid_pid(result[key]):
+                raise InvalidQueueRecord(f"invalid queue state {key}: {path}")
+        if "wait" in result and not result["wait"]:
+            raise InvalidQueueRecord(f"empty queue state wait reason: {path}")
     return result
 
 
@@ -138,89 +183,149 @@ def complete(queue: Path, job: str, state: str) -> None:
         )
 
 
-def protected(queue: Path, job: str) -> bool:
-    for directory in ("jobs", "running"):
-        path = queue / directory / job
-        if path.exists() or path.is_symlink():
-            return True
-    state = values(queue / "state" / f"{job[:-4]}.state").get("state")
-    if state is not None and state not in TERMINAL:
-        return True
+def protected(queue: Path, job: str, state: str | None) -> bool:
     owner = values(queue / "state" / f"{job[:-4]}.owner")
+    owned = False
     if owner:
         if (
             owner.get("job") != job
-            or not owner.get("pid", "").isdigit()
+            or not valid_pid(owner.get("pid", ""))
+            or not owner.get("start_time", "").isascii()
             or not owner.get("start_time", "").isdigit()
+            or len(owner["start_time"]) > 20
         ):
-            raise ValueError(f"invalid queue owner record: {job}")
+            raise InvalidQueueRecord(f"invalid queue owner record: {job}")
         try:
             # comm may contain spaces or parentheses; starttime is field 22.
             process = (
                 Path(f"/proc/{owner['pid']}/stat").read_text().rsplit(")", 1)[1].split()
             )
         except FileNotFoundError:
-            return False
-        return process[19] == owner["start_time"]
-    return False
+            pass
+        else:
+            owned = process[19] == owner["start_time"]
+    return (
+        owned
+        or (state is not None and state not in TERMINAL)
+        or any((queue / directory / job).exists() for directory in ("jobs", "running"))
+    )
+
+
+def collection_paths(queue: Path, job: str, state: str) -> list[Path]:
+    stem = job[:-4]
+    return [
+        queue / state / job,
+        queue / "logs" / f"{stem}.log",
+        queue / "state" / f"{stem}.state",
+        queue / "state" / f"{stem}.owner",
+        queue / "cancel-requests" / f"{stem}.cancel",
+        queue / "control/external-acks" / f"{stem}.ack",
+    ]
+
+
+@dataclass
+class HistoryEntry:
+    job: str
+    directories: list[str]
+    record: dict[str, Any] | None = None
+    protected: bool = False
+    problem: str | None = None
+    orphaned: bool = False
+
+
+def history_entries(queue: Path) -> Iterator[HistoryEntry]:
+    """Inspect under history_lock; only job-local record errors are recoverable."""
+    terminal: dict[str, list[str]] = {}
+    for state in TERMINAL:
+        for path in (queue / state).glob("*.job"):
+            if not path.name.startswith("."):
+                terminal.setdefault(path.name, []).append(state)
+    jobs = set(terminal)
+    for directory, suffix in (("control/completions", ".json"), ("logs", ".log")):
+        jobs.update(
+            f"{p.stem}.job"
+            for p in (queue / directory).glob(f"*{suffix}")
+            if not p.name.startswith(".")
+        )
+    for job in sorted(jobs):
+        entry = HistoryEntry(job, terminal.get(job, []))
+        # Validate paths before handling data errors. A symlink, directory or
+        # special file must never be hidden by a corrupt record for the same job.
+        for path in [
+            *(queue / state / job for state in ("jobs", "running", *TERMINAL)),
+            *collection_paths(queue, job, "done")[1:],
+            completion_path(queue, job),
+        ]:
+            regular(path)
+        try:
+            if len(entry.directories) > 1:
+                raise InvalidQueueRecord("job appears in multiple terminal directories")
+            state_value = values(queue / "state" / f"{job[:-4]}.state").get("state")
+            entry.record = read_completion(queue, job)
+            entry.protected = protected(queue, job, state_value)
+            terminal_directory = entry.directories[0] if entry.directories else None
+            expected = (
+                terminal_directory if entry.record is None else entry.record["state"]
+            )
+            if (
+                expected is not None
+                and state_value is not None
+                and state_value != expected
+            ):
+                raise InvalidQueueRecord(
+                    f"terminal state {state_value} disagrees with history {expected}"
+                )
+            if entry.record is not None:
+                if (
+                    terminal_directory is not None
+                    and entry.record["state"] != terminal_directory
+                ):
+                    raise InvalidQueueRecord(
+                        "terminal directory disagrees with completion"
+                    )
+                if (
+                    terminal_directory is None
+                    and "expired_at_ns" not in entry.record
+                    and not entry.protected
+                ):
+                    raise InvalidQueueRecord("terminal history missing before expiry")
+            elif terminal_directory is None and not entry.protected:
+                entry.orphaned = True
+        except InvalidQueueRecord as exc:
+            entry.problem = str(exc)
+        yield entry
 
 
 def maintain(queue: Path) -> None:
-    migrated = orphaned = 0
+    migrated = orphaned = inconsistent = 0
     timestamp = now_ns()
     with history_lock(queue):
-        terminal: dict[str, str] = {}
-        for state in TERMINAL:
-            for path in (queue / state).glob("*.job"):
-                if path.name.startswith("."):
-                    continue
-                if path.name in terminal:
-                    raise ValueError(
-                        f"job appears in multiple terminal directories: {path.name}"
-                    )
-                terminal[path.name] = state
-        jobs = set(terminal)
-        jobs.update(
-            f"{p.stem}.job" for p in (queue / "control/completions").glob("*.json")
-        )
-        for job in sorted(jobs):
-            if protected(queue, job):
+        for entry in history_entries(queue):
+            if entry.problem:
+                inconsistent += 1
                 continue
-            record = read_completion(queue, job)
-            state_value = values(queue / "state" / f"{job[:-4]}.state").get("state")
-            expected = terminal.get(job) if record is None else record["state"]
-            if state_value is not None and state_value != expected:
-                raise ValueError(f"terminal state disagrees with history: {job}")
+            if entry.orphaned:
+                orphaned += 1
+                continue
+            if entry.protected:
+                continue
+            job, record = entry.job, entry.record
             if record is None:
                 # No reliable end timestamp exists for old data. Start a full
                 # grace period on first observation, never use registration/mtime.
-                regular(queue / terminal[job] / job)
                 record = dict(
                     version=1,
                     job=job,
-                    state=terminal[job],
+                    state=entry.directories[0],
                     finished_at_ns=None,
                     retention_started_at_ns=timestamp,
                     time_source="legacy-observed",
                 )
                 write_completion(queue, record)
                 migrated += 1
-            if job in terminal and record["state"] != terminal[job]:
-                raise ValueError(f"terminal history disagrees with completion: {job}")
             if timestamp - record["retention_started_at_ns"] <= RETENTION_NS:
                 continue
-            if job not in terminal and "expired_at_ns" not in record:
-                # An unexplained disappearance is not an intentional expiry.
-                raise ValueError(f"terminal history missing before expiry: {job}")
-            stem = job[:-4]
-            paths = [
-                queue / record["state"] / job,
-                queue / "logs" / f"{stem}.log",
-                queue / "state" / f"{stem}.state",
-                queue / "state" / f"{stem}.owner",
-                queue / "cancel-requests" / f"{stem}.cancel",
-                queue / "control/external-acks" / f"{stem}.ack",
-            ]
+            paths = collection_paths(queue, job, record["state"])
             for path in paths:
                 regular(path)  # Validate the complete deletion set before acting.
             if "expired_at_ns" not in record:
@@ -230,14 +335,6 @@ def maintain(queue: Path) -> None:
             # safe both for collection and for idempotent registration.
             for path in paths:
                 path.unlink(missing_ok=True)
-        for path in (queue / "logs").glob("*.log"):
-            job = f"{path.stem}.job"
-            if (
-                job not in jobs
-                and not (queue / "jobs" / job).exists()
-                and not (queue / "running" / job).exists()
-            ):
-                orphaned += 1
     if migrated:
         print(
             f"[history] {migrated} legacy terminal jobs: retaining for 7 days from first observation (end time unknown)",
@@ -245,16 +342,42 @@ def maintain(queue: Path) -> None:
         )
     if orphaned:
         print(
-            f"[history] retaining {orphaned} logs without terminal evidence; inspect manually",
+            f"[history] retaining {orphaned} logs without terminal evidence; inspect with list --include-expired (history=orphaned)",
             file=sys.stderr,
         )
+    if inconsistent:
+        print(
+            f"[history] retaining {inconsistent} inconsistent jobs; inspect with list --include-expired (history=inconsistent)",
+            file=sys.stderr,
+        )
+
+
+def list_history(queue: Path) -> None:
+    with history_lock(queue):
+        for entry in history_entries(queue):
+            if entry.problem or entry.orphaned:
+                kind = "inconsistent" if entry.problem else "orphaned"
+                reason = entry.problem or "log without terminal evidence"
+                print(
+                    f"{entry.job} resource=- slot=- pid=- pgid=- state=unknown "
+                    f"wait=history-{kind} history={kind} "
+                    f"directories={','.join(entry.directories) or '-'} reason={json.dumps(reason)}"
+                )
+            elif (
+                not entry.protected
+                and entry.record is not None
+                and "expired_at_ns" in entry.record
+            ):
+                print(
+                    f"{entry.job} resource=- slot=- pid=- pgid=- state={entry.record['state']} wait=history-expired history=expired"
+                )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "action",
-        choices=("name", "order", "maintain", "complete", "expired", "list-expired"),
+        choices=("name", "order", "maintain", "complete", "expired", "list-history"),
     )
     parser.add_argument("path")
     parser.add_argument("arguments", nargs="*")
@@ -281,12 +404,7 @@ def main() -> int:
                 return 1
             print(record["state"])
         else:
-            for path in sorted((queue / "control/completions").glob("*.json")):
-                record = read_completion(queue, f"{path.stem}.job")
-                if record is not None and "expired_at_ns" in record:
-                    print(
-                        f"{record['job']} resource=- slot=- pid=- pgid=- state={record['state']} wait=history-expired history=expired"
-                    )
+            list_history(queue)
     except (OSError, ValueError, KeyError, IndexError) as exc:
         print(f"error: queue history: {exc}", file=sys.stderr)
         return 1

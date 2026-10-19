@@ -462,7 +462,7 @@ _queue_python() {
 }
 
 _history() {
-  "$(_queue_python)" "$(dirname "$SCRIPT_PATH")/queue_history.py" "$@"
+  python3 -B "$(dirname "$SCRIPT_PATH")/queue_history.py" "$@"
 }
 
 _maintain_history() {
@@ -1551,7 +1551,7 @@ cmd_list() {
     done < <(find "$directory" -maxdepth 1 -name '*.job' -printf '%f\n' 2>/dev/null | sort)
   done
   if [ "$include_expired" -eq 1 ]; then
-    _history list-expired "$QUEUE_DIR" || return 1
+    _history list-history "$QUEUE_DIR" || return 1
   fi
   return 0
 }
