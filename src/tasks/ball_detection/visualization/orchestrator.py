@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Literal, cast
 
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_detection.configuration import BallRuntimePaths
 from src.tasks.ball_detection.inference import BallDetectionPredictor
@@ -16,10 +17,12 @@ from src.tasks.ball_detection.visualization.api.predict import (
     predict_clip,
 )
 from src.tasks.ball_detection.visualization.io.clip import load_clip_sequence
+from src.tasks.ball_detection.visualization.io.manifest import build_overlay_manifest
 from src.tasks.ball_detection.visualization.rendering import (
     DrawStyle,
     LayoutStyle,
     render_animation_frames,
+    render_overlay_frames,
 )
 from src.tasks.base.visualization.gif import save_gif
 from src.tasks.base.visualization.orchestrator import (
@@ -33,6 +36,7 @@ from src.tasks.base.visualization.orchestrator import (
 )
 from src.tasks.base.visualization.orchestrator import resolve_device
 from src.utils.configuration import PathResolver, PathRole
+from src.utils.io import save_json
 
 logger = logging.getLogger(__name__)
 
@@ -61,16 +65,25 @@ class RuntimeConfig:
     info: bool
     clip_label: str
     draw: DrawStyle
-    layout: LayoutStyle
+    layout: Literal["grid_2x2", "overlay"]
+    grid: LayoutStyle
+    overlay_output_width: int
     resolver: PathResolver
     subpixel_refine: bool
     strict: bool
     weights_only: bool
+    resolved_config: dict[str, Any]
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Build runtime config from composed Hydra config."""
     vis = cfg.visualization
+    layout = str(vis.layout)
+    if layout not in {"grid_2x2", "overlay"}:
+        raise ValueError("visualization.layout must be 'grid_2x2' or 'overlay'.")
+    overlay_output_width = int(vis.overlay.output_width)
+    if overlay_output_width <= 0:
+        raise ValueError("visualization.overlay.output_width must be positive.")
     run = cfg.run
     data_cfg = cfg.data
     metrics_cfg = cfg.metrics
@@ -114,7 +127,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     )
 
     draw_cfg = vis.draw
-    layout_cfg = vis.layout
+    layout_cfg = vis.grid
     gif_cfg = vis.gif
 
     return RuntimeConfig(
@@ -155,13 +168,15 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
                 name="visualization.draw.muted_text_color_rgb",
             ),
         ),
-        layout=LayoutStyle(
+        layout=cast(Literal["grid_2x2", "overlay"], layout),
+        overlay_output_width=overlay_output_width,
+        grid=LayoutStyle(
             header_height=int(layout_cfg.header_height),
             tile_gap=int(layout_cfg.tile_gap),
             text_scale=float(layout_cfg.text_scale),
             text_thickness=int(layout_cfg.text_thickness),
             background_rgb=_parse_rgb(
-                layout_cfg.background_rgb, name="visualization.layout.background_rgb"
+                layout_cfg.background_rgb, name="visualization.grid.background_rgb"
             ),
             panel_label_height=int(layout_cfg.panel_label_height),
         ),
@@ -169,6 +184,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         subpixel_refine=bool(metrics_cfg.subpixel_refine),
         strict=bool(vis.strict),
         weights_only=bool(vis.weights_only),
+        resolved_config=cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True)),
     )
 
 
@@ -183,6 +199,7 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         normalize_imagenet=False,
         imagenet_mean=cfg.imagenet_mean,
         imagenet_std=cfg.imagenet_std,
+        render_width=cfg.overlay_output_width if cfg.layout == "overlay" else None,
     )
 
     logger.info("Loaded clip %s with %d frames.", cfg.clip_label, len(clip.frame_names))
@@ -218,29 +235,48 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         image_size_hw=cfg.image_size_hw,
         peak_threshold=cfg.peak_threshold,
     )
-    mdd_frames_rgb = build_mdd_frames(predictor=predictor, clip=clip)
-
-    rendered_frames = render_animation_frames(
-        frames_rgb=[frame.cpu().numpy() for frame in clip.render_frames_rgb],
-        frame_names=clip.frame_names,
-        mdd_frames_rgb=mdd_frames_rgb,
-        pred_coords_px=[
-            _coord_tensor_to_tuple(coord) for coord in predictions.coords_px
-        ],
-        pred_visibility=[bool(value.item()) for value in predictions.visibility],
-        pred_confidences=[float(value.item()) for value in predictions.confidences],
-        pred_heatmaps=[heatmap.cpu().numpy() for heatmap in predictions.heatmaps],
-        peak_threshold=cfg.peak_threshold,
-        clip_label=cfg.clip_label,
-        draw=cfg.draw,
-        layout=cfg.layout,
-    )
+    frames_rgb = [frame.cpu().numpy() for frame in clip.render_frames_rgb]
+    pred_visibility = [bool(value.item()) for value in predictions.visibility]
+    if cfg.layout == "overlay":
+        rendered_frames = render_overlay_frames(
+            frames_rgb=frames_rgb,
+            pred_coords_normalized=[
+                _coord_tensor_to_tuple(coord) for coord in predictions.coords_normalized
+            ],
+            pred_visibility=pred_visibility,
+            draw=cfg.draw,
+        )
+        manifest = build_overlay_manifest(
+            store_dir=cfg.store_dir,
+            clip_id=cfg.clip_id,
+            frame_names=clip.frame_names,
+            checkpoint=cfg.checkpoint,
+            resolved_config=cfg.resolved_config,
+        )
+    else:
+        rendered_frames = render_animation_frames(
+            frames_rgb=frames_rgb,
+            frame_names=clip.frame_names,
+            mdd_frames_rgb=build_mdd_frames(predictor=predictor, clip=clip),
+            pred_coords_px=[
+                _coord_tensor_to_tuple(coord) for coord in predictions.coords_px
+            ],
+            pred_visibility=pred_visibility,
+            pred_confidences=[float(value.item()) for value in predictions.confidences],
+            pred_heatmaps=[heatmap.cpu().numpy() for heatmap in predictions.heatmaps],
+            peak_threshold=cfg.peak_threshold,
+            clip_label=cfg.clip_label,
+            draw=cfg.draw,
+            layout=cfg.grid,
+        )
     save_gif(
         frames_rgb=rendered_frames,
         path=cfg.save,
         fps=cfg.fps,
         loop=cfg.gif_loop,
     )
+    if cfg.layout == "overlay":
+        save_json(manifest, cfg.save.parent / "manifest.json")
     logger.info("Saved clip visualization to %s", cfg.save)
     return 0
 

@@ -12,6 +12,10 @@ max_frames: null
 info: false
 strict: true
 weights_only: false
+layout: grid_2x2
+
+overlay:
+  output_width: 960
 
 draw:
   gt_radius: 6
@@ -22,7 +26,7 @@ draw:
   text_color_rgb: [245, 245, 245]
   muted_text_color_rgb: [168, 168, 168]
 
-layout:
+grid:
   header_height: 44
   tile_gap: 12
   text_scale: 0.52

@@ -2,20 +2,27 @@
 
 from __future__ import annotations
 
+import hashlib
 import inspect
+import json
 from collections.abc import Callable
+from pathlib import Path
 from typing import cast
 
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig, ListConfig
+from omegaconf import DictConfig, ListConfig, OmegaConf, open_dict
+from PIL import Image
 
+from src.tasks.ball_detection.configuration import validate_visualization
 from src.tasks.ball_detection.scripts import visualize as visualize_script
 from src.tasks.ball_detection.visualization import orchestrator
 from src.tasks.ball_detection.visualization.orchestrator import build_runtime_config
+from src.utils.configuration import ConfigurationError
 from src.utils.device import DeviceSelectionError
 from src.utils.paths import PROJECT_ROOT
+from tests.support.tasks.ball_detection.store import frame, write_store_clip
 
 
 def _visualization_config(*, device: str) -> DictConfig:
@@ -37,7 +44,90 @@ def test_runtime_config_keeps_resolved_torch_device() -> None:
     assert runtime.image_size_hw == (288, 512)
     assert runtime.imagenet_mean == (0.485, 0.456, 0.406)
     assert runtime.draw.gt_color_rgb == (255, 96, 96)
-    assert runtime.layout.background_rgb == (18, 18, 18)
+    assert runtime.layout == "grid_2x2"
+    assert runtime.grid.background_rgb == (18, 18, 18)
+    assert runtime.overlay_output_width == 960
+
+
+@pytest.mark.parametrize("layout", ["unknown", "", "GRID_2X2"])
+def test_unknown_layout_is_rejected_at_runtime_and_cli_boundary(layout: str) -> None:
+    config = _visualization_config(device="cpu")
+    config.visualization.layout = layout
+    with pytest.raises(ValueError, match="visualization.layout"):
+        build_runtime_config(config)
+    with pytest.raises(ConfigurationError, match="visualization.layout"):
+        validate_visualization(config)
+
+
+def test_layout_is_required() -> None:
+    config = _visualization_config(device="cpu")
+    with open_dict(config):
+        del config.visualization.layout
+    with pytest.raises(ConfigurationError, match="layout"):
+        validate_visualization(config)
+
+
+@pytest.mark.parametrize("width", [0, -1])
+def test_nonpositive_overlay_width_is_rejected(width: int) -> None:
+    config = _visualization_config(device="cpu")
+    config.visualization.overlay.output_width = width
+    with pytest.raises(ValueError, match="output_width"):
+        build_runtime_config(config)
+    with pytest.raises(ConfigurationError, match="output_width"):
+        validate_visualization(config)
+
+
+@pytest.mark.parametrize("layout", ["grid_2x2", "overlay"])
+def test_real_cpu_prediction_saves_gif(
+    tmp_path: Path,
+    make_tiny_checkpoint: Callable[..., Path],
+    monkeypatch: pytest.MonkeyPatch,
+    layout: str,
+) -> None:
+    """Exercise store -> real checkpoint -> aggregated predictions -> GIF."""
+    clip_id = "tracknet/game1/Clip1"
+    write_store_clip(
+        tmp_path / "data/ball_detection/test", clip_id,
+        [frame(index) for index in range(3)], size=(640, 360),
+    )
+    make_tiny_checkpoint(tmp_path / "ckpt/ball_detection/tiny.ckpt")
+    config = _visualization_config(device="cpu")
+    config.paths.project_root = str(tmp_path)
+    config.data.data_dir = "ball_detection/test"
+    config.data.image_size = [64, 128]
+    config.data.augmentation.normalize_imagenet.enabled = False
+    config.model.num_frames = 2
+    config.visualization.checkpoint = {"role": "checkpoint", "path": "ball_detection/tiny.ckpt"}
+    config.visualization.layout = layout
+    config.visualization.overlay.output_width = 320
+    config.visualization.save = "ball_detection/presentation/ball_2d/test/ball_2d.gif"
+    config.visualization.max_frames = 3
+    if layout == "overlay":
+        def unexpected_mdd(**_kwargs: object) -> None:
+            pytest.fail("overlay must not build the unused MDD panel")
+        monkeypatch.setattr(orchestrator, "build_mdd_frames", unexpected_mdd)
+    validate_visualization(config)
+    runtime = build_runtime_config(config)
+
+    assert orchestrator.run_visualization(runtime) == 0
+
+    with Image.open(runtime.save) as gif:
+        assert gif.format == "GIF"
+        assert gif.n_frames == 3
+        assert gif.size == ((320, 180) if layout == "overlay" else (268, 232))
+    assert not list(runtime.save.parent.glob("*.mp4"))
+    manifest_path = runtime.save.parent / "manifest.json"
+    if layout == "overlay":
+        manifest = json.loads(manifest_path.read_text())
+        assert manifest["clip_id"] == clip_id
+        assert manifest["frame_names"] == [f"{clip_id}:{index}" for index in range(3)]
+        assert manifest["config"] == OmegaConf.to_container(config, resolve=True)
+        assert manifest["elements"] == {"video": "measured", "predictions": "measured"}
+        assert len(manifest["git_commit"]) == 40
+        for entry in [*manifest["inputs"], manifest["checkpoint"]]:
+            assert entry["sha256"] == hashlib.sha256(Path(entry["path"]).read_bytes()).hexdigest()
+    else:
+        assert not manifest_path.exists()
 
 
 def test_runtime_config_rejects_unavailable_cuda_before_predictor_construction(
