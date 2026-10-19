@@ -17,6 +17,20 @@ layout: grid_2x2
 
 overlay:
   output_width: 960
+  frame_stride: 1
+  styles: [point]
+  # Marker sizes below are pixels at output width 960, scaled with the width.
+  ring:
+    radius: 9
+    thickness: 2
+    center_radius: 2
+    glow_radius: 3
+    glow_opacity: 0.12
+  trail:
+    radius: 4
+    length: 8
+    thickness: 2
+    opacity: 0.55
 
 draw:
   gt_radius: 6

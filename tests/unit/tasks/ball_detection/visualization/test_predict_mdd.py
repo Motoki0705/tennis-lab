@@ -55,6 +55,7 @@ def _build(
         subpixel_refine=False,
     )
     clip = ClipSequence(
+        source_fps=30.0,
         frame_names=tuple(f"frame_{index}.jpg" for index in range(num_frames)),
         render_frames_rgb=tuple(
             torch.zeros(h, w, 3, dtype=torch.uint8) for _ in range(num_frames)

@@ -130,6 +130,36 @@ storeの途中の区間は `visualization.start_frame`（0始まり、既定0）
 はframe 200〜299です。負の開始位置・clip末尾以降・モデル窓より短い区間は拒否します。
 モデル入力・MDDの前処理はclip全体と同じ経路です。
 
+### 元動画の速度とマーカー案の比較
+
+`visualization.fps=null` はstoreに記録された元動画のfpsを使う指定です（overlayのみ）。
+`visualization.overlay.frame_stride` は**推論後の描画だけ**を間引き、GIFのfpsは
+元動画のfps / strideになります。モデルは選択区間の全frameを、元の順序と時間文脈で推論します。
+たとえば59.94006fpsの1010frameをstride=2にすると、505frame・29.97003fpsで
+約16.85秒の1x再生になります。端数の区間では最後の表示もstride分だけ保持します。
+数値の `visualization.fps` は従来どおり指定した表示fpsを使います。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize \
+  visualization.layout=overlay visualization.clip_id=meiji/video_000/clip_000/cam2 \
+  visualization.start_frame=0 visualization.max_frames=null visualization.fps=null \
+  visualization.overlay.output_width=960 visualization.overlay.frame_stride=2 \
+  'visualization.overlay.styles=[ring,trail]' \
+  'run.output_dir=ball_detection/visualize/presentation/ball_2d/${tennis_run_id:}' \
+  'visualization.save=${run.output_dir}/ball_2d.gif'
+```
+
+`overlay.styles` は `point`（従来の輪）、`ring`（案A）、`trail`（案B）の重複しないリストです。
+複数指定すると、**1回の推論を共有**し、保存先の `ring/ball_2d.gif`、`trail/ball_2d.gif` と
+各 `manifest.json` を出力します。1種類だけの場合は指定したGIFパスへ保存します。
+
+案Aは `overlay.ring` で、半径9・線幅2・中心点半径2・glow半径3・opacity 0.12を明示します。
+案Bは `overlay.trail` で、点半径4・線幅2・長さ8（元動画のframe数）・最大opacity 0.55を明示します。
+マーカー寸法は出力幅960を基準に比例させ、色は共通の `draw.pred_color_rgb` を使います。
+軌跡は古いほど薄く、**予測のない元frameで切ります**。表示を間引いても欠測をまたいで結びません。
+不可視frameではマーカーも軌跡も描かず、文字・補間点は追加しません。
+manifestには全推論frame、表示frame、元fps、描画stride、GIFのfpsとstyleを記録します。
+
 GPU推論は[共有キュー](../../../../.agents/skills/training-queue/SKILL.md)へ登録して実行してください。
 worktreeでは実データの `paths.data_root` とcheckpointのrootを絶対パスで指定します。
 checkpointは `visualization.checkpoint` の `role`（`artifact` / `checkpoint`）と `path` で

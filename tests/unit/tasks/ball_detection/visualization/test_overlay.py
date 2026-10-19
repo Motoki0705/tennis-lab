@@ -18,6 +18,10 @@ from src.tasks.ball_detection.visualization.rendering.clip_renderer import (
     DrawStyle,
     render_overlay_frames,
 )
+from src.tasks.ball_detection.visualization.rendering.markers import (
+    RingStyle,
+    TrailStyle,
+)
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
 from tests.support.tasks.ball_detection.store import frame, write_store_clip
 
@@ -26,6 +30,8 @@ DRAW = DrawStyle(
     gt_color_rgb=(255, 96, 96), pred_color_rgb=(96, 255, 128),
     text_color_rgb=(245, 245, 245), muted_text_color_rgb=(168, 168, 168),
 )
+RING = RingStyle(radius=9, thickness=2, center_radius=2, glow_radius=3, glow_opacity=0.12)
+TRAIL = TrailStyle(radius=4, length=8, thickness=2, opacity=0.55)
 
 
 @pytest.mark.parametrize("width,height", [(512, 288), (960, 540), (256, 144)])
@@ -66,6 +72,64 @@ def test_mismatched_prediction_lengths_are_rejected() -> None:
         render_overlay_frames(
             frames_rgb=[np.zeros((20, 30, 3), dtype=np.uint8)],
             pred_coords_normalized=[], pred_visibility=[False], draw=DRAW,
+        )
+
+
+def test_ring_has_small_center_thin_outline_and_faint_glow() -> None:
+    original: np.ndarray = np.zeros((160, 960, 3), dtype=np.uint8)
+    coord = (480 / 959, 80 / 159)
+    (actual,) = render_overlay_frames(
+        frames_rgb=[original], pred_coords_normalized=[coord], pred_visibility=[True],
+        draw=DRAW, style="ring", ring=RING,
+    )
+    np.testing.assert_array_equal(actual[80, 480], DRAW.pred_color_rgb)
+    np.testing.assert_array_equal(actual[80, 489], DRAW.pred_color_rgb)
+    assert actual[80, 485].max() < 20  # Clear space between dot and ring.
+    assert 0 < actual[80, 493].max() < 30  # Faint glow outside the outline.
+    np.testing.assert_array_equal(actual[:50], original[:50])
+
+
+def test_trail_fades_and_has_bounded_source_frame_history() -> None:
+    original: np.ndarray = np.zeros((160, 960, 3), dtype=np.uint8)
+    frames = render_overlay_frames(
+        frames_rgb=[original] * 5,
+        pred_coords_normalized=[(x / 959, 80 / 159) for x in (100, 200, 300, 400, 500)],
+        pred_visibility=[True] * 5, draw=DRAW, style="trail", trail=TRAIL,
+    )
+    assert 0 < frames[-1][80, 150, 1] < frames[-1][80, 450, 1] < DRAW.pred_color_rgb[1]
+    np.testing.assert_array_equal(frames[-1][80, 500], DRAW.pred_color_rgb)
+    short = TrailStyle(radius=4, length=3, thickness=2, opacity=0.55)
+    final = render_overlay_frames(
+        frames_rgb=[original] * 5,
+        pred_coords_normalized=[(x / 959, 80 / 159) for x in (100, 200, 300, 400, 500)],
+        pred_visibility=[True] * 5, draw=DRAW, style="trail", trail=short,
+    )[-1]
+    assert final[80, 150].max() == 0
+    assert final[80, 350].max() > 0
+
+
+@pytest.mark.parametrize("stride", [1, 2])
+def test_trail_breaks_at_missing_source_frame_even_when_skipped(stride: int) -> None:
+    original: np.ndarray = np.zeros((160, 960, 3), dtype=np.uint8)
+    coords = [(x / 959, 80 / 159) for x in (100, 200, 300, 400, 500)]
+    coords[3] = (float("nan"), float("nan"))
+    frames = render_overlay_frames(
+        frames_rgb=[original] * 5, pred_coords_normalized=coords,
+        pred_visibility=[True, True, True, False, True], draw=DRAW,
+        style="trail", trail=TRAIL, frame_stride=stride,
+    )
+    assert frames[-1][80, 400].max() == 0  # No bridge across missing frame 3.
+    np.testing.assert_array_equal(frames[-1][80, 500], DRAW.pred_color_rgb)
+    if stride == 1:
+        np.testing.assert_array_equal(frames[3], original)
+
+
+@pytest.mark.parametrize("stride", [0, -1])
+def test_render_stride_must_be_positive(stride: int) -> None:
+    with pytest.raises(ValueError, match="frame_stride"):
+        render_overlay_frames(
+            frames_rgb=[], pred_coords_normalized=[], pred_visibility=[], draw=DRAW,
+            frame_stride=stride,
         )
 
 
