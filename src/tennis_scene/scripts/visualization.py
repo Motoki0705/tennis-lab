@@ -61,8 +61,10 @@ def main(cfg: DictConfig) -> int:
     """Visualize tennis scene results."""
     from src.tennis_scene.archive import load_scene_result
     from src.tennis_scene.configuration import parse_visualization_config
-    from src.tennis_scene.rendering import TennisSceneRenderer
-    from src.tennis_scene.rendering.tennis_scene_renderer import TennisSceneStyle
+    from src.tennis_scene.visualization.rendering import TennisSceneRenderer
+    from src.tennis_scene.visualization.rendering.tennis_scene_renderer import (
+        TennisSceneStyle,
+    )
 
     runtime = parse_visualization_config(cfg)
     if not runtime.input_path.is_file():

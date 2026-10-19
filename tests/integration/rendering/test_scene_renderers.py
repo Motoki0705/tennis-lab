@@ -336,8 +336,11 @@ class TestTennisSceneRenderer:
         tmp_path: Path,
         tennis_scene_assets: tuple[Path, Path],
     ) -> None:
-        from src.tennis_scene.rendering import TennisSceneRenderer, TennisSceneStyle
         from src.tennis_scene.schema import SceneResult
+        from src.tennis_scene.visualization.rendering import (
+            TennisSceneRenderer,
+            TennisSceneStyle,
+        )
 
         num_frames = 4
         ball_3d: np.ndarray = np.zeros((num_frames, 3), dtype=np.float32)

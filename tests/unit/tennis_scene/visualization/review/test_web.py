@@ -9,8 +9,8 @@ import cv2
 import numpy as np
 import pytest
 
-from src.tennis_scene.review.web import make_server
-from src.tennis_scene.scripts.visualize_component_store import Review
+from src.tennis_scene.visualization.review.gallery import Review
+from src.tennis_scene.visualization.review.web import make_server
 from src.utils.checksum import dual_sha256
 
 

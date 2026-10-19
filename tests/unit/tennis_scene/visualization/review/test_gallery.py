@@ -12,7 +12,8 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
-from src.tennis_scene.scripts.visualize_component_store import RENDERERS, Review
+from src.tennis_scene.visualization.review.gallery import RENDERERS, Review
+from src.tennis_scene.visualization.review.store import StoreReader
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.video import VideoInfo
@@ -32,9 +33,17 @@ def test_gallery_renders_every_declared_component_without_writing_the_store(tmp_
     assert set(RENDERERS) == set(STANDARD_COMPONENTS)
 
     monkeypatch.setattr(Review, "frame", lambda self, camera, index: np.zeros((720, 1280, 3), np.uint8))
-    monkeypatch.setattr("src.tennis_scene.review.snapshot.probe_video_info", lambda _: VideoInfo(30., 1280, 720, 24))
+    monkeypatch.setattr("src.tennis_scene.visualization.review.snapshot.probe_video_info", lambda _: VideoInfo(30., 1280, 720, 24))
     store = tmp_path / "store"
     before = {path: dual_sha256(path) for path in store.rglob("*") if path.is_file() and path.name != ".scene.lock"}
+    reader = StoreReader(store / "scene.json")
+    for node in reader.references:
+        assert reader.stale_dependencies(node) == ()
+        payload, descriptor = reader.payload(node)
+        assert isinstance(payload, dict)
+        assert descriptor == reader.descriptor(node)
+    assert not (tmp_path / "gallery").exists()
+    assert before == {path: dual_sha256(path) for path in store.rglob("*") if path.is_file() and path.name != ".scene.lock"}
     index = Review(store / "scene.json", tmp_path / "gallery").build()
     after = {path: dual_sha256(path) for path in store.rglob("*") if path.is_file() and path.name != ".scene.lock"}
     assert before == after
@@ -71,7 +80,7 @@ def test_gallery_renderers_keep_gaps_on_the_source_frame_axis(tmp_path: Path, mo
         finally:
             plt.close(fig)
         return path.name
-    monkeypatch.setattr("src.tennis_scene.scripts.visualize_component_store._save_plot", capture)
+    monkeypatch.setattr("src.tennis_scene.visualization.review.gallery._save_plot", capture)
     valid = np.array([True, True, False, True, False])
     position = np.array([[0., 0., 0.], [1., 1., 1.], [0., 0., 0.], [3., 3., 3.], [0., 0., 0.]])
     review.render_ball_triangulation("ball_triangulation", "", {"ball": {"status": "partial", "trajectory": {

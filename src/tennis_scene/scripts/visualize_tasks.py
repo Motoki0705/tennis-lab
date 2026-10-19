@@ -17,7 +17,7 @@ from omegaconf import DictConfig
 
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.configuration import validate_visualize_tasks_boundary
-from src.tennis_scene.review.trajectory import mask_intervals
+from src.tennis_scene.visualization.review.trajectory import mask_intervals
 from src.utils.hydra import hydra_main, register_boundary_validator
 from src.utils.schema.player import COCO17_SKELETON
 

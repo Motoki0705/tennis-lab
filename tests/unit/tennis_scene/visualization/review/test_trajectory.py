@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 
-from src.tennis_scene.review.trajectory import mask_intervals, masked_trajectory
+from src.tennis_scene.visualization.review.trajectory import (
+    mask_intervals,
+    masked_trajectory,
+)
 
 
 @pytest.mark.parametrize("mask,intervals", [

@@ -9,15 +9,15 @@ import numpy as np
 
 from src.tennis_scene.motion_alignment.temporal import PlacementRejection
 from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
-from src.tennis_scene.review.trajectory import mask_intervals
 from src.tennis_scene.schema import SceneResult, validate_scene_result_arrays
+from src.tennis_scene.visualization.review.trajectory import mask_intervals
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PointRejection
 from src.utils.schema.player import COCO17_SKELETON
 from src.utils.video import probe_video_info
 
 if TYPE_CHECKING:
-    from src.tennis_scene.scripts.visualize_component_store import Review
+    from src.tennis_scene.visualization.review.gallery import Review
 
 
 def scene_snapshot(value: dict[str, Any]) -> dict[str, Any]:
