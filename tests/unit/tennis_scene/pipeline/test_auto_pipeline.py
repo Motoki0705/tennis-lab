@@ -53,17 +53,11 @@ def runtime(tmp_path: Path, *, overrides: tuple[str, ...] = ()) -> PipelineRunti
 
 
 def materialize_assets(paths: Any, tmp_path: Path) -> None:
-    """Create stand-ins for the test-owned model assets under ``tmp_path``.
-
-    Repository-bundled assets (``src/submodules/vendor``) resolve outside
-    ``tmp_path``; they are real files and must never be overwritten by a test.
-    """
+    """Create stand-ins only for test-owned assets, including SMPL auxiliary files."""
     for path in paths:
-        if path.is_relative_to(tmp_path):
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(b"asset")
-        else:
-            assert path.is_file(), f"repository-bundled asset is missing: {path}"
+        assert path.is_relative_to(tmp_path), f"test asset escapes tmp_path: {path}"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"asset")
 
 
 class FixedStage:

@@ -1,4 +1,4 @@
-"""Strict model-runtime and bundled-asset configuration contracts."""
+"""Strict model-runtime and user-acquired SMPL asset configuration contracts."""
 
 from __future__ import annotations
 
@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 
 from src.submodules.configuration import (
-    BundledModelAssetPaths,
+    SmplAssetPaths,
     SubmoduleRuntimeConfig,
     ViTPoseHeadConfig,
 )
+from src.submodules.smpl_assets import SMPL_ASSET_SOURCES
 from src.utils.configuration import ConfigurationError, PathResolver, RuntimePathRoots
 
 
@@ -83,13 +84,14 @@ def test_vitpose_head_rejects_incomplete_or_untyped_values(failure: str) -> None
         SubmoduleRuntimeConfig.from_mapping(mapping)
 
 
-def test_bundled_assets_require_explicit_project_files(tmp_path: Path) -> None:
+@pytest.mark.parametrize("missing_name", SMPL_ASSET_SOURCES)
+def test_smpl_assets_require_explicit_checkpoint_files(tmp_path: Path, missing_name: str) -> None:
     project = tmp_path.resolve()
     roots = RuntimePathRoots.from_mapping(
         {
             "project_root": ".",
             "data_root": "data",
-            "checkpoint_root": "ckpt",
+            "checkpoint_root": "published-models",
             "artifact_root": "artifacts",
             "output_root": "outputs",
             "cache_root": ".cache",
@@ -104,20 +106,27 @@ def test_bundled_assets_require_explicit_project_files(tmp_path: Path) -> None:
         "smplx_verts437": "assets/verts.pt",
         "smpl_neutral_joint_regressor": "assets/joints.pt",
     }
-    assets = BundledModelAssetPaths.from_mapping(
+    assets = SmplAssetPaths.from_mapping(
         asset_names,
         resolver=PathResolver(roots),
     )
-    with pytest.raises(FileNotFoundError, match="Bundled GVHMR asset"):
-        assets.require_files()
-    for relative in asset_names.values():
-        path = project / relative
+    for name, relative in asset_names.items():
+        path = project / "published-models" / relative
+        assert getattr(assets, name) == path
         path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
     assets.require_files()
+    missing = getattr(assets, missing_name)
+    missing.unlink()
+    with pytest.raises(FileNotFoundError) as error:
+        assets.require_files()
+    assert str(missing) in str(error.value)
+    assert SMPL_ASSET_SOURCES[missing_name].source_url in str(error.value)
+    assert "src/submodules/README.md" in str(error.value)
 
 
-def test_bundled_assets_reject_absolute_and_unknown_paths(tmp_path: Path) -> None:
+@pytest.mark.parametrize("failure", ["absolute", "unknown", "escape"])
+def test_smpl_assets_reject_invalid_paths(tmp_path: Path, failure: str) -> None:
     roots = RuntimePathRoots.from_mapping(
         {
             "project_root": ".",
@@ -131,12 +140,17 @@ def test_bundled_assets_reject_absolute_and_unknown_paths(tmp_path: Path) -> Non
         repository_root=tmp_path.resolve(),
     )
     mapping: dict[str, object] = {
-        "hmr2_mean_params": "/tmp/mean.npz",
+        "hmr2_mean_params": "assets/mean.npz",
         "smplx_to_smpl": "assets/to-smpl.pt",
         "smpl_coco17_regressor": "assets/coco.pt",
         "smplx_verts437": "assets/verts.pt",
         "smpl_neutral_joint_regressor": "assets/joints.pt",
-        "typo": "assets/typo.pt",
     }
+    if failure == "absolute":
+        mapping["hmr2_mean_params"] = str(tmp_path / "mean.npz")
+    elif failure == "unknown":
+        mapping["typo"] = "assets/typo.pt"
+    else:
+        mapping["hmr2_mean_params"] = "../mean.npz"
     with pytest.raises(ConfigurationError):
-        BundledModelAssetPaths.from_mapping(mapping, resolver=PathResolver(roots))
+        SmplAssetPaths.from_mapping(mapping, resolver=PathResolver(roots))

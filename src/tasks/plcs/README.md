@@ -31,7 +31,9 @@ camera_view_v2専用データは廃止しました。旧設定や別モデルの
 
 SMPL-Hは `paths.external_asset_root=ckpt` 配下の `body_models/smplh` を読みます。
 学習のresume/init_weightsを解決する `paths.checkpoint_root=outputs` とは独立しています。
-chunked生成のCOCO17 regressorはvendoredの静的資産を参照します。
+生成・chunked学習のCOCO17 regressorも同じ外部asset root配下の
+`body_models/gvhmr/smpl_coco17_J_regressor.pt` を参照します。
+配置方法は[SMPL補助資産の取得](../../submodules/README.md#smpl補助資産の取得)を参照してください。
 
 ## データセットの体系
 

@@ -4,10 +4,14 @@ The yacs config dependency is replaced with explicit constructor defaults that
 match HMR2.0a's ``model_config.yaml``.
 """
 
+from pathlib import Path
+
 import einops
 import numpy as np
 import torch
 import torch.nn as nn
+
+from src.submodules.smpl_assets import require_smpl_asset
 
 from .geometry import rot6d_to_rotmat
 from .pose_transformer import TransformerDecoder
@@ -29,6 +33,7 @@ class SMPLTransformerDecoderHead(nn.Module):
         mean_params_path,
     ):
         super().__init__()
+        require_smpl_asset(Path(mean_params_path), "hmr2_mean_params")
         self.joint_rep_type = "6d"
         self.joint_rep_dim = 6
         npose = self.joint_rep_dim * (num_body_joints + 1)

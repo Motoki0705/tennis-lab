@@ -67,12 +67,12 @@ people_models:
   hmr2_checkpoint: hmr2/epoch=10-step=25000.ckpt
   gvhmr_checkpoint: gvhmr/gvhmr_siga24_release.ckpt
   body_models_dir: body_models
-  bundled_assets:
-    hmr2_mean_params: src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz
-    smplx_to_smpl: src/submodules/vendor/gvhmr/body_model/data/smplx2smpl_sparse.pt
-    smpl_coco17_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_coco17_J_regressor.pt
-    smplx_verts437: src/submodules/vendor/gvhmr/body_model/data/smplx_verts437.pt
-    smpl_neutral_joint_regressor: src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt
+  smpl_assets:
+    hmr2_mean_params: body_models/gvhmr/smpl_mean_params.npz
+    smplx_to_smpl: body_models/gvhmr/smplx2smpl_sparse.pt
+    smpl_coco17_regressor: body_models/gvhmr/smpl_coco17_J_regressor.pt
+    smplx_verts437: body_models/gvhmr/smplx_verts437.pt
+    smpl_neutral_joint_regressor: body_models/gvhmr/smpl_neutral_J_regressor.pt
   runtime:
     device: ${device}
     tracking:

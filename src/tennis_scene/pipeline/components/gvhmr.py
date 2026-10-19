@@ -59,9 +59,9 @@ class GVHMRModule:
             return GVHMROutput(())
         config = self.config
         features = Hmr2FeatureExtractor(config.hmr2_checkpoint, device=config.runtime.device,
-            batch_size=config.runtime.hmr2.batch_size, mean_params_path=config.bundled_assets.hmr2_mean_params)
+            batch_size=config.runtime.hmr2.batch_size, mean_params_path=config.smpl_assets.hmr2_mean_params)
         model = GvhmrMeshRecovery(config.gvhmr_checkpoint, config.body_models_dir,
-            device=config.runtime.device, bundled_assets=config.bundled_assets)
+            device=config.runtime.device, smpl_assets=config.smpl_assets)
         bodies: list[RecoveredBody] = []
         try:
             for selected in inputs.selection.selections:

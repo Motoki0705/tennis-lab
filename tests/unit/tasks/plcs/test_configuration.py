@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
@@ -53,6 +54,14 @@ def test_body_model_root_is_independent_of_training_checkpoint_root() -> None:
     runtime = PLCSTrainingConfig.from_config(_training_config())
     assert runtime.shared.resolver.roots.checkpoint_root == (PROJECT_ROOT / "outputs").resolve()
     assert runtime.shared.resolver.roots.external_asset_root == (PROJECT_ROOT / "ckpt").resolve()
+
+
+def test_generation_regressor_follows_external_body_model_root(tmp_path: Path) -> None:
+    cfg = _config("generate_dataset")
+    cfg.paths.external_asset_root = str(tmp_path / "licensed-models")
+    runtime = PLCSGenerationConfig.from_config(cfg)
+    assert runtime.external_assets.smplh_model_path == tmp_path / "licensed-models/body_models/smplh"
+    assert runtime.external_assets.coco17_regressor_path == tmp_path / "licensed-models/body_models/gvhmr/smpl_coco17_J_regressor.pt"
 
 
 def test_analysis_output_is_explicitly_output_root_relative() -> None:

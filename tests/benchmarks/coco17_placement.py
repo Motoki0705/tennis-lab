@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from scipy.spatial.transform import Rotation
 
-from src.submodules.configuration import BundledModelAssetPaths
+from src.submodules.configuration import SmplAssetPaths
 from src.submodules.models import SmplCoco17Reconstructor, SmplVertexReconstructor
 from src.tennis_scene.motion_alignment.mesh_placement import (
     canonicalize_incam_body,
@@ -35,20 +35,19 @@ def replay(repo: Path, inputs: Path, output: Path) -> dict[str, Any]:
     """Read the fixed Meiji bundle and exercise the production placement/renderer boundary."""
     torch.set_num_threads(4)
     output.mkdir(parents=True, exist_ok=True)
-    vendor = repo / "src/submodules/vendor/gvhmr"
-    asset_dir = vendor / "body_model/data"
-    assets = BundledModelAssetPaths(
-        vendor / "hmr2/smpl_mean_params.npz",
+    asset_dir = repo / "ckpt/body_models/gvhmr"
+    assets = SmplAssetPaths(
+        asset_dir / "smpl_mean_params.npz",
         asset_dir / "smplx2smpl_sparse.pt",
         asset_dir / "smpl_coco17_J_regressor.pt",
         asset_dir / "smplx_verts437.pt",
         asset_dir / "smpl_neutral_J_regressor.pt",
     )
     coco = SmplCoco17Reconstructor(
-        repo / "ckpt/body_models", device="cpu", bundled_assets=assets
+        repo / "ckpt/body_models", device="cpu", smpl_assets=assets
     )
     mesh = SmplVertexReconstructor(
-        repo / "ckpt/body_models", device="cpu", bundled_assets=assets
+        repo / "ckpt/body_models", device="cpu", smpl_assets=assets
     )
     root_regressor = (
         torch.load(

@@ -44,7 +44,7 @@ def test_shipped_config_resolves_roles_and_limits(tmp_path: Path) -> None:
     )
     assert runtime.smpl_joint_regressor_path == (
         tmp_path
-        / "src/submodules/vendor/gvhmr/body_model/data/smpl_neutral_J_regressor.pt"
+        / "ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
     )
 
 

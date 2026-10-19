@@ -234,13 +234,13 @@ def build_gvhmr_demo_model(
     checkpoint_path,
     body_models_dir,
     *,
-    bundled_assets,
+    smpl_assets,
 ) -> GvhmrDemoModel:
     """Build the GVHMR demo model with the released SIGA24 configuration."""
     denoiser3d = NetworkEncoderRoPE()
     endecoder = EnDecoder(
         body_model_path=body_models_dir,
-        bundled_assets=bundled_assets,
+        smpl_assets=smpl_assets,
         stats_name=DEMO_ENDECODER_STATS,
     )
     model = GvhmrDemoModel(Pipeline(denoiser3d, endecoder, normalize_cam_angvel=True))

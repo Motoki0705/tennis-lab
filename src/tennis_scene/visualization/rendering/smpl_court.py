@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from src.submodules.smpl_assets import require_smpl_asset
 from src.utils.geometry.matrices import (
     axis_angle_to_rotation_matrix,
     rotation_matrix_z,
@@ -28,6 +29,7 @@ def load_smpl_joint_regressor(path: Path) -> NDArray[np.float32]:
     """Load a ``(joints, vertices)`` SMPL joint regressor from a torch file."""
     import torch
 
+    require_smpl_asset(path, "smpl_neutral_joint_regressor")
     reg = torch.load(path, map_location="cpu", weights_only=False)
     if isinstance(reg, torch.Tensor):
         result = reg.cpu().numpy().astype(np.float32)

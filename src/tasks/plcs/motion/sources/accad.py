@@ -8,6 +8,7 @@ from typing import Any, cast
 import numpy as np
 import torch
 
+from src.submodules.smpl_assets import require_smpl_asset
 from src.tasks.plcs.generate_dataset.sampling.motion_source import PLCSMotionClip
 from src.tasks.plcs.motion.contracts import Coco17MotionClip, MotionSourceKind
 from src.utils.geometry.rotation_conversions import axis_angle_to_matrix
@@ -46,10 +47,7 @@ class AccadCoco17Adapter:
 
     def _coco17_regressor(self) -> torch.Tensor:
         if self._regressor is None:
-            if not self.coco17_regressor_path.is_file():
-                raise FileNotFoundError(
-                    f"SMPL COCO-17 regressor not found: {self.coco17_regressor_path}"
-                )
+            require_smpl_asset(self.coco17_regressor_path, "smpl_coco17_regressor")
             value = torch.load(
                 self.coco17_regressor_path,
                 map_location="cpu",
