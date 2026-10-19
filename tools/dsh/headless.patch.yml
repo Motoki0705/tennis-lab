@@ -1,0 +1,17 @@
+# Complete config replacements for @deepseek-ai/dsh@0.2.0-rc.2.
+- id: agent-default-model
+  config:
+    provider: deepseek-official
+    model: deepseek-flash
+    reasoningEffort: high
+- id: llm-deepseek
+  config:
+    baseURL: https://api.deepseek.com/anthropic
+    apiKeyEnv: DEEPSEEK_API_KEY
+    thinking: enabled
+    reasoningEffort: high
+- id: session-log-deepseek
+  config:
+    enabled: false
+- id: session-telemetry-otel
+  disabled: true

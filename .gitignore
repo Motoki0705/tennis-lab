@@ -125,6 +125,7 @@ web/**/.vite/
 
 # Keep dsh dependencies local and track the pinned manifests.
 /tools/dsh/node_modules/
+/.dsh-runs/
 !/tools/dsh/package.json
 !/tools/dsh/package-lock.json
 
