@@ -1,0 +1,36 @@
+defaults:
+  - paths: default
+  - override hydra/job_logging: disabled
+  - override hydra/hydra_logging: disabled
+  - _self_
+
+runs:
+  pretraining: knowledge/runs/run-i1050-convnext-v2-pretrain-s42
+  posttraining: knowledge/runs/run-i1049-convnext-query-posttrain-s42
+# Required: real_clip | schematic. Never switch panels on a read failure.
+input_panel: ???
+# real_clip: {store_dir: <data-root-relative store>, clip_id: <id>, frame: <window start>}
+input_clip: null
+durations:
+  intro: 3
+  phase1: 18
+  handoff12: 4
+  phase2: 20
+  handoff23: 3
+  phase3: 9
+  outro: 3
+fps: 30
+width: 1920
+height: 1080
+gif_width: 960
+gif_fps: 15
+run_id: ${tennis_run_id:}
+
+# Keep Hydra from pre-creating the export directory: the exporter refuses
+# existing destinations, including empty ones.
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false
