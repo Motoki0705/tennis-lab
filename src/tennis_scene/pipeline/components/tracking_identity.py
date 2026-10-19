@@ -1,4 +1,4 @@
-"""Conservative, auditable links between camera-local BoT-SORT tracklets."""
+"""Conservative, auditable links between camera-local tracklets."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 
 @dataclass(frozen=True)
 class TrackletLinkPolicy:
-    """Thresholds that a BoT-SORT tracklet split must satisfy to be joined.
+    """Thresholds that a tracklet split must satisfy to be joined.
 
     The values are part of the ``person_tracking`` artifact identity.
     """

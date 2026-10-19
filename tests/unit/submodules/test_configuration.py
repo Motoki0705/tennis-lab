@@ -17,7 +17,7 @@ from src.utils.configuration import ConfigurationError, PathResolver, RuntimePat
 def _runtime_mapping() -> dict[str, object]:
     return {
         "device": "cpu",
-        "tracking": {"yolo_confidence": 0.25, "bbox_enlarge": 1.2},
+        "tracking": {"bbox_enlarge": 1.2},
         "dino_detector": {
             "confidence": 0.35,
             "short_side": 800,

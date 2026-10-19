@@ -1,9 +1,8 @@
-"""Replaceable frame detector; no tracking or pose estimation is performed here."""
+"""Full-frame DINO person detection before tracking and pose estimation."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -11,7 +10,6 @@ from numpy.typing import NDArray
 from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
-    PersonDetectionResult,
 )
 from src.tasks.person_tracking.duplicate_boxes import DuplicateMerge, merge_person_boxes
 from src.tennis_scene.pipeline.components.base import release_inference_memory
@@ -64,14 +62,9 @@ class PersonDetectionModule:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32), np.empty(0, np.int64))
         config = self.config
-        detector: Any
-        if config.detector == "dino":
-            detector = DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
-                device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
-                short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side)
-        else:
-            from ultralytics import YOLO
-            detector = YOLO(str(config.yolo_checkpoint))
+        detector = DinoPersonDetector(config.dino_checkpoint, config.dino_repository,
+            device=config.runtime.device, confidence=config.runtime.dino_detector.confidence,
+            short_side=config.runtime.dino_detector.short_side, max_long_side=config.runtime.dino_detector.max_long_side)
         offsets = [0]
         boxes: list[NDArray[np.float32]] = []
         scores: list[NDArray[np.float32]] = []
@@ -80,13 +73,7 @@ class PersonDetectionModule:
         source_offset = 0
         try:
             for packet in OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames):
-                if config.detector == "dino":
-                    detections = detector.predict(PersonDetectionRequest(packet.frame))
-                else:
-                    prediction = detector.predict(packet.frame, classes=[0], conf=config.runtime.tracking.yolo_confidence,
-                        device=config.runtime.device, verbose=False)[0]
-                    detections = PersonDetectionResult(prediction.boxes.xyxy.detach().cpu().numpy().astype(np.float32),
-                        prediction.boxes.conf.detach().cpu().numpy().astype(np.float32))
+                detections = detector.predict(PersonDetectionRequest(packet.frame))
                 rows: NDArray[np.int64] = np.arange(source_offset, source_offset + len(detections.scores), dtype=np.int64)
                 source_offset += len(rows)
                 keep, dropped = merge_person_boxes(packet.index, rows, detections.boxes_xyxy,
@@ -97,8 +84,7 @@ class PersonDetectionModule:
                 scores.append(detections.scores[keep])
                 offsets.append(offsets[-1] + len(keep))
         finally:
-            if config.detector == "dino":
-                detector.unload()
+            detector.unload()
             del detector
             release_inference_memory(config.runtime.device)
         if len(offsets) != inputs.video.num_frames + 1:

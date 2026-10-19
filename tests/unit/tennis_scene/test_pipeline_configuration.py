@@ -5,8 +5,10 @@ from typing import Any, cast
 
 import pytest
 from hydra import compose, initialize_config_dir
+from hydra.errors import ConfigCompositionException
 
 from src.tennis_scene.configuration import PipelineRuntimeConfig
+from src.utils.configuration import UnknownConfigurationKeyError
 from src.utils.configuration.errors import PathContractError
 
 
@@ -111,7 +113,6 @@ def test_output_paths_cannot_escape_authority(fragment: str) -> None:
         ["video_paths=[a.mp4,b.mp4]", "camera_ids=[a,b]"],
         ["camera_ids=[a,a,c]"],
         ["person_observations.enabled=false"],
-        ["people_models.detector=unknown"],
         ["people_models.runtime.static_cam=false"],
         ["cache.source=load", "cache.overwrite=true"],
     ],
@@ -123,18 +124,27 @@ def test_invalid_inputs_or_dependency_choices_fail_before_models(
         _runtime(overrides)
 
 
-def test_detector_can_be_replaced_without_changing_the_runner() -> None:
-    assert _runtime(["people_models.detector=yolo"]).people.detector == "yolo"
+@pytest.mark.parametrize("prefix", ["", "+"])
+@pytest.mark.parametrize("override", [
+    "people_models.detector=dino",
+    "people_models.yolo_checkpoint=retired.pt",
+    "people_models.runtime.tracking.yolo_confidence=0.5",
+])
+def test_removed_detector_settings_are_rejected(prefix: str, override: str) -> None:
+    """Removed YOLO/selector keys must fail even when added to an old config."""
+    error = UnknownConfigurationKeyError if prefix else ConfigCompositionException
+    with pytest.raises(error, match=override.split("=")[0].rsplit(".", 1)[-1]):
+        _runtime([prefix + override], bind_inputs=False)
 
 
 def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
     runtime = _runtime([])
-    assert runtime.people.detector == "dino"
-    assert runtime.people.detector_checkpoint == (
+    assert not hasattr(runtime.people, "detector")
+    assert runtime.people.dino_checkpoint == (
         runtime.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
     )
     legacy = _runtime(["people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth"])
-    assert legacy.people.detector_checkpoint == (
+    assert legacy.people.dino_checkpoint == (
         legacy.roots.checkpoint_root / "player_detection/chat-player-v1-e8-best-pr937.pth"
     )
     assert legacy.people.runtime.dino_detector == runtime.people.runtime.dino_detector

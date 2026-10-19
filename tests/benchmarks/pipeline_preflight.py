@@ -50,7 +50,7 @@ def check_full_recipe(runtime: PipelineRuntimeConfig) -> None:
     if runtime.cache_source != 'execute':
         raise ValueError('Full qualification must start fresh')
     detector = runtime.people.runtime.dino_detector
-    if runtime.people.detector != 'dino' or detector.confidence != .3 \
+    if detector.confidence != .3 \
             or (detector.short_side, detector.max_long_side) != (800, 1333) \
             or runtime.tracking.method != 'strongsort_pp_pose' or runtime.merge_duplicate_person_boxes \
             or runtime.max_tracks_per_camera != 6:

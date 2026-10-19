@@ -24,12 +24,18 @@ from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
 from tests.unit.tennis_scene.test_pipeline_configuration import _runtime
 
 
-def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path) -> None:
+@pytest.mark.parametrize('body_enabled', [False, True])
+def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enabled: bool) -> None:
     from src.tennis_scene.pipeline.contracts import ClipSource
-    cfg = runtime(tmp_path)
+    cfg = runtime(tmp_path, overrides=(f'gvhmr.enabled={str(body_enabled).lower()}',))
     assert cfg.tracking.method == 'strongsort_pp_pose' and not cfg.merge_duplicate_person_boxes
     assert cfg.tracking.online_config().pose_weight == .15
     assets = enabled_model_assets(cfg)
+    assert assets['detector'] == cfg.people.dino_checkpoint
+    expected = {'court', 'ball', 'detector', 'vitpose', 'tracking_encoder', 'aflink', 'association_encoder'}
+    if body_enabled:
+        expected.update(cfg.people.body_assets())
+    assert set(assets) == expected
     assert assets['tracking_encoder'] == cfg.tracking_encoder_weights and assets['aflink'] == cfg.aflink_checkpoint
     materialize_assets(assets.values(), tmp_path)
     source = ClipSource('test', tuple(SourceVideo(f'cam{i}', tmp_path / f'{i}.mp4', 'hash', 5, 30., 1920, 1080) for i in range(3)))
@@ -43,8 +49,8 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path) -> None:
         standard_definition(cfg, source, code_identity='test')
 
 
-@pytest.mark.parametrize('method', ['all_person_botsort', 'strongsort_pp', 'deep_ocsort_pose',
-                                   'deep_ocsort_pose_aflink_gsi', 'botsort_pose', 'invalid'])
+@pytest.mark.parametrize('method', ['strongsort_pp', 'deep_ocsort_pose',
+                                   'deep_ocsort_pose_aflink_gsi', 'invalid'])
 def test_standard_pipeline_rejects_comparison_methods(method: str) -> None:
     with pytest.raises(ValueError, match='Production tracking requires'):
         _runtime([f'person_tracking.method={method}'])

@@ -158,7 +158,7 @@ def plan(repo: Path, report: Path) -> None:
                           'status': data['status']})
         if set(records) & {r['key'] for r in inputs}:
             raise ValueError('Matching calibration cache discovered: audit identity before scheduling extraction')
-    model_paths = {'detector': cfg.people.detector_checkpoint, 'pose': cfg.people.vitpose_checkpoint,
+    model_paths = {'detector': cfg.people.dino_checkpoint, 'pose': cfg.people.vitpose_checkpoint,
                    'clip': cfg.tracking_encoder_weights, 'aflink': cfg.aflink_checkpoint}
     manifest = {
         'schema': 'i964_recalibration_features_plan_v1', 'repo': str(repo), 'dataset': str(dataset),
@@ -229,7 +229,7 @@ def extract(repo: Path, report: Path) -> None:
     total = torch.cuda.get_device_properties(0).total_memory
     torch.cuda.set_per_process_memory_fraction(manifest['budget']['allocator_bytes'] / total, 0)
     cfg = runtime(repo, report, clip_path(Path(manifest['dataset']), manifest['selected_clips'][0]), 'cuda')
-    actual_models = {'detector': cfg.people.detector_checkpoint, 'pose': cfg.people.vitpose_checkpoint,
+    actual_models = {'detector': cfg.people.dino_checkpoint, 'pose': cfg.people.vitpose_checkpoint,
                      'clip': cfg.tracking_encoder_weights, 'aflink': cfg.aflink_checkpoint}
     if {k: file_identity(p) for k, p in actual_models.items()} != manifest['models']:
         raise ValueError('Runtime asset paths/content changed after planning')

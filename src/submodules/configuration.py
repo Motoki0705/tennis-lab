@@ -9,10 +9,8 @@ from typing import cast
 
 from src.utils.configuration import (
     ConfigField,
-    ConfigFieldContract,
     PathResolver,
     PathRole,
-    RuntimePathRoots,
     SemanticConfigurationError,
     StrictConfigSchema,
 )
@@ -22,14 +20,11 @@ __all__ = [
     "BUNDLED_MODEL_ASSET_SCHEMA",
     "BundledModelAssetPaths",
     "DinoDetectorRuntimeConfig",
-    "ExternalModelAssetPaths",
-    "GvhmrDemoConfig",
     "Hmr2RuntimeConfig",
     "SubmoduleRuntimeConfig",
     "TrackingRuntimeConfig",
     "ViTPoseRuntimeConfig",
     "ViTPoseHeadConfig",
-    "inspect_gvhmr_demo_schema",
     "require_absolute_path",
 ]
 
@@ -92,16 +87,6 @@ class ViTPoseHeadConfig:
             )
 
 
-_CHECKPOINT_SCHEMA = StrictConfigSchema(
-    name="submodules.assets.checkpoints",
-    fields={
-        "yolo": ConfigField.of(str),
-        "dino": ConfigField.of(str),
-        "vitpose": ConfigField.of(str),
-        "hmr2": ConfigField.of(str),
-        "gvhmr": ConfigField.of(str),
-    },
-)
 BUNDLED_MODEL_ASSET_SCHEMA = StrictConfigSchema(
     name="submodules.assets.bundled",
     fields={
@@ -112,37 +97,10 @@ BUNDLED_MODEL_ASSET_SCHEMA = StrictConfigSchema(
         "smpl_neutral_joint_regressor": ConfigField.of(str),
     },
 )
-_ASSET_SCHEMA = StrictConfigSchema(
-    name="submodules.assets",
-    fields={
-        "checkpoints": ConfigField.mapping(_CHECKPOINT_SCHEMA),
-        "dino_repository": ConfigField.of(str),
-        "body_models_dir": ConfigField.of(str),
-        "smpl_faces": ConfigField.of(str),
-        "bundled": ConfigField.mapping(BUNDLED_MODEL_ASSET_SCHEMA),
-    },
-)
-_PATH_ROOT_SCHEMA = StrictConfigSchema(
-    name="submodules.paths",
-    fields={
-        "project_root": ConfigField.of(str),
-        "data_root": ConfigField.of(str),
-        "checkpoint_root": ConfigField.of(str),
-        "artifact_root": ConfigField.of(str),
-        "output_root": ConfigField.of(str),
-        "cache_root": ConfigField.of(str),
-        "external_asset_root": ConfigField.of(str),
-    },
-)
 
 
 def _validate_tracking_runtime(value: Mapping[str, object]) -> None:
-    confidence = cast(float, value["yolo_confidence"])
     bbox_enlarge = cast(float, value["bbox_enlarge"])
-    if not 0.0 < confidence <= 1.0:
-        raise SemanticConfigurationError(
-            "submodules.runtime.tracking.yolo_confidence must be in (0, 1]."
-        )
     if bbox_enlarge <= 0.0:
         raise SemanticConfigurationError(
             "submodules.runtime.tracking.bbox_enlarge must be positive."
@@ -193,7 +151,6 @@ def _validate_hmr2_runtime(value: Mapping[str, object]) -> None:
 _TRACKING_RUNTIME_SCHEMA = StrictConfigSchema(
     name="submodules.runtime.tracking",
     fields={
-        "yolo_confidence": ConfigField.of(float),
         "bbox_enlarge": ConfigField.of(float),
     },
     semantic_checks=(_validate_tracking_runtime,),
@@ -246,22 +203,6 @@ SUBMODULE_RUNTIME_SCHEMA = StrictConfigSchema(
         "static_cam": ConfigField.of(bool),
     },
 )
-_DEMO_SCHEMA = StrictConfigSchema(
-    name="submodules.demo_gvhmr",
-    fields={
-        "paths": ConfigField.mapping(_PATH_ROOT_SCHEMA),
-        "assets": ConfigField.mapping(_ASSET_SCHEMA),
-        "video": ConfigField.of(str),
-        "output_directory": ConfigField.of(str),
-        "output_name": ConfigField.of(str),
-        "num_tracks": ConfigField.of(int),
-        "interactive_tracks": ConfigField.of(bool),
-        "max_frames": ConfigField.of(int, type(None)),
-        "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
-        "mesh_alpha": ConfigField.of(float),
-        "video_crf": ConfigField.of(int),
-    },
-)
 
 
 def _nested_mapping(value: object, *, name: str) -> Mapping[str, object]:
@@ -274,7 +215,6 @@ def _nested_mapping(value: object, *, name: str) -> Mapping[str, object]:
 class TrackingRuntimeConfig:
     """Validated person-tracking settings selected by composition."""
 
-    yolo_confidence: float
     bbox_enlarge: float
 
 
@@ -340,7 +280,6 @@ class SubmoduleRuntimeConfig:
         return cls(
             device=device,
             tracking=TrackingRuntimeConfig(
-                yolo_confidence=cast(float, tracking["yolo_confidence"]),
                 bbox_enlarge=cast(float, tracking["bbox_enlarge"]),
             ),
             dino_detector=DinoDetectorRuntimeConfig(
@@ -433,163 +372,3 @@ class BundledModelAssetPaths:
             path = getattr(self, name)
             if not path.is_file():
                 raise FileNotFoundError(f"Bundled GVHMR asset is missing: {path}")
-
-
-@dataclass(frozen=True, slots=True)
-class ExternalModelAssetPaths:
-    """Absolute external-model paths derived from the shared root roles."""
-
-    yolo_checkpoint: Path
-    dino_checkpoint: Path
-    vitpose_checkpoint: Path
-    hmr2_checkpoint: Path
-    gvhmr_checkpoint: Path
-    dino_repository: Path
-    body_models_dir: Path
-    smpl_faces: Path
-    bundled: BundledModelAssetPaths
-
-    @classmethod
-    def from_mapping(
-        cls,
-        value: Mapping[str, object],
-        *,
-        resolver: PathResolver,
-    ) -> ExternalModelAssetPaths:
-        """Validate exact asset keys and resolve every path under its role root."""
-        validated = _ASSET_SCHEMA.validate(value)
-        checkpoints = validated["checkpoints"]
-        bundled = validated["bundled"]
-        if not isinstance(checkpoints, Mapping):
-            raise AssertionError("Strict checkpoint schema did not return a mapping.")
-        if not isinstance(bundled, Mapping):
-            raise AssertionError(
-                "Strict bundled-asset schema did not return a mapping."
-            )
-        return cls(
-            yolo_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, checkpoints["yolo"])
-            ),
-            dino_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, checkpoints["dino"])
-            ),
-            vitpose_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, checkpoints["vitpose"])
-            ),
-            hmr2_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, checkpoints["hmr2"])
-            ),
-            gvhmr_checkpoint=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, checkpoints["gvhmr"])
-            ),
-            dino_repository=resolver.resolve(
-                PathRole.EXTERNAL_ASSET,
-                cast(str, validated["dino_repository"]),
-            ),
-            body_models_dir=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, validated["body_models_dir"])
-            ),
-            smpl_faces=resolver.resolve(
-                PathRole.CHECKPOINT, cast(str, validated["smpl_faces"])
-            ),
-            bundled=BundledModelAssetPaths.from_mapping(bundled, resolver=resolver),
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class GvhmrDemoConfig:
-    """Validated GVHMR demo settings with all runtime paths already absolute."""
-
-    roots: RuntimePathRoots
-    assets: ExternalModelAssetPaths
-    video_path: Path
-    output_path: Path
-    num_tracks: int
-    interactive_tracks: bool
-    max_frames: int | None
-    runtime: SubmoduleRuntimeConfig
-    mesh_alpha: float
-    video_crf: int
-
-    @classmethod
-    def from_mapping(
-        cls,
-        value: Mapping[str, object],
-        *,
-        repository_root: Path,
-    ) -> GvhmrDemoConfig:
-        """Validate the complete boundary and deterministically resolve its paths."""
-        validated = _DEMO_SCHEMA.validate(value)
-        paths = validated["paths"]
-        assets = validated["assets"]
-        runtime = validated["runtime"]
-        if (
-            not isinstance(paths, Mapping)
-            or not isinstance(assets, Mapping)
-            or not isinstance(runtime, Mapping)
-        ):
-            raise AssertionError("Strict demo schema did not return nested mappings.")
-        roots = RuntimePathRoots.from_mapping(paths, repository_root=repository_root)
-        resolver = PathResolver(roots)
-        video_path = resolver.resolve(PathRole.DATA, cast(str, validated["video"]))
-        output_name = cast(str, validated["output_name"])
-        if not output_name or Path(output_name).name != output_name:
-            raise SemanticConfigurationError(
-                "submodules.demo_gvhmr.output_name must be a non-empty filename, "
-                "not a path."
-            )
-        output_path = resolver.resolve(
-            PathRole.OUTPUT,
-            cast(str, validated["output_directory"]),
-            output_name,
-        )
-        num_tracks = validated["num_tracks"]
-        max_frames = validated["max_frames"]
-        mesh_alpha = validated["mesh_alpha"]
-        video_crf = validated["video_crf"]
-        if not isinstance(num_tracks, int) or isinstance(num_tracks, bool):
-            raise AssertionError(
-                "Strict demo schema did not return an integer num_tracks."
-            )
-        if not isinstance(mesh_alpha, float):
-            raise AssertionError(
-                "Strict demo schema did not return a float mesh_alpha."
-            )
-        if not isinstance(video_crf, int) or isinstance(video_crf, bool):
-            raise AssertionError(
-                "Strict demo schema did not return an integer video_crf."
-            )
-        if max_frames is not None and (
-            not isinstance(max_frames, int) or isinstance(max_frames, bool)
-        ):
-            raise AssertionError(
-                "Strict demo schema did not return an optional integer max_frames."
-            )
-        if num_tracks <= 0:
-            raise SemanticConfigurationError("num_tracks must be positive.")
-        if max_frames is not None and max_frames <= 0:
-            raise SemanticConfigurationError(
-                "max_frames must be null or a positive integer."
-            )
-        if not 0.0 < mesh_alpha <= 1.0:
-            raise SemanticConfigurationError("mesh_alpha must be in (0, 1].")
-        if not 0 <= video_crf <= 51:
-            raise SemanticConfigurationError("video_crf must be in [0, 51].")
-        return cls(
-            roots=roots,
-            assets=ExternalModelAssetPaths.from_mapping(assets, resolver=resolver),
-            video_path=video_path,
-            output_path=output_path,
-            num_tracks=num_tracks,
-            interactive_tracks=cast(bool, validated["interactive_tracks"]),
-            max_frames=max_frames,
-            runtime=SubmoduleRuntimeConfig.from_mapping(runtime),
-            mesh_alpha=mesh_alpha,
-            video_crf=video_crf,
-        )
-
-
-def inspect_gvhmr_demo_schema() -> tuple[ConfigFieldContract, ...]:
-    """Expose required/default/precedence policy for the composed demo schema."""
-    contracts: tuple[ConfigFieldContract, ...] = _DEMO_SCHEMA.inspect()
-    return contracts

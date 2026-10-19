@@ -2,7 +2,7 @@
 
 Each model exposes ``load()`` / ``unload()`` / ``predict(request) -> result``:
 
-- :class:`YoloPersonTracker` / :class:`DinoPersonTracker` — video -> bbox tracks
+- :class:`DinoPersonDetector` — image -> person boxes
 - :class:`ViTPosePose2D` — video + boxes -> COCO-17 keypoints
 - :class:`Hmr2FeatureExtractor` — video + boxes -> per-frame image features
 - :class:`GvhmrMeshRecovery` — keypoints + boxes + features -> SMPL-X params
@@ -30,14 +30,9 @@ from src.submodules.models.hmr2.feature_extractor import (
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
+    filter_detections_by_footpoint,
     select_and_complete_tracks,
 )
-from src.submodules.models.tracker.dino_tracker import (
-    BotSortAssociator,
-    DinoPersonTracker,
-    filter_detections_by_footpoint,
-)
-from src.submodules.models.tracker.yolo_tracker import YoloPersonTracker
 from src.submodules.models.vitpose.pose2d import (
     Pose2DFrameSequenceRequest,
     Pose2DRequest,
@@ -47,9 +42,7 @@ from src.submodules.models.vitpose.pose2d import (
 
 __all__ = [
     "BaseInferenceModel",
-    "BotSortAssociator",
     "DinoPersonDetector",
-    "DinoPersonTracker",
     "GvhmrMeshRecovery",
     "GvhmrRequest",
     "GvhmrResult",
@@ -67,7 +60,6 @@ __all__ = [
     "TrackRequest",
     "TrackResult",
     "ViTPosePose2D",
-    "YoloPersonTracker",
     "filter_detections_by_footpoint",
     "select_and_complete_tracks",
     "validate_dino_extension",

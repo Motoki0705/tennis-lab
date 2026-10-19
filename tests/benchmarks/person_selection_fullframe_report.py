@@ -122,7 +122,7 @@ def summarize(report: Path) -> None:
     write_json_atomic(report / 'verified_artifacts.json', {'artifacts': artifact_hashes, 'selection_invariants': 'all passed: observed subset, <=6 groups, no spatial trimming of selected fragments'})
     primary = [r for r in totals if r['stage'] == 'selected']
     lines = ['# #964 run 6 — ROI前の人物source比較（固定4 dev clip）', '',
-        '参照boxは旧COCO/旧trackerから作った部分ラベルで、**COCOに有利**。旧boxとの一致を検出recallとは呼ばない。未ラベル予測をFPと数えない。全sourceは800/1333・全画面・ROI前。同じmotion/IoU BoT-SORTを使うsource比較で、最終tracking方式比較ではない。', '',
+        '参照boxは旧COCO/旧trackerから作った部分ラベルで、**COCOに有利**。旧boxとの一致を検出recallとは呼ばない。未ラベル予測をFPと数えない。全sourceは800/1333・全画面・ROI前。保存済み追跡archiveによるsource比較で、最終tracking方式比較ではない。追跡条件は入力archiveのprovenanceを参照する。', '',
         '## 固定した選別規則', '',
         'box下端中心を校正cameraのz=0平面へ投影。シングルス幅 |x|≤4.115m、|y|≤16.885mのcoreにおけるdistinctな実観測frameがclipの25%以上となる連結groupを選手候補とし、その後に上限6。ダブルス幅 |x|≤5.485mは診断値で、出力を切らない。**選択済み断片の全実観測を保持する**（wide run・無効足元も含む）。', '',
         'gap>1秒または既存0.25秒窓/3m jumpで区間を切る。両方coreへ入る断片を位置連続性＋CLIP cosine≥.8のvetoで連結。mutual nearestと次点差.2を要求、1秒未満の曖昧断片は除外、同camera handoff重複は≤.2秒。滞在の重複は1回だけ数える。選別maskは重複観測も保持し、既存v3対応に渡すgroup timelineだけ早いraw track IDで1box/frameへ正規化する。検出sourceの閾値以降にscore gate/fusionは無い。ラベルはこの判定へ渡さない。', '',

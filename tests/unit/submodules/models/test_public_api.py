@@ -11,9 +11,7 @@ from src.submodules.models._base.inference_model import BaseInferenceModel
 def test_models_root_owns_the_documented_public_symbols() -> None:
     expected = {
         "BaseInferenceModel",
-        "BotSortAssociator",
         "DinoPersonDetector",
-        "DinoPersonTracker",
         "GvhmrMeshRecovery",
         "GvhmrRequest",
         "GvhmrResult",
@@ -30,7 +28,6 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "TrackRequest",
         "TrackResult",
         "ViTPosePose2D",
-        "YoloPersonTracker",
         "filter_detections_by_footpoint",
         "select_and_complete_tracks",
         "validate_dino_extension",
@@ -52,10 +49,8 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
         "src.submodules.models.gvhmr": ("GvhmrMeshRecovery", "GvhmrRequest"),
         "src.submodules.models.hmr2": ("Hmr2FeatureExtractor", "ImageFeatureRequest"),
         "src.submodules.models.tracker": (
-            "DinoPersonTracker",
             "TrackRequest",
             "TrackResult",
-            "YoloPersonTracker",
         ),
         "src.submodules.models.vitpose": ("Pose2DRequest", "ViTPosePose2D"),
     }
@@ -65,8 +60,5 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
             assert not hasattr(module, name), f"{module_name}.{name} was restored"
 
 
-def test_removed_pass_through_and_yolo_helper_aliases_are_absent() -> None:
-    yolo_tracker = importlib.import_module("src.submodules.models.tracker.yolo_tracker")
+def test_removed_pass_through_alias_is_absent() -> None:
     assert "__call__" not in BaseInferenceModel.__dict__
-    assert not hasattr(yolo_tracker, "_sort_tracks")
-    assert not hasattr(yolo_tracker, "_build_track_tensor")
