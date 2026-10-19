@@ -44,6 +44,10 @@ fitの原点はCOCO hip中心ですが、SceneResultの`player_position`はSMPL 
 `global_orient`は既存renderer式に整合する回転へ変換し、原姿勢の傾きを保持します。
 3D関節・mesh・SMPL rootが同一の変換を受けるため、位置の二重加算はありません。
 
+`player_reconstruction.py::trace_player_placement`は人物1人分の`u_t`・`J_src`・三角測量点・
+重み・フィット結果を`PlacementTrace`として返します。`world = q_t + s·Rz(ψ_t)·u_t`は
+本番の`place_canonical_body(...).vertices_court`と一致し、無効frameは補間しません。
+
 SceneResultのvalidity・archive契約は[tennis_scene README](../README.md)を参照してください。
 旧v1 archiveの`gvhmr_aligned_*`とその閲覧機能は読込互換のため保持しますが、旧推定器はありません。
 床接地・非貫通・関節IKはこの配置の目的関数には含めません。
