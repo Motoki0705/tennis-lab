@@ -66,7 +66,9 @@
 
 ## ライセンス / 引用
 
-このリポジトリは [MIT License](LICENSE) の下で公開されています。
+独自コードは [MIT License](LICENSE) です。第三者のコード・重み・データ・論文には別の条件が適用されます。出典とMITの対象外の範囲は [LICENSES.md](LICENSES.md) を参照してください。
+
+Original code is MIT licensed. See [LICENSES.md](LICENSES.md) for third-party attribution and terms that apply to code, weights, data, and papers.
 
 ## 構造（成果の裏側）
 
