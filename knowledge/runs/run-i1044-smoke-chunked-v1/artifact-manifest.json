@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-smoke-chunked-v1",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 1018,
+      "sha256": "c40bb223742e6b406147161207d1b4af9b1a824d7c6cedbd50a91f978f6fd9c2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

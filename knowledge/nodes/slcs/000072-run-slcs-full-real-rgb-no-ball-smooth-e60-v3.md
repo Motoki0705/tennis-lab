@@ -54,7 +54,7 @@ repro:
     train_real_rgb loss.ball_position_smoothness_weight=0.0 run.output_dir=slcs/train/real_rgb_no_ball_smooth/s42-takeover-003
 artifacts:
   run_dir: knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-e60-v3
-  predictions: knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-e60-v3/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-e60-v3/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0
   log: knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-e60-v3/queue.log
   curves: knowledge/runs/run-slcs-full-real-rgb-no-ball-smooth-e60-v3/curves.png

@@ -42,7 +42,7 @@ repro:
     training.gravity_loss_weight=0.15 run.init_weights=outputs/blcs/blcs_multiview_axial/logs/version_2/checkpoints/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-fta-s03g015
-  predictions: knowledge/runs/run-mono3d-blcs-fta-s03g015/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-fta-s03g015/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783270565709415066_465705_mono3d_blcs_ftA_s03g015.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_4
   curves: knowledge/runs/run-mono3d-blcs-fta-s03g015/curves.png

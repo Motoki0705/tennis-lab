@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-position-s42-u4000",
+  "files": [
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 2462107,
+      "sha256": "6137efae64c9fb23b9a93519e435d7b09f60c1a78231d8cf28b9b03a602723f4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 33965,
+      "sha256": "2ebe2adba07f17251663c0b34779d2e53de09df49e1bd039d2006eee5df78da3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

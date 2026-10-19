@@ -52,7 +52,7 @@ repro:
     run.output_dir=slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001
 artifacts:
   run_dir: knowledge/runs/run-slcs-pilot-no-ball-smooth-e60-takeover-v1
-  predictions: knowledge/runs/run-slcs-pilot-no-ball-smooth-e60-takeover-v1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-pilot-no-ball-smooth-e60-takeover-v1/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0
   curves: knowledge/runs/run-slcs-pilot-no-ball-smooth-e60-takeover-v1/curves.png
   tb_logdir: outputs/slcs/train/real_rgb_pilot_no_ball_smooth/s42-takeover-001/logs/version_0

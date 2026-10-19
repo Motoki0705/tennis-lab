@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-reprojection-s42-cuda-interrupted",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 8747,
+      "sha256": "f378c1fbfb78a55f506ee6791a1c825454b09341a60060e66842121b15c029f0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

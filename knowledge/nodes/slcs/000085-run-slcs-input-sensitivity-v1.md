@@ -31,7 +31,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-slcs-input-sensitivity-v1
   diagnostics: knowledge/runs/run-slcs-input-sensitivity-v1/result/results.json
-  predictions: knowledge/runs/run-slcs-input-sensitivity-v1/result/meiji.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-input-sensitivity-v1/artifact-manifest.json#/files/1}
 repro:
   commit: 57726f2c
   branch: codex/slcs-input-sensitivity

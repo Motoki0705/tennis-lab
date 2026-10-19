@@ -68,7 +68,7 @@ artifacts:
   startup_status: knowledge/runs/run-i983-court-dinov3-b-s42/startup-status.json
   log: knowledge/runs/run-i983-court-dinov3-b-s42/startup.log
   training_process: knowledge/runs/run-i983-court-dinov3-b-s42/training-process.json
-  tb_logdir: knowledge/runs/run-i983-court-dinov3-b-s42/tensorboard/version_0
+  tb_logdir: {status: deleted, record: knowledge/runs/run-i983-court-dinov3-b-s42/artifact-manifest.json, path_prefix: tensorboard/version_0/}
   curves: knowledge/runs/run-i983-court-dinov3-b-s42/curves.png
   training_completion: knowledge/runs/run-i983-court-dinov3-b-s42/training-completion.json
   checkpoint_selection: knowledge/runs/run-i983-court-dinov3-b-s42/checkpoint-selection.json

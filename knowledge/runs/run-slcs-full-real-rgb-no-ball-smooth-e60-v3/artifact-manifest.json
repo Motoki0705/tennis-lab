@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-full-real-rgb-no-ball-smooth-e60-v3",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 939801,
+      "sha256": "7b7ea0daa442120e7c2db1929cd6a0d3613c1cd8f90d7735d9c735f32f5fb094",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

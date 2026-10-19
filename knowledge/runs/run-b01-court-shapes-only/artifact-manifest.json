@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-b01-court-shapes-only",
+  "files": [
+    {
+      "path": "sfm_bounded-plan.json.gz",
+      "size_bytes": 425562,
+      "sha256": "4cb6bec7018eadf792bb0cc69a53da9ee327a117c28072e43b655a5c561cfd07",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

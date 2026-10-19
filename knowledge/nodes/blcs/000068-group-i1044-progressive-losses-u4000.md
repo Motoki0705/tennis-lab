@@ -151,7 +151,7 @@ GT自己評価のrolloutは位置3.78e-7 m・速度4.36e-7 m/s。ジッターは
 
 再投影の外れ値も保存test配列で調べた。主対照seed42の138,856観測・20.686pxを再計算し、scene_000759がSSEの6.60%（frame124で2view平均398.86px、単view最大563.90px）、scene_000344が5.52%、scene_000300が5.27%を占めた。clip RMSE最大はscene_000300の97.13pxでframe0から大きく、窓境界だけでは説明できない。これら上位3clipの寄与は17.39%で、1clipだけの外れ値ではない。原因は未同定。学習時validationの125.816pxは別split・中心窓の値であり、その予測配列は保存されていないため該当frameの特定は未確認である。
 
-出力勾配は200更新ごとにraw/weightedの両方を記録した。600更新以降の記録点で、各新損失が依存する出力へのweighted勾配は有限・非ゼロだった。依存しない出力の勾配は0であり、異常と扱わない。rollout位置のxyz勾配は後半に位置教師と同程度以上になる一方、Bの再構成→parameter勾配は数桁小さい。これは出力に対するL2で、trunkの勾配競合や損失間の角度を測ったものではない。[重み付き出力勾配](../../runs/run-i1044-final-evaluation/report/weighted_output_gradients.png)、[学習曲線](../../runs/run-i1044-final-evaluation/report/validation_learning.png)と個別runのscalarが根拠。
+出力勾配は200更新ごとにraw/weightedの両方を記録した。600更新以降の記録点で、各新損失が依存する出力へのweighted勾配は有限・非ゼロだった。依存しない出力の勾配は0であり、異常と扱わない。rollout位置のxyz勾配は後半に位置教師と同程度以上になる一方、Bの再構成→parameter勾配は数桁小さい。これは出力に対するL2で、trunkの勾配競合や損失間の角度を測ったものではない。[重み付き出力勾配（削除済み）](../../runs/run-i1044-final-evaluation/artifact-manifest.json#/files/57)、[学習曲線](../../runs/run-i1044-final-evaluation/report/validation_learning.png)と個別runのscalarが根拠。
 
 次の検証候補は、窓の重複/結合による連続性を同じ推論条件で比較すること、長い同予算でA/B/主対照を追加seed確認すること、Bのheadと個々の補助損失を分離すること、独立した実3D/校正データで一般化を調べること。今回はこれらを追加実行していない。短予算の今回結果はB直接出力の改善を観測する材料となったが、全軸の優位・積分出力の採用・実運用での最適性は未実証のままである。
 

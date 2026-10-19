@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-b00-canonical-sfm",
+  "files": [
+    {
+      "path": "B00-preview.jpg",
+      "size_bytes": 161457,
+      "sha256": "951048fdf9cd01b5a7e90e3b4fbcdae4d01a42bf30dc5f1ccd55dc5399e590e5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "run.log",
+      "size_bytes": 892193,
+      "sha256": "84444661134763048ee49b1e6e7c33bcbdec53ca737932da7cb5533cdcb5f10c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

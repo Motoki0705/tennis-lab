@@ -80,8 +80,8 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-court-b02-canonical-sfm
   output_dir: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/datasets/court
-  preview: knowledge/runs/run-court-b02-canonical-sfm/B02-preview.jpg
-  log: knowledge/runs/run-court-b02-canonical-sfm/run.log
+  preview: {status: deleted, record: knowledge/runs/run-court-b02-canonical-sfm/artifact-manifest.json#/files/0}
+  log: {status: deleted, record: knowledge/runs/run-court-b02-canonical-sfm/artifact-manifest.json#/files/1}
 parents:
 - run-court-b02-wide-no-full
 relations: []

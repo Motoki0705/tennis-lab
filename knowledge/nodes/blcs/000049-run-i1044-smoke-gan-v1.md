@@ -37,7 +37,7 @@ artifacts:
   config_yaml: knowledge/runs/run-i1044-smoke-gan-v1/config.yaml
   selection_json: knowledge/runs/run-i1044-smoke-gan-v1/selection.json
   tb_logdir: outputs/blcs/i1044/smoke-gan-v1/logs/version_0
-  scalars: knowledge/runs/run-i1044-smoke-gan-v1/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-smoke-gan-v1/artifact-manifest.json#/files/0}
 parents: []
 relations: []
 papers: []

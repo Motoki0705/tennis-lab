@@ -90,7 +90,7 @@ manual Court・外注ball annotation・旧Court予測は候補生成や採択に
 cam0は[600,0,1680,540]、cam1/2は[0,270,1920,1080]を選んだ。
 選んだ領域で9時点をそれぞれ新規推論し、27件すべてのhybridが成功した。固定Hの反復や失敗frameの補間は行っていない。
 各frameの14点平均manual距離はcam0 8.93–11.43px、cam1 9.84–17.18px、cam2 6.37–9.35pxだった。
-[冒頭・中盤・終盤の確認画像](../../runs/run-court-meiji-model-only-regions-20260922/court_region_temporal_probe/contact.jpg)でも同じ対象コートに点が並ぶことを確認した。
+[冒頭・中盤・終盤の確認画像（削除済み）](../../runs/run-court-meiji-model-only-regions-20260922/artifact-manifest.json#/files/0)でも同じ対象コートに点が並ぶことを確認した。
 
 実装したCourt-owned領域wrapperとtennis_sceneの正規componentを使った3cameraのframe 0再推論でも、camera_view_v2校正が成功した。
 raw rasterはcrop/native gridに保持し、KP/Hだけを元画像へ写す。最初の領域採択基準と各frameのhybrid valid判定は別であり、後続frameのraw inlier数が8未満でも元のhybrid契約で成功したframeは含む。

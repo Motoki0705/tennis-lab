@@ -26,7 +26,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-read-stream-capture-v1
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001
-  audit: knowledge/runs/run-slcs-meiji-read-stream-capture-v1/audit.json
+  audit: {status: deleted, record: knowledge/runs/run-slcs-meiji-read-stream-capture-v1/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-v9-observation-reuse-v1
 relations: []

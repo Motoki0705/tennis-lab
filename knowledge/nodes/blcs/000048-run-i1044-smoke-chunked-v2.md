@@ -37,7 +37,7 @@ artifacts:
   config_yaml: knowledge/runs/run-i1044-smoke-chunked-v2/config.yaml
   selection_json: knowledge/runs/run-i1044-smoke-chunked-v2/selection.json
   tb_logdir: outputs/blcs/i1044/smoke-chunked-v2/logs/version_0
-  scalars: knowledge/runs/run-i1044-smoke-chunked-v2/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-smoke-chunked-v2/artifact-manifest.json#/files/0}
 parents: []
 relations: []
 papers: []

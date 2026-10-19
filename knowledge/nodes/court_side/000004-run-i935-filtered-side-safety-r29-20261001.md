@@ -24,7 +24,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-i935-filtered-side-safety-r29-20261001
   report: knowledge/runs/run-i935-filtered-side-safety-r29-20261001/report.json
-  evidence: knowledge/runs/run-i935-filtered-side-safety-r29-20261001/evidence.jsonl.gz
+  evidence: {status: deleted, record: knowledge/runs/run-i935-filtered-side-safety-r29-20261001/artifact-manifest.json#/files/0}
 parents:
 - run-i932-synthetic-side-thresholds
 - run-i935-confidence-r29-20261001

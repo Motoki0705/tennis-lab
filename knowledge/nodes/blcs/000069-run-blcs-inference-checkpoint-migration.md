@@ -28,8 +28,8 @@ artifacts:
   verification: knowledge/runs/run-blcs-inference-checkpoint-migration/migration.json
   log: knowledge/runs/run-blcs-inference-checkpoint-migration/migration.log
   migration_script: knowledge/runs/run-blcs-inference-checkpoint-migration/migrate.py
-  original_prediction: knowledge/runs/run-blcs-inference-checkpoint-migration/original-prediction.npz
-  migrated_prediction: knowledge/runs/run-blcs-inference-checkpoint-migration/migrated-prediction.npz
+  original_prediction: {status: deleted, record: knowledge/runs/run-blcs-inference-checkpoint-migration/artifact-manifest.json#/files/6}
+  migrated_prediction: {status: deleted, record: knowledge/runs/run-blcs-inference-checkpoint-migration/artifact-manifest.json#/files/5}
   original_review: knowledge/runs/run-blcs-inference-checkpoint-migration/claude-review.json
   review_response: knowledge/runs/run-blcs-inference-checkpoint-migration/review-response.md
   verification_checks: knowledge/runs/run-blcs-inference-checkpoint-migration/checks.json

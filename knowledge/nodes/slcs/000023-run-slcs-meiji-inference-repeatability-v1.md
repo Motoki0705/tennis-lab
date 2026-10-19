@@ -38,7 +38,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-inference-repeatability-v1
   output_dir: outputs/tennis_scene/analyze/meiji_inference_repeatability/s42-001
   diagnostics: knowledge/runs/run-slcs-meiji-inference-repeatability-v1/results.json
-  predictions: knowledge/runs/run-slcs-meiji-inference-repeatability-v1/prediction_1.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-meiji-inference-repeatability-v1/artifact-manifest.json#/files/0}
   log: knowledge/runs/run-slcs-meiji-inference-repeatability-v1/queue.log
 parents:
 - run-slcs-meiji-checkpoint-hash-gpu-control-v1

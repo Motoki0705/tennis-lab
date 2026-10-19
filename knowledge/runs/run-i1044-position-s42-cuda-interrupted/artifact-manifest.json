@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-position-s42-cuda-interrupted",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 5488,
+      "sha256": "df7a37447ea609ea7e4afc294af2c244f9e9bc21a09b38cf59cf279f4abba274",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

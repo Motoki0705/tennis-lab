@@ -40,7 +40,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-deploy-multiview-blcs-v3-simfix-c3-6-v2
-  predictions: knowledge/runs/run-deploy-multiview-blcs-v3-simfix-c3-6-v2/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-deploy-multiview-blcs-v3-simfix-c3-6-v2/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783986831913101106_1649558_deploy_multiview_blcs_v3_simfix_c3_6_v2.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_9
   checkpoint: ckpt/blcs/run-multiview-blcs-v3-simfix-c3-6-epoch129.ckpt

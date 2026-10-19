@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-pipeline-ft-e13-r7-20260928",
+  "files": [
+    {
+      "path": "refiner_prediction.npz",
+      "size_bytes": 30473,
+      "sha256": "2f993221a454462b53137301cbf9b08423ebb59fc751a7496617e596919c91dc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -30,7 +30,7 @@ artifacts:
   config_yaml: knowledge/runs/run-i1044-position-s42-cuda-interrupted/config.yaml
   interruption_json: knowledge/runs/run-i1044-position-s42-cuda-interrupted/interruption.json
   tb_logdir: outputs/blcs/i1044/aborted-position-s42-cuda-unknown/logs/version_0
-  scalars: knowledge/runs/run-i1044-position-s42-cuda-interrupted/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-position-s42-cuda-interrupted/artifact-manifest.json#/files/0}
   curves: knowledge/runs/run-i1044-position-s42-cuda-interrupted/curves.png
 parents: []
 relations: []

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-meiji-clip000-triangulation",
+  "files": [
+    {
+      "path": "predictions.npz",
+      "size_bytes": 774479,
+      "sha256": "5432b7c3a9cd7562e5055e10abd40b23dd9fac9d104bf3f2e1e9d17965a78662",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

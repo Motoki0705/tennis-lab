@@ -34,7 +34,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v2
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_observation_reuse/s42-002
   read_witness_directory: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_read_witness/s42-001
-  ledger: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v2/ledger.json
+  ledger: {status: deleted, record: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v2/artifact-manifest.json#/files/0}
   failure: knowledge/runs/run-slcs-meiji-v9-observation-reuse-v2/failure.json
 parents:
 - run-slcs-meiji-v9-observation-reuse-v1

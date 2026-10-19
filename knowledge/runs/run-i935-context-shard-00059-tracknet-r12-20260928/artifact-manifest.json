@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-context-shard-00059-tracknet-r12-20260928",
+  "files": [
+    {
+      "path": "build-dino.log.gz",
+      "size_bytes": 2965,
+      "sha256": "e945436960ae765e652d592351ef101dff3f90d88671137ff9ebaa49bf2c3d07",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip-00071-context.jpg",
+      "size_bytes": 570522,
+      "sha256": "a8c8bb874ee60ef45664d1c00ae921ad59294ad509eae6957dccabf91d2271c6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00071.npz",
+      "size_bytes": 2254901,
+      "sha256": "91b7c92ab77b71dff236d79a327d5337f303f38979bec3fe90649d7925f1dfaa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -37,7 +37,7 @@ artifacts:
   run_dir: knowledge/runs/run-i1044-final-evaluation
   output_dir: outputs/blcs/i1044
   log: knowledge/runs/run-i1044-final-evaluation/queue-summary.log
-  raw_log: knowledge/runs/run-i1044-final-evaluation/queue.log.gz
+  raw_log: {status: deleted, record: knowledge/runs/run-i1044-final-evaluation/artifact-manifest.json#/files/43}
   log_archive: knowledge/runs/run-i1044-final-evaluation/log-archive.json
   capture_checksums: knowledge/runs/run-i1044-final-evaluation/capture_checksums.json
   artifact_manifest: knowledge/runs/run-i1044-final-evaluation/artifact_manifest.json

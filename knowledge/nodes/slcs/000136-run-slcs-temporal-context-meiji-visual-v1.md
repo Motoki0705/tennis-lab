@@ -35,7 +35,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-slcs-temporal-context-meiji-visual-v1
   output_dir: outputs/slcs/visualize/real_rgb_temporal_context_meiji/s42-001
-  predictions: knowledge/runs/run-slcs-temporal-context-meiji-visual-v1/predictions.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-temporal-context-meiji-visual-v1/artifact-manifest.json#/files/3}
   summary: knowledge/runs/run-slcs-temporal-context-meiji-visual-v1/summary.json
   pr_preview: knowledge/runs/run-slcs-temporal-context-meiji-visual-v1/pr_preview
 parents:
@@ -90,4 +90,4 @@ broadcastの位置誤差やplayerなどが悪化したため親の判定は不�
 進行中のtrain-domain抽出頻度を均衡化する比較を5条件validationで評価する。
 数値と固定clipの両方を確認し、候補を採用する場合はそのcheckpointで可視化も再生成する。
 
-![Meijiの入力映像とTemporalContext推定（未採用）](../../runs/run-slcs-temporal-context-meiji-visual-v1/pr_preview/comparison.gif)
+[Meijiの入力映像とTemporalContext推定（未採用）（削除済み）](../../runs/run-slcs-temporal-context-meiji-visual-v1/artifact-manifest.json#/files/0)

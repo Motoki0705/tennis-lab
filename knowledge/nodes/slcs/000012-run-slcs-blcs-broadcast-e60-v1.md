@@ -28,7 +28,7 @@ repro:
     -m src.tasks.blcs.scripts.train --config-name train_broadcast_real_rgb run.output_dir=blcs/train/broadcast_real_rgb/s42-001
 artifacts:
   run_dir: knowledge/runs/run-slcs-blcs-broadcast-e60-v1
-  predictions: knowledge/runs/run-slcs-blcs-broadcast-e60-v1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-blcs-broadcast-e60-v1/artifact-manifest.json#/files/0}
   output_dir: outputs/blcs/train/broadcast_real_rgb/s42-001
   curves: knowledge/runs/run-slcs-blcs-broadcast-e60-v1/curves.png
   tb_logdir: outputs/blcs/train/broadcast_real_rgb/s42-001/logs/version_0

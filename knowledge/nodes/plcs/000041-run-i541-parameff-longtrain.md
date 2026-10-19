@@ -43,7 +43,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i541-parameff-longtrain
-  predictions: knowledge/runs/run-i541-parameff-longtrain/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i541-parameff-longtrain/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781927074922005793_760015_i541_parameff_longtrain.log
   curves: knowledge/runs/run-i541-parameff-longtrain/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_1

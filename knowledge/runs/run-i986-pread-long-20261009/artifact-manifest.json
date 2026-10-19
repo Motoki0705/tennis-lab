@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i986-pread-long-20261009",
+  "files": [
+    {
+      "path": "report.json",
+      "size_bytes": 328531,
+      "sha256": "85f60b3bf7d7fa00887443ff3c8a2e461b83ac42fea1372cb0ef01a0179c73e1",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

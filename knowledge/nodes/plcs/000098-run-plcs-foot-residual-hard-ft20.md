@@ -42,7 +42,7 @@ repro:
     --config-name train
 artifacts:
   run_dir: knowledge/runs/run-plcs-foot-residual-hard-ft20
-  predictions: knowledge/runs/run-plcs-foot-residual-hard-ft20/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-foot-residual-hard-ft20/artifact-manifest.json#/files/0}
   output_dir: outputs/plcs/foot_residual/training/logs/version_0
   curves: knowledge/runs/run-plcs-foot-residual-hard-ft20/curves.png
   tb_logdir: outputs/plcs/foot_residual/training/logs/version_0

@@ -50,7 +50,7 @@ repro:
     --device cuda
 artifacts:
   run_dir: knowledge/runs/run-plcs-headless-reid-export-eval-20260925
-  predictions: knowledge/runs/run-plcs-headless-reid-export-eval-20260925/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-headless-reid-export-eval-20260925/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790299213752921401_51561_plcs-headless-reid-export-eval-20260925.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/evaluate/headless_reid_v2_20260925
   evaluation: knowledge/runs/run-plcs-headless-reid-export-eval-20260925/evaluation.json

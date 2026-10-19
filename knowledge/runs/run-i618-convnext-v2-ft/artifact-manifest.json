@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i618-convnext-v2-ft",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 11426840,
+      "sha256": "41d2f0e7be67be9bcb64944730684dfbe2f8151f4f5860d4881fe4f82bec9faa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

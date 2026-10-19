@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1032-blcs-physics-v3-e200-s42",
+  "files": [
+    {
+      "path": "dataset_files.jsonl.gz",
+      "size_bytes": 1859160,
+      "sha256": "b722e4f173aad48548134f7e72dc6cefc16ddad247760bcb2059bfa1cbe37b72",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation.log.gz",
+      "size_bytes": 2666,
+      "sha256": "35616ecbf39f2b6add92a828d7ca359d7ee7b741c2bd1c164a18e20e7e997183",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 187988,
+      "sha256": "43b9f39a3f29a70a2c243e3c525d08ed5f01bb26bfb43316a6c1663f632e9bd9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 78862,
+      "sha256": "ea9e9d3588202e2806cdbc0313130d532eebbcaf9d1d8b0ebbdaf0a3cb84f29a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "training.log.gz",
+      "size_bytes": 1341,
+      "sha256": "a4bfc0a011e1691dd2231323d55e09bcba018feaacfc7b0eabee4dcc46173273",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

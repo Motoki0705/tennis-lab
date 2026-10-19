@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-default-merge-r11-20260930",
+  "files": [
+    {
+      "path": "merge_contacts/page_00.jpg",
+      "size_bytes": 303192,
+      "sha256": "eaba943f4f81445920a14a57bcd124128d82bea1af115d9a23486f0a7ec49fef",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "merge_contacts/page_01.jpg",
+      "size_bytes": 378512,
+      "sha256": "b668e7521ee89b043d252a6777ef833863b4fc54d151b9373828c2fc4d78158f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "merge_contacts/page_02.jpg",
+      "size_bytes": 322220,
+      "sha256": "7088dbd03bec338d91472c449deef235c4008fb635aa313b71411e5fd0d0550b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "merge_contacts/page_03.jpg",
+      "size_bytes": 266417,
+      "sha256": "060375c62633efd19e09a96d4826257971406fef5ec25b5a8f3aa3835130e29c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "merge_contacts/page_04.jpg",
+      "size_bytes": 333700,
+      "sha256": "1c6cf0d7f20277cdd4bd9acccdaffdd5df45bb2ed303a6319d28829107737466",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "merge_contacts/page_05.jpg",
+      "size_bytes": 92292,
+      "sha256": "348bd1ce85587f1adbb5019af11718fbb7c439fdacd246433a25bb6a0e72845f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

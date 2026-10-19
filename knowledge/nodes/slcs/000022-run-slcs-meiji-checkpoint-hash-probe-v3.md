@@ -34,7 +34,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v3
   log: .training_queue/logs/1789734467299446249_848899_slcs-meiji-checkpoint-hash-probe-v3.log
   output_dir: outputs/tennis_scene/analyze/meiji_hash_probe_v3/s42-001
-  diagnostics: knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v3/results.json
+  diagnostics: {status: deleted, record: knowledge/runs/run-slcs-meiji-checkpoint-hash-probe-v3/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-checkpoint-hash-probe-v1
 - run-slcs-meiji-checkpoint-hash-probe-v2b

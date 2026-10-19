@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-clip000-qualification-r14-20261001",
+  "files": [
+    {
+      "path": "collection/snapshot/1790790062674261667_32446_i964-clip000-qualification-r14-20261001.log",
+      "size_bytes": 384607,
+      "sha256": "c8ea0c43a93824bda2712b0ffe4e3fa7a0b2fc64322ea51ae4dad22cecb1e397",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

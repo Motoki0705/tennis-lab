@@ -45,7 +45,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2
   log: knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2/evaluation.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/slcs/analyze/real_rgb_pilot_baseline/s42-002
-  predictions: knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2/test_full/eval_arrays.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2/artifact-manifest.json#/files/1}
 parents:
 - run-slcs-rgb-pilot-baseline-e60-v2
 relations: []

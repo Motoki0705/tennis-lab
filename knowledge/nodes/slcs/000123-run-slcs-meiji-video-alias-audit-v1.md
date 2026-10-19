@@ -29,7 +29,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-video-alias-audit-v1
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_video_alias_audit/s42-001
   receipt: knowledge/runs/run-slcs-meiji-video-alias-audit-v1/audit.json
-  previous_failed_audit: knowledge/runs/run-slcs-meiji-v8-features-missing-v1/audit.json
+  previous_failed_audit: {status: deleted, record: knowledge/runs/run-slcs-meiji-v8-features-missing-v1/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-v8-features-missing-v1
 relations: []

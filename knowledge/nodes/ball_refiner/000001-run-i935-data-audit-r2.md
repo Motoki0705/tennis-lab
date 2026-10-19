@@ -51,7 +51,7 @@ tags: [data-audit, amodal-supervision, context-coverage]
 | Meiji val | 26,961 | 23,007 | 0 | 0 |
 | Meiji test | 36,006 | 28,806 | 0 | 0 |
 
-完全な全source/split・理由別内訳とclipのhashは[監査JSON](../../runs/run-i935-data-audit-r2/audit.json)に保存。
+完全な全source/split・理由別内訳とclipのhashは[監査JSON（削除済み）](../../runs/run-i935-data-audit-r2/artifact-manifest.json#/files/0)に保存。
 表の残りはunreviewed・unresolved・interpolated・occlusion_estimatedで、主教師にはしない。
 実storeの複数instance frameは0件だが、将来の入力を想定してテストで除外を検証した。
 trainの存在既知frameは正例67,462、負例1,063で偏りが強い。Meijiには確定負例がないため、

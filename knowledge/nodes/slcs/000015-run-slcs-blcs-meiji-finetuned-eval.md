@@ -21,7 +21,7 @@ metrics:
   endpoint_error_m: 0.5972864031791687
 artifacts:
   run_dir: knowledge/runs/run-slcs-blcs-meiji-finetuned-eval
-  predictions: knowledge/runs/run-slcs-blcs-meiji-finetuned-eval/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-blcs-meiji-finetuned-eval/artifact-manifest.json#/files/0}
   output_dir: outputs/blcs/evaluate/meiji_finetuned/s42-001
 parents:
 - run-slcs-blcs-meiji-e60-v1

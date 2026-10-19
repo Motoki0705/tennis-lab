@@ -124,7 +124,7 @@ union（#937≥.30＋COCO≥.30）は有力な代案。wideを143/143、cam0 far
 
 ## 全表と固定規則
 
-[日本語レポート](../../runs/run-i964-fullframe-selection-r6-20260930/report.md)を、camera×near/far・clip・identity・候補/track負荷・対応成功/失敗の入口とする。[comparison.json](../../runs/run-i964-fullframe-selection-r6-20260930/comparison.json)と同名CSVが数値の正本。主表は選別直後、IoU .3、unit=(clip,camera,frame,person)で重複boxをまとめる。選手ID保持はその集計範囲のunitの50%以上、非選手ID完全除外は残存0。非選手は全体除外と追跡hitに条件付けた除外を分ける。全体除外の改善を幾何による除外だけの成果とはしない。near/farは画像内の2選手のbox下端順位で、不明はunknownに残す。
+[日本語レポート](../../runs/run-i964-fullframe-selection-r6-20260930/report.md)を、camera×near/far・clip・identity・候補/track負荷・対応成功/失敗の入口とする。[comparison.json（削除済み）](../../runs/run-i964-fullframe-selection-r6-20260930/artifact-manifest.json#/files/8)と同名CSVが数値の正本。主表は選別直後、IoU .3、unit=(clip,camera,frame,person)で重複boxをまとめる。選手ID保持はその集計範囲のunitの50%以上、非選手ID完全除外は残存0。非選手は全体除外と追跡hitに条件付けた除外を分ける。全体除外の改善を幾何による除外だけの成果とはしない。near/farは画像内の2選手のbox下端順位で、不明はunknownに残す。
 
 選別規則の実装正本は`src/tasks/person_tracking/court_linking.py`、実行時の全値は[selection_protocol.json](../../runs/run-i964-fullframe-selection-r6-20260930/selection_protocol.json)。singles core（|x|≤4.115m、|y|≤16.885m）内の実観測distinct frameを連結後に25%以上集約し、その後group上限6。**領域はmembershipだけを決め、選択済み断片の全実観測を保存する。** ダブルス幅は診断値。gap/jumpによるidentity区間、安全な短いhandoff、1秒未満の曖昧断片除外は維持した。全84 source camera-clipで、全選択断片の観測が無削除・非観測を追加しない・上限6を確認した。COCO .30では診断corridor外（横幅またはbaseline+5m外）の実観測669件も選択済みのまま保持している。
 

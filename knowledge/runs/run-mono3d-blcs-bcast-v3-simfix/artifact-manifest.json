@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-bcast-v3-simfix",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 281433,
+      "sha256": "97f5ac9c5c8be8c63887ac3ab678b35d97c6bb8d95a0e5e8d302e6f804c02abc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

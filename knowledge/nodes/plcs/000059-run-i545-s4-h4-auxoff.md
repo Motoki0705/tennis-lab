@@ -47,7 +47,7 @@ repro:
     training.early_stopping.enabled=false run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i545-s4-h4-auxoff
-  predictions: knowledge/runs/run-i545-s4-h4-auxoff/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i545-s4-h4-auxoff/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782305635208315185_634509_i545_s4_h4_auxoff.log
   curves: knowledge/runs/run-i545-s4-h4-auxoff/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_8

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-fixed-track-reid-eager-e60-s42-20260924",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 657736,
+      "sha256": "3ce90e612b1e4025666cfc02d49b0a27a7faafa3f6d547f009524721b907993d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

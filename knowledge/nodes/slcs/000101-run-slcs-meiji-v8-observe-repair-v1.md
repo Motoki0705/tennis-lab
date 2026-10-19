@@ -41,7 +41,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-v8-observe-repair-v1
   output_dir: outputs/tennis_scene/generate/meiji_rgb_v8/s42-002
-  audit: knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/audit.json
+  audit: {status: deleted, record: knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/artifact-manifest.json#/files/0}
   quarantine: knowledge/runs/run-slcs-meiji-v8-observe-repair-v1/quarantine.json
 parents:
 - run-slcs-meiji-v8-observe-v1

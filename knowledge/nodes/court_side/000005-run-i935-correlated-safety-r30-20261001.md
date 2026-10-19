@@ -51,7 +51,7 @@ clip_000 qualificationは提案/投入せず、次の方針は未選択とする
 | 同一GMM＋固定confidence規則 | 2 | 28.4286% |
 
 [report](../../runs/run-i935-correlated-safety-r30-20261001/result/report.json)、
-[全33,600判定のevidence](../../runs/run-i935-correlated-safety-r30-20261001/result/evidence.jsonl.gz)、
+[全33,600判定のevidence（削除済み）](../../runs/run-i935-correlated-safety-r30-20261001/artifact-manifest.json#/files/0)、
 [実行log](../../runs/run-i935-correlated-safety-r30-20261001/bench.log)を保存した。
 CPU単一process/torch1thread、315.26秒。GPUは使用していない。
 

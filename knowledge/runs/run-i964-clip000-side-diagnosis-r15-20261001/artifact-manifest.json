@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-clip000-side-diagnosis-r15-20261001",
+  "files": [
+    {
+      "path": "counterfactuals/annotation_observed-observations.npz",
+      "size_bytes": 19687,
+      "sha256": "57f311ff5334d5ebc5ebbf31d471c8cba6f804472f735d04c7a08dc7f7cc6c4e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "counterfactuals/e9_top1_production_gate-observations.npz",
+      "size_bytes": 23502,
+      "sha256": "57dddb4560897b4f738b25c33cdf09c34e7521c2220e68dd71c0f96e4ab17da0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "counterfactuals/e9_top1_ungated-observations.npz",
+      "size_bytes": 23257,
+      "sha256": "3ab0270249bcb336ca0a6e4d1bfb66550c5cec8e8e155c0a8c1d8c8fd8345767",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "counterfactuals/production-observations.npz",
+      "size_bytes": 14249,
+      "sha256": "68c4d1d3821447663fbbf53d856573689f71fc320f07bea4655c16e44dc5411b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "counterfactuals/quality-all-frames.csv",
+      "size_bytes": 520279,
+      "sha256": "cc7b6fcdcdd42867d6d58b4adf385481537a357d39cb5e23b7efc48f4e9cc27d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "production/production-observations.npz",
+      "size_bytes": 14249,
+      "sha256": "68c4d1d3821447663fbbf53d856573689f71fc320f07bea4655c16e44dc5411b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-recalibration-fit-r14-20261001",
+  "files": [
+    {
+      "path": "dev/fitted-units.jsonl.gz",
+      "size_bytes": 74586,
+      "sha256": "5bd3b77404c6dfe73ee7f90c28e7c3b1ac3d27028b9878dd5a451d07bb589f10",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/group-units.jsonl.gz",
+      "size_bytes": 74601,
+      "sha256": "90584950110b85df96f3a764d59d08d9679f9f19bbaaa93ce9705733a755d9c0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/old-units.jsonl.gz",
+      "size_bytes": 74583,
+      "sha256": "654743fdff1bf645d90a9602bddf10857741d79232f68a50c42b4e25d7b1d7a3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/raw-units.jsonl.gz",
+      "size_bytes": 74702,
+      "sha256": "6f5cfba1355b15b11043de05ea79ee89864df99865f12f5bae03f4ced74ca73c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_000/clip_000/fitted.npz",
+      "size_bytes": 1012,
+      "sha256": "3e66f185ea155332fc8628ef52850c8b525c7c41c8b83204fa87d6de3507c111",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_000/clip_000/old.npz",
+      "size_bytes": 1012,
+      "sha256": "3e66f185ea155332fc8628ef52850c8b525c7c41c8b83204fa87d6de3507c111",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_000/clip_007/fitted.npz",
+      "size_bytes": 964,
+      "sha256": "a77d901b1a889b6769fccf246cca75fd155b8c9bb203cc152f9bf52fb8952168",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_000/clip_007/old.npz",
+      "size_bytes": 964,
+      "sha256": "a77d901b1a889b6769fccf246cca75fd155b8c9bb203cc152f9bf52fb8952168",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_001/clip_001/fitted.npz",
+      "size_bytes": 1366,
+      "sha256": "1a8a5acd90a9056653d3cded95ce86a7ff4b9db84a7a03b6404e85767e616769",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_001/clip_001/old.npz",
+      "size_bytes": 1366,
+      "sha256": "1a8a5acd90a9056653d3cded95ce86a7ff4b9db84a7a03b6404e85767e616769",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_002/clip_013/fitted.npz",
+      "size_bytes": 855,
+      "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dev/video_002/clip_013/old.npz",
+      "size_bytes": 855,
+      "sha256": "69a57304b439c6d5327dc04e78ff436953cd1cf89ca7f07a9b64e546a6769635",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "fit.json",
+      "size_bytes": 453741,
+      "sha256": "149a9c61681f91b28fecc443ba1a3b9956af88aedeb2ecb011e6483c2e34620d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

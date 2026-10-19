@@ -155,7 +155,7 @@ tags:
 現行DINOを3camera×1010frameで実行し、推定Courtからの既存footpoint filterを有効化した。
 cam0の両bbox軌跡は旧人手対応の対象と全要素一致した。cam1も中心差の中央値は両人0で、95%点は最大0.0132bbox幅だった。
 cam2では対応候補そのものは同じ対象選手だったが、遠方選手の直接観測は298/1010frameだけとなった。
-[拡大画像](../../runs/run-tennis-scene-meiji-court-filter-5m-20260922/evidence/tracking/cam2_far_crops.jpg)では、後半の推定bboxが実際の人物へ追従せず停止することを確認した。
+[拡大画像（削除済み）](../../runs/run-tennis-scene-meiji-court-filter-5m-20260922/artifact-manifest.json#/files/6)では、後半の推定bboxが実際の人物へ追従せず停止することを確認した。
 数値上の旧bboxへの最近傍と、現在の映像を追跡できていることは区別する必要がある。
 
 ## 原因の切り分け

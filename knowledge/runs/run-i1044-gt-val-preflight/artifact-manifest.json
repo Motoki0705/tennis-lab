@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-gt-val-preflight",
+  "files": [
+    {
+      "path": "evaluation.json",
+      "size_bytes": 816441,
+      "sha256": "0c803932668d390470a4501aeb91f79070501000e6fb1a179453d60b830ceccd",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pred_val.npz",
+      "size_bytes": 4359278,
+      "sha256": "74956c7b6ca5c9fa2b3dd2778a4a7c6d7ec2076b0f125d0b11e8ae396fa84ea8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

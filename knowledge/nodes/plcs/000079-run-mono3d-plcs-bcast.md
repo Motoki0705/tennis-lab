@@ -49,7 +49,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-plcs-bcast
-  predictions: knowledge/runs/run-mono3d-plcs-bcast/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-plcs-bcast/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783207757918559209_7684_mono3d_plcs_bcast.log
   output_dir: outputs/plcs/plcs_multiview_axial_split/logs/version_21
   curves: knowledge/runs/run-mono3d-plcs-bcast/curves.png

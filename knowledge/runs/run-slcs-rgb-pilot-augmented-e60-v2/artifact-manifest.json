@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-rgb-pilot-augmented-e60-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 15889,
+      "sha256": "eba41af123e3021774d5721b07bfdd6bdff1c1b649ce2d18cb9ffc3f5bb1988e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-broadcast-unused-source-inventory-v1",
+  "files": [
+    {
+      "path": "halle_1685.jpg",
+      "size_bytes": 14739,
+      "sha256": "12a1f98374782b3f5ef2e2e249d388cfee10c63f548f672d4ac23da0849c5d68",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "heldout_overlap_strip.jpg",
+      "size_bytes": 64198,
+      "sha256": "70cddaceda8dd8c736cfdb537304be17c8d4ea9a39a8bd13b8e11ad60049df3a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "sydney_3240.jpg",
+      "size_bytes": 11217,
+      "sha256": "5f037ae0a220091d94221c8ce1b088232aa1419955287ae830c4b371e9f9b4ad",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "torino_1200.jpg",
+      "size_bytes": 10443,
+      "sha256": "e0dc2edfd9ab5a305d5b22d8ba0014363b9d39cc2da17e103c82cda249dab2d1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

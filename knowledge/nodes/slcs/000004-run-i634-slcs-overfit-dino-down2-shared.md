@@ -64,7 +64,7 @@ repro:
     run.output_dir=outputs/slcs/i634_overfit_dino_down2_shared
 artifacts:
   run_dir: knowledge/runs/run-i634-slcs-overfit-dino-down2-shared
-  predictions: knowledge/runs/run-i634-slcs-overfit-dino-down2-shared/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i634-slcs-overfit-dino-down2-shared/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783905015753095149_1219154_i634_slcs_overfit_dino_down2_shared.log
   output_dir: outputs/slcs/i634_overfit_dino_down2_shared/logs/version_0
   curves: knowledge/runs/run-i634-slcs-overfit-dino-down2-shared/curves.png

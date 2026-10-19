@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v9-observation-reuse-v4",
+  "files": [
+    {
+      "path": "inputs_after.json",
+      "size_bytes": 406944,
+      "sha256": "ac2bc48ab49665c6b4b361d59f322c8b612650c2631e01e7dd83a203ce9bd03c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs_before.json",
+      "size_bytes": 406944,
+      "sha256": "ac2bc48ab49665c6b4b361d59f322c8b612650c2631e01e7dd83a203ce9bd03c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs_prepublication.json",
+      "size_bytes": 406944,
+      "sha256": "ac2bc48ab49665c6b4b361d59f322c8b612650c2631e01e7dd83a203ce9bd03c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

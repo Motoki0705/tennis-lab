@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i991-coords-2d-regression-p075-s42-20261005-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 5999236,
+      "sha256": "154e2838d3e78794701d41aebb80ae0883e8a8b11c9dc647e91e390ff2b89a90",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

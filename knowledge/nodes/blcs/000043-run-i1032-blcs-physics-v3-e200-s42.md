@@ -57,11 +57,11 @@ artifacts:
   run_dir: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791333871983856390_1050674_i1032-blcs-physics-v3-e200-s42-20261007.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001/logs/version_0
-  predictions: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/artifact-manifest.json#/files/2}
   checkpoint: ckpt/blcs/axial-base-physics-v3-kp14-t128-v3-6-e200-s42-epoch189.ckpt
   selection: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/checkpoint-selection.json
   placement: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/checkpoint-placement.json
-  dataset_manifest: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/dataset_files.jsonl.gz
+  dataset_manifest: {status: deleted, record: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/artifact-manifest.json#/files/0}
   evaluation_repro: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/evaluation_repro
   tb_logdir: outputs/blcs/train/axial_base_physics_v3_t128_v3-6_reprojection_e200/s42-20261007-001/logs/version_0
   curves: knowledge/runs/run-i1032-blcs-physics-v3-e200-s42/curves.png

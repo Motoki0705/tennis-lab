@@ -33,7 +33,7 @@ repro:
     run.resume=plcs/train/meiji_foot_real_rgb/s42-001/logs/version_2/checkpoints/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-slcs-plcs-meiji-foot-e60-resume-v3
-  predictions: knowledge/runs/run-slcs-plcs-meiji-foot-e60-resume-v3/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-plcs-meiji-foot-e60-resume-v3/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3
   tb_logdir: outputs/plcs/train/meiji_foot_real_rgb/s42-001/logs/version_3
   checkpoint_selection: knowledge/runs/run-slcs-plcs-meiji-foot-e60-resume-v3/selection.json

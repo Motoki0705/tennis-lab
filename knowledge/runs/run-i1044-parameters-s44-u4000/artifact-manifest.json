@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-parameters-s44-u4000",
+  "files": [
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 2479160,
+      "sha256": "a19e3bb01cd2110a621a9ff1279ce5d72397ce9563893ce35afdd6bb66a76ca6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 57877,
+      "sha256": "bd54b0c6fe4389fd9376208a75d3f31a6877c8a1f5571a6632484b11cf3afcc5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

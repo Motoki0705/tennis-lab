@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-meiji-hybrid-cpu-profile-20260923",
+  "files": [
+    {
+      "path": "court_cpu_profile/cam0.prof",
+      "size_bytes": 55470,
+      "sha256": "91561148d4f17bc7ebc805db6341181cfdbc5c5a55ff64e7597aa0c9f4766179",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "court_cpu_profile/cam1.prof",
+      "size_bytes": 55505,
+      "sha256": "a8e2ea3d1ea945e4bc35c68f155bf1179e27b834ae3453befd44be72d2347c70",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "court_cpu_profile/cam2.prof",
+      "size_bytes": 55505,
+      "sha256": "0dac8e40e3354bd703187b48ac05c70407c318d5759f6a11538c305193245575",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

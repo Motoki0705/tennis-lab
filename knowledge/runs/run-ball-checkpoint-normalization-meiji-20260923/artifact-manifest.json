@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-ball-checkpoint-normalization-meiji-20260923",
+  "files": [
+    {
+      "path": "ball_preprocessing_cpu_probe/cam0-comparison.jpg",
+      "size_bytes": 1776261,
+      "sha256": "48ddb4af8ea4e24738ee6fbd3debceca635320a6fe59f4d173724228857f6893",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ball_preprocessing_cpu_probe/cam1-comparison.jpg",
+      "size_bytes": 1466765,
+      "sha256": "fde82430f30ef04cc6918ba2b1fc6a24f3c934ecc79024efe4f08c5e4db31b7c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ball_preprocessing_cpu_probe/cam2-comparison.jpg",
+      "size_bytes": 1373410,
+      "sha256": "aa629946e5096a809d7de9444b063f87085ca404795952604325c0e37a8f647d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

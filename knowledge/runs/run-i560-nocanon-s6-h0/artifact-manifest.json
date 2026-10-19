@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i560-nocanon-s6-h0",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 405178,
+      "sha256": "28ea98ca9a05c129f37c4585ec6c0b5b654dd4467869024da5c2efc7f45062ae",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

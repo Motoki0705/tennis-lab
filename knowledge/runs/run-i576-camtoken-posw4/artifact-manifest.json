@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i576-camtoken-posw4",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 476169,
+      "sha256": "d19c3ed17ad8ce09a5e465d73b812a318e9b7fafdb5af0b0af3c0e72c67ee29d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

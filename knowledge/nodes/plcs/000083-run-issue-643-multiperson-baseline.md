@@ -38,7 +38,7 @@ repro:
   command: .venv/bin/python -m src.tasks.player_tracking.scripts.train run.output_dir=outputs/player_tracking/issue-643-baseline
 artifacts:
   run_dir: knowledge/runs/run-issue-643-multiperson-baseline
-  predictions: knowledge/runs/run-issue-643-multiperson-baseline/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-issue-643-multiperson-baseline/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1784025505000778325_1905602_issue-643-multiperson-baseline.log
   output_dir: outputs/player_tracking/issue-643-baseline/logs/version_0
   curves: knowledge/runs/run-issue-643-multiperson-baseline/curves.png

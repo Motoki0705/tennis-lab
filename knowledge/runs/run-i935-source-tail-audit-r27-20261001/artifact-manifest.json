@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-source-tail-audit-r27-20261001",
+  "files": [
+    {
+      "path": "frames/cam0.npz",
+      "size_bytes": 9022907,
+      "sha256": "ddf3214a6e9ecadf37d94d6bb5876a4e6a1263a455ab0ff0c29166446e8a48dc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "frames/cam1.npz",
+      "size_bytes": 9026826,
+      "sha256": "92462bfc6372055d8f1cb5c29ba6a88145c9bb09342c357f8d7bc20df2401489",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "frames/cam2.npz",
+      "size_bytes": 9144638,
+      "sha256": "4bd6d112349aac740e66737b8373ea49e919b71225e2a4ae97ccc7db1ab28aec",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "frames/candidates.csv",
+      "size_bytes": 858253,
+      "sha256": "68ad23517ff08798e39578a458a5584a3201501bfde4c6d663db93b6afc50b50",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "frames/components.csv",
+      "size_bytes": 418539,
+      "sha256": "db7c6ed8c845354b5817941ea9460b1a891af30f3094c49b6df800938576dcd6",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "isolation/cpu-v3/cam2-raw/predictions.npz",
+      "size_bytes": 300563,
+      "sha256": "5651ce33b9a1162f31c49fd813465f96771bfb682ffcb9e84330bc70d287631c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "isolation/cpu-v3/cam2-reencoded/predictions.npz",
+      "size_bytes": 297164,
+      "sha256": "b70256c7aeb2fdee5fe216c45efcaaf61393f5c1844070cf17db2aee76b7179a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "isolation/cpu-v3/cam2-resize_only/predictions.npz",
+      "size_bytes": 295124,
+      "sha256": "edb5f5a77b3fe2ee9fdc26ff579b2560e646b8a7deb602487d549332ad6e778a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "noise-balanced-v2/pooled-bootstrap-samples.npz",
+      "size_bytes": 982385,
+      "sha256": "8ec619db0b632a167828f654f2a8a14d0b50a27726ccf40d2f36ac160fbe74da",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "noise/pooled-bootstrap-samples.npz",
+      "size_bytes": 578128,
+      "sha256": "14bef26a7abefba930999337ced6fbceda70eeda374bd9aba5ed3fd121093942",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pixels/frames.csv",
+      "size_bytes": 335871,
+      "sha256": "be0fe68b50b7e95823d15aa0f535b094fa4f2bdff5a2c2e9ea1ccd0a5b358ed0",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

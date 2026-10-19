@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "group-i1044-qualification",
+  "files": [
+    {
+      "path": "b-diagnostic-roundtrip-preflight/pred_val.npz",
+      "size_bytes": 127038,
+      "sha256": "e3ac21c4f969386abcb1da74857aa244df67bd366069a8e00311997ba2d789c3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "geometry-cpu-preflight/pred_val.npz",
+      "size_bytes": 67182,
+      "sha256": "1f0d61a7d92489d1e87b1c936fda4eff01dd9c5c1553526708c22e0bdb999e90",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "historical-cpu-preflight/pred_val.npz",
+      "size_bytes": 67567,
+      "sha256": "315567cafdfcd698d4e3a85a34567c876cc986bed6374dc74f2d7fc5ab78581c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real-cpu-preflight/real_predictions.npz",
+      "size_bytes": 43934,
+      "sha256": "f0b4a2c77946b6c5ccbad96e29e4a8dddeb547a8f8dfdf70ec43d06d35e88e29",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "real-diagnostic-roundtrip-preflight/real_predictions.npz",
+      "size_bytes": 44886,
+      "sha256": "02df0221897ce8bb8c4a3005bdbf30ea9244c6ba92733e8498198a5e78b51558",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}
