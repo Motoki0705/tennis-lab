@@ -337,6 +337,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "submodules.pose_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.submodules.scripts.install_smpl_assets": (
+        "submodules.install_smpl_assets",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.clip_studio.__main__": (
         "tennis_scene.clip_studio_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -513,6 +517,11 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         domain="base", executable_module=True,
     ),
     _non_hydra_boundary("src.submodules.visualization.review.__main__", "main", domain="submodules", executable_module=True),
+    _non_hydra_boundary(
+        "src.submodules.scripts.install_smpl_assets", "main", domain="submodules",
+        executable_module=True,
+        optional_policy="gvhmr_root is required when installing; --list may omit it, but any supplied checkout is validated",
+    ),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),

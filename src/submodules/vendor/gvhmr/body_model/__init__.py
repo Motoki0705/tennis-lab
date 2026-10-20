@@ -2,10 +2,10 @@
 
 Only the model types used by GVHMR inference are provided. All variants
 require the licensed ``SMPLX_NEUTRAL.npz`` (see :mod:`smplx_lite`); the small
-regressor assets are bundled under ``data/``.
+regressor assets are supplied explicitly from user-owned checkpoint storage.
 """
 
-from src.submodules.configuration import BundledModelAssetPaths, require_absolute_path
+from src.submodules.configuration import SmplAssetPaths, require_absolute_path
 
 from .body_model_smplx import BodyModelSMPLX
 from .smplx_lite import (
@@ -17,7 +17,7 @@ from .smplx_lite import (
 )
 
 
-def make_smplx(type, *, model_path, bundled_assets, **kwargs):
+def make_smplx(type, *, model_path, smpl_assets, **kwargs):
     """Build a body model used by GVHMR (trimmed to inference variants).
 
     - ``supermotion``: full SMPL-X (``BodyModelSMPLX``), predicts vertices.
@@ -25,9 +25,9 @@ def make_smplx(type, *, model_path, bundled_assets, **kwargs):
     - ``supermotion_coco17`` / ``supermotion_smpl24``: joints-only variants.
     """
     model_path = require_absolute_path(model_path, name="SMPL-X body-model directory")
-    if not isinstance(bundled_assets, BundledModelAssetPaths):
-        raise TypeError("bundled_assets must be BundledModelAssetPaths.")
-    bundled_assets.require_files()
+    if not isinstance(smpl_assets, SmplAssetPaths):
+        raise TypeError("smpl_assets must be SmplAssetPaths.")
+    smpl_assets.require_files()
     if type == "supermotion":
         bm_kwargs = {
             "model_type": "smplx",
@@ -42,19 +42,19 @@ def make_smplx(type, *, model_path, bundled_assets, **kwargs):
     if type == "supermotion_v437coco17":
         return SmplxLiteV437Coco17(
             model_path=model_path / "smplx",
-            bundled_assets=bundled_assets,
+            smpl_assets=smpl_assets,
             **kwargs,
         )
     if type == "supermotion_coco17":
         return SmplxLiteCoco17(
             model_path=model_path / "smplx",
-            bundled_assets=bundled_assets,
+            smpl_assets=smpl_assets,
             **kwargs,
         )
     if type == "supermotion_smpl24":
         return SmplxLiteSmplN24(
             model_path=model_path / "smplx",
-            bundled_assets=bundled_assets,
+            smpl_assets=smpl_assets,
             **kwargs,
         )
     raise NotImplementedError(f"Unknown body model type: {type}")

@@ -32,14 +32,14 @@ class SmplGeometry:
 
     def __init__(self, config: PeopleModelConfig) -> None:
         self.config = config
-        self.vertices = SmplVertexReconstructor(config.body_models_dir, device=config.runtime.device, bundled_assets=config.bundled_assets)
-        self.coco = SmplCoco17Reconstructor(config.body_models_dir, device=config.runtime.device, bundled_assets=config.bundled_assets)
+        self.vertices = SmplVertexReconstructor(config.body_models_dir, device=config.runtime.device, smpl_assets=config.smpl_assets)
+        self.coco = SmplCoco17Reconstructor(config.body_models_dir, device=config.runtime.device, smpl_assets=config.smpl_assets)
         self._root: NDArray[np.float64] | None = None
 
     @property
     def root_regressor(self) -> NDArray[np.float64]:
         if self._root is None:
-            value = torch.load(self.config.bundled_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
+            value = torch.load(self.config.smpl_assets.smpl_neutral_joint_regressor, map_location="cpu", weights_only=True)
             if not isinstance(value, torch.Tensor) or value.ndim not in (1, 2) or not bool(torch.isfinite(value).all()):
                 raise ValueError("Invalid SMPL root regressor")
             self._root = value.double().numpy()

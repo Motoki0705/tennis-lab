@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from src.submodules.smpl_assets import SMPL_ASSET_SOURCES, require_smpl_asset
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -17,8 +18,8 @@ from src.utils.configuration import (
 
 __all__ = [
     "SUBMODULE_RUNTIME_SCHEMA",
-    "BUNDLED_MODEL_ASSET_SCHEMA",
-    "BundledModelAssetPaths",
+    "SMPL_ASSET_SCHEMA",
+    "SmplAssetPaths",
     "DinoDetectorRuntimeConfig",
     "Hmr2RuntimeConfig",
     "SubmoduleRuntimeConfig",
@@ -87,8 +88,8 @@ class ViTPoseHeadConfig:
             )
 
 
-BUNDLED_MODEL_ASSET_SCHEMA = StrictConfigSchema(
-    name="submodules.assets.bundled",
+SMPL_ASSET_SCHEMA = StrictConfigSchema(
+    name="submodules.assets.smpl",
     fields={
         "hmr2_mean_params": ConfigField.of(str),
         "smplx_to_smpl": ConfigField.of(str),
@@ -323,8 +324,8 @@ def require_absolute_path(value: str | Path, *, name: str) -> Path:
 
 
 @dataclass(frozen=True, slots=True)
-class BundledModelAssetPaths:
-    """Repository-owned GVHMR assets resolved through the PROJECT role."""
+class SmplAssetPaths:
+    """User-acquired SMPL auxiliary files resolved through the CHECKPOINT role."""
 
     hmr2_mean_params: Path
     smplx_to_smpl: Path
@@ -338,37 +339,29 @@ class BundledModelAssetPaths:
         value: Mapping[str, object],
         *,
         resolver: PathResolver,
-    ) -> BundledModelAssetPaths:
-        """Reject unknown bundled assets and resolve every file as PROJECT-owned."""
-        validated = BUNDLED_MODEL_ASSET_SCHEMA.validate(value)
+    ) -> SmplAssetPaths:
+        """Reject unknown assets and resolve every file under checkpoint storage."""
+        validated = SMPL_ASSET_SCHEMA.validate(value)
         return cls(
             hmr2_mean_params=resolver.resolve(
-                PathRole.PROJECT, cast(str, validated["hmr2_mean_params"])
+                PathRole.CHECKPOINT, cast(str, validated["hmr2_mean_params"])
             ),
             smplx_to_smpl=resolver.resolve(
-                PathRole.PROJECT, cast(str, validated["smplx_to_smpl"])
+                PathRole.CHECKPOINT, cast(str, validated["smplx_to_smpl"])
             ),
             smpl_coco17_regressor=resolver.resolve(
-                PathRole.PROJECT, cast(str, validated["smpl_coco17_regressor"])
+                PathRole.CHECKPOINT, cast(str, validated["smpl_coco17_regressor"])
             ),
             smplx_verts437=resolver.resolve(
-                PathRole.PROJECT, cast(str, validated["smplx_verts437"])
+                PathRole.CHECKPOINT, cast(str, validated["smplx_verts437"])
             ),
             smpl_neutral_joint_regressor=resolver.resolve(
-                PathRole.PROJECT,
+                PathRole.CHECKPOINT,
                 cast(str, validated["smpl_neutral_joint_regressor"]),
             ),
         )
 
     def require_files(self) -> None:
-        """Fail before model construction when a bundled source asset is absent."""
-        for name in (
-            "hmr2_mean_params",
-            "smplx_to_smpl",
-            "smpl_coco17_regressor",
-            "smplx_verts437",
-            "smpl_neutral_joint_regressor",
-        ):
-            path = getattr(self, name)
-            if not path.is_file():
-                raise FileNotFoundError(f"Bundled GVHMR asset is missing: {path}")
+        """Fail with acquisition instructions before constructing any body model."""
+        for name in SMPL_ASSET_SOURCES:
+            require_smpl_asset(getattr(self, name), name)

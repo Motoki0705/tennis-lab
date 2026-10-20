@@ -16,7 +16,7 @@ VITPOSE_CKPT = PROJECT_ROOT / "ckpt/vitpose/vitpose-h-multi-coco.pth"
 HMR2_CKPT = PROJECT_ROOT / "ckpt/hmr2/epoch=10-step=25000.ckpt"
 GVHMR_CKPT = PROJECT_ROOT / "ckpt/gvhmr/gvhmr_siga24_release.ckpt"
 HMR2_MEAN_PARAMS = (
-    PROJECT_ROOT / "src/submodules/vendor/gvhmr/hmr2/smpl_mean_params.npz"
+    PROJECT_ROOT / "ckpt/body_models/gvhmr/smpl_mean_params.npz"
 )
 
 
@@ -51,6 +51,7 @@ class TestCheckpointCompatibility:
         assert heatmap.shape == (1, 17, 64, 48)
 
     @_needs(HMR2_CKPT)
+    @_needs(HMR2_MEAN_PARAMS)
     def test_hmr2_strict_load_and_forward(self):
         from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 

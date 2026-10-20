@@ -12,6 +12,7 @@ from tqdm import tqdm
 from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base.crops import iter_person_crops
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.submodules.smpl_assets import require_smpl_asset
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.hmr2.preproc import get_batch
 
@@ -65,10 +66,7 @@ class Hmr2FeatureExtractor(BaseInferenceModel[ImageFeatureRequest, ImageFeatureR
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"HMR2 checkpoint not found: {self.checkpoint}")
-        if not self.mean_params_path.is_file():
-            raise FileNotFoundError(
-                f"HMR2 mean-parameter asset not found: {self.mean_params_path}"
-            )
+        require_smpl_asset(self.mean_params_path, "hmr2_mean_params")
         self._model = (
             load_hmr2(
                 str(self.checkpoint),

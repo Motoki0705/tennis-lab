@@ -74,14 +74,66 @@ finally:
 | DINO 4-scale Swin-L | `ckpt/dino/checkpoint0029_4scale_swin.pth` | COCO person (class id 1) のみ使用 |
 | DINO source | `third_party/DINO/` | IDEA-Research/DINOをgit submoduleとして固定 |
 | SMPL-X 本体 (`SMPLX_NEUTRAL.npz`) | `ckpt/body_models/smplx/` | 要ライセンス登録: https://smpl-x.is.tue.mpg.de/ |
-| regressor 等の小物 `.pt` | `vendor/gvhmr/body_model/data/` | リポジトリに同梱 |
+| SMPL補助資産5点（regressor・変換・頂点index・平均パラメータ） | `ckpt/body_models/gvhmr/` | 利用者がGVHMR公式から取得。下記参照 |
 | SMPL-H（facesをレンダリングに使用） | `ckpt/body_models/smplh/{neutral,male,female}/model.npz` | SMPL と SMPL-H は同一トポロジー |
 | SMPL-H（ACCAD adapter用） | `ckpt/body_models/smplh/SMPLH_{MALE,FEMALE}.pkl` | 既存PKLを変換せず配置 |
 
 scene pipelineは重みの配置に `paths.checkpoint_root` を使います。
 `paths.external_asset_root` はDINO等の外部source専用です。旧配置から移す際は原本を保持し、
 コピー元/先のSHA-256一致を確認してからckptへ配置します。旧パスを探索するfallbackはありません。
-SMPL-X/SMPL-H本体と外部重みはgitへ追加しません。
+SMPL-X/SMPL-H本体、SMPL補助資産、外部重みはgitへ追加しません。
+
+### SMPL補助資産の取得
+
+5点は **[GVHMR公式リポジトリ](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)**
+の固定commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1` から利用者が取得します。
+各ファイルの公式配布パス・用途・条件は [LICENSES.md](../../LICENSES.md#利用者が取得するsmpl補助資産)
+を参照してください。本repoにはバイナリを同梱せず、自動ダウンロードもしません。
+
+先に [GVHMRの条件](vendor/gvhmr/LICENSE) と
+[SMPL](https://smpl.is.tue.mpg.de/modellicense.html)・
+[SMPL-X](https://smpl-x.is.tue.mpg.de/modellicense.html) の条件を確認してください。
+[GVHMR公式導入手順](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md)
+が案内するとおり、body model本体はSMPL/SMPL-Xの公式サイトで登録・同意して取得します。
+以下は、その条件に従って利用する補助資産の配置手順です。GVHMR用の別環境の構築は不要です。
+
+```bash
+git clone --filter=blob:none --no-checkout https://github.com/zju3dv/GVHMR downloads/gvhmr-assets
+git -C downloads/gvhmr-assets checkout ee960bb6e2ea2d381aa97f08e9b71ef320b624b1 -- \
+  LICENSE hmr4d/utils/body_model hmr4d/network/hmr2/configs/smpl_mean_params.npz
+.venv/bin/python -m src.submodules.scripts.install_smpl_assets \
+  --gvhmr-root "$PWD/downloads/gvhmr-assets" --checkpoint-root "$PWD/ckpt"
+```
+
+両rootは絶対パスで明示し、`--checkpoint-root` には実行設定の `paths.checkpoint_root` を指定します。
+5点すべてのSHA-256を検査してから、次の場所へコピーします。
+欠損・異なる版・配置先の競合はエラーにし、別の資産へ切り替えません。
+
+```text
+ckpt/body_models/gvhmr/
+├── smpl_coco17_J_regressor.pt
+├── smpl_neutral_J_regressor.pt
+├── smplx2smpl_sparse.pt
+├── smplx_verts437.pt
+└── smpl_mean_params.npz
+```
+
+取得元URL・配置先・期待するSHA-256は以下で確認できます。
+
+```bash
+.venv/bin/python -m src.submodules.scripts.install_smpl_assets --list --checkpoint-root "$PWD/ckpt"
+```
+
+2026-10-19に、公式配布の5点が旧同梱版とすべてbyte単位で一致することを確認しました。
+生成による置き換えは行っていません。設定の `people_models.smpl_assets` はCHECKPOINT root相対です。
+旧 `bundled_assets` は受け付けません。可視化・Blenderも同じCHECKPOINT rootを参照します。
+PLCSの生成・chunked学習では、SMPL-Hと同じ `paths.external_asset_root`（既定 `ckpt`）
+から `body_models/gvhmr/smpl_coco17_J_regressor.pt` を解決します。
+
+The five SMPL auxiliary files are user-acquired from the pinned official GVHMR
+checkout. Review the upstream terms and register for SMPL/SMPL-X body models
+before use. The command above verifies all five hashes and installs them into
+your checkpoint root; it neither downloads nor regenerates model data.
 
 ## 上流コードの扱い
 

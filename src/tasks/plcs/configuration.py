@@ -867,7 +867,7 @@ class PLCSTrainingConfig:
         )
         if data.backend == "chunked":
             paths.resolver.resolve(
-                PathRole.PROJECT,
+                PathRole.EXTERNAL_ASSET,
                 _string(
                     external_assets,
                     "coco17_regressor_path",

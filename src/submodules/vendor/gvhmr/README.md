@@ -19,7 +19,6 @@ LICENSEは [zju3dv/GVHMR の固定commit](https://github.com/zju3dv/GVHMR/blob/e
 - HMR2 / 4D-Humans由来部分: [MIT全文](LICENSE.HMR2)。
 
 ViTPoseのheatmap headとmodel builderは、公式Apache-2.0版を出典に置き換えた。
-SMPL系の同梱資産の再配布許諾は確認できていない。
 ファイルごとの出典・条件・未解決事項は [ルートの一覧](../../../../LICENSES.md) を参照する。
 
 ## third_party 版からの主な変更
@@ -40,8 +39,8 @@ SMPL系の同梱資産の再配布許諾は確認できていない。
 
 ## モデル資産
 
-- 小さい regressor 資産（`body_model/data/*.pt`, `hmr2/smpl_mean_params.npz`）は
-  このパッケージに同梱（GVHMR リポジトリ由来）。
+- regressor等のSMPL補助資産は本repoに同梱せず、利用者が取得して `ckpt/body_models/gvhmr/` に置く。
+  [取得・検証手順](../../README.md#smpl補助資産の取得)を参照する。
 - 学習済み重みは `ckpt/`（`third_party/GVHMR/inputs/checkpoints` への symlink）から読む。
 - **SMPL-X 本体（`SMPLX_NEUTRAL.npz`）はライセンス登録が必要**。
   https://smpl-x.is.tue.mpg.de/ から取得し、`ckpt/body_models/smplx/` に配置する。

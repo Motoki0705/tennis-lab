@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.submodules.configuration import BundledModelAssetPaths
+from src.submodules.configuration import SmplAssetPaths
 from src.submodules.vendor.gvhmr.body_model.smplx_lite import (
     SmplxLite,
     batch_rigid_transform_v2,
@@ -18,8 +18,8 @@ NUM_VERTS = 40
 NUM_JOINTS = 55
 
 
-def _bundled_assets(path: Path) -> BundledModelAssetPaths:
-    return BundledModelAssetPaths(
+def _smpl_assets(path: Path) -> SmplAssetPaths:
+    return SmplAssetPaths(
         hmr2_mean_params=path,
         smplx_to_smpl=path,
         smpl_coco17_regressor=path,
@@ -54,7 +54,7 @@ class TestSmplxLite:
     def test_forward_shapes(self, synthetic_smplx_npz: Path):
         model = SmplxLite(
             model_path=synthetic_smplx_npz,
-            bundled_assets=_bundled_assets(synthetic_smplx_npz),
+            smpl_assets=_smpl_assets(synthetic_smplx_npz),
         )
         B, L = 2, 3
         verts = model(
@@ -69,7 +69,7 @@ class TestSmplxLite:
     def test_zero_pose_zero_betas_recovers_template(self, synthetic_smplx_npz: Path):
         model = SmplxLite(
             model_path=synthetic_smplx_npz,
-            bundled_assets=_bundled_assets(synthetic_smplx_npz),
+            smpl_assets=_smpl_assets(synthetic_smplx_npz),
         )
         transl = torch.tensor([[[1.0, 2.0, 3.0]]])
         verts = model(
@@ -85,7 +85,7 @@ class TestSmplxLite:
     def test_get_skeleton_shape(self, synthetic_smplx_npz: Path):
         model = SmplxLite(
             model_path=synthetic_smplx_npz,
-            bundled_assets=_bundled_assets(synthetic_smplx_npz),
+            smpl_assets=_smpl_assets(synthetic_smplx_npz),
         )
         skeleton = model.get_skeleton(torch.zeros(2, 10))
         assert skeleton.shape == (2, NUM_JOINTS, 3)

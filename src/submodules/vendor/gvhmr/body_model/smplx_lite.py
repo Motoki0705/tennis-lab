@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from einops import einsum, rearrange
 from smplx.utils import Struct, to_np, to_tensor
 
-from src.submodules.configuration import BundledModelAssetPaths, require_absolute_path
+from src.submodules.configuration import SmplAssetPaths, require_absolute_path
 from src.utils.geometry.rotation_conversions import (
     axis_angle_to_matrix,
     rotation_6d_to_matrix,
@@ -45,15 +45,15 @@ class SmplxLite(nn.Module):
     def __init__(
         self,
         model_path,
-        bundled_assets: BundledModelAssetPaths,
+        smpl_assets: SmplAssetPaths,
         gender="neutral",
         num_betas=10,
     ):
         super().__init__()
-        if not isinstance(bundled_assets, BundledModelAssetPaths):
-            raise TypeError("bundled_assets must be BundledModelAssetPaths.")
-        bundled_assets.require_files()
-        self.bundled_assets = bundled_assets
+        if not isinstance(smpl_assets, SmplAssetPaths):
+            raise TypeError("smpl_assets must be SmplAssetPaths.")
+        smpl_assets.require_files()
+        self.smpl_assets = smpl_assets
 
         # Load the model
         smplx_path = resolve_smplx_model_file(model_path, gender)
@@ -193,12 +193,12 @@ class SmplxLiteCoco17(SmplxLite):
         super().__init__(**kwargs)
 
         # Compute mapping
-        smplx2smpl = _load_asset(self.bundled_assets.smplx_to_smpl)
-        COCO17_regressor = _load_asset(self.bundled_assets.smpl_coco17_regressor)
+        smplx2smpl = _load_asset(self.smpl_assets.smplx_to_smpl)
+        COCO17_regressor = _load_asset(self.smpl_assets.smpl_coco17_regressor)
         if not isinstance(smplx2smpl, torch.Tensor) or not isinstance(
             COCO17_regressor, torch.Tensor
         ):
-            raise TypeError("Bundled SMPL-X conversion assets must be tensors.")
+            raise TypeError("SMPL-X conversion assets must be tensors.")
         smplx2coco17 = torch.matmul(COCO17_regressor, smplx2smpl.to_dense())
 
         jids, smplx_vids = torch.where(smplx2coco17 != 0)
@@ -228,12 +228,12 @@ class SmplxLiteV437Coco17(SmplxLite):
         super().__init__(**kwargs)
 
         # Compute mapping (COCO17)
-        smplx2smpl = _load_asset(self.bundled_assets.smplx_to_smpl)
-        COCO17_regressor = _load_asset(self.bundled_assets.smpl_coco17_regressor)
+        smplx2smpl = _load_asset(self.smpl_assets.smplx_to_smpl)
+        COCO17_regressor = _load_asset(self.smpl_assets.smpl_coco17_regressor)
         if not isinstance(smplx2smpl, torch.Tensor) or not isinstance(
             COCO17_regressor, torch.Tensor
         ):
-            raise TypeError("Bundled SMPL-X conversion assets must be tensors.")
+            raise TypeError("SMPL-X conversion assets must be tensors.")
         smplx2coco17 = torch.matmul(COCO17_regressor, smplx2smpl.to_dense())
 
         jids, smplx_vids = torch.where(smplx2coco17 != 0)
@@ -246,9 +246,9 @@ class SmplxLiteV437Coco17(SmplxLite):
         assert len(smplx_vids) == 132
 
         # Verts437
-        smplx_vids2 = _load_asset(self.bundled_assets.smplx_verts437)
+        smplx_vids2 = _load_asset(self.smpl_assets.smplx_verts437)
         if not isinstance(smplx_vids2, torch.Tensor):
-            raise TypeError("Bundled SMPL-X vertex indices must be a tensor.")
+            raise TypeError("SMPL-X vertex indices must be a tensor.")
         smplx_vids = torch.cat([smplx_vids, smplx_vids2])
 
         # Update to vertices of interest
@@ -282,12 +282,12 @@ class SmplxLiteSmplN24(SmplxLite):
         super().__init__(**kwargs)
 
         # Compute mapping
-        smplx2smpl = _load_asset(self.bundled_assets.smplx_to_smpl)
-        smpl2joints = _load_asset(self.bundled_assets.smpl_neutral_joint_regressor)
+        smplx2smpl = _load_asset(self.smpl_assets.smplx_to_smpl)
+        smpl2joints = _load_asset(self.smpl_assets.smpl_neutral_joint_regressor)
         if not isinstance(smplx2smpl, torch.Tensor) or not isinstance(
             smpl2joints, torch.Tensor
         ):
-            raise TypeError("Bundled SMPL-X joint assets must be tensors.")
+            raise TypeError("SMPL-X joint assets must be tensors.")
         smplx2joints = torch.matmul(smpl2joints, smplx2smpl.to_dense())
 
         jids, smplx_vids = torch.where(smplx2joints != 0)
