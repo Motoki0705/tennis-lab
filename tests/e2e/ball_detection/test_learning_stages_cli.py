@@ -48,7 +48,9 @@ def test_learning_stages_cli_exports_video_gif_stills_and_manifest(
         timeout=90,
     )
     assert result.returncode == 0, result.stderr
-    output = tmp_path / "ball_detection/visualize/presentation/learning_stages/smoke"
+    run_dir = tmp_path / "ball_detection/visualize/learning_stages/smoke"
+    output = run_dir / "presentation"
+    assert (run_dir / "hydra").is_dir()
     with av.open(str(output / "learning_stages.mp4")) as video:
         frames = list(video.decode(video=0))
         assert len(frames) == 7

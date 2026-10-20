@@ -1,7 +1,5 @@
 defaults:
   - paths: default
-  - override hydra/job_logging: disabled
-  - override hydra/hydra_logging: disabled
   - _self_
 
 runs:
@@ -25,12 +23,14 @@ height: 1080
 gif_width: 960
 gif_fps: 15
 run_id: ${tennis_run_id:}
+run:
+  output_dir: ${tennis_output:ball_detection,visualize,learning_stages,${run_id}}
 
-# Keep Hydra from pre-creating the export directory: the exporter refuses
-# existing destinations, including empty ones.
+# Hydra owns run.output_dir/hydra; the exporter owns the fresh presentation/
+# child, so Hydra cannot pre-create or overwrite the media destination.
 hydra:
   run:
-    dir: .
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false

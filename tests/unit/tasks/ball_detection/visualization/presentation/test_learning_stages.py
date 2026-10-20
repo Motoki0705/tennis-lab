@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import shutil
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig
+from omegaconf import DictConfig, open_dict
 
 from src.tasks.ball_detection.visualization.presentation.configuration import (
     InputClip,
@@ -39,13 +40,16 @@ def logs() -> StageLogs:
     return load_stage_logs(_PRE, _POST)
 
 
-def _config(tmp_path: Path, *overrides: str) -> DictConfig:
+def _config(
+    tmp_path: Path, *overrides: str, return_hydra_config: bool = False
+) -> DictConfig:
     with initialize_config_dir(
         config_dir=str(PROJECT_ROOT / "src/tasks/ball_detection/configs"),
         version_base="1.3",
     ):
         return compose(
             config_name="visualize_learning_stages",
+            return_hydra_config=return_hydra_config,
             overrides=[
                 "input_panel=schematic",
                 "width=640",
@@ -61,6 +65,46 @@ def scene(tmp_path: Path, logs: StageLogs) -> LearningStagesPresentation:
     return LearningStagesPresentation(
         build_learning_stages_config(_config(tmp_path)), logs, schematic_panel()
     )
+
+
+def test_hydra_and_media_share_one_output_run_with_separate_destinations(
+    tmp_path: Path,
+) -> None:
+    raw = _config(
+        tmp_path / "output",
+        f"paths.artifact_root={tmp_path / 'artifacts'}",
+        f"paths.data_root={tmp_path / 'data'}",
+        f"paths.checkpoint_root={tmp_path / 'checkpoints'}",
+        return_hydra_config=True,
+    )
+    run_dir = tmp_path / "output" / raw.run.output_dir
+    log_dir = Path(raw.hydra.run.dir)
+    assert log_dir == run_dir / "hydra"
+    with open_dict(raw):
+        del raw["hydra"]
+    runtime = build_learning_stages_config(raw)
+    assert runtime.output_dir == run_dir / "presentation"
+    log_dir.mkdir(parents=True)
+    assert not runtime.output_dir.exists()
+
+
+def test_output_location_does_not_change_rendered_frames(
+    scene: LearningStagesPresentation, tmp_path: Path, logs: StageLogs
+) -> None:
+    relocated = LearningStagesPresentation(
+        build_learning_stages_config(
+            _config(tmp_path / "relocated", "run_id=another-run")
+        ),
+        logs,
+        schematic_panel(),
+    )
+    assert replace(relocated.config, output_dir=scene.config.output_dir) == scene.config
+    assert relocated.still_frames() == scene.still_frames()
+    for name in ("intro", "handoff12", "phase2"):
+        frame = scene.still_frames()[name]
+        np.testing.assert_array_equal(
+            scene.render_frame(frame), relocated.render_frame(frame)
+        )
 
 
 def test_real_bundles_have_measured_rows_and_global_step_offset(
