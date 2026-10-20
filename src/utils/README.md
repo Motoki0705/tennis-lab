@@ -195,7 +195,7 @@ fallback は行わない。式と dtype/device/state の完全な契約は
 
 ## Published detector weights
 
-`model_weights.py`は[Hugging Faceの公開重み](https://huggingface.co/Motoki098/tennis-lab-models)を
+[`model_weights/`](model_weights/)は[Hugging Faceの公開重み](https://huggingface.co/Motoki098/tennis-lab-models)を
 checkpoint rootに取得し、[公開版のSHA-256](../../LICENSES.md#公開先と重みの識別情報)を検査します。
 ライセンスは[公開物の条件](../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)と
 配布先の`LICENSE`を確認してください。第三者のモデル重みは取得しません。

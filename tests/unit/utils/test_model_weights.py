@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import runpy
 import sys
 from pathlib import Path
 from unittest.mock import Mock
@@ -236,7 +237,7 @@ def test_cli_rejects_http_failure_with_valid_hub_cache(
         transport_error = httpx.ReadTimeout if failure == "timeout" else HfHubHTTPError
         expected_error = ValueError if method == "HEAD" else transport_error
         with pytest.raises(expected_error) as error:
-            weights.main()
+            runpy.run_module("src.utils.model_weights", run_name="__main__")
         # HEAD errors are chained by huggingface_hub; GET errors propagate directly.
         underlying = error.value.__cause__ if method == "HEAD" else error.value
         assert isinstance(underlying, transport_error)
@@ -361,7 +362,7 @@ def test_cli_selects_one_model_and_verifies_offline(
             "--verify-only",
         ],
     )
-    weights.main()
+    runpy.run_module("src.utils.model_weights", run_name="__main__")
     assert (
         capsys.readouterr().out.strip()
         == f"Verified {root / weights.PUBLISHED_WEIGHTS[1].filename}"

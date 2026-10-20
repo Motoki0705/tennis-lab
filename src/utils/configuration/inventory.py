@@ -278,7 +278,7 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
-    "src.utils.model_weights": (
+    "src.utils.model_weights.__init__": (
         "model_weights.download",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
@@ -836,8 +836,8 @@ _RUNTIME_BOUNDARIES += (
 
 _RUNTIME_BOUNDARIES += (
     _non_hydra_boundary(
-        "src.utils.model_weights", "_checkpoint_resolver", domain="model_weights",
-        executable_module=True,
+        "src.utils.model_weights.__init__", "_checkpoint_resolver", domain="model_weights",
+        kind=BoundaryKind.CALLABLE,
     ),
 )
 
