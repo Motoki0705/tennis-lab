@@ -10,6 +10,7 @@ from src.utils.configuration import (
     DEFAULT_AUDIT_INVENTORY,
     AuditInventory,
     AuditRule,
+    BoundaryKind,
 )
 from src.utils.configuration.inventory import EXPECTED_RUNTIME_BOUNDARIES
 
@@ -70,6 +71,23 @@ def test_manual_court_editor_has_an_explicit_non_hydra_path_boundary() -> None:
 
     assert boundary.domain == "manual_court_alignment"
     assert boundary.validator_key == "synthetic.manual_court_alignment"
+    assert boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+    assert boundary.executable_module
+
+
+def test_smpl_asset_installer_has_an_explicit_non_hydra_path_boundary() -> None:
+    boundary = next(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.module == "src.submodules.scripts.install_smpl_assets"
+    )
+
+    assert boundary.domain == "submodules"
+    assert boundary.callable_name == "main"
+    assert boundary.kind is BoundaryKind.ARGPARSE
+    assert boundary.validator_key == "submodules.install_smpl_assets"
     assert boundary.validator_callable == (
         "src.utils.configuration.paths.NonHydraPathBoundary.validate"
     )

@@ -190,7 +190,6 @@ PERSON_TRACKING_REMOVED_MODULES = (
     # Removed detector/tracker comparisons and the single-camera demo have no shims.
     "src.submodules.models.tracker.dino_tracker",
     "src.submodules.models.tracker.yolo_tracker",
-    "src.submodules.scripts",
     "src.submodules.scripts.demo_gvhmr",
     "src.tasks.person_tracking.all_person",
     "src.tasks.person_tracking.botsort_pose",

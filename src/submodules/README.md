@@ -102,10 +102,10 @@ git clone --filter=blob:none --no-checkout https://github.com/zju3dv/GVHMR downl
 git -C downloads/gvhmr-assets checkout ee960bb6e2ea2d381aa97f08e9b71ef320b624b1 -- \
   LICENSE hmr4d/utils/body_model hmr4d/network/hmr2/configs/smpl_mean_params.npz
 .venv/bin/python -m src.submodules.scripts.install_smpl_assets \
-  --gvhmr-root downloads/gvhmr-assets --checkpoint-root ckpt
+  --gvhmr-root "$PWD/downloads/gvhmr-assets" --checkpoint-root "$PWD/ckpt"
 ```
 
-`--checkpoint-root` には実行設定の `paths.checkpoint_root` を指定します。
+両rootは絶対パスで明示し、`--checkpoint-root` には実行設定の `paths.checkpoint_root` を指定します。
 5点すべてのSHA-256を検査してから、次の場所へコピーします。
 欠損・異なる版・配置先の競合はエラーにし、別の資産へ切り替えません。
 
@@ -121,7 +121,7 @@ ckpt/body_models/gvhmr/
 取得元URL・配置先・期待するSHA-256は以下で確認できます。
 
 ```bash
-.venv/bin/python -m src.submodules.scripts.install_smpl_assets --list
+.venv/bin/python -m src.submodules.scripts.install_smpl_assets --list --checkpoint-root "$PWD/ckpt"
 ```
 
 2026-10-19に、公式配布の5点が旧同梱版とすべてbyte単位で一致することを確認しました。
