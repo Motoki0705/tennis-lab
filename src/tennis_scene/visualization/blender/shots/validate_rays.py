@@ -79,6 +79,17 @@ def validate(bundle: Path) -> dict[str, Any]:
             state = int(arrays["ray_state"][view, t])
             states_seen.add(state)
             ray = bpy.data.objects[f"Ray_{view}"].evaluated_get(depsgraph)
+            if ray["geometry_representation"] != "midpoint_relative_pc2":
+                raise ValueError("Unsupported ray geometry representation")
+            world = np.array(ray.matrix_world, dtype=np.float64)
+            base_local = np.array(
+                ray.data.vertices[ray["base_vertex"]].co, dtype=np.float64
+            )
+            tip_local = np.array(
+                ray.data.vertices[ray["tip_vertex"]].co, dtype=np.float64
+            )
+            base_world = world[:3, :3] @ base_local + world[:3, 3]
+            tip_world = world[:3, :3] @ tip_local + world[:3, 3]
             visible = state != 0 and frame >= shot["rays_start"]
             if ray.hide_render != (not visible) or ray.hide_viewport != (not visible):
                 raise AssertionError(f"Ray {view} visibility at frame {frame}")
@@ -114,7 +125,7 @@ def validate(bundle: Path) -> dict[str, Any]:
                 shot["ball_start"] - 1,
                 shot["ball_start"],
             ):
-                midpoint = ray.matrix_world @ Vector((0.0, 0.0, 0.5))
+                midpoint = Vector((base_world + tip_world) * 0.5)
                 camera = scene.camera.evaluated_get(depsgraph)
                 camera_point = camera.matrix_world.inverted() @ midpoint
                 focal_px = (
@@ -134,7 +145,7 @@ def validate(bundle: Path) -> dict[str, Any]:
                         "dashed": dashed,
                         "opacity": opacity,
                         "color": color,
-                        "length_m": float(ray.scale.z),
+                        "length_m": float(np.linalg.norm(tip_world - base_world)),
                         "projected_diameter_px_approx": 2
                         * shot["ray_radius_m"]
                         * focal_px
@@ -158,13 +169,16 @@ def validate(bundle: Path) -> dict[str, Any]:
                     * arrays["ray_length"][view, t]
                     * growth
                 )
+                # Read the evaluated affine transform exactly, then apply it in
+                # float64. mathutils' float32 matrix-vector addition introduces
+                # a second rounding at distant ground intersections (~150m).
                 near(
-                    ray.matrix_world @ Vector((0.0, 0.0, 0.0)),
+                    base_world,
                     arrays["ray_origin"][view],
                     f"ray origin {view}/{frame}",
                 )
                 near(
-                    ray.matrix_world @ Vector((0.0, 0.0, 1.0)),
+                    tip_world,
                     expected,
                     f"ray endpoint {view}/{frame}",
                 )
@@ -222,6 +236,7 @@ def validate(bundle: Path) -> dict[str, Any]:
         "tolerance_m": 1e-5,
         "ray_states_seen": sorted(states_seen),
         "material_checks": material_checks,
+        "ray_geometry": "midpoint_relative_pc2",
         "growth_material_samples": growth_material_samples,
         "ball_source": manifest["ball_source"],
     }

@@ -66,6 +66,9 @@ Blender 5.2の同梱Pythonで動き、repoはimportしません。`RayShot` に�
 ゆっくり俯瞰へ引きます。
 30fpsの各出力時刻に最も近いsource frameを選び、対応は `shot_manifest.json` に残します。
 欠測を補間せず、球の軌跡は16点・source 2frameおきで、欠測を跨ぎません。
+光線の円柱は、中点からの相対座標をPC2に保存して動かします。遠い地面へ伸びる棄却光線でも
+Quaternionの丸めで端点がずれないための表現で、長さや交差位置の規則はexporterの値を使います。
+破線は円柱の長手方向の `ray_axis` 属性で作り、単独viewのときだけ有効にします。
 
 次のBlenderコマンドは共有training queueの `--resource half` へ登録します。
 `BUNDLE`・`SHOT_DIR` は絶対パス、Windows版Blenderでは対応するUNCパスを渡してください。

@@ -86,11 +86,11 @@ def _material(
     dash = n.new("ShaderNodeValue")
     dash.name = "Dashed"
     dash.outputs[0].default_value = 0.0
-    coords = n.new("ShaderNodeTexCoord")
-    sep = n.new("ShaderNodeSeparateXYZ")
-    n.set(sep.inputs[0], coords.outputs["Generated"])
+    # The longitudinal coordinate survives the ray's Mesh Cache deformation.
+    axis = n.new("ShaderNodeAttribute")
+    axis.attribute_name = "ray_axis"
     stripe = n.math(
-        "LESS_THAN", n.math("FRACT", n.math("MULTIPLY", sep.outputs["Z"], 64.0)), 0.6
+        "LESS_THAN", n.math("FRACT", n.math("MULTIPLY", axis.outputs["Fac"], 64.0)), 0.6
     )
     mask = n.math(
         "SUBTRACT",
@@ -148,6 +148,53 @@ def _key_segment(
     obj.scale = (1.0, 1.0, length)
     for channel in ("location", "rotation_quaternion", "scale"):
         obj.keyframe_insert(channel, frame=frame)
+
+
+def _ray_mesh(
+    name: str, radius: float, material: bpy.types.Material
+) -> tuple[bpy.types.Object, np.ndarray]:
+    """Cylinder with explicit cap centers for evaluated endpoint checks."""
+    angles = np.arange(12) * (2 * math.pi / 12)
+    ring = np.column_stack(
+        (radius * np.cos(angles), radius * np.sin(angles), np.zeros(12))
+    )
+    unit = np.concatenate(
+        (ring, ring + [0.0, 0.0, 1.0], [[0.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    )
+    faces = []
+    for i in range(12):
+        j = (i + 1) % 12
+        faces.extend(((i, j, j + 12, i + 12), (24, j, i), (25, i + 12, j + 12)))
+    obj = _object(name, unit.tolist(), faces)
+    obj.data.materials.append(material)
+    attr = obj.data.attributes.new("ray_axis", "FLOAT", "POINT")
+    attr.data.foreach_set("value", unit[:, 2].astype(np.float32))
+    obj["base_vertex"], obj["tip_vertex"] = 24, 25
+    obj["geometry_representation"] = "midpoint_relative_pc2"
+    return obj, unit
+
+
+def _ray_cache_frame(
+    unit: np.ndarray, origin: np.ndarray, direction: np.ndarray, length: float
+) -> tuple[np.ndarray, np.ndarray]:
+    """Display exported ray geometry around its midpoint to retain precision.
+
+    Long rejected rays can meet the ground hundreds of meters away. An object
+    quaternion loses their tiny vertical component. Camera-relative cached
+    vertices avoid that cancellation and keep the supplied origin/end intact.
+    """
+    side = np.cross(direction, np.eye(3)[np.argmin(np.abs(direction))])
+    side /= np.linalg.norm(side)
+    up = np.cross(direction, side)
+    points = (
+        origin
+        + unit[:, :1] * side
+        + unit[:, 1:2] * up
+        + unit[:, 2:] * direction * length
+    )
+    # Subtract the actual float32 location that Blender will store.
+    anchor = np.asarray(origin + direction * length * 0.5, np.float32)
+    return anchor, np.asarray(points - anchor.astype(np.float64), np.float32)
 
 
 def _source_frames(manifest: dict[str, Any], shot: RayShot) -> np.ndarray:
@@ -232,6 +279,7 @@ def _build_view(
     view: int,
     source_frames: np.ndarray,
     shot: RayShot,
+    output: Path,
 ) -> None:
     cam = manifest["cameras"][view]
     color = _rgb(shot.camera_colors[view])
@@ -265,7 +313,8 @@ def _build_view(
     cross = _marker(f"Reprojection_{view}", cross=True, material=cross_mat)
     ring.parent = cross.parent = root
     ray_mat = _material(f"RayMaterial_{view}", color, strength=2.0)
-    ray = _cylinder(f"Ray_{view}", shot.ray_radius_m, ray_mat)
+    ray, unit = _ray_mesh(f"Ray_{view}", shot.ray_radius_m, ray_mat)
+    cache = np.zeros((len(source_frames), len(unit), 3), np.float32)
     residual_mat = _material(f"ResidualMaterial_{view}", _rgb("#FFD166"), strength=3.0)
     residual = _cylinder(f"Residual_{view}", 0.003, residual_mat)
     ray_valid, ring_valid, cross_valid, residual_valid = [], [], [], []
@@ -301,13 +350,14 @@ def _build_view(
         texture.image_user.frame_offset = int(src) - frame - 1
         texture.image_user.keyframe_insert("frame_offset", frame=frame)
         if exists:
-            _key_segment(
-                ray,
+            anchor, cache[frame] = _ray_cache_frame(
+                unit,
                 arrays["ray_origin"][view],
                 arrays["ray_direction"][view, t],
                 float(arrays["ray_length"][view, t]) * growth,
-                frame,
             )
+            ray.location = anchor.tolist()
+            ray.keyframe_insert("location", frame=frame)
             ring.location = image_plane_point(
                 cam, arrays["detection_uv"][view, t], depth=shot.frustum_depth_m
             )
@@ -342,6 +392,14 @@ def _build_view(
                 _key_segment(residual, point, np.array([0.0, 0.0, 1.0]), 0.0, frame)
         pulse = math.sin(math.pi * _progress(frame, shot.ball_start, shot.zoom_start))
         _key_value(residual_mat, "Opacity", pulse, frame)
+    cache_path = output / f"ray_{view}.pc2"
+    _write_pc2(cache_path, cache)
+    modifier = ray.modifiers.new("RayMotion", "MESH_CACHE")
+    modifier.cache_format, modifier.filepath, modifier.frame_start = (
+        "PC2",
+        str(cache_path),
+        0.0,
+    )
     for obj, valid in (
         (ray, ray_valid),
         (ring, ring_valid),
@@ -538,7 +596,7 @@ def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
         sun.rotation_euler = (math.radians(35.0), 0.0, math.radians(-140.0))
         _court(manifest["court"])
         for view in range(len(manifest["cameras"])):
-            _build_view(bundle, manifest, arrays, view, sources, shot)
+            _build_view(bundle, manifest, arrays, view, sources, shot, output)
         _ball(arrays, manifest, sources, shot, output)
         _camera(manifest, sources, arrays, shot)
         _constant_keys()
