@@ -95,11 +95,12 @@ def ensure_weights(
     revision: str = "main",
     verify_only: bool = False,
 ) -> tuple[Path, ...]:
-    """Authenticate cached and copied bytes; never replace an existing file.
+    """Download missing checkpoints afresh; never replace an existing file.
 
-    Hub/network errors propagate. An invalid existing checkpoint stops the
-    complete selection before any download. Temporary copies are authenticated
-    before an atomic, no-clobber hard link publishes them under checkpoint_root.
+    Hub/network errors propagate without falling back to cached bytes, even for
+    pinned commits. An invalid existing checkpoint stops the complete selection
+    before any download. Temporary copies are authenticated before an atomic,
+    no-clobber hard link publishes them under checkpoint_root.
     """
     if model not in {"all", *(weight.name for weight in PUBLISHED_WEIGHTS)}:
         raise ValueError(f"Unknown model: {model}")
@@ -124,6 +125,8 @@ def ensure_weights(
                 filename=weight.filename,
                 repo_type="model",
                 revision=revision,
+                # Disable cached returns after a failed HEAD or for pinned commits.
+                force_download=True,
             )
         )
         _verify(cached, weight)
