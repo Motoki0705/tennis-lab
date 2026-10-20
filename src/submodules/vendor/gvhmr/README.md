@@ -18,8 +18,8 @@ LICENSEは [zju3dv/GVHMR の固定commit](https://github.com/zju3dv/GVHMR/blob/e
 - OpenMMLab / ViTPose由来部分: [Apache-2.0全文](LICENSE.ViTPose)。
 - HMR2 / 4D-Humans由来部分: [MIT全文](LICENSE.HMR2)。
 
-ViTPoseの一部にはGPL-3.0のViTPose-Pytorch経由の移植があり、扱いは未解決。
-SMPL系の同梱資産についても再配布許諾は確認できていない。
+ViTPoseのheatmap headとmodel builderは、公式Apache-2.0版を出典に置き換えた。
+SMPL系の同梱資産の再配布許諾は確認できていない。
 ファイルごとの出典・条件・未解決事項は [ルートの一覧](../../../../LICENSES.md) を参照する。
 
 ## third_party 版からの主な変更
