@@ -43,7 +43,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i525-parameff
-  predictions: knowledge/runs/run-i525-parameff/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i525-parameff/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781875485488211550_626786_i525_parameff_200ep.log
   curves: knowledge/runs/run-i525-parameff/curves.png
 parents:

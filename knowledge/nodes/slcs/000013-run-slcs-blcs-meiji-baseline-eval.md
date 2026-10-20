@@ -21,7 +21,7 @@ metrics:
   endpoint_error_m: 3.728851795196533
 artifacts:
   run_dir: knowledge/runs/run-slcs-blcs-meiji-baseline-eval
-  predictions: knowledge/runs/run-slcs-blcs-meiji-baseline-eval/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-blcs-meiji-baseline-eval/artifact-manifest.json#/files/0}
   output_dir: outputs/blcs/evaluate/meiji_baseline/s42-001
 parents:
 - run-slcs-real-infer-pilot-v1

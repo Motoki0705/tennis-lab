@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-b01-court-sfm-bounds",
+  "files": [
+    {
+      "path": "sfm_bounded-plan.json.gz",
+      "size_bytes": 434965,
+      "sha256": "b50e0f5bc7832df66c3b5f42f16f41e758b4bdc571d9eefe82c716d9a4f7e059",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "v3-plan.json.gz",
+      "size_bytes": 895067,
+      "sha256": "6866be45d58130c490488c862136fba699af96fc221222960ab610493ed98cdc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

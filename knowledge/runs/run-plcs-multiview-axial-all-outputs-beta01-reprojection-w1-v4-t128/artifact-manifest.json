@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 281399,
+      "sha256": "19b4a86e187d653b6a631d721df4e0acfb55b6ce48c57a80893675290df2233c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "visualization_scene_000233_position_rotation.mp4",
+      "size_bytes": 83474,
+      "sha256": "443cb8a854f1fd45c9bf05c5aeb9a0da1b506c7e2e63ead4e57a8f32369fb621",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

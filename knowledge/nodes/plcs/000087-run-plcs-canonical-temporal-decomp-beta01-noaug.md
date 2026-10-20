@@ -66,7 +66,7 @@ repro:
     training.checkpoint.save_top_k=1 training.qualitative_logging.enabled=false run.output_dir=plcs/plcs_multiview_axial_canonical_only_temporal_decomp_beta01_noaug
 artifacts:
   run_dir: knowledge/runs/run-plcs-canonical-temporal-decomp-beta01-noaug
-  predictions: knowledge/runs/run-plcs-canonical-temporal-decomp-beta01-noaug/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-canonical-temporal-decomp-beta01-noaug/artifact-manifest.json#/files/0}
   output_dir: outputs/plcs/plcs_multiview_axial_canonical_only_temporal_decomp_beta01_noaug/logs/version_0
   curves: knowledge/runs/run-plcs-canonical-temporal-decomp-beta01-noaug/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_canonical_only_temporal_decomp_beta01_noaug/logs/version_0

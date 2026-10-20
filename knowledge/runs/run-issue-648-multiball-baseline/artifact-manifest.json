@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-issue-648-multiball-baseline",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 21477,
+      "sha256": "bcc89fd932532e9c876b6a7de47b609bcacddd04042866eb3b7f6d869edb4061",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

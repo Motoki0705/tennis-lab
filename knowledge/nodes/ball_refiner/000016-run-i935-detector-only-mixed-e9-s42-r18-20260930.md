@@ -107,7 +107,7 @@ r4学習は実測169秒、出力108,686,939 bytes。**r4のpeak VRAMは記録さ
 ## 回収監査（run 19）
 
 [collection.json](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/collection.json)に監査結果、
-[artifact_hashes.json](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/artifact_hashes.json)に全NPZ・checkpointのSHA-256/byte数を保存した。
+[artifact_hashes.json（削除済み）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/artifact-manifest.json#/files/0)に全NPZ・checkpointのSHA-256/byte数を保存した。
 job `1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930`は09-30 10:23:43開始、11:00:29 done。
 queue state=doneとworkerのrc=0専用経路を照合した。成功時の独立したexit codeファイルはない。
 12 checkpointのepoch/step/選択NLL/data hash/有限重み、12行の曲線、3,000 stepを照合。
@@ -185,11 +185,11 @@ GMMの95% HDRではない。点指標の最大weight成分平均と、描画の�
 
 目視したframe0/40/80/120/160/164/240からの読み:
 
-- [frame80](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-frame-080.jpg)のcam2は人工gapで楕円が広がる。
+- [frame80（削除済み）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/artifact-manifest.json#/files/2)のcam2は人工gapで楕円が広がる。
   一方cam0はframe40–80で新pilotもdetectorの誤った位置側へ寄り、旧平均の方が教師に近い。
-- [frame164（MP4からdecode）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-decoded-frame-164.jpg)ではcam0の推定遮蔽を橙で示す。
+- [frame164（MP4からdecode）（削除済み）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/artifact-manifest.json#/files/1)ではcam0の推定遮蔽を橙で示す。
   新平均と教師が近いことは見えるが、推定教師なので実遮蔽精度の確証にはしない。
-- [frame240](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/overlay-frame-240.jpg)のcam2は複数成分が広がり、
+- [frame240（削除済み）](../../runs/run-i935-detector-only-mixed-e9-s42-r18-20260930/artifact-manifest.json#/files/3)のcam2は複数成分が広がり、
   新混合平均が教師から外れる。cam1でも小さい楕円が誤位置にあり、全frameを適切に較正できたとは読めない。
   frame0は3cameraともunknown表示で位置採点しない。動画は1clipの可視化で、採否は全val表から判断する。
 

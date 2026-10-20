@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i986-reader-pread-20261009",
+  "files": [
+    {
+      "path": "sustained-parent.json",
+      "size_bytes": 326881,
+      "sha256": "833461ee28fe7d2ae21cb285920feeac49ed008485fed0b338843000db91eb45",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

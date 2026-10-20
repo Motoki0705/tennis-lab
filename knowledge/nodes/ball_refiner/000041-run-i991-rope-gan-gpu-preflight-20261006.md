@@ -83,7 +83,7 @@ repro:
     training.gan.warmup_steps=2 run.output_dir=ball_refiner/train/rope-2d-gan-gpu-preflight/20261006-s42
 artifacts:
   run_dir: knowledge/runs/run-i991-rope-gan-gpu-preflight-20261006
-  predictions: knowledge/runs/run-i991-rope-gan-gpu-preflight-20261006/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i991-rope-gan-gpu-preflight-20261006/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791247437343443332_3420896_i991-rope-gan-gpu-preflight-20261006.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/train/rope-2d-gan-gpu-preflight/20261006-s42/logs/version_0
   config: knowledge/runs/run-i991-rope-gan-gpu-preflight-20261006/config.yaml

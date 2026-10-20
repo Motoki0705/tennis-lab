@@ -46,7 +46,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i560-nocanon-s4-h4
-  predictions: knowledge/runs/run-i560-nocanon-s4-h4/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i560-nocanon-s4-h4/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782307133770982559_638957_i545_nocanon_s4_h4.log
   output_dir: outputs/plcs/plcs_multiview_axial_split/logs/version_14
   curves: knowledge/runs/run-i560-nocanon-s4-h4/curves.png

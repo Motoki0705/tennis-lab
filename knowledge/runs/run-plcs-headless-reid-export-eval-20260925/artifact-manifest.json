@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-headless-reid-export-eval-20260925",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 655434,
+      "sha256": "16e464889a101517d3eb604d8c5026b151a10e3532ea55505afdc68c35205b8b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

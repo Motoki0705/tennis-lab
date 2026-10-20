@@ -46,7 +46,7 @@ repro:
     training.trainer.enable_progress_bar=false training.warmup_epochs=0
 artifacts:
   run_dir: knowledge/runs/run-blcs-residual-v2-gpu-smoke-r2
-  predictions: knowledge/runs/run-blcs-residual-v2-gpu-smoke-r2/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-blcs-residual-v2-gpu-smoke-r2/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1789944265918799799_317643_blcs-residual-v2-gpu-smoke-r2.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/blcs/triangulation_residual_v2_gpu_smoke_20260921/logs/version_0
   curves: knowledge/runs/run-blcs-residual-v2-gpu-smoke-r2/curves.png

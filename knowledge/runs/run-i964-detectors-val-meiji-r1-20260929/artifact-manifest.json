@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-detectors-val-meiji-r1-20260929",
+  "files": [
+    {
+      "path": "dino_cache_audit.json",
+      "size_bytes": 303348,
+      "sha256": "2f572723bfedec5d4f7c8614303b488815d74dfcf8d520443b1674ae9293aade",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

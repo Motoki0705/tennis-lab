@@ -19,7 +19,7 @@ relations: [{to: run-i933-association-meiji, rel: compares}]
 
 [run12事前protocol](../../runs/run-i964-recalibration-r12-20260930/protocol.md)を変更せず、
 全18cameraの検証済み特徴から6clipをCPU再追跡してfitした。
-[fit全証拠](../../runs/run-i964-recalibration-fit-r14-20261001/fit.json)は全pair-window、
+[fit全証拠（削除済み）](../../runs/run-i964-recalibration-fit-r14-20261001/artifact-manifest.json#/files/12)は全pair-window、
 除外理由、階層重み、camera×近遠支持、3fold尺度/loss/停止を含む。
 [入力identity](../../runs/run-i964-recalibration-fit-r14-20261001/identity.json)、
 [出力hash](../../runs/run-i964-recalibration-fit-r14-20261001/output_manifest.json)、

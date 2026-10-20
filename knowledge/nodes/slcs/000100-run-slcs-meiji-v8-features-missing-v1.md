@@ -39,7 +39,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-v8-features-missing-v1
   output_dir: outputs/tennis_scene/precompute/meiji_rgb_v8/s42-001
-  audit: knowledge/runs/run-slcs-meiji-v8-features-missing-v1/audit.json
+  audit: {status: deleted, record: knowledge/runs/run-slcs-meiji-v8-features-missing-v1/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-v8-feature-reuse-v1
 relations: []

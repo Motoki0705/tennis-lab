@@ -64,7 +64,7 @@ artifacts:
   preview_gif: assets/tennis_scene/blender_reveal_meiji_cam1.gif
   video: outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/reveal_preview.mp4
   blend: outputs/tennis_scene/visualize/hook_reveal/pr1203-meiji-cam1-preview/tennis_reveal.blend
-  contact_sheet: knowledge/runs/run-blender-reveal-meiji-cam1-20261016/contact_sheet.png
+  contact_sheet: {status: deleted, record: knowledge/runs/run-blender-reveal-meiji-cam1-20261016/artifact-manifest.json#/files/0}
 parents:
 - run-i931-default-meiji-clip000-20260927
 relations: []
@@ -85,7 +85,7 @@ tags:
 保存した`.blend`を別プロセスで開き、`scripts/blender/validate_reveal.py`で1010frameの球位置・選手/球/軌跡の表示maskを検査した。選手meshは0,126,252,378,504,630,756,882,1009の9frameでBlender評価後の頂点をPC2と比較した。mesh・球とも座標差は0 m、移動前カメラの最大投影差は0.000131 pxだった。この差は**書き出したデータとの一致**であり、真の3D位置との誤差ではない。
 
 元動画のframe 100をOpenCV INTER_AREAで960×540へ縮小し、描画frame 100と照合したPSNRは43.135 dB。前後の99/101frameでは37.744/37.499 dBであり、この時点のフレーム対応も確認した。
-[代表6frame](../../runs/run-blender-reveal-meiji-cam1-20261016/contact_sheet.png)で、元映像、グリッド/コートの切り替え、選手と球軌跡、自由視点への移動を目視確認した。
+[代表6frame（削除済み）](../../runs/run-blender-reveal-meiji-cam1-20261016/artifact-manifest.json#/files/0)で、元映像、グリッド/コートの切り替え、選手と球軌跡、自由視点への移動を目視確認した。
 
 ## 入力と再現
 

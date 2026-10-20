@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-vitpose-redownload-smoke-v1",
+  "files": [
+    {
+      "path": "input.npz",
+      "size_bytes": 849,
+      "sha256": "c54aadfae59b1b5cfb82a0c795a3ab8276e9c9447f4d9abf7ddca98bf6814d3e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 580,
+      "sha256": "93bef71fbf9b60f6db1109f27e1c329f8ffe4606e828afa5d1ecb88b48b96b3a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

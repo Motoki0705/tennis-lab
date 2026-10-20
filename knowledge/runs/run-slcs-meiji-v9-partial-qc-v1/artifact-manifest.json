@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v9-partial-qc-v1",
+  "files": [
+    {
+      "path": "quality_report.json",
+      "size_bytes": 787200,
+      "sha256": "cd25b1cd20ac295b9e53795c5bf38f3cf525c201607ed56264b052778237aa52",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -29,7 +29,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-court-b02-narrow-fov
   output_dir: /home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/court-b00-b03-generation
-  log: knowledge/runs/run-court-b02-narrow-fov/run.log
+  log: {status: deleted, record: knowledge/runs/run-court-b02-narrow-fov/artifact-manifest.json#/files/0}
 parents:
 - run-court-b01-canonical-sfm
 relations: []

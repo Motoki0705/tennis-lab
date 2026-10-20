@@ -100,7 +100,7 @@ HDR Monte Carlo自体は再実行せず、保存値と全reductionを照合し�
 allocatorの記録は評価phaseの値であり、学習全体のpeakとは扱わない。
 
 数値の正本は[source/camera/half別全表](../../runs/run-i935-precision-variants-s42-r21-20260930/comparison.md)と
-[全精度JSON](../../runs/run-i935-precision-variants-s42-r21-20260930/comparison.json)。
+[全精度JSON（削除済み）](../../runs/run-i935-precision-variants-s42-r21-20260930/artifact-manifest.json#/files/0)。
 Meiji observed中央値はr18 23.66、detector 6.09、absolute_12k 10.52、
 anchored_3k 4.20、anchored_12k 3.11 px。長期化だけでも改善するが、
 候補平均を残す方式が典型精度の改善の主因と整合する。

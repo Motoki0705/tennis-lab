@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i540-asym-wide",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 453398,
+      "sha256": "bcf86763a65b02b86174bb671941e995040440e830da8943c30cec2d2fcc901a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

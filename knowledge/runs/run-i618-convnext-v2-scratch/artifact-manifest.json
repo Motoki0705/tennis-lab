@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i618-convnext-v2-scratch",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 11939010,
+      "sha256": "7ba4e2f870eb9a0621ad85a9c4e6e2014074585a257a947aa77d6ec55bbdfee7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

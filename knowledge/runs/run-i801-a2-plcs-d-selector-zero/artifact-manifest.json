@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i801-a2-plcs-d-selector-zero",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 911506,
+      "sha256": "aebb636f193b14b9ce0c1621d52b6e1c9e66b72f8d8ac0f085255d0d4c57cb97",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

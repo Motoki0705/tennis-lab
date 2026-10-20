@@ -170,7 +170,7 @@ Court中心と同じ可視branchを選び、camera平面を越える拡張corner
 cam0両名とcam1両名の中心差中央値・95%点は0。cam2遠方選手の95%点も0.000139bbox幅となった。
 
 直接検出に裏付けられたframe数はcam0 [1010,684]、cam1 [1010,995]、cam2 [1010,925]。
-5m marginとの比較でcam2遠方選手は298→925となり、[拡大画像](../../runs/run-tennis-scene-meiji-visible-court-roi-20260922/evidence/tracking/cam2_far_crops.jpg)でも後半の追従が回復した。
+5m marginとの比較でcam2遠方選手は298→925となり、[拡大画像（削除済み）](../../runs/run-tennis-scene-meiji-visible-court-roi-20260922/artifact-manifest.json#/files/6)でも後半の追従が回復した。
 残る欠損は追跡補間を含み、全frameが直接観測であるとは扱わない。
 
 ## 解釈と次の実行

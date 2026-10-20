@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blcs-residual-v2-asinh-legacy-s42",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2490269,
+      "sha256": "ac303964bcb93c9357e063c0ff9f67d96d1d2dc2dac7f633c5e93bb08aedd17f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-track-reid-gpu-smoke-20260924",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 30883,
+      "sha256": "0fe8e778d82309c494c3784e270f475d283d01526f50252c0faee2ac9428145e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

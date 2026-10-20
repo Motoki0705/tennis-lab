@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-precision-variants-s42-r20-20260930",
+  "files": [
+    {
+      "path": "diagnosis.json",
+      "size_bytes": 986195,
+      "sha256": "42baad83027f9d421104fdf6e917822dfc8852c86c4cd07a84c2b090ded87e20",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

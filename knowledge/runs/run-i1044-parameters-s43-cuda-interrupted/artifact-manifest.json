@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-parameters-s43-cuda-interrupted",
+  "files": [
+    {
+      "path": "queue.log.gz",
+      "size_bytes": 1608177,
+      "sha256": "b40214d438b86ca6fb43d300fccb70053e36b075bb058de435f7e4f8d11ca616",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 38247,
+      "sha256": "ebd3d10c7a2b1044acc12528540f36179e581afbf2d3d729d34b57ae82d5e57b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

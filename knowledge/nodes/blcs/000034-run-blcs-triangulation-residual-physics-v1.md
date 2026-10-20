@@ -45,7 +45,7 @@ repro:
     ''--device'' ''cuda'''
 artifacts:
   run_dir: knowledge/runs/run-blcs-triangulation-residual-physics-v1
-  predictions: knowledge/runs/run-blcs-triangulation-residual-physics-v1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-blcs-triangulation-residual-physics-v1/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/blcs/triangulation_residual_v1_20260921/logs/version_0
   curves: knowledge/runs/run-blcs-triangulation-residual-physics-v1/curves.png
   tb_logdir: outputs/blcs/triangulation_residual_v1_20260921/logs/version_0

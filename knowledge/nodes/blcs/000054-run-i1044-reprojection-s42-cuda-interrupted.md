@@ -31,7 +31,7 @@ artifacts:
   experiment_config_yaml: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/experiment-config.yaml
   config_yaml: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/config.yaml
   interruption_json: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/interruption.json
-  scalars: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/artifact-manifest.json#/files/0}
   tb_logdir: outputs/blcs/i1044/aborted-reprojection-s42-cuda-unknown/logs/version_0
   curves: knowledge/runs/run-i1044-reprojection-s42-cuda-interrupted/curves.png
 parents:

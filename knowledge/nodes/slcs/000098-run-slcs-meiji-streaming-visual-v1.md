@@ -37,7 +37,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-streaming-visual-v1
   log: knowledge/runs/run-slcs-meiji-streaming-visual-v1/run.log
-  predictions: knowledge/runs/run-slcs-meiji-streaming-visual-v1/predictions.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-meiji-streaming-visual-v1/artifact-manifest.json#/files/3}
   output_dir: outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001
   pr_preview: knowledge/runs/run-slcs-meiji-streaming-visual-v1/pr_preview
 parents:
@@ -96,4 +96,4 @@ PR向けには既存動画の3.0–11.0秒を10fpsで同期合成した。元の
 推論はやり直さず、全画角・未加工の軌道を維持する。GIFは表示用の縮小・色量子化のみ。1440px MP4・3時点PNG・生成コマンドとSHAはpr_preview/へ保存した。
 この区間は定性的な例であり、全体の性能を代表する統計的な抽出ではない。ball影はz=0の投影で、画像ballとの一致には用いない。
 
-![MeijiのRGB観測とSLCSの3D予測・疑似教師](../../runs/run-slcs-meiji-streaming-visual-v1/pr_preview/comparison.gif)
+[MeijiのRGB観測とSLCSの3D予測・疑似教師（削除済み）](../../runs/run-slcs-meiji-streaming-visual-v1/artifact-manifest.json#/files/0)

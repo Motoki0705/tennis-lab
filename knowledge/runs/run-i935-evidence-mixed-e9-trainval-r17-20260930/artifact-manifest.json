@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-evidence-mixed-e9-trainval-r17-20260930",
+  "files": [
+    {
+      "path": "manifest.json",
+      "size_bytes": 265332,
+      "sha256": "4101cd9f0f480809dfbc8260e9266a453ec65184639d6af4b23bf8bf66a5c2f6",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

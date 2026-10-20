@@ -30,7 +30,7 @@ repro:
     training.early_stopping.patience=10 training.early_stopping.min_delta=0.0005 run.output_dir=outputs/ball_detection/convnext_v2_scratch
 artifacts:
   run_dir: knowledge/runs/run-i618-convnext-v2-scratch
-  predictions: knowledge/runs/run-i618-convnext-v2-scratch/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i618-convnext-v2-scratch/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783405858454132778_1226767_i618_convnext_v2_scratch.log
   output_dir: outputs/ball_detection/convnext_v2_scratch/logs/version_0
   curves: knowledge/runs/run-i618-convnext-v2-scratch/curves.png

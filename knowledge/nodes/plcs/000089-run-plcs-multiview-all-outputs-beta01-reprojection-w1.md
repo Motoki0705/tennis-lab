@@ -51,7 +51,7 @@ repro:
     paths.artifact_root=/home/kamimura/projects/tennis-lab/.training_queue/repro/1787816665730150531_direct_plcs-multiview-all-outputs-beta01-reprojection-w1-gpu1
 artifacts:
   run_dir: knowledge/runs/run-plcs-multiview-all-outputs-beta01-reprojection-w1
-  predictions: knowledge/runs/run-plcs-multiview-all-outputs-beta01-reprojection-w1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-multiview-all-outputs-beta01-reprojection-w1/artifact-manifest.json#/files/0}
   output_dir: outputs/plcs/plcs_multiview_all_outputs_beta01_reprojection_w1_gpu1/logs/version_merged_gpu1_to_gpu0_v2
   resume_run: knowledge/runs/run-plcs-multiview-all-outputs-beta01-reprojection-w1/resume_gpu0_run.json
   resume_repro: knowledge/runs/run-plcs-multiview-all-outputs-beta01-reprojection-w1/resume_gpu0_repro.sh

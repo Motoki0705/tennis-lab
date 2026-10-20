@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v9-observation-reuse-v1",
+  "files": [
+    {
+      "path": "failure.json",
+      "size_bytes": 554036,
+      "sha256": "2d0687c54330ec8e72e1b77dd500b77b1541828c7903b8fc500b42c25fa2b824",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs_after.json",
+      "size_bytes": 405745,
+      "sha256": "099710b7edff6257fc5eedd2248e612c0d98a5d1e99f8695ca2eb4f92314408d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs_before.json",
+      "size_bytes": 405745,
+      "sha256": "099710b7edff6257fc5eedd2248e612c0d98a5d1e99f8695ca2eb4f92314408d",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs_prepublication.json",
+      "size_bytes": 405745,
+      "sha256": "b1df49ba606f99a58d2cc789f2602cbb90de0b6bb918b24319914fd8ccc0b9fb",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -32,7 +32,7 @@ repro:
     training.qualitative_logging.enabled=false'
 artifacts:
   run_dir: knowledge/runs/run-i832-blcs-legacy-slot-baseline
-  predictions: knowledge/runs/run-i832-blcs-legacy-slot-baseline/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i832-blcs-legacy-slot-baseline/artifact-manifest.json#/files/0}
   output_dir: outputs/blcs/issue-832/legacy-slot-baseline-r4/logs/version_0
   curves: knowledge/runs/run-i832-blcs-legacy-slot-baseline/curves.png
   tb_logdir: .claude/worktrees/issue-832-legacy-baseline/outputs/blcs/issue-832/legacy-slot-baseline-r4/logs/version_0

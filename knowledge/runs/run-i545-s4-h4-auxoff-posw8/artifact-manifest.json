@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i545-s4-h4-auxoff-posw8",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 459211,
+      "sha256": "08af74715ac6e90468d0ad6d072e819e6992b0410b1238beec3ec669ca58b2c7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

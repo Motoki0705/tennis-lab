@@ -28,7 +28,7 @@ repro:
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs 'predict.checkpoint="slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=56.ckpt"' data.dataset_root=slcs/real_rgb_v1 data.split_file=slcs/real_rgb_v1/splits.json data.quality.min_window_label_ratio=0.5 predict.clip_id=video_001/clip_000 predict.camera_id=cam0 predict.device=cpu predict.frame_step=3 predict.output_dir=slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-takeover-003
 artifacts:
   run_dir: knowledge/runs/run-slcs-full-no-smooth-meiji-visual-interrupted-v1
-  predictions: knowledge/runs/run-slcs-full-no-smooth-meiji-visual-interrupted-v1/predictions.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-full-no-smooth-meiji-visual-interrupted-v1/artifact-manifest.json#/files/0}
   output_dir: outputs/slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-takeover-003
 parents: [run-slcs-full-real-rgb-no-ball-smooth-val-v3]
 tags: [slcs, real-rgb, visualization, cpu]

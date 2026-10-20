@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1014-coords-3d-regression-p05-s42-20261005-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2332664,
+      "sha256": "7912c5a3bf22b7039431bb7809b46a65bff275b81c3a34cd2354aa467ee87799",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

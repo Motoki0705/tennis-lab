@@ -38,7 +38,7 @@ repro:
   command: bash knowledge/runs/run-plcs-gvhmr-similarity-clip000/repro.sh
 artifacts:
   run_dir: knowledge/runs/run-plcs-gvhmr-similarity-clip000
-  predictions: knowledge/runs/run-plcs-gvhmr-similarity-clip000/predictions.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-gvhmr-similarity-clip000/artifact-manifest.json#/files/4}
   output_dir: outputs/plcs_gvhmr_similarity/clip_000
 parents: []
 relations: []
@@ -124,7 +124,7 @@ knowledge内にはこのclipでの同一変換実験の先行ノードはなか�
 
 ![選手0の軌跡・向き](../../runs/run-plcs-gvhmr-similarity-clip000/player_0_diagnostics.png)
 
-[3方式の同期比較動画](../../runs/run-plcs-gvhmr-similarity-clip000/comparison.mp4)
+[3方式の同期比較動画（削除済み）](../../runs/run-plcs-gvhmr-similarity-clip000/artifact-manifest.json#/files/1)
 
 ### 次に有効な実験
 

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i540-asym-deep16",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 424955,
+      "sha256": "659617f59cf34367214e5e9cdf4daef7c1b2f1ebcce8280331a5be763c9bf004",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

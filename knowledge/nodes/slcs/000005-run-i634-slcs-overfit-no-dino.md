@@ -59,7 +59,7 @@ repro:
     training.checkpoint.save_top_k=1
 artifacts:
   run_dir: knowledge/runs/run-i634-slcs-overfit-no-dino
-  predictions: knowledge/runs/run-i634-slcs-overfit-no-dino/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i634-slcs-overfit-no-dino/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783894087426433674_1161831_i634_slcs_overfit_no_dino.log
   output_dir: outputs/slcs/i634_overfit_no_dino/logs/version_0
   curves: knowledge/runs/run-i634-slcs-overfit-no-dino/curves.png

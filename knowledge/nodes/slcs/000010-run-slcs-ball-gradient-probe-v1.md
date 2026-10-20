@@ -45,7 +45,7 @@ artifacts:
   run_dir: knowledge/runs/run-slcs-ball-gradient-probe-v1
   output_dir: outputs/slcs/analyze/ball_gradient_probe/s42-001
   diagnostics: knowledge/runs/run-slcs-ball-gradient-probe-v1/results.json
-  predictions: knowledge/runs/run-slcs-ball-gradient-probe-v1/meiji_eval.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-ball-gradient-probe-v1/artifact-manifest.json#/files/2}
 parents:
 - run-slcs-rgb-pilot-augmented-selected-conditions-v2
 relations: []

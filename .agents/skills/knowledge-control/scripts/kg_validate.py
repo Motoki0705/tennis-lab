@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 
+from kg_artifacts import validate_runs
 from kg_history import validate_history
 from kg_lib import load_nodes, nodes_dir, validate
 from kg_papers import validate_papers
@@ -37,6 +38,7 @@ def main() -> int:
         res.errors.extend(validate_counters(nodes))
         papers = validate_papers(nodes)
         res.errors.extend(papers.errors)
+        res.errors.extend(validate_runs(directory.parent, nodes, args.base_ref))
         if args.check_summary:
             res.errors.extend(check_summary())
         if args.base_ref:

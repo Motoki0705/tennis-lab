@@ -45,7 +45,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-ftc-axis-s04g03
-  predictions: knowledge/runs/run-mono3d-blcs-ftc-axis-s04g03/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-ftc-axis-s04g03/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783274918987051955_506543_mono3d_blcs_ftC_axis_s04g03.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_6
   curves: knowledge/runs/run-mono3d-blcs-ftc-axis-s04g03/curves.png

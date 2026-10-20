@@ -27,6 +27,12 @@ Inspect the reported node and promoted `runs/<id>/` bundle. The capture date is
 imported when available; `--date YYYY-MM-DD` overrides it with a known experiment
 date. Add `--issue N` only for a real issue, and `--papers <paper-id> ...` only for
 already registered papers. Never edit the historical repro bundle to match new code.
+Only the reproducibility files and small metric summaries are copied; raw
+predictions remain at the source, with an explicit message. Check that message
+and the promoted file list. The [storage policy](../../../../knowledge/README.md#run成果物の保存基準)
+defines limits and the format for approved deletion records. Registration rejects
+oversized evidence before copying; reduce future captures at their source rather
+than editing historical commands or silently omitting required reproduction files.
 
 ## Historical job/log without a bundle
 

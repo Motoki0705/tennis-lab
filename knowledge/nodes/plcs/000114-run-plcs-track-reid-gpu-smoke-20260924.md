@@ -51,7 +51,7 @@ repro:
     plcs/tracked_person_reid_v1 --output /home/kamimura/projects/tennis-lab/outputs/plcs/diagnostics/tracked_reid_smoke_20260924
 artifacts:
   run_dir: knowledge/runs/run-plcs-track-reid-gpu-smoke-20260924
-  predictions: knowledge/runs/run-plcs-track-reid-gpu-smoke-20260924/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-track-reid-gpu-smoke-20260924/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790218808214964499_733501_plcs-track-reid-gpu-smoke-20260924.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/diagnostics/tracked_reid_smoke_20260924
   tb_logdir: outputs/plcs/diagnostics/tracked_reid_smoke_20260924/logs/version_0

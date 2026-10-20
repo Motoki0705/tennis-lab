@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-source-check-retry-r25-20260930",
+  "files": [
+    {
+      "path": "collected-r26/cam0/execute.npz",
+      "size_bytes": 49658,
+      "sha256": "ff1c32da00c14617f1fbe50cde2b3582dbb14c440940e40ced45589bf8145f42",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "collected-r26/cam0/load.npz",
+      "size_bytes": 49658,
+      "sha256": "ff1c32da00c14617f1fbe50cde2b3582dbb14c440940e40ced45589bf8145f42",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "collected-r26/cam1/execute.npz",
+      "size_bytes": 49723,
+      "sha256": "546c7e40ffeb1918103f689ccdfc3f2411d1676b1060b1185d7a8c6adbef6164",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "collected-r26/cam1/load.npz",
+      "size_bytes": 49723,
+      "sha256": "546c7e40ffeb1918103f689ccdfc3f2411d1676b1060b1185d7a8c6adbef6164",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "collected-r26/cam2/execute.npz",
+      "size_bytes": 49852,
+      "sha256": "072f5133e887c576b59743ca084a6fc372772acdcd8d1ca3997ec814e0e48f4b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "collected-r26/cam2/load.npz",
+      "size_bytes": 49852,
+      "sha256": "072f5133e887c576b59743ca084a6fc372772acdcd8d1ca3997ec814e0e48f4b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

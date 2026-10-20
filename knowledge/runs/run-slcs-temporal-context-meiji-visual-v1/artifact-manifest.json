@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-temporal-context-meiji-visual-v1",
+  "files": [
+    {
+      "path": "pr_preview/comparison.gif",
+      "size_bytes": 1947739,
+      "sha256": "a787ed5356e76bc087daa0e197094aa864ac5556ad3237f5c322da182f0a08b4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/comparison.mp4",
+      "size_bytes": 488283,
+      "sha256": "952a2139fe016a5ad3b37cdf7260d7b2641bc747ad768855883ca95936ce612b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pr_preview/contact_sheet.png",
+      "size_bytes": 1499288,
+      "sha256": "0a762f781c43cc5cc852cd494b66fc70b073380ba8a40f7731c0874375d4b23b",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 161957,
+      "sha256": "293dfab0c674ccce4390aa33deb6a5377d641487d56fba730a5ccfc3af2f83db",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

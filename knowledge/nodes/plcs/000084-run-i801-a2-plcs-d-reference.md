@@ -83,7 +83,7 @@ repro:
     run.test_after_fit=true model=track_query_ablation_d_v2_selector run.output_dir=plcs/norm-v2/issue-801/t128-v6/ablation-d-reference-selector-eb32-final
 artifacts:
   run_dir: knowledge/runs/run-i801-a2-plcs-d-reference
-  predictions: knowledge/runs/run-i801-a2-plcs-d-reference/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i801-a2-plcs-d-reference/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1787644646345366163_3910851_i801_attempt2_plcs_d_reference_t128_v6_eb32_e100_final.log
   output_dir: outputs/plcs/norm-v2/issue-801/t128-v6/ablation-d-reference-selector-eb32-final/logs/version_0
   curves: knowledge/runs/run-i801-a2-plcs-d-reference/curves.png

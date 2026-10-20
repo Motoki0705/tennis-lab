@@ -36,7 +36,7 @@ repro:
     run.seed=42
 artifacts:
   run_dir: knowledge/runs/run-plcs-accad-gvhmr-meiji-1000-v1-train
-  predictions: knowledge/runs/run-plcs-accad-gvhmr-meiji-1000-v1-train/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-accad-gvhmr-meiji-1000-v1-train/artifact-manifest.json#/files/2}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/accad_gvhmr_meiji_1000_v1_train/logs/version_0
   curves: knowledge/runs/run-plcs-accad-gvhmr-meiji-1000-v1-train/curves.png
   tb_logdir: outputs/plcs/accad_gvhmr_meiji_1000_v1_train/logs/version_0

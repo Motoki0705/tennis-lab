@@ -29,7 +29,7 @@ repro:
     run.resume=outputs/court_detection/kp/logs/version_0/checkpoints/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-i621-court-kp512-resume-r4
-  predictions: knowledge/runs/run-i621-court-kp512-resume-r4/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i621-court-kp512-resume-r4/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783481398399240801_20792_i621_court_kp512_resume_r4.log
   output_dir: outputs/court_detection/kp/logs/version_1
   checkpoint: ckpt/court_detection/kp/run-i621-court-kp512-resume-r4-epoch21.ckpt

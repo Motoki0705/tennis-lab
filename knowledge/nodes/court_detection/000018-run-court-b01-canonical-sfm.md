@@ -28,7 +28,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-court-b01-canonical-sfm
   output_dir: /home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/court-b00-b03-generation
-  log: knowledge/runs/run-court-b01-canonical-sfm/run.log
+  log: {status: deleted, record: knowledge/runs/run-court-b01-canonical-sfm/artifact-manifest.json#/files/1}
 parents:
 - run-b01-court-expansion-5
 relations: []

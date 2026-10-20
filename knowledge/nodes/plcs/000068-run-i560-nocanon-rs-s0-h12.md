@@ -46,7 +46,7 @@ repro:
     training.early_stopping.enabled=false run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i560-nocanon-rs-s0-h12
-  predictions: knowledge/runs/run-i560-nocanon-rs-s0-h12/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i560-nocanon-rs-s0-h12/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782307133857545536_638926_i545_nocanon_rs_s0_h12.log
   output_dir: outputs/plcs/plcs_multiview_axial/logs/version_34
   curves: knowledge/runs/run-i560-nocanon-rs-s0-h12/curves.png

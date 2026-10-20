@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-tennis-scene-cleanup-meiji-court-model-20260922",
+  "files": [
+    {
+      "path": "evidence/court_frame0_comparison.jpg",
+      "size_bytes": 961357,
+      "sha256": "bb94bd82f9e0d2afe853701e34266d095e9bc5152d092351d7da622fa0be8bd9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

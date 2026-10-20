@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-covariance-loco-s42-r23-20260930",
+  "files": [
+    {
+      "path": "bank.npz",
+      "size_bytes": 1405797,
+      "sha256": "0697fe921daf79c7960d616ed0437efecd3b7195f3f8a7dd6188048dd8ecc858",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "metrics.json",
+      "size_bytes": 300563,
+      "sha256": "14df269eac61be1d6b34e3af7c0254cea1fbe10c5e1788883d9a7c7062257ec7",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

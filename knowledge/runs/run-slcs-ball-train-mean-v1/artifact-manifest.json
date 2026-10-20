@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-ball-train-mean-v1",
+  "files": [
+    {
+      "path": "fit_evidence.npz",
+      "size_bytes": 53844,
+      "sha256": "81100fadf51e335934b4378bb5bdd738df3d223b05a04b1e29b7d9d67dff90c0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i991-coordinate-gpu-smoke-20261005",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 55380,
+      "sha256": "d53fc0e1f1d240db086775fb35c6ac7c41af0fd8e1b743f278dc7df0f9420f97",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

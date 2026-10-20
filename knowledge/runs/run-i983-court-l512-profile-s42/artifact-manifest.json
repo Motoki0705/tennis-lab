@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i983-court-l512-profile-s42",
+  "files": [
+    {
+      "path": "splits.json",
+      "size_bytes": 504303,
+      "sha256": "4a4bb6e0ac536f4e7428fcad26a56158151cb1dc80c9e459dc8696019c38d4ad",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -43,7 +43,7 @@ repro:
     training.trainer.max_epochs=200 run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i540-asym-deep16
-  predictions: knowledge/runs/run-i540-asym-deep16/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i540-asym-deep16/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781927908633902412_762455_i540_asym_deep16.log
   curves: knowledge/runs/run-i540-asym-deep16/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_5

@@ -23,7 +23,7 @@ metrics:
   real_root_reprojection_px: 105.58882620344812
 artifacts:
   run_dir: knowledge/runs/run-plcs-foot-baseline-epoch19-eval
-  predictions: knowledge/runs/run-plcs-foot-baseline-epoch19-eval/baseline_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-foot-baseline-epoch19-eval/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual/outputs/plcs/foot_residual/comparison
   checkpoint: /home/kamimura/projects/tennis-lab/ckpt/plcs/plcs-multiview-axial-split-camera-view-v2-epoch19.ckpt
   metrics: knowledge/runs/run-plcs-foot-baseline-epoch19-eval/baseline_test_metrics.json

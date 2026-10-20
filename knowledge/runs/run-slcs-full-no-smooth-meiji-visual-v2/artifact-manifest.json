@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-full-no-smooth-meiji-visual-v2",
+  "files": [
+    {
+      "path": "overlay_contact.png",
+      "size_bytes": 2257156,
+      "sha256": "f7d0225d07f5bc12edd849ab640c579422e07c890fd2254b6a76de1dd9ce1f95",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 161844,
+      "sha256": "b6d6657dcf5f73ae95d4f5d6e2f2fa199b2c35ee3fad5dcd7dc513fc2e26edc1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

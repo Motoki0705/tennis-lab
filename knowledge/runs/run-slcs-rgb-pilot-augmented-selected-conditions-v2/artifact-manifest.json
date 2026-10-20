@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-rgb-pilot-augmented-selected-conditions-v2",
+  "files": [
+    {
+      "path": "test_detector_gap/eval_arrays.npz",
+      "size_bytes": 35553,
+      "sha256": "1889c45e72683328e4b5ddf40b01693834575967c2a5a6d48c164b7c974e75c8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_full/eval_arrays.npz",
+      "size_bytes": 35676,
+      "sha256": "0fcf1095babfb2e21e4fd775daedb16f515bc10d2d52a7f5bbc53189ea2f3359",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_no_rgb/eval_arrays.npz",
+      "size_bytes": 35812,
+      "sha256": "0807d06ffeaafedadcce33a134eeffa68d1315abcd1fd12afee5b4aab2b400c4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "test_rgb_only/eval_arrays.npz",
+      "size_bytes": 33743,
+      "sha256": "3cbf7c0ce87b358ecb81fb1875f622a9de1b9993a8c4f516987813e65fc4bf90",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_detector_gap/eval_arrays.npz",
+      "size_bytes": 537910,
+      "sha256": "efe07ab6d3c639a54414645bd0d4a23f4f3c6337e1d60ffad73e50a05db7cd99",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_full/eval_arrays.npz",
+      "size_bytes": 535493,
+      "sha256": "a8d0d2f20c9ec3f911735abce70d8ee236ba67847100d1736fe00c8e074606fe",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_no_rgb/eval_arrays.npz",
+      "size_bytes": 541068,
+      "sha256": "5849032915982589542ccf3853bd636acfd125287f10a52454ee0a9d5f342ff4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val_rgb_only/eval_arrays.npz",
+      "size_bytes": 499833,
+      "sha256": "cf2009703a4826d59a1b45c24a66dbada0781838247b9426b066026e078f5ac9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

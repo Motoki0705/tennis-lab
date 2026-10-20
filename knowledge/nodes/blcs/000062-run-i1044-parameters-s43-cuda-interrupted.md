@@ -56,14 +56,14 @@ artifacts:
   run_dir: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted
   output_dir: outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown
   log: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/queue-summary.log
-  raw_log: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/queue.log.gz
+  raw_log: {status: deleted, record: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/artifact-manifest.json#/files/0}
   log_archive: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/log-archive.json
   config: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/config.yaml
   experiment_config: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/experiment-config.yaml
   output_archive: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/output-archive.json
   interruption: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/interruption.json
   capture_checksums: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/capture_checksums.json
-  scalars: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/artifact-manifest.json#/files/1}
   tb_logdir: outputs/blcs/i1044/aborted-parameters-s43-cuda-unknown/logs/version_0
   curves: knowledge/runs/run-i1044-parameters-s43-cuda-interrupted/curves.png
 parents:

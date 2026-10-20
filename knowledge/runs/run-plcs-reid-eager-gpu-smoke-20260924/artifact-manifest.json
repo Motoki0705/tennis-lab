@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-reid-eager-gpu-smoke-20260924",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 54485,
+      "sha256": "7ab846e84caf8510d2685ac335a3520d3fbc79467cf71515016d079cef18168e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

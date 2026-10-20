@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-gan-scratch",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 279864,
+      "sha256": "c799515d402cf052eb16b1ef605c9ab4794710e31f5e32ea588f4dc544b87655",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

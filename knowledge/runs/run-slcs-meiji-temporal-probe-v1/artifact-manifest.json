@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-temporal-probe-v1",
+  "files": [
+    {
+      "path": "clip000_007_contact_sheet.jpg",
+      "size_bytes": 870057,
+      "sha256": "65ffcaf430ea0afb0aa498b5e4eede19c9111c581ba6291583a82d3832e0e243",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip001_000_contact_sheet.jpg",
+      "size_bytes": 869967,
+      "sha256": "fef6121331f863fd7a9a6040afe78dca8237b7d8baa06f7b3ee79afca570262a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clip001_001_contact_sheet.jpg",
+      "size_bytes": 860843,
+      "sha256": "dbd26df197f48fe9814a22e2aa88e307b76cad4a926baf99931f0a2d51bbf65e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial_video_000_clip_007_contact_sheet.jpg",
+      "size_bytes": 294779,
+      "sha256": "e9a692b7aea26ce5afc9aa3e150592855346f2c356ef175a87da3681efee32a2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial_video_000_clip_009_contact_sheet.jpg",
+      "size_bytes": 291509,
+      "sha256": "bc51780a11c0ee2dddc80de5a06f7e0996677a3d2fe0f7738a238799f33ac3ad",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial_video_001_clip_000_contact_sheet.jpg",
+      "size_bytes": 291211,
+      "sha256": "efab1b2914d85fff05eaead1dd4cf3cc2bbe61b495d76496a5564f818008215f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial_video_001_clip_001_contact_sheet.jpg",
+      "size_bytes": 292931,
+      "sha256": "7ea6a25ec5ee5b92f479c4f43332a9ec468b9b7417078ef5270ff9224b7a51e7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection_audit/meiji_interpolated_root_review/video_001/clip_001/contact_sheet.jpg",
+      "size_bytes": 1148811,
+      "sha256": "a0a3c4c586e03df9fdff52d132eb4f11460e80bf4fa840807338a21c0a974c49",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection_audit/meiji_residual_review/video_000/clip_009/contact_sheet.jpg",
+      "size_bytes": 859502,
+      "sha256": "fa2638c58cd7861e284edff640daeb4509df2ccfe6e8a855d4bee59652bffeb9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "reprojection_audit/meiji_residual_review/video_001/clip_001/contact_sheet.jpg",
+      "size_bytes": 861481,
+      "sha256": "57f3f7a02353d6a33119022d5f8e17eb8ebb537168790aafee8ae7b269388eb7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

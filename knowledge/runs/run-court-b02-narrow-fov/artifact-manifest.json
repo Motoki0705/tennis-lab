@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-b02-narrow-fov",
+  "files": [
+    {
+      "path": "run.log",
+      "size_bytes": 697922,
+      "sha256": "6c35fff2f62d21949807e78d700895543f5f10e58d72a276ca026506d573f6f7",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}
