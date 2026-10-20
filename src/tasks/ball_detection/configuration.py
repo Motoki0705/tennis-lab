@@ -972,6 +972,31 @@ def _validate_layout_style(value: object, *, path: str) -> ConfigMapping:
     return layout
 
 
+def validate_overlay(value: object) -> ConfigMapping:
+    """Validate explicit overlay marker and frame-sampling settings."""
+    path = "visualization.overlay"
+    overlay = exact_mapping(
+        value, path=path, required={"output_width", "frame_stride", "styles", "ring", "trail"},
+    )
+    for key in ("output_width", "frame_stride"):
+        _positive(cast(int, typed(overlay, key, int, path=path)), path=f"{path}.{key}")
+    styles = _required_sequence(overlay, "styles", path=path, item_type=str)
+    if not styles or len(set(styles)) != len(styles) or set(styles) - {"point", "ring", "trail"}:
+        raise SemanticConfigurationError(f"{path}.styles must be a nonempty unique list of point/ring/trail")
+    for name, dimensions, opacity_key in (
+        ("ring", {"radius", "thickness", "center_radius", "glow_radius"}, "glow_opacity"),
+        ("trail", {"radius", "length", "thickness"}, "opacity"),
+    ):
+        style_path = f"{path}.{name}"
+        style = exact_mapping(overlay[name], path=style_path, required=dimensions | {opacity_key})
+        for key in dimensions:
+            _positive(cast(int, typed(style, key, int, path=style_path)), path=f"{style_path}.{key}")
+        opacity = _required_number(style, opacity_key, path=style_path)
+        if not 0 <= opacity <= 1:
+            raise SemanticConfigurationError(f"{style_path}.{opacity_key} must be in [0, 1]")
+    return overlay
+
+
 def validate_visualization(config: DictConfig) -> None:
     """Validate visualization composition and all derived paths."""
     exact_mapping(
@@ -1014,25 +1039,37 @@ def validate_visualization(config: DictConfig) -> None:
             "window_stride",
             "inference_batch_size",
             "peak_threshold",
+            "start_frame",
             "max_frames",
             "info",
             "strict",
             "weights_only",
             "draw",
             "layout",
+            "grid",
+            "overlay",
             "gif",
         },
     )
     for key in ("store_dir", "clip_id", "save"):
         typed(vis, key, str, path="visualization")
-    fps = _required_number(vis, "fps", path="visualization")
-    _positive(fps, path="visualization.fps")
+    fps = _optional_number(vis, "fps", path="visualization")
+    if fps is None:
+        if vis["layout"] != "overlay":
+            raise SemanticConfigurationError("visualization.fps=null requires overlay layout")
+    else:
+        _positive(fps, path="visualization.fps")
     for key in ("window_stride", "inference_batch_size"):
         _positive(
             cast(int, typed(vis, key, int, path="visualization")),
             path=f"visualization.{key}",
         )
     _required_number(vis, "peak_threshold", path="visualization")
+    _positive(
+        cast(int, typed(vis, "start_frame", int, path="visualization")),
+        path="visualization.start_frame",
+        allow_zero=True,
+    )
     max_frames = typed(vis, "max_frames", (int, type(None)), path="visualization")
     if max_frames is not None:
         _positive(cast(int, max_frames), path="visualization.max_frames")
@@ -1040,7 +1077,10 @@ def validate_visualization(config: DictConfig) -> None:
     typed(vis, "strict", bool, path="visualization")
     typed(vis, "weights_only", bool, path="visualization")
     _validate_draw_style(vis["draw"], path="visualization.draw")
-    _validate_layout_style(vis["layout"], path="visualization.layout")
+    if typed(vis, "layout", str, path="visualization") not in {"grid_2x2", "overlay"}:
+        raise SemanticConfigurationError("visualization.layout must be 'grid_2x2' or 'overlay'")
+    _validate_layout_style(vis["grid"], path="visualization.grid")
+    validate_overlay(vis["overlay"])
     gif = exact_mapping(vis["gif"], path="visualization.gif", required={"loop"})
     _positive(
         cast(int, typed(gif, "loop", int, path="visualization.gif")),

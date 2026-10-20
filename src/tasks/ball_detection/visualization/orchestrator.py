@@ -4,22 +4,31 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from math import isfinite
 from pathlib import Path
+from typing import Any, Literal, cast
 
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
-from src.tasks.ball_detection.configuration import BallRuntimePaths
+from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_overlay
 from src.tasks.ball_detection.inference import BallDetectionPredictor
 from src.tasks.ball_detection.visualization.api.predict import (
     build_mdd_frames,
     predict_clip,
 )
 from src.tasks.ball_detection.visualization.io.clip import load_clip_sequence
+from src.tasks.ball_detection.visualization.io.manifest import build_overlay_manifest
 from src.tasks.ball_detection.visualization.rendering import (
     DrawStyle,
     LayoutStyle,
     render_animation_frames,
+    render_overlay_frames,
+)
+from src.tasks.ball_detection.visualization.rendering.markers import (
+    OverlayMarker,
+    RingStyle,
+    TrailStyle,
 )
 from src.tasks.base.visualization.gif import save_gif
 from src.tasks.base.visualization.orchestrator import (
@@ -32,7 +41,10 @@ from src.tasks.base.visualization.orchestrator import (
     parse_rgb as _parse_rgb,
 )
 from src.tasks.base.visualization.orchestrator import resolve_device
+from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathResolver, PathRole
+from src.utils.io import save_json
+from src.utils.video.writer import VideoWriter
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +59,13 @@ class RuntimeConfig:
     checkpoint_role: PathRole
     save: Path
     device: torch.device
-    fps: float
+    fps: float | None
     window_stride: int
     inference_batch_size: int
     sequence_length: int
     image_size_hw: tuple[int, int]
     peak_threshold: float
+    start_frame: int
     max_frames: int | None
     normalize_imagenet: bool
     imagenet_mean: tuple[float, float, float]
@@ -61,16 +74,28 @@ class RuntimeConfig:
     info: bool
     clip_label: str
     draw: DrawStyle
-    layout: LayoutStyle
+    layout: Literal["grid_2x2", "overlay"]
+    grid: LayoutStyle
+    overlay_output_width: int
+    overlay_frame_stride: int
+    overlay_styles: tuple[OverlayMarker, ...]
+    overlay_ring: RingStyle
+    overlay_trail: TrailStyle
     resolver: PathResolver
     subpixel_refine: bool
     strict: bool
     weights_only: bool
+    resolved_config: dict[str, Any]
 
 
 def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     """Build runtime config from composed Hydra config."""
     vis = cfg.visualization
+    layout = str(vis.layout)
+    if layout not in {"grid_2x2", "overlay"}:
+        raise ValueError("visualization.layout must be 'grid_2x2' or 'overlay'.")
+    validate_overlay(vis.overlay)
+    overlay_output_width = int(vis.overlay.output_width)
     run = cfg.run
     data_cfg = cfg.data
     metrics_cfg = cfg.metrics
@@ -93,14 +118,19 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     if inference_batch_size <= 0:
         raise ValueError("visualization.inference_batch_size must be positive.")
 
-    fps = float(vis.fps)
-    if fps <= 0:
+    fps = None if vis.fps is None else float(vis.fps)
+    if fps is None and layout != "overlay":
+        raise ValueError("visualization.fps=null requires overlay layout")
+    if fps is not None and (not isfinite(fps) or fps <= 0):
         raise ValueError("visualization.fps must be positive.")
 
     max_frames_raw = vis.max_frames
     max_frames = None if max_frames_raw is None else int(max_frames_raw)
     if max_frames is not None and max_frames <= 0:
         raise ValueError("visualization.max_frames must be positive when set.")
+    start_frame = int(vis.start_frame)
+    if start_frame < 0:
+        raise ValueError("visualization.start_frame must be nonnegative.")
 
     normalize_cfg = data_cfg.augmentation.normalize_imagenet
     normalize_imagenet = bool(normalize_cfg.enabled)
@@ -114,7 +144,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
     )
 
     draw_cfg = vis.draw
-    layout_cfg = vis.layout
+    layout_cfg = vis.grid
     gif_cfg = vis.gif
 
     return RuntimeConfig(
@@ -130,6 +160,7 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         sequence_length=sequence_length,
         image_size_hw=image_size_hw,
         peak_threshold=float(vis.peak_threshold),
+        start_frame=start_frame,
         max_frames=max_frames,
         normalize_imagenet=normalize_imagenet,
         imagenet_mean=imagenet_mean,
@@ -155,13 +186,19 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
                 name="visualization.draw.muted_text_color_rgb",
             ),
         ),
-        layout=LayoutStyle(
+        layout=cast(Literal["grid_2x2", "overlay"], layout),
+        overlay_output_width=overlay_output_width,
+        overlay_frame_stride=int(vis.overlay.frame_stride),
+        overlay_styles=tuple(cast(OverlayMarker, name) for name in vis.overlay.styles),
+        overlay_ring=RingStyle(**dict(vis.overlay.ring)),
+        overlay_trail=TrailStyle(**dict(vis.overlay.trail)),
+        grid=LayoutStyle(
             header_height=int(layout_cfg.header_height),
             tile_gap=int(layout_cfg.tile_gap),
             text_scale=float(layout_cfg.text_scale),
             text_thickness=int(layout_cfg.text_thickness),
             background_rgb=_parse_rgb(
-                layout_cfg.background_rgb, name="visualization.layout.background_rgb"
+                layout_cfg.background_rgb, name="visualization.grid.background_rgb"
             ),
             panel_label_height=int(layout_cfg.panel_label_height),
         ),
@@ -169,23 +206,30 @@ def build_runtime_config(cfg: DictConfig) -> RuntimeConfig:
         subpixel_refine=bool(metrics_cfg.subpixel_refine),
         strict=bool(vis.strict),
         weights_only=bool(vis.weights_only),
+        resolved_config=cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True)),
     )
 
 
 def run_visualization(cfg: RuntimeConfig) -> int:
-    """Run clip-level visualization and save a GIF."""
+    """Save a clip GIF, with a companion H.264 MP4 for overlays."""
     clip = load_clip_sequence(
         store_dir=cfg.store_dir,
         clip_id=cfg.clip_id,
         sequence_length=cfg.sequence_length,
         image_size_hw=cfg.image_size_hw,
         max_frames=cfg.max_frames,
+        start_frame=cfg.start_frame,
         normalize_imagenet=False,
         imagenet_mean=cfg.imagenet_mean,
         imagenet_std=cfg.imagenet_std,
+        render_width=cfg.overlay_output_width if cfg.layout == "overlay" else None,
     )
 
     logger.info("Loaded clip %s with %d frames.", cfg.clip_label, len(clip.frame_names))
+    gif_fps = (
+        overlay_playback_fps(cfg.fps, clip.source_fps, cfg.overlay_frame_stride)
+        if cfg.layout == "overlay" else cast(float, cfg.fps)
+    )
     if cfg.info:
         logger.info("Checkpoint: %s", cfg.checkpoint)
         logger.info("Save path: %s", cfg.save)
@@ -218,31 +262,87 @@ def run_visualization(cfg: RuntimeConfig) -> int:
         image_size_hw=cfg.image_size_hw,
         peak_threshold=cfg.peak_threshold,
     )
-    mdd_frames_rgb = build_mdd_frames(predictor=predictor, clip=clip)
-
-    rendered_frames = render_animation_frames(
-        frames_rgb=[frame.cpu().numpy() for frame in clip.render_frames_rgb],
-        frame_names=clip.frame_names,
-        mdd_frames_rgb=mdd_frames_rgb,
-        pred_coords_px=[
-            _coord_tensor_to_tuple(coord) for coord in predictions.coords_px
-        ],
-        pred_visibility=[bool(value.item()) for value in predictions.visibility],
-        pred_confidences=[float(value.item()) for value in predictions.confidences],
-        pred_heatmaps=[heatmap.cpu().numpy() for heatmap in predictions.heatmaps],
-        peak_threshold=cfg.peak_threshold,
-        clip_label=cfg.clip_label,
-        draw=cfg.draw,
-        layout=cfg.layout,
-    )
-    save_gif(
-        frames_rgb=rendered_frames,
-        path=cfg.save,
-        fps=cfg.fps,
-        loop=cfg.gif_loop,
-    )
-    logger.info("Saved clip visualization to %s", cfg.save)
+    frames_rgb = [frame.cpu().numpy() for frame in clip.render_frames_rgb]
+    pred_visibility = [bool(value.item()) for value in predictions.visibility]
+    if cfg.layout == "overlay":
+        coords = [_coord_tensor_to_tuple(coord) for coord in predictions.coords_normalized]
+        manifest = build_overlay_manifest(
+            store_dir=cfg.store_dir,
+            clip_id=cfg.clip_id,
+            frame_names=clip.frame_names,
+            start_frame=cfg.start_frame,
+            checkpoint=cfg.checkpoint,
+            resolved_config=cfg.resolved_config,
+        )
+        manifest["playback"] = {
+            "source_fps": clip.source_fps,
+            "frame_stride": cfg.overlay_frame_stride,
+            "gif_fps": gif_fps,
+            "inference_frames": len(clip.frame_names),
+            "rendered_frames": len(clip.frame_names[::cfg.overlay_frame_stride]),
+        }
+        manifest["rendered_frame_names"] = list(clip.frame_names[::cfg.overlay_frame_stride])
+        for style in cfg.overlay_styles:
+            save_path = cfg.save if len(cfg.overlay_styles) == 1 else cfg.save.parent / style / cfg.save.name
+            rendered_frames = render_overlay_frames(
+                frames_rgb=frames_rgb,
+                pred_coords_normalized=coords,
+                pred_visibility=pred_visibility,
+                draw=cfg.draw,
+                style=style,
+                ring=cfg.overlay_ring,
+                trail=cfg.overlay_trail,
+                frame_stride=cfg.overlay_frame_stride,
+            )
+            save_gif(frames_rgb=rendered_frames, path=save_path, fps=gif_fps, loop=cfg.gif_loop)
+            video_path = save_path.with_suffix(".mp4")
+            with VideoWriter(video_path, fps=gif_fps) as writer:
+                for frame_rgb in rendered_frames:
+                    writer.write_frame(frame_rgb)
+            outputs = {
+                name: {"path": str(path), "sha256": dual_sha256(path)}
+                for name, path in (("gif", save_path), ("mp4", video_path))
+            }
+            save_json(
+                {**manifest, "overlay_style": style, "outputs": outputs},
+                save_path.parent / "manifest.json",
+            )
+            logger.info("Saved %s overlay to %s and %s", style, save_path, video_path)
+            del rendered_frames
+    else:
+        rendered_frames = render_animation_frames(
+            frames_rgb=frames_rgb,
+            frame_names=clip.frame_names,
+            mdd_frames_rgb=build_mdd_frames(predictor=predictor, clip=clip),
+            pred_coords_px=[
+                _coord_tensor_to_tuple(coord) for coord in predictions.coords_px
+            ],
+            pred_visibility=pred_visibility,
+            pred_confidences=[float(value.item()) for value in predictions.confidences],
+            pred_heatmaps=[heatmap.cpu().numpy() for heatmap in predictions.heatmaps],
+            peak_threshold=cfg.peak_threshold,
+            clip_label=cfg.clip_label,
+            draw=cfg.draw,
+            layout=cfg.grid,
+        )
+        save_gif(
+            frames_rgb=rendered_frames,
+            path=cfg.save,
+            fps=cast(float, cfg.fps),
+            loop=cfg.gif_loop,
+        )
+        logger.info("Saved clip visualization to %s", cfg.save)
     return 0
+
+
+def overlay_playback_fps(fps: float | None, source_fps: float, frame_stride: int) -> float:
+    """Resolve explicit playback fps or source-speed playback after rendering stride."""
+    if not isfinite(source_fps) or source_fps <= 0 or frame_stride <= 0:
+        raise ValueError("Overlay source_fps and frame_stride must be positive and finite")
+    result = source_fps / frame_stride if fps is None else fps
+    if not isfinite(result) or not 0 < result <= 100:
+        raise ValueError("Overlay GIF fps must be in (0, 100] for 10ms timing")
+    return result
 
 
 def _coord_tensor_to_tuple(coord: torch.Tensor) -> tuple[float, float]:

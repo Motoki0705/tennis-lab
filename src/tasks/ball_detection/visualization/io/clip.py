@@ -7,6 +7,8 @@ consumed by inference and the original RGB frames used for rendering.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from fractions import Fraction
+from math import isfinite
 from pathlib import Path
 
 import cv2
@@ -25,6 +27,7 @@ class ClipSequence:
     frame_names: tuple[str, ...]
     render_frames_rgb: tuple[torch.Tensor, ...]
     model_images: torch.Tensor
+    source_fps: float
 
 
 def load_clip_sequence(
@@ -37,6 +40,8 @@ def load_clip_sequence(
     normalize_imagenet: bool,
     imagenet_mean: tuple[float, float, float],
     imagenet_std: tuple[float, float, float],
+    render_width: int | None = None,
+    start_frame: int = 0,
 ) -> ClipSequence:
     """Load and preprocess a stored clip for visualization.
 
@@ -44,20 +49,34 @@ def load_clip_sequence(
         store_dir: Absolute path of a ball frame store version.
         clip_id: Exact clip_id from its metadata.
         sequence_length: Model temporal window length (``model.num_frames``).
-        image_size_hw: Target ``(height, width)`` for model/render frames.
+        image_size_hw: Target ``(height, width)`` for model images.
         max_frames: Optional cap on the number of frames.
         normalize_imagenet: Whether to ImageNet-normalize model images.
         imagenet_mean: ImageNet mean (used when normalizing).
         imagenet_std: ImageNet std (used when normalizing).
+        render_width: Resize stored images to this width, preserving aspect ratio.
+            ``None`` keeps render frames at the model input size.
+        start_frame: Zero-based first frame of the selected contiguous interval.
+            ``max_frames`` caps the number of frames after this position.
 
     Returns:
-        A :class:`ClipSequence` with render frames, model images and GT labels.
+        A :class:`ClipSequence` with render frames and model images.
     """
+    if render_width is not None and render_width <= 0:
+        raise ValueError("render_width must be positive when set")
+    if start_frame < 0:
+        raise ValueError("start_frame must be nonnegative")
     store = BallFrameStore(store_dir)
     clip = store.clip_by_id(clip_id)
+    source_fps = float(Fraction(clip.fps))
+    if not isfinite(source_fps) or source_fps <= 0:
+        raise ValueError(f"Clip {clip_id} has invalid source fps: {clip.fps}")
     if max_frames is not None and max_frames <= 0:
         raise ValueError("max_frames must be positive")
     rows = store.clip_rows(clip)
+    if start_frame >= len(rows):
+        raise ValueError(f"start_frame {start_frame} is outside clip {clip_id} ({len(rows)} frames)")
+    rows = rows[start_frame:]
     if max_frames is not None:
         rows = rows[:max_frames]
     if len(rows) < sequence_length:
@@ -76,7 +95,17 @@ def load_clip_sequence(
             interpolation=cv2.INTER_LINEAR,
         )
 
-        render_frames_rgb.append(torch.from_numpy(resized_rgb.copy()).to(torch.uint8))
+        if render_width is None:
+            render_rgb = resized_rgb
+        else:
+            stored_height, stored_width = frame_rgb.shape[:2]
+            render_height = max(1, round(stored_height * render_width / stored_width))
+            render_rgb = cv2.resize(
+                frame_rgb,
+                (render_width, render_height),
+                interpolation=cv2.INTER_LINEAR,
+            )
+        render_frames_rgb.append(torch.from_numpy(render_rgb.copy()).to(torch.uint8))
 
         model_frame = (
             torch.from_numpy(resized_rgb.transpose(2, 0, 1)).to(torch.float32) / 255.0
@@ -97,4 +126,5 @@ def load_clip_sequence(
         frame_names=tuple(frame_names),
         render_frames_rgb=tuple(render_frames_rgb),
         model_images=model_images,
+        source_fps=source_fps,
     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import cast
@@ -14,6 +15,9 @@ from src.tasks.base.visualization.layout import (
     label_panel,
     put_text,
 )
+from src.utils.geometry.keypoints import denormalize_grid_keypoints
+
+from .markers import OverlayMarker, RingStyle, TrailStyle, draw_ring, draw_trail
 
 
 @dataclass(frozen=True)
@@ -39,6 +43,61 @@ class LayoutStyle:
     text_thickness: int
     background_rgb: tuple[int, int, int]
     panel_label_height: int
+
+
+def render_overlay_frames(
+    *,
+    frames_rgb: Sequence[np.ndarray],
+    pred_coords_normalized: Sequence[tuple[float, float]],
+    pred_visibility: Sequence[bool],
+    draw: DrawStyle,
+    style: OverlayMarker = "point",
+    ring: RingStyle | None = None,
+    trail: TrailStyle | None = None,
+    frame_stride: int = 1,
+) -> list[np.ndarray]:
+    """Overlay visible predictions on stored-image renders, without text.
+
+    Coordinates use the native heatmap grid convention, x/(W-1), y/(H-1).
+    The legacy point uses 512px styling; ring/trail dimensions use width 960.
+    History is updated on every source frame before rendering is subsampled.
+    """
+    if frame_stride <= 0:
+        raise ValueError("frame_stride must be positive")
+    if style not in {"point", "ring", "trail"}:
+        raise ValueError(f"Unknown overlay style: {style}")
+    if (style == "ring" and ring is None) or (style == "trail" and trail is None):
+        raise ValueError(f"Explicit settings are required for overlay style {style}")
+    history: deque[tuple[int, int]] = deque(maxlen=trail.length if trail is not None else 1)
+    rendered_frames: list[np.ndarray] = []
+    for index, (frame_rgb, coord, visible) in enumerate(zip(
+        frames_rgb, pred_coords_normalized, pred_visibility, strict=True,
+    )):
+        if visible:
+            height, width = frame_rgb.shape[:2]
+            coord_px = denormalize_grid_keypoints(np.asarray(coord), width, height)
+            center = (round(float(coord_px[0])), round(float(coord_px[1])))
+            history.append(center)
+        else:
+            history.clear()
+        if index % frame_stride:
+            continue
+        panel = frame_rgb.copy()
+        if visible and style == "ring":
+            draw_ring(panel, center, draw.pred_color_rgb, cast(RingStyle, ring))
+        elif visible and style == "trail":
+            draw_trail(panel, list(history), draw.pred_color_rgb, cast(TrailStyle, trail))
+        elif visible:
+            scale = width / 512
+            _draw_point(
+                panel,
+                coord_px=(float(coord_px[0]), float(coord_px[1])),
+                radius=max(1, round(draw.pred_radius * scale)),
+                color_rgb=draw.pred_color_rgb,
+                thickness=max(1, round(draw.thickness * scale)),
+            )
+        rendered_frames.append(panel)
+    return rendered_frames
 
 
 def render_animation_frames(

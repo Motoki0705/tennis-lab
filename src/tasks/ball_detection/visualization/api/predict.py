@@ -24,6 +24,7 @@ class PredictionSequence:
     """Aggregated per-frame predictions for one clip."""
 
     heatmaps: torch.Tensor
+    coords_normalized: torch.Tensor
     coords_px: torch.Tensor
     confidences: torch.Tensor
     visibility: torch.Tensor
@@ -84,6 +85,7 @@ def predict_clip(
 
     return PredictionSequence(
         heatmaps=averaged_heatmaps,
+        coords_normalized=coords_normalized,
         coords_px=coords_px,
         confidences=confidences,
         visibility=visibility,
