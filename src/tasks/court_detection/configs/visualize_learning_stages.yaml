@@ -1,0 +1,41 @@
+defaults:
+  - paths: default
+  - _self_
+
+hydra:
+  run:
+    # Hydra and the exclusive media target are siblings within one run.
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false
+
+run_bundle: knowledge/runs/run-i983-court-dinov3-b-s42
+scalar_summary: assets/court_detection/learning_stages/scalars.json
+run:
+  output_dir: ${tennis_output:court_detection,visualize,learning_stages,${tennis_run_id:}}
+tags:
+  train_loss: train/loss
+  train_kp: train/loss_kp
+  train_line: train/loss_line
+  train_seg: train/loss_seg
+  train_semline: train/loss_semantic_line
+  train_pose: train/loss_direct_pose
+  val_kp: val/kp_mean_distance_px
+  val_line: val/line_dice
+  val_seg: val/seg_miou
+  val_semline: val/semantic_line_miou
+  val_pose: val/pose_translation_l2_m
+  val_loss: val/loss
+  learning_rate: lr-AdamW
+seconds:
+  intro: 4
+  warmup: 8
+  train: 26
+  select: 4
+  handoff: 3
+fps: 30
+width: 1920
+height: 1080
+gif_width: 960
+gif_fps: 15

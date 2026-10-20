@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "kind": "measured_learning_scalar_summary",
+  "source_manifest": "tensorboard-sources.json",
+  "source_sha256": "df51dc090c641556813afee7379572c0a6252edfdb6ffeb1659dc1f9bc62a4b7",
+  "policy": "Preserve selected original tag, step, value and wall_time; no smoothing or scheduler reconstruction.",
+  "counts": {
+    "train/loss": 663,
+    "train/loss_kp": 663,
+    "train/loss_line": 663,
+    "train/loss_seg": 663,
+    "train/loss_semantic_line": 663,
+    "train/loss_direct_pose": 663,
+    "val/kp_mean_distance_px": 6,
+    "val/line_dice": 6,
+    "val/seg_miou": 6,
+    "val/semantic_line_miou": 6,
+    "val/pose_translation_l2_m": 6,
+    "val/loss": 6,
+    "lr-AdamW": 20
+  },
+  "output": "scalars.json",
+  "sha256": "e70fc8ee0b8068003423cbf1121fe9bb3272511615cfd8fa014f12f89edbaf62"
+}
