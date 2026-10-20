@@ -31,6 +31,12 @@
 - `mode=rank`: `ranking.json` の上位10件を人に提示します。既定90frameの各窓に、外れ値の
   光線と単独viewのframeをそれぞれ要求します。`t0` は中央1/3にある3view以上のinlierを持つ
   有効frameから中央に最も近いものです。同率では開始frame順です。候補を自動採用しません。
+  `ranking_suppression=non_overlapping`（既定）は、有効率の順位順に採用済みの
+  `[start, stop)` と重なる窓を抑制します。境界で接する窓は許可します。
+  `t0_distance` は採用済みの全 `t0` から `window_frames` 以上離れた窓だけを残します。
+  抑制してから上位10件に制限し、条件を満たす窓が足りない場合は得られた件数を返します。
+  抑制規則・返却件数と、外れ値／単独view／棄却frameの番号・件数をrankingに記録します。
+  棄却frameの件数は「可視2view以上で球が無効」のframe数で、単独viewと分けて数えます。
 - `mode=export`: 元動画の `[start, stop)` だけを復号し、`bundle/` を作ります。
   `t0` は同区間内の有効frameで、3view以上のinlierが必要です。元動画のhash・寸法・FPS・
   frame数を検査します。uvは縮小JPEGの座標ではなく元解像度のpxです。
@@ -88,3 +94,5 @@ reprojection=300、playback=315以降）から候補を取り出します。採�
 検証は全出力frameの評価済み光線の端点、球、表示状態、カメラ位置、画像面上の観測と
 再投影、plateのsource frameを照合します。座標の許容誤差は1e-5 mです。
 不一致でも失敗理由をJSONに保存し、非ゼロで終了します。
+材質についても全frameで割り当て先・カメラ色／赤／灰・不透明度・破線フラグを検査します。
+伸長途中の材質と画面上の線幅の概算は `growth_material_samples` に記録します。

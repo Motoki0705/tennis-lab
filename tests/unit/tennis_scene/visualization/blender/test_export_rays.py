@@ -171,7 +171,9 @@ def test_rank_requires_all_three_conditions_and_sorts_by_valid_ratio() -> None:
     ball.trajectory.reasons[0] = 1
     ranked = rank_windows(ball, window_frames=12)
     assert ranked
-    assert [item["start"] for item in ranked] == [1, 2, 0]
+    # Lower-validity and adjacent windows cannot displace the best candidate
+    # or fill the result list with the same event.
+    assert [item["start"] for item in ranked] == [1]
     for item in ranked:
         start, stop, t0 = (item[key] for key in ("start", "stop", "t0"))
         assert stop - start == 12
@@ -189,6 +191,57 @@ def test_rank_requires_all_three_conditions_and_sorts_by_valid_ratio() -> None:
     ball = rank_fixture()
     ball.trajectory.inliers[2, :] = False
     assert rank_windows(ball, window_frames=12) == []
+
+
+@pytest.mark.parametrize("suppression", ["non_overlapping", "t0_distance"])
+def test_rank_suppresses_neighbours_before_limiting_to_ten(suppression: str) -> None:
+    ball = ball_fixture(144)
+    for base in range(0, 144, 12):
+        ball.trajectory.inliers[2, base + 2] = False
+        ball.visibility[:2, base + 8] = False
+        ball.trajectory.valid[base + 8] = False
+        ball.trajectory.reasons[base + 8] = 1
+        ball.trajectory.inliers[:, base + 8] = False
+    ranked = rank_windows(ball, window_frames=12, suppression=suppression)
+    assert len(ranked) == 10
+    assert [item["start"] for item in ranked] == list(range(0, 120, 12))
+    for index, left in enumerate(ranked):
+        for right in ranked[index + 1 :]:
+            if suppression == "non_overlapping":
+                assert left["stop"] <= right["start"] or right["stop"] <= left["start"]
+            else:
+                assert abs(left["t0"] - right["t0"]) >= 12
+    # Windows meeting at the half-open boundary are distinct.
+    assert ranked[0]["stop"] == ranked[1]["start"]
+
+
+def test_rank_records_event_counts_and_reports_only_available_candidates() -> None:
+    ball = rank_fixture()
+    ball.trajectory.valid[3] = False
+    ball.trajectory.reasons[3] = 4
+    ball.trajectory.inliers[:, 3] = False
+    ranked = rank_windows(ball, window_frames=12)
+    assert len(ranked) == 1
+    assert ranked[0]["event_counts"] == {"outlier": 1, "single_view": 1, "rejected": 1}
+    assert ranked[0]["rejected_frames"] == [3]
+
+
+def test_t0_distance_is_distinct_from_interval_non_overlap() -> None:
+    ball = ball_fixture(24)
+    ball.trajectory.inliers[2, :] = False
+    ball.trajectory.inliers[2, [4, 16]] = True
+    for frame in (8, 20):
+        ball.visibility[:2, frame] = False
+        ball.trajectory.valid[frame] = False
+        ball.trajectory.reasons[frame] = 1
+        ball.trajectory.inliers[:, frame] = False
+    non_overlapping = rank_windows(
+        ball, window_frames=12, suppression="non_overlapping"
+    )
+    separated_t0 = rank_windows(ball, window_frames=12, suppression="t0_distance")
+    assert [item["start"] for item in non_overlapping] == [0, 12]
+    assert [item["start"] for item in separated_t0] == [0, 9]
+    assert [item["t0"] for item in separated_t0] == [4, 16]
 
 
 def test_reject_bad_status_and_scene_disagreement() -> None:
@@ -233,6 +286,13 @@ def test_config_has_explicit_roles_and_export_selection(tmp_path: Path) -> None:
         tmp_path / "outputs/tennis_scene/visualize/export_blender_rays"
     )
     assert runtime.config.fallback_ray_length_m == 60
+    assert runtime.config.ranking_suppression == "non_overlapping"
+    assert (
+        parse_rays_config(
+            config(tmp_path, "ranking_suppression=t0_distance")
+        ).config.ranking_suppression
+        == "t0_distance"
+    )
     with pytest.raises(SemanticConfigurationError, match="requires"):
         parse_rays_config(config(tmp_path, "mode=export"))
     with pytest.raises(SemanticConfigurationError, match="does not accept"):
@@ -244,6 +304,7 @@ def test_config_has_explicit_roles_and_export_selection(tmp_path: Path) -> None:
     [
         "mode=unknown",
         "window_frames=0",
+        "ranking_suppression=unknown",
         "plate_max_width=-1",
         "fallback_ray_length_m=0",
         "plate_jpeg_quality=101",

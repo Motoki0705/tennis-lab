@@ -8,6 +8,10 @@ start: null
 stop: null
 t0: null
 window_frames: 90
+# Greedy validity-descending/start-ascending selection; retain at most ten.
+# non_overlapping: [start,stop) intervals must not overlap (touching is allowed).
+# t0_distance: representative frames must be >= window_frames apart.
+ranking_suppression: non_overlapping
 fallback_ray_length_m: 60.0
 plate_max_width: 960
 plate_jpeg_quality: 95

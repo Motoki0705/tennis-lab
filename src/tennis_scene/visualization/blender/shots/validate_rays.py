@@ -14,6 +14,7 @@ from mathutils import Vector
 
 
 def validate(bundle: Path) -> dict[str, Any]:
+    bundle = bundle.resolve()
     manifest = json.loads((bundle / "manifest.json").read_text())
     if manifest["schema"] != "tennis_scene_blender_rays_v1":
         raise ValueError("Unsupported bundle schema")
@@ -38,6 +39,9 @@ def validate(bundle: Path) -> dict[str, Any]:
     max_error = 0.0
     checks = 0
     states_seen = set()
+    material_checks = 0
+    growth_material_samples = []
+    checked_plates: set[Path] = set()
 
     def near(actual: Any, expected: Any, label: str) -> None:
         nonlocal max_error, checks
@@ -80,6 +84,65 @@ def validate(bundle: Path) -> dict[str, Any]:
                 raise AssertionError(f"Ray {view} visibility at frame {frame}")
             if ray["ray_state"] != state:
                 raise AssertionError(f"Ray {view} state at frame {frame}")
+            material = ray.active_material
+            if len(ray.data.materials) != 1 or material.name != f"RayMaterial_{view}":
+                raise AssertionError(f"Ray {view} material assignment at frame {frame}")
+            nodes = material.node_tree.nodes
+            dashed = float(nodes["Dashed"].outputs[0].default_value)
+            opacity = float(nodes["Opacity"].outputs[0].default_value)
+            color = tuple(nodes["Color"].outputs[0].default_value)
+            expected_hex = (
+                "#E63946"
+                if state == 2
+                else ("#6C757D" if state == 4 else shot["camera_colors"][view])
+            )
+            expected_color = tuple(
+                int(expected_hex[i : i + 2], 16) / 255 for i in (1, 3, 5)
+            ) + (1.0,)
+            if (
+                dashed != float(state == 3)
+                or abs(opacity - (0.6 if state == 2 else 1.0)) > 1e-6
+                or not np.allclose(color, expected_color, atol=1e-6, rtol=0)
+            ):
+                raise AssertionError(
+                    f"Ray {view} material state at frame {frame}: state={state}, dashed={dashed}, opacity={opacity}, color={color}"
+                )
+            material_checks += 1
+            if frame in (
+                shot["rays_start"],
+                (shot["rays_start"] + shot["ball_start"]) // 2,
+                shot["ball_start"] - 1,
+                shot["ball_start"],
+            ):
+                midpoint = ray.matrix_world @ Vector((0.0, 0.0, 0.5))
+                camera = scene.camera.evaluated_get(depsgraph)
+                camera_point = camera.matrix_world.inverted() @ midpoint
+                focal_px = (
+                    camera.data.lens
+                    / camera.data.sensor_width
+                    * scene.render.resolution_x
+                    * scene.render.resolution_percentage
+                    / 100
+                )
+                growth_material_samples.append(
+                    {
+                        "frame": frame,
+                        "source_frame": int(source),
+                        "view": view,
+                        "material": material.name,
+                        "state": state,
+                        "dashed": dashed,
+                        "opacity": opacity,
+                        "color": color,
+                        "length_m": float(ray.scale.z),
+                        "projected_diameter_px_approx": 2
+                        * shot["ray_radius_m"]
+                        * focal_px
+                        / (-camera_point.z)
+                        if camera_point.z < 0
+                        else None,
+                    }
+                )
             if visible:
                 growth = float(
                     np.clip(
@@ -140,12 +203,15 @@ def validate(bundle: Path) -> dict[str, Any]:
             user.frame_current = frame - user.frame_start + user.frame_offset + 1
             actual_path = Path(
                 texture.image.filepath_from_user(image_user=texture.image_user)
-            ).resolve()
-            expected_path = (bundle / cam["plate_dir"] / f"{source:05d}.jpg").resolve()
-            if actual_path != expected_path or not actual_path.is_file():
+            )
+            expected_path = bundle / cam["plate_dir"] / f"{source:05d}.jpg"
+            if actual_path != expected_path or (
+                actual_path not in checked_plates and not actual_path.is_file()
+            ):
                 raise AssertionError(
                     f"Plate image at {view}/{frame}: {actual_path}, expected {expected_path}"
                 )
+            checked_plates.add(actual_path)
     if scene.render.fps / scene.render.fps_base != 30.0:
         raise AssertionError("Shot must render at 30fps")
     return {
@@ -155,6 +221,8 @@ def validate(bundle: Path) -> dict[str, Any]:
         "max_error_m": max_error,
         "tolerance_m": 1e-5,
         "ray_states_seen": sorted(states_seen),
+        "material_checks": material_checks,
+        "growth_material_samples": growth_material_samples,
         "ball_source": manifest["ball_source"],
     }
 

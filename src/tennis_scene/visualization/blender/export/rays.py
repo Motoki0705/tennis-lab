@@ -52,11 +52,16 @@ class RayLengthRule(IntEnum):
 @dataclass(frozen=True)
 class RaysConfig:
     window_frames: int = 90
+    ranking_suppression: str = "non_overlapping"
     fallback_ray_length_m: float = 60.0
     plate_max_width: int = 960
     plate_jpeg_quality: int = 95
 
     def __post_init__(self) -> None:
+        if self.ranking_suppression not in ("non_overlapping", "t0_distance"):
+            raise ValueError(
+                "ranking_suppression must be non_overlapping or t0_distance"
+            )
         if self.window_frames < 3 or self.plate_max_width < 1:
             raise ValueError("window_frames must be >= 3 and plate_max_width positive")
         if (
@@ -174,16 +179,27 @@ def ray_arrays(
 
 
 def rank_windows(
-    ball: BallReconstructionResult, *, window_frames: int
+    ball: BallReconstructionResult,
+    *,
+    window_frames: int,
+    suppression: str = "non_overlapping",
 ) -> list[dict[str, Any]]:
-    """Return ten eligible windows; t0 is in the middle third of each window."""
+    """Greedily suppress similar windows after sorting by validity and start.
+
+    Keep at most ten. Non-overlap permits touching half-open intervals;
+    t0_distance requires representative frames at least window_frames apart.
+    Neither rule relaxes the eligibility requirements to fill the result list.
+    """
     validate_ball(ball, ball.visibility.shape[0])
     if window_frames < 3:
         raise ValueError("window_frames must be >= 3")
+    if suppression not in ("non_overlapping", "t0_distance"):
+        raise ValueError("Unknown ranking suppression rule")
     valid = ball.trajectory.valid
     support = ball.trajectory.inliers.sum(axis=0)
     outlier = valid & (ball.visibility & ~ball.trajectory.inliers).any(axis=0)
     single = ball.visibility.sum(axis=0) == 1
+    rejected = ~valid & (ball.visibility.sum(axis=0) >= 2)
     candidates = []
     for start in range(len(valid) - window_frames + 1):
         stop = start + window_frames
@@ -208,11 +224,34 @@ def rank_windows(
                 "single_view_frames": (
                     np.flatnonzero(single[start:stop]) + start
                 ).tolist(),
+                "rejected_frames": (
+                    np.flatnonzero(rejected[start:stop]) + start
+                ).tolist(),
+                "event_counts": {
+                    "outlier": int(outlier[start:stop].sum()),
+                    "single_view": int(single[start:stop].sum()),
+                    "rejected": int(rejected[start:stop].sum()),
+                },
             }
         )
-    return sorted(candidates, key=lambda item: (-item["valid_ratio"], item["start"]))[
-        :10
-    ]
+    retained: list[dict[str, Any]] = []
+    for item in sorted(
+        candidates, key=lambda item: (-item["valid_ratio"], item["start"])
+    ):
+        if suppression == "non_overlapping":
+            distinct = all(
+                item["stop"] <= other["start"] or item["start"] >= other["stop"]
+                for other in retained
+            )
+        else:
+            distinct = all(
+                abs(item["t0"] - other["t0"]) >= window_frames for other in retained
+            )
+        if distinct:
+            retained.append(item)
+            if len(retained) == 10:
+                break
+    return retained
 
 
 @dataclass(frozen=True)
@@ -379,9 +418,16 @@ def export_ranking(
     document.update(
         schema="tennis_scene_blender_rays_ranking_v1",
         window_frames=config.window_frames,
+        ranking_suppression=config.ranking_suppression,
+        candidate_limit=10,
         t0_rule="nearest frame to center within middle third with >=3 inliers",
-        candidates=rank_windows(inputs.ball, window_frames=config.window_frames),
+        candidates=rank_windows(
+            inputs.ball,
+            window_frames=config.window_frames,
+            suppression=config.ranking_suppression,
+        ),
     )
+    document["returned_candidates"] = len(document["candidates"])
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("x", encoding="utf-8") as handle:
         json.dump(document, handle, indent=2, allow_nan=False)

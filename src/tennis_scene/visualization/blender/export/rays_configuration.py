@@ -31,6 +31,7 @@ RAYS_CONFIG_SCHEMA = StrictConfigSchema(
         "stop": ConfigField.of(int, type(None)),
         "t0": ConfigField.of(int, type(None)),
         "window_frames": ConfigField.of(int),
+        "ranking_suppression": ConfigField.of(str),
         "fallback_ray_length_m": ConfigField.of(int, float),
         "plate_max_width": ConfigField.of(int),
         "plate_jpeg_quality": ConfigField.of(int),
@@ -69,6 +70,7 @@ def parse_rays_config(cfg: DictConfig) -> RaysRuntime:
     try:
         config = RaysConfig(
             window_frames=value["window_frames"],
+            ranking_suppression=value["ranking_suppression"],
             fallback_ray_length_m=float(value["fallback_ray_length_m"]),
             plate_max_width=value["plate_max_width"],
             plate_jpeg_quality=value["plate_jpeg_quality"],
