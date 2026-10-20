@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-foot-baseline-epoch29-eval",
+  "files": [
+    {
+      "path": "baseline_best_clip.npz",
+      "size_bytes": 932867,
+      "sha256": "26363901a4829f94842634d756e758b1f55179332fe6404a2c315bc41a4f8457",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "baseline_best_test.npz",
+      "size_bytes": 5392279,
+      "sha256": "e811b0b3337fcd3aa1aeee7e748dad858481ab88de51444ed985b6fd61412fb2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

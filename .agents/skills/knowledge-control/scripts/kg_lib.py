@@ -256,8 +256,7 @@ def _validate_run(n: Node, res: ValidationResult) -> None:
     loc = n.path.name
     if "issue" not in n.meta:
         res.warnings.append(f"{loc}: run node has no 'issue'")
-    # issue #533: when a run records its git-tracked reproducibility bundle, that
-    # directory must actually exist (it holds repro.sh / run.json / pred_test.npz).
+    # A recorded reproducibility bundle (or its deletion manifest) must exist.
     artifacts = n.meta.get("artifacts") or {}
     run_dir = artifacts.get("run_dir") if isinstance(artifacts, dict) else None
     if run_dir not in (None, ""):

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1014-coords-3d-gan-p05-s42-20261005-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2332752,
+      "sha256": "affa1863bc785179916f2d0c9dc441d36c412cc9c1c46b3a7aca036750cefa2a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

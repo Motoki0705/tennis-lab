@@ -1,0 +1,1483 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-val-candidate-recall-r15-20260929",
+  "files": [
+    {
+      "path": "ft-e13/clip-00086.npz",
+      "size_bytes": 8372,
+      "sha256": "8585e3fd3008238d5372f83012145639a2d6b82b9f0524b488bec3b9449c85b7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00087.npz",
+      "size_bytes": 22118,
+      "sha256": "78f6c8f281fc88578162b32a71e7c52e469029eaadeaf3ed48ee9f1d5dd85ea4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00088.npz",
+      "size_bytes": 29042,
+      "sha256": "1a5f248b3182244f0c0342bce97af13bd2f3625efbf355a8c803aa38598f40c6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00089.npz",
+      "size_bytes": 10150,
+      "sha256": "46ba162792c63de5531623222c8dabd0bd0782d756be830ae755e8257e7be760",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00090.npz",
+      "size_bytes": 24023,
+      "sha256": "bf8ad95bb2a18f2a08399f48a40268cdaf75cbc15f77216294089d37b67d6f77",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00091.npz",
+      "size_bytes": 10387,
+      "sha256": "69859964dd2eb7e37dbd1590c36e1d805668305426b8fbfb9f480ce3a1bf80a8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00092.npz",
+      "size_bytes": 8789,
+      "sha256": "0aac87f30fdd21e4f9db3c7d1af912d3d0b27e0e902b89e12e0e2bdba5aa8461",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00093.npz",
+      "size_bytes": 6318,
+      "sha256": "983b9ab409d71e89f1d3e52a5d32c7954703dddb4308f843303baf2b7c3fd897",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00094.npz",
+      "size_bytes": 18704,
+      "sha256": "db5d44475350969b5b8b3a3e72bcba4a7d823307f0f068ad3f5175ba4874a879",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00095.npz",
+      "size_bytes": 86421,
+      "sha256": "b068e9d8f0be2b467ccb9296cb63eebff6626bbc8b74da191ee0e9c8fe23a879",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00096.npz",
+      "size_bytes": 86264,
+      "sha256": "4f4b9a01378cdf953da1c0f2e1c4a9a61b955718e9a54587e4ea35c911677fb3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00097.npz",
+      "size_bytes": 86850,
+      "sha256": "c7adb042a1e20d6fc7560e6b33c068da9c376104c35d102559e1c75e4a8d1345",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00098.npz",
+      "size_bytes": 88263,
+      "sha256": "8189e1448481bbb34c311834ad4d3a2415b8750bbaf4ca0ec02ddd4bde3b578a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00099.npz",
+      "size_bytes": 81399,
+      "sha256": "a39709e1e7a720ef05ec14cd12aa373e5223e75a177a5af11f779f8fa31ea287",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00100.npz",
+      "size_bytes": 85368,
+      "sha256": "808d505db785c716bf2ffceb8ccba90a4970f40427fd06d0ae1df9c2b8d9ddc6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00101.npz",
+      "size_bytes": 112027,
+      "sha256": "795beab32fec55512ffa89ad3e77cacaed1eb1fa46a5c15ab1ca0b8852ec9315",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00102.npz",
+      "size_bytes": 114677,
+      "sha256": "9c84ead4cee41a351dc74668f009b5eff0848fc8c50061f1fb68a4c2d6c0013d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00103.npz",
+      "size_bytes": 114960,
+      "sha256": "c51ee24e6bb20c19c30109795e4b7f25c2198fa08a48641d252e39516e1b3874",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00104.npz",
+      "size_bytes": 88529,
+      "sha256": "8d19098c23af4ec563f5f4119a744e21e6a40d495f15f0328ec62715b26fb423",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00105.npz",
+      "size_bytes": 87131,
+      "sha256": "5f16e836b097cc94abb861eb48f42396bfe8059bc5df75198e230bfb74a4fb4e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00106.npz",
+      "size_bytes": 92170,
+      "sha256": "b2f32a64849e5443abd3074a9fdd65796691803496c680cf7d941d5ccb834c37",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00107.npz",
+      "size_bytes": 30281,
+      "sha256": "986b6350f5aeb375f9ea51adc26fbec0f7af99547c530100c86efa1434dbb6c0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00108.npz",
+      "size_bytes": 30268,
+      "sha256": "632bb498937ae33cf9d212607114271175b667e3ae553d078b4ab071bbaed1a0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00109.npz",
+      "size_bytes": 31406,
+      "sha256": "7a667b2e2aa18d4b2c6f8ca8b8de136d70632069eaf267ae0b671735a1abb81e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00110.npz",
+      "size_bytes": 27812,
+      "sha256": "eaeed865ba1775b3483ceeb50c57f9e52c466ee9ea122dbb70053c862c3782ce",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00111.npz",
+      "size_bytes": 27036,
+      "sha256": "ea982dfd5e964589925a73c3ae8ab435f52b4c9b75cdfbd2891f54c912cb73a2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00112.npz",
+      "size_bytes": 28178,
+      "sha256": "9c7b5b5ed6ee84af7bef323331e85bf2842e000d5dde20c3c6a207daebb87a82",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00113.npz",
+      "size_bytes": 40294,
+      "sha256": "cbc8a7f474ad7f8e19298a32144ba189fe07a3b23ff2b15e1f15eaa2103e6897",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00114.npz",
+      "size_bytes": 40104,
+      "sha256": "79270c752b760f34e2ce81eae9a963f1adbd41764e34f081c27aa23866bf13bd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00115.npz",
+      "size_bytes": 40471,
+      "sha256": "70eaf4d371a8f1c1032525dfda08ee1484746c64900395bcac90a70f7ebae23a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00116.npz",
+      "size_bytes": 56540,
+      "sha256": "1d8f330a9fc311adec3d0be59a1d57106edb6a49cb0d9617857329670ed9ad94",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00117.npz",
+      "size_bytes": 56900,
+      "sha256": "477f8575c4343d5ab052e1a4afaaa57e9546d3690e6e34066eedab8a8522a5c1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00118.npz",
+      "size_bytes": 56674,
+      "sha256": "a6166bfd9c9ef0960f08ad2ca100ac9c400966a80ddee6f394cc8f18d4e38b0e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00119.npz",
+      "size_bytes": 41752,
+      "sha256": "f198537b6b028166a16007adaf0f111e3e108f2d4a77e0ea82e8fe4d3af35eed",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00120.npz",
+      "size_bytes": 39893,
+      "sha256": "729b0138c590d2c4fcba283c299997e57b02f902884e6561f12eb9558d04a1fb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00121.npz",
+      "size_bytes": 40360,
+      "sha256": "d7240ce2c0e92498f758d194b3093c94363037d8cfab736b5cd5e2b83bd0abf2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00122.npz",
+      "size_bytes": 63668,
+      "sha256": "d2562bc49a112679c055badc9774539f3e24d0c094cd8fdb99aed86be263c4a6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00123.npz",
+      "size_bytes": 64770,
+      "sha256": "d42e632635b4029a570b5cfe8978e8776535ccfc4135d1c43c77123c2f914689",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00124.npz",
+      "size_bytes": 62744,
+      "sha256": "711dd7d39d15c171b445786eab40d5856c8d3da122300e325b1eda775feeeba8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00125.npz",
+      "size_bytes": 23207,
+      "sha256": "f56201b946bba531836d2f85c764589c44229079a9827d4093f613d6d82b0faf",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00126.npz",
+      "size_bytes": 23531,
+      "sha256": "469c97f61603fa961f5a63bfa0e1644054eff62db169807a50d670b98594d3a8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00127.npz",
+      "size_bytes": 24068,
+      "sha256": "720113562f75f4a02f3bcab7e12a523bb4818097a5635b21e159217d297ebea9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00128.npz",
+      "size_bytes": 107263,
+      "sha256": "602b4707be815712e4ddff0fdaa4d54591ed609704fc836eaa9415e53ab115e2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00129.npz",
+      "size_bytes": 106172,
+      "sha256": "5311d88d03270eabb8516c650f399d4dc3e9955493547a9fe665677571b522b8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00130.npz",
+      "size_bytes": 107826,
+      "sha256": "f308eeab00deaa3ec6bef8f87fe9b35760919acaea9bc490f87361b439f20d11",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00296.npz",
+      "size_bytes": 37508,
+      "sha256": "7d54e29f725fad536b462cc854d1a449f99e3589dbb757dc4cd9791435f40ed3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00297.npz",
+      "size_bytes": 37627,
+      "sha256": "b8ce5d8af90e7d70ac4078122163e7fcf9aac58c0597509ba57f59593f10533c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00298.npz",
+      "size_bytes": 37161,
+      "sha256": "723b14fa043bc214ca2eb6d2d9320a5fc87a4a49a28a1e7c372c54606c7818f5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00299.npz",
+      "size_bytes": 37585,
+      "sha256": "30eb67c82a5b89b64e476078186c99abf6d355a60d7e7496cf4d9ae6b927f131",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00300.npz",
+      "size_bytes": 35508,
+      "sha256": "d64f97b9b1196f1feeac02861289439e80ab400ec154c4547ff30101ab0d67c0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00301.npz",
+      "size_bytes": 33687,
+      "sha256": "71dacfda121d733e9d55a52f673208e6e0ea0c62c3d7bb4f889eddc8519c99bf",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00302.npz",
+      "size_bytes": 33724,
+      "sha256": "86f08bfcfe7fb5f4a407ee5712a2d2cf358595945b87cd3d4021901303a9cfbb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00303.npz",
+      "size_bytes": 34327,
+      "sha256": "da0e03eadbe62ed321162357dec1650bb3f2bdfe90fd3d1149b7e63cf4457740",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00304.npz",
+      "size_bytes": 31841,
+      "sha256": "ef8b4199c6989c76a468ce606112ffd5817a3d13e8c4a90654c802253dc1b994",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00305.npz",
+      "size_bytes": 35329,
+      "sha256": "291d5f1c54fb0448fe5b11f9884cbf0e2e166631e623958e62180a3ac2d49a41",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00316.npz",
+      "size_bytes": 62111,
+      "sha256": "4c2c8d61d260360b93fac847f516c4e4afbcec83e8671317bc9a06724e40e15f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00317.npz",
+      "size_bytes": 66834,
+      "sha256": "85f6ea1fde579e5a6a5658e3c21f93841399f2f23d5b2b86ad338da762c1757b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00318.npz",
+      "size_bytes": 62750,
+      "sha256": "cebcaea0e25794307f8605830a00cb1881f67858585d7dc3d5467e3444653e0c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00319.npz",
+      "size_bytes": 66949,
+      "sha256": "af8c4b7de8f5106088a31af336888b50d3b938913919dddaf4d61b8f711537ee",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00320.npz",
+      "size_bytes": 68452,
+      "sha256": "2f333518714d59a23c4bab07ed94e499d9a58ff2c4774fdd37f13d2b0e2f960b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00326.npz",
+      "size_bytes": 32797,
+      "sha256": "dd6bdc4c3edfddab05a9440abeb9bd1ad8b362c660d8c2239e99533b5769166e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00327.npz",
+      "size_bytes": 33184,
+      "sha256": "c166dd9124fba4a64489d8ed8c7c8aa280615bad8931240294ba46c77fa4bfcd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00328.npz",
+      "size_bytes": 32301,
+      "sha256": "d511020437c18b17fcabacce994638f01d43b87f939b2bead04881cf8f0aefb0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00329.npz",
+      "size_bytes": 33223,
+      "sha256": "79dec6c5583e90c13ae32927365fa4599264df469c913e50b84f4dea012a2369",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00330.npz",
+      "size_bytes": 34604,
+      "sha256": "dc120723645c03cf84499e9194073ae1f632a1e49dc0bb448ffc92190372402b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00419.npz",
+      "size_bytes": 40007,
+      "sha256": "d7c97eedca1fea364da4b74bd8c577399abf432213a525c95128bde22d7ab592",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00420.npz",
+      "size_bytes": 40331,
+      "sha256": "bf7f0e95f0f12183427bbe2a1688b738f33dc2e0ceb4d7447efc9126f157edfb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00421.npz",
+      "size_bytes": 40143,
+      "sha256": "7218bf6345800d38ba0edeec7a0148a2743444b0d25f067601c987a051943e64",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00422.npz",
+      "size_bytes": 41023,
+      "sha256": "ae7ea773b41db6243c72c1e74ea65fd58ddc66f990a5e62b8f06b55624705349",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "ft-e13/clip-00423.npz",
+      "size_bytes": 42021,
+      "sha256": "d9976b03e5914bc2b7b2d99b560eacaef334df4451bdfed99ef07fc9301215d6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "manifest.json",
+      "size_bytes": 271326,
+      "sha256": "033ff04a59b29ac107cf6f6b8ae74eb17ca4896f9072b20952cea2f092f0a226",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00086.npz",
+      "size_bytes": 9081,
+      "sha256": "7b134cd545103e4970f41b394cfa2136ef4d206ffb28fd5c7b37b0b76c64abcc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00087.npz",
+      "size_bytes": 25337,
+      "sha256": "25a7d381d40d5e6b794bb39115dd3f51f434530da98a5b02d5358b26d18e9213",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00088.npz",
+      "size_bytes": 33243,
+      "sha256": "c6f00e0d8ea74452e56eee7ce90dc82713e1dbf38b288d672f4eb15a4d10336e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00089.npz",
+      "size_bytes": 12006,
+      "sha256": "5ff041c98af4b7033ac3481a0fa877303caac52e86e891dfc94f9e2d0bc3836a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00090.npz",
+      "size_bytes": 27042,
+      "sha256": "6c5a854e642fe58943e92554174b4c483c6196b0000bc5cb7d78056999b5b113",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00091.npz",
+      "size_bytes": 12479,
+      "sha256": "f8b8fb95bf1f83ea07d269f627851bfa2b609853b4d33af43725084e3737da2d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00092.npz",
+      "size_bytes": 9964,
+      "sha256": "6f77230220ca36728c81be9593e34de891244985426dfccb6b8332f0ebfa7b1b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00093.npz",
+      "size_bytes": 7186,
+      "sha256": "2f9bd3a0c2cbeb79ced12ef036d6db4f0655d483cf4e57b0d4d25613611da7bc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00094.npz",
+      "size_bytes": 21371,
+      "sha256": "00e628f4435cbc8944de2173e7a7636c5f676e5dc4bbd1672d2ed71fca19ea48",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00095.npz",
+      "size_bytes": 94831,
+      "sha256": "0da3a93c6c7f676db287a0527ca1f2d7e4b3f99646f29c552302884ab9cec955",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00096.npz",
+      "size_bytes": 92519,
+      "sha256": "4d9b09a10409271e204c76076c85ec957a7303754becf33347574b5a68d5d8c9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00097.npz",
+      "size_bytes": 97835,
+      "sha256": "25ad59aff81039d0dc80cf9974a575c328e4c66f08a82862d069739edeb86c3e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00098.npz",
+      "size_bytes": 99173,
+      "sha256": "1570516ea83fc9a6bb879dab25fc81b4ee44f4e0a74ac078bfa7aafaf0657f67",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00099.npz",
+      "size_bytes": 96727,
+      "sha256": "a68e32b84ba4fbca112d0b7350cb2d255f4f6b4c2b2746570adf53ed0806ba2b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00100.npz",
+      "size_bytes": 97691,
+      "sha256": "7e3b79248046a0340a50df75e577cb81c1cd81c3a607fc10bee10af2c1e1bc48",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00101.npz",
+      "size_bytes": 125570,
+      "sha256": "7206bbcbf64471027e50162aa2bf9181f5c25eb76df040f72442dd4f162e622a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00102.npz",
+      "size_bytes": 126630,
+      "sha256": "fc6221773693835c490645ee0f38b335ed4920757eb23e278a9ad40fb13987f9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00103.npz",
+      "size_bytes": 129375,
+      "sha256": "24ccf97200a677a50cf4a88ab86a7571935dc2e024c6beb44aec8e13e9dbe131",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00104.npz",
+      "size_bytes": 97444,
+      "sha256": "e1870b549480decb26495fbabe5c8bc27c55e95e32c18c11fb5025a28e942a5c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00105.npz",
+      "size_bytes": 95675,
+      "sha256": "5204cfe678394881861b7c86a147eba552ab340e13ebaa63451c5ba36460a1b8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00106.npz",
+      "size_bytes": 101654,
+      "sha256": "aa556c9ba4e69924f8d240800f69a0412106ac198d869a4c755eae4c5384d5d4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00107.npz",
+      "size_bytes": 34119,
+      "sha256": "f78b98799227103590d648f7c77bf320ec4da5795af4c3d2da17b6d506b0e4cc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00108.npz",
+      "size_bytes": 33225,
+      "sha256": "702661516c8620a7ec982008bbbf083bfd4f5494ba4f902e7cefb4257a965051",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00109.npz",
+      "size_bytes": 35077,
+      "sha256": "cf5de0e3bc0ee0a9a132fa7f2e6258346a34914aebcaccf6d93100ea572690d6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00110.npz",
+      "size_bytes": 30410,
+      "sha256": "5a060a82e8ee0ceafd114642a0fe3e799f150d336ded3eb00ef9c4506eadda20",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00111.npz",
+      "size_bytes": 31038,
+      "sha256": "9f500505a3fb29d99b1ea66dbf8c334d482f0cc0b2502e966cb31425a8f199df",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00112.npz",
+      "size_bytes": 31481,
+      "sha256": "83fd058c1e22f25de5885aea1b6514b18056874eeee2881819708b5e60a39386",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00113.npz",
+      "size_bytes": 43994,
+      "sha256": "e63319c08d420a0b69a1bd0a54c37992cbfdf58ec762c6442cdb45dbf6678f13",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00114.npz",
+      "size_bytes": 43167,
+      "sha256": "728b6cff87aa969bf17f1b77590d796c442ff9c38caed0e90dd29d20181276ce",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00115.npz",
+      "size_bytes": 45584,
+      "sha256": "92309b16c90a6ba9a19e3e27d27cf097d10963d57edaf98612b0d7b617f3bd13",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00116.npz",
+      "size_bytes": 62590,
+      "sha256": "e2530385bb05b56d5df80f2f186e1478a77cc9a8efec3236997629fc8eced09e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00117.npz",
+      "size_bytes": 62830,
+      "sha256": "f35b5284a287017def2980d3b662b6effbc0ee61d7be0cbcd765773a68eeb7b6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00118.npz",
+      "size_bytes": 63344,
+      "sha256": "94660213e913c9a26bf24229b72556107ea8a0f2896cc10b637a1a7b5aa56a75",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00119.npz",
+      "size_bytes": 46415,
+      "sha256": "6b29150df7fe9a3f26101228dfc8fac216e824bbfb52a20babbe3dab9158e357",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00120.npz",
+      "size_bytes": 45383,
+      "sha256": "8cefc8478c1388e3434f35f2c6b471f1c00f6f57afec56b14a95f98edd807563",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00121.npz",
+      "size_bytes": 46333,
+      "sha256": "07606283fed862f67d26faf4c553ac63e17220396b616d6586e3c7a4bd7ad21e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00122.npz",
+      "size_bytes": 71015,
+      "sha256": "7b4f28a6abad0696c1cedf44835161dcfcc136fe5af089c922b1bffb044793aa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00123.npz",
+      "size_bytes": 71188,
+      "sha256": "4cb6518cb55bace24cc1bdc0824a09e387c5b893021ccadc5c34c2096c311c8f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00124.npz",
+      "size_bytes": 71781,
+      "sha256": "5a1351af2679f3f171325d7232c2a1090ec23010a4526c19d5fd20b2e442fed6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00125.npz",
+      "size_bytes": 27093,
+      "sha256": "b093a8037a9b201ff857e0c9f6236de06ba8c0c8717c3be4211a79dbe9fc44a5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00126.npz",
+      "size_bytes": 26630,
+      "sha256": "c3f70a316601d39df1a8231a9f7d6094c46e0ba5e0e405df5629f8f03d1f7796",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00127.npz",
+      "size_bytes": 27688,
+      "sha256": "9f5bd2afd8d27b9d5d40b9c3c5d8afc97dd362b21342267a5c4224aaf0995265",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00128.npz",
+      "size_bytes": 119871,
+      "sha256": "44769dd87d5c0d0cad1179c22ed257b9ac458acc79f2e41249f762b71679d7c9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00129.npz",
+      "size_bytes": 118760,
+      "sha256": "a8ff1696d40bce955e54eef99160375bea6ebec3d310553378047a792c2c6e46",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00130.npz",
+      "size_bytes": 123220,
+      "sha256": "32332cd94ec167ce2fcc7460cf3362b77bc656d32c2e31ff744c43fb858cc4b2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00296.npz",
+      "size_bytes": 37464,
+      "sha256": "c4ddf8620ca62d993fc5bf1443b9fa123d33c5749b20c1c817d2a92f19a4f431",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00297.npz",
+      "size_bytes": 37561,
+      "sha256": "17bf657d53f94d690b887fc34734484275a912d0284f0fad922df26fe807b522",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00298.npz",
+      "size_bytes": 37136,
+      "sha256": "4f54962e72dd3ccff9f5142c05a2a2f3e31c2156f758f99bc0e20ecaee6ce0cd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00299.npz",
+      "size_bytes": 37551,
+      "sha256": "731ec08f9f6a4bd5b4c490383c722b2b9d6153eae53a54131372abe9f977020e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00300.npz",
+      "size_bytes": 35486,
+      "sha256": "f245702f03b6f5684120c302508cd2ca797a44bd5970683f725bb0e84eb839e6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00301.npz",
+      "size_bytes": 34905,
+      "sha256": "efc22bdbd31aa74ef609e9d2537c0864f7e38d5d068774c43f30e65cc8608f88",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00302.npz",
+      "size_bytes": 35495,
+      "sha256": "a1f89e303479015d0fdb7868b1cdd97e9b96b4dbe537694d31568e3334b12329",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00303.npz",
+      "size_bytes": 36729,
+      "sha256": "31e29b845f9542993d88671540d0e1d5f28aa976687fbc21427e8e42de2e0f2f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00304.npz",
+      "size_bytes": 35015,
+      "sha256": "106fc1aefef08410f81d24d85ea72e7d44ae21e8b66fab7e53f92e6482c43647",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00305.npz",
+      "size_bytes": 35109,
+      "sha256": "27ea591887142413feb30b4e22858803d865059709ab66fba6f87fab7822d298",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00316.npz",
+      "size_bytes": 69167,
+      "sha256": "b6241ba5ee46617dafcc30b8233713e33ddfa60875cf5e73fa3c59c0a7f08207",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00317.npz",
+      "size_bytes": 70557,
+      "sha256": "741f358fbe0e77d0a86386dfb0a40d0bf6578fff7a4fb72bcf2021186c14d36f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00318.npz",
+      "size_bytes": 71631,
+      "sha256": "285bcab4be5af5b2595a4073615cf11a7dc31c8e98b181bbd618826075820413",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00319.npz",
+      "size_bytes": 69545,
+      "sha256": "cfa98642129816f0029cbdb4919e64b7c28ee51fdf8db67f11e4d1eb545452f4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00320.npz",
+      "size_bytes": 68983,
+      "sha256": "0e1d05e01e322a70fdf8adbe46b6600aa8bdb87caef492f769254a3b33710152",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00326.npz",
+      "size_bytes": 34521,
+      "sha256": "ff68da63ff580a082ed8411393ba2034b5cd3140ff217c89af26551d57846841",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00327.npz",
+      "size_bytes": 34658,
+      "sha256": "40cd2c55767663d88d86448d6b0582a0e5986138465409295a387f41f7b2f564",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00328.npz",
+      "size_bytes": 35006,
+      "sha256": "c05d61dca2e34b9d26f998daa18943b460d7c862218e044359bc019c5894abe1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00329.npz",
+      "size_bytes": 35304,
+      "sha256": "60e101201e062c8b8452e4450e2365b7c53a18479455ad649647cc7b8cf5a518",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00330.npz",
+      "size_bytes": 33974,
+      "sha256": "2b53268e7ba9f239d820b808ffd159e3b2fc06e30ca37a39b11e3b56f37b5c16",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00419.npz",
+      "size_bytes": 44445,
+      "sha256": "194bb0c3c36993a05ea06732005fdb9943b1742c74ea2e883b468afe41b61bac",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00420.npz",
+      "size_bytes": 44825,
+      "sha256": "d78c0f321c7e838d0558e3d61fc782a047369518eeea33b67439eb4c2ec76ad9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00421.npz",
+      "size_bytes": 43967,
+      "sha256": "c5c2ae009705b921bc313b1af0e265c6b2384fc26af5f94a6be57addae4488b7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00422.npz",
+      "size_bytes": 44954,
+      "sha256": "9cc5583c3ed7c937dbed9e3bf2a8d146375cc58fb6ee95ae2fa519c5b6316267",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e0/clip-00423.npz",
+      "size_bytes": 44487,
+      "sha256": "6a78d5e55a2cd3ff500cd6940181003aa114f8bfacb530d6f49c137ff5a0e47d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00086.npz",
+      "size_bytes": 8441,
+      "sha256": "d636a6f08c550317539123fb6fdb53fa43ee08614cf6758abf67c60efbf5883b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00087.npz",
+      "size_bytes": 23103,
+      "sha256": "e6eb29f23261fbcfbaf152ffa05e34bb2e5d5b63425ab80f7118a729dc370470",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00088.npz",
+      "size_bytes": 29960,
+      "sha256": "31a588dcba8f69021239bf772cea7601868b0f4d85e52d2819cc0f777e032506",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00089.npz",
+      "size_bytes": 10949,
+      "sha256": "13c156657f282e1eebf71f0f92fd9073bb8f3b04eaae364a70478615713565d0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00090.npz",
+      "size_bytes": 24126,
+      "sha256": "cb99ba498a61222de7f9e082af4ffddf334ae6b4d574856956bf229ff4ecc945",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00091.npz",
+      "size_bytes": 11435,
+      "sha256": "a6a5f1f8fc0add25305dd463fc1b64d3705b8a16cf626f9384a9a4b6cf8e1946",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00092.npz",
+      "size_bytes": 9011,
+      "sha256": "85a41d5e9c79d1b9d1234b57bee1f591d011e130ef9450d609c5cd0f8fff5554",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00093.npz",
+      "size_bytes": 6513,
+      "sha256": "ec5d648244abb29b5e0396a769e12978002007f8429c0e3a9e8d46799deeb508",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00094.npz",
+      "size_bytes": 19223,
+      "sha256": "35360bfe21b680a35fc5b81733357db367b27936ea13ae42862dfa6d6fc9e538",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00095.npz",
+      "size_bytes": 94539,
+      "sha256": "e04f1fc650545defd81d388528c066958f35fbee5199c99ac760b12c359700f1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00096.npz",
+      "size_bytes": 90323,
+      "sha256": "ef86d083e35ab6ecb63049aed447e7349af15ddc3065710b17dcc8343031dc36",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00097.npz",
+      "size_bytes": 95533,
+      "sha256": "bbcb3120a5079450c98b3a4ffc9be943b5477b4e65462588fa55cf53799120d6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00098.npz",
+      "size_bytes": 98320,
+      "sha256": "985b93f0b91adc923dd97beb383bcd13a7503fffc52c1b0c52bf1d41f5b152f8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00099.npz",
+      "size_bytes": 95248,
+      "sha256": "d1d07d8e6bfde9290a95b8ff01c68a9c696e75cd016afa92ac414abd608cc416",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00100.npz",
+      "size_bytes": 95161,
+      "sha256": "514fd4760b495817cf6ce826bbd37bbd92c9514de6407ab30f5e66efb07f8d01",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00101.npz",
+      "size_bytes": 125402,
+      "sha256": "6ebce2991d856f29e3303b2dc6ef914adb38ab6356edfe549dc50d986593851e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00102.npz",
+      "size_bytes": 124603,
+      "sha256": "00734fd730308e30fe1eae9258166ca1201c38b5bb42a8eda2a5357d5236955e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00103.npz",
+      "size_bytes": 128177,
+      "sha256": "970dfced19be85aa2f6aa86876394c5af35ab8fabe91e5340dd6d558e9c078c1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00104.npz",
+      "size_bytes": 96543,
+      "sha256": "5639e3b671d8336ee1beebf9f1570eda6432f9c763eca9db3c4c39a33e068df9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00105.npz",
+      "size_bytes": 93014,
+      "sha256": "4b271e4ad7a403b4ae5a35cff41e71db91f0fc08bfed9b4a03b075d493a3ae63",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00106.npz",
+      "size_bytes": 100019,
+      "sha256": "66b0bf2cb7bc9c60eadc2c7afccefc9316185fae753a69ed6b9f7d87c9791d76",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00107.npz",
+      "size_bytes": 34064,
+      "sha256": "1e6b6346bf84d7ad5c3cd8d1ceb7d02eaf5c6477694f0cef3f8affeadf525a29",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00108.npz",
+      "size_bytes": 32942,
+      "sha256": "d1bd369218a7d5e943ce1f2e752bfffffc8171738b786a1dd47a8c89f2744ccc",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00109.npz",
+      "size_bytes": 35107,
+      "sha256": "53f535978dbe3e380b4611f793306511b17350346d912a4511b5c9fa65b12a93",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00110.npz",
+      "size_bytes": 30619,
+      "sha256": "dbbc6ca41158fd54227fc38b42a7bf79aadd6b77fd7b8b2f623668b971fc23ae",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00111.npz",
+      "size_bytes": 30369,
+      "sha256": "f53d385b38de7acdfe4ae0294f0e045c52f3dfb7b296b40f0585602db7f567b6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00112.npz",
+      "size_bytes": 30795,
+      "sha256": "a556bc9f1e5b31d9233f288f3d0baca88fea9a90615f4b5dd3373c7e0c6b046c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00113.npz",
+      "size_bytes": 43343,
+      "sha256": "5b3f1fc6d811caf51820e17239bce71146aa7d042ee3e1678ed694cd8643d3cf",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00114.npz",
+      "size_bytes": 42386,
+      "sha256": "6a96a78e6a3402ef2bc544be599249a0b9564bae04f6d4a9d64f9cab931931d7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00115.npz",
+      "size_bytes": 45147,
+      "sha256": "c9a4d1cd8982a9be7065fd3059d03085aeced48204c45986097d7fe30e613a57",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00116.npz",
+      "size_bytes": 62041,
+      "sha256": "4cf7c0bffd66d7f357b771ea21d769eedfc6332188ed23d54d2a2b527b979267",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00117.npz",
+      "size_bytes": 61700,
+      "sha256": "5c669b502c090ae394b163029d5471aeaea239cd30700feac818503a8372d658",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00118.npz",
+      "size_bytes": 62866,
+      "sha256": "3c95df3aedfdc501516a4719db8cacf41b59cc0114242bb726db3fb68e08ab56",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00119.npz",
+      "size_bytes": 47055,
+      "sha256": "ffc0d13822017b05a2f069f47bf110b6aff1ae8ef3fa5e09d7d203e5fd19fa17",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00120.npz",
+      "size_bytes": 44886,
+      "sha256": "b140e5d22f208908ec5bcf882716b4737898e4a4f0c79a78549cb45cd07de6ac",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00121.npz",
+      "size_bytes": 45983,
+      "sha256": "d14faa45a36bdb23b8cd8536165705a7db0af2d8aa965351fa6f02cb98bc947f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00122.npz",
+      "size_bytes": 71788,
+      "sha256": "aa14edf166b8f95b94a42699e51142b92e2364dcbdb688a28b639a1c0d343de3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00123.npz",
+      "size_bytes": 70496,
+      "sha256": "654e2f15dad67e8eea80be245001d2776ccab3a171244c5d271f0e54150e6eed",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00124.npz",
+      "size_bytes": 70630,
+      "sha256": "cf956406434275f00e287f962b18e5e93692603d72fa8d1529cdc05e9ba15718",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00125.npz",
+      "size_bytes": 27508,
+      "sha256": "34f8ca556c8a92b21e457fd3f41fd3197b64acd418757079d39236f991572a2a",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00126.npz",
+      "size_bytes": 25979,
+      "sha256": "22a2606e3016c0f302b11fff5ac66481582463c17a97b52e27e24e09a864b2a1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00127.npz",
+      "size_bytes": 27389,
+      "sha256": "f5461ab1bb5394c127b7d4305cfe186600edb8c2bbc2f060e04cb7e7fa79425b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00128.npz",
+      "size_bytes": 116889,
+      "sha256": "d4065ef5e230ee5683fa0dceaa8b8d12657e9647222c395c1afce85a4afaf017",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00129.npz",
+      "size_bytes": 116239,
+      "sha256": "a3574bcbabcdc399aa46283ee3de27d3409bdbc05c1fda0706003e15f698d345",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00130.npz",
+      "size_bytes": 120057,
+      "sha256": "b26e857553cfddef6198797eeee7f90711637985125a181f328e0ee32b76e5bd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00296.npz",
+      "size_bytes": 37460,
+      "sha256": "5fa8f66b1f92f280d8ccd26f69baa5f31b277c6efd5de41fe5e3d02b4cbd9cea",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00297.npz",
+      "size_bytes": 37595,
+      "sha256": "e91f6a30b338de72ec510a173c83d37436f9b4f07cb09f2b9fa7a5f21fe122d0",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00298.npz",
+      "size_bytes": 37096,
+      "sha256": "75d773152dbb9942f4c5314c8e0c4850dafaac22b41b872cdd5baefccae672e5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00299.npz",
+      "size_bytes": 37497,
+      "sha256": "7067a41cc51cc2f995a3640166bba28c3225cbbef2899e783fb0c435da921d2b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00300.npz",
+      "size_bytes": 35567,
+      "sha256": "265a3b55e372d3e5d8fa951ddad6cfb308b52de8db4b0d2000e265ed8d8ad06d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00301.npz",
+      "size_bytes": 33283,
+      "sha256": "b78aa206f883d42255552903c88e8c5c6f1fda0e63ae5ffe9a61a65bc135aa6b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00302.npz",
+      "size_bytes": 33712,
+      "sha256": "0f97347d8b180112bc0060b09077babdfe56b6b1d5fec4f76759b83e3adddfc1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00303.npz",
+      "size_bytes": 35405,
+      "sha256": "a0d8c40b9cd855f72141308fe5bdf18ca83274ecca01a5c6286cd8685877c1fb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00304.npz",
+      "size_bytes": 32090,
+      "sha256": "811b6836f061784b59a5b7c17be141d3e5bb1dfae0666d7340d45a1ce52e4596",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00305.npz",
+      "size_bytes": 35075,
+      "sha256": "c6c87bf7219e8d29f584a148c9691d7afd44ca8d27e90e92b104deb7d6e08596",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00316.npz",
+      "size_bytes": 65815,
+      "sha256": "5ed36885d0b48137c44150cb386846b3c0b6eda31e0fe2a20b2af9fdb79595ee",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00317.npz",
+      "size_bytes": 66828,
+      "sha256": "aa78ba68a90b9628400a1682baae3b45988160cd7f9f0042976c84ead28b671d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00318.npz",
+      "size_bytes": 66185,
+      "sha256": "82eab61c018cae1f09023ce16b37c136b4ecf0b76a33b8948a46ef98514ec4f9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00319.npz",
+      "size_bytes": 66781,
+      "sha256": "702eb4ab2b01ba54590b73c03f981d9494371d65ba0693daf9bf7812816ea265",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00320.npz",
+      "size_bytes": 67476,
+      "sha256": "e0dfc36c2866c70ef73850ca0e7b669f58ca4d343b2fd4697a6505a169ee2a8d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00326.npz",
+      "size_bytes": 32214,
+      "sha256": "99b446f5031a6ef4ae7dd524387960ef53f69b8f8f62bc70058775b587790410",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00327.npz",
+      "size_bytes": 32554,
+      "sha256": "17c72bc57ea30c71c329b9f1ba2a88ab9b3ff7e8b53adfabe19290a23aaa6dc4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00328.npz",
+      "size_bytes": 32538,
+      "sha256": "926e351df56d82025ca0ff1fbe7203d0cbb02e38b590aee68d250f45c03fee11",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00329.npz",
+      "size_bytes": 33062,
+      "sha256": "49f6078afb3cc34728cf7050919a34b393dac1fe77b956c57eb23076899af0c5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00330.npz",
+      "size_bytes": 34953,
+      "sha256": "c6fcd5240c2093e5132631876ab8c6ca20fcff25c884dcfc60b111edf46faaac",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00419.npz",
+      "size_bytes": 42797,
+      "sha256": "fde44e4d0aa59296ce2f05d6bc997bf7e9a6c5baa292b55484d88511e8045b7d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00420.npz",
+      "size_bytes": 42557,
+      "sha256": "921c124fdebc4aed6e705cbcce8d0a803f15fb77ff0627aa6e7647bcf870ead8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00421.npz",
+      "size_bytes": 42419,
+      "sha256": "54ec1c8890ee206607ab18cdca84ceca5a37be240577cdde6113c70dd040e376",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00422.npz",
+      "size_bytes": 43067,
+      "sha256": "47f19dff6b2b4fb5d4b82813938a775397a784bcd1f7c8dda527f77bd3f93952",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "mixed-e11/clip-00423.npz",
+      "size_bytes": 43256,
+      "sha256": "9db490f6b7f1a748ccb96b95a8371dbb4fba794a7fb1910ed5e219c70b0b7b88",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

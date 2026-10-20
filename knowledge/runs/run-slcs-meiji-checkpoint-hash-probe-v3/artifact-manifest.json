@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-checkpoint-hash-probe-v3",
+  "files": [
+    {
+      "path": "results.json",
+      "size_bytes": 340254,
+      "sha256": "da1c8dbc184450f5fe1f05785fbbd928ce9ca4816779f70e7487de339d75fd35",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

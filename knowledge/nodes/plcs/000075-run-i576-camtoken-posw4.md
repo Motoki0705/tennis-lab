@@ -46,7 +46,7 @@ repro:
     run.gpus=1 loss.position_weight=4.0
 artifacts:
   run_dir: knowledge/runs/run-i576-camtoken-posw4
-  predictions: knowledge/runs/run-i576-camtoken-posw4/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i576-camtoken-posw4/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1782618120707958414_75044_i576_camtoken_posw4.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_camtoken/logs/version_1
   curves: knowledge/runs/run-i576-camtoken-posw4/curves.png

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-pilot-no-ball-smooth-ball8-e60-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 16308,
+      "sha256": "e536ebcf24cae9b21655f191b5653b677ac30d4100cfbd103a4758f7de188d5b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

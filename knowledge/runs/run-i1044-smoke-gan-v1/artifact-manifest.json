@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-smoke-gan-v1",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 1119,
+      "sha256": "9b3be4c9e008bb74596defc66db6bac48eeb65ffe6ac7b98787133ed8b35f67b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

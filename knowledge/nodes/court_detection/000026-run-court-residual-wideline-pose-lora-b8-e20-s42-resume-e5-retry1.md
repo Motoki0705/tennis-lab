@@ -50,7 +50,7 @@ repro:
     run.output_dir=court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1
 artifacts:
   run_dir: knowledge/runs/run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1
-  predictions: knowledge/runs/run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1/artifact-manifest.json#/files/0}
   output_dir: /home/kamimura/projects/tennis-lab/outputs/court_detection/mixed-source/residual-head-wide-line-pose-lora-b8-e20-s42-resume-e5-retry1/logs/version_0
   log: .training_queue/logs/1789131317875449519_3473120_court_residual_wideline_pose_lora_b8_e20_s42_resume_e5_retry1.log
   curves: knowledge/runs/run-court-residual-wideline-pose-lora-b8-e20-s42-resume-e5-retry1/curves.png

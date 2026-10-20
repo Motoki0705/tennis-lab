@@ -38,7 +38,7 @@ artifacts:
   log: knowledge/runs/run-i1044-smoke-evaluation-v1/queue.log
   output_dir: outputs/blcs/i1044/smoke-evaluation-v1
   evaluation_json: knowledge/runs/run-i1044-smoke-evaluation-v1/evaluation.json
-  pred_val_npz: knowledge/runs/run-i1044-smoke-evaluation-v1/pred_val.npz
+  pred_val_npz: {status: deleted, record: knowledge/runs/run-i1044-smoke-evaluation-v1/artifact-manifest.json#/files/0}
 parents: []
 relations: []
 papers: []

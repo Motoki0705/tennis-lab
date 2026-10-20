@@ -31,7 +31,7 @@ repro:
     run.init_weights=ckpt/ball_detection/last.ckpt run.output_dir=outputs/ball_detection/convnext_v2_ft
 artifacts:
   run_dir: knowledge/runs/run-i618-convnext-v2-ft
-  predictions: knowledge/runs/run-i618-convnext-v2-ft/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i618-convnext-v2-ft/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783405858437554277_1226752_i618_convnext_v2_ft.log
   output_dir: outputs/ball_detection/convnext_v2_ft/logs/version_0
   checkpoint: ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt

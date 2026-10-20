@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "run_id": "run-tennis-scene-meiji-visible-court-roi-20260922",
+  "files": [
+    {
+      "path": "evidence/tracking/cam0.npz",
+      "size_bytes": 18540,
+      "sha256": "446e32310f6085e009c655b2103fc8035a78084ab5771610a7c7fd2945da03c3",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam0_comparison.jpg",
+      "size_bytes": 974682,
+      "sha256": "8e8f00a8c428f179b1854cb4491a45f26781c0935326f3d100f0d444ff9c4d48",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam1.npz",
+      "size_bytes": 21796,
+      "sha256": "5e1828fb0d25f9d44d19c52564d4d6c37a2348170b2ca3fa45794a3e05a19323",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam1_comparison.jpg",
+      "size_bytes": 785012,
+      "sha256": "4a3d4c0fb1c6223fb68e43e192b9e3b0dca86c4ec22e6f5e70b40671de51a0b2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam2.npz",
+      "size_bytes": 20936,
+      "sha256": "018b031c2a907b6623867441ee0ed7857ff51ddf75941fb9eb77383e82f66de7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam2_comparison.jpg",
+      "size_bytes": 767693,
+      "sha256": "e31a779512a0486b73e27b04975ee54a7cbc7f062a5a8bb279ee753e08086b77",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evidence/tracking/cam2_far_crops.jpg",
+      "size_bytes": 172688,
+      "sha256": "3502ef92d252ae140202832349897a0dab1a140a8907b92330ab71f0cba2af37",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

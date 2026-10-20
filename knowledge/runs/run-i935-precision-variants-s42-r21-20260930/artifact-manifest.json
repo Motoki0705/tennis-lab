@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-precision-variants-s42-r21-20260930",
+  "files": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 946629,
+      "sha256": "26b843913254c0ac0597a7dd2f770f89a245863be266724d081f691f6e248465",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "cpu-before.npz",
+      "size_bytes": 674338,
+      "sha256": "0696351e47c4f03682848320a9020a38fd4ba2f9013b5a2168671da9df4224fd",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation-absolute_12k/metrics.json",
+      "size_bytes": 464941,
+      "sha256": "95d99cbd58a1479f8991e55ecea4f39ce851185dc7e3c40ea1460cc098390706",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation-anchored_12k/metrics.json",
+      "size_bytes": 464832,
+      "sha256": "8a1685e1e94ebf7b9e6758b73c57937b7269e5ac8be5b63baa69be4705b3f749",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "evaluation-anchored_3k/metrics.json",
+      "size_bytes": 464966,
+      "sha256": "c2339c773b12afe229a813e8b432ac91e7f8578357c4bb92604c493383baac8c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-clip010-frame-0135.jpg",
+      "size_bytes": 1080381,
+      "sha256": "9f9db24e77c1020219080ae35b735b1fcdc115084d0c4a4f92a1b357042b2752",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-clip010-frame-0146.jpg",
+      "size_bytes": 1118637,
+      "sha256": "0649173f0b19fda1d3e6343c48b7f81675394bce8b81727f4b65d905f7a3ca59",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-hard-frame-0400.jpg",
+      "size_bytes": 1055214,
+      "sha256": "159f3a36c014574ddb544d1fcc19dfe1048122c0ee39fc5c32ca95fcdcd976ce",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-hard-frame-0402.jpg",
+      "size_bytes": 1063409,
+      "sha256": "39c037b7307361fd13407f5b4987ac33563d563637a68bce6e62c69b52e2ddef",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "overlay-hard-frame-0535.jpg",
+      "size_bytes": 1088499,
+      "sha256": "bfd8715e30b814b604e87f96bc007b6c7641ff3bf6e10c2c59d7e1c09a5425fe",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "training-absolute_12k/learning_curve.jsonl",
+      "size_bytes": 262269,
+      "sha256": "33707d7c7ebba102bcf7d9449f2beb13ba7a0e65caf739116c6467ae8768fa44",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "training-anchored_12k/learning_curve.jsonl",
+      "size_bytes": 262168,
+      "sha256": "78e5d1408be70e4600d2a749728f06d11d2092ff43cf9f241235fa57fa01df93",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

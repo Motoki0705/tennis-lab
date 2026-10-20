@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1014-coords-3d-flow-p075-s42-20261005-v2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2332969,
+      "sha256": "cec60a3bcdf72704a33434789134231e1457d3a46f082ee77496692b7ee5f9ad",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

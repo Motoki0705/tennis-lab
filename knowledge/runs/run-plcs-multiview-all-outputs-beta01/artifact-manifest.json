@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-multiview-all-outputs-beta01",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 34346,
+      "sha256": "f8e9de13411c530ffb6beb828b86b42ef7376ff8f9f25e1da43a81ec8fdf0f37",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

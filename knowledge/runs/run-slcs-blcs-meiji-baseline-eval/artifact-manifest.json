@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-blcs-meiji-baseline-eval",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 64366,
+      "sha256": "5ffbc610569a61c0e39efd50ef606a1ac135976778888d1a0c45d0797bac5557",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

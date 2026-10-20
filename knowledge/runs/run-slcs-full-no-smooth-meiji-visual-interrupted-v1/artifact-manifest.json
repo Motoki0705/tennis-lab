@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-full-no-smooth-meiji-visual-interrupted-v1",
+  "files": [
+    {
+      "path": "predictions.npz",
+      "size_bytes": 161844,
+      "sha256": "b6d6657dcf5f73ae95d4f5d6e2f2fa199b2c35ee3fad5dcd7dc513fc2e26edc1",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

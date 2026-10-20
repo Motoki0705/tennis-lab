@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-pilot-no-ball-smooth-e60-takeover-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 16641,
+      "sha256": "f4ea5e1540301fce5783ed2584b44b2b851fc51ff5d4386da087267dca48205b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

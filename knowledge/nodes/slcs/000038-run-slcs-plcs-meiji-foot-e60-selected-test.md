@@ -26,7 +26,7 @@ repro:
   command: bash outputs/plcs/analyze/meiji_foot_final/s42-001/evaluate_selected.sh
 artifacts:
   run_dir: knowledge/runs/run-slcs-plcs-meiji-foot-e60-selected-test
-  predictions: knowledge/runs/run-slcs-plcs-meiji-foot-e60-selected-test/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-slcs-plcs-meiji-foot-e60-selected-test/artifact-manifest.json#/files/0}
   evaluation: knowledge/runs/run-slcs-plcs-meiji-foot-e60-selected-test/evaluation.json
   output_dir: outputs/plcs/analyze/meiji_foot_final/s42-001/selected_test
 parents:

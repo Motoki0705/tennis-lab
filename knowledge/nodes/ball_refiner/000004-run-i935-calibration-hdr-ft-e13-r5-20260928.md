@@ -57,7 +57,7 @@ artifacts:
   run_dir: knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790597271266337994_560715_i935-calibration-hdr-ft-e13-r5-20260928.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/detector_only/i935-ft-e13-calibration-r5-20260928
-  predictions: knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928/predictions
+  predictions: {status: deleted, record: knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928/artifact-manifest.json, path_prefix: predictions/}
   audit: knowledge/runs/run-i935-calibration-hdr-ft-e13-r5-20260928/evaluation_audit.json
 parents:
 - run-i935-detector-only-ft-e13-s42-r4-20260928

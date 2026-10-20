@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i991-i1014-coordinates-report-20261005-v2",
+  "files": [
+    {
+      "path": "cli_examples/input-2d.npz",
+      "size_bytes": 3753,
+      "sha256": "32bf1b04dd8c842c1e0d2ab5ace9ae4f71c8b4c1513b4488d12d1f4558e1774c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "cli_examples/input-3d.npz",
+      "size_bytes": 5159,
+      "sha256": "477f6ecd449576b314c3e31e976610bf07257b68126c562bfb3284928660429c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "cli_examples/prediction-2d.npz",
+      "size_bytes": 4514,
+      "sha256": "3fef0f6e86eea7ac1c46abe9703cb7b1cda91ef574a665d82d4c8f99febd09e6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "cli_examples/prediction-3d-flow.npz",
+      "size_bytes": 6432,
+      "sha256": "9322bbee232dc7d3e73241cec3cde7ef17c3da896acf4e5ffdcf71210ad3637f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "cli_examples/prediction-3d-regression.npz",
+      "size_bytes": 6419,
+      "sha256": "eae25f14989e5c62fff18c864f10e1468d825eaecb4484d235cc6ffedc78fb1e",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "dataset_manifest.json",
+      "size_bytes": 1254527,
+      "sha256": "18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "source_manifest.json",
+      "size_bytes": 1166090,
+      "sha256": "54f2b0ccf026a1332f0fb8e947ee72a27de3fb591626400dc7952d4a20192d12",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-filtered-side-safety-r29-20261001",
+  "files": [
+    {
+      "path": "evidence.jsonl.gz",
+      "size_bytes": 2172233,
+      "sha256": "9b34d2e4df79e360473c8d2e0f2e2c2b32e1013e0ec94a6a6d6e47734290451f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

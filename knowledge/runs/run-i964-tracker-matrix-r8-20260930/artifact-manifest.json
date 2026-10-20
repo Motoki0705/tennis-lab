@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-tracker-matrix-r8-20260930",
+  "files": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 653415,
+      "sha256": "277b5cf83696642f7b5cb7d98723597a839c9f5f1d20e43bab1176f829d53869",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

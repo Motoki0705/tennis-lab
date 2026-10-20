@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-rollout-position-s42-u4000",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 43190,
+      "sha256": "567168b5a15efa982ce029fc6118dc1ade8bd4b72cba193381ac455b1b206f10",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

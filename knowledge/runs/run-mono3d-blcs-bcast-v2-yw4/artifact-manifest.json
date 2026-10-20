@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-bcast-v2-yw4",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 285830,
+      "sha256": "b8ab684b8944bda99466b7554c333432f70a7d4a980a857b1792af2da7fb5dc9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

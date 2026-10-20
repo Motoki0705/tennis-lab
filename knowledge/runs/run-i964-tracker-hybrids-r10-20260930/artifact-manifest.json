@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-tracker-hybrids-r10-20260930",
+  "files": [
+    {
+      "path": "comparison.json",
+      "size_bytes": 1539582,
+      "sha256": "95f9becc48749927d19067314c3a2ffb50633218b78fd2f1814c7dbc6d87d283",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "correspondence.csv",
+      "size_bytes": 285082,
+      "sha256": "1c0f427c68f3555edd28349950d236a3d092080ec5b08a5d25fc993e0bbcea50",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

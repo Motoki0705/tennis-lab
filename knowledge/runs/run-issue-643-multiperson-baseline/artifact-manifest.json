@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-issue-643-multiperson-baseline",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 32768,
+      "sha256": "8c6d7cedb7d90c7f71b83b5648ed843a4b18723966e9a4a61ec7325c694098b2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

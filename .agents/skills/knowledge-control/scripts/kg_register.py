@@ -5,8 +5,8 @@ This is the canonical entry point for the issue #533 workflow. Given a queue job
 name (or an explicit ``--repro-dir``) it:
 
 1. Copies the reproducibility bundle (``run.json`` / ``repro.sh`` /
-   ``uncommitted.patch`` / ``git_status.txt``) and the test-split predictions
-   (``pred_test.npz`` / ``metrics.json`` / ``diagnostic_metrics.json``) out of
+   ``uncommitted.patch`` / ``git_status.txt``) and small metric summaries
+   (``metrics.json`` / ``diagnostic_metrics.json``) out of
    the gitignored
    ``.training_queue/`` staging area into git-tracked
    ``knowledge/runs/<run-id>/``.
@@ -36,6 +36,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from kg_artifacts import RUN_LIMIT, removal_reason
 from kg_lib import nodes_dir, portable_path, queue_dir, repo_root
 from kg_schema import PROVIDERS, STATUSES, iso_date
 from kg_storage import check_identity, prepare_node, registration_lock, write_node
@@ -43,13 +44,12 @@ from kg_storage import check_identity, prepare_node, registration_lock, write_no
 sys.path.insert(0, str(repo_root()))
 from src.utils.training_queue import latest_named_job  # noqa: E402
 
-QUEUE_DIR = queue_dir()
+QUEUE_DIR: Path = queue_dir()
 OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
 CONFIG_KEYS = ("model", "loss", "data")
 METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
 BUNDLE_FILES = ("run.json", "repro.sh", "uncommitted.patch", "git_status.txt", "output_dir.txt")
-PREDICTION_FILES = (
-    "pred_test.npz",
+METRIC_FILES = (
     "metrics.json",
     "diagnostic_metrics.json",
 )
@@ -155,31 +155,35 @@ def main() -> int:
         run_dir = nodes_dir().parent / "runs" / node_id
         meta = {"id": node_id, "type": "run", "task": args.task, "papers": args.papers}
         check_identity(meta)
+        # Validate the complete proposed bundle before allocating or copying.
+        # Raw predictions remain at the source; they are never promoted to Git.
+        sources = {fn: repro / fn for fn in BUNDLE_FILES if (repro / fn).exists()}
+        sources.update({fn: repro / "predictions" / fn for fn in METRIC_FILES if (repro / "predictions" / fn).exists()})
+        for fn, src in sources.items():
+            if src.is_symlink() or not src.is_file():
+                p.error(f"not a regular bundle file: {src}")
+            reason = removal_reason(Path(fn), src.stat().st_size)
+            if reason:
+                p.error(f"bundle rejected before copying: {src}: {reason}")
+        existing = {path.relative_to(run_dir).as_posix(): path for path in run_dir.rglob("*") if path.is_file()}
+        proposed = {**existing, **sources}
+        if sum(path.stat().st_size for path in proposed.values()) > RUN_LIMIT:
+            p.error("bundle rejected before copying: run exceeds 2 MiB")
         node_path = prepare_node(meta, args.force)
         if (run_dir.exists() or node_path.exists()) and not args.force:
             p.error(f"{node_id} already registered (use --force)")
         run_dir.mkdir(parents=True, exist_ok=True)
 
         copied: list[str] = []
-        for fn in BUNDLE_FILES:
-            src = repro / fn
-            if src.exists():
-                shutil.copy2(src, run_dir / fn)
-                copied.append(fn)
-        preds = repro / "predictions"
-        for fn in PREDICTION_FILES:
-            src = preds / fn
-            if src.exists():
-                shutil.copy2(src, run_dir / fn)
-                copied.append(fn)
+        for fn, src in sources.items():
+            shutil.copy2(src, run_dir / fn)
+            copied.append(fn)
 
         try:
             rel_run_dir = run_dir.relative_to(repo_root())
         except ValueError:
             rel_run_dir = run_dir
         artifacts: dict[str, str] = {"run_dir": str(rel_run_dir)}
-        if (run_dir / "pred_test.npz").exists():
-            artifacts["predictions"] = str(rel_run_dir / "pred_test.npz")
         log = find_log(name, run_id=repro.name)
         if log and log.exists():
             artifacts["log"] = portable_path(log)
@@ -229,6 +233,9 @@ def main() -> int:
     print(f"registered {node_id}")
     print(f"  node:   {_rel(node_path)}")
     print(f"  bundle: {rel_run_dir} (copied: {', '.join(copied) or 'nothing'})")
+    raw_predictions = repro / "predictions" / "pred_test.npz"
+    if raw_predictions.exists():
+        print(f"  not copied (raw predictions): {raw_predictions}")
     print(f"  metrics: {len(metrics)} | config: {list(config)}")
     print("Next: write the 考察 body, set parents/tags, then run kg_validate.py")
     return 0

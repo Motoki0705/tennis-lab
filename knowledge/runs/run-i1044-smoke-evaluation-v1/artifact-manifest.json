@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-smoke-evaluation-v1",
+  "files": [
+    {
+      "path": "pred_val.npz",
+      "size_bytes": 90643,
+      "sha256": "a66d499a9aa976cf9c22eae8ab4cb79834c83b4c7c5a0b264df58a05ce187e74",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

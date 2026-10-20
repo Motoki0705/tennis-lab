@@ -37,7 +37,7 @@ repro:
   command: .venv/bin/python -m src.tasks.ball_tracking.scripts.train run.output_dir=outputs/ball_tracking/issue-648-baseline
 artifacts:
   run_dir: knowledge/runs/run-issue-648-multiball-baseline
-  predictions: knowledge/runs/run-issue-648-multiball-baseline/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-issue-648-multiball-baseline/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1784025504981160217_1905587_issue-648-multiball-baseline.log
   output_dir: outputs/ball_tracking/issue-648-baseline/logs/version_0
   curves: knowledge/runs/run-issue-648-multiball-baseline/curves.png

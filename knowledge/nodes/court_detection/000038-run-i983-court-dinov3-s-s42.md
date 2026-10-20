@@ -54,7 +54,7 @@ repro:
     run.artifact_store.sync_interval_seconds=60
 artifacts:
   run_dir: knowledge/runs/run-i983-court-dinov3-s-s42
-  tb_logdir: knowledge/runs/run-i983-court-dinov3-s-s42/tensorboard/version_0
+  tb_logdir: {status: deleted, record: knowledge/runs/run-i983-court-dinov3-s-s42/artifact-manifest.json, path_prefix: tensorboard/version_0/}
   config: knowledge/runs/run-i983-court-dinov3-s-s42/attempts/02-config.yaml
   environment: knowledge/runs/run-i983-court-dinov3-s-s42/attempts/02-environment.json
   input_verification: knowledge/runs/run-i983-court-dinov3-s-s42/input-verification.json
@@ -70,7 +70,7 @@ artifacts:
   evaluation_verification: knowledge/runs/run-i983-court-dinov3-s-s42/evaluation-verification.json
   checkpoint_selection: knowledge/runs/run-i983-court-dinov3-s-s42/checkpoint-selection.json
   pose_diagnostic: knowledge/runs/run-i983-court-dinov3-s-s42/pose-diagnostic/diagnostic.json
-  diagnostic_points: knowledge/runs/run-i983-court-dinov3-s-s42/pose-diagnostic/points.json
+  diagnostic_points: {status: deleted, record: knowledge/runs/run-i983-court-dinov3-s-s42/artifact-manifest.json#/files/0}
   completion: knowledge/runs/run-i983-court-dinov3-s-s42/attempts/02-completion.json
 parents:
 - run-i983-court-l512-profile-s42

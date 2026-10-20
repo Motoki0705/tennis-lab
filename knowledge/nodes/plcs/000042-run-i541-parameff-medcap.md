@@ -43,7 +43,7 @@ repro:
     training.trainer.max_epochs=200 run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i541-parameff-medcap
-  predictions: knowledge/runs/run-i541-parameff-medcap/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i541-parameff-medcap/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781927073241453654_759989_i541_parameff_medcap.log
   curves: knowledge/runs/run-i541-parameff-medcap/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_0

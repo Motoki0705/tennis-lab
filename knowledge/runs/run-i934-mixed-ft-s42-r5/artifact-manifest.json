@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i934-mixed-ft-s42-r5",
+  "files": [
+    {
+      "path": "events.out.tfevents.1790558981.kamimura.1609824.0",
+      "size_bytes": 23215,
+      "sha256": "39908b26e98092b8d6f84e030b2ecb435d43c323596bd87158449048ed3413da",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

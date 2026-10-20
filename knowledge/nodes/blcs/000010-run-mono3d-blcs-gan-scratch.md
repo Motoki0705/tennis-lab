@@ -44,7 +44,7 @@ repro:
     run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-blcs-gan-scratch
-  predictions: knowledge/runs/run-mono3d-blcs-gan-scratch/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-blcs-gan-scratch/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783307565131814992_687133_mono3d_blcs_gan_scratch.log
   output_dir: outputs/blcs/blcs_multiview_axial/logs/version_8
   curves: knowledge/runs/run-mono3d-blcs-gan-scratch/curves.png

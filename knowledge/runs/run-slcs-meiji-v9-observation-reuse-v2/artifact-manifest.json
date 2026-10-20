@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v9-observation-reuse-v2",
+  "files": [
+    {
+      "path": "ledger.json",
+      "size_bytes": 912563,
+      "sha256": "62b664af47bea2860d581494358fd756d241093c07b91cbc270f9a459f70c8f9",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

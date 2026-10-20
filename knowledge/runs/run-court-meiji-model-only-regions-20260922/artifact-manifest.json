@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-meiji-model-only-regions-20260922",
+  "files": [
+    {
+      "path": "court_region_temporal_probe/contact.jpg",
+      "size_bytes": 813076,
+      "sha256": "c44d17438bd661efbffc009fcdc65ec55c4f2387c862c3b300e3cd892c14f3d7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

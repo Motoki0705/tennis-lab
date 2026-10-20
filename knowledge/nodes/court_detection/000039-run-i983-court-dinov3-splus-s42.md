@@ -69,7 +69,7 @@ artifacts:
   evaluation: knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation/evaluation.json
   evaluation_verification: knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation-verification.json
   evaluation_completion: knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation-completion.json
-  tb_logdir: knowledge/runs/run-i983-court-dinov3-splus-s42/tensorboard/version_0
+  tb_logdir: {status: deleted, record: knowledge/runs/run-i983-court-dinov3-splus-s42/artifact-manifest.json, path_prefix: tensorboard/version_0/}
   curves: knowledge/runs/run-i983-court-dinov3-splus-s42/curves.png
 parents:
 - run-i983-court-l512-profile-s42

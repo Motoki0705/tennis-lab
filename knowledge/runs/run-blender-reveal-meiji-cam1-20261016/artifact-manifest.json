@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blender-reveal-meiji-cam1-20261016",
+  "files": [
+    {
+      "path": "contact_sheet.png",
+      "size_bytes": 723591,
+      "sha256": "b888e45258c20923834fefade29387bb843644c09d982fe74c47df4096f0c44d",
+      "reason": "figure-over-512KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

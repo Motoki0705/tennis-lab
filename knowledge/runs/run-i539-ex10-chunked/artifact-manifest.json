@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i539-ex10-chunked",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 403130,
+      "sha256": "0e551d07a9b79eba2fbb383260ff3f15eee64c16a574075a651e16329da59b6d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

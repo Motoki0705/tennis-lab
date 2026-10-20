@@ -63,7 +63,7 @@ repro:
     training.compile.enabled=false training.trainer.enable_progress_bar=false
 artifacts:
   run_dir: knowledge/runs/run-plcs-fixed-track-reid-eager-e60-s42-20260924
-  predictions: knowledge/runs/run-plcs-fixed-track-reid-eager-e60-s42-20260924/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-plcs-fixed-track-reid-eager-e60-s42-20260924/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1790220288389042047_787832_plcs-fixed-track-reid-eager-e60-s42-20260924.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/plcs/train/fixed_track_reid_eager_v1_s42
   checkpoint: /home/kamimura/projects/tennis-lab/outputs/plcs/train/fixed_track_reid_eager_v1_s42/logs/version_0/checkpoints/plcs-epoch=41.ckpt

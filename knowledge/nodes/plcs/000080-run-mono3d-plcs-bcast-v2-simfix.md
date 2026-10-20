@@ -50,7 +50,7 @@ repro:
     camera=broadcast run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-mono3d-plcs-bcast-v2-simfix
-  predictions: knowledge/runs/run-mono3d-plcs-bcast-v2-simfix/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-mono3d-plcs-bcast-v2-simfix/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783252014501234340_346610_mono3d_plcs_bcast_v2_simfix.log
   output_dir: outputs/plcs/plcs_multiview_axial_split/logs/version_22
   checkpoint: ckpt/plcs/run-mono3d-plcs-bcast-v2-simfix-epoch199.ckpt

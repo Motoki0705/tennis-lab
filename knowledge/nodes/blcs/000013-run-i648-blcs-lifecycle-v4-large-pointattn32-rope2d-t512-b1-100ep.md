@@ -54,7 +54,7 @@ repro:
     training.early_stopping.enabled=false run.output_dir=outputs/blcs/tracking_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep
 artifacts:
   run_dir: knowledge/runs/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep
-  predictions: knowledge/runs/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1784632739204612693_1513834_i648_blcs_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep.log
   output_dir: outputs/blcs/tracking_lifecycle_v4_large_pointattn32_rope2d_t512_b1_100ep/logs/version_0
   curves: knowledge/runs/run-i648-blcs-lifecycle-v4-large-pointattn32-rope2d-t512-b1-100ep/curves.png

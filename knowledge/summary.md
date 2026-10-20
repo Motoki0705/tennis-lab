@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8b701f9ab12d3b302f9a56722c46adb2ca82c7b47e27222356291ef03d0b82b1 on 2026-10-18 -->
+<!-- knowledge-review: d746f1ac5bc40495f9dc069c63e8bd2f5175356a1744a747fcf0865972d4e4b6 on 2026-10-19 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-18（#1088の実clip予測経路とBlender再構成アニメーションの再生成・整合性検証を反映。既存の採用判断は維持）
@@ -552,7 +552,7 @@ multi-ballはsingle-ballと別契約です。短clip diagnosticと、[`run-i648-
 
 - [`summary.md`](./summary.md): 現在の到達点と未解決課題を俯瞰する入口。
 - [`nodes/`](./nodes): 各runの設定・metric・考察、および関連runをまとめるgroup nodeの正本。
-- [`runs/`](./runs): `repro.sh`、`metrics.json`、`pred_test.npz`、収束曲線などの再現性bundle。
+- [`runs/`](./runs): `repro.sh`、`metrics.json`、収束曲線などの再現性bundleと、保存基準に従って削除した成果物の記録。
 - [`README.md`](./README.md): knowledge graphのschema、登録方法、検証手順。
 - [`webui/`](./webui): node間の関係と実験結果をグラフとして閲覧するUI。
 

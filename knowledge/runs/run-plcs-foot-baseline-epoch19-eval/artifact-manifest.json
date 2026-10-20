@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-foot-baseline-epoch19-eval",
+  "files": [
+    {
+      "path": "baseline_test.npz",
+      "size_bytes": 3826947,
+      "sha256": "1670c6c29ee10ab0427e3e558f02bb26cf77387a5001cfb0aff787fb3c3ae421",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

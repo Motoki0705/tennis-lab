@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blcs-residual-v2-gpu-smoke-r2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 78591,
+      "sha256": "4fe8d173b3dae0a08595834c10ebb73ab5ab7f4fd2b4910e061094985f58f525",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

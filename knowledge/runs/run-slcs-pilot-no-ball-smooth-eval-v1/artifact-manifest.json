@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-pilot-no-ball-smooth-eval-v1",
+  "files": [
+    {
+      "path": "val/detector_gap/eval_arrays.npz",
+      "size_bytes": 543495,
+      "sha256": "2f2891ef1e5ff0ee60fbe690933d23adb4ad45a2202612d646fd2e433d34c0fa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val/full/eval_arrays.npz",
+      "size_bytes": 540855,
+      "sha256": "d556cc9dcb33ab07f91248a32148a91b94fb8521862d7f54630168c35ea74682",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val/no_rgb/eval_arrays.npz",
+      "size_bytes": 546896,
+      "sha256": "3077f3b0855e0707d028fa8de5bedd90fc7f4817f9c5ca3d129d57c09f5706f2",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "val/rgb_only/eval_arrays.npz",
+      "size_bytes": 508615,
+      "sha256": "f86f16581a181d8de70824987cf15b6b9a4ab8b5ab4274cfd2326e4864e75813",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

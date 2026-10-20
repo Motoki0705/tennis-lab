@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blcs-inference-checkpoint-migration",
+  "files": [
+    {
+      "path": "configuration-boundaries.log.gz",
+      "size_bytes": 6984,
+      "sha256": "23fd9f95d1163417ea9e81ca6009dda344f7eaa3f9a7a2556f9cb16f4bd9e61c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "corrected-targets.log.gz",
+      "size_bytes": 1648,
+      "sha256": "aec972b06fbe99045a2e00f62cccd9bd3cdf6420d637857b61b72d2f5423e887",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "curated-checkpoint.log.gz",
+      "size_bytes": 393,
+      "sha256": "e3c5abe0dad9adf007199addd57d933eeeb82160d271c778aa5235a5e415b24d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "expanded-blcs.log.gz",
+      "size_bytes": 7136,
+      "sha256": "729a92cb18d99b2f4703aee52224973a3943310da2736e5cf84c84d64ffd6869",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "initial-blcs.log.gz",
+      "size_bytes": 6256,
+      "sha256": "d8e87deb80a1ba611305bf53fea7d3461aa7d8845e98c7745c517acba99e291b",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "migrated-prediction.npz",
+      "size_bytes": 321,
+      "sha256": "78c41fb8d2560f161a01d34e1909b8807fca2f2eea10225f9f0c3894892ef9c8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "original-prediction.npz",
+      "size_bytes": 321,
+      "sha256": "78c41fb8d2560f161a01d34e1909b8807fca2f2eea10225f9f0c3894892ef9c8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

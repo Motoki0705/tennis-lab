@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-mono3d-blcs-gan-ft-v3",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 288573,
+      "sha256": "8c09f0325a076bc53823759e02ca37b3b1a7d62cfd745bc4a5de45e888d40d5f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

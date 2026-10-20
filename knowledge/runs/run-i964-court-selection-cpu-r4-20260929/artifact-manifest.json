@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i964-court-selection-cpu-r4-20260929",
+  "files": [
+    {
+      "path": "selection.json",
+      "size_bytes": 464770,
+      "sha256": "99d9be85dc20377d474f60a9fff22fdc039a21d9fc61c13cf245c9fae706660c",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "selection_preview.jpg",
+      "size_bytes": 256736,
+      "sha256": "19046df74d66c7fa0e9a64d6a78389888f5b967b94e057b3cde8b655b56385af",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "sources.json",
+      "size_bytes": 353568,
+      "sha256": "f72da1b89dfcc3ee74b1dccee8d9559512cf450fece8c52fb750054f630ce6db",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

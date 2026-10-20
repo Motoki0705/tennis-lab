@@ -81,7 +81,7 @@ repro:
     loss.physics.reconstruction_weight=1.0 loss.physics.consistency_weight=1.0 loss.physics.consistency_gradient=direct
 artifacts:
   run_dir: knowledge/runs/run-i1032-c-recon-consistency-s42-v1
-  predictions: knowledge/runs/run-i1032-c-recon-consistency-s42-v1/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i1032-c-recon-consistency-s42-v1/artifact-manifest.json#/files/0}
   log: /home/kamimura/projects/tennis-lab/.training_queue/logs/1791305838832827675_219894_i1032-c-recon-consistency-s42-v1.log
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner_3d/train/i1032-physics/c-recon-consistency-s42-v1/logs/version_0
 parents:

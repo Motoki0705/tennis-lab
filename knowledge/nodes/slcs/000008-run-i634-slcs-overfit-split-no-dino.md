@@ -62,7 +62,7 @@ repro:
     model.num_position_layers=2 model.num_rotation_layers=2 run.output_dir=outputs/slcs/i634_overfit_split_no_dino
 artifacts:
   run_dir: knowledge/runs/run-i634-slcs-overfit-split-no-dino
-  predictions: knowledge/runs/run-i634-slcs-overfit-split-no-dino/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i634-slcs-overfit-split-no-dino/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1783905015815052209_1219186_i634_slcs_overfit_split_no_dino.log
   output_dir: outputs/slcs/i634_overfit_split_no_dino/logs/version_0
   curves: knowledge/runs/run-i634-slcs-overfit-split-no-dino/curves.png

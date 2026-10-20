@@ -1,0 +1,249 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "runs/run-ball-checkpoint-normalization-meiji-20260923/source.patch",
+      "sha256": "8a36c83580d3280ff9f0037d0c19aae38bccfe5e25e83326f64236a66163ccad",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-blcs-compile-compiled-a-v4/uncommitted.patch",
+      "sha256": "2fd195d9ca1c606971b4bff1259ae86c77d2ca51189fb17d6e618d2a09f3e3da",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-blcs-compile-compiled-b-v4/uncommitted.patch",
+      "sha256": "2fd195d9ca1c606971b4bff1259ae86c77d2ca51189fb17d6e618d2a09f3e3da",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-blcs-compile-eager-a-v4/uncommitted.patch",
+      "sha256": "2fd195d9ca1c606971b4bff1259ae86c77d2ca51189fb17d6e618d2a09f3e3da",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-blcs-compile-eager-b-v4/uncommitted.patch",
+      "sha256": "2fd195d9ca1c606971b4bff1259ae86c77d2ca51189fb17d6e618d2a09f3e3da",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-court-meiji-model-only-regions-20260922/current_source.patch",
+      "sha256": "53553a978f33fdc15e0c94e40fb27c285b6dc507a1c7cf7e56360b67e7bea320",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-blcs-meiji-baseline-eval/uncommitted.patch",
+      "sha256": "54822119e3ed414c773d25ff4a94eea8c74d9d0d8a012f4d1ff269079fd61b1d",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-blcs-meiji-e60-v1/uncommitted.patch",
+      "sha256": "67b60af5ac522fed91f9bed882720c69d7d8c4445ce04b8572c0bf41fe2936f2",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-blcs-meiji-finetuned-eval/uncommitted.patch",
+      "sha256": "54822119e3ed414c773d25ff4a94eea8c74d9d0d8a012f4d1ff269079fd61b1d",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-meiji-observation-mask-probe-v1/uncommitted.patch",
+      "sha256": "d0864ca8a79452f646025c5393535a05a90931e437b95bd7a0777860f1361dbe",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-meiji-rgb-features-v2/uncommitted.patch",
+      "sha256": "e00bfe45d20e4b81a9cd7aed9fbf606e2439a1aff94d92421ca5e01e017d5061",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-meiji-v6-tracking-qc/uncommitted.patch",
+      "sha256": "87c004b666af774b637d34c601b4d076c61c7bf8b537ec55d7bc080178f981b3",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-plcs-meiji-foot-e60-resume-v1/uncommitted.patch",
+      "sha256": "64faeec0546d20ff4e31581d9834b378861659b2f4b951ceb300d2a8af87237c",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-plcs-meiji-foot-e60-resume-v2/uncommitted.patch",
+      "sha256": "a44ccacb04305802782d746c2454c0d47ad94ede2e21357a58424459d1801c08",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-plcs-meiji-foot-e60-resume-v3/uncommitted.patch",
+      "sha256": "dc4373e26a74e767d3b4f5b597a06d6f380dc756a173a943e04f1f0c10389bd7",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-plcs-meiji-foot-e60-selected-test/uncommitted.patch",
+      "sha256": "dc4373e26a74e767d3b4f5b597a06d6f380dc756a173a943e04f1f0c10389bd7",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-plcs-meiji-real-final-eval/uncommitted.patch",
+      "sha256": "12dbaa8fdac3c500f769aa79826607cf38cb2523762897a329555d6d67093d2b",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-real-geometry-v1/uncommitted.patch",
+      "sha256": "3b762064a0f61d2838ba47ffa45f4037e28ba6e7982ddfc9b3e1140f9032ee27",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-augmented-e60-v1/uncommitted.patch",
+      "sha256": "c0afe17c69aba3afcaea89b66142aa04a8e23608af5699a51529bdcb36bd2e17",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-augmented-e60-v2/uncommitted.patch",
+      "sha256": "87c004b666af774b637d34c601b4d076c61c7bf8b537ec55d7bc080178f981b3",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-baseline-e60-v1/uncommitted.patch",
+      "sha256": "c0afe17c69aba3afcaea89b66142aa04a8e23608af5699a51529bdcb36bd2e17",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-baseline-e60-v2/uncommitted.patch",
+      "sha256": "87c004b666af774b637d34c601b4d076c61c7bf8b537ec55d7bc080178f981b3",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-gpu-smoke-v1/uncommitted.patch",
+      "sha256": "dc4373e26a74e767d3b4f5b597a06d6f380dc756a173a943e04f1f0c10389bd7",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-gpu-smoke-v2/uncommitted.patch",
+      "sha256": "0aadb50b60a5d796628061fe35f3da812943470f48271511493a4b63493c9c8d",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-slcs-rgb-pilot-gpu-smoke-v3/uncommitted.patch",
+      "sha256": "021f9b0c2ca3a750de8a86807f6d0c124c796e71a3fe9174c4d7fe6a9adf374b",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-cleanup-meiji-court-model-20260922/uncommitted.patch",
+      "sha256": "aeb3fecedd901f83d3a4b8351109ef2b9a67fa8a68ad61b70e67413a38191f2f",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-dino-extension-chain-20260922/uncommitted.patch",
+      "sha256": "2cb926b9b4a79faec473a58a31b8f1ae0bc665c44c8400172d6643f114e782e9",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-auto-person-mismatch-20260922/uncommitted.patch",
+      "sha256": "b7c6be9a0626285fb485167d398b395e4be7a2b7cf3ec2d1b8a7a9bf812b56a9",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-corrected-dataset-20260923/uncommitted.patch",
+      "sha256": "452e11f127e0f23c440283ac3b94e9fef7814f77b4aef4f2408f04b20ae11372",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-corrected-pipeline-20260923/uncommitted.patch",
+      "sha256": "452e11f127e0f23c440283ac3b94e9fef7814f77b4aef4f2408f04b20ae11372",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-court-filter-5m-20260922/uncommitted.patch",
+      "sha256": "01326b6fa8536fa8f72594e83317d0be4c128b68329fa6916752e030f987e63b",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-court-regions-dino-block-20260922/uncommitted.patch",
+      "sha256": "7a464320388f5468290d05fd4c4abf178c0fdb545b20e23ac0058fc80e275cbd",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-raw-ball-baseline-20260923/uncommitted.patch",
+      "sha256": "942a767d970219eb03cddc74e5212f28b15e465cb8ff16a4c01b59ec1e25c40f",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-visible-court-roi-20260922/uncommitted.patch",
+      "sha256": "13b1a1383b53013f3a78e41db33502dde31c42d2a6416077305706823845df71",
+      "reason": "整理前から存在する再現用パッチ。再現scriptが依存する当時のコードを保持する。"
+    }
+  ],
+  "runs": [
+    {
+      "path": "runs/group-i983-court-dinov3-shared1024-s42",
+      "sha256": "0aba79a1e52e84820c9557e43a9aafa38c96b753ef57508eb8fdbd0192aae3ca",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-court-hybrid-downstream-migration",
+      "sha256": "93c1820aaf040114e8b44938b389c7a83870873cce8ffef5f7416197dc8c3575",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-i983-court-dinov3-b-s42",
+      "sha256": "d4b909b10325314e8cfd0e2bff7434c8ecce862aa6f8943f92f3afe50860a094",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-i983-court-dinov3-l-s42",
+      "sha256": "3ace2126bb2aa81c2491832162aeb14676ad0879af89e5ee269378a876f8eefb",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-i983-court-dinov3-s-s42",
+      "sha256": "9af35143abf215c370960cb5950b60968b0e0d8e3844cb84b7852c9ddb5d41f6",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-i983-court-dinov3-splus-s42",
+      "sha256": "dd728b14c0d29b631c3360fe723b9d40c700237b36a9239c8ff047773bf136a3",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3",
+      "sha256": "f6fee156ba7933fee5a31ec415da335951e7b1fbe14913b241d514cfee88db45",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-auto-person-mismatch-20260922",
+      "sha256": "caa810d28c99f1fb5fa50b6791fe11b2b8a9f1529d17c574482b283456394e42",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-corrected-dataset-20260923",
+      "sha256": "90ed03f64cdc652a88a38853d613753ab5e5658141e7d75b283318a2e353da38",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-corrected-pipeline-20260923",
+      "sha256": "fc685cbcace108423a9d1ad2fe662e4ac2c1db4e8bcd5ab1a4536dd146fe1318",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-court-filter-5m-20260922",
+      "sha256": "34b9d953138823d6292ba7067eb039fd182090bfef58a6b2015e739dc45ac0a4",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-raw-ball-baseline-20260923",
+      "sha256": "e76cad439fff4c777de879485e503498213a41c5d21fbb9cc37d716d8deff3dc",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    },
+    {
+      "path": "runs/run-tennis-scene-meiji-visible-court-roi-20260922",
+      "sha256": "087246048e8e01613a16b42be237061c4db9c0521c165711e47150fca8787e4a",
+      "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
+    }
+  ],
+  "legacy_manifests": [
+    {
+      "path": "runs/group-i983-court-dinov3-shared1024-s42/artifact-manifest.json",
+      "sha256": "0fde0a65434f1d36ff430db7c81dc90e2133d68364592017bcf5e38a5c08ef5d",
+      "reason": "既存の比較bundleの内容目録。削除記録とは形式と用途が異なるため、原文を固定して保持する。"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1044-smoke-parameters-v2",
+  "files": [
+    {
+      "path": "scalars.json.gz",
+      "size_bytes": 1138,
+      "sha256": "8c64690258c2cef83b064bf235a9baaadc8305700b2c977dc3a9a20f389cb504",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

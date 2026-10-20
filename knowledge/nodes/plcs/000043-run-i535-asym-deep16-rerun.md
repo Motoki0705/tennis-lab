@@ -43,7 +43,7 @@ repro:
     data=multiview_sequence data.batch_size=4 training.trainer.max_epochs=200 run.gpus=1
 artifacts:
   run_dir: knowledge/runs/run-i535-asym-deep16-rerun
-  predictions: knowledge/runs/run-i535-asym-deep16-rerun/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i535-asym-deep16-rerun/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781994475574624725_1061676_i535_asym_deep16_rerun.log
   curves: knowledge/runs/run-i535-asym-deep16-rerun/curves.png
 parents:

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-blcs-triangulation-residual-physics-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2261524,
+      "sha256": "55132b4451555ff56413e5b52295b106d0ffb6f36c3d99cd7df058c728e46309",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

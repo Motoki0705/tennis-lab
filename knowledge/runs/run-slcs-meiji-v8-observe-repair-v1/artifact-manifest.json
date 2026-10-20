@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v8-observe-repair-v1",
+  "files": [
+    {
+      "path": "audit.json",
+      "size_bytes": 326352,
+      "sha256": "6473f18ba24ed0f1c7d93534d53468b9cb254bcc28bf3fb0117d09d0046f8aae",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

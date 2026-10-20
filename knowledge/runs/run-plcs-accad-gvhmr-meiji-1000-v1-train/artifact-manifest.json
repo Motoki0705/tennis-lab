@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-accad-gvhmr-meiji-1000-v1-train",
+  "files": [
+    {
+      "path": "events.out.tfevents.1789480065.kamimura.984859.0",
+      "size_bytes": 162665,
+      "sha256": "509ef92a4cbb0aeafb59db0ca4f487a1eb559f9fda6bba278481cef1ae52928c",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "events.out.tfevents.1789487659.kamimura.984859.1",
+      "size_bytes": 20240,
+      "sha256": "c2cf38bb78b69be2eee8d03284447510bc9440b6a2bbd13dda3f8f0e21c0c1b9",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 5057204,
+      "sha256": "27c7a3dd9f3f2548e52021a7d694d681d32b36a7c1c7c096efcb632de7bd44d4",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-plcs-meiji-foot-e60-selected-test",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 7717393,
+      "sha256": "729867d4480c452a8754a1f15fec76c78983cea5ab716d437b675e3880cf1af6",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

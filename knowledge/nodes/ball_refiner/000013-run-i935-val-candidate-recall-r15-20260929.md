@@ -72,7 +72,7 @@ repro:
 artifacts:
   run_dir: knowledge/runs/run-i935-val-candidate-recall-r15-20260929
   log: knowledge/runs/run-i935-val-candidate-recall-r15-20260929/queue.log
-  manifest: knowledge/runs/run-i935-val-candidate-recall-r15-20260929/manifest.json
+  manifest: {status: deleted, record: knowledge/runs/run-i935-val-candidate-recall-r15-20260929/artifact-manifest.json#/files/70}
   comparison: knowledge/runs/run-i935-val-candidate-recall-r15-20260929/comparison.md
   output_dir: /home/kamimura/projects/tennis-lab/outputs/ball_refiner/evaluate/detector_selection/i935-val-three-checkpoints-r15-20260929
 parents:
@@ -93,7 +93,7 @@ tags:
 
 共有queue job `1790685340897606853_510468_i935-val-candidate-recall-r15-20260929` はdone。
 [全source/camera表とcheckpoint SHA-256](../../runs/run-i935-val-candidate-recall-r15-20260929/comparison.md)、
-[manifestと加算可能な件数](../../runs/run-i935-val-candidate-recall-r15-20260929/manifest.json)、
+[manifestと加算可能な件数（削除済み）](../../runs/run-i935-val-candidate-recall-r15-20260929/artifact-manifest.json#/files/70)、
 [実行ログ](../../runs/run-i935-val-candidate-recall-r15-20260929/queue.log)を保存した。
 全210 clip予測NPZのhashと3checkpointの実ファイルhashを登録時にも照合した。
 元のrepro bundleは開始時commit `fbe33b13125451da090f8f68720d718d9fc69c06` / cleanを保持する。

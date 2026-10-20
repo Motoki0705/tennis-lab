@@ -43,7 +43,7 @@ repro:
     run.gpus=1 run.resume=/home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/logs/version_3/checkpoints/last.ckpt
 artifacts:
   run_dir: knowledge/runs/run-i540-asym-wide
-  predictions: knowledge/runs/run-i540-asym-wide/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-i540-asym-wide/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1781927908633902411_828149_i540_asym_wide_resume.log
   curves: knowledge/runs/run-i540-asym-wide/curves.png
   tb_logdir: outputs/plcs/plcs_multiview_axial_split/logs/version_4

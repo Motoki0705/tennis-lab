@@ -21,7 +21,8 @@ knowledge/
     paper-2024-gvhmr/
       paper.md                       # 書誌情報・読解・プロジェクトとの関係
       paper.pdf                      # 出典の版を固定したPDF
-  runs/<run-id>/                     # 再現性bundle・予測・曲線（既存パスを維持）
+  runs/<run-id>/                     # 小さな再現性bundle・指標・図・削除記録
+  run-storage-exceptions.json        # 既存bundleの固定例外（自動追加しない）
   webui/
 ```
 
@@ -78,7 +79,69 @@ frontmatterはYAML mappingとして記述し、重複キー・alias/mergeを使�
 runに `members` は指定しない。groupには1件以上のmemberが必要。`relations.rel` は拡張可能であり、比較関係同士の循環は許可する。
 
 `artifacts.run_dir` を記録した場合は、そのノード自身の `knowledge/runs/<id>/` ディレクトリが必須。通常はrepo相対パスを使う。`KNOWLEDGE_DIR` で隔離したライブラリを使う場合はそのライブラリの `runs/<id>` を指す。`log` / `output_dir` / checkpoint等のローカルパスはCIでの存在を要求しない。
-`runs/` の再現コマンド・patch・予測は歴史的証拠なので、ノード移動に伴って書き換えない。実体は従来通り `runs/<id>` に保ち、巨大なcheckpointを追加しない。
+`runs/` の再現コマンド・`repro.sh`・`run.json`・patchは歴史的証拠なので、保存基準の変更やノード移動に伴って書き換えない。
+
+## run成果物の保存基準
+
+この節の容量・種別の制約は **`runs/` に適用する**。`Papers/` の論文PDF、reports、Web UIには一律に適用しない。
+Gitに残すものは、研究の考察・指標・設定・正確なコマンド・環境情報・再現スクリプト・小さな図。
+通常ファイルは **256 KiB以下**、図（PNG・SVG・PDF）は **512 KiB以下**、run合計（削除記録を含む）は **2 MiB以下**。KiB=1,024 bytes、MiB=1,048,576 bytes。境界値ちょうどは許可する。
+
+- 予測配列（NPZ・NPY）、モデル重み、TensorBoard event、圧縮ファイル・ログ、動画・GIF・JPEG、プロファイルはサイズにかかわらず置かない。
+- 許可するテキスト系の拡張子は `.py .sh .yaml .yml .json .csv .jsonl .txt .log .md .patch .cjs .state .job .ps1 .toml .js .mjs .html .css .ts`。上記の図以外の種別とsymlinkはエラー。新たな種別を扱うときは基準と検査器を明示的に改訂する。
+- `kg_register.py` は再現bundleと小さな指標JSONだけをコピーする。予測配列はコピーせず元に残し、その旨を表示する。上限を超えるbundleはコピー前に拒否する。再現用patchも新規登録では通常上限に従う。
+- 既存の大型パッチ34件と、初回整理後も合計上限を超える13 bundleは [固定例外](run-storage-exceptions.json) にパス・SHA-256・理由を記録した。ファイル例外は内容、run例外は全相対パスと内容の集合を固定する。runのhashは、相対パス順に並べた `<ファイルSHA-256>  <run相対パス>\n` のUTF-8バイト列のSHA-256。追加・変更・不要になった例外は検査エラーで、登録処理が例外を広げることはない。
+- 初回整理前からある別用途の `artifact-manifest.json` 1件（比較bundleの内容目録）は、同じ一覧の `legacy_manifests` でパスとhashを固定して原文を維持する。削除記録と混同せず、未登録の形式を自動的に許可しない。
+
+### 削除した成果物の記録
+
+2026-10-19の初回整理は、承認された基準で該当成果物を**保存先を作らず削除**した。記録は内容を復元するための保存先ではない。履歴からの除去後は現物を再取得できない。
+各runの `artifact-manifest.json` が削除記録の正本。全ファイルが対象のrunも、この記録によりディレクトリを残す。
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "run-example",
+  "files": [
+    {
+      "path": "predictions/pred_test.npz",
+      "size_bytes": 1234,
+      "sha256": "<元ファイルのSHA-256、64桁小文字hex>",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "<削除直前のHEAD、40桁commit SHA>"
+    }
+  ]
+}
+```
+
+`path` はrunディレクトリからの元の相対パス。`removed_from_commit` は削除時に観測した**変更前のHEAD**を指す（記録を含むcommit自身は自己参照しない）。保存先のフィールドは作らない。
+削除理由は `raw-data-events-archives` / `figure-over-512KiB` / `table-or-log-over-256KiB` / `file-over-256KiB` / `unsupported-file-type` / `run-over-2MiB`。
+形式はversion 1だけを受け付け、未知の版・フィールド・重複パス・不正なhash・種別/容量と矛盾する理由・現物が残る記録を拒否する。
+`files` の順序と既存項目は変更しない。後の削除は末尾に追記し、JSON Pointerを維持する。
+
+削除したartifactは、元の参照を次のmappingに置き換える。本文リンクは `[元の説明（削除済み）](../../runs/run-example/artifact-manifest.json#/files/0)` とする。画像も削除記録への通常リンクに変える。研究内容・指標・過去の再現コマンドは変更しない。
+
+```yaml
+artifacts:
+  run_dir: knowledge/runs/run-example
+  predictions:
+    status: deleted
+    record: knowledge/runs/run-example/artifact-manifest.json#/files/0
+```
+
+全内容を削除したディレクトリへの参照は、`status: deleted` とmanifest全体の `record` に、元のrun相対ディレクトリを示す `path_prefix: predictions/` を加える。対応する削除記録が1件以上あり、そのディレクトリが残っていないことを検査する。
+
+検査器はrun配下へのartifact・本文リンク・本文の `knowledge/runs/...` 参照と、記録のJSON Pointerを検査する。ローカルの `output_dir`・checkpoint・ログ等は従来通りCIでの存在を要求しない。歴史的bundle内部の入出力参照は変更せず、実行scriptの可用性は `kg_repro_paths.py` が検査する。
+`--base-ref` では、新しい削除と記録の1対1対応、削除前のGit blobと記録のサイズ・SHA-256、変更前commitにそのblobがあること、既存記録の不変性も検査する。履歴書き換え後も、既存記録の検査に旧commitの取得を要求しない。
+
+履歴から除くためのHEAD削除パス一覧は、検証した記録から機械的に取り出せる（標準出力はソート済みのrepo相対パスだけ）。
+
+```bash
+mkdir -p tmp
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_artifacts.py --removed-paths > tmp/knowledge-removed-paths.txt
+```
+
+この一覧は記録済みのHEAD削除分だけを表す。過去の履歴にだけ存在した対象パスは、履歴整理の実施時に別途調査する。履歴書き換えとforce pushはHEAD整理とは別工程で行う。
 
 ## Papersの仕様
 

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-residual-v2-gpu-smoke-r2",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 1309071,
+      "sha256": "588b13ea064986b6a55507630de66e5926e97f4d5eb1e6645f382fb3e39e08fa",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

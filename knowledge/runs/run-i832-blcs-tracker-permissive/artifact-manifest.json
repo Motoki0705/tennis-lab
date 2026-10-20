@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i832-blcs-tracker-permissive",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2678933,
+      "sha256": "ff1067c043bfe99f8911adc34cec271739a2c6d0243f773bddf69bb3ac02f36d",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

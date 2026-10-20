@@ -33,7 +33,7 @@ metrics:
 artifacts:
   run_dir: knowledge/runs/run-slcs-meiji-v9-feature-reuse-v1
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_v9_feature_reuse/s42-001
-  audit: knowledge/runs/run-slcs-meiji-v9-feature-reuse-v1/audit.json
+  audit: {status: deleted, record: knowledge/runs/run-slcs-meiji-v9-feature-reuse-v1/artifact-manifest.json#/files/0}
 parents:
 - run-slcs-meiji-v8-features-missing-v1
 - run-slcs-meiji-video-alias-audit-v1

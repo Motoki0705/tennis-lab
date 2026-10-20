@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i935-context-shard-00089-meiji-r12-20260928",
+  "files": [
+    {
+      "path": "clip-00101-context.jpg",
+      "size_bytes": 747146,
+      "sha256": "ca4d7ecfaa426787d3fdb7b2f18153d5c1e0e077fe5136ebe42eb28a3862924f",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "clips/clip-00101.npz",
+      "size_bytes": 1282445,
+      "sha256": "60f95ec6d40f7c9569408567f0a2966cc358f1eaa44d6d4044cfa8380e175c64",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

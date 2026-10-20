@@ -44,7 +44,7 @@ reprojection weight 1は平均・中央値の3D position、向き、画像面整
 
 ### 可視化
 
-- [baseline（GT vs prediction）](../../runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/visualization_scene_000233_position_rotation.mp4)
-- [reprojection weight 1（GT vs prediction）](../../runs/run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128/visualization_scene_000233_position_rotation.mp4)
+- [baseline（GT vs prediction）（削除済み）](../../runs/run-plcs-multiview-axial-all-outputs-beta01-v4-t128/artifact-manifest.json#/files/1)
+- [reprojection weight 1（GT vs prediction）（削除済み）](../../runs/run-plcs-multiview-axial-all-outputs-beta01-reprojection-w1-v4-t128/artifact-manifest.json#/files/1)
 
 両動画は同じ`scene_000233`のtest clip（test index 18、source frames 265–392、128 frames）を30 fpsで描画した。選択条件は「reprojection版でscene平均position/angular errorがともに改善するsceneのうち、両runの4指標がtest全体の分布中心に最も近いもの」。このclipではbaselineが1.177687 m / 56.011864度、reprojection版が0.809771 m / 44.879143度である。`pred_test.npz`にはcanonical pose予測が含まれないため、両予測に同一のGT canonical poseを使用し、position・rotationの差だけを可視化している。

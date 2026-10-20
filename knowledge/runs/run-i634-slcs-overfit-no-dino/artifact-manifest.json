@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i634-slcs-overfit-no-dino",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 71937,
+      "sha256": "690046bdb682703f3cb53c4303968d8b8014a4d8fa276c33d52344dade14cde8",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

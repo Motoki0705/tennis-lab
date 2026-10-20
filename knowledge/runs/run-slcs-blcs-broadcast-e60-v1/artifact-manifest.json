@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-blcs-broadcast-e60-v1",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 181989,
+      "sha256": "cd93a276dfa1560ff4556c452f23ef159494d5351cbd6805ad185a70bcb470b5",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

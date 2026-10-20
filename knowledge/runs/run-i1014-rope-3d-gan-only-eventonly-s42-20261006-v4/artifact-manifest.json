@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i1014-rope-3d-gan-only-eventonly-s42-20261006-v4",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 2361589,
+      "sha256": "cec1b512ccaa305a63ed3dad7829c2cf90f06bceeff90aace39511a0fd817966",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions_last/pred_test.npz",
+      "size_bytes": 2359943,
+      "sha256": "9890ef0923e444748746e1b535505b6f3a47f643752f9c93141a48df6bf944fb",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

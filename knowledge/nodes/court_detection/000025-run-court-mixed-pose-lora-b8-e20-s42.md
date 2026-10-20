@@ -43,7 +43,7 @@ repro:
     run.test_after_fit=true run.output_dir=court_detection/mixed-source/dense-pose-lora-b8-e20-s42
 artifacts:
   run_dir: knowledge/runs/run-court-mixed-pose-lora-b8-e20-s42
-  predictions: knowledge/runs/run-court-mixed-pose-lora-b8-e20-s42/pred_test.npz
+  predictions: {status: deleted, record: knowledge/runs/run-court-mixed-pose-lora-b8-e20-s42/artifact-manifest.json#/files/0}
   log: .training_queue/logs/1789052279895515108_1993066_court_mixed_pose_lora_b8_e20_s42.log
   output_dir: outputs/court_detection/mixed-source/dense-pose-lora-b8-e20-s42/logs/version_0
   curves: knowledge/runs/run-court-mixed-pose-lora-b8-e20-s42/curves.png

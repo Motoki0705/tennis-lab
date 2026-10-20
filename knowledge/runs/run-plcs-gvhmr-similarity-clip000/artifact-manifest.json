@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "run-plcs-gvhmr-similarity-clip000",
+  "files": [
+    {
+      "path": "alignment_pipeline_viz.mp4",
+      "size_bytes": 247635,
+      "sha256": "d3d659ff4217afd20c2ecae2e160cb5af20fa8ae72ad456cc0b0300b58991eaf",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "comparison.mp4",
+      "size_bytes": 349282,
+      "sha256": "1bc0571478a22e9c86e25893af7a3180068c6906be774bf192e3be1369165df7",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs/cam1.gvhmr.npz",
+      "size_bytes": 453530,
+      "sha256": "2d5d8edfaa1e50b9c65b9a9bbdd52215eecb7e4bf678b9d7b97dd4152d96ecac",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "inputs/cam2.gvhmr.npz",
+      "size_bytes": 456305,
+      "sha256": "b87a6902f52e52a432ba762e4b43c2ac9d8a23d386e1801b32c5aa6547fad7ce",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    },
+    {
+      "path": "predictions.npz",
+      "size_bytes": 3668238,
+      "sha256": "16215428fbc3500c7ea3c6cfd310b8b0747e73231614c8c225eff51006ac6118",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

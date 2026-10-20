@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-i991-rope-2d-gan-eventonly-s42-20261006-v3",
+  "files": [
+    {
+      "path": "pred_test.npz",
+      "size_bytes": 6018676,
+      "sha256": "24105c28e6f5aee420b1d32232324b36a5fde8039a0c5850a0b0a2e49d6c69ee",
+      "reason": "raw-data-events-archives",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}

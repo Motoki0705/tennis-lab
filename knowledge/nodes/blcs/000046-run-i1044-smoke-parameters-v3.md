@@ -36,7 +36,7 @@ artifacts:
   config_yaml: knowledge/runs/run-i1044-smoke-parameters-v3/config.yaml
   selection_json: knowledge/runs/run-i1044-smoke-parameters-v3/selection.json
   tb_logdir: outputs/blcs/i1044/smoke-parameters-v3/logs/version_0
-  scalars: knowledge/runs/run-i1044-smoke-parameters-v3/scalars.json.gz
+  scalars: {status: deleted, record: knowledge/runs/run-i1044-smoke-parameters-v3/artifact-manifest.json#/files/0}
   original_capture: knowledge/runs/run-i1044-smoke-parameters-v3/original_capture
 parents: []
 relations: []

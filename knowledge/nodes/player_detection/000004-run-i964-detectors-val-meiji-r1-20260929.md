@@ -131,5 +131,5 @@ cam0 clip_000の抽出画像では小さい遠側選手に旧boxだけがある�
 評価ラベルを各Meiji clipの`annotations/player_association/{labels.json,review.yaml}`へ移動し、
 boxと人物IDの不変を検査。旧新hashと保存先は[bundleの移動記録](../../runs/run-i964-detectors-val-meiji-r1-20260929/label_migration.json)。
 旧DINO cache4 rootは全227 clipでv2 scene完成markerが欠落しSLCS readerが拒否したため、
-ユーザー承認に従って削除。[全件の検査記録](../../runs/run-i964-detectors-val-meiji-r1-20260929/dino_cache_audit.json)と
+ユーザー承認に従って削除。[全件の検査記録（削除済み）](../../runs/run-i964-detectors-val-meiji-r1-20260929/artifact-manifest.json#/files/0)と
 [#931への報告](https://github.com/Motoki0705/tennis-lab/issues/931#issuecomment-5886136703)を参照。

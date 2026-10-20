@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": "run-slcs-meiji-v9-feature-reuse-v1",
+  "files": [
+    {
+      "path": "audit.json",
+      "size_bytes": 674692,
+      "sha256": "176c980d3c10be8e5e7648ff6278f545cb767aac5d02b557a6d8df4e486b10b7",
+      "reason": "table-or-log-over-256KiB",
+      "removed_from_commit": "9772783ca5179435f969d3be64d67a5523a14e30"
+    }
+  ]
+}
