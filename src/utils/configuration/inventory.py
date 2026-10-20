@@ -22,6 +22,12 @@ __all__ = [
 
 
 EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
+    "src.tennis_scene.visualization.blender.shots.ball_rays": (
+        "Blender bundled Python; displays saved ball rays without repo imports."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_rays": (
+        "Blender bundled Python; validates evaluated rays without repo imports."
+    ),
     "src.tennis_scene.visualization.blender.shots.reveal": (
         "Blender bundled Python; consumes a plain-file bundle without repo imports."
     ),
@@ -198,6 +204,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.slcs.scripts.train": "slcs.train",
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_blender": "tennis_scene.blender_export",
+    "src.tennis_scene.scripts.export_blender_rays": "tennis_scene.export_blender_rays",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
     "src.tennis_scene.scripts.preflight": "tennis_scene.preflight",
@@ -255,6 +262,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.slcs.scripts.train": "src.tasks.slcs.configuration.validate_training_boundary",
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_blender": "src.tennis_scene.configuration.validate_blender_export_boundary",
+    "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.preflight": "src.tennis_scene.configuration.validate_pipeline_boundary",
@@ -772,6 +780,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("slcs", "src.tasks.slcs.scripts.train"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_rays"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.preflight"),

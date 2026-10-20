@@ -1,0 +1,19 @@
+defaults:
+  - paths: default
+  - _self_
+input: ???
+output: ${tennis_output:tennis_scene,visualize,export_blender_rays,${tennis_run_id:}}
+mode: rank
+start: null
+stop: null
+t0: null
+window_frames: 90
+fallback_ray_length_m: 60.0
+plate_max_width: 960
+plate_jpeg_quality: 95
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,visualize,export_blender_rays,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false
