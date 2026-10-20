@@ -123,6 +123,7 @@ _OUTPUT_KIND_CONTRACTS = {
         "ball.annotation_correction",
         "court_detection.preview_augmentation", "court_detection.visualize",
         "court_detection.learning_stages",
+        "court_detection.hybrid_fit",
         "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
     ),
     "analyze": (
