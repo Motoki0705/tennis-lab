@@ -278,6 +278,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.utils.model_weights.__init__": (
+        "model_weights.download",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.annotation.__main__": (
         "annotation.workflow.cli",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -828,6 +832,13 @@ _RUNTIME_BOUNDARIES += (
         "heatmaps": "src.tasks.ball_detection.visualization.preview.heatmaps",
         "video": "src.tasks.ball_detection.visualization.preview.video",
     }, executable=True),
+)
+
+_RUNTIME_BOUNDARIES += (
+    _non_hydra_boundary(
+        "src.utils.model_weights.__init__", "_checkpoint_resolver", domain="model_weights",
+        kind=BoundaryKind.CALLABLE,
+    ),
 )
 
 EXPECTED_RUNTIME_BOUNDARIES = _RUNTIME_BOUNDARIES
