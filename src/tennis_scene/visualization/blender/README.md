@@ -56,6 +56,8 @@ bundle schemaは `tennis_scene_blender_rays_v1` です。`ray_origin (V,3)`、
 Blender 5.2の同梱Pythonで動き、repoはimportしません。`RayShot` に尺・色・半径を
 まとめています。既定は1920×1080・30fpsです。frame 0–315で原理を説明し、その後
 入力区間を元の秒数で再生します。90frame・59.94fpsの素材では全体約12秒になります。
+画像面での説明の後、再生開始時には3D全体へカットし、短い外れ値・欠測も見える構図で
+ゆっくり俯瞰へ引きます。
 30fpsの各出力時刻に最も近いsource frameを選び、対応は `shot_manifest.json` に残します。
 欠測を補間せず、球の軌跡は16点・source 2frameおきで、欠測を跨ぎません。
 

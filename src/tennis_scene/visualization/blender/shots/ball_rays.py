@@ -463,7 +463,9 @@ def _camera(
             location, target = overview.lerp(close, t), focus.lerp(plane, t)
         else:
             t = _progress(frame, shot.playback_start, len(source_frames) - 1)
-            location, target = close.lerp(overview, t), plane.lerp(focus, t)
+            # Cut back to the reconstruction at playback start so brief source
+            # outliers/missing frames remain visible; then pull out slowly.
+            location, target = overview * (0.9 + 0.1 * t), focus
         camera.location = location
         camera.rotation_mode = "QUATERNION"
         camera.rotation_quaternion = _look_rotation(target - location, 0.0)
