@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from dataclasses import replace
@@ -33,11 +34,12 @@ from tests.support.tasks.ball_detection.store import frame, write_store_clip
 
 _PRE = PROJECT_ROOT / "knowledge/runs/run-i1050-convnext-v2-pretrain-s42"
 _POST = PROJECT_ROOT / "knowledge/runs/run-i1049-convnext-query-posttrain-s42"
+_SUMMARY = PROJECT_ROOT / "assets/ball_detection/learning_stages/scalars.json"
 
 
 @pytest.fixture(scope="module")
 def logs() -> StageLogs:
-    return load_stage_logs(_PRE, _POST)
+    return load_stage_logs(_PRE, _POST, training_summary=_SUMMARY)
 
 
 def _config(
@@ -120,7 +122,9 @@ def test_real_bundles_have_measured_rows_and_global_step_offset(
     assert second.common.values[-1] == pytest.approx(13.489567152302158)
     assert first.best_point[:2] == pytest.approx((48000, 17.34708861378516))
     assert second.best_point[:2] == pytest.approx((120000, 13.489567152302158))
-    assert len(logs.input_files) == 8
+    assert len(logs.input_files) == 10
+    assert str(_SUMMARY) in logs.input_files
+    assert all(not path.endswith("train-summary.jsonl") for path in logs.input_files)
     assert all(len(value) == 64 for value in logs.input_files.values())
 
 
@@ -131,7 +135,7 @@ def bundles(tmp_path: Path) -> tuple[Path, Path]:
         target.mkdir()
         for name in (
             "metrics.jsonl",
-            "train-summary.jsonl",
+            "artifact-manifest.json",
             "config.json",
             "best.json",
         ):
@@ -154,7 +158,7 @@ def test_parent_lineage_mismatch_is_rejected(
     config["recipe"]["parent"][key] = value
     path.write_text(json.dumps(config))
     with pytest.raises(ValueError, match=message):
-        load_stage_logs(*bundles)
+        load_stage_logs(*bundles, training_summary=_SUMMARY)
 
 
 @pytest.mark.parametrize("stage", [0, 1])
@@ -166,7 +170,7 @@ def test_evaluation_schema_mismatch_is_rejected(
     rows[0]["schema"] = "unexpected.v1"
     path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
     with pytest.raises(ValueError, match="evaluation schema"):
-        load_stage_logs(*bundles)
+        load_stage_logs(*bundles, training_summary=_SUMMARY)
 
 
 def test_different_fixed_manifest_is_rejected(bundles: tuple[Path, Path]) -> None:
@@ -175,16 +179,21 @@ def test_different_fixed_manifest_is_rejected(bundles: tuple[Path, Path]) -> Non
     config["recipe"]["manifest_sha256"] = "1" * 64
     path.write_text(json.dumps(config))
     with pytest.raises(ValueError, match="same fixed manifest"):
-        load_stage_logs(*bundles)
+        load_stage_logs(*bundles, training_summary=_SUMMARY)
 
 
-def test_inconsistent_freeze_log_is_rejected(bundles: tuple[Path, Path]) -> None:
-    path = bundles[1] / "train-summary.jsonl"
-    rows = [json.loads(line) for line in path.read_text().splitlines()]
-    rows[0]["encoder_frozen"] = False
-    path.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+def test_inconsistent_freeze_log_is_rejected(
+    bundles: tuple[Path, Path], tmp_path: Path
+) -> None:
+    path = tmp_path / "scalars.json"
+    payload = json.loads(_SUMMARY.read_text())
+    payload["runs"]["posttraining"]["columns"]["encoder_frozen"][0] = False
+    path.write_text(json.dumps(payload))
+    receipt = json.loads(_SUMMARY.with_name("derivation.json").read_text())
+    receipt["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    path.with_name("derivation.json").write_text(json.dumps(receipt))
     with pytest.raises(ValueError, match="encoder_frozen disagrees"):
-        load_stage_logs(*bundles)
+        load_stage_logs(*bundles, training_summary=path)
 
 
 def test_freeze_state_and_badge_follow_the_summary_intervals(

@@ -468,7 +468,11 @@ def run_learning_stages(
     """Read evidence, render all three formats and record reproducible provenance."""
     if config.output_dir.exists():
         raise FileExistsError(f"output_dir already exists: {config.output_dir}")
-    logs = load_stage_logs(config.pretraining, config.posttraining)
+    logs = load_stage_logs(
+        config.pretraining,
+        config.posttraining,
+        training_summary=config.training_summary,
+    )
     if config.input_panel == "schematic":
         panel = schematic_panel()
     else:

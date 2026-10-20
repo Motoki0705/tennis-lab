@@ -22,7 +22,9 @@ CPUだけで、事前学習 → 事後学習 → 継続学習の60秒のMP4・GI
 窓内frame 1 / 16 / 31のRGBとMDD（G＝明るくなった画素、R＝暗くなった画素）を表示します。
 入力不備を模式図へ読み替えず、checkpointの重みも開きません。
 
-実測曲線は `runs.pretraining / runs.posttraining` のrepo相対bundleから読みます。
+評価値・設定・checkpoint記録は `runs.pretraining / runs.posttraining` のrepo相対bundle、
+loss・学習率・凍結状態は `training_summary` の無加工の列抽出から読みます。
+抽出の由来・検証・再生成は [実測系列asset](../../../../assets/ball_detection/learning_stages/README.md) を参照してください。
 評価schema、選択checkpointのSHA-256とstep、固定manifest、凍結状態と学習率を検証します。
 横軸は事後学習に事前学習の総更新数を加え、48kの選択checkpointからの引き継ぎを点線で示します。
 学習lossは段階ごとに過去20点の移動平均を独立して正規化し、別々の軸で表示します。
