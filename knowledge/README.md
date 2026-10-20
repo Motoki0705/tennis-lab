@@ -143,6 +143,20 @@ mkdir -p tmp
 
 この一覧は記録済みのHEAD削除分だけを表す。過去の履歴にだけ存在した対象パスは、履歴整理の実施時に別途調査する。履歴書き換えとforce pushはHEAD整理とは別工程で行う。
 
+### 履歴書き換え後のcommit参照
+
+`kg_remap_commits.py` はfilter-repoの `commit-map` から、追跡中のテキストにある完全SHAと文脈を確認できる7桁以上の短縮SHAの更新案を作る。新SHAはbranch・tag・remote-tracking branchから到達可能なものに限る。新しいcheckoutで実行し、差分を通常のcommit/PRとして適用する。履歴自体や外部サービスは変更しない。
+
+```bash
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_remap_commits.py \
+  --repo "$PWD" --commit-map /path/to/commit-map --report /path/outside/checkout/remap.json \
+  --refresh-run-exceptions
+```
+
+既定はdry-run。未解決があると終了値2を返し、`--write` でも書き込まない。短縮形が複数の旧commitに一致する場合・消滅したcommitは自動適用しない。mapにない参照や公開refから到達不能な新commitを報告し、そのまま残すことを確認した場合だけ `--allow-unresolved --write` を使う。SHAだけから別実装への対応を推測しない。第三者repoのURL、パッチ、削除manifestと内容hashは保持する。
+
+`--refresh-run-exceptions` は既存runの固定hashを先に照合し、参照変更を受けたrunのhashだけを再計算する。例外パスやファイルの集合は増やさず、パッチと削除記録も変更しない。更新後はノード・summaryの差分を確認してskillの完了手順と `kg_repro_paths.py` を実行する。`--text-dir /path/to/exported-markdown` ではissue本文やmodel cardのローカルコピーに同じ更新案を作れる。外部への投稿は別工程で行う。
+
 ## Papersの仕様
 
 論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。
