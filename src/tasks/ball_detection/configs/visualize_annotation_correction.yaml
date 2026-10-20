@@ -1,0 +1,31 @@
+defaults:
+  - paths: default
+  - _self_
+
+paths:
+  # Existing artifacts only. Pass absolute paths to the shared input tree.
+  annotation_root: ???
+  campaign_dir: ???
+
+mode: rank
+clip_id: null
+# Source display frames, zero-based and half-open; required in render mode.
+frames: null
+radius_px: 8.0  # Source pixels at width 1920, scaled by actual source width.
+resolution:
+  width: 1920
+  height: 1080
+playback:
+  hold_on_change_frames: 0
+gif:
+  width: 960
+  fps: 15
+run:
+  output_dir: ${tennis_output:ball_detection,visualize,annotation_correction,${tennis_run_id:}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

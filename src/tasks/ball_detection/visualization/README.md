@@ -215,6 +215,57 @@ MP4のyuv420p形式には偶数の幅・高さが必要で、不正な寸法はw
 4パネルの装飾設定は `visualization.layout.<項目>` から `visualization.grid.<項目>` へ移しました。
 不明なlayout名は実行前に拒否します。
 
+## モデル候補とCodex確定注釈の発表用比較
+
+`presentation/annotation_correction.py` は、旧 `campaign_ball_candidates.v1` の候補と
+`tennis_chat_ball_annotation.v1` の確定注釈を、同じ動画に重ねて左右で比較します。
+モデル候補は探索の手がかりであり、右側はCodexが確認した注釈です。
+新しい推論は実行せず、CPUだけで既存成果物を読みます。
+旧形式の契約・動画照合は [migration reader](../../annotation/migration/README.md) を使います。
+
+入力rootは共有データの**絶対パス**を明示してください。次の `ANNOTATION_ROOT` と
+`CAMPAIGN_DIR` を既存データに合わせて設定し、worktree直下から実行します。
+出力は現在のworktreeの `outputs/ball_detection/visualize/annotation_correction/<run-id>/presentation/`
+です（`paths.output_root` で変更可能）。入力への書き込みはありません。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
+  mode=rank paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR"
+```
+
+`ranking.json` はcandidate cacheとprocessed注釈が揃う全clipのclass別frame数と入力hashを記録します。
+4種類の変更がすべてあるclipを先にし、変更frame比率の降順で並べます。
+rankはJSONを検証し、動画を復号しません。候補の順位を並べ替えたり、欠落frameを補ったりしません。
+ランキングと短いプレビューを見て、利用者がclip・区間を選びます。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
+  mode=render clip_id="$CLIP_ID" frames=120:300 \
+  paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR" \
+  resolution.width=960 resolution.height=540
+```
+
+`frames` は元動画の0始まり・終了を含まない区間です。1920×1080（既定）では
+左右944×531px・間隔32px、その下に36pxの全clip分類帯と現在frameの白線を描きます。
+文字は描きません。異なる入力アスペクト比はパネル内に余白を入れて保ちます。
+読み込み時にschema・`proposals_only=true`・候補の降順・注釈の寸法と全frame対応を検証し、
+renderでは動画のSHA-256・PTS・表示時間をmanifestと照合します。
+元FPSの固定レートで全frameを再生し、可変frame間隔の動画は拒否します。
+
+帯は未確認＝灰、順位変更＝黄、位置指定＝橙、追加＝緑、除去＝赤です。
+一致・双方なしは無色で、距離は `radius_px=8` を1920px幅の基準から元画像幅へ換算します。
+球が複数ある場合はtrackごとに判定し、除去→位置指定→追加→順位変更→一致の順で優先します。
+座標のない球も除去／双方なしの判定に含みます。未確認frameの右側には何も重ねません。
+左は最上位を白円、2・3位をscoreに比例した濃さの点で示します。
+右は可視＝緑の塗り円、遮蔽＝破線円、補間＝中空円です。
+変更classの連続区間の開始から0.3秒で矢印を伸ばし、枠を0.4秒点灯します。
+
+`playback.hold_on_change_frames=0` が既定です。正数を明示した場合だけ、変更のある各frameを
+指定数だけ追加複製します。manifestに元frameとの全対応と複製数を残します。
+MP4・GIF・class別の先頭静止画・manifestを共通exporterで書き出し、既存の出力先は拒否します。
+manifestは入力・checkpointのhash、git commit、解決済みconfigと由来を記録します。
+左右の結果と帯は実データ (`measured`)、矢印・枠は説明用の図示 (`schematic`) です。
+
 ## データセット統計
 
 BallのDataset Reviewでdatasetを選び、画面上部の「データセット統計」を開きます。

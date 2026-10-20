@@ -22,6 +22,11 @@ COURT_HEAD_COLORS: Final = {
 }
 SYNTHETIC: Final = "#E76F51"
 REAL: Final = "#4CC9F0"
+CORRECTION_UNREVIEWED: Final = "#495057"
+CORRECTION_RERANK: Final = "#FFD166"
+CORRECTION_MOVED: Final = "#F4A261"
+CORRECTION_ADDED: Final = NEW
+CORRECTION_REMOVED: Final = "#E63946"
 
 REMOVED_ALPHA: Final = 0.2
 # The state API has no per-block base color. The supported removal use case is

@@ -120,6 +120,7 @@ _OUTPUT_KIND_CONTRACTS = {
     "evaluate": ("ball.eval", "ball.evaluate_manifest", "player_detection.evaluate", "slcs.evaluate"),
     "visualize": (
         "ball.preview", "ball.visualize", "ball.learning_stages", "blcs.preview_augmentation", "blcs.visualize",
+        "ball.annotation_correction",
         "court_detection.preview_augmentation", "court_detection.visualize",
         "court_detection.learning_stages",
         "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
@@ -192,9 +193,19 @@ def test_all_task_cli_output_contracts(
             "runtime.precision=fp32", "runtime.compile_mode=off",
             "runtime.jpeg_decoder=opencv", "runtime.input_verification=lazy",
         ]
+    if boundary.validator_key == "ball.annotation_correction":
+        overrides += [
+            f"paths.annotation_root={tmp_path / 'annotation-input'}",
+            f"paths.campaign_dir={tmp_path / 'campaign-input'}",
+        ]
     cfg = _compose_boundary(boundary, overrides)
+    role_paths = cast(dict[str, object], OmegaConf.to_container(cfg.paths, resolve=True))
+    if boundary.validator_key == "ball.annotation_correction":
+        # Legacy annotation inputs are explicitly absolute paths, not members
+        # of the seven shared role roots. The CLI validates these two itself.
+        del role_paths["annotation_root"], role_paths["campaign_dir"]
     roots = RuntimePathRoots.from_mapping(
-        cast(dict[str, object], OmegaConf.to_container(cfg.paths, resolve=True)),
+        role_paths,
         repository_root=PROJECT_ROOT,
     )
     if boundary.module == "src.tasks.blcs.scripts.evaluate_real":
