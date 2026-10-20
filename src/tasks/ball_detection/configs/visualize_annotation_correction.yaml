@@ -9,8 +9,11 @@ paths:
 
 mode: rank
 clip_id: null
-# Source display frames, zero-based and half-open; required in render mode.
-frames: null
+frames:
+  source: video  # Explicit choice: video | store. Never switches automatically.
+  # Source display frames, zero-based and half-open; required in render mode.
+  range: null
+  store_dir: null  # DATA-root-relative ball store; required only for source=store.
 radius_px: 8.0  # Source pixels at width 1920, scaled by actual source width.
 resolution:
   width: 1920

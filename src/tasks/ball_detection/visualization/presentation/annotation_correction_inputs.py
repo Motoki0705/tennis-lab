@@ -199,7 +199,11 @@ class AnnotationComparison:
                 "path": str(self.prepared.path),
                 "sha256": sha256_file(self.prepared.path),
             },
-            "video": {"path": str(self.video), "sha256": self.prepared.manifest.sha256},
+            "video": {
+                "path": str(self.video),
+                "sha256": self.prepared.manifest.sha256,
+                "role": "original_media_identity",
+            },
             "checkpoint_sha256": self.cache.identity.checkpoint_sha256,
             "candidate_identity": self.cache.identity.model_dump(),
         }

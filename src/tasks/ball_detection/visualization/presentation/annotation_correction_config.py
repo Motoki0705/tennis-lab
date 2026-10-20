@@ -69,13 +69,20 @@ _GIF_SCHEMA = StrictConfigSchema(
         "fps": ConfigField.of(int, float),
     }
 )
+_FRAMES_SCHEMA = StrictConfigSchema(
+    fields={
+        "source": ConfigField.of(str),
+        "range": ConfigField.of(str, type(None)),
+        "store_dir": ConfigField.of(str, type(None)),
+    }
+)
 _SCHEMA = StrictConfigSchema(
     fields={
         "paths": ConfigField.mapping(_PATHS_SCHEMA),
         "run": ConfigField.mapping(_RUN_SCHEMA),
         "mode": ConfigField.of(str),
         "clip_id": ConfigField.of(str, type(None)),
-        "frames": ConfigField.of(str, type(None)),
+        "frames": ConfigField.mapping(_FRAMES_SCHEMA),
         "radius_px": ConfigField.of(int, float),
         "resolution": ConfigField.mapping(_RESOLUTION_SCHEMA),
         "playback": ConfigField.mapping(_PLAYBACK_SCHEMA),
@@ -92,6 +99,8 @@ class AnnotationCorrectionConfig:
     run_dir: Path
     clip_id: str | None
     frame_range: tuple[int, int] | None
+    frame_source: Literal["video", "store"]
+    store_dir: Path | None
     radius_px: float
     width: int
     height: int
@@ -124,7 +133,22 @@ def build_runtime_config(config: DictConfig) -> AnnotationCorrectionConfig:
     mode = values["mode"]
     if mode not in ("rank", "render"):
         raise SemanticConfigurationError("mode must be rank or render")
-    clip_id, frames = values["clip_id"], values["frames"]
+    frame_source = values["frames"]["source"]
+    store_fragment = values["frames"]["store_dir"]
+    if frame_source not in ("video", "store"):
+        raise SemanticConfigurationError("frames.source must be video or store")
+    store_dir = None
+    if frame_source == "store":
+        if store_fragment is None:
+            raise SemanticConfigurationError(
+                "frames.source=store requires frames.store_dir"
+            )
+        store_dir = resolver.resolve(PathRole.DATA, store_fragment)
+    elif store_fragment is not None:
+        raise SemanticConfigurationError(
+            "frames.store_dir requires frames.source=store"
+        )
+    clip_id, frames = values["clip_id"], values["frames"]["range"]
     frame_range = None
     if mode == "render":
         if clip_id is None or re.fullmatch(r"[A-Za-z0-9_-]+", clip_id) is None:
@@ -132,11 +156,15 @@ def build_runtime_config(config: DictConfig) -> AnnotationCorrectionConfig:
         match = re.fullmatch(r"(\d+):(\d+)", frames) if frames is not None else None
         if match is None or int(match[1]) >= int(match[2]):
             raise SemanticConfigurationError(
-                "render requires frames=start:stop (nonempty, half-open)"
+                "render requires frames.range=start:stop (nonempty, half-open)"
             )
         frame_range = (int(match[1]), int(match[2]))
     elif clip_id is not None or frames is not None:
-        raise SemanticConfigurationError("rank requires clip_id=null and frames=null")
+        raise SemanticConfigurationError(
+            "rank requires clip_id=null and frames.range=null"
+        )
+    if mode == "rank" and frame_source != "video":
+        raise SemanticConfigurationError("frames.source=store is a render-only option")
     radius = float(values["radius_px"])
     width, height = values["resolution"]["width"], values["resolution"]["height"]
     hold = values["playback"]["hold_on_change_frames"]
@@ -169,6 +197,8 @@ def build_runtime_config(config: DictConfig) -> AnnotationCorrectionConfig:
         run_dir,
         clip_id,
         frame_range,
+        frame_source,
+        store_dir,
         radius,
         width,
         height,

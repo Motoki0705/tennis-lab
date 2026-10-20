@@ -240,17 +240,38 @@ rankはJSONを検証し、動画を復号しません。候補の順位を並べ
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
-  mode=render clip_id="$CLIP_ID" frames=120:300 \
+  mode=render clip_id="$CLIP_ID" frames.range=120:300 \
   paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR" \
   resolution.width=960 resolution.height=540
 ```
 
-`frames` は元動画の0始まり・終了を含まない区間です。1920×1080（既定）では
+`frames.range` は元動画の0始まり・終了を含まない区間です。1920×1080（既定）では
 左右944×531px・間隔32px、その下に36pxの全clip分類帯と現在frameの白線を描きます。
 文字は描きません。異なる入力アスペクト比はパネル内に余白を入れて保ちます。
 読み込み時にschema・`proposals_only=true`・候補の降順・注釈の寸法と全frame対応を検証し、
 renderでは動画のSHA-256・PTS・表示時間をmanifestと照合します。
 元FPSの固定レートで全frameを再生し、可変frame間隔の動画は拒否します。
+
+`frames.source=video` が既定です。別の入力選択肢として `frames.source=store` を指定すると、
+Ball frame storeに残る保存RGBを読みます。元MP4がなくてもstoreへ自動切り替えはしません。
+store入力は、入力変更と候補を利用者が同時に確認するためのプレビューに使えます。
+採用する入力と素材は別途確認してください。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
+  mode=render clip_id="$CLIP_ID" frames.range=120:300 frames.source=store \
+  paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR" \
+  paths.data_root="$DATA_ROOT" frames.store_dir=ball_detection/ball-mix-v2 \
+  resolution.width=960 resolution.height=540
+```
+
+`frames.store_dir` は明示したDATA rootからの相対パスです。storeの
+`chat_annotation/<clip_id>` を使い、`media_sha256` が候補・元clip manifestの動画hashと
+一致すること、全frame数・元解像度・FPS・各frameのPTSが一致することを検証します。
+候補と確定注釈の座標は元画像pxのまま判定し、保存RGBの縮小率を描画に反映します。
+manifestの `frame_input` に入力元、store・metadata・index・画像payloadのpath/hash、
+保存／元解像度、座標倍率、JPEG品質を記録します。元動画hashは元メディアの同一性を表し、
+保存JPEGの画素を表すhashとは区別します。
 
 帯は未確認＝灰、順位変更＝黄、位置指定＝橙、追加＝緑、除去＝赤です。
 一致・双方なしは無色で、距離は `radius_px=8` を1920px幅の基準から元画像幅へ換算します。

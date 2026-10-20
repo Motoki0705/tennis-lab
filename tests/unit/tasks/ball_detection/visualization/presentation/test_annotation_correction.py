@@ -33,6 +33,9 @@ from src.tasks.ball_detection.visualization.presentation.annotation_correction i
 from src.tasks.ball_detection.visualization.presentation.annotation_correction_config import (
     build_runtime_config,
 )
+from src.tasks.ball_detection.visualization.presentation.annotation_correction_frames import (
+    open_frame_input,
+)
 from src.tasks.ball_detection.visualization.presentation.annotation_correction_inputs import (
     Candidate,
     Correction,
@@ -43,6 +46,8 @@ from src.tasks.ball_detection.visualization.presentation.annotation_correction_i
 )
 from src.tasks.base.annotation.media import encode_video, probe_video
 from src.utils.paths import PROJECT_ROOT
+from tests.support.tasks.ball_detection.store import frame as stored_frame
+from tests.support.tasks.ball_detection.store import write_store_clip
 
 
 def _peak(x: float, y: float, score: float = 0.9) -> Candidate:
@@ -433,6 +438,7 @@ def test_layout_and_strip_are_exact_and_panels_are_synchronized() -> None:
         source_frame=1,
         event_seconds=1,
         layout=layout,
+        source_size=(160, 90),
     )
     assert result.shape == (1080, 1920, 3)
     np.testing.assert_array_equal(result[274:805, :944], result[274:805, 976:])
@@ -455,6 +461,7 @@ def test_unreviewed_draws_no_right_annotation_or_proposal() -> None:
         source_frame=0,
         event_seconds=1,
         layout=layout,
+        source_size=(160, 90),
     )
     x, y, w, h = layout.right
     np.testing.assert_array_equal(result[y : y + h, x : x + w], np.full((h, w, 3), 50))
@@ -476,6 +483,7 @@ def test_annotation_marker_distinguishes_status(
         source_frame=0,
         event_seconds=1,
         layout=layout,
+        source_size=(160, 90),
     )
     point = (976 + round(80 * 944 / 160), 274 + round(40 * 531 / 90))
     assert bool(result[point[1], point[0], 1] > 100) is center_filled
@@ -510,6 +518,7 @@ def test_arrow_grows_for_point_three_seconds_and_border_expires_at_point_four() 
             source_frame=0,
             event_seconds=seconds,
             layout=layout,
+            source_size=(160, 90),
         )
 
     halfway, complete, expired = draw(0.15), draw(0.3), draw(0.4)
@@ -531,6 +540,7 @@ def test_lower_candidate_opacity_tracks_score() -> None:
         source_frame=0,
         event_seconds=1,
         layout=layout,
+        source_size=(160, 90),
     )
     _, y, w, h = layout.left
     high = result[y + round(40 * h / 90), round(80 * w / 160), 0]
@@ -547,7 +557,7 @@ def test_synthetic_render_exports_native_fps_panels_gif_and_manifest(
             mode="render",
             overrides=[
                 "clip_id=testclip",
-                "frames=0:8",
+                "frames.range=0:8",
                 "resolution.width=320",
                 "resolution.height=180",
                 "gif.width=160",
@@ -602,7 +612,9 @@ def test_media_hash_mismatch_is_rejected_before_export(inputs: Inputs) -> None:
     bad_manifest = clip.prepared.manifest.model_copy(update={"sha256": "f" * 64})
     bad_clip = replace(clip, prepared=replace(clip.prepared, manifest=bad_manifest))
     config = build_runtime_config(
-        _config(inputs, mode="render", overrides=["clip_id=testclip", "frames=0:8"])
+        _config(
+            inputs, mode="render", overrides=["clip_id=testclip", "frames.range=0:8"]
+        )
     )
     with pytest.raises(ValueError, match="filename/hash"):
         render_comparison(bad_clip, config, manifest={})
@@ -616,7 +628,9 @@ def test_media_pts_mismatch_is_rejected_before_export(inputs: Inputs) -> None:
     bad_manifest = clip.prepared.manifest.model_copy(update={"frames": frames})
     bad_clip = replace(clip, prepared=replace(clip.prepared, manifest=bad_manifest))
     config = build_runtime_config(
-        _config(inputs, mode="render", overrides=["clip_id=testclip", "frames=0:8"])
+        _config(
+            inputs, mode="render", overrides=["clip_id=testclip", "frames.range=0:8"]
+        )
     )
     with pytest.raises(ValueError, match="PTS/duration"):
         render_comparison(bad_clip, config, manifest={})
@@ -632,8 +646,8 @@ def test_media_pts_mismatch_is_rejected_before_export(inputs: Inputs) -> None:
         ["mode=bad"],
         ["resolution.width=961"],
         ["gif.fps=0"],
-        ["mode=render", "clip_id=testclip", "frames=8:8"],
-        ["mode=render", "clip_id=../escape", "frames=0:8"],
+        ["mode=render", "clip_id=testclip", "frames.range=8:8"],
+        ["mode=render", "clip_id=../escape", "frames.range=0:8"],
         ["clip_id=testclip"],
         ["paths.annotation_root=relative/path"],
         ["+playback.unknown=1"],
@@ -658,3 +672,172 @@ def test_input_paths_are_required_and_rank_output_is_immutable(inputs: Inputs) -
     assert ranking["clips"][0]["clip_id"] == "testclip"
     with pytest.raises(FileExistsError):
         run_visualization(runtime)
+
+
+def _store(inputs: Inputs, *, frame_count: int = 8) -> Path:
+    manifest = json.loads(inputs.manifest_path.read_text())
+    directory = inputs.root.parent / "store-data/fixture-store"
+    write_store_clip(
+        directory,
+        "chat_annotation/testclip",
+        [stored_frame(frame["clip_pts"]) for frame in manifest["frames"][:frame_count]],
+        source="chat_annotation",
+        size=(80, 45),
+    )
+    path = directory / "metadata.json"
+    metadata = json.loads(path.read_text())
+    # The fixture uses OpenCV's default Q95, so recording it also checks that
+    # the reader does not assume the real dataset's Q90 encoding.
+    metadata["jpeg_quality"] = 95
+    metadata["clips"][0].update(
+        source_width=160,
+        source_height=90,
+        media_sha256=manifest["sha256"],
+        time_base=manifest["time_base"],
+        fps=manifest["nominal_fps"],
+    )
+    _save(path, metadata)
+    return directory
+
+
+def _store_runtime(inputs: Inputs, directory: Path):
+    return build_runtime_config(
+        _config(
+            inputs,
+            mode="render",
+            overrides=[
+                "clip_id=testclip",
+                "frames.range=0:8",
+                "frames.source=store",
+                f"paths.data_root={directory.parent}",
+                f"frames.store_dir={directory.name}",
+                "resolution.width=320",
+                "resolution.height=180",
+                "gif.width=160",
+                "gif.fps=5",
+            ],
+        )
+    )
+
+
+def test_store_rgb_without_original_video_and_original_coordinate_geometry(
+    inputs: Inputs,
+) -> None:
+    directory = _store(inputs)
+    inputs.video.unlink()
+    clip = _comparison(inputs)
+    frames = open_frame_input(clip, source="store", store_dir=directory)
+    decoded = list(frames.decode(2, 3))
+    assert decoded[0].shape == (45, 80, 3)
+    assert (
+        frames.metadata["media_sha256"]
+        == clip.cache.identity.video_sha256
+        == clip.prepared.manifest.sha256
+    )
+    assert frames.metadata["coordinate_scale"] == [0.5, 0.5]
+    config = _store_runtime(inputs, directory)
+    assert run_visualization(config) == 0
+    output = config.run_dir / "presentation"
+    with Image.open(output / "stills/moved.png") as image:
+        pixels = np.array(image)
+    layout = comparison_layout(320, 180)
+    x, y, w, h = layout.right
+    # Source center (90,60) maps using 160x90, not the saved 80x45.
+    center = (x + round(90 * w / 160), y + round(60 * h / 90))
+    np.testing.assert_array_equal(pixels[center[1], center[0]], [138, 201, 38])
+    manifest = json.loads((output / "manifest.json").read_text())
+    info = manifest["frame_input"]
+    assert info["source"] == "store"
+    assert info["store_dir"] == str(directory)
+    assert info["saved_resolution"] == [80, 45]
+    assert info["source_resolution"] == [160, 90]
+    assert info["jpeg_quality"] == 95
+    assert info["metadata"]["sha256"] == sha256_file(directory / "metadata.json")
+    assert info["index"]["sha256"] == sha256_file(directory / "index.npz")
+    assert info["image_payload"]["sha256"] == sha256_file(
+        directory / "shards/clip-00000.bin"
+    )
+    timeline = probe_video(output / "annotation_correction.mp4")
+    assert (timeline.rate, len(timeline.pts)) == (Fraction(10), 8)
+
+
+@pytest.mark.parametrize(
+    "case,match",
+    [
+        ("media", "SHA-256"),
+        ("candidate", "SHA-256"),
+        ("frame_count", "frame_count"),
+        ("source_size", "source dimensions"),
+        ("pts", "timestamps"),
+        ("fps", "FPS"),
+        ("quality", "jpeg_quality"),
+        ("clip_id", "no clip"),
+    ],
+)
+def test_store_identity_timing_and_encoding_validation(
+    inputs: Inputs, case: str, match: str
+) -> None:
+    directory = _store(inputs, frame_count=7 if case == "frame_count" else 8)
+    path = directory / "metadata.json"
+    data = json.loads(path.read_text())
+    clip = _comparison(inputs)
+    if case == "media":
+        data["clips"][0]["media_sha256"] = "e" * 64
+    elif case == "candidate":
+        cache = clip.cache.model_copy(
+            update={
+                "identity": clip.cache.identity.model_copy(
+                    update={"video_sha256": "e" * 64}
+                )
+            }
+        )
+        clip = replace(clip, cache=cache)
+    elif case == "source_size":
+        data["clips"][0].update(source_width=320, source_height=180)
+    elif case == "pts":
+        with np.load(directory / "index.npz") as archive:
+            columns = {key: archive[key] for key in archive.files}
+        columns["pts"][1] += 1
+        np.savez(directory / "index.npz", **columns)
+    elif case == "fps":
+        data["clips"][0]["fps"] = "20"
+    elif case == "quality":
+        data["jpeg_quality"] = True
+    elif case == "clip_id":
+        data["clips"][0]["clip_id"] = "chat_annotation/anotherclip"
+    _save(path, data)
+    with pytest.raises((ValueError, KeyError), match=match):
+        open_frame_input(clip, source="store", store_dir=directory)
+
+
+def test_video_input_does_not_substitute_available_store(inputs: Inputs) -> None:
+    directory = _store(inputs)
+    config = _store_runtime(inputs, directory)
+    assert config.frame_source == "store"
+    inputs.video.unlink()
+    with pytest.raises(FileNotFoundError):
+        open_frame_input(_comparison(inputs), source="video", store_dir=None)
+    assert build_runtime_config(_config(inputs)).frame_source == "video"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        ["frames.source=store"],
+        ["frames.source=unknown"],
+        ["frames.store_dir=fixture-store"],
+        [
+            "mode=render",
+            "clip_id=testclip",
+            "frames.range=0:8",
+            "frames.source=store",
+            "frames.store_dir=/absolute",
+        ],
+        ["frames.source=store", "frames.store_dir=fixture-store"],
+    ],
+)
+def test_frame_source_selection_rejects_incomplete_or_unused_options(
+    inputs: Inputs, overrides: list[str]
+) -> None:
+    with pytest.raises(ValueError):
+        build_runtime_config(_config(inputs, overrides=overrides))

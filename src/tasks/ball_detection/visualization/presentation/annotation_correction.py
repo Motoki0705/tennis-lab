@@ -16,12 +16,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.annotation.migration.legacy_format.contracts import BallFrameAnnotation
-from src.tasks.annotation.migration.legacy_format.media import check_clip, decode_range
 from src.tasks.base.visualization.presentation import style
 from src.tasks.base.visualization.presentation.export import render_presentation
 from src.utils.paths import PROJECT_ROOT
 
 from .annotation_correction_config import AnnotationCorrectionConfig
+from .annotation_correction_frames import open_frame_input
 from .annotation_correction_inputs import (
     CHANGES,
     AnnotationComparison,
@@ -106,6 +106,7 @@ def draw_comparison_frame(
     source_frame: int,
     event_seconds: float,
     layout: ComparisonLayout,
+    source_size: tuple[int, int],
 ) -> NDArray[np.uint8]:
     """Draw two letterboxed panels and the full-clip classification strip.
 
@@ -115,6 +116,9 @@ def draw_comparison_frame(
     if image.dtype != np.uint8 or image.ndim != 3 or image.shape[2] != 3:
         raise ValueError("image must be RGB uint8")
     height, width = image.shape[:2]
+    source_width, source_height = source_size
+    if source_width <= 0 or source_height <= 0:
+        raise ValueError("source coordinate dimensions must be positive")
     _, _, panel_width, panel_height = layout.left
     scale = min(panel_width / width, panel_height / height)
     scaled_width, scaled_height = round(width * scale), round(height * scale)
@@ -130,8 +134,8 @@ def draw_comparison_frame(
 
     def point(center: Sequence[float]) -> tuple[int, int]:
         return (
-            round(offset_x + center[0] * scaled_width / width),
-            round(offset_y + center[1] * scaled_height / height),
+            round(offset_x + center[0] * scaled_width / source_width),
+            round(offset_y + center[1] * scaled_height / source_height),
         )
 
     radius = max(2, round(panel_width * 0.009))
@@ -253,7 +257,12 @@ def render_comparison(
     sources = playback_frames(
         clip.corrections, start, stop, config.hold_on_change_frames
     )
-    timeline = check_clip(clip.video, clip.prepared.manifest)
+    frame_input = open_frame_input(
+        clip,
+        source=config.frame_source,
+        store_dir=config.store_dir,
+    )
+    timeline = frame_input.timeline
     if Fraction(clip.prepared.manifest.nominal_fps) != timeline.rate or any(
         duration * timeline.time_base != 1 / timeline.rate
         for duration in timeline.durations
@@ -263,7 +272,7 @@ def render_comparison(
         )
     fps = float(timeline.rate)
     layout = comparison_layout(config.width, config.height)
-    decoder = decode_range(clip.video, timeline, start, stop)
+    decoder = frame_input.decode(start, stop)
     image: NDArray[np.uint8] | None = None
     previous_source = -1
     event_start = 0
@@ -273,7 +282,7 @@ def render_comparison(
         nonlocal image, previous_source, event_start, previous_kind
         source = sources[index]
         if source != previous_source:
-            image = next(decoder).to_ndarray(format="rgb24")
+            image = next(decoder)
             previous_source = source
         kind = clip.corrections[source]
         if kind != previous_kind:
@@ -288,6 +297,7 @@ def render_comparison(
             source_frame=source,
             event_seconds=(index - event_start) / fps,
             layout=layout,
+            source_size=(clip.prepared.manifest.width, clip.prepared.manifest.height),
         )
 
     stills = {"first": 0, "last": len(sources) - 1}
@@ -299,6 +309,7 @@ def render_comparison(
         **manifest,
         "clip_id": clip.annotation.clip_id,
         "inputs": clip.input_manifest(),
+        "frame_input": frame_input.metadata,
         "frames": {"start": start, "stop": stop},
         "class_counts": class_counts(clip.corrections[start:stop]),
         "full_clip_class_counts": class_counts(clip.corrections),
