@@ -22,7 +22,6 @@ from mathutils import Quaternion, Vector
 sys.path.insert(0, str(Path(__file__).parent))
 from camera_planes import camera_frustum, image_plane_point  # noqa: E402
 from common import (  # noqa: E402
-    Nodes,
     _build_compositor,
     _key_visibility,
     _look_rotation,
@@ -180,7 +179,7 @@ def _ray_cache_frame(
     """Display exported ray geometry around its midpoint to retain precision.
 
     Long rejected rays can meet the ground hundreds of meters away. An object
-    quaternion loses their tiny vertical component. Camera-relative cached
+    quaternion loses their tiny vertical component. Midpoint-relative cached
     vertices avoid that cancellation and keep the supplied origin/end intact.
     """
     side = np.cross(direction, np.eye(3)[np.argmin(np.abs(direction))])
