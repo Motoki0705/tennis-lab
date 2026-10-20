@@ -300,9 +300,37 @@ def _config(
                 f"paths.campaign_dir={inputs.campaign}",
                 f"paths.output_root={inputs.root.parent / 'runs'}",
                 f"mode={mode}",
+                "clip_id=null",
+                "frames.range=null",
+                "frames.source=video",
+                "frames.store_dir=null",
                 *overrides,
             ],
         )
+
+
+def test_selected_material_defaults_are_reproducible(inputs: Inputs) -> None:
+    with initialize_config_dir(
+        version_base="1.3",
+        config_dir=str(PROJECT_ROOT / "src/tasks/ball_detection/configs"),
+    ):
+        config = compose(
+            config_name="visualize_annotation_correction",
+            overrides=[
+                f"paths.annotation_root={inputs.root}",
+                f"paths.campaign_dir={inputs.campaign}",
+                f"paths.data_root={inputs.root.parent / 'data'}",
+                f"paths.output_root={inputs.root.parent / 'runs'}",
+            ],
+        )
+    runtime = build_runtime_config(config)
+    assert runtime.mode == "render"
+    assert runtime.clip_id == "csu_MWYHS8k__3b250a3c0ef22d47__f000002998-000003776"
+    assert runtime.frame_range == (217, 517)
+    assert runtime.frame_source == "store"
+    assert runtime.store_dir == inputs.root.parent / "data/ball_detection/ball-mix-v2"
+    assert (runtime.width, runtime.height) == (1920, 1080)
+    assert runtime.hold_on_change_frames == 0
 
 
 def test_reader_and_width_scaled_radius(inputs: Inputs) -> None:

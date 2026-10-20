@@ -7,13 +7,14 @@ paths:
   annotation_root: ???
   campaign_dir: ???
 
-mode: rank
-clip_id: null
+# Selected presentation material. Override these explicitly to explore other clips.
+mode: render
+clip_id: csu_MWYHS8k__3b250a3c0ef22d47__f000002998-000003776
 frames:
-  source: video  # Explicit choice: video | store. Never switches automatically.
+  source: store  # Explicit choice: video | store. Never switches automatically.
   # Source display frames, zero-based and half-open; required in render mode.
-  range: null
-  store_dir: null  # DATA-root-relative ball store; required only for source=store.
+  range: "217:517"
+  store_dir: ball_detection/ball-mix-v2  # DATA-root-relative; source=video requires null.
 radius_px: 8.0  # Source pixels at width 1920, scaled by actual source width.
 resolution:
   width: 1920

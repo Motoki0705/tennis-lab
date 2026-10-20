@@ -218,52 +218,39 @@ MP4のyuv420p形式には偶数の幅・高さが必要で、不正な寸法はw
 ## モデル候補とCodex確定注釈の発表用比較
 
 `presentation/annotation_correction.py` は、旧 `campaign_ball_candidates.v1` の候補と
-`tennis_chat_ball_annotation.v1` の確定注釈を、同じ動画に重ねて左右で比較します。
+`tennis_chat_ball_annotation.v1` の確定注釈を、同じframeに重ねて左右で比較します。
 モデル候補は探索の手がかりであり、右側はCodexが確認した注釈です。
 新しい推論は実行せず、CPUだけで既存成果物を読みます。
-旧形式の契約・動画照合は [migration reader](../../annotation/migration/README.md) を使います。
+旧形式の契約は [migration reader](../../annotation/migration/README.md) を使います。
 
-入力rootは共有データの**絶対パス**を明示してください。次の `ANNOTATION_ROOT` と
-`CAMPAIGN_DIR` を既存データに合わせて設定し、worktree直下から実行します。
+採用素材は `csu_MWYHS8k__3b250a3c0ef22d47__f000002998-000003776` の
+frame `217:517`（0始まり・終了を含まない300frame、5.005秒）です。
+元MP4は削除済みのため、採用された `ball-mix-v2` の保存RGBを
+`frames.source=store` で明示選択します。configの既定値はこの素材・区間と1920×1080です。
+以下をworktree直下から実行すると再生成できます。入力rootは共有データの**絶対パス**で、
+別環境では3つのrootを既存データに合わせて変更してください。
 出力は現在のworktreeの `outputs/ball_detection/visualize/annotation_correction/<run-id>/presentation/`
 です（`paths.output_root` で変更可能）。入力への書き込みはありません。
 
 ```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
-  mode=rank paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR"
-```
+ANNOTATION_ROOT=/home/kamimura/projects/tennis-lab/outputs/chat_annotation
+CAMPAIGN_DIR="$ANNOTATION_ROOT/local_agent"
+DATA_ROOT=/home/kamimura/projects/tennis-lab/data
 
-`ranking.json` はcandidate cacheとprocessed注釈が揃う全clipのclass別frame数と入力hashを記録します。
-4種類の変更がすべてあるclipを先にし、変更frame比率の降順で並べます。
-rankはJSONを検証し、動画を復号しません。候補の順位を並べ替えたり、欠落frameを補ったりしません。
-ランキングと短いプレビューを見て、利用者がclip・区間を選びます。
-
-```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
-  mode=render clip_id="$CLIP_ID" frames.range=120:300 \
+  mode=render frames.source=store frames.store_dir=ball_detection/ball-mix-v2 \
+  clip_id=csu_MWYHS8k__3b250a3c0ef22d47__f000002998-000003776 frames.range=217:517 \
+  resolution.width=1920 resolution.height=1080 \
   paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR" \
-  resolution.width=960 resolution.height=540
+  paths.data_root="$DATA_ROOT"
 ```
 
-`frames.range` は元動画の0始まり・終了を含まない区間です。1920×1080（既定）では
+1920×1080では
 左右944×531px・間隔32px、その下に36pxの全clip分類帯と現在frameの白線を描きます。
 文字は描きません。異なる入力アスペクト比はパネル内に余白を入れて保ちます。
 読み込み時にschema・`proposals_only=true`・候補の降順・注釈の寸法と全frame対応を検証し、
-renderでは動画のSHA-256・PTS・表示時間をmanifestと照合します。
+renderでは入力のSHA-256・PTS・表示時間をmanifestと照合します。
 元FPSの固定レートで全frameを再生し、可変frame間隔の動画は拒否します。
-
-`frames.source=video` が既定です。別の入力選択肢として `frames.source=store` を指定すると、
-Ball frame storeに残る保存RGBを読みます。元MP4がなくてもstoreへ自動切り替えはしません。
-store入力は、入力変更と候補を利用者が同時に確認するためのプレビューに使えます。
-採用する入力と素材は別途確認してください。
-
-```bash
-.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
-  mode=render clip_id="$CLIP_ID" frames.range=120:300 frames.source=store \
-  paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR" \
-  paths.data_root="$DATA_ROOT" frames.store_dir=ball_detection/ball-mix-v2 \
-  resolution.width=960 resolution.height=540
-```
 
 `frames.store_dir` は明示したDATA rootからの相対パスです。storeの
 `chat_annotation/<clip_id>` を使い、`media_sha256` が候補・元clip manifestの動画hashと
@@ -272,6 +259,23 @@ store入力は、入力変更と候補を利用者が同時に確認するため
 manifestの `frame_input` に入力元、store・metadata・index・画像payloadのpath/hash、
 保存／元解像度、座標倍率、JPEG品質を記録します。元動画hashは元メディアの同一性を表し、
 保存JPEGの画素を表すhashとは区別します。
+
+元MP4がある素材では、同じrenderコマンドに `frames.source=video frames.store_dir=null` と
+clip・区間を明示して動画から復号できます。入力元の自動切り替えはありません。
+
+別素材を探す場合は採用値を解除して順位付けします。rankはJSONだけを検証し、
+RGBを読みません（`frames.source=video` はrender用store設定を解除するための指定です）。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_annotation_correction \
+  mode=rank clip_id=null frames.range=null frames.source=video frames.store_dir=null \
+  paths.annotation_root="$ANNOTATION_ROOT" paths.campaign_dir="$CAMPAIGN_DIR"
+```
+
+`ranking.json` はcandidate cacheとprocessed注釈が揃う全clipのclass別frame数と入力hashを記録します。
+4種類の変更がすべてあるclipを先にし、変更frame比率の降順で並べます。
+候補の順位を並べ替えたり、欠落frameを補ったりしません。
+別のclip・区間の採用は、ランキングと短いプレビューを見て利用者が決めます。
 
 帯は未確認＝灰、順位変更＝黄、位置指定＝橙、追加＝緑、除去＝赤です。
 一致・双方なしは無色で、距離は `radius_px=8` を1920px幅の基準から元画像幅へ換算します。
