@@ -10,9 +10,8 @@ from typing import Any
 
 import bpy
 import numpy as np
-from mathutils import Vector
-
 from common import _new_material
+from mathutils import Vector
 
 
 def image_plane_point(
