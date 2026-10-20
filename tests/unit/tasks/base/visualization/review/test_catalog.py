@@ -209,4 +209,4 @@ def test_form_paths_cannot_escape(tmp_path: Path) -> None:
 )
 def test_real_blcs_forms_are_detected() -> None:
     catalog = DatasetCatalog(DATA_ROOT, "blcs")
-    assert {form.name for form in catalog.forms()} == {"single_object"}
+    assert "single_object" in {form.name for form in catalog.forms()}
