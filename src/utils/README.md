@@ -193,6 +193,52 @@ semantics で、future token は参照しない。`log_decay` と `beta` は活�
 fallback は行わない。式と dtype/device/state の完全な契約は
 `kimi_delta_attention()` の docstring を正本とする。
 
+## Published detector weights
+
+[`model_weights/`](model_weights/)は[Hugging Faceの公開重み](https://huggingface.co/Motoki098/tennis-lab-models)を
+checkpoint rootに取得し、[公開版のSHA-256](../../LICENSES.md#公開先と重みの識別情報)を検査します。
+ライセンスは[公開物の条件](../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)と
+配布先の`LICENSE`を確認してください。第三者のモデル重みは取得しません。
+
+repo rootで実行します。`--checkpoint-root`は絶対パスで明示します。
+
+```bash
+# コート・ボールの両方を取得し、SHA-256照合後に所定の相対パスへ配置
+.venv/bin/python -m src.utils.model_weights --checkpoint-root "$PWD/ckpt"
+
+# ネットワークを使わずに両ファイルの存在とSHA-256を再検査
+.venv/bin/python -m src.utils.model_weights --checkpoint-root "$PWD/ckpt" --verify-only
+```
+
+`--model court` / `--model ball`で1つだけ選べます。`--revision <Hub commit>`で配布版を固定できます。
+期待SHA-256とパスの正本は`PUBLISHED_WEIGHTS`です。既存ファイルが一致すれば再取得せず、
+不一致なら全選択の取得前に停止します。競合ファイルは利用者が明示的に退避してから再実行してください。
+欠損ファイルの取得には`force_download=True`を使い、Hubキャッシュがある場合やcommit固定時も
+Hubから本体を再取得します。通信失敗はキャッシュで補わずエラーにします。
+欠損（`--verify-only`時）、取得物・コピーの不一致もエラーです。検証済みの一時コピーだけを
+原子的に配置し、既存ファイルを上書きしません。
+
+公開版は学習状態を除去したLightning checkpointです。推論ローダーと標準pipelineのファイル名は変更していません。
+コートはbackboneを同梱しますが、現行ローダーは構築時に別途`third_party/dinov3`のコードと
+`ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`を必要とします。
+これらの上流資産の取得はこのCLIの対象外です。
+
+公開ファイルの再現は`src`外の[exportスクリプト](../../scripts/export_detector_weights.py)で行います。
+元checkpointのSHA-256を検査し、モデル全tensor・metadataを保持して学習状態を除去します。
+固定の内部archive名で出力するため、配置先に依存せず同じSHA-256になります。
+CPUで元版・推論版をstrict loadし、コート全dense head＋pose、ボールのheatmap・座標・confidenceの
+完全一致（`rtol=atol=0`）を検査します。GPU・学習は使用しません。
+
+```bash
+# 3つのパスは実際の絶対パスに置き換える。bundle内の既存重みは上書きしない
+CUDA_VISIBLE_DEVICES='' .venv/bin/python scripts/export_detector_weights.py \
+  --source-root /absolute/path/to/original/ckpt \
+  --output-root /absolute/path/to/new/bundle \
+  --external-asset-root /absolute/path/to/third_party
+
+# 既存bundleやHubからの再取得版をCPUで比較するときは同じ引数に--verify-onlyを追加
+```
+
 ## Adding a utility
 
 1. まず近い既存モジュールを探す。新規ファイル追加より、既存モジュールへの寄せ先があることが多い。
