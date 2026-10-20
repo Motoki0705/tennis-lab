@@ -15,14 +15,15 @@ from src.submodules.vendor.gvhmr.vitpose.heatmap_head import TopdownHeatmapSimpl
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
 
 REFERENCE_PATH = Path(__file__).with_name("fixtures") / "heatmap_reference.npz"
+UDP_REFERENCE_PATH = REFERENCE_PATH.with_name("udp_reference.npz")
 CASES = (
     "released_layout", "alternate_kernels", "extra_convs", "direct_projection",
     "identity_projection", "identity_head",
 )
 
 
-def _reference(case: str):
-    with np.load(REFERENCE_PATH, allow_pickle=False) as archive:
+def _reference(case: str, reference_path: Path = REFERENCE_PATH):
+    with np.load(reference_path, allow_pickle=False) as archive:
         prefix = case + "/"
         arrays = {key.removeprefix(prefix): archive[key] for key in archive.files if key.startswith(prefix)}
     config_values = json.loads(str(arrays.pop("config")))
@@ -36,9 +37,8 @@ def _reference(case: str):
     return config, state_dict, arrays
 
 
-@pytest.mark.parametrize("case", CASES)
-def test_legacy_checkpoint_heatmaps_and_udp_keypoints(case: str) -> None:
-    config, state_dict, reference = _reference(case)
+def _legacy_outputs(case: str, reference_path: Path):
+    config, state_dict, reference = _reference(case, reference_path)
     model = vitpose.VitPoseModel(
         nn.Conv2d(3, config.in_channels, 1), TopdownHeatmapSimpleHead(config)
     ).eval()
@@ -51,16 +51,49 @@ def test_legacy_checkpoint_heatmaps_and_udp_keypoints(case: str) -> None:
     with torch.inference_mode():
         heatmaps = model(torch.from_numpy(reference["images"]))
         averaged = (heatmaps[:1] + flip_heatmap_coco17(heatmaps[1:])) * 0.5
+    return heatmaps, averaged, reference
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_legacy_checkpoint_heatmaps(case: str) -> None:
+    # Keep the signed random weights and their strict heatmap tolerances.
+    heatmaps, averaged, reference = _legacy_outputs(case, REFERENCE_PATH)
     np.testing.assert_allclose(heatmaps.numpy(), reference["heatmaps"], rtol=1e-5, atol=1e-7)
     np.testing.assert_allclose(averaged.numpy(), reference["flip_average"], rtol=1e-5, atol=1e-7)
+
+
+@pytest.mark.parametrize("case", CASES)
+def test_legacy_checkpoint_udp_keypoints(case: str) -> None:
+    # UDP inverts the local log-heatmap Hessian. Flat random heatmaps amplify
+    # CPU roundoff into unstable coordinates, so decode the legacy model's
+    # peaked outputs instead. Keep both heatmap and coordinate tolerances.
+    heatmaps, averaged, reference = _legacy_outputs(case, UDP_REFERENCE_PATH)
+    rng = np.random.default_rng(0)
     for name, value in (("heatmaps", heatmaps), ("flip_average", averaged)):
         count = value.shape[0]
+        decode_options = {
+            "center": np.tile([[100., 200.]], (count, 1)),
+            "scale": np.tile([[0.9, 1.2]], (count, 1)), "use_udp": True, "kernel": 3,
+        }
         coords, scores = keypoints_from_heatmaps(
-            value.numpy(), center=np.tile([[100., 200.]], (count, 1)),
-            scale=np.tile([[0.9, 1.2]], (count, 1)), use_udp=True, kernel=3,
+            value.numpy(), **decode_options,
         )
         np.testing.assert_allclose(coords, reference[name + "_coordinates"], rtol=1e-5, atol=1e-4)
         np.testing.assert_allclose(scores, reference[name + "_confidence"], rtol=1e-5, atol=1e-7)
+
+        # Guard the fixture's conditioning: the peak gap must exceed the
+        # heatmap error budget. Also check UDP under a deterministic sample
+        # of perturbations within that budget, using the same coordinate tol.
+        maps = value.numpy()
+        top_two = np.sort(maps.reshape(*maps.shape[:2], -1), axis=-1)[..., -2:]
+        peak_gap = top_two[..., 1] - top_two[..., 0]
+        error_budget = np.sum(1e-5 * np.abs(top_two) + 1e-7, axis=-1)
+        assert np.all(peak_gap > error_budget)
+        error = (1e-5 * np.abs(maps) + 1e-7) * rng.uniform(-1, 1, maps.shape)
+        perturbed_coords, _ = keypoints_from_heatmaps(
+            (maps + error).astype(np.float32), **decode_options,
+        )
+        np.testing.assert_allclose(perturbed_coords, coords, rtol=1e-5, atol=1e-4)
 
 
 def test_builder_uses_official_huge_settings_and_loads_on_cpu(tmp_path, monkeypatch) -> None:
