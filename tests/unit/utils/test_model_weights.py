@@ -8,8 +8,12 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock
 
+import httpx
 import pytest
 import yaml
+from huggingface_hub import constants as hub_constants
+from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.utils import _http as hub_http
 
 from src.utils import model_weights as weights
 from src.utils.configuration import PathContractError
@@ -23,14 +27,14 @@ def test_release_paths_match_pipeline_and_documented_hashes() -> None:
     licenses = (PROJECT_ROOT / "LICENSES.md").read_text()
     configuration_keys = {"court": "court_kp", "ball": "ball_detection"}
     for weight in weights.PUBLISHED_WEIGHTS:
-        assert pipeline[configuration_keys[weight.name]]["checkpoint"] == weight.filename
+        assert (
+            pipeline[configuration_keys[weight.name]]["checkpoint"] == weight.filename
+        )
         assert f"`{weight.filename}` | `{weight.sha256}`" in licenses
 
 
 @pytest.fixture
-def published(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[dict[str, bytes], Mock]:
+def published_content(monkeypatch: pytest.MonkeyPatch) -> dict[str, bytes]:
     content = {"court": b"court checkpoint", "ball": b"ball checkpoint"}
     registry = tuple(
         weights.PublishedWeight(
@@ -38,6 +42,18 @@ def published(
         )
         for name, data in content.items()
     )
+    monkeypatch.setattr(weights, "PUBLISHED_WEIGHTS", registry)
+    return content
+
+
+@pytest.fixture
+def published(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    published_content: dict[str, bytes],
+) -> tuple[dict[str, bytes], Mock]:
+    content = published_content
+    registry = weights.PUBLISHED_WEIGHTS
     cache = tmp_path / "hub-cache"
     cache.mkdir()
     for weight in registry:
@@ -52,7 +68,6 @@ def published(
             )
         )
     )
-    monkeypatch.setattr(weights, "PUBLISHED_WEIGHTS", registry)
     monkeypatch.setattr(weights, "hf_hub_download", download)
     return content, download
 
@@ -73,6 +88,7 @@ def test_download_places_verified_assets_under_pipeline_paths(
             filename=weight.filename,
             repo_type="model",
             revision="fixed-release",
+            force_download=True,
         )
     assert download.call_count == 2
     assert not list(root.rglob("*.tmp"))
@@ -147,6 +163,91 @@ def test_bad_download_is_never_installed(
     assert download.call_count == 1
 
 
+@pytest.mark.parametrize("revision", ["main", "a" * 40], ids=["branch", "commit"])
+@pytest.mark.parametrize("method", ["HEAD", "GET"])
+@pytest.mark.parametrize("failure", ["timeout", "503"])
+def test_cli_rejects_http_failure_with_valid_hub_cache(
+    tmp_path: Path,
+    published_content: dict[str, bytes],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    revision: str,
+    method: str,
+    failure: str,
+) -> None:
+    cache = tmp_path / "hub-cache"
+    monkeypatch.setattr(hub_constants, "HF_HUB_CACHE", str(cache))
+    monkeypatch.setattr(hub_constants, "HF_HUB_DISABLE_IMPLICIT_TOKEN", True)
+    monkeypatch.setattr(hub_constants, "HF_TOKEN_PATH", str(tmp_path / "no-token"))
+    monkeypatch.setattr(hub_constants, "HF_HUB_OFFLINE", False)
+    weight = weights.PUBLISHED_WEIGHTS[1]
+    content = published_content[weight.name]
+    requests: list[str] = []
+    fail_requests = False
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request.method)
+        if fail_requests and request.method == method:
+            if failure == "timeout":
+                raise httpx.ReadTimeout("simulated Hub timeout", request=request)
+            return httpx.Response(503)
+        if request.method == "HEAD":
+            return httpx.Response(
+                200,
+                headers={
+                    "X-Repo-Commit": "a" * 40,
+                    "ETag": f'"{weight.sha256}"',
+                    "Content-Length": str(len(content)),
+                },
+            )
+        assert request.method == "GET"
+        return httpx.Response(200, content=content)
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        monkeypatch.setattr(hub_http, "get_session", lambda: client)
+        # Populate a real Hub blob, snapshot and branch ref through the actual
+        # downloader. Only its HTTP transport is replaced, including on failure.
+        cached = Path(
+            weights.hf_hub_download(
+                repo_id=weights.MODEL_REPO,
+                filename=weight.filename,
+                revision=revision,
+            )
+        )
+        assert cached.is_relative_to(cache)
+        assert hashlib.sha256(cached.read_bytes()).hexdigest() == weight.sha256
+        assert requests == ["HEAD", "GET"]
+        requests.clear()
+        fail_requests = True
+        root = tmp_path / "ckpt"
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "model_weights",
+                "--checkpoint-root",
+                str(root),
+                "--model",
+                weight.name,
+                "--revision",
+                revision,
+            ],
+        )
+        transport_error = httpx.ReadTimeout if failure == "timeout" else HfHubHTTPError
+        expected_error = ValueError if method == "HEAD" else transport_error
+        with pytest.raises(expected_error) as error:
+            weights.main()
+        # HEAD errors are chained by huggingface_hub; GET errors propagate directly.
+        underlying = error.value.__cause__ if method == "HEAD" else error.value
+        assert isinstance(underlying, transport_error)
+        if isinstance(underlying, HfHubHTTPError):
+            assert underlying.response.status_code == 503
+        assert requests == (["HEAD"] if method == "HEAD" else ["HEAD", "GET"])
+        assert not root.exists()
+        assert cached.read_bytes() == content
+        assert "Verified" not in capsys.readouterr().out
+
+
 def test_corrupted_copy_is_removed_before_publication(
     tmp_path: Path,
     published: tuple[dict[str, bytes], Mock],
@@ -209,7 +310,7 @@ def test_target_appearing_during_download_is_not_trusted(
     root = tmp_path / "ckpt"
     destination = root / weights.PUBLISHED_WEIGHTS[1].filename
 
-    def race(**kwargs: str) -> str:
+    def race(**kwargs: object) -> str:
         destination.parent.mkdir(parents=True)
         destination.write_bytes(b"unverified concurrent file")
         return str(cached_download(**kwargs))
