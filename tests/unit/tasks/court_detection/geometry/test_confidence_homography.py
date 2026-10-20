@@ -9,8 +9,10 @@ import numpy as np
 import pytest
 
 from src.tasks.court_detection.geometry.confidence_homography import (
+    PROSAC_OPTIONS,
     estimate_confidence_homography,
 )
+from src.tasks.court_detection.geometry.homography import court_template_xy
 
 
 def points() -> tuple[np.ndarray, np.ndarray]:
@@ -77,8 +79,16 @@ def test_scores_reorder_actual_solver_inputs_and_masks_return_semantic_order(
     )
     order = [5, 3, 1, 2, 4, 0, 6, 7, 8, 9]
     assert result.ranked_indices.tolist() == order
+    assert len(calls) == 3
     np.testing.assert_array_equal(calls[0][0], src[order])
-    assert calls[0][2].sampler == cv2.SAMPLING_PROSAC
+    np.testing.assert_array_equal(calls[1][0], src[order] * [-1, 1])
+    for call in calls[:2]:
+        np.testing.assert_array_equal(call[1], dst[order])
+        for name, value in PROSAC_OPTIONS.items():
+            assert getattr(call[2], name) == value
+        assert call[2].threshold == 1
+    np.testing.assert_array_equal(calls[2][0], src)
+    np.testing.assert_array_equal(calls[2][1], dst)
     assert result.inliers.all()
     np.testing.assert_allclose(result.projected, dst, atol=1e-4)
 
@@ -100,7 +110,9 @@ def test_degenerate_or_insufficient_input_has_no_fallback(kind: str) -> None:
         src, dst, np.ones(len(src)), reprojection_threshold_px=1
     )
     assert result.matrix is None
-    assert result.status != "ok"
+    assert result.status == (
+        "insufficient_points" if kind == "too_few" else "degenerate_correspondences"
+    )
     assert not result.inliers.any()
     assert np.isnan(result.projected).all()
 
@@ -158,9 +170,10 @@ def test_highest_confidence_wrong_point_can_be_rejected() -> None:
 
 
 @pytest.mark.parametrize("crosses_pole", [False, True])
-def test_exact_four_points_and_projection_pole(crosses_pole: bool) -> None:
+@pytest.mark.parametrize("x_sign", [-1, 1])
+def test_exact_four_points_and_projection_pole(crosses_pole: bool, x_sign: int) -> None:
     src = np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=float)
-    matrix = np.array([[100, 0, 10], [0, 100, 20], [0, 0, 1.0]])
+    matrix = np.array([[100 * x_sign, 0, 10], [0, 100, 20], [0, 0, 1.0]])
     if crosses_pole:
         matrix[2] = [1, 0, -0.5]
     dst = cv2.perspectiveTransform(src[None], matrix)[0]
@@ -177,3 +190,109 @@ def test_exact_four_points_and_projection_pole(crosses_pole: bool) -> None:
         assert result.status == "ok"
         assert result.inliers.sum() == 4
         np.testing.assert_allclose(result.projected, dst, atol=1e-5)
+
+
+@pytest.mark.parametrize("y_sign", [-1, 1], ids=["camera_view", "preserving"])
+@pytest.mark.parametrize("with_outliers", [False, True])
+def test_court_template_supports_both_orientations_and_equivalent_source_frames(
+    y_sign: int, with_outliers: bool
+) -> None:
+    template = court_template_xy().astype(np.float64)
+    matrix = np.array([[30, 3, 640], [2, y_sign * 20, 400], [0.005, 0.01, 1]])
+    truth = cv2.perspectiveTransform(template[None], matrix)[0]
+    observed = truth.copy()
+    scores = np.linspace(0.99, 0.6, len(template))
+    scores[1:] = scores[1:][::-1]
+    if with_outliers:
+        observed += np.random.default_rng(4).normal(0, 0.1, observed.shape)
+        # Includes the highest-confidence point and noncontiguous semantic IDs.
+        observed[[0, 7, 10]] += [90, -70]
+    result = estimate_confidence_homography(
+        template, observed, scores, reprojection_threshold_px=1
+    )
+    reflection = np.diag([-1.0, 1.0, 1.0])
+    reflected_template = template * [-1, 1]
+    reflected = estimate_confidence_homography(
+        reflected_template, observed, scores, reprojection_threshold_px=1
+    )
+    assert result.status == reflected.status == "ok"
+    assert result.matrix is not None and reflected.matrix is not None
+    # H_reflected @ F == H, including the projective denominator, so changing
+    # source handedness cannot change pixel errors, masks or downstream points.
+    np.testing.assert_allclose(reflected.matrix @ reflection, result.matrix, atol=1e-7)
+    np.testing.assert_allclose(reflected.projected, result.projected, atol=1e-6)
+    np.testing.assert_allclose(reflected.residuals_px, result.residuals_px, atol=1e-6)
+    np.testing.assert_array_equal(reflected.ranked_indices, result.ranked_indices)
+    np.testing.assert_array_equal(reflected.fit_inliers, result.fit_inliers)
+    np.testing.assert_array_equal(reflected.inliers, result.inliers)
+    assert np.max(np.linalg.norm(result.projected - truth, axis=1)) < 0.5
+    expected_mask: np.ndarray = np.ones(len(template), dtype=bool)
+    if with_outliers:
+        expected_mask[[0, 7, 10]] = False
+    np.testing.assert_array_equal(result.fit_inliers, expected_mask)
+    expected, _ = cv2.findHomography(
+        template[expected_mask], observed[expected_mask], method=0
+    )
+    np.testing.assert_allclose(result.matrix, expected, atol=1e-10)
+
+
+def test_both_solver_orientations_failing_preserves_explicit_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src, dst = points()
+    calls = []
+
+    def fail(*args: Any, **kwargs: Any) -> tuple[None, None]:
+        calls.append(args)
+        return None, None
+
+    monkeypatch.setattr(cv2, "findHomography", fail)
+    result = estimate_confidence_homography(
+        src, dst, np.ones(len(src)), reprojection_threshold_px=1
+    )
+    assert len(calls) == 2
+    assert result.status == "prosac_failed"
+    assert result.matrix is None
+    assert not result.fit_inliers.any()
+    assert not result.inliers.any()
+    assert np.isnan(result.projected).all()
+    assert np.isnan(result.residuals_px).all()
+
+
+@pytest.mark.parametrize("equal_cost", [False, True])
+def test_orientation_candidates_compete_on_pixel_cost_before_original_frame_refit(
+    monkeypatch: pytest.MonkeyPatch,
+    equal_cost: bool,
+) -> None:
+    src, dst = points()
+    correct, _ = cv2.findHomography(src, dst, method=0)
+    assert correct is not None
+    wrong = correct.copy()
+    if not equal_cost:
+        wrong[0, 2] += 40
+    mask: np.ndarray = np.ones((len(src), 1), dtype=np.uint8)
+    mask[-1] = 0
+    expected_mask = np.ones_like(mask, dtype=bool) if equal_cost else mask.astype(bool)
+    original = cv2.findHomography
+    calls = 0
+
+    def solve(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return wrong, np.ones_like(mask)
+        if calls == 2:
+            return correct @ np.diag([-1.0, 1.0, 1.0]), mask
+        np.testing.assert_array_equal(args[0], src[expected_mask[:, 0]])
+        np.testing.assert_array_equal(args[1], dst[expected_mask[:, 0]])
+        assert kwargs == {"method": 0}
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(cv2, "findHomography", solve)
+    result = estimate_confidence_homography(
+        src, dst, np.ones(len(src)), reprojection_threshold_px=1
+    )
+    assert calls == 3
+    assert result.status == "ok"
+    np.testing.assert_array_equal(result.fit_inliers, expected_mask[:, 0])
+    np.testing.assert_allclose(result.projected, dst, atol=1e-4)

@@ -54,6 +54,9 @@ def estimate_confidence_homography(
     Stable descending score order breaks ties by input index. USAC rejects
     degenerate samples and expands the ranked sampling pool. MSAC evaluates
     geometric consensus, followed by least-squares/LM on its inliers only.
+    USAC's oriented-sample check excludes reflections, so both source frames
+    (original and x-reflected) are scored in image pixels before the same refit.
+    All returned coordinates/masks retain the caller's template/semantic order.
     The seed, iteration budget and single-thread setting are fixed for repeatable
     inference. Threshold units are original image pixels (caller-owned scale).
     """
@@ -97,9 +100,30 @@ def estimate_confidence_homography(
     for name, value in PROSAC_OPTIONS.items():
         setattr(params, name, value)
     params.threshold = float(reprojection_threshold_px)
-    # Final least-squares/LM is explicit below; do not polish twice.
-    initial, mask = cv2.findHomography(src[order], dst[order], params)
-    if initial is None or mask is None:
+    # Score both source handednesses explicitly with the same PROSAC settings.
+    # With F = diag(-1, 1, 1), H_reflected @ F maps the original template to
+    # the same image points: projection and pixel thresholds are unchanged.
+    # Compare truncated squared pixel reprojection costs; ties keep the
+    # original source frame. Final least-squares/LM remains in caller units.
+    mask = None
+    best_cost = np.inf
+    for x_sign in (1.0, -1.0):
+        frame = np.diag([x_sign, 1.0, 1.0])
+        initial, candidate_mask = cv2.findHomography(
+            src[order] * [x_sign, 1.0], dst[order], params
+        )
+        if initial is None or candidate_mask is None:
+            continue
+        matrix = np.asarray(initial, dtype=np.float64) @ frame
+        homogeneous = np.c_[src[order], np.ones(len(order))] @ matrix.T
+        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+            projected = homogeneous[:, :2] / homogeneous[:, 2, None]
+            squared_error = np.sum((projected - dst[order]) ** 2, axis=1)
+        squared_error[~np.isfinite(squared_error)] = np.inf
+        cost = float(np.minimum(squared_error, reprojection_threshold_px**2).sum())
+        if cost < best_cost:
+            best_cost, mask = cost, candidate_mask
+    if mask is None:
         return failure("prosac_failed")
     fit_mask[order] = np.asarray(mask).reshape(-1).astype(bool)
     if fit_mask.sum() < 4 or not _has_support(src[fit_mask], dst[fit_mask]):

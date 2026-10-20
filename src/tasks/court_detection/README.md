@@ -192,6 +192,10 @@ Python APIでは同じresolverと`checkpoint_role=PathRole.ARTIFACT`を渡し、
 
 `CourtPredictor.predict(rgb, postprocess="hybrid")`はraw headとhomographyを分けて返します。
 ordered KP14とLINEでHを推定し、失敗理由を返します。別Hへの代替はありません。
+KPだけのPROSACは、USACの向き判定に対応して元のテンプレートとx軸を反転した
+テンプレートの両方を評価します。反転側のHは元の座標系へ合成して戻し、同じpixel閾値で
+打ち切った再投影誤差の二乗和が小さい側のinlierを選びます（同点は元の向き）。
+最終の最小二乗再当てはめは元のテンプレートで行い、両方が不成立なら`prosac_failed`です。
 下流の採用点数`max_kp`は4〜8です。`downstream_keypoints()`は再投影14点と
 画像内validityを返し、失敗時はゼロ座標・全不可視です。
 raw KPは原画像pixel、raw LINEはnative gridで、結果は両サイズを保持します。
