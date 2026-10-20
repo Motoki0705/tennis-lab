@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 # Ported and modified by Tennis-Lab for standalone heatmap decoding.
 # Selected ViTPose evaluation/post-processing functions are collected here,
 # retaining the decoding behavior and omitting unrelated upstream helpers.

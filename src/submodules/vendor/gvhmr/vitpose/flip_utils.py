@@ -1,3 +1,6 @@
+# Source: Motoki0705/GVHMR, commit 900e8c4471e80bb6db5cb14c404c1a0766aba5f4
+# https://github.com/Motoki0705/GVHMR/blob/900e8c4471e80bb6db5cb14c404c1a0766aba5f4/hmr4d/utils/geo/flip_utils.py
+# Retained flip_heatmap_coco17 without changes; license text: ../LICENSE
 """Flip-test helpers (trimmed from hmr4d.utils.geo.flip_utils)."""
 
 
