@@ -185,6 +185,8 @@ def test_cli_dry_run_and_unknown_write_gate(tmp_path: Path) -> None:
     root.mkdir()
     new = initialize(root)
     (root / "README.md").write_text(f"commit {OLD}\ncommit 9876abc\n")
+    git(root, "add", "README.md")
+    git(root, "commit", "-qm", "record unresolved reference")
     mapping = tmp_path / "commit-map"
     mapping.write_text(f"old new\n{OLD} {new}\n")
     report = tmp_path / "report.json"
@@ -212,6 +214,36 @@ def test_cli_dry_run_and_unknown_write_gate(tmp_path: Path) -> None:
     )
     assert f"commit {new}\ncommit 9876abc\n" == (root / "README.md").read_text()
     assert json.loads(report.read_text())["applied"] is True
+
+
+def test_write_refuses_existing_tracked_changes(tmp_path: Path) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    new = initialize(root)
+    path = root / "README.md"
+    path.write_text(f"uncommitted work and commit {OLD}\n")
+    before = path.read_bytes()
+    mapping = tmp_path / "commit-map"
+    mapping.write_text(f"old new\n{OLD} {new}\n")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-B",
+            str(SCRIPT),
+            "--repo",
+            str(root),
+            "--commit-map",
+            str(mapping),
+            "--report",
+            str(tmp_path / "report.json"),
+            "--allow-unresolved",
+            "--write",
+        ],
+        capture_output=True,
+    )
+    assert result.returncode != 0
+    assert b"clean tracked checkout" in result.stderr
+    assert path.read_bytes() == before
 
 
 def test_offline_issue_export_only(tmp_path: Path, remap: Any) -> None:
