@@ -68,6 +68,7 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
             "gif_width",
             "gif_fps",
             "run_id",
+            "run",
         },
     )
     paths = BallRuntimePaths.from_config(config)
@@ -133,6 +134,8 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
     run_id = cast(str, typed(raw, "run_id", str, path="configuration"))
     if not run_id.strip() or run_id in (".", "..") or "/" in run_id or "\\" in run_id:
         raise ValueError("run_id must be a nonempty filename component")
+    run = exact_mapping(raw["run"], path="run", required={"output_dir"})
+    output_dir = cast(str, typed(run, "output_dir", str, path="run"))
     return LearningStagesConfig(
         pretraining,
         posttraining,
@@ -144,7 +147,7 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
         sizes["height"],
         sizes["gif_width"],
         gif_fps,
-        paths.output(f"ball_detection/visualize/presentation/learning_stages/{run_id}"),
+        paths.output(output_dir) / "presentation",
     )
 
 

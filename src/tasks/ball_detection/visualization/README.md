@@ -10,7 +10,8 @@ CPUだけで、事前学習 → 事後学習 → 継続学習の60秒のMP4・GI
 `intro / phase1 / handoff12 / phase2 / phase3` の静止画を出力します。
 設定の正本は [`configs/visualize_learning_stages.yaml`](../configs/visualize_learning_stages.yaml)。
 保存先は `paths.output_root` 配下の
-`ball_detection/visualize/presentation/learning_stages/<tennis_run_id>/` です。
+`ball_detection/visualize/learning_stages/<tennis_run_id>/presentation/` です。
+同じrunの `hydra/` にCLIログを保存し、可視化ファイルの保存先とは分けます。
 既存ディレクトリには上書きしません。worktreeから元repoへ素材を保存するときは、
 `paths.output_root=<元repoの絶対パス>/outputs` を明示してください。
 

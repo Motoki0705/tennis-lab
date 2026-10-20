@@ -119,7 +119,7 @@ _OUTPUT_KIND_CONTRACTS = {
     ),
     "evaluate": ("ball.eval", "ball.evaluate_manifest", "player_detection.evaluate", "slcs.evaluate"),
     "visualize": (
-        "ball.preview", "ball.visualize", "blcs.preview_augmentation", "blcs.visualize",
+        "ball.preview", "ball.visualize", "ball.learning_stages", "blcs.preview_augmentation", "blcs.visualize",
         "court_detection.preview_augmentation", "court_detection.visualize",
         "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
     ),
@@ -176,6 +176,8 @@ def test_all_task_cli_output_contracts(
         ]
     if boundary.module == "src.tasks.slcs.scripts.generate_dataset":
         overrides += ["data.dataset_root=smoke/clips"]
+    if boundary.validator_key == "ball.learning_stages":
+        overrides += ["input_panel=schematic"]
     if boundary.module == "src.tasks.ball_detection.training.hybrid.runner":
         overrides += [
             "manifest=smoke/windows.json", "initialization.mode=query",
