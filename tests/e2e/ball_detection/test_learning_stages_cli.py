@@ -74,7 +74,14 @@ def test_learning_stages_cli_exports_video_gif_stills_and_manifest(
     assert (
         manifest["elements"]["phase2"]["final_full_mean_error_px"] == 15.384655889330702
     )
-    assert len(manifest["input_files"]) == 8
+    assert len(manifest["input_files"]) == 10
+    assert any(
+        path.endswith("learning_stages/scalars.json")
+        for path in manifest["input_files"]
+    )
+    assert all(
+        not path.endswith("train-summary.jsonl") for path in manifest["input_files"]
+    )
     assert len(manifest["git_commit"]) == 40
     repeated = subprocess.run(
         command,

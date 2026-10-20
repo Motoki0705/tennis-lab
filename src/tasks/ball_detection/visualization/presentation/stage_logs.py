@@ -12,6 +12,9 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.ball_detection.visualization.presentation.training_summary import (
+    read_training_summary,
+)
 from src.tasks.base.visualization.presentation import CurveSeries
 from src.utils.checksum import dual_sha256
 
@@ -111,11 +114,15 @@ def trailing_mean(values: NDArray[np.float64], window: int = 20) -> NDArray[np.f
     )
 
 
-def _load_run(path: Path, *, schema: str, offset: int, posttraining: bool) -> StageRun:
-    metrics, training = (
-        _rows(path / "metrics.jsonl"),
-        _rows(path / "train-summary.jsonl"),
-    )
+def _load_run(
+    path: Path,
+    training: tuple[dict[str, Any], ...],
+    *,
+    schema: str,
+    offset: int,
+    posttraining: bool,
+) -> StageRun:
+    metrics = _rows(path / "metrics.jsonl")
     recipe, best = _object(path / "config.json")["recipe"], _object(path / "best.json")
     if (
         any(row.get("schema") != schema for row in metrics)
@@ -210,7 +217,9 @@ def _load_run(path: Path, *, schema: str, offset: int, posttraining: bool) -> St
     )
 
 
-def load_stage_logs(pretraining: Path, posttraining: Path) -> StageLogs:
+def load_stage_logs(
+    pretraining: Path, posttraining: Path, *, training_summary: Path
+) -> StageLogs:
     """Read both bundles and reject mismatched lineage or evaluation contracts.
 
     The checkpoint hashes are recorded evidence, not a request to open weights.
@@ -220,17 +229,28 @@ def load_stage_logs(pretraining: Path, posttraining: Path) -> StageLogs:
     files = [
         path / name
         for path in (pretraining, posttraining)
-        for name in ("metrics.jsonl", "train-summary.jsonl", "config.json", "best.json")
+        for name in (
+            "metrics.jsonl",
+            "config.json",
+            "best.json",
+            "artifact-manifest.json",
+        )
     ]
+    files.extend([training_summary, training_summary.with_name("derivation.json")])
     hashes = {str(path): dual_sha256(path) for path in files}
+    training = read_training_summary(
+        training_summary, {"pretraining": pretraining, "posttraining": posttraining}
+    )
     first = _load_run(
         pretraining,
+        training["pretraining"],
         schema="mdd_heatmap_pretraining_evaluation.v1",
         offset=0,
         posttraining=False,
     )
     second = _load_run(
         posttraining,
+        training["posttraining"],
         schema="mdd_coordinate_evaluation.v1",
         offset=first.steps,
         posttraining=True,

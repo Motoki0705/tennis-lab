@@ -5,6 +5,7 @@ defaults:
 runs:
   pretraining: knowledge/runs/run-i1050-convnext-v2-pretrain-s42
   posttraining: knowledge/runs/run-i1049-convnext-query-posttrain-s42
+training_summary: assets/ball_detection/learning_stages/scalars.json
 # Required: real_clip | schematic. Never switch panels on a read failure.
 input_panel: ???
 # real_clip: {store_dir: <data-root-relative store>, clip_id: <id>, frame: <window start>}

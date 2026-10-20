@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "kind": "measured_learning_scalar_summary",
+  "policy": "Preserve selected original columns and every step/value; no smoothing, resampling, normalization or scheduler reconstruction.",
+  "sources": {
+    "pretraining": {
+      "source_path": "knowledge/runs/run-i1050-convnext-v2-pretrain-s42/train-summary.jsonl",
+      "source_manifest": "knowledge/runs/run-i1050-convnext-v2-pretrain-s42/artifact-manifest.json#/files/0",
+      "sha256": "6872eef3cabed8c724d8649ec506c6c4eb27fab5f612c82d5382e033f8cb999c",
+      "size_bytes": 601196,
+      "columns": [
+        "epoch",
+        "global_step",
+        "train_loss",
+        "learning_rate"
+      ],
+      "count": 1200,
+      "steps": {
+        "first": 50,
+        "last": 60000,
+        "stride": 50
+      }
+    },
+    "posttraining": {
+      "source_path": "knowledge/runs/run-i1049-convnext-query-posttrain-s42/train-summary.jsonl",
+      "source_manifest": "knowledge/runs/run-i1049-convnext-query-posttrain-s42/artifact-manifest.json#/files/0",
+      "sha256": "c4cedac86e4047077e618e40010713222e8c06a4894d2f5680dc34c00b93e9c0",
+      "size_bytes": 371113,
+      "columns": [
+        "epoch",
+        "global_step",
+        "train_loss",
+        "learning_rate",
+        "encoder_frozen",
+        "encoder_learning_rate"
+      ],
+      "count": 1200,
+      "steps": {
+        "first": 50,
+        "last": 60000,
+        "stride": 50
+      }
+    }
+  },
+  "output": "scalars.json",
+  "sha256": "a769422858258f7dc2663f72d247dfd572fb5bab732323efd27eb878048ea99d"
+}

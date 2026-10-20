@@ -40,6 +40,7 @@ class InputClip:
 class LearningStagesConfig:
     pretraining: Path
     posttraining: Path
+    training_summary: Path
     input_panel: Literal["real_clip", "schematic"]
     input_clip: InputClip | None
     durations: Mapping[str, float]
@@ -59,6 +60,7 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
         required={
             "paths",
             "runs",
+            "training_summary",
             "input_panel",
             "input_clip",
             "durations",
@@ -78,6 +80,9 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
     pretraining = paths.project(cast(str, typed(runs, "pretraining", str, path="runs")))
     posttraining = paths.project(
         cast(str, typed(runs, "posttraining", str, path="runs"))
+    )
+    training_summary = paths.project(
+        cast(str, typed(raw, "training_summary", str, path="configuration"))
     )
     panel = typed(raw, "input_panel", str, path="configuration")
     if panel not in ("real_clip", "schematic"):
@@ -139,6 +144,7 @@ def build_learning_stages_config(config: DictConfig) -> LearningStagesConfig:
     return LearningStagesConfig(
         pretraining,
         posttraining,
+        training_summary,
         cast(Literal["real_clip", "schematic"], panel),
         clip,
         durations,
