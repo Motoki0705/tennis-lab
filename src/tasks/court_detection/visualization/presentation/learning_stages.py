@@ -19,7 +19,6 @@ from matplotlib.figure import Figure
 from matplotlib.patches import FancyBboxPatch
 from numpy.typing import NDArray
 from omegaconf import DictConfig, OmegaConf
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from src.tasks.base.visualization.presentation import (
     ArchitectureState,
@@ -38,6 +37,7 @@ from src.tasks.base.visualization.presentation import (
 from src.tasks.court_detection.visualization.presentation.configuration import (
     TAG_SCHEMA,
     CourtPresentationRequest,
+    default_scalar_summary,
     default_tags,
 )
 from src.utils.paths import PROJECT_ROOT
@@ -87,12 +87,48 @@ def _validate_b_config(config: DictConfig) -> None:
             )
 
 
+def _read_scalar_summary(bundle: Path, summary: Path) -> Mapping[str, Any]:
+    payload = json.loads(summary.read_text())
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"schema_version", "kind", "source_sha256", "scalars"}
+        or type(payload["schema_version"]) is not int
+        or payload["schema_version"] != 1
+        or payload["kind"] != "court_learning_scalars"
+        or not isinstance(payload["scalars"], dict)
+    ):
+        raise ValueError("Invalid court learning scalar summary schema")
+    sources = json.loads((bundle / "tensorboard-sources.json").read_text())
+    training = [source for source in sources["sources"] if source["role"] == "training"]
+    if len(training) != 1 or payload["source_sha256"] != training[0]["sha256"]:
+        raise ValueError(
+            "Scalar summary source SHA-256 differs from the recorded training event"
+        )
+    for tag, values in payload["scalars"].items():
+        if (
+            not isinstance(tag, str)
+            or not isinstance(values, dict)
+            or set(values) != {"steps", "values", "wall_times"}
+            or any(not isinstance(value, list) for value in values.values())
+            or len({len(value) for value in values.values()}) != 1
+            or any(type(step) is not int for step in values["steps"])
+            or any(
+                type(value) not in (int, float) or not math.isfinite(value)
+                for key in ("values", "wall_times")
+                for value in values[key]
+            )
+        ):
+            raise ValueError(f"Invalid scalar arrays for {tag}")
+    return cast(Mapping[str, Any], payload["scalars"])
+
+
 def load_court_run(
     bundle: Path,
     *,
     tags: Mapping[str, str] | None = None,
+    scalar_summary: Path | None = None,
 ) -> CourtRunLog:
-    """Load every required scalar without reservoir sampling or tag fallback.
+    """Load the compact measured summary without sampling or tag fallback.
 
     Train/val event steps are zero-based update indices; +1 converts them to
     completed optimizer updates. LR-monitor already records epoch-start update
@@ -115,28 +151,22 @@ def load_court_run(
     ):
         raise ValueError("Checkpoint selection has an inconsistent final step/epoch")
     per_epoch = total // epochs
-    files = sorted(bundle.glob("tensorboard/version_0/events.out.tfevents.*"))
-    if not files:
-        raise FileNotFoundError(f"No TensorBoard events in {bundle}")
-    accumulator = EventAccumulator(
-        str(bundle / "tensorboard/version_0"),
-        size_guidance={"scalars": 0},
-        purge_orphaned_data=False,
-    ).Reload()
-    available = set(accumulator.Tags()["scalars"])
+    summary = default_scalar_summary() if scalar_summary is None else scalar_summary
+    scalars = _read_scalar_summary(bundle, summary)
+    available = set(scalars)
     missing = set(tag_map.values()) - available
     if missing:
         raise ValueError(f"Missing required TensorBoard tags: {sorted(missing)}")
     series: dict[str, CurveSeries] = {}
     val_every = int(config.training.trainer.check_val_every_n_epoch)
     for name, tag in tag_map.items():
-        values = accumulator.Scalars(tag)
+        values = scalars[tag]
         offset = 0 if name == "learning_rate" else 1
-        steps = np.asarray([value.step + offset for value in values], dtype=np.int64)
+        steps = np.asarray(values["steps"], dtype=np.int64) + offset
         curve = CurveSeries(
             name,
             steps,
-            np.asarray([value.value for value in values], dtype=np.float64),
+            np.asarray(values["values"], dtype=np.float64),
             "points" if name.startswith("val_") else "line",
         )
         expected_steps: NDArray[np.int64]
@@ -182,9 +212,10 @@ def load_court_run(
             "checkpoint-selection.json",
             "tensorboard-derivation.json",
             "tensorboard-sources.json",
-            "tensorboard-lr-derivation.json",
+            "artifact-manifest.json",
         )
     ]
+    evidence.extend([summary, summary.with_name("derivation.json")])
     return CourtRunLog(
         bundle=bundle,
         config=config,
@@ -197,10 +228,7 @@ def load_court_run(
         best_epoch=best_epoch,
         best_checkpoint=best_checkpoint,
         checkpoint_sha256=checkpoint_hash,
-        input_sha256={
-            path.relative_to(bundle).as_posix(): _sha256(path)
-            for path in [*evidence, *files]
-        },
+        input_sha256={str(path.resolve()): _sha256(path) for path in evidence},
     )
 
 
@@ -621,7 +649,9 @@ def render_learning_stages(request: CourtPresentationRequest) -> Path:
     """Export the fixed story and its complete input/measurement provenance."""
     if request.output_dir.exists() or request.output_dir.is_symlink():
         raise FileExistsError(f"output_dir already exists: {request.output_dir}")
-    run = load_court_run(request.bundle, tags=request.tags)
+    run = load_court_run(
+        request.bundle, tags=request.tags, scalar_summary=request.scalar_summary
+    )
     story = CourtLearningStory(
         run,
         seconds=request.seconds,
@@ -639,7 +669,11 @@ def render_learning_stages(request: CourtPresentationRequest) -> Path:
         "schema_version": 1,
         "git_commit": commit,
         "resolved_config": request.resolved_config,
-        "inputs": {"bundle": str(run.bundle), "sha256": run.input_sha256},
+        "inputs": {
+            "bundle": str(run.bundle),
+            "sha256_paths": "absolute",
+            "sha256": run.input_sha256,
+        },
         "checkpoint": {
             "path": run.best_checkpoint,
             "sha256": run.checkpoint_sha256,
@@ -649,7 +683,7 @@ def render_learning_stages(request: CourtPresentationRequest) -> Path:
         },
         "provenance": {
             "run_id": run.bundle.name,
-            "measured": "TensorBoard train/val scalars and the restored original lr-AdamW scalars",
+            "measured": "Compact summary preserving original TensorBoard train/val and lr-AdamW tag, step, value and wall_time",
             "schematic": "Architecture, mixed-batch particles, real-pose supervision gate, checkpoint and head highlights",
             "pipeline_checkpoint_difference": "This is the fully frozen DINOv3-B run from #983, not pipeline checkpoint court_detection/multiscale_depth3/b863df1f01f0.ckpt. Numerical slide annotations must identify the B run.",
         },

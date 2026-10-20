@@ -4,14 +4,16 @@ defaults:
 
 hydra:
   run:
-    # Keep Hydra's early directory creation outside the exclusive media target.
-    dir: ${tennis_lab_path:output,${paths.output_root},court_detection/visualize/presentation/_hydra/${tennis_run_id:}}
+    # Hydra and the exclusive media target are siblings within one run.
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
   output_subdir: null
   job:
     chdir: false
 
 run_bundle: knowledge/runs/run-i983-court-dinov3-b-s42
-output_dir: court_detection/visualize/presentation/learning_stages/${tennis_run_id:}
+scalar_summary: assets/court_detection/learning_stages/scalars.json
+run:
+  output_dir: ${tennis_output:court_detection,visualize,learning_stages,${tennis_run_id:}}
 tags:
   train_loss: train/loss
   train_kp: train/loss_kp

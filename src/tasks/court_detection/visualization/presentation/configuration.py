@@ -48,12 +48,14 @@ _DURATION_SCHEMA = StrictConfigSchema(
         for name in ("intro", "warmup", "train", "select", "handoff")
     },
 )
+_RUN_SCHEMA = StrictConfigSchema(name="run", fields={"output_dir": ConfigField.of(str)})
 _SCHEMA = StrictConfigSchema(
     name="court learning presentation",
     fields={
         "paths": ConfigField.of(dict),
         "run_bundle": ConfigField.of(str),
-        "output_dir": ConfigField.of(str),
+        "scalar_summary": ConfigField.of(str),
+        "run": ConfigField.mapping(_RUN_SCHEMA),
         "tags": ConfigField.mapping(TAG_SCHEMA),
         "seconds": ConfigField.mapping(_DURATION_SCHEMA),
         "fps": ConfigField.of(int, float),
@@ -68,6 +70,7 @@ _SCHEMA = StrictConfigSchema(
 @dataclass(frozen=True)
 class CourtPresentationRequest:
     bundle: Path
+    scalar_summary: Path
     output_dir: Path
     tags: Mapping[str, str]
     seconds: Mapping[str, float]
@@ -86,6 +89,20 @@ def default_tags() -> Mapping[str, str]:
     return cast(
         Mapping[str, str], TAG_SCHEMA.validate(cast(Mapping[str, object], values))
     )
+
+
+def default_scalar_summary() -> Path:
+    """Resolve the composition-owned scalar asset for the bundle-only API."""
+    config = OmegaConf.load(DEFAULT_CONFIG)
+    paths = OmegaConf.to_container(
+        OmegaConf.load(DEFAULT_CONFIG.parent / "paths/default.yaml"), resolve=True
+    )
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(
+            cast(Mapping[str, object], paths), repository_root=PROJECT_ROOT
+        )
+    )
+    return cast(Path, resolver.resolve(PathRole.PROJECT, str(config.scalar_summary)))
 
 
 def build_request(config: DictConfig) -> CourtPresentationRequest:
@@ -110,13 +127,18 @@ def build_request(config: DictConfig) -> CourtPresentationRequest:
     if cast(int, raw["width"]) % 2 or cast(int, raw["height"]) % 2:
         raise ValueError("width and height must be even for H.264")
     tags = cast(Mapping[str, str], raw["tags"])
+    run = cast(Mapping[str, str], raw["run"])
     if any(not value.strip() for value in tags.values()) or len(
         set(tags.values())
     ) != len(tags):
         raise ValueError("tags must be nonempty and unique")
     return CourtPresentationRequest(
         bundle=resolver.resolve(PathRole.PROJECT, cast(str, raw["run_bundle"])),
-        output_dir=resolver.resolve(PathRole.OUTPUT, cast(str, raw["output_dir"])),
+        scalar_summary=resolver.resolve(
+            PathRole.PROJECT, cast(str, raw["scalar_summary"])
+        ),
+        output_dir=resolver.resolve(PathRole.OUTPUT, run["output_dir"])
+        / "presentation",
         tags=tags,
         seconds=seconds,
         fps=float(cast(float, raw["fps"])),
