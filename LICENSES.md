@@ -194,13 +194,19 @@ byte単位で同一です。パスは `src/submodules/vendor/gvhmr/` からの�
 ### 公開先と重みの識別情報
 
 重みの公開先はHugging Face Model repo
-[`Motoki0705/tennis-lab-models`](https://huggingface.co/Motoki0705/tennis-lab-models)です。
+[`Motoki098/tennis-lab-models`](https://huggingface.co/Motoki098/tennis-lab-models)です。
 次のパスはModel repo内、およびTennis-Labの `ckpt/` からの相対パスです。
 
 | 重みのファイル | SHA-256 | ライセンス |
 | --- | --- | --- |
-| `ball_detection/i935-mixed-ft-s42-epoch09.ckpt` | `37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36` | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en) |
-| `court_detection/multiscale_depth3/b863df1f01f0.ckpt` | `b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383` | [DINOv3 License](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md) |
+| `ball_detection/i935-mixed-ft-s42-epoch09.ckpt` | `489bb90fb6bb4deab81e507b17e698fbe40ee945533196e78d6c69e4ee3f5828` | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en) |
+| `court_detection/multiscale_depth3/b863df1f01f0.ckpt` | `bca48cdbdf0b26847b3f650cc4249397b2f7c0a963ba4801b7cd111c6e81522c` | [DINOv3 License](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md) |
+
+公開版はLightning形式の推論用checkpointで、モデル全重み（コートのbackboneを含む）・
+`hyper_parameters`・Lightningのバージョン情報を保持し、optimizer・scheduler・loop・callback・
+学習進捗を除去しています。ファイル名は学習版と同じですが、上表のSHA-256は**公開する推論版**の値です。
+取得とSHA検査は[重み取得CLI](src/utils/README.md#published-detector-weights)、
+再現は[exportスクリプト](scripts/export_detector_weights.py)を参照してください。
 
 ### 重みのライセンスの根拠
 
@@ -243,7 +249,7 @@ checkpoint全体を同契約の条件で配布し、契約全文を添付しま�
 ### サンプルdatasetの利用条件
 
 公開先はHugging Face Dataset repo
-[`Motoki0705/tennis-lab-multiview-sample`](https://huggingface.co/datasets/Motoki0705/tennis-lab-multiview-sample)です。
+[`Motoki098/tennis-lab-multiview-sample`](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)です。
 対象はMeijiの `video_003` をClip Studioで同期・書き出しした3カメラclip全体で、
 ライセンスは[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)です。
 被撮影者の同意に関する記録は[第三者のデータ・論文](#第三者のデータ論文)のMeiji行を参照してください。
@@ -257,12 +263,12 @@ checkpoint全体を同契約の条件で配布し、契約全文を添付しま�
 CCは肖像・プライバシー等の権利を一律に許諾するものではありません。
 
 帰属表示例: Motoki0705, “Tennis-Lab Multiview Sample”, 2026,
-[配布ページ](https://huggingface.co/datasets/Motoki0705/tennis-lab-multiview-sample),
+[配布ページ](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample),
 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)。
 
 ### Hugging Faceのlicenseメタデータ
 
-Model repo `Motoki0705/tennis-lab-models` のmodel cardには次を設定します。
+Model repo `Motoki098/tennis-lab-models` のmodel cardには次を設定します。
 
 ```yaml
 ---
@@ -278,7 +284,7 @@ Model repoのルート `LICENSE` にファイルごとの適用範囲と両ラ�
 異なる条件の重みを含むため、Model repo全体を `cc-by-nc-4.0` と表示しません。
 メタデータの書式は[HF公式仕様](https://huggingface.co/docs/hub/model-cards#specifying-a-license)を参照してください。
 
-Dataset repo `Motoki0705/tennis-lab-multiview-sample` のdataset cardには次を設定します。
+Dataset repo `Motoki098/tennis-lab-multiview-sample` のdataset cardには次を設定します。
 
 ```yaml
 ---
