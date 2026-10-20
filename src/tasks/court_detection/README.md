@@ -170,6 +170,17 @@ YouTubeの取得・20点注釈・専用previewは、このタスクの提供範�
 
 ## 推論・checkpoint
 
+公開推論重みは[Hugging Face](https://huggingface.co/Motoki098/tennis-lab-models)から取得できます。
+repo rootで実行してください。
+
+```bash
+.venv/bin/python -m src.utils.model_weights --checkpoint-root "$PWD/ckpt" --model court
+```
+
+SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../../utils/README.md#published-detector-weights)、
+利用条件は[LICENSES.md](../../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を参照してください。
+backboneは同梱していますが、現行ローダーの構築にはDINOv3コードと初期weightも必要です。
+
 既定checkpointは`ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`です。
 4つのdense headとpose headを持ち、residual depthは3です。
 `CourtPredictor.load_from_checkpoint`は保存モデル構成・target bundle・解像度を読み、

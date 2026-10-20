@@ -8,6 +8,21 @@ RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規C
 [注釈・継続学習のアーキテクチャ](../base/annotation/README.md)を参照する。
 実装状況は同資料からリンクしたサブIssueで管理する。
 
+## 公開推論重み
+
+sceneで使用するConvNeXtの推論用checkpointは
+[Hugging Face](https://huggingface.co/Motoki098/tennis-lab-models)から取得できます。repo rootで実行してください。
+
+```bash
+.venv/bin/python -m src.utils.model_weights --checkpoint-root "$PWD/ckpt" --model ball
+```
+
+SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../../utils/README.md#published-detector-weights)、
+データの出自とCC BY-NC 4.0の利用条件は
+[LICENSES.md](../../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を参照してください。
+配置先は標準pipelineと同じ`ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt`です。
+公開版は学習状態を除去しており、推論用です。
+
 ## 構成と責任
 
 | 場所 | 責任 |
