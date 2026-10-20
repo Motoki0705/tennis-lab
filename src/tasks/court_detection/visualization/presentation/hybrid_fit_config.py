@@ -134,11 +134,8 @@ class HybridFitConfig:
                 raise ValueError(
                     "input.kind=image requires mode=render and sample_id=null"
                 )
-            selected_path = Path(_text(raw_input, "path", "input"))
-            image_path = (
-                resolver.validate(PathRole.DATA, selected_path)
-                if selected_path.is_absolute()
-                else resolver.resolve(PathRole.DATA, selected_path)
+            image_path = resolver.resolve(
+                PathRole.DATA, _text(raw_input, "path", "input")
             )
         elif raw_path is not None:
             raise ValueError("input.path must be null for TennisCourtDetector")

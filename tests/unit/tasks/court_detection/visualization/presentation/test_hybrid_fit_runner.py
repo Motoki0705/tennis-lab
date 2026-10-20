@@ -192,7 +192,7 @@ def test_render_image_has_no_fabricated_gt_errors(
     _, image = hybrid_prediction
     path = tmp_path / "data/frame.png"
     Image.fromarray(image).save(path)
-    config.mode, config.input.kind, config.input.path = "render", "image", str(path)
+    config.mode, config.input.kind, config.input.path = "render", "image", "frame.png"
     runner.run_hybrid_fit(config)
     manifest = json.loads(
         (HybridFitConfig.from_config(config).output_dir / "manifest.json").read_text()

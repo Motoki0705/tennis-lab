@@ -137,7 +137,7 @@ MP4は既定1920×1080・30fps、GIFは幅960・15fpsです。
 その他は中空、最終fitに選ばれなかったKPは赤い×です。画面内に文字は出しません。
 seedは推定器が実際に選んだものだけを使い、native gridのKP/LINEは表示用にだけresizeします。
 
-`mode=render input.kind=image input.path=<DATA相対または絶対PNG> sample_id=null` では
+`mode=render input.kind=image input.path=<DATA相対PNG> sample_id=null` では
 別の単一画像も描画できます。この場合GT誤差は算出しません。
 `manifest.json` には解決済みconfig・commit・入力とcheckpointのSHA-256・段階名を記録します。
 画像・予測・seed・fitは `measured`、表示の時間と色は `schematic` です。
