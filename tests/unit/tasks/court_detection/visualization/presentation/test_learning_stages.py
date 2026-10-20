@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import shutil
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -11,15 +13,14 @@ import numpy as np
 import pytest
 from hydra import compose, initialize_config_dir
 from matplotlib.colors import to_rgb
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from PIL import Image
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from src.tasks.base.visualization.presentation import style
-from src.tasks.court_detection.visualization.presentation import learning_stages
 from src.tasks.court_detection.visualization.presentation.configuration import (
     DEFAULT_CONFIG,
     build_request,
+    default_scalar_summary,
     default_tags,
 )
 from src.tasks.court_detection.visualization.presentation.learning_stages import (
@@ -73,8 +74,10 @@ def test_reads_all_real_measurements_and_best_checkpoint(run: CourtRunLog) -> No
     assert run.series["learning_rate"].steps[0] == 0
     assert run.series["learning_rate"].values[3] == pytest.approx(1e-4)
     assert (
-        run.input_sha256["tensorboard/version_0/events.out.tfevents.learning_rate"]
-        == json.loads((BUNDLE / "tensorboard-lr-derivation.json").read_text())["sha256"]
+        run.input_sha256[str(default_scalar_summary())]
+        == json.loads(
+            default_scalar_summary().with_name("derivation.json").read_text()
+        )["sha256"]
     )
 
 
@@ -85,22 +88,92 @@ def test_missing_tag_is_an_error() -> None:
         load_court_run(BUNDLE, tags={**default_tags(), "train_loss": "train/missing"})
 
 
-def test_incomplete_validation_log_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
-    events = EventAccumulator(
-        str(BUNDLE / "tensorboard/version_0"), size_guidance={"scalars": 0}
-    ).Reload()
-    original = events.Scalars
-
-    def truncated(tag: str) -> list[object]:
-        values: list[object] = original(tag)
-        return values[:-1] if tag == "val/kp_mean_distance_px" else values
-
-    monkeypatch.setattr(events, "Scalars", truncated)
-    monkeypatch.setattr(
-        learning_stages, "EventAccumulator", lambda *args, **kwargs: events
-    )
+def test_incomplete_validation_log_is_rejected(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    shutil.copytree(BUNDLE, bundle)
+    payload = json.loads(default_scalar_summary().read_text())
+    values = payload["scalars"]["val/kp_mean_distance_px"]
+    for key in values:
+        values[key] = values[key][:-1]
+    summary = tmp_path / "scalars.json"
+    summary.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match="val/kp_mean_distance_px.*expected 6 points"):
-        load_court_run(BUNDLE)
+        load_court_run(bundle, scalar_summary=summary)
+
+
+@pytest.mark.parametrize(
+    "field,value", [("schema_version", 2), ("source_sha256", "0" * 64)]
+)
+def test_scalar_summary_schema_and_source_are_strict(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    bundle = tmp_path / "bundle"
+    shutil.copytree(BUNDLE, bundle)
+    payload = json.loads(default_scalar_summary().read_text())
+    payload[field] = value
+    summary = tmp_path / "scalars.json"
+    summary.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="schema|source SHA-256"):
+        load_court_run(bundle, scalar_summary=summary)
+
+
+def test_hydra_and_media_use_sibling_destinations_in_one_run(tmp_path: Path) -> None:
+    with initialize_config_dir(
+        config_dir=str(DEFAULT_CONFIG.parent), version_base="1.3"
+    ):
+        config = compose(
+            config_name=DEFAULT_CONFIG.stem,
+            return_hydra_config=True,
+            overrides=[
+                f"paths.{role}_root={tmp_path / role}"
+                for role in ("output", "data", "artifact", "checkpoint")
+            ],
+        )
+    run_dir = tmp_path / "output" / config.run.output_dir
+    assert run_dir.relative_to(tmp_path / "output").parts[:3] == (
+        "court_detection",
+        "visualize",
+        "learning_stages",
+    )
+    log_dir = Path(config.hydra.run.dir)
+    assert log_dir == run_dir / "hydra"
+    with open_dict(config):
+        del config["hydra"]
+    request = build_request(config)
+    assert request.output_dir == run_dir / "presentation"
+    log_dir.mkdir(parents=True)
+    assert not request.output_dir.exists()
+
+
+def test_output_location_preserves_still_and_sample_frame_rgb(
+    config: DictConfig, tmp_path: Path, run: CourtRunLog
+) -> None:
+    config.width, config.height = 640, 360
+    original = build_request(config)
+    config.paths.output_root = str(tmp_path / "relocated")
+    config.run.output_dir = "court_detection/visualize/learning_stages/another-run"
+    relocated = build_request(config)
+    assert original.output_dir != relocated.output_dir
+    before = CourtLearningStory(
+        run,
+        seconds=original.seconds,
+        fps=original.fps,
+        width=original.width,
+        height=original.height,
+    )
+    after = CourtLearningStory(
+        run,
+        seconds=relocated.seconds,
+        fps=relocated.fps,
+        width=relocated.width,
+        height=relocated.height,
+    )
+    assert before.stills == after.stills
+    for frame in sorted({240, 600, *before.stills.values()}):
+        assert (
+            hashlib.sha256(before.render_frame(frame).tobytes()).digest()
+            == hashlib.sha256(after.render_frame(frame).tobytes()).digest()
+        )
 
 
 def test_b_run_config_mismatch_is_an_error(tmp_path: Path, run: CourtRunLog) -> None:
@@ -215,7 +288,7 @@ def test_small_export_preserves_measurements_provenance_and_stills(
     config: DictConfig, tmp_path: Path
 ) -> None:
     config.paths.output_root = str(tmp_path)
-    config.output_dir = "story"
+    config.run.output_dir = "story"
     config.width, config.height, config.gif_width = 320, 180, 160
     config.fps, config.gif_fps = 10, 10
     for name in config.seconds:

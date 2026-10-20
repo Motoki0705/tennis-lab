@@ -120,7 +120,7 @@ _OUTPUT_KIND_CONTRACTS = {
     "evaluate": ("ball.eval", "ball.evaluate_manifest", "player_detection.evaluate", "slcs.evaluate"),
     "visualize": (
         "ball.preview", "ball.visualize", "blcs.preview_augmentation", "blcs.visualize",
-        "court_detection.preview_augmentation", "court_detection.visualize",
+        "court_detection.preview_augmentation", "court_detection.visualize", "court_detection.learning_stages",
         "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
     ),
     "analyze": (

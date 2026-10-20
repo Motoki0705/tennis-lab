@@ -14,15 +14,20 @@ CPUで、左にアーキテクチャ・混合バッチとpose教師の流れ、�
 既定は45秒・1920×1080・30fpsのMP4、幅960・15fpsのGIFと、
 `stills/{intro,train,select,handoff}.png`です。解像度・fps・各区間の秒数・tag対応は
 [`configs/visualize_learning_stages.yaml`](../configs/visualize_learning_stages.yaml)で明示します。
-出力は`paths.output_root`配下の`court_detection/visualize/presentation/learning_stages/<run-id>/`で、
-既存の出力先は拒否します。worktreeから共有成果物へ出す場合は`paths.output_root=<元repoの絶対path>/outputs`を指定します。
+出力は`paths.output_root`配下の`court_detection/visualize/learning_stages/<run-id>/presentation/`で、
+同じrunの`hydra/`にCLIログを置きます。既存の映像出力先は拒否します。
+worktreeから共有成果物へ出す場合は`paths.output_root=<元repoの絶対path>/outputs`を指定します。
 
 入力はrepo内の`knowledge/runs/run-i983-court-dinov3-b-s42`です。
 train/valの0始まりevent stepを+1し、更新回数0〜33,160で表示します。
 検証は6点、学習lossは50更新ごとの663点で、lossだけを過去20点の移動平均・対数軸で表示します。
-LRはepoch開始時の実測20点を区間内で保持して描きます。元の派生ログがLRを除外していたため、
-同bundleの`restore_learning_rate.py`でhash検証済み原本から補助eventを追加しました。
-元の派生eventは変更せず、由来を`tensorboard-lr-derivation.json`に記録しています。
+LRはepoch開始時の実測20点を区間内で保持して描きます。
+run保存基準に従ってraw eventを保持せず、`scalar_summary`で指定した
+[発表用assets](../../../../assets/court_detection/learning_stages/)の`scalars.json`を読みます。
+元runの内容は変更しません。同assetsの`export_scalars.py`がhash検証済み原本から
+必要な13 tagのstep・値・wall_timeを無加工で抽出し、`derivation.json`に由来を記録します。
+再抽出時は`--bundle`に元run、`--raw-file`に原本、`--tags-config`に上記の可視化config、
+`--output-dir`に新しい出力先を指定します。
 必要tag・件数・step・保存config・checkpoint選択が食い違う場合は停止します。
 
 図と粒子は模式表現、曲線は**#983のB runの実測値**です。pipeline既定のcheckpointとは別runです。
