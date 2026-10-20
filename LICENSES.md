@@ -144,7 +144,7 @@ URLは公式の案内先です。コードのLICENSEと、重み・学習元デ�
 | SMPL-X（`SMPLX_NEUTRAL.npz`） | [SMPL-X公式](https://smpl-x.is.tue.mpg.de/)、Git commitは該当なし。登録時のモデル配布版・同意した契約を確認する。 | [SMPL-X Model License](https://smpl-x.is.tue.mpg.de/modellicense.html)。非商用の科学研究・教育・芸術目的。個人に付与される非移転の権利で、第三者への全部・一部の再配布を許可しない。各利用者が登録・同意して取得する。 |
 | SMPL-H（motion生成用） | [MANO / SMPL+H公式](https://mano.is.tue.mpg.de/)、Git commitは該当なし。 | [MANO / SMPL+HのLicense](https://mano.is.tue.mpg.de/license.html)。非商用の科学研究・教育・芸術目的、再配布制限。各利用者が登録・同意して取得する。 |
 | SMPL（HMR2・モデル変換用） | [SMPL公式](https://smpl.is.tue.mpg.de/)、Git commitは該当なし。 | [SMPL Model License](https://smpl.is.tue.mpg.de/modellicense.html)。非商用の科学研究・教育・芸術目的、第三者への全部・一部の再配布を許可しない。 |
-| DINOv3 ViT-S/16・ViT-B/16 | [Meta公式の申請先](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)、[公式fork README](https://github.com/Motoki0705/dinov3/blob/4add255125e6cbf446c6a43c5f3028aa41b63648/README.md)。参照commit `4add255125e6cbf446c6a43c5f3028aa41b63648`、配布名 `dinov3_vits16_pretrain_lvd1689m-08c60483.pth` / `dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`。 | [DINOv3 License](https://github.com/Motoki0705/dinov3/blob/4add255125e6cbf446c6a43c5f3028aa41b63648/LICENSE.md)。コードと重みを含むDINO Materialsの条件。派生した自作重みへの適用は #1278 が確定する。 |
+| DINOv3 ViT-S/16・ViT-B/16 | [Meta公式の申請先](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)、[公式fork README](https://github.com/Motoki0705/dinov3/blob/4add255125e6cbf446c6a43c5f3028aa41b63648/README.md)。参照commit `4add255125e6cbf446c6a43c5f3028aa41b63648`、配布名 `dinov3_vits16_pretrain_lvd1689m-08c60483.pth` / `dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`。 | [DINOv3 License](https://github.com/Motoki0705/dinov3/blob/4add255125e6cbf446c6a43c5f3028aa41b63648/LICENSE.md)。コードと重みを含むDINO Materialsの条件。派生した自作重みへの適用は[重みのライセンスの根拠](#重みのライセンスの根拠)を参照。 |
 | 比較用SOLIDER-REID・KPR | [SOLIDER公式](https://github.com/tinyvision/SOLIDER-REID/blob/8c08e1c3255e8e1e51e006bf189e52cc57b009ed/README.md)（`8c08e1c3255e8e1e51e006bf189e52cc57b009ed`）、[KPR公式](https://github.com/VlSomers/keypoint_promptable_reidentification/blob/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa/README.md#download-the-pre-trained-models)（`e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa`）。 | repoはそれぞれMIT / HL3-LAW-MEDIA-MIL-SOC-SV。重みを本repoから再配布せず、公式案内・学習元データの条件を確認する。 |
 | 比較用OSNet（MSMT17） | [deep-person-reid公式model zoo](https://kaiyangzhou.github.io/deep-person-reid/MODEL_ZOO)、[公式repo](https://github.com/KaiyangZhou/deep-person-reid/tree/f8cd150fdf77e8d9e1ed143b7f308c2c609ded50)（確認用 `f8cd150fdf77e8d9e1ed143b7f308c2c609ded50`）。 | repoは [MIT](https://github.com/KaiyangZhou/deep-person-reid/blob/f8cd150fdf77e8d9e1ed143b7f308c2c609ded50/LICENSE)。重み・MSMT17等のデータ条件は元配布に従う。 |
 
@@ -169,7 +169,7 @@ byte単位で同一です。パスは `src/submodules/vendor/gvhmr/` からの�
 **対応方針（ユーザー判断、2026-10-19）:** 上記5点は同梱をやめ、利用者が公式の配布元から
 取得する経路へ [#1296](https://github.com/Motoki0705/tennis-lab/issues/1296) で切り替えます。
 現時点では同梱されており、削除と取得・生成手順の整備は #1296 で行います。
-パイプライン出力への条件の及び方は #1278 が扱います。
+パイプライン出力への条件の及び方は[パイプライン出力](#パイプライン出力)を参照してください。
 
 ## 第三者のデータ・論文
 
@@ -180,11 +180,123 @@ byte単位で同一です。パスは `src/submodules/vendor/gvhmr/` からの�
 | --- | --- | --- |
 | TennisCourtDetectorの画像・コート注釈 | [yastrebksv/TennisCourtDetector README](https://github.com/yastrebksv/TennisCourtDetector/blob/e5cd4f1ce26b15361700d3d89e068cbf0e82749e/README.md)。確認用commit `e5cd4f1ce26b15361700d3d89e068cbf0e82749e`、8841画像の配布。データ自体のGit commitは該当なし。 | LICENSEなし。公式説明ではYouTubeの大会highlightから収集。放送・動画・注釈の再配布許諾を確認できていない。 |
 | TrackNetのフレーム・ボール注釈 | [yastrebksv/TrackNet README](https://github.com/yastrebksv/TrackNet/blob/730ea17a324321c553c480179caa8ff13e4cf553/README.md)。確認用commit `730ea17a324321c553c480179caa8ff13e4cf553`、放送動画10本・19835フレームの配布。データ自体のGit commitは該当なし。 | LICENSEなし。リポジトリが公開されていることをデータの自由な再利用・再配布の許諾とは扱わない。 |
-| YouTube由来の映像・独自注釈 | [YouTube利用規約](https://www.youtube.com/static?template=terms)、データのGit commitは該当なし。動画ごとの出典・版は各datasetのprovenanceで管理する。 | 動画ごとの権利・表示条件と利用規約がある。独自注釈を付けても映像の権利や契約条件は消えない。学習利用に関する著作権法第30条の4の判断範囲と契約の論点は #1278 が記録する。 |
+| YouTube由来の映像・独自注釈 | [YouTube利用規約](https://www.youtube.com/static?template=terms)、データのGit commitは該当なし。動画ごとの出典・版は各datasetのprovenanceで管理する。 | 動画ごとの権利・表示条件と利用規約がある。独自注釈を付けても映像の権利や契約条件は消えない。学習利用に関する著作権法第30条の4の判断範囲と契約の論点は[学習データと公開判断](#学習データと公開判断)を参照。 |
 | ACCAD / AMASS motion | [ACCAD公式](https://accad.osu.edu/research/motion-lab/mocap-system-and-data)、[AMASS公式](https://amass.is.tue.mpg.de/)、Git commitは該当なし。AMASSのACCAD配布を使う場合はその版・契約に従う。 | ACCAD Open Motion Projectの公式表示は [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)。一方、AMASS版には [非商用科学研究用のDataset License](https://amass.is.tue.mpg.de/license.html) と再配布制限がある。元データとAMASSのSMPL形式への変換物を混同しない。 |
-| Meijiのマルチカメラ映像・注釈 | [本プロジェクトの公開準備・合意 #1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公開収録データ、Git commitは該当なし。動画・clip単位の識別はdatasetのmanifestによる。 | 被撮影者の同意を取得済み（プロジェクト側の記録）。MITの対象外。公開サンプルの範囲・ライセンスは #1273 / #1278 で確定する。 |
+| Meijiのマルチカメラ映像・注釈 | [本プロジェクトの公開準備・合意 #1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公開収録データ、Git commitは該当なし。動画・clip単位の識別はdatasetのmanifestによる。 | 被撮影者の同意を取得済み（プロジェクト側の記録）。MITの対象外。公開サンプルの範囲・ライセンスは[サンプルdatasetの利用条件](#サンプルdatasetの利用条件)を参照。 |
 | `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)、Git commitは該当なし、論文版はv1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。著者の原PDFを保持。[同梱の出典表示](knowledge/Papers/paper-2024-gvhmr/paper.md)。論文本体にMITは適用しない。 |
 
 ## 公開物（自作の重み・サンプルdataset）のライセンス
 
-#1278 で確定する。
+以下は[2026-10-19のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/1278)に基づく公開条件です。
+研究と非商用デモを想定していますが、この用途説明は各ライセンスに追加の用途制限を設けません。
+標準CCの条件を満たす研究・デモ以外の非商用利用も認められます。
+
+### 公開先と重みの識別情報
+
+重みの公開先はHugging Face Model repo
+[`Motoki0705/tennis-lab-models`](https://huggingface.co/Motoki0705/tennis-lab-models)です。
+次のパスはModel repo内、およびTennis-Labの `ckpt/` からの相対パスです。
+
+| 重みのファイル | SHA-256 | ライセンス |
+| --- | --- | --- |
+| `ball_detection/i935-mixed-ft-s42-epoch09.ckpt` | `37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36` | [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en) |
+| `court_detection/multiscale_depth3/b863df1f01f0.ckpt` | `b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383` | [DINOv3 License](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md) |
+
+### 重みのライセンスの根拠
+
+**ボール検出:** [学習設定](src/tasks/ball_detection/configs/train_meiji_mixed.yaml)の初期値は
+`ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt`で、その前身は旧Colabの
+`ckpt/ball_detection/last.ckpt`です。
+**初代学習はスクラッチ（2026-10-19のユーザー回答）**で、外部の事前学習重みは使っていません。
+初代の初期化元の根拠は上記の回答であり、初代checkpoint原本の再検証ではありません。
+この自作重みをCC BY-NC 4.0で公開します。帰属表示等の条件に従った非商用の複製・共有・改変物の共有が認められます。
+詳細は[同ライセンス第2・3条](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en)に従ってください。
+
+**コート検出:** checkpointはDINOv3 ViT-B/16のパラメータを含む派生物です。
+[調査記録](https://github.com/Motoki0705/tennis-lab/issues/1278#issuecomment-6257877131)では、
+backboneの188 tensorすべてが初期重みと一致することを確認しています。
+[DINOv3 License第1条b.i](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md)に従い、
+checkpoint全体を同契約の条件で配布し、契約全文を添付します。
+研究発表でのDINOv3使用の明示など、利用時にも同契約の条件が適用されます。
+コート重み単体は「重みは非商用」というプロジェクト方針の例外であり、独自の非商用条件やCC BY-NC 4.0を追加しません。
+
+### 学習データと公開判断
+
+ボール検出はTrackNet・Meiji・YouTube由来の追加ボール注釈を使って学習しています
+（[生成設定](src/tasks/ball_detection/configs/generate_dataset.yaml)、上記の学習設定）。
+コート検出はTennisCourtDetector由来の実画像とSynthetic Court B00–B03の合成画像を混合しています
+（[学習runの保存設定](paper/court_robustness/evidence/training_run_config.yaml)）。
+第三者データの出典・配布条件の確認結果は[第三者のデータ・論文](#第三者のデータ論文)を参照してください。
+
+ボール位置やコート形状を推定する情報解析を目的として学習しました。
+ボール重みの公開は、日本の著作権法第30条の4が学習時の利用に適用されるというプロジェクトの判断に基づきます。
+同条は非享受目的の利用を必要な範囲で認める一方、著作権者の利益を不当に害する場合を除外しています。
+非商用であることだけで適用が決まるものではありません。
+根拠条文は[e-Govの著作権法第30条の4](https://laws.e-gov.go.jp/law/345AC0000000048#Mp-At_30_4)、
+解釈上の論点は[文化庁「AIと著作権に関する考え方について」](https://www.bunka.go.jp/seisaku/bunkashingikai/chosakuken/pdf/94037901_01.pdf)を参照してください。
+
+この判断は学習時の著作権上の利用に関するもので、配布元との契約条件を解決したことや、第三者素材の再配布許諾を意味しません。
+当時の取得経路・適用規約・許可の有無には未確認事項が残っています
+（[調査記録](https://github.com/Motoki0705/tennis-lab/issues/1278#issuecomment-6257877131)）。
+第三者の学習映像・画像・データセット自体は、今回の公開物に含めません。
+
+### サンプルdatasetの利用条件
+
+公開先はHugging Face Dataset repo
+[`Motoki0705/tennis-lab-multiview-sample`](https://huggingface.co/datasets/Motoki0705/tennis-lab-multiview-sample)です。
+対象はMeijiの `video_003` をClip Studioで同期・書き出しした3カメラclip全体で、
+ライセンスは[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)です。
+被撮影者の同意に関する記録は[第三者のデータ・論文](#第三者のデータ論文)のMeiji行を参照してください。
+**clip名・公開ファイル名・各SHA-256は未確定**です。
+書き出し後に[#1273](https://github.com/Motoki0705/tennis-lab/issues/1273)で、撮影・同期情報とともに確定・記録します。
+
+同ライセンス第2・3条に従い、帰属表示等の条件を満たす非商用の共有が認められます。
+改変物の非商用での作成・複製は認められますが、その共有は許諾されません。
+切り抜き・注釈重畳・GIF等が翻案に当たる場合、その共有には別途許諾が必要です。
+第2条(a)(4)の必要な技術的形式変換や、法令上許諾を必要としない利用は、ライセンス本文の扱いに従います。
+CCは肖像・プライバシー等の権利を一律に許諾するものではありません。
+
+帰属表示例: Motoki0705, “Tennis-Lab Multiview Sample”, 2026,
+[配布ページ](https://huggingface.co/datasets/Motoki0705/tennis-lab-multiview-sample),
+[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)。
+
+### Hugging Faceのlicenseメタデータ
+
+Model repo `Motoki0705/tennis-lab-models` のmodel cardには次を設定します。
+
+```yaml
+---
+license: other
+license_name: tennis-lab-per-file-licenses
+license_link: LICENSE
+---
+```
+
+Model repoのルート `LICENSE` にファイルごとの適用範囲と両ライセンスの全文を収録します。
+ここでの `LICENSE` はHugging Face側のファイルであり、コード用の本repoのMIT Licenseとは別です。
+`license_name` は条件一覧の識別名で、独自の追加条件を作るものではありません。
+異なる条件の重みを含むため、Model repo全体を `cc-by-nc-4.0` と表示しません。
+メタデータの書式は[HF公式仕様](https://huggingface.co/docs/hub/model-cards#specifying-a-license)を参照してください。
+
+Dataset repo `Motoki0705/tennis-lab-multiview-sample` のdataset cardには次を設定します。
+
+```yaml
+---
+license: cc-by-nc-nd-4.0
+---
+```
+
+### パイプライン出力
+
+上記の公開条件は、別途使用する第三者資産やパイプライン出力を一括して再許諾するものではありません。
+GVHMR・SMPL・SMPL-X等の取得・利用条件、AFLinkの継続利用判断、SMPL派生資産の同梱をやめる方針は、
+[第三者の重み・body model資産](#第三者の重みbody-model資産)を参照してください。
+
+GVHMRの[LICENSE](src/submodules/vendor/gvhmr/LICENSE)には、推定した数値すべてに同じライセンスを付すという明示規定は確認できません。
+SMPL／SMPL-Xを使用した出力の生成には、各Model Licenseの条件（商用目的の成果物生成の制限を含む）が適用されます。
+書き出した身体mesh等が[SMPL Body](https://smpl.is.tue.mpg.de/bodylicense.html)または
+[SMPL-X Body](https://smpl-x.is.tue.mpg.de/bodylicense.html)の定義を満たす場合には、
+別途CC BY 4.0の許諾があり、帰属表示・ライセンスリンク・変更表示と、論文・メディア向けの出典表示に従って共有できます。
+Bodyはshape blendshapeやそれを使って身体を生成するツールを含まず、Body Licenseがモデル本体の条件を置き換えるものではありません。
+推定パラメータのみの共有条件は、確認した一次情報からは確定できていません。
+モデル本体・補助行列等の資産と、出力したパラメータ・身体meshを区別してください。
