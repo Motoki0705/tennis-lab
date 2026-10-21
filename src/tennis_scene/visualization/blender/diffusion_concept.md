@@ -5,6 +5,10 @@
 呼び出しません。条件は取り込んだ注釈を上流に持つ実データ、軌道と生成過程は模式表現、
 全体は構想です。「構想」バッジと色の凡例を全場面に表示します。
 
+2026-10-21にユーザーが960×540のプレビューを確認し、構成・尺・seed・表示をそのまま採用しました。
+最終版の既定は1920×1080・30fps・64samples、GIFは幅960・15fpsです。
+プレビューから変更するのは描画解像度とsamplesだけです。
+
 ## 入力と数値計算
 
 入口は `src.tennis_scene.scripts.export_blender_diffusion`、設定の正本は
@@ -18,7 +22,7 @@
   paths.artifact_root=/absolute/main/outputs \
   paths.external_asset_root=/usr/share/fonts \
   paths.output_root=/absolute/task-worktree/outputs \
-  output=tennis_scene/visualize/export_blender_diffusion/meiji-concept-preview
+  output=tennis_scene/visualize/export_blender_diffusion/meiji-concept-final
 ```
 
 日本語フォントはEXTERNAL_ASSETで指定します。上の例はNoto CJKがある環境向けです。
@@ -51,7 +55,7 @@
 blender --background --factory-startup --threads 4 --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/ball_diffusion.py -- \
   --bundle "$BUNDLE" --source-blend "$SOURCE_BLEND" --output "$SHOT_DIR" \
-  --samples 8 --resolution-percentage 50 --render
+  --samples 64 --resolution-percentage 100 --render
 blender --background "$SHOT_DIR/ball_diffusion.blend" --threads 4 --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/validate_diffusion.py -- \
   --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
@@ -63,15 +67,19 @@ ffmpeg -n -i "$SHOT_DIR/ball_diffusion.mp4" -filter_complex_threads 1 \
 ```
 
 `--render` を外すとsceneの生成・保存だけを行います。既存のbundle/shotは上書きしません。
-プレビューは960×540です。ユーザー確認後、最終版は `--samples 64 --resolution-percentage 100` で
-1920×1080を描き直します。configの値を変えた場合は新しいbundleもexportしてください。
+最終版は必ずプレビューと別のrunへ出力します。既定configのまま上のコマンドを使うと
+1920×1080・64samplesになります。確認用の960×540は `--samples 8 --resolution-percentage 50` で
+生成できます。seed・軌道・尺・カメラ・材質・構想バッジは両者で共通です。
+queueは `TRAINING_QUEUE_DIR=<main repoの絶対パス>/.training_queue`、このworktreeをcwdとして
+`--provider codex --session "$CODEX_THREAD_ID" --issue 1214 --resource half` で登録します。
+workerは親が管理します。実行driverとqueueログは各runへ保存します。
 
 Blender側では入力 `.blend` の最終frameを評価し、カメラ・コート・ネット・錐体をそのまま残します。
 以前の光線・検出リング・球・trailを取り除き、画像面には最終source frameの静止画を使います。
 完成軌道・ノイズ・tube頂点・球の各時刻の位置はすべてexporterで計算し、Blenderは描画だけを行います。
 既存の `common.py` と `ball_rays.py` の表示部品を読み取りだけで再利用しています。
 
-既定は次の15秒です。全区間の模式軌道を9秒で再生するため、最後の場面は元の時間軸より速くなります。
+採用した構成は次の15秒です。全区間の模式軌道を9秒で再生するため、最後の場面は約1.226倍速です。
 その速度倍率とsource frame対応はmanifestに明記します。
 
 | 秒 | 場面 | 代表frame候補 |
@@ -83,13 +91,25 @@ Blender側では入力 `.blend` の最終frameを評価し、カメラ・コー�
 検証スクリプトは全450frameの評価済みtube頂点・表示状態と、表示中の球、前shotからのカメラ・錐体の連続性、
 条件の位置・色分け・由来、常時表示する構想バッジを調べます。座標許容誤差は1e-5mで、不一致は
 JSONへ理由を残し非ゼロで終了します。`ffprobe -count_frames` とMP4の全frame復号も確認してください。
-プレビュー・代表静止画は候補として親へ渡し、採否はユーザーが決めます。
+最終版のMP4は1920×1080・30fps・450frame・15秒を要求し、全frameを復号します。
+GIFは最終版のMP4から960×540・15fpsで生成し、全frameの復号と尺も確認します。
+静止画は最終版のframe 30（条件）と179（完成軌道）から取り出します。
+各素材のSHA-256をdeliveryの `manifest.json` と `SHA256SUMS` に保存します。
+
+`.blend` の外部依存は `bundle/process.pc2`、`bundle/badge.png`、`bundle/plate_0.jpg`・
+`plate_1.jpg`・`plate_2.jpg` です。コート表面は `.blend` に内包されています。
+再配布では `bundle/` と `shot/` を一緒に保持し、移動後は外部参照先も確認してください。
+数値の再検証にはその他の `.npy` と `bundle/manifest.json` も必要です。
+入力の `ball_rays.blend` と日本語フォントはexport・shot再構築の際に使い、完成した `.blend` の
+再描画では新しいbundle内のcache・画像を使います。
 
 ## CPUテスト
 
 ```bash
-.venv/bin/python -m pytest tests/unit/tennis_scene/visualization/blender -n 4 -q
-.venv/bin/python -m pytest tests/unit/utils/configuration tests/unit/utils/test_output_layout.py \
+flock /home/kamimura/.local/state/tennis-lab-agents/parent-1204/pytest.lock \
+  .venv/bin/python -m pytest tests/unit/tennis_scene/visualization/blender -n 4 -q
+flock /home/kamimura/.local/state/tennis-lab-agents/parent-1204/pytest.lock \
+  .venv/bin/python -m pytest tests/unit/utils/configuration tests/unit/utils/test_output_layout.py \
   tests/e2e/development/test_architecture_boundaries.py -n 4 -q \
   -k 'not test_branch_contains_configuration_contract_merge'
 ```

@@ -5,6 +5,7 @@ input: tennis_scene/visualize/export_blender_rays/meiji-rays-final-20261021
 output: ${tennis_output:tennis_scene,visualize,export_blender_diffusion,${tennis_run_id:}}
 # EXTERNAL_ASSET-relative. Supply the font root explicitly; never substitute fonts.
 badge_font: opentype/noto/NotoSansCJK-Regular.ttc
+# Adopted preview: keep seed, 2s/4s/9s timing, noise and display unchanged.
 seed: 42
 smoothing_lambda: 0.01
 point_tolerance_m: 0.2
@@ -20,6 +21,7 @@ tube_sides: 8
 condition_radius_m: 0.065
 gap_radius_m: 0.15
 ball_radius_m: 0.14
+# Final render defaults. Preview overrides only samples=8 and resolution=50%.
 width: 1920
 height: 1080
 samples: 64
