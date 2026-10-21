@@ -10,6 +10,7 @@ import pytest
 
 from src.tasks.court_detection.geometry.confidence_homography import (
     PROSAC_OPTIONS,
+    ProsacOrientation,
     estimate_confidence_homography,
 )
 from src.tasks.court_detection.geometry.homography import court_template_xy
@@ -110,6 +111,7 @@ def test_degenerate_or_insufficient_input_has_no_fallback(kind: str) -> None:
         src, dst, np.ones(len(src)), reprojection_threshold_px=1
     )
     assert result.matrix is None
+    assert result.prosac_orientation is None
     assert result.status == (
         "insufficient_points" if kind == "too_few" else "degenerate_correspondences"
     )
@@ -185,9 +187,13 @@ def test_exact_four_points_and_projection_pole(crosses_pole: bool, x_sign: int) 
     )
     if crosses_pole:
         assert result.matrix is None
+        assert result.prosac_orientation is None
         assert not result.inliers.any()
     else:
         assert result.status == "ok"
+        assert result.prosac_orientation is (
+            ProsacOrientation.IDENTITY if x_sign == 1 else ProsacOrientation.X_REFLECTED
+        )
         assert result.inliers.sum() == 4
         np.testing.assert_allclose(result.projected, dst, atol=1e-5)
 
@@ -216,6 +222,12 @@ def test_court_template_supports_both_orientations_and_equivalent_source_frames(
         reflected_template, observed, scores, reprojection_threshold_px=1
     )
     assert result.status == reflected.status == "ok"
+    assert result.prosac_orientation is (
+        ProsacOrientation.IDENTITY if y_sign == 1 else ProsacOrientation.X_REFLECTED
+    )
+    assert reflected.prosac_orientation is (
+        ProsacOrientation.X_REFLECTED if y_sign == 1 else ProsacOrientation.IDENTITY
+    )
     assert result.matrix is not None and reflected.matrix is not None
     # H_reflected @ F == H, including the projective denominator, so changing
     # source handedness cannot change pixel errors, masks or downstream points.
@@ -252,6 +264,7 @@ def test_both_solver_orientations_failing_preserves_explicit_failure(
     )
     assert len(calls) == 2
     assert result.status == "prosac_failed"
+    assert result.prosac_orientation is None
     assert result.matrix is None
     assert not result.fit_inliers.any()
     assert not result.inliers.any()
@@ -259,30 +272,43 @@ def test_both_solver_orientations_failing_preserves_explicit_failure(
     assert np.isnan(result.residuals_px).all()
 
 
-@pytest.mark.parametrize("equal_cost", [False, True])
+@pytest.mark.parametrize(
+    "preferred",
+    [ProsacOrientation.IDENTITY, ProsacOrientation.X_REFLECTED, None],
+    ids=["identity_wins", "x_reflected_wins", "tie_keeps_identity"],
+)
 def test_orientation_candidates_compete_on_pixel_cost_before_original_frame_refit(
     monkeypatch: pytest.MonkeyPatch,
-    equal_cost: bool,
+    preferred: ProsacOrientation | None,
 ) -> None:
     src, dst = points()
     correct, _ = cv2.findHomography(src, dst, method=0)
     assert correct is not None
-    wrong = correct.copy()
-    if not equal_cost:
-        wrong[0, 2] += 40
+    identity_candidate = correct.copy()
+    reflected_candidate = correct @ np.diag([-1.0, 1.0, 1.0])
+    if preferred is ProsacOrientation.X_REFLECTED:
+        identity_candidate[0, 2] += 40
+    elif preferred is ProsacOrientation.IDENTITY:
+        reflected_candidate[0, 2] += 40
     mask: np.ndarray = np.ones((len(src), 1), dtype=np.uint8)
     mask[-1] = 0
-    expected_mask = np.ones_like(mask, dtype=bool) if equal_cost else mask.astype(bool)
+    expected_orientation = preferred or ProsacOrientation.IDENTITY
+    expected_mask = (
+        mask.astype(bool)
+        if preferred is ProsacOrientation.X_REFLECTED
+        else np.ones_like(mask, dtype=bool)
+    )
     original = cv2.findHomography
+    expected, _ = original(src[expected_mask[:, 0]], dst[expected_mask[:, 0]], method=0)
     calls = 0
 
     def solve(*args: Any, **kwargs: Any) -> Any:
         nonlocal calls
         calls += 1
         if calls == 1:
-            return wrong, np.ones_like(mask)
+            return identity_candidate, np.ones_like(mask)
         if calls == 2:
-            return correct @ np.diag([-1.0, 1.0, 1.0]), mask
+            return reflected_candidate, mask
         np.testing.assert_array_equal(args[0], src[expected_mask[:, 0]])
         np.testing.assert_array_equal(args[1], dst[expected_mask[:, 0]])
         assert kwargs == {"method": 0}
@@ -294,5 +320,76 @@ def test_orientation_candidates_compete_on_pixel_cost_before_original_frame_refi
     )
     assert calls == 3
     assert result.status == "ok"
+    assert result.prosac_orientation is expected_orientation
+    np.testing.assert_array_equal(result.matrix, expected)
     np.testing.assert_array_equal(result.fit_inliers, expected_mask[:, 0])
+    assert result.inliers.all()
     np.testing.assert_allclose(result.projected, dst, atol=1e-4)
+
+
+@pytest.mark.parametrize("failed_orientation", list(ProsacOrientation))
+def test_one_solver_orientation_failing_records_the_successful_orientation(
+    monkeypatch: pytest.MonkeyPatch,
+    failed_orientation: ProsacOrientation,
+) -> None:
+    src, dst = points()
+    original = cv2.findHomography
+    expected, _ = original(src, dst, method=0)
+    assert expected is not None
+    calls = 0
+
+    def solve(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if kwargs == {"method": 0}:
+            np.testing.assert_array_equal(args[0], src)
+            np.testing.assert_array_equal(args[1], dst)
+            return original(*args, **kwargs)
+        orientation = (
+            ProsacOrientation.IDENTITY if calls == 1 else ProsacOrientation.X_REFLECTED
+        )
+        if orientation is failed_orientation:
+            return None, None
+        frame = np.eye(3) if calls == 1 else np.diag([-1.0, 1.0, 1.0])
+        return expected @ frame, np.ones((len(src), 1), dtype=np.uint8)
+
+    monkeypatch.setattr(cv2, "findHomography", solve)
+    result = estimate_confidence_homography(
+        src, dst, np.ones(len(src)), reprojection_threshold_px=1
+    )
+    assert calls == 3
+    assert result.status == "ok"
+    assert result.prosac_orientation is (
+        ProsacOrientation.X_REFLECTED
+        if failed_orientation is ProsacOrientation.IDENTITY
+        else ProsacOrientation.IDENTITY
+    )
+    np.testing.assert_array_equal(result.matrix, expected)
+    assert result.fit_inliers.all() and result.inliers.all()
+
+
+def test_failure_after_orientation_selection_clears_the_orientation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src, dst = points()
+    correct, _ = cv2.findHomography(src, dst, method=0)
+    assert correct is not None
+    calls = 0
+
+    def solve(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if kwargs == {"method": 0}:
+            return None, None
+        frame = np.eye(3) if calls == 1 else np.diag([-1.0, 1.0, 1.0])
+        return correct @ frame, np.ones((len(src), 1), dtype=np.uint8)
+
+    monkeypatch.setattr(cv2, "findHomography", solve)
+    result = estimate_confidence_homography(
+        src, dst, np.ones(len(src)), reprojection_threshold_px=1
+    )
+    assert calls == 3
+    assert result.status == "refit_failed"
+    assert result.matrix is None
+    assert result.prosac_orientation is None
+    assert not result.inliers.any()

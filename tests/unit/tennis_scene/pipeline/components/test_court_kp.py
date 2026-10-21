@@ -44,6 +44,7 @@ def test_predict_frame_consumes_typed_task_prediction(tmp_path) -> None:
     assert keypoints.dtype == np.float32
     assert valid.sum() == 12
     assert diagnostic["selected_keypoints"] == [3, 4, 8, 9]
+    assert diagnostic["kp_only_prosac_orientation"] == "identity"
 
 
 def test_result_allows_only_invisible_out_of_image_geometry() -> None:
@@ -145,6 +146,7 @@ def test_component_infers_only_frame_zero_and_normalizes_by_last_pixel(tmp_path:
     assert result.diagnostics["temporal_policy"] == "static_first_frame"
     assert result.diagnostics["checkpoint"] == {"checkpoint_sha256": "fixture"}
     assert result.diagnostics["cameras"][0]["frames"][0]["frame_index"] == 0
+    assert result.diagnostics["cameras"][0]["frames"][0]["kp_only_prosac_orientation"] == "identity"
     assert not module.is_loaded
 
 

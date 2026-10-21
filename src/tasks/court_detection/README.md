@@ -196,6 +196,12 @@ KPだけのPROSACは、USACの向き判定に対応して元のテンプレー�
 テンプレートの両方を評価します。反転側のHは元の座標系へ合成して戻し、同じpixel閾値で
 打ち切った再投影誤差の二乗和が小さい側のinlierを選びます（同点は元の向き）。
 最終の最小二乗再当てはめは元のテンプレートで行い、両方が不成立なら`prosac_failed`です。
+`ConfidenceHomographyResult.prosac_orientation`は採用したPROSAC入力の向きを
+`ProsacOrientation.IDENTITY`（`identity`）または`X_REFLECTED`（`x_reflected`）で返します。
+再当てはめ以降を含むすべての失敗では`None`です。最終Hは常に元テンプレートから画像への写像です。
+`CourtPrediction.geometry_diagnostics()`にも`kp_only_status`と
+`kp_only_prosac_orientation`（同じ文字列、失敗時はJSONの`null`）を記録し、
+監査JSON・tennis_sceneのcourt_kp診断へ引き継ぎます。
 下流の採用点数`max_kp`は4〜8です。`downstream_keypoints()`は再投影14点と
 画像内validityを返し、失敗時はゼロ座標・全不可視です。
 raw KPは原画像pixel、raw LINEはnative gridで、結果は両サイズを保持します。
