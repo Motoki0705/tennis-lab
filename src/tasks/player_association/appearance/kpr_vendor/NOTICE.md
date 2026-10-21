@@ -3,7 +3,7 @@
 Source: [VlSomers/keypoint_promptable_reidentification](https://github.com/VlSomers/keypoint_promptable_reidentification/tree/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa), commit `e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa`.
 Authors: Vladimir Somers, Alexandre Alahi, Christophe De Vleeschouwer.
 License: **Hippocratic License 3.0 HL3-LAW-MEDIA-MIL-SOC-SV**, full upstream text in LICENSE.
-This portion is not relicensed under the repository MIT license.
+This portion is not relicensed under the repository Apache-2.0 license.
 
 `heads.py` contains only the inference pooling/dimension-reduction/classifier classes from
 `torchreid/models/kpr.py`. Training, datasets, optimizers, Torchreid installation and pretrained

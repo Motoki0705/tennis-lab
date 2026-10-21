@@ -7,8 +7,22 @@ name = "tennis-lab"
 version = "0.1.0"
 description = "ML components for tennis video analysis: ball/court/player detection and 3D scene reconstruction"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+# The SPDX identifier covers original code; bundled exceptions are in LICENSES.md.
+license = "Apache-2.0"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "LICENSES.md",
+    "src/submodules/vendor/gvhmr/LICENSE*",
+    "src/tasks/person_tracking/deep_ocsort_vendor/LICENSE",
+    "src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md",
+    "src/tasks/person_tracking/strongsort_NOTICE.md",
+    "src/tasks/player_association/appearance/solider_vendor/LICENSE",
+    "src/tasks/player_association/appearance/solider_vendor/NOTICE.md",
+    "src/tasks/player_association/appearance/kpr_vendor/LICENSE",
+    "src/tasks/player_association/appearance/kpr_vendor/NOTICE.md",
+    "src/tasks/base/visualization/shared/LICENSE-*.txt",
+]
 requires-python = ">=3.11"
 dependencies = [
     "accelerate>=1.14.0",
@@ -47,6 +61,9 @@ dependencies = [
     "requests>=2.34.2",
     "lap>=0.5.12",
 ]
+
+[project.urls]
+"License scope" = "https://github.com/Motoki0705/tennis-lab/blob/main/LICENSES.md"
 
 [tool.uv]
 default-groups = ["dev", "gpu"]
