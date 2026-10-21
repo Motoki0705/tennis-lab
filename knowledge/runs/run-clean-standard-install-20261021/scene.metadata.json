@@ -1,0 +1,1787 @@
+{
+  "ball_observation_contract": "single_detection_per_camera_frame",
+  "body_placement": {
+    "config": {
+      "data_sigma_m": 0.1,
+      "max_nfev": 200,
+      "max_reprojection_rms_px": 10.0,
+      "max_scale": 1.4,
+      "min_joints": 5,
+      "min_scale": 0.7,
+      "min_scale_pairs": 6,
+      "reprojection_weight_sigma_px": 5.0,
+      "root_acceleration_sigma": 10.0,
+      "temporal_weight": 0.05,
+      "yaw_acceleration_sigma": 20.0
+    },
+    "placement": "coco17_temporal_position_yaw_v1",
+    "players": {
+      "0": {
+        "intervals": [
+          {
+            "body_segment": 0,
+            "end_frame": 701,
+            "nfev": 9,
+            "objective": 0.18327089055919538,
+            "optimality": 1.0551785911072536e-05,
+            "start_frame": 2,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 708,
+            "nfev": 5,
+            "objective": 0.15068589344347202,
+            "optimality": 6.30117939405539e-05,
+            "start_frame": 705,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 710,
+            "nfev": 6,
+            "objective": 0.2475565846375175,
+            "optimality": 8.948184357250371e-05,
+            "start_frame": 709,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 712,
+            "nfev": 9,
+            "objective": 0.27836617404263236,
+            "optimality": 0.00022214750200846714,
+            "start_frame": 711,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 719,
+            "nfev": 10,
+            "objective": 0.3077277308852092,
+            "optimality": 0.0001031895769036022,
+            "start_frame": 717,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 722,
+            "nfev": 6,
+            "objective": 0.22483016415312607,
+            "optimality": 8.187966302036082e-05,
+            "start_frame": 721,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 1010,
+            "nfev": 7,
+            "objective": 0.2408736232444591,
+            "optimality": 1.4155869989488506e-05,
+            "start_frame": 733,
+            "status": "ok"
+          }
+        ],
+        "rejection_counts": {
+          "0": 984,
+          "1": 2,
+          "101": 24
+        },
+        "scale": 0.9662969616596229,
+        "scale_pairs": 8791,
+        "weighted_joint_frames": 15803
+      },
+      "1": {
+        "intervals": [
+          {
+            "body_segment": 0,
+            "end_frame": 735,
+            "nfev": 13,
+            "objective": 0.8091677620429671,
+            "optimality": 1.527345543028951e-05,
+            "start_frame": 2,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 741,
+            "nfev": 8,
+            "objective": 0.608149260605374,
+            "optimality": 0.0001121413238933111,
+            "start_frame": 736,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 750,
+            "nfev": 7,
+            "objective": 0.5431058645991582,
+            "optimality": 0.000256621059124551,
+            "start_frame": 743,
+            "status": "ok"
+          },
+          {
+            "body_segment": 0,
+            "end_frame": 1010,
+            "nfev": 9,
+            "objective": 0.88102674734298,
+            "optimality": 5.025665579515672e-05,
+            "start_frame": 762,
+            "status": "ok"
+          }
+        ],
+        "rejection_counts": {
+          "0": 993,
+          "1": 2,
+          "101": 15
+        },
+        "scale": 0.9945467950329596,
+        "scale_pairs": 8506,
+        "weighted_joint_frames": 15595
+      }
+    },
+    "rejection_codes": {
+      "INSUFFICIENT_JOINTS": 101,
+      "INSUFFICIENT_SCALE": 103,
+      "SCALE_OUT_OF_RANGE": 104,
+      "SOLVER_FAILED": 105,
+      "UNOBSERVABLE_YAW": 102
+    },
+    "segments": [
+      {
+        "camera_id": "cam1",
+        "end_frame": 1010,
+        "identity": 0,
+        "observed_samples": 505,
+        "start_frame": 2
+      },
+      {
+        "camera_id": "cam2",
+        "end_frame": 1010,
+        "identity": 1,
+        "observed_samples": 505,
+        "start_frame": 2
+      }
+    ],
+    "source_cameras": {
+      "0": "cam1",
+      "1": "cam2"
+    }
+  },
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "court_detection": {
+    "cameras": [
+      {
+        "camera_id": "cam0",
+        "frames": [
+          {
+            "candidate_count": 171,
+            "frame_index": 0,
+            "homography_court_metres_to_image_pixels": [
+              [
+                1.8682724663269634,
+                52.847973870622226,
+                1001.655372649235
+              ],
+              [
+                -11.705577518919773,
+                11.253500348303472,
+                399.95643810849083
+              ],
+              [
+                -0.024773111413845826,
+                0.04125354494880167,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 5.079923872311276,
+              "forward_support": 0.7694444444444444,
+              "reverse_rms_px": 3.320611637769839,
+              "reverse_support": 0.9195056450328737,
+              "segment_support": [
+                0.7,
+                0.725,
+                0.625,
+                0.85,
+                0.65,
+                0.85,
+                0.575,
+                0.975,
+                0.975
+              ],
+              "supported_segments": 9.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              256,
+              512
+            ],
+            "original_size_hw": [
+              1080,
+              1920
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              540,
+              1080
+            ],
+            "raw_keypoints_px": [
+              [
+                992.0392150878906,
+                367.2479248046875
+              ],
+              [
+                1212.2540283203125,
+                350.8421325683594
+              ],
+              [
+                619.4224319458008,
+                509.7313537597656
+              ],
+              [
+                627.0696754455566,
+                519.6421508789062
+              ],
+              [
+                1015.8572082519531,
+                372.7967529296875
+              ],
+              [
+                628.4587173461914,
+                509.5091857910156
+              ],
+              [
+                1187.2730712890625,
+                357.2682800292969
+              ],
+              [
+                636.6729736328125,
+                525.0126342773438
+              ],
+              [
+                966.0473022460938,
+                376.4750061035156
+              ],
+              [
+                1167.7337646484375,
+                366.7087707519531
+              ],
+              [
+                781.9630584716797,
+                449.469482421875
+              ],
+              [
+                1058.6509094238281,
+                441.7983703613281
+              ],
+              [
+                1057.9891357421875,
+                373.5690002441406
+              ],
+              [
+                904.9581909179688,
+                442.0804748535156
+              ]
+            ],
+            "raw_scores": [
+              0.8347350358963013,
+              0.7151960134506226,
+              0.11551351100206375,
+              0.16278034448623657,
+              0.5965907573699951,
+              0.38489940762519836,
+              0.5642890930175781,
+              0.11791864782571793,
+              0.8587905764579773,
+              0.6278127431869507,
+              0.8402186632156372,
+              0.9374822378158569,
+              0.8924440145492554,
+              0.947566568851471
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              600,
+              0,
+              1680,
+              540
+            ],
+            "residuals_px": [
+              3.881249435733211,
+              4.426864624042937,
+              56.69748054423833,
+              400.1745838117911,
+              7.895784631244275,
+              30.61354274056762,
+              10.900290704737774,
+              298.4588682271207,
+              10.189887592127654,
+              8.36088611688041,
+              0.873710362803377,
+              0.5777021613067874,
+              2.0329094822409615,
+              4.970334521187386
+            ],
+            "selected_keypoints": [
+              0,
+              10,
+              11,
+              12,
+              13
+            ],
+            "status": "ok"
+          }
+        ],
+        "region_selection": {
+          "candidates": [
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                0,
+                0,
+                1920,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                0,
+                1680,
+                1080
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                0,
+                1680,
+                810
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                270,
+                1680,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                0,
+                1320,
+                540
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                270,
+                1320,
+                810
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                240,
+                540,
+                1320,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0278879703472607,
+              "convex": true,
+              "inlier_score": 5.885427951812744,
+              "inliers": 7,
+              "inside_content": true,
+              "region_xyxy": [
+                420,
+                0,
+                1500,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                420,
+                270,
+                1500,
+                810
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                420,
+                540,
+                1500,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.02821473179645204,
+              "convex": true,
+              "inlier_score": 7.815125465393066,
+              "inliers": 10,
+              "inside_content": true,
+              "region_xyxy": [
+                600,
+                0,
+                1680,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                600,
+                270,
+                1680,
+                810
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": false,
+              "region_xyxy": [
+                600,
+                540,
+                1680,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            }
+          ],
+          "frame_index": 0,
+          "original_size_hw": [
+            1080,
+            1920
+          ],
+          "region_xyxy": [
+            600,
+            0,
+            1680,
+            540
+          ]
+        },
+        "video_path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam0.mp4"
+      },
+      {
+        "camera_id": "cam1",
+        "frames": [
+          {
+            "candidate_count": 282,
+            "frame_index": 0,
+            "homography_court_metres_to_image_pixels": [
+              [
+                68.96067436871476,
+                10.990601084418286,
+                715.6716721948206
+              ],
+              [
+                8.81414636533922,
+                18.356938250508883,
+                565.417273320189
+              ],
+              [
+                0.025407105060957495,
+                0.0432070793023257,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 14.40127869989982,
+              "forward_support": 0.8805555555555555,
+              "reverse_rms_px": 5.813836783489071,
+              "reverse_support": 0.9744655840739296,
+              "segment_support": [
+                0.85,
+                0.55,
+                1.0,
+                0.925,
+                1.0,
+                0.95,
+                0.725,
+                0.925,
+                1.0
+              ],
+              "supported_segments": 9.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              216,
+              512
+            ],
+            "original_size_hw": [
+              1080,
+              1920
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              810,
+              1920
+            ],
+            "raw_keypoints_px": [
+              [
+                333.4390563964844,
+                531.7870178222656
+              ],
+              [
+                740.2456665039062,
+                503.097412109375
+              ],
+              [
+                604.247314453125,
+                872.667236328125
+              ],
+              [
+                798.170654296875,
+                816.2116088867188
+              ],
+              [
+                394.6286926269531,
+                530.7706909179688
+              ],
+              [
+                784.9171752929688,
+                814.1093139648438
+              ],
+              [
+                683.7272338867188,
+                503.188720703125
+              ],
+              [
+                1442.892333984375,
+                709.8509216308594
+              ],
+              [
+                426.7889099121094,
+                548.2209167480469
+              ],
+              [
+                771.9881591796875,
+                518.5098266601562
+              ],
+              [
+                579.0888671875,
+                663.114990234375
+              ],
+              [
+                1149.35009765625,
+                578.0470275878906
+              ],
+              [
+                636.1242065429688,
+                533.4071044921875
+              ],
+              [
+                892.630615234375,
+                618.5601806640625
+              ]
+            ],
+            "raw_scores": [
+              0.922332763671875,
+              0.5333434343338013,
+              0.19162414968013763,
+              0.27308690547943115,
+              0.9541172981262207,
+              0.44514840841293335,
+              0.5819768905639648,
+              0.3409997224807739,
+              0.9496403336524963,
+              0.40310296416282654,
+              0.9189045429229736,
+              0.43559759855270386,
+              0.7485977411270142,
+              0.7692576050758362
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              0,
+              270,
+              1920,
+              1080
+            ],
+            "residuals_px": [
+              7.874380157839624,
+              0.6533089471032031,
+              14.37957409020855,
+              763.5630373400634,
+              4.630396792161377,
+              3.8998179709261427,
+              15.09131751683305,
+              66.7185417472236,
+              3.9352805253916445,
+              3.431996097934999,
+              5.466916610538775,
+              28.09240515763443,
+              20.44098250280033,
+              0.8651138144433361
+            ],
+            "selected_keypoints": [
+              1,
+              4,
+              5,
+              8,
+              9,
+              10,
+              13
+            ],
+            "status": "ok"
+          }
+        ],
+        "region_selection": {
+          "candidates": [
+            {
+              "accepted": false,
+              "area_ratio": 0.10657088154777941,
+              "convex": true,
+              "inlier_score": 5.509018898010254,
+              "inliers": 7,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1920,
+                1080
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.10414819489623335,
+              "convex": true,
+              "inlier_score": 4.779020309448242,
+              "inliers": 6,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1920,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.10678820227398655,
+              "convex": true,
+              "inlier_score": 5.895847320556641,
+              "inliers": 8,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                270,
+                1920,
+                1080
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1440,
+                540
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.105462563763173,
+              "convex": true,
+              "inlier_score": 5.576803684234619,
+              "inliers": 8,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                270,
+                1440,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                540,
+                1440,
+                1080
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.029090250477418995,
+              "convex": true,
+              "inlier_score": 1.9941977262496948,
+              "inliers": 5,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                0,
+                1680,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.10504844534512499,
+              "convex": true,
+              "inlier_score": 3.7539610862731934,
+              "inliers": 6,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                270,
+                1680,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                540,
+                1680,
+                1080
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                480,
+                0,
+                1920,
+                540
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                480,
+                270,
+                1920,
+                810
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                480,
+                540,
+                1920,
+                1080
+              ],
+              "status": "insufficient_line_support"
+            }
+          ],
+          "frame_index": 0,
+          "original_size_hw": [
+            1080,
+            1920
+          ],
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ]
+        },
+        "video_path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam1.mp4"
+      },
+      {
+        "camera_id": "cam2",
+        "frames": [
+          {
+            "candidate_count": 710,
+            "frame_index": 0,
+            "homography_court_metres_to_image_pixels": [
+              [
+                58.78899392848478,
+                46.441061500455895,
+                906.0848921762962
+              ],
+              [
+                0.35878734984707683,
+                15.551143449954365,
+                467.19649224804755
+              ],
+              [
+                0.0020342292372053893,
+                0.050618824037168525,
+                1.0
+              ]
+            ],
+            "homography_frame": "checkpoint_KP14_template_metres",
+            "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+            "line_support": {
+              "forward_rms_px": 21.278209668311977,
+              "forward_support": 0.7972222222222222,
+              "reverse_rms_px": 2.6358949323807024,
+              "reverse_support": 0.998092489912616,
+              "segment_support": [
+                0.125,
+                1.0,
+                1.0,
+                1.0,
+                0.975,
+                0.975,
+                0.15,
+                0.975,
+                0.975
+              ],
+              "supported_segments": 7.0,
+              "visible_segments": 9.0
+            },
+            "native_size_hw": [
+              216,
+              512
+            ],
+            "original_size_hw": [
+              1080,
+              1920
+            ],
+            "output_keypoint_contract": "camera_view_v2",
+            "postprocess_image_size_hw": [
+              810,
+              1920
+            ],
+            "raw_keypoints_px": [
+              [
+                713.751220703125,
+                409.80491638183594
+              ],
+              [
+                1100.4029541015625,
+                407.3966522216797
+              ],
+              [
+                80.52742004394531,
+                723.8883056640625
+              ],
+              [
+                1653.3692626953125,
+                695.0721130371094
+              ],
+              [
+                755.70849609375,
+                409.71978759765625
+              ],
+              [
+                289.912353515625,
+                723.0543823242188
+              ],
+              [
+                1057.1112060546875,
+                407.69786071777344
+              ],
+              [
+                1461.1171875,
+                697.7560424804688
+              ],
+              [
+                724.9352416992188,
+                426.2645263671875
+              ],
+              [
+                1085.50439453125,
+                425.2471466064453
+              ],
+              [
+                558.3887329101562,
+                544.7378845214844
+              ],
+              [
+                1237.4185791015625,
+                533.5646057128906
+              ],
+              [
+                906.5892944335938,
+                425.9463195800781
+              ],
+              [
+                903.6143798828125,
+                534.1485290527344
+              ]
+            ],
+            "raw_scores": [
+              0.8447284698486328,
+              0.9234133362770081,
+              0.8069355487823486,
+              0.9240373373031616,
+              0.7232586145401001,
+              0.860709547996521,
+              0.8749610185623169,
+              0.9626917243003845,
+              0.9031351208686829,
+              0.9346433281898499,
+              0.9178271889686584,
+              0.9608047008514404,
+              0.9688078761100769,
+              0.9758735299110413
+            ],
+            "raw_valid": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "region_xyxy": [
+              0,
+              270,
+              1920,
+              1080
+            ],
+            "residuals_px": [
+              1.10917442424423,
+              4.064860994586042,
+              1.2899895852530106,
+              1.5697234829253615,
+              7.722876850300083,
+              3.6034524671340753,
+              2.169922022004867,
+              4.220520761991071,
+              6.745847727167678,
+              1.446136383236186,
+              9.553606089359478,
+              8.105822788193755,
+              3.1039006229864885,
+              10.157037796810586
+            ],
+            "selected_keypoints": [
+              0,
+              1,
+              2,
+              3,
+              5,
+              7,
+              9,
+              12
+            ],
+            "status": "ok"
+          }
+        ],
+        "region_selection": {
+          "candidates": [
+            {
+              "accepted": true,
+              "area_ratio": 0.1442824110983599,
+              "convex": true,
+              "inlier_score": 11.38903522491455,
+              "inliers": 12,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1920,
+                1080
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.14327511426082187,
+              "convex": true,
+              "inlier_score": 12.428253173828125,
+              "inliers": 14,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1920,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.14244300416062367,
+              "convex": true,
+              "inlier_score": 12.581829071044922,
+              "inliers": 14,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                270,
+                1920,
+                1080
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.15905781228925314,
+              "convex": true,
+              "inlier_score": 5.6158905029296875,
+              "inliers": 6,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                0,
+                1440,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.1440040146904867,
+              "convex": true,
+              "inlier_score": 10.858802795410156,
+              "inliers": 12,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                270,
+                1440,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                0,
+                540,
+                1440,
+                1080
+              ],
+              "status": "joint_optimization_failed"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.15072884721536361,
+              "convex": true,
+              "inlier_score": 4.790287971496582,
+              "inliers": 5,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                0,
+                1680,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.14390776849212894,
+              "convex": true,
+              "inlier_score": 11.416834831237793,
+              "inliers": 13,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                270,
+                1680,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                240,
+                540,
+                1680,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.2652427327996154,
+              "convex": true,
+              "inlier_score": 6.44364070892334,
+              "inliers": 7,
+              "inside_content": false,
+              "region_xyxy": [
+                480,
+                0,
+                1920,
+                540
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": true,
+              "area_ratio": 0.14486512160283316,
+              "convex": true,
+              "inlier_score": 10.801061630249023,
+              "inliers": 12,
+              "inside_content": true,
+              "region_xyxy": [
+                480,
+                270,
+                1920,
+                810
+              ],
+              "status": "ok"
+            },
+            {
+              "accepted": false,
+              "area_ratio": 0.0,
+              "convex": false,
+              "inlier_score": 0.0,
+              "inliers": 0,
+              "inside_content": true,
+              "region_xyxy": [
+                480,
+                540,
+                1920,
+                1080
+              ],
+              "status": "no_jointly_supported_candidate"
+            }
+          ],
+          "frame_index": 0,
+          "original_size_hw": [
+            1080,
+            1920
+          ],
+          "region_xyxy": [
+            0,
+            270,
+            1920,
+            1080
+          ]
+        },
+        "video_path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam2.mp4"
+      }
+    ],
+    "observed_frame_indices": [
+      0
+    ],
+    "output_keypoint_contract": "camera_view_v2",
+    "source_frame_count": 1010,
+    "temporal_policy": "static_first_frame_broadcast"
+  },
+  "court_keypoints": {
+    "contract_id": "camera_view_courtkp20_rzpi_v1",
+    "num_keypoints": 20,
+    "schema_version": 1,
+    "target_frame_id": "reference_camera_court_rzpi_v1"
+  },
+  "court_observation_order": "camera_local_v1",
+  "court_reference": {
+    "camera_fits": [
+      {
+        "K": [
+          [
+            568.9013319923846,
+            0.0,
+            960.0
+          ],
+          [
+            0.0,
+            568.9013319923846,
+            540.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "R": [
+          [
+            0.8802817501367117,
+            0.4553338617740085,
+            -0.13332334641095622
+          ],
+          [
+            0.05629541778539368,
+            -0.37926030408937933,
+            -0.9235759024998429
+          ],
+          [
+            -0.4710996352287016,
+            0.8055015183499032,
+            -0.3594891342215849
+          ]
+        ],
+        "calibration": "approximate single-plane pinhole; no distortion correction",
+        "calibration_frame_index": 0,
+        "camera_center_court_m": [
+          8.216471087004026,
+          -18.243967414102404,
+          2.7782790776471833
+        ],
+        "rmse_px": 0.3652255103224924,
+        "t": [
+          1.4446960522222934,
+          -4.8158106952992785,
+          19.565081124989746
+        ]
+      },
+      {
+        "K": [
+          [
+            1044.243123921987,
+            0.0,
+            960.0
+          ],
+          [
+            0.0,
+            1044.243123921987,
+            540.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "R": [
+          [
+            0.8277231056723068,
+            -0.5608771654072329,
+            -0.017066506992911512
+          ],
+          [
+            -0.08146939686535909,
+            -0.09002659234385989,
+            -0.9926016069125354
+          ],
+          [
+            0.5551911361959827,
+            0.8229896828002767,
+            -0.1202114149892339
+          ]
+        ],
+        "calibration": "approximate single-plane pinhole; no distortion correction",
+        "calibration_frame_index": 0,
+        "camera_center_court_m": [
+          -6.994437306176884,
+          -18.228520201802798,
+          2.6957119544234134
+        ],
+        "rmse_px": 4.432216267284413,
+        "t": [
+          -4.3884969839356165,
+          0.464883871747698,
+          19.209189002312662
+        ]
+      },
+      {
+        "K": [
+          [
+            1098.121116336941,
+            0.0,
+            960.0
+          ],
+          [
+            0.0,
+            1098.121116336941,
+            540.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "R": [
+          [
+            -0.9992801004613288,
+            0.03750124995287859,
+            -0.0057390830250121025
+          ],
+          [
+            0.013393011236422551,
+            0.20717519319724406,
+            -0.9782121787085384
+          ],
+          [
+            -0.03549518378621694,
+            -0.9775848278158045,
+            -0.2075283025332361
+          ]
+        ],
+        "calibration": "approximate single-plane pinhole; no distortion correction",
+        "calibration_frame_index": 0,
+        "camera_center_court_m": [
+          -0.250615795405468,
+          19.17583271317132,
+          2.7490508926209083
+        ],
+        "rmse_px": 0.2607410237933167,
+        "t": [
+          -0.953776041528461,
+          -1.2802452838540606,
+          19.30761333273571
+        ]
+      }
+    ],
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "court_keypoint_views": [
+      {
+        "camera_center_court_m": [
+          8.216471087004026,
+          -18.243967414102404,
+          2.7782790776471833
+        ],
+        "camera_id": "cam0",
+        "canonical_from_physical": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "contract_id": "camera_view_courtkp20_rzpi_v1",
+        "coordinate_frame": "physical_court",
+        "schema_version": 1,
+        "semantic_to_physical": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ]
+      },
+      {
+        "camera_center_court_m": [
+          -6.994437306176884,
+          -18.228520201802798,
+          2.6957119544234134
+        ],
+        "camera_id": "cam1",
+        "canonical_from_physical": [
+          [
+            1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "contract_id": "camera_view_courtkp20_rzpi_v1",
+        "coordinate_frame": "physical_court",
+        "schema_version": 1,
+        "semantic_to_physical": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ]
+      },
+      {
+        "camera_center_court_m": [
+          -0.250615795405468,
+          19.17583271317132,
+          2.7490508926209083
+        ],
+        "camera_id": "cam2",
+        "canonical_from_physical": [
+          [
+            -1.0,
+            0.0,
+            0.0
+          ],
+          [
+            0.0,
+            -1.0,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "contract_id": "camera_view_courtkp20_rzpi_v1",
+        "coordinate_frame": "physical_court",
+        "schema_version": 1,
+        "semantic_to_physical": [
+          3,
+          2,
+          1,
+          0,
+          7,
+          6,
+          5,
+          4,
+          11,
+          10,
+          9,
+          8,
+          13,
+          12,
+          14,
+          17,
+          18,
+          15,
+          16,
+          19
+        ]
+      }
+    ],
+    "court_keypoints": {
+      "contract_id": "camera_view_courtkp20_rzpi_v1",
+      "num_keypoints": 20,
+      "schema_version": 1,
+      "target_frame_id": "reference_camera_court_rzpi_v1"
+    },
+    "court_observation_order": "camera_local_v1",
+    "court_reference_provenance": {
+      "contract_id": "camera_view_courtkp20_rzpi_v1",
+      "physical_from_reference": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "reference_camera_id": "cam0",
+      "reference_camera_local_index": 0,
+      "reference_from_physical": [
+        [
+          1.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "schema_version": 1,
+      "target_frame_id": "reference_camera_court_rzpi_v1"
+    },
+    "excluded_cameras": {},
+    "reference_camera": "cam0",
+    "side_validation": {
+      "cost": 0.1732230213730749,
+      "support": 0.9000769097415756,
+      "view_half_turns": [
+        false,
+        false,
+        true
+      ]
+    },
+    "view_half_turns": [
+      false,
+      false,
+      true
+    ]
+  },
+  "court_reference_provenance": {
+    "contract_id": "camera_view_courtkp20_rzpi_v1",
+    "physical_from_reference": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "reference_camera_id": "cam0",
+    "reference_camera_local_index": 0,
+    "reference_from_physical": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "schema_version": 1,
+    "target_frame_id": "reference_camera_court_rzpi_v1"
+  },
+  "dataset_clip_id": "standalone",
+  "identity_scope": "one_model_input_clip",
+  "normalization": "image_width_height",
+  "num_cameras": 3,
+  "pipeline_contract": "declared_components_v1",
+  "representation": "triangulated_coco17_and_temporal_smpl_v1",
+  "scene_schema_version": 2,
+  "status": "ok",
+  "sync_assumption": "preprocessed",
+  "track_ids": [
+    0,
+    1
+  ],
+  "validity_statistics": {
+    "ball_3d_frames": 822,
+    "player_joint_frames": [
+      1008,
+      993
+    ],
+    "player_root_frames": [
+      984,
+      993
+    ],
+    "player_smpl_frames": [
+      984,
+      993
+    ]
+  },
+  "video_paths": [
+    "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam0.mp4",
+    "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam1.mp4",
+    "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data/samples/cam2.mp4"
+  ]
+}

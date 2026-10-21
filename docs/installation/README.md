@@ -11,8 +11,11 @@ Obtain each asset under its upstream terms before running the commands below.
 ## 動作環境 / Requirements
 
 - Linux x86-64、またはNVIDIA GPUが利用できるWSL2。Python 3.11は`.python-version`で固定し、uvで同期します。
-- NVIDIA GPU。確認済みは **RTX 5060 Ti / VRAM 16 GB**。これを推奨構成とし、より小さいVRAMの下限は未測定です。
-  ホストRAMは24 GBの環境で従来のサンプルが完走しています。GPUは他の処理と共有せず実行してください。
+- NVIDIA GPU。確認済みは **RTX 5060 Ti / VRAM 16 GB**。独立clone・新venvでの公開サンプル実行中、
+  `nvidia-smi`による約5秒間隔の測定最大は**GPU全体で4,928 MiB**でした。
+  開始前の使用量1,215 MiB（他プロセス）を含み、冒頭約22秒とサンプル間の瞬間的なピークは測れていません。
+  より小さいVRAMでの動作下限は未検証です。ホストRAM上限24 GBの既存WSL2ホストを使用し、RAMピークは未測定です。
+  GPUは他の処理と共有せず実行してください。
 - **CUDA toolkit 13系の`nvcc`**と対応ドライバ。lockは`torch 2.14.1+cu130`です。
   検証構成はtoolkit **13.0.88**、driver **610.88**。CUDA 13.xのdriver最低系列は580、
   CUDA 13.0 GAのLinux driverは580.65.06以降です（[NVIDIAの固定版release notes](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-toolkit-release-notes/index.html#cuda-driver)）。
@@ -20,12 +23,15 @@ Obtain each asset under its upstream terms before running the commands below.
   torchとtoolkitのCUDAメジャー版が違うと拡張ビルドが停止します。13.0を使うとlockのcu130と揃います。
 - Git、[uv](https://docs.astral.sh/uv/getting-started/installation/)、C++ compiler、CUDA対応のhost compiler、
   `ffmpeg`（MP4保存）、Ninja。Ubuntuでは`build-essential`・`ninja-build`・`ffmpeg`をOS側に用意します。
-- **空きディスク80 GBを確保**してください（作業用の目安。最低容量の保証ではありません）。通常clone約1.06 GBに加え、
-  venv・uv/HF cache・約10 GBの重み・CUDA build・component storeを置きます。サンプル入力は約49 MBです。
-  実測値は[導入検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)を参照してください。
+- ディスクは、独立clone・venv・分離したuv/HF cache・重み・サンプル・CUDA build・component cache・
+  scene・全編可視化を含むworkspaceで**約20.87 GB（19.43 GiB）**を使用しました（準備完了時は約19.94 GB）。
+  CUDA toolkit・OSのパッケージ・第三者資産を別途ダウンロードする作業領域は含みません。
+  必要容量はcacheや実行回数で変わるため、それらと追加の出力を見込んで空きを確保してください。
+  測定範囲は[導入検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)を参照してください。
 
 CPU実行はこの手順の対象外です。CPUで行うのは資産検査・拡張のimport/dispatch検査・可視化です。
-The tested GPU has 16 GB VRAM; minimum memory requirements have not been established.
+The tested GPU has 16 GB VRAM. Device-wide samples reached 4,928 MiB, including other processes;
+sampling misses brief peaks and the first 22 seconds, so this does not establish minimum VRAM.
 Use a CUDA 13 toolkit matching the locked cu130 PyTorch build.
 
 ## cloneと依存関係 / Clone and sync
@@ -185,8 +191,9 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
 ```
 
 このrepoの共有GPU上では[training queue](../../.agents/skills/training-queue/SKILL.md)から実行します。
-RTX 5060 Tiでの既存サンプル実行は**30分36秒**でした（[実測記録](../../knowledge/nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md)）。
-これは既存環境の参考値で、初回の取得・ビルド時間を含みません。
+RTX 5060 Tiでのクリーン導入検証では、pipeline開始からscene保存まで**30分27秒**でした
+（[実測記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)）。
+公開サンプル1clipの参考値で、queue待ち・プロセス起動・資産取得・ビルド・可視化は含みません。
 
 `outputs/tennis_scene/generate/clean_install/scene.npz`と`scene.metadata.json`が保存され、
 metadataの`scene_schema_version=2`・`status=ok`であることを確認します。
@@ -205,6 +212,8 @@ PY
 
 出力cacheはこの入力・設定・コードに対するものです。新しい導入検証では新規cloneと空の出力先を使います。
 完走は処理・保存契約の成立を示し、真値に対する3D精度の保証にはしません。
+同じ入力・推論コードの先行実行とは、有効なball 3Dや選手root/SMPLのフレーム数に差がありました。
+原因は未確定であり、同一byteの出力を保証する検証ではありません。詳細は上記の実測記録を参照してください。
 
 ## 可視化 / Visualize
 
@@ -218,6 +227,9 @@ CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg .venv/bin/python -m src.tennis_scene.scri
 ```
 
 MP4を再生して、コート・両選手・ボールと欠測区間を確認します。
+クリーン導入検証のCPU描画は**6分3秒**（親セッションの計時、起動時間込み）で、
+1200×800・1,010フレーム・約16.85秒のMP4を生成しました。親セッションが9秒時点のフレームで
+コート・両選手のSMPL・ボール・ミニマップの描画を確認しています。
 componentごとの入力との照合は[review UI](../../src/tennis_scene/visualization/review/README.md)を参照してください。
 
 ## クリーン導入の再検証 / Rehearse a clean install
@@ -242,3 +254,13 @@ python3 scripts/prepare_clean_install.py \
 CPU準備が成功すると`ready_for_gpu`になり、**GPU実行前で停止**します。
 生成された`run_pipeline.sh`を親がtraining queueへ投入し、完了後に`visualize.sh`を実行します。
 GPUの所要時間・ピークVRAM・scene検査・動画確認は、その後の実行記録へ追記してください。
+
+2026-10-21の[検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)では、
+CPU準備**12分41秒**の後、queue経由のGPU完走・正規readerによるscene検査・新sceneのCPU可視化を確認しました。
+この検証のclone元はGitHubではなく上記worktreeで、`git clone --no-local`と固定commitを使用しました。
+登録・申請が必要な第三者資産は利用者取得済みファイルの検査・コピーであり、新規登録・手動取得や
+CUDA toolkit・OSの導入時間は含みません。
+
+The rehearsal used a local worktree clone at a pinned commit, independent asset files and a fresh venv.
+CPU preparation took about 12m41s, pipeline execution 30m27s and CPU visualization 6m03s on the tested host.
+GitHub transfer, toolkit/OS installation and manual third-party acquisition were not timed.

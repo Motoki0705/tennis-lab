@@ -1,7 +1,7 @@
 {
-  "status": "cpu_preparation_passed",
-  "gpu_executed": false,
-  "gpu_vram_measured": false,
+  "status": "clean_standard_install_passed",
+  "gpu_executed": true,
+  "gpu_vram_measured": true,
   "preflight_checks": 28,
   "source_commit": "261c2186134bbe09e11b757e55aa1cb70bd02335",
   "source_tree": "2f4801f8c883540a0adeb57281d6291d098132f7",
@@ -141,9 +141,70 @@
     }
   },
   "unverified": [
-    "GPU kernels/inference in the independent clone",
-    "full pipeline scene export and masks in the independent clone",
-    "fresh scene visualization and visual acceptance",
-    "peak VRAM and GPU elapsed time"
-  ]
+    "GitHub network clone and fresh third-party registrations/manual downloads",
+    "instantaneous/process-specific peak VRAM and smaller-memory GPU requirements",
+    "cause of validity-frame differences from the prior run",
+    "independent 3D accuracy and all-frame visual acceptance",
+    "fresh OS/driver provisioning and other GPU hardware"
+  ],
+  "gpu_completion": "gpu_validation.json",
+  "completion_checks": {
+    "pytest": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 XDG_CACHE_HOME=\"$PWD/tmp/clean-install-finish/cache\" MPLCONFIGDIR=\"$PWD/tmp/clean-install-finish/matplotlib\" TMPDIR=\"$PWD/tmp/clean-install-finish\" .venv/bin/python -m pytest -n 2 --basetemp=\"$PWD/tmp/clean-install-finish/pytest\" tests/unit/tennis_scene/test_preflight.py tests/e2e/tennis_scene/test_preflight_cli.py tests/e2e/tennis_scene/test_prepare_clean_install.py tests/unit/submodules/models/dino/test_extension.py tests/unit/submodules/models/dino/test_person_detector.py tests/unit/tennis_scene/test_configuration.py tests/e2e/skills/test_knowledge_library.py",
+      "result": "91 passed in 21.71s",
+      "log": {
+        "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide/tmp/clean-install-finish/pytest.log",
+        "bytes": 23654,
+        "sha256": "eef8de3bafb71ff16ae5f2d9e15f5352b1ab6fae7fd6e61bdb023cbf68ee6d62"
+      }
+    },
+    "pre_commit": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' PRE_COMMIT_HOME=\"$PWD/tmp/clean-install-finish/pre-commit\" XDG_CACHE_HOME=\"$PWD/tmp/clean-install-finish/cache\" RUFF_CACHE_DIR=\"$PWD/tmp/clean-install-finish/ruff\" MYPY_CACHE_DIR=\"$PWD/tmp/clean-install-finish/mypy\" .venv/bin/pre-commit run --from-ref 808ce1507 --to-ref HEAD",
+      "head_at_execution": "dda11e0fa7eb749c08b597878221b518861308ee",
+      "result": "ruff and mypy passed for all implementation files changed since the branch base",
+      "log": {
+        "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide/tmp/clean-install-finish/pre-commit.log",
+        "bytes": 514,
+        "sha256": "7e5ed6ec51beccb26b268c35e0ab90a95aaa13739cd99ecf560adf434279ccd1"
+      }
+    },
+    "configuration_audit": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' XDG_CACHE_HOME=\"$PWD/tmp/clean-install-finish/cache\" .venv/bin/python scripts/audit_configuration.py src",
+      "result": "113 runtime boundaries verified",
+      "log": {
+        "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide/tmp/clean-install-finish/configuration-audit.log",
+        "bytes": 96,
+        "sha256": "ce0443d7fa459d4a7551016e7c31a49494300356a9c2cb9249d131915ddfe50e"
+      }
+    },
+    "knowledge_repro_paths": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' XDG_CACHE_HOME=\"$PWD/tmp/clean-install-finish/cache\" .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+      "result": "396 repro.sh, 493 script references: 0 missing, 8 unverifiable historical references",
+      "log": {
+        "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide/tmp/clean-install-finish/repro-paths.log",
+        "bytes": 1636,
+        "sha256": "5a4144639fefe86cc6408aee359d245c2ddb13b1445e83a90ce0af16af05d895"
+      }
+    },
+    "bash_syntax": {
+      "command": "bash -n knowledge/runs/run-clean-standard-install-20261021/run_pipeline.sh knowledge/runs/run-clean-standard-install-20261021/visualize.sh scripts/build_dino_extension.sh",
+      "result": "passed"
+    },
+    "gpu": {
+      "result": "not rerun; prior parent execution and outputs recorded in gpu_validation.json"
+    },
+    "summary_review": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' .venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed",
+      "result": "passed; tennis_scene conclusions reviewed and updated"
+    },
+    "knowledge_validation": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref 808ce1507",
+      "result": "584 nodes; 0 errors, 218 existing advisory warnings",
+      "log": {
+        "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide/tmp/clean-install-finish/knowledge-validation.log",
+        "bytes": 17340,
+        "sha256": "d11d992019e13a4c3dd6f4c161c2bad4eceb9c79ed89929cad4ed0f6f1b81634"
+      }
+    }
+  }
 }

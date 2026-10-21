@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-21",
+  "recording_agent": "codex; CPU read-only verification of parent-run outputs; GPU not rerun",
+  "gpu_execution": {
+    "executed_by": "parent Claude Code session",
+    "job_id": "0-8207442519961621865_2026-10-21T04-38-00-038378134Z_1544414_clean_install_standard",
+    "queue_state": "done",
+    "job_file": {
+      "path": "/home/kamimura/projects/tennis-lab/.training_queue/done/0-8207442519961621865_2026-10-21T04-38-00-038378134Z_1544414_clean_install_standard.job",
+      "bytes": 1269,
+      "sha256": "1ca58326a9741775d4b983c3049986f2d35172cfc8f29c2cce327f0be28ab071"
+    },
+    "exit_code": 0,
+    "exit_code_source": "parent execution report supplied in task instructions",
+    "cwd": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo",
+    "commit": "261c2186134bbe09e11b757e55aa1cb70bd02335",
+    "source_tree": "2f4801f8c883540a0adeb57281d6291d098132f7",
+    "current_worktree_source_tree_matches": true,
+    "git_status_at_start": "",
+    "uncommitted_patch_bytes": 0,
+    "resource": "all",
+    "device": "cuda"
+  },
+  "timing": {
+    "pipeline_start_jst": "2026-10-21T13:38:08.538+09:00",
+    "scene_saved_jst": "2026-10-21T14:08:35.667+09:00",
+    "pipeline_to_save_seconds": 1827.129,
+    "pipeline_excludes": [
+      "queue wait",
+      "Python/Hydra startup",
+      "CPU preparation",
+      "visualization"
+    ],
+    "visualization_load_jst": "2026-10-21T14:09:04.373+09:00",
+    "visualization_saved_jst": "2026-10-21T14:14:59.463+09:00",
+    "visualization_logged_load_to_save_seconds": 355.09,
+    "visualization_process_seconds": 363,
+    "visualization_process_seconds_source": "parent wall-clock execution report; includes process startup"
+  },
+  "vram": {
+    "source_file": "vram-samples.csv",
+    "csv_columns_no_header": [
+      "unix_timestamp_seconds",
+      "nvidia_smi_device_memory_used_mib"
+    ],
+    "measurement": "nvidia-smi device-wide memory.used sampled by parent",
+    "nominal_interval_seconds": 5,
+    "sample_count": 368,
+    "sampled_max_device_memory_used_mib": 4928,
+    "first_sample_device_memory_used_mib": 1215,
+    "parent_reported_pre_job_baseline_mib": 1215,
+    "baseline_source": "parent report: includes other processes; not a per-process measurement",
+    "first_sample_utc": "2026-10-21T04:38:31+00:00",
+    "last_sample_utc": "2026-10-21T05:08:37+00:00",
+    "sample_span_seconds": 1806,
+    "actual_interval_seconds": {
+      "min": 4,
+      "median": 5,
+      "max": 6
+    },
+    "first_sample_delay_after_pipeline_start_seconds": 22.462,
+    "limits": [
+      "device-wide total includes other processes",
+      "sampling omits the first 22.462 seconds of the logged pipeline",
+      "short peaks between samples are unobserved",
+      "minimum VRAM and smaller GPUs not tested",
+      "baseline subtraction is not a measured process peak"
+    ]
+  },
+  "scene": {
+    "reader": "src.tennis_scene.archive.load_scene_result",
+    "cuda_visible_devices": "",
+    "archive": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/generate/clean_install/scene.npz",
+      "bytes": 153173597,
+      "sha256": "538f7b60a7a27bf9207529672c8fbe5e9bdbcfd12da4dc6f8eb2aaced89bef3d"
+    },
+    "metadata": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/generate/clean_install/scene.metadata.json",
+      "bytes": 45323,
+      "sha256": "97c7d7aeacaa6d460c0de79411e30eabf652ce49f5f230aa8b1469032d4340d5"
+    },
+    "schema": 2,
+    "status": "ok",
+    "frames": 1010,
+    "fps": 59.94006,
+    "width": 1920,
+    "height": 1080,
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "track_ids": [
+      0,
+      1
+    ],
+    "validity_statistics_recomputed_from_masks": {
+      "ball_3d_frames": 822,
+      "player_joint_frames": [
+        1008,
+        993
+      ],
+      "player_root_frames": [
+        984,
+        993
+      ],
+      "player_smpl_frames": [
+        984,
+        993
+      ]
+    },
+    "matches_metadata": true,
+    "reader_contract_validation": "passed v2 masks, rejection codes and court coordinate metadata validation"
+  },
+  "comparison_with_prior_run": {
+    "node_id": "run-multiview-sample-standard-pipeline-20261021",
+    "input_and_inference_code": "same input bytes and executable inference code; independent environment and caches",
+    "prior_validity_statistics": {
+      "ball_3d_frames": 821,
+      "player_joint_frames": [
+        1008,
+        993
+      ],
+      "player_root_frames": [
+        1000,
+        993
+      ],
+      "player_smpl_frames": [
+        1000,
+        993
+      ]
+    },
+    "difference": {
+      "ball_3d_frames": 1,
+      "player_joint_frames": [
+        0,
+        0
+      ],
+      "player_root_frames": [
+        -16,
+        0
+      ],
+      "player_smpl_frames": [
+        -16,
+        0
+      ]
+    },
+    "cause": "not established; GPU inference nondeterminism is a hypothesis, not a finding",
+    "acceptance": "processing and archive contract only; no bitwise repeatability or independent 3D accuracy claim"
+  },
+  "visualization": {
+    "command_file": "visualize.sh",
+    "cuda_visible_devices": "",
+    "exit_code": 0,
+    "exit_code_source": "parent execution report supplied in task instructions",
+    "output": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/visualize/clean_install/scene.mp4",
+      "bytes": 567965,
+      "sha256": "3ad3b8d6455d99e58a3da9c4e676ff11d87604d5298590bf840c1c71643e086e"
+    },
+    "ffprobe_command": [
+      "ffprobe",
+      "-v",
+      "error",
+      "-count_frames",
+      "-show_entries",
+      "stream=codec_name,width,height,r_frame_rate,avg_frame_rate,nb_read_frames",
+      "-show_entries",
+      "format=duration,size",
+      "-of",
+      "json",
+      "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/visualize/clean_install/scene.mp4"
+    ],
+    "ffprobe": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 1200,
+          "height": 800,
+          "r_frame_rate": "979001/16333",
+          "avg_frame_rate": "979001/16333",
+          "nb_read_frames": "1010"
+        }
+      ],
+      "format": {
+        "duration": "16.850167",
+        "size": "567965"
+      }
+    },
+    "visual_review": {
+      "reviewer": "parent Claude Code session; reported in task instructions",
+      "video_time_seconds": 9,
+      "observed": [
+        "court",
+        "two players with SMPL meshes",
+        "ball",
+        "minimap"
+      ],
+      "scope": "one reported frame; not an all-frame 3D accuracy evaluation"
+    }
+  },
+  "completed_workspace_disk": {
+    "apparent_bytes": 20703572320,
+    "allocated_bytes": 20866301952,
+    "commands": [
+      [
+        "du",
+        "-sB1",
+        "--apparent-size",
+        "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install"
+      ],
+      [
+        "du",
+        "-sB1",
+        "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install"
+      ]
+    ],
+    "scope": "independent clone, venv, isolated uv/HF caches, acquired assets, sample, build output, component cache, scene, full video, prior two-frame visualization smoke and logs",
+    "excludes": [
+      "system CUDA toolkit",
+      "OS packages",
+      "manual third-party download staging outside workspace"
+    ],
+    "hardlinks": "du deduplicates inodes within the workspace"
+  },
+  "source_files": {
+    "run.json": {
+      "path": "/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8207442519961621865_2026-10-21T04-38-00-038378134Z_1544414_clean_install_standard/run.json",
+      "bytes": 826,
+      "sha256": "df9b9912c2eb6792937e37115e8e29e45f231cc6eaeb47ea3e9fc35fb7d0f6c5"
+    },
+    "run_pipeline.sh": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/run_pipeline.sh",
+      "bytes": 572,
+      "sha256": "6eb31f4435c36b48c69569fa3e9c2aee3ea2f2f84c71f4e03776fef518cb695d"
+    },
+    "visualize.sh": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/visualize.sh",
+      "bytes": 465,
+      "sha256": "fa9923ab84aaf063e8ae59a1026b7583e2e48874a503f88078a9a446971e8643"
+    },
+    "pipeline.log": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/generate/clean_install/hydra/run_pipeline.log",
+      "bytes": 7020,
+      "sha256": "428022120a4b9a2b36e32ea11ad988c5c27b908c6cd986afb99429b09b1ea2e2"
+    },
+    "visualization.log": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/visualize.log",
+      "bytes": 1349,
+      "sha256": "9069ba2cb503b97f9b9ce4ae0fa0a8f0d68026baacf454b309340acc19efac00"
+    },
+    "scene.metadata.json": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/generate/clean_install/scene.metadata.json",
+      "bytes": 45323,
+      "sha256": "97c7d7aeacaa6d460c0de79411e30eabf652ce49f5f230aa8b1469032d4340d5"
+    },
+    "vram-samples.csv": {
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/vram-samples.csv",
+      "bytes": 5888,
+      "sha256": "ac75bd883ecc640def9464f7a908ef1787d175d379a812936364c4ef54ca7060"
+    }
+  },
+  "queue_raw_log_not_copied": {
+    "path": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8207442519961621865_2026-10-21T04-38-00-038378134Z_1544414_clean_install_standard.log",
+    "bytes": 291485,
+    "sha256": "c69784b7732448c5348c5cde2169c8c3ad5b21a3c1f6d7ce6479d48fb6989ba2",
+    "reason": "291485 bytes exceeds the 256 KiB ordinary-file limit"
+  },
+  "large_outputs": {
+    "scene_and_video": "retained at source outputs; prediction arrays and video are excluded from knowledge regardless of size",
+    "model_weights_and_component_cache": "retained at source; not copied to knowledge"
+  },
+  "clean_install_limits": [
+    "clone source is the local worktree using git clone --no-local, not a GitHub network clone",
+    "third-party registered assets were locally copied with SHA-256 checks; new registrations/manual downloads were not timed",
+    "single Linux/WSL2 GPU host; not a freshly provisioned OS or driver",
+    "upstream driver/toolkit and smaller-memory GPU compatibility not tested"
+  ]
+}
