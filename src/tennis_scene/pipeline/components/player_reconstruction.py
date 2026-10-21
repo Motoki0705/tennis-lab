@@ -69,8 +69,9 @@ class PlacementTrace:
     ``world = hip_position + scale * Rz(yaw_correction) @ u_t``; callers must
     gate on ``valid`` and never interpolate across invalid frames.
 
-    ``target_joints`` keeps the existing triangulation missing representation:
-    invalid joints are 0 (not NaN), and ``target_weights`` is 0 there.
+    ``target_joints`` marks triangulation missing values with NaN, and
+    ``target_weights`` is 0 there.  Consumers must gate on ``target_weights``
+    and never treat NaN as a coordinate.
     ``hip_position``/``yaw_correction`` are the fit output, so frames rejected
     by the fit (101-105) are 0; the excessive-speed gate changes only
     ``valid``/``reasons``.  Those are the final root validity for this identity:
@@ -84,7 +85,7 @@ class PlacementTrace:
     segment_camera_ids: tuple[str, ...]  # segment ID -> GVHMR camera
     vertices_local: NDArray[np.float32]  # (F,V,3) u_t, zero without a body
     joints_local: NDArray[np.float64]  # (F,17,3) J_src
-    target_joints: NDArray[np.float32]  # (F,17,3) triangulated COCO17, zero invalid
+    target_joints: NDArray[np.float32]  # (F,17,3) triangulated COCO17, NaN invalid
     target_weights: NDArray[np.float64]  # (F,17) placement_weights
     scale: float | None
     hip_position: NDArray[np.float64]  # (F,3) q_t, zero on rejected frames
@@ -431,7 +432,7 @@ def _place_player(
     target_joints = np.where(
         skeleton.valid[player, trace_frames, :, None],
         skeleton.positions[player, trace_frames],
-        0,
+        np.nan,
     ).astype(np.float32)
     if canonical_vertices is None:
         vertices_local: NDArray[np.float32] = np.zeros(

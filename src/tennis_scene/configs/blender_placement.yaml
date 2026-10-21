@@ -1,0 +1,24 @@
+defaults:
+  - paths: default
+  - _self_
+# This unit implements only the per-identity export. rank is added separately.
+mode: export
+store: ???
+identity: ???
+frames: ???  # <start>:<stop>, inside one GVHMR segment
+t0: ???
+plate_camera_id: ???
+plate_video_path: ???
+# Must be the production pipeline's person_observations.visibility_threshold;
+# it controls the identity/time grouping this exporter rebuilds.
+human_vis_threshold: ???
+assets:
+  smpl_faces: body_models/smplh/neutral/model.npz
+output: ${tennis_output:tennis_scene,visualize,blender_placement,${tennis_run_id:}}/bundle
+plate_jpeg_quality: 95
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,visualize,blender_placement,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false

@@ -44,6 +44,9 @@ from src.tennis_scene.pipeline.feature_flags import (
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleConfig
+from src.tennis_scene.visualization.blender.export.placement import (
+    PlacementExportConfig,
+)
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -1085,3 +1088,138 @@ def parse_blender_export_config(cfg: DictConfig) -> BlenderExportRuntimeConfig:
 def validate_blender_export_boundary(cfg: DictConfig) -> None:
     """Validate the complete Blender bundle export boundary."""
     parse_blender_export_config(cfg)
+
+
+_BLENDER_PLACEMENT_ASSETS_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.blender_placement.assets",
+    fields={
+        "smpl_faces": ConfigField.of(str),
+    },
+)
+
+_BLENDER_PLACEMENT_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.blender_placement",
+    fields={
+        "paths": ConfigField.mapping(PATHS_SCHEMA),
+        "assets": ConfigField.mapping(_BLENDER_PLACEMENT_ASSETS_SCHEMA),
+        "mode": ConfigField.of(str),
+        "store": ConfigField.of(str),
+        "output": ConfigField.of(str),
+        "identity": ConfigField.of(int),
+        "frames": ConfigField.of(str),
+        "t0": ConfigField.of(int),
+        "plate_camera_id": ConfigField.of(str),
+        "plate_video_path": ConfigField.of(str),
+        "human_vis_threshold": ConfigField.of(float, int),
+        "plate_jpeg_quality": ConfigField.of(int),
+    },
+)
+
+
+@dataclass(frozen=True, slots=True)
+class BlenderPlacementRuntimeConfig:
+    roots: RuntimePathRoots
+    store_path: Path
+    output_path: Path
+    smpl_faces_path: Path
+    export: PlacementExportConfig
+
+
+def _frame_range(value: str, *, name: str) -> tuple[int, int]:
+    parts = value.split(":")
+    if len(parts) != 2 or any(not part.strip() for part in parts):
+        raise SemanticConfigurationError(f"{name} must be <start>:<stop>, got {value!r}.")
+    try:
+        start, stop = (int(part) for part in parts)
+    except ValueError as error:
+        raise SemanticConfigurationError(
+            f"{name} must contain integer start/stop, got {value!r}."
+        ) from error
+    if start < 0 or stop <= start:
+        raise SemanticConfigurationError(
+            f"{name} must satisfy 0 <= start < stop, got {value!r}."
+        )
+    return start, stop
+
+
+def parse_blender_placement_config(cfg: DictConfig) -> BlenderPlacementRuntimeConfig:
+    """Validate the placement export boundary and explicit input choices."""
+    for key in (
+        "paths",
+        "assets",
+        "mode",
+        "store",
+        "output",
+        "identity",
+        "frames",
+        "t0",
+        "plate_camera_id",
+        "plate_video_path",
+        "human_vis_threshold",
+        "plate_jpeg_quality",
+    ):
+        if OmegaConf.is_missing(cfg, key):
+            raise SemanticConfigurationError(
+                f"blender_placement.{key} is required."
+            )
+    value = _BLENDER_PLACEMENT_SCHEMA.validate(_plain(cfg))
+    roots, resolver = _roots(value["paths"])
+    assets = _mapping(value["assets"], name="assets")
+    mode = cast(str, value["mode"])
+    if mode != "export":
+        raise SemanticConfigurationError(
+            f"blender_placement.mode must be 'export' in this unit, got {mode!r}."
+        )
+    identity = cast(int, value["identity"])
+    if type(identity) is not int or identity < 0:
+        raise SemanticConfigurationError("identity must be a non-negative integer.")
+    frames = _frame_range(cast(str, value["frames"]), name="frames")
+    t0 = cast(int, value["t0"])
+    if type(t0) is not int:
+        raise SemanticConfigurationError("t0 must be an integer.")
+    plate_camera_id = cast(str, value["plate_camera_id"])
+    if not plate_camera_id.strip():
+        raise SemanticConfigurationError("plate_camera_id must be non-empty.")
+    human_vis_threshold = float(cast(float, value["human_vis_threshold"]))
+    _unit_interval(human_vis_threshold, name="human_vis_threshold")
+    store_path = resolver.resolve(PathRole.ARTIFACT, cast(str, value["store"]))
+    if not store_path.is_dir():
+        raise SemanticConfigurationError(
+            f"blender_placement.store is not a directory: {store_path}"
+        )
+    plate_video_path = resolver.resolve(PathRole.DATA, cast(str, value["plate_video_path"]))
+    if not plate_video_path.is_file():
+        raise SemanticConfigurationError(
+            f"blender_placement.plate_video_path is not a file: {plate_video_path}"
+        )
+    smpl_faces_path = resolver.resolve(
+        PathRole.CHECKPOINT, cast(str, assets["smpl_faces"])
+    )
+    if not smpl_faces_path.is_file():
+        raise SemanticConfigurationError(
+            f"blender_placement.assets.smpl_faces is not a file: {smpl_faces_path}"
+        )
+    try:
+        export = PlacementExportConfig(
+            identity=identity,
+            frames=frames,
+            t0=t0,
+            plate_camera_id=plate_camera_id,
+            plate_video_path=plate_video_path,
+            human_vis_threshold=human_vis_threshold,
+            plate_jpeg_quality=cast(int, value["plate_jpeg_quality"]),
+        )
+    except (TypeError, ValueError) as error:
+        raise SemanticConfigurationError(str(error)) from error
+    return BlenderPlacementRuntimeConfig(
+        roots=roots,
+        store_path=store_path,
+        output_path=resolver.resolve(PathRole.OUTPUT, cast(str, value["output"])),
+        smpl_faces_path=smpl_faces_path,
+        export=export,
+    )
+
+
+def validate_blender_placement_boundary(cfg: DictConfig) -> None:
+    """Validate the complete Blender placement bundle export boundary."""
+    parse_blender_placement_config(cfg)

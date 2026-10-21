@@ -611,6 +611,22 @@ def test_trace_reports_missing_and_rejected_frames() -> None:
     )
 
 
+def test_trace_target_joints_use_nan_for_invalid_joints() -> None:
+    case = _build_case()
+    trace = _trace(case)
+    expected_valid = case.skeleton.valid[0, trace.frames]
+    assert not expected_valid.all()
+    nan_mask = ~expected_valid
+    assert np.isnan(trace.target_joints[nan_mask]).all()
+    assert np.isfinite(trace.target_joints[expected_valid]).all()
+    np.testing.assert_array_equal(
+        trace.target_joints[expected_valid],
+        case.skeleton.positions[0, trace.frames][expected_valid],
+    )
+    assert (trace.target_weights[nan_mask] == 0).all()
+    assert (trace.target_weights > 0)[expected_valid].any()
+
+
 def test_trace_does_not_unload_or_mutate_inputs() -> None:
     case = _build_case()
     positions = case.skeleton.positions.copy()

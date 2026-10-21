@@ -47,6 +47,8 @@ fitの原点はCOCO hip中心ですが、SceneResultの`player_position`はSMPL 
 `player_reconstruction.py::trace_player_placement`は人物1人分の`u_t`・`J_src`・三角測量点・
 重み・フィット結果を`PlacementTrace`として返します。`world = q_t + s·Rz(ψ_t)·u_t`は
 本番の`place_canonical_body(...).vertices_court`と一致し、無効frameは補間しません。
+三角測量の欠測関節は`target_joints`でNaN、`target_weights`で0として表し、重みのないNaNを
+座標として扱いません。
 
 SceneResultのvalidity・archive契約は[tennis_scene README](../README.md)を参照してください。
 旧v1 archiveの`gvhmr_aligned_*`とその閲覧機能は読込互換のため保持しますが、旧推定器はありません。

@@ -71,6 +71,61 @@ world座標はコート座標（m、XY地面、+Z上）です。rendererと同�
 コート線・ネット形状の正本は`src/utils/schema/court.py`で、bundleに書き出します。
 既存bundleは上書きせず、途中失敗の出力は削除します。
 
+## 配置bundle（player placement）
+
+GVHMRパラメータからCPUでSMPL meshを復元し、本番と同じ`trace_player_placement`の
+`u_t`・`q_t`・`ψ_t`・`scale`を`tennis_scene_blender_placement_v1`として書き出します。
+画像推論・学習・Blenderは実行しません。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_placement \
+  store=<component store directory> identity=0 frames=2:120 t0=60 \
+  plate_camera_id=cam0 plate_video_path=<clip>/cam0.mp4 human_vis_threshold=0.15
+```
+
+`store`は`scene.json`を持つcomponent storeのdirectoryです。`identity`・`frames`・`t0`・
+`plate_camera_id`・`plate_video_path`・`human_vis_threshold`は必須の明示指定です。
+`human_vis_threshold`は本番pipelineの`person_observations.visibility_threshold`と同じ値を
+渡します。`frames`は1つのGVHMR区間内に収める必要があり、跨いだ場合は拒否します。
+`plate_video_path`はstore sourceの`plate_camera_id`の`video.sha256`と一致しなければ停止します。
+
+`StoreReader`で`camera_alignment`・`player_triangulation`・`gvhmr`・`body_placement`・
+`person_poses`・`person_identities`（v3のみ）を読み取り専用で読み、checksum・schema/version・
+依存の整合を検査します。camera順と時間軸を本番の`input_assembly`に合わせるため、
+`player_triangulation`の依存である`court_calibration`も読み取り専用で参照します。SMPL資産は`body_placement`の`identity.settings.assets`のpathと
+SHA-256を検証して束縛し、自動探索しません。配置configも保存済みの
+`identity.settings.config`を使い、source pixel scaleを本番と同じく適用します。
+
+```text
+bundle/
+├── manifest.json          # schema, fps, frames, t0, identity, gvhmr_camera_id,
+│                          # scale, coco17_skeleton, court, plate, provenance
+├── smpl_faces.npy
+├── body_local.pc2         # (F,V,3) u_t。無効frameは0
+├── joints_local.npy       # (F,17,3) J_src
+├── target_joints.npy      # (F,17,3) NaN=無効
+├── target_weights.npy     # (F,17)
+├── hip_position.npy       # (F,3) q_t
+├── yaw_correction.npy     # (F,) psi_t
+├── valid.npy              # (F,)
+├── placed_vertices_t0.npy # (V,3) 保存済み配置のt0をworld座標にした検証用頂点
+└── plate/%05d.jpg         # plate_camera_idの指定区間
+```
+
+`t0`は有効frameでなければなりません。再計算した
+`q_t + s·Rz(ψ_t)·u_t`は保存済み`body_placement`のworld頂点と、保存側で有効な全frame
+（t0を含む）で比較します。差が1e-4 m以上、または比較対象のworld座標が非有限なら、
+元frame・identity・頂点位置・最大差を報告して停止します。保存済み`root_valid`と
+再計算した`trace.valid`も`trace.frames`上で一致しなければ停止します。`trace.valid`と
+`smpl_valid`は同一視しません（mesh reprojection gateはtraceの外側です）。
+
+`plate_camera_id`は`camera_alignment`で校正済みのカメラから明示的に選び、校正がない
+カメラなら拒否します。manifestにはreveal exporterと同じ`width`・`height`・
+`camera.opencv`（K/R/t）・`camera.blender`（location/rotation_matrix/lens/sensor）を
+記録します。Blender cameraはrevealと同じ36.0 mmのhorizontal sensor widthで変換します。
+
+出力先が存在すれば上書きせず、途中失敗した新規bundleは削除します。
+
 ## 撮影・動画化
 
 GPUを使うレンダリングは共有training queue経由で実行します。
