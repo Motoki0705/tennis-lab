@@ -558,8 +558,12 @@ def _assert_world_matches(
     identity: int,
     *,
     context: str,
-) -> None:
-    """Reject non-finite or >= tolerance differences for the selected frames."""
+) -> float:
+    """Reject non-finite or >= tolerance differences for selected frames.
+
+    Returns the maximum absolute difference over the inspected frames so callers
+    that report diagnostics (the ranking exporter) do not recompute it.
+    """
     if recomputed.shape != saved.shape or mask.shape != frames.shape:
         raise ValueError(
             "World comparison arrays disagree: "
@@ -570,7 +574,7 @@ def _assert_world_matches(
         raise ValueError("World comparison mask does not match the frame axis.")
     selected = np.flatnonzero(mask)
     if not len(selected):
-        return
+        return 0.0
     recomputed_values = np.asarray(recomputed[selected], np.float64)
     saved_values = np.asarray(saved[selected], np.float64)
     for label, values in (("recomputed", recomputed_values), ("saved", saved_values)):
@@ -607,6 +611,7 @@ def _assert_world_matches(
             f"saved_world_m="
             f"{saved_values[int(masked_frame), int(vertex)].tolist()}."
         )
+    return worst
 
 
 def _validate_root_validity(
@@ -642,13 +647,13 @@ def _validate_reproduction(
     player: int,
     scale: float,
     identity: int,
-) -> NDArray[np.float64]:
+) -> tuple[NDArray[np.float64], float]:
     """Stop when current code no longer reproduces the saved placement artifact."""
     frames = trace.frames
     smpl_valid = np.asarray(placed.smpl_valid[player, frames])
     recomputed = _trace_world(trace, scale)
     saved = _saved_world(placed, player, frames, inputs.joint_regressor)
-    _assert_world_matches(
+    max_difference = _assert_world_matches(
         recomputed,
         saved,
         smpl_valid,
@@ -656,7 +661,7 @@ def _validate_reproduction(
         identity,
         context="Recomputed placement",
     )
-    return recomputed
+    return recomputed, max_difference
 
 
 def _placed_vertices_t0(
@@ -745,7 +750,7 @@ def export_placement_bundle(
         )
     _validate_root_validity(inputs.placed, trace, player, config.identity)
     positions = _range_indices(trace, config.frames)
-    world = _validate_reproduction(
+    world, _ = _validate_reproduction(
         inputs,
         inputs.placed,
         trace,
@@ -786,7 +791,11 @@ def export_placement_bundle(
         )
 
     plate_camera, plate_pose = _plate_camera(inputs, config)
-    plate_video = _validate_plate_video(inputs, config)
+    plate_video = _validate_plate_video(
+        inputs,
+        plate_camera_id=config.plate_camera_id,
+        plate_video_path=config.plate_video_path,
+    )
     plate_sha256 = dual_sha256(plate_video)
     smpl_faces_sha256 = dual_sha256(smpl_faces_path)
 
@@ -929,22 +938,25 @@ def _plate_camera(
 
 
 def _validate_plate_video(
-    inputs: PlacementInputs, config: PlacementExportConfig
+    inputs: PlacementInputs,
+    *,
+    plate_camera_id: str,
+    plate_video_path: Path,
 ) -> Path:
-    if config.plate_camera_id not in inputs.source.camera_ids:
+    if plate_camera_id not in inputs.source.camera_ids:
         raise ValueError(
-            f"plate_camera_id {config.plate_camera_id!r} is not a source camera "
+            f"plate_camera_id {plate_camera_id!r} is not a source camera "
             f"{list(inputs.source.camera_ids)}."
         )
-    video = inputs.source.video(config.plate_camera_id)
-    path = config.plate_video_path
+    video = inputs.source.video(plate_camera_id)
+    path = plate_video_path
     if not path.is_file():
         raise FileNotFoundError(f"Plate video is missing: {path}")
     actual = dual_sha256(path)
     if actual != video.sha256:
         raise ValueError(
             f"Plate video SHA-256 mismatch: config {path} has {actual}, "
-            f"store source {config.plate_camera_id} has {video.sha256}."
+            f"store source {plate_camera_id} has {video.sha256}."
         )
     info = probe_video_info(path)
     if (info.width, info.height) != (video.width, video.height):
@@ -964,6 +976,18 @@ def _validate_plate_video(
     return path
 
 
+def _cpu_body_model(inputs: PlacementInputs) -> BodyGeometryModel:
+    """Build the CPU SMPL reconstructor bound to the saved store assets."""
+    from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+
+    binding = _BodyModelBinding(
+        inputs.body_models_dir,
+        inputs.body_assets,
+        _CpuRuntime(),
+    )
+    return SmplGeometry(cast(PeopleModelConfig, binding))
+
+
 def export_blender_placement_bundle(
     *,
     store_dir: Path,
@@ -979,14 +1003,7 @@ def export_blender_placement_bundle(
     )
     owned = body is None
     if body is None:
-        from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-
-        binding = _BodyModelBinding(
-            inputs.body_models_dir,
-            inputs.body_assets,
-            _CpuRuntime(),
-        )
-        body = SmplGeometry(cast(PeopleModelConfig, binding))
+        body = _cpu_body_model(inputs)
     try:
         return export_placement_bundle(
             inputs,

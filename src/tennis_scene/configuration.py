@@ -47,6 +47,9 @@ from src.tennis_scene.visualization.blender.export.bundle import BlenderBundleCo
 from src.tennis_scene.visualization.blender.export.placement import (
     PlacementExportConfig,
 )
+from src.tennis_scene.visualization.blender.export.placement_ranking import (
+    PlacementRankConfig,
+)
 from src.utils.configuration import (
     ConfigField,
     PathResolver,
@@ -1097,6 +1100,16 @@ _BLENDER_PLACEMENT_ASSETS_SCHEMA = StrictConfigSchema(
     },
 )
 
+_BLENDER_PLACEMENT_RANK_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.blender_placement.rank",
+    fields={
+        "window_seconds": ConfigField.of(float, int),
+        "stride_seconds": ConfigField.of(float, int),
+        "min_valid_ratio": ConfigField.of(float, int),
+        "top_k": ConfigField.of(int),
+    },
+)
+
 _BLENDER_PLACEMENT_SCHEMA = StrictConfigSchema(
     name="tennis_scene.blender_placement",
     fields={
@@ -1104,14 +1117,18 @@ _BLENDER_PLACEMENT_SCHEMA = StrictConfigSchema(
         "assets": ConfigField.mapping(_BLENDER_PLACEMENT_ASSETS_SCHEMA),
         "mode": ConfigField.of(str),
         "store": ConfigField.of(str),
-        "output": ConfigField.of(str),
-        "identity": ConfigField.of(int),
-        "frames": ConfigField.of(str),
-        "t0": ConfigField.of(int),
+        "output": ConfigField.of(str, required=False),
+        "rank_output": ConfigField.of(str, required=False),
+        # rank does not consume identity/frames/t0.  They stay optional here and
+        # are rejected when absent in export mode.
+        "identity": ConfigField.of(int, type(None), required=False),
+        "frames": ConfigField.of(str, type(None), required=False),
+        "t0": ConfigField.of(int, type(None), required=False),
         "plate_camera_id": ConfigField.of(str),
         "plate_video_path": ConfigField.of(str),
         "human_vis_threshold": ConfigField.of(float, int),
         "plate_jpeg_quality": ConfigField.of(int),
+        "rank": ConfigField.mapping(_BLENDER_PLACEMENT_RANK_SCHEMA, required=False),
     },
 )
 
@@ -1123,6 +1140,17 @@ class BlenderPlacementRuntimeConfig:
     output_path: Path
     smpl_faces_path: Path
     export: PlacementExportConfig
+
+
+@dataclass(frozen=True, slots=True)
+class BlenderPlacementRankRuntimeConfig:
+    roots: RuntimePathRoots
+    store_path: Path
+    rank_output_path: Path
+    plate_camera_id: str
+    plate_video_path: Path
+    human_vis_threshold: float
+    rank: PlacementRankConfig
 
 
 def _frame_range(value: str, *, name: str) -> tuple[int, int]:
@@ -1142,39 +1170,79 @@ def _frame_range(value: str, *, name: str) -> tuple[int, int]:
     return start, stop
 
 
-def parse_blender_placement_config(cfg: DictConfig) -> BlenderPlacementRuntimeConfig:
-    """Validate the placement export boundary and explicit input choices."""
-    for key in (
-        "paths",
-        "assets",
-        "mode",
-        "store",
-        "output",
-        "identity",
-        "frames",
-        "t0",
-        "plate_camera_id",
-        "plate_video_path",
-        "human_vis_threshold",
-        "plate_jpeg_quality",
-    ):
+def _blender_placement_mode_value(value: object) -> str:
+    if type(value) is not str or value not in ("export", "rank"):
+        raise SemanticConfigurationError(
+            f"blender_placement.mode must be 'export' or 'rank', got {value!r}."
+        )
+    return value
+
+
+def blender_placement_mode(cfg: DictConfig) -> str:
+    """Read the mode without resolving values that only one mode consumes."""
+    if OmegaConf.is_missing(cfg, "mode"):
+        raise SemanticConfigurationError("blender_placement.mode is required.")
+    return _blender_placement_mode_value(OmegaConf.select(cfg, "mode"))
+
+
+def _require_blender_placement_keys(
+    cfg: DictConfig, keys: tuple[str, ...]
+) -> None:
+    for key in keys:
         if OmegaConf.is_missing(cfg, key):
             raise SemanticConfigurationError(
                 f"blender_placement.{key} is required."
             )
+
+
+def parse_blender_placement_config(cfg: DictConfig) -> BlenderPlacementRuntimeConfig:
+    """Validate the placement export boundary and explicit input choices."""
+    _require_blender_placement_keys(
+        cfg,
+        (
+            "paths",
+            "assets",
+            "mode",
+            "store",
+            "output",
+            "identity",
+            "frames",
+            "t0",
+            "plate_camera_id",
+            "plate_video_path",
+            "human_vis_threshold",
+            "plate_jpeg_quality",
+        ),
+    )
     value = _BLENDER_PLACEMENT_SCHEMA.validate(_plain(cfg))
     roots, resolver = _roots(value["paths"])
     assets = _mapping(value["assets"], name="assets")
-    mode = cast(str, value["mode"])
+    mode = _blender_placement_mode_value(value["mode"])
     if mode != "export":
         raise SemanticConfigurationError(
-            f"blender_placement.mode must be 'export' in this unit, got {mode!r}."
+            "blender_placement.mode must be 'export' for the bundle boundary, "
+            f"got {mode!r}."
         )
-    identity = cast(int, value["identity"])
+    identity_value = value.get("identity")
+    if identity_value is None:
+        raise SemanticConfigurationError(
+            "blender_placement.identity is required for mode=export."
+        )
+    identity = cast(int, identity_value)
     if type(identity) is not int or identity < 0:
         raise SemanticConfigurationError("identity must be a non-negative integer.")
-    frames = _frame_range(cast(str, value["frames"]), name="frames")
-    t0 = cast(int, value["t0"])
+    frames_value = value.get("frames")
+    if frames_value is None:
+        raise SemanticConfigurationError(
+            "blender_placement.frames is required for mode=export."
+        )
+    frames = _frame_range(cast(str, frames_value), name="frames")
+    t0_value = value.get("t0")
+    if t0_value is None:
+        raise SemanticConfigurationError(
+            "blender_placement.t0 is required for mode=export."
+        )
+    t0 = cast(int, t0_value)
     if type(t0) is not int:
         raise SemanticConfigurationError("t0 must be an integer.")
     plate_camera_id = cast(str, value["plate_camera_id"])
@@ -1211,15 +1279,96 @@ def parse_blender_placement_config(cfg: DictConfig) -> BlenderPlacementRuntimeCo
         )
     except (TypeError, ValueError) as error:
         raise SemanticConfigurationError(str(error)) from error
+    output_value = value.get("output")
+    if output_value is None:
+        raise SemanticConfigurationError(
+            "blender_placement.output is required for mode=export."
+        )
     return BlenderPlacementRuntimeConfig(
         roots=roots,
         store_path=store_path,
-        output_path=resolver.resolve(PathRole.OUTPUT, cast(str, value["output"])),
+        output_path=resolver.resolve(PathRole.OUTPUT, cast(str, output_value)),
         smpl_faces_path=smpl_faces_path,
         export=export,
     )
 
 
+def parse_blender_placement_rank_config(
+    cfg: DictConfig,
+) -> BlenderPlacementRankRuntimeConfig:
+    """Validate the rank boundary; identity/frames/t0 are not consumed."""
+    _require_blender_placement_keys(
+        cfg,
+        (
+            "paths",
+            "assets",
+            "mode",
+            "store",
+            "rank_output",
+            "plate_camera_id",
+            "plate_video_path",
+            "human_vis_threshold",
+            "rank",
+        ),
+    )
+    value = _BLENDER_PLACEMENT_SCHEMA.validate(_plain(cfg))
+    roots, resolver = _roots(value["paths"])
+    mode = _blender_placement_mode_value(value["mode"])
+    if mode != "rank":
+        raise SemanticConfigurationError(
+            "blender_placement.mode must be 'rank' for the ranking boundary, "
+            f"got {mode!r}."
+        )
+    rank_value = value.get("rank")
+    if not isinstance(rank_value, Mapping):
+        raise SemanticConfigurationError(
+            "blender_placement.rank is required for mode=rank."
+        )
+    try:
+        rank = PlacementRankConfig(
+            window_seconds=float(cast(float, rank_value["window_seconds"])),
+            stride_seconds=float(cast(float, rank_value["stride_seconds"])),
+            min_valid_ratio=float(cast(float, rank_value["min_valid_ratio"])),
+            top_k=cast(int, rank_value["top_k"]),
+        )
+    except (TypeError, ValueError) as error:
+        raise SemanticConfigurationError(str(error)) from error
+    plate_camera_id = cast(str, value["plate_camera_id"])
+    if not plate_camera_id.strip():
+        raise SemanticConfigurationError("plate_camera_id must be non-empty.")
+    human_vis_threshold = float(cast(float, value["human_vis_threshold"]))
+    _unit_interval(human_vis_threshold, name="human_vis_threshold")
+    store_path = resolver.resolve(PathRole.ARTIFACT, cast(str, value["store"]))
+    if not store_path.is_dir():
+        raise SemanticConfigurationError(
+            f"blender_placement.store is not a directory: {store_path}"
+        )
+    plate_video_path = resolver.resolve(PathRole.DATA, cast(str, value["plate_video_path"]))
+    if not plate_video_path.is_file():
+        raise SemanticConfigurationError(
+            f"blender_placement.plate_video_path is not a file: {plate_video_path}"
+        )
+    rank_output_value = value.get("rank_output")
+    if rank_output_value is None:
+        raise SemanticConfigurationError(
+            "blender_placement.rank_output is required for mode=rank."
+        )
+    return BlenderPlacementRankRuntimeConfig(
+        roots=roots,
+        store_path=store_path,
+        rank_output_path=resolver.resolve(
+            PathRole.OUTPUT, cast(str, rank_output_value)
+        ),
+        plate_camera_id=plate_camera_id,
+        plate_video_path=plate_video_path,
+        human_vis_threshold=human_vis_threshold,
+        rank=rank,
+    )
+
+
 def validate_blender_placement_boundary(cfg: DictConfig) -> None:
-    """Validate the complete Blender placement bundle export boundary."""
-    parse_blender_placement_config(cfg)
+    """Validate the mode-specific Blender placement boundary."""
+    if blender_placement_mode(cfg) == "rank":
+        parse_blender_placement_rank_config(cfg)
+    else:
+        parse_blender_placement_config(cfg)

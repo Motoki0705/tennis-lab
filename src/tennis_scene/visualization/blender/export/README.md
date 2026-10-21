@@ -126,6 +126,20 @@ bundle/
 
 出力先が存在すれば上書きせず、途中失敗した新規bundleは削除します。
 
+### mode=rank（候補の列挙）
+
+`mode=rank` は `identity`・`frames`・`t0` を要求せず、store内の全identity・各GVHMR区間の窓を評価して `ranking.json` だけを新規出力します（上書き拒否。plate抽出・bundle作成はしません）。`store`・`plate_camera_id`・`plate_video_path`・`human_vis_threshold` は明示必須です。出力先は `rank_output`（既定は `.../<run-id>/ranking.json`）で指定します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_placement \
+  mode=rank store=<component store directory> \
+  plate_camera_id=cam0 plate_video_path=<clip>/cam0.mp4 human_vis_threshold=0.15
+```
+
+窓長は `rank.window_seconds`（14.0）を `store.source.fps` で丸めたframe数、開始位置は `rank.stride_seconds`（1.0）で進め、GVHMR区間の内側だけに取ります。区間が窓より短い場合は全体を1窓として `shortened: true` にします。`rank.min_valid_ratio`（0.9）未満の窓を除外し、`t0` はvalidかつ三角測量有効関節15点以上のframeから、点数・`target_weights`和・窓中央・frame順で選びます。並びはyaw変化量降順・valid_ratio降順・start昇順です。`rank.top_k`（10）件を選ぶときは、各identityの上位3件を優先して確保し、残りの枠を全体順位で埋めます。identityごとの候補が3件未満の場合、top_kが「3件×identity数」を下回る場合、全体の候補がtop_k未満の場合は、捏造せず不足を `ranking.json` の `quota` に明示します。
+
+各候補は identity・segment_id・gvhmr_camera_id・start/stop・t0・t0の有効関節数・valid_ratio・yaw_variation_deg・yaw_correction_range_deg・scale・shortened を持ちます。`ranking.json` にはstore index SHA-256・artifact ID・解決済みconfig・除外集計・保存済み `body_placement` との照合結果（最大差）を含めます。`plate_video_path` のSHA-256がstore sourceと一致しない場合、または保存配置と再計算したworld頂点が1e-4 m以上ずれる場合は停止します。
+
 ## 撮影・動画化
 
 GPUを使うレンダリングは共有training queue経由で実行します。

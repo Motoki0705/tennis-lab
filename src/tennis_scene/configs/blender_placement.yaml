@@ -1,20 +1,29 @@
 defaults:
   - paths: default
   - _self_
-# This unit implements only the per-identity export. rank is added separately.
+# export: one explicitly chosen identity/window/bundle.
+# rank: enumerate candidates for every identity and write ranking.json.
 mode: export
 store: ???
-identity: ???
-frames: ???  # <start>:<stop>, inside one GVHMR segment
-t0: ???
+# Only export consumes these.  They stay null so mode=rank can compose without
+# resolving Hydra mandatory values that it never uses.
+identity: null
+frames: null  # <start>:<stop>, inside one GVHMR segment
+t0: null
 plate_camera_id: ???
 plate_video_path: ???
 # Must be the production pipeline's person_observations.visibility_threshold;
 # it controls the identity/time grouping this exporter rebuilds.
 human_vis_threshold: ???
+rank:
+  window_seconds: 14.0
+  stride_seconds: 1.0
+  min_valid_ratio: 0.9
+  top_k: 10
 assets:
   smpl_faces: body_models/smplh/neutral/model.npz
 output: ${tennis_output:tennis_scene,visualize,blender_placement,${tennis_run_id:}}/bundle
+rank_output: ${tennis_output:tennis_scene,visualize,blender_placement,${tennis_run_id:}}/ranking.json
 plate_jpeg_quality: 95
 hydra:
   run:
