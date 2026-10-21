@@ -48,6 +48,7 @@ def test_story_resizes_only_display_maps_and_preserves_evidence(
     line = prediction.raw_heads["line"]
     assert isinstance(kp, CourtKeypointPrediction)
     assert isinstance(line, CourtLinePrediction)
+    assert kp.heatmaps.min() < 0 and kp.heatmaps.max() > 1
     original_heatmap, original_line = kp.heatmaps.clone(), line.probability.clone()
     story = build_story(prediction, image)
     assert np.isnan(story.kp_xy[-1]).all()
@@ -55,7 +56,8 @@ def test_story_resizes_only_display_maps_and_preserves_evidence(
         story.kp_only_fit_inliers, prediction.homography.kp_only.fit_inliers
     )
     np.testing.assert_allclose(
-        story.kp_heatmap, cv2.resize(kp.heatmaps.numpy().max(axis=0), (320, 240))
+        story.kp_heatmap,
+        cv2.resize(kp.heatmaps.sigmoid().numpy().max(axis=0), (320, 240)),
     )
     np.testing.assert_allclose(
         story.line_probability, cv2.resize(line.probability.numpy(), (320, 240))
@@ -63,6 +65,23 @@ def test_story_resizes_only_display_maps_and_preserves_evidence(
     np.testing.assert_array_equal(kp.heatmaps.numpy(), original_heatmap.numpy())
     np.testing.assert_array_equal(line.probability.numpy(), original_line.numpy())
     assert story.seeds is prediction.homography.seeds
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_nonfinite_kp_logits_cannot_be_hidden_by_display_sigmoid(
+    hybrid_prediction, value
+) -> None:
+    prediction, image = hybrid_prediction
+    kp = prediction.raw_heads["kp"]
+    assert isinstance(kp, CourtKeypointPrediction)
+    logits = kp.heatmaps.clone()
+    logits[0, 0, 0] = value
+    prediction = replace(
+        prediction,
+        raw_heads={**prediction.raw_heads, "kp": replace(kp, heatmaps=logits)},
+    )
+    with pytest.raises(ValueError, match="KP heatmap logits must be finite"):
+        build_story(prediction, image)
 
 
 @pytest.mark.parametrize(

@@ -136,6 +136,8 @@ MP4は既定1920×1080・30fps、GIFは幅960・15fpsです。
 緑の最終fit → 原画像と緑線の静止、の順です。PROSACのfit inlierは塗りつぶし、
 その他は中空、最終fitに選ばれなかったKPは赤い×です。画面内に文字は出しません。
 seedは推定器が実際に選んだものだけを使い、native gridのKP/LINEは表示用にだけresizeします。
+raw KP heatmapはlogitなので、表示用にsigmoidで確率へ変換してから14chの最大値を取ります。
+raw headやホモグラフィー推定の入力は変更しません。
 
 `mode=render input.kind=image input.path=<DATA相対PNG> sample_id=null` では
 別の単一画像も描画できます。この場合GT誤差は算出しません。

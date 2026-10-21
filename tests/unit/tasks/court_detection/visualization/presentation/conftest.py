@@ -77,9 +77,9 @@ def hybrid_prediction() -> tuple[CourtPrediction, NDArray[np.uint8]]:
     )
     valid = torch.ones((14, 1), dtype=torch.bool)
     valid[-1] = False
-    heatmaps = torch.zeros((14, 60, 80), dtype=torch.float32)
-    heatmaps[0, 5, 5] = 1.0
-    heatmaps[1, 6, 5] = 0.8
+    heatmaps = torch.full((14, 60, 80), -8.0, dtype=torch.float32)
+    heatmaps[0, 5, 5] = 8.0
+    heatmaps[1, 6, 5] = 4.0
     probability = torch.zeros((60, 80), dtype=torch.float32)
     probability[10] = 1.0
     kp = CourtKeypointPrediction(

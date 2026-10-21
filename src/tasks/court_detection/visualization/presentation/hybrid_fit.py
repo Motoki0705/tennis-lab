@@ -132,7 +132,10 @@ def build_story(
         raise ValueError("Hybrid fit story requires one peak for each of KP14")
     xy = kp.keypoints[:, 0].detach().cpu().numpy().astype(np.float64)
     xy[~kp.valid[:, 0].detach().cpu().numpy()] = np.nan
-    heatmap = kp.heatmaps.detach().cpu().numpy().max(axis=0)
+    if not kp.heatmaps.is_floating_point() or not kp.heatmaps.isfinite().all():
+        raise ValueError("KP heatmap logits must be finite floating point values")
+    # The raw KP head preserves logits; decode probabilities only for display.
+    heatmap = kp.heatmaps.detach().sigmoid().cpu().numpy().max(axis=0)
     probability = line.probability.detach().cpu().numpy()
     height, width = prediction.original_size_hw
     return HybridFitStory(
