@@ -271,11 +271,12 @@ checkpoint全体を同契約の条件で配布し、契約全文を添付しま�
 
 公開先はHugging Face Dataset repo
 [`Motoki098/tennis-lab-multiview-sample`](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)です。
-対象はMeijiの `video_003` をClip Studioで同期・書き出しした3カメラclip全体で、
+対象はMeijiの書き出し済み `video_000/clip_000` の3カメラ動画全体と公開用 `clip.json` で、
 ライセンスは[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)です。
 被撮影者の同意に関する記録は[第三者のデータ・論文](#第三者のデータ論文)のMeiji行を参照してください。
-**clip名・公開ファイル名・各SHA-256は未確定**です。
-書き出し後に[#1273](https://github.com/Motoki0705/tennis-lab/issues/1273)で、撮影・同期情報とともに確定・記録します。
+公開ファイル名・SHA-256・撮影条件・同期情報・cam0のletterboxは配布先のdataset card、
+取得と検証は[サンプル取得CLI](src/utils/README.md#published-multiview-sample)を参照してください。
+公開用manifestはローカル絶対パスを除いたものです。raw動画・注釈・推論結果は含めません。
 
 同ライセンス第2・3条に従い、帰属表示等の条件を満たす非商用の共有が認められます。
 改変物の非商用での作成・複製は認められますが、その共有は許諾されません。

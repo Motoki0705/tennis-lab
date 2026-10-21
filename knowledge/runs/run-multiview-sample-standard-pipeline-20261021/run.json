@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207457047915595751_2026-10-21T00-35-52-084404248Z_247100_multiview_sample_release_a2",
+  "name": "multiview_sample_release_a2",
+  "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_dino/lib /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/.venv/bin/python -m src.tennis_scene.scripts.run_pipeline paths.data_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party paths.output_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs paths.artifact_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs output_directory=tennis_scene/generate/multiview_sample_release_20261021_a2 output_name=scene cache.directory=tennis_scene/cache/multiview_sample_release_20261021_a2",
+  "provider": "claude",
+  "session": "28f24ac1-d24f-4418-8ae8-606f1058850c",
+  "issue": "1273",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "925631791ceb271ef88cf919061317891097dc0e",
+  "branch": "codex/multiview-sample",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample",
+  "captured_at": "2026-10-21T09:35:58+09:00"
+}

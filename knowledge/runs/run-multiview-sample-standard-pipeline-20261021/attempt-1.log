@@ -1,0 +1,107 @@
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8207457415463193113_2026-10-21T00-29-44-536806886Z_172080_multiview_sample_release (commit=925631791ceb provider=claude session=28f24ac1-d24f-4418-8ae8-606f1058850c)
+[2026-10-21 09:29:51,428][__main__][INFO] - Configuration:
+[2026-10-21 09:29:51,428][__main__][INFO] -   Device: cuda
+[2026-10-21 09:29:51,428][__main__][INFO] -   Cameras: 3
+[2026-10-21 09:29:51,428][__main__][INFO] -     cam0: /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam0.mp4
+[2026-10-21 09:29:51,428][__main__][INFO] -     cam1: /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam1.mp4
+[2026-10-21 09:29:51,428][__main__][INFO] -     cam2: /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam2.mp4
+[2026-10-21 09:29:51,428][__main__][INFO] -   Max frames: None
+[2026-10-21 09:29:51,542][__main__][INFO] - Running pipeline...
+[2026-10-21 09:30:53,510][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-10-21 09:30:54,696][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-10-21 09:30:54,812][dinov3][INFO] - using base=100 for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using min_period=None for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using max_period=None for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using shift_coords=None for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-10-21 09:30:54,813][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-10-21 09:30:54,831][dinov3][INFO] - using mlp layer as FFN
+[2026-10-21 09:31:16,167][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-10-21 09:31:17,215][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-10-21 09:31:17,219][dinov3][INFO] - using base=100 for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using min_period=None for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using max_period=None for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using shift_coords=None for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-10-21 09:31:17,219][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-10-21 09:31:17,220][dinov3][INFO] - using mlp layer as FFN
+[2026-10-21 09:31:35,784][src.tennis_scene.pipeline.components.court_kp][INFO] - Loading Court KP model from /home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt
+[2026-10-21 09:31:36,832][src.tasks.court_detection.inference.checkpoint][WARNING] - Migrating saved DINOv3 asset path dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth -> dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth under /home/kamimura/projects/tennis-lab/ckpt
+[2026-10-21 09:31:36,836][dinov3][INFO] - using base=100 for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using min_period=None for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using max_period=None for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using normalize_coords=separate for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using shift_coords=None for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using rescale_coords=2 for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using jitter_coords=None for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using dtype=fp32 for rope new
+[2026-10-21 09:31:36,837][dinov3][INFO] - using mlp layer as FFN
+[2026-10-21 09:32:07,112][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-10-21 09:32:19,587][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 8 frame(s): [0, 273, 397, 398, 771, 1, 770, 772]
+[2026-10-21 09:32:20,027][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-10-21 09:32:31,371][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 13 frame(s): [251, 252, 253, 254, 255, 496, 972, 1005, 1009, 971, 973, 1007, 1008]
+[2026-10-21 09:32:31,819][src.tennis_scene.pipeline.components.ball_detection][INFO] - Loading ball detection model from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+[2026-10-21 09:32:41,875][src.tennis_scene.pipeline.components.ball_detection][INFO] - Ball trajectory gate rejected 10 frame(s): [4, 110, 442, 833, 843, 956, 3, 5, 842, 844]
+/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/.venv/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+Error executing job with overrides: ['paths.data_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data', 'paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt', 'paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party', 'paths.output_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs', 'paths.artifact_root=/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs', 'output_directory=tennis_scene/generate/multiview_sample_release_20261021', 'output_name=scene', 'cache.directory=tennis_scene/cache/multiview_sample_release_20261021']
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/dino/architecture.py", line 130, in build_dino
+    build_function = load_dino_build_function(repository)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/dino/architecture.py", line 178, in load_dino_build_function
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/__init__.py", line 7, in <module>
+    from .dino import build_dino
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/__init__.py", line 10, in <module>
+    from .dino import build_dino
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/dino.py", line 33, in <module>
+    from .deformable_transformer import build_deformable_transformer
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/deformable_transformer.py", line 23, in <module>
+    from .ops.modules import MSDeformAttn
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/modules/__init__.py", line 9, in <module>
+    from .ms_deform_attn import MSDeformAttn
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/modules/ms_deform_attn.py", line 21, in <module>
+    from ..functions import MSDeformAttnFunction
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/functions/__init__.py", line 9, in <module>
+    from .ms_deform_attn_func import MSDeformAttnFunction
+  File "/home/kamimura/projects/tennis-lab/third_party/DINO/models/dino/ops/functions/ms_deform_attn_func.py", line 18, in <module>
+    import MultiScaleDeformableAttention as MSDA
+ModuleNotFoundError: No module named 'MultiScaleDeformableAttention'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/utils/hydra.py", line 128, in validated
+    return function(config)
+           ^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/tennis_scene/scripts/run_pipeline.py", line 51, in main
+    result = orchestrator.run(
+             ^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/tennis_scene/pipeline/orchestrator.py", line 81, in run
+    runner.run()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/tennis_scene/pipeline/runner.py", line 122, in run
+    output = node.component.process(inputs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/tennis_scene/pipeline/components/person_detection.py", line 76, in process
+    detections = detector.predict(PersonDetectionRequest(packet.frame))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/_base/inference_model.py", line 71, in predict
+    self.load()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/_base/inference_model.py", line 56, in load
+    self._load_impl()
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/dino/person_detector.py", line 83, in _load_impl
+    model, _ = build_dino(
+               ^^^^^^^^^^^
+  File "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/src/submodules/models/dino/architecture.py", line 133, in build_dino
+    raise RuntimeError(
+RuntimeError: DINO CUDA extension is not installed. Run: TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+exit_code=1

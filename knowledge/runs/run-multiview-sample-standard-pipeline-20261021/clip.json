@@ -1,0 +1,63 @@
+{
+  "version": 2,
+  "clip_id": "video_000/clip_000",
+  "clip_name": "clip_000",
+  "fps": 59.94006,
+  "num_frames": 1010,
+  "width": 1920,
+  "height": 1080,
+  "global_start_sec": 37.338406601390844,
+  "global_end_sec": 54.18857326805711,
+  "camera_ids": [
+    "cam0",
+    "cam1",
+    "cam2"
+  ],
+  "video_paths": [
+    "cam0.mp4",
+    "cam1.mp4",
+    "cam2.mp4"
+  ],
+  "cameras": [
+    {
+      "camera_id": "cam0",
+      "video": "cam0.mp4",
+      "source_path": "tennis_multivew/raw/meiji_3cam/video_000/cam0.mp4",
+      "offset_sec": 0.0,
+      "source_fps": 59.94005994005994,
+      "source_frame_start": 2238,
+      "source_frame_end": 3247,
+      "letterbox": {
+        "scale": 1.125,
+        "pad_x": 240,
+        "pad_y": 0,
+        "scaled_width": 1440,
+        "scaled_height": 1080
+      }
+    },
+    {
+      "camera_id": "cam1",
+      "video": "cam1.mp4",
+      "source_path": "tennis_multivew/raw/meiji_3cam/video_000/cam1.mp4",
+      "offset_sec": 48.465083333332295,
+      "source_fps": 59.94005994005994,
+      "source_frame_start": 5143,
+      "source_frame_end": 6152,
+      "letterbox": null
+    },
+    {
+      "camera_id": "cam2",
+      "video": "cam2.mp4",
+      "source_path": "tennis_multivew/raw/meiji_3cam/video_000/cam2.mp4",
+      "offset_sec": -31.998633333333203,
+      "source_fps": 59.94005994005994,
+      "source_frame_start": 320,
+      "source_frame_end": 1329,
+      "letterbox": null
+    }
+  ],
+  "sync_source": "clip_studio",
+  "exported_at": "2026-07-13T23:43:53.467690+00:00",
+  "dataset_id": "meiji_3cam",
+  "video_id": "video_000"
+}
