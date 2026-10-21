@@ -1,7 +1,7 @@
 # Ball 3D の光線による説明
 
-保存済みcomponent storeから2D観測と三角測量の結果を読み、カメラの画像面・光線・球・
-最近点の線分・再投影をBlenderで表示します。推論・三角測量の再実行やstoreの更新はしません。
+保存済みcomponent storeから2D観測と三角測量の結果を読み、元動画と2D観測のリングから始め、
+カメラを引いて画像面・光線・球・軌跡の3D再生へつなぎます。推論・三角測量の再実行やstoreの更新はしません。
 入力映像からシーンへ切り替える既存shotは[revealの手順](export/README.md)を参照してください。
 
 錐体と画像面は [shots/camera_planes.py](shots/camera_planes.py) の
@@ -59,16 +59,45 @@ bundle schemaは `tennis_scene_blender_rays_v1` です。`ray_origin (V,3)`、
 
 ## Blenderでの撮影と検証
 
-Blender 5.2の同梱Pythonで動き、repoはimportしません。`RayShot` に尺・色・半径を
-まとめています。既定は1920×1080・30fpsです。frame 0–315で原理を説明し、その後
-入力区間を元の秒数で再生します。90frame・59.94fpsの素材では全体約12秒になります。
-画像面での説明の後、再生開始時には3D全体へカットし、短い外れ値・欠測も見える構図で
-ゆっくり俯瞰へ引きます。
-30fpsの各出力時刻に最も近いsource frameを選び、対応は `shot_manifest.json` に残します。
-欠測を補間せず、球の軌跡は16点・source 2frameおきで、欠測を跨ぎません。
-光線の円柱は、中点からの相対座標をPC2に保存して動かします。遠い地面へ伸びる棄却光線でも
-Quaternionの丸めで端点がずれないための表現で、長さや交差位置の規則はexporterの値を使います。
-破線は円柱の長手方向の `ray_axis` 属性で作り、単独viewのときだけ有効にします。
+Blender 5.2の同梱Pythonで動き、repoはimportしません。CPUだけで使える
+[shots/ray_timeline.py](shots/ray_timeline.py) の `RayShot` が設定の正本です。
+既定は1920×1080・30fpsです。旧来の `t0` 固定による段階的な説明は行いません。
+
+1. `two_d`: 実カメラと一致するK・R・tで画像面を画面いっぱいに映し、元映像と
+   カメラ色の検出リングを再生します。リングは同じ画素の光線に沿って画像面より手前に置きます。
+2. `pullback`: 実カメラの位置から同じ側の俯瞰へ、位置・姿勢・レンズを連続的に変えます。
+   画像面は錐体の底面に残り、他のカメラの錐体・画像面とコートも見えてきます。
+3. `playback`: 俯瞰を保って全カメラの光線・球・軌跡を再生します。光線は最初から
+   bundleの `ray_length` の長さです。最近点の線分・再投影の十字・fade-inは使いません。
+
+`camera_id=None`（CLIの未指定）は、**入力区間全体**で `detection_uv` が有限のframeが
+最も多いカメラを選びます。同数ならcamera IDの昇順です。`--camera-id cam1` で固定できます。
+選択規則・全カメラの観測frame数・選択カメラの件数を `shot_manifest.json` に記録します。
+未知のID・観測のないカメラでは停止し、途中でカメラを切り替えません。
+実データの校正と同じく、主点は画像中心、歪み・skewなし、fx=fyを要求します。
+選択カメラと出力の縦横比が異なる場合も、切り抜きや余白で近似せず停止します。
+
+時間の接続は `--time-mode continuous|replay` で明示します。
+
+| 設定 | 2D | 引き | 3D playback |
+|---|---|---|---|
+| `continuous` | 区間の前半 | 次の1/4を進める | 残りの1/4を再生 |
+| `replay` | 区間全体 | 最終source frameを保つ | 同じ区間を最初から再生 |
+
+`--continuous-two-d-fraction`（既定0.5）と `--continuous-pullback-fraction`（0.25）で
+continuousのsource配分を変えられます。各区間には少なくとも1 source frameが必要です。
+`--two-d-seconds` と `--playback-seconds` の未指定は元の速度、指定値はその場面だけの尺です。
+`--pullback-seconds` は既定3秒で、continuousでは割り当てられたsource区間をこの秒数に
+伸縮して**時間を進めます**。90frame・約59.94fpsの素材では、3秒の引きは減速になります。
+元の速度の引きが必要なら、そのsource区間のframe数÷source fpsを明示してください。
+replayの引きは意図的な静止です。時間の接続方法の採用はプレビューを見て人が決めます。
+
+各場面の出力尺は30fpsに切り上げます。各出力時刻の最も近いsource frameを選び、
+欠測は補間しません。`shot_manifest.json` に解決済み設定、各場面の出力frame範囲・秒数・
+source範囲・source速度の倍率、全出力frameのsource対応と `ball_source` を残します。
+軌跡は16点・source 2frameおきで、欠測を跨ぎません。
+光線の円柱は中点からの相対座標をPC2に保存し、長い棄却光線でも端点の精度を保ちます。
+単独viewの破線は長手方向の `ray_axis` 属性によるものです。
 
 次のBlenderコマンドは共有training queueの `--resource half` へ登録します。
 `BUNDLE`・`SHOT_DIR` は絶対パス、Windows版Blenderでは対応するUNCパスを渡してください。
@@ -77,7 +106,8 @@ Quaternionの丸めで端点がずれないための表現で、長さや交差�
 ```bash
 blender --background --factory-startup --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/ball_rays.py -- \
-  --bundle "$BUNDLE" --output "$SHOT_DIR" --render
+  --bundle "$BUNDLE" --output "$SHOT_DIR" --time-mode replay \
+  --pullback-seconds 3 --render
 blender --background "$SHOT_DIR/ball_rays.blend" --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/validate_rays.py -- \
   --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
@@ -88,14 +118,15 @@ ffmpeg -n -i "$SHOT_DIR/ball_rays.mp4" \
   "$SHOT_DIR/ball_rays.gif"
 ```
 
-低負荷プレビューは `--samples 8 --resolution-percentage 25 --frame-step 3` を付けます。
-frame step 3なら動画化は `-framerate 10 -pattern_type glob -i "$SHOT_DIR/frames/*.png"`
-に変更し、再生時間を保ちます。`--frames 150:240` は範囲を両端含みで限定します。
-静止画は連番の段階中央（overview=45、detections=120、rays=180、ball=240、
-reprojection=300、playback=315以降）から候補を取り出します。採否は人が決めます。
+960×540のプレビューは `--samples 8 --resolution-percentage 50` を付けます。
+`--frame-step 3` なら動画化を `-framerate 10 -pattern_type glob -i "$SHOT_DIR/frames/*.png"`
+に変更し、再生時間を保ちます。`--frames start:end` は出力frameの範囲を両端含みで限定します。
+代表静止画はmanifestの `stages[].output_frames` にある各場面の中央から取り出せます。
+候補の区間・カメラ・つなぎ方・静止画の採否は人が決めます。
 
-検証は全出力frameの評価済み光線の端点、球、表示状態、カメラ位置、画像面上の観測と
-再投影、plateのsource frameを照合します。座標の許容誤差は1e-5 mです。
-不一致でも失敗理由をJSONに保存し、非ゼロで終了します。
-材質についても全frameで割り当て先・カメラ色／赤／灰・不透明度・破線フラグを検査します。
-伸長途中の材質と画面上の線幅の概算は `growth_material_samples` に記録します。
+検証は全出力frameの光線の端点・球・表示状態・材質と、錐体の位置／姿勢・画像面の角・
+検出リングの位置・plateのsource frameをbundleと照合します。座標の許容誤差は1e-5 mです。
+2D場面では実カメラのK・R・t、画像面が画面全体を覆うこと、リング中心と `detection_uv` の
+投影差（許容誤差0.01 px、元画像解像度）も調べます。不一致でも理由をJSONに残し非ゼロで終了します。
+`material_samples` には線幅の概算を残します。低解像度で実線が細切れに見えても、
+`Dashed` は単独viewだけで有効なことを全frameで検査します。

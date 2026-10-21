@@ -11,13 +11,13 @@ import json
 import math
 import shutil
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 import bpy
 import numpy as np
-from mathutils import Quaternion, Vector
+from mathutils import Matrix, Vector
 
 sys.path.insert(0, str(Path(__file__).parent))
 from camera_planes import camera_frustum, image_plane_point  # noqa: E402
@@ -32,31 +32,13 @@ from common import (  # noqa: E402
     court_image,
     net_shader,
 )
-
-
-@dataclass(frozen=True)
-class RayShot:
-    fps: int = 30
-    width: int = 1920
-    height: int = 1080
-    samples: int = 32
-    plate_start: int = 90
-    rays_start: int = 150
-    ball_start: int = 210
-    zoom_start: int = 255
-    playback_start: int = 315
-    frustum_depth_m: float = 1.5
-    ray_radius_m: float = 0.012
-    ball_radius_m: float = 0.05
-    trail_count: int = 16
-    trail_stride: int = 2
-    camera_colors: tuple[str, ...] = (
-        "#4CC9F0",
-        "#F4A261",
-        "#8AC926",
-        "#C77DFF",
-        "#FFCD70",
-    )
+from ray_timeline import (  # noqa: E402
+    RayShot,
+    Timeline,
+    calibrated_pose,
+    plan_timeline,
+    select_camera,
+)
 
 
 def _rgb(hex_color: str) -> tuple[float, float, float]:
@@ -128,27 +110,6 @@ def _cylinder(
     return obj
 
 
-def _key_segment(
-    obj: bpy.types.Object,
-    origin: np.ndarray,
-    direction: np.ndarray,
-    length: float,
-    frame: int,
-) -> None:
-    obj.location = origin.tolist()
-    # Calculate in float64 before storing Blender's float32 quaternion. The
-    # float32 to_track_quat path can move a 40m endpoint by more than 1e-5m.
-    w = math.sqrt(max(0.0, (1.0 + float(direction[2])) / 2.0))
-    obj.rotation_quaternion = (
-        Quaternion((w, -direction[1] / (2.0 * w), direction[0] / (2.0 * w), 0.0))
-        if w > 1e-10
-        else Quaternion((0.0, 1.0, 0.0, 0.0))
-    )
-    obj.scale = (1.0, 1.0, length)
-    for channel in ("location", "rotation_quaternion", "scale"):
-        obj.keyframe_insert(channel, frame=frame)
-
-
 def _ray_mesh(
     name: str, radius: float, material: bpy.types.Material
 ) -> tuple[bpy.types.Object, np.ndarray]:
@@ -196,24 +157,6 @@ def _ray_cache_frame(
     return anchor, np.asarray(points - anchor.astype(np.float64), np.float32)
 
 
-def _source_frames(manifest: dict[str, Any], shot: RayShot) -> np.ndarray:
-    start, stop = manifest["frames"]
-    playback_count = math.ceil((stop - start) * shot.fps / manifest["fps"])
-    # Nearest source sample at each output timestamp; timing stays in seconds.
-    playback = np.minimum(
-        np.floor(np.arange(playback_count) * manifest["fps"] / shot.fps + 0.5).astype(
-            int
-        )
-        + start,
-        stop - 1,
-    )
-    return np.r_[np.full(shot.playback_start, manifest["t0"], int), playback]
-
-
-def _progress(frame: int, start: int, stop: int) -> float:
-    return float(np.clip((frame - start) / (stop - start), 0.0, 1.0))
-
-
 def _court(court: dict[str, Any]) -> None:
     xmin, xmax, ymin, ymax = court["runoff_xy"]
     ground = _object(
@@ -245,28 +188,12 @@ def _court(court: dict[str, Any]) -> None:
         post.scale.z = court["net"]["height_post"]
 
 
-def _marker(
-    name: str, *, cross: bool, material: bpy.types.Material
-) -> bpy.types.Object:
-    if cross:
-        a, b = 0.025, 0.003
-        vertices = [
-            (-a, -b, 0),
-            (a, -b, 0),
-            (a, b, 0),
-            (-a, b, 0),
-            (-b, -a, 0),
-            (b, -a, 0),
-            (b, a, 0),
-            (-b, a, 0),
-        ]
-        obj = _object(name, vertices, [(0, 1, 2, 3), (4, 5, 6, 7)])
-    else:
-        bpy.ops.mesh.primitive_torus_add(
-            major_segments=24, minor_segments=6, major_radius=0.022, minor_radius=0.003
-        )
-        obj = bpy.context.object
-        obj.name = name
+def _marker(name: str, material: bpy.types.Material) -> bpy.types.Object:
+    bpy.ops.mesh.primitive_torus_add(
+        major_segments=24, minor_segments=6, major_radius=0.022, minor_radius=0.003
+    )
+    obj = bpy.context.object
+    obj.name = name
     obj.data.materials.append(material)
     return obj
 
@@ -276,14 +203,19 @@ def _build_view(
     manifest: dict[str, Any],
     arrays: dict[str, np.ndarray],
     view: int,
-    source_frames: np.ndarray,
+    timeline: Timeline,
+    focus_view: int,
     shot: RayShot,
     output: Path,
 ) -> None:
+    sources = timeline.source_frames
     cam = manifest["cameras"][view]
     color = _rgb(shot.camera_colors[view])
     root, plane = camera_frustum(cam, color=color, depth=shot.frustum_depth_m)
-    plate_mat, n, surface = _new_material(f"Plate_{view}", transparent=True)
+    reveal = np.arange(len(sources)) >= timeline.pullback_start
+    _key_visibility(bpy.data.objects[f"FrustumLines_{cam['id']}"], reveal)
+    _key_visibility(plane, reveal | (view == focus_view))
+    plate_mat, n, surface = _new_material(f"Plate_{view}", transparent=False)
     texture = n.new("ShaderNodeTexImage")
     texture.name = "PlateSequence"
     texture.image = bpy.data.images.load(
@@ -291,61 +223,26 @@ def _build_view(
     )
     texture.image.source = "SEQUENCE"
     texture.image.colorspace_settings.name = "sRGB"
-    texture.image_user.frame_duration = max(len(source_frames), manifest["frames"][1])
+    texture.image_user.frame_duration = max(len(sources), manifest["frames"][1])
     texture.image_user.frame_start = 0
     texture.image_user.use_auto_refresh = True
-    opacity = n.new("ShaderNodeValue")
-    opacity.name = "Opacity"
-    n.set(
-        surface,
-        n.mix_shader(
-            opacity.outputs[0],
-            n.new("ShaderNodeBsdfTransparent").outputs[0],
-            n.emission(texture.outputs["Color"]),
-        ),
-    )
+    n.set(surface, n.emission(texture.outputs["Color"]))
     plane.data.materials.clear()
     plane.data.materials.append(plate_mat)
     ring_mat = _material(f"DetectionMaterial_{view}", color, strength=2.0)
-    cross_mat = _material(f"ReprojectionMaterial_{view}", (1.0, 1.0, 1.0), strength=2.0)
-    ring = _marker(f"Detection_{view}", cross=False, material=ring_mat)
-    cross = _marker(f"Reprojection_{view}", cross=True, material=cross_mat)
-    ring.parent = cross.parent = root
+    ring = _marker(f"Detection_{view}", ring_mat)
+    ring.parent = root
     ray_mat = _material(f"RayMaterial_{view}", color, strength=2.0)
     ray, unit = _ray_mesh(f"Ray_{view}", shot.ray_radius_m, ray_mat)
-    cache = np.zeros((len(source_frames), len(unit), 3), np.float32)
-    residual_mat = _material(f"ResidualMaterial_{view}", _rgb("#FFD166"), strength=3.0)
-    residual = _cylinder(f"Residual_{view}", 0.003, residual_mat)
-    ray_valid, ring_valid, cross_valid, residual_valid = [], [], [], []
-    for frame, src in enumerate(source_frames):
+    cache = np.zeros((len(sources), len(unit), 3), np.float32)
+    ray_valid, ring_valid = [], []
+    for frame, src in enumerate(sources):
         t = int(src - manifest["frames"][0])
         state = int(arrays["ray_state"][view, t])
         exists = state != 0
-        growth = _progress(frame, shot.rays_start, shot.ball_start)
-        ray_valid.append(exists and frame >= shot.rays_start)
-        ring_valid.append(exists and frame >= shot.plate_start)
-        uv = arrays["reprojection_uv"][view, t]
-        cross_valid.append(bool(np.isfinite(uv).all()) and frame >= shot.zoom_start)
-        _key_value(
-            plate_mat,
-            "Opacity",
-            _progress(frame, shot.plate_start, shot.rays_start),
-            frame,
-        )
-        _key_value(
-            ring_mat,
-            "Opacity",
-            _progress(frame, shot.plate_start, shot.rays_start),
-            frame,
-        )
-        _key_value(
-            cross_mat,
-            "Opacity",
-            _progress(frame, shot.zoom_start, shot.playback_start),
-            frame,
-        )
-        # Blender uses the absolute numeric filename, rather than an offset
-        # relative to the first loaded JPEG. Keep its time range unclamped.
+        ray_valid.append(exists and frame >= timeline.playback_start)
+        ring_valid.append(exists and (view == focus_view or reveal[frame]))
+        # Absolute numeric filename, with no fade or frozen t0 intro.
         texture.image_user.frame_offset = int(src) - frame - 1
         texture.image_user.keyframe_insert("frame_offset", frame=frame)
         if exists:
@@ -353,19 +250,17 @@ def _build_view(
                 unit,
                 arrays["ray_origin"][view],
                 arrays["ray_direction"][view, t],
-                float(arrays["ray_length"][view, t]) * growth,
+                float(arrays["ray_length"][view, t]),
             )
             ray.location = anchor.tolist()
             ray.keyframe_insert("location", frame=frame)
+            # Offset towards the real camera along the same pixel ray. An
+            # additive z offset shifts the projected uv and hides it behind
+            # the plate when looking from the calibrated camera center.
             ring.location = image_plane_point(
-                cam, arrays["detection_uv"][view, t], depth=shot.frustum_depth_m
+                cam, arrays["detection_uv"][view, t], depth=shot.frustum_depth_m - 0.005
             )
-            ring.location.z += 0.005
             ring.keyframe_insert("location", frame=frame)
-        if np.isfinite(uv).all():
-            cross.location = image_plane_point(cam, uv, depth=shot.frustum_depth_m)
-            cross.location.z += 0.008
-            cross.keyframe_insert("location", frame=frame)
         ray["ray_state"] = state
         ray.keyframe_insert('["ray_state"]', frame=frame)
         state_color = (
@@ -376,21 +271,6 @@ def _build_view(
         _key_value(ray_mat, "Color", (*state_color, 1.0), frame)
         _key_value(ray_mat, "Opacity", 0.6 if state == 2 else 1.0, frame)
         _key_value(ray_mat, "Dashed", float(state == 3), frame)
-        point = arrays["ball_position"][t]
-        closest = arrays["closest_point"][view, t]
-        has_residual = bool(np.isfinite(closest).all())
-        residual_valid.append(
-            has_residual and shot.ball_start <= frame < shot.zoom_start
-        )
-        if has_residual:
-            delta = closest - point
-            length = float(np.linalg.norm(delta))
-            if length > 1e-12:
-                _key_segment(residual, point, delta / length, length, frame)
-            else:
-                _key_segment(residual, point, np.array([0.0, 0.0, 1.0]), 0.0, frame)
-        pulse = math.sin(math.pi * _progress(frame, shot.ball_start, shot.zoom_start))
-        _key_value(residual_mat, "Opacity", pulse, frame)
     cache_path = output / f"ray_{view}.pc2"
     _write_pc2(cache_path, cache)
     modifier = ray.modifiers.new("RayMotion", "MESH_CACHE")
@@ -399,22 +279,18 @@ def _build_view(
         str(cache_path),
         0.0,
     )
-    for obj, valid in (
-        (ray, ray_valid),
-        (ring, ring_valid),
-        (cross, cross_valid),
-        (residual, residual_valid),
-    ):
-        _key_visibility(obj, np.array(valid))
+    _key_visibility(ray, np.array(ray_valid))
+    _key_visibility(ring, np.array(ring_valid))
 
 
 def _ball(
     arrays: dict[str, np.ndarray],
     manifest: dict[str, Any],
-    source_frames: np.ndarray,
+    timeline: Timeline,
     shot: RayShot,
     output: Path,
 ) -> None:
+    source_frames = timeline.source_frames
     positions = arrays["ball_position"]
     valid = np.isfinite(positions).all(axis=1)
     bpy.ops.mesh.primitive_uv_sphere_add(
@@ -426,7 +302,7 @@ def _ball(
     ball.data.materials.append(material)
     timeline_valid = np.array(
         [
-            frame >= shot.ball_start and valid[src - manifest["frames"][0]]
+            frame >= timeline.playback_start and valid[src - manifest["frames"][0]]
             for frame, src in enumerate(source_frames)
         ]
     )
@@ -434,12 +310,6 @@ def _ball(
         if timeline_valid[frame]:
             ball.location = positions[src - manifest["frames"][0]].tolist()
             ball.keyframe_insert("location", frame=frame)
-        _key_value(
-            material,
-            "Opacity",
-            _progress(frame, shot.ball_start, shot.ball_start + 15),
-            frame,
-        )
     _key_visibility(ball, timeline_valid)
     # Same shrinking-sphere PC2 trail as reveal: 16 points, stride two source
     # frames, and every intervening source mask must be valid.
@@ -456,7 +326,9 @@ def _ball(
         for k in range(count):
             past = t - (k + 1) * shot.trail_stride
             ok = (
-                frame >= shot.playback_start and past >= 0 and valid[past : t + 1].all()
+                frame >= timeline.playback_start
+                and past >= 0
+                and valid[past : t + 1].all()
             )
             center = (
                 positions[past] if ok else (positions[t] if valid[t] else np.zeros(3))
@@ -480,66 +352,69 @@ def _ball(
     )
     mod = trail.modifiers.new("Trail", "MESH_CACHE")
     mod.cache_format, mod.filepath, mod.frame_start = "PC2", str(cache), 0.0
-    _key_visibility(
-        trail, timeline_valid & (np.arange(len(source_frames)) >= shot.playback_start)
-    )
+    _key_visibility(trail, timeline_valid)
 
 
 def _camera(
     manifest: dict[str, Any],
-    source_frames: np.ndarray,
+    timeline: Timeline,
     arrays: dict[str, np.ndarray],
+    focus_view: int,
     shot: RayShot,
 ) -> None:
     data = bpy.data.cameras.new("ShotCamera")
     camera = bpy.data.objects.new("ShotCamera", data)
     bpy.context.scene.collection.objects.link(camera)
     bpy.context.scene.camera = camera
-    data.lens = 32.0
+    data.sensor_fit, data.sensor_width = "HORIZONTAL", 36.0
     data.clip_start, data.clip_end = 0.05, 1000.0
+    center, rotation, lens = calibrated_pose(manifest["cameras"][focus_view], shot)
+    start_location = Vector(center)
+    start_rotation = Matrix(rotation).to_quaternion()
     radius = max(
         45.0, float(np.linalg.norm(arrays["ray_origin"][:, :2], axis=1).max()) + 30.0
     )
-    focus_cam = manifest["cameras"][0]
-    rotation = np.array(focus_cam["R"])
-    plane = Vector(
-        np.array(focus_cam["center"])
-        + rotation.T @ np.array([0.0, 0.0, shot.frustum_depth_m])
+    # Pull backwards from the selected camera's side of the court. The plate
+    # remains the base of its frustum; no cut, orbit or reprojection zoom.
+    angle = math.atan2(float(center[1]), float(center[0]))
+    overview = Vector(
+        (radius * math.cos(angle), radius * math.sin(angle), radius * 0.7)
     )
-    close = plane + Vector(rotation.T @ np.array([0.0, 0.0, 2.2]))
     focus = Vector((0.0, 0.0, 1.0))
-    for frame in range(len(source_frames)):
-        angle = math.radians(-65.0 + 20.0 * frame / max(1, len(source_frames) - 1))
-        overview = Vector(
-            (radius * math.cos(angle), radius * math.sin(angle), radius * 0.7)
+    end_rotation = _look_rotation(focus - overview, 0.0)
+    for frame in range(len(timeline.source_frames)):
+        t = float(
+            np.clip(
+                (frame - timeline.pullback_start)
+                / (timeline.playback_start - timeline.pullback_start - 1),
+                0.0,
+                1.0,
+            )
         )
-        if frame < shot.zoom_start:
-            location, target = overview, focus
-        elif frame < shot.playback_start:
-            t = _progress(frame, shot.zoom_start, shot.playback_start - 1)
-            location, target = overview.lerp(close, t), focus.lerp(plane, t)
-        else:
-            t = _progress(frame, shot.playback_start, len(source_frames) - 1)
-            # Cut back to the reconstruction at playback start so brief source
-            # outliers/missing frames remain visible; then pull out slowly.
-            location, target = overview * (0.9 + 0.1 * t), focus
-        camera.location = location
+        t = t * t * (3.0 - 2.0 * t)
+        camera.location = start_location.lerp(overview, t)
         camera.rotation_mode = "QUATERNION"
-        camera.rotation_quaternion = _look_rotation(target - location, 0.0)
+        camera.rotation_quaternion = start_rotation.slerp(end_rotation, t)
+        data.lens = lens + (32.0 - lens) * t
         camera.keyframe_insert("location", frame=frame)
         camera.keyframe_insert("rotation_quaternion", frame=frame)
+        data.keyframe_insert("lens", frame=frame)
 
 
 def _constant_keys() -> None:
     # Shader, sequence, visibility and source geometry must switch together;
     # missing observations are never interpolated into the next source frame.
+    camera = bpy.context.scene.camera
+    camera_actions = (camera.animation_data.action, camera.data.animation_data.action)
     for action in bpy.data.actions:
         for layer in action.layers:
             for strip in layer.strips:
                 for bag in strip.channelbags:
                     for curve in bag.fcurves:
                         for point in curve.keyframe_points:
-                            point.interpolation = "CONSTANT"
+                            point.interpolation = (
+                                "LINEAR" if action in camera_actions else "CONSTANT"
+                            )
 
 
 def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
@@ -557,13 +432,16 @@ def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
             "ray_direction",
             "ray_length",
             "ray_state",
-            "closest_point",
             "ball_position",
-            "reprojection_uv",
             "detection_uv",
         )
     }
-    sources = _source_frames(manifest, shot)
+    timeline = plan_timeline(manifest, shot)
+    sources = timeline.source_frames
+    focus_view, camera_selection = select_camera(
+        manifest, arrays["detection_uv"], shot.camera_id
+    )
+    calibrated_pose(manifest["cameras"][focus_view], shot)
     output.mkdir(parents=True)
     try:
         bpy.ops.object.select_all(action="SELECT")
@@ -595,20 +473,27 @@ def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
         sun.rotation_euler = (math.radians(35.0), 0.0, math.radians(-140.0))
         _court(manifest["court"])
         for view in range(len(manifest["cameras"])):
-            _build_view(bundle, manifest, arrays, view, sources, shot, output)
-        _ball(arrays, manifest, sources, shot, output)
-        _camera(manifest, sources, arrays, shot)
+            _build_view(
+                bundle, manifest, arrays, view, timeline, focus_view, shot, output
+            )
+        _ball(arrays, manifest, timeline, shot, output)
+        _camera(manifest, timeline, arrays, focus_view, shot)
         _constant_keys()
         _build_compositor(scene, name="RaysComposite")
         scene["rays_bundle_schema"] = manifest["schema"]
         scene["source_frames"] = sources.tolist()
         scene["ray_shot"] = json.dumps(asdict(shot))
+        scene["camera_selection"] = json.dumps(camera_selection)
         (output / "shot_manifest.json").write_text(
             json.dumps(
                 {
                     "shot": asdict(shot),
                     "source_frames": sources.tolist(),
-                    "source_sampling": "nearest source timestamp at 30fps; no gap filling",
+                    "source_sampling": "nearest timestamp per stage; no gap filling",
+                    "camera_selection": camera_selection,
+                    "stages": [
+                        s.to_dict(shot.fps, manifest["fps"]) for s in timeline.stages
+                    ],
                     "bundle": str(bundle),
                     "ball_source": manifest["ball_source"],
                 },
@@ -623,12 +508,34 @@ def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
 
 
 def main(argv: list[str]) -> None:
+    defaults = RayShot()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--render", action="store_true")
+    parser.add_argument(
+        "--time-mode", choices=("continuous", "replay"), default=defaults.time_mode
+    )
+    parser.add_argument(
+        "--camera-id", help="default: most visible frames, then camera ID"
+    )
+    parser.add_argument("--two-d-seconds", type=float, help="default: native speed")
+    parser.add_argument(
+        "--pullback-seconds", type=float, default=defaults.pullback_seconds
+    )
+    parser.add_argument("--playback-seconds", type=float, help="default: native speed")
+    parser.add_argument(
+        "--continuous-two-d-fraction",
+        type=float,
+        default=defaults.continuous_two_d_fraction,
+    )
+    parser.add_argument(
+        "--continuous-pullback-fraction",
+        type=float,
+        default=defaults.continuous_pullback_fraction,
+    )
     parser.add_argument("--frames", help="start:end, inclusive")
-    parser.add_argument("--samples", type=int, default=32)
+    parser.add_argument("--samples", type=int, default=defaults.samples)
     parser.add_argument("--resolution-percentage", type=int, default=100)
     parser.add_argument("--frame-step", type=int, default=1)
     args = parser.parse_args(argv)
@@ -639,7 +546,18 @@ def main(argv: list[str]) -> None:
     ):
         parser.error("Require resolution 1..100, positive samples/frame-step")
     scene = build(
-        args.bundle.resolve(), args.output.resolve(), RayShot(samples=args.samples)
+        args.bundle.resolve(),
+        args.output.resolve(),
+        RayShot(
+            samples=args.samples,
+            camera_id=args.camera_id,
+            time_mode=args.time_mode,
+            two_d_seconds=args.two_d_seconds,
+            pullback_seconds=args.pullback_seconds,
+            playback_seconds=args.playback_seconds,
+            continuous_two_d_fraction=args.continuous_two_d_fraction,
+            continuous_pullback_fraction=args.continuous_pullback_fraction,
+        ),
     )
     if args.frames:
         start, end = map(int, args.frames.split(":"))
