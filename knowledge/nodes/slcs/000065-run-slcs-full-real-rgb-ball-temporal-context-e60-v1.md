@@ -30,7 +30,7 @@ metrics:
   temporal_projection_nonzero_weights: 16384
   temporal_projection_norm: 2.3306963443756104
 repro:
-  commit: 5ab9afc7da2e9cebcd461b806e0676037d97622c
+  commit: b73cc95a4708e0f755647bf589889678cc2f8f92
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

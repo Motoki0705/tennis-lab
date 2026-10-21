@@ -246,6 +246,31 @@ def test_write_refuses_existing_tracked_changes(tmp_path: Path) -> None:
     assert path.read_bytes() == before
 
 
+def test_published_rewrite_evidence_is_preserved(tmp_path: Path, remap: Any) -> None:
+    root = tmp_path / "repo"
+    root.mkdir()
+    new = initialize(root)
+    directory = root / "docs/history-rewrite"
+    directory.mkdir(parents=True)
+    evidence = {
+        directory / "commit-map.txt": f"old new\n{OLD} {new}\n",
+        directory / "README.md": f"old commit `{OLD}` -> new commit `{new}`\n",
+    }
+    for path, text in evidence.items():
+        path.write_text(text)
+    git(root, "add", "docs/history-rewrite")
+    git(root, "commit", "-qm", "publish rewrite evidence")
+
+    changes, report = remap.plan(root, {OLD: new})
+
+    assert changes == {root / "README.md": f"commit `{new}`\n".encode()}
+    assert {str(path.relative_to(root)) for path in evidence} <= set(
+        report["protected_files"]
+    )
+    for path, text in evidence.items():
+        assert path.read_text() == text
+
+
 def test_offline_issue_export_only(tmp_path: Path, remap: Any) -> None:
     root = tmp_path / "repo"
     root.mkdir()

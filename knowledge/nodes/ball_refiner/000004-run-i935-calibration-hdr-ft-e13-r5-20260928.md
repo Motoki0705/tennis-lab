@@ -44,7 +44,7 @@ metrics:
   evidence_gap/position_nll_px: 12.209332143928245
   evidence_gap/recall_20px: 0.04063467492260062
 repro:
-  commit: 7195911befde371c39f375981cb637bd117f5861
+  commit: 81b251f71fc3f78596aaf6a4f077a0f9836ffde1
   branch: campaign930/i935-5-evaluation
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-5-evaluation

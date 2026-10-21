@@ -54,7 +54,7 @@ tags:
 - visual-review
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: f94f61dd0b16a32867b02de92781d3dfaf7fac3d
+  commit: 6ca76663b32dac43fb50d4814e1f84498a88cf53
   branch: codex/slcs-real-rgb
   command: bash knowledge/runs/run-slcs-meiji-observation-review-v5/repro.sh REPRO_NEW_RUN_ID
 ---

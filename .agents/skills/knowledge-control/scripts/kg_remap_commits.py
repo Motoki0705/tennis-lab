@@ -225,7 +225,11 @@ def plan(
             )
         data = path.read_bytes()
         baseline[path] = data
-        if path.suffix in {".patch", ".diff"} or path.name in {MANIFEST, EXCEPTIONS}:
+        if (
+            path.suffix in {".patch", ".diff"}
+            or path.name in {MANIFEST, EXCEPTIONS}
+            or (text_dir is None and relative.startswith("docs/history-rewrite/"))
+        ):
             protected.append(relative)
             continue
         if path.suffix.lower() not in TEXT_SUFFIXES and path.name not in {
@@ -323,11 +327,14 @@ def main() -> int:
     root = args.repo.resolve()
     if args.text_dir is not None:
         args.text_dir = args.text_dir.resolve()
-    if args.write and args.text_dir is None:
-        if git(root, "status", "--porcelain=v1", "--untracked-files=no").strip():
-            raise ValueError(
-                "--write requires a clean tracked checkout; review existing changes first"
-            )
+    if (
+        args.write
+        and args.text_dir is None
+        and git(root, "status", "--porcelain=v1", "--untracked-files=no").strip()
+    ):
+        raise ValueError(
+            "--write requires a clean tracked checkout; review existing changes first"
+        )
     mapping = read_map(args.commit_map)
     changes, report = plan(
         root,

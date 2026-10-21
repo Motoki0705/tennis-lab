@@ -13,7 +13,7 @@
   "scene_schema_counts": {
     "blcs_generated_dataset_v3": 1000
   },
-  "training_code_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "training_code_commit": "d10a780a5cfd4476d2936604a1a9343ad89013b3",
   "generator_commit": "not recorded by generator; local data matched to PR1038 via schema and metadata, not independently proven",
   "captured_utc": "2026-10-07T00:43:49Z"
 }

@@ -1397,7 +1397,7 @@
     "knowledge/runs/run-slcs-input-sensitivity-v1/result"
   ],
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-input-sensitivity",
-  "git_head": "57726f2c8f38fe50ab3870a7a030fad78ab14b4b",
+  "git_head": "d455b785340b83b601e8344d3f057a96fef25cd5",
   "versions": {
     "python": "3.11.15",
     "torch": "2.13.0+cu130",

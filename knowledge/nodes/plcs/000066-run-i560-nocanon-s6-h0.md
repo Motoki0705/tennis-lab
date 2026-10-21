@@ -35,7 +35,7 @@ metrics:
   angle_accuracy_15deg: 0.630532
   angle_accuracy_30deg: 0.89732
 repro:
-  commit: a7bd9a7b4e3bb88a51fe536840a9b44b18d941ec
+  commit: 0f4641cfa6bab922bc25a27e1fe533d370477b8b
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

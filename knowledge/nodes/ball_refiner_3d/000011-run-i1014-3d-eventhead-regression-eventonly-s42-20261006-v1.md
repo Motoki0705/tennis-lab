@@ -68,7 +68,7 @@ metrics:
   training_seconds: 194.27434777002782
   peak_gpu_memory_bytes: 1005275648
 repro:
-  commit: 09540efcf1cd46e1941eaf31f4062691eeee3c66
+  commit: 0991922e21d3da436e8648b5c59235361625fe36
   branch: codex/ball-refiner-3d-consolidation
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train_coordinates

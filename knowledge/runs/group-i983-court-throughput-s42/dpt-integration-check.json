@@ -1,5 +1,5 @@
 {
-  "legacy_commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "legacy_commit": "75e30a565b1f7a5f7fd4f08cea2daf458d377653",
   "scope": "CPU compatibility check during latest-main integration; scientific Colab runs remain pinned to legacy commit.",
   "shared_dpt_sha256": "31f971642ce4fcaf5ea4ebb2581d7766161dcfdff546b86de304194c2d2e6c50",
   "court_model_sha256": "f5336a0e78b93cc27814c3a128f50501cda2c0d2215b11a80210033fcc6a6bc3",

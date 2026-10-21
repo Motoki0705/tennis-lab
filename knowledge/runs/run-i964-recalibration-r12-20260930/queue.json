@@ -8,8 +8,8 @@
   "provider": "codex",
   "issue": 964,
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",
-  "feature_code_commit": "da42054d",
-  "frozen_inputs_commit": "3653ed90",
+  "feature_code_commit": "e9c0bd098f8828ee2f2130b34005a03669a59cbe",
+  "frozen_inputs_commit": "61964eefbaa2d8afff87bccc00bb6453f12c2310",
   "expected_seconds": [
     3600,
     6900

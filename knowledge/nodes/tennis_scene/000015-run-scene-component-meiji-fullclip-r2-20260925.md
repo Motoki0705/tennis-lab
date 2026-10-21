@@ -24,7 +24,7 @@ metrics:
   imported_ball_observed_cam2: 941
   accepted_court_regions: 0
 repro:
-  commit: b0620d701fd38ffd1d5c6cdbeeb8c0f37744cbc4
+  commit: b1a7dca9ed23aa115ca1c865dfa4ebd1453cb0fd
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

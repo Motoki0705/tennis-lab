@@ -5,7 +5,7 @@
   "context_cache_queued": false,
   "qualification_blocker": "filtered safety bench: 3 wrong decisions / 11200; original 0",
   "person_freeze": "3edefd77",
-  "stack_base": "32a35af427c95c8b281ee733517074ed33dc792a",
+  "stack_base": "4cfee67e464203023ceb3306697c95b670ab1b73",
   "commits": {
     "default": "2a25cadf0",
     "confidence": "16c112aa6",

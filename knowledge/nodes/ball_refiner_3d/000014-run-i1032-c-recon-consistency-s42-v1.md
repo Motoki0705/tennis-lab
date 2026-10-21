@@ -71,7 +71,7 @@ metrics:
   test_velocity_rmse_mps: 5.125955
   test_wind_error_median_mps: 1.629562
 repro:
-  commit: 5251d2f693dc7cabe5b766a5073b8585f6b98b2b
+  commit: 2e9985c251a8249c63e953e2adf269fd69de926a
   branch: feat/issue-1032-p5-physics-heads
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train

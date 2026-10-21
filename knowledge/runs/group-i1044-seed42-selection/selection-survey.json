@@ -63,7 +63,7 @@
     }
   },
   "selection_source": "src/tasks/blcs/experiments/repeat_selected.py",
-  "selection_and_training_source_commit": "8faa9bd42da3483cb06e7288fcff9be7e9a54858",
+  "selection_and_training_source_commit": "a1921e349b1ec6162affccc6b96f38c4af2ad729",
   "boundary_evidence": [
     "repeat_selected validates six seed42 receipts and ranks ARMS[2:]",
     "issue1044 sets test_after_fit=false and selects with trainer.validate"

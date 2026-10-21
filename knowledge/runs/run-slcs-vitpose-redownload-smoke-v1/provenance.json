@@ -98,7 +98,7 @@
   "device": "cuda:0",
   "driver_sha256": "925a6b10c02c0acca82c9783a3af3097e2d4a64e2913602a3864293e5cb90eb6",
   "driver_untracked_at_execution": true,
-  "execution_base_commit": "3bebe44d52f4a2cc2a77f2bc2dba1eea31be306e",
+  "execution_base_commit": "04d73f00dbd098d66a489b28902882cf7b62ef72",
   "source_sha256": {
     "src/submodules/models/vitpose/pose2d.py": "01e647cd72fe9b22cc49d28056dbd21f51b37d950812b8e0854d29d77651ceb8",
     "src/submodules/vendor/gvhmr/vitpose/__init__.py": "ab8fc9f3119b8b35361c0eb554b1215abe94e91da18fdac820f1c17d52aa326e",

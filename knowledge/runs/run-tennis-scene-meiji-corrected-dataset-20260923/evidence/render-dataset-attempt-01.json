@@ -5,7 +5,7 @@
   "scene": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/tennis_scene/scene.npz",
   "scene_sha256": "f1d7d25972fd6b47d3f58ecb81ff407b2cee3148f4b33d3bdb2f66e315238533",
   "metadata_sha256": "503a79e6cfaff5a38b65b7fe9b564840447fa437728ee00d4afb79ec5de062d8",
-  "source_commit": "fa8798a4c19f7efc6b123f4819130d57fe14b565",
+  "source_commit": "0115977fc3b061eeaee774a00c9b787f110e81d9",
   "changed_source_sha256": {
     "src/tasks/OUTPUTS.md": "e83e3c9a916f1080fa571ee15e62d5368d71a24d3b93991ded07ac96b8827ab3",
     "src/tasks/ball_detection/README.md": "a71a85c333cdcd17434ac4045c0afdbbb8e9ba931bbee5fb167688c59c04b55f",

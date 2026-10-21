@@ -50,7 +50,7 @@ metrics:
   loss_canonical_pose: 0.008204
   loss_reprojection: 0.023028
 repro:
-  commit: 00a2bb2af251a86038600c871b1f30a3c664b9b8
+  commit: 84674f92303dc99ce2bf06e2be2668c5328ec5c6
   branch: exp/plcs-reprojection-loss
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

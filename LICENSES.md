@@ -27,13 +27,13 @@ Git以外で配布される資産のcommitは「該当なし」とし、配布�
 
 | パス | 出典URL・取込元commit | ライセンス・表示 |
 | --- | --- | --- |
-| `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/beba5f9a94d598efe52cf7606a9cbdebae6e2f5d/src/submodules/vendor)（確認用 `beba5f9a94d598efe52cf7606a9cbdebae6e2f5d`） | コンテナの `__init__.py` は独自コード、MIT。配下のGVHMRは次行の条件。 |
+| `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/src/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | コンテナの `__init__.py` は独自コード、MIT。配下のGVHMRは次行の条件。 |
 | `src/submodules/vendor/gvhmr` | [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR) の [Motoki0705/GVHMR fork](https://github.com/Motoki0705/GVHMR/tree/900e8c4471e80bb6db5cb14c404c1a0766aba5f4)、取込元 `900e8c4471e80bb6db5cb14c404c1a0766aba5f4` | GVHMR独自の非商用条件。[LICENSE全文](src/submodules/vendor/gvhmr/LICENSE)、[移植内容](src/submodules/vendor/gvhmr/README.md)。内包する第三者部分は下表も参照。 |
 | `src/tasks/person_tracking/deep_ocsort_vendor` | [GerardMaggiolino/Deep-OC-SORT](https://github.com/GerardMaggiolino/Deep-OC-SORT/tree/6bb51d027b137233f5c520b6fcc4f2ae387a6ba9)、`6bb51d027b137233f5c520b6fcc4f2ae387a6ba9` | MIT。Roger R. Labbe Jr.のKalman実装のMIT表示も保持。[LICENSE](src/tasks/person_tracking/deep_ocsort_vendor/LICENSE)・[NOTICE](src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md)。 |
 | `src/tasks/player_association/appearance/solider_vendor` | [tinyvision/SOLIDER-REID](https://github.com/tinyvision/SOLIDER-REID/tree/8c08e1c3255e8e1e51e006bf189e52cc57b009ed)、`8c08e1c3255e8e1e51e006bf189e52cc57b009ed` | MIT。[LICENSE](src/tasks/player_association/appearance/solider_vendor/LICENSE)・[NOTICE](src/tasks/player_association/appearance/solider_vendor/NOTICE.md)。 |
 | `src/tasks/player_association/appearance/kpr_vendor` | [VlSomers/keypoint_promptable_reidentification](https://github.com/VlSomers/keypoint_promptable_reidentification/tree/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa)、`e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa` | Hippocratic License 3.0 **HL3-LAW-MEDIA-MIL-SOC-SV**。倫理上の条件と派生物の条件を含み、MITの対象外。[LICENSE](src/tasks/player_association/appearance/kpr_vendor/LICENSE)・[NOTICE](src/tasks/player_association/appearance/kpr_vendor/NOTICE.md)。 |
-| `tests/unit/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/beba5f9a94d598efe52cf7606a9cbdebae6e2f5d/tests/unit/submodules/vendor)（確認用 `beba5f9a94d598efe52cf7606a9cbdebae6e2f5d`） | MIT。移植コードを検証する独自テスト。上流コードの配布ディレクトリではありません。 |
-| `tests/unit/submodules/vendor/gvhmr` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/beba5f9a94d598efe52cf7606a9cbdebae6e2f5d/tests/unit/submodules/vendor/gvhmr)（確認用 `beba5f9a94d598efe52cf7606a9cbdebae6e2f5d`） | MIT。上記テストのGVHMR用パッケージ。 |
+| `tests/unit/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | MIT。移植コードを検証する独自テスト。上流コードの配布ディレクトリではありません。 |
+| `tests/unit/submodules/vendor/gvhmr` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor/gvhmr)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | MIT。上記テストのGVHMR用パッケージ。 |
 
 GVHMRのLICENSEは、教育・研究・非営利目的のみの使用・複製・改変・配布を許し、
 改変物のソース公開と商用利用禁止、著作権・帰属表示等の保持を求めます。

@@ -1,7 +1,7 @@
 {
   "schema": "mdd_cnn_campaign.v1",
   "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009",
-  "code_commit": "4cb8b70c9cae3e7841944e94295615e584947402",
+  "code_commit": "4d356ca5199b30860247906eba9b7e9325bacd55",
   "queue_directory": "/home/kamimura/projects/tennis-lab/.training_queue",
   "manifest": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_coordinates_36/20261008-fps124-v1/mdd_only_windows.json",
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",

@@ -31,7 +31,7 @@ metrics:
   test_position_accuracy_0.3m: 0.7576349431818182
   test_endpoint_error_m: 0.7294378669678487
 repro:
-  commit: cc863cacdd347027acd0a4700706fec6cca86f81
+  commit: d10a780a5cfd4476d2936604a1a9343ad89013b3
   branch: codex/blcs-physics-v3-retrain-20261007
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: '''env'' ''MPLBACKEND=Agg'' ''OMP_NUM_THREADS=4'' ''MKL_NUM_THREADS=4''
@@ -86,7 +86,7 @@ tags:
 
 元データ data/blcs/single_object を data/blcs/single_object-physics-v3-cc863cacd-20261007 へコピーし、全59,006ファイル（63,359,688 bytes）の内容一致を確認してから学習した。学習前後も全ファイルのSHA-256と一覧が一致した。正本はbundleの dataset_files.jsonl.gz と dataset_snapshot.json で、manifestを展開したJSONLのSHA-256は 36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544。generator設定とsplitは dataset_metadata/ に保存した。
 
-全1,000シーンが blcs_generated_dataset_v3 / ball_physics.v1、6カメラ、30 FPS、g=9.8で、surfaceはclay 355 / grass 334 / hard 311。全件で記録した速度・スピン・場から飛行区間をCPU再積分し、保存位置との最大誤差0を確認した。生成元commitは元データに記録されていないため、PR説明とschema/設定との対応を確認した範囲に限る。学習コードのcommit cc863cacdd347027acd0a4700706fec6cca86f81 はqueue bundleに固定した。
+全1,000シーンが blcs_generated_dataset_v3 / ball_physics.v1、6カメラ、30 FPS、g=9.8で、surfaceはclay 355 / grass 334 / hard 311。全件で記録した速度・スピン・場から飛行区間をCPU再積分し、保存位置との最大誤差0を確認した。生成元commitは元データに記録されていないため、PR説明とschema/設定との対応を確認した範囲に限る。学習コードのcommit d10a780a5cfd4476d2936604a1a9343ad89013b3 はqueue bundleに固定した。
 
 | split | 元シーン数 | 128 frame以上の評価・学習対象 | 短いため除外 |
 |---|---:|---:|---:|

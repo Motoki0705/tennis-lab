@@ -5,7 +5,7 @@
   "scene": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/generate/responsibility_cleanup/20260922T231809Z-pipeline/scene.npz",
   "scene_sha256": "6679e76ad5207f3367155871b4ff02150708d71f1e0def2efcdd14c5817f2385",
   "metadata_sha256": "47c4f091f8eb91877d57f7c5923dd0e7ea71339f53f71f92190523fbbe652e0f",
-  "source_commit": "fa8798a4c19f7efc6b123f4819130d57fe14b565",
+  "source_commit": "0115977fc3b061eeaee774a00c9b787f110e81d9",
   "changed_source_sha256": {
     "src/tasks/OUTPUTS.md": "e83e3c9a916f1080fa571ee15e62d5368d71a24d3b93991ded07ac96b8827ab3",
     "src/tasks/ball_detection/README.md": "83f49b889c89172435fdccabb4951e5d928d4a9863d2e564eaba85065a939296",

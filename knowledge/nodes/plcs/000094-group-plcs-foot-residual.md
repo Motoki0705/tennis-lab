@@ -53,8 +53,8 @@ tags:
 ## 実験スクリプトの履歴
 
 この比較で使った `prepare.py` / `evaluate.py` / `finalize.py` / `render.py` / `render_smpl.py` と README は
-実験用のスクリプトであり、現在のツリーからは削除済み。実行時の実装はcommit `2ce01844` のツリーで確認できる。保存済みの `outputs/plcs/foot_residual/` の成果物と学習モデルは当時の生成物である。
+実験用のスクリプトであり、現在のツリーからは削除済み。実行時の実装はcommit `6ecfad000dfa04b74a9049baefcc633b8a6e52ee` のツリーで確認できる。保存済みの `outputs/plcs/foot_residual/` の成果物と学習モデルは当時の生成物である。
 
 各runノードの `repro.command` と `knowledge/runs/*` の `run.json` / `repro.sh` / `uncommitted.patch` は、
 当時実行したコマンドと training queue bundle の監査記録であり、現行の再実行手順ではない。
-再度動かす場合は commit `2ce01844` のスクリプトを参照し、GPU実行は共有 training queue を使う。
+再度動かす場合は commit `6ecfad000dfa04b74a9049baefcc633b8a6e52ee` のスクリプトを参照し、GPU実行は共有 training queue を使う。

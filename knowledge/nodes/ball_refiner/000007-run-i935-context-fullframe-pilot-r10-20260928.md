@@ -27,7 +27,7 @@ metrics:
   total_dense_arm_slots: 94472
   clips_with_valid_court: 2
 repro:
-  commit: c90b6153b3588cc1a73c238e93ee4e7030dc4304
+  commit: 270e0f338265574f4d973083d82b639622496c30
   branch: campaign930/i935-8-context-cache
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 18m bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache/tests/benchmarks/ball_refiner_context_pilot.sh

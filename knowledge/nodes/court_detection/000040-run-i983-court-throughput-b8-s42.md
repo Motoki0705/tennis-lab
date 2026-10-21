@@ -69,7 +69,7 @@ tags:
 - throughput
 - diagnostic
 repro:
-  commit: c4b12f923b243da6b502149aa6f3912c706045e7
+  commit: 75e30a565b1f7a5f7fd4f08cea2daf458d377653
   command: PYTHONPATH=. .venv/bin/python "$SCRIPT_DIR/profile_throughput.py" --output
     <fresh-output> --batch-size 8
 session: 01a12538-67e1-7d22-a6ce-2d7add686d59

@@ -31,7 +31,7 @@ metrics:
   state_tensors_strict_loaded: 716
   peak_cuda_allocated_mib: 2644.515625
 repro:
-  commit: 1dcf9407897cefc38842fe02e57e6895c008e6f6
+  commit: 516de81b34cc06ff8785bcb45c966a439240d321
   branch: fix/issue-1031-qualitative-schedule
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'env TENNIS_LAB_BUILD_CUDA_OPS=1 ''TENNIS_LAB_DINO_OPS_BUILD_CONFIG={"paths":

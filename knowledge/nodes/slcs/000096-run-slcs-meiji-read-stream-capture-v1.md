@@ -37,7 +37,7 @@ tags:
 - snapshot
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 6b3756ec
+  commit: 9c9d5d6cf7eaf8955cc2ee65198556afdb8a4fce
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= .venv/bin/python -B knowledge/runs/run-slcs-meiji-read-stream-capture-v1/capture.py
     --checkpoint /home/kamimura/projects/tennis-lab/third_party/GVHMR/inputs/checkpoints/vitpose/vitpose-h-multi-coco.pth

@@ -4,7 +4,7 @@
   "experiment": "meiji-clip000-triangulation",
   "device": "cpu",
   "clip": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000",
-  "base_commit": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "base_commit": "554327a5cbcea54fcc156540fb678b89ffd235c2",
   "branch": "codex/meiji-clip000-triangulation",
   "method": "score-weighted DLT + 12 Gauss-Newton steps minimizing weighted pixel SSE",
   "min_score": 0.3,

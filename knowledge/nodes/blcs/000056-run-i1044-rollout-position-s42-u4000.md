@@ -48,7 +48,7 @@ config:
 metrics:
   val_trajectory_rmse_m: 0.7140101194381714
 repro:
-  commit: a272019de509b30b46d636633d3a8ca91c247ba4
+  commit: 434f0660bfc0208e31b07fe1968cc6d96e41b3a3
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

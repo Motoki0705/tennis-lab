@@ -27,7 +27,7 @@ metrics:
   people_producer_pin_mismatches: 3
   queue_recorded_clip_failures: 0
 repro:
-  commit: fdb6aa99580a0b5e92c68bd4254a91457ce3f950
+  commit: b23cb71e7ad2869785643b224f50a74f42fe3560
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python
@@ -54,7 +54,7 @@ tags:
 対象56clip・29148clip-frameの観測ファイルが揃いqueueはdoneだったが、事後の固定pin照合で3cameraのpeople receipt SHA不一致を検出した。観測の採用監査をfailedとし、後続buildをcancelした。正常終了をデータセット完成とは扱わない。
 
 ### アーキテクチャ詳細
-実行commit fdb6aa99580a0b5e92c68bd4254a91457ce3f950、Meiji v8のtemporal_continuityで3cameraを処理した。開始時checkpoint_verificationはCourt/DINO/ViTPoseの固定SHAを通過。people/raw detectionsのhashは当時からdual_sha256であり、現HEADまで関連4sourceに変更はない。固定pinとの照合が開始時のみで、後の各receipt計算値を固定pinへ再照合する境界が無かった。
+実行commit b23cb71e7ad2869785643b224f50a74f42fe3560、Meiji v8のtemporal_continuityで3cameraを処理した。開始時checkpoint_verificationはCourt/DINO/ViTPoseの固定SHAを通過。people/raw detectionsのhashは当時からdual_sha256であり、現HEADまで関連4sourceに変更はない。固定pinとの照合が開始時のみで、後の各receipt計算値を固定pinへ再照合する境界が無かった。
 
 ### メトリクスの解釈
 57clipのうち002/001を既存理由で除外。全168people NPZのshapeとmask dtype、metadata schema/policyを照合し、NPZ+metadata計336fileの前後dual SHAは一致した。005cam2/006cam2のdetector SHAと012cam2のpose SHAの計3件が固定値と異なる。他165cameraの両SHAは一致した。元jobのfailuresは空で、queue終了状態と監査結果を分離する。最終3D教師は未生成である。

@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 96b98a17ee067d9956cafcfb65448d527910349b (branch codex/court-sfm-bounded)"
-git checkout 96b98a17ee067d9956cafcfb65448d527910349b 2>/dev/null || echo "[repro] WARN: checkout 96b98a17ee067d9956cafcfb65448d527910349b failed; using current HEAD"
+echo "[repro] target commit: b442364533333fd1cb831ba6a03c5218597c92ec (branch codex/court-sfm-bounded)"
+git checkout b442364533333fd1cb831ba6a03c5218597c92ec 2>/dev/null || echo "[repro] WARN: checkout b442364533333fd1cb831ba6a03c5218597c92ec failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: NOT REPRODUCIBLE. outputs/b01-court-shapes/full_render_check.py was neither committed nor saved in

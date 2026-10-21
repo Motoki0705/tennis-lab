@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789795360536547420_192201_slcs-full-real-rgb-velocity-e60-v1 (commit=34023014f38b provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789795360536547420_192201_slcs-full-real-rgb-velocity-e60-v1 (commit=71b9eec83078b4f58aa53a3c439852ea17e13696 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

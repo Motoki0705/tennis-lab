@@ -17,7 +17,7 @@ config:
   checkpoint_warning_roles: [dino, vitpose]
 metrics: {published_clips: 56, expected_source_clips: 57, excluded_clips: 1}
 repro:
-  commit: 767ac67c43c35f65dd294ddf69a0b6a25d519656
+  commit: 8da19012e331642343a45ee7b1e7c8fa2fe7945d
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'env TENNIS_RGB_GPU=0 bash /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/scripts/datasets/build_real_rgb.sh

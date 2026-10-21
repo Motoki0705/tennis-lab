@@ -25,7 +25,7 @@ metrics:
   stage_elapsed_seconds: 18.749603291999847
   exit_code: 1
 repro:
-  commit: d734b1308ed9181e7ed2ffb8d3d8c941f747f590
+  commit: 45366c306e0c9001341b3fd76c3b551366ed19ee
   branch: codex/annotation-budget-roots
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: /home/kamimura/projects/tennis-lab/.claude/worktrees/annotation-budget-roots/.venv/bin/python

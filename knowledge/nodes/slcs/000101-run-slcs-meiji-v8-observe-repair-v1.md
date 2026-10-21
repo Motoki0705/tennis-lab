@@ -32,7 +32,7 @@ metrics:
   stable_input_hashes: 691
   audit_errors: 0
 repro:
-  commit: 41020d13080c5c1765c218924bbbb4d2aee2ef84
+  commit: 032c11225ef7dbdb500955e5004a8784b3248129
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

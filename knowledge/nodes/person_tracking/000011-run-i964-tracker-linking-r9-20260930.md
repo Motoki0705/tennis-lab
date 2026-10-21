@@ -35,8 +35,8 @@ papers: []
 tags: []
 date: '2026-09-30'
 repro:
-  commit: ebaaa0f1
-  protocol_commit: ac1957ad
+  commit: a3b3b7ea2309881c62c81b07985f50e1789f1b34
+  protocol_commit: fa56d6f7131e82a792b0fbe8caec411c80bd299c
   command: PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1
     .venv/bin/python tests/benchmarks/person_tracking_linking.py --repo /home/kamimura/projects/tennis-lab
     --features /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/dev_features/i964-features-r7-20260930

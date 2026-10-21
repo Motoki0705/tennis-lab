@@ -26,7 +26,7 @@ metrics:
   state_tensors_strict_loaded: 593
   peak_cuda_allocated_mib: 1137.19091796875
 repro:
-  commit: 1dcf9407897cefc38842fe02e57e6895c008e6f6
+  commit: 516de81b34cc06ff8785bcb45c966a439240d321
   branch: fix/issue-1031-qualitative-schedule
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env MPLBACKEND=Agg OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2

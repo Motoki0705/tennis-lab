@@ -30,7 +30,7 @@ tags: []
 ## 確定判断とpipeline接続
 
 [2026-09-30ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5900983788)を
-`2aaa42a3`でpipelineへ接続した。COCO全画面0.30、800/1333を既定にし、#937は明示設定で残した。
+`acd1d2618dc07fe85ecfa5f4b5beb5962c8fe8dd`でpipelineへ接続した。COCO全画面0.30、800/1333を既定にし、#937は明示設定で残した。
 新しい`player_selection`はrun 6の規則を再利用する。core・連結・distinct滞在・全観測保持・capの定義は
 [実装docstring](../../../src/tasks/person_tracking/court_linking.py)を正本とする。
 raw trackingのROI/累計6制限とLab事前連結は除去し、group上限だけを選別後にかける。

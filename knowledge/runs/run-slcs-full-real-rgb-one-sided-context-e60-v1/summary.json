@@ -1,7 +1,7 @@
 {
   "job_id": "1789809294678939765_618256_slcs-full-real-rgb-one-sided-context-e60-v1",
   "training_run": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_one_sided_context/s42-001",
-  "source_commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+  "source_commit": "16ce8892df535cb00e528c71b37c58209b7bdda3",
   "terminal_state": "state=done\nresource=all\nslot=all\npid=618368\npgid=618368\nwait=none\n",
   "pgid_absent": 618368,
   "epochs_completed": 60,

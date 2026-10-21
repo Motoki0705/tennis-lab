@@ -1,6 +1,6 @@
 {
   "profile": "train_real_rgb_temporal_domain_balanced",
-  "source_commit": "760195c0",
+  "source_commit": "1581265b274163dd7f35b7dd875485af8823fe1e",
   "direct_control_profile": "train_real_rgb_ball_temporal_context",
   "profile_difference": "domain_sampling and run.output_dir only",
   "seed": 42,

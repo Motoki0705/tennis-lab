@@ -19,7 +19,7 @@ metrics:
   bs1_workers0_windows_per_second: 0.5721
   bs1_workers4_windows_per_second: 1.5374
 repro:
-  commit: c8e6810616f3f31f3cff3dee0df7376d7c9a7a9b
+  commit: b39c4ff0981274db7eec4c1e62b0bdd19e0cc2ca
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 timeout -k 20s 2400s bash tests/benchmarks/ball_mdd_query_gpu_sweep.sh

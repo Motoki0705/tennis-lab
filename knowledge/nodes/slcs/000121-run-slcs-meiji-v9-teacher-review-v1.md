@@ -22,7 +22,7 @@ metrics:
   positive_ball_frames: 2730
   positive_player_frames: 6077
 repro:
-  commit: f4a887a9
+  commit: 7c6281f08a9e9993eced107eb935a6594f9ff581
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

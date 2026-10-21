@@ -36,7 +36,7 @@ repro:
     /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/bin/python
     -u /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py
     --plan /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/plan.json
-  commit: 28bdcd3fcbe774f99f526481b038749bd581a6a1
+  commit: 1abfc1729352ce88b4e774bba1017012b6cfe036
 ---
 
 ## run25での回収

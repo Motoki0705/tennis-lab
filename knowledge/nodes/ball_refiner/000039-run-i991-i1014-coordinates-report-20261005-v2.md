@@ -22,7 +22,7 @@ metrics:
   selected_2d_test_rmse_px: 15.188450813293457
   selected_3d_test_rmse_m: 0.4249493479728699
 repro:
-  commit: 0bdeb9514ae1e780f1d8e8e08a431b2aa9f5143c
+  commit: b6f99e5ac9d9322373819bbd6b2b6e7caee4fbf1
   branch: codex/coordinate-ball-refiners-991-1014
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python

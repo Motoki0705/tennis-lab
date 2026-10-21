@@ -33,7 +33,7 @@ metrics:
   terminal_train_ball_velocity_loss: 3.1056883335113525
   terminal_val_ball_velocity_loss: 0.1452355831861496
 repro:
-  commit: 34023014f38b3ba4d3c175f7b7e3917d57a00a93
+  commit: 71b9eec83078b4f58aa53a3c439852ea17e13696
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

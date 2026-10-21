@@ -10,7 +10,7 @@ provider: codex
 date: '2026-10-01'
 status: done
 metrics: {lovo_positive_recall: 0.8592682453416148, lovo_negative_false_join: 0.0, sigma_m: 0.7381677290433, slope: 36.70286491794044, center: 0.8298172161822686}
-repro: {commit: 6bafe87c635eaaf2d1136300c469a9dcc1031fdf}
+repro: {commit: 636925fb1a6d5c65334fefee172d1055b478b0b7}
 artifacts:
   run_dir: knowledge/runs/run-i964-recalibration-fit-r14-20261001
 parents: [run-i964-recalibration-resume-r13-20261001]

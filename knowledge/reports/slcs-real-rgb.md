@@ -80,7 +80,7 @@ OneSidedContextの直接対照はDomainBalancedではなく非均衡TemporalCont
 
 ## 再現性・失敗記録の扱い
 
-診断・較正・PR用可視化・派生データ準備の補助CLIは現行の操作入口から除外した。保存した図・数値・再現bundleは実験時の記録として保持する。過去のコマンドは各runが記録するcommitで再実行し、削除前の整理済み実装は[commit `5d39b69f`](https://github.com/Motoki0705/tennis-lab/tree/5d39b69fce1b4fe5d55dc19652d0ab2b87a8296a)を参照する。
+診断・較正・PR用可視化・派生データ準備の補助CLIは現行の操作入口から除外した。保存した図・数値・再現bundleは実験時の記録として保持する。過去のコマンドは各runが記録するcommitで再実行し、削除前の整理済み実装は[commit `beafeb58722798302d1ae93e1f4521370a14a966`](https://github.com/Motoki0705/tennis-lab/tree/beafeb58722798302d1ae93e1f4521370a14a966)を参照する。
 
 固定split、設定、重み選定receipt、入力digest、保存予測により比較条件を追跡できる。ただし「同じ環境で同じ手順が完走した」「固定保存配列から指標を再計算できる」「独立生成がbit-exact」は異なる保証である。
 

@@ -32,7 +32,7 @@ metrics:
   test_loss: 0.098785713
   test_position_error: 0.339648724
 repro:
-  commit: 2f92bcb473e7ba653a6998db1049551bd7ac7938
+  commit: 8e52d835025068bd64d5e618d44ca07cba18ca1f
   branch: feat/shared-torch-compile
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: '/usr/bin/time -f "BENCHMARK_WALL_SECONDS=%e BENCHMARK_MAX_RSS_KB=%M" env

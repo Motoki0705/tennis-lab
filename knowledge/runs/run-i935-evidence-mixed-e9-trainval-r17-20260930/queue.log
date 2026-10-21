@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930 (commit=9f2256370cb5 provider=codex session=01a0ef7d-1eb8-7973-b7c6-8b0604efd8ef)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790725512433633211_3869834_i935-evidence-mixed-e9-trainval-r17-20260930 (commit=e7561fa44b07745b854b35848de9c373a5f36038 provider=codex session=01a0ef7d-1eb8-7973-b7c6-8b0604efd8ef)
 {"completed_clips": 1, "total_clips": 329, "clip_id": "tracknet/game1/Clip1", "frames": 207}
 {"completed_clips": 2, "total_clips": 329, "clip_id": "tracknet/game1/Clip2", "frames": 130}
 {"completed_clips": 3, "total_clips": 329, "clip_id": "tracknet/game1/Clip3", "frames": 63}

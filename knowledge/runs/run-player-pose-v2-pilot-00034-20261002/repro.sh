@@ -8,7 +8,7 @@ set -euo pipefail
 REPO="${TENNIS_REPO:?set an isolated checkout; do not use the live campaign worktree}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO"
-git checkout 47bd048c54183a186b37e7d49102467c2ac10587
+git checkout e4db047aa5e2eb172f62f8ee1b4062d1d7a40e96
 BUILD_DIR="$(mktemp -d)"
 bash "$REPO/tests/benchmarks/build_dino_extension.sh" /home/kamimura/projects/tennis-lab "$BUILD_DIR/operator"
 PYTHONPATH="$BUILD_DIR/operator/lib:$REPO" OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 "$REPO/.venv/bin/python" "$SCRIPT_DIR/replay_pilot.py" "$BUILD_DIR" "$REPO"

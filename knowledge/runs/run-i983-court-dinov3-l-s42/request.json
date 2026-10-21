@@ -18,7 +18,7 @@
     "outputs/court_detection/train/i983-dino-l-shared1024/s42"
   ],
   "created_at": "2026-10-10T14:26:59.359596+00:00",
-  "source_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "source_commit": "7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f",
   "helpers": {
     "core": {
       "path": "/content/.tennis-colab/i983-l4-ablation-01/colab_core.py",

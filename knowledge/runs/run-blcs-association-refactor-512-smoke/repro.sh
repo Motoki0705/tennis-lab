@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/association-task-refactor}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 (branch codex/association-task-refactor)"
-git checkout 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 2>/dev/null || echo "[repro] WARN: checkout 28885e46cb76341001c8d20aaaeb5dcfe987d7a4 failed; using current HEAD"
+echo "[repro] target commit: 3147aeb3085e2a6735017c415a62eadd4925bb3a (branch codex/association-task-refactor)"
+git checkout 3147aeb3085e2a6735017c415a62eadd4925bb3a 2>/dev/null || echo "[repro] WARN: checkout 3147aeb3085e2a6735017c415a62eadd4925bb3a failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command ran /tmp/association_gpu_smoke.py; diagnostic.py in this bundle is its saved copy.

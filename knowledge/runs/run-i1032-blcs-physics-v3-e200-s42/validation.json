@@ -2,12 +2,12 @@
   "cpu_tests": {
     "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest -n 2 -q tests/unit/tasks/blcs/model_io/test_checkpoints.py tests/unit/tasks/blcs/data/test_datamodule.py tests/unit/tasks/blcs/training/test_metrics.py tests/unit/utils/physics/test_ball_record.py",
     "passed": 32,
-    "source_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+    "source_commit": "d10a780a5cfd4476d2936604a1a9343ad89013b3",
     "performed_before_training_completed": true
   },
   "knowledge_validation": {
     "base_ref": "origin/main",
-    "base_commit": "548484ae23add38e442eeb446c1f68d6604f3d48",
+    "base_commit": "f0e2e5982b3ffc9d4c3fd492bbdd42184b383f3f",
     "errors": 0,
     "warnings": 217
   },

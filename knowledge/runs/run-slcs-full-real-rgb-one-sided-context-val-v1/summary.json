@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "job_id": "1789810674175860469_746238_slcs-full-real-rgb-one-sided-context-val-v1",
-  "source_commit": "29955efbf385d8e340df85ec1377749e207f5060",
+  "source_commit": "153e670bd984d02a64404420163580e56d582abb",
   "output": "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_one_sided_context/s42-001",
   "terminal_state": "done",
   "pgid_absent": 746347,
@@ -1312,11 +1312,11 @@
   "test_evaluated": false,
   "adopted_as_final_model": false,
   "decision": "Partial effect on one-sided gaps and mean boundary velocity error; not a robust replacement because overall full/gap ball means regress against the direct TemporalContext control, no-anchor and some tails regress, and large discontinuities remain. Test remains unopened.",
-  "diagnostics_source_commit": "29955efbf385d8e340df85ec1377749e207f5060",
+  "diagnostics_source_commit": "153e670bd984d02a64404420163580e56d582abb",
   "paired_comparisons": "paired_summary.json contains compact all-group statistics and paths/SHA256 for all 20 complete reports in the evaluation output. Full reports include all video and empty strata.",
   "figure_generation": "figure_generation.json",
   "publication_verification": {
-    "source": "1e5b38cfec422b595452557441cc261b00730a16",
+    "source": "1748d3d398165b81760331ba5ab5ce5227277bd6",
     "pytest": {
       "scope": "SLCS evaluation + dataset pipeline + scene configuration/pipeline configuration + configuration/architecture audits",
       "passed": 522,
@@ -1335,7 +1335,7 @@
     "kg_curves": "Expected skip: evaluation run has no TensorBoard; figures use parent training logs."
   },
   "ordinary_verification": {
-    "commit": "29955efbf385d8e340df85ec1377749e207f5060",
+    "commit": "153e670bd984d02a64404420163580e56d582abb",
     "pytest": {
       "scope": "tests/unit/tasks/slcs/evaluation + configuration/architecture audits",
       "passed": 164,

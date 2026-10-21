@@ -30,7 +30,7 @@ metrics:
   best_val_scene_position_error_m: 1.9005093574523926
   selected_epoch_zero_based: 55
 repro:
-  commit: 1758eda44debb618395fc7fe86e9ecb30f32a4fa
+  commit: cb4308500af9aa5d0cb7469bc1747d89af11ae1c
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

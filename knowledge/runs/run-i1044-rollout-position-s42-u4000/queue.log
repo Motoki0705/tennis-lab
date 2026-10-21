@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791853065891624636_1326740_i1044-rollout_position-s42-u4000 (commit=a272019de509 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791853065891624636_1326740_i1044-rollout_position-s42-u4000 (commit=434f0660bfc0208e31b07fe1968cc6d96e41b3a3 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

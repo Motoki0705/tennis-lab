@@ -1,12 +1,12 @@
 {
-  "execution_commit": "4d24a2144680cace5af825659b8909aecd19e15e",
+  "execution_commit": "086e2476c7315c0a3b6eddca10951e77a4928135",
   "command": "bash knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh",
   "expanded_command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=\"$PWD\" .venv/bin/python knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py --project-root /home/kamimura/projects/tennis-lab --samples-root /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-001 --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_court_visual_qc/s42-001",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
   "exit_status": 0,
   "execution_attempts": 1,
   "patch_verification": {
-    "temporary_index_base": "4d24a2144680cace5af825659b8909aecd19e15e",
+    "temporary_index_base": "086e2476c7315c0a3b6eddca10951e77a4928135",
     "git_apply_cached": true,
     "restored_bytes_match": [
       "knowledge/runs/run-slcs-meiji-court-visual-qc-v1/probe.py",

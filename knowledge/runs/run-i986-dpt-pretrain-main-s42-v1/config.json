@@ -86,7 +86,7 @@
   },
   "code": {
     "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-dpt-pretrain-s42",
-    "base_commit": "e3f1356163e7b2009c580fc1727c1a413c5889a3",
+    "base_commit": "af0b0c92d8db948f2dfeb3171515bff1c025ade8",
     "torch_version": "2.13.0+cu130",
     "source_sha256": {
       "src/tasks/ball_detection/data/annotation_states.py": "f2b6ef40e2c241e9256276a4d265414c2c921a674fde542daefa139d149ce7ef",

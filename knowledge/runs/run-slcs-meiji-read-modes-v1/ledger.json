@@ -5,7 +5,7 @@
     "--output",
     "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001"
   ],
-  "git_commit": "f87e0bf95c36554d59eede0b9d8f7f68bb6ddf31",
+  "git_commit": "119d5ef5b2073548ca9f8e10c85be9cfd77bfaf5",
   "script_sha256": "24356c8f6d507803faa3e191e111edc4da8d853b9c58a774655e9792ca2996c2",
   "evidence": {
     "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/knowledge/runs/run-slcs-meiji-stream-byte-diff-v1/comparison.json",

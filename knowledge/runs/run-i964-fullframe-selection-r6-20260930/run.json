@@ -3,8 +3,8 @@
   "date": "2026-09-30",
   "status": "done",
   "device": "cpu",
-  "commit": "5a64e94332f4eb74ec2569a17bc0cd552c9f3ade",
-  "selection_commit": "05088508bec57dd3af2d245e3a51b05650c30467",
+  "commit": "45daf430d38f4b867fafc0ecdec81e8d4db374cd",
+  "selection_commit": "bc5ce67684e81db66e98ed3004d0c67feccc71a6",
   "branch": "campaign930/i964-2-tracking",
   "source_variants": 7,
   "dev_clips": 4,
@@ -24,6 +24,6 @@
   "video_command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 OPENCV_FFMPEG_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_fullframe_video.py --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-fullframe-r6-20260929 --source coco_fullframe_0.30 --stem best_source_review_3cam",
   "wide_attribution_command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-fullframe-selection-r6-20260930/wide_losses.py /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-fullframe-r6-20260929",
   "notes": "Reproduce into a fresh output path. Sources/tracking ran at 13f0fe58; guards added later only validate the same 800/1333, .01 floor. Selection rule and CLIP code were frozen before any variant was scored; no threshold sweep of the rule. All four select calls were <7 minutes.",
-  "video_commit": "f83bb2fa",
+  "video_commit": "0262c3554d8b1accb27b6cef7835d2bcca554c65",
   "initial_video_command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 OPENCV_FFMPEG_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_fullframe_video.py --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-fullframe-r6-20260929 --source coco_fullframe_0.30"
 }

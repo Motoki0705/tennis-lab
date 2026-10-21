@@ -45,7 +45,7 @@ metrics:
   last_saved_checkpoint_step: 2610
   last_logged_val_trajectory_rmse_m: 0.8086180686950684
 repro:
-  commit: 8faa9bd42da3483cb06e7288fcff9be7e9a54858
+  commit: a1921e349b1ec6162affccc6b96f38c4af2ad729
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl

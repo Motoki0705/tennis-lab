@@ -29,7 +29,7 @@ metrics:
   terminal_val_ball_position_error_m: 2.5437731742858887
   terminal_val_player_position_error_m: 1.4007446765899658
 repro:
-  commit: f8f83a6c457c153640dcba04ed86722cbdb794f9
+  commit: 16ce8892df535cb00e528c71b37c58209b7bdda3
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4
@@ -96,7 +96,7 @@ last/選定checkpointのmodel・optimizerを含む浮動値を監査し、非有
 TemporalContextと同じ466 train窓・30batch/epoch・1800更新を維持した。自然の片側欠損が多いMeijiと少ないbroadcastを全体平均だけでまとめない。
 DomainBalancedの巨大な境界不連続を契機にした仮説だが、このrunはsamplingを継承していない。
 元のno-smooth基準とは両側・片側contextの2変更があるため、片側追加の直接因果比較はTemporalContextとの比較に限定する。
-source `f8f83a6c` はcleanで開始した。後から統合したanchor分類診断はこの学習sourceには含まれない。
+source `16ce8892df535cb00e528c71b37c58209b7bdda3` はcleanで開始した。後から統合したanchor分類診断はこの学習sourceには含まれない。
 
 ### 次に有効な実験
 

@@ -21,7 +21,7 @@ metrics:
   alignment_published: true
   accepted_courts: 1
 repro:
-  commit: ad5554ab0cfdc433408b5762f3eb8792a30e6698
+  commit: f547c79507e03ed1c81427356d1a5ba436ef62fb
   branch: codex/court-sfm-bounded
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py

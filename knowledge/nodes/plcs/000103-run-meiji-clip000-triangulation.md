@@ -25,7 +25,7 @@ metrics:
   person_frames_with_limb_over_1m: 26
   worst_limb_length_m: 3.0382538855924532
 repro:
-  commit: 893d0ca4
+  commit: 554327a5cbcea54fcc156540fb678b89ffd235c2
   branch: codex/meiji-clip000-triangulation
   command: bash knowledge/runs/run-meiji-clip000-triangulation/repro.sh
 artifacts:

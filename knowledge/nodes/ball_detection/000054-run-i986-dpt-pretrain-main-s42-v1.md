@@ -39,7 +39,7 @@ metrics:
   selected_full_mean_error_px: 32.75036181722699
   first_attempt_exit_code: 134
 repro:
-  commit: e3f1356163e7b2009c580fc1727c1a413c5889a3
+  commit: af0b0c92d8db948f2dfeb3171515bff1c025ade8
   branch: HEAD
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2

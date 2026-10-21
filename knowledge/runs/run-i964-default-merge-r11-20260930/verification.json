@@ -4,7 +4,7 @@
   "shared_production_entrypoint": "track_sequence",
   "strata": 32,
   "status": "ok",
-  "execution_commit": "923856b71a5c54aa8aca32abd6046c490c32de54",
+  "execution_commit": "360c1f0dd1916f12b75632698ac8b3df46718f68",
   "code_files_match_commit": 104,
   "summary": {
     "strongsort_pp_pose_merge_off__clipreid_vitb16_market1501": {

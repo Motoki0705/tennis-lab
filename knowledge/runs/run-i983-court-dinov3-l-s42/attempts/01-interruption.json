@@ -4,7 +4,7 @@
   "event": "assignment_missing",
   "session": "i983-l4-ablation-01",
   "job": "train-l-s42",
-  "source_commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "source_commit": "7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f",
   "last_published_status": {
     "schema_version": 1,
     "job_id": "train-l-s42",

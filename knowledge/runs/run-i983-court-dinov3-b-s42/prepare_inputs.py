@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-commit = "c4b12f923b243da6b502149aa6f3912c706045e7"
+commit = "75e30a565b1f7a5f7fd4f08cea2daf458d377653"
 observed = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
 if observed != commit:
     raise RuntimeError(f"Unexpected source commit: {observed}")

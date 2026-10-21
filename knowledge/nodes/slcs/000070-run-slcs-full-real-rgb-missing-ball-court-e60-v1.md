@@ -31,7 +31,7 @@ metrics:
   context_weight_norm: 0.7447413802146912
   context_weight_nonzero: 5376
 repro:
-  commit: edabe593ef615d12a07a282a5df61e9c3c5a94d5
+  commit: c32015915aa80a675fef37cb90aaf95422e2ec29
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

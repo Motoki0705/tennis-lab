@@ -37,7 +37,7 @@ metrics:
   max_confident_keypoints: 13
   max_homography_inliers: 11
 repro:
-  commit: ac9e640903a6dfaecb65fc980f5dcf408bbcd589
+  commit: a36d4e02bcd42acc0f6e17163dacdd666827a6fb
   branch: main
   command: .venv/bin/python -m src.tennis_scene.scripts.infer_fit_view_courts
   provider_bundle_fingerprint: 5438ced3d08307cc0357b1509b8ae58c6fa834e023042bb5f7e7b0bf6d76066b

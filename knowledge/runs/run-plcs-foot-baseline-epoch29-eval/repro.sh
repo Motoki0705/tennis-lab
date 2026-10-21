@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-foot-residual}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 43291cdb40fbec423eb773984b907fc07d105467 (branch experiments/plcs-foot-residual)"
-git checkout 43291cdb40fbec423eb773984b907fc07d105467 2>/dev/null || echo "[repro] WARN: checkout 43291cdb40fbec423eb773984b907fc07d105467 failed; using current HEAD"
+echo "[repro] target commit: d3c4e825f1d0216acad3e5b7871310b7b99cc321 (branch experiments/plcs-foot-residual)"
+git checkout d3c4e825f1d0216acad3e5b7871310b7b99cc321 2>/dev/null || echo "[repro] WARN: checkout d3c4e825f1d0216acad3e5b7871310b7b99cc321 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command read these files from outputs/; they are saved in this bundle.

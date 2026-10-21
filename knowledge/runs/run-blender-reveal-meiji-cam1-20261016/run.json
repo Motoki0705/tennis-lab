@@ -7,7 +7,7 @@
   "issue": "",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "8549c66c05abd9e2b3f73b785cc6382603cfb7b5",
+  "commit": "01a2bd3fd4cb37730ac939fa092cd88a28bbfbfb",
   "branch": "codex/blender-scene-reveal",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/blender-scene-reveal",

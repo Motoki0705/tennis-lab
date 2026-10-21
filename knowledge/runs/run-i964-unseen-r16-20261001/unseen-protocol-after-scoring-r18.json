@@ -583,7 +583,7 @@
     "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/scoring/summary.json",
     "sha256": "8904fa1a6df11b15dc9d4f0a7e6bdaee4df92385fcf548348416626dfb18240c"
   },
-  "label_commit": "43da331cc4f82ec0911e2ed5ead37a2df5c8ed7d",
-  "model_freeze_commit": "3edefd77",
+  "label_commit": "24b6ce12c016ac3f1f2404d81e9d106b11b0d9fe",
+  "model_freeze_commit": "6f4c65c28875405fd8c53e6e23fc24752b8fd339",
   "retune_allowed": false
 }

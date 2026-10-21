@@ -37,7 +37,7 @@ tags:
 - diagnostics
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 0b3ccdb1e77de23a9c6644dc072c61f7661a1c04
+  commit: b1f1f682475dfad38c9371b87116ae9fc52c6ff3
   branch: codex/slcs-real-rgb
   command: powershell.exe -NoProfile -NonInteractive -File '\\wsl.localhost\Ubuntu\home\kamimura\projects\tennis-lab\.claude\worktrees\slcs-real-rgb\knowledge\runs\run-slcs-host-storage-audit-v1\collect_storage.ps1'
     -OutputPath '\\wsl.localhost\Ubuntu\home\kamimura\projects\tennis-lab\outputs\tennis_scene\analyze\meiji_host_storage\s42-002\storage.json'

@@ -43,7 +43,7 @@ metrics:
   load_only_resume_nodes: 25
   scene_npz_max_abs_diff_vs_i932: 0.0
 repro:
-  commit: ed12854b89fd8896552bd1577098f6361a835128
+  commit: d50f055839ca5435d6e2d9303b422916f82def27
   branch: campaign930/i933-4-pipeline
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab
@@ -78,7 +78,7 @@ tags:
 
 ## 要約
 
-#933 の PR #946 の tree（`ed12854b`）で、[run-i932-component-side-meiji-clip000-20260927](000024-run-i932-component-side-meiji-clip000-20260927.md) と同じ benchmark を Meiji `clip_000`（3 camera × 1010 frame）に再実行した。
+#933 の PR #946 の tree（`d50f055839ca5435d6e2d9303b422916f82def27`）で、[run-i932-component-side-meiji-clip000-20260927](000024-run-i932-component-side-meiji-clip000-20260927.md) と同じ benchmark を Meiji `clip_000`（3 camera × 1010 frame）に再実行した。
 違いは人物対応の出どころだけである。000024 までは過去に人手で確認した対応を import していたが、今回は既定の `pipeline.yaml` で `player_association: execute` とし、`player_association` component が track・コート較正・`court_side` の出力と動画の crop から対応を決めた（幾何＋CLIP-ReID 外観、MILP、[run-i933-association-meiji](../player_association/000002-run-i933-association-meiji.md) と同じ `association.yaml`）。
 import は ball（外注 `video_ball_annotation.v2` の observed 点）だけになった。
 

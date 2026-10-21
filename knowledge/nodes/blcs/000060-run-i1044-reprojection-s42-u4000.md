@@ -48,7 +48,7 @@ config:
 metrics:
   val_trajectory_rmse_m: 0.8476958870887756
 repro:
-  commit: 6273dbb114f2ad83c478ddd617ec8513c0843c08
+  commit: 9c7c48e2f863922a23e976b7696518a4c9d493ba
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl

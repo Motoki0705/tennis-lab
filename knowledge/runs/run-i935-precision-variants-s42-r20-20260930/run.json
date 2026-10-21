@@ -7,7 +7,7 @@
   "issue": "935",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+  "commit": "536fab226e5991e5366a0348b58fbbd15e3a4875",
   "branch": "campaign930/i935-12-precision-diagnosis",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",

@@ -12,8 +12,8 @@ from typing import TypeVar
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 BoundaryIdentityT = TypeVar("BoundaryIdentityT", bound=Hashable)
-BASE_REVISION = "408791ac5697adb89c431a9e4331d173cb01a890"
-CONFIG_MERGE_REVISION = "7ea4e16a48137c249763f884b831a82c70b7eb29"
+BASE_REVISION = "4a307dbdfaafa16229347bf29c29ae027998a363"
+CONFIG_MERGE_REVISION = "aa57e9e1d2371587765c8032680c584625745d7e"
 REMOVED_MODULES = (
     "src.configuration_contracts",
     "src.configuration_validation",

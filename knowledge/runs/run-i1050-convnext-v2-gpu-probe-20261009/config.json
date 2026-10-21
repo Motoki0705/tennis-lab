@@ -88,7 +88,7 @@
   },
   "code": {
     "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009",
-    "base_commit": "4cb8b70c9cae3e7841944e94295615e584947402",
+    "base_commit": "4d356ca5199b30860247906eba9b7e9325bacd55",
     "torch_version": "2.13.0+cu130",
     "source_sha256": {
       "src/tasks/ball_detection/data/annotation_states.py": "f2b6ef40e2c241e9256276a4d265414c2c921a674fde542daefa139d149ce7ef",

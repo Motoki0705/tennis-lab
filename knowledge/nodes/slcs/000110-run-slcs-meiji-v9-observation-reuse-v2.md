@@ -47,7 +47,7 @@ tags:
 - captured-stream
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 78ac29cb3976110db8c6597f326951f99b27b302
+  commit: 5d4676aa085542d01887e463af80533065ace290
   branch: codex/slcs-real-rgb
   command: env PYTHONPATH=. CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
     .venv/bin/python -B knowledge/runs/run-slcs-meiji-v9-observation-reuse-v2/witness.py

@@ -30,7 +30,7 @@ metrics:
   person_tracking_cam0_cumulative_ids: 5
   person_tracking_camera_capacity: 4
 repro:
-  commit: 382005b42e2db9c5f27db252faeb8308b669d6bc
+  commit: 566511b51452c83c5b493d67f681bde61bc8dbf5
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

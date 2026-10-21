@@ -32,7 +32,7 @@ metrics:
   full_observed_to_missing_velocity_error_mean_mps: 61.850591217010745
   full_missing_to_observed_velocity_error_mean_mps: 61.030746700642084
 repro:
-  commit: fd37dee05eed1744abb50d891e056f5d574fc7c4
+  commit: 6bed32e2731a52e5610033ae6e3625e5e2b1d9e8
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

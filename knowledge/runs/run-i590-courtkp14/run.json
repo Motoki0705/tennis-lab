@@ -5,7 +5,7 @@
   "provider": "claude",
   "session": "e6b05f74-5cf0-4470-9219-ca1b8fb11eec",
   "issue": "590",
-  "commit": "175045f8a9e7efce4585d658083defd895ad62f6",
+  "commit": "d28b54c9d02df72cbdf30cb45a103befa0f9b9a1",
   "branch": "feat/tennis-scene-submodules-gvhmr",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab",

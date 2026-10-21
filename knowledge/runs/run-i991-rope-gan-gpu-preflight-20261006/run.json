@@ -7,7 +7,7 @@
   "issue": "991",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "9588b33833c54423c361d150fbac442f9631497f",
+  "commit": "b97e51a5e3defdab6ad70a0bd9cb80bbb47b569e",
   "branch": "codex/coordinate-refiner-rope-gan",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-refiner-rope-gan",

@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930 (commit=521eea03985a provider=codex session=01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790765753518931936_1202742_i935-e9-anchored-source3cam-r24-20260930 (commit=1a1c34588e670af93f920031029fa72ac9179161 provider=codex session=01a0f1dc-49b9-7c82-bcfb-fe29dda6b9e1)
 Traceback (most recent call last):
   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/knowledge/runs/run-i935-pipeline-candidate-r24-20260930/check_pipeline.py", line 302, in <module>
     main()

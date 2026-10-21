@@ -49,7 +49,7 @@ metrics:
   ball_position_pred_b_m: 1.3189
   ball_position_conf_error_corr: 0.560462
 repro:
-  commit: 56445ad063a9a87e6453f4d095c084f8efb0b532
+  commit: edbc90c152b5df0e360c7b7bd6475b535a055d42
   branch: feat/issue-634-dino-compress-split-trunks
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.slcs.scripts.train

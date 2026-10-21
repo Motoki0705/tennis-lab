@@ -49,7 +49,7 @@ metrics:
     line_dice: 0.7060995101928711
     semantic_line_miou: 0.48428186774253845
 repro:
-  commit: c4b12f923b243da6b502149aa6f3912c706045e7
+  commit: 75e30a565b1f7a5f7fd4f08cea2daf458d377653
   command: .venv/bin/python -m src.tasks.court_detection.scripts.train --config-name
     train_i983_b run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-b-shared1024/s42
     run.artifact_store.sync_interval_seconds=60
@@ -95,7 +95,7 @@ tags:
 
 #983の4条件比較の最後の条件として、凍結DINOv3-Bの20epoch学習をColab L4で開始した。4段の768次元特徴を独立した学習可能な1×1層で1024次元へ揃え、Transformer/DPT/headsは先行L/S/S+と同じ容量と初期重みに固定する。データ、512長辺の前処理、batch8の4:4混合、seed42、loss、optimizer、学習予算を変えない。
 
-入力はB00〜B03とTennisCourtDetector-v1の5 dataset、およびB pretrained weightである。session07のVM内へ取得し、転送検証とmanifest/index/画像shard/weightのSHA-256照合を完了した。実際に解決したconfigはS+と比較し、backbone名・weight path・run/Drive保存先以外の一致を確認した。科学的commit c4b12f923、Python3.11.16、PyTorch2.14.1、Lightning2.6.6、DINOv3 submodule、L4とdriverも先行S/S+と一致する。
+入力はB00〜B03とTennisCourtDetector-v1の5 dataset、およびB pretrained weightである。session07のVM内へ取得し、転送検証とmanifest/index/画像shard/weightのSHA-256照合を完了した。実際に解決したconfigはS+と比較し、backbone名・weight path・run/Drive保存先以外の一致を確認した。科学的commit 75e30a565b1f7a5f7fd4f08cea2daf458d377653、Python3.11.16、PyTorch2.14.1、Lightning2.6.6、DINOv3 submodule、L4とdriverも先行S/S+と一致する。
 
 最初の準備VMであるsession06は環境と入力を用意した後、本学習の開始前に消失した。準備・取消・保存の履歴はbundleのprovisioning-attempts/06に残す。VM消失原因は確定していない。session07では1つのNotebook kernel jobが環境構築、入力検証、学習を連続して実行する。job自体の開始は2026-10-12T10:20:13Z、学習childの開始は10:27:51Zであり、両時刻を区別する。準備VMでの検証はsession07自身の入力検証の代用にしていない。
 

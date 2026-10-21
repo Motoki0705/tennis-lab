@@ -1,4 +1,4 @@
-"""Reproduce the read-only scout probe on commit 4671f9ba (CPU, no optimizer).
+"""Reproduce the read-only scout probe on commit 58d6d5502abc7bcab6b4d5e896b3cfc390b88a12 (CPU, no optimizer).
 
 Run from that checkout with PYTHONPATH=. and OMP/MKL/OPENBLAS_NUM_THREADS=2.
 The checkpoint/config inputs are the two completed GPU smoke runs.

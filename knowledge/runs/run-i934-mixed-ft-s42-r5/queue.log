@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790558974032900448_1609437_i934-mixed-ft-s42-r5-20260928 (commit=ae5f5baaa359 provider=codex session=01a0e592-3e39-74f1-816b-fffe8fead5fc)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790558974032900448_1609437_i934-mixed-ft-s42-r5-20260928 (commit=e83f885f5b25f60f96129857c3f43eaf9f4ad1cf provider=codex session=01a0e592-3e39-74f1-816b-fffe8fead5fc)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

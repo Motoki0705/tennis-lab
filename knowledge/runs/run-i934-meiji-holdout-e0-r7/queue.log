@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928 (commit=78ce7d9bd961 provider=codex session=01a0e707-b9f5-7221-b920-50119a3004e4)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928 (commit=e6369feaea818ad7dc1b4c31114edac6c4cb54ba provider=codex session=01a0e707-b9f5-7221-b920-50119a3004e4)
 Validated 63 clips / 36006 unique frames
 ft_e13 1/63 meiji/video_001/clip_000/cam0 frames=1316
 ft_e13 2/63 meiji/video_001/clip_000/cam1 frames=1316

@@ -23,7 +23,7 @@ metrics:
   detection_identity_errors: 1
   stat_changed_comparisons: 0
 repro:
-  commit: 88dca25f954178bb3668768c8418332bd0a98749
+  commit: 98e2f1f893590d76b2909541e609b41e16bd608c
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

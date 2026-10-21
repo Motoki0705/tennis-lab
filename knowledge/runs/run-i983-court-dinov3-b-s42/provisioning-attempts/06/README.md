@@ -1,6 +1,6 @@
 # 本学習前に消失した準備用VM
 
-`i983-l4-ablation-06` はL4と科学的commit `c4b12f923b243da6b502149aa6f3912c706045e7` を確認し、環境と入力を準備した。Bの本学習を開始した証跡はないため、完了した学習やcheckpoint再開として扱わない。
+`i983-l4-ablation-06` はL4と科学的commit `75e30a565b1f7a5f7fd4f08cea2daf458d377653` を確認し、環境と入力を準備した。Bの本学習を開始した証跡はないため、完了した学習やcheckpoint再開として扱わない。
 
 - setupは2026-10-12T08:47:58Zにreturncode 0・Drive保存で終了した。
 - 最初の入力準備はNotebook接続エラー後もremoteがpendingのままだった。09:14:52Zにcancelled・returncode 130・Drive保存を確認した。cancel markerを残し、所有を確認したローカルtransportだけを終了した。要求と取消receiptは `input-attempts/` に残す。

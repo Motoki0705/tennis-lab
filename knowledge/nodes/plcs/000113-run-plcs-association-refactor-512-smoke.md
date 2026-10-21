@@ -44,7 +44,7 @@ metrics:
   peak_allocated_bytes: 5320590848
   peak_reserved_bytes: 5842665472
 repro:
-  commit: 8a25c17bf9281f751bc6fd41b6b10af6fb40b23d
+  commit: c236f13c63bcffccd9a807449b654e53a7b2d6c9
   branch: codex/association-task-refactor
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 PYTHONPATH=. /home/kamimura/projects/tennis-lab/.venv/bin/python

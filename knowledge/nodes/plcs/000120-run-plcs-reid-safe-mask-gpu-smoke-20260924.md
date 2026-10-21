@@ -21,7 +21,7 @@ config:
   data: plcs/tracked_person_reid_v1
 metrics: {}
 repro:
-  commit: be54b85471c7e735544276f5038b2ab70b139798
+  commit: 3e7854db239e83e6b5d09db505ee7a02ef50cb0e
   branch: codex/plcs-track-reid
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.

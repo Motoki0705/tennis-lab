@@ -4,7 +4,7 @@ set -euo pipefail
 # Declare --runner-output outputs/<TRAIN_OUTPUT> when submitting this script.
 # The exact observed command is preserved in request.json and run.json.
 TRAIN_OUTPUT="${1:?Provide a fresh task/purpose/experiment/run-id under outputs}"
-git checkout 98b737829ba8baae8b823c7b7728cf0608f5073f
+git checkout 7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f
 .venv/bin/python -m src.tasks.court_detection.scripts.train \
   --config-name train_i983_l \
   "run.output_dir=$TRAIN_OUTPUT" \

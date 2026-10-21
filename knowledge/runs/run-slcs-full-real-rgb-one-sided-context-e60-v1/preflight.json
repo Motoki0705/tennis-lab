@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+  "source_commit": "16ce8892df535cb00e528c71b37c58209b7bdda3",
   "device": "cpu",
   "profile": "train_real_rgb_one_sided_context",
   "control_profile": "train_real_rgb_ball_temporal_context",
@@ -125,7 +125,7 @@
     "one_sided_gradient_finite": true
   },
   "ordinary_verification": {
-    "commit": "f8f83a6c457c153640dcba04ed86722cbdb794f9",
+    "commit": "16ce8892df535cb00e528c71b37c58209b7bdda3",
     "cpu_tests": {
       "passed": 797,
       "warnings": 10,

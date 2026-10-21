@@ -33,7 +33,7 @@ config:
   seed: 42
   max_epochs: 20
 repro:
-  commit: c4b12f923b243da6b502149aa6f3912c706045e7
+  commit: 75e30a565b1f7a5f7fd4f08cea2daf458d377653
   command: .venv/bin/python -m src.tasks.court_detection.scripts.compare_ablation
     --evaluations knowledge/runs/run-i983-court-dinov3-s-s42/evaluation/evaluation.json
     knowledge/runs/run-i983-court-dinov3-splus-s42/evaluation/evaluation.json knowledge/runs/run-i983-court-dinov3-b-s42/evaluation/evaluation.json

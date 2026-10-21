@@ -19,7 +19,7 @@ metrics:
   first_windows_per_second: 1.0575643884335877
   replay_windows_per_second: 4.678582627679386
 repro:
-  commit: 2da3351a28cf6c685767338f0f768d3c357c402e
+  commit: 6063958b203e9bb42e2ecec6837d3765d3b83eea
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONUNBUFFERED=1 timeout 600 .venv/bin/python

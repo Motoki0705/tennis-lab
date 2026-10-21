@@ -1,7 +1,7 @@
 {
   "observed_at": "2026-10-09T02:24:58.535703+00:00",
   "queue_job": "1791511474412814944_1611763_i986-query-bf16-s42-u60000-nvjpeg-v1",
-  "commit": "a7c6419d9dd0de01a0612b4bacfee521f23a48b9",
+  "commit": "ffe0f5f427dde06183a62a6235dc07537408b2b3",
   "exit_code": 134,
   "error": "CUDA unknown error observed in decode_coordinates finite-output synchronization; root cause not established",
   "progress_log_written": false,

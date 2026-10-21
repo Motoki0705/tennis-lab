@@ -26,7 +26,7 @@
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
   "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
   "script_sha256": "83a3b34fb5cf844b403d56da1a39c04217c846c7e1c9aa080d333f7ba88fc9e6",
-  "commit": "a7c6419d9dd0de01a0612b4bacfee521f23a48b9",
+  "commit": "ffe0f5f427dde06183a62a6235dc07537408b2b3",
   "queue_run_id": "1791512396754978286_1666698_i986-production-prefix-async-v2",
   "seed": 42,
   "optimizer": {

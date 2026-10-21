@@ -5,7 +5,7 @@
   "provider": "codex",
   "session": "01a03ee0-c172-7d22-81d3-c07127757135",
   "issue": "",
-  "commit": "00a2bb2af251a86038600c871b1f30a3c664b9b8",
+  "commit": "84674f92303dc99ce2bf06e2be2668c5328ec5c6",
   "branch": "exp/plcs-reprojection-loss",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-reprojection-loss",

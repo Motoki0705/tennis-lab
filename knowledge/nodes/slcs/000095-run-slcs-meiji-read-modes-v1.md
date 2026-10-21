@@ -50,7 +50,7 @@ tags:
 - limited-control
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: f87e0bf95c36554d59eede0b9d8f7f68bb6ddf31
+  commit: 119d5ef5b2073548ca9f8e10c85be9cfd77bfaf5
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= .venv/bin/python -B knowledge/runs/run-slcs-meiji-read-modes-v1/probe.py
     --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_modes/s42-001

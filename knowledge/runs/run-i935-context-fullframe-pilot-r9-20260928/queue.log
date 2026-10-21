@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790603504834868777_630764_i935-context-fullframe-pilot-r9-20260928 (commit=f65c91f5c8a1 provider=codex session=01a0e82d-a490-71b3-b824-86a92b90919a)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790603504834868777_630764_i935-context-fullframe-pilot-r9-20260928 (commit=87fd1c7b1f9ff777e93dde8fbf5096a4de14fe80 provider=codex session=01a0e82d-a490-71b3-b824-86a92b90919a)
 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache/.venv/lib/python3.11/site-packages/torch/functional.py:504: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/TensorShape.cpp:4215.)
   return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
 Traceback (most recent call last):

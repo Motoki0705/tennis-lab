@@ -5,8 +5,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/wt/i545-prune}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 674818c567169bd3bee4bab17dd417a7308fdcc6 (branch feat/training-queue-auto-prune-ckpt)"
-git checkout 674818c567169bd3bee4bab17dd417a7308fdcc6 2>/dev/null || echo "[repro] WARN: checkout 674818c567169bd3bee4bab17dd417a7308fdcc6 failed; using current HEAD"
+echo "[repro] target commit: 157b930576e1be0582d2fbc580da8aaccdcd094a (branch feat/training-queue-auto-prune-ckpt)"
+git checkout 157b930576e1be0582d2fbc580da8aaccdcd094a 2>/dev/null || echo "[repro] WARN: checkout 157b930576e1be0582d2fbc580da8aaccdcd094a failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

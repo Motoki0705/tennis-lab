@@ -49,10 +49,10 @@ tags:
 date: '2026-09-21'
 session: 01a0bf91-5494-74c0-8793-3424866618ed
 repro:
-  commit: 4671f9bad0873a23054a3311009b9ecf4a6bbc88
+  commit: 58d6d5502abc7bcab6b4d5e896b3cfc390b88a12
   command: PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
     .venv/bin/python knowledge/runs/run-residual-v2-conditioning-cpu/conditioning_probe.py
-  script_commit: 98282c0f
+  script_commit: bac37aebf754b371e4f0df25816b8f4569435fb3
 ---
 
 ## 考察 / Findings

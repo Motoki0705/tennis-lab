@@ -1,6 +1,6 @@
 {
-  "baseline_commit": "1178e66a8873d57083366bfc4b9536eee494878a",
-  "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+  "baseline_commit": "93e817ce798cf39f059c6bc2d2a1da2821906041",
+  "training_commit": "d10a780a5cfd4476d2936604a1a9343ad89013b3",
   "paths": {
     "src/tasks/blcs/models/blcs_multiview_axial_model.py": "5863b93d167f20cbc895c6603e9f50a42e9230e9bf76a1b52db310c3a3982e40",
     "src/tasks/blcs/data/dataset.py": "ac7e271e1cc5cfbafaf5d70586a616b8c3ed7b878ab36454567ab1b38d327f83",

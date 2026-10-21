@@ -16,7 +16,7 @@ artifacts:
   log: knowledge/runs/run-i935-precision-variants-s42-r20-20260930/queue.log
   resource_usage: knowledge/runs/run-i935-precision-variants-s42-r20-20260930/resource_usage.json
 repro:
-  commit: 0d3fd3f8a2498da33edbaf04656c1dee81185c3b
+  commit: 536fab226e5991e5366a0348b58fbbd15e3a4875
   branch: campaign930/i935-12-precision-diagnosis
 parents: [run-i935-detector-only-mixed-e9-s42-r18-20260930]
 relations: [{to: run-i935-detector-only-ft-e13-s42-r4-20260928, rel: compares}]

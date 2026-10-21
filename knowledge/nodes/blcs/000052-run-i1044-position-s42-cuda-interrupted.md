@@ -15,7 +15,7 @@ config:
   completed_comparison_run: false
 metrics: {}
 repro:
-  commit: 83c96b0636dc28634a621b9c64e069de7793e4dd
+  commit: 6b2c24acfb3a1f1f4b58b52b2abee08a57b9b225
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

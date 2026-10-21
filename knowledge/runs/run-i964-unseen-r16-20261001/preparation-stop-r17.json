@@ -3,8 +3,8 @@
   "time": "2026-10-01T00:00:47.357309+00:00",
   "run": 17,
   "status": "not_enqueued",
-  "source_commit": "cdcc4517",
-  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "source_commit": "9ec939d6250adedcddbf7ee1ec8e271cf63a95cb",
+  "freeze_commit": "6f4c65c28875405fd8c53e6e23fc24752b8fd339",
   "opening": {
     "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",
     "sha256": "b5113c99bf67503297eb47a9c2ca2373e5ac532aeb807c2b98de1027552799e1"

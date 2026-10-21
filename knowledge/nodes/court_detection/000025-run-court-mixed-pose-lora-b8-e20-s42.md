@@ -34,7 +34,7 @@ metrics:
   invalid_depth_rate: 0.000454
   visible_point_count: 2203.0
 repro:
-  commit: 379b5a66dd5ce756a29c5dd3f398b448b9526694
+  commit: db16163a2ee00ee8513647ecbeebf27e65e6bca1
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

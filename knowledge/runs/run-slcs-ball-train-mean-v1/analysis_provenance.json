@@ -1,5 +1,5 @@
 {
-  "reproduction_commit": "11c35c1759b4a434c979da17f82c68a90cb335dc",
+  "reproduction_commit": "2c2be222a1cf0498bebc090c9fb85d7e5fd46127",
   "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -B knowledge/runs/run-slcs-ball-train-mean-v1/probe.py --training-config outputs/slcs/train/real_rgb_pilot_augmented/s42-002/config.yaml --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_baseline_val_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_baseline_test_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_augmented_val_full/s42-002 --evaluation-dir outputs/slcs/evaluate/real_rgb_pilot_augmented_test_full/s42-002 --output-dir outputs/slcs/analyze/ball_train_mean/s42-001",
   "gpu_used": false,
   "optimizer_steps": 0,

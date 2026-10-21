@@ -27,7 +27,7 @@ metrics:
   real_after_reprojection_px: 2.324268
   real_mean_correction_m: 0.005315
 repro:
-  commit: 893d0ca4129e9e69f8e8c850d89c6200cf2df2e3
+  commit: 554327a5cbcea54fcc156540fb678b89ffd235c2
   branch: codex/plcs-triangulation-residual
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: '''env'' ''CUDA_VISIBLE_DEVICES=0'' ''OMP_NUM_THREADS=2'' ''OPENBLAS_NUM_THREADS=1''

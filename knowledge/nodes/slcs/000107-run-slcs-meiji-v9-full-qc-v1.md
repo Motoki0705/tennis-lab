@@ -14,7 +14,7 @@ session: 01a0b71f-c516-75b2-ac58-0c92e8a4f098
 config: {data: slcs/meiji_rgb_v9, allow_incomplete: false, device: cpu}
 metrics: {completed_clips: 53, missing_clips: 0, error_clips: 3, excluded_clips: 1}
 repro:
-  commit: 57726f2c8f38fe50ab3870a7a030fad78ab14b4b
+  commit: d455b785340b83b601e8344d3f057a96fef25cd5
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

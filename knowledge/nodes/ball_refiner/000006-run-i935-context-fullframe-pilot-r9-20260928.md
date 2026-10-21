@@ -25,7 +25,7 @@ metrics:
   completed_clips: 0
   queue_exit_code: 1
 repro:
-  commit: f65c91f5c8a1a0e60025237ef424fc90afd7bcfa
+  commit: 87fd1c7b1f9ff777e93dde8fbf5096a4de14fe80
   branch: campaign930/i935-8-context-cache
   remote: git@github.com:Motoki0705/tennis-lab.git
   captured_command: knowledge/runs/run-i935-context-fullframe-pilot-r9-20260928/run.json

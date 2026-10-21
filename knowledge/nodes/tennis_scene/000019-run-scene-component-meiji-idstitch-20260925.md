@@ -35,7 +35,7 @@ metrics:
   cost_limit: 0.5
   support_minimum: 0.5
 repro:
-  commit: 2b084442f29027f4d0402e18bd0193a12b2eddd2
+  commit: df69ac1c7d123b346bd56802db73153b9c8fdea7
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

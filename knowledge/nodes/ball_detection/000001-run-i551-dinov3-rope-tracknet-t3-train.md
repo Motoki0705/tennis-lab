@@ -22,7 +22,7 @@ metrics:
   precision: 0.084435
   recall: 0.106615
 repro:
-  commit: ed6eef1b4fbfa5431d1ce40f3a010e90115b09fb
+  commit: 0440dadf6c6e242b70f2d8f45f768f6db86bfe18
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train

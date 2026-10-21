@@ -61,7 +61,7 @@ repro:
   command: CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python knowledge/runs/run-slcs-rgb-pilot-augmented-selected-conditions-v2/reproduce.py
     augmented
-  commit: 44e529721933b08f5703526f554a155247b3df6c
+  commit: 3e1a5b3ba9d5d47320f18c8ee1ba0ed2a4d57415
   checkpoint_sha256: b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c
 ---
 

@@ -5,7 +5,7 @@
   "rounds": [
     {
       "round": 1,
-      "commit": "6e4659af8ddb70675188c0dc6b38f169e551db9f",
+      "commit": "caf256d2d9cff124d21d413fde38e9d8d90f50fa",
       "verdict": "CHANGES_REQUIRED",
       "findings": [
         {
@@ -31,7 +31,7 @@
       "status": "completed",
       "model_provider_effort": "inherited from parent",
       "fork_turns": "none",
-      "commit": "c51da4c43adce1b5c5ad58f19ebaa03af6e7f9da",
+      "commit": "71019f657feb138563aa5a6004aabb5e45e88701",
       "verdict": "PASS",
       "findings": [],
       "verified": [
@@ -64,7 +64,7 @@
           "status": "completed",
           "model_provider_effort": "inherited from parent",
           "fork_turns": "none",
-          "commit": "218b61586dec9ad088abbde9065ee022a27e9ce6",
+          "commit": "8f92f886c1a876b4f15e3c12d8bc66303d9c71a3",
           "verdict": "PASS",
           "findings": [],
           "verified": [
@@ -94,10 +94,10 @@
         {
           "round": 1,
           "status": "completed",
-          "artifact_commit": "14aa523410f1b393cc29fe3ae7b96b87655791d7",
+          "artifact_commit": "916baf54e42bec180e394acfc53e9774f1cdd619",
           "model_provider_effort": "inherited from parent; validator role configuration has no model/effort override",
           "fork_turns": "none",
-          "commit": "19bfaef1ce600851e0f4af9df73e67a527cb650d",
+          "commit": "39cd6086513c161424ae5d72351f22dd35ef3840",
           "verdict": "PASS",
           "findings": [],
           "verified": [

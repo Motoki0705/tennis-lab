@@ -98,7 +98,7 @@ metrics:
   canonical_mpjpe_m: 0.0984630212187767
   canonical_pck_0.1m: 0.6652390360832214
 repro:
-  commit: 0dafcdee375981846d1bc34835d780937941935b
+  commit: bc8f10e8dc28e0533b27efb4ee05b416ae998365
   branch: feat/plcs-axial-reference
   remote: https://github.com/Motoki0705/tennis-lab.git
   command: .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_axial_reference

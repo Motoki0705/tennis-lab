@@ -3,19 +3,19 @@
   "date": "2026-09-29",
   "status": "done",
   "device": "cpu",
-  "commit": "b9fec834949ca002ff15804dd3b6f0839a1b0745",
+  "commit": "37814e5d5f5eb0877f272aa8a09f8078ecbfad77",
   "branch": "campaign930/i964-2-tracking",
   "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_refinement.py --previous /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929",
   "video_command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_failure_video.py --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-final-20260929",
   "negative_trials": [
     {
       "name": "initial",
-      "commit": "69b0719d",
+      "commit": "e1b387791cf246a0c164984a37481709ca8d5471",
       "output": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-20260929"
     },
     {
       "name": "windowed_0.5s",
-      "commit": "6b31823c",
+      "commit": "31f886803c8877a24cb0fe11b0bc7f48d50caed5",
       "output": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r5-v2-20260929"
     }
   ],
@@ -23,5 +23,5 @@
   "gpu_job": "1790686649923407965_657085_i964-coco-fullframe-r5-20260929",
   "gpu_result": "pending; collect next run",
   "reproduction_note": "Use a new output directory; existing/partial runs are never overwritten.",
-  "video_commit": "6ffb47e719e2d83285567fbef0594b9637f6fe8c"
+  "video_commit": "798505f98e8747034dfa4542f0f79df8e8a1e765"
 }

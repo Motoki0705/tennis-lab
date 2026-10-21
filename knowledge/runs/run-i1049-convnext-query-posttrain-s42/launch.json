@@ -2,7 +2,7 @@
   "schema": "mdd_user_selected_posttraining.v1",
   "status": "completed",
   "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010",
-  "code_commit": "8ac45d9f79bf4f6a7feb343d09428a07aa6e8847",
+  "code_commit": "c7a3087085109f006a12ad1ee76b25ef85f8fff0",
   "selected_encoder": "convnext_v2/factorized",
   "selection": "explicit user selection",
   "pretraining_run": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-cnn-comparison/convnext_v2-s42-v2-serial",

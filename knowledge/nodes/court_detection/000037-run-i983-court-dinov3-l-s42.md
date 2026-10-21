@@ -45,7 +45,7 @@ metrics:
     line_dice: 0.707917332649231
     semantic_line_miou: 0.48592713475227356
 repro:
-  commit: 98b737829ba8baae8b823c7b7728cf0608f5073f
+  commit: 7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f
   command: .venv/bin/python -m src.tasks.court_detection.scripts.train --config-name
     train_i983_l run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-l-shared1024/s42
     run.artifact_store.sync_interval_seconds=60
@@ -75,7 +75,7 @@ tags:
 - shared-downstream
 ---
 
-#983の4条件比較のうちViT-Lの20epoch学習と、validation loss最小checkpointの評価を完了した。凍結backbone、長辺512、混合4:4、batch8、seed42、共通1024次元・8層・16 heads・FFN2752・DPT512を固定した。backboneと射影層の初期化の乱数消費を隔離し、他サイズでも共通後段の初期重みを揃える。科学的コードはcommit `98b737829ba8baae8b823c7b7728cf0608f5073f`で固定した。
+#983の4条件比較のうちViT-Lの20epoch学習と、validation loss最小checkpointの評価を完了した。凍結backbone、長辺512、混合4:4、batch8、seed42、共通1024次元・8層・16 heads・FFN2752・DPT512を固定した。backboneと射影層の初期化の乱数消費を隔離し、他サイズでも共通後段の初期重みを揃える。科学的コードはcommit `7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f`で固定した。
 
 全20epochの最終stateはepoch=19・global_step=33160。3epochごとのvalidationで保存した6世代から、epoch=17（18epoch目、step=29844、val/loss=1.143399）を選んだ。最小値の根拠はcheckpoint-selection.jsonのcallbackランキング、評価対象のSHA-256はevaluation/evaluation.jsonに記録した。合成testを選択に使わず、test_after_fitの終端モデル評価とも区別した。学習・正式評価ともreturncode=0とDrive保存を確認し、全jobの保存後にL4 sessionを終了した。
 

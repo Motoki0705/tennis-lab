@@ -35,7 +35,7 @@ metrics:
   plcs_residual_calibration_frame_index: 0
   plcs_residual_player_ids: [0, 1]
 repro:
-  commit: f3706f1913bee277ea950be4252af0b3cb12a389
+  commit: 808e6a2447a2f1df3df3fea6d6ecd044f9853583
   branch: campaign930/i931-4-imports
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab

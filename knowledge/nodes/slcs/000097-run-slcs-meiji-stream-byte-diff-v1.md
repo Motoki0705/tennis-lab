@@ -42,7 +42,7 @@ tags:
 - bit-difference
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: e8483b69a6f1c1c41b818b9ca87f56fc2d4ed4d4
+  commit: 373e5d0e48ea372fbf60b2f21a9fea77a010fe4e
   branch: codex/slcs-real-rgb
   command: env PYTHONPATH=. CUDA_VISIBLE_DEVICES= .venv/bin/python knowledge/runs/run-slcs-meiji-stream-byte-diff-v1/compare.py
     --good-metadata /home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/meiji_read_stream_capture/s42-001/audit.json

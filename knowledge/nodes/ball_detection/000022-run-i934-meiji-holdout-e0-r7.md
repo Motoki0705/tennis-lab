@@ -65,7 +65,7 @@ metrics:
       without_reference_frames: 0
       wrong_reference_frames: 4362
 repro:
-  commit: 78ce7d9bd96104e424cd4983e7427a2b81912f9f
+  commit: e6369feaea818ad7dc1b4c31114edac6c4cb54ba
   branch: campaign930/i934-4-mixed-ft
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft
@@ -168,7 +168,7 @@ camera×手首、point_kind、位置不明frameの出力数を含む全指標は
 ## 保存証拠と再採点
 
 共有queue job `1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928` はdone。
-推論commitは`78ce7d9bd96104e424cd4983e7427a2b81912f9f`、capture時のtreeはcleanだった。
+推論commitは`e6369feaea818ad7dc1b4c31114edac6c4cb54ba`、capture時のtreeはcleanだった。
 元のqueue job/logとrepro bundle、protocol・参照NPZ・両予測NPZ・checksum manifest・指標表を保存した。
 GPUを隠したCPU再採点でmetrics.json / metrics.csv / comparison.mdの全byte一致を確認した
 （[qualification](../../runs/run-i934-meiji-holdout-e0-r7/qualification.json)）。

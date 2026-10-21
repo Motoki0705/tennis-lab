@@ -27,7 +27,7 @@ metrics:
   full_ball_target_mean_speed_mps: 13.70674498997783
   full_ball_std_norm_ratio: 0.08281839317553723
 repro:
-  commit: 7621307bf292f5b06bd6d3fe2e0cf90a7ee27985
+  commit: 06e921c8e5a62e3a6f1496de1c27e91af9352b24
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
     .venv/bin/python -m scripts.analysis.evaluate_slcs_run

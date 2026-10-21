@@ -28,7 +28,7 @@
     "outputs/slcs/analyze/ball_gradient_probe/s42-001"
   ],
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
-  "git_head": "bc2e8e00e1dff7746ac8c099dcf791e9431146fc",
+  "git_head": "80c2c7712b77ac09454e8fc11e5c8c9d33358e04",
   "git_status": "?? knowledge/runs/run-slcs-ball-gradient-probe-v1/__pycache__/\n?? knowledge/runs/run-slcs-meiji-v8-feature-reuse-v1/__pycache__/\n",
   "court_coordinate_scale_xyz": [
     11.885,

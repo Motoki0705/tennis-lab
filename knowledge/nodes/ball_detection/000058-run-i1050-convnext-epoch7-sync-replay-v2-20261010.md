@@ -22,7 +22,7 @@ metrics:
   last_replayed_step: 42016
   seconds: 22.52211118300329
 repro:
-  commit: 0e2a12c46a46f910df4da6885179c45cfca8b5f6
+  commit: 9e9d554f4904517cefdc450b19f6de16ef4ce52d
   branch: codex/ball-cuda-replay-20261010
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cuda-replay-20261010

@@ -39,7 +39,7 @@ tags:
 - integrity
 - cpu-control
 repro:
-  commit: 4af1c8d1d0e5ee3d4d02d2166cddff7a1cd78334
+  commit: 59c2a3b88e1d72bb3504edab703e4ce4d429d114
   branch: codex/slcs-real-rgb
   command: OMP_NUM_THREADS=2 .venv/bin/python -B knowledge/runs/run-slcs-meiji-video-alias-audit-v1/audit_alias.py
     --original /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_001/clips/clip_005/media/cam2.mp4

@@ -18,7 +18,7 @@ metrics:
   clips_with_feature_marker: 57
   cameras_per_clip: 3
 repro:
-  commit: 4348077d8f7a0b35ab58350232cf4ccb607990f1
+  commit: 3927bd67fd17b373ab44412919563dd22e24d913
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=3 MKL_NUM_THREADS=3 .venv/bin/python

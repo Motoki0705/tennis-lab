@@ -31,7 +31,7 @@ config:
   kill_after_seconds: 15
 metrics: {}
 repro:
-  commit: c93d37f4e3af64c7b3189aa78ad348de9c2da4e3
+  commit: e94bb7fe9e329b431b40ae259a6da2c9d6fbbc18
   branch: campaign930/i935-10-detector-selection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

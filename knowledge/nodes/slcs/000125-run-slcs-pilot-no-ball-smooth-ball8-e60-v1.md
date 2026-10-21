@@ -43,7 +43,7 @@ metrics:
   ball_position_conf_error_corr: 0.525207
   scene_position_error_m: 3.978868
 repro:
-  commit: 7621307bf292f5b06bd6d3fe2e0cf90a7ee27985
+  commit: 06e921c8e5a62e3a6f1496de1c27e91af9352b24
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

@@ -1,6 +1,6 @@
 {
   "retry_of_job": "1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930",
-  "old_commit": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+  "old_commit": "536fab226e5991e5366a0348b58fbbd15e3a4875",
   "authorization": "campaign-930 issue 935 run21 ORCHESTRATOR DIRECTIVE: one retry after diagnosed infrastructure bug",
   "reason": "output_size must handle directory disappearance during iteration; outputs and compiler cache use fresh r21 paths; original r20 artifacts unchanged",
   "hash_definition": "SHA-256 of exact file bytes, including command.txt final newline",

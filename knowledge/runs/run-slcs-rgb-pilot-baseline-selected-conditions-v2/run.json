@@ -5,5 +5,5 @@
   "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2/reproduce.py baseline",
   "dataset": "slcs/real_rgb_pilot_v2",
   "min_window_label_ratio": 0.5,
-  "code_commit": "44e529721933b08f5703526f554a155247b3df6c"
+  "code_commit": "3e1a5b3ba9d5d47320f18c8ee1ba0ed2a4d57415"
 }

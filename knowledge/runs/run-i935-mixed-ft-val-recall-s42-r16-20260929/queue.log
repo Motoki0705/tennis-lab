@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929 (commit=5e7d4d2a8981 provider=codex session=01a0ed7c-698e-7130-b127-badc4ab7ee8f)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790691583774854570_1206594_i935-mixed-ft-val-recall-s42-r16-20260929 (commit=ef2b7864bb4f8a4b5db385403b0848420b622935 provider=codex session=01a0ed7c-698e-7130-b127-badc4ab7ee8f)
 Seed set to 42
 [ball init_weights] strictly loaded 242 tensors from /home/kamimura/projects/tennis-lab/ckpt/ball_detection/run-i618-convnext-v2-ft-epoch13.ckpt
 Using bfloat16 Automatic Mixed Precision (AMP)

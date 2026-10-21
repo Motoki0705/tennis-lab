@@ -41,7 +41,7 @@ metrics:
   position_mae_y_m: 6.510261
   position_mae_z_m: 0.573248
 repro:
-  commit: fc45020ec9bb40f4d49b0bb81a5d2822f33f3afc
+  commit: 36238e6a04ff5959b6573a7a641c605eaeb02d9b
   branch: feat/issue-643-648-multi-object-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.blcs.scripts.train

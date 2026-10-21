@@ -2,7 +2,7 @@
   "status": "ok",
   "job": "1790735986295857060_1473474_i964-kpr-native-features-r8-20260930",
   "queue_state": "state=done\nresource=all\nslot=all\npid=1474140\npgid=1474140\nwait=none\n",
-  "repro_commit": "935cb0d55175214abef807d44d3f654ebb743038",
+  "repro_commit": "ab672a9d2525a67bbbc3c52cf4e1b30602707eff",
   "manifest_sha256": "8befd09f4b8e896266d1db67dc1ce9b48bb12b9f1eef20d9253d9de96c0dcdda",
   "plan_sha256": "1c0c2d34fcd8a279708435d31a0456991fa62893175d7ee339b54df45520ff5e",
   "rows": 40531,

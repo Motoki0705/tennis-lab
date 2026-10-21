@@ -1,6 +1,6 @@
 {
   "kind": "cpu_comparative_experiment",
-  "base_commit": "b8ccc6ba",
+  "base_commit": "59e02af5c548a94fc36d9b64971f94a958410ce7",
   "branch": "feat/plcs-gvhmr-similarity",
   "source_clip": "meiji_3cam/video_000/clip_000",
   "variants": [

@@ -1,6 +1,6 @@
 ### 進捗ログ run 24 (2026-09-30) RAM修正・B option・2jobの投入前見積
 
-- 実施: [事前判定基準](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5909424600)を283515adでcommit/push済み。seed43評価は引き続き未読。RAM guardを[4823af6d](https://github.com/Motoki0705/tennis-lab/commit/4823af6d)でpush、関連15 tests成功。8GiB起動、6GiB未満が連続sampleで30秒継続したら停止、3GiB未満は即停止。10秒bucketの最低/最高MemAvailable・process tree RSSを保存する。
+- 実施: [事前判定基準](https://github.com/Motoki0705/tennis-lab/issues/935#issuecomment-5909424600)を283515adでcommit/push済み。seed43評価は引き続き未読。RAM guardを[4823af6d](https://github.com/Motoki0705/tennis-lab/commit/ce5b717d84846c8ae8b0b1adeb2508291ebd274b)でpush、関連15 tests成功。8GiB起動、6GiB未満が連続sampleで30秒継続したら停止、3GiB未満は即停止。10秒bucketの最低/最高MemAvailable・process tree RSSを保存する。
 - 成果物: draft [#973](https://github.com/Motoki0705/tennis-lab/pull/973)、base #972。名前付き e9_anchored_s42_covariance を実装中。bundle/検出器/共分散artifactのhashを固定し、平均・weight・presence不変の補正とschema v2保存。既定は変更しない。
 - GPU事前見積（**この順で2件、resource=all、追加/自動retryなし**）:
   1. seed44のみstep0から12k更新。run23と同じ入力・選択・評価、出力だけr24へ分離。seed43実測1201秒を根拠に**20–30分、peak VRAM2–4GB、出力約0.8GB（job上限1.5GB）**。外側timeout2385秒＋kill猶予15秒で40分以内。allocator6GiB・device監視7.5GBで停止。

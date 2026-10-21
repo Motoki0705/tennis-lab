@@ -157,6 +157,8 @@ mkdir -p tmp
 
 `--refresh-run-exceptions` は既存runの固定hashを先に照合し、参照変更を受けたrunのhashだけを再計算する。例外パスやファイルの集合は増やさず、パッチと削除記録も変更しない。更新後はノード・summaryの差分を確認してskillの完了手順と `kg_repro_paths.py` を実行する。`--text-dir /path/to/exported-markdown` ではissue本文やmodel cardのローカルコピーに同じ更新案を作れる。外部への投稿は別工程で行う。
 
+公開した対応表と旧SHAの説明を保つため、`docs/history-rewrite/` は再実行時の置換対象から除外する。
+
 ## Papersの仕様
 
 論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。

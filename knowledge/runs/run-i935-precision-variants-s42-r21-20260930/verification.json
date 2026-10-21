@@ -11,7 +11,7 @@
   "gpu_retry": "not started at verification time",
   "frozen_old_bundle": "original plan, command, scripts, configs and preflight retained byte-for-byte; failed queue and resources added",
   "ci_before_retry": {
-    "head": "0d3fd3f8a2498da33edbaf04656c1dee81185c3b",
+    "head": "536fab226e5991e5366a0348b58fbbd15e3a4875",
     "python": "failure",
     "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/36663198204",
     "failed": 1,

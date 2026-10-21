@@ -26,7 +26,7 @@ metrics:
   forward_seconds: 0.9770847969994065
   gpu_peak_allocated_bytes: 3940516864
 repro:
-  commit: 6ca6507564f091ac924040e78156c063e1948bc1
+  commit: 6e7ccdb8c4a0914e54e01bcd120db34ad68768c5
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash knowledge/runs/run-slcs-vitpose-redownload-smoke-v1/repro.sh NEW_ABSOLUTE_OUTPUT_DIRECTORY SESSION_ID

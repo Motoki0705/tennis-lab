@@ -25,7 +25,7 @@ metrics:
   exact_comparisons: 150
   stable_comparison_inputs: 110
 repro:
-  commit: 4af1c8d1d0e5ee3d4d02d2166cddff7a1cd78334
+  commit: 59c2a3b88e1d72bb3504edab703e4ce4d429d114
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

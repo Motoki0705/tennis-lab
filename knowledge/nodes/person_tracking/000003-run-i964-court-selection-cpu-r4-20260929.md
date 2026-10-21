@@ -46,7 +46,7 @@ papers: []
 tags: []
 date: '2026-09-29'
 repro:
-  commit: 4b7d3a6ea319c8e427cc4e103035c4ed3761e674
+  commit: 4e529b84ce9c1f75cd510b14f282bff87a0012e6
   branch: campaign930/i964-2-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1

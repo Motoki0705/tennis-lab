@@ -1,6 +1,6 @@
 # Readable view only: driver diagnostics containing ][CUDA][ are omitted.
 # Full unmodified log is preserved in queue.log.gz; see log-archive.json.
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031966211422_1392693_i1044-final-comparison-v4-cli (commit=9948985912f3 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791904031966211422_1392693_i1044-final-comparison-v4-cli (commit=d81c56467d5aff18d61856c1668534f801708422 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
 Final synthetic evaluation: position-s42-u4000
 evaluation test 1/100
 evaluation test 11/100

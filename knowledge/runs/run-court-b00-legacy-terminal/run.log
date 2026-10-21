@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789012422042855067_570266_court_b00_regenerate (commit=ecf64a7aa6e2 provider=codex session=01a088da-0867-7e43-99b5-415e56dc292d)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789012422042855067_570266_court_b00_regenerate (commit=b830f9372b92e0a3a06b3596a7af5755dd4cf188 provider=codex session=01a088da-0867-7e43-99b5-415e56dc292d)
 Traceback (most recent call last):
   File "/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded/outputs/court-b00-b03-generation/run_requested.py", line 8, in <module>
     manifest=runner.run(runtime.request)

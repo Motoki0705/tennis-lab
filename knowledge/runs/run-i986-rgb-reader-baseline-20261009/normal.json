@@ -7,10 +7,10 @@
   "torch_threads_per_process": 1,
   "opencv_threads": 1,
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
-  "source_commit": "2da3351a28cf6c685767338f0f768d3c357c402e",
+  "source_commit": "6063958b203e9bb42e2ecec6837d3765d3b83eea",
   "code": {
     "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-training",
-    "base_commit": "2da3351a28cf6c685767338f0f768d3c357c402e",
+    "base_commit": "6063958b203e9bb42e2ecec6837d3765d3b83eea",
     "torch_version": "2.13.0+cu130",
     "source_sha256": {
       "src/tasks/ball_detection/data/annotation_states.py": "f2b6ef40e2c241e9256276a4d265414c2c921a674fde542daefa139d149ce7ef",

@@ -24,7 +24,7 @@ metrics:
   refined_positive_weight_ball_reprojection_mean_px: 5.470675908640705
 session: 01a0b71f-c516-75b2-ac58-0c92e8a4f098
 repro:
-  commit: 767ac67c43c35f65dd294ddf69a0b6a25d519656
+  commit: 8da19012e331642343a45ee7b1e7c8fa2fe7945d
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

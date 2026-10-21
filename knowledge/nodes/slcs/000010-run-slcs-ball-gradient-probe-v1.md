@@ -57,7 +57,7 @@ tags:
 - dropout
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: bc2e8e00e1dff7746ac8c099dcf791e9431146fc
+  commit: 80c2c7712b77ac09454e8fc11e5c8c9d33358e04
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python -B knowledge/runs/run-slcs-ball-gradient-probe-v1/probe.py --output-dir
@@ -87,4 +87,4 @@ ball教師有効frameはbroadcast96/120、Meiji118/120。ball誤差はeval5.202/
 
 比較設定は [`train_real_rgb_pilot_no_ball_smooth.yaml`](../../../src/tasks/slcs/configs/train_real_rgb_pilot_no_ball_smooth.yaml) に分離した。CPUの設定合成・型付きruntimeで、保存済みaugmented runとの変更が平滑化重みと出力先だけであることを確認した（絶対root表記はruntime解決して比較）。この記載時点では追加学習は未実施で、Meiji全体QC後に共有queueへ投入する。
 
-後続の読み取り専用コード監査は、初回に誤ってmain（`4348077d`）を参照したため、従来の監査版表記（`c7728c49`）を訂正する。`pwd`・git root・HEADを確認し、正しい `.claude/worktrees/slcs-real-rgb` の `740e788877a00971a7ab3d913458c8328379815e` で再監査した。SLCSは基底のoptimizer構築を使い、登録された全パラメータをAdamWへ渡す。ball embedding/headは通常のmodule属性で、保存済み両pilot設定にfreezeの指定はなく、resume・init_weightsはnull、learning_rateは0.0003、min_lrは0.000001だった。ballがoptimizerから外れる、またはfreezeされる構造的原因は見つからなかった。同版の `data/augmentation.py`・dataset・datamoduleでは、学習用augmentationは入力観測に適用され、教師と時間軸の `padding_mask` は維持される（RGB dropout時の入力側 `dino_padding_mask` は変更される）。datamoduleはtrainにだけaugmentationを有効化し、overfit時もval/testには適用しない。このコード監査は実checkpointのoptimizer state、学習途中の状態、学習済みモデルの入力感度を確認したものではない。上記CPU勾配診断は当初から正しいworktreeで実行された別の根拠であり、その `repro.commit=bc2e8e00` と実測結果は変更しない。
+後続の読み取り専用コード監査は、初回に誤ってmain（`3927bd67fd17b373ab44412919563dd22e24d913`）を参照したため、従来の監査版表記（`55ac34d9c01ab1790d03fb0fbca9fbfa17695cc1`）を訂正する。`pwd`・git root・HEADを確認し、正しい `.claude/worktrees/slcs-real-rgb` の `c04479d50c62070384eb273065ef3c6623dc1ae3` で再監査した。SLCSは基底のoptimizer構築を使い、登録された全パラメータをAdamWへ渡す。ball embedding/headは通常のmodule属性で、保存済み両pilot設定にfreezeの指定はなく、resume・init_weightsはnull、learning_rateは0.0003、min_lrは0.000001だった。ballがoptimizerから外れる、またはfreezeされる構造的原因は見つからなかった。同版の `data/augmentation.py`・dataset・datamoduleでは、学習用augmentationは入力観測に適用され、教師と時間軸の `padding_mask` は維持される（RGB dropout時の入力側 `dino_padding_mask` は変更される）。datamoduleはtrainにだけaugmentationを有効化し、overfit時もval/testには適用しない。このコード監査は実checkpointのoptimizer state、学習途中の状態、学習済みモデルの入力感度を確認したものではない。上記CPU勾配診断は当初から正しいworktreeで実行された別の根拠であり、その `repro.commit=80c2c7712b77ac09454e8fc11e5c8c9d33358e04` と実測結果は変更しない。

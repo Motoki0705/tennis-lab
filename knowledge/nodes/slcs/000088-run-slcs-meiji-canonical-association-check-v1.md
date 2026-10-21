@@ -30,7 +30,7 @@ metrics:
   video000_clip008_canonical_p1_support_frames: 447
   video000_clip008_canonical_p1_support_fraction: 0.9331941544885177
 repro:
-  commit: 740e788877a00971a7ab3d913458c8328379815e
+  commit: c04479d50c62070384eb273065ef3c6623dc1ae3
   branch: codex/slcs-real-rgb
   command: bash knowledge/runs/run-slcs-meiji-canonical-association-check-v1/repro.sh /absolute/path/to/NEW_OUTPUT_DIRECTORY
 artifacts:

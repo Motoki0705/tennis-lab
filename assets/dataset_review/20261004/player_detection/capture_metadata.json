@@ -1,7 +1,7 @@
 {
   "captured_at": "2026-10-04T12:49:21.622Z",
   "chromium": "151.0.7922.34",
-  "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+  "code_revision": "ebb730b86dae4550ca00432384144572459f8899",
   "real_data": true,
   "fixture_used_for_evidence": false,
   "dataset_manifest_index_unchanged": true,
@@ -66,7 +66,7 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "all",
-      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_revision": "ebb730b86dae4550ca00432384144572459f8899",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
@@ -142,7 +142,7 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "unresolved",
-      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_revision": "ebb730b86dae4550ca00432384144572459f8899",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",
@@ -186,7 +186,7 @@
       "stage": "new",
       "view": "new read-only UI: full-frame RGB, annotation bbox state and player crops",
       "filter": "truncated",
-      "code_revision": "f438ff3029b87b2f8cf48783ff8359b55eab0acb",
+      "code_revision": "ebb730b86dae4550ca00432384144572459f8899",
       "code_file_sha256": {
         "src/tasks/player_detection/review/service.py": "064289a79b0641308daf59538ac644a32f4ac47e97300cad4198092dfb4977b4",
         "src/tasks/player_detection/review/web.py": "bc0a55edc7687ff7e727de540b678a7c3a8bc4e6e95ec6bf3e0866d7cc965f71",

@@ -43,7 +43,7 @@ tags:
 - visual-review
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: ba3a9dbf3ce041b7b9de7008693c04a7293fffaa
+  commit: 935cde8c7aa5a87cafd14b73f888c8bcd67c4624
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py

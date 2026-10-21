@@ -25,7 +25,7 @@ metrics:
   three_clip_supported_player_speed_max_mps: 11.572952270507812
   three_clip_supported_ball_speed_max_mps: 63.50231170654297
 repro:
-  commit: 25f4beafe1156371d00b5bf70ae1847b31ab5eb5
+  commit: d99ee5917720b08b59d706126d348d5fee968a14
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

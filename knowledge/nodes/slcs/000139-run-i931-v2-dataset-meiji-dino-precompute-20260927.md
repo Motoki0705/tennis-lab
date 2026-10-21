@@ -22,7 +22,7 @@ metrics:
   samples_per_camera: 102
   slcs_train_windows_stride60: 48
 repro:
-  commit: 4f1001dca8232702bf1c549e095530f368e87664
+  commit: 495ffd82f17305add85569de372d72d0593a15b5
   branch: campaign930/i931-4-imports
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 .venv/bin/python -m src.tasks.slcs.scripts.precompute_dino_tokens

@@ -4,7 +4,7 @@ applies_to: all
 source: "2026-10-14 のユーザー指示（#1097 の整理、#1109）。同じ整理の指示が過去にも繰り返された"
 created: 2026-10-14
 last_verified: 2026-10-15
-evidence: "#1109 本文、commit 44a6c978d（固定10 run専用の script と CLI を除去し、再利用する学習・評価だけを ablation/ に残した）"
+evidence: "#1109 本文、commit 08ea733650aeb374f10871043313bc031a3b36a2（固定10 run専用の script と CLI を除去し、再利用する学習・評価だけを ablation/ に残した）"
 ---
 
 ユーザーは、一時的な実験のために書いたコードを常設のsrcに残すことを望まず、レビューの段階でこれを確かめるよう求めている。決まったrunの列挙、再試行、一回限りの集計report、Issue番号を名前に持つmoduleなどが手掛かりになる。

@@ -1,5 +1,5 @@
 {
-  "base": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "base": "554327a5cbcea54fcc156540fb678b89ffd235c2",
   "checks": [
     {
       "command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection tests/unit/tennis_scene tests/unit/synthetic_data_generation/alignment tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/e2e/colab/test_b01_b03_alignment_script.py tests/e2e/development/test_architecture_boundaries.py",
@@ -154,11 +154,11 @@
       }
     ]
   },
-  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22",
+  "rebased_onto": "1d8610a0f68807da6f46eb78d73b52c5b6f79395",
   "additional_test_maintenance": {
     "test": "tests/integration/synthetic_data_generation/test_configuration.py::test_task_local_generation_camera_profiles_remain_available",
     "baseline": "Fails on main too: corners.yaml is already a committed public profile but absent from the expected inventory.",
     "resolution": "Update the explicit expected public inventory to broadcast/corners/default."
   },
-  "final_base": "7dd5f7c444b4e7baffe4200df0eaab839653edec"
+  "final_base": "42c1b4b6b7171ce19a7b3541473a8885905fe028"
 }

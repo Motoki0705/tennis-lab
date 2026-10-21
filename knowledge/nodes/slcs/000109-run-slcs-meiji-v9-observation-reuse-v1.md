@@ -40,7 +40,7 @@ tags:
 - observation-reuse
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 67aadd96
+  commit: 31a6c81916688bf9918ab7581ee07a8665bf5e3e
   branch: codex/slcs-real-rgb
   command: env PYTHONPATH=. CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
     .venv/bin/python knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1/reuse.py

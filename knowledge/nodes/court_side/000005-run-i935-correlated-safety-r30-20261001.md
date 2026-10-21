@@ -34,7 +34,7 @@ papers: []
 tags: []
 date: '2026-10-01'
 repro:
-  commit: f862049b5034174c5c9091e2c977e536c9f4c6c5
+  commit: a2b2ea9f3dcebfb693354fa74bad87da0f4fef03
   branch: campaign930/i935-14-pipeline-candidate
 ---
 

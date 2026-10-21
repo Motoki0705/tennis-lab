@@ -12,7 +12,7 @@
     "sha256": "19de667e3da75d5545dae2fc3a84ea9f8afb0283a0600811adcde8be5f83235b"
   },
   "state_at_registration": "jobs",
-  "code_commit": "bbb568f1b95daed4d22dbb49ce23322f802909c2",
+  "code_commit": "c4aa00d2b2fe19bcaf0b595d4f42dc0b7d5f537f",
   "plan": {
     "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/plan.json",
     "sha256": "c166fdf5a8d32ee4b102678a34696f5b0ca8680dd9b12a56d4def0aafbdd05a0"

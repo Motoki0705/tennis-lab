@@ -167,7 +167,7 @@ tags:
 - synthetic
 - laplace
 repro:
-  commit: a5e8dc5f7bb4f23a8601ba1f3d5483f850eeda99
+  commit: 4f50de6eb60cf12190c03626e3e3346b11273f32
   command: bash knowledge/runs/run-i936-triangulation-abc-s936/repro.sh /absolute/new/output
   branch: campaign930/i936-1-probabilistic-triangulation
 ---

@@ -41,7 +41,7 @@ metrics:
   peak_cuda_allocated_bytes: 6934148608
   peak_cuda_reserved_bytes: 7103053824
 repro:
-  commit: 5e7d4d2a8981988cf7e9dbd13f8be30d4be81590
+  commit: ef2b7864bb4f8a4b5db385403b0848420b622935
   branch: campaign930/i935-10-detector-selection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: "timeout --signal=TERM --kill-after=15s 28785s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4\

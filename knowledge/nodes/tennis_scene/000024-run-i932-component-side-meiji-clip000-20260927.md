@@ -36,7 +36,7 @@ metrics:
   load_only_resume_nodes: 25
   scene_npz_max_abs_diff_vs_i931: 0.0
 repro:
-  commit: 6f8c44fc34be6983e993d6cc6871a312872c62c8
+  commit: 34a44319b64139bf9ba6e7ca6b6be14d0482fe43
   branch: campaign930/i932-2-component
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash tests/benchmarks/build_dino_extension.sh /home/kamimura/projects/tennis-lab
@@ -70,7 +70,7 @@ tags:
 
 ## 要約
 
-#932 の PR #942 の tree（`6f8c44fc`）で、#931 の [run-i931-default-meiji-clip000-20260927](000022-run-i931-default-meiji-clip000-20260927.md) と同じコマンドを Meiji `clip_000`（3 camera × 1010 frame）に再実行した。
+#932 の PR #942 の tree（`34a44319b64139bf9ba6e7ca6b6be14d0482fe43`）で、#931 の [run-i931-default-meiji-clip000-20260927](000022-run-i931-default-meiji-clip000-20260927.md) と同じコマンドを Meiji `clip_000`（3 camera × 1010 frame）に再実行した。
 違いは court side の決め方だけである。#931 では side を import（ball で確認した結果を読み込む）していたが、今回は既定の `pipeline.yaml` で `court_side: execute` とし、`court_side` component が ball だけの half-turn 仮説検定で side を決めた。
 import は ball（外注 `video_ball_annotation.v2` の observed 点）と player association の2つだけになった。
 

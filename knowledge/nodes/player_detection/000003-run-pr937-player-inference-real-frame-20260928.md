@@ -25,7 +25,7 @@ metrics:
   frames_verified: 1
   detections_above_threshold: 2
 repro:
-  commit: 665d10d1e25085e991678910dd216e791b29817c
+  commit: da94b011b5fc94587d6bc13563574f7323762c28
   branch: codex/pr937-player-inference
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PLAYER_DETECTION_GPU_TEST=1 PLAYER_DETECTION_ARTIFACT_ROOT=/home/kamimura/projects/tennis-lab

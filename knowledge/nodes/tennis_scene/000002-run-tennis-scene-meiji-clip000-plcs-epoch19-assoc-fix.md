@@ -25,7 +25,7 @@ metrics:
   plcs_to_ankle_median_m_cam2_p0: 4.8766
   plcs_to_ankle_median_m_cam2_p1: 3.0756
 repro:
-  commit: 7ce569b00a74d6ce4466d5da2c1ed660909f05cf
+  commit: 83a8903106a4925dd5c451f26b3f9d62c1b2633b
   branch: codex/tennis-scene-camera-view-annotations
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-camera-view-annotations

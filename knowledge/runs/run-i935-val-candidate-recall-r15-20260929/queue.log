@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790685340897606853_510468_i935-val-candidate-recall-r15-20260929 (commit=fbe33b131254 provider=codex session=01a0ed28-0639-7443-b3d1-8c613cd2429d)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790685340897606853_510468_i935-val-candidate-recall-r15-20260929 (commit=8db6104015c528b4b21e519be4d3f7138e0441d0 provider=codex session=01a0ed28-0639-7443-b3d1-8c613cd2429d)
 {"checkpoint": "ft-e13", "clips": 1, "total": 70, "clip": "tracknet/game9/Clip1", "seconds": 5.332265216042288}
 {"checkpoint": "ft-e13", "clips": 2, "total": 70, "clip": "tracknet/game9/Clip2", "seconds": 9.37289076304296}
 {"checkpoint": "ft-e13", "clips": 3, "total": 70, "clip": "tracknet/game9/Clip3", "seconds": 15.328499339986593}

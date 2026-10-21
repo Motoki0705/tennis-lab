@@ -24,7 +24,7 @@ metrics:
   async-prepared-b1_windows_per_second: 14.731525719315702
   sync-w2-b1_windows_per_second: 10.114670252624327
 repro:
-  commit: 2da3351a28cf6c685767338f0f768d3c357c402e
+  commit: 6063958b203e9bb42e2ecec6837d3765d3b83eea
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles

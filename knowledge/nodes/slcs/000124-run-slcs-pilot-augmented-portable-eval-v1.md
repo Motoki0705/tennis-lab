@@ -29,7 +29,7 @@ metrics:
   full_ball_target_mean_speed_mps: 13.70674498997783
   full_ball_std_norm_ratio: 0.018313855601182986
 repro:
-  commit: fccebe1e
+  commit: 3c1d4ceebb0c2edf303fff3afc9747e69c6e1872
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

@@ -43,7 +43,7 @@ tags:
 - checkpoint-migration
 - no-retraining
 repro:
-  commit: 44a6c978d7726e63f4a58cfbc0a99bd4cdf6a2bd
+  commit: 08ea733650aeb374f10871043313bc031a3b36a2
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: >-
@@ -59,7 +59,7 @@ repro:
 
 通常推論は厳密なモデル設定とstate dictからモデルだけを復元し、学習用Lightning module・loss・metricsの初期化に依存しない。未知のstate prefix、欠損・余分なkey、shape不一致は拒否する。UIも同じモデルmetadata検証を行い、未移行checkpointには`physics_head`欠落の理由を表示する。`single_object-...`という名前付きsnapshotもsingle_objectとして認識する。移行版のファイル名は末尾が`-inference-v1.ckpt`で、元の参考重みと区別する。
 
-元artifactのSHA-256を固定値と照合し、保存し直した131個のstate tensorがすべて完全一致することを確認した。元checkout `e848e529928d2c8ee760faf0cd70112e2f976f13` の公開`BLCSPredictor.load_from_checkpoint`と、新版の同じ公開APIをそれぞれCPUで実行した。固定seed1044・2view・8frameの同一入力について、物理mの位置出力は配列単位で完全一致し、最大差は0 mだった。これはschema移行の同値性確認であり、test性能の再評価ではない。元の10run比較値・選定・採用保留は変わらない。
+元artifactのSHA-256を固定値と照合し、保存し直した131個のstate tensorがすべて完全一致することを確認した。元checkout `9f5fed173b9dd56e4a1bb72622ff2c771b8d1f66` の公開`BLCSPredictor.load_from_checkpoint`と、新版の同じ公開APIをそれぞれCPUで実行した。固定seed1044・2view・8frameの同一入力について、物理mの位置出力は配列単位で完全一致し、最大差は0 mだった。これはschema移行の同値性確認であり、test性能の再評価ではない。元の10run比較値・選定・採用保留は変わらない。
 
 初回は保存済みOmegaConfのstruct制約により新key追加前に失敗した（`attempt1.log`）。追加を明示的な`open_dict`内で行うよう修正し、再実行した。移行版はtensor一致と両公開APIの出力一致を確認した後に公開し、元fileは上書きしていない。再現時の`--original-checkout`は上記の元revisionを指す必要がある。`--output`には未作成の別pathを指定する。
 

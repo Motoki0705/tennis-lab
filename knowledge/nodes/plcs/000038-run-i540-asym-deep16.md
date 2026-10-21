@@ -35,7 +35,7 @@ metrics:
   angle_accuracy_15deg: 0.839364
   angle_accuracy_30deg: 0.984475
 repro:
-  commit: 6399aa6f6848994957412eebabf4a4330c95cd15
+  commit: 0e953d4a1af972afdd9543f2d5dd68ad8e885540
   branch: feat/issue-533-experiment-log-format
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train

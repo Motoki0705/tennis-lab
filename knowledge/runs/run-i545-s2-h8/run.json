@@ -5,7 +5,7 @@
   "provider": "claude",
   "session": "8722d9dc-5894-4536-8e54-d03e3e34949a",
   "issue": "545",
-  "commit": "674818c567169bd3bee4bab17dd417a7308fdcc6",
+  "commit": "157b930576e1be0582d2fbc580da8aaccdcd094a",
   "branch": "feat/training-queue-auto-prune-ckpt",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/wt/i545-prune",

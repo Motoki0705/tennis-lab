@@ -26,7 +26,7 @@ metrics:
   clip011_raw_ball_reprojection_mean_px: 14.964027693889701
   clip011_refined_ball_reprojection_mean_px: 7.679828110176651
 repro:
-  commit: d499ba31
+  commit: 57f50621f87c5238fe6197d82be301023bba2373
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

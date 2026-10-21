@@ -35,7 +35,7 @@ metrics:
   visibility_matches_masks: true
   source_plate_psnr_db: 43.13495005467417
 repro:
-  commit: 8549c66c05abd9e2b3f73b785cc6382603cfb7b5
+  commit: 01a2bd3fd4cb37730ac939fa092cd88a28bbfbfb
   branch: codex/blender-scene-reveal
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4 LIBGL_ALWAYS_SOFTWARE=1
@@ -101,7 +101,7 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 CUDA_VISIBLE_DEVICES=
   camera_id=cam1 output=tennis_scene/visualize/blender_export/pr1203-meiji-cam1/bundle
 ```
 
-描画・Blender内検証・MP4化の完全な実行コマンドとcommitは`runs/`の`run.json`/`repro.sh`に保持した。実行時はcleanなcommit `8549c66c05abd9e2b3f73b785cc6382603cfb7b5`で、差分patchは空。bundle・入力・SMPL資産とLinux版Blenderが別途必要で、再実行には空の出力先を用意する。
+描画・Blender内検証・MP4化の完全な実行コマンドとcommitは`runs/`の`run.json`/`repro.sh`に保持した。実行時はcleanなcommit `01a2bd3fd4cb37730ac939fa092cd88a28bbfbfb`で、差分patchは空。bundle・入力・SMPL資産とLinux版Blenderが別途必要で、再実行には空の出力先を用意する。
 Linux Blender 5.2.1 LTSは[公式配布](https://download.blender.org/release/Blender5.2/blender-5.2.1-linux-x64.tar.xz)のSHA-256 `a31f524fa99a527d3d52b7f5aaa68c34e1a19d5a1c9473f79c5cc610fd5b10e9`を照合した。
 学習を行わない描画検証なのでTensorBoard曲線はない。
 

@@ -7,7 +7,7 @@
   "issue": "1014",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "09540efcf1cd46e1941eaf31f4062691eeee3c66",
+  "commit": "0991922e21d3da436e8648b5c59235361625fe36",
   "branch": "codex/ball-refiner-3d-consolidation",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-refiner-3d-consolidation",

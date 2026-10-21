@@ -23,7 +23,7 @@ metrics:
   windows_per_second: 14.167566824694367
   optimizer_updates: 128
 repro:
-  commit: a7c6419d9dd0de01a0612b4bacfee521f23a48b9
+  commit: ffe0f5f427dde06183a62a6235dc07537408b2b3
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=. CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2

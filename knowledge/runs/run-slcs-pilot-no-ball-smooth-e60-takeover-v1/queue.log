@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789784491282891569_199513_slcs-pilot-no-ball-smooth-e60-takeover-v1 (commit=7621307bf292 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789784491282891569_199513_slcs-pilot-no-ball-smooth-e60-takeover-v1 (commit=06e921c8e5a62e3a6f1496de1c27e91af9352b24 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

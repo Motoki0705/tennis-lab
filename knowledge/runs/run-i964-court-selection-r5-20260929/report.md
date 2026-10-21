@@ -108,8 +108,8 @@ FTはROI前の全画面、保存unionはFT＋ROI後COCO、old_pipelineもROI後�
 
 ## 開発中に不採用にした試行
 
-初回はフレーム間距離で分割したため投影ノイズで過分割になり、FT保持15,194/20,558、cam0 far722/3270に悪化した（[初回表](initial_selection.csv)、code `69b0719d`）。時間窓へ修正した0.5秒版でもFT保持17,465、cam0 far1746で、8ID中7しか保持できなかった（[0.5秒版](windowed_selection.csv)、code `6b31823c`）。
-同じdevのcam0でgap 0.5/1/2秒とambiguity margin 0.2/0.05を比較した（[全試行log](linking_probe.txt)、[実行script](linking_probe.py)、code `6b31823c`）。1秒は0.5秒を超えるfar断片の空白をつなぎ、2秒は対抗候補を増やす。margin 0.05ではコート外人物も戻るため0.2を保った。最終版は1秒＋direction別ambiguity (`b9fec834`)。これは同じ4 devに基づく調整で、未見性能の主張ではない。
+初回はフレーム間距離で分割したため投影ノイズで過分割になり、FT保持15,194/20,558、cam0 far722/3270に悪化した（[初回表](initial_selection.csv)、code `e1b387791cf246a0c164984a37481709ca8d5471`）。時間窓へ修正した0.5秒版でもFT保持17,465、cam0 far1746で、8ID中7しか保持できなかった（[0.5秒版](windowed_selection.csv)、code `31f886803c8877a24cb0fe11b0bc7f48d50caed5`）。
+同じdevのcam0でgap 0.5/1/2秒とambiguity margin 0.2/0.05を比較した（[全試行log](linking_probe.txt)、[実行script](linking_probe.py)、code `31f886803c8877a24cb0fe11b0bc7f48d50caed5`）。1秒は0.5秒を超えるfar断片の空白をつなぎ、2秒は対抗候補を増やす。margin 0.05ではコート外人物も戻るため0.2を保った。最終版は1秒＋direction別ambiguity (`37814e5d5f5eb0877f272aa8a09f8078ecbfad77`)。これは同じ4 devに基づく調整で、未見性能の主張ではない。
 
 ## 動画・検証
 

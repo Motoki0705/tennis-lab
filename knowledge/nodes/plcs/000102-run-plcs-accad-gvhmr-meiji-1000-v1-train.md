@@ -25,7 +25,7 @@ metrics:
   canonical_mpjpe_m: 0.228291
   canonical_pck_0.1m: 0.172833
 repro:
-  commit: b8ccc6bac5beac082b97e94c8b42edd9da8d2f40
+  commit: 59e02af5c548a94fc36d9b64971f94a958410ce7
   branch: feat/plcs-gvhmr-motion-source
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

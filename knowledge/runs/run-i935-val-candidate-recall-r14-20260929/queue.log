@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790684462632181317_494060_i935-val-candidate-recall-r14-20260929 (commit=c93d37f4e3af provider=codex session=01a0ed08-f6de-7432-8d27-e607e35868df)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790684462632181317_494060_i935-val-candidate-recall-r14-20260929 (commit=e94bb7fe9e329b431b40ae259a6da2c9d6fbbc18 provider=codex session=01a0ed08-f6de-7432-8d27-e607e35868df)
 Traceback (most recent call last):
   File "<frozen runpy>", line 198, in _run_module_as_main
   File "<frozen runpy>", line 88, in _run_code

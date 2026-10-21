@@ -61,7 +61,7 @@ metrics:
       full: 32.04009401491686
       common: 30.651325366936092
 repro:
-  commit: 8ac45d9f79bf4f6a7feb343d09428a07aa6e8847
+  commit: c7a3087085109f006a12ad1ee76b25ef85f8fff0
   branch: HEAD
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_LAUNCH_BLOCKING=1 CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2

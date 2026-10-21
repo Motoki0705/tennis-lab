@@ -7,7 +7,7 @@
   "issue": "931",
   "resource": "half",
   "logical_gpu_slot": "0",
-  "commit": "4f1001dca8232702bf1c549e095530f368e87664",
+  "commit": "495ffd82f17305add85569de372d72d0593a15b5",
   "branch": "campaign930/i931-4-imports",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports",

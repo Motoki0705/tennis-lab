@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/plcs-track-reid}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 53db1868054e8330126d34a458edb1424646d61e (branch codex/plcs-track-reid)"
-git checkout 53db1868054e8330126d34a458edb1424646d61e 2>/dev/null || echo "[repro] WARN: checkout 53db1868054e8330126d34a458edb1424646d61e failed; using current HEAD"
+echo "[repro] target commit: 79d4d42bcbce7fd2040ba960b2d0f5ce95453810 (branch codex/plcs-track-reid)"
+git checkout 79d4d42bcbce7fd2040ba960b2d0f5ce95453810 2>/dev/null || echo "[repro] WARN: checkout 79d4d42bcbce7fd2040ba960b2d0f5ce95453810 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command ran /tmp/reid_numeric_probe.py; diagnostic.py in this bundle is its saved copy.

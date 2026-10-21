@@ -36,7 +36,7 @@ metrics:
   test_mean_distance_px: 2.1762075424194336
   test_negative_frame_fpr: 0.08771929824561403
 repro:
-  commit: ac9e640903a6dfaecb65fc980f5dcf408bbcd589
+  commit: a36d4e02bcd42acc0f6e17163dacdd666827a6fb
   branch: main
   command: .venv/bin/python -m src.tasks.ball_detection.scripts.evaluate_manifest
     manifest_path=src/tasks/ball_detection/configs/evaluation/3dgs_blcs_real_v1.yaml

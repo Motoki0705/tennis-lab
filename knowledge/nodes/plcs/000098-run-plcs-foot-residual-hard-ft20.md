@@ -34,7 +34,7 @@ metrics:
   hard_ge_1m_xy_error_m: 0.8736667876709351
   hard_ge_2m_xy_error_m: 1.254946228855298
 repro:
-  commit: b8ccc6bac5beac082b97e94c8b42edd9da8d2f40
+  commit: 59e02af5c548a94fc36d9b64971f94a958410ce7
   branch: experiments/plcs-foot-residual
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=4 PYTHONPATH=. .venv/bin/python -m src.tasks.plcs.scripts.train
@@ -94,6 +94,6 @@ frontmatterの無接頭辞metricsと `pred_test.npz` / `metrics.json` はtrainin
 2. scene平均だけでなくframe/windowのprior誤差binで抽出し、1–2mと2m以上を別々に管理する。今回のtestを学習側へ移さず、新たなtrain/val側の統計から作る。
 3. 同じ初期値・学習量で「埋め込みのみ」「残差のみ」「抽出なし」を分離評価する。実データの独立validation（可能なら3D GT、少なくとも複数クリップ）を用意し、合成側だけの過適合を検出する。
 
-再現情報: queue取得時点のcommitとpatchは元のまま保存した。完成コードは `43291cdb`。生成された `train.yaml`・sampling重みと統計もrun bundleに保存した。当時のコマンドとbundleの位置づけは `group-plcs-foot-residual` を参照。GPUでの再実行も共有training queueを使う。
+再現情報: queue取得時点のcommitとpatchは元のまま保存した。完成コードは `d3c4e825f1d0216acad3e5b7871310b7b99cc321`。生成された `train.yaml`・sampling重みと統計もrun bundleに保存した。当時のコマンドとbundleの位置づけは `group-plcs-foot-residual` を参照。GPUでの再実行も共有training queueを使う。
 
 実装検証: 163件の関連CPUテストが成功。射影復元・退化/遮蔽・view融合・ゼロ残差時の厳密prior一致・残差head勾配・checkpoint互換性・重み付き抽出とsplit整合性を含む。ruff/mypyも成功。

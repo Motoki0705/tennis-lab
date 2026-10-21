@@ -7,7 +7,7 @@
   "issue": "935",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "d40173f160032612ef117fdf6cfc6b87050f19af",
+  "commit": "f738a8a3e179b11bfd6f4067ce3ebfa07833b534",
   "branch": "campaign930/i935-13-covariance-calibration",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",

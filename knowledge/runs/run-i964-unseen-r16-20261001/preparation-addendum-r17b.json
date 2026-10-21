@@ -5,7 +5,7 @@
     "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/knowledge/runs/run-i964-unseen-r16-20261001/execution-addendum-r17.json",
     "sha256": "8e3a25131d187782cffae0569c633d88477de9571b7727287670dd6d3bdc2f64"
   },
-  "freeze_commit": "3edefd771c9471d83516b3fcea19072668e1dd97",
+  "freeze_commit": "6f4c65c28875405fd8c53e6e23fc24752b8fd339",
   "previous_files": {
     "opening.json": {
       "path": "/home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/i964-unseen-r16-20261001/opening.json",

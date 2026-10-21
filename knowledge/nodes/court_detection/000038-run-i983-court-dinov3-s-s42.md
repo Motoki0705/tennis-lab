@@ -47,7 +47,7 @@ metrics:
     line_dice: 0.705335795879364
     semantic_line_miou: 0.484466016292572
 repro:
-  commit: c4b12f923b243da6b502149aa6f3912c706045e7
+  commit: 75e30a565b1f7a5f7fd4f08cea2daf458d377653
   command: .venv/bin/python -m src.tasks.court_detection.scripts.train --config-name
     train_i983_s run.output_dir=court_detection/train/i983-dino-s-shared1024/s42/attempt-02
     run.artifact_store.mode=rclone run.artifact_store.remote=gdrive run.artifact_store.remote_root=tennis_lab/outputs/court_detection/train/i983-dino-s-shared1024/s42/attempt-02

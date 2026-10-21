@@ -20,7 +20,7 @@ metrics:
   optimizer_updates: 0
   exit_code: 1
 repro:
-  commit: e454473c28e5a591dc892586e8575e1b29daa6cb
+  commit: b3411ab1cc8ca54d36f17d2b9ea44bef3cf57db0
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

@@ -23,7 +23,7 @@
   ],
   "dev_scoring_invocations": 1,
   "config_commit_before_labels": "b03eb152",
-  "execution_code_commit": "937da271",
+  "execution_code_commit": "4078cd6e2b5f8151df0627ae10ac0bc600ce5d2a",
   "post_scoring_refit_or_reselection": false,
   "default_config_sha256": "da0ea67b607001ab6630b642703a6ed0a0414a81ea2f4743d8a2b4320deaf676",
   "named_config_sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"

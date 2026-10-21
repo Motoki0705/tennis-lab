@@ -9,7 +9,7 @@
     "height": 1250
   },
   "device_scale_factor": 1,
-  "code_commit": "929fa832db54801406d307ec7e42bcdc12004f26",
+  "code_commit": "360122c10fbdd55136a5066f9ce9f186366b28ff",
   "relevant_code_sha256": "80a557c3ad0abe4d5ee27f5ee45d5cb10184f29dd94b1f6328cbc4a24995aaa7",
   "relevant_file_sha256": {
     "src/tasks/player_association/review/__init__.py": "da84d45e94e231312a7fd2707f374852b4434ca707f408716fdf80602b1b412a",

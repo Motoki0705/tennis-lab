@@ -2,7 +2,7 @@
 
 責務整理と指定clipの実行・出力評価を完了した。モデル出力には検出欠損・3D軌道の異常が残る。生成処理の完了と再構成精度を分けて以下に記録する。
 
-作業先: /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup。branch: codex/tennis-scene-responsibility-cleanup。base: fa8798a4c19f7efc6b123f4819130d57fe14b565。変更は専用worktree内にあり、メインrepoのコードは変更していない。
+作業先: /home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup。branch: codex/tennis-scene-responsibility-cleanup。base: 0115977fc3b061eeaee774a00c9b787f110e81d9。変更は専用worktree内にあり、メインrepoのコードは変更していない。
 
 ## 実装
 

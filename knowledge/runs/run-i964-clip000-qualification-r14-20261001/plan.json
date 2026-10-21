@@ -8,8 +8,8 @@
     "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/src/tasks/player_association/configs/association_i964_r14_lovo_a.yaml",
     "sha256": "3f18419c49567f697e43fd18c78d6df78ffcd6c654bef5cac0ddc88193a74789"
   },
-  "fit_config_commit": "b03eb152",
-  "dev_evidence_commit": "8230f3ae",
+  "fit_config_commit": "4cca65bbba224ca9ed967ae141e71d7722693b30",
+  "dev_evidence_commit": "4a2d327f896f570a636292150d8e2d3ad74d3902",
   "fit_adoptable": true,
   "default_changed": false,
   "user_freeze": false,

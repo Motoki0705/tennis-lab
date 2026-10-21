@@ -1,6 +1,6 @@
 {
-  "training_commit": "b415d791c7275ba871bb2c2cdc541090cfacec12",
-  "artifact_compatibility_fix_commit": "f9d61e5a6",
+  "training_commit": "da85133d70dca84e781dbeb7860807ea890839ff",
+  "artifact_compatibility_fix_commit": "2462e94095c945dbab1b3d94f2d2377ea0f093f4",
   "related_unique_tests_passed": 44,
   "integration_tests_passed_after_fix": 7,
   "ruff": "passed",

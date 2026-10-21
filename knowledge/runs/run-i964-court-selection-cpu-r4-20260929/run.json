@@ -7,27 +7,27 @@
     {
       "phase": "sources",
       "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_cpu.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --phase sources --progress /home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/far_diagnosis/i964-far-r3-20260929/progress.json",
-      "code_commit": "e9f131f27f64d68c06f3fbab13c0626102ab0168"
+      "code_commit": "b5d2cd18a389ac2acbdb5c575663424125e2efca"
     },
     {
       "phase": "tracks",
       "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_cpu.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --phase tracks",
-      "code_commit": "e9f131f27f64d68c06f3fbab13c0626102ab0168"
+      "code_commit": "b5d2cd18a389ac2acbdb5c575663424125e2efca"
     },
     {
       "phase": "select",
       "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_cpu.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --phase select",
-      "code_commit": "e9f131f27f64d68c06f3fbab13c0626102ab0168"
+      "code_commit": "b5d2cd18a389ac2acbdb5c575663424125e2efca"
     },
     {
       "phase": "video",
       "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_cpu.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --phase video",
-      "code_commit": "e9f131f27f64d68c06f3fbab13c0626102ab0168"
+      "code_commit": "b5d2cd18a389ac2acbdb5c575663424125e2efca"
     },
     {
       "phase": "report",
       "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/.venv/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking/tests/benchmarks/person_selection_cpu.py --repo /home/kamimura/projects/tennis-lab --report /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/court_selection/i964-cpu-r4-20260929 --phase report",
-      "code_commit": "4b7d3a6ea319c8e427cc4e103035c4ed3761e674"
+      "code_commit": "4e529b84ce9c1f75cd510b14f282bff87a0012e6"
     }
   ],
   "note": "sources was first called through its identical Python function; use a new report path when reproducing. Tracking/features were not re-executed for the later consistency report."

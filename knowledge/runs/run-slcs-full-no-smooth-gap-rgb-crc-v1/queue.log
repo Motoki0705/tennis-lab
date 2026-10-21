@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789793040741422871_41290_slcs-full-real-rgb-no-ball-smooth-val-gap-rgb-v1 (commit=d6f29c8081f7 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789793040741422871_41290_slcs-full-real-rgb-no-ball-smooth-val-gap-rgb-v1 (commit=0384d9cb908d100c7e8e3ca269177b1154444671 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
 Traceback (most recent call last):
   File "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tasks/slcs/data/dino_tokens.py", line 295, in load_dino_tokens
     tokens = np.asarray(data["tokens"], dtype=np.float16)

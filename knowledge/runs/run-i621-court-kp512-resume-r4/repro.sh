@@ -5,8 +5,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 41b318b39f757e09897964a32f28148a777b87f5 (branch feat/issue-618-ball-subpixel-retrain)"
-git checkout 41b318b39f757e09897964a32f28148a777b87f5 2>/dev/null || echo "[repro] WARN: checkout 41b318b39f757e09897964a32f28148a777b87f5 failed; using current HEAD"
+echo "[repro] target commit: 8816994eb03116dab07102ea21179a3f64858622 (branch feat/issue-618-ball-subpixel-retrain)"
+git checkout 8816994eb03116dab07102ea21179a3f64858622 2>/dev/null || echo "[repro] WARN: checkout 8816994eb03116dab07102ea21179a3f64858622 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

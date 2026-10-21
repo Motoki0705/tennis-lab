@@ -29,7 +29,7 @@ metrics:
   endpoint_accuracy_0_5m: 0.0
   endpoint_accuracy_1m: 0.04
 repro:
-  commit: be5e653b79b7a090f095f457c4986239637951c4
+  commit: db2744bf8fe4e703cf9a58c73b3112c5c4795417
   branch: feat/issue-593-physics-prior
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

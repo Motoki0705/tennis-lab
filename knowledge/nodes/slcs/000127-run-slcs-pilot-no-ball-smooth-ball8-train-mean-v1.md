@@ -20,7 +20,7 @@ metrics:
   full_model_error_m: 7.015640559296395
   full_model_minus_train_mean_error_m: -0.0176830096272953
 repro:
-  commit: e454473c28e5a591dc892586e8575e1b29daa6cb
+  commit: b3411ab1cc8ca54d36f17d2b9ea44bef3cf57db0
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python knowledge/runs/run-slcs-pilot-no-ball-smooth-train-mean-v2/probe.py

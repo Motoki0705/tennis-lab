@@ -38,7 +38,7 @@ tags:
 - cpu-diagnosis
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 7a452096bddef69a27a7fdcb9281c9c500e5531c
+  commit: 53d30c44575f5526fb1e4f6b76298a25941449b1
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: .venv/bin/python knowledge/runs/run-slcs-meiji-root-support-probe-v1/01_root_support_probe_cpu.py

@@ -25,7 +25,7 @@ metrics:
   peak_reserved_bytes: 731906048
   output_bytes: 322955301
 repro:
-  commit: 935cb0d55175214abef807d44d3f654ebb743038
+  commit: ab672a9d2525a67bbbc3c52cf4e1b30602707eff
   branch: campaign930/i964-2-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
@@ -47,7 +47,7 @@ tags: []
 ## 回収と整合性
 
 queue `1790735986295857060_1473474_i964-kpr-native-features-r8-20260930` のdone/clean reproを確認。
-実行commitは`935cb0d55175214abef807d44d3f654ebb743038`。
+実行commitは`ab672a9d2525a67bbbc3c52cf4e1b30602707eff`。
 [再検査結果](../../runs/run-i964-kpr-native-features-r8-20260930/collection.json)と
 [検査script](../../runs/run-i964-kpr-native-features-r8-20260930/collect.py)を保存した。
 全12 NPZ、40,531row・10,491camera-frameで、元CLIP archiveのrow/box/score/pose/offsetがbit一致し、

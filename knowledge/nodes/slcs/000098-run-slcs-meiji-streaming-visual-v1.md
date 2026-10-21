@@ -30,7 +30,7 @@ metrics:
   prediction_arrays_identical: true
   decoded_videos_identical: true
 repro:
-  commit: d6f29c8081f7fd664c2555bd318eda27e12efe99
+  commit: 0384d9cb908d100c7e8e3ca269177b1154444671
   branch: codex/slcs-real-rgb
   command: >-
     /usr/bin/time -v env PYTHONUNBUFFERED=1 CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs 'predict.checkpoint="slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/logs/version_0/checkpoints/slcs-epoch=56.ckpt"' data.dataset_root=slcs/real_rgb_v1 data.split_file=slcs/real_rgb_v1/splits.json data.quality.min_window_label_ratio=0.5 predict.clip_id=video_001/clip_000 predict.camera_id=cam0 predict.device=cpu predict.frame_step=3 predict.output_dir=slcs/visualize/real_rgb_no_ball_smooth_meiji/s42-streaming-001

@@ -6,7 +6,7 @@
     "height": 1250,
     "device_scale_factor": 1
   },
-  "ui_code_revision": "9ed6eb13b3dd3b4f2b1084adbed7df4f319fc248",
+  "ui_code_revision": "405584e7efea001c0987a933c0ca85603f716ef2",
   "ui_file_sha256": {
     "src/tasks/court_side/review/store.py": "544ff58598a85c259c83f910f01e8180a0d38acd330a61cceae7cfff6f9996d1",
     "src/tasks/court_side/review/diagnostics.py": "f7183d03b6bc2663c591786d9cdd9c8ae395c063d9b554cdfb04c5d1cffdb535",
@@ -17,7 +17,7 @@
     "src/tasks/court_side/review/static/style.css": "0f51c2048563ca967e7c00c8cf8111c3cfd3146ad779279646c76f86e224ea9d"
   },
   "renderer_before": {
-    "baseline_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+    "baseline_revision": "ec4fe6f37e31aa59480835b106c523b81d537593",
     "path": "src/tennis_scene/scripts/visualize_component_store.py",
     "sha256": "eb7eb30b321d015b92d1eafca71320f5fae1734612d46041aa1ebb97eba1e46c",
     "selection": "Existing renderer and HTML template; caller restricts STANDARD_COMPONENTS to court_side because unrelated historical person schema is unsupported. No renderer code modification."

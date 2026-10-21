@@ -5,7 +5,7 @@
   "provider": "claude",
   "session": "83686dbd-1af9-4c61-814d-63204dfb6684",
   "issue": "576",
-  "commit": "8ed46945dae97f9307b38562cbbfd79172388929",
+  "commit": "cfa96fd72978fdb0fa3ba4596f40dbb0bd7ebd94",
   "branch": "exp/issue-576-camera-token-split",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-576-camera-token-split",

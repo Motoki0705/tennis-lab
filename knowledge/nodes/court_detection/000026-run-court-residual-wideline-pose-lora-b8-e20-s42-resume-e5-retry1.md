@@ -36,7 +36,7 @@ metrics:
   invalid_depth_rate: 0.002724
   visible_point_count: 2203.0
 repro:
-  commit: 0fcdd13237dbb4b14aefc5c6102c4fd6d870ee00
+  commit: 92139bae724f4327c46770bd3c54484ffe22b24c
   branch: codex/court-residual-head-target-preview
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
