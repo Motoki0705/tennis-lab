@@ -57,7 +57,7 @@ repro:
 Meiji v8用の観測cacheから新たに揃った000/000–002の3clip・9カメラをCPUで画像化し、80枚の抽出frameを親が目視確認した。確認した画像ではP0/P1が対象コートの選手を囲み、隣接コートの人物への明白な切替えは見られなかった。全frame・残りclipの正確性を保証せず、教師生成・採用判定の完了とは数えない。
 
 ### アーキテクチャ詳細
-GPU推論・重み変更なし。各cameraで均等5frameと、各playerの隣接box中心移動量/直前box対角長が最大のsegment両端を選び、重複を除いた。boxとconfidence≥0.3の関節・骨格を実動画へ重ねた。動画・NPZ・metadataを前後にdual SHA照合し、動画の記録済みSHAとも一致。実行時はproduction base 01ca134bと未追跡probeを使い、同じprobeを28ec0ae0へcommitした。正確なscript SHAと再現commitをanalysis_provenance.jsonに残した。
+GPU推論・重み変更なし。各cameraで均等5frameと、各playerの隣接box中心移動量/直前box対角長が最大のsegment両端を選び、重複を除いた。boxとconfidence≥0.3の関節・骨格を実動画へ重ねた。動画・NPZ・metadataを前後にdual SHA照合し、動画の記録済みSHAとも一致。実行時はproduction base 950ca9971e752d5c218015e8e1d1eaa11a7b4d07と未追跡probeを使い、同じprobeをa989a4822f0001e8bfe3cbf05424f8e07ebcb618へcommitした。正確なscript SHAと再現commitをanalysis_provenance.jsonに残した。
 
 ### メトリクスの解釈
 最小検出sample率91.47%、pose_supported率は全18 player-camera群で100%。これは短い検出欠損のbox補間が許可されるという意味で、全関節が正しいという意味ではない。cam0遠方P1は腰+肩のconfidence支持率が88.79–90.89%であり、他camの同選手は99.7%以上。肩支持はこの単眼を部分的に除くため、最終多視点教師の利用率は別途集計する。最大隣接box移動は直前対角長の4.79%。独立3D GT・teacher loss・学習曲線はない。

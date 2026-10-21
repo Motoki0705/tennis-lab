@@ -59,7 +59,7 @@ tags:
 不一致のあった3cameraを元の検出設定で再生成し、全168cameraの保存producer SHAが固定pinsに一致した。対象3cameraのraw/people全配列は旧結果と完全一致し、対象外165cameraのpeople配列とreceiptはbyte一致した。観測の来歴監査は通過したが、間欠的な不一致の根本原因は未確定である。
 
 ### アーキテクチャ詳細
-実行commitは41020d13080cで、DINO/ViTPoseのcameraごとの固定pin照合・推論前後照合・兄弟receipt照合を含む。元12fileはpreservation.jsonと独立コピーのdual SHAを再確認してquarantine.pyで隔離した。metadataを直接書き換えず、対象3clipのcam0/1は検証再利用、cam2のDINOとViTPoseを同じseed・設定で実行した。Court/ball/PLCS/BLCSの条件は変更していない。
+実行commitは032c11225ef7dbdb500955e5004a8784b3248129で、DINO/ViTPoseのcameraごとの固定pin照合・推論前後照合・兄弟receipt照合を含む。元12fileはpreservation.jsonと独立コピーのdual SHAを再確認してquarantine.pyで隔離した。metadataを直接書き換えず、対象3clipのcam0/1は検証再利用、cam2のDINOとViTPoseを同じseed・設定で実行した。Court/ball/PLCS/BLCSの条件は変更していない。
 
 ### メトリクスの解釈
 再生成した238+255+318=811camera-frameの全6NPZでkey・shape・dtype・値が完全一致した。metadata差は005/006のdetector_sha256、012のpose_sha256の計3fieldだけで、raw receiptに差は無い。全56clip168cameraのschema・有限値・mask・観測支持・source detection ID・raw/people SHAと設定を監査した。旧inventoryで対象外165cameraのpeople NPZ/receipt計330fileは不変。監査入力691fileの前後dual SHAも一致した。最終教師coverageやモデル精度は測っておらず、学習曲線は無い。

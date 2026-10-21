@@ -1,6 +1,6 @@
 # run18: 予測を開く前の部分参照ラベル
 
-凍結3edefd77とrun17追記に従い、保存されたperson_tracking v5の全79 raw track・38,132実観測boxを対象にした。予測のidentity/association/selection配列、prediction.jsonの内容、prediction overlay動画は開いていない。completeの完了状態と動画のffprobe情報、ファイルhashだけを先に確認した。推論は追加していない。
+凍結6f4c65c28875405fd8c53e6e23fc24752b8fd339とrun17追記に従い、保存されたperson_tracking v5の全79 raw track・38,132実観測boxを対象にした。予測のidentity/association/selection配列、prediction.jsonの内容、prediction overlay動画は開いていない。completeの完了状態と動画のffprobe情報、ファイルhashだけを先に確認した。推論は追加していない。
 
 `tests/benchmarks/person_unseen_labels.py`はplan、person-execute、raw person_tracking artifactとsource RGBだけを読む。全trackを最大12等間隔crop（最初/最後の実観測を含む）にし、16枚のoverviewをすべて目視した。全景9枚（video_000 cam0の0/677、cam1の1354、cam2の677、video_001全cameraの803、video_002 cam0/2の373）で、主コートの選手2人と隣コート人物の区別、camera間の服装・位置の対応を確認した。予測IDをラベルに転記していない。
 

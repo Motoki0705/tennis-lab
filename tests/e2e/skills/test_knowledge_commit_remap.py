@@ -60,10 +60,67 @@ def test_full_and_short_refs_and_foreign_urls(remap: Any) -> None:
     assert remap.transform(updated, resolver)[0] == updated
 
 
-def test_foreign_link_label_does_not_change(remap: Any) -> None:
+@pytest.mark.parametrize(
+    "label",
+    [f"upstream commit `{OLD[:8]}`", OLD[:8], f'"{OLD[:8]}"', f"**{OLD[:8]}**"],
+)
+def test_foreign_link_label_does_not_change(remap: Any, label: str) -> None:
     resolver = remap.Resolver({OLD: NEW}, {NEW})
+    text = f"[{label}](https://github.com/elsewhere/code/tree/{OLD})\n"
+    assert remap.transform(text, resolver) == (text, [])
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f'assert "{OLD[:9]}" in notice\n',
+        f"assert '{OLD[:9]}' in notice\n",
+        f"# Recorded from {OLD[:9]} MotionState, CPU only.\n",
+        f"commit **{OLD[:9]}** was published.\n",
+        f"[{OLD[:9]}](https://github.com/Motoki0705/tennis-lab/commit/{NEW})\n",
+    ],
+)
+def test_short_refs_in_literals_comments_and_link_labels(remap: Any, text: str) -> None:
+    resolver = remap.Resolver({OLD: NEW}, {NEW})
+    updated, events = remap.transform(text, resolver)
+    assert updated == text.replace(OLD[:9], NEW)
+    assert [row["status"] for row in events] == ["replace"]
+    assert remap.transform(updated, resolver) == (updated, [])
+
+
+def test_numeric_short_link_label_with_already_remapped_destination(remap: Any) -> None:
+    old = "123456789" + "0" * 31
+    resolver = remap.Resolver({old: NEW}, {NEW})
+    text = f"[`{old[:9]}`](https://github.com/Motoki0705/tennis-lab/commit/{NEW})\n"
+    updated, events = remap.transform(text, resolver)
+    assert updated == text.replace(old[:9], NEW)
+    assert [row["status"] for row in events] == ["replace"]
+
+
+def test_commit_refs_adjacent_to_japanese_prose(remap: Any) -> None:
+    resolver = remap.Resolver({OLD: NEW}, {NEW})
+    text = f"実行commitは{OLD[:9]}、元のcommit {OLD}のコード。commit{OLD[:9]}で開始。\n"
+    updated, events = remap.transform(text, resolver)
+    assert (
+        updated == f"実行commitは{NEW}、元のcommit {NEW}のコード。commit{NEW}で開始。\n"
+    )
+    assert [row["status"] for row in events] == ["replace"] * 3
+
+
+def test_numeric_values_paths_and_content_hashes_are_preserved(remap: Any) -> None:
+    numeric = "7530332" + "0" * 33
+    resolver = remap.Resolver({OLD: NEW, numeric: NEW}, {NEW})
     text = (
-        f"[upstream commit `{OLD[:8]}`](https://github.com/elsewhere/code/tree/{OLD})\n"
+        '"loss": 0.7530332, "steps": 7530332, "label": "7530332"\n'
+        f'"loss": 0.{numeric}, "steps": {numeric}, "label": "{numeric}"\n'
+        "metric: `7530332`\n"
+        f'dataset: "data/snapshot-{OLD[:9]}"\n'
+        f"output: `reports/predictions-{OLD[:9]}.json`\n"
+        f'sha1: "{OLD[:9]}"\n'
+        f'source_sha1: "{OLD}"\n'
+        f'md5: "{OLD[:9]}"\n'
+        f"blob_hash: '{OLD}'\n"
+        f"https://github.com/elsewhere/project/commit/{OLD}\n"
     )
     assert remap.transform(text, resolver) == (text, [])
 
@@ -115,6 +172,7 @@ def test_protected_evidence_and_binary_files(tmp_path: Path, remap: Any) -> None
     new = initialize(tmp_path)
     files = {
         "saved.patch": f"+ commit: {OLD}\n".encode(),
+        "range-diff.txt": f"1: {OLD[:9]} = 1: {NEW[:9]} commit {OLD}\n".encode(),
         "artifact-manifest.json": f'{{"removed_from_commit": "{OLD}"}}\n'.encode(),
         "binary.dat": b"\0commit: " + OLD.encode(),
         "document.md": f"commit {OLD[:7]}\n".encode(),
@@ -125,8 +183,51 @@ def test_protected_evidence_and_binary_files(tmp_path: Path, remap: Any) -> None
     changes, report = remap.plan(tmp_path, {OLD: new})
     assert {p.name for p in changes} == {"README.md", "document.md"}
     assert report["counts"]["replace"] == 2
-    assert set(report["protected_files"]) == {"saved.patch", "artifact-manifest.json"}
+    assert set(report["protected_files"]) == {
+        "saved.patch",
+        "range-diff.txt",
+        "artifact-manifest.json",
+    }
     assert all((tmp_path / name).read_bytes() == data for name, data in files.items())
+
+
+def test_short_refs_outside_knowledge_are_planned_and_idempotent(
+    tmp_path: Path, remap: Any
+) -> None:
+    new = initialize(tmp_path)
+    files = {
+        "tests/test_notice.py": (
+            f'assert "{OLD[:9]}" in notice\n# Recorded from {OLD[:9]} MotionState.\n'
+        ),
+        "src/review/README.md": (
+            f"[{OLD[:9]}](https://github.com/Motoki0705/tennis-lab/commit/{new})\n"
+        ),
+        "assets/scalars.json": '{"loss": 0.7530332}\n',
+    }
+    for name, content in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content)
+    git(tmp_path, "add", ".")
+    numeric = "7530332" + "0" * 33
+    mapping = {OLD: new, numeric: new}
+
+    changes, report = remap.plan(tmp_path, mapping)
+
+    assert {p.relative_to(tmp_path).as_posix() for p in changes} == {
+        "README.md",
+        "tests/test_notice.py",
+        "src/review/README.md",
+    }
+    assert report["counts"] == {"replace": 4}
+    for path, content in changes.items():
+        path.write_bytes(content)
+    assert (tmp_path / "assets/scalars.json").read_text() == files[
+        "assets/scalars.json"
+    ]
+    remaining, repeated = remap.plan(tmp_path, mapping)
+    assert remaining == {}
+    assert repeated["counts"] == {}
 
 
 def test_pinned_run_rebaseline_is_narrow_and_explicit(

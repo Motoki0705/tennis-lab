@@ -58,8 +58,8 @@ CLIPを含む固定選別による依存、同一収録・選手、注釈ball由
 
 ## 固定後のdev一回結果
 
-YAML/fit証拠のcommit **b03eb152** をpushした後、commit内のblobとoriginへの到達、
-旧config・入力hashをCPU入口で検証し、**937da271**のコードで1batchだけ採点した。
+YAML/fit証拠のcommit **4cca65bbba224ca9ed967ae141e71d7722693b30** をpushした後、commit内のblobとoriginへの到達、
+旧config・入力hashをCPU入口で検証し、**4078cd6e2b5f8151df0627ae10ac0bc600ce5d2a**のコードで1batchだけ採点した。
 [比較JSON](../../runs/run-i964-recalibration-fit-r14-20261001/dev/comparison.json)と
 [回収記録](../../runs/run-i964-recalibration-fit-r14-20261001/dev-collection.json)を正本とする。
 旧値は保存精度をコピーせず、run13でproduction maskへ整合した同じtrack/CLIPから再計算した。

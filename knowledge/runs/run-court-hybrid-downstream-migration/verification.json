@@ -71,14 +71,14 @@
       "command": "pytest -n0 tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference tests/unit/tennis_scene tests/e2e/development/test_architecture_boundaries.py tests/e2e/colab/test_b01_b03_alignment_script.py",
       "passed": 474,
       "failed": 0,
-      "note": "Final regression suite after rebase onto 7dd5f7c4 (including the updated NHT submodule pin)."
+      "note": "Final regression suite after rebase onto 42c1b4b6b7171ce19a7b3541473a8885905fe028 (including the updated NHT submodule pin)."
     },
     {
       "command": "ruff check and mypy --follow-imports=skip on final 43 changed/new source and test Python files",
       "status": "passed"
     },
     {
-      "command": "kg_validate.py --check-summary --base-ref 7dd5f7c4",
+      "command": "kg_validate.py --check-summary --base-ref 42c1b4b6b7171ce19a7b3541473a8885905fe028",
       "status": "passed",
       "nodes": 211,
       "errors": 0,
@@ -113,7 +113,7 @@
       {
         "round": 1,
         "reviewed_commit": "70096b47167ec5af9ff5f74f7d305e1d0f2e784e",
-        "rebased_equivalent": "537549ab",
+        "rebased_equivalent": "4ade7c79c08d8c20e2e82e6a1fe25c73e1b8a06d",
         "verdict": "CHANGES_REQUIRED",
         "independent_tests_passed": 51,
         "findings": [
@@ -150,7 +150,7 @@
           }
         ],
         "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator.",
-        "rebased_equivalent": "d5988bc5"
+        "rebased_equivalent": "0b0579b07c6a3874af4848547e8baca8653de65d"
       }
     ]
   },

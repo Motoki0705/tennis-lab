@@ -36,7 +36,7 @@ peak GPU 4,548,722,688 bytes、最少available RAM 11,544,985,600 bytes、
 6clip/閾値/既定は維持し、18camera完了前に実データfitをしない。
 次は完全なcameraだけの明示的再利用と合成入力のfitテスト、dev2cameraのCPU再追跡を準備する。
 
-再開入口をa1303f02で実装し、合成再開/不一致停止/既存mask/監視の15 testsがpassした。
+再開入口をf1af09d22e1c1c18168b1cf0cb7f7b421955e17eで実装し、合成再開/不一致停止/既存mask/監視の15 testsがpassした。
 [明示再利用一覧](../../runs/run-i964-recalibration-resume-r13-20261001/reuse.json)と
 [新plan](../../runs/run-i964-recalibration-resume-r13-20261001/resume-plan.json)をCPU検証した。
 [再見積り](../../runs/run-i964-recalibration-resume-r13-20261001/estimate.json)は実測最遅cameraに
@@ -53,7 +53,7 @@ clip_000/cam1の1行、video_001/clip_001/cam0の8行をproduction maskへ整合
 GSI読戻し/synthetic非観測を確認。他10cameraは投影後値が同じで旧track/hashを再利用する。
 元cache/trackは保持し、人物ラベル・新dev精度は見ていない。
 
-CPU較正モジュールと全18cameraの完了gateを155b6c20で実装した。
+CPU較正モジュールと全18cameraの完了gateを7dd63031463bbb286ad27a93b52acb7425492885で実装した。
 [通常検証](../../runs/run-i964-recalibration-resume-r13-20261001/verification.json)と
 [合成fit/gate 16 testsのlog](../../runs/run-i964-recalibration-resume-r13-20261001/fit-tests.log)を保存した。
 実カメラモデルから合成した6clipを既存associateへ通し、foldの動画分離、全data最終fit1回、

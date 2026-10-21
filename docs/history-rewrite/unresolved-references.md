@@ -1,6 +1,6 @@
 # 未解決参照と保持する同内容blob
 
-参照更新候補のうち、map外は188箇所 / 40種類。外部repoの由来・内容hash・テスト用短縮値も含むため、すべてが欠落commitという意味ではない。曖昧な短縮形・消滅commit・公開refから到達不能な対応先は、repo本体の更新対象では0件。
+初回の参照更新候補のうち、map外は188箇所 / 40種類。外部repoの由来・内容hash・テスト用短縮値も含むため、すべてが欠落commitという意味ではない。初回に検出した曖昧な短縮形・消滅commit・公開refから到達不能な対応先は、repo本体の更新対象では0件。追加監査は末尾に記録する。
 
 | map外候補 | 箇所数 | 最初の位置 |
 |---|---:|---|
@@ -82,3 +82,38 @@ knowledge除去対象と同内容のまま、範囲外のpaper/に残るblobは�
 | `d05e94276fc1331286ee885da69fc531e2f12c2e` | `paper/court_robustness/images/local04.jpg` | あり |
 | `dfaeeba01ebc785c4762dde0a56b812465a66dec` | `paper/src/court_detection/figures/generated/montage_real_validation.png` | なし |
 | `e80a89b8ae4bcccd733c2ae0f4ca91a585de0ac5` | `paper/court_robustness/images/local01.jpg` | あり |
+
+## 追加監査（レビュー指摘 pr-1312-1 と残った旧SHAへの対応）
+
+knowledgeを含む全追跡テキストをcommit-mapの旧SHAと照合し、参照97箇所 / 61ファイルを追加更新した。
+`LICENSE.ARIS.txt` とテストのtennis-lab側の期待値を一致させ、外部ARISのrevisionは保持した。
+ノードの結論・採用判断・研究数値は変わらないため、summary本文は維持してreview markerだけ更新した。
+固定run例外は影響した3 bundleの内容hashだけを更新し、例外とファイルの集合は増やしていない。
+
+原因は対象ディレクトリの除外ではなく、短縮形の文脈判定の漏れだった。
+引用文字列、`Recorded from …`、Markdown強調とリンク表示、数字だけのリンク表示を扱うよう修正した。
+さらに、旧正規表現の `\w` が日本語も単語として扱っていたため、日本語に隣接したSHAと
+`commit` に直接続くSHAを検出できるようにした。
+保守的な自動判定に掛からない自然文・JSON項目も、文脈と対応表を確認して更新した。
+
+ローカルにない `campaign930-i935-r27-pre-restack` tagに接続する4件は、
+`git ls-remote --tags origin` のtag SHAが本番領域のtagと同一であり、その履歴に新SHAが含まれることを確認した。
+旧短縮形は `c90b6153`・`8b71ac6f`・`521eea03`・`4823af6d`。公開refから到達できるため更新した。
+
+次はcommit参照の取りこぼしとは区別して保持する（対応表自体は走査対象外）。
+
+| 保持対象 | 箇所数 | 根拠 |
+|---|---:|---|
+| dataset名・成果物パス・Colab実行IDの旧短縮形 | 73 | `single_object-physics-v3-cc863cacd-20261007`、`cpu-plcs-5d26aa0d.json`、`20260829T150257Z-f72f860df71e`等は既存の保存先・識別子であり、名前を変えると別の場所を指す |
+| `knowledge/runs/run-i935-context-budget-r28-20261001/range-diff.txt` | 62 | 保存済みの比較記録を維持する。ツールの保護対象にも追加 |
+| `assets/court_detection/learning_stages/scalars.json` の `7530332` | 1 | 浮動小数点数の一部。短縮SHAではない |
+| `knowledge/runs/run-i964-unseen-r16-20261001/verification-r17.json` の `unchanged_vs_a5797faf` | 1 | 保存済みJSONの項目名。元の比較commitの対応先は `43f3e9269df908477ea3b35799e433d61f8093ae` だが、項目名は変えない |
+
+パッチ・削除manifest・内容hash・このディレクトリの旧SHAは引き続き保護する。
+回帰テスト用の架空SHAと数値も保持し、7桁の小数部、40桁の数値、外部リンク、MD5/SHA項目、
+データパス、保存済みrange-diffを置換しないことをテストする。
+
+拡張した文脈判定が新たに報告するmap外候補は、`knowledge/runs/run-i935-context-budget-r28-20261001/` の `restack-freeze.json`・`restack.json` の
+由来commit 28箇所と、鍵の種類名・hex文字集合・テスト用値・既知の外部revision等7箇所。
+これらも推測で置換せず、初回の188箇所と区別して保持した。
+再計画の追加置換は0件で、曖昧な対応・消滅commit・到達不能な対応先も0件。

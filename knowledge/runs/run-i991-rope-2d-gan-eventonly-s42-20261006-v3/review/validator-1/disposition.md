@@ -15,7 +15,7 @@ UI修正後にvalidatorの再評価は行っていない。本学習はこのUI�
 
 2D/3Dとも4,000更新を完了し、両方でbest step=4000、GAN係数2を選択した。親が新しい両重みを選んだ比較画面を撮影・目視し、保存済みCPU予測とその場でのCPU再推論が配列で完全一致することを確認した。座標曲線はGTに近いが、欠損付近の速度に振動が残る。trained-browser-summary.jsonに対象重み・入力hash・誤差・pageerror 0を記録した。
 
-最初のPR CIは6,375 passed、86 skipped、1 failed。新GeneratorのFFN選択が共通componentsの設定規約に未接続だった。親が設定からffn_typeを渡すように修正し、共通利用者一覧へ追加した。checkpointはFFN明示のv3にし、既存v2は定義どおりSwiGLUとして明示復元する。v1/v2/v3互換性を含む対象54テストとruff/mypyのcommit hookが成功した。今回の実際の2D/3D best重みで修正前後のCPU出力はbit単位一致した。学習run自体はc5cee39bで実行され、その記録・設定・重みは更新していない。
+最初のPR CIは6,375 passed、86 skipped、1 failed。新GeneratorのFFN選択が共通componentsの設定規約に未接続だった。親が設定からffn_typeを渡すように修正し、共通利用者一覧へ追加した。checkpointはFFN明示のv3にし、既存v2は定義どおりSwiGLUとして明示復元する。v1/v2/v3互換性を含む対象54テストとruff/mypyのcommit hookが成功した。今回の実際の2D/3D best重みで修正前後のCPU出力はbit単位一致した。学習run自体はc29edb99f2eb123ffa14b971bce389be24504463で実行され、その記録・設定・重みは更新していない。
 
 これらは親の修正と通常検証であり、validatorによる再評価ではない。指定1回・試行1回・完了1回を維持する。
 

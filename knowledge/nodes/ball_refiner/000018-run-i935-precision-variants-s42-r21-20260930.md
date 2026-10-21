@@ -168,6 +168,6 @@ head基準設計、componentのe9＋anchored切替、CPUでの裾較正比較、
 直接差し替え可能なbankとは扱わない。提案の実行とdefault変更は行っていない。
 
 通常検証はモデル/architecture 44件＋描画6件（いずれも-n4）、対象ruff/mypy、
-knowledge base-refとrepro整合検査。CI修正commit 8b71ac6fの
+knowledge base-refとrepro整合検査。CI修正commit 65ee42a4baff99ded08f760fc689a86e727c9bf7の
 [Python CI](https://github.com/Motoki0705/tennis-lab/actions/runs/36667977105)は成功。
 動画・proposed文書を含む最終HEADのCI状態は#971の最終レビューガイドを参照する。

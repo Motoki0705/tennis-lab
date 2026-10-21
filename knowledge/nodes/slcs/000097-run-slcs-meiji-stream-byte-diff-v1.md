@@ -58,7 +58,7 @@ repro:
 ### アーキテクチャ詳細
 live checkpointを開かず、既存good/bad snapshotを同時に順次読み、各bytesをhashlibと_sha256へ渡す。その同じbytesで全差分を比較し、総byte/bit数、offset range、詳細上限4096件、XOR分布を保存した。ZIP central/local headerだけを読み、差分が属するstored memberを特定した。pickle decode・モデルload・GPU処理は行っていない。6 fixture testsと対象ruff/mypyも通過した。
 
-実行時のbase commitは63a2ca9fで、driverは未追跡だった。保存済みscript SHAとの一致を確認して、そのままrepro.commitに固定した。再現commitは当時のbaseとdriver以外の本処理sourceを変更していない。
+実行時のbase commitはde9329e0a6bcb096ccf2da3ca7cde078a8501c69で、driverは未追跡だった。保存済みscript SHAとの一致を確認して、そのままrepro.commitに固定した。再現commitは当時のbaseとdriver以外の本処理sourceを変更していない。
 
 ### メトリクスの解釈
 差は0始まりoffset1896501665のみ。good=157、bad=189、LSB0でbit5が1つ異なる。chunk1808のoffset676257、4096byte単位でpage463013のoffset417に相当する（物理memory pageの特定ではない）。差分はZIP entry archive/data/94533706120768のpayload [1886831744,1906492544) 内にある。metadataの前後SHAも一致。detail truncation無しで全差分を保持した。学習曲線は対象外。

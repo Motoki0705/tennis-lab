@@ -1,4 +1,4 @@
-<!-- knowledge-review: 548d93f6d65545ad25dfa3160846654fbe8669b8caacfc615d7293f8a2df5c35 on 2026-10-21 -->
+<!-- knowledge-review: 6074da1f92debc0a2fb4bb8b0aa64499db81ab33b63e4a3172a1716b00d3b4ca on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-18（#1088の実clip予測経路とBlender再構成アニメーションの再生成・整合性検証を反映。既存の採用判断は維持）

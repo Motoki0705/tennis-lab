@@ -71,7 +71,7 @@ tags:
 
 初期化はencoder/DPTともランダム。BF16固定で、RGB uint8→GPU上FP32 MDD→2D/3D残差CNN→DPT→180×320 logitsを学習する。学習率2e-4、warmup500後cosineで1/10へ、AdamW weight decay0.01、clip1。教師はobserved-only Gaussian＋確認済み不在を負例とするFocal gamma2で、未確定位置を負例にしない。bestはcommon subsetのFPS等重み平均source位置誤差で選択する。
 
-実行コードはe3f1356163e7の固定worktree。GPU smokeは親ノードを参照。train824 clipsの検証655.62秒、val190 clipsの検証412.07秒を経て、GPU更新開始を確認した。本runのvalidation精度・最終速度はまだ測定していない。入力検証の時間は総所要時間に含める。3clipのGPU smokeから収束や全val精度を予測しない。
+実行コードはaf0b0c92d8db948f2dfeb3171515bff1c025ade8の固定worktree。GPU smokeは親ノードを参照。train824 clipsの検証655.62秒、val190 clipsの検証412.07秒を経て、GPU更新開始を確認した。本runのvalidation精度・最終速度はまだ測定していない。入力検証の時間は総所要時間に含める。3clipのGPU smokeから収束や全val精度を予測しない。
 
 各epochで全validation、checkpoint、3 validation clipsのGIFを保存する。Transformer decoderへの交換・学習はこのrunでは実行せず、終了時のCOMPLETED.jsonもautomatic_next_stage=falseを記録する。testは未使用、TensorBoardは出力しない。起動確認時点で200更新、累積train loss 0.015022、両3D層に有限・非ゼロ勾配。GPU使用率の一回観測は95%。metricsは起動時点の途中値で、validationは未実施。
 
@@ -83,4 +83,4 @@ tags:
 
 保存済みcheckpointのstate_dict・optimizerはfinite、best SHA-256、manifest、全source hashが一致。epoch2/global_step18000、CPU/CUDA RNGを保持する。共通subset29.6015px、full32.7504pxがここまでのbestで、最終結果ではない。
 
-同じe3f135616の固定コード・recipe・出力先で、epoch-002.ptから1回だけresumeをqueueへ追加した。新jobは1791538837221075032_3695702_i986-dpt-pretrain-s42-resume-e3-v1.job。CUDA_LOG_FILE=stderrだけ診断用に追加し、上限60000更新を維持する。現在のConvNeXt V2本学習と待機FasterNetを止めずFIFOの後ろで実行する。resumeが動き始めるまでは、本ノードの初回attemptをfailedとして記録する。再発したら無条件に反復せず、新ログに基づく限定診断へ進む。
+同じaf0b0c92d8db948f2dfeb3171515bff1c025ade8の固定コード・recipe・出力先で、epoch-002.ptから1回だけresumeをqueueへ追加した。新jobは1791538837221075032_3695702_i986-dpt-pretrain-s42-resume-e3-v1.job。CUDA_LOG_FILE=stderrだけ診断用に追加し、上限60000更新を維持する。現在のConvNeXt V2本学習と待機FasterNetを止めずFIFOの後ろで実行する。resumeが動き始めるまでは、本ノードの初回attemptをfailedとして記録する。再発したら無条件に反復せず、新ログに基づく限定診断へ進む。

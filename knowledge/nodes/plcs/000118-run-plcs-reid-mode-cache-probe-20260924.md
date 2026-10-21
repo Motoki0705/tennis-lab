@@ -42,4 +42,4 @@ tags:
 
 compiledモデルでtrainモードのforwardだけを実行した後にもevalがNaNになった。backward/optimizer stepが必須の発生条件ではない。RoPE moduleのbufferは有限だった。ただし値の完全な同一性や内部kernelのworkspaceまでは検証していない。
 
-RTX 5060 Ti、共有training queue、PR #915のcommit 53db1868で実施した。入力と重みは前runから固定したもので、精度評価・追加学習・checkpoint採用の実験ではない。診断スクリプトと生ログをrun bundleへ保存した。元commandの`/tmp`スクリプトはbundleの`diagnostic.py`に対応する。TensorBoardを生成しない数値probeのため学習曲線はない。内部コンパイラの原因は未確定であり、既定の本学習は明示的にeagerへ変更する。
+RTX 5060 Ti、共有training queue、PR #915のcommit 79d4d42bcbce7fd2040ba960b2d0f5ce95453810で実施した。入力と重みは前runから固定したもので、精度評価・追加学習・checkpoint採用の実験ではない。診断スクリプトと生ログをrun bundleへ保存した。元commandの`/tmp`スクリプトはbundleの`diagnostic.py`に対応する。TensorBoardを生成しない数値probeのため学習曲線はない。内部コンパイラの原因は未確定であり、既定の本学習は明示的にeagerへ変更する。

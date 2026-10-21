@@ -56,7 +56,7 @@ tags:
 残っていた3clipのRGB特徴生成はqueueで完了し、全56clip168cameraのfeature検証は通過した。ただし全入力の終了時照合で1本の動画のSHAが開始時と異なったため、採用監査はfailedとした。特徴生成の正常終了をデータセットの採用完了とは扱わない。
 
 ### アーキテクチャ詳細
-commit41020d13080c、固定DINOv3 ViT-B/16、従来の256×448/patch16/embed768/frame_stride10で不足3clipを生成した。別CPU監査は原本Meijiとv8を明示パスで読み、全56markerの存在、manifest/media、固定producer SHA、spec、production feature reader、NPZ dtype/shape/有限値/exact frame indices/marker countを検証した。新defaultのv9設定へ依存させない。
+commit032c11225ef7dbdb500955e5004a8784b3248129、固定DINOv3 ViT-B/16、従来の256×448/patch16/embed768/frame_stride10で不足3clipを生成した。別CPU監査は原本Meijiとv8を明示パスで読み、全56markerの存在、manifest/media、固定producer SHA、spec、production feature reader、NPZ dtype/shape/有限値/exact frame indices/marker countを検証した。新defaultのv9設定へ依存させない。
 
 ### メトリクスの解釈
 feature検証は56clip168camera・29148frame・8976camera token sampleを通過。686入力の前後dual SHAは685件一致、1件不一致。対象はv8 video_001/clip_005/media/cam2.mp4で、開始43fa76065af0efb29f9714101fab991edf46c3d5840a892b6a9caf767a75e636、終了7066c5e0f259a141c7f30759c4aa720d0eb0a83d9b865e7761a945c3fa01904d。原本側の同cameraは前後とも43fa…だった。終了後statでは原本/v8は同inode4189208、size12202440、mtime_ns1789017487427768594、ctime_ns1789754129599533438であった。今回の新規3clipとは別の既存clipである。

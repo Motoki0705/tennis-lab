@@ -64,7 +64,7 @@ new+oldは11/12完走でclip_007/cam0の1,202 player unitをFNに数える。同
 
 ## offline linkingを揃えて見えたこと
 
-[addendum](../../runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)は**新結果より前にac1957adでcommit/push**し、
+[addendum](../../runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)は**新結果より前にfa56d6f7131e82a792b0fbe8caec411c80bd299cでcommit/push**し、
 [Issueにも投稿](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5903288749)した。
 raw-ID主指標・IoU .5/1対1/人物unit/タイ規則はrun 8のまま。group IDF1はrun 8結果後に追加した副指標と明示する。
 旧6条件のraw指標は全camera/全96層で一致し、旧結果を改変していない。

@@ -20,19 +20,25 @@ from typing import Any
 
 from kg_artifacts import EXCEPTIONS, MANIFEST, TEXT, tree_sha256
 
-TOKEN = re.compile(r"(?<![\w])[0-9a-fA-F]{7,40}(?![\w])")
+# Japanese prose can adjoin a SHA directly, including the form "commit<sha>".
+TOKEN = re.compile(
+    r"(?:(?<![a-zA-Z0-9_])|(?<=(?i:commit)))[0-9a-fA-F]{7,40}(?![a-zA-Z0-9_])"
+)
 FULL_SHA = re.compile(r"[0-9a-f]{40}\Z")
 URL = re.compile(r"(?:https?://|git@)[^\s<>\]\)\"'`]+")
+MARKDOWN_LINK = re.compile(r"\[([^\]\n]+)\]\((https?://[^\s)]+)\)")
 REFERENCE_PREFIX = re.compile(
-    r"(?:\b[\w.-]*(?:commit|revision|git_head|head_sha|base_head)\b[\"']?\s*[:=：]?\s*"
+    r"(?:\b[\w.-]*(?:commit|revision|git_head|head_sha|base_head)(?![a-zA-Z0-9_])"
+    r"[\"']?\s*[:=：]?\s*(?:は\s*)?"
     r"|\bSHA\s*[:=：]?\s*|コミット\s*[:=：]?\s*"
+    r"|\brecorded\s+from\s+"
     r"|\bcheckout\s+"
     r"|\bworktree\s+add\s+--detach\s+\S+\s+"
-    r"|\bgit\s+(?:checkout|show|switch|reset|rebase)\s+(?:--?[\w-]+\s+)*)[\"'`(]*$",
+    r"|\bgit\s+(?:checkout|show|switch|reset|rebase)\s+(?:--?[\w-]+\s+)*)[\"'`(*]*$",
     re.I,
 )
 CONTENT_HASH_PREFIX = re.compile(
-    r"\b(?:sha1|sha256|sha512|checksum|content_hash|blob_sha|blob_hash|tree_sha|tree_hash)"
+    r"\b[\w.-]*(?:sha1|sha256|sha512|md5|checksum|content_hash|blob_sha|blob_hash|tree_sha|tree_hash)"
     r"[\"']?\s*[:=]\s*[\"'`]*$",
     re.I,
 )
@@ -123,6 +129,14 @@ def transform(text: str, resolver: Resolver) -> tuple[str, list[dict[str, Any]]]
             if LOCAL_URL.match(m.group())
             and re.search(r"/(?:commit|tree|blob|compare)/", m.group())
         ]
+        # A previous pass may already have updated the link destination while
+        # leaving its short label behind, including all-numeric commit IDs.
+        local_refs.extend(
+            m.span(1)
+            for m in MARKDOWN_LINK.finditer(line)
+            if LOCAL_URL.match(m.group(2))
+            and re.search(r"/(?:commit|tree|blob|compare)/", m.group(2))
+        )
         foreign = [(m.start(), m.end()) for m in foreign_urls]
         foreign_ids = {
             t.lower() for m in foreign_urls for t in TOKEN.findall(m.group())
@@ -148,15 +162,20 @@ def transform(text: str, resolver: Resolver) -> tuple[str, list[dict[str, Any]]]
                 bool(REFERENCE_PREFIX.search(prefix))
                 or (
                     match.start() > 0
-                    and line[match.start() - 1] == "`"
-                    and line[match.end() : match.end() + 1] == "`"
+                    and line[match.start() - 1] in "\"'`"
+                    and line[match.end() : match.end() + 1] == line[match.start() - 1]
+                    and not token.isdigit()
+                )
+                or (
+                    line[max(0, match.start() - 2) : match.start()] == "**"
+                    and line[match.end() : match.end() + 2] == "**"
                     and not token.isdigit()
                 )
                 or any(start <= match.start() < end for start, end in local_refs)
                 or bool(re.match(r"\s*\(the commit\b", line[match.end() :]))
             )
             # Large numeric logs/figures must not be interpreted as short SHAs.
-            if len(token) < 40 and not explicit:
+            if not explicit and (len(token) < 40 or token.isdigit()):
                 return token
             status, new = resolver.resolve(token)
             # Bare unknown hex strings can be hashes, IDs, or colors. Record
@@ -227,7 +246,7 @@ def plan(
         baseline[path] = data
         if (
             path.suffix in {".patch", ".diff"}
-            or path.name in {MANIFEST, EXCEPTIONS}
+            or path.name in {MANIFEST, EXCEPTIONS, "range-diff.txt"}
             or (text_dir is None and relative.startswith("docs/history-rewrite/"))
         ):
             protected.append(relative)

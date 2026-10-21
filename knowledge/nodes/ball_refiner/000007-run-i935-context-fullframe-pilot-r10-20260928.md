@@ -120,7 +120,7 @@ RGB遮蔽対照・amodal疑似教師品質・較正fit・最終Meiji testは未�
 
 ## 再現
 
-生成元commitはc90b6153。queueのrun.json / repro.sh / clean statusを内容不変で保存し、
+生成元commitは270e0f338265574f4d973083d82b639622496c30。queueのrun.json / repro.sh / clean statusを内容不変で保存し、
 追跡済みのbenchmarkからDINO拡張を再ビルドできる。旧runとは異なるbinaryでCUDAを実行した。
 元出力は上書き不可なので、再生成時は新しいcache/report pathを明示する。
 全3 NPZを本bundleのclips/へ保持し、raw JPEG・checkpoint・binaryは複製しない。

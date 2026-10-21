@@ -175,12 +175,12 @@
   "runs": [
     {
       "path": "runs/group-i983-court-dinov3-shared1024-s42",
-      "sha256": "123d347dc490156c1d22932824f3777688706ec905084dde65021ce03c5036f5",
+      "sha256": "253da2a63570f871b9d7c1e2d7d7acc0359469efedf2d2bed5582d065eefd865",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-court-hybrid-downstream-migration",
-      "sha256": "0f511b9deb5bfcb058247678d10bdd7cea5fc58e7b01e25a473e8bb21567da7d",
+      "sha256": "1321f31cc28020b63f13a6d29a1d02d69afd6cf1e428f11b9f46c364bbe4240a",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
@@ -205,7 +205,7 @@
     },
     {
       "path": "runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3",
-      "sha256": "19a5405d7093a83a38d4dd2574cc751f15d6ad12d9d48626818752dddc3ff2da",
+      "sha256": "7d7639fe2da7f65b89bcf3335dffd0235e890ee87ad6413523c31c0e0dc711dc",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {

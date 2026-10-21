@@ -65,7 +65,7 @@ repro:
 第3収録の初期完了10clipから、相対box移動が大きいclip_007、遠方の腰肩confidenceが低いclip_008、pose支持に欠損があるclip_009を追加確認した。親が9枚のcontact sheet・81画像を確認し、選定画像では明白な隣接コートへの人物切替えは見えなかった。canonical人物軸で2視点の両肩・両腰がconfidence ≥ 0.3となる割合は、全6個のclip/player系列で99.708–100%。これは最終3D教師の採用率ではない。
 
 ### アーキテクチャ詳細
-実行commit f94f61ddの既存CPU画像probeを使用し、均等5frameと各人物の最大相対box移動の両端を重複除去して各視点9frameを選んだ。表示はview-local P0/P1である。support_probeは保存されたcourt/peopleへproductionのassociate_peopleを適用し、unsupported confidenceを0にしたraw配列の並べ替えと完全一致を確認した。cam0/1は[0,1]、cam2は[1,0]、全viewのraw track IDsは[0,1]。設定・manifest・動画・観測・画像・source等48ファイルの実行前後dual SHAが一致した。モデル推論・GPU・学習・教師採用閾値の変更は行っていない。
+実行commit 6ca76663b32dac43fb50d4814e1f84498a88cf53の既存CPU画像probeを使用し、均等5frameと各人物の最大相対box移動の両端を重複除去して各視点9frameを選んだ。表示はview-local P0/P1である。support_probeは保存されたcourt/peopleへproductionのassociate_peopleを適用し、unsupported confidenceを0にしたraw配列の並べ替えと完全一致を確認した。cam0/1は[0,1]、cam2は[1,0]、全viewのraw track IDsは[0,1]。設定・manifest・動画・観測・画像・source等48ファイルの実行前後dual SHAが一致した。モデル推論・GPU・学習・教師採用閾値の変更は行っていない。
 
 ### メトリクスの解釈
 最小検出sample率89.1566%、pose支持率89.2097%、腰肩confidence支持率79.4239%。canonical 2視点支持はclip_007のP0=343/343・P1=342/343、clip_008は両者243/243、clip_009は両者658/658。唯一のpose_supported=False区間はclip_009 cam2 local P1 / track1 → canonical P0のframe425–495（両端を含む71frame）で、残る17個のview/player系列にはこのmaskの欠損がない。高confidenceの誤推定、幾何・再投影・速度不適合はこの支持率から除外できない。学習runではないため収束曲線なし。

@@ -48,7 +48,7 @@ tags:
 - input-performance
 ---
 
-固定commit a7c6419d9の本学習を開始したが、全train/valの検証後、最初の50更新ログより前にCUDA unknown errorで終了した。epoch checkpointはなく、完了更新数は不明。画像入力待ちの改善を、この起動の安定性達成とは扱わない。
+固定commit ffe0f5f427dde06183a62a6235dc07537408b2b3の本学習を開始したが、全train/valの検証後、最初の50更新ログより前にCUDA unknown errorで終了した。epoch checkpointはなく、完了更新数は不明。画像入力待ちの改善を、この起動の安定性達成とは扱わない。
 
 主例外はモデル出力のfinite検査で観測され、generatorのstream同期・CUDA allocatorの終了処理にも同じエラーが出た。非同期の先行エラーを後で観測した可能性があり、finite検査自体が原因とは断定できない。同時期のWindows Display/nvlddmkmイベント照会は一致なしで、driver resetの証拠も得られていない。
 

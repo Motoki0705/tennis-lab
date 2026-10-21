@@ -89,7 +89,7 @@ tags:
 
 最終stateはepoch19・global_step33160。保存済み6世代からepoch17（18epoch目、step29844、val/loss=1.1579619646）を選択した。monitor=Noneのlast保存callbackとmonitor=val/lossの世代管理callbackを区別し、後者のランキングで最小値を確認した。合成testを選択には使わず、test_after_fitの終端モデル評価とは別に評価した。学習・正式評価・補足診断はいずれもreturncode=0とDrive保存を確認し、全job終了後にsession03を停止した。
 
-入力は親preflightのB00〜B03とTennisCourtDetector-v1、同じsnapshotとsplitである。manifest・index・画像shard・S pretrained weightのSHA-256を照合し、Lとのcomparison_contractも完全一致した。データ・順序・前処理・教師・学習条件・共通後段parameter・評価precision・固定画像の一致が評価証跡に残る。主要環境はPython3.11.16/PyTorch2.14.1/Lightning2.6.6/L4でLと同じ。学習コードはc4b12f923で、Lの実行版からの追加コード変更は後述のautocast入力検査だけである。コード版の違いによる演算・学習条件の変更はない。
+入力は親preflightのB00〜B03とTennisCourtDetector-v1、同じsnapshotとsplitである。manifest・index・画像shard・S pretrained weightのSHA-256を照合し、Lとのcomparison_contractも完全一致した。データ・順序・前処理・教師・学習条件・共通後段parameter・評価precision・固定画像の一致が評価証跡に残る。主要環境はPython3.11.16/PyTorch2.14.1/Lightning2.6.6/L4でLと同じ。学習コードは75e30a565b1f7a5f7fd4f08cea2daf458d377653で、Lの実行版からの追加コード変更は後述のautocast入力検査だけである。コード版の違いによる演算・学習条件の変更はない。
 
 | 出力 | 合成V3 test 886画像 | 実画像val 2211画像 |
 |---|---:|---:|
@@ -107,7 +107,7 @@ pose再投影平均が大きかったため、同じcheckpoint・合成886画像
 
 今回の固定データとseedでは、Sのdense KP平均距離はL（合成4.4878px/実画像1.3675px）より小さい一方、合成poseの大きな外れ値と他のdense指標は改善していない。KPはheatmap、poseは独立したpose headの投影で、両者は別の予測経路である。固定4画像だけでは稀なpose失敗を網羅できない。Lは途中checkpointから再開したという制約もあり、S+/Bを含む4条件と再現上の制約を揃えるまで、サイズ間の一般的な優劣や採用変更は判断しない。
 
-初回はLと同じcommit98b737829で開始したが、sanity validationの最初のbatchで、Conv射影のbf16出力とfp32 parameterをdtype完全一致検査が拒否した。optimizer更新前の失敗で、returncode=1とDrive保存を確認した。c4b12f923ではfp32 parameter・有効なdevice autocast・指定autocast dtypeという組み合わせだけを許可し、演算やcastは追加しなかった。CPUで同じ失敗を再現後、射影・Transformerの有限かつ非zeroなgradient、出力、不正dtypeの拒否を含む31テストが成功した。
+初回はLと同じcommit7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67fで開始したが、sanity validationの最初のbatchで、Conv射影のbf16出力とfp32 parameterをdtype完全一致検査が拒否した。optimizer更新前の失敗で、returncode=1とDrive保存を確認した。75e30a565b1f7a5f7fd4f08cea2daf458d377653ではfp32 parameter・有効なdevice autocast・指定autocast dtypeという組み合わせだけを許可し、演算やcastは追加しなかった。CPUで同じ失敗を再現後、射影・Transformerの有限かつ非zeroなgradient、出力、不正dtypeの拒否を含む31テストが成功した。
 
 同じVMへGitで修正を反映し、初回のconfig/logを保持した別出力`.../s42/attempt-02`へ同じseedから新規実行した。checkpoint再開は使っていない。解決済み設定は初回Sから出力先だけが変わり、初回SとLの差もbackbone名・weight・取得層・保存先だけだった。attemptごとのcommand/config/失敗/完了証拠はrun.jsonから辿れる。
 

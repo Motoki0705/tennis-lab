@@ -35,4 +35,4 @@ B00・B02・B03はalignmentを現行コードで再推定した。v14は `ground
 
 シーン別の画角・軸比・複合軌道中心設定、数値検証、プレビュー、カメラ位置図、実行ログは各run nodeと同梱bundleを参照する。正式ownerの再読込では `CourtArrayValidationMode.HEADERS_ONLY` を使用し、描画後の可視性・採用条件は生成時の正式assemblerで検証した。
 
-途中の失敗・意図的中断は各成功nodeのparentsに記録した。B00の起動中にruntimeコードを変更したことによるクラス不一致も含む。最終3シーンは固定コード5589f446からCourt-only suffixで生成した。
+途中の失敗・意図的中断は各成功nodeのparentsに記録した。B00の起動中にruntimeコードを変更したことによるクラス不一致も含む。最終3シーンは固定コードcfa10e6767a4981ce9dffa4fd20b7c266682e9a4からCourt-only suffixで生成した。

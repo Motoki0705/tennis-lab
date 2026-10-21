@@ -90,7 +90,7 @@ tags:
 
 Sの学習・正式評価・補足診断のDrive保存とsession停止を確認してから、新しいsession04を起動した。親preflightと同じB00〜B03・TennisCourtDetector-v1の5 dataset、およびS+ pretrained weightを取得し、転送検証とmanifest/index/画像shard/weightのSHA-256照合を完了した。入力準備jobのreturncode=0とDrive保存を確認してから本学習を提出した。
 
-実行版はSの成功runと同じc4b12f923である。Python3.11.16/PyTorch2.14.1/Lightning2.6.6、DINOv3 submodule、L4とdriverもSと一致する。実際に解決したconfigをSの成功attemptと比較し、backbone名・weight path・run/Drive保存先だけが変わることを確認した。データ・split・前処理・loss・共通後段・学習条件は維持する。Driveへ保存された設定はVMの設定とbyte一致した。
+実行版はSの成功runと同じ75e30a565b1f7a5f7fd4f08cea2daf458d377653である。Python3.11.16/PyTorch2.14.1/Lightning2.6.6、DINOv3 submodule、L4とdriverもSと一致する。実際に解決したconfigをSの成功attemptと比較し、backbone名・weight path・run/Drive保存先だけが変わることを確認した。データ・split・前処理・loss・共通後段・学習条件は維持する。Driveへ保存された設定はVMの設定とbyte一致した。
 
 Notebook kernel経由で実行し、checkpoint保存直後と60秒ごとのArtifactStore同期でDriveへ保存する。世代保持と最良checkpoint選択を分け、全20epoch後に共通validation loss最小の保存checkpointを評価する。合成testを選択に使わず、test_after_fitの終端モデル評価とも区別する。
 

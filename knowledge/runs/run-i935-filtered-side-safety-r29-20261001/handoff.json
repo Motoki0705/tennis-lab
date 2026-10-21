@@ -4,12 +4,12 @@
   "clip000_run": false,
   "context_cache_queued": false,
   "qualification_blocker": "filtered safety bench: 3 wrong decisions / 11200; original 0",
-  "person_freeze": "3edefd77",
+  "person_freeze": "6f4c65c28875405fd8c53e6e23fc24752b8fd339",
   "stack_base": "4cfee67e464203023ceb3306697c95b670ab1b73",
   "commits": {
-    "default": "2a25cadf0",
-    "confidence": "16c112aa6",
-    "consumers": "609a9b14b"
+    "default": "cccab6e76717f590c4380532bebb60be8bfc5a1f",
+    "confidence": "b0ed53293b7da8c34d4d9e5476d951ec4ebc1a4a",
+    "consumers": "df64f1427ebd0f6b76571ca0f37795ed100a8eba"
   },
   "normal_tests": {
     "passed": 185,

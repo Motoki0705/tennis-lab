@@ -44,4 +44,4 @@ tags:
 
 同じ重み・同じ入力でsanity→train→val→train→valを比較した。eagerは全段階で有限。compiledはtrain後のvalがNaNとなり、次のtrainは有限だった。freezing=False/cudagraphs=Falseを記録した。これはcompileされた実行経路を疑う根拠であり、optimizer更新だけを原因と断定しない。
 
-RTX 5060 Ti、共有training queue、PR #915のcommit 53db1868で実施した。入力と重みは前runから固定したもので、精度評価・追加学習・checkpoint採用の実験ではない。診断スクリプトと生ログをrun bundleへ保存した。元commandの`/tmp`スクリプトはbundleの`diagnostic.py`に対応する。TensorBoardを生成しない数値probeのため学習曲線はない。内部コンパイラの原因は未確定であり、既定の本学習は明示的にeagerへ変更する。
+RTX 5060 Ti、共有training queue、PR #915のcommit 79d4d42bcbce7fd2040ba960b2d0f5ce95453810で実施した。入力と重みは前runから固定したもので、精度評価・追加学習・checkpoint採用の実験ではない。診断スクリプトと生ログをrun bundleへ保存した。元commandの`/tmp`スクリプトはbundleの`diagnostic.py`に対応する。TensorBoardを生成しない数値probeのため学習曲線はない。内部コンパイラの原因は未確定であり、既定の本学習は明示的にeagerへ変更する。
