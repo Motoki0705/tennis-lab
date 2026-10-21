@@ -165,7 +165,7 @@ def rank_fixture() -> BallReconstructionResult:
     return ball
 
 
-def test_rank_requires_all_three_conditions_and_sorts_by_valid_ratio() -> None:
+def test_rank_requires_outlier_and_single_view_and_sorts_by_valid_ratio() -> None:
     ball = rank_fixture()
     ball.trajectory.valid[0] = False
     ball.trajectory.reasons[0] = 1
@@ -177,8 +177,7 @@ def test_rank_requires_all_three_conditions_and_sorts_by_valid_ratio() -> None:
     for item in ranked:
         start, stop, t0 = (item[key] for key in ("start", "stop", "t0"))
         assert stop - start == 12
-        assert start + 4 <= t0 < stop - 4
-        assert ball.trajectory.inliers[:, t0].sum() >= 3
+        assert t0 == (start + stop - 1) // 2
         assert item["outlier_frames"] and item["single_view_frames"]
     assert [r["valid_ratio"] for r in ranked] == sorted(
         (r["valid_ratio"] for r in ranked), reverse=True
@@ -190,7 +189,8 @@ def test_rank_requires_all_three_conditions_and_sorts_by_valid_ratio() -> None:
     assert rank_windows(ball, window_frames=12) == []
     ball = rank_fixture()
     ball.trajectory.inliers[2, :] = False
-    assert rank_windows(ball, window_frames=12) == []
+    ranked = rank_windows(ball, window_frames=12)
+    assert ranked and ranked[0]["t0_inlier_views"] == 2
 
 
 @pytest.mark.parametrize("suppression", ["non_overlapping", "t0_distance"])
@@ -226,7 +226,7 @@ def test_rank_records_event_counts_and_reports_only_available_candidates() -> No
     assert ranked[0]["rejected_frames"] == [3]
 
 
-def test_t0_distance_is_distinct_from_interval_non_overlap() -> None:
+def test_midpoint_metadata_makes_distance_suppression_match_non_overlap() -> None:
     ball = ball_fixture(24)
     ball.trajectory.inliers[2, :] = False
     ball.trajectory.inliers[2, [4, 16]] = True
@@ -240,8 +240,8 @@ def test_t0_distance_is_distinct_from_interval_non_overlap() -> None:
     )
     separated_t0 = rank_windows(ball, window_frames=12, suppression="t0_distance")
     assert [item["start"] for item in non_overlapping] == [0, 12]
-    assert [item["start"] for item in separated_t0] == [0, 9]
-    assert [item["t0"] for item in separated_t0] == [4, 16]
+    assert separated_t0 == non_overlapping
+    assert [item["t0"] for item in separated_t0] == [5, 17]
 
 
 def test_reject_bad_status_and_scene_disagreement() -> None:
@@ -313,6 +313,13 @@ def test_config_has_explicit_roles_and_export_selection(tmp_path: Path) -> None:
 def test_invalid_config_is_rejected(tmp_path: Path, override: str) -> None:
     with pytest.raises(SemanticConfigurationError):
         parse_rays_config(config(tmp_path, override))
+
+
+def small_export_config(**kwargs: Any) -> RaysConfig:
+    # The synthetic video is 60fps; 0.2s at 1x needs 12 source frames.
+    return RaysConfig(
+        window_frames=12, time_mode="replay", playback_seconds=0.2, **kwargs
+    )
 
 
 def make_store(tmp_path: Path, *, adapter: bool, imported: bool) -> ClipStore:
@@ -417,11 +424,13 @@ def test_export_reads_lineage_without_mutating_store_and_writes_partial_plates(
         start=1,
         stop=13,
         t0=6,
-        config=RaysConfig(plate_max_width=32),
+        config=small_export_config(plate_max_width=32),
         resolved_config={"mode": "export"},
     )
     document = json.loads(manifest.read_text())
     assert document["frames"] == [1, 13] and document["t0"] == 6
+    assert document["source_window"]["window_frames"] == 12
+    assert document["source_window"]["source_speed"] == 1.0
     assert document["origins"]["rays_and_frusta"] == "schematic"
     assert np.load(out / "ray_direction.npy").shape == (3, 12, 3)
     assert np.load(out / "ray_origin.npy").shape == (3, 3)
@@ -437,13 +446,62 @@ def test_export_reads_lineage_without_mutating_store_and_writes_partial_plates(
             assert image.size == (32, 24)
     with pytest.raises(FileExistsError):
         export_rays_bundle(
-            inputs, out, start=1, stop=13, t0=6, config=RaysConfig(), resolved_config={}
+            inputs,
+            out,
+            start=1,
+            stop=13,
+            t0=6,
+            config=small_export_config(),
+            resolved_config={},
         )
     assert before == {
         str(path.relative_to(store.root)): dual_sha256(path)
         for path in store.root.rglob("*")
         if path.is_file()
     }
+
+
+def test_export_allows_invalid_midpoint_because_playback_does_not_use_t0(
+    tmp_path: Path,
+) -> None:
+    inputs = load_rays_input(make_store(tmp_path, adapter=False, imported=True).root)
+    assert not inputs.ball.trajectory.valid[8]
+    manifest = export_rays_bundle(
+        inputs,
+        tmp_path / "bundle",
+        start=0,
+        stop=12,
+        t0=8,
+        config=small_export_config(),
+        resolved_config={},
+    )
+    assert json.loads(manifest.read_text())["t0"] == 8
+
+
+def test_export_rejects_wrong_window_length_and_budget_before_writing(
+    tmp_path: Path,
+) -> None:
+    inputs = load_rays_input(make_store(tmp_path, adapter=False, imported=True).root)
+    with pytest.raises(ValueError, match="interval must match"):
+        export_rays_bundle(
+            inputs,
+            tmp_path / "bundle",
+            start=0,
+            stop=11,
+            t0=5,
+            config=small_export_config(),
+            resolved_config={},
+        )
+    with pytest.raises(ValueError, match="1x source budget"):
+        export_ranking(
+            inputs,
+            tmp_path / "ranking.json",
+            config=RaysConfig(window_frames=12),
+            resolved_config={},
+        )
+    assert (
+        not (tmp_path / "bundle").exists() and not (tmp_path / "ranking.json").exists()
+    )
 
 
 def test_export_failure_removes_partial_bundle(
@@ -460,12 +518,24 @@ def test_export_failure_removes_partial_bundle(
     )
     with pytest.raises(RuntimeError, match="decode failed"):
         export_rays_bundle(
-            inputs, out, start=0, stop=12, t0=6, config=RaysConfig(), resolved_config={}
+            inputs,
+            out,
+            start=0,
+            stop=12,
+            t0=6,
+            config=small_export_config(),
+            resolved_config={},
         )
     assert not out.exists()
     with pytest.raises(ValueError, match="t0"):
         export_rays_bundle(
-            inputs, out, start=0, stop=12, t0=8, config=RaysConfig(), resolved_config={}
+            inputs,
+            out,
+            start=0,
+            stop=12,
+            t0=12,
+            config=small_export_config(),
+            resolved_config={},
         )
     assert not out.exists()
 
@@ -473,14 +543,10 @@ def test_export_failure_removes_partial_bundle(
 def test_ranking_does_not_overwrite_existing_file(tmp_path: Path) -> None:
     inputs = load_rays_input(make_store(tmp_path, adapter=False, imported=True).root)
     output = tmp_path / "rank/ranking.json"
-    export_ranking(
-        inputs, output, config=RaysConfig(window_frames=12), resolved_config={}
-    )
+    export_ranking(inputs, output, config=small_export_config(), resolved_config={})
     original = output.read_bytes()
     with pytest.raises(FileExistsError):
-        export_ranking(
-            inputs, output, config=RaysConfig(window_frames=12), resolved_config={}
-        )
+        export_ranking(inputs, output, config=small_export_config(), resolved_config={})
     assert output.read_bytes() == original
 
 

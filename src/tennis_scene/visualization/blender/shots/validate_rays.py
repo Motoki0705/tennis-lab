@@ -19,6 +19,7 @@ from ray_timeline import (  # noqa: E402
     calibrated_pose,
     plan_timeline,
     select_camera,
+    source_window,
 )
 
 
@@ -302,6 +303,7 @@ def validate(bundle: Path) -> dict[str, Any]:
         "projection_tolerance_px": pixel_tolerance,
         "camera_selection": selection,
         "time_mode": shot.time_mode,
+        "source_window": source_window(manifest["fps"], shot),
         "stages": [s.to_dict(shot.fps, manifest["fps"]) for s in timeline.stages],
         "ray_states_seen": sorted(states_seen),
         "material_checks": material_checks,

@@ -7,7 +7,14 @@ mode: rank
 start: null
 stop: null
 t0: null
-window_frames: 90
+# Explicit source budget at 59.94/60fps: ceil(3*fps)+ceil(3*fps)+ceil(5*fps).
+# Override from source fps for other durations/rates; mismatches fail at 1x.
+window_frames: 660
+time_mode: continuous
+# null derives continuous=3s, replay=playback_seconds (whole interval).
+two_d_seconds: null
+pullback_seconds: 3.0
+playback_seconds: 5.0
 # Greedy validity-descending/start-ascending selection; retain at most ten.
 # non_overlapping: [start,stop) intervals must not overlap (touching is allowed).
 # t0_distance: representative frames must be >= window_frames apart.

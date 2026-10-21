@@ -17,11 +17,12 @@ from src.tennis_scene.visualization.blender.shots.ray_timeline import (
     calibrated_pose,
     plan_timeline,
     select_camera,
+    source_window,
 )
 
 
 def manifest(
-    *, fps: float = 60.0, frames: tuple[int, int] = (782, 872)
+    *, fps: float = 60.0, frames: tuple[int, int] = (282, 942)
 ) -> dict[str, Any]:
     return {
         "frames": frames,
@@ -30,63 +31,81 @@ def manifest(
     }
 
 
-def test_continuous_advances_without_rewind_or_t0_hold() -> None:
-    shot = RayShot(pullback_seconds=3.0)
-    timeline = plan_timeline(manifest(), shot)
-    stages = timeline.stages
-    assert [(s.source_start, s.source_stop) for s in stages] == [
-        (782, 827),
-        (827, 850),
-        (850, 872),
+def test_continuous_uses_one_native_clock_across_all_three_stages() -> None:
+    timeline = plan_timeline(manifest(), RayShot())
+    assert [(s.source_start, s.source_stop) for s in timeline.stages] == [
+        (282, 462),
+        (462, 642),
+        (642, 942),
     ]
-    assert [s.name for s in stages] == ["two_d", "pullback", "playback"]
-    assert [(s.start, s.stop) for s in stages] == [(0, 23), (23, 113), (113, 124)]
-    source = timeline.source_frames
-    assert source[0] == 782 and source[-1] == 870
-    assert np.all(np.diff(source) >= 0)
-    assert len(np.unique(source[23:113])) == 23
-    assert source[23] == 827 and source[113] == 850
-    assert stages[0].source_rate_fps == stages[2].source_rate_fps == 60.0
-    assert stages[1].to_dict(30, 60)["source_speed"] == pytest.approx(23 / 180)
+    assert [s.name for s in timeline.stages] == ["two_d", "pullback", "playback"]
+    assert [(s.start, s.stop) for s in timeline.stages] == [
+        (0, 90),
+        (90, 180),
+        (180, 330),
+    ]
+    np.testing.assert_array_equal(timeline.source_frames, np.arange(282, 942, 2))
+    assert all(s.to_dict(30, 60)["source_speed"] == 1.0 for s in timeline.stages)
 
 
 def test_replay_rewinds_only_after_pullback_and_holds_last_frame_explicitly() -> None:
-    timeline = plan_timeline(manifest(fps=59.94006), RayShot(time_mode="replay"))
-    first, pull, replay = timeline.stages
-    a = timeline.source_frames[first.start : first.stop]
-    b = timeline.source_frames[replay.start : replay.stop]
-    np.testing.assert_array_equal(a, b)
-    assert first.stop == 46 and replay.start == 136 and replay.stop == 182
-    assert np.all(timeline.source_frames[pull.start : pull.stop] == 871)
-    assert pull.source_rate_fps == 0
-    assert np.flatnonzero(np.diff(timeline.source_frames) < 0).tolist() == [135]
-
-
-def test_native_and_retimed_seconds_are_explicit_in_every_stage() -> None:
-    shot = RayShot(two_d_seconds=2.0, pullback_seconds=3.0, playback_seconds=4.0)
-    timeline = plan_timeline(manifest(), shot)
-    assert len(timeline.source_frames) == 270
-    assert [s.to_dict(30, 60)["seconds"] for s in timeline.stages] == [2.0, 3.0, 4.0]
-    for stage in timeline.stages:
-        source = timeline.source_frames[stage.start : stage.stop]
-        assert source.min() >= stage.source_start and source.max() < stage.source_stop
-        assert source[0] == stage.source_start
-
-
-def test_fractional_fps_clock_matches_nearest_native_timestamp() -> None:
-    data = manifest(fps=59.94006)
-    timeline = plan_timeline(data, RayShot(time_mode="replay"))
-    expected = np.minimum(
-        782 + np.floor(np.arange(46) * 59.94006 / 30 + 0.5).astype(int), 871
+    timeline = plan_timeline(
+        manifest(fps=59.94006, frames=(477, 777)), RayShot(time_mode="replay")
     )
-    np.testing.assert_array_equal(timeline.source_frames[:46], expected)
-    assert all(s.stop > s.start for s in timeline.stages)
+    first, pull, replay = timeline.stages
+    np.testing.assert_array_equal(
+        timeline.source_frames[first.start : first.stop],
+        timeline.source_frames[replay.start : replay.stop],
+    )
+    assert first.stop == 151 and replay.start == 241 and replay.stop == 392
+    assert np.all(timeline.source_frames[pull.start : pull.stop] == 776)
+    assert pull.source_rate_fps == 0
+    assert np.flatnonzero(np.diff(timeline.source_frames) < 0).tolist() == [240]
 
 
-def test_clock_and_camera_selection_ignore_t0() -> None:
+def test_seconds_define_source_budget_and_never_retime_the_video() -> None:
+    shot = RayShot(two_d_seconds=2.0, pullback_seconds=3.0, playback_seconds=4.0)
+    budget = source_window(59.94006, shot)
+    assert budget["window_frames"] == 540
+    assert budget["requested_seconds"] == {
+        "two_d": 2.0,
+        "pullback": 3.0,
+        "playback": 4.0,
+    }
+    assert budget["source_frame_counts"] == {
+        "two_d": 120,
+        "pullback": 180,
+        "playback": 240,
+    }
+    timeline = plan_timeline(manifest(fps=59.94006, frames=(100, 640)), shot)
+    expected = np.minimum(
+        100 + np.floor(np.arange(271) * 59.94006 / 30 + 0.5).astype(int), 639
+    )
+    np.testing.assert_array_equal(timeline.source_frames, expected)
+    for stage in timeline.stages:
+        samples = timeline.source_frames[stage.start : stage.stop]
+        assert samples.min() >= stage.source_start and samples.max() < stage.source_stop
+        assert stage.source_rate_fps == 59.94006
+
+
+def test_fractional_fps_never_resets_or_holds_the_continuous_clock() -> None:
+    data = manifest(fps=59.94006)
+    timeline = plan_timeline(data, RayShot())
+    expected = 282 + np.floor(np.arange(331) * 59.94006 / 30 + 0.5).astype(int)
+    np.testing.assert_array_equal(timeline.source_frames, expected)
+    assert np.all(np.diff(timeline.source_frames) > 0)
+    assert [s.to_dict(30, 59.94006)["seconds"] for s in timeline.stages] == [
+        3.0,
+        3.0,
+        151 / 30,
+    ]
+    assert source_window(59.94006, RayShot())["window_frames"] == 660
+
+
+def test_clock_ignores_t0() -> None:
     data = manifest()
-    first = plan_timeline({**data, "t0": 826}, RayShot())
-    second = plan_timeline({**data, "t0": 870}, RayShot())
+    first = plan_timeline({**data, "t0": 282}, RayShot())
+    second = plan_timeline({**data, "t0": 941}, RayShot())
     np.testing.assert_array_equal(first.source_frames, second.source_frames)
 
 
@@ -98,10 +117,9 @@ def test_clock_and_camera_selection_ignore_t0() -> None:
         {"two_d_seconds": float("nan")},
         {"playback_seconds": -1},
         {"samples": 0},
-        {"continuous_two_d_fraction": 0.8, "continuous_pullback_fraction": 0.3},
-        {"continuous_pullback_fraction": float("inf")},
         {"camera_id": ""},
         {"frustum_depth_m": 0.001},
+        {"time_mode": "replay", "two_d_seconds": 3.0, "playback_seconds": 5.0},
     ],
 )
 def test_bad_settings_fail(settings: dict[str, Any]) -> None:
@@ -109,13 +127,16 @@ def test_bad_settings_fail(settings: dict[str, Any]) -> None:
         RayShot(**settings)
 
 
-def test_clock_rejects_short_intervals_invalid_fps_and_one_frame_move() -> None:
-    with pytest.raises(ValueError, match="too short"):
-        plan_timeline(manifest(frames=(0, 2)), RayShot())
+def test_clock_rejects_window_mismatch_instead_of_slowing_down() -> None:
+    with pytest.raises(ValueError, match="window_frames=660"):
+        plan_timeline(manifest(frames=(782, 872)), RayShot())
     with pytest.raises(ValueError, match="fps"):
         plan_timeline(manifest(fps=0), RayShot())
     with pytest.raises(ValueError, match="two output frames"):
-        plan_timeline(manifest(), RayShot(pullback_seconds=0.01))
+        plan_timeline(
+            manifest(frames=(0, 300)),
+            RayShot(time_mode="replay", pullback_seconds=0.01),
+        )
 
 
 def test_camera_uses_visible_count_and_stable_id_tie_break_and_records_reason() -> None:

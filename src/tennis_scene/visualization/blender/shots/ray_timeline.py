@@ -23,9 +23,7 @@ class RayShot:
     time_mode: str = "continuous"
     two_d_seconds: float | None = None
     pullback_seconds: float = 3.0
-    playback_seconds: float | None = None
-    continuous_two_d_fraction: float = 0.5
-    continuous_pullback_fraction: float = 0.25
+    playback_seconds: float = 5.0
     frustum_depth_m: float = 1.5
     ray_radius_m: float = 0.012
     ball_radius_m: float = 0.05
@@ -62,15 +60,16 @@ class RayShot:
             "ball_radius_m",
         ):
             value = getattr(self, name)
-            if value is None and name in ("two_d_seconds", "playback_seconds"):
+            if value is None and name == "two_d_seconds":
                 continue
             if value is None or not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and positive")
-        a, b = self.continuous_two_d_fraction, self.continuous_pullback_fraction
-        if not (0 < a < 1 and 0 < b < 1 and a + b < 1):
-            raise ValueError(
-                "Continuous source fractions must be positive and sum to <1"
-            )
+        if (
+            self.time_mode == "replay"
+            and self.two_d_seconds is not None
+            and self.two_d_seconds != self.playback_seconds
+        ):
+            raise ValueError("Replay requires equal 2D/playback seconds at 1x")
         if self.camera_id is not None and not self.camera_id:
             raise ValueError("camera_id must be nonempty or None")
         if self.frustum_depth_m <= 0.005:
@@ -110,53 +109,99 @@ class Timeline:
         return self.stages[2].start
 
 
-def plan_timeline(manifest: dict[str, Any], shot: RayShot) -> Timeline:
-    """Nearest timestamps, with explicit phase durations and no gap filling.
+def source_window(source_fps: float, shot: RayShot) -> dict[str, Any]:
+    """Derive an explicit source-frame budget; no stage can retime the video."""
+    if not math.isfinite(source_fps) or source_fps <= 0:
+        raise ValueError("Require positive finite source fps")
+    two_d = shot.two_d_seconds
+    if two_d is None:
+        two_d = 3.0 if shot.time_mode == "continuous" else shot.playback_seconds
+    seconds = {
+        "two_d": two_d,
+        "pullback": shot.pullback_seconds,
+        "playback": shot.playback_seconds,
+    }
+    counts = {name: math.ceil(value * source_fps) for name, value in seconds.items()}
+    if shot.time_mode == "replay":
+        counts["pullback"] = 0
+        # Both 2D and 3D consume the same input interval.
+        window_frames = counts["playback"]
+    else:
+        window_frames = sum(counts.values())
+    return {
+        "time_mode": shot.time_mode,
+        "source_fps": source_fps,
+        "requested_seconds": seconds,
+        "source_frame_counts": counts,
+        "window_frames": window_frames,
+        "rounding_rule": "ceil(seconds * source_fps) for each advancing stage",
+        "source_speed": 1.0,
+        "pullback_source_policy": "advance_1x"
+        if shot.time_mode == "continuous"
+        else "hold_last_frame",
+    }
 
-    Continuous partitions the source interval without rewinding. Replay holds
-    the final 2D sample during the pullback, then restarts at the first sample.
-    None durations mean native source speed; an explicit duration retimes that
-    stage. Both the source speed and quantized output duration are recorded.
+
+def plan_timeline(manifest: dict[str, Any], shot: RayShot) -> Timeline:
+    """Sample at 1x, using seconds to partition an explicitly sized interval.
+
+    Continuous uses one native-speed clock across all three stages. Replay
+    samples the whole interval twice and holds the final 2D sample while the
+    camera moves. A short/long input interval is rejected, never retimed.
     """
     start, stop = manifest["frames"]
     source_fps = float(manifest["fps"])
-    if not math.isfinite(source_fps) or source_fps <= 0 or stop <= start:
-        raise ValueError("Require a nonempty source interval and positive fps")
+    budget = source_window(source_fps, shot)
+    window_frames = budget["window_frames"]
+    if stop - start != window_frames:
+        raise ValueError(
+            f"1x shot requires window_frames={window_frames} at {source_fps}fps "
+            f"for the configured seconds; got {stop - start}. Retiming is not allowed."
+        )
+    count = math.ceil(window_frames * shot.fps / source_fps)
+    native = start + np.floor(np.arange(count) * source_fps / shot.fps + 0.5).astype(
+        np.int64
+    )
+    native = np.minimum(native, stop - 1)
     if shot.time_mode == "continuous":
-        count = stop - start
-        split_a = start + round(count * shot.continuous_two_d_fraction)
-        split_b = start + round(
-            count * (shot.continuous_two_d_fraction + shot.continuous_pullback_fraction)
+        counts = budget["source_frame_counts"]
+        a = start + counts["two_d"]
+        b = a + counts["pullback"]
+        # Assign each nearest source sample to its source span without resetting
+        # the clock or repeating samples at phase boundaries.
+        first = int(np.searchsorted(native, a))
+        second = int(np.searchsorted(native, b))
+        if first < 1 or second - first < 2 or count - second < 1:
+            raise ValueError(
+                "Require visible 2D/3D stages and at least two pullback frames"
+            )
+        stages = (
+            Stage("two_d", 0, first, start, a, source_fps),
+            Stage("pullback", first, second, a, b, source_fps),
+            Stage("playback", second, count, b, stop, source_fps),
         )
-        if not start < split_a < split_b < stop:
-            raise ValueError("Continuous source interval is too short for three stages")
-        spans = [(start, split_a), (split_a, split_b), (split_b, stop)]
-    else:
-        spans = [(start, stop), (stop - 1, stop), (start, stop)]
-    durations = (shot.two_d_seconds, shot.pullback_seconds, shot.playback_seconds)
-    stages, samples = [], []
-    output_start = 0
-    for name, (left, right), seconds in zip(
-        ("two_d", "pullback", "playback"), spans, durations, strict=True
-    ):
-        native_speed = seconds is None
-        if native_speed:
-            seconds = (right - left) / source_fps
-        assert seconds is not None
-        output_count = math.ceil(seconds * shot.fps)
-        if name == "pullback" and output_count < 2:
-            raise ValueError("Pullback requires at least two output frames")
-        hold = shot.time_mode == "replay" and name == "pullback"
-        rate = (
-            0.0 if hold else (source_fps if native_speed else (right - left) / seconds)
-        )
-        source = left + np.floor(np.arange(output_count) * rate / shot.fps + 0.5)
-        samples.append(np.minimum(source.astype(np.int64), right - 1))
-        stages.append(
-            Stage(name, output_start, output_start + output_count, left, right, rate)
-        )
-        output_start += output_count
-    return Timeline(np.concatenate(samples), tuple(stages))
+        return Timeline(native, stages)
+    pullback_count = math.ceil(shot.pullback_seconds * shot.fps)
+    if pullback_count < 2:
+        raise ValueError("Pullback requires at least two output frames")
+    samples = np.concatenate(
+        (native, np.full(pullback_count, stop - 1, np.int64), native)
+    )
+    return Timeline(
+        samples,
+        (
+            Stage("two_d", 0, count, start, stop, source_fps),
+            Stage("pullback", count, count + pullback_count, stop - 1, stop, 0.0),
+            Stage(
+                "playback",
+                count + pullback_count,
+                len(samples),
+                start,
+                stop,
+                source_fps,
+            ),
+        ),
+    )
 
 
 def select_camera(

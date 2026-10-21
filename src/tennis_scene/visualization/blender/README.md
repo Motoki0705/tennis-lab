@@ -20,17 +20,20 @@
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
-  input=tennis_scene/evaluate/<run>/store mode=rank
+  input=tennis_scene/evaluate/<run>/store mode=rank window_frames=660
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
-  input=tennis_scene/evaluate/<run>/store mode=export start=782 stop=872 t0=826
+  input=tennis_scene/evaluate/<run>/store mode=export \
+  window_frames=660 start=282 stop=942 t0=611
 ```
 
 既定出力は `<OUTPUT>/tennis_scene/visualize/export_blender_rays/<run-id>/` です。
 親の発表用配置案より、repoの共通run契約を優先しています。
 
-- `mode=rank`: `ranking.json` の上位10件を人に提示します。既定90frameの各窓に、外れ値の
-  光線と単独viewのframeをそれぞれ要求します。`t0` は中央1/3にある3view以上のinlierを持つ
-  有効frameから中央に最も近いものです。同率では開始frame順です。候補を自動採用しません。
+- `mode=rank`: `ranking.json` の上位10件を人に提示します。各窓に、外れ値の光線と
+  単独viewのframeをそれぞれ要求します。valid率の降順、同率では開始frame順です。
+  `t0` は区間の時間的な中央（偶数長では前側）を記録するだけです。新構成は `t0` を
+  固定表示しないため、中央の3view以上のinlier・validという旧条件は要求しません。
+  `window_frames` は下記の秒数と元fpsから計算した値を明示します。候補を自動採用しません。
   `ranking_suppression=non_overlapping`（既定）は、有効率の順位順に採用済みの
   `[start, stop)` と重なる窓を抑制します。境界で接する窓は許可します。
   `t0_distance` は採用済みの全 `t0` から `window_frames` 以上離れた窓だけを残します。
@@ -38,8 +41,9 @@
   抑制規則・返却件数と、外れ値／単独view／棄却frameの番号・件数をrankingに記録します。
   棄却frameの件数は「可視2view以上で球が無効」のframe数で、単独viewと分けて数えます。
 - `mode=export`: 元動画の `[start, stop)` だけを復号し、`bundle/` を作ります。
-  `t0` は同区間内の有効frameで、3view以上のinlierが必要です。元動画のhash・寸法・FPS・
-  frame数を検査します。uvは縮小JPEGの座標ではなく元解像度のpxです。
+  区間長は明示した `window_frames` と一致する必要があります。`t0` はschema上の
+  時刻メタデータとして同区間内を要求しますが、valid・3view条件はありません。
+  元動画のhash・寸法・FPS・frame数を検査します。uvは元解像度のpxです。
 - 採用artifactのschema・依存を検査し、完成sceneが `exports.scene` にあれば、
   `ball_3d` と有効maskが三角測量結果に一致することも要求します。
 - `ball_source.artifacts` は依存をたどった検出器または注釈importの由来・入力hash・レビュー
@@ -81,20 +85,40 @@ Blender 5.2の同梱Pythonで動き、repoはimportしません。CPUだけで�
 
 | 設定 | 2D | 引き | 3D playback |
 |---|---|---|---|
-| `continuous` | 区間の前半 | 次の1/4を進める | 残りの1/4を再生 |
-| `replay` | 区間全体 | 最終source frameを保つ | 同じ区間を最初から再生 |
+| `continuous` | 約3秒を1x再生 | 次の約3秒を1x再生しながら引く | 残りの約5秒を1x再生 |
+| `replay` | 約5秒の区間全体を1x再生 | 最終source frameを3秒保つ | 同じ区間を最初から1x再生 |
 
-`--continuous-two-d-fraction`（既定0.5）と `--continuous-pullback-fraction`（0.25）で
-continuousのsource配分を変えられます。各区間には少なくとも1 source frameが必要です。
-`--two-d-seconds` と `--playback-seconds` の未指定は元の速度、指定値はその場面だけの尺です。
-`--pullback-seconds` は既定3秒で、continuousでは割り当てられたsource区間をこの秒数に
-伸縮して**時間を進めます**。90frame・約59.94fpsの素材では、3秒の引きは減速になります。
-元の速度の引きが必要なら、そのsource区間のframe数÷source fpsを明示してください。
-replayの引きは意図的な静止です。時間の接続方法の採用はプレビューを見て人が決めます。
+`--two-d-seconds`（continuousは既定3秒、replayはplaybackと同じ秒数）、
+`--pullback-seconds`（3秒）、`--playback-seconds`（5秒）で尺を明示します。
+元動画の再生速度は**常に1x**です。区間が短くてもスロー・補間・繰り返しで尺を延ばしません。
+replayの2Dと3Dは同じ区間なので、両者の秒数が異なる指定は拒否します。
 
-各場面の出力尺は30fpsに切り上げます。各出力時刻の最も近いsource frameを選び、
-欠測は補間しません。`shot_manifest.json` に解決済み設定、各場面の出力frame範囲・秒数・
-source範囲・source速度の倍率、全出力frameのsource対応と `ball_source` を残します。
+元fpsを `f` とすると、必要な入力は次のframe数です。
+
+- continuous: `ceil(two_d_seconds*f) + ceil(pullback_seconds*f) + ceil(playback_seconds*f)`
+- replay: `ceil(playback_seconds*f)`。2Dで同じframeを使い、引きだけ意図的に静止します。
+
+59.94006fpsでは、それぞれ660frame（約11秒）と300frame（約5秒）です。
+rank・exportのconfigにも同名の秒数と `time_mode` を指定し、`window_frames` を明示します。
+秒数からの計算値と窓長が異なる場合は停止します。
+
+```bash
+# continuous: 3秒 + 3秒 + 5秒を1xで。
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
+  input=tennis_scene/evaluate/<run>/store mode=rank \
+  time_mode=continuous two_d_seconds=3 pullback_seconds=3 playback_seconds=5 window_frames=660
+# replay: 同じ5秒の区間を前後で再生。
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
+  input=tennis_scene/evaluate/<run>/store mode=rank \
+  time_mode=replay two_d_seconds=5 pullback_seconds=3 playback_seconds=5 window_frames=300
+```
+
+元fps・秒数・frame数の丸め方・計算した窓長はrank/bundle/shotの `source_window` に記録します。
+continuousでは全場面を通して1つの1x時計を使い、場面の境界でも時計をリセットしません。
+各出力時刻に最も近いsource frameを選び、欠測は補間しません。30fpsへの丸めにより尺は
+1出力frame未満だけ延びる場合があります。`shot_manifest.json` に各場面の出力frame範囲・
+実際の秒数・source範囲・速度倍率、全出力frameのsource対応と `ball_source` を残します。
+時間の接続方法・区間の採用はプレビューを見て人が決めます。
 軌跡は16点・source 2frameおきで、欠測を跨ぎません。
 光線の円柱は中点からの相対座標をPC2に保存し、長い棄却光線でも端点の精度を保ちます。
 単独viewの破線は長手方向の `ray_axis` 属性によるものです。
@@ -106,8 +130,8 @@ source範囲・source速度の倍率、全出力frameのsource対応と `ball_so
 ```bash
 blender --background --factory-startup --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/ball_rays.py -- \
-  --bundle "$BUNDLE" --output "$SHOT_DIR" --time-mode replay \
-  --pullback-seconds 3 --render
+  --bundle "$BUNDLE" --output "$SHOT_DIR" --time-mode continuous \
+  --two-d-seconds 3 --pullback-seconds 3 --playback-seconds 5 --render
 blender --background "$SHOT_DIR/ball_rays.blend" --python-exit-code 1 \
   --python src/tennis_scene/visualization/blender/shots/validate_rays.py -- \
   --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"

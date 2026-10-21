@@ -26,6 +26,10 @@ from src.tennis_scene.visualization.blender.export.bundle import (
     _write_plate,
     court_geometry,
 )
+from src.tennis_scene.visualization.blender.shots.ray_timeline import (
+    RayShot,
+    source_window,
+)
 from src.tennis_scene.visualization.review.store import StoreReader
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PinholeCamera, TriangulatedPoints
@@ -51,13 +55,18 @@ class RayLengthRule(IntEnum):
 
 @dataclass(frozen=True)
 class RaysConfig:
-    window_frames: int = 90
+    window_frames: int = 660
+    time_mode: str = "continuous"
+    two_d_seconds: float | None = None
+    pullback_seconds: float = 3.0
+    playback_seconds: float = 5.0
     ranking_suppression: str = "non_overlapping"
     fallback_ray_length_m: float = 60.0
     plate_max_width: int = 960
     plate_jpeg_quality: int = 95
 
     def __post_init__(self) -> None:
+        self.shot_timing()
         if self.ranking_suppression not in ("non_overlapping", "t0_distance"):
             raise ValueError(
                 "ranking_suppression must be non_overlapping or t0_distance"
@@ -71,6 +80,15 @@ class RaysConfig:
             raise ValueError("fallback_ray_length_m must be finite and positive")
         if not 1 <= self.plate_jpeg_quality <= 100:
             raise ValueError("plate_jpeg_quality must be in [1, 100]")
+
+    def shot_timing(self) -> RayShot:
+        """Use the same pure source clock as the standalone Blender shot."""
+        return RayShot(
+            time_mode=self.time_mode,
+            two_d_seconds=self.two_d_seconds,
+            pullback_seconds=self.pullback_seconds,
+            playback_seconds=self.playback_seconds,
+        )
 
 
 def validate_ball(ball: BallReconstructionResult, views: int) -> None:
@@ -205,12 +223,9 @@ def rank_windows(
         stop = start + window_frames
         if not outlier[start:stop].any() or not single[start:stop].any():
             continue
-        middle = np.arange(start + window_frames // 3, stop - window_frames // 3)
-        supported = middle[valid[middle] & (support[middle] >= 3)]
-        if not len(supported):
-            continue
-        center = (start + stop - 1) / 2
-        t0 = int(supported[np.argmin(np.abs(supported - center))])
+        # No frozen t0 explanation stage remains. Retain the schema field as
+        # temporal metadata; neither validity nor three-view support is needed.
+        t0 = (start + stop - 1) // 2
         candidates.append(
             {
                 "start": start,
@@ -391,12 +406,19 @@ def load_rays_input(store: Path) -> RaysInput:
 def _document(
     inputs: RaysInput, config: RaysConfig, resolved_config: dict[str, Any]
 ) -> dict[str, Any]:
+    window = source_window(inputs.fps, config.shot_timing())
+    if config.window_frames != window["window_frames"]:
+        raise ValueError(
+            f"window_frames={config.window_frames} disagrees with the 1x source "
+            f"budget {window['window_frames']} at {inputs.fps}fps"
+        )
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     return {
         "provenance": inputs.provenance,
         "ball_source": inputs.ball_source,
         "git_commit": commit,
         "resolved_config": resolved_config,
+        "source_window": window,
         "origins": {
             "observations": "measured",
             "reconstruction": "measured",
@@ -420,7 +442,7 @@ def export_ranking(
         window_frames=config.window_frames,
         ranking_suppression=config.ranking_suppression,
         candidate_limit=10,
-        t0_rule="nearest frame to center within middle third with >=3 inliers",
+        t0_rule="temporal midpoint (lower if even); metadata only, unused by playback",
         candidates=rank_windows(
             inputs.ball,
             window_frames=config.window_frames,
@@ -449,11 +471,8 @@ def export_rays_bundle(
         raise FileExistsError(f"Bundle output already exists: {output}")
     if not 0 <= start <= t0 < stop <= inputs.reader.frame_count:
         raise ValueError("Require 0 <= start <= t0 < stop <= source frame count")
-    if (
-        not inputs.ball.trajectory.valid[t0]
-        or inputs.ball.trajectory.inliers[:, t0].sum() < 3
-    ):
-        raise ValueError("t0 must have a valid ball and at least three inlier views")
+    if stop - start != config.window_frames:
+        raise ValueError("Export interval must match explicit window_frames")
     arrays = ray_arrays(
         inputs.cameras, inputs.ball, fallback_ray_length_m=config.fallback_ray_length_m
     )

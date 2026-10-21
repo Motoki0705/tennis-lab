@@ -38,6 +38,7 @@ from ray_timeline import (  # noqa: E402
     calibrated_pose,
     plan_timeline,
     select_camera,
+    source_window,
 )
 
 
@@ -491,6 +492,7 @@ def build(bundle: Path, output: Path, shot: RayShot) -> bpy.types.Scene:
                     "source_frames": sources.tolist(),
                     "source_sampling": "nearest timestamp per stage; no gap filling",
                     "camera_selection": camera_selection,
+                    "source_window": source_window(manifest["fps"], shot),
                     "stages": [
                         s.to_dict(shot.fps, manifest["fps"]) for s in timeline.stages
                     ],
@@ -519,20 +521,16 @@ def main(argv: list[str]) -> None:
     parser.add_argument(
         "--camera-id", help="default: most visible frames, then camera ID"
     )
-    parser.add_argument("--two-d-seconds", type=float, help="default: native speed")
+    parser.add_argument(
+        "--two-d-seconds",
+        type=float,
+        help="1x source duration; default continuous=3, replay=playback seconds",
+    )
     parser.add_argument(
         "--pullback-seconds", type=float, default=defaults.pullback_seconds
     )
-    parser.add_argument("--playback-seconds", type=float, help="default: native speed")
     parser.add_argument(
-        "--continuous-two-d-fraction",
-        type=float,
-        default=defaults.continuous_two_d_fraction,
-    )
-    parser.add_argument(
-        "--continuous-pullback-fraction",
-        type=float,
-        default=defaults.continuous_pullback_fraction,
+        "--playback-seconds", type=float, default=defaults.playback_seconds
     )
     parser.add_argument("--frames", help="start:end, inclusive")
     parser.add_argument("--samples", type=int, default=defaults.samples)
@@ -555,8 +553,6 @@ def main(argv: list[str]) -> None:
             two_d_seconds=args.two_d_seconds,
             pullback_seconds=args.pullback_seconds,
             playback_seconds=args.playback_seconds,
-            continuous_two_d_fraction=args.continuous_two_d_fraction,
-            continuous_pullback_fraction=args.continuous_pullback_fraction,
         ),
     )
     if args.frames:
