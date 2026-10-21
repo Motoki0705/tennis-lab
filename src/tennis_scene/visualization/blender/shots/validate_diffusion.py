@@ -44,6 +44,23 @@ def validate(bundle: Path) -> dict:
     ball_visible = np.load(bundle / "ball_visible.npy")
     curve_visible = np.load(bundle / "curve_visible.npy")
     centers = np.load(bundle / "tube_center_indices.npy")
+    cache = np.memmap(
+        bundle / "process.pc2",
+        dtype="<f4",
+        mode="r",
+        offset=32,
+        shape=(
+            manifest["num_frames"],
+            len(centers) * (manifest["config"]["tube_sides"] + 1),
+            3,
+        ),
+    )
+    faces = np.load(bundle / "tube_faces.npy")
+    curve_source = bpy.data.objects["CompletionCurve"]
+    if not np.array_equal(
+        np.array([polygon.vertices[:] for polygon in curve_source.data.polygons]), faces
+    ):
+        raise AssertionError("Curve topology differs from exported tube")
     states = np.load(bundle / "condition_state.npy")
     positions = np.load(bundle / "condition_position.npy")
     trajectory = np.load(bundle / "trajectory.npy")
@@ -95,15 +112,20 @@ def validate(bundle: Path) -> dict:
                 f"Frustum {cam['id']}/{frame}",
             )
         curve = bpy.data.objects["CompletionCurve"].evaluated_get(graph)
+        near(np.array(curve.matrix_world), np.eye(4), f"Curve transform {frame}")
         if curve.hide_render != (not bool(curve_visible[frame])):
             raise AssertionError(f"Curve visibility at {frame}")
         vertices = np.empty((len(curve.data.vertices), 3), np.float32)
         curve.data.vertices.foreach_get("co", vertices.ravel())
+        near(vertices, cache[frame], f"Tube vertices {frame}")
         near(vertices[centers], process[frame], f"Process {frame}")
         ball = bpy.data.objects["CompletedBall"].evaluated_get(graph)
         if ball.hide_render != (not bool(ball_visible[frame])):
             raise AssertionError(f"Ball visibility at {frame}")
-        near(ball.matrix_world.translation, ball_positions[frame], f"Ball {frame}")
+        # Blender omits viewport-hidden objects from dependency evaluation.
+        # Their cached transform is irrelevant until visibility becomes true.
+        if ball_visible[frame]:
+            near(ball.matrix_world.translation, ball_positions[frame], f"Ball {frame}")
     return {
         "ok": True,
         "frames_checked": manifest["num_frames"],
