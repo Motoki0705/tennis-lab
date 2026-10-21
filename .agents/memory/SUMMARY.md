@@ -12,6 +12,7 @@
 - 長時間ジョブは定期的に起きて確かめず、完了・失敗だけを監視して待つ。
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
+- 親セッションは、依存関係が許す子issueを並列に起動する。merge待ちの依存はstacked branchで越え、pytestはlockで直列にする。
 
 ## [environment](environment/index.md) — 環境の癖
 
