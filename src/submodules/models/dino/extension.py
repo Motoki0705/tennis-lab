@@ -17,8 +17,8 @@ def validate_dino_extension() -> Path:
     No extension is built, searched for elsewhere, or substituted on failure.
     """
     rebuild = (
-        "Rebuild DINO with this checkout's tests/benchmarks/build_dino_extension.sh "
-        "and select its lib directory explicitly via PYTHONPATH."
+        "Follow docs/installation/README.md#dino-cuda-extension to rebuild with "
+        "scripts/build_dino_extension.sh and select its lib explicitly via PYTHONPATH."
     )
     try:
         extension = importlib.import_module("MultiScaleDeformableAttention")

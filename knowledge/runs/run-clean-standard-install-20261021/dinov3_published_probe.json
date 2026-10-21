@@ -1,0 +1,12 @@
+{
+  "court_filename": "b863df1f01f0.ckpt",
+  "backbone_filename": "dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+  "embedded_prefix": "model.encoder.backbone.module.",
+  "embedded_tensors": 188,
+  "standalone_tensors": 188,
+  "same_keys": true,
+  "same_tensors": true,
+  "parameters": 85697296,
+  "court_sha256": "bca48cdbdf0b26847b3f650cc4249397b2f7c0a963ba4801b7cd111c6e81522c",
+  "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c"
+}

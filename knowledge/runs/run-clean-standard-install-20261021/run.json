@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207442519961621865_2026-10-21T04-38-00-038378134Z_1544414_clean_install_standard",
+  "name": "clean_install_standard",
+  "command": "bash /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/run_pipeline.sh",
+  "provider": "claude",
+  "session": "28f24ac1-d24f-4418-8ae8-606f1058850c",
+  "issue": "1274",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "261c2186134bbe09e11b757e55aa1cb70bd02335",
+  "branch": "HEAD",
+  "remote": "/home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide",
+  "cwd": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo",
+  "repo_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo",
+  "captured_at": "2026-10-21T13:38:00+09:00"
+}

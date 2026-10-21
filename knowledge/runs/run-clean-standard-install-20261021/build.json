@@ -1,0 +1,27 @@
+{
+  "config": {
+    "compressed_time_local_bindings": "src/utils/models/components/ops/compressed_time_local/bindings.cpp",
+    "compressed_time_local_kernels": "src/utils/models/components/ops/compressed_time_local/kernels.cu",
+    "destination": "dino_ops_sources",
+    "destination_role": "cache",
+    "paths": {
+      "artifact_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/dino_extension",
+      "cache_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/dino_extension/cache",
+      "checkpoint_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/ckpt",
+      "data_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data",
+      "external_asset_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/third_party",
+      "output_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/dino_extension",
+      "project_root": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo"
+    },
+    "source": "DINO/models/dino/ops/src",
+    "source_role": "external_asset"
+  },
+  "environment": {
+    "CUDA_HOME": "/usr/local/cuda-13.0",
+    "MAX_JOBS": "2",
+    "TORCH_CUDA_ARCH_LIST": "12.0"
+  },
+  "nvcc": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0\n",
+  "torch": "2.14.1+cu130",
+  "torch_cuda": "13.0"
+}

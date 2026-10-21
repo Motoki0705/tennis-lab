@@ -1,0 +1,10 @@
+[2026-10-21 14:09:04,373][__main__][INFO] - Loading scene from /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/generate/clean_install/scene.npz
+[2026-10-21 14:09:05,417][__main__][INFO] - Scene: 1010 frames, 59.9 FPS
+[2026-10-21 14:09:05,417][__main__][INFO] - Resolution: 1920x1080
+[2026-10-21 14:09:05,417][__main__][INFO] - Camera: mode=static, base=(18, -90, zoom=1.60)
+[2026-10-21 14:09:05,422][__main__][INFO] - 3D mode, FPS: 59.9
+[2026-10-21 14:09:05,423][__main__][INFO] - Frame range: 0-1010
+[2026-10-21 14:09:05,423][__main__][INFO] - Saving animation to /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/visualize/clean_install/scene.mp4
+[2026-10-21 14:09:05,457][matplotlib.animation][INFO] - Animation.save using <class 'matplotlib.animation.FFMpegWriter'>
+[2026-10-21 14:09:05,457][matplotlib.animation][INFO] - MovieWriter._run: running command: ffmpeg -f rawvideo -vcodec rawvideo -s 1200x800 -pix_fmt rgba -framerate 59.94006 -loglevel error -i pipe: -vcodec h264 -pix_fmt yuv420p -y /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/visualize/clean_install/scene.mp4
+[2026-10-21 14:14:59,463][__main__][INFO] - Animation saved successfully

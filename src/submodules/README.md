@@ -141,16 +141,11 @@ GVHMRはメイン環境との競合を避けるため `vendor/gvhmr/` に移植�
 DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから読み込み、型付きの
 推論契約だけを `models/dino/` に置きます。
 
-DINO利用時はsubmoduleを初期化し、custom CUDA opをルート `setup.py` からビルドします。
-PyTorch互換修正は `build/` 内の生成ソースだけに適用し、submodule自体は変更しません。
+DINO利用時のsubmodule初期化・CUDA toolkit要件・拡張ビルドは
+[導入手順](../../docs/installation/README.md#dino-cuda-extension)を正本とします。
+PyTorch互換修正は出力ディレクトリ内の生成ソースだけに適用し、submodule自体は変更しません。
 
 `validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、
 forward/backwardが上流のCPU非対応エラーへ到達することを確認します。import可能でも
 古いPyTorch APIで停止するバイナリは拒否します。CUDA kernelの動作・精度は別途queueで検証します。
-run専用のビルドには[build_dino_extension.sh](../../tests/benchmarks/build_dino_extension.sh)を使い、
-出力の`lib/`を`PYTHONPATH`へ明示してください。共有の古いビルドへの自動切替はしません。
-
-```bash
-git submodule update --init third_party/DINO
-TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python setup.py build_ext --inplace
-```
+出力の`lib/`を`PYTHONPATH`へ明示し、共有の古いビルドへの自動切替はしません。
