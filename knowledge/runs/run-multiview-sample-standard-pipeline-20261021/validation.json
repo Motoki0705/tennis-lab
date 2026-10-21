@@ -8,7 +8,9 @@
     "tree": "9006f4f657eaf6e2fec11fc92eb33f15858125f5",
     "trees_identical": true,
     "captured_git_status_empty": true,
-    "captured_patch_size_bytes": 0
+    "captured_patch_size_bytes": 0,
+    "published_commit": "cb8f1be66c34256046d1388962ee0f1dde3a9811",
+    "published_commit_differs_only_in": "#1312 commit-reference updates: src/ README files (4) and knowledge/; executable code and configs identical"
   },
   "queue": {
     "job": "0-8207457047915595751_2026-10-21T00-35-52-084404248Z_247100_multiview_sample_release_a2",

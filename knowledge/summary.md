@@ -1,4 +1,4 @@
-<!-- knowledge-review: dc8573ff896df23e7783a8cf6f55f31fe0f4410b157a38ef9c6e6732cde393cf on 2026-10-21 -->
+<!-- knowledge-review: 04fc9dd35fb7b0dbcda0fc915ae039c4751c5cb436df17b458c223a3ef656b02 on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走確認を追加。既存の採用判断は維持）

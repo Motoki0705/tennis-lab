@@ -28,7 +28,7 @@ metrics:
   player_root_frames: [1000, 993]
   player_smpl_frames: [1000, 993]
 repro:
-  commit: 001a0afafb804b032f4dff9bf099d10f426ad305
+  commit: cb8f1be66c34256046d1388962ee0f1dde3a9811
   branch: codex/multiview-sample
 artifacts:
   run_dir: knowledge/runs/run-multiview-sample-standard-pipeline-20261021
@@ -81,8 +81,8 @@ cam0は1280×960から1440×1080へ拡大し、左右各240pxの余白を付け�
 被撮影者の同意・公開条件は [LICENSES.md](../../../LICENSES.md#サンプルdatasetの利用条件) を正とする。
 
 実行時commitは旧履歴の `925631791ceb271ef88cf919061317891097dc0e`。
-#1310の履歴書き換え後は `001a0afafb804b032f4dff9bf099d10f426ad305` に対応する。
-両commitのtreeをGitで照合し、どちらも `9006f4f657eaf6e2fec11fc92eb33f15858125f5` と一致した。
+#1310の履歴書き換え後に、新しい履歴へ載せ替えた同じ変更は `001a0afafb804b032f4dff9bf099d10f426ad305`（未公開）で、treeは実行時と同じ `9006f4f657eaf6e2fec11fc92eb33f15858125f5` だった。
+その後、参照の付け替え（#1312）を含むmainへ載せ替えた公開commitは `cb8f1be66c34256046d1388962ee0f1dde3a9811` である。実行時のtreeとの差は、#1312 による参照の付け替え（`src/` 配下のREADME 4件とknowledge配下）だけで、実行されるコード・設定は同一である。
 queueが実行前に採録したgit statusとuncommitted patchはともに空だった。
 [run.json](../../runs/run-multiview-sample-standard-pipeline-20261021/run.json) は実行時の記録をそのまま保存しているため、
 旧commitと当時の絶対パスを保持する。再現時のコード参照には上記の新commitを使う。
@@ -115,7 +115,7 @@ queueが実行前に採録したgit statusとuncommitted patchはともに空だ
 `ASSET_ROOT` は `third_party/DINO` を持つ取得済み資産のrootへ明示する）:
 
 ```bash
-git checkout --detach 001a0afafb804b032f4dff9bf099d10f426ad305
+git checkout --detach cb8f1be66c34256046d1388962ee0f1dde3a9811
 CUDA_HOME=/usr/local/cuda TORCH_CUDA_ARCH_LIST=12.0 MAX_JOBS=2 \
   bash knowledge/runs/run-scene-component-meiji-fullclip-b863-20260925/build_dino_extension.sh \
   "$ASSET_ROOT" "$PWD/outputs/tennis_scene/generate/multiview_sample_release_20261021_dino"
