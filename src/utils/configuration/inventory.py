@@ -282,6 +282,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.utils.sample_dataset.__init__": (
+        "sample_dataset.download",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.utils.model_weights.__init__": (
         "model_weights.download",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -850,6 +854,10 @@ _RUNTIME_BOUNDARIES += (
 )
 
 _RUNTIME_BOUNDARIES += (
+    _non_hydra_boundary(
+        "src.utils.sample_dataset.__init__", "_data_resolver", domain="sample_dataset",
+        kind=BoundaryKind.CALLABLE,
+    ),
     _non_hydra_boundary(
         "src.utils.model_weights.__init__", "_checkpoint_resolver", domain="model_weights",
         kind=BoundaryKind.CALLABLE,

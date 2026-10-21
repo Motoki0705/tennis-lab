@@ -239,6 +239,29 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python scripts/export_detector_weights.py \
 # 既存bundleやHubからの再取得版をCPUで比較するときは同じ引数に--verify-onlyを追加
 ```
 
+## Published multiview sample
+
+[`sample_dataset/`](sample_dataset/)は[公開サンプルdataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)の
+動画3本、公開用`clip.json`、`LICENSE`をDATA rootの`samples/`に取得します。
+既定pipelineの`video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]`をそのまま使えます。
+利用条件は[LICENSES.md](../../LICENSES.md#サンプルdatasetの利用条件)、撮影・同期・letterbox・SHA-256は
+配布先のdataset cardを参照してください。raw動画・注釈・推論結果は取得しません。
+
+repo rootで、絶対パスの`--data-root`を明示します。
+
+```bash
+.venv/bin/python -m src.utils.sample_dataset --data-root "$PWD/data"
+.venv/bin/python -m src.utils.sample_dataset --data-root "$PWD/data" --verify-only
+```
+
+`--revision <Hub commit>`で配布版を固定できます。期待するファイル名とSHA-256の正本は
+`PUBLISHED_FILES`です。既存ファイルが一致すれば再取得せず、不一致なら全ファイルの取得前に
+停止します。競合ファイルは利用者が明示的に退避してください。欠損ファイルはHubから
+`force_download=True`で再取得し、通信失敗時にキャッシュへ戻りません。
+ダウンロードと一時コピーのSHA-256を検査し、既存ファイルを上書きせず原子的に配置します。
+途中で失敗した場合、先に配置した検証済みファイルは残り、再実行時に再検査して使います。
+`--verify-only`はネットワークも書き込みも行わず、欠損・不一致をエラーにします。
+
 ## Adding a utility
 
 1. まず近い既存モジュールを探す。新規ファイル追加より、既存モジュールへの寄せ先があることが多い。
