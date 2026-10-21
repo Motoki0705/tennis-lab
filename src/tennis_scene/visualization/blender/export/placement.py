@@ -985,7 +985,7 @@ def _cpu_body_model(inputs: PlacementInputs) -> BodyGeometryModel:
         inputs.body_assets,
         _CpuRuntime(),
     )
-    return SmplGeometry(cast(PeopleModelConfig, binding))
+    return cast(BodyGeometryModel, SmplGeometry(cast(PeopleModelConfig, binding)))
 
 
 def export_blender_placement_bundle(
