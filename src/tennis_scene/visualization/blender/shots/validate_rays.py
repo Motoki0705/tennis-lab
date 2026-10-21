@@ -201,6 +201,11 @@ def validate(bundle: Path) -> dict[str, Any]:
             material = ray.active_material
             if len(ray.data.materials) != 1 or material.name != f"RayMaterial_{view}":
                 raise AssertionError(f"Ray {view} material assignment at {frame}")
+            if (
+                material.surface_render_method != "BLENDED"
+                or material.use_transparency_overlap
+            ):
+                raise AssertionError(f"Ray {view} transparency method at {frame}")
             nodes = material.node_tree.nodes
             dashed = float(nodes["Dashed"].outputs[0].default_value)
             opacity = float(nodes["Opacity"].outputs[0].default_value)
@@ -222,7 +227,11 @@ def validate(bundle: Path) -> dict[str, Any]:
                     f"Ray {view} material state at {frame}: state={state}, dashed={dashed}, opacity={opacity}, color={color}"
                 )
             material_checks += 1
-            if in_3d and frame in (timeline.playback_start, len(sources) - 1):
+            if in_3d and frame in (
+                timeline.playback_start,
+                (timeline.playback_start + len(sources) - 1) // 2,
+                len(sources) - 1,
+            ):
                 camera_point = camera.matrix_world.inverted() @ Vector(
                     (base_world + tip_world) * 0.5
                 )
@@ -241,6 +250,7 @@ def validate(bundle: Path) -> dict[str, Any]:
                         "state": state,
                         "dashed": dashed,
                         "opacity": opacity,
+                        "surface_render_method": material.surface_render_method,
                         "length_m": float(np.linalg.norm(tip_world - base_world)),
                         "projected_diameter_px_approx": 2
                         * shot.ray_radius_m
@@ -308,6 +318,8 @@ def validate(bundle: Path) -> dict[str, Any]:
         "ray_states_seen": sorted(states_seen),
         "material_checks": material_checks,
         "ray_geometry": "midpoint_relative_pc2",
+        "ray_material_surface": "BLENDED",
+        "render_samples": int(scene.eevee.taa_render_samples),
         "material_samples": material_samples,
         "ball_source": manifest["ball_source"],
     }

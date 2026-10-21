@@ -274,6 +274,10 @@ def config(tmp_path: Path, *overrides: str) -> DictConfig:
             overrides=[
                 f"paths.project_root={tmp_path}",
                 "input=clip/store",
+                "mode=rank",
+                "start=null",
+                "stop=null",
+                "t0=null",
                 *overrides,
             ],
         )
@@ -297,6 +301,28 @@ def test_config_has_explicit_roles_and_export_selection(tmp_path: Path) -> None:
         parse_rays_config(config(tmp_path, "mode=export"))
     with pytest.raises(SemanticConfigurationError, match="does not accept"):
         parse_rays_config(config(tmp_path, "start=0"))
+
+
+def test_adopted_defaults_pin_continuous_interval_and_camera(tmp_path: Path) -> None:
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"
+    ):
+        cfg = compose(
+            config_name="export_blender_rays",
+            overrides=[f"paths.project_root={tmp_path}"],
+        )
+    runtime = parse_rays_config(cfg)
+    assert runtime.mode == "export"
+    assert (runtime.start, runtime.stop, runtime.t0) == (282, 942, 611)
+    assert runtime.config.window_frames == 660
+    assert runtime.config.camera_id == "cam1"
+    assert runtime.config.time_mode == "continuous"
+    assert (
+        runtime.config.two_d_seconds,
+        runtime.config.pullback_seconds,
+        runtime.config.playback_seconds,
+    ) == (3.0, 3.0, 5.0)
+    assert runtime.config.plate_max_width == 1920
 
 
 @pytest.mark.parametrize(
@@ -431,6 +457,9 @@ def test_export_reads_lineage_without_mutating_store_and_writes_partial_plates(
     assert document["frames"] == [1, 13] and document["t0"] == 6
     assert document["source_window"]["window_frames"] == 12
     assert document["source_window"]["source_speed"] == 1.0
+    assert document["camera_selection"]["camera_id"] == "cam2"
+    assert document["camera_selection"]["policy"] == "most_visible_frames"
+    assert document["camera_selection"]["visible_frames"] == 12
     assert document["origins"]["rays_and_frusta"] == "schematic"
     assert np.load(out / "ray_direction.npy").shape == (3, 12, 3)
     assert np.load(out / "ray_origin.npy").shape == (3, 3)
@@ -472,10 +501,14 @@ def test_export_allows_invalid_midpoint_because_playback_does_not_use_t0(
         start=0,
         stop=12,
         t0=8,
-        config=small_export_config(),
+        config=small_export_config(camera_id="cam1"),
         resolved_config={},
     )
-    assert json.loads(manifest.read_text())["t0"] == 8
+    document = json.loads(manifest.read_text())
+    assert document["t0"] == 8
+    assert document["camera_selection"]["camera_id"] == "cam1"
+    assert document["camera_selection"]["policy"] == "explicit_camera_id"
+    assert document["camera_selection"]["visible_frames"] == 11
 
 
 def test_export_rejects_wrong_window_length_and_budget_before_writing(
@@ -497,6 +530,16 @@ def test_export_rejects_wrong_window_length_and_budget_before_writing(
             inputs,
             tmp_path / "ranking.json",
             config=RaysConfig(window_frames=12),
+            resolved_config={},
+        )
+    with pytest.raises(ValueError, match="Unknown camera_id"):
+        export_rays_bundle(
+            inputs,
+            tmp_path / "bundle",
+            start=0,
+            stop=12,
+            t0=5,
+            config=small_export_config(camera_id="unknown"),
             resolved_config={},
         )
     assert (

@@ -11,6 +11,60 @@
 他のshotもこの2関数を再利用できます。コート・ネット・材質・compositorは既存の
 `shots/common.py` を使います。
 
+## 採用した構成と再生成
+
+設定の既定は、ユーザーが採用した Meiji の **continuous** 構成です。
+
+| 項目 | 採用値 |
+|---|---|
+| store（ARTIFACT root相対） | `tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store` |
+| 入力区間 | `[282,942)`、660frame、59.94006fps |
+| カメラ | `cam1` に固定。区間内の観測数が最多（cam0=569、cam1=642、cam2=607）だったため |
+| 2D → 引き → 3D | 3秒 → 3秒 → 約5秒、全場面で1x |
+| 出力 | 1920×1080・30fps・331frame（11.033秒）。30fpsへの丸めで3Dは5.033秒 |
+
+`camera_id=null` は新しい素材で観測数による自動選択を要求する指定です。
+採用素材では選択結果を固定し、exportの `camera_selection` と撮影のmanifestに件数を残します。
+
+worktreeから共有入力を読み、既定の区間とカメラで新しいbundleを作る例です。
+`output` は毎回新しいrun名にしてください。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
+  paths.artifact_root=/absolute/main/outputs \
+  output=tennis_scene/visualize/export_blender_rays/meiji-rays-final
+```
+
+次のBlenderコマンドは、同じworktreeをcwdとして共有training queueへ
+`--provider codex --issue 1213 --resource half` で登録します。workerは親が管理します。
+`BUNDLE`・`SHOT_DIR` は絶対パス、Windows版では対応するUNCパスを渡してください。
+
+```bash
+blender --background --factory-startup --python-exit-code 1 \
+  --python src/tennis_scene/visualization/blender/shots/ball_rays.py -- \
+  --bundle "$BUNDLE" --output "$SHOT_DIR" --camera-id cam1 \
+  --time-mode continuous --two-d-seconds 3 --pullback-seconds 3 --playback-seconds 5 \
+  --samples 64 --render
+blender --background "$SHOT_DIR/ball_rays.blend" --python-exit-code 1 \
+  --python src/tennis_scene/visualization/blender/shots/validate_rays.py -- \
+  --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
+ffmpeg -n -framerate 30 -start_number 0 -i "$SHOT_DIR/frames/%05d.png" \
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/ball_rays.mp4"
+ffmpeg -n -i "$SHOT_DIR/ball_rays.mp4" \
+  -filter_complex 'fps=15,scale=1920:-1:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse=dither=none' \
+  "$SHOT_DIR/ball_rays.gif"
+```
+
+スライド用の小さいGIFは同じ式の `scale=960:-1` で生成します。
+代表静止画は連番のframe 44（2D）、134（引きの途中）、255（3D playback）です。
+MP4は `ffprobe -count_frames` と `ffmpeg -xerror -i <mp4> -f framemd5 -` で全frameを復号し、
+331frame・1920×1080・30fps・11.033秒を確認します。
+
+3D代表静止画の出力frame 255はsource frame 791に対応し、3本ともinlierです。
+光線の材質はBLENDED・重なりなしで、破線maskは単独viewだけに適用します。
+半径0.012mの線はプレビューで1px未満になるため、960×540・8sampleでは実線が
+細切れに見える場合があります。最終版は64sampleを既定とし、1920×1080で確認します。
+
 ## 候補とbundle
 
 入口は `src.tennis_scene.scripts.export_blender_rays`、設定の正本は
@@ -20,7 +74,8 @@
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
-  input=tennis_scene/evaluate/<run>/store mode=rank window_frames=660
+  input=tennis_scene/evaluate/<run>/store mode=rank \
+  start=null stop=null t0=null camera_id=null window_frames=660
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
   input=tennis_scene/evaluate/<run>/store mode=export \
   window_frames=660 start=282 stop=942 t0=611
@@ -65,7 +120,7 @@ bundle schemaは `tennis_scene_blender_rays_v1` です。`ray_origin (V,3)`、
 
 Blender 5.2の同梱Pythonで動き、repoはimportしません。CPUだけで使える
 [shots/ray_timeline.py](shots/ray_timeline.py) の `RayShot` が設定の正本です。
-既定は1920×1080・30fpsです。旧来の `t0` 固定による段階的な説明は行いません。
+既定は1920×1080・30fps・64sampleです。旧来の `t0` 固定による段階的な説明は行いません。
 
 1. `two_d`: 実カメラと一致するK・R・tで画像面を画面いっぱいに映し、元映像と
    カメラ色の検出リングを再生します。リングは同じ画素の光線に沿って画像面より手前に置きます。
@@ -106,11 +161,11 @@ rank・exportのconfigにも同名の秒数と `time_mode` を指定し、`windo
 # continuous: 3秒 + 3秒 + 5秒を1xで。
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
   input=tennis_scene/evaluate/<run>/store mode=rank \
-  time_mode=continuous two_d_seconds=3 pullback_seconds=3 playback_seconds=5 window_frames=660
+  start=null stop=null t0=null camera_id=null time_mode=continuous two_d_seconds=3 pullback_seconds=3 playback_seconds=5 window_frames=660
 # replay: 同じ5秒の区間を前後で再生。
 .venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
   input=tennis_scene/evaluate/<run>/store mode=rank \
-  time_mode=replay two_d_seconds=5 pullback_seconds=3 playback_seconds=5 window_frames=300
+  start=null stop=null t0=null camera_id=null time_mode=replay two_d_seconds=5 pullback_seconds=3 playback_seconds=5 window_frames=300
 ```
 
 元fps・秒数・frame数の丸め方・計算した窓長はrank/bundle/shotの `source_window` に記録します。
@@ -123,24 +178,8 @@ continuousでは全場面を通して1つの1x時計を使い、場面の境界�
 光線の円柱は中点からの相対座標をPC2に保存し、長い棄却光線でも端点の精度を保ちます。
 単独viewの破線は長手方向の `ray_axis` 属性によるものです。
 
-次のBlenderコマンドは共有training queueの `--resource half` へ登録します。
-`BUNDLE`・`SHOT_DIR` は絶対パス、Windows版Blenderでは対応するUNCパスを渡してください。
-新規出力先が必要です。`--render` なしでは `.blend` の生成だけを行います。
-
-```bash
-blender --background --factory-startup --python-exit-code 1 \
-  --python src/tennis_scene/visualization/blender/shots/ball_rays.py -- \
-  --bundle "$BUNDLE" --output "$SHOT_DIR" --time-mode continuous \
-  --two-d-seconds 3 --pullback-seconds 3 --playback-seconds 5 --render
-blender --background "$SHOT_DIR/ball_rays.blend" --python-exit-code 1 \
-  --python src/tennis_scene/visualization/blender/shots/validate_rays.py -- \
-  --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
-ffmpeg -n -framerate 30 -start_number 0 -i "$SHOT_DIR/frames/%05d.png" \
-  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/ball_rays.mp4"
-ffmpeg -n -i "$SHOT_DIR/ball_rays.mp4" \
-  -filter_complex 'fps=15,scale=960:-1,split[a][b];[a]palettegen[p];[b][p]paletteuse' \
-  "$SHOT_DIR/ball_rays.gif"
-```
+採用構成の描画・検証・MP4/GIF化は[再生成手順](#採用した構成と再生成)を参照してください。
+`--render` なしでは `.blend` の生成だけを行い、既存の出力先は拒否します。
 
 960×540のプレビューは `--samples 8 --resolution-percentage 50` を付けます。
 `--frame-step 3` なら動画化を `-framerate 10 -pattern_type glob -i "$SHOT_DIR/frames/*.png"`

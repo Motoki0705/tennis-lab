@@ -28,6 +28,7 @@ from src.tennis_scene.visualization.blender.export.bundle import (
 )
 from src.tennis_scene.visualization.blender.shots.ray_timeline import (
     RayShot,
+    select_camera,
     source_window,
 )
 from src.tennis_scene.visualization.review.store import StoreReader
@@ -60,9 +61,10 @@ class RaysConfig:
     two_d_seconds: float | None = None
     pullback_seconds: float = 3.0
     playback_seconds: float = 5.0
+    camera_id: str | None = None
     ranking_suppression: str = "non_overlapping"
     fallback_ray_length_m: float = 60.0
-    plate_max_width: int = 960
+    plate_max_width: int = 1920
     plate_jpeg_quality: int = 95
 
     def __post_init__(self) -> None:
@@ -84,6 +86,7 @@ class RaysConfig:
     def shot_timing(self) -> RayShot:
         """Use the same pure source clock as the standalone Blender shot."""
         return RayShot(
+            camera_id=self.camera_id,
             time_mode=self.time_mode,
             two_d_seconds=self.two_d_seconds,
             pullback_seconds=self.pullback_seconds,
@@ -477,6 +480,14 @@ def export_rays_bundle(
         inputs.cameras, inputs.ball, fallback_ray_length_m=config.fallback_ray_length_m
     )
     manifest = _document(inputs, config, resolved_config)
+    _, camera_selection = select_camera(
+        {
+            "frames": [start, stop],
+            "cameras": [{"id": camera.camera_id} for camera in inputs.cameras],
+        },
+        arrays["detection_uv"][:, start:stop],
+        config.camera_id,
+    )
     manifest.update(
         schema=RAYS_SCHEMA,
         fps=inputs.fps,
@@ -485,6 +496,7 @@ def export_rays_bundle(
         num_frames=stop - start,
         court=court_geometry(),
         cameras=[],
+        camera_selection=camera_selection,
         ray_states={item.name: int(item) for item in RayState},
         ray_length_rules={item.name: int(item) for item in RayLengthRule},
     )

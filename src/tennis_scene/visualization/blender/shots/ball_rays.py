@@ -234,6 +234,10 @@ def _build_view(
     ring = _marker(f"Detection_{view}", ring_mat)
     ring.parent = root
     ray_mat = _material(f"RayMaterial_{view}", color, strength=2.0)
+    # Use explicit alpha blending for outliers and single-view dashes.
+    # Opaque inliers keep alpha=1; render samples handle subpixel coverage.
+    ray_mat.surface_render_method = "BLENDED"
+    ray_mat.use_transparency_overlap = False
     ray, unit = _ray_mesh(f"Ray_{view}", shot.ray_radius_m, ray_mat)
     cache = np.zeros((len(sources), len(unit), 3), np.float32)
     ray_valid, ring_valid = [], []

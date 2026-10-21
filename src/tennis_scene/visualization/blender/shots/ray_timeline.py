@@ -18,7 +18,7 @@ class RayShot:
     fps: int = 30
     width: int = 1920
     height: int = 1080
-    samples: int = 32
+    samples: int = 64
     camera_id: str | None = None
     time_mode: str = "continuous"
     two_d_seconds: float | None = None

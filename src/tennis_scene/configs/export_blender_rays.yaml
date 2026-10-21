@@ -1,26 +1,29 @@
 defaults:
   - paths: default
   - _self_
-input: ???
+input: tennis_scene/evaluate/i931-default-meiji-clip000-20260927/store
 output: ${tennis_output:tennis_scene,visualize,export_blender_rays,${tennis_run_id:}}
-mode: rank
-start: null
-stop: null
-t0: null
+# Adopted continuous shot (source frame interval is half-open).
+mode: export
+start: 282
+stop: 942
+t0: 611
 # Explicit source budget at 59.94/60fps: ceil(3*fps)+ceil(3*fps)+ceil(5*fps).
 # Override from source fps for other durations/rates; mismatches fail at 1x.
 window_frames: 660
 time_mode: continuous
-# null derives continuous=3s, replay=playback_seconds (whole interval).
-two_d_seconds: null
+two_d_seconds: 3.0
 pullback_seconds: 3.0
 playback_seconds: 5.0
+# Chosen by interval-wide observation count: cam0=569, cam1=642, cam2=607.
+# Pin the adopted result; null requests most-visible selection for new clips.
+camera_id: cam1
 # Greedy validity-descending/start-ascending selection; retain at most ten.
 # non_overlapping: [start,stop) intervals must not overlap (touching is allowed).
 # t0_distance: representative frames must be >= window_frames apart.
 ranking_suppression: non_overlapping
 fallback_ray_length_m: 60.0
-plate_max_width: 960
+plate_max_width: 1920
 plate_jpeg_quality: 95
 hydra:
   run:
