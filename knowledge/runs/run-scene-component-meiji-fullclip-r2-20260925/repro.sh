@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-component-store}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: b0620d701fd38ffd1d5c6cdbeeb8c0f37744cbc4 (branch codex/clip-component-store)"
-git checkout b0620d701fd38ffd1d5c6cdbeeb8c0f37744cbc4 2>/dev/null || echo "[repro] WARN: checkout b0620d701fd38ffd1d5c6cdbeeb8c0f37744cbc4 failed; using current HEAD"
+echo "[repro] target commit: b1a7dca9ed23aa115ca1c865dfa4ebd1453cb0fd (branch codex/clip-component-store)"
+git checkout b1a7dca9ed23aa115ca1c865dfa4ebd1453cb0fd 2>/dev/null || echo "[repro] WARN: checkout b1a7dca9ed23aa115ca1c865dfa4ebd1453cb0fd failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original PYTHONPATH used a DINO extension built outside the repository; it is rebuilt from

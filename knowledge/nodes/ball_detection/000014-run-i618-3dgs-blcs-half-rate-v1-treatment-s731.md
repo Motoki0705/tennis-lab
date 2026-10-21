@@ -44,7 +44,7 @@ metrics:
   paired_f1_delta: 0.0184539556503296
   qualification_passed: true
 repro:
-  commit: ac9e640903a6dfaecb65fc980f5dcf408bbcd589
+  commit: a36d4e02bcd42acc0f6e17163dacdd666827a6fb
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: .venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name

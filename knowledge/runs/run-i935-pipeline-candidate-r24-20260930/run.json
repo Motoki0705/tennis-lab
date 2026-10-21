@@ -7,7 +7,7 @@
   "issue": "935",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "521eea03985a96a715a26cdbdbdac90995aebfb6",
+  "commit": "1a1c34588e670af93f920031029fa72ac9179161",
   "branch": "campaign930/i935-14-pipeline-candidate",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain",

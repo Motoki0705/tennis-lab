@@ -28,7 +28,7 @@ metrics:
   frames: 145767
   frames_without_candidates: 0
 repro:
-  commit: c873f0b8e2b8e2c683d3a19ae83bfc74272431a9
+  commit: dad41ae6468c8910c62e2edb932c4aa2fd13e25a
   branch: campaign930/i935-3-cache-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-3-cache-training

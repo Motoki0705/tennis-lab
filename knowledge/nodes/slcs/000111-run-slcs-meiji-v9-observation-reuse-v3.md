@@ -51,7 +51,7 @@ tags:
 - integrity
 - cpu
 repro:
-  commit: 754c7201ec9540b3176d227b3d00d8e99b90faf2
+  commit: 2557c01a7cab971dd52196e6273a805a0f856311
   branch: codex/slcs-real-rgb
   command: env PYTHONPATH=. CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
     .venv/bin/python knowledge/runs/run-slcs-meiji-v9-observation-reuse-v1/reuse.py

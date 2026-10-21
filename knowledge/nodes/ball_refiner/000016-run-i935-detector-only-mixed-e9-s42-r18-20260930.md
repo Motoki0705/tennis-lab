@@ -48,7 +48,7 @@ issue: 935
 date: '2026-09-30'
 session: 01a0efbe-288b-75f0-9741-326beaf4d6aa
 repro:
-  commit: 06b8fae79fbfd27f2b45b8623bd08761d10c17be
+  commit: ed0ce6f1eb80ffc8ab52d99390881bde5a8dc79b
   branch: campaign930/i935-11-pilot-retrain
   command: timeout --signal=TERM --kill-after=15s 7185s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain
     OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 TORCHINDUCTOR_COMPILE_THREADS=2

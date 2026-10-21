@@ -40,7 +40,7 @@ metrics:
   embeddings_bitwise_equal: true
   max_embedding_difference: 0.0
 repro:
-  commit: 5d7beca7a404aaf2d3a596ab2e5f23dc88940c1e
+  commit: 2bd502fc1d7d92aa58989f7d220d87b49adbfa03
   branch: codex/plcs-reid-headless
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTHONPATH=.

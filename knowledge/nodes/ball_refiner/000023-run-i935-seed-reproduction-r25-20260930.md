@@ -32,7 +32,7 @@ issue: 935
 date: '2026-09-30'
 session: 01a0f263-c4b3-7972-a86a-90c1f4c56cc8
 repro:
-  commit: 9197995b
+  commit: 4ad05fb34eafbb7dd3fefcfa4f7706e61eadb27e
   branch: campaign930/i935-14-pipeline-candidate
   command: CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
     PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain

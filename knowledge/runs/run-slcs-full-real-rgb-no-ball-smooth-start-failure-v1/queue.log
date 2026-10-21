@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789786382137727204_422715_slcs-full-real-rgb-no-ball-smooth-e60-takeover-v1 (commit=e454473c28e5 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789786382137727204_422715_slcs-full-real-rgb-no-ball-smooth-e60-takeover-v1 (commit=b3411ab1cc8ca54d36f17d2b9ea44bef3cf57db0 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
 Seed set to 42
 Error executing job with overrides: ['loss.ball_position_smoothness_weight=0.0', 'run.output_dir=slcs/train/real_rgb_no_ball_smooth/s42-takeover-001']
 Traceback (most recent call last):

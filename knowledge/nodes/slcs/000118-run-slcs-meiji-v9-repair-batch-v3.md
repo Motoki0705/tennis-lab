@@ -25,7 +25,7 @@ metrics:
   supported_player_speed_max_mps: 11.551239967346191
   supported_ball_speed_max_mps: 53.536407470703125
 repro:
-  commit: 57726f2c8f38fe50ab3870a7a030fad78ab14b4b
+  commit: d455b785340b83b601e8344d3f057a96fef25cd5
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

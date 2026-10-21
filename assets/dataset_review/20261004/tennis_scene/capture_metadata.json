@@ -90,7 +90,7 @@
   },
   "code": {
     "after": {
-      "revision": "ba128b7ce700c96e6e282be4b58ae92fb401be2e",
+      "revision": "e5f082f636539b9d35afab1156c6ec130c9b849c",
       "files": {
         "src/tennis_scene/scripts/visualize_component_store.py": "e348105841183a940c4f61beb6bef37baa9d96a23d61f1f4f6769787d3deb679",
         "src/tennis_scene/scripts/visualize_tasks.py": "8fdb275a1166588e0df12258f84034885784ceff9ed33f759b9299312b33fffc",
@@ -104,7 +104,7 @@
       }
     },
     "before_current": {
-      "revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "revision": "ec4fe6f37e31aa59480835b106c523b81d537593",
       "files": {
         "src/tennis_scene/scripts/visualize_component_store.py": "eb7eb30b321d015b92d1eafca71320f5fae1734612d46041aa1ebb97eba1e46c"
       }

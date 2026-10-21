@@ -19,7 +19,7 @@ metrics:
   window_frames: 16
   position_error_m: 0.06978401109151
 repro:
-  commit: 782fc137d85c054d0f5ef775fe5edbf8cf52f00f
+  commit: ea35c0559ee5762d7be1851a453ce5289ee240cb
   branch: codex/dataset-scene-review
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.base.visualization.inference_queue

@@ -42,7 +42,7 @@ tags:
 - visual-review
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 740e788877a00971a7ab3d913458c8328379815e
+  commit: c04479d50c62070384eb273065ef3c6623dc1ae3
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py
@@ -63,7 +63,7 @@ repro:
 最小検出sample率97.47%、pose_supported率100%、腰肩支持率82.69%、最大隣接box移動は前frameのbox対角長の3.47%。これらは視点内の検出・支持の値で、別視点の同じ番号が同一人物であることを証明しない。clip_000のcam1は8画像、cam0/cam2は各9画像、clip_002のcam2は8画像、cam0/cam1は各9画像。学習runではないため収束曲線なし。
 
 ### アーキテクチャ⇄メトリクスの因果考察
-cam2は画像内の建物・コート背景からcam0/cam1とは逆側の撮影に見える。`740e7888` のコード確認では、`reference_pipeline/reconstruction.py:associate_people` が `view_half_turns=[false,false,true]` を使ってcam2の地面座標を反転し、共通座標のcourt Y中央値で人物を並べ替えていた。raw cacheをそのまま描く本probeはこの変換前であり、両clipの衣服と動作は期待されるview-local番号の反転と整合する。選定画像やコード確認だけから全frameの対応や3D精度は結論しない。
+cam2は画像内の建物・コート背景からcam0/cam1とは逆側の撮影に見える。`c04479d50c62070384eb273065ef3c6623dc1ae3` のコード確認では、`reference_pipeline/reconstruction.py:associate_people` が `view_half_turns=[false,false,true]` を使ってcam2の地面座標を反転し、共通座標のcourt Y中央値で人物を並べ替えていた。raw cacheをそのまま描く本probeはこの変換前であり、両clipの衣服と動作は期待されるview-local番号の反転と整合する。選定画像やコード確認だけから全frameの対応や3D精度は結論しない。
 
 ### 既存実験との比較
 v1–v3と合わせて10clip・267画像・3収録を確認した。既存のvideo_000/clip_000とvideo_001/clip_002のcam1/cam2画像も再参照し、同様のview-local番号の反転を確認したが、再参照分を画像数に加算しない。以前の「明白な隣接コートへの切替えなし」は視点内の時間的追跡の所見であり、カメラ間対応を検証したものではない。v3のraw P0/P1を視点間で集計した腰肩支持数も、canonical人物ごとの支持とは区別して再確認する。

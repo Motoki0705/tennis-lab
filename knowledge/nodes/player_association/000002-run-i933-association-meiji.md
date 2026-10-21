@@ -31,7 +31,7 @@ metrics:
   clip000_group_accuracy: 1.0
   stopped_clips: 0
 repro:
-  commit: b03426a3
+  commit: 2be3aaf51fadb6ea127e099f2d134780cc377e78
   command: >-
     R=/home/kamimura/projects/tennis-lab; COMMON="--repo $R --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset
     --observe $R/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927

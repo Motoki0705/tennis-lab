@@ -33,9 +33,9 @@
   "repro_unverifiable": 0,
   "validator_agents_requested": 0,
   "validator_agents_attempted": 0,
-  "main_integrated_commit": "e848e529928d2c8ee760faf0cd70112e2f976f13",
-  "merge_commit": "9462fd897",
-  "receipt_guard_commit": "7552a8f1d",
+  "main_integrated_commit": "9f5fed173b9dd56e4a1bb72622ff2c771b8d1f66",
+  "merge_commit": "6629deb79dbc14ef58c9f4c768bd4d5547365f6d",
+  "receipt_guard_commit": "4c43aec0d9bdaf961e946025173af1d3bf6b89de",
   "posthoc_cpu_execution_succeeded": true,
   "posthoc_typecheck_succeeded": true,
   "frozen_training_or_test_inference_repeated_after_source_integration": false

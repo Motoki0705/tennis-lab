@@ -1,5 +1,5 @@
 {
-  "reproduction_commit": "740e788877a00971a7ab3d913458c8328379815e",
+  "reproduction_commit": "c04479d50c62070384eb273065ef3c6623dc1ae3",
   "worktree": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
   "script_sha256": "170370a9c3abc271d0a3abdd336af2b9a48caa7d179ccabf7ac9fab31fabde42",
   "results_sha256": "b2bf69dd64e1baaf7e304b2e14672ab64d0498d4d43453fa17b4b038661822d7",
@@ -113,7 +113,7 @@
   ],
   "visual_findings": {
     "temporal_tracking": "No clear neighboring-court switch in these selected images. This does not establish all-frame identity.",
-    "cross_camera_identity": "In both clips cam1 local P0 is the light-blue receiver, while cam2 local P0 is the dark-blue server. The observation sheets label view-local near/far halves. Code audit at 740e7888 confirms associate_people applies configured half-turns before constructing the canonical scene player axis. This visual reversal alone is expected, not a confirmed teacher association defect. Production CPU replay is a separate follow-up.",
+    "cross_camera_identity": "In both clips cam1 local P0 is the light-blue receiver, while cam2 local P0 is the dark-blue server. The observation sheets label view-local near/far halves. Code audit at c04479d50c62070384eb273065ef3c6623dc1ae3 confirms associate_people applies configured half-turns before constructing the canonical scene player axis. This visual reversal alone is expected, not a confirmed teacher association defect. Production CPU replay is a separate follow-up.",
     "prior_review_crosscheck": "Revisited existing video_000/clip_000 and video_001/clip_002 cam1/cam2 contact sheets: same view-local reversal. These revisited images are not added to the new reviewed-image count."
   }
 }

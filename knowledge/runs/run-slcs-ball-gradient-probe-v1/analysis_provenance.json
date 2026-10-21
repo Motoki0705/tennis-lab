@@ -1,5 +1,5 @@
 {
-  "commit": "bc2e8e00e1dff7746ac8c099dcf791e9431146fc",
+  "commit": "80c2c7712b77ac09454e8fc11e5c8c9d33358e04",
   "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-ball-gradient-probe-v1/probe.py --output-dir outputs/slcs/analyze/ball_gradient_probe/REPRO_NEW_RUN_ID",
   "exit_code": 0,
   "exact_executed_script": "executed_probe.py",

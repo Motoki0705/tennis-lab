@@ -75,7 +75,7 @@ metrics:
   acceleration_rmse_per_s2: 102205.81866822844
   event_acceleration_magnitude_ratio: 11.619981236792873
 repro:
-  commit: 9588b33833c54423c361d150fbac442f9631497f
+  commit: b97e51a5e3defdab6ad70a0bd9cb80bbb47b569e
   branch: codex/coordinate-refiner-rope-gan
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates

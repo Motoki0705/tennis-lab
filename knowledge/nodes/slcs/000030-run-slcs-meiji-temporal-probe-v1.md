@@ -32,7 +32,7 @@ metrics:
   refined_positive_pose_both_inside_max_px: 257.67230180791796
   refined_positive_hip_root_reprojection_mean_px: 8.75179822469612
 repro:
-  commit: 30a7eeb04714fd548f28d0a58c9813cdfea6ee1b
+  commit: ba10b01e6b35c615e23df9bdbcc6f06d935c228a
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'env TENNIS_RGB_GPU=0 bash /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/scripts/datasets/build_real_rgb.sh

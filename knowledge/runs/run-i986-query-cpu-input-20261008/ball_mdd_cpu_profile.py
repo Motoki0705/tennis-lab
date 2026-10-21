@@ -124,7 +124,7 @@ def main() -> None:
     indices = list(FPSMixSampler(data, windows_per_epoch=6000, seed=42))[:args.windows]
     report: dict[str, Any] = dict(schema="mdd_cpu_profile.v1", case=args.case, workers=args.workers,
         windows=args.windows, torch_threads_per_process=1, opencv_threads=1,
-        manifest_sha256=dual_sha256(args.manifest), source_commit="0008c6d0b6123ce1c555523a4de6133255cc5151",
+        manifest_sha256=dual_sha256(args.manifest), source_commit="8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
         window_sequence_sha256=hashlib.sha256(json.dumps(indices).encode()).hexdigest(),
         pin_memory=False, device="cpu", prefetch_factor=1, model_executed=False,
         setup_seconds=time.perf_counter() - setup_start,

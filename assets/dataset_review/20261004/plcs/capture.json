@@ -15,7 +15,7 @@
         "height": 1000
       },
       "notes": "UI source restored from baseline commit; original read-only service and frontend; existing synthetic scene",
-      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "code_revision": "ec4fe6f37e31aa59480835b106c523b81d537593",
       "image_sha256": "ce294ad276ab90cdab5d98580d923b96153be7031d7f34f5299dd72558f3a34c",
       "browser": "151.0.7922.34"
     },
@@ -32,7 +32,7 @@
         "height": 1000
       },
       "notes": "Stored 2D observation and teacher reprojection",
-      "code_revision": "9d24a5b61cff4e1741f164727dd7c5cb19e2efd2",
+      "code_revision": "a37f344f37dee25bf8c43b0cb64862979bd6a8c8",
       "image_sha256": "4f525b30f1d115c540a5d784f80d3bcbc749a5af830c4d3367dd229096646885",
       "browser": "151.0.7922.34"
     },
@@ -49,7 +49,7 @@
         "height": 1000
       },
       "notes": "Real saved mask has 0/17 visible human joints on frame 100",
-      "code_revision": "9d24a5b61cff4e1741f164727dd7c5cb19e2efd2",
+      "code_revision": "a37f344f37dee25bf8c43b0cb64862979bd6a8c8",
       "image_sha256": "c9537318e07c9a6341e8d8c74d7a434a966134e236b8967161ebcfd825062c50",
       "browser": "151.0.7922.34"
     },
@@ -66,7 +66,7 @@
         "height": 1000
       },
       "notes": "Panel scrolled to source and split facts",
-      "code_revision": "9d24a5b61cff4e1741f164727dd7c5cb19e2efd2",
+      "code_revision": "a37f344f37dee25bf8c43b0cb64862979bd6a8c8",
       "image_sha256": "65482c3d60d1c4df5aae9ba7efc1d1736009117e8816a7d3dbcfc06af0d660a6",
       "browser": "151.0.7922.34"
     }

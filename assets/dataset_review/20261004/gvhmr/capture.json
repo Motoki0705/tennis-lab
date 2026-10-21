@@ -62,7 +62,7 @@
         "height": 1600
       },
       "url": "http://127.0.0.1:8902/?person=0&camera=cam1&frame=504",
-      "code_revision": "0f33d0e5efb005fd0817dd155a5ab6dfe98eca5a",
+      "code_revision": "1f45765475f9ba8ae5ba03bac3ea18c0771e7407",
       "ui_file_sha256": {
         "app.js": "b0382fbaba1312f98de95beebe68164353abf918fbdb480c5ce03577f5b99360",
         "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",
@@ -138,7 +138,7 @@
         "height": 1600
       },
       "url": "http://127.0.0.1:8902/?person=0&camera=cam1&frame=148",
-      "code_revision": "0f33d0e5efb005fd0817dd155a5ab6dfe98eca5a",
+      "code_revision": "1f45765475f9ba8ae5ba03bac3ea18c0771e7407",
       "ui_file_sha256": {
         "app.js": "b0382fbaba1312f98de95beebe68164353abf918fbdb480c5ce03577f5b99360",
         "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",
@@ -214,7 +214,7 @@
         "height": 1600
       },
       "url": "http://127.0.0.1:8902/?person=1&camera=cam2&frame=754",
-      "code_revision": "0f33d0e5efb005fd0817dd155a5ab6dfe98eca5a",
+      "code_revision": "1f45765475f9ba8ae5ba03bac3ea18c0771e7407",
       "ui_file_sha256": {
         "app.js": "b0382fbaba1312f98de95beebe68164353abf918fbdb480c5ce03577f5b99360",
         "style.css": "f43531a485a078a823c167d05a57eedefce187d60d7ad5c8ac9b0e9cf8cce943",

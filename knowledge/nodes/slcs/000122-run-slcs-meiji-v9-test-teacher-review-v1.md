@@ -17,7 +17,7 @@ config:
   device: cpu
 metrics: {reviewed_clips: 2, selected_frames: 20, rgb_panels: 60, positive_ball_frames: 908, positive_player_frames: 2066}
 repro:
-  commit: 48243023
+  commit: a6e60fce6cfbb14924615bc041e387f4b99b2cee
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

@@ -30,7 +30,7 @@ metrics:
   valid_positive_weight_pairs: 1579
   pair_confidence_sum: 1318.949951171875
 repro:
-  commit: 42b1429268c3e4502071ac09535d466163e9e8a2
+  commit: 97d5066546ca3e444f21287bfd6901700a44aea3
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: ae5f5baaa359ad608b973d0d9b09e8cfaae3a17f (branch campaign930/i934-4-mixed-ft)"
-git checkout ae5f5baaa359ad608b973d0d9b09e8cfaae3a17f 2>/dev/null || echo "[repro] WARN: checkout ae5f5baaa359ad608b973d0d9b09e8cfaae3a17f failed; using current HEAD"
+echo "[repro] target commit: e83f885f5b25f60f96129857c3f43eaf9f4ad1cf (branch campaign930/i934-4-mixed-ft)"
+git checkout e83f885f5b25f60f96129857c3f43eaf9f4ad1cf 2>/dev/null || echo "[repro] WARN: checkout e83f885f5b25f60f96129857c3f43eaf9f4ad1cf failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

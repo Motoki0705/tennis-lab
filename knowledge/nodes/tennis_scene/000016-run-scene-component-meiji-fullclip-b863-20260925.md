@@ -19,7 +19,7 @@ config:
   queue_status: cancelled
 metrics: {}
 repro:
-  commit: 93f6035e0733acedfa61940cd78faf2055fd4aee
+  commit: 0b64708daf178f07e758ee0dfda8681767ca0fe7
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

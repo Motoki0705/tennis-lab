@@ -24,7 +24,7 @@ metrics:
   presence_f1: 0.8811509
   id_switches: 0.66
 repro:
-  commit: 01b6cb5f46bb6c7bdd7f4735007f84d93f1689de
+  commit: e595494117fbf3f303f0249b6fe1c9237be2874b
   branch: feat/issue-832-deterministic-2d-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'test "$PWD" = "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking"

@@ -20,7 +20,7 @@ config:
 metrics:
   exit_code: 1
 repro:
-  commit: d6f29c8081f7fd664c2555bd318eda27e12efe99
+  commit: 0384d9cb908d100c7e8e3ca269177b1154444671
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

@@ -33,7 +33,7 @@ tags:
 - diagnostic-failure
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 10a8a73edf38348eb6322b901d05329b6b2c7f5d
+  commit: 7488b14ddfb5a2dd064d978b46922cc5bb7d5ad0
   branch: codex/slcs-real-rgb
   command: bash knowledge/runs/run-slcs-meiji-baseline-line-audit-v1/repro.sh /new/unique/output
 ---

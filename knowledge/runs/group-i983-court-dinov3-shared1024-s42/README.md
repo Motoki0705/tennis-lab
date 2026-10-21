@@ -8,7 +8,7 @@ S/S+/B/Lのbackboneを完全凍結し、LoRAなし、共通後段をTransformer 
 
 B00〜B03とTennisCourtDetector-v1の入力版とsplitを固定し、長辺512・縦横比維持・クロップなし、K変換とpaddingを共通化した。今回の画像は512×288。batch8（合成4・実画像4）、seed42、20epoch、optimizer/loss/precision等を揃えた。各runのlastはepoch19・step33160で、保存されたval/loss最小のcheckpointを選んだ。4条件とも結果としてepoch17・step29844が選ばれた。合成testの値を選択には使っていない。
 
-Lの学習sourceは98b737829、S/S+/Bはc4b12f923である。差分は、正当なbf16 autocast入力を許可するdtype検査修正で、モデル演算と構成は変更していない。Bの評価と比較処理もc4の実装を用いた。比較CLIの2 source fileがc4とbyte一致することを確認した。
+Lの学習sourceは7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f、S/S+/Bは75e30a565b1f7a5f7fd4f08cea2daf458d377653である。差分は、正当なbf16 autocast入力を許可するdtype検査修正で、モデル演算と構成は変更していない。Bの評価と比較処理もc4の実装を用いた。比較CLIの2 source fileがc4とbyte一致することを確認した。
 
 ## 観測と解釈
 

@@ -23,7 +23,7 @@ metrics:
   saturated_pose_slots: 323
   total_pose_slots: 655468
 repro:
-  commit: d53db5e995b10ba12d3870ca295f59663c207b8d
+  commit: bc931155185f6a2f9e5f5c43fddbd74fa2c16002
   branch: campaign930/i935-2-data-training
   command: .venv/bin/python -m src.tasks.ball_refiner.scripts.audit_data --store /home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v1 --meiji-context-root /home/kamimura/projects/tennis-lab/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927/stores --output /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-2-data-training/outputs/ball_refiner/analyze/data_audit/i935-run2-v2
 artifacts:

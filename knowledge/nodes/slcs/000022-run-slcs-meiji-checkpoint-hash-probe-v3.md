@@ -24,7 +24,7 @@ metrics:
   system_sha256sum_mismatches: 1
   elapsed_seconds: 110.17556197499835
 repro:
-  commit: 89daad4e7cf501ff4c63f5016d9aa25ae159ac52
+  commit: 5e98cceaa5e84a969c581aaf3418ba841de12b7e
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --kill-after=5s 590s env PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

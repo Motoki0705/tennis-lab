@@ -1,6 +1,6 @@
 Lossless full log: queue.log.gz. This view omits CUDA driver diagnostic lines matching ][CUDA][. Python/training output is preserved.
 
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791857516841918861_3137657_i1044-rollout_velocity-s42-u4000-cli (commit=806b0d3675e8 provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791857516841918861_3137657_i1044-rollout_velocity-s42-u4000-cli (commit=154a5e05e94d959e7423610143bfd78d1096c56d provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

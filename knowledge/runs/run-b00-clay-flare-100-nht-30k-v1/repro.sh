@@ -7,10 +7,10 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 2d78cc47c8e1fca872a87339d2d1511f34df8a3a (branch codex/b00-clay-variant)"
-# #931: the run used 893d0ca4 plus untracked source files (src/synthetic_data_generation/appearance/, scripts/run_appearance_variant.py), which the bundle did not capture.
-# They were first committed in 2d78cc47; the repro checks out that commit (the patch may not apply).
-git checkout 2d78cc47c8e1fca872a87339d2d1511f34df8a3a 2>/dev/null || echo "[repro] WARN: checkout 2d78cc47c8e1fca872a87339d2d1511f34df8a3a failed; using current HEAD"
+echo "[repro] target commit: 3eb77c7e416c4586dd2a563aa8725e657052b16c (branch codex/b00-clay-variant)"
+# #931: the run used 554327a5cbcea54fcc156540fb678b89ffd235c2 plus untracked source files (src/synthetic_data_generation/appearance/, scripts/run_appearance_variant.py), which the bundle did not capture.
+# They were first committed in 3eb77c7e416c4586dd2a563aa8725e657052b16c; the repro checks out that commit (the patch may not apply).
+git checkout 3eb77c7e416c4586dd2a563aa8725e657052b16c 2>/dev/null || echo "[repro] WARN: checkout 3eb77c7e416c4586dd2a563aa8725e657052b16c failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

@@ -53,7 +53,7 @@ metrics:
   player_ft_unmatched_far_proxy: 3489
   player_ft_unmatched_zero_iou: 3354
 repro:
-  commit: 312f11ec8c7242bef3f3fbeae14ccc0f69d70129
+  commit: 2e05ed878b53a822aaa98f9f3845c4770631a78d
   branch: campaign930/i964-1-player-detection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: bash /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-1-player-detection/tests/benchmarks/player_detection_comparison.sh

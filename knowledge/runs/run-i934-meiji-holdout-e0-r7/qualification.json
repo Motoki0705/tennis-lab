@@ -1,7 +1,7 @@
 {
   "queue_job": "1790583830380544588_9731_i934-holdout-ft-e13-vs-mixed-e0-r7-20260928",
   "queue_state": "done",
-  "inference_commit": "78ce7d9bd96104e424cd4983e7427a2b81912f9f",
+  "inference_commit": "e6369feaea818ad7dc1b4c31114edac6c4cb54ba",
   "rescore_command": [
     "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/.venv/bin/python",
     "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-4-mixed-ft/tests/benchmarks/ball_detection_holdout.py",

@@ -28,7 +28,7 @@ metrics:
   preview_frames: 80
   preview_duration_seconds: 8
 repro:
-  commit: dda1cc664080a0360550b7b6766b476cd23808de
+  commit: 472618eb28f3e79f71030e4e567a2ac42d28311f
   branch: codex/slcs-real-rgb
   command: >-
     env PYTHONUNBUFFERED=1 CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m src.tasks.slcs.scripts.predict_clip paths.checkpoint_root=/home/kamimura/projects/tennis-lab/outputs paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/home/kamimura/projects/tennis-lab/outputs 'predict.checkpoint="slcs/train/real_rgb_ball_temporal_context/s42-001/logs/version_0/checkpoints/slcs-epoch=49.ckpt"' data.dataset_root=slcs/real_rgb_v1 data.split_file=slcs/real_rgb_v1/splits.json data.quality.min_window_label_ratio=0.5 predict.clip_id=video_001/clip_000 predict.camera_id=cam0 predict.device=cpu predict.frame_step=3 predict.output_dir=slcs/visualize/real_rgb_temporal_context_meiji/s42-001
@@ -62,7 +62,7 @@ tags:
 ### アーキテクチャ詳細
 
 親のvalidationで選定したepoch49を使用。checkpoint SHA256は`94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961`。
-推論sourceは`dda1cc664080a0360550b7b6766b476cd23808de`、既存動画の合成sourceは`760195c02ace1f61a102cd1ce8f97431f52ad0fc`。
+推論sourceは`472618eb28f3e79f71030e4e567a2ac42d28311f`、既存動画の合成sourceは`1581265b274163dd7f35b7dd875485af8823fe1e`。
 元の解像度・全画角を維持してletterboxし、異なるFPSは同じwall-timeの直前frameを選ぶ。時間補間・平滑化・軌道filterは加えない。
 GIFは1200×508へ表示用に縮小・色量子化し、元の1440×610 MP4と3時点PNGも保存する。
 

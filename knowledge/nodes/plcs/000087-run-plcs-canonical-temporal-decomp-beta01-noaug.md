@@ -53,7 +53,7 @@ metrics:
   canonical_pred_high_frequency_fraction: 0.391067
   canonical_target_high_frequency_fraction: 0.06893
 repro:
-  commit: e57e1d9f868e289135dc7881fba5ffc0ee6a0282
+  commit: b50be94265533a113e46d09fa3aec28e50c6893d
   branch: exp/plcs-canonical-pose-beta
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: /home/kamimura/projects/tennis-lab/.venv/bin/python -m src.tasks.plcs.scripts.train

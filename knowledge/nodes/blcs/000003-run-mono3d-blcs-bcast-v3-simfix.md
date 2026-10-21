@@ -28,7 +28,7 @@ metrics:
   endpoint_accuracy_0_5m: 0.13
   endpoint_accuracy_1m: 0.27
 repro:
-  commit: 16a21f752374d48ea2c1e6d0ae6d5556b3d87593
+  commit: becd095ac7d63abc3251b1cda20f3132c1f65099
   branch: fix/issue-593-sim-to-real-projection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

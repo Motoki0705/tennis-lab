@@ -5,8 +5,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/i634-dino-compress-split-trunks}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 56445ad063a9a87e6453f4d095c084f8efb0b532 (branch feat/issue-634-dino-compress-split-trunks)"
-git checkout 56445ad063a9a87e6453f4d095c084f8efb0b532 2>/dev/null || echo "[repro] WARN: checkout 56445ad063a9a87e6453f4d095c084f8efb0b532 failed; using current HEAD"
+echo "[repro] target commit: edbc90c152b5df0e360c7b7bd6475b535a055d42 (branch feat/issue-634-dino-compress-split-trunks)"
+git checkout edbc90c152b5df0e360c7b7bd6475b535a055d42 2>/dev/null || echo "[repro] WARN: checkout edbc90c152b5df0e360c7b7bd6475b535a055d42 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

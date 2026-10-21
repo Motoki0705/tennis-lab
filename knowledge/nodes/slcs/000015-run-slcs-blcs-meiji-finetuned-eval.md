@@ -35,7 +35,7 @@ tags:
 - evaluation
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 4348077d8f7a0b35ab58350232cf4ccb607990f1
+  commit: 3927bd67fd17b373ab44412919563dd22e24d913
   command: CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python
     -m scripts.analysis.evaluate_blcs_real --checkpoint blcs/real-rgb-meiji-e60-v1.ckpt
     --output blcs/evaluate/meiji_finetuned/s42-001

@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930 (commit=06b8fae79fbf provider=codex session=01a0efbe-288b-75f0-9741-326beaf4d6aa)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790730250749474097_274619_i935-detector-only-mixed-e9-s42-r18-20260930 (commit=ed0ce6f1eb80ffc8ab52d99390881bde5a8dc79b provider=codex session=01a0efbe-288b-75f0-9741-326beaf4d6aa)
 [torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
 {"epoch": 0, "step": 50, "batch_nll": -1.3097859621047974}
 {"epoch": 0, "step": 100, "batch_nll": -1.0740388631820679}

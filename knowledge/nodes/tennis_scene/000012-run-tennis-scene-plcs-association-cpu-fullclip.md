@@ -54,7 +54,7 @@ tags:
 - integration
 session: 01a0c384-7833-7021-868a-22a9433bfc02
 repro:
-  commit: 5d26aa0de6b2592fddbb2433df331ba70768b32b
+  commit: 540f5e1d59936e140b00f7013c75ba7d377ccd0b
   branch: codex/tennis-scene-auto-association
   command: env CUDA_VISIBLE_DEVICES=-1 OMP_NUM_THREADS=2 /home/kamimura/projects/tennis-lab/.venv/bin/python
     tests/benchmarks/association_integration.py --task plcs --checkpoint /home/kamimura/projects/tennis-lab/outputs/plcs/train/plcs_view_association/global_mha_mhc_d512_s12_e60_20260922/logs/version_2/checkpoints/plcs-epoch=23.ckpt

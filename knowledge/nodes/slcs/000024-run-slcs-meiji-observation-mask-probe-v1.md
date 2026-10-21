@@ -22,7 +22,7 @@ metrics:
   completed_clips: 2
   masked_frames_cam2_video001_clip001: 87
 repro:
-  commit: 4348077d8f7a0b35ab58350232cf4ccb607990f1
+  commit: 3927bd67fd17b373ab44412919563dd22e24d913
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: 'env TENNIS_RGB_GPU=0 bash /home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/scripts/datasets/build_real_rgb.sh

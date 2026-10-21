@@ -21,7 +21,7 @@ metrics:
   elapsed_seconds: 207.3279926059986
   inference_seconds: 25.147090390000812
 repro:
-  commit: bbe6a703022c6b44a765b6f570e6fe7b85eceb7b
+  commit: ba468ba8a868d96cc607865f4747f6bbd3b6c60a
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout 10m env PYTHONPATH=. CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

@@ -5,7 +5,7 @@
   "job": "1791626374950003350_67338_i1049-convnext-posttrain-s42-v1-20261010.job",
   "queue_state": "done",
   "run": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-query-posttraining/convnext-v2-s42-v1",
-  "code_commit": "8ac45d9f79bf4f6a7feb343d09428a07aa6e8847",
+  "code_commit": "c7a3087085109f006a12ad1ee76b25ef85f8fff0",
   "verified_source_files": 63,
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
   "parent_checkpoint_sha256": "73f1f0d50693f4d6a84ba451f08cc1918d8fb1a0483a60a97874d916a249745f",

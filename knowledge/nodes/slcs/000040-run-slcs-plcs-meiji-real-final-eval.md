@@ -50,7 +50,7 @@ tags:
 - evaluation
 - real-rgb
 repro:
-  commit: 4348077d8f7a0b35ab58350232cf4ccb607990f1
+  commit: 3927bd67fd17b373ab44412919563dd22e24d913
   branch: codex/slcs-real-rgb
   command: CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=3 MKL_NUM_THREADS=3 .venv/bin/python
     -m src.tennis_scene.scripts.build_slcs_dataset stage=infer device=cpu paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party

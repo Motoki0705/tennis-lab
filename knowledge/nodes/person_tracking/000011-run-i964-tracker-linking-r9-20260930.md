@@ -35,8 +35,8 @@ papers: []
 tags: []
 date: '2026-09-30'
 repro:
-  commit: ebaaa0f1
-  protocol_commit: ac1957ad
+  commit: a3b3b7ea2309881c62c81b07985f50e1789f1b34
+  protocol_commit: fa56d6f7131e82a792b0fbe8caec411c80bd299c
   command: PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1
     .venv/bin/python tests/benchmarks/person_tracking_linking.py --repo /home/kamimura/projects/tennis-lab
     --features /home/kamimura/projects/tennis-lab/outputs/person_tracking/evaluate/dev_features/i964-features-r7-20260930
@@ -64,7 +64,7 @@ new+oldは11/12完走でclip_007/cam0の1,202 player unitをFNに数える。同
 
 ## offline linkingを揃えて見えたこと
 
-[addendum](../../runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)は**新結果より前にac1957adでcommit/push**し、
+[addendum](../../runs/run-i964-tracker-linking-r9-20260930/protocol-addendum.md)は**新結果より前にfa56d6f7131e82a792b0fbe8caec411c80bd299cでcommit/push**し、
 [Issueにも投稿](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5903288749)した。
 raw-ID主指標・IoU .5/1対1/人物unit/タイ規則はrun 8のまま。group IDF1はrun 8結果後に追加した副指標と明示する。
 旧6条件のraw指標は全camera/全96層で一致し、旧結果を改変していない。

@@ -82,8 +82,8 @@
     "checkpoint_sha256": "94793e761d22a1f163d8089ae0210b6cb45f7c37144deb498c31b4d85fd6f961"
   },
   "forward_validation_cleanup": {
-    "training_source": "5ab9afc7da2e9cebcd461b806e0676037d97622c",
-    "cleanup_commit": "6dbb1c19",
+    "training_source": "b73cc95a4708e0f755647bf589889678cc2f8f92",
+    "cleanup_commit": "e4bce909fba4a2cfa5e31eb896715d6482e32b4b",
     "constructor_ast_identical": true,
     "arithmetic_ast_identical": true
   },

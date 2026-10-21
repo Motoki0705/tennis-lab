@@ -1,7 +1,7 @@
 {
   "task": "player_detection",
   "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/player_detection/chat-player-v1-e8-best-epoch03.ckpt",
-  "commit": "c751331f589a40432920a4f9fc2bbf34eb3c96db",
+  "commit": "7503266aacf2e0cebd185fa353d380ad7d3c31e9",
   "status": "failed",
   "checkpoint_sha256": "f14401da5214c3f32f44171c466b5775e7daebf6bd5236c95508b3c6d68d7e05",
   "sample_indices": [

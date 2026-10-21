@@ -55,7 +55,7 @@ metrics:
     not_in_candidates_rate: 0.09779632285826052
     wrong_ranked_above_true_rate: 0.12252792628330508
 repro:
-  commit: fbe33b13125451da090f8f68720d718d9fc69c06
+  commit: 8db6104015c528b4b21e519be4d3f7138e0441d0
   branch: campaign930/i935-10-detector-selection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
@@ -96,7 +96,7 @@ tags:
 [manifestと加算可能な件数（削除済み）](../../runs/run-i935-val-candidate-recall-r15-20260929/artifact-manifest.json#/files/70)、
 [実行ログ](../../runs/run-i935-val-candidate-recall-r15-20260929/queue.log)を保存した。
 全210 clip予測NPZのhashと3checkpointの実ファイルhashを登録時にも照合した。
-元のrepro bundleは開始時commit `fbe33b13125451da090f8f68720d718d9fc69c06` / cleanを保持する。
+元のrepro bundleは開始時commit `8db6104015c528b4b21e519be4d3f7138e0441d0` / cleanを保持する。
 r15で後から追加した学習callbackは、この比較の実行コードには含まれない。
 
 主指標はMeiji video_000の単一observed球23,007 frame。

@@ -1,5 +1,5 @@
 {
-  "commit": "41020d13080c5c1765c218924bbbb4d2aee2ef84",
+  "commit": "032c11225ef7dbdb500955e5004a8784b3248129",
   "command": [
     "knowledge/runs/run-slcs-meiji-court-crop-probe-v1/probe.py",
     "--output",

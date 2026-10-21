@@ -26,7 +26,7 @@ config:
   test_after_fit: false
 metrics: {}
 repro:
-  commit: ae5f5baaa359ad608b973d0d9b09e8cfaae3a17f
+  commit: e83f885f5b25f60f96129857c3f43eaf9f4ad1cf
   branch: campaign930/i934-4-mixed-ft
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

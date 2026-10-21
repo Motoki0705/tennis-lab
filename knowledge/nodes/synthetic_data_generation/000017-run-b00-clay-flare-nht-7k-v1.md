@@ -36,7 +36,7 @@ metrics:
   scene_scale: 1.5407659983226785
   source_transform_max_abs_difference: 0.0
 repro:
-  commit: 893d0ca4129e9e69f8e8c850d89c6200cf2df2e3
+  commit: 554327a5cbcea54fcc156540fb678b89ffd235c2
   branch: codex/b00-clay-variant
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: /home/kamimura/projects/tennis-lab/.claude/worktrees/b00-clay-variant/.venv/bin/python

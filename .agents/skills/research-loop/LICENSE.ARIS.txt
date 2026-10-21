@@ -1,7 +1,7 @@
 Portions of this skill are adapted from ARIS (Auto-claude-code-research-in-sleep):
   repository: https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep
   revision:   3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d (skills/skills-codex)
-  as vendored in tennis-lab commit 57ae07631 (PR #1033, branch codex/install-aris-codex-20261006)
+  as vendored in tennis-lab commit 824d8ab91c4de38938928463b7399b26c6aceb55 (PR #1033, branch codex/install-aris-codex-20261006)
 
 Adapted files: scripts/lit_search.py, references/evidence-checklist.md,
 references/literature.md (novelty-judgement section).

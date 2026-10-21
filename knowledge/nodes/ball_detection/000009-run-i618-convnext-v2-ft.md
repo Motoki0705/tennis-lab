@@ -20,7 +20,7 @@ metrics:
   f1: 0.645535
   mean_distance_px: 2.216319
 repro:
-  commit: a577e137013287a546a4f3ce793afc6f21a73136
+  commit: abf3dfd659913a8084b8d4390c21db10fd52b541
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.ball_detection.scripts.train

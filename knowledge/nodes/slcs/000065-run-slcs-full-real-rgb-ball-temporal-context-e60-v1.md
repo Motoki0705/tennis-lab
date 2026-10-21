@@ -30,7 +30,7 @@ metrics:
   temporal_projection_nonzero_weights: 16384
   temporal_projection_norm: 2.3306963443756104
 repro:
-  commit: 5ab9afc7da2e9cebcd461b806e0676037d97622c
+  commit: b73cc95a4708e0f755647bf589889678cc2f8f92
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4
@@ -98,7 +98,7 @@ validation入力maskの事前集計では、教師有効な自然欠損2269 occu
 基準のbest validation scene monitor1.9568mに対して今回1.9492mと小幅に低下したが、単一monitorだけを採否根拠にしない。
 前のcourt-only contextは位置と境界の退行により不採用だった。今回それを重ねず、元の基準から比較する。
 基準保存configとの差は時間的context、有効時にしか使わないvelocity既定値の明示、保存root/出力先、自動終端test無効化である。
-学習開始sourceは5ab9afc7。途中にCIのcomputation-only規約へ合わせてforwardの重複形状検証だけを除去した6dbb1c19を統合したが、実行中processは変更していない。
+学習開始sourceはb73cc95a4708e0f755647bf589889678cc2f8f92。途中にCIのcomputation-only規約へ合わせてforwardの重複形状検証だけを除去したe4bce909fba4a2cfa5e31eb896715d6482e32b4bを統合したが、実行中processは変更していない。
 constructorとforward計算部分のASTは同一と確認し、有効入力の計算・gradient・mask・パラメータ構造は変えていない。
 
 ### 次に有効な実験

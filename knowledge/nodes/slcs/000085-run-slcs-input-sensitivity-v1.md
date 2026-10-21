@@ -33,7 +33,7 @@ artifacts:
   diagnostics: knowledge/runs/run-slcs-input-sensitivity-v1/result/results.json
   predictions: {status: deleted, record: knowledge/runs/run-slcs-input-sensitivity-v1/artifact-manifest.json#/files/1}
 repro:
-  commit: 57726f2c
+  commit: d455b785340b83b601e8344d3f057a96fef25cd5
   branch: codex/slcs-input-sensitivity
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-input-sensitivity-v1/probe.py --output-dir knowledge/runs/run-slcs-input-sensitivity-v1/REPRO_NEW_RUN_ID
   checkpoint_sha256: b925fc2a8cc2eb3dc80aacb7e2e6f8389d40ab48f8afb3c74408b97cbd17d30c

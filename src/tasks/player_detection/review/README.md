@@ -24,9 +24,9 @@ v2の`confirmed_empty`がある対象frameを確認済み不在として表示�
 `inferred`は遮蔽や画面端の切れ等の推定・補完で、数が多いことだけで誤りや利用不可と判断しません。
 `partial`と注釈注意事項を確認し、`reviewed=true`を全pixel精度の品質保証と取り違えないでください。
 
-Git履歴では、frame storeは[82996257f](https://github.com/Motoki0705/tennis-lab/commit/82996257fba34a5b8015cc5e7b0bb26d9b7566a3)で導入されました。
-Meiji部分ラベルの評価は[312f11ec8](https://github.com/Motoki0705/tennis-lab/commit/312f11ec8c7242bef3f3fbeae14ccc0f69d70129)で追加され、
-[6e324f8c9](https://github.com/Motoki0705/tennis-lab/commit/6e324f8c9ceb8e2fd0ea6979f4bd9fa1643ec759)でdataset-ownedのclip配下へ移動しました。
+Git履歴では、frame storeは[938be93615e3ca05521072b6695a6449a2c8df25](https://github.com/Motoki0705/tennis-lab/commit/938be93615e3ca05521072b6695a6449a2c8df25)で導入されました。
+Meiji部分ラベルの評価は[2e05ed878b53a822aaa98f9f3845c4770631a78d](https://github.com/Motoki0705/tennis-lab/commit/2e05ed878b53a822aaa98f9f3845c4770631a78d)で追加され、
+[2c6e4b957c8e262b4ce9715352edeac9534b991a](https://github.com/Motoki0705/tennis-lab/commit/2c6e4b957c8e262b4ce9715352edeac9534b991a)でdataset-ownedのclip配下へ移動しました。
 以前の`tests/benchmarks/fixtures/player_association`配置は過去の配置であり、現行の不足データとして復活させません。
 過去の推論archiveや可視化成果物は実験結果で、現行の学習dataset familyとは区別します。
 

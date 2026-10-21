@@ -2,7 +2,7 @@
   "collected_at": "2026-10-01T00:57:45.090116+09:00",
   "queue_job": "1790774709010605164_1159028_i935-e9-anchored-source3cam-r25-20260930",
   "queue_exit_code": 1,
-  "check_commit": "f7930387c8188b048f5994e246c61bc91018319f",
+  "check_commit": "46c133d49d951be3f9dcccd299d426400d8c2899",
   "input_files_verified": 1146,
   "artifact_arrays_verified": 75,
   "plan_sha256": "d71f8f2b023dbb567af4567f8a63f1bea1109f6d1218a00b1db9abdf79fbc5cc",

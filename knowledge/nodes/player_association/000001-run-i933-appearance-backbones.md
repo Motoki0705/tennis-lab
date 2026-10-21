@@ -22,7 +22,7 @@ metrics:
   chat_test_auc: {osnet_ain_x1_0_msmt17: 1.000, osnet_x1_0_msmt17: 0.999, clipreid_vitb16_market1501: 1.000, dinov3_vits16: 0.997, dinov3_vitb16: 0.998}
   chat_test_rank1: {osnet_ain_x1_0_msmt17: 1.000, osnet_x1_0_msmt17: 0.958, clipreid_vitb16_market1501: 1.000, dinov3_vits16: 0.917, dinov3_vitb16: 0.917}
 repro:
-  commit: 499a1be5
+  commit: a74bc4a3f54a8cfdd2de457db779aedbb238c932
   command: >-
     PYTHONPATH=. .venv/bin/python tests/benchmarks/player_association_appearance.py --repo $R --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset
     --observe $R/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927 --labels-dir tests/benchmarks/labels/player_association/meiji_3cam

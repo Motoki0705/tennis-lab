@@ -5,7 +5,7 @@
   "provider": "codex",
   "session": "01a023be-2b89-7a33-9856-7b46d34326d5",
   "issue": "",
-  "commit": "2f92bcb473e7ba653a6998db1049551bd7ac7938",
+  "commit": "8e52d835025068bd64d5e618d44ca07cba18ca1f",
   "branch": "feat/shared-torch-compile",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/shared-torch-compile",

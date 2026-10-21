@@ -7,7 +7,7 @@
   "issue": "933",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "ed12854b89fd8896552bd1577098f6361a835128",
+  "commit": "d50f055839ca5435d6e2d9303b422916f82def27",
   "branch": "campaign930/i933-4-pipeline",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i933-player-association",

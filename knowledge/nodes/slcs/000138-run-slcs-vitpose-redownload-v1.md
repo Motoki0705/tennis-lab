@@ -22,7 +22,7 @@ metrics:
   sha256_match: true
   atomic_replacement: true
 repro:
-  commit: 3bebe44d52f4a2cc2a77f2bc2dba1eea31be306e
+  commit: 04d73f00dbd098d66a489b28902882cf7b62ef72
   branch: codex/slcs-real-rgb
   command: bash knowledge/runs/run-slcs-vitpose-redownload-v1/repro.sh NEW_OUTPUT_DIRECTORY
 artifacts:

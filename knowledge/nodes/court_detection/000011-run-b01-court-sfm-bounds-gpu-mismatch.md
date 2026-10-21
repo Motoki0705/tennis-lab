@@ -16,7 +16,7 @@ config:
   CUDA_VISIBLE_DEVICES: unset
 metrics: {}
 repro:
-  commit: 96b98a17ee067d9956cafcfb65448d527910349b
+  commit: b442364533333fd1cb831ba6a03c5218597c92ec
   branch: codex/court-sfm-bounded
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. .venv/bin/python outputs/b01-court-bounds/render_compare.py

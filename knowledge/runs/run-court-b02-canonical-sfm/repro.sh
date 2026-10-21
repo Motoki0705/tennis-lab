@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab-worktrees/court-sfm-bounded}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 5589f44671ecd85578cc93f62db131da54ec9bfe (branch codex/court-sfm-bounded)"
-git checkout 5589f44671ecd85578cc93f62db131da54ec9bfe 2>/dev/null || echo "[repro] WARN: checkout 5589f44671ecd85578cc93f62db131da54ec9bfe failed; using current HEAD"
+echo "[repro] target commit: cfa10e6767a4981ce9dffa4fd20b7c266682e9a4 (branch codex/court-sfm-bounded)"
+git checkout cfa10e6767a4981ce9dffa4fd20b7c266682e9a4 2>/dev/null || echo "[repro] WARN: checkout cfa10e6767a4981ce9dffa4fd20b7c266682e9a4 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command read these files from outputs/ (since deleted); the bundle copies are used instead.

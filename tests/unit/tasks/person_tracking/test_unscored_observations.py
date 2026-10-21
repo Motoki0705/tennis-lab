@@ -115,7 +115,7 @@ def test_unscored_box_tracks_with_explicit_fixed_noise_and_keeps_real_rows() -> 
 def test_scored_motion_matches_frozen_prechange_numerical_results(
     score: float, expected_x: float, expected_variance: float
 ) -> None:
-    # Recorded from d734b1308 MotionState using float32 detector scores, CPU only.
+    # Recorded from 45366c306e0c9001341b3fd76c3b551366ed19ee MotionState using float32 detector scores, CPU only.
     box = np.array([0, 0, 20, 60], np.float32)
     state = MotionState.initiate(box)
     state.predict()

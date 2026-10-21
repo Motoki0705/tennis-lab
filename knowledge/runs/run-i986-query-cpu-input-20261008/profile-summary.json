@@ -1,5 +1,5 @@
 {
-  "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+  "source_commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
   "scope": "CPU-only diagnostic; no CUDA, pinning, H2D or model execution",
   "cases": {
     "normal-workers8": {
@@ -10,7 +10,7 @@
       "torch_threads_per_process": 1,
       "opencv_threads": 1,
       "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
-      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "source_commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
       "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
       "pin_memory": false,
       "device": "cpu",
@@ -93,7 +93,7 @@
       "torch_threads_per_process": 1,
       "opencv_threads": 1,
       "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
-      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "source_commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
       "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
       "pin_memory": false,
       "device": "cpu",
@@ -189,7 +189,7 @@
       "torch_threads_per_process": 1,
       "opencv_threads": 1,
       "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
-      "source_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+      "source_commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
       "window_sequence_sha256": "5afe5531baafaaab0e05726569410366aefe027329cc09c2cd6212294618ad71",
       "pin_memory": false,
       "device": "cpu",

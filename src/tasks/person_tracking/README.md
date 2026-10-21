@@ -89,7 +89,7 @@ sourceとdestinationは絶対パスとし、destinationは未作成の別ファ�
   /absolute/path/to/v2-features.npz /absolute/path/to/new-v3-features.npz
 ```
 
-`Pose2DFrameSequenceRequest`と共通crop処理は#935の`74ac16d6`から取り込んだ。raw動画とJPEG文脈の双方から同じ
+`Pose2DFrameSequenceRequest`と共通crop処理は#935の`762348042fbd36fc77476c74aa8d45b9e7c3388a`から取り込んだ。raw動画とJPEG文脈の双方から同じ
 特徴処理を呼べる。#935 branch/worktreeは変更しておらず、積み直し時に同じ修正を重複させない。
 
 単独の実データ実行は`tests/benchmarks/person_tracking_features.py`。GPUでの特徴生成は共有training queueを使う。

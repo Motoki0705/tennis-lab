@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790219880496701332_779831_plcs-reid-safe-mask-gpu-smoke-20260924 (commit=be54b85471c7 provider=codex session=01a0d0f9-6057-7961-ad6b-adc46744d619)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790219880496701332_779831_plcs-reid-safe-mask-gpu-smoke-20260924 (commit=3e7854db239e83e6b5d09db505ee7a02ef50cb0e provider=codex session=01a0d0f9-6057-7961-ad6b-adc46744d619)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

@@ -7,7 +7,7 @@
   "issue": "",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "7621307bf292f5b06bd6d3fe2e0cf90a7ee27985",
+  "commit": "06e921c8e5a62e3a6f1496de1c27e91af9352b24",
   "branch": "codex/slcs-real-rgb",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",

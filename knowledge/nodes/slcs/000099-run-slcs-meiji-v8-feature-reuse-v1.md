@@ -23,7 +23,7 @@ metrics:
   linked_camera_features: 159
   skipped_missing_completion_clips: 3
 repro:
-  commit: 10a8a73edf38348eb6322b901d05329b6b2c7f5d
+  commit: 7488b14ddfb5a2dd064d978b46922cc5bb7d5ad0
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: if [ ! -f /home/kamimura/projects/tennis-lab/.training_queue/done/1789739458621952459_956621_slcs-meiji-v8-observe-v1.job

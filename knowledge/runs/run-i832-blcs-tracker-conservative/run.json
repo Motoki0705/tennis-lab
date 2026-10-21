@@ -5,7 +5,7 @@
   "provider": "codex",
   "session": "01a04ddb-48b6-7342-96a7-be95090cc969",
   "issue": "832",
-  "commit": "01b6cb5f46bb6c7bdd7f4735007f84d93f1689de",
+  "commit": "e595494117fbf3f303f0249b6fe1c9237be2874b",
   "branch": "feat/issue-832-deterministic-2d-tracking",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking",

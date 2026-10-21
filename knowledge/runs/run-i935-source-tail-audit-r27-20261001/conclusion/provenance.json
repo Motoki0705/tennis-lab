@@ -1,5 +1,5 @@
 {
-  "base_commit": "f92abc034f65a67ec9f98010c87b771b155805cb",
+  "base_commit": "f627efbbc96914969f2fedabbf727bd6476a1a30",
   "recorded_at": "2026-09-30T17:06:59.451938+00:00",
   "code_sha256": {
     "knowledge/runs/run-i935-source-tail-audit-r27-20261001/summarize_isolation.py": "033e7a9d985ca9ca6b66eb3da4fc40437906446f9e9d980511ac2519da63924a",

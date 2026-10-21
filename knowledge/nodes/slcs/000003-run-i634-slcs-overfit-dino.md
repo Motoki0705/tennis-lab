@@ -48,7 +48,7 @@ metrics:
   ball_position_pred_b_m: 1.461908
   ball_position_conf_error_corr: 0.525916
 repro:
-  commit: 8ed508912eff3e6e9f532d60d8e2e4ee01e328b8
+  commit: b1cf58e10667e1a5dc2863488d03b1e609272eaf
   branch: feat/issue-634-slcs-overfit
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.slcs.scripts.train

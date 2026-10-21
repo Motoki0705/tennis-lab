@@ -7,7 +7,7 @@ git履歴、ネットワークを使わず、このfixtureを読み込む。
 ## ランダム重みによるheatmap比較
 
 `heatmap_reference.npz` は、符号の異なる乱数重みでheatmapの一致を検査する。
-生成元は tennis-lab commit `9772783ca5179435f969d3be64d67a5523a14e30` の
+生成元は tennis-lab commit `3ad2bb3806e8e266d51878c7f27950512f93744f` の
 `src/submodules/vendor/gvhmr/vitpose/{__init__,heatmap_head}.py`。
 生成環境は PyTorch `2.13.0+cu130`、CPU・float32・eval mode・1 thread。
 乱数は NumPy `default_rng(20261019)` で生成した。

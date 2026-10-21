@@ -28,7 +28,7 @@ metrics:
   extra_axis_gvhmr_observed_samples: 90
   ball_3d_valid_frames: 987
 repro:
-  commit: d236a7184651d354a8c684eb45e4324868bc48c9
+  commit: 06385e260875fee65af081516ebb5cfeb7a907c8
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

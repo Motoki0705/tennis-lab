@@ -19,7 +19,7 @@ metrics:
   source_duration_seconds: 3530.547664
   new_quality_accepted_clips: 0
 repro:
-  commit: f8f83a6c457c153640dcba04ed86722cbdb794f9
+  commit: 16ce8892df535cb00e528c71b37c58209b7bdda3
   command: ffmpeg -ss <summary.json sampling time> -i <data_root>/tennis_multivew/raw/tennis_clip_source/cam0.mp4 -frames:v 1 -vf scale=320:-1 <new_temporary_directory>/frame.jpg
 artifacts:
   run_dir: knowledge/runs/run-slcs-broadcast-unused-source-inventory-v1

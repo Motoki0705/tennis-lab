@@ -110,7 +110,7 @@ tags:
 - selection
 date: '2026-09-30'
 repro:
-  commit: f83bb2fa
+  commit: 0262c3554d8b1accb27b6cef7835d2bcca554c65
   branch: campaign930/i964-2-tracking
 ---
 

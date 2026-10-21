@@ -12,7 +12,7 @@ from torch import nn
 
 from src.submodules.configuration import ViTPoseHeadConfig
 
-LEGACY_COMMIT = "9772783ca5179435f969d3be64d67a5523a14e30"
+LEGACY_COMMIT = "3ad2bb3806e8e266d51878c7f27950512f93744f"
 LEGACY_DIRECTORY = "src/submodules/vendor/gvhmr/vitpose"
 FIXTURES = Path(__file__).resolve().parent
 

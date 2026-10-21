@@ -29,7 +29,7 @@ metrics:
   pipeline_off_windows_per_second: 1.0658718999478085
   pipeline_default_windows_per_second: 1.6807995513373784
 repro:
-  commit: 524cef6b95645881ed04174639b6b5a71f4e6a77
+  commit: 3d041ef14700e8123bf67483d0a7c6c0615ba775
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles

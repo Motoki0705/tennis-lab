@@ -7,7 +7,7 @@
   "issue": "964",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "53c292ecf6c5670d632528ce97e236d2a5e440f0",
+  "commit": "18cd8ea2f3154dfc57180ec161709f772f9389ed",
   "branch": "campaign930/i964-2-tracking",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i964-2-tracking",

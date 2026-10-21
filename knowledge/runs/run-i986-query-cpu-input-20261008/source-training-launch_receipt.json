@@ -4,7 +4,7 @@
   "observed_at": "2026-10-08T12:42:39.599725+00:00",
   "queue_job": "1791463137499163561_670665_i986-query-bf16-s42-u60000-v1",
   "code_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-train-s42-u60000-v1",
-  "commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+  "commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
   "total_optimizer_updates": 60000,
   "progress_at_launch_check": {
     "epoch": 0,

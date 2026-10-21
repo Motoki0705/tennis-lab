@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789801028265387161_87223_slcs-full-real-rgb-missing-ball-court-e60-v1 (commit=edabe593ef61 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789801028265387161_87223_slcs-full-real-rgb-missing-ball-court-e60-v1 (commit=c32015915aa80a675fef37cb90aaf95422e2ec29 provider=codex session=01a0b71f-c516-75b2-ac58-0c92e8a4f098)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

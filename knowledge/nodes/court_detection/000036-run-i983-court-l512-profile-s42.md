@@ -45,7 +45,7 @@ tags:
 date: '2026-10-10'
 session: 01a12538-67e1-7d22-a6ce-2d7add686d59
 repro:
-  commit: 98b737829ba8baae8b823c7b7728cf0608f5073f
+  commit: 7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f
   command: .venv/bin/python -m src.tasks.court_detection.scripts.profile_ablation
     --output outputs/court_detection/profile/i983-l512/attempt-01 --steps 3
 ---

@@ -1,6 +1,6 @@
 {
   "training_dir": "/home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_temporal_domain_balanced/s42-001",
-  "training_source": "760195c02ace1f61a102cd1ce8f97431f52ad0fc",
+  "training_source": "1581265b274163dd7f35b7dd875485af8823fe1e",
   "epoch_zero_based": 59,
   "global_step": 1800,
   "finite_floating_tensors_checked": 1320,

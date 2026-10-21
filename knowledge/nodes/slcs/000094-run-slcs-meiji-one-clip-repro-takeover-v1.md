@@ -33,7 +33,7 @@ metrics:
   cold_player_speed_max_abs_difference_mps: 0.006157875061035156
   comparison_exit_code: 1
 repro:
-  commit: 57726f2c8f38fe50ab3870a7a030fad78ab14b4b
+  commit: d455b785340b83b601e8344d3f057a96fef25cd5
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python knowledge/runs/run-slcs-meiji-one-clip-repro-v1/probe.py

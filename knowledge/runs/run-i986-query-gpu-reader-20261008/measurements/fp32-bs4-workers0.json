@@ -17,7 +17,7 @@
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
   "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
   "script_sha256": "e4d7e2e3cd3c69913e8f994f2d59e4283e25966e299ced227d1a7e67dad341b8",
-  "commit": "c8e6810616f3f31f3cff3dee0df7376d7c9a7a9b",
+  "commit": "b39c4ff0981274db7eec4c1e62b0bdd19e0cc2ca",
   "queue_run_id": "1791456659354412883_398125_i986-conv2d-query-gpu-pipeline-v1",
   "seed": 42,
   "optimizer": {

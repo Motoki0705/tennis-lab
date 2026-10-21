@@ -27,7 +27,7 @@ metrics:
   old1_new0_bbox_normalized_median: 12.638323499868575
   old1_new1_bbox_normalized_median: 15.975402375877962
 repro:
-  commit: fa8798a4c19f7efc6b123f4819130d57fe14b565
+  commit: 0115977fc3b061eeaee774a00c9b787f110e81d9
   branch: codex/tennis-scene-responsibility-cleanup
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/outputs/tennis_scene/analyze/responsibility_cleanup/20260922T170847Z/dino_extension/lib

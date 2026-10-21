@@ -25,7 +25,7 @@ config:
 metrics:
   train_loss_epoch4: 0.20049546658992767
 repro:
-  commit: 53db1868054e8330126d34a458edb1424646d61e
+  commit: 79d4d42bcbce7fd2040ba960b2d0f5ce95453810
   branch: codex/plcs-track-reid
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

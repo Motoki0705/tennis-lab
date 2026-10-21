@@ -26,7 +26,7 @@ metrics:
   val_reprojection_rmse_px: 2.7926874707956362e-05
   val_reprojection_evaluable_rate: 1.0
 repro:
-  commit: e25ce1c8702a37febafea375b10fd3f162f16e6c
+  commit: 90e52a25126cb4d5a790e2a36ebfd09c9f1480da
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl .venv/bin/python

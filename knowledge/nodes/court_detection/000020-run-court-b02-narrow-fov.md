@@ -21,7 +21,7 @@ metrics:
   pre_render_valid: 1678
   proposals: 2232
 repro:
-  commit: ecf64a7aa6e21ed11e619cb75360ef44377aea8b
+  commit: b830f9372b92e0a3a06b3596a7af5755dd4cf188
   branch: codex/court-sfm-bounded
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py

@@ -1,5 +1,5 @@
 {
-  "execution_commit": "10a8a73edf38348eb6322b901d05329b6b2c7f5d",
+  "execution_commit": "7488b14ddfb5a2dd064d978b46922cc5bb7d5ad0",
   "command": "bash knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/repro.sh",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
   "exit_status": 0,
@@ -7,7 +7,7 @@
   "predecessor_failed_run": "run-slcs-meiji-baseline-line-audit-v1",
   "fix": "Normalize OpenCV LSD segment/width/precision arrays using reshape; candidate thresholds unchanged",
   "patch_verification": {
-    "temporary_index_base": "10a8a73edf38348eb6322b901d05329b6b2c7f5d",
+    "temporary_index_base": "7488b14ddfb5a2dd064d978b46922cc5bb7d5ad0",
     "git_apply_cached": true,
     "restored_bytes_match": [
       "knowledge/runs/run-slcs-meiji-baseline-line-audit-v2/probe.py",

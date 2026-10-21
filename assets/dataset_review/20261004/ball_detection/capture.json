@@ -17,7 +17,7 @@
     "path": "data/ball_detection/ball-mix-v2-player-pose-v1/manifest.json",
     "sha256": "8302c8803894e201191f635fb287fad5142ceaa98444249be7cc089173fb23c0"
   },
-  "code_revision_after": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+  "code_revision_after": "487f7c1dd6f4216ced8e265733c19bac7793e033",
   "captures": [
     {
       "file": "before-interpolated.png",
@@ -31,7 +31,7 @@
         "width": 1440,
         "height": 1000
       },
-      "code_revision": "a8b48ba50068f255ccd84267eb3fa63fc7a77c75",
+      "code_revision": "37632d95ffa3c4734e0fe4f5f41efc42ba0759c3",
       "screenshot_sha256": "4e11f70b87095779b9f519fdaa94027eee6bacae1f53ef797f9583cad1916dfb",
       "captured_at_utc": "2026-10-04T11:21:41.817080+00:00",
       "stored_jpeg_sha256": "dd6ffbc973b33e20ba3828a290f4853f3249b74c741cc3ab911d812d1e1a6a85",
@@ -61,7 +61,7 @@
         "width": 1440,
         "height": 1000
       },
-      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "code_revision": "487f7c1dd6f4216ced8e265733c19bac7793e033",
       "screenshot_sha256": "17e6fb53f319a8783bbd6c7b6c33bda104981c90bc9d3d8084f2d2be7f8a2ef4",
       "captured_at_utc": "2026-10-04T11:46:20.349424+00:00",
       "stored_jpeg_sha256": "dd6ffbc973b33e20ba3828a290f4853f3249b74c741cc3ab911d812d1e1a6a85",
@@ -91,7 +91,7 @@
         "width": 1440,
         "height": 1000
       },
-      "code_revision": "a8b48ba50068f255ccd84267eb3fa63fc7a77c75",
+      "code_revision": "37632d95ffa3c4734e0fe4f5f41efc42ba0759c3",
       "screenshot_sha256": "134b633dab21b69af16915e8ad6cf06160ff27be6c70927e70080b74a960e372",
       "captured_at_utc": "2026-10-04T11:21:42.092196+00:00",
       "stored_jpeg_sha256": "2fe608bf34d2e144dfd828d8602a0ca9ae5997c5d98611814fbe86fcac8d87e6",
@@ -121,7 +121,7 @@
         "width": 1440,
         "height": 1000
       },
-      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "code_revision": "487f7c1dd6f4216ced8e265733c19bac7793e033",
       "screenshot_sha256": "e0db25fee0264f91109ba2a87b77d2897b70946e280c8c81583271a96d7efb77",
       "captured_at_utc": "2026-10-04T11:46:20.606949+00:00",
       "stored_jpeg_sha256": "2fe608bf34d2e144dfd828d8602a0ca9ae5997c5d98611814fbe86fcac8d87e6",
@@ -151,7 +151,7 @@
         "width": 1440,
         "height": 1000
       },
-      "code_revision": "3c5cf2db3c6d9efb8b05c5c380e40c310b1a1e62",
+      "code_revision": "487f7c1dd6f4216ced8e265733c19bac7793e033",
       "screenshot_sha256": "7ecfc7ac386a21a5f938cbe01bd402f3807cad2bcce13cc41b26ec5c8b672c08",
       "captured_at_utc": "2026-10-04T11:46:19.842179+00:00",
       "stored_jpeg_sha256": "d2578b329abc5c8ff485f72cbfe97c5d7e77314c3c38c31badf62799cf48a3fa",

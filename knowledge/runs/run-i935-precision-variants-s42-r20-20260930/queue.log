@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930 (commit=0d3fd3f8a249 provider=codex session=01a0f031-959b-7442-9c47-56b11c1a9426)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1790738050136194711_2100742_i935-precision-variants-s42-r20-20260930 (commit=536fab226e5991e5366a0348b58fbbd15e3a4875 provider=codex session=01a0f031-959b-7442-9c47-56b11c1a9426)
 [torch.compile] enabled targets=[refiner_2d] backend=inductor mode=default fullgraph=False dynamic=False
 /home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-11-pilot-retrain/.venv/lib/python3.11/site-packages/torch/_inductor/compile_fx.py:321: UserWarning: TensorFloat32 tensor cores for float32 matrix multiplication available but not enabled. Consider setting `torch.set_float32_matmul_precision('high')` for better performance.
   warnings.warn(

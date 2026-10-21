@@ -54,9 +54,9 @@ clipごとの`annotations/player_association/{labels.json,review.yaml}`。
 learned研究の根拠は既存`association-learning-recovery` worktreeの
 `src/tasks/{plcs,blcs}/configs/data/_association.yaml`、`src/tasks/base/data/association_dataset.py`と
 `outputs/association_analysis_20260922/training_dataset_feasibility.json`。
-[`c3d51a86d`](https://github.com/Motoki0705/tennis-lab/commit/c3d51a86d)が旧multi_object系とlearned入口を整理し、
-[`601754149`](https://github.com/Motoki0705/tennis-lab/commit/601754149)がclassical採用尺度Aを既定化した。
-ラベルのdataset移管は[`6e324f8c9`](https://github.com/Motoki0705/tennis-lab/commit/6e324f8c9)。
+[`846475313950672b281e1c3a0f716f9d6a8e671c`](https://github.com/Motoki0705/tennis-lab/commit/846475313950672b281e1c3a0f716f9d6a8e671c)が旧multi_object系とlearned入口を整理し、
+[`8ca20ee1bdf5fc31d236c2157bcad9f022e9c243`](https://github.com/Motoki0705/tennis-lab/commit/8ca20ee1bdf5fc31d236c2157bcad9f022e9c243)がclassical採用尺度Aを既定化した。
+ラベルのdataset移管は[`2c6e4b957c8e262b4ce9715352edeac9534b991a`](https://github.com/Motoki0705/tennis-lab/commit/2c6e4b957c8e262b4ce9715352edeac9534b991a)。
 
 ## 読み取りと欠測の意味
 

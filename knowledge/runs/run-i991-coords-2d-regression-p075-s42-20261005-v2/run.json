@@ -7,7 +7,7 @@
   "issue": "991",
   "resource": "half",
   "logical_gpu_slot": "1",
-  "commit": "0bdeb9514ae1e780f1d8e8e08a431b2aa9f5143c",
+  "commit": "b6f99e5ac9d9322373819bbd6b2b6e7caee4fbf1",
   "branch": "codex/coordinate-ball-refiners-991-1014",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014",

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # #931: src/tennis_scene/scripts/align_gvhmr_world.py was removed after this run. The code is taken from
-# 91a28952 (the commit that added it on the run's branch feat/plcs-gvhmr-similarity) in a temporary
+# aecc5fa866a5f36b17d20cb2a003f4daf645b673 (the commit that added it on the run's branch feat/plcs-gvhmr-similarity) in a temporary
 # worktree; the inputs stay in this checkout's bundle.
 task_repo_root="$(git rev-parse --show-toplevel)"
 task_assets_root="${TENNIS_LAB_LOCAL_ASSET_ROOT:-$task_repo_root}"
 task_python="${TENNIS_LAB_PYTHON:-$task_assets_root/.venv/bin/python}"
 task_code="$(mktemp -d)/code"
-git -C "$task_repo_root" worktree add --detach "$task_code" 91a28952
+git -C "$task_repo_root" worktree add --detach "$task_code" aecc5fa866a5f36b17d20cb2a003f4daf645b673
 trap 'git -C "$task_repo_root" worktree remove --force "$task_code"' EXIT
 cd "$task_code"
 "$task_python" -m src.tennis_scene.scripts.align_gvhmr_world \

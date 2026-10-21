@@ -2,7 +2,7 @@
   "status": "done",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
   "git_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
-  "commit": "740e788877a00971a7ab3d913458c8328379815e",
+  "commit": "c04479d50c62070384eb273065ef3c6623dc1ae3",
   "production_source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb/src/tennis_scene/reference_pipeline/reconstruction.py",
   "command": [
     "knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py",

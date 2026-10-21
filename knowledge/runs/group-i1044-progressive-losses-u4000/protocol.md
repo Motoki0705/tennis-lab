@@ -1,4 +1,4 @@
-このプロトコルは実験時の固定記録です。旧module名・既定値・コマンドはcommit `c02c20e45ab8d33e8b98d15933a4e4b8e0547ef1` のものです。現行の入口は[ablation README](../../../src/tasks/blcs/ablation/README.md)を参照してください。
+このプロトコルは実験時の固定記録です。旧module名・既定値・コマンドはcommit `bb624eeb40e6902b4d737fcb356a071d587ed1db` のものです。現行の入口は[ablation README](../../../src/tasks/blcs/ablation/README.md)を参照してください。
 
 # Issue #1044 比較プロトコル（学習前固定）
 

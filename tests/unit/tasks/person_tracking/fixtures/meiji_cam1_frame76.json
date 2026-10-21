@@ -240,7 +240,7 @@
   "fixture_sha256": "3697a3c4d8d3d389717b774a32a3ff167bf597d53c93b00f274c8613339095e2",
   "reproduction": {
     "failed_job": "1790670135971707507_3453837_i964-features-smoke-r2-20260929",
-    "failed_commit": "5185a9385f64c8d6bbedb7e6306e394f420e4dea",
+    "failed_commit": "2e83822f48eabb380529648920ed4ec07a4d140d",
     "localization": "197 nonempty-frame ViTPose calls = 120 cam0 + cam1 frame 76; identical boxes, frame-stream API, float32 and flip-test on CPU",
     "limits": "Original GPU outputs were not saved; these exact values are CPU reproduction, not captured GPU values."
   }

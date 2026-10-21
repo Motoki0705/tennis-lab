@@ -1,6 +1,6 @@
 {
   "campaign": "dataset-review-20261004:clip_studio",
-  "ui_code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+  "ui_code_revision": "6ca785fed5f127e21a81b9629c2e9d9cdb735f6a",
   "captures": [
     {
       "name": "before-clip.png",
@@ -24,7 +24,7 @@
         "frame 5602 · 00:01:33.465",
         "frame 779 · 00:00:13.001"
       ],
-      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "code_revision": "ec4fe6f37e31aa59480835b106c523b81d537593",
       "relevant_file_hashes": {
         "web/static/index.html": "118deb097651e128ddcde496f5bcd10f5bc2fa0b9c1f18b8d74e1cfe12426386",
         "web/static/studio.js": "d12d5e5bc6d0bb7aad37746344a714756224e249a8e09d9f1eafc24bd458161f",
@@ -59,7 +59,7 @@
         "frame 5602 · 00:01:33.465",
         "frame 779 · 00:00:13.001"
       ],
-      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "code_revision": "6ca785fed5f127e21a81b9629c2e9d9cdb735f6a",
       "relevant_file_hashes": {
         "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
         "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",
@@ -99,7 +99,7 @@
         "frame 2905 · 00:00:48.465",
         "この時刻の映像はありません"
       ],
-      "code_revision": "1ec5b9a0d833b084fb4789e7d635c290b62f85c9",
+      "code_revision": "ec4fe6f37e31aa59480835b106c523b81d537593",
       "relevant_file_hashes": {
         "web/static/index.html": "118deb097651e128ddcde496f5bcd10f5bc2fa0b9c1f18b8d74e1cfe12426386",
         "web/static/studio.js": "d12d5e5bc6d0bb7aad37746344a714756224e249a8e09d9f1eafc24bd458161f",
@@ -134,7 +134,7 @@
         "frame 2905 · 00:00:48.465",
         "この時刻の映像はありません"
       ],
-      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "code_revision": "6ca785fed5f127e21a81b9629c2e9d9cdb735f6a",
       "relevant_file_hashes": {
         "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
         "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",
@@ -174,7 +174,7 @@
         "frame 34421 · 00:09:34.259",
         "frame 33908 · 00:09:25.693"
       ],
-      "code_revision": "4b607a142e81960d917bcb23fb13f3df3656bd70",
+      "code_revision": "6ca785fed5f127e21a81b9629c2e9d9cdb735f6a",
       "relevant_file_hashes": {
         "web/static/index.html": "bf75c414c2155cda25cc51ac69c2c2531dcd05ed58c5266ae7547696fa08ac0a",
         "web/static/studio.js": "cbc4364107eb1e3c8b3dbdbd28333fd5059aded87f1fc9dfd28865272583d5f3",

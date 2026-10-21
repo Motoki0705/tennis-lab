@@ -10,7 +10,7 @@ provider: codex
 date: '2026-10-01'
 status: done
 metrics: {lovo_positive_recall: 0.8592682453416148, lovo_negative_false_join: 0.0, sigma_m: 0.7381677290433, slope: 36.70286491794044, center: 0.8298172161822686}
-repro: {commit: 6bafe87c635eaaf2d1136300c469a9dcc1031fdf}
+repro: {commit: 636925fb1a6d5c65334fefee172d1055b478b0b7}
 artifacts:
   run_dir: knowledge/runs/run-i964-recalibration-fit-r14-20261001
 parents: [run-i964-recalibration-resume-r13-20261001]
@@ -58,8 +58,8 @@ CLIPを含む固定選別による依存、同一収録・選手、注釈ball由
 
 ## 固定後のdev一回結果
 
-YAML/fit証拠のcommit **b03eb152** をpushした後、commit内のblobとoriginへの到達、
-旧config・入力hashをCPU入口で検証し、**937da271**のコードで1batchだけ採点した。
+YAML/fit証拠のcommit **4cca65bbba224ca9ed967ae141e71d7722693b30** をpushした後、commit内のblobとoriginへの到達、
+旧config・入力hashをCPU入口で検証し、**4078cd6e2b5f8151df0627ae10ac0bc600ce5d2a**のコードで1batchだけ採点した。
 [比較JSON](../../runs/run-i964-recalibration-fit-r14-20261001/dev/comparison.json)と
 [回収記録](../../runs/run-i964-recalibration-fit-r14-20261001/dev-collection.json)を正本とする。
 旧値は保存精度をコピーせず、run13でproduction maskへ整合した同じtrack/CLIPから再計算した。

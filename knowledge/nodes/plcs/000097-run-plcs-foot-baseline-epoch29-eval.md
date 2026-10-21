@@ -34,7 +34,7 @@ tags:
 - evaluation
 session: 01a09b38-6993-7e23-9122-9482895fe0b4
 repro:
-  commit: 43291cdb
+  commit: d3c4e825f1d0216acad3e5b7871310b7b99cc321
   branch: experiments/plcs-foot-residual
   command: .venv/bin/python scripts/plcs_foot_residual/evaluate.py --checkpoint /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/logs/version_0/checkpoints/plcs-epoch=29.ckpt
     --label baseline_best --baseline-config /home/kamimura/projects/tennis-lab/outputs/plcs/plcs_multiview_axial_split/config.yaml

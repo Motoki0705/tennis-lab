@@ -6,7 +6,7 @@ case "$output_dir" in /*) ;; *) echo 'Output must be absolute' >&2; exit 2;; esa
 repro_main_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 repro_checkout="$repro_main_root/.claude/worktrees/repro-i936-triangulation-abc"
 test -x "$repro_main_root/.venv/bin/python"
-git -C "$repro_main_root" worktree add --detach "$repro_checkout" a5e8dc5f7bb4f23a8601ba1f3d5483f850eeda99
+git -C "$repro_main_root" worktree add --detach "$repro_checkout" 4f50de6eb60cf12190c03626e3e3346b11273f32
 ln -s "$repro_main_root/.venv" "$repro_checkout/.venv"
 cd "$repro_checkout"
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 CUDA_VISIBLE_DEVICES=''

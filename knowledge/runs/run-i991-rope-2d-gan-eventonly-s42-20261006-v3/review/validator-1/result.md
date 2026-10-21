@@ -2,7 +2,7 @@
 
 **CHANGES_REQUIRED**。評価1回目／指定1回。要修正はUIの状態更新漏れ1件。Generator／Discriminator、学習更新、GAN係数、ゼロノイズ、Flow／旧checkpoint互換性には今回の検査で要修正を認めなかった。
 
-対象commit: `9588b33833c54423c361d150fbac442f9631497f`、base: `b8dab538e1121c4ccc357b31e4bf45a2e6f8ef1f`。開始・終了ともHEADとclean状態が一致し、指定30ファイルのSHA256も全件一致。manifestは `18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca` のまま。終了時に1280ラリーの内容hashをmanifestと照合し、カタログ内の互換checkpoint32件も開始時hashと一致した。
+対象commit: `b97e51a5e3defdab6ad70a0bd9cb80bbb47b569e`、base: `00e673f3b31966777ebdc728dfc5ed5ed5f07900`。開始・終了ともHEADとclean状態が一致し、指定30ファイルのSHA256も全件一致。manifestは `18fe4f79dcc1a030edc41922e61b15085a0de0bd25735c50a4a5e0ec8dd87cca` のまま。終了時に1280ラリーの内容hashをmanifestと照合し、カタログ内の互換checkpoint32件も開始時hashと一致した。
 
 自身のrolloutのsession_meta／turn_contextから `openai / gpt-6-astra / effort=max / agent_path=/root/rope_gan_validator_1` を確認。親が提示した設定と一致する。同一モデル別コンテキストであり、見落としの統計的独立性は保証しない。
 

@@ -25,7 +25,7 @@ metrics:
   high_confidence_speed_p99_mps: 35.37607360681939
   high_confidence_speed_max_mps: 63.862420299756614
 repro:
-  commit: 559c04189770ade585e554c82a25bb3c39a8f423
+  commit: 4e779d0132f244f23a3c413ec93529ed216fe6ea
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= PYTHONPATH=. .venv/bin/python knowledge/runs/run-slcs-ball-velocity-train-scale-v1/analyze.py /home/kamimura/projects/tennis-lab/outputs/slcs/train/real_rgb_no_ball_smooth/s42-takeover-003/config.yaml

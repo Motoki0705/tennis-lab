@@ -59,7 +59,7 @@ repro:
   command: CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=.
     .venv/bin/python knowledge/runs/run-slcs-rgb-pilot-baseline-selected-conditions-v2/reproduce.py
     baseline
-  commit: 44e529721933b08f5703526f554a155247b3df6c
+  commit: 3e1a5b3ba9d5d47320f18c8ee1ba0ed2a4d57415
   checkpoint_sha256: 318eef5423c4183d894c8c032e7a85b3d8f83ca3cf2b0909aabbadd344fe1c73
 ---
 

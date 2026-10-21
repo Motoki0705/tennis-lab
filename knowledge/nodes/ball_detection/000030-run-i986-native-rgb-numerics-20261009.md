@@ -24,7 +24,7 @@ metrics:
   gradient_relative_l2: 0.014985211193561554
   max_uv_delta: 0.0016404390335083008
 repro:
-  commit: 524cef6b95645881ed04174639b6b5a71f4e6a77
+  commit: 3d041ef14700e8123bf67483d0a7c6c0615ba775
   branch: codex/ball-query-only-training
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2 TORCH_LOGS=graph_breaks,recompiles

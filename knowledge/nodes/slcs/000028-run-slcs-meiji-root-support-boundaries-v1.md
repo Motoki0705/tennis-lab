@@ -38,7 +38,7 @@ tags:
 - cpu-diagnosis
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 777d339101e162739c12e37cf52dbb4fe75cce6a
+  commit: 2519b23fd8ee83e3b6dbe8fb24417132536e585f
   branch: codex/slcs-real-rgb
   command: .venv/bin/python knowledge/runs/run-slcs-meiji-root-support-boundaries-v1/01_speed_reject_audit_cpu.py
   patch: knowledge/runs/run-slcs-meiji-root-support-boundaries-v1/uncommitted.patch

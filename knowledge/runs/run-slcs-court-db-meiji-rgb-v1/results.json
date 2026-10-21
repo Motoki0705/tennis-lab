@@ -20,7 +20,7 @@
     "target_radius_m": 0.5,
     "hfov_radius_deg": 1.5
   },
-  "execution_commit": "767ac67c43c35f65dd294ddf69a0b6a25d519656",
+  "execution_commit": "8da19012e331642343a45ee7b1e7c8fa2fe7945d",
   "opencv": "5.0.0",
   "manual_sha256": "4b55bb9a857f55285e2aa2d33163d349d33e1affcd1eee618e9ac1dff6bd6a5b",
   "views": [

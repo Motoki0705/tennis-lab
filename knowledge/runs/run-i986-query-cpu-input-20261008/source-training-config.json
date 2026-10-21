@@ -23,7 +23,7 @@
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
   "code": {
     "directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-only-train-s42-u60000-v1",
-    "base_commit": "0008c6d0b6123ce1c555523a4de6133255cc5151",
+    "base_commit": "8384f2fe6d6b60d0fb6487d3a23e6ee65056a1ad",
     "torch_version": "2.13.0+cu130",
     "source_sha256": {
       "src/tasks/ball_detection/data/annotation_states.py": "f2b6ef40e2c241e9256276a4d265414c2c921a674fde542daefa139d149ce7ef",

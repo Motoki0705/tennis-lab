@@ -26,7 +26,7 @@ metrics:
   projection_evidence_sum: 12538.386719
   rendered_vs_captured_median_absolute_rgb_difference: 4.271098
 repro:
-  commit: c4bb0e63b43ae4492f190bfac485a4dae087af5d
+  commit: e4059e8684ede1565b571f747cdec27d25ea2d0c
   branch: feat/issue-878-rendered-line-input
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST=1 TENNIS_B00_FIXTURE_REPOSITORY=/home/kamimura/projects/tennis-lab

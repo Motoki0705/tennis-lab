@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=1
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-ball-refiners-991-1014}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: ea96f1ffaa378f5b36d5347f29dabbd3edaee038 (branch codex/coordinate-ball-refiners-991-1014)"
-git checkout ea96f1ffaa378f5b36d5347f29dabbd3edaee038 2>/dev/null || echo "[repro] WARN: checkout ea96f1ffaa378f5b36d5347f29dabbd3edaee038 failed; using current HEAD"
+echo "[repro] target commit: fabafd5ae8138dc9010039fbc9af75528bb1fa0e (branch codex/coordinate-ball-refiners-991-1014)"
+git checkout fabafd5ae8138dc9010039fbc9af75528bb1fa0e 2>/dev/null || echo "[repro] WARN: checkout fabafd5ae8138dc9010039fbc9af75528bb1fa0e failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

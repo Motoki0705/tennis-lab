@@ -7,7 +7,7 @@
   "issue": "1049",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "8ac45d9f79bf4f6a7feb343d09428a07aa6e8847",
+  "commit": "c7a3087085109f006a12ad1ee76b25ef85f8fff0",
   "branch": "HEAD",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-blocking-20261010",

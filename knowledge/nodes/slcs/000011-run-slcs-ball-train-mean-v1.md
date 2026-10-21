@@ -46,7 +46,7 @@ tags:
 - underfit
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 11c35c1759b4a434c979da17f82c68a90cb335dc
+  commit: 2c2be222a1cf0498bebc090c9fb85d7e5fd46127
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python
     -B knowledge/runs/run-slcs-ball-train-mean-v1/probe.py

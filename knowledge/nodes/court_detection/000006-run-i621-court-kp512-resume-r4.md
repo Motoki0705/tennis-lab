@@ -18,7 +18,7 @@ metrics:
   val_mean_dist_px_best: 2.23
   test_mean_dist_px: 1.708886
 repro:
-  commit: 41b318b39f757e09897964a32f28148a777b87f5
+  commit: 8816994eb03116dab07102ea21179a3f64858622
   branch: feat/issue-618-ball-subpixel-retrain
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

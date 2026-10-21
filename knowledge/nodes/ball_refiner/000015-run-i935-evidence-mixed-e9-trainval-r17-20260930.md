@@ -128,7 +128,7 @@ metrics:
       wrong_strictly_higher_score_rate: 0.006501950585175552
       rank_only_due_to_tie: 0
 repro:
-  commit: 9f2256370cb52af71c6edf28d58ce7182923adb7
+  commit: e7561fa44b07745b854b35848de9c373a5f36038
   branch: campaign930/i935-10-detector-selection
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 5385s env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-10-detector-selection

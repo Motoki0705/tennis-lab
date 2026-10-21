@@ -203,9 +203,8 @@ def test_no_aris_skill_enters_the_default_skill_directory() -> None:
 def test_aris_derived_parts_carry_mit_notice_and_source_revision() -> None:
     notice = (SKILL / "LICENSE.ARIS.txt").read_text(encoding="utf-8")
     assert "MIT License" in notice and "Copyright (c) 2026 wanshuiyin" in notice
-    assert (
-        "3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d" in notice and "57ae07631" in notice
-    )
+    assert "3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d" in notice
+    assert "824d8ab91c4de38938928463b7399b26c6aceb55" in notice
     for derived in (
         "scripts/lit_search.py",
         "references/evidence-checklist.md",

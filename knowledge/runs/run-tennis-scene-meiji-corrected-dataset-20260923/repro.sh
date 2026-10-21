@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: fa8798a4c19f7efc6b123f4819130d57fe14b565 (branch codex/tennis-scene-responsibility-cleanup)"
-git checkout fa8798a4c19f7efc6b123f4819130d57fe14b565 2>/dev/null || echo "[repro] WARN: checkout fa8798a4c19f7efc6b123f4819130d57fe14b565 failed; using current HEAD"
+echo "[repro] target commit: 0115977fc3b061eeaee774a00c9b787f110e81d9 (branch codex/tennis-scene-responsibility-cleanup)"
+git checkout 0115977fc3b061eeaee774a00c9b787f110e81d9 2>/dev/null || echo "[repro] WARN: checkout 0115977fc3b061eeaee774a00c9b787f110e81d9 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command read these files from outputs/; they are saved in this bundle.

@@ -26,7 +26,7 @@ relations: []
 papers: []
 tags: []
 repro:
-  commit: 37c41ce42c5e5b79110b07cee97088795b246f25
+  commit: d4cb642c8d81bc390990643747638b76771801e9
   branch: codex/remove-ball-confidence-filter-20261002
 ---
 

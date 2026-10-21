@@ -37,7 +37,7 @@ metrics:
   final_cumulative_train_loss: 0.005103066492059345
   diagnostic_validation_mean_error_px: 81.44019881434117
 repro:
-  commit: e3f1356163e7b2009c580fc1727c1a413c5889a3
+  commit: af0b0c92d8db948f2dfeb3171515bff1c025ade8
   branch: HEAD
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2
@@ -62,7 +62,7 @@ tags:
 - encoder-transfer
 ---
 
-実720p・32frame、BF16＋compile defaultでCNN＋DPTを96更新し、9窓のvalidationとcheckpoint・GIF保存まで完了した。3 train clips / 3 validation clipsから各FPSの1窓ずつを使用した診断で、testは使わない。実装commit e3f1356163e7。GPU予約はshared queueのall。
+実720p・32frame、BF16＋compile defaultでCNN＋DPTを96更新し、9窓のvalidationとcheckpoint・GIF保存まで完了した。3 train clips / 3 validation clipsから各FPSの1窓ずつを使用した診断で、testは使わない。実装commit af0b0c92d8db948f2dfeb3171515bff1c025ade8。GPU予約はshared queueのall。
 
 CNNは2D Conv22層＋3D Conv2層、DPTを含む957万パラメータ。SwiGLU decoderへのCNN転送は別のCPUテストで確認した。GPUでは両3D層の勾配が有限・非ゼロであり、compileのgraph breakは0、train/evalで2 graphだった。初回8更新を除いた速度は3.088窓/秒。PyTorch最大allocated 5.680GiB、reserved 7.492GiBで、GPU全使用量とは区別する。
 

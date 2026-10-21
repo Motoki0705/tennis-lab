@@ -84,7 +84,7 @@ tags:
 - real-observation-diagnostics
 session: 01a1327c-d543-7673-8143-2764d9f62447
 repro:
-  commit: 9948985912f3f2dd1a62f212b30fd92db8e57f2e
+  commit: d81c56467d5aff18d61856c1668534f801708422
   branch: codex/issue-1044-blcs-physics
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 MPLCONFIGDIR=/tmp/i1044-mpl

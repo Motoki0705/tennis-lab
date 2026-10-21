@@ -38,7 +38,7 @@ metrics:
   final_val_mean_distance_px: 2.3588125705718994
   exact_match_to_c11_control: true
 repro:
-  commit: ac9e640903a6dfaecb65fc980f5dcf408bbcd589
+  commit: a36d4e02bcd42acc0f6e17163dacdd666827a6fb
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: .venv/bin/python -m src.tasks.ball_detection.scripts.train --config-name

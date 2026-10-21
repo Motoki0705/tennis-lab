@@ -20,7 +20,7 @@ metrics:
   retained_checkpoints: 0
   tensorboard_scalar_tags: 0
 repro:
-  commit: 48f75c7777cb7cf4d597589bed612750da975d49
+  commit: 9be8b92c54561175c9ebf636f2c85f4803118f59
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

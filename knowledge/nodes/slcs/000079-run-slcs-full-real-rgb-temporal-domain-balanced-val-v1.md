@@ -34,7 +34,7 @@ metrics:
   broadcast_detector_gap_ball_position_error_m: 3.7447893619537354
   broadcast_detector_gap_no_rgb_ball_position_error_m: 3.181783437728882
 repro:
-  commit: 8e007106bb302a4237fd1a49eb3c895245dc1c0d
+  commit: 2a38080fdb21e9bcab95fb9e93880b8fd06f7d3c
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

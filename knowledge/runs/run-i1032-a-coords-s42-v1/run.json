@@ -7,7 +7,7 @@
   "issue": "1032",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "6d0cc11313b2c67c0fcbed79265f8aebafeb13b7",
+  "commit": "c5ba87dcfdb08db361575caaf1f7ea704175735a",
   "branch": "feat/issue-1032-p5-physics-heads",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-1032-physics-refiner",

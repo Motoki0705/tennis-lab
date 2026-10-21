@@ -19,7 +19,7 @@ config:
   side_source: confirmed_load
 metrics: {}
 repro:
-  commit: 9b8f7d3cd2ead11b0e9c339049fe8d4af1666da4
+  commit: 50ab645704792e2ca0b9e16a44d5f6220c9e5fc4
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

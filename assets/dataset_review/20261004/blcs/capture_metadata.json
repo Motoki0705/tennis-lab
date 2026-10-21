@@ -27,7 +27,7 @@
         "trail": true,
         "follow": false
       },
-      "code_revision": "4c7912cf20acc76b07d0fcd42e7609a69125bff4",
+      "code_revision": "020ba94d595c8d9fb3f36105199549c15977c5e1",
       "source_manifest": {
         "path": "data/blcs/single_object/meta.json",
         "sha256": "9347a29c73cabc49b304b51d09ae0bfc1a5db4924338307007dcdcfb52c6cd68"
@@ -53,7 +53,7 @@
         "trail": true,
         "follow": false
       },
-      "code_revision": "4c7912cf20acc76b07d0fcd42e7609a69125bff4",
+      "code_revision": "020ba94d595c8d9fb3f36105199549c15977c5e1",
       "source_manifest": {
         "path": "data/blcs/single_object/meta.json",
         "sha256": "9347a29c73cabc49b304b51d09ae0bfc1a5db4924338307007dcdcfb52c6cd68"
@@ -85,7 +85,7 @@
         "inspection_trail": true,
         "camera_parameters_expanded": false
       },
-      "code_revision": "5e0fdfee1a47e8e92f8275cb4360f185f0360151",
+      "code_revision": "9b4e2fe5d3e039ecd2738f2125d472fd861a8b60",
       "task_static_sha256": {
         "blcs-inspection.css": "6973e7a2eb45b4fbbdbbaa4720391b41f14b8e00b568081e668e88fd068ac1d6",
         "blcs-inspection.mjs": "bb6e6b89fe65a99b137d4717d2c6bfdb004afefdeb64937e24dbd4178061da25",
@@ -168,7 +168,7 @@
         "inspection_trail": true,
         "camera_parameters_expanded": false
       },
-      "code_revision": "5e0fdfee1a47e8e92f8275cb4360f185f0360151",
+      "code_revision": "9b4e2fe5d3e039ecd2738f2125d472fd861a8b60",
       "task_static_sha256": {
         "blcs-inspection.css": "6973e7a2eb45b4fbbdbbaa4720391b41f14b8e00b568081e668e88fd068ac1d6",
         "blcs-inspection.mjs": "bb6e6b89fe65a99b137d4717d2c6bfdb004afefdeb64937e24dbd4178061da25",
@@ -251,7 +251,7 @@
         "inspection_trail": true,
         "camera_parameters_expanded": true
       },
-      "code_revision": "5e0fdfee1a47e8e92f8275cb4360f185f0360151",
+      "code_revision": "9b4e2fe5d3e039ecd2738f2125d472fd861a8b60",
       "task_static_sha256": {
         "blcs-inspection.css": "6973e7a2eb45b4fbbdbbaa4720391b41f14b8e00b568081e668e88fd068ac1d6",
         "blcs-inspection.mjs": "bb6e6b89fe65a99b137d4717d2c6bfdb004afefdeb64937e24dbd4178061da25",

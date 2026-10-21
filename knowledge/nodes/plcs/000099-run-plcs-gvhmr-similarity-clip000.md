@@ -33,7 +33,7 @@ metrics:
   player1_fixed_heading_median_deg: 19.946066
   player1_free_heading_median_deg: 19.923465
 repro:
-  base_commit: b8ccc6ba
+  base_commit: 59e02af5c548a94fc36d9b64971f94a958410ce7
   branch: feat/plcs-gvhmr-similarity
   command: bash knowledge/runs/run-plcs-gvhmr-similarity-clip000/repro.sh
 artifacts:

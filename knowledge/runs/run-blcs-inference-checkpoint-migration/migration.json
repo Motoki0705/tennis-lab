@@ -10,7 +10,7 @@
   "state_dict_tensors_equal": 131,
   "original_training_metadata_preserved": true,
   "strict_public_predictor_load": true,
-  "original_checkout_commit": "e848e529928d2c8ee760faf0cd70112e2f976f13",
+  "original_checkout_commit": "9f5fed173b9dd56e4a1bb72622ff2c771b8d1f66",
   "verification": "original public predictor versus migrated public predictor; CPU FP32, fixed random 2-view/8-frame input",
   "maximum_position_difference_m": 0.0
 }

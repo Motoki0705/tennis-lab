@@ -23,7 +23,7 @@ metrics:
   unobserved_frames_with_raw_candidates: 1748
   load_only_camera_count: 3
 repro:
-  commit: 87de832cb049d5da36cd3df7a1549fa240199db8
+  commit: f01a1a0b20114dedc59502251e7a568b3c36438a
   branch: campaign930/i934-3-evidence-contract
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i934-3-evidence-contract

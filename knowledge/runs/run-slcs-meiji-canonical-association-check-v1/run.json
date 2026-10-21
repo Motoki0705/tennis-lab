@@ -1,5 +1,5 @@
 {
-  "commit": "740e788877a00971a7ab3d913458c8328379815e",
+  "commit": "c04479d50c62070384eb273065ef3c6623dc1ae3",
   "branch": "codex/slcs-real-rgb",
   "command": [
     "knowledge/runs/run-slcs-meiji-canonical-association-check-v1/probe.py",

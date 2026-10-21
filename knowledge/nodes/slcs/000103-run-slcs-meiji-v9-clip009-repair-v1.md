@@ -28,7 +28,7 @@ metrics:
   supported_ball_speed_max_mps: 61.464561462402344
   unsupported_ball_longest_gap_frames: 56
 repro:
-  commit: ab394121
+  commit: cdf0569d4cb821fde94008c94a4180d35a23cd68
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

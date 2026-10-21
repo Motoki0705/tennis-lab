@@ -35,7 +35,7 @@ metrics:
   angle_accuracy_15deg: 0.853533
   angle_accuracy_30deg: 0.974057
 repro:
-  commit: 27c9c73053baedffd2e2152520cf35443d170c57
+  commit: f9b9ba2e1f2542b58d8a605573f6b57afe98e0d6
   branch: exp/issue-576-camera-token-split
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

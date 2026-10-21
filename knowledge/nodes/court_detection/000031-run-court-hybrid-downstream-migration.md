@@ -69,13 +69,13 @@ LINE支持はモデル内部の整合率で、正解annotationに対する精度
 5例は共同最適化または支持候補の判定で棄却された。LINE-only adapterの確率gridは共通hybrid APIのraw LINEと完全一致（最大絶対差0.0、256×384）し、合成アライメントへHを描き直したmaskを渡していない。[adapter記録](../../runs/run-court-hybrid-downstream-migration/alignment-adapter.json)を参照。失敗原因を学習不足やSfM driftと断定するGTはこのrunにはない。
 
 ### 既存実験との比較
-親runのKP/LINE教師評価と今回のH採用率は別指標で、数値を直接比較できない。幾何実装は論文branchの`5b9f8d1d497d2be71dea4cccf62c1c15976c2eb4`から移植したが、その評価用checkpointとは異なる。今回の重みは指定sourceから`ckpt/court_detection/hybrid/`へ実コピーし、SHA-256の前後一致を確認した。
+親runのKP/LINE教師評価と今回のH採用率は別指標で、数値を直接比較できない。幾何実装は論文branchの`f4c93b9d75b7413d3d67b43c58bc8333486ff206`から移植したが、その評価用checkpointとは異なる。今回の重みは指定sourceから`ckpt/court_detection/hybrid/`へ実コピーし、SHA-256の前後一致を確認した。
 
 下流はユーザー指定に従いcamera_view_v2へ移行した。既定PLCS `real-rgb-meiji-foot-e60-v1.ckpt`（epoch57）とBLCS `real-rgb-meiji-e60-v1.ckpt`（epoch58）はcheckpoint本文の契約が一致する。CPUで実load・controlled tensor forwardを実施し、有限出力と不可視点・全不可視フレームのvisibility伝播を確認した。[downstream-smoke.json](../../runs/run-court-hybrid-downstream-migration/downstream-smoke.json)にSHAと結果がある。これは実動画全pipelineの精度評価ではない。重み選定は各既存runのvalidation最良保存結果に基づき、Meiji以外の汎化は未検証である。
 
 ### 次に有効な実験
 複数会場の人手正解Hで採用率と誤採用率を評価し、LINEの誤検出・幾何候補・最適化の寄与を分離する。設定変更の評価にはこの8枚と独立なholdoutを使う。既存B00/B01/B03のheatmap v2を現行v3 loaderが読めない制限は今回も残る。保存成果物の形式やcheckpoint履歴は書き換えていない。
 
-推論時のcommitはrebase前の`e002a6a8`。最新mainへの載せ替え後の同一推論実装は`d3fd5f80`であり、`metrics.json`の推論コードSHAでも照合できる。validator対応では保存入力契約とsemantic可視化設定を変更し、幾何推論の測定結果は書き換えていない。
+推論時のcommitはrebase前の`e002a6a8`。最新mainへの載せ替え後の同一推論実装は`3eab6ebd0280f2f35ff995be34a0cd507e50786a`であり、`metrics.json`の推論コードSHAでも照合できる。validator対応では保存入力契約とsemantic可視化設定を変更し、幾何推論の測定結果は書き換えていない。
 
 PR #901のmain取り込み時に、下流の最大8点制限を推論APIとpipeline設定の検証へ移した。論文の共有幾何コードは保存証拠のハッシュと一致する版を保持する。このrunの`metrics.json`のコードSHAは移動前の測定版の記録であり、保存済みの推論出力・測定値は変更していない。

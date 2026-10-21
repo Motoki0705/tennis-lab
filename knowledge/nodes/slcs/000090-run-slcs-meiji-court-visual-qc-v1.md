@@ -30,7 +30,7 @@ metrics:
   max_recorded_p95_error_delta_px: 0.0
   video_002_clip_017_cam0_near_baseline_inlier_points: 0
 repro:
-  commit: 4d24a2144680cace5af825659b8909aecd19e15e
+  commit: 086e2476c7315c0a3b6eddca10951e77a4928135
   branch: codex/slcs-real-rgb
   command: bash knowledge/runs/run-slcs-meiji-court-visual-qc-v1/repro.sh /new/unique/output/path
 artifacts:

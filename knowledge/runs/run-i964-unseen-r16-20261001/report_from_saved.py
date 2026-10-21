@@ -11,7 +11,7 @@ SCORE = BUNDLE / 'scoring-r18'
 unseen = json.loads((SCORE / 'summary.json').read_text())
 dev = json.loads((DEV / 'comparison.json').read_text())
 lines = ['# run18: 凍結未見3clip・一回採点結果', '',
-'ラベルcommit **43da331cc**をpush後、変更のない`person_unseen_score.py`を一度だけ実行し正常終了した。採点crash・再試行は0。元の予測/ラベル/指標/設定を変更していない。以下は保存JSON/CSV/countの転記・加算で、再照合や再採点ではない。', '',
+'ラベルcommit **24b6ce12c016ac3f1f2404d81e9d106b11b0d9fe**をpush後、変更のない`person_unseen_score.py`を一度だけ実行し正常終了した。採点crash・再試行は0。元の予測/ラベル/指標/設定を変更していない。以下は保存JSON/CSV/countの転記・加算で、再照合や再採点ではない。', '',
 '## 全体と開発4clip（参考のみ）', '',
 'rawは「コート選別後のraw ID」であり、選別前の全画面tracking精度ではない。全停止も母数へ含む。devは旧観測box参照、今回は同じ推論のraw box参照なので、数値差を改善・劣化や調整の根拠にしない。', '',
 '|集合/段階|IDF1|IDTP/FP/FN|switch/fragment|選手保持unit|非選手残留unit|50%人物保持|',

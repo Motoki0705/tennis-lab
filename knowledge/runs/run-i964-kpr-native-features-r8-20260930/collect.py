@@ -32,7 +32,7 @@ def main():
     repro = ROOT / f'.training_queue/repro/{JOB}'
     assert not (repro / 'git_status.txt').read_text().strip()
     identity = json.loads((repro / 'run.json').read_text())
-    assert identity['commit'] == '935cb0d55175214abef807d44d3f654ebb743038'
+    assert identity['commit'] == 'ab672a9d2525a67bbbc3c52cf4e1b30602707eff'
     plan = json.loads((RUN / 'plan.json').read_text())
     manifest = json.loads((RUN / 'features.json').read_text())
     assert manifest['status'] == 'ok'

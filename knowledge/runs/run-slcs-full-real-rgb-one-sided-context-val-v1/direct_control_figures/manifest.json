@@ -4,7 +4,7 @@
   "interpretation": "Pseudo-3D teacher agreement, not measured 3D accuracy. Checkpoint selection: validation only.",
   "aggregation": "Unweighted valid window occurrences; overlapping frames counted separately. No smoothing or clipping.",
   "p95_definition": "numpy percentile 95, linear interpolation; descriptive tail statistic",
-  "git_commit": "1e5b38cfec422b595452557441cc261b00730a16",
+  "git_commit": "1748d3d398165b81760331ba5ab5ce5227277bd6",
   "source_sha256": {
     "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/selection.json": "41d2a86921aa6277879eaee497478f10138ead1d69c4ee8b7931d5da0df5f45c",
     "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_ball_temporal_context/s42-001/val/comparison/comparison.json": "478c53b198e832e7f1ee7f1c27f14be8e9a6a2737366d8175739b472a660d6cd",

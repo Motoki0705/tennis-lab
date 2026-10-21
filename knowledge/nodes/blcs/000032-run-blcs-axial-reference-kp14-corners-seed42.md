@@ -116,7 +116,7 @@ metrics:
   position_accuracy_0.3m: 0.8301770687103271
   endpoint_error_m: 0.6715567111968994
 repro:
-  commit: 41da7f0aedbad30bf0cc65852b2ee979b9e05d11
+  commit: 465428b659ecafb79ce993c161cdf6d31d6e13fa
   branch: tmp/blcs-axial-reference-colab
   remote: https://github.com/Motoki0705/tennis-lab.git
   command: bash scripts/colab/run.sh run blcs_axial_reference_kp14 --gpu L4 --drive-mode

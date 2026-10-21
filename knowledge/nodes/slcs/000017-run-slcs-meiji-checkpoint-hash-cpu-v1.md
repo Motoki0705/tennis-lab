@@ -24,7 +24,7 @@ metrics:
   memory_mismatches: 0
   elapsed_seconds: 63.003466768999715
 repro:
-  commit: d4e6e65244b3eabc530c57e5899f117168785a62
+  commit: 59d30534e87b6192a95628cc73f25aed7f14b30d
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --kill-after=5s 590s env OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python

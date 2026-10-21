@@ -2,7 +2,7 @@
 
 Adapted from ARIS (https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep,
 revision 3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d, MIT License; see
-../LICENSE.ARIS.txt) as vendored in tennis-lab commit 57ae07631:
+../LICENSE.ARIS.txt) as vendored in tennis-lab commit 824d8ab91c4de38938928463b7399b26c6aceb55:
 ``tools/arxiv_fetch.py``, ``tools/semantic_scholar_fetch.py`` and
 ``tools/openalex_fetch.py``. Changes: one CLI and record schema, standard library
 only, injectable HTTP for tests, and no silent fallbacks (no curl rescue, no

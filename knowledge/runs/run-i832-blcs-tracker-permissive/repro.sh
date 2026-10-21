@@ -5,8 +5,8 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/issue-832-deterministic-2d-tracking}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: 103d70eb8c8b8857dd9ba3936d53084c5d24bc8d (branch feat/issue-832-deterministic-2d-tracking)"
-git checkout 103d70eb8c8b8857dd9ba3936d53084c5d24bc8d 2>/dev/null || echo "[repro] WARN: checkout 103d70eb8c8b8857dd9ba3936d53084c5d24bc8d failed; using current HEAD"
+echo "[repro] target commit: 815b7a90b95a4c1812ea60324142b6c165bacb35 (branch feat/issue-832-deterministic-2d-tracking)"
+git checkout 815b7a90b95a4c1812ea60324142b6c165bacb35 2>/dev/null || echo "[repro] WARN: checkout 815b7a90b95a4c1812ea60324142b6c165bacb35 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

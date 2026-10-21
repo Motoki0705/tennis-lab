@@ -61,7 +61,7 @@ poseを補完しません。採用済み・要確認・レビュー待ち・未�
 画面は保存結果を読むだけで、生成やレビューcampaignを再開しません。
 
 旧Web/static/temporal・staged・SSL収集の学習入力は、
-[`5e8e559d9` の整理](https://github.com/Motoki0705/tennis-lab/commit/5e8e559d9)で廃止されています。
+[`515370dfc9a09012d8201e497a89b884d2b07c9e` の整理](https://github.com/Motoki0705/tennis-lab/commit/515370dfc9a09012d8201e497a89b884d2b07c9e)で廃止されています。
 旧版や旧原本が手元にないことを、現行レビューUIの不足データとは扱いません。
 生成設定の既定versionと学習設定の既定versionは用途が異なります。
 新規生成・split変更には新しいversionを明示し、既存データを閲覧だけのために作り直さないでください。

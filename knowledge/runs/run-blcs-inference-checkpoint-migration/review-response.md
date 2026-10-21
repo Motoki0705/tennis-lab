@@ -1,6 +1,6 @@
 # PR #1097 の既存Claudeレビューへの対応
 
-対象は[2026-10-13のレビュー](https://github.com/Motoki0705/tennis-lab/pull/1097#issuecomment-6156239935)（head `c02c20e45ab8d33e8b98d15933a4e4b8e0547ef1`）。原文を`claude-review.json`に保存した。以下は実装担当による判断・修正であり、Claudeによる修正後の承認ではない。ユーザー指定により2回目のClaudeレビューは起動しない。
+対象は[2026-10-13のレビュー](https://github.com/Motoki0705/tennis-lab/pull/1097#issuecomment-6156239935)（head `bb624eeb40e6902b4d737fcb356a071d587ed1db`）。原文を`claude-review.json`に保存した。以下は実装担当による判断・修正であり、Claudeによる修正後の承認ではない。ユーザー指定により2回目のClaudeレビューは起動しない。
 
 | 指摘 | 判断と対応 | 検証 |
 |---|---|---|

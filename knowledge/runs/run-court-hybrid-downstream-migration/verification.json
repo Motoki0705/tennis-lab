@@ -1,5 +1,5 @@
 {
-  "base": "893d0ca4129e9e69f8e8c850d89c6200cf2df2e3",
+  "base": "554327a5cbcea54fcc156540fb678b89ffd235c2",
   "checks": [
     {
       "command": "CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 .venv/bin/python -m pytest -n0 tests/unit/tasks/court_detection tests/unit/tennis_scene tests/unit/synthetic_data_generation/alignment tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/e2e/colab/test_b01_b03_alignment_script.py tests/e2e/development/test_architecture_boundaries.py",
@@ -71,14 +71,14 @@
       "command": "pytest -n0 tests/unit/synthetic_data_generation/pipeline/test_runner.py tests/unit/synthetic_data_generation/test_configuration.py tests/integration/synthetic_data_generation/test_configuration.py tests/unit/tasks/court_detection/inference tests/unit/tennis_scene tests/e2e/development/test_architecture_boundaries.py tests/e2e/colab/test_b01_b03_alignment_script.py",
       "passed": 474,
       "failed": 0,
-      "note": "Final regression suite after rebase onto 7dd5f7c4 (including the updated NHT submodule pin)."
+      "note": "Final regression suite after rebase onto 42c1b4b6b7171ce19a7b3541473a8885905fe028 (including the updated NHT submodule pin)."
     },
     {
       "command": "ruff check and mypy --follow-imports=skip on final 43 changed/new source and test Python files",
       "status": "passed"
     },
     {
-      "command": "kg_validate.py --check-summary --base-ref 7dd5f7c4",
+      "command": "kg_validate.py --check-summary --base-ref 42c1b4b6b7171ce19a7b3541473a8885905fe028",
       "status": "passed",
       "nodes": 211,
       "errors": 0,
@@ -113,7 +113,7 @@
       {
         "round": 1,
         "reviewed_commit": "70096b47167ec5af9ff5f74f7d305e1d0f2e784e",
-        "rebased_equivalent": "537549ab",
+        "rebased_equivalent": "4ade7c79c08d8c20e2e82e6a1fe25c73e1b8a06d",
         "verdict": "CHANGES_REQUIRED",
         "independent_tests_passed": 51,
         "findings": [
@@ -150,15 +150,15 @@
           }
         ],
         "post_review_changes": "Test corrections only. The last correction is covered by ordinary verification and was not reevaluated by another validator.",
-        "rebased_equivalent": "d5988bc5"
+        "rebased_equivalent": "0b0579b07c6a3874af4848547e8baca8653de65d"
       }
     ]
   },
-  "rebased_onto": "bdacfc3bfda95a7b22697edf452ad27778051f22",
+  "rebased_onto": "1d8610a0f68807da6f46eb78d73b52c5b6f79395",
   "additional_test_maintenance": {
     "test": "tests/integration/synthetic_data_generation/test_configuration.py::test_task_local_generation_camera_profiles_remain_available",
     "baseline": "Fails on main too: corners.yaml is already a committed public profile but absent from the expected inventory.",
     "resolution": "Update the explicit expected public inventory to broadcast/corners/default."
   },
-  "final_base": "7dd5f7c444b4e7baffe4200df0eaab839653edec"
+  "final_base": "42c1b4b6b7171ce19a7b3541473a8885905fe028"
 }

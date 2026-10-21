@@ -32,7 +32,7 @@ metrics:
   last_full_mean_error_px: 237.40225790668592
   last_common_mean_error_px: 232.4804872352681
 repro:
-  commit: e75f81a4e3831af6f0ca175f71c0ccb90fd2b021
+  commit: 900a1781dfa4c5074864e03f830316463773ffe0
   branch: HEAD
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2

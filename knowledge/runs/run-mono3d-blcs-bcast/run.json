@@ -5,7 +5,7 @@
   "provider": "claude",
   "session": "dd9d56e0-5f2d-4d9d-a8c7-c80704a806b3",
   "issue": "",
-  "commit": "ef76d3d60d237ae9cceafeda5411f51757b4f81d",
+  "commit": "4413fcbdcc6ace6c0f32f1407e4aa6338b160a1b",
   "branch": "main",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab",

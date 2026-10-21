@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789726864016014469_138185_slcs-rgb-pilot-baseline-e60-v2 (commit=4348077d8f7a provider=codex session=01a0b314-89b5-7902-b0a1-3141a9323ea9)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1789726864016014469_138185_slcs-rgb-pilot-baseline-e60-v2 (commit=3927bd67fd17b373ab44412919563dd22e24d913 provider=codex session=01a0b314-89b5-7902-b0a1-3141a9323ea9)
 Seed set to 42
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

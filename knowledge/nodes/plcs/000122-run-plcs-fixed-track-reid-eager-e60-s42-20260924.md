@@ -52,7 +52,7 @@ metrics:
   same_side_matching_f1: 0.8685524126455907
   opposite_side_matching_f1: 0.8469991546914624
 repro:
-  commit: 3ca9b8a4d3792dc613d2f30443c8d9e03c12c83c
+  commit: eabb4b2c58311b5850dd54249e51e2c9bcc7b3d4
   branch: codex/plcs-track-reid
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

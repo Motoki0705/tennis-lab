@@ -33,7 +33,7 @@ metrics:
   completed_epochs: 12
   optimizer_steps: 23040
 repro:
-  commit: 8142fc349c268ee567525efc603c11bf705cd5a4
+  commit: 3ee676361d68c4e6f34a32dbb668d00392e166be
   branch: campaign930/i934-4-mixed-ft
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

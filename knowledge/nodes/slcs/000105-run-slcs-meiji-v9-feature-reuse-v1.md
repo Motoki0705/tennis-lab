@@ -45,7 +45,7 @@ tags:
 - reuse
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 91dc8895
+  commit: f50555581354f867ae7c1576cc57eb587edbb93d
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python
     -B knowledge/runs/run-slcs-meiji-v9-feature-reuse-v1/reuse_features.py --original

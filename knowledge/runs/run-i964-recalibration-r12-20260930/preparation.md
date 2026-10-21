@@ -1,6 +1,6 @@
 # run 12 準備の実測記録
 
-[事前protocol](protocol.md)は8e8face1、[fit前投稿](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5910654476)。
+[事前protocol](protocol.md)は2df36745036f8ffc84122ca251a7022f233c8b4a、[fit前投稿](https://github.com/Motoki0705/tennis-lab/issues/964#issuecomment-5910654476)。
 特徴生成・fit・新dev採点・予約未見評価は、この準備記録の作成時点では未実行。
 
 ## 選定結果と不足特徴

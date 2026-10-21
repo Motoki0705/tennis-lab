@@ -7,7 +7,7 @@
   "issue": "935",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "5f839cc417e960236d62e9f1d43f1bce29ee30e1",
+  "commit": "680422244ee44d1e6f36d539d30b0f6453bf59d0",
   "branch": "campaign930/i935-7-pipeline",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-7-pipeline",

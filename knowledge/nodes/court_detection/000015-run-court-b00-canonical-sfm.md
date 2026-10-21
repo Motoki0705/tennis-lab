@@ -76,7 +76,7 @@ metrics:
   minimum_expanded_hull_clearance_m: 0.9119301170375458
   accepted_court_count: 2
 repro:
-  commit: 5589f44671ecd85578cc93f62db131da54ec9bfe
+  commit: cfa10e6767a4981ce9dffa4fd20b7c266682e9a4
   branch: codex/court-sfm-bounded
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=. .venv/bin/python outputs/court-b00-b03-generation/run_requested.py

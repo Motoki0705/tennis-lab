@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i931-4-imports}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: f3706f1913bee277ea950be4252af0b3cb12a389 (branch campaign930/i931-4-imports)"
-git checkout f3706f1913bee277ea950be4252af0b3cb12a389 2>/dev/null || echo "[repro] WARN: checkout f3706f1913bee277ea950be4252af0b3cb12a389 failed; using current HEAD"
+echo "[repro] target commit: 808e6a2447a2f1df3df3fea6d6ecd044f9853583 (branch campaign930/i931-4-imports)"
+git checkout 808e6a2447a2f1df3df3fea6d6ecd044f9853583 2>/dev/null || echo "[repro] WARN: checkout 808e6a2447a2f1df3df3fea6d6ecd044f9853583 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # #931: the original command built the DINO extension into the report directory under outputs/;

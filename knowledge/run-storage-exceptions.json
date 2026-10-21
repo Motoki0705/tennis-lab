@@ -175,67 +175,67 @@
   "runs": [
     {
       "path": "runs/group-i983-court-dinov3-shared1024-s42",
-      "sha256": "0aba79a1e52e84820c9557e43a9aafa38c96b753ef57508eb8fdbd0192aae3ca",
+      "sha256": "253da2a63570f871b9d7c1e2d7d7acc0359469efedf2d2bed5582d065eefd865",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-court-hybrid-downstream-migration",
-      "sha256": "93c1820aaf040114e8b44938b389c7a83870873cce8ffef5f7416197dc8c3575",
+      "sha256": "1321f31cc28020b63f13a6d29a1d02d69afd6cf1e428f11b9f46c364bbe4240a",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-i983-court-dinov3-b-s42",
-      "sha256": "d4b909b10325314e8cfd0e2bff7434c8ecce862aa6f8943f92f3afe50860a094",
+      "sha256": "4679c12f4a17911d0d7da04c24d988bf47f2d19297dbbd11ef41cdcfbfa076d7",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-i983-court-dinov3-l-s42",
-      "sha256": "3ace2126bb2aa81c2491832162aeb14676ad0879af89e5ee269378a876f8eefb",
+      "sha256": "bdebe6c242b43fc6142c9674c45e5a8add56e9f773866e06ece2a40c06f8e0be",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-i983-court-dinov3-s-s42",
-      "sha256": "9af35143abf215c370960cb5950b60968b0e0d8e3844cb84b7852c9ddb5d41f6",
+      "sha256": "96330157b8f5987442805ac3f2a228a36a2f9efa16456e59e9dca8bb7178cf29",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-i983-court-dinov3-splus-s42",
-      "sha256": "dd728b14c0d29b631c3360fe723b9d40c700237b36a9239c8ff047773bf136a3",
+      "sha256": "322aefe5d8864491c5f030e31a4854ef9dced8e47e37c01f344d17d7a084565e",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-i991-rope-2d-gan-eventonly-s42-20261006-v3",
-      "sha256": "f6fee156ba7933fee5a31ec415da335951e7b1fbe14913b241d514cfee88db45",
+      "sha256": "7d7639fe2da7f65b89bcf3335dffd0235e890ee87ad6413523c31c0e0dc711dc",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-auto-person-mismatch-20260922",
-      "sha256": "caa810d28c99f1fb5fa50b6791fe11b2b8a9f1529d17c574482b283456394e42",
+      "sha256": "f2a31f2653379fa2f396f45e5ebc93d0f2fad1e69cf5187b34d06118e5b5ca4b",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-corrected-dataset-20260923",
-      "sha256": "90ed03f64cdc652a88a38853d613753ab5e5658141e7d75b283318a2e353da38",
+      "sha256": "c4a989388ee420c06fef4c1d7605392fc95649fbcad34278a0d5c803c41d8b80",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-corrected-pipeline-20260923",
-      "sha256": "fc685cbcace108423a9d1ad2fe662e4ac2c1db4e8bcd5ab1a4536dd146fe1318",
+      "sha256": "2677d78517b2f8b101b2bcfffceaa36cf56eb9b680ed6b27f467f22d51804182",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-court-filter-5m-20260922",
-      "sha256": "34b9d953138823d6292ba7067eb039fd182090bfef58a6b2015e739dc45ac0a4",
+      "sha256": "f5d7c4b65a3401797d95955fc4019af8e8420003cc4429a317558483d6ba8201",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-raw-ball-baseline-20260923",
-      "sha256": "e76cad439fff4c777de879485e503498213a41c5d21fbb9cc37d716d8deff3dc",
+      "sha256": "fb51405d8c3d866f756dded195ae96510ee6c49e3331b21e0178b8a42c96dc36",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     },
     {
       "path": "runs/run-tennis-scene-meiji-visible-court-roi-20260922",
-      "sha256": "087246048e8e01613a16b42be237061c4db9c0521c165711e47150fca8787e4a",
+      "sha256": "0668c5ad4b64a276a6d0121a3a068b510bed1e1d4266c7d6cfa62890b91a4146",
       "reason": "承認済みの初回整理後も2 MiBを超える既存bundle。保持した再現コード・指標・小さな図のファイル集合と内容を固定する。"
     }
   ],

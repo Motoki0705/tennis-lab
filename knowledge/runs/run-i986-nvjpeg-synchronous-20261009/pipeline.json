@@ -20,7 +20,7 @@
   "manifest_sha256": "035d3ab96807ace8e25ebe3a5d603f09a7c514802942170fdd5b8ad2854c949c",
   "model_config_sha256": "2982fc125990c0437a3f09aff5b5e3d2552d23d0a759ff6068676d56735626b2",
   "script_sha256": "8a406c06eb795e6eeb56b8c0bc482998a814ec7e5c87e2ea6d26204c4b943d11",
-  "commit": "2da3351a28cf6c685767338f0f768d3c357c402e",
+  "commit": "6063958b203e9bb42e2ecec6837d3765d3b83eea",
   "queue_run_id": "1791503742151889422_1110953_i986-nvjpeg-pipeline-v1",
   "seed": 42,
   "optimizer": {

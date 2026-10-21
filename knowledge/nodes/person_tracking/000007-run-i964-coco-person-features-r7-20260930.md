@@ -25,7 +25,7 @@ metrics:
   peak_reserved_bytes: 3074424832
   output_bytes: 365635201
 repro:
-  commit: 62033eda245c42d70ba0956585274bf1a82f4ff7
+  commit: 1639e2516abdecae47d6f1462bdc1acec82e482e
   branch: campaign930/i964-2-tracking
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: timeout --signal=TERM --kill-after=15s 5385s env OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
@@ -47,7 +47,7 @@ tags: []
 
 queue job `1790728513515020890_17831_i964-coco-person-features-r7-20260930` はdone。
 workerの2026-09-30 10:23:43 JST done記録とterminal stateを確認した。成功logはexit_codeを
-出力しない実装だが、done遷移はrc=0の場合だけである。実行commit `62033eda`、cleanなreproと一致。
+出力しない実装だが、done遷移はrc=0の場合だけである。実行commit `1639e2516abdecae47d6f1462bdc1acec82e482e`、cleanなreproと一致。
 [全検査結果](../../runs/run-i964-coco-person-features-r7-20260930/collection.json)と
 [成功manifest](../../runs/run-i964-coco-person-features-r7-20260930/features.json)を保存した。
 

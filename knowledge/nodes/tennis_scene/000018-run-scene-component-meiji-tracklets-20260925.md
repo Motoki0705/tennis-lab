@@ -32,7 +32,7 @@ metrics:
   cam2_stable_local_ids: 4
   cam2_overlapping_duplicate_ids: 2
 repro:
-  commit: 4211b108ae8e337bc7ecd3fa545117f07a17c0bd
+  commit: 6028219de5cc65f8500cf7d3d2a92eb88cdd53eb
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

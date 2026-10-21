@@ -3,13 +3,13 @@
   "session": "i983-l4-ablation-03",
   "created_at": "2026-10-11T04:02:46.376667+00:00",
   "gpu": "L4",
-  "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "commit": "7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f",
   "drive": "gdrive:tennis_lab",
   "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_",
   "observed": {
     "ok": true,
     "gpu": "NVIDIA L4, 23034 MiB",
-    "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+    "commit": "7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f",
     "python": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]"
   },
   "helpers": {

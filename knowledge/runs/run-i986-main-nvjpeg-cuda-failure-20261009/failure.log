@@ -1,4 +1,4 @@
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791511474412814944_1611763_i986-query-bf16-s42-u60000-nvjpeg-v1 (commit=a7c6419d9dd0 provider=codex session=01a0fb0c-97b5-7851-b805-25dae445a6a2)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791511474412814944_1611763_i986-query-bf16-s42-u60000-nvjpeg-v1 (commit=ffe0f5f427dde06183a62a6235dc07537408b2b3 provider=codex session=01a0fb0c-97b5-7851-b805-25dae445a6a2)
 {"phase": "verify_inputs_start", "clips": 824}
 {"phase": "verify_inputs_progress", "completed": 50, "clips": 824, "seconds": 47.59798598400084}
 {"phase": "verify_inputs_progress", "completed": 100, "clips": 824, "seconds": 50.42986643301265}

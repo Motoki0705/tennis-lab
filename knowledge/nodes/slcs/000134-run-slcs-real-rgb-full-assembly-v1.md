@@ -25,7 +25,7 @@ metrics:
   val_clips: 22
   test_clips: 24
 repro:
-  commit: a4655661
+  commit: 4094af23980bab01d486630743dd88b5ead108a1
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

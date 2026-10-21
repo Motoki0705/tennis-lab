@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "completed",
   "kind": "four_condition_comparison",
-  "source_commit": "c4b12f923b243da6b502149aa6f3912c706045e7",
+  "source_commit": "75e30a565b1f7a5f7fd4f08cea2daf458d377653",
   "source_sha256": {
     "src/tasks/court_detection/ablation/comparison.py": "25b40d0f3250158cd80797bf995bde8ad27c2520bc18e36e185948c1edb54ca1",
     "src/tasks/court_detection/scripts/compare_ablation.py": "999b15181a40f0924692eebc532c63829552e3f28f144567ef38e123dcf51bd4"

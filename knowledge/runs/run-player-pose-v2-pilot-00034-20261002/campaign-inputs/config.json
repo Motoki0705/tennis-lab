@@ -3,7 +3,7 @@
   "dataset": "/home/kamimura/projects/tennis-lab/data/ball_detection/ball-mix-v2-player-pose-v1",
   "project_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose",
   "python": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose/.venv/bin/python",
-  "code_commit": "47bd048c54183a186b37e7d49102467c2ac10587",
+  "code_commit": "e4db047aa5e2eb172f62f8ee1b4062d1d7a40e96",
   "presence_threshold": 0.4,
   "chunk_frames": 64,
   "generation_attempts": 2,

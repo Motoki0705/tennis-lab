@@ -18,7 +18,7 @@ config:
   device: cpu
 metrics: {published_clips: 0}
 repro:
-  commit: 25f4beafe1156371d00b5bf70ae1847b31ab5eb5
+  commit: d99ee5917720b08b59d706126d348d5fee968a14
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2

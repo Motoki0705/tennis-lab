@@ -31,7 +31,7 @@ metrics:
   ball_3d_valid_frames: 987
   load_only_stage_count: 25
 repro:
-  commit: 96d6cd90b38dc049a7d2ef27d27628eefb5c7617
+  commit: 128eb7402635318d6ac6de2f8bac0c93f4efb400
   branch: codex/clip-component-store
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4

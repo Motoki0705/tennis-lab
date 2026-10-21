@@ -18,7 +18,7 @@ metrics:
   completed_comparisons: 0
   exit_code: 1
 repro:
-  commit: 7621307bf292f5b06bd6d3fe2e0cf90a7ee27985
+  commit: 06e921c8e5a62e3a6f1496de1c27e91af9352b24
   branch: codex/slcs-real-rgb
   command: >-
     env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4

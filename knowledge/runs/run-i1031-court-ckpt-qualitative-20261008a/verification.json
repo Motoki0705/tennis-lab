@@ -1,7 +1,7 @@
 {
   "task": "court_detection",
   "checkpoint": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
-  "commit": "c751331f589a40432920a4f9fc2bbf34eb3c96db",
+  "commit": "7503266aacf2e0cebd185fa353d380ad7d3c31e9",
   "status": "failed",
   "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
   "sample_indices": [

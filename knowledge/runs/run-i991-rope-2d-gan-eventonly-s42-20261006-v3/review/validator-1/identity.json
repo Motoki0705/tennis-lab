@@ -1,6 +1,6 @@
 {
-  "commit": "9588b33833c54423c361d150fbac442f9631497f",
-  "base": "b8dab538e1121c4ccc357b31e4bf45a2e6f8ef1f",
+  "commit": "b97e51a5e3defdab6ad70a0bd9cb80bbb47b569e",
+  "base": "00e673f3b31966777ebdc728dfc5ed5ed5f07900",
   "files": {
     "src/tasks/ball_refiner/configs/model/coordinate_transformer.yaml": "4860273c16ff096f2f34bb750e35821e3c62997116f5f3daafb4b8224dbf2ca5",
     "src/tasks/ball_refiner/configs/train_coordinates.yaml": "233987a0ca0942fa6e3ed695698fae72f1f618ad0f4fe3821d64185095f060a8",

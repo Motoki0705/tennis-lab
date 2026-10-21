@@ -1,6 +1,6 @@
 # Readable view only: driver diagnostics containing ][CUDA][ are omitted.
 # Full unmodified log is preserved in queue.log.gz; see log-archive.json.
-[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791857517322816057_3137894_i1044-reprojection-s44-u4000-v3-cli (commit=f1e7af16681b provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
+[capture-repro] wrote /home/kamimura/projects/tennis-lab/.training_queue/repro/1791857517322816057_3137894_i1044-reprojection-s44-u4000-v3-cli (commit=4be7e304bbd2766c1bee5132b4ad24eff58c0f0a provider=codex session=01a1327c-d543-7673-8143-2764d9f62447)
 Seed set to 44
 Using bfloat16 Automatic Mixed Precision (AMP)
 GPU available: True (cuda), used: True

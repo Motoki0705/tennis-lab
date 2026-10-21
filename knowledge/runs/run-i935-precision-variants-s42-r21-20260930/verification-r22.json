@@ -25,7 +25,7 @@
   },
   "cpu_identity": "cpu-identity.json",
   "video_verification": "overlay-verification.json",
-  "ci_fix_commit": "8b71ac6f47e6cf7557cd6aee6f04939a24e1fb26",
+  "ci_fix_commit": "65ee42a4baff99ded08f760fc689a86e727c9bf7",
   "ci_fix_run": "https://github.com/Motoki0705/tennis-lab/actions/runs/36667977105",
   "limitations": [
     "CPU bit identity only; no GPU replay",

@@ -7,7 +7,7 @@
   "issue": "935",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "f65c91f5c8a1a0e60025237ef424fc90afd7bcfa",
+  "commit": "87fd1c7b1f9ff777e93dde8fbf5096a4de14fe80",
   "branch": "campaign930/i935-8-context-cache",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/c930-i935-8-context-cache",

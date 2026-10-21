@@ -32,7 +32,7 @@ tags:
 - root-support
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: b494d168721f20688dc47fc6f105ec67828d3b62
+  commit: 3371aa14077d791cf0802f5ca19a93dbd9d3bc31
   branch: codex/slcs-real-rgb
   command: env CUDA_VISIBLE_DEVICES='' PYTHONPATH=. OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
     .venv/bin/python -B knowledge/runs/run-slcs-meiji-v8-root-replay-v1/probe.py --output-dir

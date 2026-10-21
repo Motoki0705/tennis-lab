@@ -3,7 +3,7 @@
   "session": "01a08470-1d91-72d3-8da6-13497c8b30d1",
   "run_id": "run-plcs-axial-reference-corners-seed42",
   "repro": {
-    "commit": "0dafcdee375981846d1bc34835d780937941935b",
+    "commit": "bc8f10e8dc28e0533b27efb4ee05b416ae998365",
     "branch": "feat/plcs-axial-reference",
     "remote": "https://github.com/Motoki0705/tennis-lab.git",
     "command": ".venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_axial_reference",

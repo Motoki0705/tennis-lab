@@ -1,5 +1,5 @@
 {
-  "source_commit": "3b6fd412a77f5a2eef1cd015d1b89a8a72ea3a2a",
+  "source_commit": "84b050b23689b87c6e36ccc03791b738e7fceada",
   "device": "cpu",
   "cuda_visible_devices": "",
   "workers": 2,
@@ -19,5 +19,5 @@
     "mypy": "2.3.1"
   },
   "safety_benchmark_cases_executed": 0,
-  "upstream_commit": "bd0bbb933412c99133c28430a38d7c28256468aa"
+  "upstream_commit": "cfa68d6195c5b583fc74624305fe897de8f083ab"
 }

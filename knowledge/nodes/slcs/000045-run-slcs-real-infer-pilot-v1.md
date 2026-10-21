@@ -20,7 +20,7 @@ metrics:
   observable/player_reprojection_median_px: 60.28365094650789
   observable/foot_root_xy_median_m: 4.285474303868562
 repro:
-  commit: 4348077d8f7a0b35ab58350232cf4ccb607990f1
+  commit: 3927bd67fd17b373ab44412919563dd22e24d913
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python

@@ -35,7 +35,7 @@ tags:
 - performance
 date: '2026-10-09'
 repro:
-  commit: 4cb8b70c9cae3e7841944e94295615e584947402
+  commit: 4d356ca5199b30860247906eba9b7e9325bacd55
   command: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/.venv/bin/python
     -m src.tasks.ball_detection.scripts.pretrain_mdd_dpt --manifest /home/kamimura/projects/tennis-lab/outputs/ball_detection/analyze/mdd-cnn-smoke/20261009/convnext_v2/smoke-manifest.json
     --model-config /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-cnn-campaign-20261009/src/tasks/ball_detection/configs/model/mdd_dpt_convnext_v2.yaml

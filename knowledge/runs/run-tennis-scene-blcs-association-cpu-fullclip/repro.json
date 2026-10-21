@@ -1,5 +1,5 @@
 {
-  "commit": "5d26aa0de6b2592fddbb2433df331ba70768b32b",
+  "commit": "540f5e1d59936e140b00f7013c75ba7d377ccd0b",
   "command": "env CUDA_VISIBLE_DEVICES=-1 OMP_NUM_THREADS=2 /home/kamimura/projects/tennis-lab/.venv/bin/python tests/benchmarks/association_integration.py --task blcs --checkpoint /home/kamimura/projects/tennis-lab/outputs/blcs/train/blcs_view_association/global_mha_mhc_d512_s12_e60_20260922/logs/version_1/checkpoints/blcs-epoch=14.ckpt --scene-root /home/kamimura/projects/tennis-lab/data/blcs/multi_object_camera_view_v2 --scenes scene_000686 scene_000270 --views 3 5 --device cpu --boundary-padding --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/automatic_association/20260923-integration/cpu-blcs-5d26aa0d.json",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-auto-association",
   "source_data_sha256": {

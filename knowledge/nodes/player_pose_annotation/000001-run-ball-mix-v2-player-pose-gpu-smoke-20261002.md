@@ -19,7 +19,7 @@ metrics:
   processed_frames: 1
   detected_people: 17
 repro:
-  commit: bd48b063d73778710f849e56178e07806343ec1e
+  commit: df3a95ed23dc10c3854b74fe41f9359c4f25b201
   branch: codex/ball-mix-v2-player-pose
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: PYTHONPATH=/home/kamimura/projects/tennis-lab/outputs/ball_refiner/generate/context/i935-context-fullframe-pilot-r10-20260928/dino_extension/lib:/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-mix-v2-player-pose

@@ -28,7 +28,7 @@ metrics:
   test_missing_rmse_px: 299.927277
   test_rmse_px: 131.139374
 repro:
-  commit: ea96f1ffaa378f5b36d5347f29dabbd3edaee038
+  commit: fabafd5ae8138dc9010039fbc9af75528bb1fa0e
   branch: codex/coordinate-ball-refiners-991-1014
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.ball_refiner.scripts.train_coordinates

@@ -4,7 +4,7 @@
   "interpretation": "Pseudo-3D teacher agreement, not measured 3D accuracy. Checkpoint selection: validation only.",
   "aggregation": "Unweighted valid window occurrences; overlapping frames counted separately. No smoothing or clipping.",
   "p95_definition": "numpy percentile 95, linear interpolation; descriptive tail statistic",
-  "git_commit": "6dbb1c19ea81fce4efc61133468e664143bce795",
+  "git_commit": "e4bce909fba4a2cfa5e31eb896715d6482e32b4b",
   "source_sha256": {
     "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002/selection.json": "b571f510e605843a4eea9fbf2e435ea966b4c82a09a526227617272c3cc43a97",
     "/home/kamimura/projects/tennis-lab/outputs/slcs/evaluate/real_rgb_no_ball_smooth/s42-gap-diagnostic-002/val/comparison/comparison.json": "186b3ac0e3d3b17e83832d91b03fd5054b1ef66151c54825cd7a6f6642b51b7d",

@@ -87,7 +87,7 @@ def main() -> None:
         "selection_used_test": False,
         "selection_frozen_at_utc": datetime.now(UTC).isoformat(),
         "last_epoch_finished_utc": datetime.fromtimestamp(epochs[-1].wall_time, UTC).isoformat(),
-        "training_commit": "cc863cacdd347027acd0a4700706fec6cca86f81",
+        "training_commit": "d10a780a5cfd4476d2936604a1a9343ad89013b3",
         "dataset_manifest_sha256": "36c1c978867016173a32e0f75bae06165bb557bfd981a32db27bec2a291e9544",
         "validation_metrics": metrics,
         "tennis_scene_integration": "deferred by user; checkpoint and knowledge only",

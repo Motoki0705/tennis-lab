@@ -28,7 +28,7 @@ metrics:
   terminal_val_player_position_error_m: 1.2526277303695679
   terminal_val_scene_position_error_m: 1.879565715789795
 repro:
-  commit: 760195c02ace1f61a102cd1ce8f97431f52ad0fc
+  commit: 1581265b274163dd7f35b7dd875485af8823fe1e
   branch: codex/slcs-real-rgb
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONUNBUFFERED=1 PYTHONFAULTHANDLER=1 CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4

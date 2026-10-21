@@ -42,7 +42,7 @@ metrics:
     p95_error_px: 12.389126399105175
     first_frame_mean_px: 8.0536277785548
 repro:
-  commit: fa8798a4c19f7efc6b123f4819130d57fe14b565
+  commit: 0115977fc3b061eeaee774a00c9b787f110e81d9
   branch: codex/tennis-scene-responsibility-cleanup
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/tennis-scene-responsibility-cleanup:/home/kamimura/projects/tennis-lab/build/lib.linux-x86_64-cpython-311

@@ -7,7 +7,7 @@
   },
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/slcs-real-rgb",
   "script_sha256": "ffe093baaf8498f820ebaeaadc7ac96e92e80ba5d102ad714966876f4619feef",
-  "commit": "57726f2c8f38fe50ab3870a7a030fad78ab14b4b",
+  "commit": "d455b785340b83b601e8344d3f057a96fef25cd5",
   "roots": {
     "a": {
       "dataset": "/home/kamimura/projects/tennis-lab/data/slcs/meiji_one_clip_repro_takeover001_a",

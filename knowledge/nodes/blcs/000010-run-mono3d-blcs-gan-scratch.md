@@ -30,7 +30,7 @@ metrics:
   endpoint_accuracy_0_5m: 0.02
   endpoint_accuracy_1m: 0.19
 repro:
-  commit: 692b4f6c94bb4bd7036101112a50de61e90983ab
+  commit: 7dc0abce12a497004196768e1a4023fe9a08c3fd
   branch: main
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python

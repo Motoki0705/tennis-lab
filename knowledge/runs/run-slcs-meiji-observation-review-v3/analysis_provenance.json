@@ -1,5 +1,5 @@
 {
-  "reproduction_commit": "ba3a9dbf3ce041b7b9de7008693c04a7293fffaa",
+  "reproduction_commit": "935cde8c7aa5a87cafd14b73f888c8bcd67c4624",
   "script_sha256": "170370a9c3abc271d0a3abdd336af2b9a48caa7d179ccabf7ac9fab31fabde42",
   "results_sha256": "ab46e10353b6860ebbaecc46d31fc0f1cde8ef79ef19d01b6cfc9203f36ff01f",
   "command": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python -B knowledge/runs/run-slcs-meiji-observation-review-v1/probe.py --project-root /home/kamimura/projects/tennis-lab --observation-root /home/kamimura/projects/tennis-lab/outputs/tennis_scene/precompute/meiji_dino_vitpose/s42-004 --clip video_000/clip_008 --clip video_001/clip_004 --clip video_001/clip_008 --output-dir outputs/tennis_scene/analyze/meiji_observation_review/s42-003",

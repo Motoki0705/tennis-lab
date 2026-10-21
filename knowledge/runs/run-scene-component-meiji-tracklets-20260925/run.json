@@ -7,7 +7,7 @@
   "issue": "915",
   "resource": "all",
   "logical_gpu_slot": "all",
-  "commit": "4211b108ae8e337bc7ecd3fa545117f07a17c0bd",
+  "commit": "6028219de5cc65f8500cf7d3d2a92eb88cdd53eb",
   "branch": "codex/clip-component-store",
   "remote": "git@github.com:Motoki0705/tennis-lab.git",
   "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/clip-component-store",

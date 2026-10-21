@@ -5,7 +5,7 @@
   "checkpoint": "/home/kamimura/projects/tennis-lab/outputs/ball_detection/train/mdd-dpt-pretrain/s42-u60000-v1/epoch-002.pt",
   "checkpoint_sha256": "4eb75952c30400c9d14aa7599e8838e4bc3383a0ac7de350e4febc5113ebd0b3",
   "global_step": 18000,
-  "code_commit": "e3f1356163e7b2009c580fc1727c1a413c5889a3",
+  "code_commit": "af0b0c92d8db948f2dfeb3171515bff1c025ade8",
   "recipe_changed": false,
   "diagnostic_environment": {
     "CUDA_LOG_FILE": "stderr"

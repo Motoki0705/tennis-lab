@@ -55,7 +55,7 @@ tags:
 - explicit-warning
 session: 01a0b314-89b5-7902-b0a1-3141a9323ea9
 repro:
-  commit: 0e2c252a86fd2068849ac9a8d59636d39db1b530
+  commit: d6b287b6dc3ef8aa5cd3732d625fc3efa6eed891
   branch: codex/slcs-real-rgb
   command: env PYTHONPATH=. CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=4 MKL_NUM_THREADS=4
     .venv/bin/python knowledge/runs/run-slcs-meiji-v9-observation-reuse-v4/reuse.py

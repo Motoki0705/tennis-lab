@@ -21,7 +21,7 @@ config:
   qualitative_interval: 1
 metrics: {}
 repro:
-  commit: c751331f589a40432920a4f9fc2bbf34eb3c96db
+  commit: 7503266aacf2e0cebd185fa353d380ad7d3c31e9
   branch: fix/issue-1031-qualitative-schedule
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: MPLBACKEND=Agg OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2

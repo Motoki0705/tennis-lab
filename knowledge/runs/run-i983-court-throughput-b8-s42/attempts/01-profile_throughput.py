@@ -73,7 +73,7 @@ def main() -> None:
     if Path("/content/.tennis-colab") not in config_path.parents:
         raise RuntimeError("Run through the tennis-colab managed job")
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    if commit != "c4b12f923b243da6b502149aa6f3912c706045e7":
+    if commit != "75e30a565b1f7a5f7fd4f08cea2daf458d377653":
         raise RuntimeError(f"Unexpected scientific source: {commit}")
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)

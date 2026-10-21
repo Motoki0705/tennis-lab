@@ -51,7 +51,7 @@ metrics:
   common_mean_error_px: 17.34708861378516
   full_mean_error_px: 20.012687514479662
 repro:
-  commit: 5f8746b49cee4af6f5c4155105c259893ff32c1e
+  commit: 4001f5995cd8089540a21fcdda628500ff6f3396
   branch: HEAD
   remote: git@github.com:Motoki0705/tennis-lab.git
   command: env CUDA_LAUNCH_BLOCKING=1 CUDA_LOG_FILE=stderr OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_COMPILE_THREADS=2

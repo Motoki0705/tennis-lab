@@ -7,8 +7,8 @@ export TENNIS_GPU_SLOT=all
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO="${TENNIS_REPO:-/home/kamimura/projects/tennis-lab/.claude/worktrees/coordinate-refiner-rope-gan}"
 cd "$REPO" || { echo "[repro] cannot cd to $REPO" >&2; exit 1; }
-echo "[repro] target commit: c5cee39b26e8f876c23df177d627df2f6ea8fece (branch codex/coordinate-refiner-rope-gan)"
-git checkout c5cee39b26e8f876c23df177d627df2f6ea8fece 2>/dev/null || echo "[repro] WARN: checkout c5cee39b26e8f876c23df177d627df2f6ea8fece failed; using current HEAD"
+echo "[repro] target commit: c29edb99f2eb123ffa14b971bce389be24504463 (branch codex/coordinate-refiner-rope-gan)"
+git checkout c29edb99f2eb123ffa14b971bce389be24504463 2>/dev/null || echo "[repro] WARN: checkout c29edb99f2eb123ffa14b971bce389be24504463 failed; using current HEAD"
 PATCH="$SCRIPT_DIR/uncommitted.patch"
 if [ -s "$PATCH" ]; then git apply "$PATCH" 2>/dev/null || echo "[repro] WARN: patch did not apply cleanly"; fi
 # --- original training command ---

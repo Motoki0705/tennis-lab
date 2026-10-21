@@ -1,6 +1,6 @@
 {
   "status": "all_inputs_and_resume_verified",
-  "commit": "98b737829ba8baae8b823c7b7728cf0608f5073f",
+  "commit": "7d6f53b94f81f8cf7f08b6b78fddcc94d25cc67f",
   "assets": [
     "data/synthetic_data_generation/scenes/B00/datasets/court",
     "data/synthetic_data_generation/scenes/B01/datasets/court",
