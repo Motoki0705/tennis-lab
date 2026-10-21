@@ -27,7 +27,7 @@ Obtain each asset under its upstream terms before running the commands below.
   scene・全編可視化を含むworkspaceで**約20.87 GB（19.43 GiB）**を使用しました（準備完了時は約19.94 GB）。
   CUDA toolkit・OSのパッケージ・第三者資産を別途ダウンロードする作業領域は含みません。
   必要容量はcacheや実行回数で変わるため、それらと追加の出力を見込んで空きを確保してください。
-  測定範囲は[導入検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)を参照してください。
+  測定範囲は[導入検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)を参照してください。
 
 CPU実行はこの手順の対象外です。CPUで行うのは資産検査・拡張のimport/dispatch検査・可視化です。
 The tested GPU has 16 GB VRAM. Device-wide samples reached 4,928 MiB, including other processes;
@@ -148,7 +148,7 @@ The build script requires explicit toolkit and GPU architecture settings. Keep t
 - **CLIP-ReID**: [公式README](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/README.md#trained-models-and-test-logs)
   の**ViT-CLIP-ReID / Market / model**を選びます。ファイル名は`Market1501_clipreid_ViT-B-16_60.pth`です。
   内容を変えず`ckpt/player_association/person_vit_clip_reid.pth`へ配置します。
-  公式配布と従来使用版の同一性は[検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)にあります。
+  公式配布と従来使用版の同一性は[検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)にあります。
 - **AFLink**: [StrongSORT公式README](https://github.com/dyhBUPT/StrongSORT#datamodel-preparation)が案内するDriveの
   `AFLink_epoch20.pth`を取得します。条件の未確認は上記NOTICEのとおりです。
 - **DINOv3 ViT-B/16**: [Meta公式](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)に申請し、
@@ -192,7 +192,7 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
 
 このrepoの共有GPU上では[training queue](../../.agents/skills/training-queue/SKILL.md)から実行します。
 RTX 5060 Tiでのクリーン導入検証では、pipeline開始からscene保存まで**30分27秒**でした
-（[実測記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)）。
+（[実測記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)）。
 公開サンプル1clipの参考値で、queue待ち・プロセス起動・資産取得・ビルド・可視化は含みません。
 
 `outputs/tennis_scene/generate/clean_install/scene.npz`と`scene.metadata.json`が保存され、
@@ -255,7 +255,7 @@ CPU準備が成功すると`ready_for_gpu`になり、**GPU実行前で停止**�
 生成された`run_pipeline.sh`を親がtraining queueへ投入し、完了後に`visualize.sh`を実行します。
 GPUの所要時間・ピークVRAM・scene検査・動画確認は、その後の実行記録へ追記してください。
 
-2026-10-21の[検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)では、
+2026-10-21の[検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)では、
 CPU準備**12分41秒**の後、queue経由のGPU完走・正規readerによるscene検査・新sceneのCPU可視化を確認しました。
 この検証のclone元はGitHubではなく上記worktreeで、`git clone --no-local`と固定commitを使用しました。
 登録・申請が必要な第三者資産は利用者取得済みファイルの検査・コピーであり、新規登録・手動取得や

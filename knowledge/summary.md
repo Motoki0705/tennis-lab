@@ -1,4 +1,4 @@
-<!-- knowledge-review: 92b52c2a050bc08956009adc3a1cf71e66aa612cd6bf741ee038ee4035b87607 on 2026-10-21 -->
+<!-- knowledge-review: 0f7008596818209d2cf9d88f6cfe91e858210bd6463d80766478a90b101f6016 on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-21（公開3カメラサンプルのREADME GIF描画・クリーン導入・GPU完走・可視化と公式CLIP-ReID比較を確認。既存の採用判断は維持）
@@ -20,7 +20,7 @@
 [README用GIFのCPU描画](nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)では、
 公開サンプルの3視点と同frameのSMPL・コート・球を並べ、入力frameとの対応と完成GIFの代表場面を確認した。
 欠測mask・mesh不足時の骨格表示・球軌跡の揺れを残した可視化であり、3D精度やモデル採用の判断は変えない。
-その後の[クリーン導入](nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)は、
+その後の[クリーン導入](nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)は、
 独立clone・新venv・CUDA拡張・Hubからの公開物取得・全資産preflightに続き、
 親のqueue経由でGPU推論・v2 scene保存とCPU可視化まで成功した。
 公式CLIP-ReIDは従来ファイルとbyte・CPU embeddingが一致し、追跡と人物対応の設定を維持する。

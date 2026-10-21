@@ -2,7 +2,7 @@
 id: run-clean-standard-install-20261021
 type: run
 task: tennis_scene
-sequence: 29
+sequence: 30
 recorded_at: '2026-10-21'
 date: '2026-10-21'
 title: 公開標準pipelineのクリーン導入・GPU完走と公式CLIP-ReID比較
