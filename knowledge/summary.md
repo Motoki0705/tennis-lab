@@ -1,15 +1,23 @@
-<!-- knowledge-review: 6074da1f92debc0a2fb4bb8b0aa64499db81ab33b63e4a3172a1716b00d3b4ca on 2026-10-21 -->
+<!-- knowledge-review: dc8573ff896df23e7783a8cf6f55f31fe0f4410b157a38ef9c6e6732cde393cf on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-18（#1088の実clip予測経路とBlender再構成アニメーションの再生成・整合性検証を反映。既存の採用判断は維持）
+更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走確認を追加。既存の採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
-従来の横断調査基準commit: `92d9dece1793aa1be3cdaa033951732d5078bfdb`。追加実験の版・差分は各runの再現性bundleを参照。
+従来の横断調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`。追加実験の版・差分は各runの再現性bundleを参照。
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-21の公開3カメラサンプル
+
+[公開予定のMeiji video_000/clip_000](nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md)から、
+既定pipelineがGPUでSceneResult v2の保存まで完走した。DINO拡張欠損による初回停止と、
+明示的なビルド後の再実行を記録し、公開bundleと実入力のhash一致・保存結果のmask整合性をCPUで確認した。
+既存資産を用いた1clipの動作確認であり、モデル品質や過去runとの優劣に関する判断は変更しない。
+HF公開は親が実施予定。次は #1274 のクリーン導入でビルド案内と公開物の再取得を検証し、#1275 で可視化を確認する。
 
 ## 2026-10-16のBlender再構成アニメーション
 

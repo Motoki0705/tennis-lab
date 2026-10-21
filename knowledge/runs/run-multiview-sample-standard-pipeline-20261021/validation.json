@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-10-21",
+  "method": "CPU-only load_scene_result validates archive, mask/reason contracts and mandatory sidecar; mask counts independently recomputed and compared to metadata; inputs and artifacts SHA-256 verified.",
+  "code": {
+    "execution_commit": "925631791ceb271ef88cf919061317891097dc0e",
+    "rewritten_commit": "001a0afafb804b032f4dff9bf099d10f426ad305",
+    "tree": "9006f4f657eaf6e2fec11fc92eb33f15858125f5",
+    "trees_identical": true,
+    "captured_git_status_empty": true,
+    "captured_patch_size_bytes": 0
+  },
+  "queue": {
+    "job": "0-8207457047915595751_2026-10-21T00-35-52-084404248Z_247100_multiview_sample_release_a2",
+    "failed_attempt_job": "0-8207457415463193113_2026-10-21T00-29-44-536806886Z_172080_multiview_sample_release",
+    "resource": "all",
+    "state": "state=done\nresource=all\nslot=all\npid=248439\npgid=248439\nwait=none\n",
+    "completion": {
+      "finished_at_ns": 1792544805968473590,
+      "job": "0-8207457047915595751_2026-10-21T00-35-52-084404248Z_247100_multiview_sample_release_a2.job",
+      "retention_started_at_ns": 1792544805968473590,
+      "state": "done",
+      "time_source": "recorded",
+      "version": 1
+    },
+    "raw_log": {
+      "path": "/home/kamimura/projects/tennis-lab/.training_queue/logs/0-8207457047915595751_2026-10-21T00-35-52-084404248Z_247100_multiview_sample_release_a2.log",
+      "size_bytes": 290925,
+      "sha256": "093554728e1f83299c640d5e16a3b7eb51475b4348cc4fba42e98a1c368160f5"
+    },
+    "raw_log_retained_in_knowledge": false
+  },
+  "timing": {
+    "timezone": "Asia/Tokyo",
+    "pipeline_started_at": "2026-10-21T09:36:05.790+09:00",
+    "scene_saved_at": "2026-10-21T10:06:41.769+09:00",
+    "pipeline_to_save_seconds": 1835.979,
+    "includes_smpl_install_or_dino_build": false,
+    "includes_queue_wait": false
+  },
+  "inputs": {
+    "clip_id": "video_000/clip_000",
+    "source": "Local release bundle, identical SHA-256 to staged pipeline inputs; no Hub download in this GPU run.",
+    "files": {
+      "cam0.mp4": {
+        "size_bytes": 11850811,
+        "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39"
+      },
+      "cam1.mp4": {
+        "size_bytes": 19479451,
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e"
+      },
+      "cam2.mp4": {
+        "size_bytes": 19787313,
+        "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+      },
+      "clip.json": {
+        "size_bytes": 1574,
+        "sha256": "410d77571f553123ffd57ebb457f45f4798f57d7ab6a0828e70b0a47ec42eaf2"
+      },
+      "LICENSE": {
+        "size_bytes": 19127,
+        "sha256": "38762e3777f4ec00a6f769062a7c3f704fb78ce08303ecff88558da4c49cf9ea"
+      }
+    },
+    "smpl_auxiliary_files_verified_after_run": {
+      "body_models/gvhmr/smpl_mean_params.npz": {
+        "size_bytes": 1310,
+        "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+      },
+      "body_models/gvhmr/smplx2smpl_sparse.pt": {
+        "size_bytes": 208935,
+        "sha256": "0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06"
+      },
+      "body_models/gvhmr/smpl_coco17_J_regressor.pt": {
+        "size_bytes": 469227,
+        "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+      },
+      "body_models/gvhmr/smplx_verts437.pt": {
+        "size_bytes": 4203,
+        "sha256": "ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d"
+      },
+      "body_models/gvhmr/smpl_neutral_J_regressor.pt": {
+        "size_bytes": 662187,
+        "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf"
+      }
+    }
+  },
+  "scene": {
+    "schema_version": 2,
+    "num_frames": 1010,
+    "fps": 59.94006,
+    "width": 1920,
+    "height": 1080,
+    "camera_ids": [
+      "cam0",
+      "cam1",
+      "cam2"
+    ],
+    "track_ids": [
+      0,
+      1
+    ],
+    "status": "ok",
+    "validity_statistics": {
+      "ball_3d_frames": 821,
+      "player_joint_frames": [
+        1008,
+        993
+      ],
+      "player_root_frames": [
+        1000,
+        993
+      ],
+      "player_smpl_frames": [
+        1000,
+        993
+      ]
+    },
+    "ball_any_camera_visible_frames": 1010
+  },
+  "outputs": {
+    "scene.npz": {
+      "path": "outputs/tennis_scene/generate/multiview_sample_release_20261021_a2/scene.npz",
+      "size_bytes": 154410684,
+      "sha256": "4db905f968e81fd61a925d9fb2402ebe89d6fe6bf09b29b0491df5a94797e635",
+      "retained_in_knowledge": false
+    },
+    "scene.metadata.json": {
+      "path": "outputs/tennis_scene/generate/multiview_sample_release_20261021_a2/scene.metadata.json",
+      "size_bytes": 45186,
+      "sha256": "33634ffe3f3d0a7c835ebc2a35ae19908f40b2a31a5b52e3a84c226d9f939a0a",
+      "retained_in_knowledge": true
+    }
+  },
+  "retained_evidence": {
+    "run.json": {
+      "size_bytes": 1610,
+      "sha256": "090c5981b88d891fbaa94de6e82b023eb6aedc543cc84b3b3af893eae1bedcef"
+    },
+    "build.json": {
+      "size_bytes": 1321,
+      "sha256": "a99dd8bbfc8bca2627640f88bc05b0b345e850da25bfeba4f973d35b8f8e414c"
+    },
+    "pipeline.log": {
+      "size_bytes": 6508,
+      "sha256": "e9d0e178a36c8c48e5607cfa1da411696397a43bf95e6a2e93f281db4678fc8a"
+    },
+    "attempt-1.log": {
+      "size_bytes": 10910,
+      "sha256": "ebf46c63a6ae884995f5d0fcc965d176424e82a0d4d8ddbd870f437a77d0304c"
+    },
+    "scene.metadata.json": {
+      "size_bytes": 45186,
+      "sha256": "33634ffe3f3d0a7c835ebc2a35ae19908f40b2a31a5b52e3a84c226d9f939a0a"
+    },
+    "clip.json": {
+      "size_bytes": 1574,
+      "sha256": "410d77571f553123ffd57ebb457f45f4798f57d7ab6a0828e70b0a47ec42eaf2"
+    }
+  },
+  "limitations": [
+    "No independent 3D ground truth or visual quality review.",
+    "Existing local checkpoints and external sources; not a clean-clone installation or Hub round trip.",
+    "No peak VRAM, clean-install disk use, build duration, or TensorBoard metrics recorded."
+  ]
+}
