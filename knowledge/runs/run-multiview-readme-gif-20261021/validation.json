@@ -1,0 +1,31 @@
+{
+  "gif": "assets/tennis_scene/multiview_reconstruction.gif",
+  "gif_sha256": "ad266c94b16f71b11bb63d0c86ab508278e947bba9e5a32af3d6151e2f6ee239",
+  "size_bytes": 5775532,
+  "width": 960,
+  "height": 620,
+  "frames": 168,
+  "duration_ms": 16750,
+  "loop": 0,
+  "all_input_hashes_unchanged": true,
+  "camera_source_comparisons": 504,
+  "unlabelled_input_panel_max_rgb_error": 0,
+  "gif_to_png_psnr_min_db": 36.35348859678245,
+  "gif_to_png_psnr_mean_db": 36.57685274105391,
+  "review_output_frames": [
+    0,
+    29,
+    59,
+    89,
+    119,
+    167
+  ],
+  "review_source_frames": [
+    6,
+    180,
+    360,
+    540,
+    720,
+    1008
+  ]
+}

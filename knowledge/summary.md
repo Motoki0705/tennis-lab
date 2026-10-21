@@ -1,7 +1,7 @@
-<!-- knowledge-review: c064e5e70d649a3d11737dfb8b6bdb255e5f18827083b61b39924217623e0742 on 2026-10-21 -->
+<!-- knowledge-review: e99f56ffa55dcd38a538b29d72d14b305f144b4626bd0a06fe5e4b617501275f on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走確認を追加。既存の採用判断は維持）
+更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走とREADME GIFの描画確認を追加。既存の採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -17,7 +17,10 @@
 既定pipelineがGPUでSceneResult v2の保存まで完走した。DINO拡張欠損による初回停止と、
 明示的なビルド後の再実行を記録し、公開bundleと実入力のhash一致・保存結果のmask整合性をCPUで確認した。
 既存資産を用いた1clipの動作確認であり、モデル品質や過去runとの優劣に関する判断は変更しない。
-HF公開は親が実施予定。次は #1274 のクリーン導入でビルド案内と公開物の再取得を検証し、#1275 で可視化を確認する。
+[README用GIFのCPU描画](nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)では、
+公開サンプルの3視点と同frameのSMPL・コート・球を並べ、入力frameとの対応と完成GIFの代表場面を確認した。
+欠測mask・mesh不足時の骨格表示・球軌跡の揺れを残した可視化であり、3D精度やモデル採用の判断は変えない。
+次は #1274 のクリーン導入でビルド案内と公開物の再取得を検証し、#1276 でREADMEへ掲載してGitHubでの表示を確認する。
 
 ## 2026-10-16のBlender再構成アニメーション
 
