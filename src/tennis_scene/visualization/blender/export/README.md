@@ -140,6 +140,57 @@ bundle/
 
 各候補は identity・segment_id・gvhmr_camera_id・start/stop・t0・t0の有効関節数・valid_ratio・yaw_variation_deg・yaw_correction_range_deg・scale・shortened を持ちます。`ranking.json` にはstore index SHA-256・artifact ID・解決済みconfig・除外集計・保存済み `body_placement` との照合結果（最大差）を含めます。`plate_video_path` のSHA-256がstore sourceと一致しない場合、または保存配置と再計算したworld頂点が1e-4 m以上ずれる場合は停止します。
 
+### 配置shot（player placement）
+
+`bundle` の `u_t`・`joints_local`・`target_joints` から、スケール → yaw → 位置の順に
+三角測量の点群へ埋め込む30fpsのBlenderシーンを作ります。レンダリングはせず、
+シーン構築と保存だけを実行する場合は `--render` を付けません。出力先が既に存在すれば拒否します。
+`Body` は `body_local.pc2` を Mesh Cache で読み、段階中は `t0` のcache frameを固定します。
+`valid` が偽のframeでは `Body` と `SourceJoints` を非表示にし、補間で埋めません。
+視点は`t0`の左右hip差（COCO17の11/12）を`Rz(yaw_t0)`で回して`+Z`と外積した身体前方から、
+既定35度の斜め前に置きます。plate cameraの位置には依存しません。再生中もこの`t0`の身体前方を
+方位の基準に固定し、hipの移動には追従しながら45度だけゆっくりorbitします。各frameのbody yaw/poseは
+カメラ方位へ加えません。左右hip差が水平に取れない場合は推測せず停止します。
+
+```bash
+set -euo pipefail
+BUNDLE=/absolute/path/to/bundle
+SHOT_DIR=/absolute/path/to/new-placement-shot
+if [ -e "$SHOT_DIR" ]; then
+  printf 'Output already exists: %s\n' "$SHOT_DIR" >&2
+  exit 1
+fi
+blender --background --factory-startup --python-exit-code 1 -t 4 \
+  --python src/tennis_scene/visualization/blender/shots/player_placement.py -- \
+  --bundle "$BUNDLE" --output "$SHOT_DIR"
+```
+
+`--intro-plate` を付けると、`manifest.frames.start` から3秒ぶんのplateを30fpsへ再サンプルし、
+冒頭90frameの背景として追加してから全段階を後ろへずらします。3秒ぶんの入力frameが
+bundleに無い場合はループ・複製・凍結せず停止します。再サンプルした連番は
+`$SHOT_DIR/intro_plate/%05d.jpg` に保存します。`--samples`・`--resolution-percentage`・
+`--frame-step`・`--frames` はrevealと同じ意味です。入力fpsが30以外でも、再生区間は
+入力fpsの元の時間で30fpsへ再サンプルします（60fpsを30fpsとして遅く再生しません）。
+
+```bash
+blender --background "$SHOT_DIR/tennis_placement.blend" --python-exit-code 1 -t 4 \
+  --python src/tennis_scene/visualization/blender/shots/validate_placement.py -- \
+  --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
+```
+
+validatorは最終段階の `Body` のworld頂点と `placed_vertices_t0`（許容誤差1e-4 m）、
+再生全frameの `SourceJoints` world座標と `hip_position + scale·Rz(yaw)·joints_local`、
+`Body`・`SourceJoints` のrenderとviewport両方の非表示mask、`intro_plate` の表示区間と
+plate元frameの対応を検査します。NaNは不一致として扱います。結果は `validation.json` に
+保存し、不一致なら非ゼロ終了します。`--frames` で部分区間にしたシーンは完全な
+タイムラインを検証できないため、検証にはsubset化していないシーンを使ってください。
+
+親の実Blender検証用の合成bundleは
+`tests/unit/tennis_scene/visualization/blender/test_player_placement.py` の
+`write_synthetic_bundle(output, fps=..., num_frames=...)` で生成できます。既定は
+非ゼロstart・`t0 != start`・非自明なscale/yaw/hip移動・valid穴・target欠損を含み、
+30fpsと60fpsの両方で3秒ぶん以上のplateを持ちます。
+
 ## 撮影・動画化
 
 GPUを使うレンダリングは共有training queue経由で実行します。

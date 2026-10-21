@@ -40,6 +40,12 @@ EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
     "src.tennis_scene.visualization.blender.shots.validate_reveal": (
         "Blender bundled Python; validates a saved scene without repo imports."
     ),
+    "src.tennis_scene.visualization.blender.shots.player_placement": (
+        "Blender bundled Python; builds the placement shot from a plain-file bundle."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_placement": (
+        "Blender bundled Python; validates a saved placement scene without repo imports."
+    ),
 }
 
 
