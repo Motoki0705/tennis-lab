@@ -1,0 +1,203 @@
+{
+  "status": "failed",
+  "failed": 28,
+  "inference_executed": false,
+  "checks": [
+    {
+      "name": "court",
+      "path": "ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "ball",
+      "path": "ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "detector",
+      "path": "ckpt/dino/checkpoint0029_4scale_swin.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "vitpose",
+      "path": "ckpt/vitpose/vitpose-h-multi-coco.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "association_encoder",
+      "path": "ckpt/player_association/person_vit_clip_reid.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "tracking_encoder",
+      "path": "ckpt/player_association/person_vit_clip_reid.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "aflink",
+      "path": "ckpt/person_tracking/AFLink_epoch20.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "hmr2",
+      "path": "ckpt/hmr2/epoch=10-step=25000.ckpt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "gvhmr",
+      "path": "ckpt/gvhmr/gvhmr_siga24_release.ckpt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "body_model",
+      "path": "ckpt/body_models/smplx/SMPLX_NEUTRAL.npz",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_hmr2_mean_params",
+      "path": "ckpt/body_models/gvhmr/smpl_mean_params.npz",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_smplx_to_smpl",
+      "path": "ckpt/body_models/gvhmr/smplx2smpl_sparse.pt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_smpl_coco17_regressor",
+      "path": "ckpt/body_models/gvhmr/smpl_coco17_J_regressor.pt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_smplx_verts437",
+      "path": "ckpt/body_models/gvhmr/smplx_verts437.pt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_smpl_neutral_joint_regressor",
+      "path": "ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dinov3",
+      "path": "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "smpl_faces",
+      "path": "ckpt/body_models/smplh/neutral/model.npz",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dino_models",
+      "path": "third_party/DINO/models/__init__.py",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dino_util",
+      "path": "third_party/DINO/util/__init__.py",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dino_ops",
+      "path": "third_party/DINO/models/dino/ops/src/vision.cpp",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dinov3_hub",
+      "path": "third_party/dinov3/hubconf.py",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dinov3_backbones",
+      "path": "third_party/dinov3/dinov3/hub/backbones.py",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "video_cam0",
+      "path": "data/samples/cam0.mp4",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "video_cam1",
+      "path": "data/samples/cam1.mp4",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "video_cam2",
+      "path": "data/samples/cam2.mp4",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "sample_clip.json",
+      "path": "data/samples/clip.json",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "sample_LICENSE",
+      "path": "data/samples/LICENSE",
+      "status": "missing",
+      "detail": "Required file is absent",
+      "sha256": null
+    },
+    {
+      "name": "dino_extension",
+      "path": "PYTHONPATH:MultiScaleDeformableAttention",
+      "status": "error",
+      "detail": "Cannot import the DINO CUDA extension. Follow docs/installation/README.md#dino-cuda-extension to rebuild with scripts/build_dino_extension.sh and select its lib explicitly via PYTHONPATH.",
+      "sha256": null
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+CPU only; CUDA_VISIBLE_DEVICES=""
+pytest -n 2: 56 passed in 15.72s
+ruff check: passed
+mypy --follow-imports=skip: passed
+bash -n scripts/build_dino_extension.sh tests/benchmarks/build_dino_extension.sh: passed
+scripts/audit_configuration.py src: 113 runtime boundaries verified
+pre-commit (implementation commit): ruff/mypy passed

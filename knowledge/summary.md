@@ -1,7 +1,7 @@
-<!-- knowledge-review: e99f56ffa55dcd38a538b29d72d14b305f144b4626bd0a06fe5e4b617501275f on 2026-10-21 -->
+<!-- knowledge-review: 546696137bbe7ff42a992efb775f8f9b658e30bd98049b1702d09a9a3c5c10dc on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走とREADME GIFの描画確認を追加。既存の採用判断は維持）
+更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走・README GIFの描画とクリーン導入CPU準備・公式CLIP-ReID比較を確認。既存の採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -20,7 +20,12 @@
 [README用GIFのCPU描画](nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)では、
 公開サンプルの3視点と同frameのSMPL・コート・球を並べ、入力frameとの対応と完成GIFの代表場面を確認した。
 欠測mask・mesh不足時の骨格表示・球軌跡の揺れを残した可視化であり、3D精度やモデル採用の判断は変えない。
-次は #1274 のクリーン導入でビルド案内と公開物の再取得を検証し、#1276 でREADMEへ掲載してGitHubでの表示を確認する。
+その後の[クリーン導入CPU準備](nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)は、
+独立clone・新venv・CUDA拡張・Hubからの公開物取得・全資産preflightまで成功した。
+公式CLIP-ReIDは従来ファイルとbyte・CPU embeddingが一致し、追跡と人物対応の設定を維持する。
+公開コート重みのbackbone全tensorは単体DINOv3と一致するが、単体ファイルを不要にする実装は別課題とする。
+GPU推論と新sceneの可視化は親のqueue実行待ちであり、クリーン環境の完走や新しい3D品質の確認とは扱わない。
+次はそのGPU完走・ピークVRAM・可視化を確認し、#1276 のREADMEへ反映してGitHubでの表示を確認する。
 
 ## 2026-10-16のBlender再構成アニメーション
 

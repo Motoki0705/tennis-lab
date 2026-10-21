@@ -1,0 +1,149 @@
+{
+  "status": "cpu_preparation_passed",
+  "gpu_executed": false,
+  "gpu_vram_measured": false,
+  "preflight_checks": 28,
+  "source_commit": "261c2186134bbe09e11b757e55aa1cb70bd02335",
+  "source_tree": "2f4801f8c883540a0adeb57281d6291d098132f7",
+  "git_status_after_preparation": "",
+  "local_assets_copied": 14,
+  "copies_have_distinct_inodes": true,
+  "published_model_revisions": [
+    "2186bf799bd6066a7b1b6db773fbb4ec48f5c0a5"
+  ],
+  "published_sample_revisions": [
+    "ebe2969bac795b5e8837dba463b6d687b3c99141"
+  ],
+  "environment": {
+    "python_environment": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv\n2.14.1+cu130 13.0\n",
+    "uv": "uv 0.11.3 (x86_64-unknown-linux-gnu)",
+    "gpu_driver_read_only": "NVIDIA GeForce RTX 5060 Ti, 610.88, 16311 MiB",
+    "ninja": "1.11.1"
+  },
+  "commands": {
+    "prepare": [
+      "[clone] git clone --no-local --no-checkout /home/kamimura/projects/tennis-lab/.claude/worktrees/install-guide /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo",
+      "[checkout] git checkout --detach 261c2186134bbe09e11b757e55aa1cb70bd02335",
+      "[commit] git rev-parse HEAD",
+      "[uv-sync] uv sync --locked",
+      "[python-environment] /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv/bin/python -c 'import sys,torch; from pathlib import Path; assert Path(sys.prefix) == Path.cwd()/'\"'\"'.venv'\"'\"'; assert not Path('\"'\"'.venv'\"'\"').is_symlink(); print(sys.prefix); print(torch.__version__,torch.version.cuda)'",
+      "[ffmpeg] ffmpeg -version",
+      "[submodules] git submodule update --init third_party/DINO third_party/dinov3",
+      "[build-dino] bash scripts/build_dino_extension.sh /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/dino_extension",
+      "[asset-catalog] /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv/bin/python -c 'import json; from dataclasses import asdict; from src.tennis_scene.installation_assets import INSTALLATION_ASSETS; print(json.dumps([asdict(a) for a in INSTALLATION_ASSETS]))'",
+      "[download-models] /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv/bin/python -m src.utils.model_weights --checkpoint-root /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/ckpt",
+      "[download-sample] /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv/bin/python -m src.utils.sample_dataset --data-root /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/data",
+      "[preflight] /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/.venv/bin/python -m src.tennis_scene.scripts.preflight",
+      "[git-status] git status --short --untracked-files=all",
+      "Ready for the parent to enqueue (GPU has not run):",
+      "bash /home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/run_pipeline.sh"
+    ],
+    "pytest": "CUDA_VISIBLE_DEVICES=\"\" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 2 tests/unit/tennis_scene/test_preflight.py tests/e2e/tennis_scene/test_preflight_cli.py tests/e2e/tennis_scene/test_prepare_clean_install.py tests/unit/submodules/models/dino/test_extension.py tests/unit/submodules/models/dino/test_person_detector.py tests/unit/tennis_scene/test_configuration.py",
+    "configuration_audit": "CUDA_VISIBLE_DEVICES=\"\" .venv/bin/python scripts/audit_configuration.py src"
+  },
+  "results": {
+    "pytest": "56 passed in 15.72s",
+    "configuration_audit": "113 runtime boundaries verified",
+    "ruff": "passed",
+    "mypy": "passed",
+    "pre_commit": "implementation commit passed ruff and mypy"
+  },
+  "visualization_environment_smoke": {
+    "input": "existing scene from the prior standard-pipeline run; no fresh scene generated",
+    "input_path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_a2/scene.npz",
+    "output_path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/repo/outputs/tennis_scene/visualize/environment_smoke/scene.mp4",
+    "cuda_visible_devices": "",
+    "exit_code": 0,
+    "ffprobe": {
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 720,
+          "height": 480,
+          "r_frame_rate": "979001/16333",
+          "nb_read_frames": "2"
+        }
+      ]
+    },
+    "log": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/visualization-environment-smoke.log"
+  },
+  "raw_logs": {
+    "asset-catalog.log": {
+      "bytes": 5285,
+      "sha256": "c0144db4063b2af3466f775d24b3ade0c5552ec26a92a5a8a9e11146f832dd04",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/asset-catalog.log"
+    },
+    "build-dino.log": {
+      "bytes": 102441,
+      "sha256": "6c3c6d6a6d1be6355b3d25ae47d15263c70a132e7087deef310e7a7378eaa6d0",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/build-dino.log"
+    },
+    "checkout.log": {
+      "bytes": 91,
+      "sha256": "df76569adf835fce2530f3128289be79d25ca822a31660d5d575b89df9a31222",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/checkout.log"
+    },
+    "clone.log": {
+      "bytes": 110,
+      "sha256": "ddefdd134ca81545dce8648cc46a5a3f3101efde80fd3623eae3e37cf67a71a9",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/clone.log"
+    },
+    "commit.log": {
+      "bytes": 41,
+      "sha256": "cfa9c9b88a6693287f56de5b6bca4dc9fb8a507104051973ed011eb25ee28103",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/commit.log"
+    },
+    "download-models.log": {
+      "bytes": 448,
+      "sha256": "e5efd4b542f5938f2b2bd8eeab00fb50f240b874aa48fe29d3ca7180b77711e8",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/download-models.log"
+    },
+    "download-sample.log": {
+      "bytes": 753,
+      "sha256": "498bdac992c9d6421d903338df90e607abe18c67eaf1c7c9e2d9378bbf6b762f",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/download-sample.log"
+    },
+    "ffmpeg.log": {
+      "bytes": 1838,
+      "sha256": "5b320c97f515e79171f10a2147d875ffb6b14bd2b25681047b73c46fe0a527ee",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/ffmpeg.log"
+    },
+    "git-status.log": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/git-status.log"
+    },
+    "preflight.log": {
+      "bytes": 10689,
+      "sha256": "171edef88b0e30fe5209adbf71002f482bc35715371aa19fa8a7266d6deedfbb",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/preflight.log"
+    },
+    "python-environment.log": {
+      "bytes": 116,
+      "sha256": "cd933832f40f88b15f5c2cf7c74107bff5a54d88b8688bb2dab8b1d38a6f66d4",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/python-environment.log"
+    },
+    "submodules.log": {
+      "bytes": 665,
+      "sha256": "c375b0ff4f2062aaae67e8d397a443d3bddbdb39036f2e293748fb6ba1752329",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/submodules.log"
+    },
+    "uv-sync.log": {
+      "bytes": 7225,
+      "sha256": "0deb7cfc24d66adb253bccdd17f98efb8a04394c7de10479c1aed8c451c5a6f4",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/uv-sync.log"
+    },
+    "visualization-environment-smoke.log": {
+      "bytes": 1354,
+      "sha256": "d98dad0550b2d184a2a66ba0ca4dec0ec355a7f1f10916cc4d5b39a358128530",
+      "path": "/home/kamimura/.local/state/tennis-lab-agents/campaign-1267/clean-env/standard-install/visualization-environment-smoke.log"
+    }
+  },
+  "unverified": [
+    "GPU kernels/inference in the independent clone",
+    "full pipeline scene export and masks in the independent clone",
+    "fresh scene visualization and visual acceptance",
+    "peak VRAM and GPU elapsed time"
+  ]
+}

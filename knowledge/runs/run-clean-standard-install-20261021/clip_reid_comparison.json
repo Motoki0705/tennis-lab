@@ -1,0 +1,52 @@
+{
+  "official_source": "https://drive.google.com/file/d/1GnyAVeNOg3Yug1KBBWMKKbT2x43O5Ch7/view",
+  "current_source": "occurra/person_vit_clip_reid",
+  "device": "cpu",
+  "input_shape": [
+    4,
+    3,
+    256,
+    128
+  ],
+  "input_kind": "synthetic RGB in [0, 1]",
+  "seed": 42,
+  "files": [
+    {
+      "label": "official",
+      "filename": "official_market.pth",
+      "bytes": 507391033,
+      "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc",
+      "image_encoder_keys": 152,
+      "position_shape": [
+        129,
+        768
+      ],
+      "strict_visual_load": true,
+      "embedding_shape": [
+        4,
+        1280
+      ],
+      "embedding_sha256": "6b7a9c2e8c9d49f4fe00110ce9adcca44d9d2d5725de16dbd7779972aa4807e1"
+    },
+    {
+      "label": "current",
+      "filename": "person_vit_clip_reid.pth",
+      "bytes": 507391033,
+      "sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc",
+      "image_encoder_keys": 152,
+      "position_shape": [
+        129,
+        768
+      ],
+      "strict_visual_load": true,
+      "embedding_shape": [
+        4,
+        1280
+      ],
+      "embedding_sha256": "6b7a9c2e8c9d49f4fe00110ce9adcca44d9d2d5725de16dbd7779972aa4807e1"
+    }
+  ],
+  "embedding_equal": true,
+  "embedding_max_abs_diff": 0.0,
+  "file_sha256_equal": true
+}

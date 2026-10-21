@@ -19,10 +19,10 @@ Obtain each asset under its upstream terms before running the commands below.
   `nvidia-smi`の「CUDA Version」はtoolkitのインストール確認にはなりません。`nvcc --version`も確認します。
   torchとtoolkitのCUDAメジャー版が違うと拡張ビルドが停止します。13.0を使うとlockのcu130と揃います。
 - Git、[uv](https://docs.astral.sh/uv/getting-started/installation/)、C++ compiler、CUDA対応のhost compiler、
-  `ffmpeg`（MP4保存）。Ninjaはlockから入ります。Ubuntuでは`build-essential`・`ffmpeg`をOS側に用意します。
+  `ffmpeg`（MP4保存）、Ninja。Ubuntuでは`build-essential`・`ninja-build`・`ffmpeg`をOS側に用意します。
 - **空きディスク80 GBを確保**してください（作業用の目安。最低容量の保証ではありません）。通常clone約1.06 GBに加え、
   venv・uv/HF cache・約10 GBの重み・CUDA build・component storeを置きます。サンプル入力は約49 MBです。
-  実測値は[導入検証記録](../../knowledge/nodes/tennis_scene/)を参照してください。
+  実測値は[導入検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)を参照してください。
 
 CPU実行はこの手順の対象外です。CPUで行うのは資産検査・拡張のimport/dispatch検査・可視化です。
 The tested GPU has 16 GB VRAM; minimum memory requirements have not been established.
@@ -142,7 +142,7 @@ The build script requires explicit toolkit and GPU architecture settings. Keep t
 - **CLIP-ReID**: [公式README](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/README.md#trained-models-and-test-logs)
   の**ViT-CLIP-ReID / Market / model**を選びます。ファイル名は`Market1501_clipreid_ViT-B-16_60.pth`です。
   内容を変えず`ckpt/player_association/person_vit_clip_reid.pth`へ配置します。
-  公式配布と従来使用版の同一性は[検証記録](../../knowledge/nodes/tennis_scene/)にあります。
+  公式配布と従来使用版の同一性は[検証記録](../../knowledge/nodes/tennis_scene/000029-run-clean-standard-install-20261021.md)にあります。
 - **AFLink**: [StrongSORT公式README](https://github.com/dyhBUPT/StrongSORT#datamodel-preparation)が案内するDriveの
   `AFLink_epoch20.pth`を取得します。条件の未確認は上記NOTICEのとおりです。
 - **DINOv3 ViT-B/16**: [Meta公式](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)に申請し、
