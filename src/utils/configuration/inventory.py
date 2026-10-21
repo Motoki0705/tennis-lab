@@ -189,6 +189,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.export_blender": "tennis_scene.blender_export",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
+    "src.tennis_scene.scripts.preflight": "tennis_scene.preflight",
     "src.tennis_scene.scripts.visualization": "tennis_scene.visualization",
     "src.tennis_scene.scripts.visualize_tasks": "tennis_scene.visualize_tasks",
 }
@@ -245,6 +246,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.export_blender": "src.tennis_scene.configuration.validate_blender_export_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
+    "src.tennis_scene.scripts.preflight": "src.tennis_scene.configuration.validate_pipeline_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
     "src.tennis_scene.scripts.visualize_tasks": "src.tennis_scene.configuration.validate_visualize_tasks_boundary",
 }
@@ -761,6 +763,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.preflight"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualization"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.visualize_tasks"),
 )

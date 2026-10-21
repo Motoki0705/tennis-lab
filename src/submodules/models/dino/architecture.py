@@ -131,9 +131,9 @@ def build_dino(
     except ModuleNotFoundError as error:
         if error.name == "MultiScaleDeformableAttention":
             raise RuntimeError(
-                "DINO CUDA extension is not installed. Run: "
-                "TENNIS_LAB_BUILD_CUDA_OPS=1 "
-                ".venv/bin/python setup.py build_ext --inplace"
+                "DINO CUDA extension is not installed. Follow "
+                "docs/installation/README.md#dino-cuda-extension "
+                "to run scripts/build_dino_extension.sh and select its lib via PYTHONPATH."
             ) from error
         raise
     model, criterion, _ = build_function(args)
