@@ -15,6 +15,19 @@ Original Tennis-Lab code and documentation are licensed under Apache-2.0 unless 
 Third-party materials retain their own terms, including restrictions on research use,
 commercial use, and redistribution. The root Apache-2.0 license does not license those materials.
 
+sdist・wheelの `License-Expression` は、[`pyproject.toml`](pyproject.toml) で独自コードと
+実際に同梱する第三者コードの条件を `AND` で結合しています。各条件の適用範囲と全文は
+本節と以下の第三者コードの一覧に従います。GVHMRの独自条件とKPRの
+HL3-LAW-MEDIA-MIL-SOC-SV全体に対応する識別子は
+[SPDX License List](https://spdx.org/licenses/) にないため、次の `LicenseRef-` を使います。
+SPDXの `Hippocratic-3.0-core` は、KPRが採用する追加条項を含む条件全体を表しません。
+この対応表とリンク先のライセンス全文は、`license-files` によって両配布物に同梱します。
+
+| メタデータの識別子 | 適用範囲 | 同梱するライセンス全文 |
+| --- | --- | --- |
+| `LicenseRef-GVHMR` | `src/submodules/vendor/gvhmr/` のGVHMR由来部分。内包する第三者部分の個別条件は下表を参照。 | [`src/submodules/vendor/gvhmr/LICENSE`](src/submodules/vendor/gvhmr/LICENSE) |
+| `LicenseRef-HL3-LAW-MEDIA-MIL-SOC-SV` | `src/tasks/player_association/appearance/kpr_vendor/` のKPR移植コード。 | [`src/tasks/player_association/appearance/kpr_vendor/LICENSE`](src/tasks/player_association/appearance/kpr_vendor/LICENSE) |
+
 独自部分のApache-2.0への移行は、[#1313](https://github.com/Motoki0705/tennis-lab/issues/1313) の対応PRのmerge commitから適用します。
 それ以前にMITで配布した版の許諾は取り消さず、過去のtag・履歴は変更しません。
 

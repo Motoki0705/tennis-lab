@@ -7,8 +7,10 @@ name = "tennis-lab"
 version = "0.1.0"
 description = "ML components for tennis video analysis: ball/court/player detection and 3D scene reconstruction"
 readme = "README.md"
-# The SPDX identifier covers original code; bundled exceptions are in LICENSES.md.
-license = "Apache-2.0"
+# The expression covers original code AND all bundled third-party code in each
+# sdist/wheel. LICENSES.md maps each LicenseRef to its scope and the full license
+# text included by license-files; third-party terms remain in force.
+license = "Apache-2.0 AND MIT AND BSD-3-Clause AND ISC AND CC-BY-NC-4.0 AND LicenseRef-GVHMR AND LicenseRef-HL3-LAW-MEDIA-MIL-SOC-SV"
 license-files = [
     "LICENSE",
     "NOTICE",
