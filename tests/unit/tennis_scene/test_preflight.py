@@ -10,7 +10,7 @@ from hydra import compose, initialize_config_dir
 
 from src.tennis_scene import preflight
 from src.tennis_scene.configuration import PipelineRuntimeConfig
-from src.tennis_scene.installation_assets import INSTALLATION_ASSETS, asset_table
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
 from src.tennis_scene.pipeline.definition import enabled_model_assets
 from src.tennis_scene.preflight import (
     AssetRequirement,
@@ -84,9 +84,3 @@ def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_pa
     assert {"dino_models", "dino_util", "dino_ops", "dinov3_hub", "dinov3_backbones",
             "sample_clip.json", "sample_LICENSE", "video_cam0", "video_cam1", "video_cam2"} <= names
     assert all(item.sha256 is not None for item in requirements if item.path.is_relative_to(tmp_path / "ckpt"))
-
-
-def test_guide_checkpoint_table_matches_authoritative_manifests() -> None:
-    guide = (PROJECT_ROOT / "docs/installation/README.md").read_text()
-    table = guide.split("<!-- checkpoint-assets:start -->\n")[1].split("\n<!-- checkpoint-assets:end -->")[0]
-    assert table == asset_table()

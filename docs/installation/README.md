@@ -83,29 +83,29 @@ The build script requires explicit toolkit and GPU architecture settings. Keep t
 ## 必要資産 / Required assets
 
 配置はすべてrepo内の**実ファイル**にします。checkpoint root外へのsymlinkはpath契約で拒否されます。
-表のSHA-256は公開標準経路の検証対象であり、再圧縮・変換・別リリースへの自動切替はしません。
+preflightが既知の重みとサンプルを固定したSHA-256で検査し、再圧縮・変換・別リリースへの自動切替はしません。
 ライセンスの詳しい適用範囲は[第三者重み](../../LICENSES.md#第三者の重みbody-model資産)と
 [公開物](../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を正とします。
 
 <!-- checkpoint-assets:start -->
-| 資産 | 配置先（`ckpt/`相対） | SHA-256 | 入手先 | ライセンス・条件 |
-| --- | --- | --- | --- | --- |
-| court | `court_detection/multiscale_depth3/b863df1f01f0.ckpt` | `bca48cdbdf0b26847b3f650cc4249397b2f7c0a963ba4801b7cd111c6e81522c` | [配布元](https://huggingface.co/Motoki098/tennis-lab-models) | DINOv3 License |
-| ball | `ball_detection/i935-mixed-ft-s42-epoch09.ckpt` | `489bb90fb6bb4deab81e507b17e698fbe40ee945533196e78d6c69e4ee3f5828` | [配布元](https://huggingface.co/Motoki098/tennis-lab-models) | CC BY-NC 4.0 |
-| detector | `dino/checkpoint0029_4scale_swin.pth` | `e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5` | [配布元](https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_) | DINO / Apache-2.0¹ |
-| vitpose | `vitpose/vitpose-h-multi-coco.pth` | `50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc` | [配布元](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | ViTPose / Apache-2.0¹ |
-| hmr2 | `hmr2/epoch=10-step=25000.ckpt` | `2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e` | [配布元](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | HMR2 / MIT¹; SMPL条件は別 |
-| gvhmr | `gvhmr/gvhmr_siga24_release.ckpt` | `4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91` | [配布元](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | GVHMR非商用条件 |
-| body_model | `body_models/smplx/SMPLX_NEUTRAL.npz` | `376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992` | [配布元](https://smpl-x.is.tue.mpg.de/) | SMPL-X Model License / 登録・同意 |
-| aflink | `person_tracking/AFLink_epoch20.pth` | `b35cbeddd3acc48fece820bd640640e6bfb1f5fbf570aa79af26c6a38958daa4` | [配布元](https://drive.google.com/file/d/1DFMUkL-dc-j8-fibcJIq-46Xoq_bFoO9/view) | AFLink重みの条件は未確認 |
-| tracking_encoder | `player_association/person_vit_clip_reid.pth` | `bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc` | [配布元](https://drive.google.com/file/d/1GnyAVeNOg3Yug1KBBWMKKbT2x43O5Ch7/view) | CLIP-ReID / MIT¹ |
-| smpl_faces | `body_models/smplh/neutral/model.npz` | `a60a7e29d33f09ef1a6352907e2f485e161f471330ca40592764374063e751df` | [配布元](https://mano.is.tue.mpg.de/) | MANO / SMPL+H License / 登録・同意 |
-| dinov3 | `dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth` | `73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c` | [配布元](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/) | DINOv3 License / 申請 |
-| smpl_hmr2_mean_params | `body_models/gvhmr/smpl_mean_params.npz` | `6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd` | [配布元](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/network/hmr2/configs/smpl_mean_params.npz) | GVHMR・SMPL・SMPL-X条件 |
-| smpl_smplx_to_smpl | `body_models/gvhmr/smplx2smpl_sparse.pt` | `0fc821a9e79ec3e76d6a9796b96d5bef8cd67055e18497bbe370d8aed9e07e06` | [配布元](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx2smpl_sparse.pt) | GVHMR・SMPL・SMPL-X条件 |
-| smpl_smpl_coco17_regressor | `body_models/gvhmr/smpl_coco17_J_regressor.pt` | `bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f` | [配布元](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_coco17_J_regressor.pt) | GVHMR・SMPL・SMPL-X条件 |
-| smpl_smplx_verts437 | `body_models/gvhmr/smplx_verts437.pt` | `ef0ea64c470a1fea80adb5e4b866c78a792a04f5f98744c9367b15e57bfb4a4d` | [配布元](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx_verts437.pt) | GVHMR・SMPL・SMPL-X条件 |
-| smpl_smpl_neutral_joint_regressor | `body_models/gvhmr/smpl_neutral_J_regressor.pt` | `70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf` | [配布元](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt) | GVHMR・SMPL・SMPL-X条件 |
+| Asset | Destination (relative to `ckpt/`) | Source | License / terms |
+| --- | --- | --- | --- |
+| court | `court_detection/multiscale_depth3/b863df1f01f0.ckpt` | [Source](https://huggingface.co/Motoki098/tennis-lab-models) | DINOv3 License |
+| ball | `ball_detection/i935-mixed-ft-s42-epoch09.ckpt` | [Source](https://huggingface.co/Motoki098/tennis-lab-models) | CC BY-NC 4.0 |
+| detector | `dino/checkpoint0029_4scale_swin.pth` | [Source](https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_) | DINO / Apache-2.0¹ |
+| vitpose | `vitpose/vitpose-h-multi-coco.pth` | [Source](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | ViTPose / Apache-2.0¹ |
+| hmr2 | `hmr2/epoch=10-step=25000.ckpt` | [Source](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | HMR2 / MIT¹; separate SMPL terms apply |
+| gvhmr | `gvhmr/gvhmr_siga24_release.ckpt` | [Source](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) | GVHMR non-commercial terms |
+| body_model | `body_models/smplx/SMPLX_NEUTRAL.npz` | [Source](https://smpl-x.is.tue.mpg.de/) | SMPL-X Model License / registration and acceptance |
+| aflink | `person_tracking/AFLink_epoch20.pth` | [Source](https://drive.google.com/file/d/1DFMUkL-dc-j8-fibcJIq-46Xoq_bFoO9/view) | AFLink weight terms unconfirmed |
+| tracking_encoder | `player_association/person_vit_clip_reid.pth` | [Source](https://drive.google.com/file/d/1GnyAVeNOg3Yug1KBBWMKKbT2x43O5Ch7/view) | CLIP-ReID / MIT¹ |
+| smpl_faces | `body_models/smplh/neutral/model.npz` | [Source](https://mano.is.tue.mpg.de/) | MANO / SMPL+H License / registration and acceptance |
+| dinov3 | `dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth` | [Source](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/) | DINOv3 License / application required |
+| smpl_hmr2_mean_params | `body_models/gvhmr/smpl_mean_params.npz` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/network/hmr2/configs/smpl_mean_params.npz) | GVHMR / SMPL / SMPL-X terms |
+| smpl_smplx_to_smpl | `body_models/gvhmr/smplx2smpl_sparse.pt` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx2smpl_sparse.pt) | GVHMR / SMPL / SMPL-X terms |
+| smpl_smpl_coco17_regressor | `body_models/gvhmr/smpl_coco17_J_regressor.pt` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_coco17_J_regressor.pt) | GVHMR / SMPL / SMPL-X terms |
+| smpl_smplx_verts437 | `body_models/gvhmr/smplx_verts437.pt` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smplx_verts437.pt) | GVHMR / SMPL / SMPL-X terms |
+| smpl_smpl_neutral_joint_regressor | `body_models/gvhmr/smpl_neutral_J_regressor.pt` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt) | GVHMR / SMPL / SMPL-X terms |
 <!-- checkpoint-assets:end -->
 
 ¹ repo側のコードのライセンス表示です。コードの許諾が、学習元データ・body modelや別配布重みの
@@ -126,16 +126,16 @@ The build script requires explicit toolkit and GPU architecture settings. Keep t
 サンプルは`Motoki098/tennis-lab-multiview-sample`の`video_000/clip_000`、
 1920×1080・59.94006 fps・1,010フレーム・3カメラです。cam0の拡大・letterboxを含みます。
 同期・出自は配布先のdataset cardを参照してください。利用条件は**CC BY-NC-ND 4.0**です。
-動画とmanifest・LICENSEは以下へ配置され、同CLIとpreflightがSHA-256を検査します。
+動画とmanifest・LICENSEは以下へ配置されます。
 
 <!-- sample-assets:start -->
-| 配置先 | SHA-256 | 入手先・条件 |
-| --- | --- | --- |
-| `data/samples/cam0.mp4` | `f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39` | [公開Dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
-| `data/samples/cam1.mp4` | `ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e` | [公開Dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
-| `data/samples/cam2.mp4` | `fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461` | [公開Dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
-| `data/samples/clip.json` | `410d77571f553123ffd57ebb457f45f4798f57d7ab6a0828e70b0a47ec42eaf2` | [公開Dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
-| `data/samples/LICENSE` | `38762e3777f4ec00a6f769062a7c3f704fb78ce08303ecff88558da4c49cf9ea` | [公開Dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
+| Destination | Source / terms |
+| --- | --- |
+| `data/samples/cam0.mp4` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
+| `data/samples/cam1.mp4` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
+| `data/samples/cam2.mp4` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
+| `data/samples/clip.json` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
+| `data/samples/LICENSE` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
 <!-- sample-assets:end -->
 
 ### 第三者の重み・body model
@@ -171,11 +171,11 @@ export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ```
 
-`status: ok`と終了値0が必要です。欠損・SHA不一致・読取失敗・拡張の不適合を**全件まとめて**
+`status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
 JSONへ出力し、1件でもあれば終了値1になります。入手したファイルを明示的に直し、再実行してください。
 `enabled_model_assets()`の全資産に加え、DINOとDINOv3 source、DINOv3単体重み、可視化のSMPL-H・regressor、
 入力動画（公開サンプルならmanifest・LICENSEも）を検査します。モデルの推論・GPU使用は行いません。
-ソースは必要ファイルの存在、既知の重みとサンプルは固定SHAで検証します。
+ソースは必要ファイルの存在を検査します。
 別モデルの重みを評価する汎用コマンドではなく、上表の公開標準経路を導入するための検査です。
 
 With assets missing, preflight lists all failures and exits nonzero. It does not download,
@@ -235,9 +235,9 @@ componentごとの入力との照合は[review UI](../../src/tennis_scene/visual
 ## クリーン導入の再検証 / Rehearse a clean install
 
 [scripts/prepare_clean_install.py](../../scripts/prepare_clean_install.py)は、この順序を独立したclone・venvで実行し、
-stepごとの時間・ログ・コピー元とSHA・ディスク使用量を`preparation.json`へ記録します。
+stepごとの時間・ログ・コピー元・検査結果・ディスク使用量を`preparation.json`へ記録します。
 登録・申請やDriveから利用者が取得した第三者資産は、**このローカル検証に限り**明示したcheckpoint rootから
-SHA検査後にコピーし、コピー後にも再検査します。自作重みとサンプルはHubから取得します。
+検査後にコピーし、コピー後にも再検査します。自作重みとサンプルはHubから取得します。
 既存venv・data・ckptへのリンクや、重みの無検査コピーは行いません。
 利用者自身の導入では、上記公式配布元から取得してください。
 
