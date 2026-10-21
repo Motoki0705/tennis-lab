@@ -1,0 +1,103 @@
+{
+  "schema": "court_hybrid_fit_gpu_validation.v1",
+  "implementation_commit": "12efecfab4aad0565a949e09b835055efa15d010",
+  "scope": "CPU-only inspection; no model inference, no media alteration, no material selection",
+  "search": {
+    "output_dir": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121234.070016Z-5a06c602/presentation",
+    "criteria": {
+      "min_kp_only_error_px": 10.0,
+      "max_hybrid_error_px": 3.0,
+      "max_samples": 300,
+      "top_k": 20
+    },
+    "scanned_count": 300,
+    "qualified_count": 2,
+    "statuses": {
+      "ok": 300
+    },
+    "kp_only_exists_count": 300,
+    "hybrid_at_most_3px_count": 282,
+    "prior_search": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261020T020007.842666Z-b49b84f6/presentation",
+    "prior_sample_order_and_input_hashes_unchanged": true,
+    "sort": [
+      "improvement_px descending",
+      "hybrid_error ascending",
+      "sample_id ascending"
+    ],
+    "artifacts": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121234.070016Z-5a06c602/presentation/ranking.json",
+        "size_bytes": 177013,
+        "sha256": "6094fb46fe3ad2c64219ce7d7cbc25052b9ae82f5d01f4420963b6ce37341245"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121234.070016Z-5a06c602/presentation/contact_sheet.png",
+        "size_bytes": 302204,
+        "sha256": "162d924948d8dbb05c305d743d808b6b3a6d96cecc25c29e374dd1fa319caa88",
+        "size": [
+          960,
+          310
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "40d3166ee918bac8b4a99b90ac35f11b7f6cde29c9b450d0782ae3fa6077f550"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121234.070016Z-5a06c602/presentation/manifest.json",
+        "size_bytes": 7209,
+        "sha256": "1db9552f3d55842669f7658ed819a44ffe2c40ee30b4e047ac8034a0a5aa262b"
+      }
+    ]
+  },
+  "verified_input_files": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "size_bytes": 1646,
+      "sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/index.npz",
+      "size_bytes": 1117677,
+      "sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+      "size_bytes": 1320569176,
+      "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "size_bytes": 342860279,
+      "sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c"
+    }
+  ],
+  "selection": "candidate_for_user_review",
+  "cpu_gpu_difference_cause": "Not isolated; use GPU measurements for GPU candidates",
+  "candidates": [
+    {
+      "rank": 1,
+      "sample_id": "BiOnysEJdYE_2200",
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121828.493922Z-d1f76f96/presentation",
+      "errors": {
+        "kp_only_error": 16.396553305626206,
+        "hybrid_error": 1.7338136461290754,
+        "status": "ok"
+      },
+      "improvement_px": 14.66273965949713,
+      "search_and_render_errors_identical": true,
+      "verification": "knowledge/runs/run-court-hybrid-fit-bionys-20261021/artifact-verification.json"
+    },
+    {
+      "rank": 2,
+      "sample_id": "UwuccciC0Jg_100",
+      "output_dir": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation",
+      "errors": {
+        "kp_only_error": 10.625403295558375,
+        "hybrid_error": 2.8945211888325653,
+        "status": "ok"
+      },
+      "improvement_px": 7.73088210672581,
+      "search_and_render_errors_identical": true,
+      "verification": "knowledge/runs/run-court-hybrid-fit-uwuccci-20261021/artifact-verification.json"
+    }
+  ]
+}
