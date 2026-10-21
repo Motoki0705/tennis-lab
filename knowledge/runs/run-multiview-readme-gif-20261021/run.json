@@ -1,0 +1,51 @@
+{
+  "id": "run-multiview-readme-gif-20261021",
+  "issue": 1275,
+  "provider": "codex",
+  "status": "ok",
+  "device": "cpu",
+  "commit": "7c504fe6891ab85fb965dd09efb913ca960db983",
+  "branch": "codex/readme-gif",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif",
+  "captured_at": "2026-10-21T13:19:15.768230+09:00",
+  "pipeline_input_run": "run-multiview-sample-standard-pipeline-20261021",
+  "render_environment": {
+    "CUDA_VISIBLE_DEVICES": "",
+    "OMP_NUM_THREADS": "2",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "2",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "PYTHONPATH": "/home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif",
+    "MPLCONFIGDIR": "/home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif/outputs/readme_gif/mpl-cache",
+    "XDG_CACHE_HOME": "/home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif/outputs/readme_gif/cache",
+    "TMPDIR": "/home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif/outputs/readme_gif/tmp"
+  },
+  "command": ".venv/bin/python knowledge/runs/run-multiview-readme-gif-20261021/render.py --scene /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_a2/scene.npz --video cam0 /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam0.mp4 --video cam1 /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam1.mp4 --video cam2 /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam2.mp4 --smpl-faces /home/kamimura/projects/tennis-lab/ckpt/body_models/smplh/neutral/model.npz --smpl-joint-regressor /home/kamimura/projects/tennis-lab/ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt --output-dir outputs/readme_gif/release --start-frame 6 > outputs/readme_gif/release-render.log 2>&1",
+  "encoding_command": "ffmpeg -hide_banner -v error -y -threads 2 -filter_complex_threads 1 -framerate 10000/1001 -i outputs/readme_gif/release/%05d.png -filter_complex '[0:v]split[a][b];[a]palettegen=max_colors=192:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle' -loop 0 -final_delay 3 assets/tennis_scene/multiview_reconstruction.gif",
+  "verification_command": ".venv/bin/python knowledge/runs/run-multiview-readme-gif-20261021/verify.py --frames outputs/readme_gif/release --gif assets/tennis_scene/multiview_reconstruction.gif --output outputs/readme_gif/release-review",
+  "render_source_hashes": {
+    "src/tennis_scene/visualization/rendering/multiview.py": "1f3972b00d2ac0619f3c4a5037978d7382a57f253e316e45985ecac4a949bf31",
+    "knowledge/runs/run-multiview-readme-gif-20261021/render.py": "278b20c686a603110e62dc265541d4d773b5478ff266f772561b7de5399abe11"
+  },
+  "render_seconds": 44.96755001699785,
+  "environment": {
+    "python": "3.11.15",
+    "numpy": "2.3.5",
+    "matplotlib": "3.11.1",
+    "opencv-python": "5.0.0.93",
+    "Pillow": "12.3.0",
+    "torch": "2.13.0",
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers"
+  },
+  "reproduction": {
+    "command": "bash knowledge/runs/run-multiview-readme-gif-20261021/repro.sh /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_a2/scene.npz /home/kamimura/projects/tennis-lab/.claude/worktrees/multiview-sample/outputs/multiview_sample_preflight/input_data/samples /home/kamimura/projects/tennis-lab/ckpt /home/kamimura/projects/tennis-lab/.claude/worktrees/readme-gif/outputs/readme_gif/reproduction",
+    "exit_code": 0,
+    "gif_sha256": "ad266c94b16f71b11bb63d0c86ab508278e947bba9e5a32af3d6151e2f6ee239",
+    "matches_published_asset": true,
+    "source_correspondence_checks": 504
+  },
+  "verification_source_hashes": {
+    "repro.sh": "c7c53284531f62648b07b043c01a4d4863590ebbc85f24d10dbe63e40c6bffcb",
+    "verify.py": "6669a5913fef13c3ed5d1407696a1d59b5c90742873b45d385fa4054c1020c3a"
+  }
+}

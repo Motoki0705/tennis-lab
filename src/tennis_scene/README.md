@@ -87,6 +87,15 @@ rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌�
 SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
 2D可視性で無効な3Dのweightを復活させません。
 
+## 同期入力と3Dの並列表示
+
+[`MultiviewSceneRenderer`](visualization/rendering/multiview.py)は、3〜5台の同期済み入力を左、
+既存rendererの3D表示を右に並べ、全パネルを同じ元frame番号で描画します。
+camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS・frame数が異なる場合は拒否します。
+同期推定や欠測の補間は行わず、SceneResult v2の有効性maskを既存rendererへそのまま渡します。
+README用GIFのCPU生成コマンド・入力hash・目視確認結果は
+[生成記録](../../knowledge/nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)を参照してください。
+
 ## Blenderアニメーション
 
 保存済みSceneResult v2と元動画から、入力映像がコート・選手・ボールの3Dシーンへ

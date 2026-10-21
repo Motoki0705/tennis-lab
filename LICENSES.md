@@ -288,6 +288,16 @@ CCは肖像・プライバシー等の権利を一律に許諾するものでは
 [配布ページ](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample),
 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)。
 
+README用の同梱素材 [`assets/tennis_scene/multiview_reconstruction.gif`](assets/tennis_scene/multiview_reconstruction.gif)
+は、ライセンス元である本プロジェクトが上記サンプル映像を縮小・間引きし、3視点と3D再構成を
+合成して別途提供するGIFです。© 2026 Motoki0705。GIFに関してプロジェクトが持つ権利は
+[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)で提供し、MITの対象外です。
+研究・デモ確認は想定用途であり、ライセンスに追加の用途制限を設けるものではありません。
+このGIFの提供は、第三者が元動画から作った任意の改変物の共有を許諾するものではありません。
+人物はGVHMRによるSMPL復元を描画しています。SMPL-Bodyの出典は
+Max Planck Institute for Intelligent Systems（[Body License / CC BY 4.0](https://smpl.is.tue.mpg.de/bodylicense.html)）です。
+モデル本体・身体出力の条件は[パイプライン出力](#パイプライン出力)を参照してください。
+
 ### Hugging Faceのlicenseメタデータ
 
 Model repo `Motoki098/tennis-lab-models` のmodel cardには次を設定します。
