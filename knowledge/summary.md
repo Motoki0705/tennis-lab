@@ -1,11 +1,11 @@
-<!-- knowledge-review: 04fc9dd35fb7b0dbcda0fc915ae039c4751c5cb436df17b458c223a3ef656b02 on 2026-10-21 -->
+<!-- knowledge-review: c064e5e70d649a3d11737dfb8b6bdb255e5f18827083b61b39924217623e0742 on 2026-10-21 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-21（公開3カメラサンプルの標準pipeline完走確認を追加。既存の採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
-従来の横断調査基準commit: `5f64fbd9c8fffc75295027eb2ece2a2f72eb6f9d`。追加実験の版・差分は各runの再現性bundleを参照。
+従来の横断調査基準commit: `92d9dece1793aa1be3cdaa033951732d5078bfdb`。追加実験の版・差分は各runの再現性bundleを参照。
 
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
