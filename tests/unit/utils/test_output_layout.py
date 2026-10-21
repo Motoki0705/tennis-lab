@@ -312,6 +312,7 @@ def test_visualize_mode_shares_log_identity_with_artifact(
         ("visualization", "visualize", ("output", "preview_output")),
         ("visualize_tasks", "visualize", ("output_directory",)),
         ("blender_export", "visualize", ("output",)),
+        ("export_blender_diffusion", "visualize", ("output",)),
         ("export_blender_rays", "visualize", ("output",)),
         ("clip_studio", "generate", ()),
         ("generate_dataset", "generate", ()),
