@@ -397,6 +397,8 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
                     "read-only",
                     "--log-dir",
                     str(run_dir),
+                    "--run-dir",
+                    str(run_dir / "agent-runtime"),
                 ],
                 cwd=root,
                 timeout=args.agent_timeout,

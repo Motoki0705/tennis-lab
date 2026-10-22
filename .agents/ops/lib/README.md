@@ -1,0 +1,160 @@
+# Headless agent共通ランナー
+
+`agent_exec.sh` はこのcheckoutの `.venv/bin/python` で `agent_runtime.py` を実行する。
+Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1ターンを実行・保存する。
+担当registry、実行枠、GitHub操作、タスクの合否判定は呼出元が管理する。
+
+| ファイル | 責務 |
+|---|---|
+| `agents.conf` | 役割の既定値・実装子の代替モデル・用途別の固定プロファイル |
+| `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
+| `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
+| `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
+| `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
+
+## モデルと設定の優先順位
+
+`--role parent` は `--agent claude`、`--role implementation` は `--agent codex` と同じ。
+両方の指定は拒否する。既定値の正本は [`agents.conf`](agents.conf)。
+親はOpus / xhigh、実装子はSol / max。実装子は `--model gpt-6-astra` で代替モデルを明示選択でき、
+effortはmaxを必須とする。親effortは設定または `--effort` で変更できる。
+
+- プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
+  overrideがあっても不足・不正な既定設定を許容しない。
+- `--profile review` / `ops_report`: そのプロファイルの完全な固定値だけを使う。
+  通常の既定値へ戻らず、`--model` / `--effort` / `--role` との併用を拒否する。
+  reviewとops_reportの従来のmodel/effort/service tierは維持する。
+  ops_reportだけnative multi_agentと設定されたthreads/depthを有効にする。
+- configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
+  `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
+  CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。
+
+利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗・異なる実効値を
+非ゼロ終了にする。他モデルへの振替や自動再試行はしない。
+
+## 起動・継続
+
+呼出元は既存worker/PR/担当と実行枠を先に照合し、各ターンに新しい `--run-dir` を割り当てる。
+`--task-id` は同じ作業を表す安定した呼出元のキー。指定時はgit worktreeを必須とする。
+`--branch` は任意の期待branchで、不一致なら起動前に拒否する。detached checkoutは
+`(detached)` とそのHEADを記録し、再開時に照合する。パスは呼出元のcwdを基準に解決する。
+
+```bash
+runner=.agents/ops/lib/agent_exec.sh
+"$runner" --role implementation --mode write --task-id ball-detector \
+  --cwd "$worktree" --branch codex/ball-detector \
+  --prompt-file "$task_dir/task.md" --run-dir "$task_dir/initial"
+
+"$runner" resume --role implementation --mode write --task-id ball-detector \
+  --cwd "$worktree" --branch codex/ball-detector \
+  --resume-from "$task_dir/initial" --prompt-file "$task_dir/fix.md" \
+  --run-dir "$task_dir/fix"
+```
+
+`--prompt-file -` はstdinのUTF-8本文を読む。promptは引数へ埋め込まない。
+最終文は常にrun dirの `final.md` に保存し、`--out FILE` 指定時は正常終了後にそのパスにもコピーする。
+同じoutを次ターンで使っても過去の最終文は残す。従来の `--agent --cwd --prompt-file --out`
+呼出しも使え、`--run-dir` 省略時は `--log-dir/<run UUID>/` に保存する。
+log dir既定は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/logs/`。
+task ID省略時は初回promptのSHA-256をキーにする。後続workflowは明示キーとrun dirを使う。
+
+再開では初回と同じagent/profile/mode/task/worktree/branch/configを指定する。
+前回の明示model/effort overrideは省略すれば保持し、異なる値の指定は拒否する。
+configはパスとファイル全体のSHA-256も照合するため、コメントだけの変更でも再開を止める。
+初回sessionのlockを全ターンで共有し、稼働中・古いrunからの再開を拒否する。
+Codex transcriptに別経路の継続が見つかった場合も拒否する。
+同一branch上の実装commitによるHEADの前進は許容する。
+
+Codexは `exec resume <session-id> -`、Claudeは `-p --resume <session-id>` を使う。
+確認したCLIはCodex 0.163.0（`exec --help` / `exec resume --help`）とClaude Code 2.1.307（`--help`）。
+Codexは初回・再開とも `--disable daemon_auto_start` を渡す。
+WSLでCODEX_HOMEがdrvfs上にあるとdaemonのUnix socketが作れないため、この指定を外さない。
+Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数でsandboxを指定する。
+`--last`、fork、新sessionへの自動振替は使わない。
+JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
+
+子へ渡す環境から `CLAUDE_CODE_SESSION_ID`、`CLAUDE_CODE_PARENT_SESSION_ID`、
+`CLAUDE_CODE_AGENT_ID`、`CLAUDECODE`、`CODEX_SESSION_ID`、`CODEX_THREAD_ID` を除く。
+子の担当identityは子CLI自身が設定する値を使い、親の値やPIDを代用しない。
+`AGENT_RUNTIME_RUN_DIR` と `AGENT_RUNTIME_TASK_ID` は子のローカル記録への参照であり、
+担当identityや起動権限ではない。実CLIが環境を生成すること自体の検証は実機検証で行う。
+
+## 記録と結果JSON（schema_version 1）
+
+run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renameで保存する。
+既存runを上書きせず、不正JSON・重複key・未知versionを空状態へ置換しない。
+
+| 保存先 | 内容 |
+|---|---|
+| `prompt.md` | そのターンの入力原文。`prompt_sha256` と対応 |
+| `invocation.json` | 実引数と除去した環境変数の名前。環境の値は保存しない |
+| `events.jsonl` / `stderr.log` | CLIの構造化stdout原文 / stderr原文。失敗・途中切れも残す |
+| `final.md` | 最終文。CodexではCLIのlast-messageファイルとイベント本文を照合。正常終了時は `--out` にもコピー |
+| `result.json` | run ID、contract、runtime情報、process情報、終了理由 |
+| 初回runの `session.json` / `session.lock` | runtime session、最後に観測したturn、最新runの対応と排他 |
+
+`result.json` の主要フィールド:
+
+- `result`: `running` / `completed` / `failed`。`completed` はCLIターンの正常終了だけ。
+  `task_success` は常に `null`。親が差分・受入条件・テスト・PRなどを照合する。
+- `contract`: `task_id`, `cwd`, `branch`, `detached_head`, `mode`, `runtime_home`, `settings`。
+  settingsはconfig出典/hash、role/agent/profile、`defaults`、`overrides`、`selected`、
+  `selection_sources`、ops_reportのthreadsを区別する。
+- `runtime`: 実session/turn ID、再開要求のsession ID（観測値とは別）、`effective`、`usage`、`runtime_errors`。
+  effective/usageは `status=observed` と `value` / `source`、または
+  `status=unavailable` と `value=null` / `reason` を持つ。欠測を既定値や0へ変換しない。
+- Codexのmodel/effort/turn/worktreeは、返されたsession IDと一致するCODEX_HOMEの
+  `sessions/` または `archived_sessions/` の新しい `turn_context` から確認する。
+  transcript欠落・破損・曖昧さ・不一致は `metadata_error`。CLIのJSONLだけから推測しない。
+  service tierは現行transcriptにないため、実効値未取得の理由を残す。
+- Claudeのmodel/sessionは `system.init` と `result` を照合する。
+  effective effortとturn IDはstream-jsonが提供しないため理由付き未取得。
+  usage/modelUsage/costは取得できたresultの値を保存し、請求確定額へ読み替えない。
+- `runner` / `process`: PID、boot ID、start ticks。生存確認はPIDだけで判定しない。
+  `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
+  `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
+  session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
+
+stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, `task_success`
+だけのJSON。status/stopは生存確認のbooleanを追加する。session ID・絶対パス・本文を含めない。
+ローカル記録には秘密情報・生session ID・ローカルパスが入り得るため、そのまま公開しない。
+`--out` の本文を公開する既存呼出元も、自身の出力schema/公開検証を続ける。
+
+| 終了理由 | wrapper終了値 | 扱い |
+|---|---|---|
+| `completed` | 0 | 正常なsession/完了イベント、非空最終文、必須実効情報を確認 |
+| `invalid_output` / `metadata_error` | 1 | 空・破損・未完了イベント、最終文不一致、実効値取得失敗 |
+| `runtime_error` / `usage_limit` | 非0（CLIが0なら1） | runtime失敗。枠不足の識別は構造化errorの文言による補助分類 |
+| `cli_error` / `startup_failed` | CLI終了値 / 127 | 起動・認証・モデル利用不能など。詳細はローカルstderr |
+| `timeout` | 124 | 呼出元が明示した有限正数の `--timeout` 到達。既定は上限なし |
+| `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
+| `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |
+| `cleanup_failed` | 1 | プロセス回収未確認。supervisorが照合するまで再開しない |
+
+設定・入力・再開契約の事前拒否は終了値2でCLIを起動しない。run dir作成前の拒否は
+result.jsonを生成しないので、呼出元は終了値とJSONの有無を両方確認する。
+
+## 状態確認・停止・中断からの復旧
+
+```bash
+.agents/ops/lib/agent_exec.sh status --run-dir "$task_dir/initial"
+.agents/ops/lib/agent_exec.sh stop --run-dir "$task_dir/initial"
+```
+
+statusは保存結果とrunner/CLI/CLI process groupの生存を返す。読み取りだけで状態を変えない。
+通常のstopは同じboot/start ticksのrunnerへTERMを送り、終了記録を待つ。
+runnerはCLI groupをTERM→KILLし、subreaperで引き受けた別sessionの子孫も回収する。
+stdoutを先に閉じたCLIも、停止・timeoutを監視し続ける。
+
+runnerがSIGKILL等で失われた場合、`running` の残存は成功でも稼働の証拠でもない。
+stopはsession lock下で、生存するCLI leaderのidentityが一致すればそのgroupを回収する。
+CLI/groupが消滅済みなら中断として記録する。PID再利用・leader不在で残るgroupなど、
+identityを確認できない残存プロセスは強制停止せず、supervisorの照合を要求する。
+wrapper自身のSIGKILL後に既に離脱していた子孫の回収は、外側supervisorの責務。
+同じsessionのローカル記録・実プロセス・差分を確認し、stopで中断状態を確定してからresumeする。
+session IDが得られなかったrunは再開できず、別sessionを黙って作成しない。
+
+既存 `opsproc.run_process_group` からも呼べる。runnerはTERM/INTを処理して自身のCLI groupを
+回収する。外側のgraceは内側の回収待ち（通常最大約4秒）より長く保つ。既定は5秒。
+review / ops-reportは `agent-runtime/` を指定して従来のprofileと `--out` を使い、
+それぞれの既存の受理・レビュー・公開処理がタスク合否を判断する。

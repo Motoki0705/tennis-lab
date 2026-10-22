@@ -12,20 +12,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 AGENT_EXEC = ROOT / ".agents/ops/lib/agent_exec.sh"
 
-FAKE_CLAUDE = """#!/usr/bin/env bash
-printf '%s\\n' "$@" > "$FAKE_ARGS"
-pwd > "$FAKE_CWD"
-cat
-"""
-
-FAKE_CODEX = """#!/usr/bin/env bash
-printf '%s\\n' "$@" > "$FAKE_ARGS"
-out=""
-while (($#)); do
-  if [[ "$1" == --output-last-message ]]; then out="$2"; shift 2; else shift; fi
-done
-cat > "$out"
-"""
+FAKE_CLAUDE = Path(__file__).with_name("fake_agent_cli.py").read_text(encoding="utf-8")
+FAKE_CODEX = FAKE_CLAUDE
 
 
 def _install_fake(bin_dir: Path, name: str, body: str) -> None:
@@ -44,6 +32,7 @@ def _run(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_ARGS": str(tmp_path / "args.txt"),
         "FAKE_CWD": str(tmp_path / "cwd.txt"),
+        "CODEX_HOME": str(tmp_path / "codex-home"),
     }
     return subprocess.run(
         ["bash", str(AGENT_EXEC), *args],
@@ -90,7 +79,7 @@ def test_prompt_round_trips_to_output(
         tools = args[args.index("--tools") + 1 : args.index("--permission-mode")]
         assert tools == ["Read", "Grep", "Glob"]
     model = args[args.index("--model") + 1]
-    assert model == ("claude-opus-5-5" if agent == "claude" else "gpt-6-astra")
+    assert model == ("claude-opus-5-5" if agent == "claude" else "gpt-6.1-sol")
     if agent == "claude":
         assert (tmp_path / "cwd.txt").read_text(encoding="utf-8").strip() == str(work)
     else:
@@ -217,6 +206,7 @@ def test_relative_paths_resolve_against_caller_cwd(tmp_path: Path) -> None:
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_ARGS": str(tmp_path / "args.txt"),
         "FAKE_CWD": str(tmp_path / "cwd.txt"),
+        "CODEX_HOME": str(tmp_path / "codex-home"),
     }
 
     result = subprocess.run(

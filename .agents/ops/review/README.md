@@ -67,6 +67,7 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
    既存workspaceは削除せずエラーにし、今回作ったworktreeは終了時に撤去する。
 5. `agent_exec.sh --agent codex --profile review --mode read-only` を**1回だけ**呼ぶ。
    model/effort/service tierは [`../lib/agents.conf`](../lib/agents.conf) の `REVIEW_CODEX_*`。
+   CLIイベント・実効設定・使用量は `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
    agentは専用プロセスグループで起動し、timeout/異常終了時は子孫も停止する。
    合計20万文字を超えるdiffはプロンプトを一部に限定し、全文ファイルの読取を明示する。
    大きな本文もcontext全文を参照させる。確認不能ならincompleteで失敗し、追加agentへ分割しない。
