@@ -71,6 +71,12 @@ class ReviewService:
             raise ValueError("Scene escapes configured root.")
         return path
 
+    def sample_source(
+        self, scene: str, data: dict[str, Any], sample: str
+    ) -> tuple[Path, Any]:
+        """Resolve one sample's store without changing its real scene identity."""
+        return self.scene_root(scene) / "datasets/court", data["image_store"]
+
     def revision(self, scene: str) -> str:
         root = self.scene_root(scene)
         identities = []
@@ -342,11 +348,8 @@ class ReviewService:
     ) -> bytes:
         data = self.load(scene, revision)
         entry = data["samples"][sample]
-        root = self.scene_root(scene) / "datasets/court"
-        rgb = (
-            read_court_rgb(root, entry, store=data["image_store"]).astype(np.float32)
-            / 255.0
-        )
+        root, image_store = self.sample_source(scene, data, sample)
+        rgb = read_court_rgb(root, entry, store=image_store).astype(np.float32) / 255.0
         if (
             rgb.dtype != np.float32
             or rgb.shape != (entry["height"], entry["width"], 3)
