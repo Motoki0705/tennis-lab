@@ -1,4 +1,4 @@
-<!-- knowledge-review: 0f7008596818209d2cf9d88f6cfe91e858210bd6463d80766478a90b101f6016 on 2026-10-21 -->
+<!-- knowledge-review: 9a1f0f0ca729af6b9865c4b0dc80519f9df6bd0da6c2d186ce5596ae734bf62e on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-21（公開3カメラサンプルのREADME GIF描画・クリーン導入・GPU完走・可視化と公式CLIP-ReID比較を確認。既存の採用判断は維持）
@@ -468,6 +468,8 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-22の[合成専用・固定20更新のGPU起動確認](nodes/court_detection/000048-run-court-data-scaling-smoke-s42.md)で、ViT-B＋幅768・長辺512、B00の8枚・batch 1・compile無効から指定更新数checkpointの実画像val/test別評価と集計まで通した。実画像全体の固定一覧は498動画を249動画ずつへ分け、退化注釈除外後val 4,468枚・test 4,372枚、動画重複0を記録した。全体testは未評価で、起動確認の少数fixtureから精度や本番batch 8の容量は判断しない。既存の採用判断は維持し、次は#1356のColab試走で本番更新数・評価間隔と容量を固定する。
 
 2026-10-13に[#983の4条件比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)を完了した。凍結DINOv3 S/S+/B/Lを同じ1024次元の後段、入力・split・seed42・20epochで学習し、各最小validation loss checkpointを同じ合成test886件・実画像val2211件で評価した。この1 seedではBが合成KP/SEG、LがLINE/semantic LINE/pose再投影で最良で、サイズによる一様な改善は見られなかった。実画像valの差は小さく、選択データを兼ねることも明示する。Lのcheckpoint再開に伴うRNG/sampler継続の制約を保持し、Sは同じ1画像の深度無効な2点がpose誤差総和の91.65%を占めた診断を添え、公式の全点平均を置き換えない。4条件の設定・checkpoint hash・学習曲線・同一画像36パネルと再現記録を保存し、既存の採用判断は変更しない。次に有効なのはB/Lの複数seedとpose投影の安定性の検証で、追加学習は開始していない。[速度診断](nodes/court_detection/000042-group-i983-court-throughput-s42.md)はデータのVM内配置と、S+のbatch8→16による約3%の画像/秒改善を示し、共有後段の計算と保存処理が改善候補である。本比較のbatch8/20epochは維持した。
 
