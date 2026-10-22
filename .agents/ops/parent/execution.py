@@ -275,7 +275,8 @@ def _current_basis(session: ParentSession, generation: int) -> dict[str, Any]:
             raise ValueError(
                 "legacy human agreement lacks requirements_sha256; "
                 "合意時点の要件本文を検証できないため実行を停止しました。"
-                "checking → agree で現在の本文を人間と確認し、実際の再合意を記録してください"
+                "parent READMEの「稼働中の親への移行」に従い、現在の本文・指示を確認して "
+                "checking → agree で本文digestを記録してください"
             )
         body = session.gh.issue(session.parent).get("body") or ""
         if sha256(current["requirements_sha256"]) != digest(requirement_body(body)):
