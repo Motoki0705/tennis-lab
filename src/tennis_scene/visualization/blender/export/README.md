@@ -195,12 +195,21 @@ blender --background "$SHOT_DIR/tennis_placement.blend" --python-exit-code 1 -t 
   --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
 ```
 
-validatorは最終段階の `Body` のworld頂点と `placed_vertices_t0`（許容誤差1e-4 m）、
-再生全frameの `SourceJoints` world座標と `hip_position + scale·Rz(yaw)·joints_local`、
-`Body`・`SourceJoints` のrenderとviewport両方の非表示mask、`intro_plate` の表示区間と
-plate元frameの対応を検査します。NaNは不一致として扱います。結果は `validation.json` に
-保存し、不一致なら非ゼロ終了します。`--frames` で部分区間にしたシーンは完全な
-タイムラインを検証できないため、検証にはsubset化していないシーンを使ってください。
+validatorは、`appear`・`scale`・`yaw`・`position`・`final`の各段階の最初・中央・最後の
+frameで、`Body`の評価済みworld変形（scale・π周期を考慮したZ回転・location）を
+`body_transform_at`と照合し、同じframeのlocal頂点が`body_local.pc2`の`t0`サンプルに
+保たれていることも確認します（位置1e-4 m、角度1e-3度）。最終段階ではworld頂点を
+`placed_vertices_t0`とも照合します。再生区間では、validな全frameで
+`Body`の評価済みworld頂点を`hip_position[i] + scale·Rz(yaw_correction[i])·u[i]`
+（`i = timeline.pc2_frame_at(frame)`、`u`はpc2頂点。頂点は等間隔の最大64点）と比較し、
+入力fpsから30fpsへの対応を30fps・60fpsの両方で検証します。カメラ方位は、`t0`の身体前方を
+基準に`camera_azimuth_offset_deg`から`camera_orbit_deg`まで等間隔に回る絶対方位を
+`[-π, π)`へ折り返して直接比較し、開始frameの誤差で相殺しません。加えて`SourceJoints`の
+world座標、`Body`・`SourceJoints`のrenderとviewport両方の非表示mask、`intro_plate`の
+表示区間とplate元frameの対応を検査します。NaNは不一致として扱います。`validation.json`の
+`stages`には期待する境界の再掲ではなく、実シーンで照合したframeごとの誤差・最大値・合否を
+保存し、不一致なら非ゼロ終了します。`--frames`で部分区間にしたシーンは完全なタイムラインを
+検証できないため、検証にはsubset化していないシーンを使ってください。
 
 親の実Blender検証用の合成bundleは
 `tests/unit/tennis_scene/visualization/blender/test_player_placement.py` の

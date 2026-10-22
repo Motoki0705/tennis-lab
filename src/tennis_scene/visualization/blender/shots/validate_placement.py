@@ -7,18 +7,34 @@ blender --background <shot>/tennis_placement.blend --python-exit-code 1 \
 No rendering is performed.  The checks use Blender's evaluated mesh and object
 matrices:
 
+* on the staged frames of ``appear``/``scale``/``yaw``/``position``/``final``,
+  the evaluated ``Body`` world transform equals ``body_transform_at`` (scale,
+  Z rotation with a 2*pi wrap, and location; the first, middle and last frame
+  of every stage are sampled);
+* on the same staged frames, the evaluated *local* ``Body`` vertices equal the
+  ``body_local.pc2`` sample at ``t0`` (tolerance 1e-4 m);
+* on every valid replay frame, the evaluated ``Body`` world vertices equal
+  ``hip_position[i] + scale * Rz(yaw_correction[i]) @ u[i]`` with
+  ``i = timeline.pc2_frame_at(frame)`` (a fixed vertex subset is compared so
+  the input-fps to 30 fps mapping is checked on every frame);
 * at the final staged frames, the world-space ``Body`` vertices equal
   ``placed_vertices_t0`` (tolerance 1e-4 m);
 * on every replay frame, each ``SourceJoints`` world position equals
   ``hip_position + scale * Rz(yaw) @ joints_local`` (tolerance 1e-4 m);
+* on every replay frame, the absolute camera-hip azimuth equals the direction
+  from ``_camera_direction(shot, t0_forward, progress)``; the comparison never
+  cancels the first frame's error (tolerance 1e-3 degrees);
 * ``Body`` and every ``SourceJoint`` hide in render *and* viewport exactly where
   ``valid`` is false (and only there);
 * when ``intro_plate`` is enabled, the plate backdrop is visible only during the
   intro and every copied plate frame is the source frame selected from
   ``manifest["frames"]["start"]``.
 
-Every comparison rejects non-finite values instead of letting NaN slip through.
-The report is written on success and on failure; mismatches exit non-zero.
+The comparison functions at the top of this module do not import Blender, so
+they run under CPython's pytest; only the collection functions at the bottom
+import ``bpy``.  Every comparison rejects non-finite values instead of letting
+NaN slip through.  The report is written on success and on failure; mismatches
+exit non-zero.
 """
 
 from __future__ import annotations
@@ -31,7 +47,6 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-import bpy
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -46,10 +61,469 @@ from player_placement import (  # noqa: E402
     _camera_direction,
     _rotation_z,
     body_forward,
+    body_transform_at,
     body_visible_at,
     build_timeline,
     load_manifest,
 )
+
+# Existing tolerances from the shot: metres for positions and 1e-3 degrees for
+# angles.  Scale is dimensionless and uses the same numeric bound as TOLERANCE_M.
+ANGLE_TOLERANCE_DEG = 1e-3
+ANGLE_TOLERANCE_RAD = math.radians(ANGLE_TOLERANCE_DEG)
+STAGED_STAGES = ("appear", "scale", "yaw", "position", "final")
+REPLAY_VERTEX_COUNT = 64
+
+
+def _bpy() -> Any:
+    """Import Blender only while running inside it.
+
+    The comparison functions below are exercised by CPython tests, where ``bpy``
+    does not exist.
+    """
+    import bpy
+
+    return bpy
+
+
+def _wrap_angle(radians: float) -> float:
+    """Wrap an angle to ``[-pi, pi)``."""
+    return (float(radians) + math.pi) % (2.0 * math.pi) - math.pi
+
+
+def _angle_error(actual: float, expected: float) -> float:
+    return abs(_wrap_angle(float(actual) - float(expected)))
+
+
+def stage_sample_frames(timeline: PlacementTimeline) -> dict[str, tuple[int, ...]]:
+    """Frames sampled for the staged transform/cache checks.
+
+    Every staged interval is half-open, so its last displayed frame is
+    ``end - 1``.  The first, middle and last frame are compared; the middle
+    frame is what rejects intermediate keys replaced by the final value.
+    """
+    bounds = timeline.stage_bounds()
+    result: dict[str, tuple[int, ...]] = {}
+    for name in STAGED_STAGES:
+        begin, end = bounds[name]
+        result[name] = tuple(sorted({begin, (begin + end - 1) // 2, end - 1}))
+    return result
+
+
+def _transform_json(
+    scale: np.ndarray, yaw: float, location: np.ndarray
+) -> dict[str, Any]:
+    return {
+        "scale": [float(value) for value in np.asarray(scale, np.float64)],
+        "yaw_rad": float(yaw),
+        "yaw_deg": float(math.degrees(yaw)),
+        "location_m": [
+            float(value) for value in np.asarray(location, np.float64)
+        ],
+    }
+
+
+def compare_stage_transforms(
+    timeline: PlacementTimeline,
+    expected: dict[int, dict[str, Any]],
+    actual: dict[int, dict[str, Any]],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compare the staged ``Body`` transform with ``body_transform_at``.
+
+    ``expected`` and ``actual`` map a frame to ``{"scale": (sx, sy, sz),
+    "yaw": radians, "location": (x, y, z)}``.  Scale and location use
+    TOLERANCE_M as their numeric bound; the Z rotation is wrapped to
+    ``[-pi, pi)`` and compared in degrees (ANGLE_TOLERANCE_DEG).
+    """
+    failures: list[dict[str, Any]] = []
+    stages: dict[str, Any] = {}
+    for name, frames in stage_sample_frames(timeline).items():
+        entries: list[dict[str, Any]] = []
+        max_scale = 0.0
+        max_yaw = 0.0
+        max_location = 0.0
+        for frame in frames:
+            expected_item = expected.get(frame)
+            actual_item = actual.get(frame)
+            if expected_item is None or actual_item is None:
+                failures.append(
+                    {
+                        "check": "stage_transform",
+                        "stage": name,
+                        "frame": int(frame),
+                        "error": "missing expected or actual transform",
+                    }
+                )
+                entries.append({"frame": int(frame), "passed": False})
+                continue
+            expected_scale = np.asarray(expected_item["scale"], np.float64)
+            expected_yaw = float(expected_item["yaw"])
+            expected_location = np.asarray(expected_item["location"], np.float64)
+            actual_scale = np.asarray(actual_item["scale"], np.float64)
+            actual_yaw = float(actual_item["yaw"])
+            actual_location = np.asarray(actual_item["location"], np.float64)
+            scale_error = float(np.max(np.abs(actual_scale - expected_scale)))
+            yaw_error = _angle_error(actual_yaw, expected_yaw)
+            location_error = float(
+                np.max(np.abs(actual_location - expected_location))
+            )
+            max_scale = max(max_scale, scale_error)
+            max_yaw = max(max_yaw, yaw_error)
+            max_location = max(max_location, location_error)
+            passed = (
+                math.isfinite(scale_error)
+                and math.isfinite(yaw_error)
+                and math.isfinite(location_error)
+                and scale_error <= TOLERANCE_M
+                and yaw_error <= ANGLE_TOLERANCE_RAD
+                and location_error <= TOLERANCE_M
+            )
+            entries.append(
+                {
+                    "frame": int(frame),
+                    "max_scale_error": scale_error,
+                    "yaw_error_deg": float(math.degrees(yaw_error)),
+                    "max_location_error_m": location_error,
+                    "passed": passed,
+                }
+            )
+            if not passed:
+                failures.append(
+                    {
+                        "check": "stage_transform",
+                        "stage": name,
+                        "frame": int(frame),
+                        "expected": _transform_json(
+                            expected_scale, expected_yaw, expected_location
+                        ),
+                        "actual": _transform_json(
+                            actual_scale, actual_yaw, actual_location
+                        ),
+                        "max_scale_error": scale_error,
+                        "yaw_error_deg": float(math.degrees(yaw_error)),
+                        "max_location_error_m": location_error,
+                        "scale_tolerance": TOLERANCE_M,
+                        "angle_tolerance_deg": ANGLE_TOLERANCE_DEG,
+                        "tolerance_m": TOLERANCE_M,
+                    }
+                )
+        stages[name] = {
+            "frames": entries,
+            "max_scale_error": max_scale,
+            "max_yaw_error_deg": float(math.degrees(max_yaw)),
+            "max_location_error_m": max_location,
+            "passed": all(item.get("passed", False) for item in entries),
+        }
+    passed = all(stage["passed"] for stage in stages.values())
+    return (
+        {
+            "frames_checked": sum(len(stage["frames"]) for stage in stages.values()),
+            "stages": stages,
+            "scale_tolerance": TOLERANCE_M,
+            "angle_tolerance_deg": ANGLE_TOLERANCE_DEG,
+            "tolerance_m": TOLERANCE_M,
+            "passed": passed,
+        },
+        failures,
+    )
+
+
+def compare_cache_hold(
+    timeline: PlacementTimeline,
+    expected_t0: np.ndarray,
+    actual_local: dict[int, np.ndarray],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Check that staged ``Body`` local vertices stay on the ``t0`` PC2 sample."""
+    expected = np.asarray(expected_t0, np.float64)
+    failures: list[dict[str, Any]] = []
+    stages: dict[str, Any] = {}
+    for name, frames in stage_sample_frames(timeline).items():
+        entries: list[dict[str, Any]] = []
+        maximum = 0.0
+        for frame in frames:
+            actual = actual_local.get(frame)
+            if actual is None:
+                failures.append(
+                    {
+                        "check": "cache_hold",
+                        "stage": name,
+                        "frame": int(frame),
+                        "error": "missing evaluated Body vertices",
+                    }
+                )
+                entries.append({"frame": int(frame), "passed": False})
+                continue
+            actual_array = np.asarray(actual, np.float64)
+            if actual_array.shape != expected.shape:
+                failures.append(
+                    {
+                        "check": "cache_hold",
+                        "stage": name,
+                        "frame": int(frame),
+                        "error": f"vertex count {actual_array.shape} != "
+                        f"{expected.shape}",
+                    }
+                )
+                entries.append({"frame": int(frame), "passed": False})
+                continue
+            error = float(np.max(np.abs(actual_array - expected)))
+            maximum = max(maximum, error)
+            passed = math.isfinite(error) and error <= TOLERANCE_M
+            entries.append(
+                {
+                    "frame": int(frame),
+                    "max_abs_error_m": error,
+                    "passed": passed,
+                }
+            )
+            if not passed:
+                failures.append(
+                    {
+                        "check": "cache_hold",
+                        "stage": name,
+                        "frame": int(frame),
+                        "max_abs_error_m": error,
+                        "tolerance_m": TOLERANCE_M,
+                    }
+                )
+        stages[name] = {
+            "frames": entries,
+            "max_abs_error_m": maximum,
+            "passed": all(item.get("passed", False) for item in entries),
+        }
+    passed = all(stage["passed"] for stage in stages.values())
+    return (
+        {
+            "frames_checked": sum(len(stage["frames"]) for stage in stages.values()),
+            "stages": stages,
+            "tolerance_m": TOLERANCE_M,
+            "passed": passed,
+        },
+        failures,
+    )
+
+
+def replay_vertex_indices(point_count: int) -> np.ndarray:
+    """Fixed, evenly spaced vertex subset used on every replay frame."""
+    if point_count <= 0:
+        raise ValueError("body_local.pc2 has no points.")
+    count = min(REPLAY_VERTEX_COUNT, int(point_count))
+    return np.unique(np.round(np.linspace(0, point_count - 1, count)).astype(np.int64))
+
+
+def compare_replay_vertices(
+    timeline: PlacementTimeline,
+    cached: np.ndarray,
+    hip_position: np.ndarray,
+    yaw_correction: np.ndarray,
+    scale: float,
+    valid: np.ndarray,
+    actual_world: dict[int, np.ndarray],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compare evaluated replay ``Body`` vertices with the placement trace.
+
+    ``actual_world`` holds the selected vertices (see ``replay_vertex_indices``)
+    for the frames that were visible.  Every valid replay frame is checked; the
+    PC2 sample index comes from ``timeline.pc2_frame_at``, so a frozen ``t0``
+    cache or an off-by-one fps mapping is rejected.
+    """
+    cached_array = np.asarray(cached)
+    indices = replay_vertex_indices(cached_array.shape[1])
+    begin, end = timeline.stage_bounds()["replay"]
+    failures: list[dict[str, Any]] = []
+    maximum = 0.0
+    checked = 0
+    for frame in range(begin, end):
+        index = int(timeline.pc2_frame_at(frame))
+        if not bool(valid[index]):
+            continue
+        observed = actual_world.get(frame)
+        if observed is None:
+            failures.append(
+                {
+                    "check": "replay_body",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "error": "missing evaluated Body vertices",
+                }
+            )
+            continue
+        expected = np.asarray(hip_position[index], np.float64) + float(scale) * (
+            _rotation_z(float(yaw_correction[index]))
+            @ np.asarray(cached_array[index][indices], np.float64).T
+        ).T
+        observed_array = np.asarray(observed, np.float64)
+        if observed_array.shape != expected.shape:
+            failures.append(
+                {
+                    "check": "replay_body",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "error": f"vertex subset shape {observed_array.shape} != "
+                    f"{expected.shape}",
+                }
+            )
+            continue
+        if not np.isfinite(expected).all() or not np.isfinite(observed_array).all():
+            failures.append(
+                {
+                    "check": "replay_body",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "error": "non-finite vertex coordinate",
+                }
+            )
+            continue
+        error = float(np.max(np.abs(observed_array - expected)))
+        maximum = max(maximum, error)
+        checked += 1
+        if error > TOLERANCE_M:
+            failures.append(
+                {
+                    "check": "replay_body",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "pc2_frame": index,
+                    "max_abs_error_m": error,
+                    "tolerance_m": TOLERANCE_M,
+                }
+            )
+    return (
+        {
+            "frames_checked": checked,
+            "vertices_checked": int(len(indices)),
+            "vertex_indices": [int(value) for value in indices],
+            "max_abs_error_m": maximum,
+            "tolerance_m": TOLERANCE_M,
+            "passed": not any(item["check"] == "replay_body" for item in failures),
+        },
+        failures,
+    )
+
+
+def expected_camera_directions(
+    timeline: PlacementTimeline,
+    shot: PlacementShot,
+    t0_forward: np.ndarray,
+) -> dict[int, np.ndarray]:
+    """Absolute camera direction from the hip for every replay frame.
+
+    The reference is the fixed ``t0`` body forward (never the per-frame body
+    yaw); the camera starts at ``camera_azimuth_offset_deg`` and orbits by
+    ``camera_orbit_deg`` with the same progress used to key the camera.
+    """
+    begin, end = timeline.stage_bounds()["replay"]
+    count = end - begin
+    return {
+        frame: _camera_direction(
+            shot, t0_forward, (frame - begin) / max(count - 1, 1)
+        )
+        for frame in range(begin, end)
+    }
+
+
+def compare_camera_azimuths(
+    timeline: PlacementTimeline,
+    expected_directions: dict[int, np.ndarray],
+    actual_offsets: dict[int, np.ndarray],
+    camera_distance_m: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Compare absolute camera-hip azimuths, wrapped to ``[-pi, pi)``.
+
+    The actual and expected azimuths are each measured from the world +X axis;
+    the expected value already contains ``camera_azimuth_offset_deg``.  The
+    first frame is not used as a reference, so a uniform rotation of the whole
+    replay cannot cancel itself.
+    """
+    begin, end = timeline.stage_bounds()["replay"]
+    failures: list[dict[str, Any]] = []
+    maximum_angle = 0.0
+    maximum_distance = 0.0
+    checked = 0
+    endpoints: dict[str, float] = {}
+    for frame in range(begin, end):
+        direction = expected_directions.get(frame)
+        offset = actual_offsets.get(frame)
+        if direction is None or offset is None:
+            failures.append(
+                {
+                    "check": "camera_orbit",
+                    "frame": int(frame),
+                    "error": "missing expected or actual camera offset",
+                }
+            )
+            continue
+        expected = np.asarray(direction, np.float64)
+        horizontal = np.asarray(np.asarray(offset, np.float64)[:2], np.float64)
+        norm = float(np.linalg.norm(horizontal))
+        if (
+            not np.isfinite(expected[:2]).all()
+            or not np.isfinite(horizontal).all()
+            or not math.isfinite(norm)
+            or norm <= 1e-9
+        ):
+            failures.append(
+                {
+                    "check": "camera_orbit",
+                    "frame": int(frame),
+                    "error": "camera-hip horizontal offset is zero/non-finite.",
+                }
+            )
+            continue
+        expected_azimuth = math.atan2(float(expected[1]), float(expected[0]))
+        actual_azimuth = math.atan2(float(horizontal[1]), float(horizontal[0]))
+        azimuth_error = _angle_error(actual_azimuth, expected_azimuth)
+        distance_error = abs(norm - float(camera_distance_m))
+        maximum_angle = max(maximum_angle, azimuth_error)
+        maximum_distance = max(maximum_distance, distance_error)
+        checked += 1
+        if frame == begin:
+            endpoints = {
+                "expected_start_deg": float(math.degrees(expected_azimuth)),
+                "actual_start_deg": float(math.degrees(actual_azimuth)),
+            }
+        if frame == end - 1:
+            endpoints.update(
+                expected_end_deg=float(math.degrees(expected_azimuth)),
+                actual_end_deg=float(math.degrees(actual_azimuth)),
+            )
+        if azimuth_error > ANGLE_TOLERANCE_RAD:
+            failures.append(
+                {
+                    "check": "camera_orbit",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "expected_azimuth_deg": float(math.degrees(expected_azimuth)),
+                    "actual_azimuth_deg": float(math.degrees(actual_azimuth)),
+                    "max_azimuth_error_deg": float(math.degrees(azimuth_error)),
+                    "tolerance_deg": ANGLE_TOLERANCE_DEG,
+                }
+            )
+        if distance_error > TOLERANCE_M:
+            failures.append(
+                {
+                    "check": "camera_orbit",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "camera_distance_m": norm,
+                    "expected_camera_distance_m": float(camera_distance_m),
+                    "max_distance_error_m": distance_error,
+                    "tolerance_m": TOLERANCE_M,
+                }
+            )
+    return (
+        {
+            "frames": checked,
+            **endpoints,
+            "max_azimuth_error_deg": float(math.degrees(maximum_angle)),
+            "max_distance_error_m": maximum_distance,
+            "angle_tolerance_deg": ANGLE_TOLERANCE_DEG,
+            "tolerance_m": TOLERANCE_M,
+            "passed": not any(item["check"] == "camera_orbit" for item in failures),
+        },
+        failures,
+    )
+
 
 
 def _write_report(path: Path, report: dict[str, Any]) -> None:
@@ -58,6 +532,7 @@ def _write_report(path: Path, report: dict[str, Any]) -> None:
 
 
 def _object(name: str) -> Any:
+    bpy = _bpy()
     obj = bpy.data.objects.get(name)
     if obj is None:
         raise ValueError(f"Scene is missing required object {name!r}.")
@@ -83,11 +558,21 @@ def _world_matrix(obj: Any) -> np.ndarray:
 
 
 def _body_vertices(obj: Any) -> np.ndarray:
+    bpy = _bpy()
     evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
     vertices = np.empty((len(evaluated.data.vertices), 3), dtype=np.float64)
     evaluated.data.vertices.foreach_get("co", vertices.ravel())
     matrix = _world_matrix(obj)
     return vertices @ matrix[:3, :3].T + matrix[:3, 3]
+
+
+def _body_local_vertices(obj: Any) -> np.ndarray:
+    """Evaluated mesh vertices in ``Body`` local space (cache deformation only)."""
+    bpy = _bpy()
+    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    vertices = np.empty((len(evaluated.data.vertices), 3), dtype=np.float64)
+    evaluated.data.vertices.foreach_get("co", vertices.ravel())
+    return vertices
 
 
 def _check_hidden(
@@ -121,6 +606,7 @@ def _validate_visibility(
     body = _object("Body")
     sources = [_object(f"SourceJoint{joint:02d}") for joint in range(JOINT_COUNT)]
     checked_frames = 0
+    bpy = _bpy()
     for frame in range(timeline.frame_end + 1):
         bpy.context.scene.frame_set(frame)
         visible = body_visible_at(timeline, frame, valid)
@@ -145,6 +631,7 @@ def _validate_t0_vertices(
     begin, end = timeline.stage_bounds()["final"]
     frames = sorted({begin, end - 1})
     maximum = 0.0
+    bpy = _bpy()
     for frame in frames:
         bpy.context.scene.frame_set(frame)
         visible = body_visible_at(timeline, frame, valid)
@@ -192,6 +679,164 @@ def _validate_t0_vertices(
     }
 
 
+def _expected_body_transform(
+    timeline: PlacementTimeline,
+    frame: int,
+    *,
+    scale: float,
+    t0_yaw: float,
+    t0_hip: np.ndarray,
+    anchor: np.ndarray,
+    hip_position: np.ndarray,
+    yaw_correction: np.ndarray,
+) -> dict[str, Any]:
+    frame_scale, frame_yaw, frame_location = body_transform_at(
+        timeline,
+        frame,
+        scale=scale,
+        t0_yaw=t0_yaw,
+        t0_hip=t0_hip,
+        anchor=anchor,
+        hip_position=hip_position,
+        yaw_correction=yaw_correction,
+    )
+    return {
+        "scale": np.full(3, float(frame_scale), np.float64),
+        "yaw": float(frame_yaw),
+        "location": np.asarray(frame_location, np.float64),
+    }
+
+
+def _validate_stage_transforms(
+    timeline: PlacementTimeline,
+    manifest: dict[str, Any],
+    hip_position: np.ndarray,
+    yaw_correction: np.ndarray,
+    failures: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Read the evaluated staged ``Body`` transform from the real scene."""
+    bpy = _bpy()
+    scene = bpy.context.scene
+    body = _object("Body")
+    t0_index = timeline.t0 - timeline.start
+    t0_hip = np.asarray(hip_position[t0_index], np.float64)
+    t0_yaw = float(yaw_correction[t0_index])
+    anchor = t0_hip + np.asarray(timeline.shot.display_offset_m, np.float64)
+    scale = float(manifest["scale"])
+    expected: dict[int, dict[str, Any]] = {}
+    actual: dict[int, dict[str, Any]] = {}
+    for frames in stage_sample_frames(timeline).values():
+        for frame in frames:
+            expected[frame] = _expected_body_transform(
+                timeline,
+                frame,
+                scale=scale,
+                t0_yaw=t0_yaw,
+                t0_hip=t0_hip,
+                anchor=anchor,
+                hip_position=hip_position,
+                yaw_correction=yaw_correction,
+            )
+            scene.frame_set(frame)
+            matrix = _world_matrix(body)
+            actual[frame] = {
+                "scale": np.asarray(
+                    [
+                        np.linalg.norm(matrix[:3, 0]),
+                        np.linalg.norm(matrix[:3, 1]),
+                        np.linalg.norm(matrix[:3, 2]),
+                    ],
+                    np.float64,
+                ),
+                "yaw": float(math.atan2(matrix[1, 0], matrix[0, 0])),
+                "location": np.asarray(matrix[:3, 3], np.float64),
+            }
+    info, stage_failures = compare_stage_transforms(timeline, expected, actual)
+    failures.extend(stage_failures)
+    return info
+
+
+def _validate_cache_hold(
+    timeline: PlacementTimeline,
+    bundle: Path,
+    manifest: dict[str, Any],
+    failures: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Read the evaluated staged ``Body`` local vertices from the real scene."""
+    bpy = _bpy()
+    scene = bpy.context.scene
+    body = _object("Body")
+    pc2_path = bundle / str(manifest["files"]["body_local"])
+    points, samples = _pc2_shape(pc2_path)
+    cached = np.memmap(
+        pc2_path, dtype="<f4", mode="r", offset=32, shape=(samples, points, 3)
+    )
+    t0_index = timeline.t0 - timeline.start
+    expected = np.asarray(cached[t0_index], np.float64)
+    actual: dict[int, np.ndarray] = {}
+    for frames in stage_sample_frames(timeline).values():
+        for frame in frames:
+            scene.frame_set(frame)
+            actual[frame] = _body_local_vertices(body)
+    del cached
+    info, cache_failures = compare_cache_hold(timeline, expected, actual)
+    failures.extend(cache_failures)
+    return info
+
+
+def _validate_replay_body(
+    timeline: PlacementTimeline,
+    bundle: Path,
+    manifest: dict[str, Any],
+    hip_position: np.ndarray,
+    yaw_correction: np.ndarray,
+    valid: np.ndarray,
+    failures: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Read evaluated replay ``Body`` world vertices from the real scene."""
+    bpy = _bpy()
+    scene = bpy.context.scene
+    body = _object("Body")
+    pc2_path = bundle / str(manifest["files"]["body_local"])
+    points, samples = _pc2_shape(pc2_path)
+    cached = np.memmap(
+        pc2_path, dtype="<f4", mode="r", offset=32, shape=(samples, points, 3)
+    )
+    indices = replay_vertex_indices(points)
+    begin, end = timeline.stage_bounds()["replay"]
+    actual: dict[int, np.ndarray] = {}
+    for frame in range(begin, end):
+        index = int(timeline.pc2_frame_at(frame))
+        if not bool(valid[index]):
+            continue
+        scene.frame_set(frame)
+        world = _body_vertices(body)
+        if world.shape != (points, 3):
+            failures.append(
+                {
+                    "check": "replay_body",
+                    "frame": int(frame),
+                    "source_frame": int(timeline.source_frame_at(frame)),
+                    "error": f"vertex count {world.shape[0]} != {points}",
+                }
+            )
+            continue
+        actual[frame] = world[indices]
+    scale = float(manifest["scale"])
+    info, replay_failures = compare_replay_vertices(
+        timeline,
+        cached,
+        hip_position,
+        yaw_correction,
+        scale,
+        valid,
+        actual,
+    )
+    del cached
+    failures.extend(replay_failures)
+    return info
+
+
 def _validate_replay_joints(
     timeline: PlacementTimeline,
     manifest: dict[str, Any],
@@ -204,6 +849,7 @@ def _validate_replay_joints(
     begin, end = timeline.stage_bounds()["replay"]
     maximum = 0.0
     checked = 0
+    bpy = _bpy()
     body = _object("Body")
     sources = [_object(f"SourceJoint{joint:02d}") for joint in range(JOINT_COUNT)]
     for joint, obj in enumerate(sources):
@@ -320,20 +966,20 @@ def _validate_camera_orbit(
     yaw_correction: np.ndarray,
     failures: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """The actual scene camera must orbit 45 deg around the moving hip.
+    """Compare the actual replay camera azimuth with the absolute t0 orbit.
 
-    The azimuth is measured as ``camera - hip_position[source_frame]`` so the
-    moving origin cannot be confused with the orbit.  The reference is the
-    fixed t0 body forward; per-frame body yaw/pose is deliberately not used.
+    The expected direction comes from ``_camera_direction(shot, t0_forward,
+    progress)`` and is measured from the world +X axis.  The actual direction is
+    ``camera - hip_position[source_frame]``.  No first-frame offset is
+    subtracted, so a uniform rotation of the whole replay cannot cancel itself.
     """
+    bpy = _bpy()
     shot = timeline.shot
     forward = _t0_forward(timeline, joints_local, yaw_correction)
-    base_direction = _camera_direction(shot, forward, 0.0)
-    base_azimuth = math.atan2(float(base_direction[1]), float(base_direction[0]))
+    expected = expected_camera_directions(timeline, shot, forward)
     begin, end = timeline.stage_bounds()["replay"]
     scene = bpy.context.scene
-    azimuths: list[float] = []
-    distances: list[float] = []
+    actual: dict[int, np.ndarray] = {}
     for frame in range(begin, end):
         scene.frame_set(frame)
         camera = scene.camera
@@ -342,120 +988,15 @@ def _validate_camera_orbit(
                 {"check": "camera_orbit", "error": "Scene has no camera."}
             )
             return {"passed": False}
-        source_frame = timeline.replay_source_frames[frame - begin]
-        index = source_frame - timeline.start
-        offset = _world_matrix(camera)[:3, 3] - hip_position[index]
-        horizontal = np.asarray(offset[:2], np.float64)
-        norm = float(np.linalg.norm(horizontal))
-        if (
-            not np.isfinite(horizontal).all()
-            or not math.isfinite(norm)
-            or norm <= 1e-9
-        ):
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "frame": int(frame),
-                    "source_frame": int(source_frame),
-                    "error": "camera-hip horizontal offset is zero/non-finite.",
-                }
-            )
-            continue
-        azimuths.append(float(math.atan2(horizontal[1], horizontal[0])))
-        distances.append(norm)
-    if len(azimuths) != len(range(begin, end)):
-        return {"passed": False}
-    actual = np.unwrap(np.asarray(azimuths, np.float64))
-    expected_total = math.radians(float(shot.camera_orbit_deg))
-    count = len(actual)
-    tolerance_deg = 1e-3
-    tolerance_m = 1e-3
-    total = float(actual[-1] - actual[0]) if count > 1 else 0.0
-    step = 0.0
-    step_error = 0.0
-    azimuth_error = 0.0
-    monotonic = True
-    if count > 1:
-        steps = np.diff(actual)
-        step = float(steps[0]) if len(steps) else 0.0
-        step_error = float(np.max(np.abs(steps - expected_total / (count - 1))))
-        monotonic = bool((np.sign(steps) == np.sign(expected_total)).all())
-        shifted = actual - actual[0] + base_azimuth
-        expected = base_azimuth + (expected_total / (count - 1)) * np.arange(count)
-        azimuth_error = float(np.max(np.abs(shifted - expected)))
-        if abs(total - expected_total) > math.radians(tolerance_deg):
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "error": "total camera-hip azimuth is not the configured orbit.",
-                    "total_deg": float(math.degrees(total)),
-                    "expected_total_deg": float(shot.camera_orbit_deg),
-                }
-            )
-        if step_error > math.radians(tolerance_deg):
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "error": "camera-hip orbit step is not uniform.",
-                    "step_deg": float(math.degrees(step)),
-                    "expected_step_deg": float(
-                        math.degrees(expected_total / (count - 1))
-                    ),
-                    "max_step_error_deg": float(math.degrees(step_error)),
-                }
-            )
-        if not monotonic:
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "error": "camera-hip orbit is not monotonic.",
-                }
-            )
-        if azimuth_error > math.radians(tolerance_deg):
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "error": "camera-hip azimuth does not follow the fixed t0 orbit.",
-                    "max_azimuth_error_deg": float(math.degrees(azimuth_error)),
-                }
-            )
-    else:
-        difference = math.atan2(
-            math.sin(float(actual[0]) - base_azimuth),
-            math.cos(float(actual[0]) - base_azimuth),
+        index = timeline.source_frame_at(frame) - timeline.start
+        actual[frame] = np.asarray(
+            _world_matrix(camera)[:3, 3] - hip_position[index], np.float64
         )
-        if abs(difference) > math.radians(tolerance_deg):
-            failures.append(
-                {
-                    "check": "camera_orbit",
-                    "error": "single replay camera is not on the t0 orbit start.",
-                }
-            )
-    distance_error = float(
-        np.max(np.abs(np.asarray(distances, np.float64) - shot.camera_distance_m))
+    info, orbit_failures = compare_camera_azimuths(
+        timeline, expected, actual, shot.camera_distance_m
     )
-    if distance_error > tolerance_m:
-        failures.append(
-            {
-                "check": "camera_orbit",
-                "error": "camera-hip horizontal distance changed during replay.",
-                "max_distance_error_m": distance_error,
-            }
-        )
-    return {
-        "frames": count,
-        "total_deg": float(math.degrees(total)),
-        "expected_total_deg": float(shot.camera_orbit_deg),
-        "step_deg": float(math.degrees(step)),
-        "expected_step_deg": float(
-            math.degrees(expected_total / (count - 1)) if count > 1 else 0.0
-        ),
-        "max_step_error_deg": float(math.degrees(step_error)),
-        "max_azimuth_error_deg": float(math.degrees(azimuth_error)),
-        "max_distance_error_m": distance_error,
-        "monotonic": monotonic,
-        "passed": not any(item["check"] == "camera_orbit" for item in failures),
-    }
+    failures.extend(orbit_failures)
+    return info
 
 
 def _validate_camera_front(
@@ -466,6 +1007,7 @@ def _validate_camera_front(
     failures: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """The pre-replay camera must sit on the body-forward side, not the back."""
+    bpy = _bpy()
     shot = timeline.shot
     t0_index = timeline.t0 - timeline.start
     forward = _t0_forward(timeline, joints_local, yaw_correction)
@@ -516,6 +1058,7 @@ def _validate_intro_plate(
     failures: list[dict[str, Any]],
 ) -> dict[str, Any]:
     info: dict[str, Any] = {"enabled": bool(timeline.shot.intro_plate)}
+    bpy = _bpy()
     plate = bpy.data.objects.get(INTRO_PLATE_OBJECT)
     if not timeline.shot.intro_plate:
         if plate is not None:
@@ -615,6 +1158,7 @@ def _validate_intro_plate(
 
 
 def validate(bundle: Path) -> dict[str, Any]:
+    bpy = _bpy()
     scene = bpy.context.scene
     manifest = load_manifest(bundle)
     if "placement_bundle" not in scene:
@@ -666,6 +1210,19 @@ def validate(bundle: Path) -> dict[str, Any]:
 
     failures: list[dict[str, Any]] = []
     body_t0 = _validate_t0_vertices(timeline, placed, valid, failures)
+    stage_transforms = _validate_stage_transforms(
+        timeline, manifest, hip_position, yaw_correction, failures
+    )
+    body_cache_hold = _validate_cache_hold(timeline, bundle, manifest, failures)
+    replay_body = _validate_replay_body(
+        timeline,
+        bundle,
+        manifest,
+        hip_position,
+        yaw_correction,
+        valid,
+        failures,
+    )
     replay_joints = _validate_replay_joints(
         timeline, manifest, joints_local, hip_position, yaw_correction, failures
     )
@@ -713,10 +1270,7 @@ def validate(bundle: Path) -> dict[str, Any]:
         "scene_fps": float(actual_fps),
         "scene_frames": timeline.frame_end + 1,
         "intro_plate": intro_plate,
-        "stages": {
-            name: {"start": int(begin), "stop": int(end)}
-            for name, begin, end in timeline.stages
-        },
+        "stages": stage_transforms["stages"],
         "replay": {
             "output_frames": len(timeline.replay_source_frames),
             "source_start": timeline.start,
@@ -726,6 +1280,9 @@ def validate(bundle: Path) -> dict[str, Any]:
         },
         "checks": {
             "body_t0": body_t0,
+            "stage_transforms": stage_transforms,
+            "body_cache_hold": body_cache_hold,
+            "replay_body_vertices": replay_body,
             "replay_source_joints": replay_joints,
             "visibility": {
                 "frames_checked": visibility_frames,
