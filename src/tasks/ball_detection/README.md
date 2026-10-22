@@ -19,7 +19,7 @@ sceneで使用するConvNeXtの推論用checkpointは
 
 SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../../utils/README.md#published-detector-weights)、
 データの出自とCC BY-NC 4.0の利用条件は
-[LICENSES.md](../../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を参照してください。
+[LICENSES.ja.md](../../../LICENSES.ja.md#published-artifacts)を参照してください。
 配置先は標準pipelineと同じ`ckpt/ball_detection/i935-mixed-ft-s42-epoch09.ckpt`です。
 公開版は学習状態を除去しており、推論用です。
 

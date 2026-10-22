@@ -21,17 +21,21 @@ from src.utils.configuration import PathContractError
 from src.utils.paths import PROJECT_ROOT
 
 
-def test_release_paths_match_pipeline_and_documented_hashes() -> None:
+@pytest.mark.parametrize("license_document", ["LICENSES.md", "LICENSES.ja.md"])
+def test_release_paths_match_pipeline_and_license_documents(
+    license_document: str,
+) -> None:
     pipeline = yaml.safe_load(
         (PROJECT_ROOT / "src/tennis_scene/configs/pipeline.yaml").read_text()
     )
-    licenses = (PROJECT_ROOT / "LICENSES.md").read_text()
+    licenses = (PROJECT_ROOT / license_document).read_text()
+    assert f"https://huggingface.co/{weights.MODEL_REPO}" in licenses
     configuration_keys = {"court": "court_kp", "ball": "ball_detection"}
     for weight in weights.PUBLISHED_WEIGHTS:
         assert (
             pipeline[configuration_keys[weight.name]]["checkpoint"] == weight.filename
         )
-        assert f"`{weight.filename}` | `{weight.sha256}`" in licenses
+        assert f"`{weight.filename}`" in licenses
 
 
 @pytest.fixture

@@ -95,6 +95,19 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
     assert not result.selected[bad].any()
     assert all(4 <= mask.sum() <= 8 for mask in selections)
     assert result.best is not None
+    assert 1 <= len(result.seeds) <= CONFIG.refine_candidates
+    assert [seed.score for seed in result.seeds] == sorted(
+        seed.score for seed in result.seeds
+    )
+    assert result.line_selection is not None
+    assert result.seeds[0] is result.line_selection
+    assert result.seeds[0].score == result.line_selection.score
+    assert all(
+        np.sqrt(np.mean((seed.projected - previous.projected) ** 2))
+        > 0.002 * np.hypot(320, 320)
+        for index, seed in enumerate(result.seeds)
+        for previous in result.seeds[:index]
+    )
     assert tuple(np.flatnonzero(result.selected)) == result.best.selection_history[-1]
     before = np.mean(np.linalg.norm(result.kp_only.projected - truth, axis=1))
     after = np.mean(np.linalg.norm(result.projected - truth, axis=1))
@@ -136,6 +149,7 @@ def test_nonconvergent_joint_fit_has_no_kp_only_fallback() -> None:
     assert result.matrix is None
     assert result.kp_only.matrix is not None
     assert result.line_selection is not None
+    assert result.seeds  # Seeds survive failures after candidate generation.
     assert not result.selected.any()
 
 
@@ -174,6 +188,7 @@ def test_absent_or_diffuse_line_is_explicit_failure(value: float) -> None:
         config=CONFIG,
     )
     assert result.status == "insufficient_or_diffuse_line_evidence"
+    assert result.seeds == ()
     assert result.matrix is None
     assert not result.selected.any()
     assert np.isnan(result.projected).all()
@@ -194,6 +209,7 @@ def test_fewer_than_four_eligible_kp_does_not_invent_correspondences() -> None:
         config=CONFIG,
     )
     assert result.status == "no_jointly_supported_candidate"
+    assert result.seeds == ()
     assert result.matrix is None
 
 

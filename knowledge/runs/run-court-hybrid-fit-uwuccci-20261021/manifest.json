@@ -1,0 +1,486 @@
+{
+  "schema": "court_hybrid_fit_presentation.v1",
+  "mode": "render",
+  "git_commit": "12efecfab4aad0565a949e09b835055efa15d010",
+  "config": {
+    "paths": {
+      "project_root": ".",
+      "data_root": "/home/kamimura/projects/tennis-lab/data",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt",
+      "artifact_root": "outputs",
+      "output_root": "/home/kamimura/projects/tennis-lab/outputs",
+      "cache_root": ".cache",
+      "external_asset_root": "/home/kamimura/projects/tennis-lab/third_party"
+    },
+    "source": {
+      "kind": "tennis_court_detector",
+      "root": "court_detection/tennis_court_detector-v1",
+      "split_mapping": {
+        "train": "train",
+        "val": "val",
+        "test": null
+      },
+      "excluded_sample_ids": [
+        "QszoUKyCOHo_600"
+      ]
+    },
+    "mode": "render",
+    "checkpoint": "court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "device": "cuda",
+    "sample_id": "UwuccciC0Jg_100",
+    "input": {
+      "kind": "tennis_court_detector",
+      "path": null
+    },
+    "search": {
+      "min_kp_only_error_px": 10,
+      "max_hybrid_error_px": 3,
+      "max_samples": 300,
+      "top_k": 20
+    },
+    "output": {
+      "width": 960,
+      "height": 540,
+      "fps": 30,
+      "gif_width": 960,
+      "gif_fps": 15
+    },
+    "run": {
+      "output_dir": "court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2"
+    }
+  },
+  "checkpoint": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+  },
+  "provenance": {
+    "image": "measured",
+    "kp": "measured",
+    "line": "measured",
+    "kp_only": "measured",
+    "seeds": "measured",
+    "hybrid": "measured",
+    "timing_and_colors": "schematic"
+  },
+  "selection": "candidate_for_user_review",
+  "checkpoint_identity": {
+    "schema": "court_inference_checkpoint_v1",
+    "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+    "backbone_asset_migration": {
+      "layout": "external_dinov3_to_checkpoint",
+      "saved_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "runtime_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt"
+    },
+    "architecture": {
+      "encoder": {
+        "name": "dinov3",
+        "backbone_name": "dinov3_vitb16",
+        "repository_path": "dinov3",
+        "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+        "strict": true,
+        "train_mode": "frozen",
+        "last_n_blocks": 0,
+        "out_indices": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "layer_mode": "uniform",
+        "lora": {
+          "enabled": false,
+          "rank": 8,
+          "alpha": 16.0,
+          "dropout": 0.0,
+          "target_modules": [
+            "qkv",
+            "proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      },
+      "transformer_encoder": {
+        "name": "transformer",
+        "enabled": true,
+        "dim": 768,
+        "depth": 8,
+        "num_heads": 12,
+        "head_dim": 64,
+        "ffn_dim": 2048,
+        "rope_dim": 64,
+        "rope_theta": 10000.0,
+        "dropout": 0.0,
+        "attention_type": "mha",
+        "n_kv_heads": null,
+        "ffn_type": "swiglu"
+      },
+      "decoder": {
+        "name": "dpt",
+        "size": "large",
+        "channels": 512,
+        "reassemble_factors": [
+          4.0,
+          2.0,
+          1.0,
+          0.5
+        ]
+      },
+      "dense_head": {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "seg": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "line": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "semantic_line": {
+          "hidden_channels": 256,
+          "depth": 3
+        }
+      },
+      "name": "court_hierarchical",
+      "in_channels": 3
+    },
+    "target_bundle": {
+      "schema": "court_target_bundle_v1",
+      "targets": [
+        {
+          "kind": "kp",
+          "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+          "output_channels": 14,
+          "channel_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "target_dtype": "float32",
+          "precomputed": false
+        },
+        {
+          "kind": "seg",
+          "schema": "court_cell_segmentation_single_court_v2",
+          "output_channels": 7,
+          "channel_names": [
+            "background",
+            "service_left",
+            "service_right",
+            "back_left",
+            "back_right",
+            "doubles_left",
+            "doubles_right"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        },
+        {
+          "kind": "line",
+          "schema": "court_line_binary_75mm_150mm_single_court_v3",
+          "output_channels": 1,
+          "channel_names": [
+            "court_line"
+          ],
+          "target_dtype": "float32",
+          "precomputed": true
+        },
+        {
+          "kind": "semantic_line",
+          "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+          "output_channels": 12,
+          "channel_names": [
+            "background",
+            "far_baseline",
+            "near_baseline",
+            "left_doubles_sideline",
+            "right_doubles_sideline",
+            "left_singles_sideline",
+            "right_singles_sideline",
+            "far_service_line",
+            "near_service_line",
+            "center_service_line",
+            "far_center_mark",
+            "near_center_mark"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        }
+      ]
+    },
+    "short_side": 512,
+    "pose_long_side": true,
+    "patch_size": 16,
+    "epoch": 17,
+    "global_step": 29844
+  },
+  "input": {
+    "kind": "tennis_court_detector",
+    "split": "val",
+    "descriptor": {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41"
+    },
+    "annotations": {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/index.npz",
+      "sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b"
+    },
+    "sample_id": "UwuccciC0Jg_100",
+    "shard_path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/shards/images-00005.bin",
+    "image_index": 6671,
+    "jpeg_sha256": "2ae431d01db463ad36cf6e448edc33b46bd6cc421fb9fa8776b9913d62ae3879",
+    "rgb_sha256": "fe44bff6f792d4502f4be9c1a505597c2e16b03f77dfc3255c3e78e163a68808",
+    "annotation_sha256": "150701437a09bbe014e17a3a6eac6971c710f2439c97671d425b154994f8c319"
+  },
+  "errors": {
+    "kp_only_error": 10.625403295558375,
+    "hybrid_error": 2.8945211888325653,
+    "status": "ok"
+  },
+  "geometry": {
+    "status": "ok",
+    "keypoint_schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+    "homography_frame": "checkpoint_KP14_template_metres",
+    "homography_court_metres_to_image_pixels": [
+      [
+        50.874184782027704,
+        19.913112009798738,
+        661.1255687107467
+      ],
+      [
+        0.2569907279980339,
+        -5.553722179225423,
+        254.39942627426865
+      ],
+      [
+        -5.9754595685967774e-05,
+        0.03027749283932762,
+        1.0
+      ]
+    ],
+    "selected_keypoints": [
+      0,
+      1,
+      4,
+      6,
+      7,
+      8,
+      9,
+      12
+    ],
+    "raw_keypoints_px": [
+      [
+        454.69708251953125,
+        135.4613800048828
+      ],
+      [
+        864.4144287109375,
+        141.42991638183594
+      ],
+      [
+        224.58316040039062,
+        495.7913513183594
+      ],
+      [
+        1102.7659912109375,
+        503.02996826171875
+      ],
+      [
+        505.2784423828125,
+        135.61306762695312
+      ],
+      [
+        333.7817687988281,
+        495.9022216796875
+      ],
+      [
+        813.9879150390625,
+        141.47666931152344
+      ],
+      [
+        991.4074096679688,
+        502.5328063964844
+      ],
+      [
+        484.48419189453125,
+        183.11744689941406
+      ],
+      [
+        834.59912109375,
+        183.56658935546875
+      ],
+      [
+        402.236083984375,
+        361.3952941894531
+      ],
+      [
+        921.853759765625,
+        356.2423400878906
+      ],
+      [
+        662.194580078125,
+        183.3792724609375
+      ],
+      [
+        656.1619873046875,
+        361.360595703125
+      ]
+    ],
+    "raw_scores": [
+      0.9880936741828918,
+      0.9852463603019714,
+      0.970055341720581,
+      0.9883235692977905,
+      0.9865701794624329,
+      0.9836598634719849,
+      0.9901121258735657,
+      0.9836070537567139,
+      0.9888755083084106,
+      0.9895235896110535,
+      0.9830153584480286,
+      0.9823186993598938,
+      0.9913070797920227,
+      0.9751909375190735
+    ],
+    "raw_valid": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "residuals_px": [
+      2.0194961694083884,
+      2.186780596084804,
+      3.341082711833439,
+      3.2408566863576027,
+      2.3058938672555556,
+      3.4874329335101293,
+      2.158186265285042,
+      0.9568366547400637,
+      0.9413222306856165,
+      1.6557272931353608,
+      3.1859058161119003,
+      4.810775015648044,
+      1.627903192772151,
+      6.042832606808901
+    ],
+    "candidate_count": 787,
+    "line_support": {
+      "forward_support": 1.0,
+      "reverse_support": 1.0,
+      "segment_support": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "visible_segments": 9.0,
+      "supported_segments": 9.0,
+      "forward_rms_px": 1.3623749052430405,
+      "reverse_rms_px": 0.9641205925657692
+    },
+    "original_size_hw": [
+      720,
+      1280
+    ]
+  },
+  "seed_scores": [
+    0.11873960987764472,
+    0.20591503535489827,
+    0.21830306577843708,
+    0.25392451102519187,
+    0.272861445055887,
+    0.29934364572437955
+  ],
+  "kp_only_fit_inliers": [
+    0,
+    1,
+    3,
+    4,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13
+  ],
+  "stages": [
+    {
+      "name": "input",
+      "start_seconds": 0.0,
+      "stop_seconds": 1.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "kp",
+      "start_seconds": 1.0,
+      "stop_seconds": 3.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "kp_only",
+      "start_seconds": 3.0,
+      "stop_seconds": 5.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "line",
+      "start_seconds": 5.0,
+      "stop_seconds": 7.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "seeds",
+      "start_seconds": 7.0,
+      "stop_seconds": 10.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "hybrid",
+      "start_seconds": 10.0,
+      "stop_seconds": 12.0,
+      "provenance": "measured"
+    },
+    {
+      "name": "hold",
+      "start_seconds": 12.0,
+      "stop_seconds": 14.0,
+      "provenance": "measured"
+    }
+  ]
+}

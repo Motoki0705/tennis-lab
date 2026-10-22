@@ -11,6 +11,7 @@ an installed package.
 from __future__ import annotations
 
 import contextlib
+import ctypes
 import logging
 import os
 import shlex
@@ -26,6 +27,76 @@ DEFAULT_TERM_GRACE_SECONDS = 5.0
 
 class CommandError(RuntimeError):
     """An external command (gh, git, agent) failed or returned unusable output."""
+
+
+def process_identity(pid: int) -> dict[str, str | int] | None:
+    """Linux PID identity, including boot/start time so stop cannot hit a reused PID."""
+    try:
+        stat = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+    except (FileNotFoundError, ProcessLookupError):
+        return None
+    fields = stat[stat.rindex(")") + 2 :].split()
+    if fields[0] == "Z":
+        return None
+    return {
+        "pid": pid,
+        "start_ticks": fields[19],
+        "boot_id": Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
+    }
+
+
+def enable_child_subreaper() -> None:
+    """Adopt orphaned tools even when they detach into a new session (Linux)."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.prctl(36, 1, 0, 0, 0) != 0:  # PR_SET_CHILD_SUBREAPER
+        raise OSError(ctypes.get_errno(), "cannot enable child subreaper")
+
+
+def _descendants(parent: int) -> list[int]:
+    children: dict[int, list[int]] = {}
+    for directory in Path("/proc").iterdir():
+        if not directory.name.isdecimal():
+            continue
+        try:
+            stat = (directory / "stat").read_text()
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        fields = stat[stat.rindex(")") + 2 :].split()
+        if fields[0] != "Z":
+            children.setdefault(int(fields[1]), []).append(int(directory.name))
+    found = children.get(parent, []).copy()
+    for pid in found:
+        found.extend(children.get(pid, []))
+    return found
+
+
+def terminate_descendants(grace: float) -> list[int]:
+    """Stop/reap adopted tools after the CLI has been reaped by its Popen owner."""
+    found: set[int] = set()
+    deadline = time.monotonic() + grace
+    while True:
+        try:
+            while os.waitpid(-1, os.WNOHANG)[0]:
+                pass
+        except ChildProcessError:
+            pass
+        identities = [
+            identity
+            for pid in _descendants(os.getpid())
+            if (identity := process_identity(pid)) is not None
+        ]
+        if not identities:
+            return sorted(found)
+        now = time.monotonic()
+        if now >= deadline + grace:
+            raise CommandError("detached descendants survived SIGKILL")
+        for identity in identities:
+            pid = int(identity["pid"])
+            found.add(pid)
+            if process_identity(pid) == identity:
+                with contextlib.suppress(ProcessLookupError):
+                    os.kill(pid, signal.SIGKILL if now >= deadline else signal.SIGTERM)
+        time.sleep(0.05)
 
 
 def run(
@@ -79,10 +150,15 @@ def _live_group_members(pgid: int, proc_root: Path = Path("/proc")) -> list[int]
     return members
 
 
-def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> bool:
+def _wait_group_gone(
+    proc: subprocess.Popen[str] | subprocess.Popen[bytes] | None,
+    pgid: int,
+    seconds: float,
+) -> bool:
     deadline = time.monotonic() + seconds
     while True:
-        proc.poll()  # reap the leader so it does not linger as a zombie
+        if proc is not None:
+            proc.poll()  # reap the leader so it does not linger as a zombie
         if not _live_group_members(pgid):
             return True
         if time.monotonic() >= deadline:
@@ -90,7 +166,11 @@ def _wait_group_gone(proc: subprocess.Popen[str], pgid: int, seconds: float) -> 
         time.sleep(0.1)
 
 
-def _terminate_group(proc: subprocess.Popen[str], pgid: int, grace: float) -> list[int]:
+def _terminate_group(
+    proc: subprocess.Popen[str] | subprocess.Popen[bytes] | None,
+    pgid: int,
+    grace: float,
+) -> list[int]:
     """Stop every process in ``pgid`` (TERM, then KILL), reap the leader, and return
     the PIDs that were still alive. Raises if anything survives SIGKILL."""
     alive = _live_group_members(pgid)
@@ -104,7 +184,8 @@ def _terminate_group(proc: subprocess.Popen[str], pgid: int, grace: float) -> li
                 raise CommandError(
                     f"process group {pgid} survived SIGKILL: {_live_group_members(pgid)}"
                 )
-    proc.wait()
+    if proc is not None:
+        proc.wait()
     return alive
 
 

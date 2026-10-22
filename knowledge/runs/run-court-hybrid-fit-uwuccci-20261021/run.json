@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207416308018680032_2026-10-21T11-54-51-981319967Z_3062568_court-hybrid-fit-render-UwuccciC0Jg_100",
+  "name": "court-hybrid-fit-render-UwuccciC0Jg_100",
+  "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m src.tasks.court_detection.scripts.visualize_hybrid_fit mode=render sample_id=UwuccciC0Jg_100 paths.data_root=/home/kamimura/projects/tennis-lab/data paths.checkpoint_root=/home/kamimura/projects/tennis-lab/ckpt paths.external_asset_root=/home/kamimura/projects/tennis-lab/third_party paths.output_root=/home/kamimura/projects/tennis-lab/outputs output.width=960 output.height=540",
+  "provider": "codex",
+  "session": "01a15e3f-f433-79b2-8cef-f72bfe4e4cda",
+  "issue": "1207",
+  "resource": "half",
+  "logical_gpu_slot": "1",
+  "commit": "12efecfab4aad0565a949e09b835055efa15d010",
+  "branch": "codex/court-2d-hybrid-fit",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-2d-hybrid-fit",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-2d-hybrid-fit",
+  "captured_at": "2026-10-21T21:19:29+09:00"
+}

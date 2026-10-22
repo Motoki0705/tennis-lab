@@ -11,15 +11,20 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
 from opsproc import CommandError, run_process_group  # noqa: E402
+from parent.execution import (  # noqa: E402
+    require_requirement_targets,
+    require_run_authorization,
+)
 from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
     closing_issues,
@@ -29,7 +34,7 @@ from parent.policy import (  # noqa: E402
     select_prs,
 )
 from parent.session import ParentSession  # noqa: E402
-from parent.snapshot import authorization, git, snapshot  # noqa: E402
+from parent.snapshot import git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
@@ -61,13 +66,15 @@ def now() -> str:
 
 
 def read_json(path: Path) -> dict[str, Any]:
-    return cast(
-        dict[str, Any], object_value(load_json(path.read_text(encoding="utf-8")))
-    )
+    return object_value(load_json(path.read_text(encoding="utf-8")))
 
 
 def authorized(
-    session: ParentSession, request: dict[str, Any], *, launching: bool = False
+    session: ParentSession,
+    request: dict[str, Any],
+    *,
+    launching: bool = False,
+    required_issues: set[int] | None = None,
 ) -> dict[str, Any]:
     row = session.agreed()
     if not row["reviews"] or row["reviews"][-1]["request"] != request:
@@ -87,10 +94,10 @@ def authorized(
         and e.get("review_run_id") == request["review_run_id"]
         and e.get("state") == "instructed"
     )
-    auth = authorization(session)
+    auth = require_run_authorization(session, request, required_issues=required_issues)
     if any(instruction.get(k) != v for k, v in auth.items()):
         raise ValueError("review instruction belongs to an old owner/agreement")
-    return cast(dict[str, Any], auth)
+    return auth
 
 
 def collect(
@@ -100,6 +107,18 @@ def collect(
     selected = [p["number"] for p in request["prs"]]
     prs = select_prs(
         selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
+    )
+
+    def assignments(pulls: Sequence[Mapping[str, Any]]) -> dict[int, set[int]]:
+        return {
+            pr["number"]: closing_issues(pr.get("body") or "", session.gh.repo)
+            & (set(children) or {parent.number})
+            for pr in pulls
+        }
+
+    fixed_assignments = assignments(prs)
+    require_requirement_targets(
+        request, set().union(*fixed_assignments.values()), exact=True
     )
     actual, diffs, details = [], {}, []
     for pr in prs:
@@ -150,7 +169,9 @@ def collect(
     fresh = select_prs(
         selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
     )
-    if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"]:
+    if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"] or assignments(
+        fresh
+    ) != fixed_assignments:
         raise ValueError("PR set/snapshots changed during collection")
     return {
         "parent": {"number": parent.number, "title": parent.title, "body": parent.body},
@@ -173,7 +194,7 @@ def read_rollup(text: str) -> list[dict[str, Any]]:
 
 
 def read_object_text(text: str) -> dict[str, Any]:
-    return cast(dict[str, Any], object_value(load_json(text)))
+    return object_value(load_json(text))
 
 
 def result_record(
@@ -211,7 +232,7 @@ def result_record(
 
 
 def comment_body(record: dict[str, Any], summary: str) -> str:
-    body = marker(record) + "\n\n" + neutralize_markers(summary)
+    body: str = marker(record) + "\n\n" + neutralize_markers(summary)
     if len(body) > MAX_COMMENT_CHARS:
         raise ValueError(
             "review result exceeds the GitHub comment limit; 対象の縮約／親判断待ち"
@@ -397,6 +418,8 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
                     "read-only",
                     "--log-dir",
                     str(run_dir),
+                    "--run-dir",
+                    str(run_dir / "agent-runtime"),
                 ],
                 cwd=root,
                 timeout=args.agent_timeout,
@@ -478,7 +501,11 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
             request["parent_issue"],
             session_identity(dict(os.environ)),
         )
-        authorized(session, request)
+        child_issues = next(
+            (set(p["child_issues"]) for p in result["prs"] if p["number"] == args.pr),
+            set(),
+        )
+        authorized(session, request, required_issues=child_issues)
         execution = read_json(run_dir / "execution.json")
         if execution["status"] != "published" or result["status"] != "succeeded":
             raise ValueError("cannot resolve a failed/unpublished review")

@@ -123,6 +123,7 @@ _OUTPUT_KIND_CONTRACTS = {
         "ball.annotation_correction",
         "court_detection.preview_augmentation", "court_detection.visualize",
         "court_detection.learning_stages",
+        "court_detection.hybrid_fit",
         "player_detection.preview_dataset", "plcs.preview_augmentation", "plcs.visualize", "slcs.predict_clip",
     ),
     "analyze": (
@@ -323,6 +324,8 @@ def test_visualize_mode_shares_log_identity_with_artifact(
         ("visualization", "visualize", ("output", "preview_output")),
         ("visualize_tasks", "visualize", ("output_directory",)),
         ("blender_export", "visualize", ("output",)),
+        ("export_blender_diffusion", "visualize", ("output",)),
+        ("export_blender_rays", "visualize", ("output",)),
         ("clip_studio", "generate", ()),
         ("generate_dataset", "generate", ()),
     ],

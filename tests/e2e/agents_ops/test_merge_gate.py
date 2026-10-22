@@ -28,6 +28,21 @@ from tests.e2e.agents_ops.test_parent_session import (
 SCRIPT = OPS / "review/merge_gate.py"
 
 
+def assert_unclassified_agreement_comment(
+    response: subprocess.CompletedProcess[str], comment_id: int
+) -> None:
+    assert response.returncode == 2, response.stderr
+    result = json.loads(response.stderr)
+    assert result["decision"] == "blocked"
+    assert result["reasons"] == ["input_or_collection_error"]
+    assert result["agent_invocations"] == 0
+    error = result["error"]
+    assert "unclassified agreement comments" in error
+    assert f"ID={comment_id}" in error
+    assert f"https://github.com/o/r/issues/1#issuecomment-{comment_id}" in error
+    assert "agreement-ignore-comments" in error and "checking → agree" in error
+
+
 @dataclass
 class GateEnv:
     review: ReviewEnv
@@ -107,19 +122,26 @@ def gate_env(
 ) -> GateEnv:
     review_env = make_review_env(
         parent_env,
-        independent=getattr(request, "param", None) == "independent",
+        independent=getattr(request, "param", None) in {"independent", "dependency"},
         standalone=getattr(request, "param", None) == "standalone",
     )
     p = review_env.p
     policy = review_policy_module(monkeypatch)
-    if getattr(request, "param", None) == "shared":
-        worktree = p.repo / ".claude/worktrees/pr-0"
-        (worktree / ".agents").mkdir()
-        (worktree / ".agents/shared.txt").write_text("shared foundation\n")
-        run_git(worktree, "add", ".agents/shared.txt")
-        run_git(worktree, "commit", "-m", "shared changes")
+    if getattr(request, "param", None) in {"shared", "dependency"}:
         state = p.state()
-        state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
+        if request.param == "shared":
+            worktree = p.repo / ".claude/worktrees/pr-0"
+            (worktree / ".agents").mkdir()
+            (worktree / ".agents/shared.txt").write_text("shared foundation\n")
+            run_git(worktree, "add", ".agents/shared.txt")
+            run_git(worktree, "commit", "-m", "shared changes")
+            state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
+        else:
+            # Freeze dependencies before the one actual review, like other requirements.
+            parent_policy = importlib.import_module("parent.policy")
+            state["issues"]["10"]["body"] = parent_policy.replace_section(
+                state["issues"]["10"]["body"], "依存関係", "#11 のmerge後。"
+            )
         p.save(state)
         manifest = json.loads(
             p.cli(
@@ -129,7 +151,7 @@ def gate_env(
                 "101",
                 "102",
                 "--reason-file",
-                p.note("共有基盤を含む対象を親が確定し直す。"),
+                p.note("変更パス・依存関係を含む対象をレビュー前に確定し直す。"),
             ).stdout
         )
         review_env.request = json.loads(
@@ -541,6 +563,12 @@ def test_rejections_never_merge_or_launch_agent(
             pr["statusCheckRollup"] = []
     p.save(state)
     result = g.cli("merge")
+    if case in {"parent_missing", "foreign_result", "quoted_result"}:
+        # These records have become ordinary, unclassified discussion. Freshness
+        # now refuses them before the public review/coverage checks are reached.
+        assert_unclassified_agreement_comment(result, comment["id"])
+        assert g.merge_calls() == [] and len(g.review.calls()) == 1
+        return
     assert result.returncode == 1, result.stderr
     rows = g.results(result)
     assert reason in rows[103 if case == "outside" else 100]["reasons"]
@@ -573,15 +601,11 @@ def test_unset_auto_merge_is_dry_run_without_any_writes(gate_env: GateEnv) -> No
     )
 
 
-@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+@pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
 def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
-    policy = importlib.import_module("parent.policy")
     state = p.state()
     # A has the larger PR number: numeric sorting alone would merge B first.
-    state["issues"]["10"]["body"] = policy.replace_section(
-        state["issues"]["10"]["body"], "依存関係", "#11 のmerge後。"
-    )
     state["prs"][2]["statusCheckRollup"] = []
     p.save(state)
     rows = g.results(g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1"))
@@ -854,7 +878,12 @@ def test_shared_foundation_needs_explicit_current_parent_permission(
         elif permission == "new_agreement":
             # Same purpose/scope/confirmation yields the same agreement digest.
             p.agreed()
-    rows = g.results(g.cli("merge"))
+    response = g.cli("merge")
+    if permission in {"foreign", "quoted"}:
+        assert_unclassified_agreement_comment(response, comment["id"])
+        assert g.merge_calls() == [] and len(g.review.calls()) == 1
+        return
+    rows = g.results(response)
     if permission in {"allow", "reallow"}:
         assert [c[2] for c in g.merge_calls()] == ["100"]
         exemption = rows[100]["shared_exemption"]
