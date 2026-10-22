@@ -59,6 +59,7 @@ annotation.json
 annotations/
 *.csv
 *.json
+!/.claude/settings.json
 *.xml
 
 # Model files and checkpoints

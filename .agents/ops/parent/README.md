@@ -5,6 +5,9 @@
 親子issueの書式・ラベル・段階移行は [issues](../issues/README.md) が正本。
 このCLIは agent・レビュー・CI・merge を実行しない。timer・poll・hookへの登録も行わない。
 
+Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
+担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
+
 ## 責務と状態の正本
 
 | 対象 | 正本 |

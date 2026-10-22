@@ -56,6 +56,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・合意・子の進捗・明示レビュー要求を管理するCLI。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
+| [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
 
