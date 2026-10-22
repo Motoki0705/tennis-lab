@@ -201,8 +201,9 @@ fallback は行わない。式と dtype/device/state の完全な契約は
 ## Published detector weights
 
 [`model_weights/`](model_weights/)は[Hugging Faceの公開重み](https://huggingface.co/Motoki098/tennis-lab-models)を
-checkpoint rootに取得し、[公開版のSHA-256](../../LICENSES.md#公開先と重みの識別情報)を検査します。
-ライセンスは[公開物の条件](../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)と
+checkpoint rootに取得し、公開版のSHA-256を検査します。ファイル名と公開先は
+[公開重みの識別情報](../../LICENSES.ja.md#published-artifacts-hosting)を参照してください。
+ライセンスは[公開物の条件](../../LICENSES.ja.md#published-artifacts)と
 配布先の`LICENSE`を確認してください。第三者のモデル重みは取得しません。
 
 repo rootで実行します。`--checkpoint-root`は絶対パスで明示します。
@@ -249,7 +250,7 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python scripts/export_detector_weights.py \
 [`sample_dataset/`](sample_dataset/)は[公開サンプルdataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)の
 動画3本、公開用`clip.json`、`LICENSE`をDATA rootの`samples/`に取得します。
 既定pipelineの`video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]`をそのまま使えます。
-利用条件は[LICENSES.md](../../LICENSES.md#サンプルdatasetの利用条件)、撮影・同期・letterbox・SHA-256は
+利用条件は[LICENSES.ja.md](../../LICENSES.ja.md#sample-dataset-terms)、撮影・同期・letterbox・SHA-256は
 配布先のdataset cardを参照してください。raw動画・注釈・推論結果は取得しません。
 
 repo rootで、絶対パスの`--data-root`を明示します。

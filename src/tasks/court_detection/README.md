@@ -178,7 +178,7 @@ repo rootで実行してください。
 ```
 
 SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../../utils/README.md#published-detector-weights)、
-利用条件は[LICENSES.md](../../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を参照してください。
+利用条件は[LICENSES.ja.md](../../../LICENSES.ja.md#published-artifacts)を参照してください。
 backboneは同梱していますが、現行ローダーの構築にはDINOv3コードと初期weightも必要です。
 
 既定checkpointは`ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt`です。
