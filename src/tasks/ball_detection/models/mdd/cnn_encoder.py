@@ -72,7 +72,7 @@ class DeepMDDEncoder(nn.Module):
 
     def forward(self, mdd: Tensor) -> tuple[Tensor, ...]:
         if self.frame_chunk_size is None:
-            return checkpoint_call(self._encode, mdd, enabled=self.activation_checkpointing and self.training)
+            return self._encode(mdd)
         frames = mdd.shape[2]
         chunks: list[tuple[Tensor, ...]] = []
         for start in range(0, frames, self.frame_chunk_size):
@@ -80,8 +80,7 @@ class DeepMDDEncoder(nn.Module):
             # Two stride-one temporal kernels of size three require two real
             # neighbours on each side. Only clip edges receive zero padding.
             left, right = max(0, start - 2), min(frames, stop + 2)
-            levels = checkpoint_call(self._encode, mdd[:, :, left:right],
-                                     enabled=self.activation_checkpointing and self.training)
+            levels = self._encode(mdd[:, :, left:right])
             chunks.append(tuple(level[:, start - left:stop - left] for level in levels))
         return tuple(torch.cat(levels, dim=1) for levels in zip(*chunks, strict=True))
 
@@ -90,7 +89,8 @@ class DeepMDDEncoder(nn.Module):
         x = mdd.transpose(1, 2).reshape(b * t, c, height, width)
         features: list[Tensor] = []
         for i, stage in enumerate(self.stages):
-            x = stage(x)
+            # Bound recomputed activations to one spatial stage, also inside halo chunks.
+            x = checkpoint_call(stage, x, enabled=self.activation_checkpointing and self.training)
             if i >= 4:
                 x = self.temporal[i - 4](x, b, t)
             if i >= 2:

@@ -26,6 +26,7 @@ def decode_frame_heatmaps(
     """Decode frame-local DPT in bounded groups, checkpointing through the head.
 
     Checkpointing the complete decode avoids retaining the wide /4 feature map.
+    Frame-local chunks bound recomputation while retaining only their input levels.
     CNN halo frames have already been discarded and are never decoded twice.
     """
     batch, frames = features[0].shape[:2]

@@ -138,6 +138,7 @@ class DeepMDDQueryTrunk(nn.Module):
         patches = patches + self.spatial_position(torch.stack((x, y), -1).reshape(h * w, 2))[None, None]
         query = self.ball_query.expand(b, t, -1)
         for block in self.blocks:
+            # Retain block inputs and shared patches; recompute attention/FFN per block.
             query = checkpoint_call(block, query, patches, timestamps - timestamps[:, :1],
                                     enabled=self.config.activation_checkpointing and self.training)
         return features, query

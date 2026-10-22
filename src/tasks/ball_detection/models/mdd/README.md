@@ -55,7 +55,7 @@ Tを変えても、チャンネル数や層数は変えない。
 |---|---|
 | `frames` | 保存する入力長T。1以上の整数。MDDの最初のframeは0、T=1も有効 |
 | `frame_chunk_size` | nullで分割無効、正整数でCNNとframe-local DPTを時間分割。既定null |
-| `activation_checkpointing` | encoder全体（分割時はchunkごと）、query block、DPTからheatmap headまでを再計算。既定false |
+| `activation_checkpointing` | CNNの各spatial stage、queryの各block、DPTからheatmap headまでの各frame chunkを再計算。既定false |
 
 CNNは2層の時間方向kernel=3、stride=1で、特徴の時間半径は順に0/0/1/2。
 分割時は前後2枚の実frameをhaloとして読み、4特徴すべてからhaloを除いて結合する。
@@ -63,6 +63,13 @@ CNNは2層の時間方向kernel=3、stride=1で、特徴の時間半径は順に
 GroupNorm・GRNはframeごとで、halo外への時間依存を作らない。
 DPTはhaloなしで分割し、hybridのqueryは分割せず全Tの実PTSをRoPEへ渡す。
 checkpointingは学習中かつ勾配有効時に適用し、dropoutのRNGを保存する。
+CNNは分割なしでもhalo付きchunk内でもspatial stageごとにcheckpointする。
+stage境界の入力は保持するが、backwardでencoder全体の中間activationを一度に再生成せず、
+再計算時のactivationを1 stage分に区切る。低解像度の/32・/64にある時間混合層は従来どおりcheckpoint対象外。
+DPTはframe-localなのでchunk全体を1区間にし、chunkの4特徴入力だけを保持して、
+広い/4特徴を含むdecoder・headの中間activationを再計算する。
+分割なしではDPTの区間は全Tとなるため、長いTで再計算時のpeakも抑える場合はframe_chunk_sizeを明示する。
+queryはblock入力のquery・共有patch・PTSを保持し、attention・FFNの中間activationをblockごとに再計算する。
 分割だけではbackward用activationの保持は減らないため、学習時の保持削減にはcheckpointingも使う。
 前処理のFP32 5ch入力・4段のCNN特徴・全Tのqueryはメモリに保持する。720pの実行上限は別途実測する。
 
