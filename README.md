@@ -82,8 +82,6 @@ Some assets require registration, acceptance of terms or an application to the u
 
 ## 3. How to Run Locally
 
-Use Linux x86-64 or WSL2 with an NVIDIA GPU, Python 3.11, uv, a CUDA 13 toolkit and a compatible driver; the tested GPU is an RTX 5060 Ti with 16 GB VRAM.
-
 Follow the **[installation guide](docs/installation/README.md)** for requirements, setup and sample execution.
 
 For development environment checks, linting, type checking and tests, see the [spin README](.spin/README.md).

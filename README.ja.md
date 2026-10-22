@@ -82,8 +82,6 @@
 
 ## 3. ローカルでの実行
 
-Linux x86-64、またはNVIDIA GPUが利用できるWSL2で、Python 3.11・uv・CUDA toolkit 13系と対応ドライバを使い、検証GPUはRTX 5060 Ti（VRAM 16 GB）です。
-
 動作要件・環境構築・サンプル実行は **[導入ガイド](docs/installation/README.ja.md)** を参照してください。
 
 開発用の環境診断・lint・型検査・テストは [spinのREADME](.spin/README.md) を参照してください。
