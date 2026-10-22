@@ -354,6 +354,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 sync
 停止・改善候補・検証結果の記録は担当activeなら要件確認中でも行える。記録から実装は起動しない。
 進捗は停止→依存先へ保留を伝播し、独立した子は継続する。再開で保留を再計算する。
 `sync` はGitHubの実状態・完了理由から一覧を更新するだけで、agentを起動しない。
+Project表示は明示的な `project-setup` / `project-sync` を使う。既存コマンドからは呼び出さない。
+項目・ビュー・節目spec・担当・読み取り専用PMとの境界は [Project表示](../project_progress/README.md) を参照する。
 `closed/completed` だけを完了チェックにし、取消は未チェックで残す。
 親全体の完了はチェック数から推測せず、全体の受入条件を親agentが確認する。
 

@@ -41,6 +41,22 @@ def parser() -> argparse.ArgumentParser:
     for command in ("register", "status", "checking", "reconcile", "sync"):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
+
+    for command in ("project-setup", "project-sync"):
+        project = commands.add_parser(command)
+        project.add_argument("--owner", default=OWNER)
+        project.add_argument("--project", type=int, default=PROJECT_NUMBER)
+        mode = project.add_mutually_exclusive_group()
+        mode.add_argument(
+            "--apply", action="store_true", help="write the planned Project changes"
+        )
+        mode.add_argument(
+            "--dry-run", action="store_true", help="print the plan (default)"
+        )
+        if command == "project-sync":
+            project.add_argument("--event", choices=EVENTS, required=True)
+            project.add_argument("--spec", required=True)
     inputs = commands.add_parser("basis-input")
     inputs.add_argument("--ignored-comments")
     inputs.add_argument("--context")
@@ -119,7 +135,19 @@ def main(argv: list[str] | None = None) -> int:
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
-            if command == "basis-input":
+            if command in {"project-setup", "project-sync"}:
+                from project_progress.operations import parent_command
+
+                result = parent_command(
+                    session,
+                    command,
+                    args.owner,
+                    args.project,
+                    args.apply,
+                    args.event if command == "project-sync" else None,
+                    read_object(args.spec) if command == "project-sync" else None,
+                )
+            elif command == "basis-input":
                 ignored = (
                     json.loads(read_text(args.ignored_comments))
                     if args.ignored_comments
