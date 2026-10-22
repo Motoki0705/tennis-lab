@@ -1,4 +1,4 @@
-<!-- knowledge-review: a909ab9f21f253035a39df589ff1cd0b57aaa9cfd6d031741b1fcdb1069fb1a7 on 2026-10-23 -->
+<!-- knowledge-review: 3d6691bde594b373c73a3850ee0294b477a7d07a6989b91396e9d39bb3b663a0 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断、教師一致・RGB下限による可搬資産の採用判断と、Court発表素材の採用を反映。alpha/depth差の記録と既存のモデル・checkpoint採用判断は維持）
