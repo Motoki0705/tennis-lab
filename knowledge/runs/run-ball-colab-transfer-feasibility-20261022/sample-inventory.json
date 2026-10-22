@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-22T05:15:38.709766+00:00",
+  "snapshot": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1",
+  "manifest_sha256": "657e50f569f2befc317b23270670862d8dc7d656ab743b353c1d53f0a213e4d6",
+  "metadata_bytes": 65358535,
+  "aggregation": {
+    "all": {
+      "clips": 1800,
+      "frames": 1065949,
+      "bytes": 185457024923
+    },
+    "train": {
+      "clips": 1370,
+      "frames": 762004,
+      "bytes": 132816185150
+    },
+    "source/tracknet": {
+      "clips": 95,
+      "frames": 19835,
+      "bytes": 2590919224
+    },
+    "eligible/train": {
+      "clips": 1324,
+      "frames": 737042,
+      "bytes": 128414496503
+    },
+    "test": {
+      "clips": 230,
+      "frames": 159496,
+      "bytes": 28372761892
+    },
+    "eligible/test": {
+      "clips": 217,
+      "frames": 148567,
+      "bytes": 26534745761
+    },
+    "val": {
+      "clips": 200,
+      "frames": 144449,
+      "bytes": 24268077881
+    },
+    "eligible/val": {
+      "clips": 190,
+      "frames": 135617,
+      "bytes": 22798692048
+    },
+    "source/meiji": {
+      "clips": 171,
+      "frames": 88872,
+      "bytes": 14799365040
+    },
+    "source/chat_annotation": {
+      "clips": 1534,
+      "frames": 957242,
+      "bytes": 168066740659
+    }
+  },
+  "samples": [
+    {
+      "repeat": 1,
+      "directory": "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-1",
+      "bytes": 544686517,
+      "files": [
+        {
+          "index": 53,
+          "source": "tracknet",
+          "split": "train",
+          "frame_count": 110,
+          "clip_id": "tracknet/game5/Clip5",
+          "group_id": "game5",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00053.bin",
+          "bytes": 13038519,
+          "sha256": "78f61d1c1735275437a464c70e670325b3294b8f3a98e70b4a27a1e9b162765b",
+          "eligible": true,
+          "payload_name": "clip-00053.bin"
+        },
+        {
+          "index": 177,
+          "source": "meiji",
+          "split": "test",
+          "frame_count": 281,
+          "clip_id": "meiji/video_001/clip_015/cam1",
+          "group_id": "video_001",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00177.bin",
+          "bytes": 40210890,
+          "sha256": "99e474737bfbefe343b2e1d83edeee9444e571b81a7957eb0ca492c0162a2bcd",
+          "eligible": true,
+          "payload_name": "clip-00177.bin"
+        },
+        {
+          "index": 1101,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 375,
+          "clip_id": "chat_annotation/Y0kyMlrgdB4__0516ba178d125bb3__f000000450-000000775",
+          "group_id": "Y0kyMlrgdB4",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01101.bin",
+          "bytes": 57555604,
+          "sha256": "22e26aa4a66558b9e4c141b401ffbf1f401acdcdc7a0a261d002f48a9fcb8c2e",
+          "eligible": true,
+          "payload_name": "clip-01101.bin"
+        },
+        {
+          "index": 1217,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 375,
+          "clip_id": "chat_annotation/l_QkC2Lomzs__fa65b394f9346248__f000010975-000011300",
+          "group_id": "l_QkC2Lomzs",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01217.bin",
+          "bytes": 93777319,
+          "sha256": "a9f70042c9bd576e9290a7260bfd49d087f2dfcc5a83cffee05d3e43703ba18e",
+          "eligible": true,
+          "payload_name": "clip-01217.bin"
+        },
+        {
+          "index": 1327,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 896,
+          "clip_id": "chat_annotation/1iaS4jITeRE__4a097d665f59f31c__f000006426-000007204",
+          "group_id": "1iaS4jITeRE",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01327.bin",
+          "bytes": 143876798,
+          "sha256": "592500e30436973ebb81b0ea75654d00ccf77dbd938ade1b39b45464d0fcbcd1",
+          "eligible": true,
+          "payload_name": "clip-01327.bin"
+        },
+        {
+          "index": 1537,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 900,
+          "clip_id": "chat_annotation/UJGdgfByvpU__0c35d21f97bb28c8__f000002880-000003660",
+          "group_id": "UJGdgfByvpU",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01537.bin",
+          "bytes": 196227387,
+          "sha256": "4915bc97df6b0b6df016b9ead2c526d287bd04f361cc35894f2d4f0eab77130c",
+          "eligible": true,
+          "payload_name": "clip-01537.bin"
+        }
+      ]
+    },
+    {
+      "repeat": 2,
+      "directory": "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-2",
+      "bytes": 586327937,
+      "files": [
+        {
+          "index": 69,
+          "source": "tracknet",
+          "split": "train",
+          "frame_count": 202,
+          "clip_id": "tracknet/game7/Clip2",
+          "group_id": "game7",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00069.bin",
+          "bytes": 20409027,
+          "sha256": "ffe9d31d61d0fe2fffe8bfb4428ff11fdfd34dbbadfe159984221e18db2ac9b5",
+          "eligible": true,
+          "payload_name": "clip-00069.bin"
+        },
+        {
+          "index": 176,
+          "source": "meiji",
+          "split": "test",
+          "frame_count": 281,
+          "clip_id": "meiji/video_001/clip_015/cam0",
+          "group_id": "video_001",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00176.bin",
+          "bytes": 57982790,
+          "sha256": "ca793993d1277a4ed38818bd1beced96efefabedd72f5f8f0bf1cb00f26a1ca8",
+          "eligible": true,
+          "payload_name": "clip-00176.bin"
+        },
+        {
+          "index": 1419,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 356,
+          "clip_id": "chat_annotation/CIWOntfeLbY__02330baf155da09f__f000021963-000022273",
+          "group_id": "CIWOntfeLbY",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01419.bin",
+          "bytes": 59009601,
+          "sha256": "28ca66064efa525b644ebb120c660dffedd64a7f22eec4e6f71fb2e1afa19454",
+          "eligible": true,
+          "payload_name": "clip-01419.bin"
+        },
+        {
+          "index": 277,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 900,
+          "clip_id": "chat_annotation/-FNV-UPMV8g__ef59efd273e45742__f000009831-000010611",
+          "group_id": "-FNV-UPMV8g",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00277.bin",
+          "bytes": 99839991,
+          "sha256": "7bef445b53638f09c62a4f535c388f3517399875f68ac676d53ba0ef6291f901",
+          "eligible": true,
+          "payload_name": "clip-00277.bin"
+        },
+        {
+          "index": 1179,
+          "source": "chat_annotation",
+          "split": "test",
+          "frame_count": 896,
+          "clip_id": "chat_annotation/grlzdv8JWbc__210c7c69ecdcb924__f000041599-000042377",
+          "group_id": "grlzdv8JWbc",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01179.bin",
+          "bytes": 147250362,
+          "sha256": "a3762ec8213edd46b82a5a7ffc9f325f09a59b59a0535e4d7a1ad270a67a4f67",
+          "eligible": true,
+          "payload_name": "clip-01179.bin"
+        },
+        {
+          "index": 999,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 896,
+          "clip_id": "chat_annotation/LJyPFRs3iJY__acae4df1880c2d14__f000022718-000023496",
+          "group_id": "LJyPFRs3iJY",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00999.bin",
+          "bytes": 201836166,
+          "sha256": "d0b9e6b5f5980dfa8678da4af7f8352cb0791c01fe9a5ea4ef3dea8487a20bcc",
+          "eligible": true,
+          "payload_name": "clip-00999.bin"
+        }
+      ]
+    },
+    {
+      "repeat": 3,
+      "directory": "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-3",
+      "bytes": 650089269,
+      "files": [
+        {
+          "index": 47,
+          "source": "tracknet",
+          "split": "train",
+          "frame_count": 233,
+          "clip_id": "tracknet/game4/Clip6",
+          "group_id": "game4",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00047.bin",
+          "bytes": 29965467,
+          "sha256": "c71893c8e0084c1a75c34b29a48eb8f6dd78d9bd97663fde2bc5e9c919774899",
+          "eligible": true,
+          "payload_name": "clip-00047.bin"
+        },
+        {
+          "index": 223,
+          "source": "meiji",
+          "split": "train",
+          "frame_count": 658,
+          "clip_id": "meiji/video_002/clip_009/cam2",
+          "group_id": "video_002",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00223.bin",
+          "bytes": 95484618,
+          "sha256": "282817b6b49f4b56e54d380c14a4fb373c93cf6c336693dd4f8020e5c5844571",
+          "eligible": true,
+          "payload_name": "clip-00223.bin"
+        },
+        {
+          "index": 1346,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 446,
+          "clip_id": "chat_annotation/33nqluOBp9I__b54ad787ae0bff84__f000008722-000009110",
+          "group_id": "33nqluOBp9I",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01346.bin",
+          "bytes": 59748971,
+          "sha256": "fd41df01f2233fa54eb012de20f29bde286ad814d655d312661362cafb94b854",
+          "eligible": true,
+          "payload_name": "clip-01346.bin"
+        },
+        {
+          "index": 1776,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 450,
+          "clip_id": "chat_annotation/xg3fyl7Swak__2a23ed9bfee50913__f000005760-000006150",
+          "group_id": "xg3fyl7Swak",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-01776.bin",
+          "bytes": 103561783,
+          "sha256": "eb5757344c7ef7e8274659baa70f4210b60dc5ae33a5405ae843b658c6c8c114",
+          "eligible": true,
+          "payload_name": "clip-01776.bin"
+        },
+        {
+          "index": 519,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 897,
+          "clip_id": "chat_annotation/OxIm2FMGaGY__f32558857e2764c3__f000010263-000011042",
+          "group_id": "OxIm2FMGaGY",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00519.bin",
+          "bytes": 152076164,
+          "sha256": "518ef51a7d753e1dd4235d129ec900ab4003f1035900870602e4a8a019622ce6",
+          "eligible": true,
+          "payload_name": "clip-00519.bin"
+        },
+        {
+          "index": 667,
+          "source": "chat_annotation",
+          "split": "train",
+          "frame_count": 900,
+          "clip_id": "chat_annotation/e9V3ST6Tyrs__2a696610ef0db668__f000017153-000017933",
+          "group_id": "e9V3ST6Tyrs",
+          "width": 1280,
+          "height": 720,
+          "path": "${REPO_ROOT}/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00667.bin",
+          "bytes": 209252266,
+          "sha256": "3426f8d82269e7781a6e5620623208fd37901de9bd16c3732f9ff1b56f581903",
+          "eligible": true,
+          "payload_name": "clip-00667.bin"
+        }
+      ]
+    }
+  ],
+  "selection": "three non-overlapping stratified sets: TrackNet, Meiji and four Chat size quantiles; copied without modifying original hardlinks; whole native shards; timing excludes payload copy and source hash validation",
+  "drive_path": "staging/ball-detection-transfer-probe-20261022",
+  "sample_validation": "SHA256 against frozen manifest rgb_shard_sha256, not source media_sha256",
+  "full_inventory": {
+    "path": "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/inventory.json",
+    "bytes": 1033509,
+    "sha256": "548668f18beaf823c84aa7b2de2990c3ffa06a31918f089a668fb798ed79712c"
+  }
+}

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 28238fd7a0f0ee040a824b5a02b020e00afda62e45663b023d90eea8f096a882 on 2026-10-22 -->
+<!-- knowledge-review: 69ce52064792a295ff6bad406f13ff9efd1a54a66b6148143e3244bfa7609d1a on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -292,6 +292,22 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+2026-10-22の[Drive・Colab転送実測](nodes/ball_detection/000061-run-ball-colab-transfer-feasibility-20261022.md)では、
+直近720p snapshot（185.522 GB）の代表18 shard・1.781 GBを3組に分け、往復経路の内容照合を通過した。
+初回uploadのコピー工程は全量換算約5.8〜6.3時間、Colab取得は約39〜43分。ただし全量実測ではなく、
+path検査・hash照合・環境準備は別に必要で、小分けCLI総時間の比例見積もりはさらに長い。
+今回のL4は初期空き206.568 GBで、全量配置後の余裕と絶対path・不在原注釈の移植が課題。
+現行storeはtestを含む全shardを要求するため、train/validationだけの軽量配布には独立した版の準備が要る。
+同日の追加指示で、[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)は
+転送・環境・容量・速度・Drive保存と新VM再開を検証し、最終的にColabで本学習を完了する計画へ更新した。
+精度・モデルの優劣・deploy判断はこの転送実測で更新しない。
+同日のユーザー指定で、次実験の主軸は**時系列長 × DPT / Transformer＋DPT（hybrid）**に固定した。
+RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量の事前学習を固定し、その後に系列長を伸ばす。
+実験行列・予算・教師領域・評価・進捗の正本は同親issueへ移した。
+現行play区間のCPU集計では256枚・4枚おきのtrain候補が0なので、主比較は間引きなしを推奨する。
+全長で共通のtarget集合、可変T契約、hybridの等予算初期学習と共通heatmap objectiveが必要。
+長系列のVRAM・学習速度と精度は未測定。具体的な系列長上限・更新数・中央教師領域は本学習前に固定する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
