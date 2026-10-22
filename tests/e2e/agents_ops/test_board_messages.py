@@ -80,6 +80,13 @@ class World:
             if row["id"] == post_id
         )
 
+    def message_rows(self) -> dict[str, list[tuple[Any, ...]]]:
+        with self.store.read() as connection:
+            return {
+                table: connection.execute(f"SELECT * FROM {table}").fetchall()
+                for table in ("posts", "recipients", "deliveries")
+            }
+
 
 @pytest.fixture
 def world(board: SimpleNamespace, labels: Labels) -> World:
@@ -171,6 +178,147 @@ def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
         [root["id"], response["id"], nested["id"]]
     )
     private_output_absent(json.dumps(conversation), w.env())
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("audience", ["self", "other-self", "all-self"])
+def test_cli_self_recipient_is_rejected_atomically(
+    world: World, command: str, audience: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    caller = 2 if root else 1
+    names = {
+        "self": [],
+        "other-self": [w.assignments[3].name],
+        "all-self": ["all"],
+    }[audience] + [w.assignments[caller].name.swapcase()]
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    body_file = w.labels.root / "input.md"
+    body_file.write_text("A public update.")
+    args = [command, "--body-file", str(body_file)]
+    if root:
+        args += ["--post", root["id"]]
+    else:
+        args += ["--kind", "info", "--subject", "Public"]
+    for name in names:
+        args += ["--to", name]
+
+    with pytest.raises(w.board.errors.BoardError, match="sender cannot be a recipient"):
+        if root:
+            w.board.messages.reply(
+                w.env(caller),
+                post_id=root["id"],
+                to=names,
+                body="A public update.",
+                notifiers=w.routes,
+            )
+        else:
+            w.post(to=names)
+    result = run_board(w.env(caller), *args)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "sender cannot be a recipient" in result.stderr
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+    assert w.board.messages.inbox(w.env(caller), unread=True) == {
+        "posts": [w.own_state(root["id"])] if root else []
+    }
+
+
+def test_cli_reply_to_own_post_requires_explicit_recipient(world: World) -> None:
+    w = world
+    root = w.post(to=["all"])
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    with pytest.raises(w.board.errors.BoardError, match="at least one recipient"):
+        w.board.messages.reply(
+            w.env(), post_id=root["id"], body="An update.", notifiers=w.routes
+        )
+    body_file = w.labels.root / "input.md"
+    body_file.write_text("An update.")
+    result = run_board(
+        w.env(), "reply", "--post", root["id"], "--body-file", str(body_file)
+    )
+    assert result.returncode == 2 and result.stdout == ""
+    assert "at least one recipient" in result.stderr
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+    assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
+
+
+@pytest.mark.parametrize("audience", ["named", "all"])
+def test_reply_to_own_post_only_notifies_explicit_recipients(
+    world: World, audience: str
+) -> None:
+    w = world
+    root = w.post()
+    names = [w.assignments[3].name] if audience == "named" else ["all"]
+    expected = [3] if audience == "named" else [2, 3]
+    reply = w.board.messages.reply(
+        w.env(),
+        post_id=root["id"],
+        to=names,
+        body="An update.",
+        notifiers=w.routes,
+    )["post"]
+    assert [row["parent"] for row in reply["recipients"]] == expected
+    assert reply["in_reply_to"] == reply["thread_id"] == root["id"]
+    assert [call.parent for call in w.fake.calls if call.post_id == reply["id"]] == (
+        expected
+    )
+    assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
+    assert [post["id"] for post in w.board.messages.inbox(w.env(2))["posts"]] == (
+        [root["id"]] if audience == "named" else [root["id"], reply["id"]]
+    )
+    original_recipient = w.own_state(root["id"])["recipients"][0]
+    assert original_recipient["read_at"] is None
+    assert original_recipient["response_state"] is None
+    with w.store.read() as connection:
+        assert connection.execute(
+            "SELECT assignment_id FROM recipients WHERE post_id=? ORDER BY assignment_id",
+            (reply["id"],),
+        ).fetchall() == [(w.assignments[parent].id,) for parent in expected]
+        assert connection.execute(
+            "SELECT assignment_id FROM deliveries WHERE post_id=? ORDER BY assignment_id",
+            (reply["id"],),
+        ).fetchall() == [(w.assignments[parent].id,) for parent in expected]
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("audience", ["named", "all"])
+def test_cli_self_mention_is_rejected_as_outside_recipients(
+    world: World, command: str, audience: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    names = [w.assignments[3].name] if audience == "named" else ["all"]
+    body = f"An update from @{w.assignments[1].name.swapcase()}."
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    with pytest.raises(w.board.errors.BoardError, match="outside the recipients"):
+        if root:
+            w.board.messages.reply(
+                w.env(),
+                post_id=root["id"],
+                to=names,
+                body=body,
+                notifiers=w.routes,
+            )
+        else:
+            w.post(to=names, body=body)
+    body_file = w.labels.root / "input.md"
+    body_file.write_text(body)
+    args = [command, "--to", names[0], "--body-file", str(body_file)]
+    args += (
+        ["--post", root["id"]] if root else ["--kind", "info", "--subject", "Public"]
+    )
+    result = run_board(w.env(), *args)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "outside the recipients" in result.stderr
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+    assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
 
 
 @pytest.mark.parametrize("kind", ["info", "question", "request"])

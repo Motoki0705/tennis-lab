@@ -52,7 +52,7 @@ def _destinations(
     original: dict[str, Any] | None,
 ) -> tuple[list[Assignment], bool]:
     destinations: dict[int, Assignment] = {}
-    if original is not None:
+    if original is not None and original["sender_assignment_id"] != sender.id:
         row = connection.execute(
             "SELECT * FROM name_assignments WHERE id=?",
             (original["sender_assignment_id"],),
@@ -71,6 +71,8 @@ def _destinations(
                         destinations[assignment.id] = assignment
         else:
             assignment = resolve_name(connection, value)
+            if assignment.id == sender.id:
+                raise BoardError("sender cannot be a recipient")
             _recipient(assignment, parents)
             destinations[assignment.id] = assignment
     if not destinations:
