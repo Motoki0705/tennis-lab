@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "action": "copy",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-22T13:21:44.577548+00:00",
+  "source": "staging/court-scene-assets-a9281d9a41e39fc9/scenes/B03/reconstruction/export/points_scene.npy",
+  "destination": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy",
+  "source_id": "1ZeCG0lESGm9fRbWJhMDzllecxGLr6Gzu",
+  "manifest_sha256": "9595c703d32616fae01c5db54b1c31c3e85a54845a5383e36ab08fc004918074",
+  "status": "completed",
+  "verified": true,
+  "destination_id": "1Ajw5eS2A9i70bQSuvRfBGOnT4760vg7C"
+}

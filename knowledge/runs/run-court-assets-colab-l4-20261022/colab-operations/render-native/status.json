@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "render-native",
+  "status": "completed",
+  "updated_at": "2026-10-22T07:31:28.135528+00:00",
+  "returncode": 0,
+  "worker_pid": 20493,
+  "worker_token": "349685",
+  "launch_guarded": true,
+  "pid": 20676,
+  "process_token": "352841",
+  "started_at": "2026-10-22T07:30:59.416305+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-22T07:38:48.404027+00:00",
+  "finished_at": "2026-10-22T07:38:48.404041+00:00"
+}

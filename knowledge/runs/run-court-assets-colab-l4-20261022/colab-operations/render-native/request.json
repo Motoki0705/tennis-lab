@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "job_id": "render-native",
+  "argv": [
+    "bash",
+    "tmp/court_assets_render_native_colab.sh"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/synthetic_data_generation/profile/court-assets-verify/renders-native"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-10-22T07:30:26.807083+00:00",
+  "source_commit": "5d2ffbb692e68e0c0093e1358ba7fa6f7ab19f7d",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/court-assets-verify-20261022-02/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/court-assets-verify-20261022-02/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

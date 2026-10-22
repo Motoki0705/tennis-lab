@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -61,6 +62,18 @@ def test_render_command_combines_observed_and_file_request(tmp_path: Path) -> No
         "--output",
         str(tmp_path / "renders/shard-0"),
     )
+
+
+def test_render_command_explicitly_omits_source_images(tmp_path: Path) -> None:
+    scene = tmp_path / "B00/reconstruction/export/scene.json"
+    scene.parent.mkdir(parents=True)
+    scene.write_text("{}")
+    command = NHTRenderCommandRequest(
+        scene_path=scene, output_directory=tmp_path / "render",
+        observed_camera_ids=("frame_000000",),
+    )
+    assert "--without-source-images" not in command.argv()
+    assert "--without-source-images" in replace(command, without_source_images=True).argv()
 
 
 def test_render_command_rejects_overlapping_camera_ids(tmp_path: Path) -> None:

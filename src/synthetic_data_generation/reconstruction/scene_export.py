@@ -107,8 +107,12 @@ class StandardSceneExport:
         return matches[0]
 
 
-def validate_standard_scene_export(scene_path: str | Path) -> StandardSceneExport:
+def validate_standard_scene_export(
+    scene_path: str | Path, *, without_source_images: bool = False
+) -> StandardSceneExport:
     """Load and semantically validate one self-contained NHT standard export."""
+    if type(without_source_images) is not bool:
+        raise TypeError("without_source_images must be a boolean.")
     path = Path(scene_path)
     if path.name != "scene.json" or path.is_symlink() or not path.is_file():
         raise ValueError(f"Expected an ordinary exported scene.json file: {path}")
@@ -179,13 +183,17 @@ def validate_standard_scene_export(scene_path: str | Path) -> StandardSceneExpor
         image_root_reference,
         name="scene.image_root",
         kind="directory",
+        required=not without_source_images,
     )
 
     raw_cameras = _sequence(cameras_payload["cameras"], name="cameras.cameras")
     if not raw_cameras:
         raise ValueError("cameras.cameras must contain at least one camera.")
     cameras = tuple(
-        _parse_camera(item, index=index, export_root=export_root, image_root=image_root)
+        _parse_camera(
+            item, index=index, export_root=export_root, image_root=image_root,
+            without_source_images=without_source_images,
+        )
         for index, item in enumerate(raw_cameras)
     )
     camera_ids = [camera.camera_id for camera in cameras]
@@ -363,6 +371,7 @@ def _parse_camera(
     index: int,
     export_root: Path,
     image_root: Path,
+    without_source_images: bool,
 ) -> SceneCamera:
     name = f"cameras.cameras[{index}]"
     raw = _mapping(value, keys=_CAMERA_KEYS, name=name)
@@ -417,21 +426,23 @@ def _parse_camera(
         image_reference,
         name=f"{name}.image",
         kind="file",
+        required=not without_source_images,
     )
     if not image_path.is_relative_to(image_root):
         raise ValueError(f"{name}.image must resolve inside scene.image_root.")
-    try:
-        with Image.open(image_path) as image:
-            actual_size = image.size
-            image.verify()
-    except (OSError, UnidentifiedImageError) as error:
-        raise ValueError(
-            f"{name}.image is not a readable image: {image_path}"
-        ) from error
-    if actual_size != (width, height):
-        raise ValueError(
-            f"{name}.image resolution {actual_size} disagrees with {(width, height)}."
-        )
+    if not without_source_images:
+        try:
+            with Image.open(image_path) as image:
+                actual_size = image.size
+                image.verify()
+        except (OSError, UnidentifiedImageError) as error:
+            raise ValueError(
+                f"{name}.image is not a readable image: {image_path}"
+            ) from error
+        if actual_size != (width, height):
+            raise ValueError(
+                f"{name}.image resolution {actual_size} disagrees with {(width, height)}."
+            )
 
     processing = _mapping(
         raw["source_image_processing"],
@@ -500,7 +511,9 @@ def _resolve_model_file(
     return path
 
 
-def _resolve_reference(root: Path, reference: str, *, name: str, kind: str) -> Path:
+def _resolve_reference(
+    root: Path, reference: str, *, name: str, kind: str, required: bool = True
+) -> Path:
     if "\\" in reference:
         raise ValueError(f"{name} must use an export-relative POSIX path.")
     pure = PurePosixPath(reference)
@@ -514,14 +527,14 @@ def _resolve_reference(root: Path, reference: str, *, name: str, kind: str) -> P
         )
     candidate = root.joinpath(*pure.parts)
     try:
-        resolved = candidate.resolve(strict=True)
+        resolved = candidate.resolve(strict=required)
     except FileNotFoundError as error:
         raise FileNotFoundError(f"{name} does not exist: {candidate}") from error
     if not resolved.is_relative_to(root):
         raise ValueError(f"{name} escapes the export root through its resolved path.")
-    if kind == "file" and not resolved.is_file():
+    if required and kind == "file" and not resolved.is_file():
         raise ValueError(f"{name} must reference a file: {resolved}")
-    if kind == "directory" and not resolved.is_dir():
+    if required and kind == "directory" and not resolved.is_dir():
         raise ValueError(f"{name} must reference a directory: {resolved}")
     return resolved
 

@@ -28,13 +28,19 @@ NHTとそのgsplat runtimeをtennis-labの`.venv`とは独立した`uv tool`環�
 editable installする。production SfMの任意retry backendも用意する場合は
 `spin setup-nht --with-sfm-learned`を使用する。`uv tool`のbin directoryが
 `PATH`にない場合は、コマンドが具体的な追加先を表示して失敗する。
+描画だけを行う環境では `spin setup-nht --render-only` を使う。同じ固定版の
+公開renderer・gsplat・tiny-cuda-nnを導入し、trainer環境の構築は行わない。
+`--with-sfm-learned`とは併用できない。
+gsplatは固定Torchを導入した後、そのtool環境内でbuild isolationを無効にして
+ビルドする。別のTorch ABIで作られた拡張をJITで補うことなく、ネイティブ拡張と
+shaderの両方をimportして検証する。
 
 ## コマンド
 
 | コマンド | 用途 |
 |---|---|
 | `spin doctor [--strict]` | Python、`.venv`、lockfile、主要 CLI、submodule を診断する。通常は任意機能の不足を警告し、`--strict` では警告も失敗にする |
-| `spin setup-nht [--with-sfm-learned]` | NHT submoduleを固定commitへ更新し、`nht-reconstruct`と`nht-render`を独立した`uv tool`環境へインストールする |
+| `spin setup-nht [--with-sfm-learned \| --render-only]` | NHT submoduleを固定commitへ更新し、公開CLIを独立した`uv tool`環境へインストールする。`--render-only`ではtrainerを構築しない |
 | `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |
 | `spin test [PYTEST_ARGS...]` | `local_data` / `cuda` marker を除外して pytest を実行する。`--all`, `--coverage`, `--serial` を利用できる |
