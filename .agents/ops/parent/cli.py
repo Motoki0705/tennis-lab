@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from contextlib import suppress
@@ -97,6 +98,15 @@ def parser() -> argparse.ArgumentParser:
     result = commands.add_parser("record-result")
     result.add_argument("--child", type=int, required=True)
     result.add_argument("--evidence-file", required=True)
+    policy = commands.add_parser("configure-delegation")
+    policy.add_argument(
+        "--max-parallel-children", required=True, help="all or a positive integer"
+    )
+    policy.add_argument("--reason-file", required=True)
+    ended = commands.add_parser("record-worker-ended")
+    ended.add_argument("--child", type=int, required=True)
+    ended.add_argument("--delegation-id", required=True)
+    ended.add_argument("--evidence-file", required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -209,7 +219,29 @@ def main(argv: list[str] | None = None) -> int:
                 result = session.reconcile()
             elif command == "sync":
                 session.owner()
-                result = {"progress": session.sync_progress()}
+                result = {
+                    "progress": session.sync_progress(),
+                    "launch_plan": session.launch_plan(),
+                }
+            elif command == "configure-delegation":
+                if args.max_parallel_children != "all" and not re.fullmatch(
+                    r"[1-9][0-9]*", args.max_parallel_children
+                ):
+                    raise ValueError(
+                        "--max-parallel-children must be all or a positive integer"
+                    )
+                result = session.configure_delegation(
+                    None
+                    if args.max_parallel_children == "all"
+                    else int(args.max_parallel_children),
+                    read_text(args.reason_file),
+                )
+            elif command == "record-worker-ended":
+                result = session.record_worker_ended(
+                    number(args.child),
+                    args.delegation_id,
+                    read_text(args.evidence_file),
+                )
             elif command == "delegate":
                 result = session.delegate(
                     number(args.child),
