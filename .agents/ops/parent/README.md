@@ -322,7 +322,7 @@ open/closed全issueをページングしてキーを照合し、spec不一致・
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
 `action: launch` を受けた親がサブエージェントを起動する。CLI自身は起動しない。
-既存PR・委任予約・完了・取消・停止・依存保留があれば起動を拒否する。
+既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
 記録済みbranchを照合して、PRと担当・検証記録を返す。
 PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合も各番号に指示を付ける。
@@ -336,6 +336,109 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠/担当/子の要件が変わった既存成果は、親が現在の要件で確認してrecord-resultを実行するまで新review/mergeへ渡さない。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
+
+### 並列起動の選択と予約上限
+
+`status` / `reconcile` / `sync` / 成功した `delegate` は `launch_plan` を返す。
+`launch.py` が最新の子本文・正式関係・全状態のPR・既存予約を使い、次のJSONを計算する。
+
+```json
+{
+  "policy": {"schema_version": 1, "max_parallel_children": null, "reason": "設定の根拠"},
+  "active_reservations": [1217],
+  "available_slots": null,
+  "launchable_children": [1220],
+  "tasks": [{
+    "child": 1220, "state": "continue", "action": "ready", "dependencies": [1217],
+    "stacked_on": [{"child": 1217, "pr": 1250, "branch": "codex/upstream", "head_sha": "40桁SHA"}],
+    "reasons": []
+  }]
+}
+```
+
+`tasks` は全直属子を番号順で含み、`reasons` は `{code,message}` の配列。
+起動対象は `action=ready`、対象外は `do_not_launch` と具体的理由を持つ。
+既存PR・予約・完了/取消・停止・停止先への依存・依存PRの不在/複数/別repo・親のphase/担当・上限待ちを区別する。
+未完了の推移的な依存にも同repoのPRが一意に必要で、閉じた未merge PRは利用しない。
+停止した依存先のPRがあっても起動しない。完了済み依存はstackの対象から外す。
+計画は予約・起動許可そのものではない。実行根拠の鮮度、提案の採用、専用worktree、依存headは
+`delegate` が書き込み直前に検査する。`status` の読み取りだけでは予約もagent起動も行わない。
+`sync` は親本文の進捗概要に予約一覧・起動可能・待機理由を反映する。
+
+手動親の既定は `max_parallel_children=null`（依存が許す全子）。上限があれば空き数まで番号順に選ぶ。
+上限と根拠は親のregistry行の `launch_policy` に保存し、同じ `Store.locked()` で委任予約と直列化する。
+設定はworktree・セッションの再開をまたいで維持する。未知schema・不正型は既定値に置換しない。
+
+```bash
+# 実測で上限が必要なら、根拠を非空のファイルに記録して設定する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 configure-delegation --max-parallel-children 4 --reason-file tmp/resources.md
+# 制限を解除する場合も理由を残す
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 configure-delegation --max-parallel-children all --reason-file tmp/resources.md
+# runnerの終了・子孫の不在を確認した親が、delegateで返ったdelegation_idを指定する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-worker-ended --child 1217 --delegation-id 32桁hex --evidence-file tmp/worker-ended.md
+```
+
+上の4件は設定方法の例で、推奨初期値ではない。固定3件の根拠だった事故は、ホストRAM上限24GB・GPU 16GBの環境で
+2026-10-18にpytestとtraining jobが重なってPCが落ちた事例。子の数の実測上限ではないため、
+pytestは下記lock、GPU・Blenderはtraining queueの既存 `half` / `all` 枠で調停し、子の上限は追加の実測に基づき設定する。
+自律ループの「各親の実装子2件」という初期値と実プロセスの稼働枠・担当排他はdispatcherの責務で、ここでは変更しない。
+dispatcher/親workflowはその実行枠内でこの計画を使い、必要なら同じ予約上限を明示設定する。
+
+終了未確認の委任予約は停止・PR作成・子のclose・親の待機だけで解放しない。
+`record-worker-ended` は親が確認した終了証拠を現在の `delegation_id` へ結び付けるだけで、プロセスを停止しない。
+旧予約でIDがないものには明示値 `legacy` を使う。再委任は新しいIDになり、古い終了通知は拒否する。
+予約枠を解放しても `delegated` は保持し、自動再起動はしない。再予約は従来の証拠付き `delegate --restart-evidence-file` を使う。
+停止・根拠・PR検査は再予約でも省略しない。稼働中workerの終了を推測する新しい台帳は作らない。
+
+### stacked branchの確認とrebase
+
+`stacked_on` の各PRはclosing指示で依存子に対応付け、branch名だけから推測しない。
+親が全headのコード・インターフェースを確認し、同じrepoに取得してから専用worktreeを作る。
+以下は依存先が1つの場合。`upstream_head` は計画の完全なhead SHAで固定し、ローカルに保存する。
+
+```bash
+git fetch origin codex/upstream
+upstream_head="$(git rev-parse origin/codex/upstream)"
+# 計画のheadと一致しなければ再照合する
+git worktree add -b codex/downstream .claude/worktrees/downstream "$upstream_head"
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 delegate --child 1220 --agent codex --branch codex/downstream --worktree .claude/worktrees/downstream
+```
+
+作成先は必ずメインcheckoutの `.claude/worktrees/`。親自身がworktree内なら上の相対パスをその絶対パスへ置き換える。
+複数依存なら全headを含むbranchへ積むか、子専用の統合branchへ取り込む。
+`delegate` は全未完了依存headが子のHEADの祖先であることと、保存直前にもhead/依存が同じことを確認する。
+予約の `stacked_on` が起動時の境界。先行PRの更新を取り込んだ場合は、実際に積み直した境界もローカルへ記録する。
+後続PRのbaseは先行branchにして子だけの差分を表示し、merge順序は依存順を維持する。
+
+先行PRのmerge後は、子worktreeがcleanであることを確認し、保存した境界から子自身のcommitだけをmainへ載せ替える。
+通常merge・squash mergeのどちらでも、子の差分から先行変更を除く。
+
+```bash
+git fetch origin main
+git -C .claude/worktrees/downstream rebase --onto origin/main "$upstream_head" codex/downstream
+git -C .claude/worktrees/downstream diff origin/main...HEAD
+```
+
+全先行PRのmergeを確認してから子のPR baseをmainへ変更し、差分・テスト・依存を再確認する。
+独立した複数依存の統合branchでは、全先行headを取り込んだ統合commitを境界に保存して同じ `--onto` を使う。
+競合は親が解消・検証し、判断が必要ならその子を停止する。head/base/diff変更は既存review coverageで承認済みにせず、
+rebase後にレビュー対象を固定する。既にレビューした対象の変更には理由付きの新しい明示要求が必要で、自動再レビューしない。
+
+### pytest共有lock
+
+```bash
+bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
+# キャンペーンが専用の共有lockを指定している場合は、全子に同じ絶対パスを渡す
+PYTEST_LOCK=/absolute/shared/pytest.lock bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
+```
+
+ラッパーは自身のworktree rootへ移動し、その `.venv/bin/python -m pytest -n 4` を実行する。
+lockは `PYTEST_LOCK`、未指定なら `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/pytest.lock`。
+全worktreeで同じホストstateを使い、**1つのpytestだけ**をflockで通す。worktreeごとのlockは作らない。
+`-n` / `--numprocesses` の上書きと相対lockを拒否し、pytestの終了値をそのまま返す。
+`flock --no-fork` でlockを実行プロセスに保持し、正常終了・異常終了後に解放する。
+lockを取らない直接実行は排他の対象にならないため、親・全子・通常の手動テストもこの入口を使う。
+テストではfake Pythonを使って2つのworktreeから同時要求し、実行区間が重ならないことと失敗後の解放を検査する。
 
 ## 停止・再開・改善候補
 
@@ -467,5 +570,5 @@ ghは現在認証中のアカウント、GitHub書込みにはIssuesのwrite権�
 atomic write中にプロセスを強制終了して `.tmp` が残った場合は、稼働中プロセスが無いことと
 registryの内容を確認して、その一時ファイルだけを人間の管理下で退避してから再試行する。
 
-テスト: `.venv/bin/python -m pytest tests/e2e/agents_ops/test_parent_session.py -n 4 -q`。
+テスト: `bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_parent_launch.py tests/e2e/agents_ops/test_pytest_lock.py -q`。
 fake gh・一時state・使い捨てgitを使い、本物のCodex/Claude/GitHub書込みは起動しない。

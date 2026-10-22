@@ -1332,6 +1332,9 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
     p.agreed()
     p.child("a")
     p.child("b")
+    state = p.state()
+    state["prs"] = [p.pr(100, 10)]
+    p.save(state)
     worktree = p.worktree("b")
     p.cli(
         "delegate",

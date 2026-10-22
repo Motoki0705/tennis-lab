@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ from issues.cli import render_spec
 
 from . import execution, proposals
 from .github import GitHub
+from .launch import DEFAULT_LAUNCH_POLICY, launch_policy, plan_launches, reason
 from .policy import (
     PHASES,
     child_stopped,
@@ -148,6 +150,7 @@ class ParentSession:
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
             "tasks": row.get("tasks", {}),
+            "launch_plan": self.launch_plan(),
             "review": self.review_status(history),
             "proposal_receipts": proposals.receipts(history),
             "proposal_agreements": proposals.agreed_receipts(history),
@@ -439,10 +442,26 @@ class ParentSession:
             "completed": "完了",
             "cancelled": "取消",
         }
-        summary = (
-            "\n".join(f"- #{n}: {labels[state]}" for n, state in sorted(states.items()))
-            or "未分割（子issue未作成）"
-        )
+        plan = self.launch_plan()
+        reservations = ", ".join(f"#{n}" for n in plan["active_reservations"]) or "なし"
+        limit = plan["policy"]["max_parallel_children"]
+        lines = [
+            f"子の起動予約: {reservations}。上限: {limit if limit is not None else '全子'}。"
+        ]
+        for task in plan["tasks"]:
+            detail = " / ".join(
+                r["message"].replace("\n", " ") for r in task["reasons"]
+            )
+            if not detail:
+                detail = "起動可能"
+                if task["stacked_on"]:
+                    detail += (
+                        "（stacked branch: "
+                        + ", ".join(f"PR #{p['pr']}" for p in task["stacked_on"])
+                        + "）"
+                    )
+            lines.append(f"- #{task['child']}: {labels[task['state']]} — {detail}")
+        summary = "\n".join(lines) if states else "未分割（子issue未作成）"
         self.update_body(
             self.parent, replace_section(body, "進捗概要", summary), parent.body
         )
@@ -592,6 +611,65 @@ class ParentSession:
             proposals.require_source(self, source)
         return {"child": n, "reused": bool(found), "progress": states}
 
+    def launch_plan(
+        self,
+        overrides: dict[int, list[int]] | None = None,
+        restart_child: int | None = None,
+    ) -> dict[str, Any]:
+        parent, children = self.family()
+        blockers = []
+        if self.row.get("status") != "active":
+            blockers.append(reason("parent_assignment", "親の担当がactiveでない。"))
+        if parent.state != "open":
+            blockers.append(reason("parent_closed", "親issueがopenでない。"))
+        if phase(self.history()) not in {"agreed", "autonomous"}:
+            blockers.append(
+                reason("execution_basis_required", "親の有効な実行根拠を記録する。")
+            )
+        return plan_launches(
+            children,
+            self.row.get("tasks", {}),
+            self.gh.pulls() if children else [],
+            self.gh.repo,
+            launch_policy(self.row.get("launch_policy", DEFAULT_LAUNCH_POLICY)),
+            blockers,
+            overrides,
+            restart_child,
+        )
+
+    def configure_delegation(self, limit: int | None, evidence: str) -> dict[str, Any]:
+        row = self.owner()
+        policy = launch_policy(
+            {
+                "schema_version": 1,
+                "max_parallel_children": limit,
+                "reason": nonempty(evidence, "child launch limit reason"),
+            }
+        )
+        self.public(policy)
+        row["launch_policy"] = policy
+        self.store.save()
+        self.sync_progress()
+        return {"launch_plan": self.launch_plan()}
+
+    def record_worker_ended(
+        self, child: int, delegation_id: str, evidence: str
+    ) -> dict[str, Any]:
+        row = self.owner()
+        task = row["tasks"].get(str(child), {})
+        if (
+            not task.get("delegated")
+            or task.get("delegation_id", "legacy") != delegation_id
+        ):
+            raise ValueError("worker-end evidence must match the current delegation_id")
+        task["worker_ended"] = {
+            "delegation_id": delegation_id,
+            "evidence": nonempty(evidence, "worker-end evidence"),
+        }
+        self.store.save()
+        self.sync_progress()
+        return {"child": child, "launch_plan": self.launch_plan()}
+
     def reconcile(self) -> dict[str, Any]:
         self.owner()
         _, children = self.family()
@@ -616,16 +694,10 @@ class ParentSession:
                 raise ValueError(
                     f"#{n}: PR branch differs from recorded worktree branch"
                 )
-            action = (
-                "do_not_launch"
-                if matching or task.get("delegated") or states[n] != "continue"
-                else "ready"
-            )
             result.append(
                 {
                     "child": n,
                     "state": states[n],
-                    "action": action,
                     "assignment": task,
                     "prs": [
                         {
@@ -641,10 +713,16 @@ class ParentSession:
                     ),
                 }
             )
+        plan = self.launch_plan()
+        for task, planned in zip(result, plan["tasks"], strict=True):
+            if task["child"] != planned["child"]:
+                raise ValueError("child set changed during reconciliation")
+            task.update({k: planned[k] for k in ("action", "reasons", "stacked_on")})
         return {
             "parent": self.parent,
             "phase": PHASES[phase(self.history())],
             "tasks": result,
+            "launch_plan": plan,
             "review": self.review_status(self.history()),
         }
 
@@ -686,11 +764,23 @@ class ParentSession:
             )
         if restart:
             nonempty(restart, "restart evidence")
+        planned = next(
+            t
+            for t in self.launch_plan(override, child if restart else None)["tasks"]
+            if t["child"] == child
+        )
+        if planned["action"] != "ready":
+            raise ValueError(
+                f"#{child} cannot be delegated: "
+                + "; ".join(r["message"] for r in planned["reasons"])
+            )
         if agent not in {"claude", "codex"} or not branch.startswith(agent + "/"):
             raise ValueError("agent/branch prefix mismatch")
-        from .snapshot import validate_worktree
+        from .snapshot import git, validate_worktree
 
         validate_worktree(worktree, branch)
+        for base in planned["stacked_on"]:
+            git("merge-base", "--is-ancestor", base["head_sha"], "HEAD", cwd=worktree)
         for n, task in self.row["tasks"].items():
             if n != str(child) and (
                 task.get("branch") == branch
@@ -703,6 +793,8 @@ class ParentSession:
             "branch": branch,
             "worktree": str(worktree.resolve()),
             "delegated": True,
+            "delegation_id": uuid.uuid4().hex,
+            "stacked_on": planned["stacked_on"],
             "dependencies": deps
             if deps is not None
             else dependencies(children[child].body),
@@ -722,10 +814,20 @@ class ParentSession:
         }
         if restart:
             task["restart_evidence"] = restart
+        task.pop("worker_ended", None)
         if source is not None:
             proposals.require_source(self, source)
         if execution.authorization(self) != auth:
             raise ValueError("execution basis changed before delegation")
+        fresh = next(
+            t
+            for t in self.launch_plan(override, child if restart else None)["tasks"]
+            if t["child"] == child
+        )
+        if fresh != planned:
+            raise ValueError(
+                "child launch inputs changed before delegation; reconcile before retry"
+            )
         # Claim durably before returning permission to launch; crash never causes automatic relaunch.
         self.row["tasks"][str(child)] = task
         self.store.save()
@@ -748,6 +850,7 @@ class ParentSession:
             "child": child,
             "assignment": task,
             "parent": parent.number,
+            "launch_plan": self.launch_plan(),
         }
 
     def stop_or_resume(
