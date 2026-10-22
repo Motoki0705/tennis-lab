@@ -363,13 +363,21 @@ def export_diffusion_bundle(
         or not np.isin(states, np.arange(5)).all()
     ):
         raise ValueError("Source validity/reasons/ray states disagree")
+    source_frames = shot["source_frames"]
     if (
-        shot["ball_source"] != manifest["ball_source"]
-        or shot["source_frames"][-1] != stop - 1
+        not isinstance(source_frames, list)
+        or not source_frames
+        or any(
+            type(frame) is not int or not start <= frame < stop
+            for frame in source_frames
+        )
     ):
         raise ValueError(
-            "Source shot must end at the bundle endpoint and preserve ball_source"
+            "Source shot source_frames must be a nonempty integer list inside the bundle interval"
         )
+    if shot["ball_source"] != manifest["ball_source"]:
+        raise ValueError("Source shot must preserve ball_source")
+    final_source_frame = source_frames[-1]
     arrays, details = concept_arrays(positions, manifest["fps"], config)
     arrays["condition_position"], arrays["condition_reason"] = positions, reasons
     arrays["condition_valid"] = valid
@@ -400,11 +408,11 @@ def export_diffusion_bundle(
     rotation = np.column_stack((right, np.cross(right, forward), -forward))
     camera_matrix = np.eye(4)
     camera_matrix[:3, :3], camera_matrix[:3, 3] = rotation, location
+    source_blend = delivery / "shot/ball_rays.blend"
     input_paths = [
-        delivery / "manifest.json",
         source / "manifest.json",
         delivery / "shot/shot_manifest.json",
-        delivery / "shot/ball_rays.blend",
+        source_blend,
         source / "ball_position.npy",
         source / "ball_reason.npy",
         source / "ray_state.npy",
@@ -413,11 +421,14 @@ def export_diffusion_bundle(
     ]
     # Copy just the final plates. The new scene freezes the preceding shot's view.
     plates = [
-        source / c["plate_dir"] / f"{stop - 1:05d}.jpg" for c in manifest["cameras"]
+        source / c["plate_dir"] / f"{final_source_frame:05d}.jpg"
+        for c in manifest["cameras"]
     ]
     input_paths.extend(plates)
+    input_hashes = {path: _sha(path) for path in input_paths}
     inputs = [
-        {"path": str(path.resolve()), "sha256": _sha(path)} for path in input_paths
+        {"path": str(path.resolve()), "sha256": digest}
+        for path, digest in input_hashes.items()
     ]
     result = {
         "schema": SCHEMA,
@@ -445,12 +456,13 @@ def export_diffusion_bundle(
         "tube_orientation_policy": "minimum-component cross axis; stationary tangent uses +X for display only",
         "camera_continuity": {
             "policy": "copy evaluated final state of source blend; verify against source shot overview formula",
-            "source_output_frame": len(shot["source_frames"]) - 1,
+            "source_output_frame": len(source_frames) - 1,
+            "source_frame": final_source_frame,
             "matrix_world": camera_matrix.tolist(),
             "lens_mm": 32.0,
             "sensor_width_mm": 36.0,
             "source_shot": shot["shot"],
-            "source_blend_sha256": inputs[3]["sha256"],
+            "source_blend_sha256": input_hashes[source_blend],
         },
         "cameras": [
             {"id": c["id"], "center": c["center"], "plate": f"plate_{i}.jpg"}

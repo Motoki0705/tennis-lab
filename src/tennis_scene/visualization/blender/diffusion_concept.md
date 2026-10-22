@@ -14,7 +14,9 @@
 入口は `src.tennis_scene.scripts.export_blender_diffusion`、設定の正本は
 [export_blender_diffusion.yaml](../../configs/export_blender_diffusion.yaml) です。
 `input` はARTIFACT root相対のBall 3D deliveryで、`bundle/`・`shot/ball_rays.blend`・
-`shot/shot_manifest.json`・deliveryの `manifest.json` を読み取りだけで使います。
+`shot/shot_manifest.json` を読み取りだけで使います。bundleのmanifest・数値配列、shotのmanifest・
+blend、選択した静止plate、フォントを入力hashに記録します。
+delivery直下の `manifest.json` は入力に含めません。必要なファイル・項目が欠けていれば停止します。
 既定は採用済みMeiji `[282,942)` のdeliveryです。別入力は明示して指定します。
 
 ```bash
@@ -43,6 +45,51 @@
 計算結果は `bundle/manifest.json` に残します。入力・フォントのSHA-256、git commit、解決済みconfig、
 `ball_source`、点の誤差、補完frame、乱数と補間の規則、各要素の由来区分を含みます。
 配布するときは `bundle/` と `shot/` をまとめて保持してください。
+
+## 上流の生成物から再生成する
+
+採用素材と同じstore・区間・カメラで、新しいBall 3D bundleとshotを作る例です。
+worktreeのrootをcwdにし、`MAIN_OUTPUTS` とqueueのパスを実環境の絶対パスへ置き換えます。
+run名は未使用のものにします。上流の設定・検証の詳細は[Ball 3Dの手順](README.md)を参照してください。
+
+```bash
+MAIN_OUTPUTS=/absolute/main/outputs
+TASK_OUTPUTS="$PWD/outputs"
+RAYS_RUN=tennis_scene/visualize/export_blender_rays/meiji-rays-rebuild
+DIFFUSION_RUN=tennis_scene/visualize/export_blender_diffusion/meiji-concept-rebuild
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_rays \
+  paths.artifact_root="$MAIN_OUTPUTS" paths.output_root="$TASK_OUTPUTS" \
+  output="$RAYS_RUN"
+TRAINING_QUEUE_DIR=/absolute/main/.training_queue \
+  bash .agents/skills/training-queue/scripts/training_queue.sh add \
+  "blender --background --factory-startup --threads 4 --python-exit-code 1 \
+    --python '$PWD/src/tennis_scene/visualization/blender/shots/ball_rays.py' -- \
+    --bundle '$TASK_OUTPUTS/$RAYS_RUN/bundle' --output '$TASK_OUTPUTS/$RAYS_RUN/shot' \
+    --camera-id cam1 --time-mode continuous --two-d-seconds 3 \
+    --pullback-seconds 3 --playback-seconds 5 --samples 64" \
+  --name ball-rays-for-diffusion --provider codex --session "$CODEX_THREAD_ID" \
+  --issue 1214 --resource half
+```
+
+workerは親が管理します。queueの `list` で成功を確認した後、生成された
+`bundle/manifest.json`・`shot/shot_manifest.json`・`shot/ball_rays.blend` をそのまま渡します。
+上のshot作成は `--render` を指定せず、Diffusionに必要なsceneを保存します。
+Windows版Blenderではコマンド中の実行ファイルとパスを `wslpath -w` で変換してください。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_diffusion \
+  paths.artifact_root="$TASK_OUTPUTS" paths.output_root="$TASK_OUTPUTS" \
+  paths.external_asset_root=/usr/share/fonts \
+  input="$RAYS_RUN" output="$DIFFUSION_RUN"
+BUNDLE="$TASK_OUTPUTS/$DIFFUSION_RUN/bundle"
+SOURCE_BLEND="$TASK_OUTPUTS/$RAYS_RUN/shot/ball_rays.blend"
+SHOT_DIR="$TASK_OUTPUTS/$DIFFUSION_RUN/shot"
+```
+
+引き継ぐ時刻はshotの `source_frames[-1]` です。`camera_continuity.source_frame` と
+`source_output_frame` に元動画・出力のframe番号を残し、全カメラの同じsource frameのplateを選びます。
+例えば `[282,942)` を30fps・1xで表示した最終frameは、元60fpsでは940、59.94006fpsでは941です。
+区間の `stop-1` から推定しません。以下の撮影・検証へ進めば、上流の納品manifestを別途作らず再生成できます。
 
 ## 撮影と検証
 
@@ -110,9 +157,8 @@ flock /home/kamimura/.local/state/tennis-lab-agents/parent-1204/pytest.lock \
   .venv/bin/python -m pytest tests/unit/tennis_scene/visualization/blender -n 4 -q
 flock /home/kamimura/.local/state/tennis-lab-agents/parent-1204/pytest.lock \
   .venv/bin/python -m pytest tests/unit/utils/configuration tests/unit/utils/test_output_layout.py \
-  tests/e2e/development/test_architecture_boundaries.py -n 4 -q \
-  -k 'not test_branch_contains_configuration_contract_merge'
+  tests/e2e/development/test_architecture_boundaries.py -n 4 -q
 ```
 
-上の除外は履歴書き換え前の祖先commitを要求する既知のテストです。親指定により除外し、
-履歴側で解決します。テスト本体や既存shotの実装は変更しません。
+境界テストは上流exporterの実生成物と時間軸関数を使い、60fps・59.94006fpsの最終frame・
+plate選択・入力hashを検証します。上流が生成しない空の納品manifestは用意しません。
