@@ -61,10 +61,14 @@ requested L4 and a pushed tennis-lab commit whose pinned NHT commit is also
 fetchable. In the disposable VM, prepare the repository and NHT with:
 
 ```bash
+export PATH="$(uv tool dir --bin):$PATH"
 uv sync --locked
 .venv/bin/python -m spin setup-nht --render-only
 nht-render --help
 ```
+
+Repeat the explicit tool-bin `PATH` export in every Colab shell job that invokes
+`nht-render`; a fresh login shell does not inherit another job's environment.
 
 `spin setup-nht` owns the pinned Python/Torch/tiny-cuda-nn versions and recursive
 NHT/gsplat checkout; do not duplicate those versions in an alternate installer.
