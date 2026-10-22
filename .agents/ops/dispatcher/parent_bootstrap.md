@@ -21,6 +21,10 @@
 開発workflowの担当は手順3を実装・検証・レビュー・mergeの手順へ差し替える。
 手順1の受理、bootstrap_inputのschema、最終イベントのschemaは維持する。
 子を起動する場合はparent CLIのdelegateで予約してからdispatcherのstart-childを使う。
+子の選択はparentのlaunch_planに従い、起動可能な子を実行枠内で並列に進める。
+待機理由とstacked_onはparentの契約を使い、別の起動計画を作らない。
+pytestは `.agents/ops/pytest_locked.sh` を使い、指定された `PYTEST_LOCK` を全子に継承する。
+予約上限とpytest排他の正本は `.agents/ops/parent/README.md` を参照する。
 最終文は追加キーのない `schema_version/state/reason/resume_condition` のJSON objectにする。
 stateはwaiting/completed/failed。completedはworkflow自身が受入条件・実merge/closeを確認した場合だけ使う。
 runnerのexit 0はタスク成功を示さない。子が生存/終了未確認ならcompletedは拒否される。

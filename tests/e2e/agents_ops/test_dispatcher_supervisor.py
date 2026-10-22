@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 import json
 import os
@@ -219,6 +220,151 @@ def test_duplicate_notification_and_previous_lifetime_lock_block_judgment(
     assert d.run()["result"] == "not_due"
 
 
+@pytest.mark.parametrize("outcome", ["recorded", "deferred", "preview", "failed"])
+def test_v2_results_and_recovered_results_reserve_only_recorded_candidates(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, outcome: str
+) -> None:
+    d.h.response(decision(1))
+    if outcome == "preview":
+        original = d.h.mod.run
+
+        def preview(*args: Any, **kwargs: Any) -> Any:
+            return original(*args, **{**kwargs, "apply": False})
+
+        monkeypatch.setattr(d.h.mod, "run", preview)
+    elif outcome == "failed":
+        monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "cli_error")
+    elif outcome == "deferred":
+
+        def edit_after_judgement(endpoint: str) -> None:
+            if d.h.calls.exists():
+                d.h.gh.on_get = None
+                d.h.gh.issues[1]["body"] += "\n要件変更"
+
+        d.h.gh.on_get = edit_after_judgement
+    result = d.run()
+    assert result["result"] == outcome, result
+    run = d.state()["runs"][0]
+    saved = json.loads((Path(run["directory"]) / "result.json").read_text())
+    assert saved["schema_version"] == 2
+    assert result["deferred"] == saved["deferred"]
+    assert (
+        d.control.status(d.now("2026-10-22T09:00:00+09:00"))["judgements"][0][
+            "deferred"
+        ]
+        == saved["deferred"]
+    )
+    if outcome != "recorded":
+        assert d.control.assign() == []
+        assert d.h.store.parents == {}
+    # A lost controller response must recognize every terminal v2 outcome
+    # without another judgement turn or turning a deferral into a reservation.
+    with d.h.store.locked():
+        state = d.schedule.read()
+        state["active"] = run["id"]
+        state["runs"][0].update(phase="running", controller=None)
+        d.schedule.write(state)
+    assert d.run()["result"] == "not_due"
+    assert d.state()["active"] is None
+    assert d.state()["runs"][0]["phase"] == outcome
+    assert d.control.assign() == ([1] if outcome == "recorded" else [])
+    with d.h.store.locked():
+        assert list(d.h.store.parents) == (["o/r#1"] if outcome == "recorded" else [])
+    assert len(d.h.calls.read_text().splitlines()) == 1
+
+
+def test_scheduled_judgement_uses_split_read_directory_and_output_schema(
+    d: DispatchHarness,
+) -> None:
+    d.prepare()
+    directory = Path(d.state()["runs"][0]["directory"])
+    contract = json.loads((directory / "agent-runtime/result.json").read_text())[
+        "contract"
+    ]
+    assert contract["read_dirs"] == [str(directory / "agent-input")]
+    assert (
+        contract["json_schema_sha256"]
+        == hashlib.sha256(
+            (ROOT / ".agents/ops/dispatcher/judgement.schema.json").read_bytes()
+        ).hexdigest()
+    )
+    args = json.loads(d.h.calls.read_text())["args"]
+    assert args[args.index("--add-dir") + 1] == str(directory / "agent-input")
+    assert json.loads(args[args.index("--json-schema") + 1])["$schema"] == (
+        "http://json-schema.org/draft-07/schema#"
+    )
+
+
+@pytest.mark.parametrize("stage", ["preflight", "publication", "final_check"])
+def test_mixed_deferral_reserves_fresh_subject_and_defers_changed_subject_to_next_slot(
+    d: DispatchHarness, stage: str
+) -> None:
+    d.h.gh.issues[2] = issue(2)
+    d.h.response(decision(1), decision(2))
+
+    def edit_after_judgement(endpoint: str) -> None:
+        if d.h.calls.exists():
+            d.h.gh.on_get = None
+            d.h.gh.issues[1]["body"] += "\n要件変更"
+
+    def edit_during_publication() -> None:
+        if stage == "publication" or len(d.h.gh.writes) == 2:
+            d.h.gh.on_write = None
+            d.h.gh.issues[1]["body"] += "\n要件変更"
+
+    if stage == "preflight":
+        d.h.gh.on_get = edit_after_judgement
+    else:
+        d.h.gh.on_write = edit_during_publication
+    result = d.run()
+    assert result["result"] == "recorded", result
+    assert [(x["issue"], x["stage"]) for x in result["deferred"]] == [(1, stage)]
+    saved = json.loads(
+        (Path(d.state()["runs"][0]["directory"]) / "result.json").read_text()
+    )
+    assert [c["priority"] for c in saved["candidates"]] == [2]  # Keep the gap.
+    assert d.control.assign() == [2]
+    assert "o/r#1" not in d.h.store.parents
+    assert d.run("2026-10-22T19:59:59+09:00")["result"] == "not_due"
+    assert len(d.h.calls.read_text().splitlines()) == 1
+    # Free only the runtime slot; the existing owner remains assigned.
+    d.control.reconcile(stop=True, parent=2)
+    d.h.response(decision(1), decision(2, "existing_owner"))
+    next_result = d.run("2026-10-22T20:00:00+09:00")
+    assert next_result["result"] == "recorded", next_result
+    assert next_result["deferred"] == []
+    assert d.control.assign() == [1]
+    assert len(d.h.calls.read_text().splitlines()) == 2
+
+
+@pytest.mark.parametrize("outcome", ["deferred", "preview", "failed"])
+def test_nonrecorded_result_cannot_be_promoted_by_journal_or_injected_candidates(
+    d: DispatchHarness, outcome: str
+) -> None:
+    d.prepare()
+    path = Path(d.state()["runs"][0]["directory"]) / "result.json"
+    saved = json.loads(path.read_text())
+    saved["result"] = outcome
+    path.write_text(json.dumps(saved))
+    with pytest.raises(ValueError, match="only recorded"):
+        d.control.assign()
+    assert d.h.store.parents == {}
+
+
+@pytest.mark.parametrize("version", [1, True, 999])
+def test_unknown_judgement_result_versions_cannot_reserve(
+    d: DispatchHarness, version: int | bool
+) -> None:
+    d.prepare()
+    path = Path(d.state()["runs"][0]["directory"]) / "result.json"
+    saved = json.loads(path.read_text())
+    saved["schema_version"] = version
+    path.write_text(json.dumps(saved))
+    with pytest.raises(ValueError, match="result contract"):
+        d.control.assign()
+    assert d.h.store.parents == {}
+
+
 def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -229,6 +375,11 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
 
     def fresh(*args: Any) -> None:
         order.append("fresh")
+        # The same flock remains held through both validations and reservation.
+        with importlib.import_module("dispatcher.runtime").gate(
+            d.h.store.directory / "registry.lock"
+        ) as fd:
+            assert fd is None
         original_fresh(*args)
 
     def validate(*args: Any) -> Any:
@@ -283,6 +434,45 @@ def test_changed_candidate_never_starts(d: DispatchHarness, change: str) -> None
         "stale",
         "existing_owner",
     }
+
+
+def test_freshness_failure_skips_authorization_and_all_reservations(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.h.gh.issues[1]["body"] += "\n要件変更"
+
+    def unexpected_authorization(*args: Any) -> None:
+        pytest.fail("validate_candidate must not run after failed freshness")
+
+    monkeypatch.setattr(d.mod, "validate_candidate", unexpected_authorization)
+    assert d.control.assign() == []
+    assert d.h.store.parents == {}
+    assert "次の予定回" in d.state()["runs"][0]["candidates"]["1"]["reason"]
+    assert len(d.h.calls.read_text().splitlines()) == 1
+
+
+def test_current_authorization_is_required_after_external_freshness_check(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    checked = []
+    original = d.mod.judgement.assert_candidate_fresh
+
+    def fresh(*args: Any) -> None:
+        original(*args)
+        checked.append("fresh")
+
+    def revoked(*args: Any) -> None:
+        checked.append("authorization")
+        raise ValueError("execution basis revoked")
+
+    monkeypatch.setattr(d.mod.judgement, "assert_candidate_fresh", fresh)
+    monkeypatch.setattr(d.mod, "validate_candidate", revoked)
+    assert d.control.assign() == []
+    assert checked == ["fresh", "authorization"]
+    assert d.h.store.parents == {}
+    assert not (d.schedule.directory / "workers").exists()
 
 
 def test_slot_waiting_and_sequential_candidates_keep_owner(
@@ -498,6 +688,37 @@ def test_unconfirmed_previous_judgment_blocks_next_slot_until_explicit_recovery(
     result_path.write_text(json.dumps(record))
     assert d.run("2026-10-22T20:00:00+09:00")["result"] == "recovery_required"
     assert len(d.h.calls.read_text().splitlines()) == 1
+    # The current runner requires explicit descendant-cleanup evidence after
+    # losing its subreaper; an empty CLI group does not release this gate.
+    with pytest.raises(ValueError, match="cleanup remains unconfirmed"):
+        d.service.recover_judgement(d.h.store, d.schedule, "CLI group is empty")
+    assert d.state()["active"] == run["id"]
+    record = json.loads(result_path.read_text())
+    confirmation = result_path.parent / "supervisor-cleanup.json"
+    confirmation.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                **{key: record[key] for key in ("run_id", "runner", "process")},
+                "cleanup_complete": True,
+                "evidence": "offline fixture CLI returned and has no descendant tools",
+            }
+        )
+    )
+    confirmed = subprocess.run(
+        [
+            str(d.h.mod.RUNNER),
+            "stop",
+            "--run-dir",
+            str(result_path.parent),
+            "--cleanup-confirmation",
+            str(confirmation),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert confirmed.returncode == 0, confirmed.stderr
     d.service.recover_judgement(
         d.h.store,
         d.schedule,

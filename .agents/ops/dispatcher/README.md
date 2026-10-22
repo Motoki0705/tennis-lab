@@ -248,6 +248,7 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 `python -m dispatcher` はschedule・割当・runtime管理の入口。systemd用の同じ入口は `dispatch.py`。
 `service.py` は判定agentの予定実行、`schedule.py` はAsia/Tokyoのslotとrun journal、
 `supervisor.py` はregistry内の担当予約・イベント・実行枠、`worker.py` / `runtime.py` は共通ランナーへの接続を担当する。
+`outcomes.py` は割当・controller復旧・表示で共通のv2結果検査を行う。
 上の `judgement.py` の明示入口は維持する。日程や実行枠を判定promptへ持ち込まない。
 
 毎日08:00・20:00 JSTに、正常に収集できた入力についてread-onlyの判定agentを1回呼ぶ。
@@ -279,6 +280,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher configure --max-parents 2 
 
 `status` はenabled、直近/次回/due slot、判定の結果・失敗、候補のstale/既存担当/枠待ち、
 親の担当状態と実行枠の使用、子の終了未確認予約、各jobのphaseを返す。
+`run` の返却値と `status.judgements[].deferred` は延期subjectのissue/stage/reasonを返す。
+内訳の正本は各判定の `result.json` だけで、scheduleへ複製しない。結果未保存時のstatusはdeferred=null。
+recorded/deferred/preview/failedはいずれも終了・回収を確認してcontroller中断から復旧できる。
+予約へ進むのは前述のv2候補契約を満たすrecordedだけ。部分延期の候補は優先順の欠番を保ち、延期subjectは次回へ回す。
 run journalに候補の待機理由を残すが、担当の正本はregistryだけである。
 
 ## 担当・実行枠・中断復旧
@@ -298,6 +303,8 @@ workerのlifetime lockはrunnerへFD継承する。workerが失われても起�
 
 初期の開発親上限は1、各親の実装runtime上限は2。これは手動親の `launch_policy` の既定nullとは別である。
 自律親だけ予約上限も2に揃え、実runtimeの上限はさらに `start-child` で検査する。
+子の選択・依存・予約上限は [parentのlaunch_plan](../parent/README.md#並列起動の選択と予約上限) を使う。
+dispatcherは起動選択を再実装せず、既存の委任予約を受け取って実runtimeと終了証拠を照合する。
 子の予約/停止/closeや親の待機だけでは枠を解放しない。taskの終了証拠と、過去の全runtime jobsを両方数える。
 再委任でdelegation_idやworker_endedを変えても、生存/終了未確認の旧jobを消せない。
 終了は共通ランナーのterminal結果・cleanup_complete・runner/CLI/group不在とworker lifetime lockの解放で確認する。
@@ -331,6 +338,8 @@ sessionが取れなかったrunから別sessionを自動生成しない。この
 判定controllerの中断は、保存済みresultとruntimeを照合できれば再利用する。
 欠落時は実プロセス不在を確認した証拠ファイルで `recover-judgement --evidence-file tmp/recovery.md` を明示実行する。
 稼働中controllerや未回収CLIがあれば拒否する。復旧後も勝手に再判断せず、次回または `run --explicit` を使う。
+runner喪失時は、先に [共通ランナーの子孫回収確認](../lib/README.md#状態確認停止中断からの復旧) を行う。
+`recover-judgement --evidence-file` だけでは、その `cleanup_confirmation` を代替しない。
 
 ## 親workflowへのbootstrap契約
 
@@ -348,6 +357,7 @@ sessionが取れなかったrunから別sessionを自動生成しない。この
 親workflowは外部依存・採用状態・正式関係を再取得し、委任・レビュー・merge前も根拠を再照合する。
 
 子の本文・worktree・モデル選定やdelegateはworkflowが行う。
+親workflowはparentの `launch_plan` から起動可能な子を選び、待機理由・stacked_onを引き継ぐ。
 delegateで予約した後、受理済みの親環境から次を呼ぶ。起動自体はsupervisorが行い、子を直接spawnしない。
 
 ```bash
@@ -359,6 +369,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
 モデル/effortの既定は共通ランナーを使う。既存子は終了照合後の証拠付き再delegateで新しいIDを得てからstart-childする。
 このとき以前の子の最新runから同じsessionをresumeする。モデル・worktree・branch・設定の不一致は共通ランナーが拒否する。
 子runtime記録がなく同じsessionへ戻せない場合も、別sessionへ振り替えない。
+pytestは [既存の共有lock wrapper](../parent/README.md#pytest共有lock) を使う。
+キャンペーンから `PYTEST_LOCK` が指定された場合は親・子で同じ値を継承し、別のlockを作らない。
+GPU・Blenderの資源調停はtraining queueの既存枠を使う。
 
 親の最終文は追加キーなしのJSON:
 

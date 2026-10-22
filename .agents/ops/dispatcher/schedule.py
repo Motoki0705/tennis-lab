@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 from parent.state import Store
 
+from .outcomes import RESULTS
 from .runtime import load
 
 TOKYO = ZoneInfo("Asia/Tokyo")
@@ -49,7 +50,7 @@ class Schedule:
         self.path = self.directory / "schedule.json"
 
     def read(self) -> dict[str, Any]:
-        value = load(self.path)
+        value: dict[str, Any] = load(self.path)
         if (
             set(value)
             != {"schema_version", "enabled", "cursor", "config", "runs", "active"}
@@ -104,8 +105,7 @@ class Schedule:
                     "diagnostic",
                     "candidates",
                 }
-                or run["phase"]
-                not in {"running", "recorded", "failed", "recovery_required"}
+                or run["phase"] not in {"running", "recovery_required", *RESULTS}
                 or run["id"] in seen
                 or not isinstance(run["candidates"], dict)
             ):

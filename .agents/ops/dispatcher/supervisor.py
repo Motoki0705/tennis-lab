@@ -16,6 +16,7 @@ from parent.session import ParentSession
 from parent.state import Store, session_identity
 
 from . import judgement
+from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load
 from .schedule import Schedule, latest_slot, next_slot
 
@@ -236,16 +237,13 @@ class Supervisor:
                 if run["phase"] != "recorded":
                     continue
                 directory = Path(run["directory"])
-                result, snapshot = (
-                    load(directory / "result.json"),
-                    load(directory / "input.json"),
-                )
-                if (
-                    result.get("schema_version") != 1
-                    or result.get("result") != "recorded"
-                ):
+                result = read_result(directory)
+                if result["result"] != "recorded":
                     raise ValueError("candidate journal differs from recorded judgment")
-                for candidate in result["candidates"]:
+                snapshot = load(directory / "input.json")
+                for candidate in sorted(
+                    result["candidates"], key=lambda c: c["priority"]
+                ):
                     n = number(candidate["parent"])
                     status = run["candidates"].get(str(n))
                     if status and status["state"] != "capacity_wait":
@@ -295,7 +293,7 @@ class Supervisor:
                     except ValueError as exc:
                         run["candidates"][str(n)] = {
                             "state": "stale",
-                            "reason": str(exc),
+                            "reason": f"{exc}; 次の予定回または明示実行で再判断する",
                         }
                         continue
                     assignment_id = uuid.uuid4().hex
@@ -761,15 +759,20 @@ class Supervisor:
                 "active_judgement": state["active"],
                 "judgements": [
                     {
-                        k: r[k]
-                        for k in (
-                            "id",
-                            "slot",
-                            "explicit",
-                            "phase",
-                            "diagnostic",
-                            "candidates",
-                        )
+                        **{
+                            k: r[k]
+                            for k in (
+                                "id",
+                                "slot",
+                                "explicit",
+                                "phase",
+                                "diagnostic",
+                                "candidates",
+                            )
+                        },
+                        "deferred": read_result(Path(r["directory"]))["deferred"]
+                        if (Path(r["directory"]) / "result.json").exists()
+                        else None,
                     }
                     for r in state["runs"]
                 ],

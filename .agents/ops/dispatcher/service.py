@@ -13,7 +13,8 @@ from parent.github import GitHub
 from parent.state import Store
 
 from . import judgement
-from .runtime import Runtime, alive, gate, load, process_identity
+from .outcomes import read_result, validate_result
+from .runtime import Runtime, alive, gate, process_identity
 from .schedule import Schedule, latest_slot
 
 
@@ -36,26 +37,21 @@ def reconcile_judgement(state: dict[str, Any]) -> bool:
             )
             return False
     if (directory / "result.json").exists():
-        result = load(directory / "result.json")
-        if result.get("schema_version") == 1 and result.get("result") in {
-            "recorded",
-            "failed",
-        }:
-            if (
-                result["result"] == "recorded"
-                and not (runtime_dir / "result.json").exists()
-            ):
-                run.update(
-                    phase="recovery_required",
-                    diagnostic="記録済み判定のruntime証拠が欠落",
-                )
-                return False
+        result = read_result(directory)
+        if result["result"] != "failed" and not (runtime_dir / "result.json").exists():
             run.update(
-                phase=result["result"],
-                diagnostic="controller中断後に保存済み結果を照合",
+                phase="recovery_required",
+                diagnostic="保存済み判定のruntime証拠が欠落",
             )
-            state["active"] = None
-            return True
+            return False
+        run.update(
+            phase=result["result"],
+            diagnostic=" / ".join(
+                ["controller中断後に保存済み結果を照合", *result["diagnostics"]]
+            ),
+        )
+        state["active"] = None
+        return True
     run.update(
         phase="recovery_required",
         diagnostic="前回runの結果欠落。時刻で終了扱いにせず明示復旧する",
@@ -120,14 +116,16 @@ def run_due(
             for sig in (signal.SIGTERM, signal.SIGINT)
         }
         try:
-            result = judgement.run(
-                gh,
-                store,
-                Path(config["cwd"]),
-                directory,
-                apply=True,
-                timeout=config["judgement_timeout"],
-                runner=Path(config["runner"]),
+            result = validate_result(
+                judgement.run(
+                    gh,
+                    store,
+                    Path(config["cwd"]),
+                    directory,
+                    apply=True,
+                    timeout=config["judgement_timeout"],
+                    runner=Path(config["runner"]),
+                )
             )
         finally:
             for sig, handler in old.items():
@@ -152,7 +150,11 @@ def run_due(
                 run.update(phase="recovery_required", diagnostic=str(exc))
                 state["active"] = identifier
             schedule.write(state)
-        return {"result": run["phase"], "run_id": identifier}
+        return {
+            "result": run["phase"],
+            "run_id": identifier,
+            "deferred": result["deferred"],
+        }
 
 
 def stop_judgement(store: Store, schedule: Schedule) -> None:
