@@ -1,0 +1,22 @@
+{
+  "frames.csv": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/frames.csv",
+    "bytes": 983671,
+    "sha256": "73c22250a9c51c91653eeb3f14e3819e241511d3a4ce33c358d6a659087a8e27"
+  },
+  "strata.json": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/strata.json",
+    "bytes": 845430,
+    "sha256": "b0991bfa34d98b7d6e405b0b50e016a6aa4c475aa715dfd963965258a66b30d9"
+  },
+  "summary.json": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/summary.json",
+    "bytes": 35575,
+    "sha256": "ef9f0938330a0ea50155283391e4fe3b4caafab2d91625dd51c41ebc0b9bab28"
+  },
+  "analysis-time.txt": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/analysis-time.txt",
+    "bytes": 964,
+    "sha256": "855065bb9d3c778e0c0787dd150d54242f8763e4a54543d72ba91c1dda6a1d52"
+  }
+}

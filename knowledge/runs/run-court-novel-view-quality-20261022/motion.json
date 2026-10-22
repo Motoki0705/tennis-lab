@@ -1,0 +1,130 @@
+[
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "target_switches": 2,
+    "step_angle_median_degrees": 5.0842077697834185,
+    "step_angle_p95_degrees": 22.619197782618283,
+    "step_angle_max_degrees": 81.1341297108445
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "target_switches": 2,
+    "step_angle_median_degrees": 5.013827848817577,
+    "step_angle_p95_degrees": 22.054215998990635,
+    "step_angle_max_degrees": 77.52478052730791
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "target_switches": 2,
+    "step_angle_median_degrees": 5.0842077697834185,
+    "step_angle_p95_degrees": 22.619197782618283,
+    "step_angle_max_degrees": 81.1341297108445
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "target_switches": 2,
+    "step_angle_median_degrees": 3.5932795193329636,
+    "step_angle_p95_degrees": 13.102979405402557,
+    "step_angle_max_degrees": 80.98446158885598
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "target_switches": 4,
+    "step_angle_median_degrees": 4.434442775157494,
+    "step_angle_p95_degrees": 27.97600274797798,
+    "step_angle_max_degrees": 89.30542597323402
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "target_switches": 4,
+    "step_angle_median_degrees": 4.737248842085169,
+    "step_angle_p95_degrees": 24.804040122029242,
+    "step_angle_max_degrees": 81.59049037484995
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "target_switches": 4,
+    "step_angle_median_degrees": 4.434442775157494,
+    "step_angle_p95_degrees": 27.97600274797798,
+    "step_angle_max_degrees": 89.30542597323402
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "target_switches": 4,
+    "step_angle_median_degrees": 3.6113416725844187,
+    "step_angle_p95_degrees": 19.82074602401398,
+    "step_angle_max_degrees": 96.11353478722621
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "target_switches": 0,
+    "step_angle_median_degrees": 5.2708945439254,
+    "step_angle_p95_degrees": 11.995797025137007,
+    "step_angle_max_degrees": 16.798184732757196
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "target_switches": 0,
+    "step_angle_median_degrees": 4.952773461687997,
+    "step_angle_p95_degrees": 11.60318833810907,
+    "step_angle_max_degrees": 16.232692920468796
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "target_switches": 0,
+    "step_angle_median_degrees": 5.2708945439254,
+    "step_angle_p95_degrees": 11.995797025137007,
+    "step_angle_max_degrees": 16.798184732757196
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "target_switches": 0,
+    "step_angle_median_degrees": 3.5384494001419977,
+    "step_angle_p95_degrees": 3.713737230394126,
+    "step_angle_max_degrees": 3.7167852954904723
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "target_switches": 0,
+    "step_angle_median_degrees": 6.788721920438184,
+    "step_angle_p95_degrees": 19.084993144414096,
+    "step_angle_max_degrees": 26.54046988404254
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "target_switches": 0,
+    "step_angle_median_degrees": 6.476248603046425,
+    "step_angle_p95_degrees": 17.999757860177017,
+    "step_angle_max_degrees": 25.221322357782416
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "target_switches": 0,
+    "step_angle_median_degrees": 6.788721920438184,
+    "step_angle_p95_degrees": 19.084993144414096,
+    "step_angle_max_degrees": 26.54046988404254
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "target_switches": 0,
+    "step_angle_median_degrees": 3.0309269779815686,
+    "step_angle_p95_degrees": 5.916624714741751,
+    "step_angle_max_degrees": 6.071577894592259
+  }
+]

@@ -1,7 +1,7 @@
-<!-- knowledge-review: 7527354ca7a67e739ed29140a21c273c3457297937071185e4183bec0173fc2a on 2026-10-22 -->
+<!-- knowledge-review: 4e74e6c6509bd71d11bd4663ab45e773984c80a8ed33ffc2a35b0e4d48fa132c on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Courtデータ規模のCPU計画診断を追加。既存のモデル採用判断は維持）
+更新日: 2026-10-22（Court新規視点の描画診断とデータ規模設計への判断を反映。既存のモデル採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -472,8 +472,17 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [B00〜B03のCPU軌道計画診断](nodes/synthetic_data_generation/000024-run-court-nested-plan-cpu-20261022.md)では、
 固定弧長表の2倍細分と点IDによって共通視点を保てたが、軌道長・棄却により単純な軌道prefixだけでは等枚数にならず、
 評価軌道近傍の保守的な除外で形状・中心の分布も大きく偏った。
-採択後の入れ子選択と層ごとの不足判定を含む設計案を提示した段階で、ユーザー合意・新視点の描画品質・閾値は未確定。
-既存のモデル比較・採用判断は維持し、合意と4sceneの小規模描画を本番の規模比較に先行させる。
+当時の採択後選択・評価guardは旧案の観測として保持し、新しい生成仕様には用いない。
+[4sceneの新規視点描画診断](nodes/synthetic_data_generation/000025-run-court-novel-view-quality-20261022.md)では、
+推奨と拡張5%・狭角・jitter0の計2080視点、QAと比較/連続動画16本を作成した。
+狭角で対象KP支持が減り、ROI穴0でもぼけ・線の不一致を通した。対象4KP以上で対象外の支持を除いても、
+B02/B03はほぼpartialのままで、強いalpha条件も分布を偏らせた。
+0mは動画の視線の振れを減らすが、複数courtのtarget切替とぼけは残る。
+2026-10-22のユーザー判断で、合成は全てtrain、実画像は動画単位val/testの評価専用、
+poseは学習するが主評価外、枚数は全採択候補の実測値とした。枚数揃えのquota/補充と合成評価guardは不要。
+[設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
+#1352で実装してCourt Review Web UIからユーザーが選ぶ。D2/D5/D6も診断動画を材料に同UI比較で最終判断する。
+既存モデルの採用判断は維持し、診断標本の棄却率を本番へ流用せず、方式/品質の合意と全分布の試走を規模比較に先行させる。
 
 2026-10-13に[#983の4条件比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)を完了した。凍結DINOv3 S/S+/B/Lを同じ1024次元の後段、入力・split・seed42・20epochで学習し、各最小validation loss checkpointを同じ合成test886件・実画像val2211件で評価した。この1 seedではBが合成KP/SEG、LがLINE/semantic LINE/pose再投影で最良で、サイズによる一様な改善は見られなかった。実画像valの差は小さく、選択データを兼ねることも明示する。Lのcheckpoint再開に伴うRNG/sampler継続の制約を保持し、Sは同じ1画像の深度無効な2点がpose誤差総和の91.65%を占めた診断を添え、公式の全点平均を置き換えない。4条件の設定・checkpoint hash・学習曲線・同一画像36パネルと再現記録を保存し、既存の採用判断は変更しない。次に有効なのはB/Lの複数seedとpose投影の安定性の検証で、追加学習は開始していない。[速度診断](nodes/court_detection/000042-group-i983-court-throughput-s42.md)はデータのVM内配置と、S+のbatch8→16による約3%の画像/秒改善を示し、共有後段の計算と保存処理が改善候補である。本比較のbatch8/20epochは維持した。
 

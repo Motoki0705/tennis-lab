@@ -1,0 +1,56 @@
+{
+  "B00": {
+    "hashes": {
+      "alignment/alignment.json": "d973abf8f6e8f82ac4322562f1b468c24e4472d7ed7164f79eac06a264a86581",
+      "reconstruction/export/scene.json": "18251128c91985103ef2bcfb5c5e6019a452a6be07f8b59ca4c82028485f1743",
+      "reconstruction/export/cameras.json": "9c2b6e6e927f484280a3bc53f3ce94eb27afa77bbaa380d1afd9e560c67ba075",
+      "resolved-config.yaml": "5abc57074b5829575d167815db6f015204ce90032f8eab214cea7e5c8c12d379",
+      "datasets/court/dataset.json": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+      "datasets/court/samples/index.npz": "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63",
+      "reconstruction/export/model/ckpts/ckpt_29999_rank0.pt": "659e51f5175d09f2b4dd05d6b361550e66cff53aad41efce1aae296c78c24b5f",
+      "reconstruction/export/model/runtime-config.json": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    "compatibility": []
+  },
+  "B01": {
+    "hashes": {
+      "alignment/alignment.json": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9",
+      "reconstruction/export/scene.json": "e753f8857a2d588d73fcae87d8982efc3ce1772dbc14d38bc5a9e46f69af2c57",
+      "reconstruction/export/cameras.json": "52ee696ddf39166f198577e5010b32c68a30413f3aed00e04b2d3c8848d8361b",
+      "resolved-config.yaml": "fa77bd3107b9f5b5e5620d793a9830dbcfe1f80cb8c4f9beff8a0fa8db74e170",
+      "datasets/court/dataset.json": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e",
+      "datasets/court/samples/index.npz": "422b18d17e38b47560daf055e21c9562de96662ecef5dee0316feaa38b5e40cd",
+      "reconstruction/export/model/ckpts/ckpt_29999_rank0.pt": "9a9012173303d5c47e8594f293a384557951e923f9ffe8e7b744230b295dee7f",
+      "reconstruction/export/model/runtime-config.json": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    "compatibility": [
+      "B01: explicit experimental addition sfm_complex_center_on_hull=false; source unchanged"
+    ]
+  },
+  "B02": {
+    "hashes": {
+      "alignment/alignment.json": "5cf7a69e60df3a6551f21404047df27e9e5808742518da6c7540f58232207b9d",
+      "reconstruction/export/scene.json": "ce2a7f14c7410ca76994fce9b3f054aa9d18a95d51167136642f4e94ab53d631",
+      "reconstruction/export/cameras.json": "a3a8bdf8be8736340e6e6d78ddd3655dec9993277d6e5e65c6b076271d5f263d",
+      "resolved-config.yaml": "5bf1a0d32b22dc337d180b144ac2903490d5e9fbaba7f52582bf33012a133ad4",
+      "datasets/court/dataset.json": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568",
+      "datasets/court/samples/index.npz": "c6761029a4b20132e8c0eb873c6945e518a608f8f9bc0dff8c361afe901c062b",
+      "reconstruction/export/model/ckpts/ckpt_29999_rank0.pt": "61028ed84697ab7004904db60d4fd9d9063af7728f4fa11b556efe441189f2d8",
+      "reconstruction/export/model/runtime-config.json": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    "compatibility": []
+  },
+  "B03": {
+    "hashes": {
+      "alignment/alignment.json": "8e1029f091a8d0a1bbea4992353b7dd3836bdb1b8c3bb7ecab0a00d51dba8e99",
+      "reconstruction/export/scene.json": "df7e51b9dd819164bb5915fae8cb2e4093f7af91756b723ce62c97a80065433d",
+      "reconstruction/export/cameras.json": "4d03c5a27728be0ff7e9598d42ce4459960a0af8ff0c638d9af34aa8a7c1b381",
+      "resolved-config.yaml": "51dceb2865c2be1f80dbf4a76749a8a45447bf89ab68879adbcb97fcb083cbd6",
+      "datasets/court/dataset.json": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607",
+      "datasets/court/samples/index.npz": "062dceb390c2fbb1be86540bd2637623860ce3e2d5dc4a0306c105a19ae4807d",
+      "reconstruction/export/model/ckpts/ckpt_29999_rank0.pt": "b7275ca96b3693f976dd730f77e864ec3c4243dd0755ad3c7587c739210b9b1c",
+      "reconstruction/export/model/runtime-config.json": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    "compatibility": []
+  }
+}
