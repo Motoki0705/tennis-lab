@@ -124,7 +124,11 @@ elif args[0] == "api" and "--method" in args:
         if method == "GET":
             api_emit(page(state.get("comments", {}).get(n, [])))
         time.sleep(float(os.environ.get("FAKE_GH_CREATE_DELAY", "0")))
-        comment = {"user": {"login": "bot"}, "body": payload["body"]}
+        comment_id = state["next_comment_id"]
+        state["next_comment_id"] += 1
+        comment = {"id": comment_id, "user": {"login": "bot"}, "body": payload["body"],
+                   "created_at": "2026-10-12T00:00:00Z", "updated_at": "2026-10-12T00:00:00Z",
+                   "html_url": f"https://github.com/o/r/issues/{n}#issuecomment-{comment_id}"}
         state.setdefault("comments", {}).setdefault(n, []).append(comment)
         api_saved(comment)
     if method == "PATCH":
@@ -317,6 +321,7 @@ AGENT_OUTPUT: dict[str, Any] = {
 def base_state() -> dict[str, Any]:
     return {
         "next_number": 100,
+        "next_comment_id": 1,
         "labels": ["ai-proposed"],
         "issues": [
             {

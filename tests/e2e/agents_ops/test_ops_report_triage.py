@@ -267,6 +267,47 @@ def test_old_parent_agreement_does_not_authorize_newly_received_proposal(
     _create(ops)
 
 
+def test_proposal_agreement_checks_plain_comment_after_parent_note(ops_env: Any) -> None:
+    ops = ops_env
+    _setup(ops)
+    _parent(ops, "register")
+    _select(ops)
+    _receive(ops)
+    _agree(ops, pid="R-20261012-02")
+    body = "調査を終えたので、合意済みの範囲で子issueを作成します。"
+    note = ops.tmp / "note.md"
+    note.write_text(body, encoding="utf-8")
+    _parent(ops, "note", "--body-file", str(note))
+    _create(ops)
+
+    # The same login/body without a progress marker still needs classification.
+    posted = subprocess.run(
+        [
+            str(ops.tmp / "bin/gh"),
+            "api",
+            "--method",
+            "POST",
+            "repos/o/r/issues/1/comments",
+            "--input",
+            "-",
+        ],
+        input=json.dumps({"body": body}, ensure_ascii=False),
+        env=ops.env,
+        text=True,
+        capture_output=True,
+        timeout=45,
+        check=True,
+    )
+    comment = json.loads(posted.stdout)
+    before = ops.state
+    rejected = _create(ops, ok=False)
+    assert "unclassified agreement comments" in rejected.stderr
+    assert f"ID={comment['id']}" in rejected.stderr
+    assert comment["html_url"] in rejected.stderr and "(added)" in rejected.stderr
+    assert ops.state == before
+    assert len(_children(ops)) == 1
+
+
 def test_pending_proposal_preserves_independent_creation_and_delegation(
     ops_env: Any,
 ) -> None:
