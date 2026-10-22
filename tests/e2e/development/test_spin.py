@@ -107,7 +107,8 @@ def test_setup_nht_builds_requested_isolated_runtimes(
     assert "--python 3.11" in commands
     gsplat_build = (
         f"uv pip install --python {tool_directory}/nht/bin/python "
-        "--no-build-isolation --no-cache --reinstall --editable third_party/nht/gsplat"
+        "--no-build-isolation --no-cache --reinstall-package gsplat "
+        "--torch-backend cu130 torch==2.9.1 --editable third_party/nht/gsplat"
     )
     assert gsplat_build in commands
     assert "--with-editable third_party/nht/gsplat" not in commands
