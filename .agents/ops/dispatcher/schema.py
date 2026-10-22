@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any, TypedDict
 
 from parent.policy import (
@@ -278,14 +279,16 @@ def validate(
     return sorted(decisions, key=lambda d: d["issue"]), diagnostics
 
 
-def execution_context(snapshot: dict[str, Any], issue: int) -> dict[str, Any]:
+def execution_context(
+    snapshot: dict[str, Any], issue: int, sources: Sequence[str] = ()
+) -> dict[str, Any]:
     from .collect import material
 
     return {
         "dispatcher": {
             "schema_version": 1,
             "input_sha256": snapshot["input_sha256"],
-            "target_sha256": digest(material(snapshot, issue)),
+            "target_sha256": digest(material(snapshot, issue, sources)),
             "code_commit": snapshot["code"]["commit"],
         }
     }

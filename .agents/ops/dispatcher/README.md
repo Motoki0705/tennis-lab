@@ -88,7 +88,14 @@ publisherのparent-session/review進捗は除くが、checking/agreed/basis_revo
 自律根拠の記録・自分の判断表示・GitHubのupdated_atだけではdigestを変えない。
 自然言語コメントを機械的に無関係と分類しない。新しい通常コメントは判断材料になる。
 
-`material(snapshot, N)` は対象の親子・依存・提案出典レポートの閉包と関連PR/担当/コードに絞った同じ射影。
+`material(snapshot, N, sources=())` は対象の親子・依存・提案出典レポートの閉包と関連PR/担当/コードに絞った同じ射影。
+判定の `sources` にあるissue・コメントの所属issueも起点に加え、その正式関係・依存・提案出典を再帰的に含める。
+明示引用したPRはclosing先が閉包外でも本文・head・状態を含める。明示引用したコメントはID/login/本文も
+`source_comments` に固定する。通常は除外するシステム進捗記録でも、引用した本文の編集・削除は入力変更となる。
+自身の判定表示を独立出典として使うことは引き続き拒否する。
+閉包外の資料を拒否せず含めるのは、別issueの合意・重複実装・関連する作業を判断材料として保持するためである。
+判定前の `input.json` / `input_sha256` / `execution_inputs` は書き換えない。後者は引用を加える前の基本射影であり、
+記録時の実行入力は固定snapshotと返されたsourcesから対象contextを導出し、最新の同じ射影と照合する。
 判定後と全記録後は固定したsubjectsを再収集し、各subjectの対象閉包を個別に照合する。
 全入力digestの一致は書込みの前提にしない。変わっていないsubjectは記録・候補化し、変わったsubjectだけを
 `deferred`へ移して`diagnostics`に再判断の案内を残す。previewにも同じ判定後の照合を適用する。
@@ -167,7 +174,9 @@ subjectsが最初から空の回は、延期ではなくpreview/recordedの正�
 preview/deferred/failedから予約しない。recordedに延期が混在しても、返された候補は通常どおり1件ずつ予約前照合へ進める。
 候補のschema_version=1と既存キーは変えず、優先順の値は延期による欠番を詰めない。
 `input_sha256`は来歴用の固定全体digestで、最新の全体digestとの一致を要求しない。
-鮮度は`target_sha256`に対応する対象閉包で検査する。候補1件は以下の形（追加する場合は候補のversionを上げる）。
+鮮度は`target_sha256`に対応する引用資料を含む対象閉包で検査する。候補のsourcesは公開URL形式であり、
+`assert_candidate_fresh`はagentの参照形式と同じ資料へ解決して再取得する。引用資料を含まない旧候補のdigestは流用せず再判断する。
+候補1件は以下の形（追加する場合は候補のversionを上げる）。
 
 ```json
 {

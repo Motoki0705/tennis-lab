@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -278,12 +278,55 @@ def related(snapshot: Mapping[str, Any], issue: int) -> set[int]:
     return found
 
 
-def material(snapshot: Mapping[str, Any], issue: int | None = None) -> dict[str, Any]:
-    selected = (
-        related(snapshot, issue)
-        if issue is not None
-        else {int(n) for n in snapshot["issues"]}
+def source_references(
+    repo: str, sources: Sequence[str]
+) -> tuple[set[int], set[int], set[tuple[int, int]]]:
+    """Read both agent references and the URLs stored in published candidates."""
+    issues: set[int] = set()
+    pulls: set[int] = set()
+    comments: set[tuple[int, int]] = set()
+    for source in sources:
+        if source.startswith("code:"):
+            continue  # Every target already includes the pinned code tree.
+        url = re.fullmatch(
+            re.escape(f"https://github.com/{repo}")
+            + r"/(issues|pull)/([1-9][0-9]*)(?:#issuecomment-([1-9][0-9]*))?",
+            source,
+        )
+        if url:
+            kind, n, comment = url.groups()
+            if kind == "pull" and comment:
+                raise ValueError("PR comment sources were not collected")
+            source = (
+                f"comment:{n}:{comment}"
+                if comment
+                else f"{'pr' if kind == 'pull' else 'issue'}:{n}"
+            )
+        reference = re.fullmatch(
+            r"(issue|comment|pr):([1-9][0-9]*)(?::([1-9][0-9]*))?", source
+        )
+        if reference is None or (reference[1] == "comment") != bool(reference[3]):
+            raise ValueError(f"unknown source reference: {source}")
+        (pulls if reference[1] == "pr" else issues).add(int(reference[2]))
+        if reference[1] == "comment":
+            comments.add((int(reference[2]), int(reference[3])))
+    return issues, pulls, comments
+
+
+def material(
+    snapshot: Mapping[str, Any],
+    issue: int | None = None,
+    sources: Sequence[str] = (),
+) -> dict[str, Any]:
+    cited_issues, cited_pulls, cited_comments = source_references(
+        snapshot["repo"], sources
     )
+    if issue is None:
+        selected = {int(n) for n in snapshot["issues"]}
+    else:
+        selected = set()
+        for n in {issue, *cited_issues}:
+            selected.update(related(snapshot, n))
     issues = {}
     for n in sorted(selected):
         raw = snapshot["issues"][str(n)]
@@ -308,20 +351,34 @@ def material(snapshot: Mapping[str, Any], issue: int | None = None) -> dict[str,
             "comments": prose,
             "controls": controls,
         }
-    return {
+    result = {
         "schema_version": 1,
         "repo": snapshot["repo"],
         "publisher": snapshot["publisher"],
         "code": snapshot["code"],
         "subjects": snapshot["subjects"] if issue is None else [issue],
         "issues": issues,
-        "pulls": [p for p in snapshot["pulls"] if set(p["issues"]) & selected],
+        "pulls": [
+            p
+            for p in snapshot["pulls"]
+            if p["number"] in cited_pulls or set(p["issues"]) & selected
+        ],
         "owners": {
             n: r
             for n, r in snapshot["owners"].items()
             if int(n) in selected or set(r["tasks"]) & {str(s) for s in selected}
         },
     }
+    if cited_comments:
+        # Explicit citations remain evidence even when the usual projection
+        # omits their system progress markers. Missing comments change this map.
+        result["source_comments"] = {
+            f"{n}:{c['id']}": comment_snapshot(c)
+            for n in sorted({n for n, _ in cited_comments})
+            for c in snapshot["issues"][str(n)]["comments"]
+            if (n, c["id"]) in cited_comments
+        }
+    return result
 
 
 class SnapshotGitHub(GitHub):
@@ -347,9 +404,12 @@ class SnapshotGitHub(GitHub):
 
 
 def assert_material_fresh(
-    snapshot: dict[str, Any], current: dict[str, Any], issue: int
+    snapshot: dict[str, Any],
+    current: dict[str, Any],
+    issue: int,
+    sources: Sequence[str] = (),
 ) -> None:
-    if material(current, issue) != material(snapshot, issue):
+    if material(current, issue, sources) != material(snapshot, issue, sources):
         raise InputsChanged(
             "judgement inputs changed; wait for the next slot or explicitly judge again"
         )
@@ -361,8 +421,10 @@ def assert_fresh(
     root: Path,
     snapshot: dict[str, Any],
     issue: int,
+    sources: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Caller holds the registry lock; no agent is launched on a mismatch."""
-    current = collect(gh, store, root, [issue])
-    assert_material_fresh(snapshot, current, issue)
+    cited_issues, _, _ = source_references(snapshot["repo"], sources)
+    current = collect(gh, store, root, [issue, *cited_issues])
+    assert_material_fresh(snapshot, current, issue, sources)
     return current

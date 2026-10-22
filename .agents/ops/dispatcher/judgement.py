@@ -7,6 +7,7 @@ import json
 import math
 import os
 import subprocess
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,7 @@ from .collect import (
     collect,
     is_container,
     material,
+    source_references,
 )
 from .records import DETAIL_KEYS, comment_body, owned_comment
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
@@ -49,10 +51,12 @@ CANDIDATE_KEYS = {
 }
 
 
-def inputs_for(snapshot: dict[str, Any], store: Store, n: int) -> dict[str, Any]:
+def inputs_for(
+    snapshot: dict[str, Any], store: Store, n: int, sources: Sequence[str] = ()
+) -> dict[str, Any]:
     session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
     inputs: dict[str, Any] = execution_input(
-        session, context=execution_context(snapshot, n)
+        session, context=execution_context(snapshot, n, sources)
     )
     return inputs
 
@@ -98,6 +102,7 @@ def assert_candidate_fresh(
     number(candidate["priority"])
     number(candidate["generation"])
     sha256(candidate["basis_sha256"])
+    sources = strings(candidate["sources"], "sources")
     if (
         type(candidate.get("schema_version")) is not int
         or candidate["schema_version"] != 1
@@ -107,7 +112,7 @@ def assert_candidate_fresh(
         or candidate.get("repo") != snapshot["repo"]
         or candidate.get("input_sha256") != snapshot["input_sha256"]
         or snapshot["input_sha256"] != digest(material(snapshot))
-        or candidate.get("target_sha256") != digest(material(snapshot, n))
+        or candidate.get("target_sha256") != digest(material(snapshot, n, sources))
         or candidate.get("code_commit") != snapshot["code"]["commit"]
     ):
         raise ValueError("candidate does not match the fixed judgement input")
@@ -131,14 +136,14 @@ def assert_candidate_fresh(
         raise ValueError("malformed candidate requirements")
     for key in REQUIREMENTS:
         nonempty(requirements[key], key)
-    inputs = inputs_for(snapshot, store, n)
+    inputs = inputs_for(snapshot, store, n, sources)
     if (
-        inputs != snapshot["execution_inputs"][str(n)]
+        inputs_for(snapshot, store, n) != snapshot["execution_inputs"][str(n)]
         or digest(
             autonomous_basis(
                 requirements,
                 nonempty(candidate["rationale"], "rationale"),
-                strings(candidate["sources"], "sources"),
+                sources,
                 inputs,
             )
         )
@@ -147,7 +152,7 @@ def assert_candidate_fresh(
         raise ValueError(
             "candidate requirements/sources do not match its execution basis"
         )
-    assert_fresh(gh, store, root, snapshot, n)
+    assert_fresh(gh, store, root, snapshot, n, sources)
 
 
 def autonomous_basis(
@@ -186,11 +191,14 @@ def retain_fresh_decisions(
     decisions = result["decisions"]
     if not decisions:
         return
-    current = collect(gh, store, root, [d["issue"] for d in decisions])
+    seeds = {d["issue"] for d in decisions}
+    for decision in decisions:
+        seeds.update(source_references(snapshot["repo"], decision["sources"])[0])
+    current = collect(gh, store, root, seeds)
     for decision in decisions:
         n = decision["issue"]
         try:
-            assert_material_fresh(snapshot, current, n)
+            assert_material_fresh(snapshot, current, n, decision["sources"])
         except InputsChanged:
             defer_decision(result, n, stage)
 
@@ -206,20 +214,21 @@ def record_decision(
 ) -> dict[str, Any] | None:
     """Caller holds Store.locked(); surround each publication with target checks."""
     n = decision["issue"]
+    sources = decision["sources"]
     session = ParentSession(gh, store, n, None)
-    assert_fresh(gh, store, root, snapshot, n)
+    assert_fresh(gh, store, root, snapshot, n, sources)
     action = publish_decision(session, decision, snapshot)
     result["publications"].append({"issue": n, "action": action})
     Store.write_json(run_dir / "result.json", result)
-    current = assert_fresh(gh, store, root, snapshot, n)
+    current = assert_fresh(gh, store, root, snapshot, n, sources)
     if decision["disposition"] != "startable":
         return None
     # Display-only comments may have changed since the agent read them.
     inputs = execution_input(
         ParentSession(SnapshotGitHub(current), store, n, None),
-        context=execution_context(snapshot, n),
+        context=execution_context(snapshot, n, sources),
     )
-    if inputs != snapshot["execution_inputs"][str(n)]:
+    if inputs != inputs_for(snapshot, store, n, sources):
         raise ValueError("execution input differs from the agent's fixed input")
     basis = autonomous_basis(
         decision["requirements"],
@@ -227,7 +236,7 @@ def record_decision(
         [source_url(snapshot, s) for s in decision["sources"]],
         inputs,
     )
-    assert_fresh(gh, store, root, snapshot, n)
+    assert_fresh(gh, store, root, snapshot, n, sources)
     try:
         recorded = record_autonomous(
             session, {"basis": basis, "inputs": inputs, "ignored_comments": []}
@@ -235,9 +244,9 @@ def record_decision(
     except ValueError:
         # Parent also checks its issue during publication. Defer only if the
         # collected target actually changed; other errors still fail the run.
-        assert_fresh(gh, store, root, snapshot, n)
+        assert_fresh(gh, store, root, snapshot, n, sources)
         raise
-    assert_fresh(gh, store, root, snapshot, n)
+    assert_fresh(gh, store, root, snapshot, n, sources)
     return {
         "schema_version": 1,
         "repo": snapshot["repo"],
@@ -248,7 +257,7 @@ def record_decision(
         else "standalone",
         "priority": decision["priority"],
         "input_sha256": snapshot["input_sha256"],
-        "target_sha256": digest(material(snapshot, n)),
+        "target_sha256": digest(material(snapshot, n, sources)),
         "code_commit": snapshot["code"]["commit"],
         "requirements": decision["requirements"],
         "dependencies": decision["dependencies"],
