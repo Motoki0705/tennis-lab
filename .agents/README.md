@@ -28,6 +28,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [AGENTS.md](../AGENTS.md) | プロジェクト概要、全作業に効く開発ルール | 手順の詳細、観察、実験結果 |
 | `.agents/README.md`（このファイル） | AI運用の原則、置き場所の地図、GitHub運用、研究ループの概要 | 各自動運用の実装詳細 |
 | [.agents/skills/](skills/) | 繰り返し使う作業手順（`SKILL.md` + scripts） | 一度きりの経緯 |
+| [parent-board skill](skills/parent-board/SKILL.md) | 担当中の親同士の連絡、投稿する場面、受信時の判断と応答 | CLIの引数・状態・配送仕様（board README） |
 | [.agents/memory/](memory/SUMMARY.md) | まだ規則でも仕様でもない再利用できる観察。共有5層と、全体調査が必要時に読む独立した [ops-report専用領域](memory/ops-report/SUMMARY.md)（境界はmemory skill） | コードやREADMEで確認できる事実、作業の進捗 |
 | [.agents/ops/](#自動運用) | 自動運用（systemd --user timer、headless agent）と共通の決定的ツール | 対話作業の手順 |
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
@@ -56,7 +57,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・合意・子の進捗・明示レビュー要求を管理するCLI。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
-| [ops/board/](ops/board/README.md) | 親issueに結び付く英語の名前の割当・引退、SQLiteの保存基盤、親の名前と名簿を読むCLI |
+| [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
 | [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。

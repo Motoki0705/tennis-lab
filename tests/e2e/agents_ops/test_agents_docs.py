@@ -21,6 +21,7 @@ MEMORY_DIR = ROOT / ".agents/memory"
 MEMORY_SUMMARY = MEMORY_DIR / "SUMMARY.md"
 MEMORY_SKILL = ROOT / ".agents/skills/memory/SKILL.md"
 DSH_SKILL = ROOT / ".agents/skills/deepseek-harness/SKILL.md"
+BOARD_SKILL = ROOT / ".agents/skills/parent-board/SKILL.md"
 LAYERS = ("workflow", "decision", "environment", "gotcha", "review")
 DEDICATED = "ops-report"
 AREAS = (*LAYERS, DEDICATED)
@@ -32,8 +33,11 @@ DOCS = [
     AGENTS_README,
     MEMORY_SKILL,
     DSH_SKILL,
+    BOARD_SKILL,
     DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
+    ROOT / ".agents/ops/board/README.md",
+    ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
     MEMORY_SUMMARY,
     *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
@@ -186,6 +190,25 @@ def test_deepseek_harness_skill_is_discoverable_from_both_agents() -> None:
     assert (claude_skills / name / "SKILL.md").samefile(DSH_SKILL)
     agents_targets = {target for _, target, _ in _links(AGENTS_MD)}
     assert str(DSH_SKILL.relative_to(ROOT)) in agents_targets
+
+
+def test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow() -> (
+    None
+):
+    meta = _frontmatter(BOARD_SKILL)
+    assert meta["name"] == BOARD_SKILL.parent.name == "parent-board"
+    assert isinstance(meta["description"], str) and meta["description"].strip()
+    assert (ROOT / ".claude/skills/parent-board/SKILL.md").samefile(BOARD_SKILL)
+    assert str(BOARD_SKILL.relative_to(ROOT)) in {
+        target for _, target, _ in _links(AGENTS_MD)
+    }
+    assert "skills/parent-board/SKILL.md" in {
+        target for _, target, _ in _links(AGENTS_README)
+    }
+    parent_skill = ROOT / ".agents/skills/parent-session/SKILL.md"
+    assert "../parent-board/SKILL.md" in {
+        target for _, target, _ in _links(parent_skill)
+    }
 
 
 def test_memory_dir_holds_only_summary_layers_and_dedicated_area() -> None:

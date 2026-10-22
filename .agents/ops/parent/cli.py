@@ -221,28 +221,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
         integration_failed = False
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
-            # The parent mutation is already durable. Display I/O must never keep
-            # the shared registry lock, or obscure whether that mutation applied.
-            from herdr_labels.service import sync as sync_display
-
-            try:
-                display = sync_display(
-                    dict(os.environ),
-                    confirm_parent=command == "register"
-                    or (command == "handoff" and args.accept),
-                    clear=command == "release"
-                    or (command == "handoff" and not args.accept),
-                )
-            except (
-                ValueError,
-                OSError,
-                KeyError,
-                TypeError,
-                subprocess.SubprocessError,
-            ) as exc:
-                display = {"status": "error", "error": str(exc)}
-                integration_failed = True
-            result = {**result, "display_sync": display, "parent_action_applied": True}
+            # The mutation is durable and its registry lock is released. Allocate
+            # the name before projecting it; attempt both integrations on failure.
+            result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent
 
@@ -264,6 +245,26 @@ def main(argv: list[str] | None = None) -> int:
                 }
                 integration_failed = True
             result = {**result, "board_sync": name_sync}
+            from herdr_labels.service import sync as sync_display
+
+            try:
+                display = sync_display(
+                    dict(os.environ),
+                    confirm_parent=command == "register"
+                    or (command == "handoff" and args.accept),
+                    clear=command == "release"
+                    or (command == "handoff" and not args.accept),
+                )
+            except (
+                ValueError,
+                OSError,
+                KeyError,
+                TypeError,
+                subprocess.SubprocessError,
+            ) as exc:
+                display = {"status": "error", "error": str(exc)}
+                integration_failed = True
+            result = {**result, "display_sync": display}
             if name_sync.get("name") and (
                 command == "register" or (command == "handoff" and args.accept)
             ):

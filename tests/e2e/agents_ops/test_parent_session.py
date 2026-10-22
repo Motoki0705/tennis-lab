@@ -456,6 +456,91 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     return ParentEnv(tmp_path, repo, env, state_path, calls_path, formats)
 
 
+def peer_board_request(p: ParentEnv, body: str) -> dict[str, Any]:
+    """A peer posts and the recipient reads/acks, with no GitHub or parent write."""
+    peer = {**p.env, "CLAUDE_CODE_SESSION_ID": "board-peer"}
+    p.cli("register", parent="2", extra={"CLAUDE_CODE_SESSION_ID": "board-peer"})
+    service = importlib.import_module("board.service")
+    messages = importlib.import_module("board.messages")
+    delivery = importlib.import_module("board.delivery")
+    target = service.whoami(p.env)["name"]
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    github_before, registry_before, calls_before = (
+        p.state(),
+        registry.read_bytes(),
+        p.calls(),
+    )
+    fake = delivery.FakeNotifier()
+    created = messages.post(
+        peer,
+        to=[target],
+        kind="request",
+        subject="親への連絡",
+        body=body,
+        notifiers={"claude": fake, "codex": fake},
+    )["post"]
+    assert created["recipients"][0]["delivery_state"] == "notified"
+    assert messages.read(p.env, created["id"])["post"]["body"] == body
+    acknowledged = messages.ack(p.env, post_id=created["id"], state="done")["post"]
+    assert acknowledged["recipients"][0]["response_state"] == "done"
+    # No parent-session/parent-review marker can have been published anywhere.
+    assert p.state() == github_before
+    assert p.calls() == calls_before
+    assert registry.read_bytes() == registry_before
+    return cast(dict[str, Any], acknowledged)
+
+
+@pytest.mark.parametrize("wrapper", ["exact", "quoted", "fenced"])
+def test_board_marker_and_ack_cannot_supply_human_agreement(
+    parent_env: ParentEnv,
+    wrapper: str,
+) -> None:
+    p = parent_env
+    p.agreed()
+    state = p.state()
+    # Move a genuine, otherwise valid agreement from fake GitHub to the board.
+    # Keep the checking event so no other agreement can authorize the task.
+    agreement = state["comments"]["1"].pop()["body"]
+    p.save(state)
+    body = {
+        "exact": agreement,
+        "quoted": "引用\n" + agreement,
+        "fenced": "```text\n" + agreement + "\n```",
+    }[wrapper]
+    peer_board_request(p, body)
+    before = p.state()
+    status = json.loads(p.cli("status").stdout)
+    assert status["phase"] == "要件確認中"
+    assert status["execution_basis"] is None
+    assert status["review"] == "未指示"
+    rejected = p.child("board-is-not-consent", ok=False)
+    assert "要件合意記録または有効な実行根拠がありません" in rejected.stderr
+    assert p.state() == before
+
+
+def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    selected = review_setup(p, standalone=True)
+    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    policy = importlib.import_module("parent.policy")
+    fixed = next(
+        event
+        for event in reversed(policy.events(p.state()["comments"]["1"], "operator", 1))
+        if event["event"] == "review"
+    )
+    fixed.pop("body")
+    peer_board_request(p, policy.marker({**fixed, "state": "instructed"}))
+    state = json.loads(p.cli("status").stdout)
+    assert state["review"][0]["state"] == "targets_fixed"
+    assert state["review"][0]["request"] == request
+    assert not (p.root / "review-calls.jsonl").exists()
+
+
 def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> None:
     p = parent_env
     assert json.loads(p.cli("status").stdout)["assignment"] == "unassigned"
