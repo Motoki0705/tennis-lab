@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 import cv2
 import numpy as np
@@ -22,6 +23,13 @@ PROSAC_OPTIONS: dict[str, int | float | bool] = {
 }
 
 
+class ProsacOrientation(StrEnum):
+    """Source frame selected by PROSAC before the original-template refit."""
+
+    IDENTITY = "identity"
+    X_REFLECTED = "x_reflected"
+
+
 @dataclass(frozen=True)
 class ConfidenceHomographyResult:
     """Masks/indices always refer to the original semantic KP order.
@@ -29,6 +37,9 @@ class ConfidenceHomographyResult:
     Scores guide sampling, not least-squares weights or calibrated probabilities.
     ``fit_inliers`` records the points used for the final fit; ``inliers`` is
     recomputed against that final matrix. Failure never returns a substitute H.
+    ``prosac_orientation`` names the winning source frame on success and is
+    ``None`` on every failure, including failures after candidate selection.
+    The final matrix always maps the original template to image pixels.
     """
 
     matrix: NDArray[np.float64] | None
@@ -38,6 +49,7 @@ class ConfidenceHomographyResult:
     inliers: NDArray[np.bool_]
     residuals_px: NDArray[np.float64]
     status: str
+    prosac_orientation: ProsacOrientation | None
 
 
 def estimate_confidence_homography(
@@ -54,6 +66,9 @@ def estimate_confidence_homography(
     Stable descending score order breaks ties by input index. USAC rejects
     degenerate samples and expands the ranked sampling pool. MSAC evaluates
     geometric consensus, followed by least-squares/LM on its inliers only.
+    USAC's oriented-sample check excludes reflections, so both source frames
+    (original and x-reflected) are scored in image pixels before the same refit.
+    All returned coordinates/masks retain the caller's template/semantic order.
     The seed, iteration budget and single-thread setting are fixed for repeatable
     inference. Threshold units are original image pixels (caller-owned scale).
     """
@@ -86,6 +101,7 @@ def estimate_confidence_homography(
             np.zeros(len(src), dtype=bool),
             np.full(len(src), np.nan),
             reason,
+            None,
         )
 
     if len(order) < 4:
@@ -97,9 +113,34 @@ def estimate_confidence_homography(
     for name, value in PROSAC_OPTIONS.items():
         setattr(params, name, value)
     params.threshold = float(reprojection_threshold_px)
-    # Final least-squares/LM is explicit below; do not polish twice.
-    initial, mask = cv2.findHomography(src[order], dst[order], params)
-    if initial is None or mask is None:
+    # Score both source handednesses explicitly with the same PROSAC settings.
+    # With F = diag(-1, 1, 1), H_reflected @ F maps the original template to
+    # the same image points: projection and pixel thresholds are unchanged.
+    # Compare truncated squared pixel reprojection costs; ties keep the
+    # original source frame. Final least-squares/LM remains in caller units.
+    mask = None
+    best_cost = np.inf
+    selected_orientation: ProsacOrientation | None = None
+    for orientation, x_sign in (
+        (ProsacOrientation.IDENTITY, 1.0),
+        (ProsacOrientation.X_REFLECTED, -1.0),
+    ):
+        frame = np.diag([x_sign, 1.0, 1.0])
+        initial, candidate_mask = cv2.findHomography(
+            src[order] * [x_sign, 1.0], dst[order], params
+        )
+        if initial is None or candidate_mask is None:
+            continue
+        matrix = np.asarray(initial, dtype=np.float64) @ frame
+        homogeneous = np.c_[src[order], np.ones(len(order))] @ matrix.T
+        with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+            projected = homogeneous[:, :2] / homogeneous[:, 2, None]
+            squared_error = np.sum((projected - dst[order]) ** 2, axis=1)
+        squared_error[~np.isfinite(squared_error)] = np.inf
+        cost = float(np.minimum(squared_error, reprojection_threshold_px**2).sum())
+        if cost < best_cost:
+            best_cost, mask, selected_orientation = cost, candidate_mask, orientation
+    if mask is None:
         return failure("prosac_failed")
     fit_mask[order] = np.asarray(mask).reshape(-1).astype(bool)
     if fit_mask.sum() < 4 or not _has_support(src[fit_mask], dst[fit_mask]):
@@ -125,7 +166,14 @@ def estimate_confidence_homography(
     if inliers.sum() < 4 or not _has_support(src[inliers], dst[inliers]):
         return failure("insufficient_final_consensus")
     return ConfidenceHomographyResult(
-        matrix, projected, order, fit_mask, inliers, residuals, "ok"
+        matrix,
+        projected,
+        order,
+        fit_mask,
+        inliers,
+        residuals,
+        "ok",
+        selected_orientation,
     )
 
 

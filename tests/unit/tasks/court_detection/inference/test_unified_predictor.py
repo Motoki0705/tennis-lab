@@ -20,6 +20,7 @@ from src.tasks.court_detection.data.contracts import (
 )
 from src.tasks.court_detection.geometry.confidence_homography import (
     ConfidenceHomographyResult,
+    ProsacOrientation,
 )
 from src.tasks.court_detection.geometry.hybrid_homography import (
     DEFAULT_HYBRID_CONFIG,
@@ -84,7 +85,14 @@ def geometry_prediction(*, status: str = "ok") -> CourtPrediction:
     selected: np.ndarray = np.zeros(14, dtype=bool)
     selected[[3, 4, 8, 9]] = True
     baseline = ConfidenceHomographyResult(
-        np.eye(3), points, np.arange(14), selected, selected, np.zeros(14), "ok"
+        np.eye(3),
+        points,
+        np.arange(14),
+        selected,
+        selected,
+        np.zeros(14),
+        "ok",
+        ProsacOrientation.IDENTITY,
     )
     geometry = HybridHomographyResult(
         np.eye(3) if status == "ok" else None,
@@ -274,3 +282,32 @@ def test_failed_geometry_is_zero_masked_and_json_safe_without_fallback() -> None
     json.dumps(diagnostic, allow_nan=False)
     with pytest.raises(ValueError, match="requires explicit"):
         replace(prediction, homography=None).downstream_keypoints()
+
+
+@pytest.mark.parametrize("hybrid_status", ["ok", "insufficient_line_support"])
+@pytest.mark.parametrize("orientation", [*ProsacOrientation, None])
+def test_geometry_diagnostics_records_the_kp_only_orientation_independently(
+    hybrid_status: str,
+    orientation: ProsacOrientation | None,
+) -> None:
+    prediction = geometry_prediction(status=hybrid_status)
+    assert prediction.homography is not None
+    baseline = replace(
+        prediction.homography.kp_only,
+        status="ok" if orientation is not None else "prosac_failed",
+        prosac_orientation=orientation,
+    )
+    prediction = replace(
+        prediction, homography=replace(prediction.homography, kp_only=baseline)
+    )
+    diagnostic = json.loads(
+        json.dumps(prediction.geometry_diagnostics(), allow_nan=False)
+    )
+    assert diagnostic["status"] == hybrid_status
+    assert diagnostic["kp_only_status"] == baseline.status
+    assert diagnostic["kp_only_prosac_orientation"] == (
+        None if orientation is None else orientation.value
+    )
+    assert replace(prediction, homography=None).geometry_diagnostics() == {
+        "status": "not_requested"
+    }

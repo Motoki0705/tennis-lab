@@ -49,6 +49,7 @@ def test_crop_geometry_maps_to_full_image_without_relabeling_rasters() -> None:
     np.testing.assert_allclose(diagnostic["raw_keypoints_px"], np.tile([11, 10], (14, 1)))
     assert diagnostic["postprocess_image_size_hw"] == [8, 12]
     assert diagnostic["original_size_hw"] == [20, 30]
+    assert diagnostic["kp_only_prosac_orientation"] == "identity"
 
 
 def test_failed_crop_has_zero_placeholders_without_offset_or_fallback() -> None:

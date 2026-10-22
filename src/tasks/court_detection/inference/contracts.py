@@ -64,8 +64,13 @@ class CourtPrediction:
             return {"status": "not_requested"}
         raw = self.raw_heads["kp"]
         assert isinstance(raw, CourtKeypointPrediction)
+        prosac_orientation = result.kp_only.prosac_orientation
         return {
             "status": result.status,
+            "kp_only_status": result.kp_only.status,
+            "kp_only_prosac_orientation": None
+            if prosac_orientation is None
+            else prosac_orientation.value,
             "keypoint_schema": self.keypoint_schema,
             "homography_frame": "checkpoint_KP14_template_metres",
             "homography_court_metres_to_image_pixels": None
