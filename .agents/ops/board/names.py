@@ -70,7 +70,7 @@ class Assignment:
     name: str
     repo: str
     parent: int
-    identifier: str
+    identifier: str | None
     assigned_at: str
     retired_at: str | None
 
@@ -111,7 +111,7 @@ def ensure_name(
     connection: sqlite3.Connection,
     repo: str,
     parent: int,
-    identifier: str,
+    identifier: str | None,
     *,
     now: datetime,
     catalog: Sequence[str] | None = None,

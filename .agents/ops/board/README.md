@@ -13,15 +13,25 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board agents
 ```
 
 `whoami`は実行中の担当親自身だけが使い、`name`・`repo`・`parent`を返す。
-`agents`は担当のない環境からも読める。`agents`配列の各行は、名前・repo・親番号・識別名
+`agents`は担当のない環境からも読める。`agents`配列の各行は、名前・名前の割当状態
+（`name_status`）・repo・親番号・識別名
 （`identifier`）・`engine`・`state`・`unread_count`・最終投稿時刻（`last_activity`）。
 schema v1には投稿がないので、未読数は0、最終投稿時刻はnull。
 JSONはstdout、エラーはstderr。成功0、設定・取得・整合の失敗2。
 入力値や例外の生データ、セッションID・pane ID・端末ID・絶対パスは出力しない。
 
 名簿はregistryの`active`だけを表示し、未登録の会話・子・subagentをHerdr一覧から追加しない。
-識別名は担当同期時にissueタイトルから取得し、名前表へ保存する。変更後はparentの同期で更新する。
-名前のないactive担当はエラーにし、その担当親自身による`parent register`の再実行を求める。
+親子ラベル（`issue:parent` / `issue:child`）があるissueの識別名は、担当同期時に
+issueタイトルの親子書式を検査して取得し、名前表へ保存する。自身の識別名の欠落や書式不正はエラー。
+親子ラベルのない単独issueにも名前を割り当て、識別名は`NULL`で保存し、出力では`"identifier": null`とする。
+単独issueの題名が親子書式に似ていても識別名に転用せず、要約などの代替文字列でも埋めない。
+識別名の変更や単独issueからの移行後はparentの同期で更新する。
+
+名前のあるactive担当は`"name_status": "assigned"`、名前がまだない担当は
+`"name": null`・`"name_status": "unassigned"`・`"identifier": null`として名簿に表示する。
+DBが未作成でも未割当行を表示し、未割当行の未読数は0、最終投稿時刻はnull。
+既存の親は、次の`register` / `reconcile` / `sync`などの担当操作で名前が付く。
+`whoami`は自分に有効な名前がなければエラーにし、担当親自身による`parent register`の再実行を求める。
 名簿と自己名の取得はregistryも名前表も書き換えない。
 
 ## 識別と稼働状態
@@ -50,6 +60,8 @@ ASCII英字・先頭大文字・大文字小文字を無視した一意性・予
 
 parentの`register` / `reconcile` / `sync` / `handoff` / `release`が成功した後、
 registryのロックを離し、Herdrの`display_sync`と同じ位置で名前を同期する。
+GitHubのタイトル・ラベル取得はDBの書き込みトランザクションを始める前に行う。
+トランザクション内でregistryの担当・状態・世代を再確認し、取得中に変わっていれば書き込まず拒否する。
 `board_sync`に結果と名前が入り、`parent_action_applied: true`は担当操作が適用済みであることを示す。
 名前処理だけが失敗した場合も担当操作は保持し、`board_sync.status: error`とエラーを返して終了値1。
 Herdr表示の失敗時にも名前同期を試みる。修復後は同じ担当親が同じ操作を再実行する。
@@ -72,7 +84,8 @@ SQLite WALと`BEGIN IMMEDIATE`で、名前の選択・再利用判定・更新�
 
 schema versionはSQLiteの`PRAGMA user_version`。現在は1。
 `name_assignments`は、安定した`id`、`name`、`repo`、`parent`、`identifier`、
-UTCの`assigned_at`と`retired_at`を持つ。生のsession・pane・socket・作業パスを保存しない。
+UTCの`assigned_at`と`retired_at`を持つ。`identifier`は単独issueのためにNULLを許容する。
+生のsession・pane・socket・作業パスを保存しない。
 有効な名前と有効な親はそれぞれunique indexで保護する。再利用前の行を削除・上書きしない。
 
 投稿・状態を追加する#1395は、[storage.py](storage.py)の`MIGRATIONS`末尾へ

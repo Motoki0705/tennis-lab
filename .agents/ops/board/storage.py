@@ -19,7 +19,7 @@ def _names_schema(connection: sqlite3.Connection) -> None:
             name TEXT NOT NULL COLLATE NOCASE,
             repo TEXT NOT NULL,
             parent INTEGER NOT NULL CHECK (parent > 0),
-            identifier TEXT NOT NULL,
+            identifier TEXT,
             assigned_at TEXT NOT NULL,
             retired_at TEXT,
             CHECK (retired_at IS NULL OR retired_at >= assigned_at)

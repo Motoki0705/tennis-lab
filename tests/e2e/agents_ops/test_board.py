@@ -383,6 +383,134 @@ def test_parent_lifecycle_names_and_board_failure_recovery(
         assert board.names.for_parent(connection, "o/r", 2).name != first["name"]
 
 
+@pytest.mark.parametrize("title", ["人間が作成した単独タスク", "[Bug] 単独タスク"])
+def test_standalone_parent_has_a_name_and_null_identifier(
+    board: SimpleNamespace, parent_env: ParentEnv, title: str
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["issues"]["1"].update(
+        title=title, labels=[{"name": "bug"}], body="単独タスクを実装する。"
+    )
+    p.save(state)
+    first = json.loads(p.cli("register").stdout)["board_sync"]
+    assert first["status"] == "assigned"
+    store = board.storage.Store(board.storage.directory(p.env))
+    with store.read() as connection:
+        assignment = board.names.for_parent(connection, "o/r", 1)
+        assert assignment.identifier is None
+        assert assignment.public()["identifier"] is None
+        assert board.names.resolve_name(connection, first["name"]) == assignment
+    roster = run_board(p.env, "agents")
+    assert roster.returncode == 0
+    entry = json.loads(roster.stdout)["agents"][0]
+    assert entry["identifier"] is None
+    assert entry["name"] == first["name"]
+    assert entry["name_status"] == "assigned"
+    identity = run_board(p.env, "whoami")
+    assert identity.returncode == 0
+    assert json.loads(identity.stdout)["name"] == first["name"]
+    # Promotion to a parent and back keeps the assignment, updating only metadata.
+    for role_labels, title, identifier in (
+        ([{"name": "issue:parent"}], "[開発] 親に移行", "開発"),
+        ([{"name": "bug"}], "単独タスクに戻す", None),
+    ):
+        state = p.state()
+        state["issues"]["1"].update(title=title, labels=role_labels)
+        p.save(state)
+        assert (
+            json.loads(p.cli("register").stdout)["board_sync"]["status"] == "retained"
+        )
+        with store.read() as connection:
+            updated = board.names.for_parent(connection, "o/r", 1)
+            assert updated.id == assignment.id
+            assert updated.identifier == identifier
+    private_output_absent(roster.stdout + identity.stdout, p.env)
+
+
+@pytest.mark.parametrize(
+    "title", ["識別名のない親", "[閉じていない親", "[開発 #2] 自身の識別名がない親"]
+)
+def test_malformed_parent_title_is_not_treated_as_standalone(
+    board: SimpleNamespace, parent_env: ParentEnv, title: str
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["issues"]["1"]["title"] = title
+    p.save(state)
+    result = p.cli("register", ok=None)
+    assert result.returncode == 1
+    data = json.loads(result.stdout)
+    assert data["parent_action_applied"] is True
+    assert data["board_sync"]["status"] == "error"
+    store = board.storage.Store(board.storage.directory(p.env))
+    if store.path.exists():
+        with store.read() as connection:
+            assert board.names.for_parent(connection, "o/r", 1) is None
+    assert run_board(p.env, "whoami").returncode == 2
+    private_output_absent(result.stdout + result.stderr, p.env)
+
+
+def test_sync_fetches_issue_without_holding_board_write_lock(
+    board: SimpleNamespace, parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    first = json.loads(p.cli("register").stdout)["board_sync"]
+    store = board.storage.Store(board.storage.directory(p.env))
+
+    def fetch(_github: object, number: int) -> dict[str, object]:
+        assert number == 1
+        # Another writer must be able to acquire the lock during GitHub I/O.
+        with sqlite3.connect(store.path, timeout=0) as writer:
+            writer.execute("BEGIN IMMEDIATE")
+        return {"title": "[同期後] 親", "labels": [{"name": "issue:parent"}]}
+
+    monkeypatch.setattr(board.service.GitHub, "issue", fetch)
+    result = board.service.sync_parent(p.env, "o/r", 1)
+    assert result["status"] == "retained"
+    assert result["name"] == first["name"]
+    with store.read() as connection:
+        assert board.names.for_parent(connection, "o/r", 1).identifier == "同期後"
+
+
+@pytest.mark.parametrize("change", ["session", "status", "generation", "removed"])
+def test_sync_rejects_assignment_changes_during_github_fetch(
+    board: SimpleNamespace,
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    p = parent_env
+    p.cli("register")
+    store = board.storage.Store(board.storage.directory(p.env))
+    with store.read() as connection:
+        original = board.names.for_parent(connection, "o/r", 1)
+    registry_path = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+
+    def fetch(_github: object, number: int) -> dict[str, object]:
+        assert number == 1
+        state = json.loads(registry_path.read_text())
+        if change == "removed":
+            del state["parents"]["o/r#1"]
+        else:
+            state["parents"]["o/r#1"][change] = {
+                "session": "claude:private-replacement-owner",
+                "status": "ended",
+                "generation": 2,
+            }[change]
+        registry_path.write_text(json.dumps(state))
+        return {"title": "[同期後] 親", "labels": [{"name": "issue:parent"}]}
+
+    monkeypatch.setattr(board.service.GitHub, "issue", fetch)
+    with pytest.raises(board.errors.BoardError, match="assignment changed"):
+        board.service.sync_parent(p.env, "o/r", 1)
+    with store.read() as connection:
+        assert board.names.for_parent(connection, "o/r", 1) == original
+
+
 def test_name_failure_does_not_undo_parent_or_skip_display(
     parent_env: ParentEnv, board: SimpleNamespace
 ) -> None:
@@ -519,6 +647,64 @@ def test_roster_joins_only_active_parents_and_never_mutates_registry(
     private_output_absent(result.stdout + result.stderr, labels.env)
     assert "term-a" not in result.stdout and "term-b" not in result.stdout
     assert all("report-metadata" not in call for call in labels.read()["calls"])
+
+
+@pytest.mark.parametrize("database", ["missing", "empty", "mixed", "retired"])
+def test_roster_includes_unassigned_active_parents(
+    board: SimpleNamespace, labels: Labels, database: str
+) -> None:
+    labels.set_registry(
+        {
+            "o/r#42": labels.owner(),
+            "o/r#43": labels.owner(identity="codex:private-second-owner"),
+        }
+    )
+    store = board.storage.Store(board.storage.directory(labels.env))
+    if database != "missing":
+        with store.transaction() as connection:
+            if database in {"mixed", "retired"}:
+                board.names.ensure_name(connection, "o/r", 42, "開発42", now=NOW)
+            if database == "retired":
+                board.names.ensure_name(connection, "o/r", 43, "開発43", now=NOW)
+                board.names.retire_name(connection, "o/r", 43, now=NOW)
+    before = labels.registry.read_bytes()
+    result = run_board(labels.env, "agents")
+    assert result.returncode == 0
+    entries = json.loads(result.stdout)["agents"]
+    assert [row["parent"] for row in entries] == [42, 43]
+    if database in {"mixed", "retired"}:
+        assert entries[0]["name"] == board.names.load_names()[0]
+        assert entries[0]["name_status"] == "assigned"
+        assert entries[0]["identifier"] == "開発42"
+        entries = entries[1:]
+    for entry in entries:
+        assert entry["name"] is None
+        assert entry["name_status"] == "unassigned"
+        assert entry["identifier"] is None
+        assert entry["unread_count"] == 0
+        assert entry["last_activity"] is None
+    response = run_board(
+        {
+            **labels.env,
+            "CLAUDE_CODE_SESSION_ID": "",
+            "CODEX_SESSION_ID": "private-second-owner",
+            "CODEX_THREAD_ID": "private-second-owner",
+        },
+        "whoami",
+    )
+    assert response.returncode == 2
+    assert response.stdout == ""
+    assert labels.registry.read_bytes() == before
+    assert store.path.exists() == (database != "missing")
+    if database != "missing":
+        with store.read() as connection:
+            assignment = board.names.for_parent(connection, "o/r", 43)
+            if database == "retired":
+                assert assignment.retired_at is not None
+            else:
+                assert assignment is None
+    private_output_absent(result.stdout + result.stderr + response.stderr, labels.env)
+    assert "private-second-owner" not in result.stdout + response.stderr
 
 
 @pytest.mark.parametrize("status", ["idle", "working", "blocked", "done"])

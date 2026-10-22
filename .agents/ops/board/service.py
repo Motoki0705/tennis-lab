@@ -8,6 +8,7 @@ import sqlite3
 import subprocess
 import unicodedata
 from collections.abc import Mapping
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,7 @@ from typing import Any
 from herdr_labels.client import Herdr
 from herdr_labels.coordination import owner_token, read_record, state_root
 from herdr_labels.service import registry
-from issues import parse_title
+from issues import CHILD_LABEL, PARENT_LABEL, parse_title
 from lib.identity import session_identity
 from parent.github import GitHub
 
@@ -65,22 +66,41 @@ def sync_parent(
 ) -> dict[str, Any]:
     """Run after a successful parent action and after releasing its registry lock.
 
-    Re-read the current assignment inside the board transaction: delayed register
-    callbacks must not resurrect names after a later release/ended callback.
+    Fetch GitHub metadata before taking the board write lock, then recheck the
+    owner, status and generation so a delayed callback cannot update a new owner
+    or resurrect a name after release/ended.
     """
     identity = session_identity(env)
+    key = f"{repo.casefold()}#{parent}"
+    parents = registry(env)
+    expected = parents.get(key)
+    if expected is None or expected["session"] != identity:
+        raise BoardError("parent assignment changed before board synchronization")
+    identifier = None
+    if expected["status"] == "active":
+        issue = GitHub(repo).issue(parent)
+        labels = {label["name"] for label in issue["labels"]}
+        if labels & {PARENT_LABEL, CHILD_LABEL}:
+            identifier = _identifier(
+                parse_title(issue["title"]).identifier or "", parents, env
+            )
+        # Standalone issues have no own identifier, even if their arbitrary
+        # title happens to look like the parent/child naming convention.
     store = Store(directory(env))
     with store.transaction() as connection:
         parents = registry(env)
-        row = parents.get(f"{repo.casefold()}#{parent}")
-        if row is None or row["session"] != identity:
+        row = parents.get(key)
+        if row is None or any(
+            row[field] != expected[field]
+            for field in ("session", "status", "generation")
+        ):
             raise BoardError("parent assignment changed before board synchronization")
         clock = now if now is not None else datetime.now(UTC)
         previous = for_parent(connection, repo, parent)
         assignment: Assignment | None
         if row["status"] == "active":
-            title = GitHub(repo).issue(parent)["title"]
-            identifier = _identifier(parse_title(title).identifier or "", parents, env)
+            if identifier is not None:
+                _identifier(identifier, parents, env)
             assignment = ensure_name(connection, repo, parent, identifier, now=clock)
             status = (
                 "retained" if previous and previous.id == assignment.id else "assigned"
@@ -244,27 +264,44 @@ def agents(env: Mapping[str, str]) -> dict[str, list[dict[str, Any]]]:
     states = _runtime_states(env, [row["session"] for _, row in active])
     entries = []
     store = Store(directory(env))
-    if active or store.path.exists():
-        with store.read() as connection:
-            for key, row in sorted(active):
-                repo, parent = _reference(key)
-                engine, separator, session = row["session"].partition(":")
-                if engine not in {"claude", "codex"} or not separator or not session:
-                    raise BoardError("invalid parent engine identity")
-                assignment = _assigned(connection, repo, parent)
-                state = activity.summary(connection, assignment.id)
-                entries.append(
-                    {
-                        "name": assignment.name,
-                        "repo": repo,
-                        "parent": parent,
-                        "identifier": _identifier(assignment.identifier, parents, env),
-                        "engine": engine,
-                        "state": states[row["session"]],
-                        "unread_count": state.unread_count,
-                        "last_activity": state.last_post_at,
-                    }
-                )
+    snapshot = (
+        store.read()
+        if store.path.exists() or store.path.is_symlink()
+        else nullcontext(None)
+    )
+    with snapshot as connection:
+        for key, row in sorted(active):
+            repo, parent = _reference(key)
+            engine, separator, session = row["session"].partition(":")
+            if engine not in {"claude", "codex"} or not separator or not session:
+                raise BoardError("invalid parent engine identity")
+            assignment = (
+                for_parent(connection, repo, parent) if connection is not None else None
+            )
+            if assignment is not None and assignment.retired_at is not None:
+                assignment = None
+            if assignment is not None:
+                canonical_name(assignment.name)
+            state = (
+                activity.summary(connection, assignment.id)
+                if connection is not None and assignment is not None
+                else activity.Activity()
+            )
+            entries.append(
+                {
+                    "name": assignment.name if assignment else None,
+                    "name_status": "assigned" if assignment else "unassigned",
+                    "repo": repo,
+                    "parent": parent,
+                    "identifier": _identifier(assignment.identifier, parents, env)
+                    if assignment and assignment.identifier is not None
+                    else None,
+                    "engine": engine,
+                    "state": states[row["session"]],
+                    "unread_count": state.unread_count,
+                    "last_activity": state.last_post_at,
+                }
+            )
     if registry(env) != parents:
         raise BoardError("parent registry changed during roster lookup; retry")
     result = {"agents": entries}
