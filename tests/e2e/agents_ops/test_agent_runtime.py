@@ -113,16 +113,33 @@ class Harness:
         return (self.root / "args.txt").read_text().splitlines()
 
     def query(
-        self, action: str, name: str = "initial"
+        self, action: str, name: str = "initial", *, extra: tuple[str, ...] = ()
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            ["bash", str(RUNNER), action, "--run-dir", str(self.root / name)],
+            ["bash", str(RUNNER), action, "--run-dir", str(self.root / name), *extra],
             env=self.env,
             text=True,
             capture_output=True,
             check=False,
             timeout=15,
         )
+
+    def cleanup_confirmation(self, name: str = "initial") -> Path:
+        result = self.result(name)
+        path = self.root / f"{name}-cleanup.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "run_id": result["run_id"],
+                    "runner": result["runner"],
+                    "process": result["process"],
+                    "cleanup_complete": True,
+                    "evidence": "test supervisor verified its entire process scope is empty",
+                }
+            )
+        )
+        return path
 
 
 @pytest.fixture
@@ -424,8 +441,8 @@ def test_timeout_reaps_uncooperative_descendants(h: Harness, scenario: str) -> N
     assert not process_alive(int((h.root / "child.pid").read_text()))
 
 
-@pytest.mark.parametrize("operation", ["stop", "signal", "lost_runner"])
-def test_stop_signal_and_lost_runner_recovery(h: Harness, operation: str) -> None:
+@pytest.mark.parametrize("operation", ["stop", "signal"])
+def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
     proc = subprocess.Popen(
         h.cmd(extra=("--timeout", "15")),
         env={**h.env, "FAKE_SCENARIO": "hang"},
@@ -441,9 +458,6 @@ def test_stop_signal_and_lost_runner_recovery(h: Harness, operation: str) -> Non
         if operation == "signal":
             proc.send_signal(signal.SIGINT)
         else:
-            if operation == "lost_runner":
-                proc.kill()
-                proc.wait(timeout=5)
             stopped = h.query("stop")
             assert stopped.returncode == 0, stopped.stderr
         proc.communicate(timeout=10)
@@ -461,6 +475,382 @@ def test_stop_signal_and_lost_runner_recovery(h: Harness, operation: str) -> Non
         if proc.poll() is None:
             proc.terminate()
             proc.communicate(timeout=10)
+
+
+@pytest.mark.parametrize("scenario", ["hang", "detached"])
+def test_lost_runner_requires_supervisor_cleanup_confirmation(
+    h: Harness, scenario: str
+) -> None:
+    proc = subprocess.Popen(
+        h.cmd(extra=("--timeout", "15")),
+        env={**h.env, "FAKE_SCENARIO": scenario},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    child = None
+    try:
+        child = wait_child(h)
+        proc.kill()
+        proc.communicate(timeout=5)
+        stopped = h.query("stop")
+        assert stopped.returncode == 0, stopped.stderr
+        result = h.result()
+        assert result["result"] == "failed" and result["task_success"] is None
+        assert result["turn_end_reason"] == "cleanup_failed"
+        assert result["cleanup_complete"] is False
+        assert not json.loads(stopped.stdout)["agent_group_alive"]
+        assert process_alive(child) == (scenario == "detached")
+        (h.root / "args.txt").unlink()
+        refused = h.run(
+            "refused",
+            action="resume",
+            extra=("--resume-from", str(h.root / "initial")),
+        )
+        assert refused.returncode == 2 and "cleanup is unconfirmed" in refused.stderr
+        assert not (h.root / "args.txt").exists()
+        assert not (h.root / "refused").exists()
+        if process_alive(child):
+            os.kill(child, signal.SIGKILL)
+            deadline = time.monotonic() + 5
+            while process_alive(child) and time.monotonic() < deadline:
+                time.sleep(0.05)
+        assert not process_alive(child)
+        # Even disappearance of the known child/group is not a supervisor receipt.
+        assert h.query("stop").returncode == 0
+        assert h.result()["cleanup_complete"] is False
+        confirmation = h.cleanup_confirmation()
+        confirmed = h.query("stop", extra=("--cleanup-confirmation", str(confirmation)))
+        assert confirmed.returncode == 0, confirmed.stderr
+        assert h.result()["cleanup_complete"] is True
+        assert h.result()["turn_end_reason"] == "stopped"
+        resumed = h.run(
+            "continued",
+            action="resume",
+            extra=("--resume-from", str(h.root / "initial")),
+        )
+        assert resumed.returncode == 0, resumed.stderr
+        assert (
+            h.result("continued")["runtime"]["session_id"]
+            == result["runtime"]["session_id"]
+        )
+    finally:
+        if proc.poll() is None:
+            proc.terminate()
+            proc.communicate(timeout=10)
+        if child is not None and process_alive(child):
+            os.kill(child, signal.SIGKILL)
+
+
+@pytest.mark.parametrize("agent", ["codex", "claude"])
+def test_lost_runner_recovers_a_resumed_turn_before_same_session_resume(
+    h: Harness, agent: str
+) -> None:
+    assert h.run(agent=agent).returncode == 0
+    initial = h.result()
+    proc = subprocess.Popen(
+        h.cmd(
+            "interrupted",
+            agent=agent,
+            action="resume",
+            prompt="interrupted continuation\n",
+            extra=("--resume-from", str(h.root / "initial"), "--timeout", "15"),
+        ),
+        env={**h.env, "FAKE_SCENARIO": "hang"},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        child = wait_child(h)
+        proc.kill()
+        proc.communicate(timeout=5)
+        assert h.query("stop", "interrupted").returncode == 0
+        assert not process_alive(child)
+        interrupted = h.result("interrupted")
+        if agent == "codex":
+            state = json.loads((h.root / "initial/session.json").read_text())
+            assert interrupted["runtime"]["turn_id"] is not None
+            assert state["last_turn_id"] == interrupted["runtime"]["turn_id"]
+            assert state["last_turn_id"] != initial["runtime"]["turn_id"]
+        confirmation = h.cleanup_confirmation("interrupted")
+        stopped = h.query(
+            "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+        )
+        assert stopped.returncode == 0, stopped.stderr
+        interrupted = h.result("interrupted")
+        assert (
+            interrupted["result"] == "failed"
+            and interrupted["turn_end_reason"] == "stopped"
+        )
+        assert interrupted["runtime"]["session_id"] == initial["runtime"]["session_id"]
+        resumed = h.run(
+            "recovered",
+            agent=agent,
+            action="resume",
+            prompt="recover the interrupted work\n",
+            extra=("--resume-from", str(h.root / "interrupted")),
+        )
+        assert resumed.returncode == 0, resumed.stderr
+        recovered = h.result("recovered")
+        assert recovered["runtime"]["session_id"] == initial["runtime"]["session_id"]
+        assert initial["runtime"]["session_id"] in h.args()
+        assert recovered["contract"] == initial["contract"]
+        assert h.result() == initial
+    finally:
+        if proc.poll() is None:
+            proc.terminate()
+            proc.communicate(timeout=10)
+
+
+@pytest.fixture
+def lost_turn(h: Harness) -> dict[str, Any]:
+    """Crash after the CLI exits, before the runner saves its terminal records."""
+    assert h.run().returncode == 0
+    initial = h.result()
+    continued = h.run(
+        "interrupted",
+        action="resume",
+        prompt="interrupted continuation\n",
+        extra=("--resume-from", str(h.root / "initial")),
+    )
+    assert continued.returncode == 0, continued.stderr
+    result = h.result("interrupted")
+    result.update(
+        result="running",
+        turn_end_reason=None,
+        exit_code=None,
+        cleanup_complete=False,
+        runner={"pid": 2147483647, "boot_id": "test-boot", "start_ticks": "0"},
+    )
+    result["runtime"]["turn_id"] = None
+    (h.root / "interrupted/result.json").write_text(json.dumps(result))
+    path = h.root / "initial/session.json"
+    state: dict[str, Any] = json.loads(path.read_text())
+    state["last_turn_id"] = initial["runtime"]["turn_id"]
+    path.write_text(json.dumps(state))
+    return state
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "run_id",
+        "runner",
+        "process",
+        "cleanup_complete",
+        "evidence",
+        "version",
+        "duplicate",
+    ],
+)
+def test_supervisor_confirmation_must_match_the_lost_run(
+    h: Harness, lost_turn: dict[str, Any], mutation: str
+) -> None:
+    path = h.cleanup_confirmation("interrupted")
+    confirmation = json.loads(path.read_text())
+    if mutation in {"run_id", "evidence"}:
+        confirmation[mutation] = "" if mutation == "evidence" else "other-run"
+    elif mutation in {"runner", "process"}:
+        confirmation[mutation]["start_ticks"] = "other-process"
+    elif mutation == "cleanup_complete":
+        confirmation[mutation] = 1
+    elif mutation == "version":
+        confirmation["schema_version"] = 999
+    path.write_text(json.dumps(confirmation))
+    if mutation == "duplicate":
+        path.write_text(
+            path.read_text().replace(
+                '"schema_version": 1', '"schema_version": 1, "schema_version": 1'
+            )
+        )
+    before = (h.root / "interrupted/result.json").read_bytes()
+    refused = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(path))
+    )
+    assert refused.returncode == 2, refused.stderr
+    assert (h.root / "interrupted/result.json").read_bytes() == before
+    assert json.loads((h.root / "initial/session.json").read_text()) == lost_turn
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "prefix",
+        "prompt",
+        "model",
+        "effort",
+        "cwd",
+        "external_turn",
+        "event_session",
+        "event_turn",
+        "duplicate_turn_start",
+        "missing_session_start",
+        "corrupt",
+        "corrupt_events",
+        "missing_checkpoint",
+    ],
+)
+def test_lost_runner_rejects_unverified_turn_evidence(
+    h: Harness, lost_turn: dict[str, Any], mutation: str
+) -> None:
+    transcript = next((h.root / "codex-home/sessions").rglob("*.jsonl"))
+    records = [json.loads(line) for line in transcript.read_text().splitlines()]
+    events_path = h.root / "interrupted/events.jsonl"
+    events = [json.loads(line) for line in events_path.read_text().splitlines()]
+    if mutation == "prefix":
+        records[1]["payload"]["model"] = "modified-old-turn"
+    elif mutation == "prompt":
+        records[-1]["payload"]["content"][0]["text"] = "unrelated prompt"
+    elif mutation in {"model", "effort", "cwd"}:
+        records[-2]["payload"][mutation] = "unselected-value"
+    elif mutation == "external_turn":
+        context = {**records[-2]["payload"], "turn_id": "external-turn"}
+        records.append({"type": "turn_context", "payload": context})
+    elif mutation == "event_session":
+        events[0]["thread_id"] = "external-session"
+    elif mutation == "event_turn":
+        events[1]["turn_id"] = "different-event-turn"
+    elif mutation == "duplicate_turn_start":
+        events.append(events[1])
+    elif mutation == "missing_session_start":
+        events = events[1:]
+    elif mutation == "missing_checkpoint":
+        result = h.result("interrupted")
+        result.pop("transcript_before")
+        (h.root / "interrupted/result.json").write_text(json.dumps(result))
+    transcript.write_text("".join(json.dumps(record) + "\n" for record in records))
+    events_path.write_text("".join(json.dumps(event) + "\n" for event in events))
+    if mutation == "corrupt":
+        with transcript.open("a") as stream:
+            stream.write('{"type":')
+    elif mutation == "corrupt_events":
+        with events_path.open("a") as stream:
+            stream.write('{"type":')
+    confirmation = h.cleanup_confirmation("interrupted")
+    stopped = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stopped.returncode == 0, stopped.stderr
+    result = h.result("interrupted")
+    assert result["cleanup_complete"] is True
+    assert result["turn_end_reason"] == "metadata_error"
+    assert result["recovery_error"]
+    assert json.loads((h.root / "initial/session.json").read_text()) == lost_turn
+    (h.root / "args.txt").unlink()
+    resumed = h.run(
+        "refused", action="resume", extra=("--resume-from", str(h.root / "interrupted"))
+    )
+    assert resumed.returncode == 2 and "turn evidence" in resumed.stderr
+    assert not (h.root / "args.txt").exists()
+    assert not (h.root / "refused").exists()
+
+
+@pytest.mark.parametrize("prompt_record", ["response_item", "event_msg"])
+def test_lost_runner_recovers_turn_before_the_turn_start_event_is_saved(
+    h: Harness, lost_turn: dict[str, Any], prompt_record: str
+) -> None:
+    path = h.root / "interrupted/events.jsonl"
+    path.write_text(path.read_text().splitlines()[0] + "\n")
+    if prompt_record == "event_msg":
+        transcript = next((h.root / "codex-home/sessions").rglob("*.jsonl"))
+        records = [json.loads(line) for line in transcript.read_text().splitlines()]
+        message = records[-1]["payload"]["content"][0]["text"]
+        records[-1] = {
+            "type": "event_msg",
+            "payload": {"type": "user_message", "message": message},
+        }
+        transcript.write_text("".join(json.dumps(record) + "\n" for record in records))
+    confirmation = h.cleanup_confirmation("interrupted")
+    stopped = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stopped.returncode == 0, stopped.stderr
+    result = h.result("interrupted")
+    assert result["turn_end_reason"] == "stopped", result.get("recovery_error")
+    assert result["runtime"]["turn_id"] != lost_turn["last_turn_id"]
+    resumed = h.run(
+        "recovered",
+        action="resume",
+        extra=("--resume-from", str(h.root / "interrupted")),
+    )
+    assert resumed.returncode == 0, resumed.stderr
+
+
+def test_lost_runner_recovery_repairs_a_partial_session_save(
+    h: Harness, lost_turn: dict[str, Any]
+) -> None:
+    assert h.query("stop", "interrupted").returncode == 0
+    result = h.result("interrupted")
+    (h.root / "initial/session.json").write_text(json.dumps(lost_turn))
+    confirmation = h.cleanup_confirmation("interrupted")
+    stopped = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stopped.returncode == 0, stopped.stderr
+    state = json.loads((h.root / "initial/session.json").read_text())
+    assert state["last_turn_id"] == result["runtime"]["turn_id"]
+    resumed = h.run(
+        "recovered",
+        action="resume",
+        extra=("--resume-from", str(h.root / "interrupted")),
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    latest = (h.root / "initial/session.json").read_bytes()
+    stale = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stale.returncode == 2 and "latest" in stale.stderr
+    assert (h.root / "initial/session.json").read_bytes() == latest
+
+
+def test_cleanup_confirmation_cannot_override_live_processes(
+    h: Harness, lost_turn: dict[str, Any]
+) -> None:
+    sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
+    runtime: Any = importlib.import_module("agent_runtime")
+    sleeper = subprocess.Popen(
+        [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True
+    )
+    try:
+        result = h.result("interrupted")
+        result["process"] = runtime.process_identity(sleeper.pid)
+        (h.root / "interrupted/result.json").write_text(json.dumps(result))
+        confirmation = h.cleanup_confirmation("interrupted")
+        refused = h.query(
+            "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+        )
+        assert refused.returncode == 2 and "live agent" in refused.stderr
+        assert sleeper.poll() is None
+        assert h.result("interrupted")["cleanup_complete"] is False
+        assert json.loads((h.root / "initial/session.json").read_text()) == lost_turn
+    finally:
+        sleeper.terminate()
+        sleeper.wait(timeout=5)
+
+
+@pytest.mark.parametrize("mutation", ["missing", "version"])
+def test_resume_checks_the_saved_supervisor_confirmation(
+    h: Harness, lost_turn: dict[str, Any], mutation: str
+) -> None:
+    confirmation = h.cleanup_confirmation("interrupted")
+    stopped = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stopped.returncode == 0, stopped.stderr
+    result = h.result("interrupted")
+    if mutation == "missing":
+        result.pop("cleanup_confirmation")
+    else:
+        result["cleanup_confirmation"]["schema_version"] = 999
+    (h.root / "interrupted/result.json").write_text(json.dumps(result))
+    (h.root / "args.txt").unlink()
+    refused = h.run(
+        "refused", action="resume", extra=("--resume-from", str(h.root / "interrupted"))
+    )
+    assert refused.returncode == 2 and "confirmation" in refused.stderr
+    assert not (h.root / "args.txt").exists()
+    assert not (h.root / "refused").exists()
 
 
 def test_live_session_lock_rejects_concurrent_resume(h: Harness) -> None:

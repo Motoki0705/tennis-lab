@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -41,7 +42,9 @@ def identifier(value: Any) -> str:
     return value
 
 
-def codex_context(home: Path, session: str) -> dict[str, Any]:
+def _codex_transcript(
+    home: Path, session: str
+) -> tuple[Path, bytes, list[dict[str, Any]]]:
     identifier(session)
     paths = [
         p
@@ -51,11 +54,21 @@ def codex_context(home: Path, session: str) -> dict[str, Any]:
     ]
     if len(paths) != 1:
         raise ValueError("Codex transcript missing or ambiguous")
-    meta, context = None, None
-    for line in paths[0].open(encoding="utf-8"):
+    data = paths[0].read_bytes()
+    records = []
+    for line in data.splitlines():
         record = parse_json(line)
         if not isinstance(record, dict):
             raise ValueError("invalid Codex transcript record")
+        records.append(record)
+    return paths[0], data, records
+
+
+def _codex_context(
+    path: Path, records: list[dict[str, Any]], session: str
+) -> dict[str, Any]:
+    meta, context = None, None
+    for record in records:
         if record.get("type") == "session_meta":
             meta = record.get("payload")
         if record.get("type") == "turn_context":
@@ -67,7 +80,7 @@ def codex_context(home: Path, session: str) -> dict[str, Any]:
     ):
         raise ValueError("Codex transcript has no matching session/turn context")
     return {
-        "path": str(paths[0]),
+        "path": str(path),
         "session_id": meta["id"],
         "turn_id": identifier(context.get("turn_id")),
         "cwd": context.get("cwd"),
@@ -75,6 +88,78 @@ def codex_context(home: Path, session: str) -> dict[str, Any]:
         "effort": context.get("effort"),
         "service_tier": context.get("service_tier"),
     }
+
+
+def codex_context(home: Path, session: str) -> dict[str, Any]:
+    path, _, records = _codex_transcript(home, session)
+    return _codex_context(path, records, session)
+
+
+def codex_checkpoint(home: Path, session: str) -> dict[str, Any]:
+    """Pin the transcript prefix before launching a continuation."""
+    path, data, records = _codex_transcript(home, session)
+    context = _codex_context(path, records, session)
+    return {
+        "path": str(path),
+        "size": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "turn_id": context["turn_id"],
+    }
+
+
+def interrupted_codex_turn(
+    home: Path, session: str, before: dict[str, Any] | None, prompt: str
+) -> str:
+    """Bind one appended turn to the saved input instead of adopting the latest turn."""
+    path, data, records = _codex_transcript(home, session)
+    _codex_context(path, records, session)
+    if before is not None:
+        size = before["size"]
+        if (
+            type(size) is not int
+            or not 0 < size <= len(data)
+            or data[size - 1 : size] != b"\n"
+            or hashlib.sha256(data[:size]).hexdigest() != before["sha256"]
+        ):
+            raise ValueError(
+                "Codex transcript prefix differs from the launch checkpoint"
+            )
+        records = [parse_json(line) for line in data[size:].splitlines()]
+    turns = {
+        identifier(record["payload"].get("turn_id"))
+        for record in records
+        if record.get("type") == "turn_context"
+        and isinstance(record.get("payload"), dict)
+    }
+    if len(turns) != 1 or (before is not None and before["turn_id"] in turns):
+        raise ValueError("interrupted Codex run has no unique new turn")
+    prompts = []
+    for record in records:
+        payload = record.get("payload")
+        if not isinstance(payload, dict):
+            continue
+        if record.get("type") == "event_msg" and payload.get("type") == "user_message":
+            prompts.append(payload.get("message"))
+        if (
+            record.get("type") == "response_item"
+            and payload.get("type") == "message"
+            and payload.get("role") == "user"
+            and isinstance(payload.get("content"), list)
+        ):
+            prompts.append(
+                "".join(
+                    item["text"]
+                    for item in payload["content"]
+                    if isinstance(item, dict)
+                    and item.get("type") == "input_text"
+                    and isinstance(item.get("text"), str)
+                )
+            )
+    if not prompt.strip() or not any(
+        isinstance(value, str) and value.strip() == prompt.strip() for value in prompts
+    ):
+        raise ValueError("interrupted Codex turn does not match the saved prompt")
+    return turns.pop()
 
 
 class Events:

@@ -66,6 +66,19 @@ def main() -> None:
                 stream.write(
                     json.dumps({"type": "turn_context", "payload": context}) + "\n"
                 )
+                stream.write(
+                    json.dumps(
+                        {
+                            "type": "response_item",
+                            "payload": {
+                                "type": "message",
+                                "role": "user",
+                                "content": [{"type": "input_text", "text": prompt}],
+                            },
+                        }
+                    )
+                    + "\n"
+                )
                 if scenario == "corrupt_transcript":
                     stream.write('{"type":"turn_context"}\n')
         emit({"type": "turn.started"})

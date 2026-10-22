@@ -114,6 +114,11 @@ run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renam
   `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
   `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
   session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
+- `transcript_before`: Codex継続の起動前transcriptのパス・byte数・SHA-256・turn ID。
+  初回とClaudeでは `null`。runner喪失時に、他経路のturnを中断runとして取り込まないために使う。
+- `runner_lost` / `cleanup_confirmation` / `recovery_error`: runner喪失からの復旧時に追加する。
+  外側supervisorによる全子孫の回収確認と、session/turnの証拠復旧を別々に記録する。
+  証拠の復旧エラーがあるrunは、回収確認済みでもresumeを拒否する。
 
 stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, `task_success`
 だけのJSON。status/stopは生存確認のbooleanを追加する。session ID・絶対パス・本文を含めない。
@@ -148,10 +153,34 @@ stdoutを先に閉じたCLIも、停止・timeoutを監視し続ける。
 
 runnerがSIGKILL等で失われた場合、`running` の残存は成功でも稼働の証拠でもない。
 stopはsession lock下で、生存するCLI leaderのidentityが一致すればそのgroupを回収する。
-CLI/groupが消滅済みなら中断として記録する。PID再利用・leader不在で残るgroupなど、
+CLI/groupが消滅済みでも `cleanup_complete=false`、`cleanup_failed` として記録し、resumeを拒否する。
+stop自身の終了値0は照会・記録の成功であり、回収の確認は保存結果で判断する。
+PID再利用・leader不在で残るgroupなど、
 identityを確認できない残存プロセスは強制停止せず、supervisorの照合を要求する。
 wrapper自身のSIGKILL後に既に離脱していた子孫の回収は、外側supervisorの責務。
-同じsessionのローカル記録・実プロセス・差分を確認し、stopで中断状態を確定してからresumeする。
+supervisorは自身の隔離scope等で**全子孫**の回収を照合し、その後で次の確認JSONを作る。
+CLI/groupや既知PIDの消滅だけを根拠にしない。
+
+- `schema_version`: 整数 `1`。
+- `run_id` / `runner` / `process`: 対象 `result.json` の同名フィールドの値をそのまま照合に使う。
+- `cleanup_complete`: boolean `true`。
+- `evidence`: supervisorの回収scopeと照合根拠を記した非空文字列。
+
+この6キーだけを持つJSONを、次の追加オプションで渡す。確認内容はローカルの `result.json` に保存する。
+確認JSONはsupervisorの明示的な申告であり、runnerが失った子孫一覧を復元するものではない。
+対象run・process identityの不一致、既知CLI/groupの生存、最新run以外への確認は拒否する。
+
+```bash
+.agents/ops/lib/agent_exec.sh stop --run-dir "$task_dir/interrupted" \
+  --cleanup-confirmation "$task_dir/supervisor-cleanup.json"
+```
+
+stopは保存済みイベントを再読し、Codexでは起動前transcriptのprefix・追記された唯一のturn・
+保存promptのhash/本文・session・worktree・実効設定を照合して、`runtime` と `session.json` を復旧する。
+外部turnの混入・改変・破損・継続runのcheckpoint欠落では `recovery_error` を残し、
+全子孫の回収を確認しても `metadata_error` としてresumeを拒否する。古い記録から対応を推測しない。
+stopの再実行は途中の保存から復旧でき、以前のrunから最新sessionを上書きしない。
+同じsessionのローカル記録・実プロセス・差分を確認し、回収と証拠の両方を確定してからresumeする。
 session IDが得られなかったrunは再開できず、別sessionを黙って作成しない。
 
 既存 `opsproc.run_process_group` からも呼べる。runnerはTERM/INTを処理して自身のCLI groupを

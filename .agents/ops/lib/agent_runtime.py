@@ -17,7 +17,13 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from agent_events import Events, EvidenceError, codex_context, parse_json
+from agent_events import (
+    Events,
+    EvidenceError,
+    codex_checkpoint,
+    interrupted_codex_turn,
+    parse_json,
+)
 from agent_settings import command, resolve
 from opsproc import (
     _live_group_members,
@@ -121,6 +127,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--branch")
     result.add_argument("--run-dir", type=Path)
     result.add_argument("--resume-from", type=Path)
+    result.add_argument("--cleanup-confirmation", type=Path)
     result.add_argument("--log-dir", type=Path)
     result.add_argument(
         "--config-file", type=Path, default=Path(__file__).with_name("agents.conf")
@@ -217,6 +224,8 @@ def capture(
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    if args.cleanup_confirmation is not None:
+        raise ValueError("--cleanup-confirmation requires stop")
     if (
         args.cwd is None
         or args.prompt_file is None
@@ -323,6 +332,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("session already has a live runner") from exc
+        transcript_before = None
         if previous:
             state = read_json(root / "session.json")
             if state["latest_run"] != str(args.resume_from.resolve()):
@@ -341,13 +351,24 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 )
             if not state["session_id"]:
                 raise ValueError("previous runtime did not return a resumable session")
-            if (
-                agent == "codex"
-                and state["last_turn_id"] is not None
-                and codex_context(home, state["session_id"])["turn_id"]
-                != state["last_turn_id"]
-            ):
-                raise ValueError("runtime session changed outside this runner")
+            if previous.get("runner_lost"):
+                confirmation = previous.get("cleanup_confirmation")
+                if not isinstance(confirmation, dict):
+                    raise ValueError(
+                        "previous supervisor cleanup confirmation is missing"
+                    )
+                validate_cleanup_confirmation(confirmation, previous)
+            if previous.get("recovery_error"):
+                raise ValueError(
+                    "previous turn evidence is unconfirmed; inspect stop recovery"
+                )
+            if agent == "codex":
+                transcript_before = codex_checkpoint(home, state["session_id"])
+                if (
+                    state["last_turn_id"] is not None
+                    and transcript_before["turn_id"] != state["last_turn_id"]
+                ):
+                    raise ValueError("runtime session changed outside this runner")
             run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
         else:
             state = {
@@ -364,6 +385,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "run_dir": str(run_dir),
             "session_root": str(root),
             "previous_run": str(args.resume_from.resolve()) if previous else None,
+            "transcript_before": transcript_before,
             "contract": contract,
             "prompt_sha256": hashlib.sha256(prompt).hexdigest(),
             "final_path": str(final),
@@ -490,13 +512,162 @@ def live(identity: dict[str, Any] | None) -> bool:
     return identity is not None and process_identity(identity["pid"]) == identity
 
 
+def recover_lost_turn(result: dict[str, Any], state: dict[str, Any]) -> None:
+    contract = result["contract"]
+    agent = contract["settings"]["agent"]
+    saved = result["runtime"]
+    events = Events(
+        agent,
+        contract["settings"]["selected"],
+        saved["requested_session_id"] or saved["session_id"] or state["session_id"],
+    )
+    run_dir = Path(result["run_dir"])
+    started_turns = 0
+    for line in (run_dir / "events.jsonl").read_bytes().splitlines():
+        if line.strip():
+            events.feed(line)
+            if parse_json(line).get("type") == "turn.started":
+                started_turns += 1
+    if (
+        not events.started
+        or not events.session
+        or state["session_id"] not in (None, events.session)
+    ):
+        raise ValueError("interrupted run has no matching runtime session start")
+    if agent == "codex":
+        if started_turns > 1:
+            raise ValueError("interrupted Codex run has multiple turn start events")
+        before = result.get("transcript_before")
+        if result["previous_run"] is not None and not isinstance(before, dict):
+            raise ValueError("interrupted continuation has no transcript checkpoint")
+        prompt = (run_dir / "prompt.md").read_bytes()
+        if hashlib.sha256(prompt).hexdigest() != result["prompt_sha256"]:
+            raise ValueError("saved prompt differs from the interrupted run input")
+        home = Path(contract["runtime_home"])
+        turn = interrupted_codex_turn(
+            home, events.session, before, prompt.decode("utf-8")
+        )
+        if events.turn not in {None, turn} or saved["turn_id"] not in {None, turn}:
+            raise ValueError("interrupted Codex event/transcript turn IDs disagree")
+        previous_turn = before["turn_id"] if before else None
+        if state["last_turn_id"] not in {previous_turn, turn}:
+            raise ValueError("saved session turn differs from the interrupted run")
+        events.turn = turn
+        events.evidence(home, Path(contract["cwd"]), previous_turn)
+    result["runtime"] = events.snapshot()
+    state.update(
+        session_id=events.session, last_turn_id=events.turn or state["last_turn_id"]
+    )
+
+
+def validate_cleanup_confirmation(
+    confirmation: dict[str, Any], result: dict[str, Any]
+) -> None:
+    if (
+        type(confirmation.get("schema_version")) is not int
+        or confirmation["schema_version"] != VERSION
+        or set(confirmation)
+        != {
+            "schema_version",
+            "run_id",
+            "runner",
+            "process",
+            "cleanup_complete",
+            "evidence",
+        }
+        or any(
+            confirmation[key] != result[key] for key in ("run_id", "runner", "process")
+        )
+        or confirmation["cleanup_complete"] is not True
+        or not isinstance(confirmation["evidence"], str)
+        or not confirmation["evidence"].strip()
+    ):
+        raise ValueError("supervisor cleanup confirmation does not match this run")
+
+
+def stop_lost_runner(path: Path, confirmation_path: Path | None) -> dict[str, Any]:
+    root = Path(read_json(path)["session_root"])
+    with (root / "session.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        result = read_json(path)
+        state = read_json(root / "session.json")
+        if state["latest_run"] != str(path.parent):
+            raise ValueError("stop recovery requires the latest session run")
+        if live(result["runner"]):
+            raise ValueError("runner is still alive; use ordinary stop")
+        if result["result"] != "running" and not result.get("runner_lost"):
+            raise ValueError("cleanup confirmation requires a lost runner")
+        confirmation = (
+            read_json(confirmation_path)
+            if confirmation_path is not None
+            else result.get("cleanup_confirmation")
+        )
+        if confirmation is not None:
+            validate_cleanup_confirmation(confirmation, result)
+        identity = result["process"]
+        if (
+            confirmation is not None
+            and identity is not None
+            and (live(identity) or _live_group_members(identity["pid"]))
+        ):
+            raise ValueError(
+                "supervisor cleanup confirmation conflicts with live agent processes"
+            )
+        if identity is not None:
+            if live(identity):
+                result["terminated_pids"] = sorted(
+                    set(
+                        result["terminated_pids"]
+                        + _terminate_group(None, identity["pid"], 1.0)
+                    )
+                )
+            elif process_identity(identity["pid"]) is not None or _live_group_members(
+                identity["pid"]
+            ):
+                raise ValueError(
+                    "orphaned process identity cannot be verified; supervisor reconciliation required"
+                )
+        # Losing the subreaper also loses proof about tools in other sessions.
+        # An empty CLI group alone must never release the resume gate.
+        result.update(
+            result="failed",
+            runner_lost=True,
+            turn_end_reason="cleanup_failed",
+            exit_code=1,
+            finished_at=result["finished_at"] or time.time(),
+            error="runner was lost; descendant cleanup requires supervisor confirmation",
+            cleanup_complete=confirmation is not None,
+        )
+        if confirmation is not None:
+            result["cleanup_confirmation"] = confirmation
+            result.update(
+                turn_end_reason="stopped",
+                exit_code=143,
+                error="runner was lost; supervisor confirmed descendant cleanup",
+            )
+        try:
+            recover_lost_turn(result, state)
+            result.pop("recovery_error", None)
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            result["recovery_error"] = str(exc)
+            if result["cleanup_complete"]:
+                result.update(turn_end_reason="metadata_error", exit_code=1)
+        write_json(path, result)
+        write_json(root / "session.json", state)
+        return result
+
+
 def inspect_or_stop(args: argparse.Namespace) -> dict[str, Any]:
     if args.run_dir is None:
         raise ValueError("status/stop requires --run-dir")
+    if args.action != "stop" and args.cleanup_confirmation is not None:
+        raise ValueError("--cleanup-confirmation requires stop")
     path = args.run_dir.resolve() / "result.json"
     result = read_json(path)
     if args.action == "stop" and result["result"] == "running":
         if live(result["runner"]):
+            if args.cleanup_confirmation is not None:
+                raise ValueError("cleanup confirmation requires a lost runner")
             os.kill(result["runner"]["pid"], signal.SIGTERM)
             deadline = time.monotonic() + 8
             while time.monotonic() < deadline:
@@ -509,29 +680,11 @@ def inspect_or_stop(args: argparse.Namespace) -> dict[str, Any]:
                     "runner did not acknowledge stop; inspect local processes"
                 )
         else:
-            with (Path(result["session_root"]) / "session.lock").open("a") as lock:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                identity = result["process"]
-                if identity is not None:
-                    if live(identity):
-                        result["terminated_pids"] = _terminate_group(
-                            None, identity["pid"], 1.0
-                        )
-                    elif process_identity(
-                        identity["pid"]
-                    ) is not None or _live_group_members(identity["pid"]):
-                        raise ValueError(
-                            "orphaned process identity cannot be verified; supervisor reconciliation required"
-                        )
-                result.update(
-                    result="failed",
-                    turn_end_reason="stopped",
-                    exit_code=143,
-                    finished_at=time.time(),
-                    error="runner was lost; no live agent group remains",
-                    cleanup_complete=True,
-                )
-                write_json(path, result)
+            result = stop_lost_runner(path, args.cleanup_confirmation)
+    elif args.action == "stop" and result.get("runner_lost"):
+        result = stop_lost_runner(path, args.cleanup_confirmation)
+    elif args.cleanup_confirmation is not None:
+        raise ValueError("cleanup confirmation requires a lost runner")
     summary = public_summary(result)
     summary.update(
         runner_alive=live(result["runner"]),
