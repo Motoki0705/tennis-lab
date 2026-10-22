@@ -19,7 +19,7 @@ LICENSEは [zju3dv/GVHMR の固定commit](https://github.com/zju3dv/GVHMR/blob/e
 - HMR2 / 4D-Humans由来部分: [MIT全文](LICENSE.HMR2)。
 
 ViTPoseのheatmap headとmodel builderは、公式Apache-2.0版を出典に置き換えた。
-ファイルごとの出典・条件・未解決事項は [ルートの一覧](../../../../LICENSES.md) を参照する。
+ファイルごとの出典・条件・未解決事項は [ルートの一覧](../../../../LICENSES.ja.md#third-party-code) を参照する。
 
 ## third_party 版からの主な変更
 

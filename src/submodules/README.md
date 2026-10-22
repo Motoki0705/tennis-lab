@@ -87,7 +87,7 @@ SMPL-X/SMPL-H本体、SMPL補助資産、外部重みはgitへ追加しません
 
 5点は **[GVHMR公式リポジトリ](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)**
 の固定commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1` から利用者が取得します。
-各ファイルの公式配布パス・用途・条件は [LICENSES.md](../../LICENSES.md#利用者が取得するsmpl補助資産)
+各ファイルの公式配布パス・用途・条件は [LICENSES.ja.md](../../LICENSES.ja.md#smpl-auxiliary-assets)
 を参照してください。本repoにはバイナリを同梱せず、自動ダウンロードもしません。
 
 先に [GVHMRの条件](vendor/gvhmr/LICENSE) と
