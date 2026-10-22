@@ -27,7 +27,7 @@ from .collect import (
     is_container,
     material,
 )
-from .records import DETAIL_KEYS, comment_body, ignored_comments, owned_comment
+from .records import DETAIL_KEYS, comment_body, owned_comment
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
 
 RESULT_VERSION = 2
@@ -51,11 +51,8 @@ CANDIDATE_KEYS = {
 
 def inputs_for(snapshot: dict[str, Any], store: Store, n: int) -> dict[str, Any]:
     session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
-    ignored = ignored_comments(
-        snapshot["issues"][str(n)]["comments"], session.login, session.gh.repo, n
-    )
     inputs: dict[str, Any] = execution_input(
-        session, ignored, execution_context(snapshot, n)
+        session, context=execution_context(snapshot, n)
     )
     return inputs
 
@@ -217,14 +214,10 @@ def record_decision(
     current = assert_fresh(gh, store, root, snapshot, n)
     if decision["disposition"] != "startable":
         return None
-    ignored = ignored_comments(
-        current["issues"][str(n)]["comments"], session.login, gh.repo, n
-    )
     # Display-only comments may have changed since the agent read them.
     inputs = execution_input(
         ParentSession(SnapshotGitHub(current), store, n, None),
-        ignored,
-        execution_context(snapshot, n),
+        context=execution_context(snapshot, n),
     )
     if inputs != snapshot["execution_inputs"][str(n)]:
         raise ValueError("execution input differs from the agent's fixed input")
@@ -237,7 +230,7 @@ def record_decision(
     assert_fresh(gh, store, root, snapshot, n)
     try:
         recorded = record_autonomous(
-            session, {"basis": basis, "inputs": inputs, "ignored_comments": ignored}
+            session, {"basis": basis, "inputs": inputs, "ignored_comments": []}
         )
     except ValueError:
         # Parent also checks its issue during publication. Defer only if the

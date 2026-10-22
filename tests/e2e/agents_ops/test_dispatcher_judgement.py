@@ -1514,6 +1514,36 @@ def test_assignment_contract_checks_external_context_then_parent_basis_under_one
         h.mod.assert_candidate_fresh(h.gh, h.store, h.work, snapshot, candidate)
 
 
+def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
+    h: Harness,
+) -> None:
+    h.response(decision(1))
+    first = h.run(runner=h.fake_runner)
+    assert first["result"] == "recorded", first
+    candidate = first["candidates"][0]
+    execution = importlib.import_module("parent.execution")
+    session_class = importlib.import_module("parent.session").ParentSession
+    with h.store.locked():
+        h.mod.assert_candidate_fresh(h.gh, h.store, h.work, h.snapshot(), candidate)
+        expected = execution.validate_candidate(
+            session_class(h.gh, h.store, 1, None),
+            candidate["basis_sha256"],
+            candidate["generation"],
+        )
+        owner = session_class(h.gh, h.store, 1, "claude:private-owner")
+        owner.register()
+    h.response(decision(1, "existing_owner"))
+    second = h.run(runner=h.fake_runner)
+    assert second["result"] == "recorded", second
+    assert second["candidates"] == []
+    assert second["publications"] == [{"issue": 1, "action": "updated"}]
+    with h.store.locked():
+        assert execution.authorization(owner) == expected
+    [basis] = [e for e in owner.history() if e["event"] == "execution_basis"]
+    assert basis["ignored_comments"] == []
+    assert basis["basis_sha256"] == candidate["basis_sha256"]
+
+
 def test_own_comment_is_not_an_instruction_but_same_marker_by_other_author_is(
     h: Harness,
 ) -> None:

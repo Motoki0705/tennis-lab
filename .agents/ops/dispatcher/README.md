@@ -11,7 +11,7 @@
 | `agent_input.py` | 完全なsnapshotを変更せず、索引・issue・関連PRを読み取り単位に分割 |
 | `agent.py` / `prompt.md` / `judgement.schema.json` | 共通ランナーでの1回の判定とruntime証拠の照合 / 判断方針 / CLIへ渡す返却形式 |
 | `schema.py` | 全件の構造化結果・出典・scope・完了条件・routing・機械的阻害条件の検査 |
-| `records.py` | 厳格JSON、自分の判断コメントの識別、実行根拠への進捗コメントの除外指定 |
+| `records.py` | parentと共有する厳格JSON・判断コメント形式の参照 |
 | `judgement.py` | 明示実行、記録前の再照合、コメント更新、実行根拠記録、割当候補の返却 |
 
 ## 明示実行と保存物
@@ -131,7 +131,13 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 同じpublisher・repo・issueに属する厳密な `issue-start-judgement:v1` マーカーと本文を検証し、同内容なら書かず、
 変わった場合はそのコメントだけPATCHする。他人の同形マーカーを自分のコメントとして扱わない。
 自分のコメントの破損・複数一致は上書きせず診断する。本文や指示に編集があれば対象subjectを延期する。
-自分の表示コメントだけを `ignored_comments` へ明示分類し、通常の指示を除外しない。
+判断コメントの形式・識別は `parent/judgement_comments.py` を正本とし、人間合意後のコメント検査・
+自律根拠の指示射影・判定のdigestから同じ条件で除外する。先頭行のマーカー、publisher、repo・issue、
+構造化したdetailとdigest、再構築した本文全体の一致を要求する。マーカーの引用・偽装・追記や他publisherは除外しない。
+表示は同じコメントをPATCHし、新しい根拠の `ignored_comments` には固定しない。
+表示更新で実行根拠を失効させず、同一内容の再送で投稿を増やさないためである。
+旧根拠が表示のID/digestを固定している場合も、現存コメントがこの厳密な形式であると再検証できたものだけを常時除外する。
+形式の破損や通常の指示・明示分類した通常コメントの編集/削除は引き続き拒否する。
 
 startableは `execution_input()` の固定値と最新値を照合し、version付きbasisを生成して `record_autonomous()` に渡す。
 人間のconfirmationや共有基盤許可のキーは生成しない。既存の明示取消・checkingを自律判断で解除しない。

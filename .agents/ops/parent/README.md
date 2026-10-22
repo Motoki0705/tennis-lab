@@ -94,6 +94,8 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 同じ `agree` の再送やコメントの無関係分類で変更後の本文を取り込まず、review-prepare前にも拒否する。
 現在のpublisherによる先頭行の `parent-session:v1` / `parent-review:v1` 記録を除き、
 コメントの追加・編集・削除は未分類の変更として操作を拒否する。
+`issue-start-judgement:v1` の表示も、[判定コメントの厳密な識別条件](../dispatcher/README.md#判断結果と保留コメント)を
+満たすものだけ同じく除外する。合意時の旧snapshotに含まれる表示も、現在の形式を検証してから除外し、元の記録は書き換えない。
 エラーは対象のID・URL・変更種別と解除方法を示す。`status` や旧記録の読取は維持し、
 snapshotのない旧合意は合意コメントのID・作成時刻と通常コメントのID・編集時刻で照合する。
 旧マーカー・registry・保存済みレビューを読取時に書き換えない。
@@ -239,6 +241,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 子タスクのチェックリスト、進捗概要、成果物・関連PR、次の改善候補の節と、Acceptance checklist / 全体の完了条件の完了チェックを除外する。
 停止事項・対象外・未知の節は残す。現在のpublisherのparent-session:v1 / parent-review:v1記録は
 進捗として分離する。新しい未分類コメント、本文/指示の編集・削除は鮮度不一致となり、次の予定回または明示再判断へ戻す。
+判定コメントも人間合意と同じ厳密な形式検証で分離し、新しい根拠の `ignored_comments` には固定しない。
+旧根拠の除外リストに判定表示がある場合は、現在のコメント全体を検証できたものだけ表示のdigest変更を許す。
+それ以外の明示除外は従来どおり本文変更・削除を拒否する。
 
 無関係な通常コメントは、内容を確認した呼出元だけが
 `--ignored-comments` に `[{"id":123,"sha256":"comment_snapshotのdigest","reason":"要件と無関係な理由"}]`
