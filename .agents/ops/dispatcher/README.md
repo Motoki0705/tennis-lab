@@ -47,6 +47,8 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 
 完全な`input.json`はdigest・鮮度照合用に維持し、agentには`agent-input/index.json`から必要な資料を読むよう指示する。
 索引は全subjectsと閉包のissue要約・正式関係・依存・関連PR番号・assignees・担当/委任要約・commit・digestを持つ。
+各subjectのissue要約に`mechanical_guard`を含める。阻害条件なしはnull、それ以外は`disposition`と根拠となった`facts`のobject。
+検証と同じ関数で計算する。これは派生情報であり、完全なsnapshotやdigestの判断材料を変更しない。
 要約を1行ずつ配置し、長文を含む詳細は別ファイルにして、Readの行数制限で索引の後半を落とさないようにする。
 `issues/<番号>/issue.json`は本文・関係とコメントページへの参照、`pulls/<番号>/pull.json`は関連PRのclosing本文・head・merge状態を持つ。
 参照は全て`agent-input/`からの相対パス。本文・コメントは短い`segments`の順序連結、長文は`files`の全パートの順序連結で
@@ -93,7 +95,14 @@ scriptはversion・digest・未知キー・重複・未知ID/出典・routing・
 ラベルready/ai-proposedや人間合意の有無だけでは着手可否を決めない。
 
 機械的阻害条件は報告容器、正式な既存子、親関係が欠けたissue:child、needs-human/停止/既存のchecking・人間合意、
-既存担当・assignee・委任予約・関連PR、未充足依存。矛盾するagent出力はrun全体を拒否する。
+既存担当・assignee・委任予約・関連PR、未充足依存。同時に複数ある場合は、報告容器→正式な既存子→親関係の欠落→
+人間の保留/合意→既存担当等→未充足依存の順で最初の分類を採用する。
+agentがstartableを返し、機械的阻害条件がある場合はrun全体を拒否し、書込も候補生成も行わない。
+両方が非startableで分類だけが異なる場合は、記録する`disposition`を機械的阻害条件の値にする。
+`rationale`に採用した分類とagentの元の分類・理由を併記し、`facts`にはagentの確認事実を保持して機械的根拠を追記する。
+これを判断コメントと`result.json`の`decisions`へ保存し、`diagnostics`にもissue・両分類・採用分類を不一致として残す。
+不一致だけではrunを失敗にせず、他の着手可能な対象は通常どおり扱う。元のagent出力は`agent-output.json`にそのまま保持する。
+未知分類・routing/出典の不正・情報不足の具体性等は、分類を補正する前に全て検査し、不正ならrun全体を拒否する。
 既存人間合意を自律根拠で上書きすることはparent APIが禁止しているため、その経路はhuman_holdとして既存担当管理へ返す。
 自然言語の明示停止・見送り・対象外、重要な未決事項、scopeと完了条件の妥当性はread-only agentが原文とコードを読んで判断する。
 これらの意味的判断をfixtureの正解だけで検証済みとは扱わない。

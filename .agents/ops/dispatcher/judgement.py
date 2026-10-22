@@ -199,8 +199,9 @@ def run(
         # Always one fresh turn, even if material equals a previous scheduled run.
         raw = judge(root, run_dir, timeout, runner)
         Store.write_json(run_dir / "agent-output.json", raw)
-        decisions = validate(raw, snapshot)
+        decisions, diagnostics = validate(raw, snapshot)
         result["decisions"] = decisions
+        result["diagnostics"].extend(diagnostics)
         with store.locked():
             assert_fresh(gh, store, root, snapshot)
             # Check public payloads before the first irreversible publication.

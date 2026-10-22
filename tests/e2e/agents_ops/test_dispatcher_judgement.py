@@ -77,6 +77,27 @@ def decision(
     }
 
 
+def agreement_comment(n: int) -> dict[str, Any]:
+    policy = importlib.import_module("parent.policy")
+    agreement = {
+        **decision(n)["requirements"],
+        "human_confirmation": "人間がこの目的・範囲・完了条件に合意した。",
+    }
+    return {
+        "id": 900 + n,
+        "user": {"login": "operator"},
+        "body": policy.marker(
+            {
+                "parent": n,
+                "event": "agreed",
+                "revision": 1,
+                "agreement": agreement,
+                "agreement_sha256": policy.digest(agreement),
+            }
+        ),
+    }
+
+
 class FakeGitHub:
     repo = "o/r"
 
@@ -742,26 +763,34 @@ def test_change_during_comment_write_cannot_record_a_basis(h: Harness) -> None:
     )
 
 
+@pytest.mark.parametrize("agent_status", ["startable", "information_needed"])
 @pytest.mark.parametrize(
-    "blocker",
+    ("blocker", "disposition", "fact"),
     [
-        "cancelled_dependency",
-        "closed_unmerged_pr",
-        "needs_human",
-        "checking",
-        "revoked",
-        "stopped",
-        "existing_owner",
-        "child",
+        ("cancelled_dependency", "dependency_wait", "not_planned"),
+        ("closed_unmerged_pr", "existing_owner", "PR #100"),
+        ("needs_human", "human_hold", "needs-human"),
+        ("checking", "human_hold", "phaseはchecking"),
+        ("revoked", "human_hold", "phaseはchecking"),
+        ("agreed", "human_hold", "phaseはagreed"),
+        ("stopped", "human_hold", "停止記録"),
+        ("existing_owner", "existing_owner", "担当状態はactive"),
+        ("assignee", "existing_owner", "GitHub assignee"),
+        ("delegated", "existing_owner", "#1 の委任予約"),
+        ("missing_parent", "human_hold", "正式な親関係がない"),
+        ("child", "existing_parent", "正式な親は #2"),
+        ("report", "out_of_scope", "報告容器"),
     ],
 )
-def test_agent_cannot_override_mechanical_vetoes(h: Harness, blocker: str) -> None:
-    d = decision(1)
+def test_mechanical_guard_is_exposed_and_enforced(
+    h: Harness, blocker: str, disposition: str, fact: str, agent_status: str
+) -> None:
+    d = decision(1, agent_status)
     policy = importlib.import_module("parent.policy")
     if blocker == "cancelled_dependency":
         h.gh.issues[200] = issue(200, state="closed", reason="not_planned")
         h.gh.dependencies[1] = [200]
-        d = decision(1, deps=(200,))
+        d = decision(1, agent_status, deps=(200,))
     elif blocker == "closed_unmerged_pr":
         h.gh.prs = [
             {
@@ -774,6 +803,8 @@ def test_agent_cannot_override_mechanical_vetoes(h: Harness, blocker: str) -> No
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    elif blocker == "agreed":
+        h.gh.comment_rows[1] = [agreement_comment(1)]
     elif blocker in {"checking", "revoked"}:
         event = (
             {"parent": 1, "event": "checking"}
@@ -795,16 +826,25 @@ def test_agent_cannot_override_mechanical_vetoes(h: Harness, blocker: str) -> No
             + "a" * 64
             + " -->"
         )
-    elif blocker == "existing_owner":
+    elif blocker in {"existing_owner", "delegated"}:
         with h.store.locked():
             h.store.parents["o/r#1"] = {
                 "session": "claude:private-owner",
-                "status": "active",
+                "status": "active" if blocker == "existing_owner" else "ended",
                 "generation": 1,
-                "tasks": {},
+                "tasks": {}
+                if blocker == "existing_owner"
+                else {"1": {"delegated": True}},
                 "reviews": [],
             }
             h.store.save()
+    elif blocker == "assignee":
+        h.gh.issues[1]["assignees"] = [{"login": "human"}]
+    elif blocker == "missing_parent":
+        h.gh.issues[1]["labels"] = [{"name": "issue:child"}]
+    elif blocker == "report":
+        h.gh.issues[1]["labels"] = [{"name": "ops-report"}]
+        d["target_parent"] = None
     else:
         h.gh.issues[2] = issue(2, state="closed", reason="completed")
         h.gh.parents[1] = 2
@@ -812,8 +852,172 @@ def test_agent_cannot_override_mechanical_vetoes(h: Harness, blocker: str) -> No
         d["sources"].append("issue:2")
     h.response(d)
     result = h.run()
+    assert result["candidates"] == []
+    if agent_status == "startable":
+        assert result["result"] == "failed" and h.gh.writes == []
+        assert any(
+            f"contradicts mechanical guard {disposition}" in item
+            for item in result["diagnostics"]
+        )
+    else:
+        assert result["result"] == "recorded", result
+        assert result["decisions"][0]["disposition"] == disposition
+        assert len(result["diagnostics"]) == 1
+        assert "agent_disposition=information_needed" in result["diagnostics"][0]
+    index = json.loads((h.run_dir / "agent-input/index.json").read_text())
+    required = index["issues"]["1"]["mechanical_guard"]
+    assert required == h.schema.guard(h.snapshot(), 1)
+    assert required["disposition"] == disposition
+    assert any(fact in item for item in required["facts"])
+
+
+@pytest.mark.parametrize("blocked", [False, True])
+@pytest.mark.parametrize(
+    "status",
+    [
+        "startable",
+        "information_needed",
+        "dependency_wait",
+        "existing_owner",
+        "existing_parent",
+        "out_of_scope",
+        "human_hold",
+    ],
+)
+def test_classification_disagreement_only_rejects_startable(
+    h: Harness, blocked: bool, status: str
+) -> None:
+    if blocked:
+        h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    h.gh.issues[2] = issue(2)
+    original = decision(1, status)
+    original["target_parent"] = 1
+    h.response(original, decision(2))
+    result = h.run(runner=h.fake_runner)
+    saved = json.loads((h.run_dir / "agent-output.json").read_text())
+    assert saved["decisions"][0]["disposition"] == status
+    assert saved["decisions"][0]["rationale"] == original["rationale"]
+    index = json.loads((h.run_dir / "agent-input/index.json").read_text())
+    assert (index["issues"]["1"]["mechanical_guard"] is not None) == blocked
+    assert index["issues"]["2"]["mechanical_guard"] is None
+    if blocked and status == "startable":
+        assert result["result"] == "failed" and result["candidates"] == []
+        assert result["diagnostics"] and h.gh.writes == []
+        return
+    assert result["result"] == "recorded", result
+    expected = [1, 2] if status == "startable" else [2]
+    assert [c["parent"] for c in result["candidates"]] == expected
+    recorded = result["decisions"][0]
+    assert recorded["disposition"] == ("human_hold" if blocked else status)
+    mismatch = blocked and status != "human_hold"
+    assert bool(result["diagnostics"]) == mismatch
+    if mismatch:
+        assert original["rationale"] in recorded["rationale"]
+        assert f"agentの分類: {status}" in recorded["rationale"]
+        assert recorded["facts"] == [
+            *original["facts"],
+            "機械的阻害条件: #1 にneeds-humanラベルがある。",
+        ]
+        assert f"agent_disposition={status}" in result["diagnostics"][0]
+        assert "recorded_disposition=human_hold" in result["diagnostics"][0]
+    else:
+        assert recorded["rationale"] == original["rationale"]
+        assert recorded["facts"] == original["facts"]
+
+
+@pytest.mark.parametrize(
+    "change", ["empty_facts", "missing_information", "priority", "source", "extra_key"]
+)
+def test_classification_correction_does_not_mask_invalid_agent_output(
+    h: Harness, change: str
+) -> None:
+    h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    d = decision(1, "information_needed")
+    if change == "empty_facts":
+        d["facts"] = []
+    elif change == "missing_information":
+        d["missing_information"] = []
+    elif change == "priority":
+        d["priority"] = 1
+    elif change == "source":
+        d["sources"].append("issue:999")
+    else:
+        d["launch"] = True
+    h.response(d)
+    result = h.run(runner=h.fake_runner)
     assert result["result"] == "failed" and result["candidates"] == []
-    assert h.gh.writes == []
+    assert result["diagnostics"] and h.gh.writes == []
+
+
+def test_ended_owner_with_agreement_and_work_under_another_parent_is_recorded(
+    h: Harness,
+) -> None:
+    h.gh.issues.update(
+        {
+            10: issue(10, labels=("issue:parent",)),
+            11: issue(11),
+            20: issue(20, labels=("issue:parent",)),
+            21: issue(21),
+        }
+    )
+    h.gh.parents.update({11: 10, 21: 20})
+    h.gh.comment_rows[10] = [agreement_comment(10)]
+    h.gh.prs = [
+        {
+            "number": 100,
+            "body": "Closes #21 / Refs #11",
+            "state": "open",
+            "merged_at": None,
+            "head": {"ref": "codex/shared-work", "sha": "a" * 40},
+        }
+    ]
+    with h.store.locked():
+        h.store.parents["o/r#10"] = {
+            "session": "claude:private-ended-owner",
+            "status": "ended",
+            "generation": 1,
+            "tasks": {},
+            "reviews": [],
+        }
+        h.store.save()
+    held = decision(10, "existing_owner")
+    held["facts"] = [
+        "担当記録はended、generation 1。",
+        "残る子 #11 は別親 #20 の子 #21 がPR #100で実装中。",
+    ]
+    held["sources"].extend(["issue:11", "issue:20", "issue:21", "pr:100"])
+    held["rationale"] = "担当はended。残る子の実装と重複するため既存担当へ戻す。"
+    h.response(
+        decision(1),
+        held,
+        decision(11, "existing_parent", target=10),
+        decision(20, "existing_owner"),
+        decision(21, "existing_parent", target=20),
+    )
+    result = h.run()
+    assert result["result"] == "recorded", result
+    assert [c["parent"] for c in result["candidates"]] == [1]
+    assert len(result["diagnostics"]) == 1 and "#10" in result["diagnostics"][0]
+    recorded = next(d for d in result["decisions"] if d["issue"] == 10)
+    assert recorded["disposition"] == "human_hold"
+    assert held["rationale"] in recorded["rationale"]
+    assert recorded["facts"][:2] == held["facts"]
+    assert json.loads((h.run_dir / "result.json").read_text()) == result
+    comment = h.gh.comment_rows[10][-1]
+    assert "判定: human_hold" in comment["body"]
+    assert "agentの分類: existing_owner" in comment["body"]
+    assert held["rationale"] in comment["body"]
+    assert "phaseはagreed" in comment["body"]
+    assert importlib.import_module("dispatcher.records").owned_comment(
+        comment, "operator", "o/r", 10
+    )
+    writes = len(h.gh.writes)
+    repeated = h.run()
+    assert repeated["result"] == "recorded", repeated
+    assert repeated["input_sha256"] == result["input_sha256"]
+    assert repeated["diagnostics"] == result["diagnostics"]
+    assert all(p["action"] == "unchanged" for p in repeated["publications"])
+    assert len(h.gh.writes) == writes
 
 
 def test_assignment_contract_checks_external_context_then_parent_basis_under_one_lock(

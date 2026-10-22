@@ -10,6 +10,7 @@ from typing import Any
 from parent.state import Store
 
 from .collect import related
+from .schema import guard
 
 TEXT_PART_CHARS = 8000
 TEXT_SEGMENT_CHARS = 160
@@ -138,6 +139,8 @@ def write_agent_input(snapshot: dict[str, Any], directory: Path) -> Path:
         prefix = f"issues/{n}"
         (directory / prefix).mkdir(mode=0o700)
         summary = {k: v for k, v in raw.items() if k not in {"body", "comments"}}
+        if n in snapshot["subjects"]:
+            summary["mechanical_guard"] = guard(snapshot, n)
         summary["pulls"] = [p["number"] for p in pulls if n in p["issues"]]
         summary["file"] = write(
             f"{prefix}/issue.json",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 from parent.policy import (
     child_stopped,
@@ -41,6 +41,11 @@ DECISION_KEYS = {
     "sources",
     "dependencies",
 }
+
+
+class MechanicalGuard(TypedDict):
+    disposition: str
+    facts: list[str]
 
 
 def strings(value: Any, field: str, *, empty: bool = False) -> list[str]:
@@ -89,50 +94,81 @@ def source_url(snapshot: dict[str, Any], source: str) -> str:
     raise ValueError(f"source was not collected: {source}")
 
 
-def guard(snapshot: dict[str, Any], n: int) -> str | None:
+def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
     """Mechanical vetoes supplement, rather than replace, semantic agent judgment."""
     issues = snapshot["issues"]
     raw = issues[str(n)]
     target = route(issues, n)
     if is_container(raw) or is_container(issues[str(target)]):
-        return "out_of_scope"
+        container = n if is_container(raw) else target
+        return {
+            "disposition": "out_of_scope",
+            "facts": [f"#{container} はops-reportの報告容器である。"],
+        }
     if raw["parent"] is not None:
-        return "existing_parent"
+        return {
+            "disposition": "existing_parent",
+            "facts": [
+                f"#{n} の正式な親は #{raw['parent']}、最上位の管理先は #{target}。"
+            ],
+        }
     labels = {x["name"] for x in raw["labels"]}
     if "issue:child" in labels:
-        return "human_hold"  # Label/body cannot manufacture a missing formal relation.
+        return {
+            "disposition": "human_hold",
+            "facts": [f"#{n} はissue:childラベルがあるが正式な親関係がない。"],
+        }
     history = events(raw["comments"], snapshot["publisher"], n)
-    if (
-        "needs-human" in labels
-        or child_stopped(raw["body"])
-        or phase(history) in {"checking", "agreed"}
-    ):
-        return "human_hold"
+    facts = []
+    if "needs-human" in labels:
+        facts.append(f"#{n} にneeds-humanラベルがある。")
+    if child_stopped(raw["body"]):
+        facts.append(f"#{n} の本文に子の停止記録がある。")
+    current_phase = phase(history)
+    if current_phase in {"checking", "agreed"}:
+        facts.append(
+            f"#{n} のpublisherによるparent-session記録の現在phaseは{current_phase}。"
+        )
+    if facts:
+        return {"disposition": "human_hold", "facts": facts}
     family = {
         k for k in issues if route(issues, int(k)) == n and issues[k]["state"] == "open"
     }
-    if any(issues[k]["assignees"] for k in family):
-        return "existing_owner"
-    for k, owner in snapshot["owners"].items():
+    for k in sorted(family, key=int):
+        if issues[k]["assignees"]:
+            facts.append(f"#{k} にGitHub assigneeがある。")
+    for k, owner in sorted(snapshot["owners"].items(), key=lambda item: int(item[0])):
         if k in family and owner["status"] not in {"released", "ended"}:
-            return "existing_owner"
-        if any(
-            task in family and info["delegated"]
-            for task, info in owner["tasks"].items()
-        ):
-            return "existing_owner"
-    if any(set(p["issues"]) & {int(k) for k in family} for p in snapshot["pulls"]):
-        return "existing_owner"
-    if any(
-        issues[str(dep)]["state"] != "closed"
-        or issues[str(dep)]["state_reason"] != "completed"
-        for dep in raw["dependencies"]
-    ):
-        return "dependency_wait"
+            facts.append(
+                f"親 #{k} の担当状態は{owner['status']}、generationは{owner['generation']}。"
+            )
+        for task, info in sorted(owner["tasks"].items(), key=lambda item: int(item[0])):
+            if task in family and info["delegated"]:
+                facts.append(f"親 #{k} の記録に #{task} の委任予約がある。")
+    for pull in snapshot["pulls"]:
+        linked = sorted(set(pull["issues"]) & {int(k) for k in family})
+        if linked:
+            facts.append(
+                f"PR #{pull['number']} にissue {linked} のclosing指示がある。"
+                f"state={pull['state']}、merged_at={pull['merged_at']}。"
+            )
+    if facts:
+        return {"disposition": "existing_owner", "facts": facts}
+    for dep in raw["dependencies"]:
+        issue = issues[str(dep)]
+        if issue["state"] != "closed" or issue["state_reason"] != "completed":
+            facts.append(
+                f"先行依存 #{dep} はstate={issue['state']}、"
+                f"state_reason={issue['state_reason']}で未充足。"
+            )
+    if facts:
+        return {"disposition": "dependency_wait", "facts": facts}
     return None
 
 
-def validate(value: Any, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+def validate(
+    value: Any, snapshot: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
     data = object_value(value)
     if (
         set(data) != {"schema_version", "input_sha256", "decisions"}
@@ -143,6 +179,7 @@ def validate(value: Any, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     ):
         raise ValueError("unknown/malformed judgement schema or input digest mismatch")
     decisions = []
+    diagnostics = []
     seen: set[int] = set()
     priorities: set[int] = set()
     for raw in data["decisions"]:
@@ -174,8 +211,10 @@ def validate(value: Any, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
         ):
             raise ValueError("judgement omitted/changed collected dependencies")
         required = guard(snapshot, n)
-        if required is not None and d["disposition"] != required:
-            raise ValueError(f"#{n}: judgement contradicts mechanical guard {required}")
+        if required is not None and d["disposition"] == "startable":
+            raise ValueError(
+                f"#{n}: judgement contradicts mechanical guard {required['disposition']}"
+            )
         for field in ("rationale", "resume_condition", "next_action"):
             nonempty(d[field], field)
         strings(d["facts"], "facts")
@@ -210,10 +249,33 @@ def validate(value: Any, snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 raise ValueError("startable requires inspected pinned code as evidence")
         elif d["priority"] is not None or d["requirements"] is not None:
             raise ValueError("held issues cannot carry execution requirements/priority")
+        if required is not None and d["disposition"] != required["disposition"]:
+            diagnostics.append(
+                f"#{n}: non-startable disposition mismatch; "
+                f"mechanical_guard={required['disposition']}; "
+                f"agent_disposition={d['disposition']}; "
+                f"recorded_disposition={required['disposition']}"
+            )
+            d = {
+                **d,
+                "disposition": required["disposition"],
+                "rationale": (
+                    f"機械的阻害条件に従い{required['disposition']}として記録する。"
+                    f"agentの分類: {d['disposition']}。agentの理由: {d['rationale']}"
+                ),
+                "facts": list(
+                    dict.fromkeys(
+                        [
+                            *d["facts"],
+                            *(f"機械的阻害条件: {f}" for f in required["facts"]),
+                        ]
+                    )
+                ),
+            }
         decisions.append(d)
     if seen != set(snapshot["subjects"]):
         raise ValueError("judgement did not cover every collected open issue")
-    return sorted(decisions, key=lambda d: d["issue"])
+    return sorted(decisions, key=lambda d: d["issue"]), diagnostics
 
 
 def execution_context(snapshot: dict[str, Any], issue: int) -> dict[str, Any]:
