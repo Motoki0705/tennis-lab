@@ -1,7 +1,7 @@
 # Fixed model and batch; the pilot must explicitly set every update-count value.
 defaults:
   - train
-  - override data/source: synthetic_court_stores
+  - override data/source: synthetic_court_dataset_version
   - override data/source@mixed.sources.tennis_court_detector: tennis_court_evaluation
   - _self_
 

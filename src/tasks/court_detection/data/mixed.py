@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
     CourtTrainingConfig,
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
     TennisCourtDetectorSourceConfig,
@@ -89,7 +90,13 @@ class CourtMixedDataConfig:
                 "tennis_court_detector."
             )
 
-        scaling = isinstance(runtime.data.source, SyntheticCourtStoresSourceConfig)
+        scaling = isinstance(
+            runtime.data.source,
+            (
+                SyntheticCourtStoresSourceConfig,
+                SyntheticCourtDatasetVersionSourceConfig,
+            ),
+        )
         sources: dict[str, CourtSourceConfig] = {}
         for name in _SOURCE_ORDER:
             raw_source = require_config_mapping(
@@ -108,7 +115,7 @@ class CourtMixedDataConfig:
             )
             expected_kind = (
                 {
-                    "synthetic_court": "synthetic_court_stores",
+                    "synthetic_court": runtime.data.source.kind,
                     "tennis_court_detector": "tennis_court_evaluation",
                 }[name]
                 if scaling
@@ -119,7 +126,11 @@ class CourtMixedDataConfig:
                     f"mixed.sources.{name}.kind must be {expected_kind!r}."
                 )
             source: CourtSourceConfig
-            if kind == "synthetic_court_stores":
+            if kind == "synthetic_court_dataset_version":
+                source = SyntheticCourtDatasetVersionSourceConfig.from_mapping(
+                    raw_source, resolver=runtime.shared.resolver
+                )
+            elif kind == "synthetic_court_stores":
                 source = SyntheticCourtStoresSourceConfig.from_mapping(
                     raw_source, resolver=runtime.shared.resolver
                 )

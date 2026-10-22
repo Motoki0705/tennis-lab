@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 from torch.utils.data import DataLoader, Subset
 
 from src.tasks.court_detection.configuration import (
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
     TennisCourtEvaluationSourceConfig,
@@ -301,6 +302,10 @@ def evaluate_checkpoint(
                 manifests[f"synthetic_court/{scene}"] = file_sha256(
                     source_config.workspace_root / scene / "datasets/court/dataset.json"
                 )
+        elif isinstance(source_config, SyntheticCourtDatasetVersionSourceConfig):
+            manifests["synthetic_court/dataset_version"] = file_sha256(
+                source_config.manifest
+            )
         elif isinstance(source_config, SyntheticCourtStoresSourceConfig):
             for index, root in enumerate(source_config.store_roots):
                 manifests[f"synthetic_court/store-{index}"] = file_sha256(

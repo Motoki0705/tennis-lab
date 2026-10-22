@@ -14,6 +14,7 @@ from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.court_detection.configuration import (
     CourtTrainingConfig,
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtStoresSourceConfig,
 )
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
@@ -43,10 +44,11 @@ def resolve_training_config(
         )
     runtime = CourtTrainingConfig.from_config(config)
     if isinstance(
-        runtime.data.source, SyntheticCourtStoresSourceConfig
+        runtime.data.source,
+        (SyntheticCourtStoresSourceConfig, SyntheticCourtDatasetVersionSourceConfig),
     ) != has_step_schedule(config):
         raise SemanticConfigurationError(
-            "Explicit all-train stores and step_schedule must be selected together."
+            "Explicit all-train sources and step_schedule must be selected together."
         )
     mixed = CourtMixedDataConfig.from_mapping(config.get("mixed"), runtime=runtime)
     return config, mixed

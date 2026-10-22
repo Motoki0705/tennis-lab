@@ -37,7 +37,33 @@ only for final reporting. The legacy `split_mapping` source is unchanged.
 
 ## Explicit synthetic publications
 
-`data/source=synthetic_court_stores` accepts an **ordered, nonempty list** of
+`train_data_scaling` selects `data/source=synthetic_court_dataset_version`.
+Set `data.source.manifest` to an explicit `*.dataset.json` path under
+`paths.data_root`. Set the root itself to an absolute path when needed; the
+manifest value is role-relative, like other task inputs. The adapter calls
+`scale.publication.load_dataset_version(..., verify_images=True)` before
+model/worker startup. It verifies the frozen request, generation seed, recipe,
+candidate geometry, exact accepted membership, QA ledgers, store/index hashes,
+JPEG bytes and train-only split. D5 failures and geometry rejections never enter
+the training Dataset. Version references resolve relative to the manifest's
+parent; the adapter reads only its ordered scene/store inventory.
+
+Scale stores have an explicit profile, stable-ID-derived sample indices and
+`scale`/`qa` records. Their v3 KP14, visibility, camera/target and pose authority
+pass unchanged to the shared online target pipeline. The generator's
+[dataset-version contract](../../../synthetic_data_generation/dataset/court/README.md#dataset-version-consumer-contract)
+owns publication semantics; no generation or renderer runs during training.
+
+`data_version` and `generation_seed` in `data-condition.json` and checkpoint
+hyperparameters come from the verified manifest. They cannot be supplied in
+this source's configuration. Provenance also records manifest schema/hash,
+request/plan/recipe hashes, method, actual accepted scene counts, store hashes
+and the ordered training-ID hash. `run.seed` remains the independent training
+seed. Resume and checkpoint evaluation revalidate the publication and refuse
+input or registry drift.
+
+For historical V3 stores, explicitly select
+`data/source=synthetic_court_stores`. This accepts an **ordered, nonempty list** of
 store roots under `paths.data_root`. Each root is an existing packed
 `sample_store` publication (JPEG shards, sparse index and V3 target-court
 geometry). It never searches `scenes/<scene>/datasets/court` implicitly. All
@@ -54,17 +80,11 @@ actual source inventory, without a requested-count quota or replacement draws.
 Epoch-end sampler padding may repeat records to fill a batch; it does not alter
 the measured unique accepted image count.
 
-`data_version` identifies the selected condition and `generation_seed` records
-the declared generation experiment seed. `run.seed` is the independent training
-seed. Descriptor/index hashes and the ordered training-ID hash pin the actual
-store contents in `data-condition.json` and checkpoint hyperparameters.
-Evaluation refuses input or registry drift relative to that checkpoint.
-
-The generator owns the future condition-manifest schema. Its adapter should
-validate the manifest and its referenced hashes/completion state, resolve the
-exact ordered store list, then populate `store_roots`, `data_version` and
-`generation_seed` here. There is no guessed manifest schema or implicit owner
-fallback in this consumer.
+Only this historical source requires manually declared `data_version` and
+`generation_seed`; it does not claim scale dataset-version validation. It
+retains the existing strict V3 envelope and rejects scale stores. The source
+discriminator selects exactly one contract, with no automatic detection or
+fallback between manifests, historical stores and scene owners.
 
 ## Train with optimizer-update counts
 
@@ -78,8 +98,7 @@ Use absolute roots for remote/local workloads.
 .venv/bin/python -m src.tasks.court_detection.scripts.train \
   --config-name train_data_scaling \
   paths.data_root=/absolute/data paths.artifact_root=/absolute/outputs \
-  'data.source.store_roots=[court_scale/condition-v1/B00,court_scale/condition-v1/B01]' \
-  data.source.data_version=condition-v1 data.source.generation_seed=17 \
+  data.source.manifest=court_scale/condition-v1/VERSION.dataset.json \
   mixed.sources.tennis_court_detector.registry=court_detection/evaluate/real-video-split-v1/s42/registry.json \
   training.step_schedule.max_steps=100 \
   training.step_schedule.validation_every_n_steps=20 \
@@ -89,8 +108,8 @@ Use absolute roots for remote/local workloads.
 ```
 
 The update counts above are **illustrative**, not agreed production values.
-`max_steps`, warmup, evaluation/checkpoint intervals, store list, version,
-generation seed, registry and run output are mandatory configuration inputs.
+`max_steps`, warmup, evaluation/checkpoint intervals, dataset-version manifest,
+registry and run output are mandatory configuration inputs.
 The pilot must fix production counts before the main experiment.
 
 The preset uses frozen DINOv3 ViT-B/16 without LoRA; Transformer width 768,

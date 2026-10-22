@@ -679,6 +679,49 @@ class SyntheticCourtStoresSourceConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class SyntheticCourtDatasetVersionSourceConfig:
+    """An explicit scale publication; identity and seed come from its manifest."""
+
+    kind: Literal["synthetic_court_dataset_version"]
+    schema: Literal["v3"]
+    court_scope: Literal["target_court"]
+    manifest: Path
+
+    def __post_init__(self) -> None:
+        if (self.kind, self.schema, self.court_scope) != (
+            "synthetic_court_dataset_version",
+            "v3",
+            "target_court",
+        ):
+            raise SemanticConfigurationError(
+                "Court dataset versions require V3 target_court."
+            )
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> SyntheticCourtDatasetVersionSourceConfig:
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(
+            mapping, {"kind", "schema", "court_scope", "manifest"}, path="data.source"
+        )
+        return cls(
+            cast(
+                Literal["synthetic_court_dataset_version"],
+                _string(mapping, "kind", path="data.source"),
+            ),
+            cast(Literal["v3"], _string(mapping, "schema", path="data.source")),
+            cast(
+                Literal["target_court"],
+                _string(mapping, "court_scope", path="data.source"),
+            ),
+            resolver.resolve(
+                PathRole.DATA, _string(mapping, "manifest", path="data.source")
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TennisCourtEvaluationSourceConfig:
     """Read the original store through an immutable, video-disjoint registry."""
 
@@ -709,6 +752,7 @@ CourtSourceConfig: TypeAlias = (
     TennisCourtDetectorSourceConfig
     | SyntheticCourtSourceConfig
     | SyntheticCourtStoresSourceConfig
+    | SyntheticCourtDatasetVersionSourceConfig
     | TennisCourtEvaluationSourceConfig
 )
 
@@ -722,6 +766,10 @@ def _source_config(value: object, *, resolver: PathResolver) -> CourtSourceConfi
         return SyntheticCourtSourceConfig.from_mapping(mapping, resolver=resolver)
     if kind == "synthetic_court_stores":
         return SyntheticCourtStoresSourceConfig.from_mapping(mapping, resolver=resolver)
+    if kind == "synthetic_court_dataset_version":
+        return SyntheticCourtDatasetVersionSourceConfig.from_mapping(
+            mapping, resolver=resolver
+        )
     if kind == "tennis_court_evaluation":
         return TennisCourtEvaluationSourceConfig.from_mapping(
             mapping, resolver=resolver
@@ -1583,9 +1631,7 @@ class CourtInferenceConfig:
         patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
         if patch_size <= 0:
             raise SemanticConfigurationError("Validation patch size must be positive")
-        preserve_fx_fy = _bool(
-            augmentation, "preserve_fx_fy", path="data.augmentation"
-        )
+        preserve_fx_fy = _bool(augmentation, "preserve_fx_fy", path="data.augmentation")
         if loss.pose.enabled and not preserve_fx_fy:
             raise SemanticConfigurationError(
                 "Pose inference requires preserve_fx_fy=true"
@@ -1658,7 +1704,8 @@ class CourtTrainingConfig:
                 "lr_monitor",
                 "qualitative_logging",
                 "gan",
-            } | ({"step_schedule"} if "step_schedule" in training_mapping else set()),
+            }
+            | ({"step_schedule"} if "step_schedule" in training_mapping else set()),
             path="training",
         )
         nested_keys = {
@@ -1767,6 +1814,7 @@ class CourtTrainingConfig:
         shared_training = dict(training_mapping)
         if "step_schedule" in shared_training:
             from src.tasks.court_detection.scaling.schedule import StepSchedule
+
             StepSchedule.from_config(config)
             del shared_training["step_schedule"]
         shared_training["qualitative_logging"] = {
@@ -1946,6 +1994,7 @@ __all__ = [
     "SEGMENTATION_TARGET_SCHEMA",
     "SyntheticCourtSourceConfig",
     "SyntheticCourtStoresSourceConfig",
+    "SyntheticCourtDatasetVersionSourceConfig",
     "TennisCourtEvaluationSourceConfig",
     "SyntheticCourtSchemaVersion",
     "TennisCourtDetectorSourceConfig",

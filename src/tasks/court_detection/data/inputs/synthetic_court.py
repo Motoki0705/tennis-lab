@@ -31,6 +31,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
 from src.tasks.court_detection.configuration import (
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
 )
@@ -139,8 +140,13 @@ class _ParsedPoint(TypedDict):
 class SyntheticCourtInput:
     """Load only the synthetic schema explicitly selected in typed config."""
 
+    _additional_sample_keys: frozenset[str] = frozenset()
+
     def __init__(
-        self, config: SyntheticCourtSourceConfig | SyntheticCourtStoresSourceConfig
+        self,
+        config: SyntheticCourtSourceConfig
+        | SyntheticCourtStoresSourceConfig
+        | SyntheticCourtDatasetVersionSourceConfig,
     ) -> None:
         self.config = config
         self._image_stores: dict[Path, ImageRecordStore] = {}
@@ -331,6 +337,8 @@ class SyntheticCourtInput:
             return tuple(
                 (None, root.resolve(strict=True)) for root in self.config.store_roots
             )
+        if not isinstance(self.config, SyntheticCourtSourceConfig):
+            raise TypeError("Dataset versions require the explicit scale adapter.")
         workspace = self.config.workspace_root.resolve(strict=False)
         roots = []
         for scene in self.config.scene_ids:
@@ -384,6 +392,7 @@ class SyntheticCourtInput:
             expected_keys.difference_update(LEGACY_SAMPLE_FILES)
             expected_keys.add("image_index")
         expected_keys.add("target_court")
+        expected_keys.update(self._additional_sample_keys)
         if not isinstance(value, Mapping) or set(value) != expected_keys:
             raise ValueError("Synthetic Court accepted sample record fields changed.")
         source_sample_id = self._identifier(value["sample_id"], name="sample_id")
@@ -416,7 +425,7 @@ class SyntheticCourtInput:
         camera = SceneCamera.from_dict(value["camera"])
         if (
             camera.camera_id != source_sample_id
-            or camera.source_frame_index != value["sample_index"]
+            or camera.source_frame_index != self._camera_source_frame_index(value)
             or camera.width != width
             or (camera.height != height)
         ):
@@ -515,6 +524,9 @@ class SyntheticCourtInput:
                 ),
             },
         )
+
+    def _camera_source_frame_index(self, value: Mapping[str, object]) -> int:
+        return cast(int, value["sample_index"])
 
     @staticmethod
     def _resolve_published_directory(root: Path, value: object) -> Path:

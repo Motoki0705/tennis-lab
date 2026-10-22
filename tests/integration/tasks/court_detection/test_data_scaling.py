@@ -57,6 +57,7 @@ def _config(tmp_path: Path) -> DictConfig:
         config = compose(
             config_name="train_data_scaling",
             overrides=[
+                "data/source=synthetic_court_stores",
                 "data.source.store_roots=[versions/condition/part]",
                 "data.source.data_version=fixture-v1",
                 "data.source.generation_seed=17",
