@@ -233,8 +233,6 @@ def setup_nht(with_sfm_learned: bool, render_only: bool) -> None:
             "--python",
             NHT_PYTHON_VERSION,
             "--editable",
-            "--with-editable",
-            f"{relative_root}/gsplat",
             "--with",
             f"torch=={NHT_TORCH_VERSION}",
             "--with",
@@ -250,7 +248,10 @@ def setup_nht(with_sfm_learned: bool, render_only: bool) -> None:
             "NHT was installed, but `uv tool dir` did not return a directory."
         )
     tool_python = tool_directory / NHT_TOOL_ENVIRONMENT / "bin/python"
-    cuda_build_environment = _nht_cuda_build_environment()
+    cuda_build_environment = {
+        **_nht_cuda_build_environment(),
+        "PATH": f"{tool_python.parent}{os.pathsep}{os.environ.get('PATH', '')}",
+    }
     _run(
         [
             "uv",
@@ -259,7 +260,27 @@ def setup_nht(with_sfm_learned: bool, render_only: bool) -> None:
             "--python",
             str(tool_python),
             "setuptools<81",
+            "wheel",
+            "ninja",
+            "rich",
         ]
+    )
+    # Build against the installed pinned Torch, rather than an isolated builder's
+    # unconstrained Torch ABI. Import the native module below without JIT fallback.
+    _run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(tool_python),
+            "--no-build-isolation",
+            "--no-cache",
+            "--reinstall",
+            "--editable",
+            f"{relative_root}/gsplat",
+        ],
+        environment=cuda_build_environment,
     )
     _run(
         [
@@ -284,6 +305,7 @@ def setup_nht(with_sfm_learned: bool, render_only: bool) -> None:
             "--",
             "python",
             "-c",
+            "from gsplat import csrc; "
             "from gsplat.nht.deferred_shader import DeferredShaderModule",
         ]
     )

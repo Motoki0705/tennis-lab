@@ -81,13 +81,14 @@ def test_setup_nht_builds_requested_isolated_runtimes(
     bin_directory = tmp_path / "bin"
     bin_directory.mkdir()
     log_path = tmp_path / "commands.log"
+    tool_directory = tmp_path / "tools"
     for command in ("git", "nht-reconstruct", "nht-render"):
         _write_fake_command(bin_directory / command, log_path=log_path)
     _write_fake_uv(
         bin_directory / "uv",
         log_path=log_path,
         tool_bin=bin_directory,
-        tool_directory=tmp_path / "tools",
+        tool_directory=tool_directory,
     )
     environment = {
         **os.environ,
@@ -104,12 +105,24 @@ def test_setup_nht_builds_requested_isolated_runtimes(
     )
     assert "uv tool install --force --python 3.11 --editable" in commands
     assert "--python 3.11" in commands
-    assert "--with-editable third_party/nht/gsplat" in commands
+    gsplat_build = (
+        f"uv pip install --python {tool_directory}/nht/bin/python "
+        "--no-build-isolation --no-cache --reinstall --editable third_party/nht/gsplat"
+    )
+    assert gsplat_build in commands
+    assert "--with-editable third_party/nht/gsplat" not in commands
     assert "--with torch==2.9.1 --with torchvision==0.24.1" in commands
     assert "third_party/nht[aov]" in commands
     assert "setuptools<81" in commands
+    assert "setuptools<81 wheel ninja rich" in commands
     assert "tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/" in commands
-    assert "from gsplat.nht.deferred_shader import DeferredShaderModule" in commands
+    native_probe = (
+        "from gsplat import csrc; "
+        "from gsplat.nht.deferred_shader import DeferredShaderModule"
+    )
+    assert native_probe in commands
+    assert commands.index("--with torch==") < commands.index(gsplat_build)
+    assert commands.index(gsplat_build) < commands.index(native_probe)
     assert "NHT public CLI is ready" in result.stdout
     if render_only:
         assert ".trainer-venv" not in commands

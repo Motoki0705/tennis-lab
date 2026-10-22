@@ -31,6 +31,9 @@ editable installする。production SfMの任意retry backendも用意する場�
 描画だけを行う環境では `spin setup-nht --render-only` を使う。同じ固定版の
 公開renderer・gsplat・tiny-cuda-nnを導入し、trainer環境の構築は行わない。
 `--with-sfm-learned`とは併用できない。
+gsplatは固定Torchを導入した後、そのtool環境内でbuild isolationを無効にして
+ビルドする。別のTorch ABIで作られた拡張をJITで補うことなく、ネイティブ拡張と
+shaderの両方をimportして検証する。
 
 ## コマンド
 
