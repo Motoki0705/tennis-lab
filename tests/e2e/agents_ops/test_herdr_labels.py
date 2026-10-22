@@ -47,6 +47,8 @@ if args[:2] == ['pane', 'report-metadata']:
     result = None
 elif args[:2] == ['pane', 'process-info']:
     result = {'process_info':{'foreground_processes':[{'pid':state['pid'], 'name':pane['agent']}]}}
+elif args == ['agent', 'list']:
+    result = {'agents':list(state['panes'].values())}
 elif args[:2] not in (['pane','get'], ['pane','current']):
     raise SystemExit('unexpected Herdr command')
 path.write_text(json.dumps(state))
@@ -210,6 +212,38 @@ def test_wrong_parent_or_ambiguous_owner_never_updates(labels: Labels) -> None:
     labels.set_registry({"o/r#42": labels.owner(), "o/r#43": labels.owner()})
     assert labels.run("sync").returncode == 2
     assert not labels.mutations()
+
+
+@pytest.mark.parametrize("event", ["sync", "start"])
+def test_duplicate_claude_session_cannot_turn_helper_into_parent(
+    labels: Labels, event: str
+) -> None:
+    state = labels.read()
+    state["panes"]["w1:p1"].update(display_agent="#42 · 関連")
+    state["panes"]["w1:p2"].update(
+        agent="claude",
+        display_agent="#42 · 親",
+        tokens={"tl_owner": hashlib.sha256(b"claude:test-owner").hexdigest()},
+    )
+    labels.write(state)
+    if event == "sync":
+        result = labels.run("sync")
+    else:
+        result = subprocess.run(
+            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            input=json.dumps(
+                {"hook_event_name": "SessionStart", "session_id": "test-owner"}
+            ),
+            text=True,
+            capture_output=True,
+            env=labels.env,
+            timeout=20,
+            check=False,
+        )
+    assert result.returncode != 0
+    assert "another live pane" in result.stderr
+    assert not labels.mutations()
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 関連"
 
 
 @pytest.mark.parametrize(

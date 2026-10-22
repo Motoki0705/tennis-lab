@@ -209,6 +209,19 @@ def sync(
         raise ValueError("invalid parent registry key")
     if expected_parent is not None and int(number) != expected_parent:
         raise ValueError("requested parent differs from the caller's registered parent")
+    agents = client.call("agent", "list").get("agents")
+    if not isinstance(agents, list) or not all(isinstance(p, dict) for p in agents):
+        raise ValueError("Herdr returned an invalid agent list")
+    if any(
+        p.get("terminal_id") != pane["terminal_id"]
+        and p.get("agent") == identity.split(":", 1)[0]
+        and p.get("tokens", {}).get("tl_owner") == token
+        for p in agents
+    ):
+        raise ValueError(
+            "the same session already labels another live pane; "
+            "inspect duplicated sessions before synchronizing"
+        )
     if topic is None:
         if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
             topic = existing.get("tl_topic")
