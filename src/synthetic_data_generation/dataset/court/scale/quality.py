@@ -14,7 +14,7 @@ from src.synthetic_data_generation.dataset.court.components.labels import (
 from src.synthetic_data_generation.rendering.nht import NHTRenderArrays
 from src.synthetic_data_generation.scene_contract import MultiCourtLayout, SceneCamera
 
-from .core import QualityPolicy
+from .core import QualityPolicy, digest
 
 
 def roi_mask(record: dict[str, Any], near_plane_m: float) -> np.ndarray:
@@ -104,6 +104,12 @@ def evaluate_render(
         if roi_holes is not None
         else None,
     }
+    if policy.schema == "court_scale_quality_policy_v2":
+        diagnostics.update(
+            schema="court_scale_render_diagnostics_v2",
+            rule_version=policy.rule_version,
+            quality_policy_sha256=digest(policy.to_dict()),
+        )
     return {
         **updated,
         "qa": diagnostics,
@@ -112,6 +118,15 @@ def evaluate_render(
             *quality_rejection_reasons(diagnostics, policy),
         ],
     }
+
+
+def validate_quality_binding(qa: dict[str, Any], policy: QualityPolicy) -> None:
+    if policy.schema == "court_scale_quality_policy_v2" and (
+        qa.get("schema") != "court_scale_render_diagnostics_v2"
+        or qa.get("rule_version") != policy.rule_version
+        or qa.get("quality_policy_sha256") != digest(policy.to_dict())
+    ):
+        raise ValueError("QA diagnostics disagree with the versioned quality policy.")
 
 
 def quality_rejection_reasons(qa: dict[str, Any], policy: QualityPolicy) -> list[str]:

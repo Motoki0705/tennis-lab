@@ -26,11 +26,18 @@ from src.utils.data.image_record_store import (
 
 from .core import GeometryRecipe, QualityPolicy, canonical_bytes, digest, stable_id
 from .planning import PLAN_SCHEMA, candidate_plan_header, iter_trajectory_plans
-from .quality import evaluate_render, quality_rejection_reasons
+from .quality import (
+    evaluate_render,
+    quality_rejection_reasons,
+    validate_quality_binding,
+)
+from .recipes import ProductionRecipe
 from .validation import validate_plan_geometry, validate_record_geometry
 
 REQUEST_SCHEMA = "court_scale_condition_request_v1"
 VERSION_SCHEMA = "court_scale_dataset_version_v1"
+PRODUCTION_REQUEST_SCHEMA = "court_scale_condition_request_v2"
+PRODUCTION_VERSION_SCHEMA = "court_scale_dataset_version_v2"
 STORE_PROFILE = "court_scale_train_store_v1"
 Render = Callable[
     [dict[str, Any], list[dict[str, Any]]], Iterable[tuple[str, NHTRenderArrays]]
@@ -120,6 +127,7 @@ def freeze_request(
     assets: list[dict[str, Any]],
     quality: QualityPolicy,
     renderer: dict[str, Any],
+    production_recipe: ProductionRecipe | None = None,
 ) -> Path:
     """Write every condition input before any render. The caller pins asset hashes."""
     root = root.resolve()
@@ -132,6 +140,11 @@ def freeze_request(
         raise ValueError(
             "One request requires one method/recipe/seed and unique scene IDs."
         )
+    if production_recipe is not None:
+        if quality != production_recipe.quality:
+            raise ValueError("Quality policy disagrees with the production recipe.")
+        for plan in plans:
+            production_recipe.validate_plan(plan)
     for plan, asset in sorted(
         zip(plans, assets, strict=True), key=lambda pa: pa[0]["scene_id"]
     ):
@@ -183,8 +196,55 @@ def freeze_request(
         "renderer": renderer,
         "scenes": scenes,
     }
+    if production_recipe is not None:
+        request.update(
+            schema=PRODUCTION_REQUEST_SCHEMA,
+            production_recipe=production_recipe.to_dict(),
+            recipe_sha256=digest(production_recipe.to_dict()),
+            geometry_recipe_sha256=recipe,
+            **_quality_authority(quality),
+        )
     path, _ = write_content(root, "requests", request)
     return root / path
+
+
+def _quality_authority(quality: QualityPolicy) -> dict[str, Any]:
+    if quality.schema == "court_scale_quality_policy_v1":
+        return {}
+    return {
+        "quality_policy_sha256": digest(quality.to_dict()),
+        "quality_rule_version": quality.rule_version,
+    }
+
+
+def _request_authority(request: dict[str, Any]) -> dict[str, Any]:
+    """Dispatch explicitly; old comparison requests never become production inputs."""
+    keys = {"method", "recipe_sha256", "generation_seed", "split"}
+    if request["schema"] == PRODUCTION_REQUEST_SCHEMA:
+        recipe = ProductionRecipe.from_dict(request["production_recipe"])
+        if (
+            request["method"] != recipe.method.value
+            or request["recipe_sha256"] != digest(recipe.to_dict())
+            or request["geometry_recipe_sha256"] != digest(recipe.geometry.to_dict())
+            or request["quality"] != recipe.quality.to_dict()
+            or any(
+                request[k] != v for k, v in _quality_authority(recipe.quality).items()
+            )
+        ):
+            raise ValueError("Request disagrees with its complete production recipe.")
+        keys.update(
+            {
+                "production_recipe",
+                "geometry_recipe_sha256",
+                "quality_policy_sha256",
+                "quality_rule_version",
+            }
+        )
+    elif request["schema"] != REQUEST_SCHEMA:
+        raise ValueError("Unknown train-only condition request schema.")
+    if request["split"] != "train":
+        raise ValueError("Condition requests must be train-only.")
+    return {key: request[key] for key in keys}
 
 
 def validate_counts(counts: dict[str, Any], *, complete: bool = True) -> None:
@@ -241,19 +301,36 @@ def _count(records: list[dict[str, Any]], *, reused: bool) -> dict[str, int]:
 
 
 def _read_cache(
-    root: Path, path: Path, key: str, members: list[str], *, verify_images: bool = False
+    root: Path,
+    path: Path,
+    key: str,
+    members: list[str],
+    *,
+    quality: QualityPolicy,
+    verify_images: bool = False,
 ) -> dict[str, Any]:
     completion = read_json(path / "completion.json")
+    version = 2 if quality.schema == "court_scale_quality_policy_v2" else 1
+    authority = _quality_authority(quality)
     if (
-        completion["schema"] != "court_scale_render_cache_v1"
+        completion["schema"] != f"court_scale_render_cache_v{version}"
         or completion["cache_key"] != key
         or completion["member_ids"] != members
+        or any(completion.get(k) != v for k, v in authority.items())
     ):
         raise ValueError("Render cache has a conflicting plan or renderer/QA version.")
     ledger = contained(root, completion["ledger_path"])
     if file_sha256(ledger) != completion["ledger_sha256"]:
         raise ValueError("Render cache QA ledger hash mismatch.")
-    records = read_json(ledger)["records"]
+    ledger_value = read_json(ledger)
+    if ledger_value["schema"] != f"court_scale_qa_ledger_v{version}" or any(
+        ledger_value.get(k) != v for k, v in authority.items()
+    ):
+        raise ValueError("QA ledger disagrees with the versioned quality policy.")
+    records = ledger_value["records"]
+    for item in records:
+        if item["qa"] is not None:
+            validate_quality_binding(item["qa"], quality)
     if [r["sample_id"] for r in records] != members:
         raise ValueError("Render cache QA ledger inventory mismatch.")
     if any(
@@ -300,7 +377,9 @@ def _render_cache(
     destination = root / "stores" / key
     member_ids = [s["sample_id"] for s in members]
     if destination.exists():
-        return _read_cache(root, destination, key, member_ids, verify_images=True), True
+        return _read_cache(
+            root, destination, key, member_ids, quality=quality, verify_images=True
+        ), True
     staging = root / ".staging" / key
     staging.mkdir(parents=True, exist_ok=False)
     eligible = [s for s in members if not s["reasons"]]
@@ -405,14 +484,18 @@ def _render_cache(
             "dataset_sha256": file_sha256(staging / "dataset.json"),
             "index_sha256": file_sha256(staging / "samples/index.npz"),
         }
+    qa_version = 2 if quality.schema == "court_scale_quality_policy_v2" else 1
+    authority = _quality_authority(quality)
     ledger_value = {
-        "schema": "court_scale_qa_ledger_v1",
+        "schema": f"court_scale_qa_ledger_v{qa_version}",
+        **authority,
         "cache_key": key,
         "records": ledger,
     }
     (staging / "qa.json").write_bytes(canonical_bytes(ledger_value))
     completion = {
-        "schema": "court_scale_render_cache_v1",
+        "schema": f"court_scale_render_cache_v{qa_version}",
+        **authority,
         "cache_key": key,
         "member_ids": member_ids,
         "store": store_entry,
@@ -432,12 +515,13 @@ def execute_request(root: Path, request_path: Path, render: Render) -> Path:
     if not request_path.is_relative_to(root):
         raise ValueError("Condition request is outside the explicit output root.")
     request = read_json(request_path)
-    if request["schema"] != REQUEST_SCHEMA or request["split"] != "train":
-        raise ValueError("Unknown train-only condition request schema.")
+    authority = _request_authority(request)
     receipt = root / "completed-requests" / f"{file_sha256(request_path)}.json"
     if receipt.exists():
         previous = contained(root, read_json(receipt)["dataset_version_path"])
-        load_dataset_version(previous, verify_images=True)
+        version = load_dataset_version(previous, verify_images=True)
+        if version["request_sha256"] != file_sha256(request_path):
+            raise ValueError("Completed request receipt refers to another request.")
         return previous
     quality = QualityPolicy(**request["quality"])
     scenes = []
@@ -450,6 +534,8 @@ def execute_request(root: Path, request_path: Path, render: Render) -> Path:
         ):
             raise ValueError("Frozen plan/asset hash mismatch before rendering.")
         plan, asset = read_json(plan_path), read_json(asset_path)
+        if request["schema"] == PRODUCTION_REQUEST_SCHEMA:
+            ProductionRecipe.from_dict(request["production_recipe"]).validate_plan(plan)
         alignment = AlignmentResult.from_dict(asset["alignment"])
         recipe = GeometryRecipe.from_dict(plan["recipe"])
         accepted_ids: list[str] = []
@@ -519,14 +605,13 @@ def execute_request(root: Path, request_path: Path, render: Render) -> Path:
             }
         )
     result = {
-        "schema": VERSION_SCHEMA,
+        "schema": PRODUCTION_VERSION_SCHEMA
+        if request["schema"] == PRODUCTION_REQUEST_SCHEMA
+        else VERSION_SCHEMA,
         "request_path": request_path.relative_to(root).as_posix(),
         "request_sha256": file_sha256(request_path),
         "plan_sha256": digest([s["plan_sha256"] for s in scenes]),
-        "method": request["method"],
-        "recipe_sha256": request["recipe_sha256"],
-        "generation_seed": request["generation_seed"],
-        "split": "train",
+        **authority,
         "scenes": scenes,
     }
     result["dataset_version"] = digest(result)
@@ -555,9 +640,18 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
         "split",
         "scenes",
     }
+    if version["schema"] == PRODUCTION_VERSION_SCHEMA:
+        expected.update(
+            {
+                "production_recipe",
+                "geometry_recipe_sha256",
+                "quality_policy_sha256",
+                "quality_rule_version",
+            }
+        )
     if (
         set(version) != expected
-        or version["schema"] != VERSION_SCHEMA
+        or version["schema"] not in {VERSION_SCHEMA, PRODUCTION_VERSION_SCHEMA}
         or version["split"] != "train"
         or version["dataset_version"]
         != digest({k: v for k, v in version.items() if k != "dataset_version"})
@@ -567,9 +661,14 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
     if file_sha256(request_path) != version["request_sha256"]:
         raise ValueError("Dataset-version request hash mismatch.")
     request = read_json(request_path)
-    if request["schema"] != REQUEST_SCHEMA or any(
-        version[k] != request[k]
-        for k in ("method", "recipe_sha256", "generation_seed", "split")
+    authority = _request_authority(request)
+    expected_schema = (
+        PRODUCTION_VERSION_SCHEMA
+        if request["schema"] == PRODUCTION_REQUEST_SCHEMA
+        else VERSION_SCHEMA
+    )
+    if version["schema"] != expected_schema or any(
+        version[k] != value for k, value in authority.items()
     ):
         raise ValueError("Dataset version disagrees with its frozen request.")
     quality = QualityPolicy(**request["quality"])
@@ -601,6 +700,19 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
             or plan["scene_id"] != scene["scene_id"]
         ):
             raise ValueError("Invalid candidate plan identity.")
+        if request["schema"] == PRODUCTION_REQUEST_SCHEMA:
+            ProductionRecipe.from_dict(request["production_recipe"]).validate_plan(plan)
+        if (
+            plan["method"] != request["method"]
+            or plan["generation_seed"] != request["generation_seed"]
+            or plan["recipe_sha256"]
+            != (
+                request["geometry_recipe_sha256"]
+                if request["schema"] == PRODUCTION_REQUEST_SCHEMA
+                else request["recipe_sha256"]
+            )
+        ):
+            raise ValueError("Candidate plan disagrees with its frozen request.")
         asset = read_json(contained(root, scene["asset_manifest_path"]))
         layout = AlignmentResult.from_dict(asset["alignment"]).layout
         planned: dict[str, str] = {}
@@ -625,9 +737,10 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
         ) -> dict[str, dict[str, Any]]:
             reference = refs[gid]
             group = read_json(contained(root, reference["path"]))
-            return validate_plan_geometry(
+            records: dict[str, dict[str, Any]] = validate_plan_geometry(
                 {**frozen_plan, "trajectory_groups": [group]}, frozen_layout
             )
+            return records
 
         membership = read_json(contained(root, scene["accepted_ids_path"]))
         accepted = membership["sample_ids"]
@@ -690,6 +803,7 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
                 completion_path.parent,
                 completion["cache_key"],
                 completion["member_ids"],
+                quality=quality,
                 verify_images=verify_images,
             )["records"]
             ledger_ids.extend(r["sample_id"] for r in records)

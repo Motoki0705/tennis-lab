@@ -13,6 +13,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 IDENTITY_SCHEMA = "court_scale_identity_v1"
+D5_RULE_VERSION = "target_kp4_roi_holes_1pct_v1"
 
 
 class TrajectoryMethod(StrEnum):
@@ -134,15 +135,32 @@ class GeometryRecipe:
 
 @dataclass(frozen=True)
 class QualityPolicy:
-    """Existing visibility gates by default; new hard gates require explicit values."""
+    """Legacy comparison gates or the explicitly versioned production D5 rule."""
 
     schema: str = "court_scale_quality_policy_v1"
     minimum_target_visible_kp: int | None = None
     maximum_roi_hole_fraction: float | None = None
+    rule_version: str | None = None
 
     def __post_init__(self) -> None:
-        if self.schema != "court_scale_quality_policy_v1":
+        if self.schema not in {
+            "court_scale_quality_policy_v1",
+            "court_scale_quality_policy_v2",
+        }:
             raise ValueError("Unknown quality policy schema.")
+        if self.schema == "court_scale_quality_policy_v1":
+            if self.rule_version is not None:
+                raise ValueError(
+                    "Legacy quality policy cannot declare a D5 rule version."
+                )
+        elif (
+            self.rule_version != D5_RULE_VERSION
+            or self.minimum_target_visible_kp != 4
+            or self.maximum_roi_hole_fraction != 0.01
+        ):
+            raise ValueError(
+                "Production D5 requires target KP >=4 and ROI holes <=0.01."
+            )
         if self.minimum_target_visible_kp is not None:
             require_integer(
                 self.minimum_target_visible_kp, "minimum_target_visible_kp", minimum=0
@@ -156,4 +174,7 @@ class QualityPolicy:
             raise ValueError("ROI hole threshold must lie in [0,1].")
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        result = asdict(self)
+        if self.schema == "court_scale_quality_policy_v1":
+            del result["rule_version"]
+        return result

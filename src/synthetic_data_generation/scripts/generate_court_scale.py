@@ -1,4 +1,4 @@
-"""Freeze explicit Court method comparisons, then render them through the queue."""
+"""Freeze Court production/comparison requests, then render through the queue."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from src.synthetic_data_generation.dataset.court.scale.publication import (
     persist_candidate_plan,
     read_json,
 )
+from src.synthetic_data_generation.dataset.court.scale.recipes import ProductionRecipe
 from src.synthetic_data_generation.dataset.court.scale.runtime import (
     LocalNHTRenderer,
     load_scene_inputs,
@@ -31,12 +32,12 @@ def main() -> None:
     plan = commands.add_parser("plan")
     plan.add_argument("--scenes-root", type=Path, required=True)
     plan.add_argument("--scenes", nargs="+", required=True)
-    plan.add_argument(
-        "--methods", nargs="+", choices=list(TrajectoryMethod), required=True
-    )
+    selection = plan.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--methods", nargs="+", choices=list(TrajectoryMethod))
+    selection.add_argument("--production-recipe", type=Path)
     plan.add_argument("--output-root", type=Path, required=True)
-    plan.add_argument("--recipe", type=Path, required=True)
-    plan.add_argument("--quality", type=Path, required=True)
+    plan.add_argument("--recipe", type=Path, help="comparison geometry recipe")
+    plan.add_argument("--quality", type=Path, help="comparison quality policy")
     plan.add_argument("--generation-seed", type=int, required=True)
     plan.add_argument("--trajectory-count", type=int, required=True)
     plan.add_argument("--density-level", type=int, required=True)
@@ -96,12 +97,32 @@ def main() -> None:
         args.scenes_root.resolve()
     ) or args.scenes_root.resolve().is_relative_to(root):
         raise ValueError("Output root must be outside the read-only scene root.")
+    production_recipe = None
+    if args.production_recipe is not None:
+        if (
+            args.recipe is not None
+            or args.quality is not None
+            or args.method_prefix
+            or args.method_density
+            or args.legacy_hull_center
+        ):
+            raise ValueError("Production recipe cannot use comparison overrides.")
+        production_recipe = ProductionRecipe.from_dict(
+            read_json(args.production_recipe)
+        )
+        args.methods = [production_recipe.method.value]
+        recipe, quality = production_recipe.geometry, production_recipe.quality
+    else:
+        if args.recipe is None or args.quality is None:
+            raise ValueError(
+                "Comparison methods require explicit --recipe and --quality."
+            )
+        recipe = GeometryRecipe.from_dict(read_json(args.recipe))
+        quality = QualityPolicy(**read_json(args.quality))
     if len(args.scenes) != len(set(args.scenes)) or len(args.methods) != len(
         set(args.methods)
     ):
         raise ValueError("Duplicate scene or method selections.")
-    recipe = GeometryRecipe.from_dict(read_json(args.recipe))
-    quality = QualityPolicy(**read_json(args.quality))
     overrides = {}
     for text in args.legacy_hull_center:
         scene_id, value = text.split("=", 1)
@@ -177,6 +198,7 @@ def main() -> None:
             assets=[i["asset"] for i in inputs],
             quality=quality,
             renderer=fingerprint,
+            production_recipe=production_recipe,
         )
         requests.append(str(frozen_path))
         print(f"frozen {method.value}: {frozen_path}", flush=True)
