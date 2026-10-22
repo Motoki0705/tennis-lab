@@ -76,6 +76,9 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
    競合や未確定の仕様を解消できなければ、その子に理由を記録し、独立した子を進める。
 2. [stacked branchのCLI手順](../../ops/parent/README.md#stacked-branchの確認とrebase) に従い、
    起動時の依存headを固定して `delegate` する。CLIは全依存headが子のHEADの祖先であることを検査する。
+   stacked branchのPR（`Closes #子`）は、先行PRのmerge後にrebaseしてから作る。親単位レビューとmerge gateは
+   全open子PRの集合をレビュー時の対象と照合するため、先行PRのレビュー後に後続のPRを開くと
+   先行PRのgateが `pr_set_changed` で止まる。それまではbranchのpushと子issueへの記録にとどめる。
    先行branchが更新されたら差分・インターフェースを確認して積み直す。
 3. 先行PRのmerge後は、固定した古い依存headを境界としてmainへ `rebase --onto` する。
    squash mergeでも先行の変更を重複させず、子自身の差分・テストを確認しPRのbaseをmainへ変更する。
