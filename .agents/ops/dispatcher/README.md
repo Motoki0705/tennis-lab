@@ -8,6 +8,7 @@
 | ファイル | 責務 |
 |---|---|
 | `collect.py` | 全ページ収集、正式関係と依存の閉包、registryの読取、固定コード、入力射影・鮮度照合 |
+| `agent_input.py` | 完全なsnapshotを変更せず、索引・issue・関連PRを読み取り単位に分割 |
 | `agent.py` / `prompt.md` | 共通ランナーでの1回の判定、runtime証拠の照合 / 判断方針と返却schema |
 | `schema.py` | 全件の構造化結果・出典・scope・完了条件・routing・機械的阻害条件の検査 |
 | `records.py` | 厳格JSON、自分の判断コメントの識別、実行根拠への進捗コメントの除外指定 |
@@ -32,15 +33,26 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher.judgement \
 
 `--timeout` は有限正数の秒（既定1800）。`--agent-exec` は通常共通ランナーのまま使い、テストで差し替えられる。
 モデル・effort設定の正本は [共通ランナー](../lib/README.md)。必ず `--role parent --mode read-only` で呼ぶ。
+`--read-dir <run-dir>/agent-input` でagent入力だけを追加の読み取り対象にし、runtimeの`contract.read_dirs`とも照合する。
+Claudeの`--add-dir`への変換とCodexのsandbox契約は共通ランナーが扱う。
 ランナーの正常終了、run ID・実行契約・選択値と観測model・プロセス回収を確認した後に最終JSONを読む。
 exit 0や`task_success:null`をタスク成功に読み替えない。失敗時に別モデルや別sessionへ振り替えない。
 
-保存物は `input.json`、`prompt.md`、`agent-runtime/`、`runner.stdout` / `runner.stderr`、
+保存物は `input.json`、`agent-input/`、`prompt.md`、`agent-runtime/`、`runner.stdout` / `runner.stderr`、
 `agent-output.json`、`result.json`。stdoutは `schema_version/result/candidate_count/diagnostic_count` の短いJSONだけ。
 終了値0はpreviewまたは記録完了、2は取得・整合・runtime・鮮度エラー。診断の詳細はprivateなresultを読む。
 部分公開後の失敗も `result=failed, candidates=[]`。途中までのコメントや根拠を消さず、次の予定回または明示実行で照合する。
 
 ## 入力契約とdigest
+
+完全な`input.json`はdigest・鮮度照合用に維持し、agentには`agent-input/index.json`から必要な資料を読むよう指示する。
+索引は全subjectsと閉包のissue要約・正式関係・依存・関連PR番号・assignees・担当/委任要約・commit・digestを持つ。
+要約を1行ずつ配置し、長文を含む詳細は別ファイルにして、Readの行数制限で索引の後半を落とさないようにする。
+`issues/<番号>/issue.json`は本文・関係とコメントページへの参照、`pulls/<番号>/pull.json`は関連PRのclosing本文・head・merge状態を持つ。
+参照は全て`agent-input/`からの相対パス。本文・コメントは短い`segments`の順序連結、長文は`files`の全パートの順序連結で
+原文を復元できる。コメントはページ分割し、内容の要約・切り詰めはしない（`content_complete=true`, `omissions=[]`）。
+無関係なPR・code tree・controller内部の`execution_inputs`は渡さず、索引の`omissions`に種類・理由（PRは件数も）を明記する。
+コードは固定commitのcwdを直接読む。agent向けの分割・絞り込みは`material()`やdigestを変更しない。
 
 `input.json` schema_version=1:
 
@@ -155,8 +167,11 @@ triageは生成・再利用した**通常の作業issueをGitHubへ反映する�
 flock "$PYTEST_LOCK" .venv/bin/python -m pytest tests/e2e/agents_ops/test_dispatcher_judgement.py -n 4 -q
 ```
 
-fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。共通ランナー自体は本番と同じものを通す。
+fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既存の統合試験は本番と同じ共通ランナーを通す。
+入力分割と引数・契約照合の試験にはfake runnerも使う。統合試験は共通ランナーの`--read-dir`対応が前提であり、
+未対応の引数を除去したりskipしたりせず、対応版を取り込んで同じテスト全体を再実行する。
 未合意の具体的な作業、情報不足、正式親子、単独、別親依存、取消依存、既存PR/担当、明示停止、報告容器、
 100件超のページング、不正出力、API失敗、無変更再実行、自己コメント、記録直前・途中の変更を検証する。
+巨大な本文/コメント・100件超のPRでは、原文の完全な復元・関連PR限定・省略の明示・digest維持を検証する。
 本物のagent/GitHub書込/担当予約/systemdはこの試験で起動しない。
 実agentによる代表例の意味的評価、実issueへの保留コメント、予定回・予約・起動を含む通し検証は実機検証担当へ引き継ぐ。

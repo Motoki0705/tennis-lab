@@ -14,9 +14,9 @@ RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
 
 
 def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> Any:
+    input_dir = (run_dir / "agent-input").resolve()
     prompt = Path(__file__).with_name("prompt.md").read_text(encoding="utf-8")
-    prompt += f"\n\n固定入力JSON: {run_dir / 'input.json'}\n"
-    prompt += "入力ファイルをReadで全文読み、必要なコードを調べてください。最終文はJSON objectだけを返してください。\n"
+    prompt += f"\n\n固定入力の索引: {input_dir / 'index.json'}\n"
     prompt_path = run_dir / "prompt.md"
     prompt_path.write_text(prompt, encoding="utf-8")
     runtime_dir = run_dir / "agent-runtime"
@@ -29,6 +29,8 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
             "read-only",
             "--cwd",
             str(root),
+            "--read-dir",
+            str(input_dir),
             "--task-id",
             "issue-start-judgement",
             "--prompt-file",
@@ -76,6 +78,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
     if (
         contract.get("mode") != "read-only"
         or contract.get("cwd") != str(root)
+        or contract.get("read_dirs") != [str(input_dir)]
         or contract.get("task_id") != "issue-start-judgement"
         or settings.get("role") != "parent"
         or settings.get("agent") != "claude"

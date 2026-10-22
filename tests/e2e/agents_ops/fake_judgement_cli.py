@@ -17,10 +17,12 @@ def emit(value: dict[str, Any]) -> None:
 def main() -> None:
     args = sys.argv[1:]
     task = Path(os.environ["AGENT_RUNTIME_RUN_DIR"]).parent
-    snapshot = json.loads((task / "input.json").read_text())
+    input_dir = task / "agent-input"
+    assert args[args.index("--add-dir") + 1] == str(input_dir)
+    index = json.loads((input_dir / "index.json").read_text())
     response = Path(os.environ["FAKE_JUDGEMENT_RESPONSE"]).read_text()
-    response = response.replace("INPUT_DIGEST", snapshot["input_sha256"])
-    response = response.replace("CODE_COMMIT", snapshot["code"]["commit"])
+    response = response.replace("INPUT_DIGEST", index["input_sha256"])
+    response = response.replace("CODE_COMMIT", index["code_commit"])
     prompt = sys.stdin.read()
     with Path(os.environ["FAKE_JUDGEMENT_CALLS"]).open("a") as stream:
         stream.write(json.dumps({"args": args, "prompt": prompt}) + "\n")

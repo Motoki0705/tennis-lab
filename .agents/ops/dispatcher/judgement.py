@@ -17,6 +17,7 @@ from parent.session import ParentSession
 from parent.state import Store, state_directory
 
 from .agent import RUNNER, judge
+from .agent_input import write_agent_input
 from .collect import SnapshotGitHub, assert_fresh, collect, is_container, material
 from .records import DETAIL_KEYS, comment_body, ignored_comments, owned_comment
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
@@ -194,6 +195,7 @@ def run(
                 if not is_container(snapshot["issues"][str(n)])
             }
         Store.write_json(run_dir / "input.json", snapshot)
+        write_agent_input(snapshot, run_dir / "agent-input")
         # Always one fresh turn, even if material equals a previous scheduled run.
         raw = judge(root, run_dir, timeout, runner)
         Store.write_json(run_dir / "agent-output.json", raw)

@@ -16,6 +16,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 FAKE_CLI = Path(__file__).with_name("fake_judgement_cli.py")
+FAKE_RUNNER = Path(__file__).with_name("fake_judgement_runner.py")
 
 
 def issue(
@@ -215,6 +216,9 @@ class Harness:
         fake = bin_dir / "claude"
         fake.write_bytes(FAKE_CLI.read_bytes())
         fake.chmod(0o700)
+        self.fake_runner = bin_dir / "fake-judgement-runner"
+        self.fake_runner.write_bytes(FAKE_RUNNER.read_bytes())
+        self.fake_runner.chmod(0o700)
         monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ["PATH"])
         monkeypatch.setenv("FAKE_JUDGEMENT_RESPONSE", str(self.output))
         monkeypatch.setenv("FAKE_JUDGEMENT_CALLS", str(self.calls))
@@ -247,13 +251,19 @@ class Harness:
             )
         )
 
-    def run(self, *, apply: bool = True) -> dict[str, Any]:
+    def run(self, *, apply: bool = True, runner: Path | None = None) -> dict[str, Any]:
         self.count += 1
         self.run_dir = self.root / f"run-{self.count}"
         return cast(
             dict[str, Any],
             self.mod.run(
-                self.gh, self.store, self.work, self.run_dir, apply=apply, timeout=15
+                self.gh,
+                self.store,
+                self.work,
+                self.run_dir,
+                apply=apply,
+                timeout=15,
+                runner=runner or self.mod.RUNNER,
             ),
         )
 
@@ -335,6 +345,11 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
         "Glob",
     ]
     assert "dontAsk" in args and invocation
+    assert args[args.index("--add-dir") + 1] == str(h.run_dir / "agent-input")
+    contract = json.loads((h.run_dir / "agent-runtime/result.json").read_text())[
+        "contract"
+    ]
+    assert contract["read_dirs"] == [str(h.run_dir / "agent-input")]
     assert (h.run_dir / "result.json").stat().st_mode & 0o077 == 0
 
 
@@ -377,6 +392,173 @@ def test_every_page_and_cross_parent_dependency_are_collected(h: Harness) -> Non
         "pulls?state=all",
     ):
         assert any(path in c and "page=2" in c for c in h.gh.calls)
+    snapshot["input_sha256"] = importlib.import_module("parent.policy").digest(
+        h.collector.material(snapshot)
+    )
+    index_path = importlib.import_module("dispatcher.agent_input").write_agent_input(
+        snapshot, h.root / "many-subjects-input"
+    )
+    index = json.loads(index_path.read_text())
+    assert index["subjects"] == snapshot["subjects"]
+    assert set(index["issues"]) == set(snapshot["issues"])
+    assert index["issues"]["200"]["parent"] == 400
+    assert (
+        index["issues"]["1"]["dependencies"] == snapshot["issues"]["1"]["dependencies"]
+    )
+    assert index["pulls"] == {}
+    assert len(index_path.read_text().splitlines()) < 1000
+
+
+def read_agent_text(directory: Path, value: dict[str, Any]) -> str:
+    if "segments" in value:
+        return "".join(value["segments"])
+    return "".join(
+        read_agent_text(directory, json.loads((directory / f).read_text()))
+        for f in value["files"]
+    )
+
+
+def test_large_agent_input_is_lossless_filters_prs_and_keeps_original_digest(
+    h: Harness,
+) -> None:
+    body = "<!-- ops-report-proposal: R-01 report=#9 option=plan -->\n\n"
+    body += ('長文の要件\\"\r\n' + "x" * 5000) * 50 + "\n末尾の重要な停止指示"
+    h.gh.issues[1]["body"] = body
+    h.gh.issues.update(
+        {
+            2: issue(2, state="closed", reason="completed"),
+            9: issue(9, state="closed", reason="completed", labels=("ops-report",)),
+            200: issue(200, state="closed", reason="completed"),
+        }
+    )
+    h.gh.parents[2] = 1
+    h.gh.dependencies[1] = [200]
+    h.gh.comment_rows[1] = [
+        {"id": n, "user": {"login": "human"}, "body": f"指示 {n}: " + "継続する。" * 80}
+        for n in range(1, 107)
+    ]
+    h.gh.comment_rows[1][-1]["body"] = "巨大コメント" * 40000 + "\n最後の取消指示"
+    h.gh.prs = [
+        {
+            "number": n,
+            "body": "Refs #1" if n == 500 else f"Closes #{n + 1000}",
+            "state": "closed",
+            "merged_at": None,
+            "head": {"ref": f"branch-{n}", "sha": "a" * 40},
+        }
+        for n in range(500, 651)
+    ]
+    h.gh.prs[1]["body"] = "Closes #2\n" + "PR詳細。" * 10000
+    h.gh.prs[2]["body"] = "Fixes #200"
+    h.gh.prs[2]["merged_at"] = "2026-10-22T00:00:00Z"
+    h.gh.prs[3].update(body="Resolves #9", state="open")
+    with h.store.locked():
+        before = h.collector.collect(h.gh, h.store, h.work)
+    digest = importlib.import_module("parent.policy").digest
+    expected_digest = digest(h.collector.material(before))
+    held = decision(1, "information_needed", deps=(200,))
+    held["sources"].append("issue:9")
+    h.response(held)
+    result = h.run(apply=False, runner=h.fake_runner)
+    assert result["result"] == "preview", result
+    snapshot = h.snapshot()
+    assert result["input_sha256"] == expected_digest == snapshot["input_sha256"]
+    assert h.collector.material(snapshot) == h.collector.material(before)
+    assert len(snapshot["pulls"]) == 151 and snapshot["code"]["files"]
+    directory = h.run_dir / "agent-input"
+    index = json.loads((directory / "index.json").read_text())
+    assert index["subjects"] == [1]
+    assert set(index["issues"]) == {"1", "2", "9", "200"}
+    assert set(index["pulls"]) == {"501", "502", "503"}
+    assert index["input_sha256"] == expected_digest
+    assert index["code_commit"] == snapshot["code"]["commit"] and "code" not in index
+    assert index["issue_content_complete"] is True
+    assert {o["kind"] for o in index["omissions"]} == {
+        "unrelated_pull_requests",
+        "code_tree",
+        "execution_inputs",
+    }
+    omitted_prs = next(
+        o for o in index["omissions"] if o["kind"] == "unrelated_pull_requests"
+    )
+    assert omitted_prs["count"] == 148 and all(o["reason"] for o in index["omissions"])
+    for n, raw in snapshot["issues"].items():
+        detail = json.loads((directory / index["issues"][n]["file"]).read_text())
+        assert detail["content_complete"] is True and detail["omissions"] == []
+        assert read_agent_text(directory, detail["body"]) == raw["body"]
+        comments = [
+            {**c, "body": read_agent_text(directory, c["body"])}
+            for f in detail["comment_files"]
+            for c in json.loads((directory / f).read_text())
+        ]
+        assert comments == raw["comments"]
+        assert all(
+            detail[k] == v for k, v in raw.items() if k not in {"body", "comments"}
+        )
+        if n == "1":
+            assert len(detail["body"]["files"]) > 1
+            assert len(detail["comment_files"]) > 1
+    for p in snapshot["pulls"]:
+        if str(p["number"]) not in index["pulls"]:
+            continue
+        detail = json.loads(
+            (directory / index["pulls"][str(p["number"])]["file"]).read_text()
+        )
+        assert {**detail, "body": read_agent_text(directory, detail["body"])} == p
+    for path in directory.rglob("*"):
+        assert path.stat().st_mode & 0o077 == 0
+        if path.is_file():
+            assert path.stat().st_size < 45000
+            assert max(map(len, path.read_text().splitlines())) < 2000
+    preserved = copy.deepcopy(snapshot)
+    importlib.import_module("dispatcher.agent_input").write_agent_input(
+        snapshot, h.root / "second-agent-input"
+    )
+    assert (
+        snapshot == preserved
+        and digest(h.collector.material(snapshot)) == expected_digest
+    )
+    assert h.gh.writes == []
+
+
+def test_runner_receives_only_the_agent_input_directory(h: Harness) -> None:
+    with h.store.locked():
+        h.store.parents["o/r#200"] = {
+            "session": "claude:private-owner",
+            "worktree": "/private/worktree",
+            "status": "active",
+            "generation": 2,
+            "tasks": {"1": {"delegated": True}},
+            "reviews": [],
+        }
+        h.store.save()
+    h.response(decision(1, "existing_owner"))
+    result = h.run(apply=False, runner=h.fake_runner)
+    assert result["result"] == "preview", result
+    call = json.loads(h.calls.read_text())
+    assert call["args"][call["args"].index("--read-dir") + 1] == str(
+        h.run_dir / "agent-input"
+    )
+    assert str(h.run_dir / "agent-input/index.json") in call["prompt"]
+    assert str(h.run_dir / "input.json") not in call["prompt"]
+    index_text = (h.run_dir / "agent-input/index.json").read_text()
+    owner = json.loads(index_text)["owners"]["200"]
+    assert owner["status"] == "active" and owner["generation"] == 2
+    assert owner["tasks"]["1"]["delegated"] is True
+    assert "private-owner" not in index_text and "/private/worktree" not in index_text
+    assert h.gh.writes == []
+
+
+@pytest.mark.parametrize("scenario", ["missing", "wrong"])
+def test_read_directory_contract_mismatch_never_publishes(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_READ_DIRS", scenario)
+    h.response(decision(1))
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert any("contract" in diagnostic for diagnostic in result["diagnostics"])
+    assert h.gh.writes == []
 
 
 @pytest.mark.parametrize(
