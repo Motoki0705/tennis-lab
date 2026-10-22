@@ -1,4 +1,4 @@
-<!-- knowledge-review: 69ce52064792a295ff6bad406f13ff9efd1a54a66b6148143e3244bfa7609d1a on 2026-10-22 -->
+<!-- knowledge-review: 7a49e853bfb7c1acdfe87750438ca88429e0d546e24ac4f6bfba843cbc50d6a9 on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -305,9 +305,14 @@ path検査・hash照合・環境準備は別に必要で、小分けCLI総時間
 同日のユーザー指定で、次実験の主軸は**時系列長 × DPT / Transformer＋DPT（hybrid）**に固定した。
 RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量の事前学習を固定し、その後に系列長を伸ばす。
 実験行列・予算・教師領域・評価・進捗の正本は同親issueへ移した。
-現行play区間のCPU集計では256枚・4枚おきのtrain候補が0なので、主比較は間引きなしを推奨する。
-全長で共通のtarget集合、可変T契約、hybridの等予算初期学習と共通heatmap objectiveが必要。
-長系列のVRAM・学習速度と精度は未測定。具体的な系列長上限・更新数・中央教師領域は本学習前に固定する。
+続く[中央targetのCPU調査](nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)では、
+元32窓の中央16枚を固定し、全splitでplay内文脈とreference/PTS境界を守るclip内文脈を比較した。
+後者の128共通集合は元32窓の位置教師の約76〜81%、256共通集合は約51〜61%を保持し、
+256では低FPS・TrackNetの減少が大きい。clip内文脈・中央16・上限候補128を推奨するが、人間の合意は未了。
+中央validationのreviewed_emptyと自然遮蔽付きobserved教師は0で、既存play anchorだけからclip全体の不在性能は主張できない。
+共通集合・重複集約・較正・予算算出の具体案は同runのprotocolを参照し、合意後に常設窓実装と配布データへ渡す。
+可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
+長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
