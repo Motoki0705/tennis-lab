@@ -78,7 +78,7 @@ Codexの別worktreeを`rust-v0.163.0`から作り、パッチを適用する。
 # Codexの専用worktree内
 git apply /absolute/path/to/tennis-lab/.agents/ops/herdr_labels/codex-0.163.0-terminal-clear.patch
 cd codex-rs
-cargo test -p codex-tui --profile dev-small --locked
+RUST_MIN_STACK=8388608 cargo test -p codex-tui --profile dev-small --locked -- --test-threads=2
 cargo build -p codex-cli --profile dev-small --locked
 ```
 
