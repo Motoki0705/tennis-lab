@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from issues import Issue, task_status
+from parent.execution import authorization_revoked, task_errors, validate_authorization
 from parent.policy import (
     closing_issues,
     dependencies,
@@ -109,13 +110,6 @@ def publication_errors(
     return tuple(errors)
 
 
-def authorization_revoked(event: Mapping[str, Any], auth: Mapping[str, Any]) -> bool:
-    return event.get("event") == "checking" or (
-        event.get("event") == "agreed"
-        and event.get("agreement_sha256") != auth["agreement_sha256"]
-    )
-
-
 def confirmed_state(
     history: Sequence[Mapping[str, Any]],
     request: Mapping[str, Any],
@@ -152,6 +146,18 @@ def shared_permission(
             latest = None
         if event["event"] != "merge_permission":
             continue
+        event_auth = {
+            k: v
+            for k, v in event.items()
+            if k
+            in {
+                "generation",
+                "agreement_sha256",
+                "execution_basis_sha256",
+                "execution_basis_kind",
+            }
+        }
+        validate_authorization(event_auth, legacy=True)
         data = exact(
             {k: v for k, v in event.items() if k != "body"},
             {
@@ -159,12 +165,11 @@ def shared_permission(
                 "event",
                 "review_run_id",
                 "request_sha256",
-                "generation",
-                "agreement_sha256",
                 "allow_shared_foundation",
                 "evidence",
                 "revision",
-            },
+            }
+            | set(event_auth),
         )
         if type(data["allow_shared_foundation"]) is not bool:
             raise ValueError("shared-foundation permission must be an explicit boolean")
@@ -173,7 +178,7 @@ def shared_permission(
         if (
             data["review_run_id"] != request["review_run_id"]
             or data["request_sha256"] != digest(request)
-            or any(data[k] != v for k, v in auth.items())
+            or event_auth != auth
         ):
             continue
         comment = next(
@@ -277,6 +282,13 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
         if states[child] != "continue":
             reasons.append(f"child_{child}_{states[child]}")
         branch = gate.tasks.get(str(child), {}).get("branch")
+        task = gate.tasks.get(str(child), {})
+        auth = gate.result["request"].get("authorization") if gate.result else None
+        if auth:
+            reasons.extend(
+                f"child_{child}_{error}"
+                for error in task_errors(task, auth, gate.children[child].body)
+            )
         if branch and branch != pr["head"]["ref"]:
             reasons.append(f"child_{child}_branch_mismatch")
         duplicates = [

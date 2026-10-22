@@ -1,0 +1,248 @@
+{
+  "schema": "court_hybrid_fit_presentation.v1",
+  "mode": "search",
+  "git_commit": "12efecfab4aad0565a949e09b835055efa15d010",
+  "config": {
+    "paths": {
+      "project_root": ".",
+      "data_root": "/home/kamimura/projects/tennis-lab/data",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt",
+      "artifact_root": "outputs",
+      "output_root": "/home/kamimura/projects/tennis-lab/outputs",
+      "cache_root": ".cache",
+      "external_asset_root": "/home/kamimura/projects/tennis-lab/third_party"
+    },
+    "source": {
+      "kind": "tennis_court_detector",
+      "root": "court_detection/tennis_court_detector-v1",
+      "split_mapping": {
+        "train": "train",
+        "val": "val",
+        "test": null
+      },
+      "excluded_sample_ids": [
+        "QszoUKyCOHo_600"
+      ]
+    },
+    "mode": "search",
+    "checkpoint": "court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "device": "cuda",
+    "sample_id": null,
+    "input": {
+      "kind": "tennis_court_detector",
+      "path": null
+    },
+    "search": {
+      "min_kp_only_error_px": 10,
+      "max_hybrid_error_px": 3,
+      "max_samples": 300,
+      "top_k": 20
+    },
+    "output": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "gif_width": 960,
+      "gif_fps": 15
+    },
+    "run": {
+      "output_dir": "court_detection/visualize/hybrid_fit/20261021T121234.070016Z-5a06c602"
+    }
+  },
+  "checkpoint": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+  },
+  "provenance": {
+    "image": "measured",
+    "kp": "measured",
+    "line": "measured",
+    "kp_only": "measured",
+    "seeds": "measured",
+    "hybrid": "measured",
+    "timing_and_colors": "schematic"
+  },
+  "selection": "candidate_for_user_review",
+  "checkpoint_identity": {
+    "schema": "court_inference_checkpoint_v1",
+    "checkpoint_path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "checkpoint_sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383",
+    "backbone_sha256": "73cec8be7427c8655ceced13ce62f6e20a1fa90d1b4d4a550df17a1144081a7c",
+    "backbone_asset_migration": {
+      "layout": "external_dinov3_to_checkpoint",
+      "saved_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "runtime_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt"
+    },
+    "architecture": {
+      "encoder": {
+        "name": "dinov3",
+        "backbone_name": "dinov3_vitb16",
+        "repository_path": "dinov3",
+        "checkpoint_path": "dinov3/checkpoints/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+        "strict": true,
+        "train_mode": "frozen",
+        "last_n_blocks": 0,
+        "out_indices": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "layer_mode": "uniform",
+        "lora": {
+          "enabled": false,
+          "rank": 8,
+          "alpha": 16.0,
+          "dropout": 0.0,
+          "target_modules": [
+            "qkv",
+            "proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      },
+      "transformer_encoder": {
+        "name": "transformer",
+        "enabled": true,
+        "dim": 768,
+        "depth": 8,
+        "num_heads": 12,
+        "head_dim": 64,
+        "ffn_dim": 2048,
+        "rope_dim": 64,
+        "rope_theta": 10000.0,
+        "dropout": 0.0,
+        "attention_type": "mha",
+        "n_kv_heads": null,
+        "ffn_type": "swiglu"
+      },
+      "decoder": {
+        "name": "dpt",
+        "size": "large",
+        "channels": 512,
+        "reassemble_factors": [
+          4.0,
+          2.0,
+          1.0,
+          0.5
+        ]
+      },
+      "dense_head": {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "seg": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "line": {
+          "hidden_channels": 256,
+          "depth": 3
+        },
+        "semantic_line": {
+          "hidden_channels": 256,
+          "depth": 3
+        }
+      },
+      "name": "court_hierarchical",
+      "in_channels": 3
+    },
+    "target_bundle": {
+      "schema": "court_target_bundle_v1",
+      "targets": [
+        {
+          "kind": "kp",
+          "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+          "output_channels": 14,
+          "channel_names": [
+            "far_doubles_left",
+            "far_doubles_right",
+            "near_doubles_left",
+            "near_doubles_right",
+            "far_singles_left",
+            "near_singles_left",
+            "far_singles_right",
+            "near_singles_right",
+            "far_service_left",
+            "far_service_right",
+            "near_service_left",
+            "near_service_right",
+            "far_service_t",
+            "near_service_t"
+          ],
+          "target_dtype": "float32",
+          "precomputed": false
+        },
+        {
+          "kind": "seg",
+          "schema": "court_cell_segmentation_single_court_v2",
+          "output_channels": 7,
+          "channel_names": [
+            "background",
+            "service_left",
+            "service_right",
+            "back_left",
+            "back_right",
+            "doubles_left",
+            "doubles_right"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        },
+        {
+          "kind": "line",
+          "schema": "court_line_binary_75mm_150mm_single_court_v3",
+          "output_channels": 1,
+          "channel_names": [
+            "court_line"
+          ],
+          "target_dtype": "float32",
+          "precomputed": true
+        },
+        {
+          "kind": "semantic_line",
+          "schema": "court_line_semantic_camera_view_75mm_150mm_single_court_v1",
+          "output_channels": 12,
+          "channel_names": [
+            "background",
+            "far_baseline",
+            "near_baseline",
+            "left_doubles_sideline",
+            "right_doubles_sideline",
+            "left_singles_sideline",
+            "right_singles_sideline",
+            "far_service_line",
+            "near_service_line",
+            "center_service_line",
+            "far_center_mark",
+            "near_center_mark"
+          ],
+          "target_dtype": "int64",
+          "precomputed": true
+        }
+      ]
+    },
+    "short_side": 512,
+    "pose_long_side": true,
+    "patch_size": 16,
+    "epoch": 17,
+    "global_step": 29844
+  },
+  "input": {
+    "kind": "tennis_court_detector",
+    "split": "val",
+    "descriptor": {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/dataset.json",
+      "sha256": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41"
+    },
+    "annotations": {
+      "path": "/home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1/index.npz",
+      "sha256": "31c1f71e57f4575bd0d72491fa65af31467e226c84045fcfaa0784bf7c13982b"
+    }
+  }
+}

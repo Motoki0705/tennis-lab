@@ -47,7 +47,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 | パス | 内容 |
 |---|---|
-| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | `claude -p` / `codex exec` を read-only（Claudeは Read/Grep/Glob のみ、Codexは read-only sandbox）または write モードで headless 起動する共通wrapper。失敗や空の出力は非ゼロで終了する。`--profile` で job 別の model 固定値を選ぶ |
+| [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、既定Sol・明示でAstra）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
@@ -56,6 +56,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・合意・子の進捗・明示レビュー要求を管理するCLI。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
+| [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
 利用枠の不足などで自動運用が失敗したときは、黙ってskipせず記録する。
 

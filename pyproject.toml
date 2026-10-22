@@ -15,6 +15,7 @@ license-files = [
     "LICENSE",
     "NOTICE",
     "LICENSES.md",
+    "LICENSES.ja.md",
     "src/submodules/vendor/gvhmr/LICENSE*",
     "src/tasks/person_tracking/deep_ocsort_vendor/LICENSE",
     "src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md",

@@ -12,10 +12,11 @@
 - 長時間ジョブは定期的に起きて確かめず、完了・失敗だけを監視して待つ。
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
+- 公開向けの文書は英語版を既定にし、日本語版を `.ja.md` に分ける。文書にハッシュ値を書かない。
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 

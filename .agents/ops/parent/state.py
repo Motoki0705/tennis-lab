@@ -10,7 +10,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from .execution import validate_authorization
 from .policy import object_value
+
+
+def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    if len(pairs) != len({key for key, _ in pairs}):
+        raise ValueError("duplicate keys in parent-session state")
+    return dict(pairs)
 
 
 def session_identity(env: dict[str, str]) -> str:
@@ -56,11 +63,20 @@ class Store:
             os.chmod(lock.name, 0o600)
             fcntl.flock(lock, fcntl.LOCK_EX)
             self.data = (
-                object_value(json.loads(self.path.read_text(encoding="utf-8")))
-                if self.path.exists()
+                object_value(
+                    json.loads(
+                        self.path.read_text(encoding="utf-8"),
+                        object_pairs_hook=unique_object,
+                    )
+                )
+                if self.path.exists() or self.path.is_symlink()
                 else {"version": 1, "parents": {}}
             )
-            if set(self.data) != {"version", "parents"} or self.data["version"] != 1:
+            if (
+                set(self.data) != {"version", "parents"}
+                or type(self.data["version"]) is not int
+                or self.data["version"] != 1
+            ):
                 raise ValueError("unknown or malformed parent-session state")
             parents: dict[str, Any] = {}
             for key, row in object_value(self.data["parents"]).items():
@@ -83,8 +99,22 @@ class Store:
                     or not row["session"]
                     or not isinstance(row["tasks"], dict)
                     or not isinstance(row["reviews"], list)
+                    or type(row["generation"]) is not int
+                    or row["generation"] < 1
                 ):
                     raise ValueError(f"invalid parent-session data types: {key}")
+                for task in row["tasks"].values():
+                    object_value(task)
+                    if "authorization" in task:
+                        validate_authorization(task["authorization"])
+                for review in row["reviews"]:
+                    object_value(review)
+                    request = object_value(review.get("request"))
+                    version = request.get("schema_version")
+                    if type(version) is not int or version not in {1, 2}:
+                        raise ValueError("unknown or malformed saved review request")
+                    if version == 2:
+                        validate_authorization(request.get("authorization"))
             owners = [
                 r["session"]
                 for r in parents.values()
@@ -95,6 +125,8 @@ class Store:
                     "registry contains multiple active parents for one session"
                 )
             self.data["parents"] = parents
+            # Keep the envelope readable by active older CLIs. Versioned evidence
+            # is additive inside tasks/reviews; never rewrite legacy evidence.
             yield self
 
     @property
