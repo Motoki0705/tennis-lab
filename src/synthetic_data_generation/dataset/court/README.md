@@ -29,6 +29,13 @@ videos, extracted frames, SfM intermediates, duplicate PLYs, training logs and
 alignment heatmap rasters are excluded. The public sparse points are retained
 because both scene validators require them.
 
+This bundle is a rendering/label dependency closure, not a completed scene-pipeline
+workspace. Load the public export and stored alignment directly; do not fabricate
+missing ingest, reconstruction or alignment owners to pass pipeline validation.
+Use `load_alignment_result` for every supported stored alignment schema. Convert
+exported camera poses with `alignment.metric_adapter.metric_from_nht_camera` and
+divide rendered depth by `nht_scene_units_per_metre` before comparing metric depth.
+
 Package into a **new** directory outside the source workspace, then pin the
 returned manifest digest for every subsequent verification. The packaging CLI
 requires a clean, committed worktree so its producer commit identifies the code:
@@ -110,6 +117,22 @@ relax visibility disagreements without inspecting them. Record per-scene results
 setup/transfer/render times, transferred bytes and GPU memory in the experiment
 record. Declare probe outputs with Colab `--persist`, verify terminal job/Drive
 receipts, and always `stop` the session when finished.
+
+Separate checkpoint deserialization, resident renderer initialization, the first
+camera (including lazy CUDA compilation), subsequent render calls, and the public
+call including validation/PNG/array writes. A few existing-camera probes measure
+runtime compatibility; they do not establish production generation throughput or
+unseen-view quality. Record PyTorch peak allocated/reserved memory separately from
+sampled device memory, with the sampling interval; sampled peaks are lower bounds.
+
+Keep full-frame distributions and worst-pixel coordinates when checking numeric
+agreement. Inspect RGB, alpha, metric depth and the production visibility threshold
+at those coordinates. Court polygons and common alpha masks are useful diagnostic
+subsets, but do not replace the full-frame result. In particular, finite positive
+depth at zero alpha is not evidence of a valid surface. Repeat each GPU's render to
+separate repeat variation from reproducible differences between devices. If the
+observed errors do not justify an equivalence tolerance, retain the staging inputs
+and report the unresolved comparison before promoting them.
 
 ## JPEG shard publication
 

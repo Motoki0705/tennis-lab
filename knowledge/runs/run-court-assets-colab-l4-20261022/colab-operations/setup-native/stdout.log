@@ -1,0 +1,101 @@
+$ git submodule update --init --recursive --checkout third_party/nht
+$ uv tool install --force --python 3.11 --editable --with torch==2.9.1 --with torchvision==0.24.1 --torch-backend cu130 'third_party/nht[aov]'
+warning: The `--torch-backend` option is experimental and may change without warning.
+Resolved 36 packages in 216ms
+   Building nht @ file:///content/tennis-lab/third_party/nht
+      Built nht @ file:///content/tennis-lab/third_party/nht
+Prepared 4 packages in 1.04s
+Installed 36 packages in 196ms
+ + attrs==26.1.0
+ + filelock==4.2.4
+ + fsspec==2026.9.0
+ + jinja2==3.1.6
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + markupsafe==3.0.4
+ + mpmath==1.3.0
+ + networkx==3.6.1
+ + nht==0.0.0 (from file:///content/tennis-lab/third_party/nht)
+ + numpy==2.4.6
+ + nvidia-cublas==13.0.0.19
+ + nvidia-cuda-cupti==13.0.48
+ + nvidia-cuda-nvrtc==13.0.48
+ + nvidia-cuda-runtime==13.0.48
+ + nvidia-cudnn-cu13==9.13.0.50
+ + nvidia-cufft==12.0.0.15
+ + nvidia-cufile==1.15.0.42
+ + nvidia-curand==10.4.0.35
+ + nvidia-cusolver==12.0.3.29
+ + nvidia-cusparse==12.6.2.49
+ + nvidia-cusparselt-cu13==0.8.0
+ + nvidia-nccl-cu13==2.27.7
+ + nvidia-nvjitlink==13.0.39
+ + nvidia-nvshmem-cu13==3.3.24
+ + nvidia-nvtx==13.0.39
+ + pillow==13.0.0
+ + pycolmap==4.2.1
+ + pyyaml==6.0.3
+ + referencing==0.37.0
+ + rpds-py==2026.9.1
+ + sympy==1.14.0
+ + torch==2.9.1+cu130
+ + torchvision==0.24.1+cu130
+ + triton==3.5.1
+ + typing-extensions==4.16.0
+Installed 2 executables: nht-reconstruct, nht-render
+$ uv pip install --python /root/.local/share/uv/tools/nht/bin/python 'setuptools<81' wheel ninja rich
+Resolved 8 packages in 66ms
+Installed 8 packages in 11ms
+ + markdown-it-py==4.2.0
+ + mdurl==0.1.2
+ + ninja==1.13.2
+ + packaging==26.3
+ + pygments==2.21.0
+ + rich==15.0.0
+ + setuptools==80.10.2
+ + wheel==0.48.0
+$ uv pip install --python /root/.local/share/uv/tools/nht/bin/python --no-build-isolation --no-cache --reinstall --editable third_party/nht/gsplat
+Resolved 38 packages in 4.41s
+   Building gsplat @ file:///content/tennis-lab/third_party/nht/gsplat
+Downloading networkx (2.0MiB)
+Downloading nvidia-cusolver (191.6MiB)
+Downloading pygments (1.2MiB)
+Downloading nvidia-nvjitlink (40.5MiB)
+Downloading cuda-bindings (6.8MiB)
+Downloading nvidia-nccl-cu13 (206.0MiB)
+Downloading sympy (6.0MiB)
+Downloading nvidia-cublas (403.5MiB)
+Downloading nvidia-cufft (204.2MiB)
+Downloading nvidia-nvshmem-cu13 (57.6MiB)
+Downloading nvidia-cuda-runtime (2.1MiB)
+Downloading nvidia-cudnn-cu13 (527.5MiB)
+Downloading nvidia-cusparselt-cu13 (162.3MiB)
+Downloading nvidia-cusparse (139.2MiB)
+Downloading nvidia-cuda-nvrtc (86.0MiB)
+Downloading nvidia-curand (56.8MiB)
+Downloading triton (236.5MiB)
+Downloading numpy (16.1MiB)
+Downloading nvidia-cufile (1.2MiB)
+Downloading nvidia-cuda-cupti (10.2MiB)
+Downloading torch (528.9MiB)
+ Downloaded nvidia-cufile
+ Downloaded pygments
+ Downloaded networkx
+ Downloaded nvidia-cuda-runtime
+ Downloaded sympy
+ Downloaded cuda-bindings
+ Downloaded nvidia-cuda-cupti
+ Downloaded numpy
+ Downloaded nvidia-nvjitlink
+ Downloaded nvidia-curand
+ Downloaded nvidia-nvshmem-cu13
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded nvidia-cusparse
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded nvidia-cusolver
+ Downloaded nvidia-cufft
+ Downloaded nvidia-nccl-cu13
+ Downloaded triton
+ Downloaded nvidia-cublas
+ Downloaded nvidia-cudnn-cu13
+ Downloaded torch
