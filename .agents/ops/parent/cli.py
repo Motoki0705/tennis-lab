@@ -171,8 +171,32 @@ def main(argv: list[str] | None = None) -> int:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
+        display_failed = False
+        if command in {"register", "reconcile", "sync", "release", "handoff"}:
+            # The parent mutation is already durable. Display I/O must never keep
+            # the shared registry lock, or obscure whether that mutation applied.
+            from herdr_labels.service import sync as sync_display
+
+            try:
+                display = sync_display(
+                    dict(os.environ),
+                    confirm_parent=command == "register"
+                    or (command == "handoff" and args.accept),
+                    clear=command == "release"
+                    or (command == "handoff" and not args.accept),
+                )
+            except (
+                ValueError,
+                OSError,
+                KeyError,
+                TypeError,
+                subprocess.SubprocessError,
+            ) as exc:
+                display = {"status": "error", "error": str(exc)}
+                display_failed = True
+            result = {**result, "display_sync": display, "parent_action_applied": True}
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
-        return 0
+        return 1 if display_failed else 0
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)

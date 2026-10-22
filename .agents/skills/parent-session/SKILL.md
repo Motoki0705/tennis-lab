@@ -18,6 +18,8 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
 1. 親issueの本文と全コメント、関連PR・既存の子を読み、最新の人間との合意を確認する。
    CLIの `status` で対応を確認し、`register` で担当登録する。別の担当や別の親が表示されたら
    黙って切り替えない。既存担当の解除・終了・明示引継ぎをREADMEに従って扱う。
+   Herdrでは結果の`display_sync`を確認する。表示の設定・修復には
+   [herdr-session-label](../herdr-session-label/SKILL.md)を使い、担当番号と短い題名を表示する。
 2. 採用済みのレポート提案は `receive-proposal` で要件確認の対象として明示受領する（契約はparent README）。
    受領の再送は冪等で、以前の親合意を新しい提案へ流用しない。人間作成issueも同じ登録入口から進める。
    親自体の初回合意・見直しでは `checking` を記録する。合意済みの親へ追加提案を受領した場合は
@@ -80,6 +82,8 @@ merge後の子の自動closeと親進捗への反映を確認する。停止・�
 ## 中断・引継ぎから再開する
 
 同じセッションは `status` と `reconcile`、別セッションは明示的な `handoff --accept` から始める。
+Herdrの表示はreconcile/handoffに連動して復元・解除される。表示だけ失敗した場合は
+herdr-session-labelで再同期し、担当操作を成功扱いのまま隠さない。
 issue/PRの実状態と保存された委任・レビューrunを照合し、完了済みの再実装と二重起動をしない。
 既存worker・PR・worktreeのある子はそこへ戻す。起動予約後に失敗した子は旧workerの終了を確認してから、
 READMEの証拠付き再予約を使う。未指定・終了済み・引継ぎ待ちを成功や自動代替と扱わない。
