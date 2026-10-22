@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 import json
 import os
@@ -120,7 +121,13 @@ class FakeGitHub:
 
     def write(self, method: str, endpoint: str, payload: dict[str, Any]) -> Any:
         self.writes.append((method, endpoint, copy.deepcopy(payload)))
-        if endpoint.endswith("/comments"):
+        if method == "PATCH" and "/issues/comments/" in endpoint:
+            cid = int(endpoint.split("/")[-1])
+            result = next(
+                c for rows in self.comment_rows.values() for c in rows if c["id"] == cid
+            )
+            result.update(payload)
+        elif endpoint.endswith("/comments"):
             n = int(endpoint.split("/")[-2])
             comment = {
                 "id": 1 + sum(len(rows) for rows in self.comment_rows.values()),
@@ -218,6 +225,40 @@ def plan(
     }
 
 
+def start_decision(
+    n: int,
+    status: str = "startable",
+    *,
+    parent: int | None = None,
+    reports: tuple[int, ...] = (),
+) -> dict[str, Any]:
+    ready = status == "startable"
+    return {
+        "issue": n,
+        "disposition": status,
+        "target_parent": None if status == "out_of_scope" else (parent or n),
+        "priority": n if ready else None,
+        "requirements": {
+            "purpose": "保守性を改善",
+            "scope": "big.pyとテスト",
+            "behavior": "責務を分離",
+            "acceptance": "CPUテスト成功",
+        }
+        if ready
+        else None,
+        "rationale": "固定した要件と出典を照合した。",
+        "facts": ["採用状態と正式な親子関係を確認した。"],
+        "missing_information": [],
+        "resume_condition": "予定回で再照合",
+        "next_action": "候補または管理先を返す",
+        "sources": [
+            f"issue:{k}" for k in sorted({n, *reports, *([parent] if parent else [])})
+        ]
+        + (["code:CODE_COMMIT:README.md"] if ready else []),
+        "dependencies": [],
+    }
+
+
 class Harness:
     def __init__(self, tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self.tmp = tmp
@@ -248,11 +289,19 @@ class Harness:
             + Path(__file__).with_name("fake_organization_cli.py").read_text()
         )
         codex.chmod(0o700)
+        claude = bin_dir / "claude"
+        claude.write_text(
+            f"#!{sys.executable}\n"
+            + Path(__file__).with_name("fake_judgement_cli.py").read_text()
+        )
+        claude.chmod(0o700)
         monkeypatch.setenv("PATH", str(bin_dir) + ":" + os.environ["PATH"])
         monkeypatch.setenv("CODEX_HOME", str(tmp / "codex-home"))
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp / "state"))
         monkeypatch.setenv("FAKE_ORGANIZATION_PLAN", str(tmp / "plan.json"))
         monkeypatch.setenv("FAKE_ORGANIZATION_CALLS", str(tmp / "calls.jsonl"))
+        monkeypatch.setenv("FAKE_JUDGEMENT_RESPONSE", str(tmp / "judgement.json"))
+        monkeypatch.setenv("FAKE_JUDGEMENT_CALLS", str(tmp / "judgement-calls.jsonl"))
         monkeypatch.delenv("OPS_REPORT_ORGANIZER_EXEC", raising=False)
         self.gh = FakeGitHub()
         self.run_number = 0
@@ -341,6 +390,27 @@ class Harness:
             if path.exists()
             else []
         )
+
+    def judge(self, decisions: list[dict[str, Any]], name: str) -> dict[str, Any]:
+        self.tmp.joinpath("judgement.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "input_sha256": "INPUT_DIGEST",
+                    "decisions": decisions,
+                },
+                ensure_ascii=False,
+            )
+        )
+        judgement: Any = importlib.import_module("dispatcher.judgement")
+        result: dict[str, Any] = judgement.run(
+            self.gh,
+            state.Store(self.tmp / "state/parent"),
+            self.root,
+            self.tmp / name,
+            apply=True,
+        )
+        return result
 
 
 @pytest.fixture
@@ -783,9 +853,222 @@ def test_cross_report_group_is_visible_through_unchanged_dispatcher_collection(
         snapshot = collector.collect(h.gh, store, h.root)
     assert snapshot["issues"]["102"]["source_reports"] == [90]
     assert snapshot["issues"]["103"]["source_reports"] == [100]
+    assert snapshot["issues"]["101"]["source_reports"] == [90, 100]
     assert {90, 100} <= collector.related(snapshot, 101)
     assert not collector.is_container(snapshot["issues"]["101"])
     assert not collector.is_container(snapshot["issues"]["102"])
+
+
+def test_context_sources_remain_in_split_inputs_after_index_anchors_move(
+    harness: Harness,
+) -> None:
+    h = harness
+    h.report(n=90)
+    h.response(
+        plan(
+            [
+                parent_node(),
+                task_node("first", "child", "improvements"),
+                task_node("second", "child", "improvements"),
+            ],
+            [decision("90/R-20261019-01", "first"), decision(target="second")],
+        )
+    )
+    assert not h.run().errors
+    parent = parent_node()
+    h.gh.issues[1] = raw_issue(
+        1,
+        title="[移管先] 明示的に引き継いだ親",
+        body=fmt.render_parent_body(
+            parent["sections"],
+            [fmt.ChildTask(n, "責務を分けて検証する") for n in (102, 103)],
+        ),
+        labels=[{"name": "issue:parent"}],
+    )
+    for n in (102, 103):
+        h.gh.parents[n] = 1
+        h.gh.issues[n]["title"] = "[移管先 #1] 責務を分けて検証する"
+        h.gh.issues[n]["body"] = h.gh.issues[n]["body"].replace(
+            "親issue: #101", "親issue: #1"
+        )
+    h.gh.issues[101]["body"] = policy.replace_section(
+        h.gh.issues[101]["body"], fmt.TASKS_HEADING, fmt.NO_CHILDREN
+    )
+    assert not fmt.check_consistency(h.gh.family(1))
+    collector: Any = importlib.import_module("dispatcher.collect")
+    agent_input: Any = importlib.import_module("dispatcher.agent_input")
+    with state.Store(h.tmp / "state/parent").locked() as store:
+        fixed = collector.collect(h.gh, store, h.root, [101])
+        fixed["input_sha256"] = policy.digest(collector.material(fixed))
+        assert collector.related(fixed, 101) == {90, 100, 101}
+        index_path = agent_input.write_agent_input(fixed, h.tmp / "split-input")
+        index = json.loads(index_path.read_text())
+        assert set(index["issues"]) == {"90", "100", "101"}
+        assert index["issues"]["101"]["source_reports"] == [90, 100]
+        h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
+            "- [x] **", "- [ ] **"
+        )
+        with pytest.raises(collector.InputsChanged):
+            collector.assert_fresh(h.gh, store, h.root, fixed, 101)
+
+
+@pytest.mark.parametrize("stage", ["preflight", "publication", "final_check"])
+def test_source_change_defers_only_its_subject_closure_in_v2(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    h = harness
+    h.gh.issues[1] = raw_issue(1)
+    h.report(n=90)
+    h.response(
+        plan(
+            [
+                parent_node(),
+                task_node("first", "child", "improvements"),
+                task_node("second", "child", "improvements"),
+            ],
+            [decision("90/R-20261019-01", "first"), decision(target="second")],
+        )
+    )
+    assert not h.run().errors
+    judgement: Any = importlib.import_module("dispatcher.judgement")
+
+    def revoke() -> None:
+        h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
+            "- [x] **", "- [ ] **"
+        )
+
+    if stage == "preflight":
+        original = judgement.judge
+
+        def judge(*args: Any) -> Any:
+            output = original(*args)
+            revoke()
+            return output
+
+        monkeypatch.setattr(judgement, "judge", judge)
+    elif stage == "publication":
+
+        def on_write() -> None:
+            if h.gh.writes[-1][1] == "repos/o/r/issues/101/comments":
+                h.gh.on_write = None
+                revoke()
+
+        h.gh.on_write = on_write
+    else:
+        original_check = judgement.retain_fresh_decisions
+
+        def check(*args: Any) -> None:
+            if args[-1] == "final_check":
+                revoke()
+            original_check(*args)
+
+        monkeypatch.setattr(judgement, "retain_fresh_decisions", check)
+    result = h.judge(
+        [
+            start_decision(1),
+            start_decision(90, "out_of_scope"),
+            start_decision(100, "out_of_scope"),
+            start_decision(101, reports=(90, 100)),
+            start_decision(102, "existing_parent", parent=101, reports=(90,)),
+            start_decision(103, "existing_parent", parent=101, reports=(100,)),
+        ],
+        "changed-source",
+    )
+    assert result["schema_version"] == 2 and result["result"] == "recorded", result
+    assert [d["issue"] for d in result["deferred"]] == [100, 101, 102, 103]
+    assert next(d for d in result["deferred"] if d["issue"] == 101)["stage"] == stage
+    assert [d["issue"] for d in result["decisions"]] == [1, 90]
+    assert [c["parent"] for c in result["candidates"]] == [1]
+    assert len(h.tmp.joinpath("judgement-calls.jsonl").read_text().splitlines()) == 1
+    fixed = json.loads(h.tmp.joinpath("changed-source/input.json").read_text())
+    with state.Store(h.tmp / "state/parent").locked() as store:
+        judgement.assert_candidate_fresh(
+            h.gh, store, h.root, fixed, result["candidates"][0]
+        )
+
+
+@pytest.mark.parametrize("anchor", ["parent", "child"])
+def test_autonomous_parent_notes_preserve_adopted_task_delegation(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, anchor: str
+) -> None:
+    h = harness
+    if anchor == "child":
+        h.report(count=2)
+    h.response(
+        plan(
+            [
+                parent_node(),
+                task_node("first", "child", "improvements"),
+                task_node("second", "child", "improvements"),
+            ],
+            [decision(target="improvements")]
+            if anchor == "parent"
+            else [decision(target="first"), decision("100/R-20261019-02", "second")],
+        )
+    )
+    assert not h.run().errors
+    result = h.judge(
+        [
+            start_decision(100, "out_of_scope"),
+            start_decision(101, reports=(100,)),
+            start_decision(102, "existing_parent", parent=101, reports=(100,)),
+            start_decision(103, "existing_parent", parent=101, reports=(100,)),
+        ],
+        "before-assignment",
+    )
+    assert result["result"] == "recorded" and result["deferred"] == [], result
+    candidate = result["candidates"][0]
+    fixed = json.loads(h.tmp.joinpath("before-assignment/input.json").read_text())
+    judgement: Any = importlib.import_module("dispatcher.judgement")
+    execution: Any = importlib.import_module("parent.execution")
+    sessions: Any = importlib.import_module("parent.session")
+    tasks: Any = importlib.import_module("parent.adopted_tasks")
+    worker = h.root / ".claude/worktrees/adopted-task"
+    subprocess.run(
+        ["git", "worktree", "add", "-b", "codex/adopted-task", str(worker)],
+        cwd=h.root,
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.chdir(h.root)
+    with state.Store(h.tmp / "state/parent").locked() as store:
+        session = sessions.ParentSession(h.gh, store, 101, "claude:fixture")
+        judgement.assert_candidate_fresh(h.gh, store, h.root, fixed, candidate)
+        auth = execution.validate_candidate(
+            session, candidate["basis_sha256"], candidate["generation"]
+        )
+        session.register()
+        session.note("採用出典と実行根拠を照合し、既存の子へ委任する。")
+        assert execution.authorization(session) == auth
+        for n in (101, 102):
+            assert tasks.check_task_adoptions(h.gh, h.gh.issues[n]["body"])
+        delegated = session.delegate(
+            102, "codex", "codex/adopted-task", worker, None, None
+        )
+        assert delegated["action"] == "launch"
+        assert delegated["assignment"]["authorization"] == auth
+        assert session.status()["proposal_receipts"] == []
+        assert session.status()["proposal_agreements"] == []
+        assert execution.current_basis(session)["kind"] == "autonomous_decision"
+        adopted = h.gh.issues[100]["body"]
+        h.gh.issues[100]["body"] = adopted.replace("- [x] **", "- [ ] **")
+        for n in (101, 102):
+            with pytest.raises(ValueError, match="adoption"):
+                tasks.check_task_adoptions(h.gh, h.gh.issues[n]["body"])
+        h.gh.issues[100]["body"] = adopted
+        h.gh.write(
+            "POST",
+            "repos/o/r/issues/101/comments",
+            {"body": "要件を追加してください。"},
+        )
+        with pytest.raises(ValueError, match="inputs changed"):
+            session.agreed()
+    history = policy.events(h.gh.comment_rows[101], "operator", 101)
+    assert any(e["event"] == "note" for e in history)
+    assert not any(
+        e["event"] in {"agreed", "proposal_received", "proposal_agreed"}
+        for e in history
+    )
 
 
 def test_task_provenance_requires_separate_autonomous_basis_and_current_adoption(
@@ -1028,10 +1311,16 @@ def test_task_source_metadata_cannot_silently_fall_back_to_legacy(
         body = first + "\n\n" + second + "\n" + rest
     with pytest.raises(ValueError):
         fmt.parse_task_metadata(body)
+    h.gh.issues[101]["body"] = body
+    writes = len(h.gh.writes)
+    result = h.judge([], "invalid-task-source")
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert len(h.gh.writes) == writes
+    assert not h.tmp.joinpath("judgement-calls.jsonl").exists()
 
 
 def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
-    harness: Harness, monkeypatch: pytest.MonkeyPatch
+    harness: Harness,
 ) -> None:
     h = harness
     h.run()
@@ -1039,65 +1328,38 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
         h.gh.comment_rows == {}
     )  # No execution basis or development owner from triage.
     judgement: Any = importlib.import_module("dispatcher.judgement")
-    clock = {"now": "2026-10-22T07:59:59+09:00"}
-    invocations: list[str] = []
-
-    def judge(root: Path, run_dir: Path, timeout: float, runner: Path) -> Any:
-        invocations.append(clock["now"])
-        snapshot = json.loads((run_dir / "input.json").read_text())
-        decisions = []
-        for n in snapshot["subjects"]:
-            container = n == 100
-            decisions.append(
-                {
-                    "issue": n,
-                    "disposition": "out_of_scope" if container else "startable",
-                    "target_parent": None if container else n,
-                    "priority": None if container else 1,
-                    "requirements": None
-                    if container
-                    else {
-                        "purpose": "保守性を改善",
-                        "scope": "big.pyとテスト",
-                        "behavior": "責務を分離",
-                        "acceptance": "CPUテスト成功",
-                    },
-                    "rationale": "固定した要件と出典を照合した。",
-                    "facts": ["採用状態を確認した。"],
-                    "missing_information": [],
-                    "resume_condition": "予定回で再照合",
-                    "next_action": "候補を返す",
-                    "sources": [f"issue:{n}"]
-                    if container
-                    else [
-                        "issue:100",
-                        f"issue:{n}",
-                        f"code:{snapshot['code']['commit']}:README.md",
-                    ],
-                    "dependencies": [],
-                }
-            )
-        return {
-            "schema_version": 1,
-            "input_sha256": snapshot["input_sha256"],
-            "decisions": decisions,
-        }
-
-    monkeypatch.setattr(judgement, "judge", judge)
     results = []
     for hour in ("08", "20"):
-        clock["now"] = f"2026-10-22T{hour}:00:00+09:00"
-        result = judgement.run(
-            h.gh,
-            state.Store(h.tmp / "state/parent"),
-            h.root,
-            h.tmp / f"scheduled-{hour}",
-            apply=True,
+        result = h.judge(
+            [start_decision(100, "out_of_scope"), start_decision(101, reports=(100,))],
+            f"scheduled-{hour}",
         )
         assert result["result"] == "recorded", result["diagnostics"]
+        assert result["schema_version"] == 2 and result["deferred"] == []
         assert result["candidates"][0]["parent"] == 101
+        run_dir = h.tmp / f"scheduled-{hour}"
+        index = json.loads(run_dir.joinpath("agent-input/index.json").read_text())
+        assert index["subjects"] == [100, 101]
+        assert index["issues"]["101"]["source_reports"] == [100]
+        assert index["issues"]["101"]["mechanical_guard"] is None
+        issue_file = run_dir / "agent-input" / index["issues"]["101"]["file"]
+        task = json.loads(issue_file.read_text())
+        assert "".join(task["body"]["segments"]) == h.gh.issues[101]["body"]
+        assert task["content_complete"] and task["omissions"] == []
+        runtime = json.loads(run_dir.joinpath("agent-runtime/result.json").read_text())
+        assert runtime["contract"]["read_dirs"] == [str(run_dir / "agent-input")]
+        assert (
+            runtime["contract"]["json_schema_sha256"]
+            == hashlib.sha256(
+                OPS.joinpath("dispatcher/judgement.schema.json").read_bytes()
+            ).hexdigest()
+        )
         results.append(result)
-    assert invocations == ["2026-10-22T08:00:00+09:00", "2026-10-22T20:00:00+09:00"]
+    calls = [
+        json.loads(line)
+        for line in h.tmp.joinpath("judgement-calls.jsonl").read_text().splitlines()
+    ]
+    assert len(calls) == 2 and all("--json-schema" in c["args"] for c in calls)
     assert len(h.calls()) == 1  # Only the proposal organizer used a runtime here.
     comments = h.gh.comment_rows[101]
     basis = next(

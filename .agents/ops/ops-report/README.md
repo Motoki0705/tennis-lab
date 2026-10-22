@@ -193,7 +193,8 @@ SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子�
 
 出典の正本は [issuesの出典契約](../issues/README.md#triageによる出典と復旧契約)。各提案は1つの索引anchorを持ち、
 分割時の親または実作業子へ対応付ける。複数提案をまとめる親は各提案の別anchorを子に持ち、contextの出典を保持する。
-これにより従来の単一出典索引とdispatcherの `source_reports` を変更せず、別レポートの提案も同じ正式親から辿れる。
+従来の単一出典索引を維持し、dispatcherはanchorとcontextの全bindingから `source_reports` を収集する。
+正式親が変わった後もcontextだけを持つ親・分割子の出典を対象閉包に含め、採用変更を検出する。
 目的・範囲・受入条件・選択肢・元の提案内容とdigestはスクリプトが出典節へ引き継ぐ。
 
 既存のホスト共通triage lockとparent registry lock内で、計画をstate dirの `triage-<repo digest>.json` へ
@@ -219,6 +220,7 @@ triageから割当判定agent・開発親・実装子・レビュー・mergeは�
 
 検証は `test_adopted_proposal_issues.py` と既存 `test_ops_report_triage.py`。fake GitHub・fake Codex CLI・一時state・
 使い捨てgitで生成/再利用/集約、全ページ、保留、応答喪失・中断・再実行、出典/採用変更、既存の受領記録を検証する。
+判定側は共通ランナーとfake Claude CLIを通し、分割入力・構造化出力・結果v2の一部延期と独立候補の維持を確認する。
 実レポート #1280 の採用4件から予定回の割当までの実CLI/GitHub/systemd証拠は #1336 に引き継ぐ。
 
 ## 設定

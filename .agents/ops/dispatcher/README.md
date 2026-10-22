@@ -220,9 +220,11 @@ triageは生成・再利用した**通常の作業issueをGitHubへ反映する�
 共通issues APIの目的・範囲・完了条件・先行依存・正式親子関係・提案出典を保持する。
 `ops-report` ラベルおよび本文先頭の `ops-report:v*` は報告容器専用とし、生成する作業issueへコピーしない。
 `ops-report-proposal` 出典メタデータを持つ作業issueは報告容器ではなく、通常の着手判定へ進む。
-共通 `parse_proposal_source()` から得るreport番号をsource_reportsへ収集し、採用状態の変更も候補の鮮度照合へ含める。
+共通 `parse_proposal_source()` のreport番号と `parse_task_metadata()` のcontextにある全bindingのreport番号を、
+重複を除いて `source_reports` へ収集する。contextだけを持つ親・分割子でも、索引anchorの正式親が変わった後も、
+出典レポートを分割入力とsubjectの対象閉包へ含める。採用状態の変更は関連subjectをv2の`deferred`へ移し、独立候補を維持する。
 複数提案の対応・採用取消・復旧とparentの提案受領/合意の旧契約との接続はIssue化側の責務。
-複数出典を持つ新メタデータを導入する場合は、共通issuesの出典契約とこのsource_reportsの抽出を同じ変更で接続する。
+不正・未知versionのtaskメタデータは収集エラーにし、空の出典や旧経路へ置き換えない。
 本入口から整理agent・割当判定agent・開発親を追加起動する通知経路は作らない。
 採用を人間合意や共有基盤許可に読み替えない。
 

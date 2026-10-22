@@ -167,7 +167,8 @@ parent_body = render_parent_body(
 既存の `ProposalSource` / `index_proposals` は1提案→1つの**索引anchor**を維持する。
 1提案を複数子へ分ける場合は親をanchorにする。複数提案を共通親へまとめる場合は各提案の子に別anchorを置く。
 親には全提案のcontextを持たせる。1つのissueへの複数の提案markerや同一提案の複数issueへの登録は拒否する。
-正式な親子の閉包から全anchorと出典レポートを辿れるため、dispatcherの単一出典抽出を変更しない。
+dispatcherは索引anchorに加え、contextの全bindingからも出典レポートを`source_reports`へ投影する。
+anchorが別の正式親へ移っても、元の親・分割子の出典は対象閉包と分割入力に残る。索引の一意性は変えない。
 
 `bind_task(body, plan=SHA256, node=KEY, bindings=[...], source=ProposalSource|None)` が生成する
 `ops-report-task:v1` markerは本文先頭（anchorでは従来のproposal markerの直後）に置く。
