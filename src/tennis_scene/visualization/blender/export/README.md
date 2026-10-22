@@ -142,6 +142,13 @@ bundle/
 
 ### 配置shot（player placement）
 
+![Meiji clip_000 identity 0 の配置プレビュー](../../../../../assets/tennis_scene/blender_player_placement_meiji_cam1.gif)
+
+上は、Meiji `video_000/clip_000` を現行の標準pipelineで処理した store から作ったものです。
+入力は `identity=0 frames=62:901 t0=436 plate_camera_id=cam1 human_vis_threshold=0.15`、
+`--intro-plate` 付きで、採用の経緯は #1212 に記録しています。元の動画は1920×1080・30fps・840frameで、
+このGIFは10fps・幅720に縮小したものです。
+
 `bundle` の `u_t`・`joints_local`・`target_joints` から、スケール → yaw → 位置の順に
 三角測量の点群へ埋め込む30fpsのBlenderシーンを作ります。レンダリングはせず、
 シーン構築と保存だけを実行する場合は `--render` を付けません。出力先が既に存在すれば拒否します。
@@ -171,6 +178,16 @@ bundleに無い場合はループ・複製・凍結せず停止します。再�
 `$SHOT_DIR/intro_plate/%05d.jpg` に保存します。`--samples`・`--resolution-percentage`・
 `--frame-step`・`--frames` はrevealと同じ意味です。入力fpsが30以外でも、再生区間は
 入力fpsの元の時間で30fpsへ再サンプルします（60fpsを30fpsとして遅く再生しません）。
+`--render` で `$SHOT_DIR/frames/%05d.png` に描画し、動画化は30fpsで行います。
+
+```bash
+ffmpeg -n -framerate 30 -start_number 0 -i "$SHOT_DIR/frames/%05d.png" \
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/player_placement.mp4"
+```
+
+WSL2のLinux版Blenderは、`EGL_PLATFORM=surfaceless GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA`
+を指定しないと、EEVEEをCPU（llvmpipe）で描画します。描画の前に、`gpu.platform.renderer_get()` に
+`NVIDIA` が含まれることを確かめてください。
 
 ```bash
 blender --background "$SHOT_DIR/tennis_placement.blend" --python-exit-code 1 -t 4 \
