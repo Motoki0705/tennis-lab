@@ -122,6 +122,18 @@ def event(dispatch: dict[str, Any], kind: str, **detail: Any) -> None:
     )
 
 
+def unstarted(job: dict[str, Any]) -> bool:
+    directory = Path(job["directory"])
+    return bool(
+        job["worker"] is None
+        and job["runner_exit"] is None
+        and not any(
+            (directory / name).exists()
+            for name in ("runtime", "runner.stdout", "runner.stderr")
+        )
+    )
+
+
 class Supervisor:
     def __init__(self, gh: GitHub, store: Store, schedule: Schedule) -> None:
         self.gh, self.store, self.schedule = gh, store, schedule
@@ -140,6 +152,67 @@ class Supervisor:
             or authorization(self._session(key, row)) != dispatch["authorization"]
         ):
             raise ValueError("managed execution basis changed")
+
+    def _resume_from(self, row: dict[str, Any], previous: dict[str, Any]) -> str | None:
+        jobs = row["dispatch"]["jobs"]
+        while True:
+            if previous["phase"] != "ended":
+                raise ValueError("reconcile the previous runtime before resuming")
+            if not previous.get("cancelled_before_start"):
+                directory = Path(previous["directory"]) / "runtime"
+                record = load(directory / "result.json")
+                session = record["runtime"].get("session_id")
+                if not session or (
+                    previous["role"] == "parent"
+                    and row["session"] != f"claude:{session}"
+                ):
+                    raise ValueError(
+                        "previous runtime has no matching resumable session"
+                    )
+                return str(directory)
+            if not unstarted(previous):
+                raise ValueError(
+                    "cancelled runtime has launch evidence; reconcile explicitly before resuming"
+                )
+            source = previous["resume_from"]
+            if source is None:
+                return None
+            matches = [
+                j
+                for j in jobs.values()
+                if str(Path(j["directory"]) / "runtime") == source
+                and j["role"] == previous["role"]
+                and j["child"] == previous["child"]
+                and j["sequence"] < previous["sequence"]
+            ]
+            if len(matches) != 1:
+                raise ValueError(
+                    "cancelled reservation has no unique saved resume source"
+                )
+            previous = matches[0]
+
+    @staticmethod
+    def _cancel(row: dict[str, Any], job: dict[str, Any], reason: str) -> None:
+        dispatch = row["dispatch"]
+        if not unstarted(job):
+            job.update(
+                phase="recovery_required",
+                diagnostic="予約に起動証拠があるため実プロセスを照合する",
+            )
+            dispatch.update(phase="recovery_required", reason=job["diagnostic"])
+            return
+        job.update(phase="ended", cancelled_before_start=True, diagnostic=reason)
+        event(dispatch, "runtime_cancelled", job_id=job["id"], reason=reason)
+        task = row["tasks"].get(str(job["child"]), {})
+        if (
+            job["child"] is not None
+            and task.get("delegation_id") == job["delegation_id"]
+        ):
+            task["worker_ended"] = {
+                "delegation_id": job["delegation_id"],
+                "evidence": "dispatcher cancelled reservation before the worker could claim/start the runner: "
+                + reason,
+            }
 
     def _job(
         self,
@@ -485,13 +558,7 @@ class Supervisor:
             resume_from = None
             if related:
                 previous = max(related, key=lambda j: j["sequence"])
-                previous_dir = Path(previous["directory"]) / "runtime"
-                record = load(previous_dir / "result.json")
-                if not record["runtime"].get("session_id"):
-                    raise ValueError(
-                        "child runtime has no resumable session; inspect it rather than create a replacement"
-                    )
-                resume_from = str(previous_dir)
+                resume_from = self._resume_from(row, previous)
             job = self._job(
                 key,
                 row,
@@ -517,10 +584,7 @@ class Supervisor:
                 raise ValueError("resume requires an idle managed parent")
             self._authorized(key, row)
             previous = dispatch["jobs"][dispatch["active_job"]]
-            if previous["phase"] != "ended":
-                raise ValueError("reconcile the previous runtime before resuming")
-            record = load(Path(previous["directory"]) / "runtime/result.json")
-            if record["runtime"].get("session_id") is None or row["session"].startswith(
+            if self._resume_from(row, previous) is None or row["session"].startswith(
                 "dispatcher-reservation:"
             ):
                 raise ValueError(
@@ -627,17 +691,7 @@ class Supervisor:
                     directory = Path(job["directory"])
                     if job["phase"] == "reserved":
                         if stop:
-                            job["phase"] = "ended"
-                            job["diagnostic"] = "cancelled before runtime launch"
-                            task = row["tasks"].get(str(job["child"]), {})
-                            if (
-                                job["child"] is not None
-                                and task.get("delegation_id") == job["delegation_id"]
-                            ):
-                                task["worker_ended"] = {
-                                    "delegation_id": job["delegation_id"],
-                                    "evidence": "dispatcher cancelled reservation before the worker could claim/start the runner",
-                                }
+                            self._cancel(row, job, "cancelled before runtime launch")
                         continue
                     # A live worker (or inherited launcher FD) may still be in
                     # Popen/save. Absence of a runtime file is never end evidence.
@@ -678,19 +732,15 @@ class Supervisor:
                         try:
                             self._authorized(key, row)
                             previous = dispatch["jobs"][dispatch["active_job"]]
-                            record = load(
-                                Path(previous["directory"]) / "runtime/result.json"
-                            )
-                            if not record["runtime"].get("session_id"):
+                            resume_from = self._resume_from(row, previous)
+                            if resume_from is None:
                                 raise ValueError(
                                     "previous runtime has no resumable session"
                                 )
                             self._job(
                                 key,
                                 row,
-                                resume_from=str(
-                                    Path(previous["directory"]) / "runtime"
-                                ),
+                                resume_from=resume_from,
                             )
                         except (ValueError, OSError) as exc:
                             dispatch.update(phase="failed", reason=str(exc))

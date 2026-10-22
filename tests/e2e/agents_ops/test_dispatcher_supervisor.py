@@ -809,6 +809,65 @@ def test_new_child_delegation_resumes_previous_child_session(
     )
 
 
+def test_cancelled_resume_reservation_reuses_original_session(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    d.prepare()
+    d.control.assign()
+    d.accepted()
+    original = d.job()
+    d.runtime(original)
+    d.control.reconcile()
+    for _ in range(2):
+        d.control.resume(1, "CI完了")
+        d.control.reconcile()
+        reserved = d.job()
+        assert reserved["resume_from"] == str(Path(original["directory"]) / "runtime")
+        d.control.reconcile(stop=True, parent=1)
+        cancelled = d.job()
+        assert cancelled["phase"] == "ended"
+        assert cancelled["cancelled_before_start"] is True
+        assert not (Path(cancelled["directory"]) / "runtime/result.json").exists()
+        assert d.row()["dispatch"]["phase"] == "stopped"
+    d.control.resume(1, "停止解除")
+    d.control.reconcile()
+    resumed = d.job()
+    assert resumed["id"] not in {original["id"], cancelled["id"]}
+    assert resumed["resume_from"] == str(Path(original["directory"]) / "runtime")
+    assert d.row()["session"] == "claude:fixture-session"
+
+
+@pytest.mark.parametrize("evidence", ["runtime", "worker", "runner.stdout"])
+def test_cancelled_resume_with_launch_evidence_never_guesses_a_session(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, evidence: str
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    d.prepare()
+    d.control.assign()
+    d.accepted()
+    d.runtime(d.job())
+    d.control.reconcile()
+    d.control.resume(1, "CI完了")
+    d.control.reconcile()
+    d.control.reconcile(stop=True, parent=1)
+    row = d.row()
+    cancelled = d.job(row)
+    if evidence == "runtime":
+        (Path(cancelled["directory"]) / evidence).mkdir()
+    elif evidence == "worker":
+        cancelled["worker"] = importlib.import_module(
+            "dispatcher.runtime"
+        ).process_identity(os.getpid())
+        d.update(row)
+    else:
+        (Path(cancelled["directory"]) / evidence).touch()
+    before = d.row()
+    with pytest.raises(ValueError, match="launch evidence"):
+        d.control.resume(1, "再開元を推測してはいけない")
+    assert d.row() == before
+
+
 def wait_until(predicate: Any, timeout: float = 12) -> None:
     until = time.monotonic() + timeout
     while time.monotonic() < until:

@@ -330,6 +330,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher resume --parent 123 --reas
 `supervise --once` は既存結果を照合する。失われたrunnerや残存CLIは `stop --parent` が共通ランナーのstopで照合する。
 workerが生存中なら終了後にもう一度superviseで確認する。launcherが返した終了値だけで枠を解放しない。
 予約保存後/実起動前なら同じ予約を取得するworkerへ戻る。起動後の応答喪失は保存済みrunへ結合する。
+実起動前の停止は、worker identity・runner終了値・runtimeディレクトリ・runner出力がないことを確認して
+`cancelled_before_start=true`の取消予約として残す。再開予約を取り消した場合、次のresumeは保存した
+`resume_from`を辿って実行済みrunの同じsessionへ戻る。取消予約に起動証拠がある場合や、再開元が
+一意に照合できない場合は再開を拒否し、実プロセスと記録を照合する。実行済みrunの結果欠落もこの取消扱いにしない。
 runtime記録欠落・identity不明・回収未確認はrecovery_requiredで枠を保持する。
 sessionが取れなかったrunから別sessionを自動生成しない。このケースは実プロセスと成果物を人間が照合する。
 手動handoffで稼働中のregistry identityを書き換えない。旧workerの終了確認を先に行う。
