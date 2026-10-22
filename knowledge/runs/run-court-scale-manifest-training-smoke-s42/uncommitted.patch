@@ -1,0 +1,909 @@
+diff --git a/src/tasks/court_detection/README.md b/src/tasks/court_detection/README.md
+index 22bd618f8..de50a0f26 100644
+--- a/src/tasks/court_detection/README.md
++++ b/src/tasks/court_detection/README.md
+@@ -151,7 +151,8 @@ Colab上ではevaluation/reportの出力をColab skillの`--persist`でDriveへ
+ ## 合成データ規模の比較
+ 
+ `--config-name train_data_scaling` は合成のみ（batch 8）・ViT-B＋幅768・更新数基準の専用設定です。
+-明示したJPEG store列の採択画像をすべてtrainにし、実画像全体を動画単位で固定したval/testで評価します。
++明示した `*.dataset.json` を生成器の validator で照合し、採択済みの合成画像だけをtrainにします。
++データ版・生成seed・hashをmanifestから記録し、実画像全体を動画単位で固定したval/testで評価します。
+ 固定分割の生成、必須設定、指定更新数のcheckpoint評価、対数軸の比較表・曲線は
+ [データ規模比較](scaling/README.md)を参照してください。
+ 
+diff --git a/src/tasks/court_detection/ablation/evaluation.py b/src/tasks/court_detection/ablation/evaluation.py
+index be040b0f7..baef471df 100644
+--- a/src/tasks/court_detection/ablation/evaluation.py
++++ b/src/tasks/court_detection/ablation/evaluation.py
+@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
+ from torch.utils.data import DataLoader, Subset
+ 
+ from src.tasks.court_detection.configuration import (
++    SyntheticCourtDatasetVersionSourceConfig,
+     SyntheticCourtSourceConfig,
+     SyntheticCourtStoresSourceConfig,
+     TennisCourtEvaluationSourceConfig,
+@@ -301,6 +302,10 @@ def evaluate_checkpoint(
+                 manifests[f"synthetic_court/{scene}"] = file_sha256(
+                     source_config.workspace_root / scene / "datasets/court/dataset.json"
+                 )
++        elif isinstance(source_config, SyntheticCourtDatasetVersionSourceConfig):
++            manifests["synthetic_court/dataset_version"] = file_sha256(
++                source_config.manifest
++            )
+         elif isinstance(source_config, SyntheticCourtStoresSourceConfig):
+             for index, root in enumerate(source_config.store_roots):
+                 manifests[f"synthetic_court/store-{index}"] = file_sha256(
+diff --git a/src/tasks/court_detection/configs/data/source/synthetic_court_dataset_version.yaml b/src/tasks/court_detection/configs/data/source/synthetic_court_dataset_version.yaml
+new file mode 100644
+index 000000000..3be15abbb
+--- /dev/null
++++ b/src/tasks/court_detection/configs/data/source/synthetic_court_dataset_version.yaml
+@@ -0,0 +1,4 @@
++kind: synthetic_court_dataset_version
++schema: v3
++court_scope: target_court
++manifest: ???
+diff --git a/src/tasks/court_detection/configs/train_data_scaling.yaml b/src/tasks/court_detection/configs/train_data_scaling.yaml
+index c6bb605fa..834602994 100644
+--- a/src/tasks/court_detection/configs/train_data_scaling.yaml
++++ b/src/tasks/court_detection/configs/train_data_scaling.yaml
+@@ -1,7 +1,7 @@
+ # Fixed model and batch; the pilot must explicitly set every update-count value.
+ defaults:
+   - train
+-  - override data/source: synthetic_court_stores
++  - override data/source: synthetic_court_dataset_version
+   - override data/source@mixed.sources.tennis_court_detector: tennis_court_evaluation
+   - _self_
+ 
+diff --git a/src/tasks/court_detection/configuration.py b/src/tasks/court_detection/configuration.py
+index 73b052e18..19ec3d6ba 100644
+--- a/src/tasks/court_detection/configuration.py
++++ b/src/tasks/court_detection/configuration.py
+@@ -678,6 +678,49 @@ class SyntheticCourtStoresSourceConfig:
+         )
+ 
+ 
++@dataclass(frozen=True, slots=True)
++class SyntheticCourtDatasetVersionSourceConfig:
++    """An explicit scale publication; identity and seed come from its manifest."""
++
++    kind: Literal["synthetic_court_dataset_version"]
++    schema: Literal["v3"]
++    court_scope: Literal["target_court"]
++    manifest: Path
++
++    def __post_init__(self) -> None:
++        if (self.kind, self.schema, self.court_scope) != (
++            "synthetic_court_dataset_version",
++            "v3",
++            "target_court",
++        ):
++            raise SemanticConfigurationError(
++                "Court dataset versions require V3 target_court."
++            )
++
++    @classmethod
++    def from_mapping(
++        cls, value: object, *, resolver: PathResolver
++    ) -> SyntheticCourtDatasetVersionSourceConfig:
++        mapping = as_config_mapping(value, path="data.source")
++        _exact(
++            mapping, {"kind", "schema", "court_scope", "manifest"}, path="data.source"
++        )
++        return cls(
++            cast(
++                Literal["synthetic_court_dataset_version"],
++                _string(mapping, "kind", path="data.source"),
++            ),
++            cast(Literal["v3"], _string(mapping, "schema", path="data.source")),
++            cast(
++                Literal["target_court"],
++                _string(mapping, "court_scope", path="data.source"),
++            ),
++            resolver.resolve(
++                PathRole.DATA, _string(mapping, "manifest", path="data.source")
++            ),
++        )
++
++
+ @dataclass(frozen=True, slots=True)
+ class TennisCourtEvaluationSourceConfig:
+     """Read the original store through an immutable, video-disjoint registry."""
+@@ -709,6 +752,7 @@ CourtSourceConfig: TypeAlias = (
+     TennisCourtDetectorSourceConfig
+     | SyntheticCourtSourceConfig
+     | SyntheticCourtStoresSourceConfig
++    | SyntheticCourtDatasetVersionSourceConfig
+     | TennisCourtEvaluationSourceConfig
+ )
+ 
+@@ -722,6 +766,10 @@ def _source_config(value: object, *, resolver: PathResolver) -> CourtSourceConfi
+         return SyntheticCourtSourceConfig.from_mapping(mapping, resolver=resolver)
+     if kind == "synthetic_court_stores":
+         return SyntheticCourtStoresSourceConfig.from_mapping(mapping, resolver=resolver)
++    if kind == "synthetic_court_dataset_version":
++        return SyntheticCourtDatasetVersionSourceConfig.from_mapping(
++            mapping, resolver=resolver
++        )
+     if kind == "tennis_court_evaluation":
+         return TennisCourtEvaluationSourceConfig.from_mapping(
+             mapping, resolver=resolver
+@@ -1583,9 +1631,7 @@ class CourtInferenceConfig:
+         patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
+         if patch_size <= 0:
+             raise SemanticConfigurationError("Validation patch size must be positive")
+-        preserve_fx_fy = _bool(
+-            augmentation, "preserve_fx_fy", path="data.augmentation"
+-        )
++        preserve_fx_fy = _bool(augmentation, "preserve_fx_fy", path="data.augmentation")
+         if loss.pose.enabled and not preserve_fx_fy:
+             raise SemanticConfigurationError(
+                 "Pose inference requires preserve_fx_fy=true"
+@@ -1658,7 +1704,8 @@ class CourtTrainingConfig:
+                 "lr_monitor",
+                 "qualitative_logging",
+                 "gan",
+-            } | ({"step_schedule"} if "step_schedule" in training_mapping else set()),
++            }
++            | ({"step_schedule"} if "step_schedule" in training_mapping else set()),
+             path="training",
+         )
+         nested_keys = {
+@@ -1767,6 +1814,7 @@ class CourtTrainingConfig:
+         shared_training = dict(training_mapping)
+         if "step_schedule" in shared_training:
+             from src.tasks.court_detection.scaling.schedule import StepSchedule
++
+             StepSchedule.from_config(config)
+             del shared_training["step_schedule"]
+         shared_training["qualitative_logging"] = {
+@@ -1946,6 +1994,7 @@ __all__ = [
+     "SEGMENTATION_TARGET_SCHEMA",
+     "SyntheticCourtSourceConfig",
+     "SyntheticCourtStoresSourceConfig",
++    "SyntheticCourtDatasetVersionSourceConfig",
+     "TennisCourtEvaluationSourceConfig",
+     "SyntheticCourtSchemaVersion",
+     "TennisCourtDetectorSourceConfig",
+diff --git a/src/tasks/court_detection/data/inputs/factory.py b/src/tasks/court_detection/data/inputs/factory.py
+index 1f720c860..7dc9dc2d4 100644
+--- a/src/tasks/court_detection/data/inputs/factory.py
++++ b/src/tasks/court_detection/data/inputs/factory.py
+@@ -7,6 +7,7 @@ from typing import cast
+ 
+ from src.tasks.court_detection.configuration import (
+     CourtSourceConfig,
++    SyntheticCourtDatasetVersionSourceConfig,
+     SyntheticCourtSourceConfig,
+     SyntheticCourtStoresSourceConfig,
+     TennisCourtDetectorSourceConfig,
+@@ -14,6 +15,9 @@ from src.tasks.court_detection.configuration import (
+ )
+ from src.tasks.court_detection.data.inputs.contract import CourtInput
+ from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
++from src.tasks.court_detection.data.inputs.synthetic_court_dataset_version import (
++    SyntheticCourtDatasetVersionInput,
++)
+ from src.tasks.court_detection.data.inputs.tennis_court_detector import (
+     TennisCourtDetectorInput,
+ )
+@@ -37,9 +41,16 @@ def _build_synthetic(
+ 
+ def _build_evaluation(config: CourtSourceConfig) -> CourtInput:
+     from src.tasks.court_detection.scaling.real_split import TennisCourtEvaluationInput
++
+     return TennisCourtEvaluationInput(cast(TennisCourtEvaluationSourceConfig, config))
+ 
+ 
++def _build_dataset_version(config: CourtSourceConfig) -> CourtInput:
++    return SyntheticCourtDatasetVersionInput(
++        cast(SyntheticCourtDatasetVersionSourceConfig, config)
++    )
++
++
+ _BUILDERS: dict[
+     str,
+     Callable[[CourtSourceConfig], CourtInput],
+@@ -47,6 +58,7 @@ _BUILDERS: dict[
+     "tennis_court_detector": _build_tennis,
+     "synthetic_court": _build_synthetic,
+     "synthetic_court_stores": _build_synthetic,
++    "synthetic_court_dataset_version": _build_dataset_version,
+     "tennis_court_evaluation": _build_evaluation,
+ }
+ 
+diff --git a/src/tasks/court_detection/data/inputs/synthetic_court.py b/src/tasks/court_detection/data/inputs/synthetic_court.py
+index 27bc090e7..d7368dfca 100644
+--- a/src/tasks/court_detection/data/inputs/synthetic_court.py
++++ b/src/tasks/court_detection/data/inputs/synthetic_court.py
+@@ -31,6 +31,7 @@ from src.synthetic_data_generation.dataset.court.schema import (
+ )
+ from src.synthetic_data_generation.scene_contract import SceneCamera
+ from src.tasks.court_detection.configuration import (
++    SyntheticCourtDatasetVersionSourceConfig,
+     SyntheticCourtSourceConfig,
+     SyntheticCourtStoresSourceConfig,
+ )
+@@ -139,8 +140,13 @@ class _ParsedPoint(TypedDict):
+ class SyntheticCourtInput:
+     """Load only the synthetic schema explicitly selected in typed config."""
+ 
++    _additional_sample_keys: frozenset[str] = frozenset()
++
+     def __init__(
+-        self, config: SyntheticCourtSourceConfig | SyntheticCourtStoresSourceConfig
++        self,
++        config: SyntheticCourtSourceConfig
++        | SyntheticCourtStoresSourceConfig
++        | SyntheticCourtDatasetVersionSourceConfig,
+     ) -> None:
+         self.config = config
+         self._image_stores: dict[Path, ImageRecordStore] = {}
+@@ -331,6 +337,8 @@ class SyntheticCourtInput:
+             return tuple(
+                 (None, root.resolve(strict=True)) for root in self.config.store_roots
+             )
++        if not isinstance(self.config, SyntheticCourtSourceConfig):
++            raise TypeError("Dataset versions require the explicit scale adapter.")
+         workspace = self.config.workspace_root.resolve(strict=False)
+         roots = []
+         for scene in self.config.scene_ids:
+@@ -384,6 +392,7 @@ class SyntheticCourtInput:
+             expected_keys.difference_update(LEGACY_SAMPLE_FILES)
+             expected_keys.add("image_index")
+         expected_keys.add("target_court")
++        expected_keys.update(self._additional_sample_keys)
+         if not isinstance(value, Mapping) or set(value) != expected_keys:
+             raise ValueError("Synthetic Court accepted sample record fields changed.")
+         source_sample_id = self._identifier(value["sample_id"], name="sample_id")
+@@ -416,7 +425,7 @@ class SyntheticCourtInput:
+         camera = SceneCamera.from_dict(value["camera"])
+         if (
+             camera.camera_id != source_sample_id
+-            or camera.source_frame_index != value["sample_index"]
++            or camera.source_frame_index != self._camera_source_frame_index(value)
+             or camera.width != width
+             or (camera.height != height)
+         ):
+@@ -516,6 +525,9 @@ class SyntheticCourtInput:
+             },
+         )
+ 
++    def _camera_source_frame_index(self, value: Mapping[str, object]) -> int:
++        return cast(int, value["sample_index"])
++
+     @staticmethod
+     def _resolve_published_directory(root: Path, value: object) -> Path:
+         target = SyntheticCourtInput._resolve_relative(root, value, name="directory")
+diff --git a/src/tasks/court_detection/data/inputs/synthetic_court_dataset_version.py b/src/tasks/court_detection/data/inputs/synthetic_court_dataset_version.py
+new file mode 100644
+index 000000000..bd358150d
+--- /dev/null
++++ b/src/tasks/court_detection/data/inputs/synthetic_court_dataset_version.py
+@@ -0,0 +1,98 @@
++"""Adapt a verified scale dataset version to the V3 training geometry pipeline."""
++
++from __future__ import annotations
++
++from collections.abc import Mapping
++from typing import cast
++
++from src.synthetic_data_generation.dataset.court.sample_store import (
++    open_court_store,
++    read_court_manifest,
++)
++from src.tasks.court_detection.configuration import (
++    SyntheticCourtDatasetVersionSourceConfig,
++)
++from src.tasks.court_detection.data.contracts import CourtSampleRecord, CourtSourceSplit
++from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
++from src.utils.data.image_record_store import file_sha256
++
++_DATASET_KEYS = {
++    "schema",
++    "status",
++    "scene_id",
++    "profile",
++    "scale_schema",
++    "seed",
++    "metadata_fields",
++    "trajectory_groups",
++    "rejected_samples",
++    "metrics",
++    "samples",
++    "storage",
++}
++
++
++class SyntheticCourtDatasetVersionInput(SyntheticCourtInput):
++    """Read only the exact accepted membership of one explicit train publication."""
++
++    _additional_sample_keys = frozenset({"scale", "qa"})
++
++    def __init__(self, config: SyntheticCourtDatasetVersionSourceConfig) -> None:
++        super().__init__(config)
++
++    def _load_manifests(self) -> dict[CourtSourceSplit, tuple[CourtSampleRecord, ...]]:
++        from src.synthetic_data_generation.dataset.court.scale.publication import (
++            contained,
++            load_dataset_version,
++        )
++
++        config = cast(SyntheticCourtDatasetVersionSourceConfig, self.config)
++        self.dataset_version = load_dataset_version(config.manifest, verify_images=True)
++        self.version_manifest_sha256 = file_sha256(config.manifest)
++        version_root = config.manifest.resolve(strict=True).parent
++        roots = []
++        records: list[CourtSampleRecord] = []
++        global_ids: set[str] = set()
++        for scene in self.dataset_version["scenes"]:
++            accepted = []
++            for entry in scene["stores"]:
++                root = contained(version_root, entry["path"], directory=True)
++                roots.append(root)
++                store = open_court_store(root)
++                self._image_stores[root] = store
++                manifest = read_court_manifest(root, store=store)
++                if set(manifest) != _DATASET_KEYS:
++                    raise ValueError("Scale Court dataset metadata fields changed.")
++                if manifest["seed"] != self.dataset_version["generation_seed"]:
++                    raise ValueError(
++                        "Scale store seed disagrees with its dataset version."
++                    )
++                for value in manifest["samples"]:
++                    record = self._manifest_record(
++                        value,
++                        root=root,
++                        scene_id=scene["scene_id"],
++                        manifest_digest=entry["dataset_sha256"],
++                    )
++                    if record.split != "train" or record.sample_id in global_ids:
++                        raise ValueError(
++                            "Scale dataset requires unique train sample IDs."
++                        )
++                    global_ids.add(record.sample_id)
++                    accepted.append(value["sample_id"])
++                    records.append(record)
++            # The shared validator checks membership against both the QA ledger and
++            # candidate geometry. Keep the consumer's inventory bound to those counts.
++            if len(accepted) != scene["counts"]["qa_accepted"]:
++                raise ValueError(
++                    "Scale training inventory disagrees with accepted count."
++                )
++        self.store_roots = tuple(roots)
++        return {"train": tuple(records), "val": (), "test": ()}
++
++    def _camera_source_frame_index(self, value: Mapping[str, object]) -> int:
++        # Scale cameras are synthetic, while sample_index is a stable-ID prefix.
++        return 0
++
++
++__all__ = ["SyntheticCourtDatasetVersionInput"]
+diff --git a/src/tasks/court_detection/data/mixed.py b/src/tasks/court_detection/data/mixed.py
+index 5389acb3d..cf6ba650a 100644
+--- a/src/tasks/court_detection/data/mixed.py
++++ b/src/tasks/court_detection/data/mixed.py
+@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
+ from src.tasks.court_detection.configuration import (
+     CourtSourceConfig,
+     CourtTrainingConfig,
++    SyntheticCourtDatasetVersionSourceConfig,
+     SyntheticCourtSourceConfig,
+     SyntheticCourtStoresSourceConfig,
+     TennisCourtDetectorSourceConfig,
+@@ -89,7 +90,13 @@ class CourtMixedDataConfig:
+                 "tennis_court_detector."
+             )
+ 
+-        scaling = isinstance(runtime.data.source, SyntheticCourtStoresSourceConfig)
++        scaling = isinstance(
++            runtime.data.source,
++            (
++                SyntheticCourtStoresSourceConfig,
++                SyntheticCourtDatasetVersionSourceConfig,
++            ),
++        )
+         sources: dict[str, CourtSourceConfig] = {}
+         for name in _SOURCE_ORDER:
+             raw_source = require_config_mapping(
+@@ -108,7 +115,7 @@ class CourtMixedDataConfig:
+             )
+             expected_kind = (
+                 {
+-                    "synthetic_court": "synthetic_court_stores",
++                    "synthetic_court": runtime.data.source.kind,
+                     "tennis_court_detector": "tennis_court_evaluation",
+                 }[name]
+                 if scaling
+@@ -119,7 +126,11 @@ class CourtMixedDataConfig:
+                     f"mixed.sources.{name}.kind must be {expected_kind!r}."
+                 )
+             source: CourtSourceConfig
+-            if kind == "synthetic_court_stores":
++            if kind == "synthetic_court_dataset_version":
++                source = SyntheticCourtDatasetVersionSourceConfig.from_mapping(
++                    raw_source, resolver=runtime.shared.resolver
++                )
++            elif kind == "synthetic_court_stores":
+                 source = SyntheticCourtStoresSourceConfig.from_mapping(
+                     raw_source, resolver=runtime.shared.resolver
+                 )
+diff --git a/src/tasks/court_detection/scaling/README.md b/src/tasks/court_detection/scaling/README.md
+index 82e3e73a2..eb2197678 100644
+--- a/src/tasks/court_detection/scaling/README.md
++++ b/src/tasks/court_detection/scaling/README.md
+@@ -37,7 +37,33 @@ only for final reporting. The legacy `split_mapping` source is unchanged.
+ 
+ ## Explicit synthetic publications
+ 
+-`data/source=synthetic_court_stores` accepts an **ordered, nonempty list** of
++`train_data_scaling` selects `data/source=synthetic_court_dataset_version`.
++Set `data.source.manifest` to an explicit `*.dataset.json` path under
++`paths.data_root`. Set the root itself to an absolute path when needed; the
++manifest value is role-relative, like other task inputs. The adapter calls
++`scale.publication.load_dataset_version(..., verify_images=True)` before
++model/worker startup. It verifies the frozen request, generation seed, recipe,
++candidate geometry, exact accepted membership, QA ledgers, store/index hashes,
++JPEG bytes and train-only split. D5 failures and geometry rejections never enter
++the training Dataset. Version references resolve relative to the manifest's
++parent; the adapter reads only its ordered scene/store inventory.
++
++Scale stores have an explicit profile, stable-ID-derived sample indices and
++`scale`/`qa` records. Their v3 KP14, visibility, camera/target and pose authority
++pass unchanged to the shared online target pipeline. The generator's
++[dataset-version contract](../../../synthetic_data_generation/dataset/court/README.md#dataset-version-consumer-contract)
++owns publication semantics; no generation or renderer runs during training.
++
++`data_version` and `generation_seed` in `data-condition.json` and checkpoint
++hyperparameters come from the verified manifest. They cannot be supplied in
++this source's configuration. Provenance also records manifest schema/hash,
++request/plan/recipe hashes, method, actual accepted scene counts, store hashes
++and the ordered training-ID hash. `run.seed` remains the independent training
++seed. Resume and checkpoint evaluation revalidate the publication and refuse
++input or registry drift.
++
++For historical V3 stores, explicitly select
++`data/source=synthetic_court_stores`. This accepts an **ordered, nonempty list** of
+ store roots under `paths.data_root`. Each root is an existing packed
+ `sample_store` publication (JPEG shards, sparse index and V3 target-court
+ geometry). It never searches `scenes/<scene>/datasets/court` implicitly. All
+@@ -54,17 +80,11 @@ actual source inventory, without a requested-count quota or replacement draws.
+ Epoch-end sampler padding may repeat records to fill a batch; it does not alter
+ the measured unique accepted image count.
+ 
+-`data_version` identifies the selected condition and `generation_seed` records
+-the declared generation experiment seed. `run.seed` is the independent training
+-seed. Descriptor/index hashes and the ordered training-ID hash pin the actual
+-store contents in `data-condition.json` and checkpoint hyperparameters.
+-Evaluation refuses input or registry drift relative to that checkpoint.
+-
+-The generator owns the future condition-manifest schema. Its adapter should
+-validate the manifest and its referenced hashes/completion state, resolve the
+-exact ordered store list, then populate `store_roots`, `data_version` and
+-`generation_seed` here. There is no guessed manifest schema or implicit owner
+-fallback in this consumer.
++Only this historical source requires manually declared `data_version` and
++`generation_seed`; it does not claim scale dataset-version validation. It
++retains the existing strict V3 envelope and rejects scale stores. The source
++discriminator selects exactly one contract, with no automatic detection or
++fallback between manifests, historical stores and scene owners.
+ 
+ ## Train with optimizer-update counts
+ 
+@@ -78,8 +98,7 @@ Use absolute roots for remote/local workloads.
+ .venv/bin/python -m src.tasks.court_detection.scripts.train \
+   --config-name train_data_scaling \
+   paths.data_root=/absolute/data paths.artifact_root=/absolute/outputs \
+-  'data.source.store_roots=[court_scale/condition-v1/B00,court_scale/condition-v1/B01]' \
+-  data.source.data_version=condition-v1 data.source.generation_seed=17 \
++  data.source.manifest=court_scale/condition-v1/VERSION.dataset.json \
+   mixed.sources.tennis_court_detector.registry=court_detection/evaluate/real-video-split-v1/s42/registry.json \
+   training.step_schedule.max_steps=100 \
+   training.step_schedule.validation_every_n_steps=20 \
+@@ -89,8 +108,8 @@ Use absolute roots for remote/local workloads.
+ ```
+ 
+ The update counts above are **illustrative**, not agreed production values.
+-`max_steps`, warmup, evaluation/checkpoint intervals, store list, version,
+-generation seed, registry and run output are mandatory configuration inputs.
++`max_steps`, warmup, evaluation/checkpoint intervals, dataset-version manifest,
++registry and run output are mandatory configuration inputs.
+ The pilot must fix production counts before the main experiment.
+ 
+ The preset uses frozen DINOv3 ViT-B/16 without LoRA; Transformer width 768,
+diff --git a/src/tasks/court_detection/scaling/provenance.py b/src/tasks/court_detection/scaling/provenance.py
+index 6c1746370..dce8853bf 100644
+--- a/src/tasks/court_detection/scaling/provenance.py
++++ b/src/tasks/court_detection/scaling/provenance.py
+@@ -7,6 +7,9 @@ from typing import Any
+ 
+ from src.tasks.court_detection.configuration import SyntheticCourtStoresSourceConfig
+ from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
++from src.tasks.court_detection.data.inputs.synthetic_court_dataset_version import (
++    SyntheticCourtDatasetVersionInput,
++)
+ from src.tasks.court_detection.scaling.real_split import (
+     TennisCourtEvaluationInput,
+     canonical_sha256,
+@@ -16,16 +19,45 @@ from src.utils.data.image_record_store import file_sha256
+ 
+ def data_condition(dm: CourtDetectionDataModule) -> dict[str, Any]:
+     source = dm.mixed_config.sources["synthetic_court"]
+-    if not isinstance(source, SyntheticCourtStoresSourceConfig):
+-        raise ValueError("Data conditions require explicit training stores.")
+     pipeline = dm._train_pipelines["synthetic_court"]
++    input_layer = pipeline.input_layer
++    identity: dict[str, Any]
++    if isinstance(input_layer, SyntheticCourtDatasetVersionInput):
++        version = input_layer.dataset_version
++        roots = input_layer.store_roots
++        identity = {
++            "data_version": version["dataset_version"],
++            "generation_seed": version["generation_seed"],
++            "dataset_version_manifest": {
++                "sha256": input_layer.version_manifest_sha256,
++                **{
++                    key: version[key]
++                    for key in (
++                        "schema",
++                        "request_sha256",
++                        "plan_sha256",
++                        "method",
++                        "recipe_sha256",
++                    )
++                },
++            },
++        }
++    elif isinstance(source, SyntheticCourtStoresSourceConfig):
++        roots = source.store_roots
++        identity = {
++            "data_version": source.data_version,
++            "generation_seed": source.generation_seed,
++        }
++    else:
++        raise ValueError(
++            "Data conditions require an explicit dataset version or training stores."
++        )
+     records = pipeline.input_layer.records("train")
+     real = dm._eval_pipelines["tennis_court_detector"].input_layer
+     if not isinstance(real, TennisCourtEvaluationInput):
+         raise TypeError("Data conditions require a fixed real evaluation registry.")
+     return {
+-        "data_version": source.data_version,
+-        "generation_seed": source.generation_seed,
++        **identity,
+         "training_seed": dm.seed,
+         "accepted_images": len(records),
+         "scene_images": dict(
+@@ -41,7 +73,7 @@ def data_condition(dm: CourtDetectionDataModule) -> dict[str, Any]:
+                 "descriptor_sha256": file_sha256(root / "dataset.json"),
+                 "index_sha256": file_sha256(root / "samples/index.npz"),
+             }
+-            for root in source.store_roots
++            for root in roots
+         ],
+         "evaluation_registry_sha256": real.registry["sha256"],
+         "evaluation_registry_version": real.registry["version"],
+diff --git a/src/tasks/court_detection/training/runner.py b/src/tasks/court_detection/training/runner.py
+index 9bcce6f24..2697254a5 100644
+--- a/src/tasks/court_detection/training/runner.py
++++ b/src/tasks/court_detection/training/runner.py
+@@ -14,6 +14,7 @@ from src.tasks.base.configuration import TrainingRuntimeConfig
+ from src.tasks.base.training.runner import BaseTrainingRunner
+ from src.tasks.court_detection.configuration import (
+     CourtTrainingConfig,
++    SyntheticCourtDatasetVersionSourceConfig,
+     SyntheticCourtStoresSourceConfig,
+ )
+ from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
+@@ -43,10 +44,11 @@ def resolve_training_config(
+         )
+     runtime = CourtTrainingConfig.from_config(config)
+     if isinstance(
+-        runtime.data.source, SyntheticCourtStoresSourceConfig
++        runtime.data.source,
++        (SyntheticCourtStoresSourceConfig, SyntheticCourtDatasetVersionSourceConfig),
+     ) != has_step_schedule(config):
+         raise SemanticConfigurationError(
+-            "Explicit all-train stores and step_schedule must be selected together."
++            "Explicit all-train sources and step_schedule must be selected together."
+         )
+     mixed = CourtMixedDataConfig.from_mapping(config.get("mixed"), runtime=runtime)
+     return config, mixed
+diff --git a/tests/integration/tasks/court_detection/test_data_scaling.py b/tests/integration/tasks/court_detection/test_data_scaling.py
+index 9210e877b..869ba9727 100644
+--- a/tests/integration/tasks/court_detection/test_data_scaling.py
++++ b/tests/integration/tasks/court_detection/test_data_scaling.py
+@@ -57,6 +57,7 @@ def _config(tmp_path: Path) -> DictConfig:
+         config = compose(
+             config_name="train_data_scaling",
+             overrides=[
++                "data/source=synthetic_court_stores",
+                 "data.source.store_roots=[versions/condition/part]",
+                 "data.source.data_version=fixture-v1",
+                 "data.source.generation_seed=17",
+diff --git a/tests/integration/tasks/court_detection/test_scale_dataset_version.py b/tests/integration/tasks/court_detection/test_scale_dataset_version.py
+new file mode 100644
+index 000000000..b1870a332
+--- /dev/null
++++ b/tests/integration/tasks/court_detection/test_scale_dataset_version.py
+@@ -0,0 +1,276 @@
++"""Generate scale publications on CPU and consume them through the training Dataset."""
++
++from __future__ import annotations
++
++from collections.abc import Mapping
++from dataclasses import replace
++from pathlib import Path
++from types import SimpleNamespace
++from typing import cast
++
++import numpy as np
++import pytest
++import torch
++from hydra import compose, initialize_config_dir
++from omegaconf import DictConfig, OmegaConf
++
++from src.synthetic_data_generation.dataset.court.sample_store import open_court_store
++from src.synthetic_data_generation.dataset.court.scale import publication
++from src.synthetic_data_generation.dataset.court.scale.core import (
++    canonical_bytes,
++    digest,
++)
++from src.synthetic_data_generation.dataset.court.scale.planning import (
++    build_candidate_plan,
++)
++from src.synthetic_data_generation.dataset.court.scale.recipes import ProductionRecipe
++from src.synthetic_data_generation.rendering.nht import NHTRenderArrays
++from src.tasks.court_detection.configuration import (
++    CourtTrainingConfig,
++    SyntheticCourtDatasetVersionSourceConfig,
++)
++from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
++from src.tasks.court_detection.data.dataset import CourtDetectionDataset
++from src.tasks.court_detection.data.inputs.factory import build_court_input
++from src.tasks.court_detection.data.processing.factory import (
++    build_court_processing_pipeline,
++)
++from src.tasks.court_detection.scaling.provenance import data_condition
++from src.tasks.court_detection.training.runner import resolve_training_config
++from src.utils.data.image_record_store import file_sha256
++from tests.integration.tasks.court_detection.test_data_scaling import _config, _inputs
++from tests.unit.synthetic_data_generation.dataset.court.conftest import (
++    captured_cameras as captured_cameras,
++)
++from tests.unit.synthetic_data_generation.dataset.court.conftest import (
++    multi_court_layout as multi_court_layout,
++)
++
++pytestmark = pytest.mark.integration
++_CONFIG_DIR = Path(__file__).resolve().parents[4] / "src/tasks/court_detection/configs"
++
++
++@pytest.fixture
++def scale_version(tmp_path, captured_cameras, multi_court_layout, monkeypatch):
++    # Reuse the generator's CPU scene fixtures and public publication entrypoints.
++    monkeypatch.setattr(
++        publication.AlignmentResult,
++        "from_dict",
++        lambda _: SimpleNamespace(layout=multi_court_layout),
++    )
++    production = ProductionRecipe.from_dict(
++        publication.read_json(
++            Path(
++                "src/synthetic_data_generation/configs/dataset/court/scale_stratified_counter_production_v1.json"
++            )
++        )
++    )
++    production = replace(
++        production,
++        geometry=replace(
++            production.geometry,
++            width=80,
++            height=48,
++            base_step_m=8,
++        ),
++    )
++    plan = build_candidate_plan(
++        scene_id="fixture",
++        method=production.method,
++        recipe=production.geometry,
++        seed=24,
++        trajectory_count=3,
++        density_level=0,
++        cameras=captured_cameras,
++        layout=multi_court_layout,
++    )
++    root = tmp_path / "data/scale"
++    request = publication.freeze_request(
++        root,
++        plans=[plan],
++        assets=[{"scene_id": "fixture", "alignment": {}}],
++        renderer={"schema": "fixture_renderer_v1"},
++        quality=production.quality,
++        production_recipe=production,
++    )
++    rendered = []
++
++    def render(scene, records):
++        for record in records:
++            rendered.append(record["sample_id"])
++            h, w = record["height"], record["width"]
++            yield (
++                record["sample_id"],
++                NHTRenderArrays(
++                    rgb=np.full((h, w, 3), 0.5, dtype=np.float32),
++                    alpha=np.full(
++                        (h, w, 1), 0 if len(rendered) == 1 else 1, dtype=np.float32
++                    ),
++                    depth=np.ones((h, w, 1), dtype=np.float32),
++                ),
++            )
++
++    path = publication.execute_request(root, request, render)
++    return path, publication.load_dataset_version(path), rendered
++
++
++def version_config(tmp_path: Path, path: Path) -> DictConfig:
++    config = _inputs(tmp_path)
++    config.data.source = OmegaConf.create(
++        {
++            "kind": "synthetic_court_dataset_version",
++            "schema": "v3",
++            "court_scope": "target_court",
++            "manifest": path.relative_to(tmp_path / "data").as_posix(),
++        }
++    )
++    config.data.augmentation.val_short_side = 80
++    config.data.augmentation.train_scales = [80]
++    config.data.batch_size = 1
++    config.mixed.train_batch_counts.synthetic_court = 1
++    config.data.num_workers = 0
++    return config
++
++
++def test_scaling_default_requires_manifest_and_rejects_manual_identity(tmp_path):
++    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
++        config = compose(config_name="train_data_scaling")
++    assert config.data.source.kind == "synthetic_court_dataset_version"
++    assert OmegaConf.is_missing(config.data.source, "manifest")
++    config = _config(tmp_path)
++    config.data.source = OmegaConf.create({
++        "kind": "synthetic_court_dataset_version", "schema": "v3",
++        "court_scope": "target_court", "manifest": "missing.dataset.json",
++    })
++    for field in ("data_version", "generation_seed", "store_roots"):
++        invalid = OmegaConf.merge(
++            config, OmegaConf.from_dotlist([f"data.source.{field}=unexpected"])
++        )
++        with pytest.raises(ValueError, match="Unknown configuration key"):
++            CourtTrainingConfig.from_config(invalid)
++
++
++def test_generated_version_dataset_matches_accepted_kp_visibility_pose_and_rgb(
++    tmp_path,
++    scale_version,
++):
++    path, version, rendered = scale_version
++    config = version_config(tmp_path, path)
++    _, mixed = resolve_training_config(config)
++    assert mixed.train_batch_counts == {
++        "synthetic_court": 1,
++        "tennis_court_detector": 0,
++    }
++    runtime = CourtTrainingConfig.from_config(config)
++    assert isinstance(runtime.data.source, SyntheticCourtDatasetVersionSourceConfig)
++    pipeline = build_court_processing_pipeline(
++        runtime.data, is_train=False, require_pose=True
++    )
++    source = pipeline.input_layer
++    dataset = CourtDetectionDataset(source.records("train"), pipeline=pipeline)
++    scene = version["scenes"][0]
++    counts = scene["counts"]
++    accepted = publication.read_json(path.parent / scene["accepted_ids_path"])[
++        "sample_ids"
++    ]
++    assert counts["geometry_rejected"] > 0 and counts["qa_rejected"] > 0
++    assert rendered[0] not in accepted
++    assert len(dataset) == counts["qa_accepted"] == len(accepted)
++    assert source.available_splits == ("train",)
++    assert {r.sample_id for r in dataset.records} == {f"fixture:{s}" for s in accepted}
++    stored = {}
++    for entry in scene["stores"]:
++        store = open_court_store(path.parent / entry["path"])
++        for row in range(len(store)):
++            raw = store.record(row)
++            stored[raw["sample_id"]] = raw, store.rgb(row)
++    for index, record in enumerate(dataset.records):
++        expected, rgb = stored[record.payload["source_sample_id"]]
++        raw = source.load(record)
++        assert np.array_equal(np.asarray(raw.image), rgb)
++        assert raw.pose_authority is not None and raw.keypoint_channels is not None
++        assert raw.pose_authority.camera.to_dict() == expected["camera"]
++        assert (
++            raw.pose_authority.target_court.to_dict()
++            == expected["target_court"]["binding"]
++        )
++        target_id = expected["target_court"]["binding"]["court_instance_id"]
++        target = next(
++            c
++            for c in expected["projection"]["courts"]
++            if c["court_instance_id"] == target_id
++        )
++        points = [c["points"][0] for c in target["classes"]]
++        channels = raw.keypoint_channels
++        assert torch.equal(
++            channels.points_xy[:, 0],
++            torch.tensor([p["uv"] for p in points], dtype=torch.float64),
++        )
++        assert channels.point_visible[:, 0].tolist() == [
++            p["in_front"] and p["in_frame"] and p["renderer_visible"] for p in points
++        ]
++        assert channels.physical_indices[:, 0].tolist() == [
++            p["physical_index"] for p in points
++        ]
++        item = dataset[index]
++        targets = cast(Mapping[str, torch.Tensor], item["targets"])
++        assert set(targets) == {"kp", "seg", "line", "semantic_line"}
++        assert all(torch.isfinite(value).all() for value in targets.values())
++        assert torch.allclose(targets["seg"].sum(0), torch.ones_like(targets["seg"][0]))
++        assert "pose_target" in item
++    dm = CourtDetectionDataModule(config)
++    dm.setup("fit")
++    condition = data_condition(dm)
++    assert condition["data_version"] == version["dataset_version"]
++    assert condition["generation_seed"] == version["generation_seed"] == 24
++    assert condition["accepted_images"] == len(dataset)
++    assert condition["scene_images"] == {"fixture": len(dataset)}
++    assert condition["dataset_version_manifest"]["sha256"] == file_sha256(path)
++
++
++@pytest.mark.parametrize(
++    "mutation",
++    [
++        "manifest",
++        "seed",
++        "split",
++        "membership",
++        "descriptor",
++        "index",
++        "image",
++    ],
++)
++def test_training_rejects_tampered_version_and_referenced_content(
++    tmp_path,
++    scale_version,
++    mutation,
++):
++    path, version, _ = scale_version
++    config = version_config(tmp_path, path)
++    source = CourtTrainingConfig.from_config(config).data.source
++    scene = version["scenes"][0]
++    if mutation in {"manifest", "seed", "split"}:
++        version.update(
++            {
++                "manifest": {"dataset_version": "0" * 64},
++                "seed": {"generation_seed": 25},
++                "split": {"split": "validation"},
++            }[mutation]
++        )
++        if mutation != "manifest":
++            version["dataset_version"] = digest(
++                {k: v for k, v in version.items() if k != "dataset_version"}
++            )
++        path.write_bytes(canonical_bytes(version))
++    else:
++        root = path.parent / scene["stores"][0]["path"]
++        damaged = {
++            "membership": path.parent / scene["accepted_ids_path"],
++            "descriptor": root / "dataset.json",
++            "index": root / "samples/index.npz",
++            "image": next((root / "samples/shards").glob("*.bin")),
++        }[mutation]
++        payload = damaged.read_bytes()
++        damaged.write_bytes(payload[:-1] + bytes([payload[-1] ^ 1]))
++    with pytest.raises(ValueError, match="hash|checksum|train split|frozen request"):
++        build_court_input(source)

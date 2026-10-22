@@ -237,10 +237,31 @@ def test_generated_version_dataset_matches_accepted_kp_visibility_pose_and_rgb(
             p["physical_index"] for p in points
         ]
         item = dataset[index]
-        targets = cast(Mapping[str, torch.Tensor], item["targets"])
+        targets = cast(Mapping[str, object], item["targets"])
         assert set(targets) == {"kp", "seg", "line", "semantic_line"}
-        assert all(torch.isfinite(value).all() for value in targets.values())
-        assert torch.allclose(targets["seg"].sum(0), torch.ones_like(targets["seg"][0]))
+        kp = cast(Mapping[str, torch.Tensor], targets["kp"])
+        dense = [
+            cast(torch.Tensor, targets[kind])
+            for kind in ("seg", "line", "semantic_line")
+        ]
+        assert all(
+            torch.isfinite(value).all()
+            for value in (*dense, kp["heatmap"], kp["points_xy"])
+        )
+        normalized = (
+            channels.points_xy
+            / channels.points_xy.new_tensor(
+                [expected["width"] - 1, expected["height"] - 1]
+            )
+        ).float()
+        assert torch.equal(kp["points_xy"], normalized)
+        # Raw visibility above is unchanged; shared preprocessing also clips
+        # supervision to the output pixel-centre bounds, even at identity resize.
+        in_image = (normalized >= 0).all(-1) & (normalized <= 1).all(-1)
+        assert torch.equal(kp["point_visible"], channels.point_visible & in_image)
+        assert torch.equal(kp["physical_indices"], channels.physical_indices)
+        seg = cast(torch.Tensor, targets["seg"])
+        assert torch.allclose(seg.sum(0), torch.ones_like(seg[0]))
         assert "pose_target" in item
     dm = CourtDetectionDataModule(config)
     dm.setup("fit")

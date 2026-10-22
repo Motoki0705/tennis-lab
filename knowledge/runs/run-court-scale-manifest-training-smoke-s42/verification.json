@@ -1,0 +1,83 @@
+{
+  "accepted_images": 298,
+  "scene_images": {
+    "B00": 71,
+    "B01": 80,
+    "B02": 71,
+    "B03": 76
+  },
+  "generation_seed": 42,
+  "training_seed": 42,
+  "optimizer_updates": 3,
+  "batch_size": 1,
+  "compile": false,
+  "input_long_side": 512,
+  "source": {
+    "kind": "synthetic_court_dataset_version",
+    "schema": "v3",
+    "court_scope": "target_court",
+    "manifest": ".claude/worktrees/court-scale-trajectory-strategies/tmp/court-scale-review/run-04/1bef5ceda3d453b269cbb99e6b0d422e1e8466ad4e89d527cfa12b67d361dcda.dataset.json"
+  },
+  "dataset_version_manifest_sha256": "bc2b9542efcf61c47b017ed168e2023df9776981cddffa8de3c916c3756a8359",
+  "scene_counts": {
+    "B00": {
+      "candidate_unique": 82,
+      "failed": 0,
+      "geometry_pass": 73,
+      "geometry_rejected": 9,
+      "logical_records": 82,
+      "pending": 0,
+      "qa_accepted": 71,
+      "qa_rejected": 2,
+      "render_cache_reused": 0,
+      "rendered_unique": 73
+    },
+    "B01": {
+      "candidate_unique": 88,
+      "failed": 0,
+      "geometry_pass": 81,
+      "geometry_rejected": 7,
+      "logical_records": 88,
+      "pending": 0,
+      "qa_accepted": 80,
+      "qa_rejected": 1,
+      "render_cache_reused": 0,
+      "rendered_unique": 81
+    },
+    "B02": {
+      "candidate_unique": 75,
+      "failed": 0,
+      "geometry_pass": 71,
+      "geometry_rejected": 4,
+      "logical_records": 75,
+      "pending": 0,
+      "qa_accepted": 71,
+      "qa_rejected": 0,
+      "render_cache_reused": 0,
+      "rendered_unique": 71
+    },
+    "B03": {
+      "candidate_unique": 79,
+      "failed": 0,
+      "geometry_pass": 76,
+      "geometry_rejected": 3,
+      "logical_records": 79,
+      "pending": 0,
+      "qa_accepted": 76,
+      "qa_rejected": 0,
+      "render_cache_reused": 0,
+      "rendered_unique": 76
+    }
+  },
+  "train_batch_counts": {
+    "synthetic_court": 1,
+    "tennis_court_detector": 0
+  },
+  "evaluation_split": "val",
+  "evaluation_images": 2,
+  "evaluation_pose_supervised": false,
+  "evaluation_sha256": "95bd29c13b34eed86a40ebe9bf33332d49f905cd467159be6c890b2d541b6fb5",
+  "checkpoint_sha256": "dbae8c0672cadf276cd4b1574c0afc63a2f496bd76f0e8963a929793516f4765",
+  "limitation": "Three updates and two real validation images verify integration only; production batch 8 and full real evaluation are not measured.",
+  "preflight_attempt_1": "Rejected absolute child paths before GPU startup; retry uses DATA/ARTIFACT-relative input paths."
+}
