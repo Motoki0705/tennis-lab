@@ -23,9 +23,9 @@ from src.utils.sample_dataset import DATASET_REPO, PUBLISHED_FILES, PublishedSam
 # Other tracked Markdown with either marker is also checked.
 REQUIRED_ASSET_TABLE_DOCUMENTS = (
     # Add one consumer per line; each required document must contain both tables.
-    "docs/installation/README.md",
     "README.md",
     "README.ja.md",
+    "docs/installation/README.md",
 )
 TABLE_RENDERERS = {
     "checkpoint-assets": asset_table,
