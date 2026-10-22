@@ -56,7 +56,8 @@ controller自身の判断表示コメントを独立した出典に使いませ�
 異なる分類が適切と考える場合も、返すdispositionはmechanical_guard.dispositionの値とし、異なる分類とその理由をfactsに書いてください。
 機械的阻害条件がない場合も、着手可能とは限りません。原文とコードを読んで意味的な阻害や不足情報を確認してください。
 
-最終文は次のschema_version=1のJSON objectだけとし、Markdownのfence・説明・追加キーは付けません。
+CLIで指定されたJSON Schema（judgement.schema.json）に従い、次のschema_version=1のobjectを構造化出力として返します。
+Markdownのfence・説明・追加キーは付けません。
 input_sha256は固定入力の値をそのまま返してください。
 
 {

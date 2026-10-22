@@ -105,6 +105,7 @@ def command(
     out: Path,
     session: str | None,
     read_dirs: list[str],
+    json_schema: Path | None = None,
 ) -> list[str]:
     selected = settings["selected"]
     if settings["agent"] == "claude":
@@ -126,6 +127,14 @@ def command(
             cmd += ["--permission-mode", "bypassPermissions"]
         for directory in read_dirs:
             cmd += ["--add-dir", directory]
+        if json_schema is not None:
+            cmd += [
+                "--json-schema",
+                json.dumps(
+                    json.loads(json_schema.read_text(encoding="utf-8")),
+                    ensure_ascii=False,
+                ),
+            ]
         if session:
             cmd += ["--resume", session]
         return cmd
@@ -149,6 +158,8 @@ def command(
     ]
     if mode == "write":
         cmd += ["--dangerously-bypass-approvals-and-sandbox"]
+    if json_schema is not None:
+        cmd += ["--output-schema", str(json_schema)]
     if settings["profile"] == "ops_report":
         cmd += [
             "--enable",

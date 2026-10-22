@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 import json
 import os
@@ -367,10 +368,20 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     ]
     assert "dontAsk" in args and invocation
     assert args[args.index("--add-dir") + 1] == str(h.run_dir / "agent-input")
+    output_schema = ROOT / ".agents/ops/dispatcher/judgement.schema.json"
+    assert json.loads(args[args.index("--json-schema") + 1]) == json.loads(
+        output_schema.read_text()
+    )
     contract = json.loads((h.run_dir / "agent-runtime/result.json").read_text())[
         "contract"
     ]
     assert contract["read_dirs"] == [str(h.run_dir / "agent-input")]
+    assert (
+        contract["json_schema_sha256"]
+        == hashlib.sha256(output_schema.read_bytes()).hexdigest()
+    )
+    assert json.loads((h.run_dir / "agent-runtime/final.md").read_text())["decisions"]
+    assert "I'm writing" in (h.run_dir / "agent-runtime/events.jsonl").read_text()
     assert (h.run_dir / "result.json").stat().st_mode & 0o077 == 0
 
 
@@ -580,6 +591,54 @@ def test_read_directory_contract_mismatch_never_publishes(
     assert result["result"] == "failed" and result["candidates"] == []
     assert any("contract" in diagnostic for diagnostic in result["diagnostics"])
     assert h.gh.writes == []
+
+
+@pytest.mark.parametrize("scenario", ["missing", "wrong"])
+def test_output_schema_contract_mismatch_never_publishes(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCHEMA", scenario)
+    h.response(decision(1))
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert any("contract" in diagnostic for diagnostic in result["diagnostics"])
+    assert h.gh.writes == []
+
+
+def test_missing_structured_output_is_not_recovered_from_prose(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "missing_structured_output")
+    h.response(decision(1))
+    result = h.run()
+    evidence = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert evidence["turn_end_reason"] == "invalid_output"
+    assert "missing structured_output" in evidence["error"]
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert h.gh.writes == []
+
+
+def test_preamble_without_structured_output_still_fails_strict_json(h: Harness) -> None:
+    h.response(decision(1))
+    h.output.write_text("I'm writing the final JSON now.\n\n" + h.output.read_text())
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert any("JSONDecodeError" in message for message in result["diagnostics"])
+    assert h.gh.writes == []
+
+
+def test_output_schema_keeps_decision_fields_and_classifications(h: Harness) -> None:
+    schema = json.loads(
+        (ROOT / ".agents/ops/dispatcher/judgement.schema.json").read_text()
+    )
+    decision_schema = schema["$defs"]["decision"]
+    assert set(decision_schema["required"]) == h.schema.DECISION_KEYS
+    assert set(decision_schema["properties"]) == h.schema.DECISION_KEYS
+    assert (
+        set(decision_schema["properties"]["disposition"]["enum"])
+        == h.schema.DISPOSITIONS
+    )
+    assert set(schema["$defs"]["requirements"]["required"]) == h.schema.REQUIREMENTS
 
 
 @pytest.mark.parametrize(

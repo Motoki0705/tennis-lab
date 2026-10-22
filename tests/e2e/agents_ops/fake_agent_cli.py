@@ -127,13 +127,23 @@ def main() -> None:
     if scenario == "exit_error":
         print("configured model unavailable", file=sys.stderr)
         sys.exit(7)
+    structured = "--json-schema" in args or "--output-schema" in args
+    payload = {"message": prompt.strip()}
+    if scenario == "schema_mismatch":
+        payload = {"message": 123}
+    final = json.dumps(payload) if structured else prompt
+    if scenario == "schema_preamble":
+        final = "I'm writing the final JSON now.\n\n" + final
     if agent == "codex":
         out = Path(args[args.index("--output-last-message") + 1])
-        out.write_text("different final" if scenario == "different_final" else prompt)
+        if scenario != "schema_missing":
+            out.write_text(
+                "different final" if scenario == "different_final" else final
+            )
         emit(
             {
                 "type": "item.completed",
-                "item": {"id": "item-0", "type": "agent_message", "text": prompt},
+                "item": {"id": "item-0", "type": "agent_message", "text": final},
             }
         )
         if scenario != "missing_completion":
@@ -149,13 +159,21 @@ def main() -> None:
                 }
             )
     else:
+        output = {}
+        if structured and scenario != "schema_missing":
+            output["structured_output"] = None if scenario == "schema_null" else payload
         emit(
             {
                 "type": "result",
-                "subtype": "success",
+                "subtype": "error_max_structured_output_retries"
+                if scenario == "schema_retries"
+                else "success",
                 "session_id": session,
-                "is_error": False,
-                "result": prompt,
+                "is_error": scenario == "schema_retries",
+                "result": "I'm writing the final JSON now.\n\n" + final
+                if structured
+                else final,
+                **output,
                 "usage": None
                 if scenario == "no_usage"
                 else {

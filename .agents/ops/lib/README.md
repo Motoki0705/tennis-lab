@@ -9,6 +9,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agents.conf` | 役割の既定値・実装子の代替モデル・用途別の固定プロファイル |
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
+| `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
@@ -73,6 +74,31 @@ Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数で
 `--last`、fork、新sessionへの自動振替は使わない。
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
 
+### JSON Schemaによる構造化出力
+
+`--json-schema FILE` を指定すると、そのUTF-8 JSON Schemaを起動前に検査し、原文をrun dirの
+`output-schema.json`へ固定する。検証にはproject依存の`jsonschema`を使う（導入時は`uv sync --locked`）。
+未指定のreview / ops_reportを含む既存呼出しの引数・テキスト出力・profile設定は変わらない。
+
+- Claude Code 2.1.308の`--help`で`--json-schema <schema>`を確認した。ファイル名ではなく
+  固定schemaのJSON文字列を渡す。stream-jsonの最終`result`イベントにある`structured_output`だけを
+  検証して`final.md`へJSONとして保存する。`result`の自由文やtool_useから補完しない。
+  公式の[CLI出力](https://code.claude.com/docs/en/headless#get-structured-output)と
+  [構造化結果の取得](https://code.claude.com/docs/en/agent-sdk/structured-outputs#recognize-the-structuredoutput-tool-call)
+  がこの取得先を説明している。
+- Codex 0.163.0の`exec --help` / `exec resume --help`で`--output-schema <FILE>`を確認した。
+  初回・再開とも固定ファイルを渡し、既存のlast-messageと完了イベントの本文照合後に、JSONを厳格にparseして検証する。
+  [公式のschemaと最終ファイルの使用例](https://learn.chatgpt.com/docs/non-interactive-mode#create-structured-outputs-with-a-schema)に従う。
+
+構造化結果の欠落、JSON不正、schema不一致、Claudeの`error_max_structured_output_retries`は
+`invalid_output`で失敗し、`--out`へコピーしない。前置きやfenceを読み飛ばさない。
+schema内の参照は固定ファイル内だけで解決し、外部ファイル・URLのschemaを取得しない。
+出力との照合エラーと生イベントはprivateなrun記録に残す。
+
+指定時だけ`contract.json_schema_sha256`にschema原文のSHA-256を記録する。
+resumeでも同じ内容のschemaを明示指定する。別パスの同一バイト列は許容するが、
+内容・空白の変更、指定の追加・削除はCLI起動前に終了値2で拒否する。
+
 ### checkout外の入力ディレクトリ
 
 `--read-dir DIR` は複数回指定できる。各値は呼出元のcwd基準で絶対実体パスへ解決し、
@@ -121,9 +147,10 @@ run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renam
 | 保存先 | 内容 |
 |---|---|
 | `prompt.md` | そのターンの入力原文。`prompt_sha256` と対応 |
+| `output-schema.json` | `--json-schema`指定時のschema原文。`contract.json_schema_sha256`と対応 |
 | `invocation.json` | contract、実引数と除去した環境変数の名前。環境の値は保存しない |
 | `events.jsonl` / `stderr.log` | CLIの構造化stdout原文 / stderr原文。失敗・途中切れも残す |
-| `final.md` | 最終文。CodexではCLIのlast-messageファイルとイベント本文を照合。正常終了時は `--out` にもコピー |
+| `final.md` | 最終文（schema指定時は検証済みJSON）。CodexではCLIのlast-messageファイルとイベント本文を照合。正常終了時は `--out` にもコピー |
 | `result.json` | run ID、contract、runtime情報、process情報、終了理由 |
 | 初回runの `session.json` / `session.lock` | runtime session、最後に観測したturn、最新runの対応と排他 |
 

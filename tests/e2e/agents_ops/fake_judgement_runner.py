@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -44,6 +45,9 @@ def main() -> None:
         "cwd": opt("--cwd"),
         "task_id": opt("--task-id"),
         "read_dirs": [str(input_dir)],
+        "json_schema_sha256": hashlib.sha256(
+            Path(opt("--json-schema")).read_bytes()
+        ).hexdigest(),
         "settings": {
             "role": "parent",
             "agent": "claude",
@@ -58,6 +62,11 @@ def main() -> None:
         del contract["read_dirs"]
     elif scenario == "wrong":
         contract["read_dirs"] = [str(input_dir.parent)]
+    schema_scenario = os.environ.get("FAKE_JUDGEMENT_SCHEMA")
+    if schema_scenario == "missing":
+        del contract["json_schema_sha256"]
+    elif schema_scenario == "wrong":
+        contract["json_schema_sha256"] = "f" * 64
     (runtime / "result.json").write_text(
         json.dumps(
             {

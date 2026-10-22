@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 import os
@@ -145,6 +146,166 @@ class Harness:
 @pytest.fixture
 def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
+
+
+@pytest.fixture
+def output_schema(h: Harness) -> Path:
+    path = h.root / "response.schema.json"
+    path.write_text(
+        json.dumps(
+            {
+                "type": "object",
+                "properties": {"message": {"type": "string"}},
+                "required": ["message"],
+                "additionalProperties": False,
+            },
+            indent=2,
+        )
+    )
+    return path
+
+
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+def test_json_schema_is_pinned_passed_and_validated(
+    h: Harness, output_schema: Path, agent: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(h.root)
+    out = h.root / "accepted.json"
+    proc = h.run(
+        agent=agent, extra=("--json-schema", output_schema.name, "--out", str(out))
+    )
+    assert proc.returncode == 0, proc.stderr
+    runtime = h.root / "initial"
+    pinned = runtime / "output-schema.json"
+    assert pinned.read_bytes() == output_schema.read_bytes()
+    assert pinned.stat().st_mode & 0o077 == 0
+    result = h.result()
+    expected = hashlib.sha256(output_schema.read_bytes()).hexdigest()
+    assert result["contract"]["json_schema_sha256"] == expected
+    invocation = json.loads((runtime / "invocation.json").read_text())
+    assert invocation["contract"] == result["contract"]
+    args = h.args()
+    if agent == "claude":
+        assert json.loads(args[args.index("--json-schema") + 1]) == json.loads(
+            output_schema.read_text()
+        )
+        assert "--output-schema" not in args
+        assert "I'm writing" in (runtime / "events.jsonl").read_text()
+    else:
+        assert args[args.index("--output-schema") + 1] == str(pinned)
+    assert json.loads((runtime / "final.md").read_text()) == {
+        "message": "implementation task"
+    }
+    assert out.read_bytes() == (runtime / "final.md").read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("agent", "scenario"),
+    [
+        ("claude", "schema_missing"),
+        ("claude", "schema_mismatch"),
+        ("claude", "schema_null"),
+        ("claude", "schema_retries"),
+        ("codex", "schema_missing"),
+        ("codex", "schema_mismatch"),
+        ("codex", "schema_preamble"),
+        ("codex", "different_final"),
+    ],
+)
+def test_invalid_structured_output_never_completes_or_copies_out(
+    h: Harness, output_schema: Path, agent: str, scenario: str
+) -> None:
+    out = h.root / "accepted.json"
+    proc = h.run(
+        agent=agent,
+        scenario=scenario,
+        extra=("--json-schema", str(output_schema), "--out", str(out)),
+    )
+    assert proc.returncode == 1, proc.stderr
+    result = h.result()
+    assert (
+        result["result"] == "failed" and result["turn_end_reason"] == "invalid_output"
+    )
+    assert not out.exists()
+    assert (h.root / "initial/events.jsonl").is_file()
+
+
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+def test_resume_requires_same_schema_bytes_but_allows_new_path(
+    h: Harness, output_schema: Path, agent: str
+) -> None:
+    first = h.run(agent=agent, extra=("--json-schema", str(output_schema)))
+    assert first.returncode == 0, first.stderr
+    copied = h.root / "same-schema.json"
+    copied.write_bytes(output_schema.read_bytes())
+    resumed = h.run(
+        "continued",
+        agent=agent,
+        action="resume",
+        prompt="次の返却\n",
+        extra=("--resume-from", str(h.root / "initial"), "--json-schema", str(copied)),
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert h.result("continued")["contract"] == h.result()["contract"]
+    assert json.loads((h.root / "continued/final.md").read_text()) == {
+        "message": "次の返却"
+    }
+    assert ("--json-schema" if agent == "claude" else "--output-schema") in h.args()
+
+
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+@pytest.mark.parametrize("change", ["content", "whitespace", "removed", "added"])
+def test_resume_refuses_schema_changes_before_launch(
+    h: Harness, output_schema: Path, agent: str, change: str
+) -> None:
+    initial_schema = () if change == "added" else ("--json-schema", str(output_schema))
+    assert h.run(agent=agent, extra=initial_schema).returncode == 0
+    initial_args = h.args()
+    if change == "content":
+        data = json.loads(output_schema.read_text())
+        data["description"] = "Changed contract"
+        output_schema.write_text(json.dumps(data))
+    elif change == "whitespace":
+        output_schema.write_text(output_schema.read_text() + "\n")
+    schema_args = () if change == "removed" else ("--json-schema", str(output_schema))
+    proc = h.run(
+        "continued",
+        agent=agent,
+        action="resume",
+        extra=("--resume-from", str(h.root / "initial"), *schema_args),
+    )
+    assert proc.returncode == 2 and "json_schema" in proc.stderr
+    assert h.args() == initial_args
+    assert not (h.root / "continued").exists()
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        "{broken",
+        '{"type":"object","type":"object"}',
+        "[]",
+        '{"type":42}',
+        '{"$schema":"https://example.invalid/unknown"}',
+    ],
+)
+def test_invalid_schema_fails_before_launch(
+    h: Harness, output_schema: Path, schema: str
+) -> None:
+    output_schema.write_text(schema)
+    proc = h.run(extra=("--json-schema", str(output_schema)))
+    assert proc.returncode == 2
+    assert not (h.root / "initial").exists() and not (h.root / "args.txt").exists()
+
+
+def test_unpinned_schema_reference_fails_without_fetch(
+    h: Harness, output_schema: Path
+) -> None:
+    output_schema.write_text('{"$ref":"https://example.invalid/unpinned"}')
+    proc = h.run(extra=("--json-schema", str(output_schema)))
+    assert proc.returncode == 1, proc.stderr
+    assert h.result()["turn_end_reason"] == "invalid_output"
+    assert "not pinned/resolvable" in h.result()["error"]
 
 
 @pytest.mark.parametrize(
@@ -434,6 +595,8 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
     assert initial.returncode == 0, initial.stderr
     assert h.result()["contract"]["read_dirs"] == []
     expected = h.args()
+    assert "--output-schema" not in expected and "--json-schema" not in expected
+    assert "json_schema_sha256" not in h.result()["contract"]
     proc = h.run(
         "with-input",
         extra=("--profile", profile, "--read-dir", str(h.root)),

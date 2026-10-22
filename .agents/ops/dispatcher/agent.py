@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ from parent.policy import object_value
 from .records import read_json
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
+OUTPUT_SCHEMA = Path(__file__).with_name("judgement.schema.json").resolve()
 
 
 def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> Any:
@@ -20,6 +22,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
     prompt_path = run_dir / "prompt.md"
     prompt_path.write_text(prompt, encoding="utf-8")
     runtime_dir = run_dir / "agent-runtime"
+    schema_sha256 = hashlib.sha256(OUTPUT_SCHEMA.read_bytes()).hexdigest()
     result = subprocess.run(
         [
             str(runner),
@@ -31,6 +34,8 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
             str(root),
             "--read-dir",
             str(input_dir),
+            "--json-schema",
+            str(OUTPUT_SCHEMA),
             "--task-id",
             "issue-start-judgement",
             "--prompt-file",
@@ -79,6 +84,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
         contract.get("mode") != "read-only"
         or contract.get("cwd") != str(root)
         or contract.get("read_dirs") != [str(input_dir)]
+        or contract.get("json_schema_sha256") != schema_sha256
         or contract.get("task_id") != "issue-start-judgement"
         or settings.get("role") != "parent"
         or settings.get("agent") != "claude"

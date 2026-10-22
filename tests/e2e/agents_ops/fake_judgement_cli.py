@@ -42,23 +42,30 @@ def main() -> None:
         raise SystemExit(1)
     if scenario == "empty":
         response = ""
+    text = "I'm writing the final JSON now.\n\n" + response
     emit(
         {
             "type": "assistant",
             "session_id": session,
-            "message": {"content": [{"type": "text", "text": response}]},
+            "message": {"content": [{"type": "text", "text": text}]},
         }
     )
-    emit(
-        {
-            "type": "result",
-            "subtype": "success",
-            "session_id": session,
-            "is_error": False,
-            "result": response,
-            "usage": {"input_tokens": 20, "output_tokens": 10},
-        }
-    )
+    result = {
+        "type": "result",
+        "subtype": "success",
+        "session_id": session,
+        "is_error": False,
+        "result": text,
+        "usage": {"input_tokens": 20, "output_tokens": 10},
+    }
+    if "--json-schema" in args and scenario != "missing_structured_output":
+        # Preserve deliberately corrupt JSON/duplicate keys for runner rejection.
+        print(
+            json.dumps(result)[:-1] + ', "structured_output": ' + response + "}",
+            flush=True,
+        )
+    else:
+        emit(result)
 
 
 if __name__ == "__main__":

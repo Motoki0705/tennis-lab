@@ -9,7 +9,7 @@
 |---|---|
 | `collect.py` | 全ページ収集、正式関係と依存の閉包、registryの読取、固定コード、入力射影・鮮度照合 |
 | `agent_input.py` | 完全なsnapshotを変更せず、索引・issue・関連PRを読み取り単位に分割 |
-| `agent.py` / `prompt.md` | 共通ランナーでの1回の判定、runtime証拠の照合 / 判断方針と返却schema |
+| `agent.py` / `prompt.md` / `judgement.schema.json` | 共通ランナーでの1回の判定とruntime証拠の照合 / 判断方針 / CLIへ渡す返却形式 |
 | `schema.py` | 全件の構造化結果・出典・scope・完了条件・routing・機械的阻害条件の検査 |
 | `records.py` | 厳格JSON、自分の判断コメントの識別、実行根拠への進捗コメントの除外指定 |
 | `judgement.py` | 明示実行、記録前の再照合、コメント更新、実行根拠記録、割当候補の返却 |
@@ -35,6 +35,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher.judgement \
 モデル・effort設定の正本は [共通ランナー](../lib/README.md)。必ず `--role parent --mode read-only` で呼ぶ。
 `--read-dir <run-dir>/agent-input` でagent入力だけを追加の読み取り対象にし、runtimeの`contract.read_dirs`とも照合する。
 Claudeの`--add-dir`への変換とCodexのsandbox契約は共通ランナーが扱う。
+`--json-schema judgement.schema.json`で構造化出力を必須にし、runtimeの`contract.json_schema_sha256`を
+渡したschemaと照合する。Claudeの自由文からJSONを探さず、ランナーが保存した検証済みの`final.md`を厳格に読む。
+返却形式のschema検査に加え、`schema.py`による全subjects・出典・routing・依存等の検証を続ける。
 ランナーの正常終了、run ID・実行契約・選択値と観測model・プロセス回収を確認した後に最終JSONを読む。
 exit 0や`task_success:null`をタスク成功に読み替えない。失敗時に別モデルや別sessionへ振り替えない。
 
