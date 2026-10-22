@@ -142,7 +142,7 @@ DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから
 推論契約だけを `models/dino/` に置きます。
 
 DINO利用時のsubmodule初期化・CUDA toolkit要件・拡張ビルドは
-[導入手順](../../docs/installation/README.md#dino-cuda-extension)を正本とします。
+[導入手順](../../docs/installation/README.ja.md#dino-cuda-extension)を正本とします。
 PyTorch互換修正は出力ディレクトリ内の生成ソースだけに適用し、submodule自体は変更しません。
 
 `validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、
