@@ -1,0 +1,46 @@
+{
+  "source_manifest": "outputs/ball_detection/train/i1231-hybrid-720p-e333-20261018/stage1/data_manifest.json",
+  "source_manifest_sha256": "657e50f569f2befc317b23270670862d8dc7d656ab743b353c1d53f0a213e4d6",
+  "snapshot": "outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+  "snapshot_hashes": {
+    "metadata.json": "f0230a62ba77ec9afa2a77e313f0fb01d82179661364481d284e11a684150be0",
+    "index.npz": "ce8a0fc608863bfbe2e16e181f3086b4f9c085093b68b92b01486863f3e9b2d9"
+  },
+  "api_sha256": {
+    "src/tasks/ball_detection/data/annotation_states.py": "a41e455cb7b7aeadd684c7a018c6c58a541e7ffee08f76c99f63b70d8a603e23",
+    "src/tasks/ball_detection/data/store.py": "a7a17adc4d3fb197d52040ea58cdaec2c1bb0cdeffeb636851ac4b1fb3c9474e",
+    "src/tasks/ball_detection/data/teacher_masks.py": "a99f0af678c9974ad4474e377b5d4724c9c34e35c210df58ff312b381c1ef781",
+    "src/tasks/ball_detection/data/windows/hybrid.py": "b4758cf3896be74e33e6051f53e5ccab603f71bbb29bfab201da51d2f495ede8",
+    "src/tasks/ball_detection/data/windows/intervals.py": "91405f503af9c4d0ec001d3ec6a4aaec343c441154cee85bae73ed4af79c3cf5",
+    "src/tasks/ball_detection/data/windows/manifest.py": "a0e9d9bdc2bb600493c09e49128b06d4d65ca07827eda9d672929792fe72ae4d",
+    "src/tasks/ball_detection/data/windows/temporal.py": "6a735b82a2ba66e3880e21c1af9f51365f885d07193fc587e57518201668aa82"
+  },
+  "prior_probe_sha256": "681f6051c9b3a7f31a355ef3b28e74ba805a45f5f98d7d9e5f064f9ddf20451e",
+  "clip_count": 1800,
+  "frame_count": 1065949,
+  "lengths": [
+    32,
+    64,
+    128
+  ],
+  "frame_step": 1,
+  "config": {
+    "window_length": 32,
+    "window_stride": 16,
+    "max_gap_seconds": 0.4,
+    "min_presence_fraction": 0.5,
+    "min_observed_frames": 8,
+    "timestamp_gap_factor": 2.5
+  },
+  "chat_clips_verified": 1120,
+  "excluded_noted_empty_frames": 14347,
+  "checks": {
+    "source_versions_unchanged": true,
+    "split_groups_disjoint": true,
+    "baseline_counts_reproduced": true,
+    "accepted_packs_cover_all_common_teachers": true,
+    "paired_frame_teacher_multiplicities_equal": true,
+    "evaluation_covers_every_common_frame": true,
+    "image_payloads_opened": 0
+  }
+}

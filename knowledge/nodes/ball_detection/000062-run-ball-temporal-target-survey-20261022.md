@@ -40,12 +40,14 @@ repro:
 
 ## 結論と状態
 
-CPU調査は完了した。**比較条件は未合意**で、#1369 の人間の判断と親issueへの反映は残る。
-推奨案は、文脈をreference/PTSの境界を守ったclip内へ広げ、中央16枚を固定し、
-まずT=128上限の共通集合を採るもの。T=256は全splitで成立するが、短いclip・低FPS・TrackNetの教師を強く落とす。
-256を主比較へ含める場合は全Tを256共通集合へ揃え、低いcoverageを受け入れる判断が必要。
-具体的な未合意規則は同runの[評価プロトコル案](../../runs/run-ball-temporal-target-survey-20261022/protocol.md)。
-親の比較目的・固定軸・実験行列は[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)を参照する。
+初回CPU調査の記録。2026-10-22のユーザー判断で、文脈はreference/PTS境界を守るclip内、
+T上限は128、確認済み不在の専用評価scopeを追加すると決まった。
+**中央16枚案は採用せず、入力Tの全フレームに存在する教師を使う**。
+更新した[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)が合意の正本。
+本runの数値・以下の考察・同runのprotocolは初回提案の履歴として残し、現在の採用規則として使わない。
+全フレーム教師での共通区間・更新予算・不在評価の再調査は
+[新run](000063-run-ball-all-frame-protocol-20261022.md)へ分離した。
+新しい具体規則はユーザー確認待ちであり、#1369の最終合意はまだ残る。
 
 ## 入力・列挙・分母
 

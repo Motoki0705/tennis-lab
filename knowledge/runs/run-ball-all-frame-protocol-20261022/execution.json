@@ -1,0 +1,9 @@
+{
+  "inspected_code_commit": "7db9bceb2fc4d17e42c928fec1c4b7d07514196b",
+  "elapsed_seconds": 96.48846228499315,
+  "max_rss_kib": 1020888,
+  "source_files_stat_checked": 2923,
+  "metadata_clips": 1800,
+  "frames": 1065949,
+  "note": "CPU only; metadata/index/annotation reads and file stats; no RGB opens, decoding, GPU, source writes or links"
+}

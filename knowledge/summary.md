@@ -1,4 +1,4 @@
-<!-- knowledge-review: 7a49e853bfb7c1acdfe87750438ca88429e0d546e24ac4f6bfba843cbc50d6a9 on 2026-10-22 -->
+<!-- knowledge-review: fee4266fbadc2004b5e49d1986fb109f5f5514d732dac60e3b98764720b628c4 on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -308,9 +308,14 @@ RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量
 続く[中央targetのCPU調査](nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)では、
 元32窓の中央16枚を固定し、全splitでplay内文脈とreference/PTS境界を守るclip内文脈を比較した。
 後者の128共通集合は元32窓の位置教師の約76〜81%、256共通集合は約51〜61%を保持し、
-256では低FPS・TrackNetの減少が大きい。clip内文脈・中央16・上限候補128を推奨するが、人間の合意は未了。
-中央validationのreviewed_emptyと自然遮蔽付きobserved教師は0で、既存play anchorだけからclip全体の不在性能は主張できない。
-共通集合・重複集約・較正・予算算出の具体案は同runのprotocolを参照し、合意後に常設窓実装と配布データへ渡す。
+256では低FPS・TrackNetの減少が大きかった。これは初回の中央16案の記録として保持する。
+ユーザーはclip内文脈・上限128・不在専用評価scopeを選び、教師は**入力Tの全フレーム**へ変更した。
+[全フレーム教師の再調査](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)では、
+128枚を置ける全適格区間を共通集合とする案で旧32位置教師の約99.5%以上を保持した。
+同じ128枚を4/2/1窓へ分割すると、入力frameと教師の多重度をT間で一致させられる。
+この共通区間定義では不在専用集合と共通不在は全重複するため、別scopeで報告して統合時は一度だけ数える案を返した。
+validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
+共通区間・採用・評価owner・不在重複・128枚/更新の具体案は新runのprotocolを正本とし、ユーザーの最終確認後に常設窓実装と配布へ渡す。
 可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
 長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
