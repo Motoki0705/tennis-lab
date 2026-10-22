@@ -789,3 +789,11 @@ dd {
   font-size: 10px;
   padding: 4px 6px;
 }
+#scale-details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 28rem;
+  overflow: auto;
+  padding: 16px;
+  font-size: 12px;
+}
