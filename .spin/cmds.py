@@ -199,8 +199,15 @@ def _nht_cuda_build_environment() -> Mapping[str, str]:
     is_flag=True,
     help="Install the optional HLOC/ALIKED/LightGlue retry backend.",
 )
-def setup_nht(with_sfm_learned: bool) -> None:
+@click.option(
+    "--render-only",
+    is_flag=True,
+    help="Install the public rendering runtime without rebuilding the trainer.",
+)
+def setup_nht(with_sfm_learned: bool, render_only: bool) -> None:
     """Install isolated NHT public CLIs and its dedicated trainer runtime."""
+    if render_only and with_sfm_learned:
+        raise click.ClickException("--render-only cannot be combined with --with-sfm-learned.")
     relative_root = NHT_ROOT_RELATIVE.as_posix()
     _run(
         [
@@ -280,6 +287,10 @@ def setup_nht(with_sfm_learned: bool) -> None:
             "from gsplat.nht.deferred_shader import DeferredShaderModule",
         ]
     )
+    if render_only:
+        _validate_nht_public_commands()
+        click.echo("NHT rendering runtime is ready; trainer setup was not requested.")
+        return
     trainer_python = NHT_TRAINER_PYTHON_RELATIVE.as_posix()
     _run(
         [
@@ -355,7 +366,12 @@ def setup_nht(with_sfm_learned: bool) -> None:
             NHT_TRAINER_RELATIVE.as_posix(),
         ]
     )
+    _validate_nht_public_commands()
+    click.echo(f"NHT trainer runtime is ready: {REPO_ROOT / NHT_TRAINER_VENV_RELATIVE}")
 
+
+def _validate_nht_public_commands() -> None:
+    """Check the same executable and PATH boundary for both setup modes."""
     tool_bin = _uv_tool_bin_directory()
     if tool_bin is None:
         raise click.ClickException(
@@ -401,7 +417,6 @@ def setup_nht(with_sfm_learned: bool) -> None:
     click.echo("NHT public CLI is ready:")
     for command, installed in installed_commands.items():
         click.echo(f"  {command}: {installed}")
-    click.echo(f"NHT trainer runtime is ready: {REPO_ROOT / NHT_TRAINER_VENV_RELATIVE}")
 
 
 @click.command()

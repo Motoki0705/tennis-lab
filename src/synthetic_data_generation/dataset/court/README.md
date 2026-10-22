@@ -62,12 +62,14 @@ fetchable. In the disposable VM, prepare the repository and NHT with:
 
 ```bash
 uv sync --locked
-.venv/bin/python -m spin setup-nht
+.venv/bin/python -m spin setup-nht --render-only
 nht-render --help
 ```
 
 `spin setup-nht` owns the pinned Python/Torch/tiny-cuda-nn versions and recursive
 NHT/gsplat checkout; do not duplicate those versions in an alternate installer.
+The explicit `--render-only` mode skips the trainer environment; see the
+[development CLI](../../../../.spin/README.md).
 Run it only inside the Colab checkout for this workflow. A local worktree must
 not replace the shared editable NHT tool. For setup timing, bash `time` is
 available even when `/usr/bin/time` is absent. Preserve installation stderr,
