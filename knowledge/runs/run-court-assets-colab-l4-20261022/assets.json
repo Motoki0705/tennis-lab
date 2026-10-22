@@ -1,0 +1,265 @@
+{
+  "schema": "court_scene_assets_v1",
+  "repository_commit": "1823c9c293d8f910ea44edd0123f28a399ebecf5",
+  "nht_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+  "source_images": "omitted",
+  "alignment_validation": "stored_result_geometry",
+  "scenes": [
+    {
+      "scene_id": "B00",
+      "workspace": "synthetic_data_generation/scenes/B00",
+      "source_references": [
+        {
+          "path": "run.json",
+          "size_bytes": 6640,
+          "sha256": "6417bae238001a73eee047f5d80849ca8ec954b1f23f201bdf5bdec98b5434b8"
+        },
+        {
+          "path": "resolved-config.yaml",
+          "size_bytes": 16352,
+          "sha256": "5abc57074b5829575d167815db6f015204ce90032f8eab214cea7e5c8c12d379"
+        },
+        {
+          "path": "datasets/court/dataset.json",
+          "size_bytes": 640,
+          "sha256": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad"
+        },
+        {
+          "path": "datasets/court/samples/index.npz",
+          "size_bytes": 3067097,
+          "sha256": "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63"
+        },
+        {
+          "path": "alignment/ground-line-map.npz",
+          "size_bytes": 7383193,
+          "sha256": "7bc6819ae028151c1d9c4f5a2e9f78d0c29916a26b31b59c63d76a98972e9c51"
+        }
+      ]
+    },
+    {
+      "scene_id": "B01",
+      "workspace": "synthetic_data_generation/scenes/B01",
+      "source_references": [
+        {
+          "path": "run.json",
+          "size_bytes": 6698,
+          "sha256": "ed780025300688f87a03b97d46d204ddafddfc9e797ac94274235d25fe815b35"
+        },
+        {
+          "path": "resolved-config.yaml",
+          "size_bytes": 16603,
+          "sha256": "fa77bd3107b9f5b5e5620d793a9830dbcfe1f80cb8c4f9beff8a0fa8db74e170"
+        },
+        {
+          "path": "datasets/court/dataset.json",
+          "size_bytes": 640,
+          "sha256": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e"
+        },
+        {
+          "path": "datasets/court/samples/index.npz",
+          "size_bytes": 3982906,
+          "sha256": "422b18d17e38b47560daf055e21c9562de96662ecef5dee0316feaa38b5e40cd"
+        },
+        {
+          "path": "alignment/manual-confirmation.json",
+          "size_bytes": 991,
+          "sha256": "9d44303b0d005824e9e09c10707857a894754d561470df7c7de02eb7b97d2c42"
+        },
+        {
+          "path": "alignment/ground-line-map.npz",
+          "size_bytes": 3204,
+          "sha256": "22840f2fb83910dd3c5a66014372ffab5f699b39a0684aa99082fea19ebe0435"
+        }
+      ]
+    },
+    {
+      "scene_id": "B02",
+      "workspace": "synthetic_data_generation/scenes/B02",
+      "source_references": [
+        {
+          "path": "run.json",
+          "size_bytes": 6670,
+          "sha256": "eeeb181634f222c6f400f84bd0eb2917233e9741513c378f0f974c469572d046"
+        },
+        {
+          "path": "resolved-config.yaml",
+          "size_bytes": 16761,
+          "sha256": "5bf1a0d32b22dc337d180b144ac2903490d5e9fbaba7f52582bf33012a133ad4"
+        },
+        {
+          "path": "datasets/court/dataset.json",
+          "size_bytes": 640,
+          "sha256": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568"
+        },
+        {
+          "path": "datasets/court/samples/index.npz",
+          "size_bytes": 1724484,
+          "sha256": "c6761029a4b20132e8c0eb873c6945e518a608f8f9bc0dff8c361afe901c062b"
+        },
+        {
+          "path": "alignment/manual-confirmation.json",
+          "size_bytes": 669,
+          "sha256": "1a7bcff4c04afdac95c86acadfc99d25552bf9a6e897a3e81da845f2494f0874"
+        },
+        {
+          "path": "alignment/ground-line-map.npz",
+          "size_bytes": 3007,
+          "sha256": "89eef4e2fbec655160b9f69492db149f39b2a8a63a81987e24743bda5d62eece"
+        }
+      ]
+    },
+    {
+      "scene_id": "B03",
+      "workspace": "synthetic_data_generation/scenes/B03",
+      "source_references": [
+        {
+          "path": "run.json",
+          "size_bytes": 6589,
+          "sha256": "af0a92cb0072de548ae85182e78f482eefff5a6a85a70a2ba691d26124752dd8"
+        },
+        {
+          "path": "resolved-config.yaml",
+          "size_bytes": 16773,
+          "sha256": "51dceb2865c2be1f80dbf4a76749a8a45447bf89ab68879adbcb97fcb083cbd6"
+        },
+        {
+          "path": "datasets/court/dataset.json",
+          "size_bytes": 640,
+          "sha256": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607"
+        },
+        {
+          "path": "datasets/court/samples/index.npz",
+          "size_bytes": 1712751,
+          "sha256": "062dceb390c2fbb1be86540bd2637623860ce3e2d5dc4a0306c105a19ae4807d"
+        },
+        {
+          "path": "alignment/ground-line-map.npz",
+          "size_bytes": 3116626,
+          "sha256": "45ca8080d603fc847548378d6bd766475f2d2cb8368d277ecca5caa8b91c20f6"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "path": "scenes/B00/alignment/alignment.json",
+      "size_bytes": 15237,
+      "sha256": "d973abf8f6e8f82ac4322562f1b468c24e4472d7ed7164f79eac06a264a86581"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/cameras.json",
+      "size_bytes": 1112403,
+      "sha256": "9c2b6e6e927f484280a3bc53f3ce94eb27afa77bbaa380d1afd9e560c67ba075"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "size_bytes": 236331206,
+      "sha256": "659e51f5175d09f2b4dd05d6b361550e66cff53aad41efce1aae296c78c24b5f"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model/runtime-config.json",
+      "size_bytes": 679,
+      "sha256": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/points_scene.npy",
+      "size_bytes": 5217896,
+      "sha256": "9178c177e99700ab36918c7455ce84916e3bebcfe3f094659588317588437e7e"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/scene.json",
+      "size_bytes": 14033,
+      "sha256": "18251128c91985103ef2bcfb5c5e6019a452a6be07f8b59ca4c82028485f1743"
+    },
+    {
+      "path": "scenes/B01/alignment/alignment.json",
+      "size_bytes": 29161,
+      "sha256": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/cameras.json",
+      "size_bytes": 602402,
+      "sha256": "52ee696ddf39166f198577e5010b32c68a30413f3aed00e04b2d3c8848d8361b"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "size_bytes": 236331206,
+      "sha256": "9a9012173303d5c47e8594f293a384557951e923f9ffe8e7b744230b295dee7f"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model/runtime-config.json",
+      "size_bytes": 679,
+      "sha256": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/points_scene.npy",
+      "size_bytes": 2633336,
+      "sha256": "2425e3b9350ab01822f8e4dc01f9303a0aeb7e8124160e78b21c1fa4985a49ba"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/scene.json",
+      "size_bytes": 14042,
+      "sha256": "e753f8857a2d588d73fcae87d8982efc3ce1772dbc14d38bc5a9e46f69af2c57"
+    },
+    {
+      "path": "scenes/B02/alignment/alignment.json",
+      "size_bytes": 10045,
+      "sha256": "5cf7a69e60df3a6551f21404047df27e9e5808742518da6c7540f58232207b9d"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/cameras.json",
+      "size_bytes": 354881,
+      "sha256": "a3a8bdf8be8736340e6e6d78ddd3655dec9993277d6e5e65c6b076271d5f263d"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "size_bytes": 236331206,
+      "sha256": "61028ed84697ab7004904db60d4fd9d9063af7728f4fa11b556efe441189f2d8"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model/runtime-config.json",
+      "size_bytes": 679,
+      "sha256": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/points_scene.npy",
+      "size_bytes": 1359008,
+      "sha256": "d63c1e83665a0339560739e585c5e807a0f5339f84de8126445b291ac0fccd0e"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/scene.json",
+      "size_bytes": 14207,
+      "sha256": "ce2a7f14c7410ca76994fce9b3f054aa9d18a95d51167136642f4e94ab53d631"
+    },
+    {
+      "path": "scenes/B03/alignment/alignment.json",
+      "size_bytes": 9963,
+      "sha256": "8e1029f091a8d0a1bbea4992353b7dd3836bdb1b8c3bb7ecab0a00d51dba8e99"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/cameras.json",
+      "size_bytes": 345902,
+      "sha256": "4d03c5a27728be0ff7e9598d42ce4459960a0af8ff0c638d9af34aa8a7c1b381"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "size_bytes": 236331206,
+      "sha256": "b7275ca96b3693f976dd730f77e864ec3c4243dd0755ad3c7587c739210b9b1c"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model/runtime-config.json",
+      "size_bytes": 679,
+      "sha256": "57a15bdd83d4fd2ee0dac9f5ad754ea280bf75f248e3f87c5d75c321a35bb101"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/points_scene.npy",
+      "size_bytes": 1068632,
+      "sha256": "21d09a2667b696aee19067de7c2ccbdb1eaca3192b719472a2305ca25fc3cb26"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/scene.json",
+      "size_bytes": 14047,
+      "sha256": "df7e51b9dd819164bb5915fae8cb2e4093f7af91756b723ce62c97a80065433d"
+    }
+  ]
+}

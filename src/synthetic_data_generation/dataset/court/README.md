@@ -8,6 +8,202 @@ authority for the camera-view KP14 semantics and their migration policy.
 
 See [Court Review](review/README.md) for the local 3D trajectory and image-label browser.
 
+## Portable scene assets and Colab rendering
+
+`assets.py` packages immutable rendering inputs with schema
+`court_scene_assets_v1`. Each scene carries exactly six files: the public NHT
+`scene.json`, `cameras.json`, `points_scene.npy`, the checkpoint and runtime config
+referenced by that scene, and the accepted `alignment/alignment.json`. Camera
+calibration, normalization, metric similarities, court poses and accepted
+candidate inventories remain in their original authorities. All six files are
+copied byte for byte, including automatic and human-confirmed alignment schemas;
+there is no geometry migration or alignment rerun. Unknown alignment formats fail
+in the existing reader.
+
+The manifest records size and SHA-256 for every carried file and pins the producing
+tennis-lab/NHT commits. Existing run/config/dataset descriptors, the sparse index,
+and alignment evidence remain source-relative references with digests, rather than
+copied inventories. These references describe provenance; they do not claim that
+the full alignment evidence has been transferred or refitted. Captured images,
+videos, extracted frames, SfM intermediates, duplicate PLYs, training logs and
+alignment heatmap rasters are excluded. The public sparse points are retained
+because both scene validators require them.
+
+This bundle is a rendering/label dependency closure, not a completed scene-pipeline
+workspace. Load the public export and stored alignment directly; do not fabricate
+missing ingest, reconstruction or alignment owners to pass pipeline validation.
+Use `load_alignment_result` for every supported stored alignment schema. Convert
+exported camera poses with `alignment.metric_adapter.metric_from_nht_camera` and
+divide rendered depth by `nht_scene_units_per_metre` before comparing metric depth.
+
+Package into a **new** directory outside the source workspace, then pin the
+returned manifest digest for every subsequent verification. The packaging CLI
+requires a clean, committed worktree so its producer commit identifies the code:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets pack \
+  --source-root /read-only/data/synthetic_data_generation/scenes \
+  --scene-ids B00 B01 B02 B03 --destination tmp/court-scene-assets-v1
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets verify \
+  --root tmp/court-scene-assets-v1 --manifest-sha256 MANIFEST_SHA256
+```
+
+The verifier checks exact inventory, every size/hash, exported geometry and the
+stored accepted alignment. Missing/extra files, duplicate paths, symlinks, unknown
+schemas and changed manifests fail. It never writes to the input or re-creates a
+missing file. The source workspaces remain read only.
+
+Use [tennis-drive](../../../../.agents/skills/tennis-drive/SKILL.md) for transfer,
+authentication and verification. Choose the role/path according to its
+[storage policy](../../../../.agents/skills/tennis-drive/references/storage-policy.md).
+A new bundle awaiting Colab verification is a staging candidate; promote by a
+verified copy into a new input-data version after rendering equivalence passes.
+Never overwrite an existing asset version. After upload, verify the remote bytes
+with the Drive CLI; after download, run the manifest verifier again with the
+original digest. Retain the Drive ID and transfer receipts outside the bundle.
+
+The accepted B00–B03 input is
+`data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified`
+(relative to the Drive project root and the repository checkout). Its manifest
+SHA-256 is `a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b`.
+The [adoption record](../../../../knowledge/runs/run-court-assets-colab-l4-20261022/adoption.json)
+owns the Drive ID, user-decision source and verification receipts; `assets.json`
+remains the file/geometry authority. The staging copy is retained.
+
+Colab session creation, exact Git checkout, persistence and GPU release follow
+[tennis-colab](../../../../.agents/skills/tennis-colab/SKILL.md). Use an explicitly
+requested L4 and a pushed tennis-lab commit whose pinned NHT commit is also
+fetchable. In the disposable VM, prepare the repository and NHT with:
+
+```bash
+export PATH="$(uv tool dir --bin):$PATH"
+uv sync --locked
+.venv/bin/python -m spin setup-nht --render-only
+nht-render --help
+```
+
+Repeat the explicit tool-bin `PATH` export in every Colab shell job that invokes
+`nht-render`; a fresh login shell does not inherit another job's environment.
+
+`spin setup-nht` owns the pinned Python/Torch/tiny-cuda-nn versions and recursive
+NHT/gsplat checkout; do not duplicate those versions in an alternate installer.
+The explicit `--render-only` mode skips the trainer environment; see the
+[development CLI](../../../../.spin/README.md).
+Run it only inside the Colab checkout for this workflow. A local worktree must
+not replace the shared editable NHT tool. For setup timing, bash `time` is
+available even when `/usr/bin/time` is absent. Preserve installation stderr,
+CUDA/compiler versions and the observed GPU in the session's declared outputs.
+Measured setup/transfer/render times and the failed first installation are in the
+[L4 verification record](../../../../knowledge/nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md).
+The successful setup measurement used an already warmed VM; it is not a cold
+installation estimate. The pinned NHT image-free change must be fetchable even
+while its upstream PR is pending; until it is merged, NHT `main` does not supply it.
+Keep actively growing installation logs outside the `--persist` tree and publish
+them by rename after each command exits; copying an actively changing file can
+fail the worker's periodic Drive save and stop the command.
+
+After setup, download the accepted input to the disposable VM and verify it
+before passing any scene to a generator. Use the configured Drive connection
+from the skill above; never embed its credentials in a notebook or manifest:
+
+```bash
+COURT_ASSET_PATH=data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified
+COURT_ASSET_SHA256=a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py download \
+  "$COURT_ASSET_PATH" "$COURT_ASSET_PATH" --verify
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets verify \
+  --root "$COURT_ASSET_PATH" --manifest-sha256 "$COURT_ASSET_SHA256"
+```
+
+The equivalent Python preflight is
+`verify_scene_assets(Path(asset_root), manifest_sha256=expected_digest)` from
+`src.synthetic_data_generation.dataset.court.assets`. Both the root and expected
+digest are explicit generator inputs. Download into a new directory; a prior
+directory's presence is not proof of a completed, verified transfer.
+Then render existing exported cameras:
+
+```bash
+nht-render --scene "$COURT_ASSET_PATH/scenes/B00/reconstruction/export/scene.json" \
+  --without-source-images --camera-id EXPORTED_CAMERA_ID --batch-size 1 \
+  --output outputs/synthetic_data_generation/profile/assets-check/B00
+```
+
+The explicit image-free mode retains camera/reference/model validation and records
+`source_images_explicitly_omitted` in the NHT result. Default export validation
+still requires the captured images. In Python, use
+`NHTRenderCommandRequest(..., without_source_images=True)` and
+`NHTRenderClient.validate_scene(..., without_source_images=True)`;
+`CourtNHTRenderer(..., without_source_images=True)` propagates that choice.
+Image-free and complete validations have separate process-local cache entries.
+
+### Rendering equivalence contract
+
+For equivalence, render the **same camera requests** locally and on L4, with the
+same checkpoint/runtime and camera batch size. Local GPU rendering must use the
+shared training queue. Compare original float32 RGB, alpha and depth before JPEG
+encoding, plus projected/renderer-visible KP. Packed publications retain JPEG
+quality 95 and sparse labels, but no alpha/depth rasters; JPEG differences alone
+cannot validate depth or visibility. A queue-rendered baseline supplies that
+missing evidence. Report both raw and JPEG RGB errors. Record per-scene results,
+setup/transfer/render times, transferred bytes and GPU memory in the experiment
+record. Declare probe outputs with Colab `--persist`, verify terminal job/Drive
+receipts, and always `stop` the session when finished.
+
+Separate checkpoint deserialization, resident renderer initialization, the first
+camera (including lazy CUDA compilation), subsequent render calls, and the public
+call including validation/PNG/array writes. A few existing-camera probes measure
+runtime compatibility; they do not establish production generation throughput or
+unseen-view quality. Record PyTorch peak allocated/reserved memory separately from
+sampled device memory, with the sampling interval; sampled peaks are lower bounds.
+
+Keep full-frame distributions and worst-pixel coordinates when checking numeric
+agreement. Inspect RGB, alpha, metric depth and the production visibility threshold
+at those coordinates. Court polygons and common alpha masks are useful diagnostic
+subsets, but do not replace the full-frame result. In particular, finite positive
+depth at zero alpha is not evidence of a valid surface. Repeat each GPU's render to
+separate repeat variation from reproducible differences between devices. If the
+acceptance checks below fail, retain the staging inputs and report the unresolved
+comparison before promoting them.
+
+The user decision on 2026-10-22 in
+[#1351](https://github.com/Motoki0705/tennis-lab/issues/1351) accepts cross-GPU
+equivalence by teacher agreement and RGB error. All checks must pass separately
+for each repeat, without excluding background pixels or outliers:
+
+- The complete scene/camera/court/KP inventory, class and physical IDs, projected
+  UV, metric KP camera depth, `in_front`, `in_frame` and `renderer_visible` must
+  match exactly. Renderer visibility retains the production alpha >= 0.01,
+  positive-depth, radius-1px rule. There is no epsilon for teacher agreement.
+- Raw float32 RGB in [0, 1] must have **PSNR >= 57 dB per scene**, pooling all
+  full-frame RGB channel errors of the declared probe cameras before computing
+  RMSE. Every individual full-frame view must also have **PSNR >= 55 dB**, so a
+  good average cannot hide a degraded camera. PSNR is `-20 log10(RMSE)` with
+  peak=1; exact RGB equality passes with infinite PSNR (JSON `null` only when
+  RMSE=0). Missing views or non-finite evidence fail.
+- Alpha/depth distributions, threshold crossings, full-frame and court-region
+  outliers remain diagnostic evidence. Raster equality between GPUs is not an
+  acceptance condition. Generation still applies its normal alpha/depth quality
+  gates to each L4 output; this decision does not change those gates.
+
+The thresholds round down the measured minimum scene PSNR 57.986 dB and minimum
+individual-view PSNR 55.859 dB to whole-dB floors. The scene floor limits RGB
+RMSE to 0.001413, and the view floor to 0.001778. The measured JPEG quality-95
+round trip (including uint8 quantization) has RMSE 0.003537–0.004983, or
+PSNR 46.05–49.03 dB. Even the view floor permits roughly half the smallest
+observed JPEG RMSE; this is the input-image error budget justification, not a
+claim that GPU depth differences are noise or that training accuracy is unchanged.
+The approximately 58 dB value is a pooled scene result, not a per-view minimum.
+Measurements, maxima and limitations remain in the L4 verification record above.
+
+The saved comparison can be checked without a GPU using
+[`court_assets_acceptance.py`](../../../../knowledge/runs/run-court-assets-colab-l4-20261022/court_assets_acceptance.py)
+(`--help`). It checks the exact teacher inventories and the two RGB floors for
+each supplied comparison; it does not rerender or modify the original evidence.
+Use the recorded B00–B03 probe inventory and both repeats when validating these
+assets. Production generation uses **Colab L4 only** with the pinned runtime;
+new-view quality, throughput and chunked generation/restart belong to the
+generator and Colab generation workflow.
+
 ## JPEG shard publication
 
 Generation evaluates the original renderer RGB, alpha and depth before accepting

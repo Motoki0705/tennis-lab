@@ -56,12 +56,16 @@ class NHTRenderClient:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
-        self._scene_cache: dict[Path, _SceneCacheEntry] = {}
+        self._scene_cache: dict[tuple[Path, bool], _SceneCacheEntry] = {}
         self._invocation_count = 0
 
-    def validate_scene(self, scene_path: Path) -> StandardSceneExport:
+    def validate_scene(
+        self, scene_path: Path, *, without_source_images: bool = False
+    ) -> StandardSceneExport:
         """Validate or reuse one unchanged public scene in this client session."""
-        scene, _cache_hit = self._validated_scene(scene_path)
+        scene, _cache_hit = self._validated_scene(
+            scene_path, without_source_images=without_source_images
+        )
         return scene
 
     def render(
@@ -74,7 +78,9 @@ class NHTRenderClient:
         """Execute one command without importing or inspecting renderer internals."""
         if timeout_seconds is not None and timeout_seconds <= 0.0:
             raise ValueError("timeout_seconds must be positive when provided.")
-        scene, scene_cache_hit = self._validated_scene(request.scene_path)
+        scene, scene_cache_hit = self._validated_scene(
+            request.scene_path, without_source_images=request.without_source_images
+        )
         observed = {camera.camera_id: camera for camera in scene.cameras}
         unknown_observed = set(request.observed_camera_ids) - set(observed)
         if unknown_observed:
@@ -130,18 +136,30 @@ class NHTRenderClient:
     def _validated_scene(
         self,
         scene_path: Path,
+        *,
+        without_source_images: bool,
     ) -> tuple[StandardSceneExport, bool]:
         """Validate once, then reuse only while every validated input is unchanged."""
+        if type(without_source_images) is not bool:
+            raise TypeError("without_source_images must be a boolean.")
         if not isinstance(scene_path, Path) or not scene_path.is_absolute():
             raise ValueError("NHT scene cache requires an absolute pathlib.Path.")
         resolved = scene_path.resolve(strict=True)
         with self._lock:
-            cached = self._scene_cache.get(resolved)
+            cache_key = (resolved, without_source_images)
+            cached = self._scene_cache.get(cache_key)
             if cached is not None and cached.matches(scene_path):
                 return cached.scene, True
-            scene = validate_standard_scene_export(scene_path)
-            entry = _SceneCacheEntry.capture(scene_path, scene)
-            self._scene_cache[resolved] = entry
+            if without_source_images:
+                scene = validate_standard_scene_export(
+                    scene_path, without_source_images=True
+                )
+            else:
+                scene = validate_standard_scene_export(scene_path)
+            entry = _SceneCacheEntry.capture(
+                scene_path, scene, without_source_images=without_source_images
+            )
+            self._scene_cache[cache_key] = entry
             return scene, False
 
 
@@ -191,6 +209,8 @@ class _SceneCacheEntry:
         cls,
         requested_scene_path: Path,
         scene: StandardSceneExport,
+        *,
+        without_source_images: bool,
     ) -> _SceneCacheEntry:
         paths = {
             requested_scene_path,
@@ -199,8 +219,9 @@ class _SceneCacheEntry:
             scene.export_root / "points_scene.npy",
             scene.checkpoint_path,
             scene.runtime_config_path,
-            *(Path(camera.image_path) for camera in scene.cameras),
         }
+        if not without_source_images:
+            paths.update(Path(camera.image_path) for camera in scene.cameras)
         dependencies = tuple(
             (path, _FileIdentity.capture(path))
             for path in sorted(paths, key=lambda item: str(item))
@@ -246,7 +267,11 @@ def _load_render_result(
         "canonical NHT scene space",
         name="render.coordinate_space",
     )
-    _mapping(payload["export_validation"], name="render.export_validation")
+    export_validation = _mapping(payload["export_validation"], name="render.export_validation")
+    if request.without_source_images:
+        checks = export_validation.get("checks")
+        if not isinstance(checks, list) or "source_images_explicitly_omitted" not in checks:
+            raise ValueError("NHT result did not acknowledge the omitted source images.")
     raw_records = _sequence(payload["renders"], name="render.renders")
     if len(raw_records) != len(request.expected_camera_ids):
         raise ValueError(

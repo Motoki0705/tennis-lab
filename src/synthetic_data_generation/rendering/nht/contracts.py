@@ -260,12 +260,15 @@ class NHTRenderCommandRequest:
     arbitrary_request_path: Path | None = None
     executable: str | Path = NHT_RENDER_COMMAND
     batch_size: int | None = None
+    without_source_images: bool = False
 
     def __post_init__(self) -> None:
         if self.batch_size is not None and (
             type(self.batch_size) is not int or not 1 <= self.batch_size <= 32
         ):
             raise ValueError("NHT batch_size must be an integer in 1..32.")
+        if type(self.without_source_images) is not bool:
+            raise TypeError("without_source_images must be a boolean.")
         for name, path in (
             ("scene_path", self.scene_path),
             ("output_directory", self.output_directory),
@@ -351,6 +354,8 @@ class NHTRenderCommandRequest:
     def argv(self) -> tuple[str, ...]:
         """Return the exact public shell-free command argument vector."""
         arguments: list[str] = [str(self.executable), "--scene", str(self.scene_path)]
+        if self.without_source_images:
+            arguments.append("--without-source-images")
         for camera_id in self.observed_camera_ids:
             arguments.extend(("--camera-id", camera_id))
         if self.arbitrary_request_path is not None:

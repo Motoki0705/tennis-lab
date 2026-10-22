@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "render",
+  "status": "failed",
+  "updated_at": "2026-10-22T07:03:46.708568+00:00",
+  "returncode": 1,
+  "worker_pid": 11280,
+  "worker_token": "186083",
+  "launch_guarded": true,
+  "pid": 11445,
+  "process_token": "188968",
+  "started_at": "2026-10-22T07:03:40.689720+00:00",
+  "completion_target": "failed",
+  "drive_saved_at": "2026-10-22T07:04:00.597849+00:00",
+  "finished_at": "2026-10-22T07:04:00.597863+00:00"
+}

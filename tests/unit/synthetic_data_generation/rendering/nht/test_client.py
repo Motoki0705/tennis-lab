@@ -35,6 +35,23 @@ def _camera(camera_id: str = "novel") -> NHTRenderCamera:
     )
 
 
+def test_image_free_scene_cache_cannot_satisfy_full_validation(tmp_path, monkeypatch) -> None:
+    scene_path = tmp_path / "scene.json"
+    scene_path.write_text("{}")
+    modes = []
+
+    def validate(path, *, without_source_images=False):
+        modes.append(without_source_images)
+        return _scene(path)
+
+    monkeypatch.setattr(client, "validate_standard_scene_export", validate)
+    renderer = client.NHTRenderClient()
+    renderer.validate_scene(scene_path, without_source_images=True)
+    renderer.validate_scene(scene_path, without_source_images=True)
+    renderer.validate_scene(scene_path)
+    assert modes == [True, False]
+
+
 def _scene(scene_path: Path) -> StandardSceneExport:
     (scene_path.parent / "cameras.json").write_text("{}", encoding="utf-8")
     np.save(

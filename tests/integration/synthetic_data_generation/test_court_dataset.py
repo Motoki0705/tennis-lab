@@ -33,6 +33,11 @@ from src.synthetic_data_generation.dataset.court.assembler import (
     assemble_court_dataset,
     validate_court_dataset,
 )
+from src.synthetic_data_generation.dataset.court.assets import (
+    file_sha256,
+    pack_scene_assets,
+    verify_scene_assets,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
 )
@@ -952,3 +957,66 @@ def test_generated_compressed_publication_semantics_and_visualization(
         root, trajectory_id=manifest["samples"][0]["trajectory_id"]
     )
     assert next(visualizer.frames()).rgb.shape[-1] == 3
+
+
+def _portable_assets(tmp_path: Path) -> tuple[Path, Path, dict[str, object]]:
+    workspace = tmp_path / "source/B00"
+    _write_standard_scene(workspace, _render_cameras())
+    (workspace / "alignment").mkdir()
+    (workspace / "alignment/alignment.json").write_text(json.dumps(_alignment().to_dict()))
+    (workspace / "run.json").write_text('{"existing": "source authority"}')
+    destination = tmp_path / "assets"
+    receipt = pack_scene_assets(
+        workspace.parent, destination, scene_ids=["B00"],
+        repository_commit="a" * 40, nht_commit="b" * 40,
+    )
+    return workspace, destination, receipt
+
+
+def test_portable_assets_preserve_geometry_and_exclude_capture_inputs(tmp_path: Path) -> None:
+    workspace, root, receipt = _portable_assets(tmp_path)
+    manifest = json.loads((root / "assets.json").read_text())
+    assert len(manifest["files"]) == 6
+    for item in manifest["files"]:
+        relative = Path(item["path"]).relative_to("scenes/B00")
+        assert file_sha256(root / item["path"]) == file_sha256(workspace / relative)
+    assert not list(root.rglob("images"))
+    assert not (root / "scenes/B00/run.json").exists()
+    assert manifest["scenes"][0]["source_references"] == [{
+        "path": "run.json", "size_bytes": (workspace / "run.json").stat().st_size,
+        "sha256": file_sha256(workspace / "run.json"),
+    }]
+    assert verify_scene_assets(root, manifest_sha256=str(receipt["manifest_sha256"])) == receipt
+    with pytest.raises(ValueError, match="manifest SHA-256"):
+        verify_scene_assets(root, manifest_sha256="0" * 64)
+    with pytest.raises(FileExistsError):
+        pack_scene_assets(
+            workspace.parent, root, scene_ids=["B00"],
+            repository_commit="a" * 40, nht_commit="b" * 40,
+        )
+
+
+@pytest.mark.parametrize("mutation", ["changed", "extra", "symlink", "schema", "escape", "duplicate", "undeclared"])
+def test_portable_assets_reject_corruption(tmp_path: Path, mutation: str) -> None:
+    _, root, _ = _portable_assets(tmp_path)
+    path = root / "assets.json"
+    manifest = json.loads(path.read_text())
+    checkpoint = root / "scenes/B00/reconstruction/export/model/ckpts/model.pt"
+    if mutation == "changed":
+        checkpoint.write_bytes(b"changed")
+    elif mutation == "extra":
+        (root / "unnecessary-frame.png").write_bytes(b"extra")
+    elif mutation == "symlink":
+        checkpoint.unlink()
+        checkpoint.symlink_to(root / "assets.json")
+    elif mutation == "schema":
+        manifest["schema"] = "court_scene_assets_v99"
+    elif mutation == "escape":
+        manifest["files"][0]["path"] = "../escape"
+    elif mutation == "duplicate":
+        manifest["files"].append(manifest["files"][0])
+    else:
+        manifest["scenes"] = []
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError):
+        verify_scene_assets(root)

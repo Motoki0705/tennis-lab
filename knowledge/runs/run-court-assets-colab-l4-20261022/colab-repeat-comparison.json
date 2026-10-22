@@ -1,0 +1,1859 @@
+{
+  "schema": "court_render_comparison_v1",
+  "reference_repeat": "repeat-0",
+  "candidate_repeat": "repeat-1",
+  "scenes": {
+    "B00": {
+      "summary": {
+        "rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "alpha": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "depth_m": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0
+        },
+        "jpeg_rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "visibility": {
+          "points": 112,
+          "geometry_disagreements": 0,
+          "renderer_disagreements": 0,
+          "in_frame_points": 50,
+          "renderer_visible_points": 50
+        },
+        "max_uv_delta_px": 0.0,
+        "max_kp_depth_delta_m": 0.0
+      },
+      "views": [
+        {
+          "camera_id": "frame_000000",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.003288970851811097,
+              "rmse": 0.004814496928715412,
+              "abs_quantiles": {
+                "0.5": 0.002282475490196112,
+                "0.9": 0.007084865196078427,
+                "0.95": 0.009633501838235303,
+                "0.99": 0.01694623161764708,
+                "0.999": 0.03028166743259794,
+                "1.0": 0.09637905943627456
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 46.34898172010212
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 28,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 24,
+            "renderer_visible_points": 24
+          }
+        },
+        {
+          "camera_id": "frame_000163",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0034653332954455124,
+              "rmse": 0.004852583537166282,
+              "abs_quantiles": {
+                "0.5": 0.00251034007352946,
+                "0.9": 0.007516659007352933,
+                "0.95": 0.009924555759803888,
+                "0.99": 0.016349743412990184,
+                "0.999": 0.025626719515931286,
+                "1.0": 0.06184895833333337
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 46.28053959002096
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 28,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 19,
+            "renderer_visible_points": 19
+          }
+        },
+        {
+          "camera_id": "frame_000326",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0036970791347008466,
+              "rmse": 0.004986539227372196,
+              "abs_quantiles": {
+                "0.5": 0.0028167126225490113,
+                "0.9": 0.008021216299019585,
+                "0.95": 0.010136144301470584,
+                "0.99": 0.015506280637254899,
+                "0.999": 0.023582354856004836,
+                "1.0": 0.06635071997549025
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 46.04401520332811
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 28,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 4,
+            "renderer_visible_points": 4
+          }
+        },
+        {
+          "camera_id": "frame_000490",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.003460106414490366,
+              "rmse": 0.004777885562249088,
+              "abs_quantiles": {
+                "0.5": 0.0025759229473039102,
+                "0.9": 0.007467830882352922,
+                "0.95": 0.009637331495098045,
+                "0.99": 0.015646043964460746,
+                "0.999": 0.02532254710477928,
+                "1.0": 0.059881472120098034
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 46.41528512972587
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 28,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 3,
+            "renderer_visible_points": 3
+          }
+        }
+      ],
+      "nht_units_per_metre": 0.06983810646574976
+    },
+    "B01": {
+      "summary": {
+        "rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "alpha": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "depth_m": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0
+        },
+        "jpeg_rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "visibility": {
+          "points": 168,
+          "geometry_disagreements": 0,
+          "renderer_disagreements": 0,
+          "in_frame_points": 117,
+          "renderer_visible_points": 117
+        },
+        "max_uv_delta_px": 0.0,
+        "max_kp_depth_delta_m": 0.0
+      },
+      "views": [
+        {
+          "camera_id": "frame_000000",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.002923144990169536,
+              "rmse": 0.004119831537224518,
+              "abs_quantiles": {
+                "0.5": 0.0021283318014705954,
+                "0.9": 0.006062346813725528,
+                "0.95": 0.008129882812499989,
+                "0.99": 0.014012714460784337,
+                "0.999": 0.02443704044117645,
+                "1.0": 0.08976332720588232
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 47.702410844141234
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 42,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 34,
+            "renderer_visible_points": 34
+          }
+        },
+        {
+          "camera_id": "frame_000088",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0030945192566594914,
+              "rmse": 0.00421777115490186,
+              "abs_quantiles": {
+                "0.5": 0.0023068895526960898,
+                "0.9": 0.006615732230392135,
+                "0.95": 0.008523858762254921,
+                "0.99": 0.013339173560049017,
+                "0.999": 0.02169241919424013,
+                "1.0": 0.06264361213235292
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 47.49833975252571
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 42,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 34,
+            "renderer_visible_points": 34
+          }
+        },
+        {
+          "camera_id": "frame_000176",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0033257130598148975,
+              "rmse": 0.004605538200443292,
+              "abs_quantiles": {
+                "0.5": 0.0024145986519608087,
+                "0.9": 0.007297411151960809,
+                "0.95": 0.009528186274509798,
+                "0.99": 0.015063945695465633,
+                "0.999": 0.02289397403492646,
+                "1.0": 0.06836894914215685
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 46.73439222215508
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 42,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 28,
+            "renderer_visible_points": 28
+          }
+        },
+        {
+          "camera_id": "frame_000266",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0026194900489199713,
+              "rmse": 0.00363605506971299,
+              "abs_quantiles": {
+                "0.5": 0.0018975949754902466,
+                "0.9": 0.005470664828431393,
+                "0.95": 0.0070627967984068065,
+                "0.99": 0.012154373468137247,
+                "0.999": 0.021048079427083255,
+                "1.0": 0.046441291360294124
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 48.787390956243655
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 42,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 21,
+            "renderer_visible_points": 21
+          }
+        }
+      ],
+      "nht_units_per_metre": 0.04226524189551289
+    },
+    "B02": {
+      "summary": {
+        "rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "alpha": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "depth_m": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0
+        },
+        "jpeg_rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "visibility": {
+          "points": 56,
+          "geometry_disagreements": 0,
+          "renderer_disagreements": 0,
+          "in_frame_points": 37,
+          "renderer_visible_points": 37
+        },
+        "max_uv_delta_px": 0.0,
+        "max_kp_depth_delta_m": 0.0
+      },
+      "views": [
+        {
+          "camera_id": "frame_000000",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0026189076116435077,
+              "rmse": 0.003539579181870209,
+              "abs_quantiles": {
+                "0.5": 0.0019569546568627416,
+                "0.9": 0.0054859834558823595,
+                "0.95": 0.006859872855392135,
+                "0.99": 0.010859949448529416,
+                "0.999": 0.018212503829656747,
+                "1.0": 0.10819546568627447
+              },
+              "nonzero_fraction": 1.0,
+              "psnr_db": 49.0209673575366
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 6,
+            "renderer_visible_points": 6
+          }
+        },
+        {
+          "camera_id": "frame_000052",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.003068659961535725,
+              "rmse": 0.004607423718746443,
+              "abs_quantiles": {
+                "0.5": 0.0020191865808823484,
+                "0.9": 0.0065515854779411575,
+                "0.95": 0.009193091299019629,
+                "0.99": 0.01662645526960782,
+                "0.999": 0.03155694316789212,
+                "1.0": 0.10593596813725492
+              },
+              "nonzero_fraction": 0.9999555040520332,
+              "psnr_db": 46.73083692598344
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 12,
+            "renderer_visible_points": 12
+          }
+        },
+        {
+          "camera_id": "frame_000104",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0031760263875760795,
+              "rmse": 0.004571441000544033,
+              "abs_quantiles": {
+                "0.5": 0.0022681142769607754,
+                "0.9": 0.00670860140931373,
+                "0.95": 0.00897757735906854,
+                "0.99": 0.015588618259803955,
+                "0.999": 0.02947894837622484,
+                "1.0": 0.09321001838235299
+              },
+              "nonzero_fraction": 0.9998497455670106,
+              "psnr_db": 46.798937618122984
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 12,
+            "renderer_visible_points": 12
+          }
+        },
+        {
+          "camera_id": "frame_000156",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.0027842293777326334,
+              "rmse": 0.0038778034295648693,
+              "abs_quantiles": {
+                "0.5": 0.002041685814950983,
+                "0.9": 0.005757889093137236,
+                "0.95": 0.007515701593137303,
+                "0.99": 0.01241718367034314,
+                "0.999": 0.023173538985906836,
+                "1.0": 0.09328661151960782
+              },
+              "nonzero_fraction": 0.9999941961807,
+              "psnr_db": 48.22828419198992
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 7,
+            "renderer_visible_points": 7
+          }
+        }
+      ],
+      "nht_units_per_metre": 0.06625391875418457
+    },
+    "B03": {
+      "summary": {
+        "rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "alpha": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "depth_m": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0
+        },
+        "jpeg_rgb": {
+          "mae": 0.0,
+          "rmse": 0.0,
+          "abs_quantiles": {
+            "0.5": 0.0,
+            "0.9": 0.0,
+            "0.95": 0.0,
+            "0.99": 0.0,
+            "0.999": 0.0,
+            "1.0": 0.0
+          },
+          "nonzero_fraction": 0.0,
+          "psnr_db": null
+        },
+        "visibility": {
+          "points": 56,
+          "geometry_disagreements": 0,
+          "renderer_disagreements": 0,
+          "in_frame_points": 45,
+          "renderer_visible_points": 45
+        },
+        "max_uv_delta_px": 0.0,
+        "max_kp_depth_delta_m": 0.0
+      },
+      "views": [
+        {
+          "camera_id": "frame_000000",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.002644737499615312,
+              "rmse": 0.003688220720052551,
+              "abs_quantiles": {
+                "0.5": 0.0019349341299019496,
+                "0.9": 0.00548789828431373,
+                "0.95": 0.0070934819240196095,
+                "0.99": 0.012256816789215697,
+                "0.999": 0.02194551259957106,
+                "1.0": 0.0789995978860294
+              },
+              "nonzero_fraction": 0.9999709809034999,
+              "psnr_db": 48.66366193331971
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 13,
+            "renderer_visible_points": 13
+          }
+        },
+        {
+          "camera_id": "frame_000050",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.002520197090460632,
+              "rmse": 0.00379546489288263,
+              "abs_quantiles": {
+                "0.5": 0.0017022824754902022,
+                "0.9": 0.005484068627450989,
+                "0.95": 0.007433363970588247,
+                "0.99": 0.013252508425245073,
+                "0.999": 0.0265591394761027,
+                "1.0": 0.10527822457107838
+              },
+              "nonzero_fraction": 0.9999748501163666,
+              "psnr_db": 48.41470042673724
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 14,
+            "renderer_visible_points": 14
+          }
+        },
+        {
+          "camera_id": "frame_000101",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.002783252749515878,
+              "rmse": 0.00403135665759967,
+              "abs_quantiles": {
+                "0.5": 0.0019655713848039102,
+                "0.9": 0.00578134574142157,
+                "0.95": 0.007773246017156843,
+                "0.99": 0.013628307866115203,
+                "0.999": 0.027830484068627082,
+                "1.0": 0.0820178462009804
+              },
+              "nonzero_fraction": 0.9999000453342775,
+              "psnr_db": 47.89097555479835
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 7,
+            "renderer_visible_points": 7
+          }
+        },
+        {
+          "camera_id": "frame_000161",
+          "metrics": {
+            "rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "alpha": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "depth_m": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "depth_relative": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0
+            },
+            "jpeg_rgb": {
+              "mae": 0.0,
+              "rmse": 0.0,
+              "abs_quantiles": {
+                "0.5": 0.0,
+                "0.9": 0.0,
+                "0.95": 0.0,
+                "0.99": 0.0,
+                "0.999": 0.0,
+                "1.0": 0.0
+              },
+              "nonzero_fraction": 0.0,
+              "psnr_db": null
+            },
+            "reference_jpeg_encoding": {
+              "mae": 0.002656408053179344,
+              "rmse": 0.0037206665247789127,
+              "abs_quantiles": {
+                "0.5": 0.0019344554227941069,
+                "0.9": 0.0055051317401960675,
+                "0.95": 0.007067153033088247,
+                "0.99": 0.012221392463235295,
+                "0.999": 0.022649833409926434,
+                "1.0": 0.11255457261029411
+              },
+              "nonzero_fraction": 0.999948410495111,
+              "psnr_db": 48.587585062017126
+            },
+            "alpha_threshold_disagreements": 0,
+            "depth_positive_disagreements": 0
+          },
+          "visibility": {
+            "points": 14,
+            "geometry_disagreements": 0,
+            "renderer_disagreements": 0,
+            "max_uv_delta_px": 0.0,
+            "max_kp_depth_delta_m": 0.0,
+            "in_frame_points": 11,
+            "renderer_visible_points": 11
+          }
+        }
+      ],
+      "nht_units_per_metre": 0.06338622918035165
+    }
+  }
+}
