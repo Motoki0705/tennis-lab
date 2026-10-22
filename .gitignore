@@ -184,6 +184,7 @@ preprocessed/
 !docs/**/*.png
 !docs/**/*.jpg
 !docs/**/*.jpeg
+!assets/branding/*.png
 
 # Training queue + scratch experiment logs (issue #523 / MCMC)
 .training_queue/

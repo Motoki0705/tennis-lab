@@ -1,4 +1,7 @@
-# Tennis-Lab 🎾
+<div align="center">
+  <img src="assets/branding/tennis-lab-logo.png" width="280" alt="Tennis-Lab logo">
+  <h1>Tennis-Lab</h1>
+</div>
 
 <hr>
 <div align="center">
