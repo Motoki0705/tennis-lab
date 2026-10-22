@@ -30,7 +30,7 @@ function applySplit() {
   renderList();
   const selected =
     filteredGroups().find((g) => g.id === group?.id) || filteredGroups().find((g) => g.samples.length) || filteredGroups()[0];
-  if (selected) selectGroup(selected.id);
+  if (selected) selectGroup(selected.id, true);
   else {
     group = null;
     gallery.replaceChildren();
@@ -45,6 +45,7 @@ function inspectSample(sample) {
     `frame ${sample.frame} · ${sample.view}`,
     `target ${sample.target_court ?? "未記録"} · ${sample.target_coverage ?? "未記録"}`,
     `${sample.resolution.join("×")} · 採用 / ${group.split}`,
+    ...(group.diagnostics?.view ? [`HFOV ${group.diagnostics.view.hfov_degrees}° · 注視高 ${group.diagnostics.view.look_at_height_m}m · jitter ${group.diagnostics.view.look_at_jitter_radius_m}m`] : []),
     $("label-scope").value === "target"
       ? "描画: target限定 · 学習consumerのKP14"
       : "描画: 全court参考 · target可視数とは集計範囲が異なります",
@@ -477,7 +478,7 @@ function renderStats() {
   $("publication-badge").textContent =
     `${data.schema.replace("canonical_court_dataset_", "").toUpperCase()} · ${p.storage_format} · ${p.status}`;
   $("scene-source").textContent = data.scale
-    ? `${p.method} · k=${data.scale.density_level} · seed=${data.scale.seed} · 全てtrain。点線=計画曲線 / 点=採択 / 赤×=棄却。既存格子のviewは保存設定を再現。`
+    ? `${p.method} · n=${p.group_count} k=${data.scale.density_level} · jitter=${data.scale.recipe.jitter_radius_m}m · seed=${data.scale.seed} · 版${p.dataset_version.slice(0, 10)} · 全てtrain。点線=計画曲線 / 点=採択 / 赤×=棄却。既存格子のviewは保存設定を再現。`
     : `source: ${p.source_video?.split("/").pop() ?? "未記録"} → NHT 3DGS / ${data.courts.length}コート`;
   $("schema").textContent = data.schema;
   const cards = [
@@ -638,7 +639,7 @@ try {
   }
   for (const [value, label] of methods) {
     const option = document.createElement("option");
-    option.value = value; option.textContent = label;
+    option.value = value; option.textContent = label; option.title = label;
     $("method-filter").append(option);
   }
   $("method-filter").hidden = $("method-filter-label").hidden = !methods.size;

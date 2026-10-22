@@ -198,7 +198,7 @@ class LocalNHTRenderer:
                 output_directory=directory / "renders",
                 arbitrary_cameras=NHTRenderRequest(tuple(cameras)),
                 arbitrary_request_path=directory / "request.json",
-                executable=self.fingerprint["executable"],
+                executable=Path(self.fingerprint["executable"]),
                 batch_size=self.batch_size,
             )
             result = self.client.render(request, timeout_seconds=1800)

@@ -51,6 +51,7 @@ class ScaleReviewService(ReviewService):
                     "root": path.parent,
                     "version": version,
                     "scene": scene,
+                    "plan": read_json(contained(path.parent, scene["plan_path"])),
                 }
 
     def _entry(self, key: str) -> dict[str, Any]:
@@ -92,7 +93,7 @@ class ScaleReviewService(ReviewService):
                 "method": e["version"]["method"],
                 "dataset_version": e["version"]["dataset_version"],
                 "label": e["scene"]["scene_id"],
-                "method_label": f"{e['version']['method']} · seed {e['version']['generation_seed']} · {e['version']['dataset_version'][:10]}",
+                "method_label": f"{e['version']['method']} · n={e['scene']['trajectory_count']} k={e['scene']['density_level']} · jitter {e['plan']['recipe']['jitter_radius_m']}m · seed {e['version']['generation_seed']} · {e['version']['dataset_version'][:10]}",
                 "revision": self.revision(key),
             }
             for key, e in self.entries.items()

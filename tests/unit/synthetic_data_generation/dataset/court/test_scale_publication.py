@@ -1,9 +1,11 @@
 from dataclasses import replace
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
+from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
 from src.synthetic_data_generation.dataset.court.sample_store import open_court_store
 from src.synthetic_data_generation.dataset.court.scale import publication
 from src.synthetic_data_generation.dataset.court.scale.core import (
@@ -15,6 +17,10 @@ from src.synthetic_data_generation.dataset.court.scale.core import (
 )
 from src.synthetic_data_generation.dataset.court.scale.planning import (
     build_candidate_plan,
+)
+from src.synthetic_data_generation.dataset.court.scale.runtime import LocalNHTRenderer
+from src.synthetic_data_generation.dataset.court.scale.validation import (
+    validate_plan_geometry,
 )
 from src.synthetic_data_generation.rendering.nht import (
     NHTRenderArrays,
@@ -212,3 +218,82 @@ def test_render_microbatch_is_explicit_without_changing_legacy_argv(tmp_path):
     assert replace(legacy, batch_size=1).argv()[-2:] == ("--batch-size", "1")
     with pytest.raises(ValueError, match="batch_size"):
         replace(legacy, batch_size=0)
+
+
+def test_local_renderer_uses_a_path_for_the_pinned_executable(
+    tmp_path, captured_cameras, multi_court_layout
+):
+    # CPU-only public-boundary test: the client never starts a subprocess/GPU.
+    source = tmp_path / "source/export"
+    source.mkdir(parents=True)
+    (source / "scene.json").write_text("{}")
+    root = tmp_path / "output"
+    root.mkdir()
+    (root / "asset.json").write_bytes(
+        canonical_bytes({"source_scene_path": str(source / "scene.json")})
+    )
+    backend = object.__new__(LocalNHTRenderer)
+    backend.root = root
+    backend.batch_size = 1
+    executable = root / "nht-render"
+    executable.write_text("#!/bin/sh\nexit 0\n")
+    executable.chmod(0o755)
+    backend.fingerprint = {"executable": str(executable)}
+    backend.verified = {
+        "fixture": SimpleNamespace(
+            metric_adapter=MetricSceneAdapter.from_nht_scene_from_metric_scene(
+                np.eye(4)
+            )
+        )
+    }
+    calls = []
+
+    def fake_render(request, **kwargs):
+        calls.append(request)
+        return SimpleNamespace(records=[])
+
+    backend.client = SimpleNamespace(render=fake_render)
+    sample = plan(captured_cameras, multi_court_layout)["trajectory_groups"][0][
+        "samples"
+    ][0]
+    assert (
+        list(
+            backend(
+                {"scene_id": "fixture", "asset_manifest_path": "asset.json"}, [sample]
+            )
+        )
+        == []
+    )
+    assert isinstance(calls[0].executable, Path)
+    assert calls[0].batch_size == 1
+
+
+def test_reader_rejects_changed_runtime_and_mismatched_quality_policy(
+    tmp_path, captured_cameras, multi_court_layout, monkeypatch
+):
+    import copy
+
+    candidate = plan(captured_cameras, multi_court_layout)
+    incompatible = copy.deepcopy(candidate)
+    incompatible["strategy"]["numpy"] = "unsupported-runtime"
+    with pytest.raises(ValueError, match="runtime version"):
+        validate_plan_geometry(incompatible, multi_court_layout)
+    frozen = request(tmp_path, candidate, multi_court_layout, monkeypatch)
+    published = publication.execute_request(tmp_path, frozen, Renderer())
+    version = publication.read_json(published)
+    changed = request(
+        tmp_path,
+        candidate,
+        multi_court_layout,
+        monkeypatch,
+        quality=QualityPolicy(minimum_target_visible_kp=14),
+    )
+    version["request_path"] = changed.relative_to(tmp_path).as_posix()
+    version["request_sha256"] = publication.file_sha256(changed)
+    version["dataset_version"] = digest(
+        {k: v for k, v in version.items() if k != "dataset_version"}
+    )
+    inconsistent = tmp_path / "mismatched-quality.dataset.json"
+    inconsistent.write_bytes(canonical_bytes(version))
+    with pytest.raises(ValueError, match="quality policy"):
+        publication.load_dataset_version(inconsistent)

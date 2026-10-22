@@ -110,3 +110,20 @@ index・JPEG shardの変更はrevisionを変え、古い取得を拒否する。
 
 合成版・保存・生成コマンドの正本は[scale profile](../README.md#explicit-scale-comparison-profile)。
 方式やD2/D5/D6の最終採用はユーザーが比較後に親issueへ記録し、UIの閲覧から自動採用しない。
+
+ブラウザでのscale profileの受入検証は、生成済みの4scene×5方式を含むcatalogを指定した
+上記サーバーに対して実行する。GPUは使わない。target限定の14KP、採択0件の表示、
+開曲線の終点、method/scene/version切替、古い応答の破棄を検査し、B00の各版を撮影する。
+
+```bash
+PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chrome \
+  COURT_REVIEW_URL=http://127.0.0.1:8906 \
+  COURT_SCALE_SCREENSHOT_DIR=tmp/court-scale-review/run-03/screenshots \
+  node tests/e2e/synthetic_data_generation/court_scale_review_browser.cjs
+```
+
+比較データを生成したworktreeから起動すること。`src`はcwdからimportされる。
+`review-catalog.json`、`*.dataset.json`、JPEG store、スクリーンショットはgit管理外の
+同じoutput rootに残し、catalogの絶対path参照を保つ。密度追加版やjitter 0m版を同じ
+catalogへ渡すと、左上のn/k/jitter/seed/版で識別できる。採用を決める際は、
+候補／採択枚数や層の空きを含めて確認し、親issueへ採用方式とD2/D5/D6を記録する。

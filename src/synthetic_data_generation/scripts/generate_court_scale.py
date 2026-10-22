@@ -47,6 +47,12 @@ def main() -> None:
         help="METHOD=COUNT; fixed before rendering",
     )
     plan.add_argument(
+        "--scene-prefix",
+        action="append",
+        default=[],
+        help="METHOD:SCENE=COUNT; explicit per-scene trajectory prefix",
+    )
+    plan.add_argument(
         "--method-density",
         action="append",
         default=[],
@@ -122,6 +128,18 @@ def main() -> None:
         raise ValueError("Method-specific settings reference an unselected method.")
     if any(Path(sid).name != sid or sid in {".", ".."} for sid in args.scenes):
         raise ValueError("Invalid scene ID.")
+    scene_prefixes = {}
+    for text in args.scene_prefix:
+        selection, value = text.split("=", 1)
+        method_text, scene_id = selection.split(":", 1)
+        key = (TrajectoryMethod(method_text), scene_id)
+        if (
+            key in scene_prefixes
+            or method_text not in args.methods
+            or scene_id not in args.scenes
+        ):
+            raise ValueError("Invalid or duplicate scene-specific prefix setting.")
+        scene_prefixes[key] = int(value)
     fingerprint = renderer_fingerprint()
     inputs = [
         load_scene_inputs(
@@ -141,7 +159,9 @@ def main() -> None:
                 method=method,
                 recipe=recipe,
                 seed=args.generation_seed,
-                trajectory_count=prefixes.get(method, args.trajectory_count),
+                trajectory_count=scene_prefixes.get(
+                    (method, i["scene_id"]), prefixes.get(method, args.trajectory_count)
+                ),
                 density_level=densities.get(method, args.density_level),
                 cameras=i["cameras"],
                 layout=i["layout"],

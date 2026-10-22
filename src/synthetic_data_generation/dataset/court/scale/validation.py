@@ -8,14 +8,18 @@ from typing import Any
 
 from src.synthetic_data_generation.scene_contract import MultiCourtLayout
 
-from .core import GeometryRecipe, digest, stable_id
+from .core import GeometryRecipe, TrajectoryMethod, digest, stable_id
 from .curves import ArcMap, Curve
 from .planning import point_record
+from .strategies import strategy_definition
 
 
 def validate_plan_geometry(
     plan: dict[str, Any], layout: MultiCourtLayout
 ) -> dict[str, dict[str, Any]]:
+    TrajectoryMethod(plan["method"])
+    if plan["strategy"] != strategy_definition():
+        raise ValueError("Candidate plan RNG/Sobol/runtime version mismatch.")
     recipe = GeometryRecipe.from_dict(plan["recipe"])
     if digest(recipe.to_dict()) != plan["recipe_sha256"]:
         raise ValueError("Candidate plan recipe hash mismatch.")

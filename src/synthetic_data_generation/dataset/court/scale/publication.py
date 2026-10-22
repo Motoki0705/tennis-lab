@@ -26,7 +26,7 @@ from src.utils.data.image_record_store import (
 
 from .core import GeometryRecipe, QualityPolicy, canonical_bytes, digest, stable_id
 from .planning import PLAN_SCHEMA, candidate_plan_header, iter_trajectory_plans
-from .quality import evaluate_render
+from .quality import evaluate_render, quality_rejection_reasons
 from .validation import validate_plan_geometry, validate_record_geometry
 
 REQUEST_SCHEMA = "court_scale_condition_request_v1"
@@ -572,6 +572,7 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
         for k in ("method", "recipe_sha256", "generation_seed", "split")
     ):
         raise ValueError("Dataset version disagrees with its frozen request.")
+    quality = QualityPolicy(**request["quality"])
     if not version["scenes"] or len({s["scene_id"] for s in version["scenes"]}) != len(
         version["scenes"]
     ):
@@ -637,6 +638,7 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
         ):
             raise ValueError("Dataset-version accepted membership/counts disagree.")
         stored_ids = []
+        stored_record_hashes: dict[str, str] = {}
         for store_entry in scene["stores"]:
             store_root = contained(root, store_entry["path"], directory=True)
             if (
@@ -670,6 +672,7 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
                     planned_group(planned[record["sample_id"]])[record["sample_id"]],
                 )
                 stored_ids.append(record["sample_id"])
+                stored_record_hashes[record["sample_id"]] = digest(record)
         if len(stored_ids) != len(set(stored_ids)) or set(stored_ids) != set(accepted):
             raise ValueError("Unknown/duplicate membership or store point ID.")
         ledger_ids: list[str] = []
@@ -700,6 +703,28 @@ def load_dataset_version(path: Path, *, verify_images: bool = False) -> dict[str
                     item["record"],
                     planned_group(planned[item["sample_id"]])[item["sample_id"]],
                 )
+                qa = item["qa"]
+                if qa is None:
+                    if item["state"] != "geometry_rejected":
+                        raise ValueError(
+                            "Rendered QA ledger record has no diagnostics."
+                        )
+                elif (
+                    item["state"] == "geometry_rejected"
+                    or item["reasons"] != quality_rejection_reasons(qa, quality)
+                    or item["record"].get("qa") != qa
+                ):
+                    raise ValueError(
+                        "QA ledger disagrees with the frozen quality policy."
+                    )
+                if item["state"] == "accepted" and stored_record_hashes.get(
+                    item["sample_id"]
+                ) != digest(
+                    {k: v for k, v in item["record"].items() if k != "reasons"}
+                ):
+                    raise ValueError(
+                        "Stored sample and QA ledger sparse records disagree."
+                    )
             ledger_counts.update(_count(records, reused=False))
             reasons.update(reason for r in records for reason in r["reasons"])
             if completion["store"] is not None:

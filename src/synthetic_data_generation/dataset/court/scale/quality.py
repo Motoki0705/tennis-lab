@@ -104,16 +104,29 @@ def evaluate_render(
         if roi_holes is not None
         else None,
     }
-    reasons = list(record["reasons"])
-    if visible.visible_point_count == 0:
+    return {
+        **updated,
+        "qa": diagnostics,
+        "reasons": [
+            *record["reasons"],
+            *quality_rejection_reasons(diagnostics, policy),
+        ],
+    }
+
+
+def quality_rejection_reasons(qa: dict[str, Any], policy: QualityPolicy) -> list[str]:
+    """The same explicit predicate governs generation and persisted QA validation."""
+    reasons = []
+    if qa["all_visible_kp"] == 0:
         reasons.append("no_renderer_visible_semantic_point")
     if (
         policy.minimum_target_visible_kp is not None
-        and target_visible < policy.minimum_target_visible_kp
+        and qa["target_visible_kp"] < policy.minimum_target_visible_kp
     ):
         reasons.append("target_visible_kp_below_explicit_threshold")
     if policy.maximum_roi_hole_fraction is not None and (
-        roi_holes is None or roi_holes > policy.maximum_roi_hole_fraction
+        qa["roi_hole_fraction"] is None
+        or qa["roi_hole_fraction"] > policy.maximum_roi_hole_fraction
     ):
         reasons.append("roi_holes_above_explicit_threshold_or_no_roi")
-    return {**updated, "qa": diagnostics, "reasons": reasons}
+    return reasons

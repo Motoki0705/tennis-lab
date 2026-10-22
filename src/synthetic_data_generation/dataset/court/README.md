@@ -858,6 +858,8 @@ worktree; choose a fresh output root outside the read-only scenes root):
   --quality src/synthetic_data_generation/configs/dataset/court/scale_quality.json \
   --generation-seed 42 --trajectory-count 6 --density-level 0 \
   --method-prefix capture_local=16 --method-prefix open_bezier=4 --method-density open_bezier=1 \
+  --scene-prefix capture_local:B01=80 --scene-prefix capture_local:B02=157 \
+  --scene-prefix capture_local:B03=153 \
   --legacy-hull-center B01=false
 ```
 
@@ -906,8 +908,9 @@ version['scenes'] for store in scene['stores']]`. There is no latest-version or
 scene-owner discovery. Every row of these stores belongs to that condition's
 accepted membership, exactly once; the consumer must not mix roots from other
 versions. `scale.publication.load_dataset_version(path, verify_images=True)`
-validates membership, counts, hashes, v3 cameras/targets/KP and all JPEGs before
-training. `verify_images=False` omits JPEG decoding for bounded Review reads.
+validates membership, counts, hashes, the pinned RNG/Sobol runtime, the explicit
+QA policy, ledger/store record agreement, v3 cameras/targets/KP and all JPEGs
+before training. `verify_images=False` omits JPEG decoding for bounded Review reads.
 
 Stores use the existing `court_image_store_v1` JPEG shards plus sparse index and
 `canonical_court_dataset_v3` geometry. Metadata explicitly declares
