@@ -1,0 +1,158 @@
+"""Private display destinations and serialized pane lifecycle events."""
+
+from __future__ import annotations
+
+import fcntl
+import hashlib
+import json
+import os
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Any
+
+from parent.state import Store
+
+from .client import Herdr
+
+
+def state_root(env: Mapping[str, str]) -> Path:
+    base = Path(env.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+    if not base.is_absolute():
+        raise ValueError("XDG_STATE_HOME must be absolute")
+    return base / "tennis-lab-agents"
+
+
+def owner_token(identity: str) -> str:
+    return hashlib.sha256(identity.encode()).hexdigest()
+
+
+@contextmanager
+def locked(path: Path) -> Iterator[None]:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with path.open("a") as stream:
+        os.chmod(path, 0o600)
+        fcntl.flock(stream, fcntl.LOCK_EX)
+        yield
+
+
+def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
+    info = client.call("pane", "process-info", "--pane", pane["pane_id"])[
+        "process_info"
+    ]
+    stamps = []
+    for proc in info["foreground_processes"]:
+        if proc["name"] != pane.get("agent"):
+            continue
+        pid = int(proc["pid"])
+        stat = (Path("/proc") / str(pid) / "stat").read_text()
+        stamps.append({"pid": pid, "start": stat.rsplit(")", 1)[1].split()[19]})
+    if len(stamps) != 1:
+        raise ValueError("cannot identify exactly one foreground agent process")
+    return stamps
+
+
+def read_record(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    value = json.loads(path.read_text())
+    if not isinstance(value, dict) or value.get("version") != 1:
+        raise ValueError("invalid display coordination record")
+    return value
+
+
+class Guard:
+    def __init__(
+        self, env: Mapping[str, str], identity: str, client: Herdr, pane: dict[str, Any]
+    ) -> None:
+        self.root = state_root(env) / "herdr-labels"
+        self.owner = owner_token(identity)
+        self.client, self.pane = client, pane
+        self.scope = owner_token(client.socket_path())
+        self.stamp = process_stamp(client, pane)
+        self.destination = {
+            "version": 1,
+            "scope": self.scope,
+            "terminal_id": pane["terminal_id"],
+        }
+        key = owner_token(self.scope + ":" + pane["terminal_id"])
+        self.path = self.root / "panes" / (key + ".json")
+        self.runtime: dict[str, Any] = {}
+
+    def claim(self, *, allow_create: bool = False) -> None:
+        """Keep the confirmed parent pane even after display clear/SessionEnd."""
+        path = self.root / "owners" / (self.owner + ".json")
+        with locked(path.with_suffix(".lock")):
+            previous = read_record(path)
+            if previous is not None and previous != self.destination:
+                raise ValueError(
+                    "confirmed parent display belongs to another pane; "
+                    "inspect the assignment before explicitly rebinding"
+                )
+            if previous is None:
+                if not allow_create:
+                    raise ValueError(
+                        "parent display destination is unconfirmed; "
+                        "register the parent or explicitly bind the inspected pane"
+                    )
+                Store.write_json(path, self.destination)
+
+    def check(self) -> None:
+        if process_stamp(self.client, self.pane) != self.stamp:
+            raise ValueError("foreground agent changed during display synchronization")
+        if read_record(self.path) != self.runtime:
+            raise ValueError("pane session changed during display synchronization")
+
+    def require_native_ancestor(self) -> None:
+        """A lifecycle payload must originate from the pane's current agent."""
+        native = self.stamp[0]["pid"]
+        pid = os.getpid()
+        while pid > 1:
+            if pid == native:
+                return
+            stat = (Path("/proc") / str(pid) / "stat").read_text()
+            command = stat.split("(", 1)[1].rsplit(")", 1)[0]
+            if command == self.pane.get("agent"):
+                raise ValueError(
+                    "nested agent cannot report lifecycle for its ancestor's pane"
+                )
+            pid = int(stat.rsplit(")", 1)[1].split()[1])
+        raise ValueError("lifecycle hook is not a descendant of this pane's agent")
+
+    @contextmanager
+    def hold(
+        self, *, start: bool = False, end: bool = False, confirmed: bool = False
+    ) -> Iterator[Guard]:
+        # Every sync/clear/start/end uses this lock, including title lookup.
+        # A newer SessionStart either follows the old write or invalidates it
+        # before it can run; SessionEnd also fences late old-session commands.
+        with locked(self.path.with_suffix(".lock")):
+            if process_stamp(self.client, self.pane) != self.stamp:
+                raise ValueError(
+                    "foreground agent changed while awaiting the pane lock"
+                )
+            if confirmed:
+                self.claim(allow_create=True)
+            fresh = self.client.pane(self.pane["pane_id"])
+            if (fresh["terminal_id"], fresh.get("agent")) != (
+                self.pane["terminal_id"],
+                self.pane.get("agent"),
+            ):
+                raise ValueError("pane occupant changed while awaiting the pane lock")
+            self.pane = fresh
+            previous = read_record(self.path)
+            expected = {
+                "version": 1,
+                "owner": self.owner,
+                "processes": self.stamp,
+                "state": "active",
+            }
+            if start or previous is None:
+                Store.write_json(self.path, expected)
+            elif previous != expected:
+                raise ValueError("caller is no longer the active session in this pane")
+            self.runtime = expected
+            yield self
+            self.check()
+            if end:
+                Store.write_json(self.path, {**expected, "state": "ended"})

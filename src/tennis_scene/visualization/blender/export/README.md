@@ -71,6 +71,152 @@ world座標はコート座標（m、XY地面、+Z上）です。rendererと同�
 コート線・ネット形状の正本は`src/utils/schema/court.py`で、bundleに書き出します。
 既存bundleは上書きせず、途中失敗の出力は削除します。
 
+## 配置bundle（player placement）
+
+GVHMRパラメータからCPUでSMPL meshを復元し、本番と同じ`trace_player_placement`の
+`u_t`・`q_t`・`ψ_t`・`scale`を`tennis_scene_blender_placement_v1`として書き出します。
+画像推論・学習・Blenderは実行しません。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_placement \
+  store=<component store directory> identity=0 frames=2:120 t0=60 \
+  plate_camera_id=cam0 plate_video_path=<clip>/cam0.mp4 human_vis_threshold=0.15
+```
+
+`store`は`scene.json`を持つcomponent storeのdirectoryです。`identity`・`frames`・`t0`・
+`plate_camera_id`・`plate_video_path`・`human_vis_threshold`は必須の明示指定です。
+`human_vis_threshold`は本番pipelineの`person_observations.visibility_threshold`と同じ値を
+渡します。`frames`は1つのGVHMR区間内に収める必要があり、跨いだ場合は拒否します。
+`plate_video_path`はstore sourceの`plate_camera_id`の`video.sha256`と一致しなければ停止します。
+
+`StoreReader`で`camera_alignment`・`player_triangulation`・`gvhmr`・`body_placement`・
+`person_poses`・`person_identities`（v3のみ）を読み取り専用で読み、checksum・schema/version・
+依存の整合を検査します。camera順と時間軸を本番の`input_assembly`に合わせるため、
+`player_triangulation`の依存である`court_calibration`も読み取り専用で参照します。SMPL資産は`body_placement`の`identity.settings.assets`のpathと
+SHA-256を検証して束縛し、自動探索しません。配置configも保存済みの
+`identity.settings.config`を使い、source pixel scaleを本番と同じく適用します。
+
+```text
+bundle/
+├── manifest.json          # schema, fps, frames, t0, identity, gvhmr_camera_id,
+│                          # scale, coco17_skeleton, court, plate, provenance
+├── smpl_faces.npy
+├── body_local.pc2         # (F,V,3) u_t。無効frameは0
+├── joints_local.npy       # (F,17,3) J_src
+├── target_joints.npy      # (F,17,3) NaN=無効
+├── target_weights.npy     # (F,17)
+├── hip_position.npy       # (F,3) q_t
+├── yaw_correction.npy     # (F,) psi_t
+├── valid.npy              # (F,)
+├── placed_vertices_t0.npy # (V,3) 保存済み配置のt0をworld座標にした検証用頂点
+└── plate/%05d.jpg         # plate_camera_idの指定区間
+```
+
+`t0`は有効frameでなければなりません。再計算した
+`q_t + s·Rz(ψ_t)·u_t`は保存済み`body_placement`のworld頂点と、保存側で有効な全frame
+（t0を含む）で比較します。差が1e-4 m以上、または比較対象のworld座標が非有限なら、
+元frame・identity・頂点位置・最大差を報告して停止します。保存済み`root_valid`と
+再計算した`trace.valid`も`trace.frames`上で一致しなければ停止します。`trace.valid`と
+`smpl_valid`は同一視しません（mesh reprojection gateはtraceの外側です）。
+
+`plate_camera_id`は`camera_alignment`で校正済みのカメラから明示的に選び、校正がない
+カメラなら拒否します。manifestにはreveal exporterと同じ`width`・`height`・
+`camera.opencv`（K/R/t）・`camera.blender`（location/rotation_matrix/lens/sensor）を
+記録します。Blender cameraはrevealと同じ36.0 mmのhorizontal sensor widthで変換します。
+
+出力先が存在すれば上書きせず、途中失敗した新規bundleは削除します。
+
+### mode=rank（候補の列挙）
+
+`mode=rank` は `identity`・`frames`・`t0` を要求せず、store内の全identity・各GVHMR区間の窓を評価して `ranking.json` だけを新規出力します（上書き拒否。plate抽出・bundle作成はしません）。`store`・`plate_camera_id`・`plate_video_path`・`human_vis_threshold` は明示必須です。出力先は `rank_output`（既定は `.../<run-id>/ranking.json`）で指定します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.export_blender_placement \
+  mode=rank store=<component store directory> \
+  plate_camera_id=cam0 plate_video_path=<clip>/cam0.mp4 human_vis_threshold=0.15
+```
+
+窓長は `rank.window_seconds`（14.0）を `store.source.fps` で丸めたframe数、開始位置は `rank.stride_seconds`（1.0）で進め、GVHMR区間の内側だけに取ります。区間が窓より短い場合は全体を1窓として `shortened: true` にします。`rank.min_valid_ratio`（0.9）未満の窓を除外し、`t0` はvalidかつ三角測量有効関節15点以上のframeから、点数・`target_weights`和・窓中央・frame順で選びます。並びはyaw変化量降順・valid_ratio降順・start昇順です。出力する候補は、全体順位の上位 `rank.top_k`（10）件と、各identityの上位3件（候補が3件未満なら全件）の和集合です。重複は1件にまとめ、全体順位の順に並べます。選ばれた各候補には1始まりの全体順位 `overall_rank` と、選ばれた理由 `selected_by`（`overall`・`identity_quota` の一方、または両方をこの順の配列）を付けます。このため出力件数は `top_k` を超えることがあります。identityごとの候補が3件未満の場合と、全体の候補が `top_k` 未満の場合は、捏造せず不足を `ranking.json` の `quota`（`identity_shortages`・`capacity_shortage`）に明示します。
+
+各候補は identity・segment_id・gvhmr_camera_id・start/stop・t0・t0の有効関節数・valid_ratio・yaw_variation_deg・yaw_correction_range_deg・scale・shortened を持ちます。`ranking.json` にはstore index SHA-256・artifact ID・解決済みconfig・除外集計・保存済み `body_placement` との照合結果（最大差）を含めます。`plate_video_path` のSHA-256がstore sourceと一致しない場合、または保存配置と再計算したworld頂点が1e-4 m以上ずれる場合は停止します。
+
+### 配置shot（player placement）
+
+![Meiji clip_000 identity 0 の配置プレビュー](../../../../../assets/tennis_scene/blender_player_placement_meiji_cam1.gif)
+
+上は、Meiji `video_000/clip_000` を現行の標準pipelineで処理した store から作ったものです。
+入力は `identity=0 frames=62:901 t0=436 plate_camera_id=cam1 human_vis_threshold=0.15`、
+`--intro-plate` 付きで、採用の経緯は #1212 に記録しています。元の動画は1920×1080・30fps・840frameで、
+このGIFは10fps・幅720に縮小したものです。
+
+`bundle` の `u_t`・`joints_local`・`target_joints` から、スケール → yaw → 位置の順に
+三角測量の点群へ埋め込む30fpsのBlenderシーンを作ります。レンダリングはせず、
+シーン構築と保存だけを実行する場合は `--render` を付けません。出力先が既に存在すれば拒否します。
+`Body` は `body_local.pc2` を Mesh Cache で読み、段階中は `t0` のcache frameを固定します。
+`valid` が偽のframeでは `Body` と `SourceJoints` を非表示にし、補間で埋めません。
+視点は`t0`の左右hip差（COCO17の11/12）を`Rz(yaw_t0)`で回して`+Z`と外積した身体前方から、
+既定35度の斜め前に置きます。plate cameraの位置には依存しません。再生中もこの`t0`の身体前方を
+方位の基準に固定し、hipの移動には追従しながら45度だけゆっくりorbitします。各frameのbody yaw/poseは
+カメラ方位へ加えません。左右hip差が水平に取れない場合は推測せず停止します。
+
+```bash
+set -euo pipefail
+BUNDLE=/absolute/path/to/bundle
+SHOT_DIR=/absolute/path/to/new-placement-shot
+if [ -e "$SHOT_DIR" ]; then
+  printf 'Output already exists: %s\n' "$SHOT_DIR" >&2
+  exit 1
+fi
+blender --background --factory-startup --python-exit-code 1 -t 4 \
+  --python src/tennis_scene/visualization/blender/shots/player_placement.py -- \
+  --bundle "$BUNDLE" --output "$SHOT_DIR"
+```
+
+`--intro-plate` を付けると、`manifest.frames.start` から3秒ぶんのplateを30fpsへ再サンプルし、
+冒頭90frameの背景として追加してから全段階を後ろへずらします。3秒ぶんの入力frameが
+bundleに無い場合はループ・複製・凍結せず停止します。再サンプルした連番は
+`$SHOT_DIR/intro_plate/%05d.jpg` に保存します。`--samples`・`--resolution-percentage`・
+`--frame-step`・`--frames` はrevealと同じ意味です。入力fpsが30以外でも、再生区間は
+入力fpsの元の時間で30fpsへ再サンプルします（60fpsを30fpsとして遅く再生しません）。
+`--render` で `$SHOT_DIR/frames/%05d.png` に描画し、動画化は30fpsで行います。
+
+```bash
+ffmpeg -n -framerate 30 -start_number 0 -i "$SHOT_DIR/frames/%05d.png" \
+  -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/player_placement.mp4"
+```
+
+WSL2のLinux版Blenderは、`EGL_PLATFORM=surfaceless GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA`
+を指定しないと、EEVEEをCPU（llvmpipe）で描画します。描画の前に、`gpu.platform.renderer_get()` に
+`NVIDIA` が含まれることを確かめてください。
+
+```bash
+blender --background "$SHOT_DIR/tennis_placement.blend" --python-exit-code 1 -t 4 \
+  --python src/tennis_scene/visualization/blender/shots/validate_placement.py -- \
+  --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
+```
+
+validatorは、`appear`・`scale`・`yaw`・`position`・`final`の各段階の最初・中央・最後の
+frameで、`Body`の評価済みworld変形（scale・π周期を考慮したZ回転・location）を
+`body_transform_at`と照合し、同じframeのlocal頂点が`body_local.pc2`の`t0`サンプルに
+保たれていることも確認します（位置1e-4 m、角度1e-3度）。最終段階ではworld頂点を
+`placed_vertices_t0`とも照合します。再生区間では、validな全frameで
+`Body`の評価済みworld頂点を`hip_position[i] + scale·Rz(yaw_correction[i])·u[i]`
+（`i = timeline.pc2_frame_at(frame)`、`u`はpc2頂点。頂点は等間隔の最大64点）と比較し、
+入力fpsから30fpsへの対応を30fps・60fpsの両方で検証します。カメラ方位は、`t0`の身体前方を
+基準に`camera_azimuth_offset_deg`から`camera_orbit_deg`まで等間隔に回る絶対方位を
+`[-π, π)`へ折り返して直接比較し、開始frameの誤差で相殺しません。加えて`SourceJoints`の
+world座標、`Body`・`SourceJoints`のrenderとviewport両方の非表示mask、`intro_plate`の
+表示区間とplate元frameの対応を検査します。NaNは不一致として扱います。`validation.json`の
+`stages`には期待する境界の再掲ではなく、実シーンで照合したframeごとの誤差・最大値・合否を
+保存し、不一致なら非ゼロ終了します。`--frames`で部分区間にしたシーンは完全なタイムラインを
+検証できないため、検証にはsubset化していないシーンを使ってください。
+
+親の実Blender検証用の合成bundleは
+`tests/unit/tennis_scene/visualization/blender/test_player_placement.py` の
+`write_synthetic_bundle(output, fps=..., num_frames=...)` で生成できます。既定は
+非ゼロstart・`t0 != start`・非自明なscale/yaw/hip移動・valid穴・target欠損を含み、
+30fpsと60fpsの両方で3秒ぶん以上のplateを持ちます。
+
 ## 撮影・動画化
 
 GPUを使うレンダリングは共有training queue経由で実行します。

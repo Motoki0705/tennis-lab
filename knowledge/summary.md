@@ -1,7 +1,7 @@
-<!-- knowledge-review: e525d4c3aa44a0687b1d988ad79cbc9a5619c2f18b11222813a08c7a6f532d83 on 2026-10-23 -->
+<!-- knowledge-review: 537750e1805cdf7df4eb288337e7558d8e12422f350a2a5e084f102698646aa6 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計と、教師一致・RGB下限による可搬資産の採用判断を反映。alpha/depth差の記録と既存のモデル採用判断は維持）
+更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断、教師一致・RGB下限による可搬資産の採用判断と、Court発表素材の採用を反映。alpha/depth差の記録と既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -497,6 +497,16 @@ poseは学習するが主評価外、枚数は全採択候補の実測値とし�
 [設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
 #1352で実装してCourt Review Web UIからユーザーが選ぶ。D2/D5/D6も診断動画を材料に同UI比較で最終判断する。
 既存モデルの採用判断は維持し、診断標本の棄却率を本番へ流用せず、方式/品質の合意と全分布の試走を規模比較に先行させる。
+
+2026-10-21の[発表素材用の再探索](nodes/court_detection/000045-run-court-hybrid-fit-search-20261021.md)では、
+PROSACの向き修正を含む版と固定b863 checkpointを使い、以前と同じval先頭300件・入力hash・
+10px/3pxの条件で2候補を得た。KPだけのHは全件成立し、hybridの3px以下は前回と同じ282件だった。
+2候補のGPU描画は探索の誤差と一致し、動画・静止画・入力hashを検証した。
+2026-10-22のユーザー判断で、1位の`BiOnysEJdYE_2200`の描画済みGPU版を発表素材として採用し、
+次点は採用しない。採用素材・再生成手順は[描画runの記録](nodes/court_detection/000046-run-court-hybrid-fit-bionys-20261021.md)にまとめた。
+CPU参考版とは誤差差があるため、素材にはGPU版の値を添える。原因の切り分けはしていない。
+改善例を選んだ探索であり、独立testの精度優位や既存checkpointの昇格根拠にはしない。
+従来のcheckpoint採用判断と、会場分離・下流E2Eの評価が必要という結論は維持する。
 
 2026-10-13に[#983の4条件比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)を完了した。凍結DINOv3 S/S+/B/Lを同じ1024次元の後段、入力・split・seed42・20epochで学習し、各最小validation loss checkpointを同じ合成test886件・実画像val2211件で評価した。この1 seedではBが合成KP/SEG、LがLINE/semantic LINE/pose再投影で最良で、サイズによる一様な改善は見られなかった。実画像valの差は小さく、選択データを兼ねることも明示する。Lのcheckpoint再開に伴うRNG/sampler継続の制約を保持し、Sは同じ1画像の深度無効な2点がpose誤差総和の91.65%を占めた診断を添え、公式の全点平均を置き換えない。4条件の設定・checkpoint hash・学習曲線・同一画像36パネルと再現記録を保存し、既存の採用判断は変更しない。次に有効なのはB/Lの複数seedとpose投影の安定性の検証で、追加学習は開始していない。[速度診断](nodes/court_detection/000042-group-i983-court-throughput-s42.md)はデータのVM内配置と、S+のbatch8→16による約3%の画像/秒改善を示し、共有後段の計算と保存処理が改善候補である。本比較のbatch8/20epochは維持した。
 

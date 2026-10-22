@@ -16,7 +16,7 @@
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 

@@ -40,6 +40,12 @@ EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
     "src.tennis_scene.visualization.blender.shots.validate_reveal": (
         "Blender bundled Python; validates a saved scene without repo imports."
     ),
+    "src.tennis_scene.visualization.blender.shots.player_placement": (
+        "Blender bundled Python; builds the placement shot from a plain-file bundle."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_placement": (
+        "Blender bundled Python; validates a saved placement scene without repo imports."
+    ),
 }
 
 
@@ -181,6 +187,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
+    "src.tasks.court_detection.scripts.visualize_hybrid_fit": "court_detection.hybrid_fit",
     "src.tasks.court_detection.scripts.visualize_learning_stages": "court_detection.learning_stages",
     "src.tasks.player_detection.scripts.generate_dataset": "player_detection.generate_dataset",
     "src.tasks.player_detection.scripts.train": "player_detection.train",
@@ -212,6 +219,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_blender": "tennis_scene.blender_export",
     "src.tennis_scene.scripts.export_blender_diffusion": "tennis_scene.export_blender_diffusion",
+    "src.tennis_scene.scripts.export_blender_placement": "tennis_scene.blender_placement",
     "src.tennis_scene.scripts.export_blender_rays": "tennis_scene.export_blender_rays",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
@@ -241,6 +249,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.training.runner.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
+    "src.tasks.court_detection.scripts.visualize_hybrid_fit": "src.tasks.court_detection.visualization.presentation.hybrid_fit_config.validate_hybrid_fit_boundary",
     "src.tasks.court_detection.scripts.visualize_learning_stages": "src.tasks.court_detection.visualization.presentation.configuration.validate_learning_stages_boundary",
     "src.tasks.player_detection.scripts.generate_dataset": "src.tasks.player_detection.configuration.validate_generate_boundary",
     "src.tasks.player_detection.scripts.train": "src.tasks.player_detection.configuration.validate_train_boundary",
@@ -272,6 +281,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_blender": "src.tennis_scene.configuration.validate_blender_export_boundary",
     "src.tennis_scene.scripts.export_blender_diffusion": "src.tennis_scene.visualization.blender.export.diffusion_configuration.validate_diffusion_boundary",
+    "src.tennis_scene.scripts.export_blender_placement": "src.tennis_scene.configuration.validate_blender_placement_boundary",
     "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
@@ -745,6 +755,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
+    _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize_hybrid_fit"),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize_learning_stages"),
     _runtime_boundary(
         "player_detection", "src.tasks.player_detection.scripts.generate_dataset"
@@ -792,6 +803,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_diffusion"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_placement"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_rays"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),

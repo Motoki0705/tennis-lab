@@ -8,8 +8,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import Any, cast
+from typing import Any
 
+from parent.execution import require_requirement_targets, validate_authorization
 from parent.policy import digest, nonempty, number, object_value
 from review_policy import parse_finding
 
@@ -34,7 +35,7 @@ REQUEST_KEYS = {
 
 
 def exact(value: Any, keys: set[str]) -> dict[str, Any]:
-    data = cast(dict[str, Any], object_value(value))
+    data = object_value(value)
     if set(data) != keys:
         raise ValueError(f"expected exactly {sorted(keys)}, got {sorted(data)}")
     return data
@@ -75,10 +76,22 @@ def snapshots(value: Any) -> list[dict[str, Any]]:
 
 
 def request_manifest(value: Any, *, instructed: bool = True) -> dict[str, Any]:
-    keys = REQUEST_KEYS | ({"review_state"} if instructed else set())
-    data = exact(value, keys)
-    if type(data["schema_version"]) is not int or data["schema_version"] != 1:
+    version = object_value(value).get("schema_version")
+    if type(version) is not int or version not in {1, 2}:
         raise ValueError("unknown review-request schema")
+    keys = REQUEST_KEYS | ({"review_state"} if instructed else set())
+    if version == 2:
+        keys |= {"authorization", "requirements"}
+    data = exact(value, keys)
+    if version == 2:
+        validate_authorization(data["authorization"])
+        requirements = object_value(data["requirements"])
+        if str(data["parent_issue"]) not in requirements:
+            raise ValueError("review requires the parent requirements digest")
+        for n, sha in requirements.items():
+            if not re.fullmatch(r"[1-9][0-9]*", n):
+                raise ValueError("review requirements must name issue numbers")
+            hex_value(sha, 64)
     parent = number(data["parent_issue"])
     if not re.fullmatch(rf"parent-{parent}-[0-9a-f]{{32}}", str(data["review_run_id"])):
         raise ValueError("invalid parent review run ID")
@@ -92,7 +105,7 @@ def request_manifest(value: Any, *, instructed: bool = True) -> dict[str, Any]:
 
 
 def path_value(value: Any) -> str:
-    path = cast(str, nonempty(value, "path"))
+    path = nonempty(value, "path")
     if (
         PurePosixPath(path).is_absolute()
         or any(p in {".", ".."} for p in path.split("/"))
@@ -186,6 +199,8 @@ def records(
         if object_value(comment.get("user")).get("login") != trusted_login:
             continue
         line = (comment.get("body") or "").split("\n", 1)[0].rstrip("\r")
+        if line.startswith("<!-- parent-review:v") and not line.startswith(PREFIX):
+            raise ValueError("unknown parent-review marker version")
         if not line.startswith(PREFIX):
             continue
         if not line.endswith(" -->"):
@@ -298,6 +313,11 @@ def validate_result(value: Any) -> dict[str, Any]:
                 ],
             }
         )
+    require_requirement_targets(
+        request,
+        {n for p in data["prs"] for n in p["child_issues"]},
+        exact=data["status"] == "succeeded",
+    )
     parsed = parse_output(
         json.dumps(
             {

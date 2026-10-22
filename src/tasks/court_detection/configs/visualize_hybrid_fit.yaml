@@ -1,0 +1,31 @@
+defaults:
+  - paths: default
+  - data/source@source: tennis_court_detector
+  - _self_
+
+mode: search
+checkpoint: court_detection/multiscale_depth3/b863df1f01f0.ckpt
+device: cuda
+sample_id: null
+input:
+  kind: tennis_court_detector
+  path: null
+search:
+  min_kp_only_error_px: 10
+  max_hybrid_error_px: 3
+  max_samples: 300
+  top_k: 20
+output:
+  width: 1920
+  height: 1080
+  fps: 30
+  gif_width: 960
+  gif_fps: 15
+run:
+  output_dir: ${tennis_output:court_detection,visualize,hybrid_fit,${tennis_run_id:}}
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false

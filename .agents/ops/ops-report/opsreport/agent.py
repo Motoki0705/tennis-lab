@@ -85,6 +85,7 @@ def execute(run: AgentRun) -> str:
         "--mode", "read-only",
         "--profile", "ops_report",
         "--log-dir", str(run.log_dir),
+        "--run-dir", str(run.log_dir / "agent-runtime"),
     ]  # fmt: skip
     shell.run_process_group(cmd, cwd=run.repo_root, timeout=None)
     return run.out_file.read_text(encoding="utf-8")

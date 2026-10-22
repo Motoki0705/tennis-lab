@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from unittest.mock import Mock
 
 import numpy as np
@@ -102,6 +102,7 @@ def geometry_prediction(*, status: str = "ok") -> CourtPrediction:
         status,
         baseline,
         None,
+        (),
         None,
         3,
         1,
@@ -220,7 +221,7 @@ def test_hybrid_receives_one_forward_original_pixel_kp_and_native_line(
         )
         result = geometry_prediction().homography
         assert result is not None
-        return result
+        return cast(HybridHomographyResult, result)
 
     monkeypatch.setattr(module, "estimate_hybrid_homography", fit)
     result = predictor.predict(Image.new("RGB", (31, 17)))
