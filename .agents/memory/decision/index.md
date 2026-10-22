@@ -7,3 +7,4 @@
 - [学習などの長時間ジョブは、定期的な再開ではなくプロセスの監視で待つ](wait-for-long-jobs-by-event.md) (claude)
 - [注釈workerのeffortはmaxに固定する](annotation-worker-effort-max.md)
 - [テスト用の値を本番planに使わない](keep-test-values-out-of-production-plans.md)
+- [親セッションは、依存関係が許す子issueを並列に起動する](launch-children-in-parallel.md)
