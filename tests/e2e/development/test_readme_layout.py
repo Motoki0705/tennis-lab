@@ -47,9 +47,11 @@ def test_readme_has_language_hub_and_license_badges_in_three_centered_rows(
 ) -> None:
     filename, document = readme
     header = document.partition("\n## ")[0]
-    badges = re.search(r'<div align="center">(.*?)</div>', header, re.DOTALL)
+    assert "<hr>" in header, f"{filename}: missing rule above the badges"
+    badges = re.search(
+        r'<div align="center">(.*?)</div>', header.split("<hr>", 1)[1], re.DOTALL
+    )
     assert badges is not None, f"{filename}: missing centered badges"
-    assert "<hr>" in header[: badges.start()]
     suffix = ".ja.md" if filename.endswith(".ja.md") else ".md"
     expected_rows = (
         ["README.md", "README.ja.md"],
@@ -71,6 +73,22 @@ def test_readme_has_language_hub_and_license_badges_in_three_centered_rows(
         assert len(sources) == len(destinations)
         assert all(source.startswith("https://img.shields.io/") for source in sources)
         assert len(re.findall(r'alt="[^"]+"', row)) == len(destinations)
+
+
+def test_readme_opens_with_the_centered_logo_and_title(
+    readme: tuple[str, str],
+) -> None:
+    filename, document = readme
+    logo = "assets/branding/tennis-lab-logo.png"
+    above_rule = document.partition("<hr>")[0]
+    block = re.fullmatch(
+        r'<div align="center">\s*<img\b([^>]*)>\s*<h1>Tennis-Lab</h1>\s*</div>\s*',
+        above_rule,
+    )
+    assert block is not None, f"{filename}: logo block must precede the badges"
+    assert f'src="{logo}"' in block.group(1)
+    assert re.search(r'alt="[^"]+"', block.group(1)) is not None
+    assert (REPOSITORY_ROOT / logo).is_file()
 
 
 def test_readme_has_five_numbered_sections_and_shared_explicit_anchors(
