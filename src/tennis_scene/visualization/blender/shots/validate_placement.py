@@ -37,10 +37,10 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent))
 
 from player_placement import (  # noqa: E402
+    INTRO_PLATE_OBJECT,
     JOINT_COUNT,
     OUTPUT_FPS,
     TOLERANCE_M,
-    INTRO_PLATE_OBJECT,
     PlacementShot,
     PlacementTimeline,
     _camera_direction,

@@ -936,7 +936,6 @@ def _build_body(
     for joint, obj in enumerate(target_joints_objects):
         common._key_visibility(obj, target_visibility[joint])
 
-    replay_start = timeline.stage_bounds()["replay"][0]
     for frame in range(total_frames):
         body_scale, body_yaw, body_location = body_transform_at(
             timeline,
