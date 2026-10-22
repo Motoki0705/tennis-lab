@@ -96,7 +96,15 @@ class Runtime:
             )
         )
 
-    def spawn(self, store_dir: Path, key: str, job_id: str, directory: Path) -> None:
+    def spawn(
+        self,
+        store_dir: Path,
+        key: str,
+        job_id: str,
+        directory: Path,
+        *,
+        schedule_dir: Path,
+    ) -> None:
         # The worker claims under Store.locked(). Two launchers may reach Popen
         # after a crash; only one can transition a reservation to starting.
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -107,6 +115,8 @@ class Runtime:
                     str(OPS / "dispatcher/worker.py"),
                     "--store",
                     str(store_dir),
+                    "--state-dir",
+                    str(schedule_dir),
                     "--key",
                     key,
                     "--job",

@@ -248,6 +248,7 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 `python -m dispatcher` はschedule・割当・runtime管理の入口。systemd用の同じ入口は `dispatch.py`。
 `service.py` は判定agentの予定実行、`schedule.py` はAsia/Tokyoのslotとrun journal、
 `supervisor.py` はregistry内の担当予約・イベント・実行枠、`worker.py` / `runtime.py` は共通ランナーへの接続を担当する。
+`state.py` は同じparent registryを読み、欠落時の再初期化を防ぐ。担当台帳は増やさない。
 `outcomes.py` は割当・controller復旧・表示で共通のv2結果検査を行う。
 上の `judgement.py` の明示入口は維持する。日程や実行枠を判定promptへ持ち込まない。
 
@@ -338,6 +339,20 @@ runtime記録欠落・identity不明・回収未確認はrecovery_requiredで枠
 sessionが取れなかったrunから別sessionを自動生成しない。このケースは実プロセスと成果物を人間が照合する。
 手動handoffで稼働中のregistry identityを書き換えない。旧workerの終了確認を先に行う。
 破損stateや起動記録の復元では原本を退避し、実プロセス・runtimeとの照合結果を残す。lockファイルを削除して排他を回避しない。
+
+### registry欠落からの復旧
+
+初回initはscheduleとjudgements/workersの記録がない場合だけ、欠落したregistryを初期状態として扱う。
+registryを先に保存してからdisabledのscheduleを作る。初期状態の空registryや、まだ一度も担当を予約していない
+判定履歴だけがある空registryは正常である。scheduleまたはrun/worker記録がある状態でregistryが欠落した場合、
+あるいはworker/担当予約の履歴があるのにregistryが空の場合は、初回起動とみなさない。
+statusを含むdispatcherの全操作とworker取得をエラーで止め、registry・scheduleを保存せず、判定・割当・起動もしない。
+
+このエラー時はtimerとsupervisorへの新規要求を外側から止め、欠落前のregistry・schedule・privateなworkers/judgements記録を
+退避する。生存中の親・子・runnerと各runtime identity、担当generation・委任ID・予約を照合し、確認できるバックアップから
+registryを復元する。正常に戻るまで実行枠が空いたと解釈しない。復元できない場合は人間が実プロセスと成果物を照合し、
+安全な停止と担当の復旧方法を決める。空registryの作成、schedule/run/lockの削除、initのやり直しで回避しない。
+復元後はstatusと`supervise --once`で既存runへ結合されることを確認してから、有効化・再開する。
 
 判定controllerの中断は、保存済みresultとruntimeを照合できれば再利用する。
 欠落時は実プロセス不在を確認した証拠ファイルで `recover-judgement --evidence-file tmp/recovery.md` を明示実行する。

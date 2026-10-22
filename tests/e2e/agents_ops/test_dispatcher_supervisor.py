@@ -30,6 +30,7 @@ class DispatchHarness:
         self.clock = importlib.import_module("dispatcher.schedule")
         self.schedule = self.clock.Schedule(tmp / "dispatcher")
         with self.h.store.locked():
+            self.h.store.save()
             self.schedule.initialize(
                 {
                     "repo": "o/r",
@@ -645,6 +646,57 @@ def test_corrupt_state_is_not_reset(d: DispatchHarness, which: str) -> None:
     assert path.read_bytes() == before
 
 
+@pytest.mark.parametrize("loss", ["missing", "empty"])
+def test_lost_registry_with_live_worker_and_waiting_candidate_blocks_all_operations(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, loss: str
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    d.prepare(1, 2)
+    assert d.control.assign() == [1]
+    d.accepted()
+    assert d.state()["runs"][0]["candidates"]["2"]["state"] == "capacity_wait"
+    with subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"], cwd=d.h.work
+    ) as worker:
+        try:
+            row = d.row()
+            identity = importlib.import_module("dispatcher.runtime").process_identity(
+                worker.pid
+            )
+            assert d.mod.alive(identity)
+            d.job(row)["worker"] = identity
+            d.update(row)
+            schedule_before = d.schedule.path.read_bytes()
+            if loss == "missing":
+                d.h.store.path.unlink()
+            else:
+                d.h.store.path.write_text('{"version": 1, "parents": {}}\n')
+            registry_before = d.h.store.path.read_bytes() if loss == "empty" else None
+            operations = [
+                lambda: d.control.reconcile(),
+                lambda: d.control.reconcile(stop=True),
+                lambda: d.control.assign(),
+                lambda: d.control.launch_reserved(),
+                lambda: d.control.status(d.now("2026-10-22T09:00:00+09:00")),
+                lambda: d.control.resume(1, "CI完了"),
+                lambda: d.service.stop_judgement(d.h.store, d.schedule),
+                lambda: d.service.recover_judgement(d.h.store, d.schedule, "確認"),
+                lambda: d.run("2026-10-22T20:00:00+09:00"),
+            ]
+            for operation in operations:
+                with pytest.raises(ValueError, match="registry.*README"):
+                    operation()
+                assert d.schedule.path.read_bytes() == schedule_before
+                assert (
+                    d.h.store.path.read_bytes() if d.h.store.path.exists() else None
+                ) == registry_before
+                assert d.mod.alive(identity)
+            assert len(d.h.calls.read_text().splitlines()) == 1
+        finally:
+            worker.terminate()
+            worker.wait(timeout=5)
+
+
 def test_disable_and_shutdown_do_not_abandon_live_child(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -893,8 +945,20 @@ def test_real_runner_worker_claim_stop_and_same_session_resume(
     directory = Path(job["directory"])
     runtime = importlib.import_module("dispatcher.runtime").Runtime(Path(job["runner"]))
     # Duplicate launchers race, but only one claims and starts a real wrapper.
-    runtime.spawn(d.h.store.directory, "o/r#1", job["id"], directory)
-    runtime.spawn(d.h.store.directory, "o/r#1", job["id"], directory)
+    runtime.spawn(
+        d.h.store.directory,
+        "o/r#1",
+        job["id"],
+        directory,
+        schedule_dir=d.schedule.directory,
+    )
+    runtime.spawn(
+        d.h.store.directory,
+        "o/r#1",
+        job["id"],
+        directory,
+        schedule_dir=d.schedule.directory,
+    )
 
     def initialized() -> bool:
         path = directory / "runtime/result.json"
@@ -1119,6 +1183,7 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
     )
     assert initial.returncode == 0, initial.stderr
     assert json.loads(initial.stdout)["enabled"] is False
+    assert json.loads((parent / "registry.json").read_text())["parents"] == {}
     assert (
         json.loads(cli("run", "--now", "2026-10-22T08:00:00+09:00").stdout)["result"]
         == "disabled"
@@ -1133,6 +1198,14 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
     assert error.returncode == 2
     assert "positive integers" in error.stderr
     assert str(schedule) not in error.stdout
+    before = (schedule / "schedule.json").read_bytes()
+    (parent / "registry.json").unlink()
+    for command in (("status",), ("enable",), ("supervise", "--once"), ("shutdown",)):
+        error = cli(*command)
+        assert error.returncode == 2
+        assert "registry" in error.stderr and "README" in error.stderr
+        assert not (parent / "registry.json").exists()
+        assert (schedule / "schedule.json").read_bytes() == before
 
 
 def test_stop_during_popen_stops_launcher_before_runtime_record(

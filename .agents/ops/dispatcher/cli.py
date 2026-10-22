@@ -15,12 +15,13 @@ from typing import Any
 
 from parent.github import GitHub
 from parent.policy import nonempty
-from parent.state import Store, state_directory
+from parent.state import state_directory
 
 from .agent import RUNNER
 from .runtime import gate, load
 from .schedule import Schedule, local_time
 from .service import recover_judgement, run_due, stop_judgement
+from .state import DispatchStore
 from .supervisor import Supervisor
 
 
@@ -79,13 +80,15 @@ def limits(parents: int, children: int) -> None:
 
 
 def execute(args: argparse.Namespace) -> dict[str, Any]:
-    store = Store((args.parent_state_dir or state_directory()).resolve())
-    schedule = Schedule(args.state_dir or store.directory.parent / "dispatcher")
+    parent_directory = (args.parent_state_dir or state_directory()).resolve()
+    schedule = Schedule(args.state_dir or parent_directory.parent / "dispatcher")
+    store = DispatchStore(parent_directory, schedule)
     if args.command == "init":
         limits(args.max_parents, args.max_children)
         if not math.isfinite(args.judgement_timeout) or args.judgement_timeout <= 0:
             raise ValueError("judgment timeout must be finite and positive")
         with store.locked():
+            store.save()
             schedule.initialize(
                 {
                     "repo": nonempty(args.repo, "repository").casefold(),

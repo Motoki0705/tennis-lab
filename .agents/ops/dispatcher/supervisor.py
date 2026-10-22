@@ -19,6 +19,7 @@ from . import judgement
 from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load
 from .schedule import Schedule, latest_slot, next_slot
+from .state import DispatchStore
 
 PHASES = {
     "reserved",
@@ -136,7 +137,11 @@ def unstarted(job: dict[str, Any]) -> bool:
 
 class Supervisor:
     def __init__(self, gh: GitHub, store: Store, schedule: Schedule) -> None:
-        self.gh, self.store, self.schedule = gh, store, schedule
+        self.gh, self.store, self.schedule = (
+            gh,
+            DispatchStore(store.directory, schedule),
+            schedule,
+        )
 
     def _session(self, key: str, row: dict[str, Any]) -> ParentSession:
         if key.rpartition("#")[0] != self.gh.repo.casefold():
@@ -764,6 +769,7 @@ class Supervisor:
                             key,
                             job["id"],
                             Path(job["directory"]),
+                            schedule_dir=self.schedule.directory,
                         )
 
     def status(self, now: datetime) -> dict[str, Any]:

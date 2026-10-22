@@ -16,6 +16,7 @@ from . import judgement
 from .outcomes import read_result, validate_result
 from .runtime import Runtime, alive, gate, process_identity
 from .schedule import Schedule, latest_slot
+from .state import DispatchStore
 
 
 def reconcile_judgement(state: dict[str, Any]) -> bool:
@@ -67,6 +68,7 @@ def run_due(
     *,
     explicit: bool = False,
 ) -> dict[str, Any]:
+    store = DispatchStore(store.directory, schedule)
     with gate(schedule.directory / "judgement.lock") as fd:
         if fd is None:
             return {"result": "busy"}
@@ -158,6 +160,7 @@ def run_due(
 
 
 def stop_judgement(store: Store, schedule: Schedule) -> None:
+    store = DispatchStore(store.directory, schedule)
     with store.locked():
         state = schedule.read()
         state["enabled"] = False
@@ -180,6 +183,7 @@ def stop_judgement(store: Store, schedule: Schedule) -> None:
 def recover_judgement(store: Store, schedule: Schedule, evidence: str) -> None:
     from parent.policy import nonempty
 
+    store = DispatchStore(store.directory, schedule)
     with gate(schedule.directory / "judgement.lock") as fd:
         if fd is None:
             raise ValueError(

@@ -10,21 +10,21 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from parent.state import Store  # noqa: E402
-
 from dispatcher.runtime import Runtime, gate, process_identity  # noqa: E402
 from dispatcher.schedule import Schedule  # noqa: E402
+from dispatcher.state import DispatchStore  # noqa: E402
 from dispatcher.supervisor import event, managed  # noqa: E402
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--store", type=Path, required=True)
+    parser.add_argument("--state-dir", type=Path, required=True)
     parser.add_argument("--key", required=True)
     parser.add_argument("--job", required=True)
     args = parser.parse_args()
     os.umask(0o077)
-    store = Store(args.store)
+    store = DispatchStore(args.store, Schedule(args.state_dir))
     with store.locked():
         dispatch = managed(store.parents[args.key])
         if dispatch is None:
