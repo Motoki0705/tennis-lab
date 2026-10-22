@@ -17,9 +17,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from src.tennis_scene.visualization.blender.shots import (
-    validate_placement as validator,
-)
+import src.tennis_scene.visualization.blender.shots.validate_placement as validator
 from src.tennis_scene.visualization.blender.shots.player_placement import (
     OUTPUT_FPS,
     PlacementShot,
