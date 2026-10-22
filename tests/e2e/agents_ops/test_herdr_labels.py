@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -49,15 +50,30 @@ elif args[:2] == ['pane', 'process-info']:
     result = {'process_info':{'foreground_processes':[{'pid':state['pid'], 'name':pane['agent']}]}}
 elif args == ['agent', 'list']:
     result = {'agents':list(state['panes'].values())}
+elif args == ['session','list','--json']:
+    result = {'sessions':[{'name':'default','default':True,'running':True,'socket_path':'/fake/herdr.sock'}]}
 elif args[:2] not in (['pane','get'], ['pane','current']):
     raise SystemExit('unexpected Herdr command')
 path.write_text(json.dumps(state))
+if os.environ.get('LABEL_WAITING_MARKER') and args[:2] == ['pane','process-info']:
+    Path(os.environ['LABEL_WAITING_MARKER']).touch()
 if result is not None: print(json.dumps({'result':result}))
 """
 
 FAKE_GH = r"""
-import json,os,sys
+import json,os,sys,time
 from pathlib import Path
+if os.environ.get('LABEL_GH_ENTERED'):
+    Path(os.environ['LABEL_GH_ENTERED']).touch()
+    deadline=time.monotonic()+10
+    while not Path(os.environ['LABEL_GH_RELEASE']).exists():
+        if time.monotonic()>deadline: raise SystemExit('test release timed out')
+        time.sleep(.01)
+if os.environ.get('LABEL_PREPARE_RACE'):
+    p=Path(os.environ['LABEL_FAKE_STATE']);data=json.loads(p.read_text())
+    if os.environ['LABEL_PREPARE_RACE']=='process': data['pid']=os.getppid()
+    else: data['panes']['w1:p1'].update(display_agent='#99 · 親',tokens={'tl_owner':'new-owner'})
+    p.write_text(json.dumps(data))
 if os.environ.get('LABEL_REGISTRY_RACE'):
     p=Path(os.environ['XDG_STATE_HOME'])/'tennis-lab-agents/parent-sessions/registry.json'
     data=json.loads(p.read_text());data['parents']['o/r#42']['status']='ended';p.write_text(json.dumps(data))
@@ -110,6 +126,19 @@ class Labels:
     def mutations(self) -> list[list[str]]:
         return [x for x in self.read()["calls"] if "report-metadata" in x]
 
+    def hook(
+        self, event: str, identity: str = "test-owner"
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            input=json.dumps({"hook_event_name": event, "session_id": identity}),
+            text=True,
+            capture_output=True,
+            env=self.env,
+            timeout=20,
+            check=False,
+        )
+
 
 @pytest.fixture
 def labels(tmp_path: Path) -> Labels:
@@ -134,6 +163,7 @@ def labels(tmp_path: Path) -> Labels:
         CLAUDE_CODE_SESSION_ID="test-owner",
         HERDR_ENV="1",
         HERDR_PANE_ID="w1:p1",
+        HERDR_SOCKET_PATH="/fake/herdr.sock",
         LABEL_FAKE_STATE=str(state),
     )
     value = Labels(
@@ -163,6 +193,18 @@ def labels(tmp_path: Path) -> Labels:
         }
     )
     value.set_registry({"o/r#42": value.owner()})
+    # Model a parent whose pane was confirmed during register/initial migration.
+    owners = tmp_path / "state/tennis-lab-agents/herdr-labels/owners"
+    owners.mkdir(parents=True)
+    (owners / (hashlib.sha256(b"claude:test-owner").hexdigest() + ".json")).write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "scope": hashlib.sha256(b"/fake/herdr.sock").hexdigest(),
+                "terminal_id": "term-a",
+            }
+        )
+    )
     return value
 
 
@@ -396,6 +438,168 @@ def test_claude_hooks_use_real_payload_and_never_release_registry(
     assert "export CLAUDE_CODE_SESSION_ID=test-owner" in export.read_text()
     assert labels.registry.read_bytes() == original
     assert "display_agent" not in labels.read()["panes"]["w1:p1"]
+
+
+@pytest.mark.parametrize("ending", ["clear", "SessionEnd"])
+def test_clearing_parent_display_does_not_authorize_helper(
+    labels: Labels, ending: str
+) -> None:
+    assert labels.run("sync").returncode == 0
+    result = labels.run("clear") if ending == "clear" else labels.hook(ending)
+    assert result.returncode == 0, result.stderr
+    state = labels.read()
+    state["panes"]["w1:p2"].update(agent="claude", display_agent="#42 · 関連")
+    labels.write(state)
+    helper_env = {**labels.env, "HERDR_PANE_ID": "w1:p2"}
+    result = labels.run("sync", env=helper_env)
+    assert result.returncode == 2
+    assert "confirmed parent display" in result.stderr
+    assert labels.read()["panes"]["w1:p2"]["display_agent"] == "#42 · 関連"
+
+
+def test_unconfirmed_destination_requires_explicit_binding(labels: Labels) -> None:
+    owners = labels.registry.parents[1] / "herdr-labels/owners"
+    next(owners.glob("*.json")).unlink()
+    assert labels.run("sync").returncode == 2
+    assert labels.hook("SessionStart").returncode == 1
+    assert not labels.mutations()
+    bound = labels.run(
+        "bind", "--herdr-session", "default", "--pane", "w1:p1", "--terminal", "term-a"
+    )
+    assert bound.returncode == 0, bound.stderr
+    assert labels.run("sync").returncode == 0
+
+
+def test_end_fences_old_commands_and_start_restores_same_parent(labels: Labels) -> None:
+    assert labels.run("sync").returncode == 0
+    assert labels.hook("SessionEnd").returncode == 0
+    count = len(labels.mutations())
+    assert labels.run("sync").returncode == 2
+    assert len(labels.mutations()) == count
+    assert labels.hook("SessionStart").returncode == 0
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
+
+
+def test_new_session_fences_late_commands_from_predecessor(labels: Labels) -> None:
+    assert labels.run("sync").returncode == 0
+    assert labels.hook("SessionStart", "new-session").returncode == 0
+    count = len(labels.mutations())
+    assert labels.run("sync").returncode == 2
+    assert labels.hook("SessionEnd").returncode == 1
+    assert len(labels.mutations()) == count
+    assert "display_agent" not in labels.read()["panes"]["w1:p1"]
+
+
+def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) -> None:
+    with subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(20)"]
+    ) as sibling:
+        try:
+            state = labels.read()
+            state["pid"] = sibling.pid
+            labels.write(state)
+            result = labels.hook("SessionStart")
+            assert result.returncode == 1
+            assert "not a descendant" in result.stderr
+            assert not labels.mutations()
+        finally:
+            sibling.terminate()
+            sibling.wait(timeout=5)
+
+
+@pytest.mark.parametrize("race", ["process", "metadata"])
+def test_replacement_during_title_lookup_rejects_old_write(
+    labels: Labels, race: str
+) -> None:
+    result = labels.run("sync", env={**labels.env, "LABEL_PREPARE_RACE": race})
+    assert result.returncode == 2, result.stdout
+    assert not labels.mutations()
+
+
+def wait_file(path: Path) -> None:
+    deadline = time.monotonic() + 5
+    while not path.exists():
+        if time.monotonic() > deadline:
+            raise AssertionError(f"test barrier timed out: {path.name}")
+        time.sleep(0.01)
+
+
+def test_session_start_is_serialized_after_inflight_old_sync(labels: Labels) -> None:
+    entered, release, waiting = [
+        labels.root / n for n in ("entered", "release", "waiting")
+    ]
+    old_env = {
+        **labels.env,
+        "LABEL_GH_ENTERED": str(entered),
+        "LABEL_GH_RELEASE": str(release),
+    }
+    old = subprocess.Popen(
+        [sys.executable, "-m", "herdr_labels", "sync"],
+        env=old_env,
+        cwd=labels.root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    new = None
+    try:
+        wait_file(entered)
+        new = subprocess.Popen(
+            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            env={**labels.env, "LABEL_WAITING_MARKER": str(waiting)},
+            text=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert new.stdin is not None
+        new.stdin.write(
+            json.dumps({"hook_event_name": "SessionStart", "session_id": "new-session"})
+        )
+        new.stdin.close()
+        new.stdin = None
+        wait_file(waiting)
+        assert new.poll() is None
+        release.touch()
+        old_out = old.communicate(timeout=10)
+        new_out = new.communicate(timeout=10)
+        assert old.returncode == 0, old_out
+        assert new.returncode == 0, new_out
+        assert "display_agent" not in labels.read()["panes"]["w1:p1"]
+        assert labels.run("sync").returncode == 2
+    finally:
+        release.touch()
+        for proc in (old, new):
+            if proc is not None and proc.poll() is None:
+                proc.kill()
+                proc.wait(timeout=5)
+
+
+def test_parent_fixture_blocks_inherited_host_herdr(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest, tmp_path: Path
+) -> None:
+    marker = tmp_path / "host-herdr-called"
+    host_bin = tmp_path / "host-bin"
+    host_bin.mkdir()
+    trap = host_bin / "herdr"
+    trap.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\nraise SystemExit(98)\n"
+    )
+    trap.chmod(0o755)
+    monkeypatch.setenv("PATH", str(host_bin) + os.pathsep + os.environ["PATH"])
+    monkeypatch.setenv("HERDR_ENV", "1")
+    monkeypatch.setenv("HERDR_PANE_ID", "host-pane")
+    monkeypatch.setenv("HERDR_SOCKET_PATH", "/host/socket")
+    parent = request.getfixturevalue("parent_env")
+    assert not any(k.startswith("HERDR_") for k in parent.env)
+    result = parent.cli("register")
+    assert json.loads(result.stdout)["display_sync"]["status"] == "not_configured"
+    failed = parent.cli(
+        "register", ok=None, extra={"HERDR_ENV": "1", "HERDR_PANE_ID": "host-pane"}
+    )
+    assert failed.returncode == 1
+    assert "exit 99" in failed.stdout
+    assert not marker.exists()
 
 
 def test_parent_success_and_display_failure_are_distinguished(

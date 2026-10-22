@@ -4,13 +4,15 @@ from __future__ import annotations
 
 import json
 import subprocess
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Any
 
 
 class Herdr:
     def __init__(self, env: Mapping[str, str], session: str | None = None) -> None:
         self.env = dict(env)
+        self.session = session
         self.prefix = ["herdr"]
         if session:
             self.prefix.extend(["--session", session])
@@ -39,6 +41,20 @@ class Herdr:
             raise ValueError("Herdr response result is not an object")
         return data
 
+    def socket_path(self) -> str:
+        if self.session is None and self.env.get("HERDR_SOCKET_PATH"):
+            return str(Path(self.env["HERDR_SOCKET_PATH"]).resolve())
+        sessions = self.call("session", "list", "--json").get("sessions", [])
+        selected = [
+            row
+            for row in sessions
+            if (row.get("name") == self.session if self.session else row.get("default"))
+            and row.get("running")
+        ]
+        if len(selected) != 1 or not selected[0].get("socket_path"):
+            raise ValueError("cannot resolve the selected Herdr server socket")
+        return str(Path(selected[0]["socket_path"]).resolve())
+
     def pane(self, pane_id: str | None = None) -> dict[str, Any]:
         result = (
             self.call("pane", "get", pane_id)
@@ -59,6 +75,7 @@ class Herdr:
         agent: str,
         display: str | None,
         tokens: dict[str, str],
+        validate: Callable[[], None] | None = None,
     ) -> dict[str, Any]:
         """Recheck the occupant, patch our fields, and verify the actual readback."""
         current = self.pane(pane["pane_id"])
@@ -67,6 +84,13 @@ class Herdr:
             pane.get("agent"),
         ):
             raise ValueError("Herdr pane occupant changed before metadata update")
+        if current.get("display_agent") != pane.get("display_agent") or any(
+            current.get("tokens", {}).get(k) != pane.get("tokens", {}).get(k)
+            for k in tokens
+        ):
+            raise ValueError("Herdr display ownership changed during preparation")
+        if validate:
+            validate()
         existing = current.get("tokens", {})
         fields_match = all(existing.get(k, "") == value for k, value in tokens.items())
         if current.get("display_agent") == display and fields_match:
@@ -89,6 +113,8 @@ class Herdr:
             )
         self.call(*args)
         after = self.pane(pane["pane_id"])
+        if validate:
+            validate()
         if (after["terminal_id"], after.get("agent")) != (pane["terminal_id"], agent):
             raise ValueError("Herdr pane changed during metadata update")
         if after.get("display_agent") != display or any(

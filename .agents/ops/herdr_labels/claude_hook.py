@@ -34,7 +34,10 @@ def main() -> int:
             with Path(env["CLAUDE_ENV_FILE"]).open("a", encoding="utf-8") as stream:
                 stream.write(f"\nexport CLAUDE_CODE_SESSION_ID={shlex.quote(sid)}\n")
         result = sync(
-            env, clear=event == "SessionEnd", session_start=event == "SessionStart"
+            env,
+            clear=event == "SessionEnd",
+            session_start=event == "SessionStart",
+            session_end=event == "SessionEnd",
         )
         print(json.dumps({"herdr_label": result}, ensure_ascii=False))
         return 0

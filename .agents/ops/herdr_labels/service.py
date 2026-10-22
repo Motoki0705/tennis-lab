@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import unicodedata
 from collections.abc import Mapping
@@ -14,19 +13,9 @@ from parent.github import GitHub
 from parent.state import Store, session_identity
 
 from .client import Herdr
+from .coordination import Guard, owner_token, process_stamp, state_root
 
 TOKEN_KEYS = ("tl_parent", "tl_topic", "tl_engine", "tl_owner")
-
-
-def state_root(env: Mapping[str, str]) -> Path:
-    base = Path(env.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-    if not base.is_absolute():
-        raise ValueError("XDG_STATE_HOME must be absolute")
-    return base / "tennis-lab-agents"
-
-
-def owner_token(identity: str) -> str:
-    return hashlib.sha256(identity.encode()).hexdigest()
 
 
 def short_topic(text: str, columns: int = 20) -> str:
@@ -81,23 +70,6 @@ def binding_path(env: Mapping[str, str], identity: str) -> Path:
     return state_root(env) / "herdr-labels/bindings" / f"{owner_token(identity)}.json"
 
 
-def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
-    info = client.call("pane", "process-info", "--pane", pane["pane_id"])[
-        "process_info"
-    ]
-    stamps = []
-    for proc in info["foreground_processes"]:
-        if proc["name"] != pane.get("agent"):
-            continue
-        pid = int(proc["pid"])
-        # /proc comm may contain spaces or parentheses; starttime is field 22.
-        stat = (Path("/proc") / str(pid) / "stat").read_text()
-        stamps.append({"pid": pid, "start": stat.rsplit(")", 1)[1].split()[19]})
-    if len(stamps) != 1:
-        raise ValueError("cannot identify exactly one foreground agent process")
-    return stamps
-
-
 def bind(
     env: Mapping[str, str], session: str, pane_id: str, terminal_id: str
 ) -> dict[str, Any]:
@@ -123,7 +95,8 @@ def bind(
         raise ValueError(
             "a different binding already exists; inspect and explicitly remove it"
         )
-    Store.write_json(path, record)
+    with Guard(env, identity, client, pane).hold(start=True, confirmed=True):
+        Store.write_json(path, record)
     return {"status": "bound", "pane": pane_id}
 
 
@@ -164,6 +137,8 @@ def sync(
     expected_parent: int | None = None,
     clear: bool = False,
     session_start: bool = False,
+    session_end: bool = False,
+    confirm_parent: bool = False,
 ) -> dict[str, Any]:
     identity = session_identity(dict(env))
     destination = target(env, identity)
@@ -173,6 +148,39 @@ def sync(
             "reason": "no Herdr caller context or explicit binding",
         }
     client, pane = destination
+    if (session_start or session_end) and env.get("HERDR_ENV") != "1":
+        raise ValueError("lifecycle events require the inherited Herdr caller context")
+    guard = Guard(env, identity, client, pane)
+    if session_start or session_end:
+        guard.require_native_ancestor()
+    with guard.hold(start=session_start, end=session_end):
+        return _sync(
+            env,
+            identity,
+            client,
+            guard.pane,
+            guard,
+            topic=topic,
+            expected_parent=expected_parent,
+            clear=clear,
+            session_start=session_start,
+            confirm_parent=confirm_parent,
+        )
+
+
+def _sync(
+    env: Mapping[str, str],
+    identity: str,
+    client: Herdr,
+    pane: dict[str, Any],
+    guard: Guard,
+    *,
+    topic: str | None,
+    expected_parent: int | None,
+    clear: bool,
+    session_start: bool,
+    confirm_parent: bool,
+) -> dict[str, Any]:
     token = owner_token(identity)
     snapshot = registry(env)
     active = [
@@ -202,6 +210,7 @@ def sync(
             agent=identity.split(":", 1)[0],
             display=None,
             tokens={key: "" for key in TOKEN_KEYS},
+            validate=guard.check,
         )
     key, row = active[0]
     repo, separator, number = key.rpartition("#")
@@ -222,6 +231,7 @@ def sync(
             "the same session already labels another live pane; "
             "inspect duplicated sessions before synchronizing"
         )
+    guard.claim(allow_create=confirm_parent)
     if topic is None:
         if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
             topic = existing.get("tl_topic")
@@ -251,5 +261,6 @@ def sync(
             "tl_engine": identity.split(":", 1)[0],
             "tl_owner": token,
         },
+        validate=guard.check,
     )
     return {**result, "parent": int(number), "topic": label}

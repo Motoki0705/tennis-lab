@@ -180,6 +180,8 @@ def main(argv: list[str] | None = None) -> int:
             try:
                 display = sync_display(
                     dict(os.environ),
+                    confirm_parent=command == "register"
+                    or (command == "handoff" and args.accept),
                     clear=command == "release"
                     or (command == "handoff" and not args.accept),
                 )

@@ -14,12 +14,15 @@ Herdr 0.9.3の表示用metadataへ、parent registryの担当を投影する。
 日本語の表示幅を数えて最大20桁に短縮する。
 
 `parent register/reconcile/sync/handoff/release`の担当操作後に、registryのロックを離して同期する。
+register・handoffの受領時に、担当sessionと確認済みterminalの対応をprivate stateへ保存する。
+この対応は表示トークンを消しても終了hook後も保持する。未確認の表示先をsyncや起動hookだけで推測しない。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
 `display_sync.status: error`を返す。担当操作を取り消さず、表示CLIで修復する。
 Herdr環境・bindのないheadless実行は`not_configured`を明示し、担当操作自体は成功を返す。
 表示CLIでの`not_configured`は終了値1。設定・API・読み戻しの不一致は終了値2。
 
 `.claude/settings.json`のSessionStart/SessionEnd hookは、Claudeが渡す実session_idを用いる。
+hookがそのpaneのforeground agentの子孫であることも確認する。
 SessionStartは`CLAUDE_ENV_FILE`へ識別子を追記し、担当済みなら表示を復元する。
 新しいSessionStartがHerdr内から届いた場合は、そのpaneに残った前セッションの表示も解除・更新する。
 通常のsync/clearは別セッションの`tl_owner`を見つけたら拒否する。
@@ -29,6 +32,9 @@ registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使�
 registryはatomic renameで保存されるJSONを読む。取得中に担当が変わったら更新を拒否する。
 Herdrの対象はcaller contextか明示bindだけで、フォーカスや作業ディレクトリから選ばない。
 更新直前にterminal/agentを照合し、更新後に全表示項目を読み戻す。同じ表示への再送は無変更。
+同じサーバー・terminalの同期と起動・終了を専用ロックで直列化する。親registryのロックは使わない。
+foreground PID・開始時刻・paneの現在sessionを更新前後に確認し、起動・終了後の古い処理を拒否する。
+準備中に表示名や管理対象トークンが変わった場合も拒否する。
 トークンにはTTLを付けず、終了・再開のイベントで解除する。定期ポーリングは作らない。
 
 ## Herdrの表示設定
@@ -63,13 +69,16 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 bindは表示先のローカル記録であり、担当を割り当てない。
 以後はterminal ID、agent種別、foreground PIDと開始時刻を照合する。
 agentが終了・置換されたら拒否し、別paneへ黙って追従しない。
-既存bindが違う場合は、private stateの該当bindを確認・退避してから明示的に作り直す。
-保存先は`${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/herdr-labels/bindings/`。
+保存先は`${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/herdr-labels/`。
+`bindings/`がheadless実行の接続先、`owners/`が担当sessionとterminalの対応、`panes/`が表示同期の現在session。
+表示先を変える場合は、旧画面の終了・実担当・新しい会話を確認し、該当するbindとowner記録を
+退避してからbindを明示実行する。SessionEndによる終了後はSessionStartか確認済みbindで再開する。
 
 今回だけの全セッション移行は通常のself-service CLIと分け、親が確認済みpaneへ表示用APIを使う。
+確認済みの親画面のowner対応も初回移行で保存する。関連画面には親の対応を登録しない。
 共有session IDで複数画面が開かれている場合、IDの一致だけで全画面を親扱いにしない。
 会話で役割を確認し、関連作業は`関連`、担当未登録は`親未登録`と表示する。
-自動同期でも同じセッションの`tl_owner`が別の稼働中paneにあれば拒否する。
+自動同期は永続したowner対応を必須とし、別paneの`tl_owner`も補助的に照合する。
 同一Claude sessionを複数画面で再開した場合も、関連作業の画面を親へ自動昇格させない。
 表示済みの親画面が終了した後に再開する場合は、残る実担当と表示先を確認して同期する。
 
