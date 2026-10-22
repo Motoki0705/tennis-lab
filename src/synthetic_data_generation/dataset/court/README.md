@@ -813,20 +813,82 @@ Implementation is complete only when all of the following hold:
 11. V2 artifacts and checkpoints are rejected by V3 readers and target-bundle
     checks; migration requires regeneration and retraining.
 
-## Explicit scale comparison profile
+## Explicit scale generation profile
 
 `generate_court_scale` is a separate **train-only** generation entrypoint. It does
 not change the `v1/v2/v3/sfm_bounded` presets or the scene's fixed
-`datasets/court` owner. Select every method explicitly:
+`datasets/court` owner. Production and comparison recipes are selected explicitly;
+neither has an implicit method or quality-policy fallback.
+
+### Production recipe and downstream entrypoint
+
+The production recipe agreed in #1343 is **`stratified_counter_production_v1`**,
+stored in
+[`scale_stratified_counter_production_v1.json`](../../configs/dataset/court/scale_stratified_counter_production_v1.json).
+It selects `stratified_counter` alone and pins:
+
+- **D2:** captured-camera hull expansion 0%, inward margin 0.5 m, HFOV layers
+  75/92.5/110 degrees.
+- **D5:** target-court **renderer-visible KP >= 4 AND ROI hole fraction <= 0.01**.
+  A hole is `alpha < 0.01 OR depth <= 0` inside the clipped target-court ROI.
+  An absent ROI (`roi_hole_fraction=null`) fails the gate, including when other
+  courts have visible KP. Alpha-below-0.9 area remains diagnostic only.
+  Target-KP-zero negatives are rejected. Rejected candidates are never refilled.
+- **D6:** stable-point-ID-derived uniform-area disk jitter, radius 1 m.
+
+The recipe also explicitly specifies target heights, resolution and arc precision.
+Its SHA-256 covers the **complete** name/version, method, geometry, jitter rule
+and QA policy. Production planning rejects changes to D2/D5/D6, missing fields,
+other methods, and comparison geometry/quality/method overrides.
+
+#1355 should freeze its requests with this entrypoint (the n/k values below are
+a small verification condition, not the main experiment size):
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale plan \
+  --scenes-root /path/to/scenes --scenes B00 B01 B02 B03 \
+  --production-recipe src/synthetic_data_generation/configs/dataset/court/scale_stratified_counter_production_v1.json \
+  --output-root tmp/court-scale-production \
+  --generation-seed 42 --trajectory-count 6 --density-level 0
+```
+
+`planned-requests.json` lists the frozen production request. The render command
+below consumes that exact request. A distributed caller can instead load
+`scale.recipes.ProductionRecipe.from_dict`, pass its `method/geometry` to
+`persist_candidate_plan`, and call `freeze_request(...,
+quality=recipe.quality, production_recipe=recipe, renderer=...)`. Both entrypoints
+check that every candidate plan and quality policy match the production recipe.
+`execute_request(root, request_path, render_callback)` owns the same acceptance
+and publication contract; #1355 owns Colab sharding and Drive durability.
+
+D5 is versioned as `target_kp4_roi_holes_1pct_v1` in
+`court_scale_quality_policy_v2`. Production requests and dataset versions use
+their explicit `v2` schemas, with the complete `production_recipe`, its
+`recipe_sha256`, the separate `geometry_recipe_sha256`, `quality_rule_version`
+and `quality_policy_sha256`. The latter two fields also bind each v2 QA ledger
+and cache completion; each rendered sample's v2 diagnostics pins `rule_version`
+and the policy hash. D5 failures become `qa_rejected` with explicit reasons and
+are absent from accepted membership and JPEG stores. Existing comparison QA is
+not production evidence: its schema, policy and cache key differ. RGB/alpha/depth
+must be evaluated under D5 explicitly; JPEG-only legacy caches cannot be
+re-certified from their old diagnostics. QA does not change cameras or point IDs.
+
+The selected method rarely shows a whole court in the preview. #1356 must check
+real-image metrics by court framing before fixing main-experiment conditions;
+the decision and its rationale remain in #1343.
+
+### Comparison recipes
+
+Select every comparison method explicitly:
 `grid_budget_replay`, `stratified_counter`, `sobol`, `capture_local`, or
 `open_bezier`. Unknown methods and exhausted finite sequences fail; rejected
 candidates keep their original ordinal and are never replaced to reach a quota.
-The five comparison recipes are defined by `scale/strategies.py`; they are
-comparison starting points pending the user's selection in Court Review.
+The five methods are defined by `scale/strategies.py` and remain available for
+Court Review comparisons. Only the named production recipe above is the
+main-experiment authority.
 
-`scale_geometry.json` owns the explicit D2/D6/arc settings for the preview:
-hull expansion 0%, inset 0.5 m, HFOV layers 75/92.5/110 degrees, target heights
-0/1.5 m and point-ID independent disk jitter of radius 1 m. Saved grid replay
+`scale_geometry.json` owns the explicit geometry/arc settings for comparison
+previews. Saved grid replay
 retains the source config's footprint, HFOV and target-height distribution.
 `scale_quality.json` keeps the existing all-court geometry/renderer gates and
 records target KP count and clipped target ROI alpha/depth holes as diagnostics.
@@ -888,12 +950,16 @@ Those orchestration responsibilities remain with the distributed caller.
 ### Dataset-version consumer contract
 
 A version is an explicit `*.dataset.json` under the output root. Its
-`schema=court_scale_dataset_version_v1`, content-derived `dataset_version`,
+explicit `schema=court_scale_dataset_version_v1` (comparison) or
+`court_scale_dataset_version_v2` (production), content-derived `dataset_version`,
 `request_path/sha256`, aggregate `plan_sha256`, `method`, `recipe_sha256`,
 `generation_seed`, `split=train`, and `scenes[]` pin the complete condition.
 Every scene includes its asset and candidate-plan references/hashes,
 `stores[]`, `accepted_ids_path/sha256`, render-cache completion references,
 counts, rejection reasons and the number of empty trajectories.
+In v1, `recipe_sha256` identifies geometry only; in v2 it identifies the complete
+production recipe as described above. Readers dispatch by schema without
+reinterpreting historical comparison versions or their QA records.
 
 Candidate plans stream one trajectory/table at a time into hash-pinned `curves/`
 files (`trajectory_storage=curve_files_v1`); the plan header retains references
