@@ -28,6 +28,11 @@ from merge_gate_policy import (  # noqa: E402
     publication_errors,
     shared_permission,
 )
+from parent.execution import (  # noqa: E402
+    authorization,
+    require_run_authorization,
+    requirement_body,
+)
 from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
     closing_issues,
@@ -37,7 +42,7 @@ from parent.policy import (  # noqa: E402
     object_value,
 )
 from parent.session import ParentSession  # noqa: E402
-from parent.snapshot import authorization, git, snapshot  # noqa: E402
+from parent.snapshot import git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
@@ -208,7 +213,7 @@ def load_evidence(
     execution = read_json(run_dir / "execution.json")
     if result["request"] != request or read_json(run_dir / "request.json") != request:
         raise ValueError("local review result/request mismatch")
-    auth = authorization(session)
+    auth = authorization(session, request)
     parent_comments = session.gh.comments(session.parent)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
@@ -216,6 +221,21 @@ def load_evidence(
             result, execution, parent_comments, pr_comments, session.login, auth
         )
     )
+    if request.get("authorization", auth) != auth:
+        errors.append("review_execution_basis_changed")
+    if request["schema_version"] == 2:
+        for n, expected in request["requirements"].items():
+            raw = session.gh.issue(int(n))
+            if digest(requirement_body(raw.get("body") or "")) != expected:
+                reason = f"issue_{n}_reviewed_requirements_changed"
+                affected = [
+                    p["number"] for p in result["prs"] if int(n) in p["child_issues"]
+                ]
+                if int(n) == session.parent or not affected:
+                    errors.append(reason)
+                else:
+                    for pr in affected:
+                        view.errors.setdefault(pr, []).append(reason)
     if execution.get("session") != session.session:
         errors.append("review_owner_changed")
     state = confirmed_state(session.history(), request, auth)
@@ -489,7 +509,7 @@ def record_permission(
     history = session.history()
     prior = [e for e in history if e["event"] == "merge_permission"]
     recent: list[dict[str, Any]] = []
-    auth = authorization(session)
+    auth = require_run_authorization(session, request, required_issues=set())
     for event in history:
         if authorization_revoked(event, auth):
             recent = []

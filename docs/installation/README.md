@@ -1,40 +1,45 @@
-# 標準マルチカメラpipelineの導入 / Installation
+# Standard multiview pipeline installation
 
-同期済み固定カメラ3〜5台の動画からSceneResult v2を生成します。ここが環境構築・資産配置・
-公開サンプル実行の正本です。入力の制約と保存形式は[tennis_scene](../../src/tennis_scene/README.md)、
-利用条件・帰属表示は[LICENSES.md](../../LICENSES.md)を参照してください。
+[日本語](README.ja.md)
 
-This is the canonical setup guide for the standard multiview pipeline. It uses uv,
-local NVIDIA CUDA, user-acquired third-party models and the published three-camera sample.
+Generate SceneResult v2 from synchronized videos recorded by 3–5 fixed cameras.
+This is the canonical guide for environment setup, asset placement and running the published sample.
+For input constraints and the storage format, see [tennis_scene](../../src/tennis_scene/README.md);
+for terms of use and attribution, see [LICENSES.md](../../LICENSES.md#code-license-scope).
 Obtain each asset under its upstream terms before running the commands below.
 
-## 動作環境 / Requirements
+<a id="requirements"></a>
 
-- Linux x86-64、またはNVIDIA GPUが利用できるWSL2。Python 3.11は`.python-version`で固定し、uvで同期します。
-- NVIDIA GPU。確認済みは **RTX 5060 Ti / VRAM 16 GB**。独立clone・新venvでの公開サンプル実行中、
-  `nvidia-smi`による約5秒間隔の測定最大は**GPU全体で4,928 MiB**でした。
-  開始前の使用量1,215 MiB（他プロセス）を含み、冒頭約22秒とサンプル間の瞬間的なピークは測れていません。
-  より小さいVRAMでの動作下限は未検証です。ホストRAM上限24 GBの既存WSL2ホストを使用し、RAMピークは未測定です。
-  GPUは他の処理と共有せず実行してください。
-- **CUDA toolkit 13系の`nvcc`**と対応ドライバ。lockは`torch 2.14.1+cu130`です。
-  検証構成はtoolkit **13.0.88**、driver **610.88**。CUDA 13.xのdriver最低系列は580、
-  CUDA 13.0 GAのLinux driverは580.65.06以降です（[NVIDIAの固定版release notes](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-toolkit-release-notes/index.html#cuda-driver)）。
-  `nvidia-smi`の「CUDA Version」はtoolkitのインストール確認にはなりません。`nvcc --version`も確認します。
-  torchとtoolkitのCUDAメジャー版が違うと拡張ビルドが停止します。13.0を使うとlockのcu130と揃います。
-- Git、[uv](https://docs.astral.sh/uv/getting-started/installation/)、C++ compiler、CUDA対応のhost compiler、
-  `ffmpeg`（MP4保存）、Ninja。Ubuntuでは`build-essential`・`ninja-build`・`ffmpeg`をOS側に用意します。
-- ディスクは、独立clone・venv・分離したuv/HF cache・重み・サンプル・CUDA build・component cache・
-  scene・全編可視化を含むworkspaceで**約20.87 GB（19.43 GiB）**を使用しました（準備完了時は約19.94 GB）。
-  CUDA toolkit・OSのパッケージ・第三者資産を別途ダウンロードする作業領域は含みません。
-  必要容量はcacheや実行回数で変わるため、それらと追加の出力を見込んで空きを確保してください。
-  測定範囲は[導入検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)を参照してください。
+## Requirements
 
-CPU実行はこの手順の対象外です。CPUで行うのは資産検査・拡張のimport/dispatch検査・可視化です。
-The tested GPU has 16 GB VRAM. Device-wide samples reached 4,928 MiB, including other processes;
-sampling misses brief peaks and the first 22 seconds, so this does not establish minimum VRAM.
-Use a CUDA 13 toolkit matching the locked cu130 PyTorch build.
+- Linux x86-64, or WSL2 with access to an NVIDIA GPU. Python 3.11 is pinned in `.python-version` and synced with uv.
+- An NVIDIA GPU. The tested configuration uses an **RTX 5060 Ti / 16 GB VRAM**. During the published sample run
+  in an independent clone with a fresh venv, `nvidia-smi` measurements taken about every 5 seconds reached
+  a **device-wide maximum of 4,928 MiB**. This includes the initial 1,215 MiB used by other processes;
+  the first approximately 22 seconds and brief peaks between samples were not measured.
+  The minimum VRAM needed on smaller GPUs has not been verified. The existing WSL2 host had a 24 GB host RAM limit;
+  peak RAM usage was not measured. Run without sharing the GPU with other workloads.
+- **CUDA toolkit 13.x `nvcc`** and a compatible driver. The lock uses `torch 2.14.1+cu130`.
+  The tested configuration uses toolkit **13.0.88** and driver **610.88**. CUDA 13.x requires at least
+  driver series 580; CUDA 13.0 GA requires Linux driver 580.65.06 or later
+  ([NVIDIA's versioned release notes](https://docs.nvidia.com/cuda/archive/13.0.0/cuda-toolkit-release-notes/index.html#cuda-driver)).
+  The “CUDA Version” shown by `nvidia-smi` does not confirm that the toolkit is installed. Also check `nvcc --version`.
+  The extension build stops if the CUDA major versions of torch and the toolkit differ. Using 13.0 matches the locked cu130 build.
+- Git, [uv](https://docs.astral.sh/uv/getting-started/installation/), a C++ compiler, a CUDA-compatible host compiler,
+  `ffmpeg` (for MP4 output) and Ninja. On Ubuntu, install `build-essential`, `ninja-build` and `ffmpeg` at the OS level.
+- The workspace used **about 20.87 GB (19.43 GiB)** of disk space, including the independent clone, venv,
+  isolated uv/HF caches, weights, sample, CUDA build, component cache, scene and full-length visualization
+  (about 19.94 GB when preparation finished). This excludes the CUDA toolkit, OS packages and the workspace
+  for separately downloading third-party assets. Space requirements vary with caches and the number of runs;
+  allow room for those and additional outputs. See the [installation verification record](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)
+  for the measurement scope.
 
-## cloneと依存関係 / Clone and sync
+CPU pipeline execution is outside the scope of this guide. Asset checks, extension import/dispatch validation
+and visualization run on the CPU.
+
+<a id="clone-and-sync"></a>
+
+## Clone and sync
 
 ```bash
 git clone https://github.com/Motoki0705/tennis-lab.git
@@ -43,17 +48,18 @@ uv sync --locked
 git submodule update --init third_party/DINO third_party/dinov3
 ```
 
-`uv sync --locked`はdev・gpu groupを含む新しい`.venv`を作ります。
-`third_party/GVHMR`と`third_party/nht`は標準pipelineには不要です。
-submoduleの固定版はこのcheckoutのgitlinkを使い、`--remote`を付けません。
-以後のコマンドはrepo rootから実行します。
+`uv sync --locked` creates a fresh `.venv` including the dev and gpu groups.
+`third_party/GVHMR` and `third_party/nht` are not needed for the standard pipeline.
+Use the submodule versions pinned by this checkout's gitlinks; do not add `--remote`.
+Run all subsequent commands from the repository root.
 
 <a id="dino-cuda-extension"></a>
-## DINO CUDA拡張 / DINO CUDA extension
 
-GPUのcompute capabilityを[NVIDIA一覧](https://developer.nvidia.com/cuda-gpus)で確認し、
-`TORCH_CUDA_ARCH_LIST`を明示してください。次の**12.0はRTX 5060 Tiの例**です。
-別GPUではそのGPUとCUDA 13が対応する値へ置き換えます。
+## DINO CUDA extension
+
+Check your GPU's compute capability in [NVIDIA's list](https://developer.nvidia.com/cuda-gpus)
+and set `TORCH_CUDA_ARCH_LIST` explicitly. **12.0 below is an example for the RTX 5060 Ti**.
+For another GPU, replace it with a value supported by that GPU and CUDA 13.
 
 ```bash
 export CUDA_HOME=/usr/local/cuda-13.0
@@ -67,25 +73,25 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.submodules.models import validate_dino_extension; print(validate_dino_extension())'
 ```
 
-環境によって`CUDA_HOME=/usr/local/cuda`などに変更します。`PYTHONPATH`は同じshellでの
-preflightとpipeline実行にも必要です。別shellでは再設定してください。
+Adjust `CUDA_HOME` for your environment, for example to `/usr/local/cuda`. `PYTHONPATH` is also required
+for preflight and pipeline execution in the same shell. Set it again when using another shell.
 
-スクリプトは`TENNIS_LAB_DINO_OPS_BUILD_CONFIG`を正規のpath契約で作り、ルート`setup.py`から
-DINOと共通CUDA拡張をビルドします。`outputs/dino_extension/{lib,temp,cache}`と`build.json`へ
-生成し、submodule・共有venvのソースを変更しません。互換修正は生成したDINOソースだけに適用します。
-ビルド中は`CUDA_VISIBLE_DEVICES=''`とし、GPUを使いません。`validate_dino_extension()`も
-CPU tensorでforward/backwardのdispatchを検査するもので、CUDA kernelの数値検証ではありません。
-異なるtorchへ同期し直した場合は、新しい出力先へ再ビルドし、その`lib`を明示してください。
+The script creates `TENNIS_LAB_DINO_OPS_BUILD_CONFIG` under the canonical path contract and builds
+DINO and the shared CUDA extension through the root `setup.py`. It writes to
+`outputs/dino_extension/{lib,temp,cache}` and `build.json`, without changing sources in submodules
+or the shared venv. Compatibility fixes apply only to the generated DINO sources.
+The build sets `CUDA_VISIBLE_DEVICES=''` and does not use the GPU. `validate_dino_extension()` also
+checks forward/backward dispatch with CPU tensors; it does not numerically validate CUDA kernels.
+If you sync to a different torch version, rebuild into a new output directory and explicitly use its `lib`.
 
-The build script requires explicit toolkit and GPU architecture settings. Keep the generated
-`lib` directory on `PYTHONPATH`. CPU validation checks binary compatibility; GPU inference is a later step.
+<a id="required-assets"></a>
 
-## 必要資産 / Required assets
+## Required assets
 
-配置はすべてrepo内の**実ファイル**にします。checkpoint root外へのsymlinkはpath契約で拒否されます。
-preflightが既知の重みとサンプルを固定したSHA-256で検査し、再圧縮・変換・別リリースへの自動切替はしません。
-ライセンスの詳しい適用範囲は[第三者重み](../../LICENSES.md#第三者の重みbody-model資産)と
-[公開物](../../LICENSES.md#公開物自作の重みサンプルdatasetのライセンス)を正とします。
+Place all assets as **real files** inside the repository. The path contract rejects symlinks outside the checkpoint root.
+Preflight checks known weights and the sample against pinned SHA-256 values; it does not recompress or convert files,
+or automatically switch to another release. The authoritative details on license scope are in
+[third-party weights](../../LICENSES.md#third-party-weights) and [published artifacts](../../LICENSES.md#published-artifacts).
 
 <!-- checkpoint-assets:start -->
 | Asset | Destination (relative to `ckpt/`) | Source | License / terms |
@@ -108,25 +114,26 @@ preflightが既知の重みとサンプルを固定したSHA-256で検査し、�
 | smpl_smpl_neutral_joint_regressor | `body_models/gvhmr/smpl_neutral_J_regressor.pt` | [Source](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt) | GVHMR / SMPL / SMPL-X terms |
 <!-- checkpoint-assets:end -->
 
-¹ repo側のコードのライセンス表示です。コードの許諾が、学習元データ・body modelや別配布重みの
-全権利を一括して許諾するとは扱いません。AFLinkは利用条件未確認のまま標準経路で継続使用する判断です。
-根拠と制約は[StrongSORT NOTICE](../../src/tasks/person_tracking/strongsort_NOTICE.md)にあります。
+¹ These are the licenses stated for the upstream repository's code. Permission for the code is not treated
+as a blanket grant of all rights to training data, body models or separately distributed weights.
+AFLink remains in the standard path under a decision to continue using it with its terms unconfirmed.
+The basis and constraints are in the [StrongSORT NOTICE](../../src/tasks/person_tracking/strongsort_NOTICE.md).
 
-### 自作重みと公開サンプル
+### Project weights and the published sample
 
-[重み取得CLI](../../src/utils/README.md#published-detector-weights)と
-[サンプル取得CLI](../../src/utils/README.md#published-multiview-sample)を使います。
-既存ファイルは検査し、不一致を上書きしません。
+Use the [weight acquisition CLI](../../src/utils/README.md#published-detector-weights) and
+[sample acquisition CLI](../../src/utils/README.md#published-multiview-sample).
+Existing files are checked; mismatches are not overwritten.
 
 ```bash
 .venv/bin/python -m src.utils.model_weights --checkpoint-root "$PWD/ckpt"
 .venv/bin/python -m src.utils.sample_dataset --data-root "$PWD/data"
 ```
 
-サンプルは`Motoki098/tennis-lab-multiview-sample`の`video_000/clip_000`、
-1920×1080・59.94006 fps・1,010フレーム・3カメラです。cam0の拡大・letterboxを含みます。
-同期・出自は配布先のdataset cardを参照してください。利用条件は**CC BY-NC-ND 4.0**です。
-動画とmanifest・LICENSEは以下へ配置されます。
+The sample is `video_000/clip_000` from `Motoki098/tennis-lab-multiview-sample`:
+1920×1080, 59.94006 fps, 1,010 frames and 3 cameras. It includes upscaling and letterboxing of cam0.
+See the published dataset card for synchronization and provenance. Its terms are **CC BY-NC-ND 4.0**.
+The videos, manifest and LICENSE are placed as follows.
 
 <!-- sample-assets:start -->
 | Destination | Source / terms |
@@ -138,50 +145,60 @@ preflightが既知の重みとサンプルを固定したSHA-256で検査し、�
 | `data/samples/LICENSE` | [Published dataset](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample) / CC BY-NC-ND 4.0 |
 <!-- sample-assets:end -->
 
-### 第三者の重み・body model
+### Third-party weights and body models
 
-- **DINO**: [公式model zoo](https://github.com/IDEA-Research/DINO/tree/d84a491d41898b3befd8294d1cf2614661fc0953#model-zoo)
-  の4-scale Swin-LのDriveから`checkpoint0029_4scale_swin.pth`を取得します。学習用Swin初期重みは不要です。
-- **ViTPose-H・HMR2・GVHMR**: [GVHMR公式INSTALL](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md)
-  が案内する[公式Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD)から表の3ファイルを取得します。
-  GVHMR用のconda環境やYOLO・DPVOは不要です。
-- **CLIP-ReID**: [公式README](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/README.md#trained-models-and-test-logs)
-  の**ViT-CLIP-ReID / Market / model**を選びます。ファイル名は`Market1501_clipreid_ViT-B-16_60.pth`です。
-  内容を変えず`ckpt/player_association/person_vit_clip_reid.pth`へ配置します。
-  公式配布と従来使用版の同一性は[検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)にあります。
-- **AFLink**: [StrongSORT公式README](https://github.com/dyhBUPT/StrongSORT#datamodel-preparation)が案内するDriveの
-  `AFLink_epoch20.pth`を取得します。条件の未確認は上記NOTICEのとおりです。
-- **DINOv3 ViT-B/16**: [Meta公式](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)に申請し、
-  `dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`を取得します。
-  公開コートcheckpointはbackboneを含みますが、**現行のモデル構築にはこの単体ファイルも必要**です。
-- **SMPL-X**: [公式サイト](https://smpl-x.is.tue.mpg.de/)で登録・同意し、NPZ形式のbody modelから
-  `SMPLX_NEUTRAL.npz`を配置します。SMPL-Xのmale/female、SMPL本体、SMPL-HのPKLはこの標準実行には不要です。
-- **SMPL-H**: [MANO / SMPL+H](https://mano.is.tue.mpg.de/)で登録・同意し、AMASS向けのExtended SMPL+Hモデルを取得します。
-  展開した`neutral/model.npz`を表の場所へ置きます。可視化でmeshのfacesを読みます。PKLをNPZへ変換しません。
-- **SMPL補助資産5点**: 取得・検査・配置は[src/submodulesの正本](../../src/submodules/README.md#smpl補助資産の取得)に従います。
-  GVHMR公式の固定commitから取得し、`install_smpl_assets`で表の場所へ配置します。この導入ガイドでは手順を複製しません。
+- **DINO**: Download `checkpoint0029_4scale_swin.pth` from the 4-scale Swin-L Drive link in the
+  [official model zoo](https://github.com/IDEA-Research/DINO/tree/d84a491d41898b3befd8294d1cf2614661fc0953#model-zoo).
+  The initial Swin weights used for training are not needed.
+- **ViTPose-H, HMR2 and GVHMR**: Download the three files in the table from the
+  [official Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD) linked by the
+  [official GVHMR INSTALL](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md).
+  The GVHMR conda environment, YOLO and DPVO are not needed.
+- **CLIP-ReID**: Select **ViT-CLIP-ReID / Market / model** in the
+  [official README](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/README.md#trained-models-and-test-logs).
+  The filename is `Market1501_clipreid_ViT-B-16_60.pth`. Place it at
+  `ckpt/player_association/person_vit_clip_reid.pth` without changing its contents.
+  The [verification record](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)
+  documents that the official distribution and the previously used version are identical.
+- **AFLink**: Download `AFLink_epoch20.pth` from the Drive link in the
+  [official StrongSORT README](https://github.com/dyhBUPT/StrongSORT#datamodel-preparation).
+  Its unconfirmed terms are described in the NOTICE above.
+- **DINOv3 ViT-B/16**: Apply through [Meta's official site](https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/)
+  and obtain `dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth`.
+  The published court checkpoint includes the backbone, but **the current model construction also requires this standalone file**.
+- **SMPL-X**: Register and accept the terms at the [official site](https://smpl-x.is.tue.mpg.de/),
+  then place `SMPLX_NEUTRAL.npz` from the NPZ body models. The male/female SMPL-X models, SMPL itself
+  and the SMPL-H PKL files are not needed for this standard run.
+- **SMPL-H**: Register and accept the terms at [MANO / SMPL+H](https://mano.is.tue.mpg.de/),
+  then obtain the Extended SMPL+H models for AMASS. Place the extracted `neutral/model.npz` at the location in the table.
+  Visualization reads its mesh faces. Do not convert PKL to NPZ.
+- **Five SMPL auxiliary assets**: Follow the canonical [src/submodules guide](../../src/submodules/README.md#smpl補助資産の取得)
+  for acquisition, verification and placement. Obtain them from the pinned official GVHMR commit and
+  use `install_smpl_assets` to place them at the table's destinations. This guide does not duplicate those steps.
 
-Google Driveのfolderは中の該当ファイルだけをダウンロードして表の名前へ配置してください。
-登録・申請が必要なモデルをこのrepoから再配布したり、別のミラーで補ったりしません。
+For Google Drive folders, download only the relevant files and place them under the names in the table.
+Models requiring registration or an application are not redistributed by this repository or supplied from other mirrors.
 
-## 一括確認 / Preflight
+<a id="preflight"></a>
+
+## Preflight
 
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ```
 
-`status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
-JSONへ出力し、1件でもあれば終了値1になります。入手したファイルを明示的に直し、再実行してください。
-`enabled_model_assets()`の全資産に加え、DINOとDINOv3 source、DINOv3単体重み、可視化のSMPL-H・regressor、
-入力動画（公開サンプルならmanifest・LICENSEも）を検査します。モデルの推論・GPU使用は行いません。
-ソースは必要ファイルの存在を検査します。
-別モデルの重みを評価する汎用コマンドではなく、上表の公開標準経路を導入するための検査です。
+Require `status: ok` and exit code 0. Missing files, content mismatches, read failures and extension incompatibilities
+are **reported together** in JSON; any failure produces exit code 1. Explicitly fix the acquired files and rerun.
+The check covers every asset from `enabled_model_assets()`, the DINO and DINOv3 sources, standalone DINOv3 weights,
+SMPL-H and the regressor for visualization, and input videos (plus the manifest and LICENSE for the published sample).
+It does not download files, substitute models, run inference or use the GPU. Source checks verify that required files exist.
+This is a check for installing the published standard path listed above, rather than a general command for evaluating other model weights.
+Resolve every failure before starting the pipeline.
 
-With assets missing, preflight lists all failures and exits nonzero. It does not download,
-substitute models, or run inference. Resolve every failure before starting the pipeline.
+<a id="run-the-sample"></a>
 
-## サンプルで3D再構成 / Run the sample
+## Run the sample
 
 ```bash
 PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
@@ -190,14 +207,15 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
   cache.directory=tennis_scene/cache/clean_install
 ```
 
-このrepoの共有GPU上では[training queue](../../.agents/skills/training-queue/SKILL.md)から実行します。
-RTX 5060 Tiでのクリーン導入検証では、pipeline開始からscene保存まで**30分27秒**でした
-（[実測記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)）。
-公開サンプル1clipの参考値で、queue待ち・プロセス起動・資産取得・ビルド・可視化は含みません。
+On this repository's shared GPU, run through the [training queue](../../.agents/skills/training-queue/SKILL.md).
+In the clean installation verification on the RTX 5060 Ti, the time from pipeline start to saving the scene was
+**30 minutes 27 seconds** ([measurement record](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)).
+This is a reference measurement for one clip of the published sample. It excludes queue waiting, process startup,
+asset acquisition, building and visualization.
 
-`outputs/tennis_scene/generate/clean_install/scene.npz`と`scene.metadata.json`が保存され、
-metadataの`scene_schema_version=2`・`status=ok`であることを確認します。
-正規readerでのmask・理由コード・座標系の検査も必要です。
+The run saves `outputs/tennis_scene/generate/clean_install/scene.npz` and `scene.metadata.json`.
+Check that the metadata has `scene_schema_version=2` and `status=ok`.
+Also use the canonical reader to check masks, reason codes and coordinate systems.
 
 ```bash
 CUDA_VISIBLE_DEVICES='' .venv/bin/python - <<'PY'
@@ -210,14 +228,18 @@ print(scene.num_frames, scene.fps, scene.metadata['camera_ids'])
 PY
 ```
 
-出力cacheはこの入力・設定・コードに対するものです。新しい導入検証では新規cloneと空の出力先を使います。
-完走は処理・保存契約の成立を示し、真値に対する3D精度の保証にはしません。
-同じ入力・推論コードの先行実行とは、有効なball 3Dや選手root/SMPLのフレーム数に差がありました。
-原因は未確定であり、同一byteの出力を保証する検証ではありません。詳細は上記の実測記録を参照してください。
+The output cache belongs to this input, configuration and code. Use a fresh clone and empty output locations
+for a new installation verification. Completion confirms that processing and storage contracts hold;
+it does not guarantee 3D accuracy against ground truth. Compared with an earlier run using the same inputs
+and inference code, the numbers of valid ball 3D and player root/SMPL frames differed.
+The cause is unresolved; this verification does not guarantee byte-identical outputs.
+See the measurement record above for details.
 
-## 可視化 / Visualize
+<a id="visualize"></a>
 
-`ffmpeg -version`が成功することを確かめ、同じcheckpoint rootのSMPL-H・regressorを使って描画します。
+## Visualize
+
+Check that `ffmpeg -version` succeeds, then render using SMPL-H and the regressor from the same checkpoint root.
 
 ```bash
 CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg .venv/bin/python -m src.tennis_scene.scripts.visualization \
@@ -226,20 +248,23 @@ CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg .venv/bin/python -m src.tennis_scene.scri
   style.player_representation=smpl
 ```
 
-MP4を再生して、コート・両選手・ボールと欠測区間を確認します。
-クリーン導入検証のCPU描画は**6分3秒**（親セッションの計時、起動時間込み）で、
-1200×800・1,010フレーム・約16.85秒のMP4を生成しました。親セッションが9秒時点のフレームで
-コート・両選手のSMPL・ボール・ミニマップの描画を確認しています。
-componentごとの入力との照合は[review UI](../../src/tennis_scene/visualization/review/README.md)を参照してください。
+Play the MP4 and check the court, both players, the ball and missing intervals.
+CPU rendering in the clean installation verification took **6 minutes 3 seconds** (timed by the parent session,
+including startup) and produced a 1200×800 MP4 with 1,010 frames lasting about 16.85 seconds.
+The parent session checked the frame at 9 seconds and confirmed that the court, both players' SMPL meshes,
+the ball and the minimap were rendered. See the [review UI](../../src/tennis_scene/visualization/review/README.md)
+for comparison with each component's inputs.
 
-## クリーン導入の再検証 / Rehearse a clean install
+<a id="rehearse-clean-install"></a>
 
-[scripts/prepare_clean_install.py](../../scripts/prepare_clean_install.py)は、この順序を独立したclone・venvで実行し、
-stepごとの時間・ログ・コピー元・検査結果・ディスク使用量を`preparation.json`へ記録します。
-登録・申請やDriveから利用者が取得した第三者資産は、**このローカル検証に限り**明示したcheckpoint rootから
-検査後にコピーし、コピー後にも再検査します。自作重みとサンプルはHubから取得します。
-既存venv・data・ckptへのリンクや、重みの無検査コピーは行いません。
-利用者自身の導入では、上記公式配布元から取得してください。
+## Rehearse a clean install
+
+[scripts/prepare_clean_install.py](../../scripts/prepare_clean_install.py) runs this sequence in an independent
+clone and venv, recording each step's time, logs, copy sources, verification results and disk usage in `preparation.json`.
+**For this local verification only**, third-party assets acquired by the user through registration, applications
+or Drive are checked and copied from an explicitly specified checkpoint root, then checked again after copying.
+Project weights and the sample are fetched from the Hub. The script does not link an existing venv, data or ckpt,
+and does not copy weights without checking them. For your own installation, obtain assets from the official sources above.
 
 ```bash
 python3 scripts/prepare_clean_install.py \
@@ -249,18 +274,16 @@ python3 scripts/prepare_clean_install.py \
   --cuda-home /usr/local/cuda-13.0 --cuda-arch 12.0
 ```
 
-未公開branchを試す場合は`--repository /absolute/path/to/worktree`とそのcommitを指定できます。
-`git clone --no-local`を使い、git objectも元checkoutと共有しません。既存workspaceは拒否します。
-CPU準備が成功すると`ready_for_gpu`になり、**GPU実行前で停止**します。
-生成された`run_pipeline.sh`を親がtraining queueへ投入し、完了後に`visualize.sh`を実行します。
-GPUの所要時間・ピークVRAM・scene検査・動画確認は、その後の実行記録へ追記してください。
+To test an unpublished branch, specify `--repository /absolute/path/to/worktree` and its commit.
+The script uses `git clone --no-local`, so even git objects are not shared with the source checkout.
+An existing workspace is rejected. When CPU preparation succeeds, the status becomes `ready_for_gpu`
+and the script **stops before GPU execution**. The parent submits the generated `run_pipeline.sh` to the training queue
+and runs `visualize.sh` after it finishes. Add GPU elapsed time, peak VRAM, scene checks and video review
+results to the subsequent execution record.
 
-2026-10-21の[検証記録](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)では、
-CPU準備**12分41秒**の後、queue経由のGPU完走・正規readerによるscene検査・新sceneのCPU可視化を確認しました。
-この検証のclone元はGitHubではなく上記worktreeで、`git clone --no-local`と固定commitを使用しました。
-登録・申請が必要な第三者資産は利用者取得済みファイルの検査・コピーであり、新規登録・手動取得や
-CUDA toolkit・OSの導入時間は含みません。
-
-The rehearsal used a local worktree clone at a pinned commit, independent asset files and a fresh venv.
-CPU preparation took about 12m41s, pipeline execution 30m27s and CPU visualization 6m03s on the tested host.
-GitHub transfer, toolkit/OS installation and manual third-party acquisition were not timed.
+The [verification record from 2026-10-21](../../knowledge/nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)
+confirms **12 minutes 41 seconds** of CPU preparation, followed by GPU completion through the queue,
+scene checks with the canonical reader and CPU visualization of the new scene.
+This verification cloned the local worktree above rather than GitHub, using `git clone --no-local` and a pinned commit.
+Third-party assets requiring registration or an application were verified copies of files already acquired by the user.
+The timing excludes new registration, manual acquisition, CUDA toolkit installation and OS setup.

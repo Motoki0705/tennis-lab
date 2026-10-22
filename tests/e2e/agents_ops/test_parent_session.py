@@ -111,6 +111,11 @@ if comment_edit:
     save()
     response(comment)
 if path == "repos/o/r/pulls":
+    if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
+        state["closing_reads"] = state.get("closing_reads", 0) + 1
+        if state["closing_reads"] == 2:
+            state["prs"][0]["body"] = os.environ["PARENT_CHANGE_CLOSING_ON_READ"]
+        save()
     if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
         state["pull_reads"] = state.get("pull_reads", 0) + 1
         if state["pull_reads"] == 2:
@@ -423,6 +428,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
         k: v
         for k, v in os.environ.items()
         if k not in {"CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID"}
+        and not k.startswith("HERDR_")
     }
     env.update(
         PATH=str(bin_dir) + os.pathsep + env["PATH"],
@@ -433,6 +439,13 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
         PARENT_GH_STATE=str(state_path),
         PARENT_GH_CALLS=str(calls_path),
     )
+    # Parent operations must never reach the host Herdr executable. Display
+    # integration tests explicitly replace this sentinel with their fake CLI.
+    herdr = bin_dir / "herdr"
+    herdr.write_text(
+        "#!/bin/sh\necho 'unexpected Herdr access from parent fixture' >&2\nexit 99\n"
+    )
+    herdr.chmod(0o755)
     return ParentEnv(tmp_path, repo, env, state_path, calls_path, formats)
 
 

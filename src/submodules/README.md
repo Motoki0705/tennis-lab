@@ -87,7 +87,7 @@ SMPL-X/SMPL-H本体、SMPL補助資産、外部重みはgitへ追加しません
 
 5点は **[GVHMR公式リポジトリ](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)**
 の固定commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1` から利用者が取得します。
-各ファイルの公式配布パス・用途・条件は [LICENSES.md](../../LICENSES.md#利用者が取得するsmpl補助資産)
+各ファイルの公式配布パス・用途・条件は [LICENSES.ja.md](../../LICENSES.ja.md#smpl-auxiliary-assets)
 を参照してください。本repoにはバイナリを同梱せず、自動ダウンロードもしません。
 
 先に [GVHMRの条件](vendor/gvhmr/LICENSE) と
@@ -142,7 +142,7 @@ DINOは上流ソースを変更せず `third_party/DINO/` のgit submoduleから
 推論契約だけを `models/dino/` に置きます。
 
 DINO利用時のsubmodule初期化・CUDA toolkit要件・拡張ビルドは
-[導入手順](../../docs/installation/README.md#dino-cuda-extension)を正本とします。
+[導入手順](../../docs/installation/README.ja.md#dino-cuda-extension)を正本とします。
 PyTorch互換修正は出力ディレクトリ内の生成ソースだけに適用し、submodule自体は変更しません。
 
 `validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、

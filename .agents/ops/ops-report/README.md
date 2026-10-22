@@ -166,6 +166,7 @@ cd ~/projects/tennis-lab
 実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/ops-report/<時刻>-<command>[-dry]-<pid>/` へ
 `run.log`、`collected.json`、`audit_plan.json`、`audit.json`、`prompt.md`、`agent_output.md`、agent CLIのJSONLログ、`report.md`、`result.json` を残す。
 `--log-dir` / `OPS_REPORT_LOG_DIR` の相対パスは、起動時のカレントディレクトリを基準に解決する。
+agentのCLIイベント・実効設定・使用量は各回の `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
 gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
 agentと掃除モジュールは専用のプロセスグループで起動し、失敗・中断・終了時（掃除はタイムアウトも）にグループ全体を
 SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
