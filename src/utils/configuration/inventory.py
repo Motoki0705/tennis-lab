@@ -40,6 +40,12 @@ EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
     "src.tennis_scene.visualization.blender.shots.validate_reveal": (
         "Blender bundled Python; validates a saved scene without repo imports."
     ),
+    "src.tennis_scene.visualization.blender.shots.player_placement": (
+        "Blender bundled Python; builds the placement shot from a plain-file bundle."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_placement": (
+        "Blender bundled Python; validates a saved placement scene without repo imports."
+    ),
 }
 
 
@@ -213,6 +219,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_blender": "tennis_scene.blender_export",
     "src.tennis_scene.scripts.export_blender_diffusion": "tennis_scene.export_blender_diffusion",
+    "src.tennis_scene.scripts.export_blender_placement": "tennis_scene.blender_placement",
     "src.tennis_scene.scripts.export_blender_rays": "tennis_scene.export_blender_rays",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
@@ -274,6 +281,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_blender": "src.tennis_scene.configuration.validate_blender_export_boundary",
     "src.tennis_scene.scripts.export_blender_diffusion": "src.tennis_scene.visualization.blender.export.diffusion_configuration.validate_diffusion_boundary",
+    "src.tennis_scene.scripts.export_blender_placement": "src.tennis_scene.configuration.validate_blender_placement_boundary",
     "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
@@ -795,6 +803,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_diffusion"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_placement"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_rays"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
