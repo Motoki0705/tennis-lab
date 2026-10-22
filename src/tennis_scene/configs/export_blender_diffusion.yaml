@@ -1,0 +1,35 @@
+defaults:
+  - paths: default
+  - _self_
+input: tennis_scene/visualize/export_blender_rays/meiji-rays-final-20261021
+output: ${tennis_output:tennis_scene,visualize,export_blender_diffusion,${tennis_run_id:}}
+# EXTERNAL_ASSET-relative. Supply the font root explicitly; never substitute fonts.
+badge_font: opentype/noto/NotoSansCJK-Regular.ttc
+# Adopted preview: keep seed, 2s/4s/9s timing, noise and display unchanged.
+seed: 42
+smoothing_lambda: 0.01
+point_tolerance_m: 0.2
+noise_knots: 48
+noise_scale_m: [7.0, 13.0, 4.5]
+noise_center_m: [0.0, 0.0, 5.0]
+fps: 30
+conditions_seconds: 2.0
+denoise_seconds: 4.0
+playback_seconds: 9.0
+curve_radius_m: 0.055
+tube_sides: 8
+condition_radius_m: 0.065
+gap_radius_m: 0.15
+ball_radius_m: 0.14
+# Final render defaults. Preview overrides only samples=8 and resolution=50%.
+width: 1920
+height: 1080
+samples: 64
+gif_width: 960
+gif_fps: 15
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${tennis_output:tennis_scene,visualize,export_blender_diffusion,${tennis_run_id:}},hydra}
+  output_subdir: null
+  job:
+    chdir: false
