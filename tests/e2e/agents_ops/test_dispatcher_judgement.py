@@ -696,7 +696,7 @@ def test_same_inputs_still_run_agent_and_update_only_changed_comment(
 @pytest.mark.parametrize(
     "change", ["requirements", "human_comment", "dependency", "new_pr", "owner"]
 )
-def test_changes_immediately_before_publication_reject_all_candidates(
+def test_changes_immediately_before_publication_defer_the_subject(
     h: Harness, change: str
 ) -> None:
     h.gh.issues[200] = issue(200, state="closed", reason="completed")
@@ -741,8 +741,210 @@ def test_changes_immediately_before_publication_reject_all_candidates(
 
     h.gh.on_get = concurrent_edit
     result = h.run()
-    assert result["result"] == "failed" and result["candidates"] == []
+    assert result["result"] == "deferred" and result["candidates"] == []
+    assert result["decisions"] == []
+    assert [(d["issue"], d["stage"]) for d in result["deferred"]] == [(1, "preflight")]
+    assert "次の予定回または明示実行で再判断" in result["diagnostics"][0]
     assert h.gh.writes == []
+
+
+@pytest.mark.parametrize("apply", [False, True])
+@pytest.mark.parametrize(
+    "change", ["requirements", "closed", "owner", "delegated", "assignee", "new_pr"]
+)
+def test_other_subject_changes_do_not_discard_fresh_judgements(
+    h: Harness, apply: bool, change: str
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def concurrent_edit(endpoint: str) -> None:
+        if not h.calls.exists():
+            return
+        h.gh.on_get = None
+        if change == "requirements":
+            h.gh.issues[2]["body"] += "\n新しい要件"
+        elif change == "closed":
+            h.gh.issues[2].update(state="closed", state_reason="completed")
+        elif change in {"owner", "delegated"}:
+            h.store.parents[f"o/r#{2 if change == 'owner' else 300}"] = {
+                "status": "active",
+                "generation": 1,
+                "session": "claude:private-owner",
+                "tasks": {} if change == "owner" else {"2": {"delegated": True}},
+                "reviews": [],
+            }
+            h.store.save()
+        elif change == "assignee":
+            h.gh.issues[2]["assignees"] = [{"login": "human"}]
+        else:
+            h.gh.prs.append(
+                {
+                    "number": 300,
+                    "body": "Closes #2",
+                    "state": "open",
+                    "merged_at": None,
+                    "head": {"ref": "worker", "sha": "a" * 40},
+                }
+            )
+
+    h.gh.on_get = concurrent_edit
+    result = h.run(apply=apply, runner=h.fake_runner)
+    assert result["schema_version"] == 2
+    assert result["result"] == ("recorded" if apply else "preview"), result
+    assert [d["issue"] for d in result["decisions"]] == [1]
+    assert [d["issue"] for d in result["deferred"]] == [2]
+    assert [c["parent"] for c in result["candidates"]] == ([1] if apply else [])
+    assert [p["issue"] for p in result["publications"]] == ([1] if apply else [])
+    assert all(w["endpoint"] == "repos/o/r/issues/1/comments" for w in h.gh.writes)
+    assert json.loads((h.run_dir / "result.json").read_text()) == result
+    assert len(h.calls.read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize("change", ["dependency", "formal_child", "source_report"])
+def test_related_input_changes_defer_only_subjects_in_that_closure(
+    h: Harness, change: str
+) -> None:
+    h.gh.issues.update(
+        {2: issue(2), 200: issue(200, state="closed", reason="completed")}
+    )
+    d = decision(2)
+    if change == "dependency":
+        h.gh.dependencies[2] = [200]
+        d = decision(2, deps=(200,))
+    elif change == "formal_child":
+        h.gh.parents[200] = 2
+    else:
+        h.gh.issues[2]["body"] = (
+            "<!-- ops-report-proposal: R-01 report=#200 option=plan -->\n\n"
+            + h.gh.issues[2]["body"]
+        )
+        h.gh.issues[200]["labels"] = [{"name": "ops-report"}]
+        d["sources"].append("issue:200")
+    h.response(decision(1), d)
+
+    def concurrent_edit(endpoint: str) -> None:
+        if h.calls.exists():
+            h.gh.on_get = None
+            h.gh.issues[200]["body"] += "\n対象となる判断材料の変更"
+
+    h.gh.on_get = concurrent_edit
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    assert [d["issue"] for d in result["decisions"]] == [1]
+    assert [d["issue"] for d in result["deferred"]] == [2]
+    assert [c["parent"] for c in result["candidates"]] == [1]
+    assert 2 not in h.gh.comment_rows
+
+
+@pytest.mark.parametrize("apply", [False, True])
+@pytest.mark.parametrize("change", ["issues", "code"])
+def test_all_subjects_changed_is_deferred_without_automatic_rejudgement(
+    h: Harness, apply: bool, change: str
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def concurrent_edit(endpoint: str) -> None:
+        if not h.calls.exists():
+            return
+        h.gh.on_get = None
+        if change == "issues":
+            for raw in h.gh.issues.values():
+                raw["body"] += "\n新しい要件"
+        else:
+            (h.work / "README.md").write_text("# Parser\n\nNew requirements.\n")
+            h.git("add", "README.md")
+            h.git(
+                "-c",
+                "user.name=test",
+                "-c",
+                "user.email=test@example.com",
+                "commit",
+                "-qm",
+                "new code",
+            )
+
+    h.gh.on_get = concurrent_edit
+    result = h.run(apply=apply, runner=h.fake_runner)
+    assert result["result"] == "deferred", result
+    assert result["candidates"] == result["decisions"] == result["publications"] == []
+    assert [d["issue"] for d in result["deferred"]] == [1, 2]
+    assert len(result["diagnostics"]) == 2
+    assert h.gh.writes == [] and len(h.calls.read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize("apply", [False, True])
+@pytest.mark.parametrize(
+    "change", ["new_issue", "unrelated_issue", "unrelated_pr", "unrelated_owner"]
+)
+def test_unrelated_updates_and_new_open_issues_do_not_invalidate_subjects(
+    h: Harness, apply: bool, change: str
+) -> None:
+    h.gh.issues[200] = issue(200, state="closed", reason="completed")
+    h.response(decision(1))
+
+    def concurrent_edit(endpoint: str) -> None:
+        if not h.calls.exists():
+            return
+        h.gh.on_get = None
+        if change == "new_issue":
+            h.gh.issues[2] = issue(2)
+        elif change == "unrelated_issue":
+            h.gh.issues[200]["body"] += "\n無関係な変更"
+        elif change == "unrelated_pr":
+            h.gh.prs.append(
+                {
+                    "number": 300,
+                    "body": "Closes #200",
+                    "state": "open",
+                    "merged_at": None,
+                    "head": {"ref": "unrelated-worker", "sha": "a" * 40},
+                }
+            )
+        else:
+            h.store.parents["o/r#200"] = {
+                "status": "active",
+                "generation": 1,
+                "session": "claude:private-owner",
+                "tasks": {},
+                "reviews": [],
+            }
+            h.store.save()
+
+    h.gh.on_get = concurrent_edit
+    result = h.run(apply=apply, runner=h.fake_runner)
+    assert result["result"] == ("recorded" if apply else "preview"), result
+    assert [d["issue"] for d in result["decisions"]] == [1]
+    assert result["deferred"] == [] and result["diagnostics"] == []
+    assert h.snapshot()["subjects"] == [1]
+    assert [c["parent"] for c in result["candidates"]] == ([1] if apply else [])
+    if apply:
+        with h.store.locked():
+            h.mod.assert_candidate_fresh(
+                h.gh, h.store, h.work, h.snapshot(), result["candidates"][0]
+            )
+    else:
+        assert h.gh.writes == []
+
+
+def test_new_open_child_defers_only_the_existing_family(h: Harness) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def concurrent_edit(endpoint: str) -> None:
+        if h.calls.exists():
+            h.gh.on_get = None
+            h.gh.issues[3] = issue(3)
+            h.gh.parents[3] = 2
+
+    h.gh.on_get = concurrent_edit
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    assert [c["parent"] for c in result["candidates"]] == [1]
+    assert [d["issue"] for d in result["deferred"]] == [2]
+    assert h.snapshot()["subjects"] == [1, 2]
+    assert 2 not in h.gh.comment_rows and 3 not in h.gh.comment_rows
 
 
 def test_change_during_comment_write_cannot_record_a_basis(h: Harness) -> None:
@@ -756,11 +958,123 @@ def test_change_during_comment_write_cannot_record_a_basis(h: Harness) -> None:
 
     h.gh.on_write = edit
     result = h.run()
-    assert result["result"] == "failed" and result["candidates"] == []
+    assert result["result"] == "deferred" and result["candidates"] == []
+    assert result["decisions"] == []
+    assert result["deferred"][0]["stage"] == "publication"
     assert len(h.gh.writes) == 1
     assert not any(
         '"event": "execution_basis"' in c["body"] for c in h.gh.comment_rows[1]
     )
+
+
+@pytest.mark.parametrize("write_number", [1, 2])
+@pytest.mark.parametrize("changed_subject", [1, 2])
+def test_subject_changes_during_writes_preserve_other_candidates(
+    h: Harness, write_number: int, changed_subject: int
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def edit() -> None:
+        if len(h.gh.writes) + 1 == write_number:
+            h.gh.on_write = None
+            h.gh.issues[changed_subject]["body"] += "\n新しい要件"
+
+    h.gh.on_write = edit
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    fresh_subject = 3 - changed_subject
+    assert [d["issue"] for d in result["decisions"]] == [fresh_subject]
+    assert [c["parent"] for c in result["candidates"]] == [fresh_subject]
+    assert [(d["issue"], d["stage"]) for d in result["deferred"]] == [
+        (changed_subject, "publication")
+    ]
+    if changed_subject == 2:
+        assert 2 not in h.gh.comment_rows
+    else:
+        bases = [
+            c for c in h.gh.comment_rows[1] if '"event": "execution_basis"' in c["body"]
+        ]
+        assert len(bases) == write_number - 1
+
+
+def test_dependency_change_during_basis_write_is_caught_after_publication(
+    h: Harness,
+) -> None:
+    h.gh.issues.update(
+        {2: issue(2), 200: issue(200, state="closed", reason="completed")}
+    )
+    h.gh.dependencies[1] = [200]
+    h.response(decision(1, deps=(200,)), decision(2))
+
+    def edit() -> None:
+        if len(h.gh.writes) == 1:
+            h.gh.on_write = None
+            h.gh.issues[200]["state_reason"] = "not_planned"
+
+    h.gh.on_write = edit
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    assert [c["parent"] for c in result["candidates"]] == [2]
+    assert [d["issue"] for d in result["deferred"]] == [1]
+    assert len(h.gh.comment_rows[1]) == 2
+
+
+def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
+    h: Harness,
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def edit() -> None:
+        if len(h.gh.writes) == 2:
+            h.gh.on_write = None
+            h.gh.issues[1]["body"] += "\n記録後の変更"
+
+    h.gh.on_write = edit
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    assert [d["issue"] for d in result["decisions"]] == [2]
+    assert [c["parent"] for c in result["candidates"]] == [2]
+    assert [(d["issue"], d["stage"]) for d in result["deferred"]] == [
+        (1, "final_check")
+    ]
+    assert [p["issue"] for p in result["publications"]] == [1, 2]
+    assert len(h.gh.writes) == 4
+
+
+def test_collection_failure_after_judgement_is_fatal_and_not_a_deferral(
+    h: Harness,
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+
+    def fail(endpoint: str) -> None:
+        if h.calls.exists():
+            h.gh.on_get = None
+            h.gh.fail = "issues/2/comments"
+
+    h.gh.on_get = fail
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert result["deferred"] == []
+    assert "injected API failure" in result["diagnostics"][0]
+    assert h.gh.writes == []
+
+
+def test_parent_record_error_without_input_changes_is_fatal(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h.response(decision(1))
+
+    def fail(*args: Any) -> None:
+        raise ValueError("injected basis record failure")
+
+    monkeypatch.setattr(h.mod, "record_autonomous", fail)
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert result["deferred"] == []
+    assert "injected basis record failure" in result["diagnostics"][0]
 
 
 @pytest.mark.parametrize("agent_status", ["startable", "information_needed"])
@@ -1199,11 +1513,22 @@ def test_broken_or_unsupported_input_fails_before_agent(
     assert h.gh.writes == [] and not h.calls.exists()
 
 
+@pytest.mark.parametrize("changed", [False, True])
 def test_preview_and_cli_print_no_candidates_or_local_private_information(
-    h: Harness, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    h: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    changed: bool,
 ) -> None:
     h.response(decision(1))
     monkeypatch.setattr(h.mod, "GitHub", lambda repo: h.gh)
+
+    def concurrent_edit(endpoint: str) -> None:
+        if changed and h.calls.exists():
+            h.gh.on_get = None
+            h.gh.issues[1]["body"] += "\n新しい要件"
+
+    h.gh.on_get = concurrent_edit
     code = h.mod.main(
         [
             "--repo",
@@ -1219,8 +1544,11 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
         ]
     )
     output = capsys.readouterr().out
-    assert code == 0 and json.loads(output)["result"] == "preview"
-    assert json.loads(output)["candidate_count"] == 0
+    summary = json.loads(output)
+    assert code == 0 and summary["result"] == ("deferred" if changed else "preview")
+    assert summary["schema_version"] == 2 and summary["candidate_count"] == 0
+    assert summary["decision_count"] == (0 if changed else 1)
+    assert summary["deferred_count"] == (1 if changed else 0)
     assert str(h.root) not in output and "session" not in output
     assert h.gh.writes == []
 

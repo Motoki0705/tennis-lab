@@ -18,6 +18,10 @@ from parent.state import Store
 from .records import owned_comment
 
 
+class InputsChanged(ValueError):
+    """A collected subject changed; collection/validation failures remain fatal."""
+
+
 def git(root: Path, *args: str) -> str:
     result = subprocess.run(
         ["git", "-C", str(root), *args],
@@ -342,17 +346,23 @@ class SnapshotGitHub(GitHub):
         return result
 
 
+def assert_material_fresh(
+    snapshot: dict[str, Any], current: dict[str, Any], issue: int
+) -> None:
+    if material(current, issue) != material(snapshot, issue):
+        raise InputsChanged(
+            "judgement inputs changed; wait for the next slot or explicitly judge again"
+        )
+
+
 def assert_fresh(
     gh: GitHub,
     store: Store,
     root: Path,
     snapshot: dict[str, Any],
-    issue: int | None = None,
+    issue: int,
 ) -> dict[str, Any]:
     """Caller holds the registry lock; no agent is launched on a mismatch."""
-    current = collect(gh, store, root, None if issue is None else [issue])
-    if material(current, issue) != material(snapshot, issue):
-        raise ValueError(
-            "judgement inputs changed; wait for the next slot or explicitly judge again"
-        )
+    current = collect(gh, store, root, [issue])
+    assert_material_fresh(snapshot, current, issue)
     return current

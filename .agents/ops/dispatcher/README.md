@@ -39,9 +39,10 @@ Claudeの`--add-dir`への変換とCodexのsandbox契約は共通ランナーが
 exit 0や`task_success:null`をタスク成功に読み替えない。失敗時に別モデルや別sessionへ振り替えない。
 
 保存物は `input.json`、`agent-input/`、`prompt.md`、`agent-runtime/`、`runner.stdout` / `runner.stderr`、
-`agent-output.json`、`result.json`。stdoutは `schema_version/result/candidate_count/diagnostic_count` の短いJSONだけ。
-終了値0はpreviewまたは記録完了、2は取得・整合・runtime・鮮度エラー。診断の詳細はprivateなresultを読む。
-部分公開後の失敗も `result=failed, candidates=[]`。途中までのコメントや根拠を消さず、次の予定回または明示実行で照合する。
+`agent-output.json`、`result.json`。stdoutは `schema_version/result/decision_count/deferred_count/candidate_count/diagnostic_count` の短いJSONだけ。
+終了値0はpreview・記録完了・入力変更による延期、2は取得・整合・runtime等のエラー。
+入力変更と障害の区別、延期の内訳はprivateなresultを読む。部分公開後の障害も `result=failed, candidates=[]`。
+途中までのコメントや根拠を消さず、次の予定回または明示実行で照合する。
 
 ## 入力契約とdigest
 
@@ -82,8 +83,21 @@ publisherのparent-session/review進捗は除くが、checking/agreed/basis_revo
 自然言語コメントを機械的に無関係と分類しない。新しい通常コメントは判断材料になる。
 
 `material(snapshot, N)` は対象の親子・依存・提案出典レポートの閉包と関連PR/担当/コードに絞った同じ射影。
-書込前は全入力、各書込の直前・直後は対象閉包、全記録後は再び全入力を照合する。
-API呼出しとGitHub書込は単一トランザクションではない。競合を検知したrunは候補を返さず、予約直前にも再照合する。
+判定後と全記録後は固定したsubjectsを再収集し、各subjectの対象閉包を個別に照合する。
+全入力digestの一致は書込みの前提にしない。変わっていないsubjectは記録・候補化し、変わったsubjectだけを
+`deferred`へ移して`diagnostics`に再判断の案内を残す。previewにも同じ判定後の照合を適用する。
+各コメント・自律根拠の書込み直前・直後にも対象閉包を照合する。書込み中・記録後の変更でも対象subjectだけを延期し、
+公開済みのコメントや根拠は履歴として保持する。そのsubjectの判断・候補は有効な結果として返さない。
+
+subjectsは最初に全ページ収集したopen issue集合に固定する。agent出力の全件一致検査は維持し、
+判定中に新しく開かれたissueを追加判断せず、次の予定回へ回す。既存subjectのcloseは対象閉包の変更として検出する。
+新規issueでも正式な子・依存などで既存subjectの閉包へ入った場合は、そのsubjectを延期する。
+registryの担当・generation・委任予約は閉包に関係する行だけを照合し、無関係な担当の変更では延期しない。
+publisherと固定コードは各対象閉包に含まれるため、その変更は全subjectに影響する。
+これらと全件出力検査以外に、全入力一致を要する不変条件は設けない。
+API失敗・不正データ・dirtyなコード・registry破損を入力変更として処理せず、run全体を失敗にする。
+
+API呼出しとGitHub書込は単一トランザクションではない。最終照合後にも変更は起こり得るため、予約直前にも対象閉包を再照合する。
 本文・コメント・コード・関係・依存・担当の変更からagentを予定外に再起動しない。
 この関数に差分による起動skipはなく、空入力や無変更回でも正常な収集後はagentを1回呼ぶ。
 
@@ -110,7 +124,7 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 報告容器を除く判断は当該issueへ、理由・確認事実・不足情報・再開条件・次の対応・出典・管理先を記録する。
 同じpublisher・repo・issueに属する厳密な `issue-start-judgement:v1` マーカーと本文を検証し、同内容なら書かず、
 変わった場合はそのコメントだけPATCHする。他人の同形マーカーを自分のコメントとして扱わない。
-自分のコメントの破損・複数一致は上書きせず診断する。本文や指示に編集があればfreshnessで停止する。
+自分のコメントの破損・複数一致は上書きせず診断する。本文や指示に編集があれば対象subjectを延期する。
 自分の表示コメントだけを `ignored_comments` へ明示分類し、通常の指示を除外しない。
 
 startableは `execution_input()` の固定値と最新値を照合し、version付きbasisを生成して `record_autonomous()` に渡す。
@@ -118,9 +132,30 @@ startableは `execution_input()` の固定値と最新値を照合し、version�
 
 ## 割当側への候補契約
 
-`result.json` schema_version=1は `result`（preview/recorded/failed）、`input_sha256`、`decisions`、
-`publications`、`diagnostics`、`candidates` を持つ。予約に渡せるのは `result=recorded` のcandidatesだけ。
-preview/failedのcandidatesは常に空。候補は優先順で、1件は以下の形（追加する場合はversionを上げる）。
+`result.json` とstdoutのschema_version=2。v1から`deferred`の内訳・件数と`result=deferred`を追加し、
+`decisions`は鮮度照合を通ったsubjectだけを保持する契約に変更した。入力・agent出力・候補・実行根拠contextのschemaはv1を維持する。
+resultは `result`、`input_sha256`、`decisions`、`deferred`、`publications`、`diagnostics`、`candidates` を持つ。
+
+| result | 意味 | candidates |
+|---|---|---|
+| `preview` | GitHubへの書込みなし。有効なdecisionsと一部延期の内訳を返す | 常に空 |
+| `recorded` | 鮮度照合を通った判断を記録。一部延期を含み得る | 有効なstartableのみ |
+| `deferred` | 全subjectが入力変更で延期され、有効なdecisionsが0件（preview/apply共通） | 常に空 |
+| `failed` | 取得・schema・runtime・記録等の障害。部分公開後も全候補を無効にする | 常に空 |
+
+`decisions`と`deferred`は、障害のないrunでは最初のsubjectsを過不足なく分け、どちらもissue番号順。
+報告容器の判断はローカルのdecisionsに記録し、GitHubへの書込みは行わない。
+subjectsが最初から空の回は、延期ではなくpreview/recordedの正常な空結果とする。
+`deferred`の1件は `{issue, stage, reason}`。stageは`preflight`（判定後）、`publication`（個別記録中）、
+`final_check`（全記録後）のいずれか。reasonとdiagnosticsに「入力変更のため次の予定回または明示実行で再判断」を残す。
+元の全判断は`agent-output.json`で確認できる。`publications`は実施済みの判断コメント操作の履歴なので、延期対象も含み得る。
+延期されたsubjectはそのrunで再試行せず、変更を契機にagentを追加起動しない。
+
+割当側はv2のresultを検査し、予約に渡せるのは `result=recorded` のcandidatesだけ。
+preview/deferred/failedから予約しない。recordedに延期が混在しても、返された候補は通常どおり1件ずつ予約前照合へ進める。
+候補のschema_version=1と既存キーは変えず、優先順の値は延期による欠番を詰めない。
+`input_sha256`は来歴用の固定全体digestで、最新の全体digestとの一致を要求しない。
+鮮度は`target_sha256`に対応する対象閉包で検査する。候補1件は以下の形（追加する場合は候補のversionを上げる）。
 
 ```json
 {
@@ -180,7 +215,9 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 入力分割と引数・契約照合の試験にはfake runnerも使う。統合試験は共通ランナーの`--read-dir`対応が前提であり、
 未対応の引数を除去したりskipしたりせず、対応版を取り込んで同じテスト全体を再実行する。
 未合意の具体的な作業、情報不足、正式親子、単独、別親依存、取消依存、既存PR/担当、明示停止、報告容器、
-100件超のページング、不正出力、API失敗、無変更再実行、自己コメント、記録直前・途中の変更を検証する。
+100件超のページング、不正出力、API失敗、無変更再実行、自己コメント、記録直前・途中・全記録後の変更を検証する。
+無関係なissue/PR/担当の更新、他subjectだけの変更、対象閉包だけの変更、全件延期、新規open issueと正式な子の追加、
+担当/委任予約の変更でも、影響のない判断・候補を保持し、previewにも同じ延期の内訳を返すことを確認する。
 巨大な本文/コメント・100件超のPRでは、原文の完全な復元・関連PR限定・省略の明示・digest維持を検証する。
 本物のagent/GitHub書込/担当予約/systemdはこの試験で起動しない。
 実agentによる代表例の意味的評価、実issueへの保留コメント、予定回・予約・起動を含む通し検証は実機検証担当へ引き継ぐ。

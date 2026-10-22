@@ -18,10 +18,19 @@ from parent.state import Store, state_directory
 
 from .agent import RUNNER, judge
 from .agent_input import write_agent_input
-from .collect import SnapshotGitHub, assert_fresh, collect, is_container, material
+from .collect import (
+    InputsChanged,
+    SnapshotGitHub,
+    assert_fresh,
+    assert_material_fresh,
+    collect,
+    is_container,
+    material,
+)
 from .records import DETAIL_KEYS, comment_body, ignored_comments, owned_comment
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
 
+RESULT_VERSION = 2
 CANDIDATE_KEYS = {
     "schema_version",
     "repo",
@@ -161,6 +170,100 @@ def autonomous_basis(
     }
 
 
+def defer_decision(result: dict[str, Any], n: int, stage: str) -> None:
+    reason = "入力変更のため延期。次の予定回または明示実行で再判断する。"
+    result["decisions"] = [d for d in result["decisions"] if d["issue"] != n]
+    result["deferred"].append({"issue": n, "stage": stage, "reason": reason})
+    result["diagnostics"].append(f"#{n}: deferred ({stage}); {reason}")
+
+
+def retain_fresh_decisions(
+    gh: GitHub,
+    store: Store,
+    root: Path,
+    snapshot: dict[str, Any],
+    result: dict[str, Any],
+    stage: str,
+) -> None:
+    """Caller holds Store.locked(); only the initial subjects are reconsidered."""
+    decisions = result["decisions"]
+    if not decisions:
+        return
+    current = collect(gh, store, root, [d["issue"] for d in decisions])
+    for decision in decisions:
+        n = decision["issue"]
+        try:
+            assert_material_fresh(snapshot, current, n)
+        except InputsChanged:
+            defer_decision(result, n, stage)
+
+
+def record_decision(
+    gh: GitHub,
+    store: Store,
+    root: Path,
+    run_dir: Path,
+    snapshot: dict[str, Any],
+    result: dict[str, Any],
+    decision: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Caller holds Store.locked(); surround each publication with target checks."""
+    n = decision["issue"]
+    session = ParentSession(gh, store, n, None)
+    assert_fresh(gh, store, root, snapshot, n)
+    action = publish_decision(session, decision, snapshot)
+    result["publications"].append({"issue": n, "action": action})
+    Store.write_json(run_dir / "result.json", result)
+    current = assert_fresh(gh, store, root, snapshot, n)
+    if decision["disposition"] != "startable":
+        return None
+    ignored = ignored_comments(
+        current["issues"][str(n)]["comments"], session.login, gh.repo, n
+    )
+    # Display-only comments may have changed since the agent read them.
+    inputs = execution_input(
+        ParentSession(SnapshotGitHub(current), store, n, None),
+        ignored,
+        execution_context(snapshot, n),
+    )
+    if inputs != snapshot["execution_inputs"][str(n)]:
+        raise ValueError("execution input differs from the agent's fixed input")
+    basis = autonomous_basis(
+        decision["requirements"],
+        decision["rationale"],
+        [source_url(snapshot, s) for s in decision["sources"]],
+        inputs,
+    )
+    assert_fresh(gh, store, root, snapshot, n)
+    try:
+        recorded = record_autonomous(
+            session, {"basis": basis, "inputs": inputs, "ignored_comments": ignored}
+        )
+    except ValueError:
+        # Parent also checks its issue during publication. Defer only if the
+        # collected target actually changed; other errors still fail the run.
+        assert_fresh(gh, store, root, snapshot, n)
+        raise
+    assert_fresh(gh, store, root, snapshot, n)
+    return {
+        "schema_version": 1,
+        "repo": snapshot["repo"],
+        **recorded,
+        "route": "parent"
+        if snapshot["issues"][str(n)]["children"]
+        or "issue:parent" in {x["name"] for x in snapshot["issues"][str(n)]["labels"]}
+        else "standalone",
+        "priority": decision["priority"],
+        "input_sha256": snapshot["input_sha256"],
+        "target_sha256": digest(material(snapshot, n)),
+        "code_commit": snapshot["code"]["commit"],
+        "requirements": decision["requirements"],
+        "dependencies": decision["dependencies"],
+        "rationale": basis["rationale"],
+        "sources": basis["sources"],
+    }
+
+
 def run(
     gh: GitHub,
     store: Store,
@@ -176,10 +279,11 @@ def run(
     root, run_dir = root.resolve(), run_dir.resolve()
     run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
     result: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": RESULT_VERSION,
         "result": "failed",
         "input_sha256": None,
         "decisions": [],
+        "deferred": [],
         "candidates": [],
         "publications": [],
         "diagnostics": [],
@@ -203,74 +307,38 @@ def run(
         result["decisions"] = decisions
         result["diagnostics"].extend(diagnostics)
         with store.locked():
-            assert_fresh(gh, store, root, snapshot)
             # Check public payloads before the first irreversible publication.
             for decision in decisions:
                 ParentSession(gh, store, decision["issue"], None).public(decision)
+            retain_fresh_decisions(gh, store, root, snapshot, result, "preflight")
         if not apply:
             result["result"] = "preview"
         else:
             candidates = []
-            for decision in decisions:
+            for decision in result["decisions"]:
                 n = decision["issue"]
                 if is_container(snapshot["issues"][str(n)]):
                     continue
                 with store.locked():
-                    assert_fresh(gh, store, root, snapshot, n)
-                    session = ParentSession(gh, store, n, None)
-                    action = publish_decision(session, decision, snapshot)
-                    result["publications"].append({"issue": n, "action": action})
-                    Store.write_json(run_dir / "result.json", result)
-                    current = assert_fresh(gh, store, root, snapshot, n)
-                    if decision["disposition"] != "startable":
-                        continue
-                    ignored = ignored_comments(
-                        current["issues"][str(n)]["comments"], session.login, gh.repo, n
-                    )
-                    # Display-only comments may have changed since the agent read them.
-                    inputs = execution_input(
-                        ParentSession(SnapshotGitHub(current), store, n, None),
-                        ignored,
-                        execution_context(snapshot, n),
-                    )
-                    if inputs != snapshot["execution_inputs"][str(n)]:
-                        raise ValueError(
-                            "execution input differs from the agent's fixed input"
+                    try:
+                        candidate = record_decision(
+                            gh, store, root, run_dir, snapshot, result, decision
                         )
-                    basis = autonomous_basis(
-                        decision["requirements"],
-                        decision["rationale"],
-                        [source_url(snapshot, s) for s in decision["sources"]],
-                        inputs,
-                    )
-                    recorded = record_autonomous(
-                        session,
-                        {"basis": basis, "inputs": inputs, "ignored_comments": ignored},
-                    )
-                    candidates.append(
-                        {
-                            "schema_version": 1,
-                            "repo": snapshot["repo"],
-                            **recorded,
-                            "route": "parent"
-                            if snapshot["issues"][str(n)]["children"]
-                            or "issue:parent"
-                            in {x["name"] for x in snapshot["issues"][str(n)]["labels"]}
-                            else "standalone",
-                            "priority": decision["priority"],
-                            "input_sha256": snapshot["input_sha256"],
-                            "target_sha256": digest(material(snapshot, n)),
-                            "code_commit": snapshot["code"]["commit"],
-                            "requirements": decision["requirements"],
-                            "dependencies": decision["dependencies"],
-                            "rationale": basis["rationale"],
-                            "sources": basis["sources"],
-                        }
-                    )
+                    except InputsChanged:
+                        defer_decision(result, n, "publication")
+                        continue
+                    if candidate is not None:
+                        candidates.append(candidate)
             with store.locked():
-                assert_fresh(gh, store, root, snapshot)
+                retain_fresh_decisions(gh, store, root, snapshot, result, "final_check")
             result["result"] = "recorded"
-            result["candidates"] = sorted(candidates, key=lambda c: c["priority"])
+            accepted = {d["issue"] for d in result["decisions"]}
+            result["candidates"] = sorted(
+                (c for c in candidates if c["parent"] in accepted),
+                key=lambda c: c["priority"],
+            )
+        if result["deferred"] and not result["decisions"]:
+            result["result"] = "deferred"
     except (
         ValueError,
         OSError,
@@ -281,6 +349,7 @@ def run(
         result["result"] = "failed"
         result["candidates"] = []
         result["diagnostics"].append(f"{type(exc).__name__}: {exc}")
+    result["deferred"].sort(key=lambda d: d["issue"])
     Store.write_json(run_dir / "result.json", result)
     return result
 
@@ -316,8 +385,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (ValueError, OSError, subprocess.SubprocessError) as exc:
         result = {
-            "schema_version": 1,
+            "schema_version": RESULT_VERSION,
             "result": "failed",
+            "decisions": [],
+            "deferred": [],
             "candidates": [],
             "diagnostics": [f"{type(exc).__name__}: {exc}"],
         }
@@ -325,8 +396,10 @@ def main(argv: list[str] | None = None) -> int:
     print(
         json.dumps(
             {
-                "schema_version": 1,
+                "schema_version": RESULT_VERSION,
                 "result": result["result"],
+                "decision_count": len(result["decisions"]),
+                "deferred_count": len(result["deferred"]),
                 "candidate_count": len(result["candidates"]),
                 "diagnostic_count": len(result["diagnostics"]),
             },
