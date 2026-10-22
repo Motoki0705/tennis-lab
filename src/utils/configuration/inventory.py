@@ -181,6 +181,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "court_detection.preview_augmentation",
     "src.tasks.court_detection.scripts.train": "court_detection.train",
     "src.tasks.court_detection.scripts.visualize": "court_detection.visualize",
+    "src.tasks.court_detection.scripts.visualize_hybrid_fit": "court_detection.hybrid_fit",
     "src.tasks.court_detection.scripts.visualize_learning_stages": "court_detection.learning_stages",
     "src.tasks.player_detection.scripts.generate_dataset": "player_detection.generate_dataset",
     "src.tasks.player_detection.scripts.train": "player_detection.train",
@@ -241,6 +242,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tasks.court_detection.scripts.preview_augmentation": "src.tasks.court_detection.scripts.preview_augmentation._validate_boundary",
     "src.tasks.court_detection.scripts.train": "src.tasks.court_detection.training.runner.validate_train_boundary",
     "src.tasks.court_detection.scripts.visualize": "src.tasks.court_detection.scripts.visualize._validate_boundary",
+    "src.tasks.court_detection.scripts.visualize_hybrid_fit": "src.tasks.court_detection.visualization.presentation.hybrid_fit_config.validate_hybrid_fit_boundary",
     "src.tasks.court_detection.scripts.visualize_learning_stages": "src.tasks.court_detection.visualization.presentation.configuration.validate_learning_stages_boundary",
     "src.tasks.player_detection.scripts.generate_dataset": "src.tasks.player_detection.configuration.validate_generate_boundary",
     "src.tasks.player_detection.scripts.train": "src.tasks.player_detection.configuration.validate_train_boundary",
@@ -745,6 +747,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.train"),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize"),
+    _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize_hybrid_fit"),
     _runtime_boundary("court_detection", "src.tasks.court_detection.scripts.visualize_learning_stages"),
     _runtime_boundary(
         "player_detection", "src.tasks.player_detection.scripts.generate_dataset"

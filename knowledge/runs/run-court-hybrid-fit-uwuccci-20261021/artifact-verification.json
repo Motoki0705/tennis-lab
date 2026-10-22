@@ -1,0 +1,217 @@
+{
+  "schema": "court_hybrid_fit_gpu_render_validation.v1",
+  "implementation_commit": "12efecfab4aad0565a949e09b835055efa15d010",
+  "search_rank": 2,
+  "checkpoint": {
+    "path": "/home/kamimura/projects/tennis-lab/ckpt/court_detection/multiscale_depth3/b863df1f01f0.ckpt",
+    "sha256": "b863df1f01f00d2ff00a21d56a461879e3c5af193a9f32cec47a88d2842f8383"
+  },
+  "candidate": {
+    "rank": 2,
+    "sample_id": "UwuccciC0Jg_100",
+    "output_dir": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation",
+    "errors": {
+      "kp_only_error": 10.625403295558375,
+      "hybrid_error": 2.8945211888325653,
+      "status": "ok"
+    },
+    "improvement_px": 7.73088210672581,
+    "cpu_reference_output_dir": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T115512.038625Z-fdd9e183/presentation",
+    "cpu_errors": {
+      "kp_only_error": 10.62306757744298,
+      "hybrid_error": 2.863671552131612,
+      "status": "ok"
+    },
+    "gpu_minus_cpu_error_px": {
+      "kp_only_error": 0.0023357181153951245,
+      "hybrid_error": 0.030849636700953198
+    },
+    "search_and_render_errors_identical": true,
+    "source_jpeg_rgb_annotation_sha256_verified": true,
+    "input_png_equals_decoded_source": true,
+    "hybrid_png_equals_manifest_homography": true,
+    "seed_count": 6,
+    "artifacts": [
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/hybrid_fit.mp4",
+        "size_bytes": 438118,
+        "sha256": "d6ce1a6d48487cd5911551a8d4baaa333b2fadbdd9f52968e666723d0de72798",
+        "codec": "h264",
+        "width": 960,
+        "height": 540,
+        "fps": 30,
+        "decoded_frames": 420,
+        "duration_seconds": 14.0,
+        "decoded_rgb_sha256": "a02451fc67ee079a5c56c613fc75a568309a93461bc5447351e00791e6d7df85",
+        "stage_still_mean_absolute_rgb_difference": {
+          "01_input": 1.5273167438271604,
+          "02_kp": 1.606545781893004,
+          "03_kp_only": 2.020659079218107,
+          "04_line": 1.6394727366255144,
+          "05_seeds": 1.995565200617284,
+          "06_hybrid": 1.8868145576131687
+        }
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/hybrid_fit.gif",
+        "size_bytes": 12050901,
+        "sha256": "d4b981a7c0e13f4f59a09982d294d33c67768507b80099c4e05aa4a8e95c2221",
+        "width": 960,
+        "height": 540,
+        "decoded_frames": 70,
+        "duration_ms": 14000,
+        "frame_durations_ms": [
+          1000,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          2000,
+          2000,
+          530,
+          470,
+          530,
+          470,
+          530,
+          470,
+          2000,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70,
+          70,
+          60,
+          70
+        ],
+        "decoded_rgb_sha256": "9d6d199bdd5c42050d2c99fe9f8d47292f8c0143f2cf29901e67e03b56f1ad9a"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/01_input.png",
+        "size_bytes": 398897,
+        "sha256": "648953fb05fd622d3d9f962c6f10d8f317c2816707fabe85898436fa39d944e6",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "aa4f44cf5e441c49bf9246dbfdf6ab5ff53a3015746b4e9038f598805051c5a4"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/02_kp.png",
+        "size_bytes": 424207,
+        "sha256": "8d741b5304aaef46c11c5b8f42ef47f46d0a1b2d9a2f02a2a5b7a09d64e401e3",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "f429c6f2dd0bf5fae7cbffce27e9235438f2b663576529aab06d3638e38620b1"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/03_kp_only.png",
+        "size_bytes": 404832,
+        "sha256": "9748e76edb2b55dab996a0046bb6cc1ee07d88d0b97e2de9f8fa8e150f9a287f",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "fa6c8348cead3f0afbb3563f380e26d1eb140730fb91e425f687cc2066f608be"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/04_line.png",
+        "size_bytes": 397530,
+        "sha256": "2ce77ed5042c14dafbe098caa701985d63dfffadd15774f1e012e0f6b510b929",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "77090ba3639844b65dac3dd4d48f48c740d148f7f3228a9597c8c6ec1cf0de46"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/05_seeds.png",
+        "size_bytes": 398989,
+        "sha256": "4e9b5f285d8926290d97720574eff7c34262e77a561c985d5c7319ea2cff7cb4",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "aae997a56c77883bbc72f0c746b9f02095083f790306ff58b839745504f7124a"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/stills/06_hybrid.png",
+        "size_bytes": 391804,
+        "sha256": "d81bbab57a5809df0cfe912ba36bd1295ddf90838a07f07b5cd980edf76ba2c3",
+        "size": [
+          960,
+          540
+        ],
+        "mode": "RGB",
+        "decoded_rgb_sha256": "65046ae06bac0ed2d4cd0416e56bfec2afcc9fb990b742413e851fa6ce4527c9"
+      },
+      {
+        "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T121934.595304Z-fc1a36d2/presentation/manifest.json",
+        "size_bytes": 12044,
+        "sha256": "a18df3254259a2cfbd71db417fff83769ae62b5f68e7012dcf7c66909ffdd745"
+      }
+    ],
+    "cpu_reference_manifest": {
+      "path": "/home/kamimura/projects/tennis-lab/outputs/court_detection/visualize/hybrid_fit/20261021T115512.038625Z-fdd9e183/presentation/manifest.json",
+      "sha256": "f26bdafda40f0ee9948d5f3232015312c17dd9a857cc7c6e48c74128462152a4",
+      "size_bytes": 12034
+    },
+    "cpu_gpu_inputs_and_checkpoint_identical": true
+  },
+  "selection": "candidate_for_user_review"
+}

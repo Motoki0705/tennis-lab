@@ -95,3 +95,62 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 - ポートが使用中なら`--port`を空き番号へ変更し、その番号のURLを開きます。終了はCtrl+Cです。
 
 [データ・checkpointの契約](../README.md#dataset-review--inference-ui) / [共通画面・HTTP API](../../base/visualization/detection/README.md)
+
+## 発表用: KP＋LINEからのホモグラフィー
+
+`scripts.visualize_hybrid_fit` は、KPだけのホモグラフィーが誤り、KP＋LINEの
+同時当てはめで改善する実画像を探し、1枚の画像で推論の各段階を描きます。
+GPUを使う以下のコマンドは、コードのあるworktreeをcwdにして
+[training queue](../../../../.agents/skills/training-queue/SKILL.md)へhalf枠で登録します。
+workerは親セッションが管理します。
+
+採用素材は TennisCourtDetector val の `BiOnysEJdYE_2200`（2026-10-22のユーザー決定）です。
+描画済みのGPU版（960×540・14秒）をそのまま使います。素材のpath・SHA-256・GPU誤差は
+[採用記録](../../../../knowledge/nodes/court_detection/000046-run-court-hybrid-fit-bionys-20261021.md)を参照してください。
+以下のrenderコマンドで、同じsample・checkpoint・解像度の素材を新しいrunへ再生成できます。
+
+```bash
+ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+
+# 候補探索（TennisCourtDetector valの先頭300件。条件を自動で緩めません）
+.venv/bin/python -m src.tasks.court_detection.scripts.visualize_hybrid_fit \
+  mode=search paths.data_root="$ROOT/data" paths.checkpoint_root="$ROOT/ckpt" \
+  paths.external_asset_root="$ROOT/third_party" paths.output_root="$ROOT/outputs"
+
+# 採用素材を14秒・30fpsで再生成（実行はtraining queue経由）
+.venv/bin/python -m src.tasks.court_detection.scripts.visualize_hybrid_fit \
+  mode=render sample_id=BiOnysEJdYE_2200 device=cuda \
+  checkpoint=court_detection/multiscale_depth3/b863df1f01f0.ckpt \
+  output.width=960 output.height=540 output.fps=30 output.gif_width=960 output.gif_fps=15 \
+  paths.data_root="$ROOT/data" paths.checkpoint_root="$ROOT/ckpt" \
+  paths.external_asset_root="$ROOT/third_party" paths.output_root="$ROOT/outputs"
+```
+
+checkpointはpipelineと同じ `court_detection/multiscale_depth3/b863df1f01f0.ckpt`。
+`search.min_kp_only_error_px=10` 以上かつ `search.max_hybrid_error_px=3` 以下の
+成功例を、改善量の降順で最大 `search.top_k=20` 件残します。両誤差は同じ可視GT14点での
+原画像pixelの平均距離です。`search.max_samples` が探索予算です。
+0件なら空のrankingとcontact sheetを保存したうえでエラー終了します。
+別素材を採用するときも、searchの候補を比較してユーザーが決めます。
+
+出力先は `<OUTPUT>/court_detection/visualize/hybrid_fit/<run-id>/presentation/`。
+Hydraログは同じrunの `hydra/` に置き、既存のpresentationは上書きしません。
+searchは `ranking.json`（候補・全探索対象の誤差・画像hash）と `contact_sheet.png`、
+renderは `hybrid_fit.mp4`・`hybrid_fit.gif` と
+`stills/{01_input,02_kp,03_kp_only,04_line,05_seeds,06_hybrid}.png` を生成します。
+MP4は既定1920×1080・30fps、GIFは幅960・15fpsです。
+比較用には `output.width=960 output.height=540` を指定できます。画像の縦横比は保ちます。
+
+描画は原画像 → KP heatmap/peak → KPだけの赤線 → 水色のLINE → 黄色のseed →
+緑の最終fit → 原画像と緑線の静止、の順です。PROSACのfit inlierは塗りつぶし、
+その他は中空、最終fitに選ばれなかったKPは赤い×です。画面内に文字は出しません。
+seedは推定器が実際に選んだものだけを使い、native gridのKP/LINEは表示用にだけresizeします。
+raw KP heatmapはlogitなので、表示用にsigmoidで確率へ変換してから14chの最大値を取ります。
+raw headやホモグラフィー推定の入力は変更しません。
+
+`mode=render input.kind=image input.path=<DATA相対PNG> sample_id=null` では
+別の単一画像も描画できます。この場合GT誤差は算出しません。
+`manifest.json` には解決済みconfig・commit・入力とcheckpointのSHA-256・段階名を記録します。
+画像・予測・seed・fitは `measured`、表示の時間と色は `schematic` です。
+JPEG storeではdescriptor/indexのfile hashと、読取時に検証したJPEG byte列のhash・
+RGB hash・注釈recordのhashを記録し、個別画像ファイルがあるとは仮定しません。

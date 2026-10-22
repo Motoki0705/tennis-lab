@@ -89,6 +89,8 @@ class HybridHomographyResult:
     `selected` is exactly the last optimization's KP set. Rejected coordinates
     never occur in that optimization's residual vector, including robust losses.
     The selection history records every actual nonlinear solve, not gate probes.
+    `seeds` contains the distinct, score-ranked starts used for joint fitting,
+    including when the later optimization or acceptance fails.
     """
 
     matrix: FloatArray | None
@@ -98,6 +100,7 @@ class HybridHomographyResult:
     status: str
     kp_only: ConfidenceHomographyResult
     line_selection: HybridHypothesis | None
+    seeds: tuple[HybridHypothesis, ...]
     best: HybridHypothesis | None
     candidate_count: int
     refined_count: int
@@ -212,6 +215,7 @@ def estimate_hybrid_homography(
     def result(
         status: str,
         *,
+        seeds: tuple[HybridHypothesis, ...],
         best: HybridHypothesis | None = None,
         initial: HybridHypothesis | None = None,
         count: int = 0,
@@ -232,6 +236,7 @@ def estimate_hybrid_homography(
             status,
             baseline,
             initial,
+            seeds,
             best,
             count,
             refined,
@@ -249,7 +254,7 @@ def estimate_hybrid_homography(
         )
     except ValueError as error:
         if str(error) == "insufficient_or_diffuse_line_evidence":
-            return result(str(error))
+            return result(str(error), seeds=())
         raise
     observed_line_distance = evidence.distances(np.nan_to_num(observed, nan=-diagonal))
 
@@ -307,7 +312,7 @@ def estimate_hybrid_homography(
         if candidate is not None:
             hypotheses.append(candidate)
     if not hypotheses:
-        return result("no_jointly_supported_candidate")
+        return result("no_jointly_supported_candidate", seeds=())
     hypotheses.sort(key=lambda h: h.score)
     initial = hypotheses[0]
     seeds: list[HybridHypothesis] = []
@@ -409,7 +414,10 @@ def estimate_hybrid_homography(
             solutions.append(current)
     if not solutions:
         return result(
-            "joint_optimization_failed", initial=initial, count=len(hypotheses)
+            "joint_optimization_failed",
+            seeds=tuple(seeds),
+            initial=initial,
+            count=len(hypotheses),
         )
     solutions.sort(key=lambda h: h.score)
     best = solutions[0]
@@ -436,6 +444,7 @@ def estimate_hybrid_homography(
         status = "ambiguous_candidates"
     return result(
         status,
+        seeds=tuple(seeds),
         best=best,
         initial=initial,
         count=len(hypotheses),
