@@ -7,7 +7,7 @@ Usage:
 Notes:
     - Configuration is loaded from `src/tennis_scene/configs/blender_export.yaml`.
     - The scene archive must carry `player_smpl_valid` / `ball_3d_valid` masks.
-    - Build and render the Blender scene with `scripts/blender/tennis_reveal.py`.
+    - Build and render the Blender scene with `src/tennis_scene/visualization/blender/shots/reveal.py`.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ register_boundary_validator(_BOUNDARY, validate_blender_export_boundary)
 )
 def main(cfg: DictConfig) -> int:
     """Export the configured scene/camera as a Blender bundle."""
-    from src.tennis_scene.blender_export import export_blender_bundle
     from src.tennis_scene.configuration import parse_blender_export_config
+    from src.tennis_scene.visualization.blender.export import export_blender_bundle
 
     runtime = parse_blender_export_config(cfg)
     manifest = export_blender_bundle(

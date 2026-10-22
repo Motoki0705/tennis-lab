@@ -27,6 +27,11 @@
 - **`catalog.py`**: source declaration と runtime boundary を結び付けた inspectable contract catalog の唯一の import path。
 - **`audit.py` / `inventory.py`**: 現在の repository-owned source から configuration/path の禁止パターンを直接検査し、明示的な runtime boundary 契約と照合する library API。行番号依存の migration/exemption snapshot は保持しない。運用 entrypoint は root の `scripts/audit_configuration.py` のみ。
 
+Blender同梱Pythonで実行しrepoをimportしないshotは、`inventory.EXTERNAL_RUNTIME_MODULES` に
+完全なmodule名と理由を登録し、repoのruntime boundary列挙（discovery・catalog）から外します。
+directory名や`bpy`のimportだけでは除外しません。未登録のshotとrepo側exporterは通常どおり
+設定境界を検査し、登録済みshotにも設定値・パスの禁止パターンのsource監査は適用します。
+
 ### `data/`
 - **`file_ranges.py`**: 検証済みfileの範囲を`preadv`で1つのbufferへ直接読む。descriptor数を制限し、fork/spawn・短いread・path差替え・読込中の変更を扱う。
 - **`image_record_store.py`**: JPEG byte shardとDEFLATE圧縮した疎なJSONレコードindex。offset/length、checksum、worker-local mmap、必要画像だけのdecodeを共有する。dataset schemaと公開トランザクションは呼び出し側が所有する。

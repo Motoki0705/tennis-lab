@@ -12,6 +12,11 @@ import pytest
 import src.utils.configuration.audit as audit
 import src.utils.configuration.catalog as catalog
 import src.utils.configuration.discovery as discovery
+from src.utils.configuration.inventory import (
+    EXTERNAL_RUNTIME_MODULES,
+    AuditInventory,
+    AuditRule,
+)
 from src.utils.paths import PROJECT_ROOT
 
 
@@ -107,3 +112,77 @@ def test_catalog_keeps_task_local_generation_boundaries_distinct() -> None:
         "src.tasks.plcs.scripts.preview_augmentation:main",
         "src.tasks.plcs.scripts.visualize:main",
     } <= boundary_ids
+
+
+def test_external_runtime_registration_preserves_neighbor_boundary_checks(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src"
+    shots = source_root / "tennis_scene/visualization/blender/shots"
+    shots.mkdir(parents=True)
+    source = (
+        "import bpy\n"
+        "import argparse\n"
+        "def main():\n"
+        "    return argparse.ArgumentParser().parse_args()\n"
+    )
+    for name in ("reveal", "validate_reveal", "unregistered_shot"):
+        (shots / f"{name}.py").write_text(source, encoding="utf-8")
+    exporter = source_root / "tennis_scene/scripts/export_blender.py"
+    exporter.parent.mkdir(parents=True)
+    exporter.write_text(source.replace("import bpy\n", ""), encoding="utf-8")
+
+    report = audit.inspect_source(source_root, inventory=AuditInventory())
+
+    expected = {
+        "src.tennis_scene.visualization.blender.shots.unregistered_shot:main",
+        "src.tennis_scene.scripts.export_blender:main",
+    }
+    assert {
+        f"{boundary.module}:{boundary.callable_name}"
+        for boundary in report.discovered_boundaries
+    } == expected
+    assert {issue.boundary_id for issue in report.boundary_issues} == expected
+    assert not report.passed
+
+
+def test_external_runtime_sources_still_reject_configuration_fallbacks(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "src"
+    shot = source_root / "tennis_scene/visualization/blender/shots/reveal.py"
+    shot.parent.mkdir(parents=True)
+    shot.write_text(
+        "from collections.abc import Mapping\n"
+        "def read_config(config: Mapping[str, object]):\n"
+        "    return config.get('root', 'fallback')\n"
+        "def main():\n"
+        "    return read_config({})\n",
+        encoding="utf-8",
+    )
+
+    report = audit.inspect_source(source_root, inventory=AuditInventory())
+
+    assert not report.discovered_boundaries
+    assert AuditRule.GET_WITH_FALLBACK in {finding.rule for finding in report.findings}
+    assert not report.passed
+
+
+def test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports() -> (
+    None
+):
+    for module, reason in EXTERNAL_RUNTIME_MODULES.items():
+        assert reason.strip(), module
+        path = PROJECT_ROOT / Path(*module.split(".")).with_suffix(".py")
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                modules = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                assert node.level == 0, module
+                modules = [node.module or ""]
+            else:
+                continue
+            assert not any(
+                name == "src" or name.startswith("src.") for name in modules
+            ), module

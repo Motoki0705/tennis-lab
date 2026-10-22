@@ -16,8 +16,19 @@ __all__ = [
     "BoundaryKind",
     "DEFAULT_AUDIT_INVENTORY",
     "EXPECTED_RUNTIME_BOUNDARIES",
+    "EXTERNAL_RUNTIME_MODULES",
     "RuntimeBoundary",
 ]
+
+
+EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
+    "src.tennis_scene.visualization.blender.shots.reveal": (
+        "Blender bundled Python; consumes a plain-file bundle without repo imports."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_reveal": (
+        "Blender bundled Python; validates a saved scene without repo imports."
+    ),
+}
 
 
 class AuditRule(StrEnum):

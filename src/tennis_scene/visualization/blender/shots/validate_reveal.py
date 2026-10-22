@@ -1,7 +1,7 @@
 """Validate a saved reveal scene inside Blender against its exported bundle.
 
 blender --background <shot>/tennis_reveal.blend --python-exit-code 1 \
-    --python scripts/blender/validate_reveal.py -- \
+    --python src/tennis_scene/visualization/blender/shots/validate_reveal.py -- \
     --bundle <bundle> --report <shot>/validation.json
 
 No rendering is performed. Checks use Blender's evaluated meshes and camera,

@@ -100,7 +100,7 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 保存済みSceneResult v2と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
 切り替わるアニメーションを生成できます。書き出し・Blenderでの撮影・動画化は
-[blender_export](blender_export/README.md)を参照してください。
+[visualization/blender/export](visualization/blender/export/README.md)を参照してください。
 
 ## 他の入口
 

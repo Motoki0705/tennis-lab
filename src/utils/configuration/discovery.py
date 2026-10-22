@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from src.utils.configuration.inventory import BoundaryKind
+from src.utils.configuration.inventory import EXTERNAL_RUNTIME_MODULES, BoundaryKind
 
 __all__ = ["DiscoveredRuntimeBoundary", "discover_runtime_boundaries"]
 
@@ -370,6 +370,10 @@ def discover_runtime_boundaries(
     subprocess_invokers: dict[str, set[str]] = {}
     for path in sorted(source_root.rglob("*.py")):
         module = source_module_name(source_root, path)
+        # Exact registrations describe host runtimes outside the repo's Python CLI.
+        # audit.inspect_source still checks these files for prohibited source patterns.
+        if module in EXTERNAL_RUNTIME_MODULES:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         trees[module] = tree
         constants = _module_string_constants(tree)

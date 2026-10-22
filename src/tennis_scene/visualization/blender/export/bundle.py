@@ -24,13 +24,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import cv2
 import numpy as np
 
 from src.submodules.vendor.gvhmr.body_model import load_smpl_faces
 from src.tennis_scene.archive import load_scene_result
-from src.tennis_scene.blender_export.camera import PinholeCamera, to_blender_camera
-from src.tennis_scene.blender_export.gaps import fill_short_gaps
-from src.tennis_scene.blender_export.pointcache import write_pc2
+from src.tennis_scene.visualization.blender.export.camera import (
+    PinholeCamera,
+    to_blender_camera,
+)
+from src.tennis_scene.visualization.blender.export.gaps import fill_short_gaps
+from src.tennis_scene.visualization.blender.export.pointcache import write_pc2
 from src.tennis_scene.visualization.rendering.smpl_court import (
     load_smpl_joint_regressor,
     smpl_vertices_to_court,
@@ -47,7 +51,7 @@ from src.utils.schema.court import (
     net_height_at_x,
 )
 from src.utils.video.encoding import encode_jpeg
-from src.utils.video.reader import OpenCVVideoFrameReader, probe_video_info
+from src.utils.video.reader import RandomAccessVideoReader, probe_video_info
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -125,8 +129,43 @@ def court_geometry() -> dict[str, Any]:
 
 
 def _write_plate(
-    video_path: Path, output_dir: Path, scene: SceneResult, quality: int
+    video_path: Path,
+    output_dir: Path,
+    *,
+    frame_range: range,
+    max_width: int | None,
+    quality: int,
 ) -> None:
+    """Write a contiguous source interval into ``output_dir/%05d.jpg``.
+
+    Filenames retain source frame indices. ``max_width=None`` preserves the
+    original resolution; an integer caps the width without upscaling. Callers
+    own validation against scene/camera metadata and partial-bundle cleanup.
+    """
+    info = probe_video_info(video_path)
+    if (
+        frame_range.step != 1
+        or not 0 <= frame_range.start < frame_range.stop <= info.frame_count
+    ):
+        raise ValueError("frame_range must be a non-empty contiguous video interval.")
+    if max_width is not None and max_width <= 0:
+        raise ValueError("max_width must be positive or None.")
+    if not 1 <= quality <= 100:
+        raise ValueError("quality must be in [1, 100].")
+    output_dir.mkdir(parents=True)
+    with RandomAccessVideoReader(video_path) as reader:
+        for frame_index in frame_range:
+            frame = reader.read(frame_index)
+            if max_width is not None and frame.shape[1] > max_width:
+                height = max(1, round(frame.shape[0] * max_width / frame.shape[1]))
+                frame = cv2.resize(
+                    frame, (max_width, height), interpolation=cv2.INTER_AREA
+                )
+            target = output_dir / f"{frame_index:05d}.jpg"
+            target.write_bytes(encode_jpeg(frame, quality=quality))
+
+
+def _validate_plate_video(video_path: Path, scene: SceneResult) -> None:
     info = probe_video_info(video_path)
     if not math.isclose(info.fps, scene.fps, rel_tol=1e-5):
         raise ValueError(f"Video FPS {info.fps} differs from scene FPS {scene.fps}.")
@@ -135,19 +174,10 @@ def _write_plate(
             f"Video {video_path} is {info.width}x{info.height}, scene is "
             f"{scene.width}x{scene.height}."
         )
-    (output_dir / "plate").mkdir(parents=True)
-    written = 0
-    for packet in OpenCVVideoFrameReader(video_path):
-        if packet.index >= scene.num_frames:
-            raise ValueError(
-                f"Video {video_path} has more frames than the scene ({scene.num_frames})."
-            )
-        target = output_dir / PLATE_PATTERN.format(frame=packet.index)
-        target.write_bytes(encode_jpeg(packet.frame, quality=quality))
-        written += 1
-    if written != scene.num_frames:
+    if info.frame_count != scene.num_frames:
         raise ValueError(
-            f"Decoded {written} frames from {video_path}, scene has {scene.num_frames}."
+            f"Video {video_path} has {info.frame_count} frames, "
+            f"scene has {scene.num_frames}."
         )
 
 
@@ -265,7 +295,14 @@ def export_blender_bundle(
         np.save(output_dir / "ball_positions.npy", ball.values)
         np.save(output_dir / "ball_valid.npy", ball.valid)
 
-        _write_plate(video_path, output_dir, scene, config.plate_jpeg_quality)
+        _validate_plate_video(video_path, scene)
+        _write_plate(
+            video_path,
+            output_dir / "plate",
+            frame_range=range(scene.num_frames),
+            max_width=None,
+            quality=config.plate_jpeg_quality,
+        )
 
         pose = to_blender_camera(camera, sensor_width_mm=config.sensor_width_mm)
         manifest = {

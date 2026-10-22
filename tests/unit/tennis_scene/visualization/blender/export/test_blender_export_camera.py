@@ -5,7 +5,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from src.tennis_scene.blender_export.camera import PinholeCamera, to_blender_camera
+from src.tennis_scene.visualization.blender.export.camera import (
+    PinholeCamera,
+    to_blender_camera,
+)
 
 WIDTH, HEIGHT = 1920, 1080
 
