@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import sqlite3
 import subprocess
@@ -23,6 +22,7 @@ from parent.github import GitHub
 from . import activity
 from .errors import BoardError
 from .names import Assignment, canonical_name, ensure_name, for_parent, retire_name
+from .safety import public
 from .storage import Store, directory
 
 STATES = {"idle", "working", "blocked", "done"}
@@ -38,16 +38,7 @@ def _reference(key: str) -> tuple[str, int]:
 
 
 def _public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> None:
-    serialized = json.dumps(value, ensure_ascii=False)
-    secrets = [row["session"].partition(":")[2] for row in parents.values()]
-    secrets.extend(
-        env.get(key, "")
-        for key in ("CLAUDE_CODE_SESSION_ID", "CODEX_SESSION_ID", "CODEX_THREAD_ID")
-    )
-    if any(secret and secret in serialized for secret in secrets):
-        raise BoardError("board output contains private session information")
-    if ABSOLUTE_PATH.search(serialized):
-        raise BoardError("board output contains a private path")
+    public(value, parents, env)
 
 
 def _identifier(value: str, parents: Mapping[str, Any], env: Mapping[str, str]) -> str:
