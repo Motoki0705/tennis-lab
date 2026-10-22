@@ -14,7 +14,11 @@ from omegaconf import DictConfig, OmegaConf
 from PIL import Image, ImageDraw
 from torch.utils.data import DataLoader, Subset
 
-from src.tasks.court_detection.configuration import SyntheticCourtSourceConfig
+from src.tasks.court_detection.configuration import (
+    SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
+    TennisCourtEvaluationSourceConfig,
+)
 from src.tasks.court_detection.data.contracts import CourtSourceSplit
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.dataset import CourtDetectionDataset
@@ -25,6 +29,8 @@ from src.tasks.court_detection.geometry.pose import (
 )
 from src.tasks.court_detection.inference.checkpoint import file_sha256
 from src.tasks.court_detection.models.dinov3_dpt import CourtModelOutput
+from src.tasks.court_detection.scaling.provenance import data_condition
+from src.tasks.court_detection.scaling.schedule import has_step_schedule
 from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
     _move_to_device,
@@ -208,6 +214,9 @@ def evaluate_checkpoint(
     *,
     device: str = "cuda",
     path_overrides: dict[str, str] | None = None,
+    expected_step: int | None = None,
+    real_split: str | None = None,
+    series: str | None = None,
 ) -> dict[str, Any]:
     """Score both complete splits with the checkpoint's configuration and targets."""
     if device == "cuda" and not torch.cuda.is_available():
@@ -220,12 +229,40 @@ def evaluate_checkpoint(
         if isinstance(hyper["config"], DictConfig)
         else OmegaConf.create(hyper["config"])
     )
+    scaling = has_step_schedule(cfg)
+    if scaling:
+        if (
+            type(expected_step) is not int
+            or expected_step <= 0
+            or payload.get("global_step") != expected_step
+        ):
+            raise ValueError(
+                "Scaling evaluation requires an exact positive --expected-step matching checkpoint global_step."
+            )
+        if real_split not in {"val", "test"} or not series:
+            raise ValueError(
+                "Scaling evaluation requires explicit --split val|test and --series."
+            )
+    elif expected_step is not None or real_split is not None or series is not None:
+        raise ValueError(
+            "Step, split and series overrides require a data scaling checkpoint."
+        )
     for key, value in (path_overrides or {}).items():
-        if key not in {"data_root", "checkpoint_root", "external_asset_root"}:
+        if key not in {
+            "data_root",
+            "checkpoint_root",
+            "external_asset_root",
+            "artifact_root",
+        }:
             raise ValueError(f"Unsupported evaluation path override: {key}")
         cfg.paths[key] = value
     pl.seed_everything(int(cfg.run.seed), workers=True)
     dm = CourtDetectionDataModule(cfg)
+    condition = data_condition(dm) if scaling else None
+    if scaling and condition != hyper.get("data_condition"):
+        raise ValueError(
+            "Training data condition or fixed evaluation registry changed since checkpoint publication."
+        )
     module = CourtDetectionLightningModule(
         cfg, target_bundle_state=hyper["target_bundle_state"]
     )
@@ -237,7 +274,9 @@ def evaluate_checkpoint(
     output.mkdir(parents=True, exist_ok=False)
     plain = cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True))
     result: dict[str, Any] = {
-        "schema": "court_ablation_evaluation_v1",
+        "schema": "court_data_scaling_evaluation_v1"
+        if scaling
+        else "court_ablation_evaluation_v1",
         "checkpoint_sha256": digest,
         "checkpoint": str(checkpoint.resolve()),
         "epoch": payload.get("epoch"),
@@ -252,16 +291,26 @@ def evaluate_checkpoint(
         "evaluation_compile": False,
         "splits": {},
     }
+    if scaling:
+        result["data_condition"] = condition
+        result["series"] = series
     manifests = {}
-    for source in dm.mixed_config.sources.values():
-        if isinstance(source, SyntheticCourtSourceConfig):
-            for scene in source.scene_ids:
+    for source_config in dm.mixed_config.sources.values():
+        if isinstance(source_config, SyntheticCourtSourceConfig):
+            for scene in source_config.scene_ids:
                 manifests[f"synthetic_court/{scene}"] = file_sha256(
-                    source.workspace_root / scene / "datasets/court/dataset.json"
+                    source_config.workspace_root / scene / "datasets/court/dataset.json"
+                )
+        elif isinstance(source_config, SyntheticCourtStoresSourceConfig):
+            for index, root in enumerate(source_config.store_roots):
+                manifests[f"synthetic_court/store-{index}"] = file_sha256(
+                    root / "dataset.json"
                 )
         else:
+            if isinstance(source_config, TennisCourtEvaluationSourceConfig):
+                manifests["evaluation_registry"] = file_sha256(source_config.registry)
             manifests["tennis_court_detector"] = file_sha256(
-                source.root / "dataset.json"
+                source_config.root / "dataset.json"
             )
     result["data_manifest_sha256"] = manifests
     del payload
@@ -275,7 +324,12 @@ def evaluate_checkpoint(
         precision=result["precision"],
         deterministic="warn",
     )
-    for source, split in EVALUATION_SPLITS:
+    splits: tuple[tuple[str, CourtSourceSplit], ...] = (
+        (("tennis_court_detector", cast(CourtSourceSplit, real_split)),)
+        if scaling
+        else EVALUATION_SPLITS
+    )
+    for source, split in splits:
         loader = dm.source_eval_dataloader(source, split)
         identity = sample_identity(cast(CourtDetectionDataset, loader.dataset))
         # validate uses the existing whole-split accumulators without buffering

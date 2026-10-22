@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import TypedDict, cast
 
@@ -29,7 +30,10 @@ from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SAMPLE_SCHEMA_V3,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
-from src.tasks.court_detection.configuration import SyntheticCourtSourceConfig
+from src.tasks.court_detection.configuration import (
+    SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
+)
 from src.tasks.court_detection.data.contracts import (
     CourtInputCapability,
     CourtInputSpec,
@@ -135,7 +139,9 @@ class _ParsedPoint(TypedDict):
 class SyntheticCourtInput:
     """Load only the synthetic schema explicitly selected in typed config."""
 
-    def __init__(self, config: SyntheticCourtSourceConfig) -> None:
+    def __init__(
+        self, config: SyntheticCourtSourceConfig | SyntheticCourtStoresSourceConfig
+    ) -> None:
         self.config = config
         self._image_stores: dict[Path, ImageRecordStore] = {}
         flip_permutation: tuple[int, ...]
@@ -256,23 +262,22 @@ class SyntheticCourtInput:
         }
         global_ids: set[str] = set()
         group_splits: dict[tuple[str, str], CourtSourceSplit] = {}
-        workspace_root = self.config.workspace_root.resolve(strict=False)
-        for scene_id in self.config.scene_ids:
-            root = (workspace_root / scene_id / "datasets" / "court").resolve(
-                strict=False
-            )
-            if root == workspace_root or not root.is_relative_to(workspace_root):
-                raise ValueError(
-                    "Synthetic Court manifest root must remain below workspace_root."
-                )
+        explicit = isinstance(self.config, SyntheticCourtStoresSourceConfig)
+        for expected_scene_id, root in self._dataset_roots():
             manifest_path = root / "dataset.json"
             if manifest_path.is_symlink():
                 raise ValueError(
                     "Synthetic Court dataset.json must be an ordinary file."
                 )
-            manifest = read_court_manifest(root)
+            if explicit:
+                store = open_court_store(root)
+                store.validate(decode=False)
+                self._image_stores[root] = store
+                manifest = read_court_manifest(root, store=store)
+            else:
+                manifest = read_court_manifest(root)
             compact = "storage" in manifest
-            if compact:
+            if compact and root not in self._image_stores:
                 self._image_stores[root] = open_court_store(root)
             if set(manifest) != _DATASET_KEYS | ({"storage"} if compact else set()):
                 raise ValueError("Synthetic Court dataset.json fields changed.")
@@ -282,7 +287,8 @@ class SyntheticCourtInput:
                 )
             if manifest["status"] != "completed":
                 raise ValueError("Synthetic Court dataset stage must be completed.")
-            if manifest["scene_id"] != scene_id:
+            scene_id = self._identifier(manifest["scene_id"], name="scene_id")
+            if expected_scene_id is not None and scene_id != expected_scene_id:
                 raise ValueError(
                     "Synthetic Court scene_id disagrees with configuration."
                 )
@@ -298,6 +304,8 @@ class SyntheticCourtInput:
                     scene_id=scene_id,
                     manifest_digest=manifest_digest,
                 )
+                if explicit:
+                    record = replace(record, split="train")
                 if record.sample_id in global_ids:
                     raise ValueError(
                         "Synthetic Court stable sample IDs must be unique."
@@ -312,11 +320,27 @@ class SyntheticCourtInput:
                     )
                 grouped[record.split].append(record)
         empty = [split for split, records in grouped.items() if not records]
-        if empty:
+        if empty and not explicit:
             raise ValueError(
                 f"Synthetic Court V3 requires non-empty train/validation/test splits; empty={empty}."
             )
         return {split: tuple(values) for split, values in grouped.items()}
+
+    def _dataset_roots(self) -> tuple[tuple[str | None, Path], ...]:
+        if isinstance(self.config, SyntheticCourtStoresSourceConfig):
+            return tuple(
+                (None, root.resolve(strict=True)) for root in self.config.store_roots
+            )
+        workspace = self.config.workspace_root.resolve(strict=False)
+        roots = []
+        for scene in self.config.scene_ids:
+            root = (workspace / scene / "datasets" / "court").resolve(strict=False)
+            if root == workspace or not root.is_relative_to(workspace):
+                raise ValueError(
+                    "Synthetic Court manifest root must remain below workspace_root."
+                )
+            roots.append((scene, root))
+        return tuple(roots)
 
     @classmethod
     def _validate_manifest_envelope(cls, manifest: Mapping[str, object]) -> None:

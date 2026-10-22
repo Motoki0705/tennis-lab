@@ -148,6 +148,13 @@ Colab上ではevaluation/reportの出力をColab skillの`--persist`でDriveへ�
 `data/processing`はpreviewや教師検査にも使うtarget選択です。学習の既定は`all`で、
 `loss=default`はpose lossを無効にする明示的なdense-only実験に使用できます。
 
+## 合成データ規模の比較
+
+`--config-name train_data_scaling` は合成のみ（batch 8）・ViT-B＋幅768・更新数基準の専用設定です。
+明示したJPEG store列の採択画像をすべてtrainにし、実画像全体を動画単位で固定したval/testで評価します。
+固定分割の生成、必須設定、指定更新数のcheckpoint評価、対数軸の比較表・曲線は
+[データ規模比較](scaling/README.md)を参照してください。
+
 ## 学習前の確認
 
 `review_dataset.py`は両sourceのGTを表示し、checkpoint・GPUは不要です。

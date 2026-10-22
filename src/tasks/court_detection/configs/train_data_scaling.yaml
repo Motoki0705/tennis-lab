@@ -1,0 +1,46 @@
+# Fixed model and batch; the pilot must explicitly set every update-count value.
+defaults:
+  - train
+  - override data/source: synthetic_court_stores
+  - override data/source@mixed.sources.tennis_court_detector: tennis_court_evaluation
+  - _self_
+
+mixed:
+  train_batch_counts:
+    synthetic_court: 8
+    tennis_court_detector: 0
+data:
+  augmentation:
+    train_scales: [512]
+    val_short_side: 512
+model:
+  transformer_encoder:
+    dim: 768
+    depth: 8
+    num_heads: 12
+    head_dim: 64
+    ffn_dim: 2048
+training:
+  # Inert shared-schema fields. The step runner uses max_epochs=-1 and
+  # check_val_every_n_epoch=null; changing these is rejected.
+  trainer:
+    max_epochs: 1
+    check_val_every_n_epoch: 1
+  warmup_epochs: null
+  warmup_steps: ???
+  steps_per_epoch: null
+  step_schedule:
+    max_steps: ???
+    validation_every_n_steps: ???
+    checkpoint_every_n_steps: ???
+  checkpoint:
+    enabled: false
+  early_stopping:
+    enabled: false
+  qualitative_logging:
+    enabled: false
+  lr_monitor:
+    interval: step
+run:
+  output_dir: ???
+  test_after_fit: false

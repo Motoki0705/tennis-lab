@@ -8,7 +8,9 @@ from typing import cast
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
     SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
     TennisCourtDetectorSourceConfig,
+    TennisCourtEvaluationSourceConfig,
 )
 from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
@@ -29,8 +31,13 @@ def _build_synthetic(
     config: CourtSourceConfig,
 ) -> CourtInput:
     return SyntheticCourtInput(
-        cast(SyntheticCourtSourceConfig, config),
+        cast(SyntheticCourtSourceConfig | SyntheticCourtStoresSourceConfig, config),
     )
+
+
+def _build_evaluation(config: CourtSourceConfig) -> CourtInput:
+    from src.tasks.court_detection.scaling.real_split import TennisCourtEvaluationInput
+    return TennisCourtEvaluationInput(cast(TennisCourtEvaluationSourceConfig, config))
 
 
 _BUILDERS: dict[
@@ -39,6 +46,8 @@ _BUILDERS: dict[
 ] = {
     "tennis_court_detector": _build_tennis,
     "synthetic_court": _build_synthetic,
+    "synthetic_court_stores": _build_synthetic,
+    "tennis_court_evaluation": _build_evaluation,
 }
 
 
