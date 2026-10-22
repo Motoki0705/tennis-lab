@@ -6,6 +6,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 | ファイル | 責務 |
 |---|---|
+| `identity.py` | parent・board・Herdr表示・レビューが共有する環境由来のroot session識別。IDの引数指定や推測をせず、混在と子agentを拒否する |
 | `agents.conf` | 役割の既定値・実装子の代替モデル・用途別の固定プロファイル |
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |

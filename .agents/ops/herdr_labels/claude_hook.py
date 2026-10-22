@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from parent.state import session_identity  # noqa: E402
+from lib.identity import session_identity  # noqa: E402
 
 from herdr_labels.service import sync  # noqa: E402
 
