@@ -298,6 +298,15 @@ registry外側のversionは1を維持し、既存の親行にversion付き `disp
 初期予約はregistryのactive行に `session=dispatcher-reservation:<random token>` として保存する。
 これは起動権の予約であり、runtimeのsession identityではない。
 worker自身が同じlockでreserved→startingを取得するため、Popen直後の応答喪失や複数launcherでも実runnerは1つだけ。
+取得時も保存したauthorization・担当generation・assignment ID・現在の委任IDと親/子の停止状態を検査し、
+parentの実行根拠検査、子の要件digest・正式関係と既存launch_planによる起動条件を再照合する。
+各jobのprivateな`start-input.json`とregistry内のdigestを使い、引用資料・依存・PR・コード等の対象閉包も
+同じlock内で再取得する。初回親は判定時の入力を使い、再開親・子は予約時点の入力を固定する。
+自分のregistry行の変化は上記の担当・委任検査で扱い、他の担当と外部入力の変更は鮮度照合に残す。
+不一致は理由と`runtime_cancelled`イベントを残して未起動予約を解放し、予定外に再判断したり別候補を起動したりしない。
+初回親の未受理予約だけはreleasedとし、次の予定回または明示判定で得た新しい候補から再予約できる。
+その場合も以前のdispatchは`dispatch_history`に保持する。受理済み親・手動担当・明示停止の担当は自動移管しない。
+起動証拠がある予約は解放せずrecovery_requiredで枠を保持する。保存入力の欠落・改変を新しい入力で補わない。
 workerのlifetime lockはrunnerへFD継承する。workerが失われても起動途中のrunnerを見落として再起動しない。
 共通ランナーは親を `--role parent --mode write` で起動し、モデル値の正本は共通設定のまま使う。
 担当受理時だけ、観測した生存Claude runtimeとCLI環境のidentityを照合し、同じgenerationで予約に結合する。

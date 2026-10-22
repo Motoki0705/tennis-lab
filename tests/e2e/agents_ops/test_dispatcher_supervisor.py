@@ -17,14 +17,38 @@ from typing import Any, cast
 
 import pytest
 
-from tests.e2e.agents_ops.test_dispatcher_judgement import Harness, decision, issue
+from tests.e2e.agents_ops.test_dispatcher_judgement import (
+    FakeGitHub,
+    Harness,
+    decision,
+    issue,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
+
+
+class DispatchGitHub(FakeGitHub):
+    def write(
+        self, method: str, endpoint: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        if (
+            method == "PATCH"
+            and endpoint.startswith("repos/o/r/issues/")
+            and "/comments/" not in endpoint
+        ):
+            self.writes.append(
+                {"method": method, "endpoint": endpoint, "payload": payload}
+            )
+            row = self.issues[int(endpoint.rsplit("/", 1)[1])]
+            row.update(payload)
+            return copy.deepcopy(row)
+        return cast(dict[str, Any], super().write(method, endpoint, payload))
 
 
 class DispatchHarness:
     def __init__(self, tmp: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         self.h = Harness(tmp, monkeypatch)
+        self.h.gh = DispatchGitHub()
         self.mod = importlib.import_module("dispatcher.supervisor")
         self.service = importlib.import_module("dispatcher.service")
         self.clock = importlib.import_module("dispatcher.schedule")
@@ -46,6 +70,93 @@ class DispatchHarness:
             state["enabled"] = True
             self.schedule.write(state)
         self.control = self.mod.Supervisor(self.h.gh, self.h.store, self.schedule)
+
+    def publish_github(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        fake = self.h.root / "bin/gh"
+        shutil.copyfile(Path(__file__).with_name("fake_dispatch_github.py"), fake)
+        fake.chmod(0o700)
+        state = self.h.root / "github.json"
+        state.write_text(
+            json.dumps(
+                {
+                    "issues": self.h.gh.issues,
+                    "parents": self.h.gh.parents,
+                    "dependencies": self.h.gh.dependencies,
+                    "comments": self.h.gh.comment_rows,
+                    "prs": self.h.gh.prs,
+                }
+            )
+        )
+        monkeypatch.setenv("FAKE_DISPATCH_GITHUB", str(state))
+
+    def prepare_family(self, *children: int) -> None:
+        formats = importlib.import_module("issues")
+        render = importlib.import_module("issues.cli").render_spec
+        self.h.gh.issues = {}
+        for n in children:
+            sections = {
+                heading: heading + "を検証する。" for heading in formats.CHILD_REQUIRED
+            }
+            sections["依存関係"] = "なし。"
+            sections["Acceptance checklist"] = (
+                "- [ ] 動作する\n  文脈: 起動予約。\n  下流への影響: 停止維持。\n  検証方法・証拠: fake。"
+            )
+            rendered = render(
+                {
+                    "role": "child",
+                    "summary": f"子 {n}",
+                    "parent": {"number": 1, "identifier": "開発"},
+                    "sections": sections,
+                }
+            )
+            self.h.gh.issues[n] = {
+                **issue(n),
+                **{k: rendered[k] for k in ("title", "body")},
+                "labels": [{"name": x} for x in rendered["labels"]],
+            }
+            self.h.gh.parents[n] = 1
+        sections = {
+            heading: heading + "を検証する。"
+            for heading in formats.PARENT_REQUIRED
+            if heading != formats.TASKS_HEADING
+        }
+        rendered = render(
+            {
+                "role": "parent",
+                "identifier": "開発",
+                "summary": "親の起動",
+                "sections": sections,
+                "children": [
+                    {"number": n, "title": self.h.gh.issues[n]["title"]}
+                    for n in children
+                ],
+            }
+        )
+        self.h.gh.issues[1] = {
+            **issue(1),
+            **{k: rendered[k] for k in ("title", "body")},
+            "labels": [{"name": x} for x in rendered["labels"]],
+        }
+        self.h.response(
+            decision(1), *(decision(n, "existing_parent", target=1) for n in children)
+        )
+        assert self.run()["result"] == "recorded"
+
+    def child_task(self, child: int, delegation_id: str) -> dict[str, Any]:
+        policy = importlib.import_module("parent.policy")
+        execution = importlib.import_module("parent.execution")
+        return {
+            "delegated": True,
+            "delegation_id": delegation_id,
+            "agent": "codex",
+            "authorization": self.row()["dispatch"]["authorization"],
+            "worktree": str(self.h.work),
+            "branch": "test",
+            "dependencies": [],
+            "requirements_sha256": policy.digest(
+                execution.requirement_body(self.h.gh.issues[child]["body"])
+            ),
+        }
 
     def now(self, value: str) -> Any:
         return self.clock.local_time(value)
@@ -474,6 +585,229 @@ def test_current_authorization_is_required_after_external_freshness_check(
     assert checked == ["fresh", "authorization"]
     assert d.h.store.parents == {}
     assert not (d.schedule.directory / "workers").exists()
+
+
+def invoke_worker(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, job_id: str
+) -> list[dict[str, Any]]:
+    worker = importlib.import_module("dispatcher.worker")
+    calls: list[dict[str, Any]] = []
+
+    class RecordingRuntime:
+        def __init__(self, runner: Path) -> None:
+            pass
+
+        def execute(self, job: dict[str, Any], fd: int) -> int:
+            calls.append(copy.deepcopy(job))
+            return 0
+
+    monkeypatch.setattr(worker, "Runtime", RecordingRuntime)
+    monkeypatch.setattr(worker, "GitHub", lambda repo: d.h.gh)
+    monkeypatch.setattr(worker.signal, "signal", lambda *args: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "worker",
+            "--store",
+            str(d.h.store.directory),
+            "--state-dir",
+            str(d.schedule.directory),
+            "--key",
+            "o/r#1",
+            "--job",
+            job_id,
+        ],
+    )
+    assert worker.main() == 0
+    return calls
+
+
+@pytest.mark.parametrize(
+    "change",
+    ["stopped", "basis", "generation", "delegation", "authorization", "requirements"],
+)
+def test_worker_rechecks_child_stop_and_authorization_after_reservation(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    d.prepare_family(10, 11)
+    d.control.assign()
+    env = d.accepted()
+    row = d.row()
+    row["tasks"]["10"] = d.child_task(10, "d1")
+    d.update(row)
+    child_id = d.control.start_child(1, 10, "d1", "task", env)
+    if change in {"stopped", "basis"}:
+        with d.control.store.locked():
+            session = d.control._session("o/r#1", d.control.store.parents["o/r#1"])
+            if change == "stopped":
+                session.stop_or_resume(
+                    10,
+                    {
+                        k: "判断待ちのため停止する"
+                        for k in (
+                            "reason",
+                            "facts",
+                            "impact",
+                            "resume_condition",
+                            "next_action",
+                        )
+                    },
+                    False,
+                )
+            else:
+                session.revoke_basis("実行根拠を取り消す")
+    elif change == "requirements":
+        d.h.gh.issues[10]["body"] += "\n新しい受入条件。"
+    else:
+        row = d.row()
+        if change == "generation":
+            row["generation"] += 1
+        elif change == "delegation":
+            row["tasks"]["10"]["delegation_id"] = "d2"
+        else:
+            row["tasks"]["10"]["authorization"] = {
+                **row["dispatch"]["authorization"],
+                "execution_basis_sha256": "f" * 64,
+            }
+        d.update(row)
+    assert invoke_worker(d, monkeypatch, child_id) == []
+    row = d.row()
+    child = row["dispatch"]["jobs"][child_id]
+    assert child["phase"] == "ended" and child["cancelled_before_start"] is True
+    assert "次の予定回または明示実行" in child["diagnostic"]
+    assert not (Path(child["directory"]) / "runtime").exists()
+    if change == "delegation":
+        assert "worker_ended" not in row["tasks"]["10"]
+    else:
+        assert row["tasks"]["10"]["worker_ended"]["delegation_id"] == "d1"
+    if change == "stopped":
+        assert row["tasks"]["10"]["stopped"] is True
+        assert row["dispatch"]["phase"] == "running"
+        row["tasks"]["11"] = d.child_task(11, "independent")
+        d.update(row)
+        independent = d.control.start_child(
+            1, 11, "independent", "independent task", env
+        )
+        calls = invoke_worker(d, monkeypatch, independent)
+        assert len(calls) == 1 and calls[0]["child"] == 11
+
+
+@pytest.mark.parametrize("change", ["body", "comment", "code", "closed", "snapshot"])
+def test_worker_rechecks_initial_parent_inputs_after_reservation(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    d.prepare()
+    d.control.assign()
+    job = d.job()
+    if change == "body":
+        d.h.gh.issues[1]["body"] += "\n実行根拠を変更する。"
+    elif change == "comment":
+        d.h.gh.comment_rows[1].append(
+            {"id": 999, "user": {"login": "human"}, "body": "明示停止"}
+        )
+    elif change == "code":
+        (d.h.work / "README.md").write_text("changed after reservation")
+    elif change == "closed":
+        d.h.gh.issues[1]["state"] = "closed"
+    else:
+        path = Path(job["directory"]) / "start-input.json"
+        data = json.loads(path.read_text())
+        data["issues"]["1"]["body"] += "\n保存入力の改変。"
+        path.write_text(json.dumps(data))
+    assert invoke_worker(d, monkeypatch, job["id"]) == []
+    row = d.row()
+    assert d.job(row)["phase"] == "ended"
+    assert row["status"] == "released"
+    assert "次の予定回または明示実行" in d.job(row)["diagnostic"]
+    assert not (Path(job["directory"]) / "runtime").exists()
+
+
+def test_worker_rechecks_cited_external_inputs_after_reservation(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.h.gh.issues[2] = issue(2)
+    first = decision(1)
+    first["sources"].append("issue:2")
+    d.h.response(first, decision(2))
+    assert d.run()["result"] == "recorded"
+    assert d.control.assign() == [1]
+    job = d.job()
+    d.h.gh.issues[2]["body"] += "\n引用資料の変更。"
+    assert invoke_worker(d, monkeypatch, job["id"]) == []
+    assert "judgement inputs changed" in d.job()["diagnostic"]
+    assert d.state()["runs"][0]["candidates"]["2"]["state"] == "capacity_wait"
+
+
+def test_worker_claim_validates_inside_registry_lock_and_starts_only_once(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.control.assign()
+    job = d.job()
+
+    def locked_validation(endpoint: str) -> None:
+        with importlib.import_module("dispatcher.runtime").gate(
+            d.h.store.directory / "registry.lock"
+        ) as fd:
+            assert fd is None
+
+    d.h.gh.on_get = locked_validation
+    calls = invoke_worker(d, monkeypatch, job["id"])
+    assert len(calls) == 1 and calls[0]["phase"] == "starting"
+    assert invoke_worker(d, monkeypatch, job["id"]) == []
+
+
+def test_worker_claim_preserves_explicit_parent_stop(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.control.assign()
+    row = d.row()
+    row["dispatch"]["phase"] = "stopped"
+    d.update(row)
+    assert invoke_worker(d, monkeypatch, d.job()["id"]) == []
+    assert d.row()["dispatch"]["phase"] == "stopped"
+    assert d.row()["status"] == "active"
+
+
+def test_worker_claim_with_launch_evidence_requires_recovery_and_holds_capacity(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare(1, 2)
+    d.control.assign()
+    job = d.job()
+    (Path(job["directory"]) / "runner.stdout").touch()
+    assert invoke_worker(d, monkeypatch, job["id"]) == []
+    assert d.row()["dispatch"]["phase"] == "recovery_required"
+    assert d.job()["phase"] == "recovery_required"
+    assert d.control.assign() == []
+
+
+def test_rejected_parent_reservation_can_be_rejudged_with_history_preserved(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.control.assign()
+    previous = d.row()["dispatch"]
+    d.h.gh.issues[1]["body"] += "\n要件を変更する。"
+    assert invoke_worker(d, monkeypatch, d.job()["id"]) == []
+    assert d.control.assign() == []
+    assert len(d.h.calls.read_text().splitlines()) == 1
+    assert d.run(explicit=True)["result"] == "recorded"
+    assert d.control.assign() == [1]
+    row = d.row()
+    assert row["generation"] == 2
+    assert row["dispatch"]["assignment_id"] != previous["assignment_id"]
+    assert row["dispatch_history"][0]["assignment_id"] == previous["assignment_id"]
+    assert (
+        row["dispatch_history"][0]["jobs"][previous["active_job"]][
+            "cancelled_before_start"
+        ]
+        is True
+    )
+    assert len(invoke_worker(d, monkeypatch, d.job()["id"])) == 1
 
 
 def test_slot_waiting_and_sequential_candidates_keep_owner(
@@ -941,6 +1275,7 @@ def test_real_runner_worker_claim_stop_and_same_session_resume(
     monkeypatch.setenv("FAKE_DISPATCH_CALLS", str(d.h.root / "runtime-calls.jsonl"))
     monkeypatch.setenv("FAKE_DISPATCH_HOLD", "1")
     monkeypatch.setenv("CODEX_HOME", str(d.h.root / "codex-home"))
+    d.publish_github(monkeypatch)
     job = d.job()
     directory = Path(job["directory"])
     runtime = importlib.import_module("dispatcher.runtime").Runtime(Path(job["runner"]))
@@ -985,6 +1320,12 @@ def test_real_runner_worker_claim_stop_and_same_session_resume(
         first_identity = d.row()["session"]
         d.control.resume(1, "CI event")
         d.control.reconcile()
+        cancelled = d.job()
+        d.control.reconcile(stop=True, parent=1)
+        assert d.job()["cancelled_before_start"] is True
+        assert not (Path(cancelled["directory"]) / "runtime/result.json").exists()
+        d.control.resume(1, "resume after cancelling the unstarted turn")
+        d.control.reconcile()
         resumed = d.job()
         d.control.launch_reserved()
         wait_until(
@@ -1020,7 +1361,7 @@ def test_real_runner_worker_claim_stop_and_same_session_resume(
 def test_real_implementation_slots_and_sol_astra_wiring(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    d.prepare()
+    d.prepare_family(10, 11)
     d.control.assign()
     for name in ("claude", "codex"):
         fake = d.h.root / "bin" / name
@@ -1029,6 +1370,7 @@ def test_real_implementation_slots_and_sol_astra_wiring(
     monkeypatch.setenv("FAKE_DISPATCH_CALLS", str(d.h.root / "runtime-calls.jsonl"))
     monkeypatch.setenv("FAKE_DISPATCH_HOLD", "1")
     monkeypatch.setenv("CODEX_HOME", str(d.h.root / "codex-home"))
+    d.publish_github(monkeypatch)
     parent = d.job()
     d.control.launch_reserved()
 
@@ -1053,14 +1395,7 @@ def test_real_implementation_slots_and_sol_astra_wiring(
         )
         row = d.row()
         for child in (10, 11):
-            row["tasks"][str(child)] = {
-                "delegated": True,
-                "delegation_id": str(child),
-                "agent": "codex",
-                "authorization": row["dispatch"]["authorization"],
-                "worktree": str(d.h.work),
-                "branch": "test",
-            }
+            row["tasks"][str(child)] = d.child_task(child, str(child))
         d.update(row)
         jobs = [
             d.control.start_child(1, 10, "10", "implementation", env),

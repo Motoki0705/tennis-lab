@@ -9,15 +9,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from parent.execution import authorization, validate_authorization, validate_candidate
+from parent.execution import (
+    authorization,
+    requirement_body,
+    validate_authorization,
+    validate_candidate,
+)
 from parent.github import GitHub
-from parent.policy import nonempty, number
+from parent.policy import digest, nonempty, number
 from parent.session import ParentSession
 from parent.state import Store, session_identity
 
 from . import judgement
+from .collect import assert_material_fresh, collect, material, source_references
 from .outcomes import read_result
-from .runtime import Runtime, alive, gate, load
+from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
 from .state import DispatchStore
 
@@ -129,8 +135,22 @@ def unstarted(job: dict[str, Any]) -> bool:
         job["worker"] is None
         and job["runner_exit"] is None
         and not any(
-            (directory / name).exists()
+            (directory / name).exists() or (directory / name).is_symlink()
             for name in ("runtime", "runner.stdout", "runner.stderr")
+        )
+    )
+
+
+def released_reservation(row: dict[str, Any]) -> bool:
+    dispatch = managed(row)
+    return bool(
+        dispatch
+        and row["status"] == "released"
+        and row["session"] == f"dispatcher-reservation:{dispatch['assignment_id']}"
+        and not row["tasks"]
+        and all(
+            j["phase"] == "ended" and j.get("cancelled_before_start") and unstarted(j)
+            for j in dispatch["jobs"].values()
         )
     )
 
@@ -157,6 +177,115 @@ class Supervisor:
             or authorization(self._session(key, row)) != dispatch["authorization"]
         ):
             raise ValueError("managed execution basis changed")
+
+    def _validate_start(
+        self, key: str, row: dict[str, Any], job: dict[str, Any]
+    ) -> None:
+        if not unstarted(job):
+            raise ValueError("reserved runtime already has launch evidence")
+        dispatch = managed(row)
+        if (
+            not dispatch
+            or dispatch["phase"] in {"stopped", "recovery_required"}
+            or job["authorization"] != dispatch["authorization"]
+            or job["assignment_id"] != dispatch["assignment_id"]
+            or job["candidate_sha256"] != digest(dispatch["candidate"])
+        ):
+            raise ValueError(
+                "runtime assignment/generation/authorization changed or stopped"
+            )
+        self._authorized(key, row)
+        session = self._session(key, row)
+        session.agreed()
+        if job["role"] == "parent":
+            if dispatch["active_job"] != job["id"]:
+                raise ValueError("parent reservation was superseded")
+        else:
+            task = row["tasks"].get(str(job["child"]), {})
+            if (
+                not task.get("delegated")
+                or task.get("delegation_id") != job["delegation_id"]
+                or task.get("worker_ended")
+                or task.get("stopped")
+                or task.get("authorization") != job["authorization"]
+                or task.get("agent") != "codex"
+                or task.get("worktree") != job["cwd"]
+                or task.get("branch") != job["branch"]
+            ):
+                raise ValueError("current child delegation changed or stopped")
+            _, children = session.family()
+            child = children.get(job["child"])
+            if child is None or task.get("requirements_sha256") != digest(
+                requirement_body(child.body)
+            ):
+                raise ValueError(
+                    "delegated child requirements or formal parent changed"
+                )
+            planned = next(
+                t
+                for t in session.launch_plan(restart_child=job["child"])["tasks"]
+                if t["child"] == job["child"]
+            )
+            if planned["action"] != "ready":
+                raise ValueError(
+                    "child launch is blocked: "
+                    + "; ".join(r["message"] for r in planned["reasons"])
+                )
+        snapshot = load(Path(job["directory"]) / "start-input.json")
+        sources = dispatch["candidate"]["sources"]
+        if (
+            digest(material(snapshot, session.parent, sources))
+            != job["start_input_sha256"]
+        ):
+            raise ValueError("reserved runtime input digest changed")
+        cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
+        current = collect(
+            self.gh,
+            self.store,
+            Path(self.schedule.read()["config"]["cwd"]),
+            [session.parent, *cited_issues],
+        )
+        # The dispatcher itself changes this row while binding/finishing jobs.
+        # Its authorization and the current delegation were checked above;
+        # all external inputs and other owners remain part of freshness.
+        current["owners"].pop(str(session.parent), None)
+        if str(session.parent) in snapshot["owners"]:
+            current["owners"][str(session.parent)] = snapshot["owners"][
+                str(session.parent)
+            ]
+        assert_material_fresh(snapshot, current, session.parent, sources)
+
+    def claim(self, key: str, job_id: str) -> dict[str, Any] | None:
+        """Validate and acquire a reservation in one parent registry lock."""
+        with self.store.locked():
+            row = self.store.parents[key]
+            dispatch = row["dispatch"]
+            job: dict[str, Any] = dispatch["jobs"][job_id]
+            if job["phase"] != "reserved" or not self.schedule.read()["enabled"]:
+                return None
+            try:
+                self._validate_start(key, row, job)
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                reason = f"{exc}; 次の予定回または明示実行で再判断する"
+                self._cancel(row, job, reason)
+                if (
+                    job["role"] == "parent"
+                    and job["phase"] == "ended"
+                    and dispatch["phase"] != "stopped"
+                ):
+                    dispatch.update(phase="failed", reason=reason)
+                    if (
+                        row["session"]
+                        == f"dispatcher-reservation:{job['assignment_id']}"
+                        and row["generation"] == job["authorization"]["generation"]
+                    ):
+                        row["status"] = "released"
+                self.store.save()
+                return None
+            job.update(phase="starting", worker=process_identity(os.getpid()))
+            event(dispatch, "runtime_starting", job_id=job_id)
+            self.store.save()
+            return job
 
     def _resume_from(self, row: dict[str, Any], previous: dict[str, Any]) -> str | None:
         jobs = row["dispatch"]["jobs"]
@@ -243,6 +372,20 @@ class Supervisor:
         )
         if not Path(cwd).is_absolute():
             raise ValueError("delegated worktree must be absolute")
+        parent = number(int(key.rpartition("#")[2]))
+        sources = dispatch["candidate"]["sources"]
+        if row["session"].startswith("dispatcher-reservation:") and child is None:
+            run = next(
+                r
+                for r in self.schedule.read()["runs"]
+                if r["id"] == dispatch["source_run"]
+            )
+            snapshot = load(Path(run["directory"]) / "input.json")
+        else:
+            cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
+            snapshot = collect(
+                self.gh, self.store, Path(config["cwd"]), [parent, *cited_issues]
+            )
         job_id = uuid.uuid4().hex
         directory = (
             self.schedule.directory / "workers" / dispatch["assignment_id"] / job_id
@@ -267,7 +410,12 @@ class Supervisor:
             "worker": None,
             "runner_exit": None,
             "diagnostic": None,
+            "authorization": dict(dispatch["authorization"]),
+            "assignment_id": dispatch["assignment_id"],
+            "candidate_sha256": digest(dispatch["candidate"]),
+            "start_input_sha256": digest(material(snapshot, parent, sources)),
         }
+        Store.write_json(directory / "start-input.json", snapshot)
         if child is None:
             inputs = {
                 "schema_version": 1,
@@ -340,7 +488,7 @@ class Supervisor:
                             "reason": "registry予約済み",
                         }
                         continue
-                    if row:
+                    if row and not released_reservation(row):
                         run["candidates"][str(n)] = {
                             "state": "existing_owner",
                             "reason": "既存担当は自動移管しない",
@@ -376,12 +524,14 @@ class Supervisor:
                         continue
                     assignment_id = uuid.uuid4().hex
                     reservation = f"dispatcher-reservation:{assignment_id}"
+                    previous = row
                     row = {
+                        **(previous or {}),
                         "session": reservation,
                         "status": "active",
                         "generation": candidate["generation"],
-                        "tasks": {},
-                        "reviews": [],
+                        "tasks": previous["tasks"] if previous else {},
+                        "reviews": previous["reviews"] if previous else [],
                         "launch_policy": {
                             "schema_version": 1,
                             "max_parallel_children": state["config"]["max_children"],
@@ -402,6 +552,11 @@ class Supervisor:
                             "reason": "起動予約済み",
                         },
                     }
+                    if previous:
+                        row["dispatch_history"] = [
+                            *previous.get("dispatch_history", []),
+                            previous["dispatch"],
+                        ]
                     self._job(key, row)
                     self.store.parents[key] = row
                     self.store.save()
