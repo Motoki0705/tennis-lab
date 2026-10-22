@@ -25,6 +25,93 @@ from src.synthetic_data_generation.dataset.court.scale.runtime import (
     load_scene_inputs,
     renderer_fingerprint,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="synthetic.court_scale_generation",
+    fields=(
+        BoundaryPathField(
+            "scenes_root",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "asset_manifest",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "production_recipe",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "output_root",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            required=False,
+        ),
+        BoundaryPathField(
+            "recipe",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "quality",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "request",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            many=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "dataset_version",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+    ),
+)
 
 
 def main() -> None:
@@ -75,6 +162,51 @@ def main() -> None:
     check = commands.add_parser("validate")
     check.add_argument("--dataset-version", type=Path, required=True)
     args = parser.parse_args()
+    names = {
+        "plan": (
+            "scenes_root",
+            "asset_manifest",
+            "production_recipe",
+            "output_root",
+            "recipe",
+            "quality",
+        ),
+        "render": ("output_root", "request"),
+        "validate": ("dataset_version",),
+    }[args.command]
+    arguments: dict[str, Path | list[Path]] = {}
+    for name in names:
+        value = getattr(args, name)
+        if value is not None:
+            arguments[name] = (
+                [path.expanduser().resolve() for path in value]
+                if name == "request"
+                else value.expanduser().resolve()
+            )
+    roots = RuntimePathRoots(
+        project_root=PROJECT_ROOT,
+        data_root=args.scenes_root.expanduser().resolve()
+        if args.command == "plan"
+        else PROJECT_ROOT,
+        checkpoint_root=PROJECT_ROOT,
+        artifact_root=PROJECT_ROOT,
+        output_root=args.output_root.expanduser().resolve().parent
+        if args.command != "validate"
+        else PROJECT_ROOT,
+        cache_root=PROJECT_ROOT,
+        external_asset_root=PROJECT_ROOT,
+    )
+    paths = PATH_BOUNDARY.validate(
+        arguments, resolver=PathResolver(roots), independent_artifact_inputs=True
+    )
+    for name in arguments:
+        setattr(
+            args,
+            name,
+            [entry.path for entry in paths.declared_many(name)]
+            if name == "request"
+            else paths.declared(name).path,
+        )
     if args.command == "validate":
         version = load_dataset_version(args.dataset_version, verify_images=True)
         print(f"verified {version['dataset_version']}", flush=True)
@@ -101,7 +233,9 @@ def main() -> None:
     ) or args.scenes_root.resolve().is_relative_to(root):
         raise ValueError("Output root must be outside the read-only scene root.")
     if (args.asset_manifest is None) != (args.asset_manifest_sha256 is None):
-        raise ValueError("--asset-manifest and --asset-manifest-sha256 are required together.")
+        raise ValueError(
+            "--asset-manifest and --asset-manifest-sha256 are required together."
+        )
     if args.asset_manifest is not None:
         asset_root = args.asset_manifest.parent.resolve()
         if root.is_relative_to(asset_root) or asset_root.is_relative_to(root):
