@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from src.synthetic_data_generation.dataset.court.sample_store import (
@@ -90,7 +90,7 @@ def scale_version(tmp_path, captured_cameras, multi_court_layout, monkeypatch):
         geometry=replace(
             production.geometry,
             width=80,
-            height=48,
+            height=16,
             base_step_m=8,
         ),
     )
@@ -99,7 +99,7 @@ def scale_version(tmp_path, captured_cameras, multi_court_layout, monkeypatch):
         method=production.method,
         recipe=production.geometry,
         seed=24,
-        trajectory_count=3,
+        trajectory_count=6,
         density_level=0,
         cameras=captured_cameras,
         layout=multi_court_layout,
@@ -167,9 +167,9 @@ def test_scaling_default_requires_manifest_and_rejects_manual_identity(tmp_path)
         }
     )
     for field in ("data_version", "generation_seed", "store_roots"):
-        invalid = OmegaConf.merge(
-            config, OmegaConf.from_dotlist([f"data.source.{field}=unexpected"])
-        )
+        invalid = config.copy()
+        with open_dict(invalid.data.source):
+            invalid.data.source[field] = "unexpected"
         with pytest.raises(ValueError, match="Unknown configuration key"):
             CourtTrainingConfig.from_config(invalid)
 
@@ -270,6 +270,9 @@ def test_cpu_updates_and_checkpoint_evaluation_revalidate_dataset_version(
     config.training.lr_monitor.enabled = False
     dm = CourtDetectionDataModule(config)
     dm.setup("fit")
+    (tmp_path / "outputs/court_detection/train/data-scaling-fixture/s42").mkdir(
+        parents=True
+    )
     module = CourtDetectionTrainingRunner().build_lightning_module(config, dm)
     logger = TensorBoardLogger(save_dir=str(tmp_path / "training"), name="logs")
     trainer = build_step_trainer(
