@@ -1,0 +1,32 @@
+CPU prototype (2026-10-22):
+Expanded commands, versions, code hashes and input hashes: run.json / metrics.json.
+Both prototype.py and saved_trajectory_video.py completed with exit code 0.
+Common geometry equal: B00=192, B01=192, B02=156, B03=132 points.
+Fixed evaluation plan: 92 points. Selected A1/A2 union: 2976. Candidate union: 20836.
+Input metadata/store-index hashes before and after: unchanged (24 files).
+No GPU, new 3DGS rendering, Colab, training, source/preset changes or external writes.
+
+OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest knowledge/runs/run-court-nested-plan-cpu-20261022/test_plan.py -n 4 -q
+Result: 8 passed in 9.47s (shared lock wait excluded from pytest duration).
+
+.venv/bin/ruff check knowledge/runs/run-court-nested-plan-cpu-20261022/*.py
+Result: All checks passed.
+.venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-nested-plan-cpu-20261022/*.py
+Result: Success: no issues found in 3 source files.
+Archived tests match the repository tests.* untyped-decorator policy explicitly.
+
+Validation limits:
+Geometry/teacher equality is CPU projection equality with pinned assets; renderer
+visibility, RGB/depth/alpha consistency and new-view quality remain unmeasured.
+Synthetic QA probabilities are sensitivity probes, not renderer acceptance rates.
+
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main
+Result: 586 nodes (544 run, 42 group), 0 errors, 218 advisory warnings.
+No warning refers to the new run; historical metadata warnings remain unchanged.
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
+Result: 398 repro.sh, 493 script references, 0 missing, 8 unverifiable historical references.
+
+.venv/bin/pre-commit run --files knowledge/runs/run-court-nested-plan-cpu-20261022/prototype.py knowledge/runs/run-court-nested-plan-cpu-20261022/saved_trajectory_video.py knowledge/runs/run-court-nested-plan-cpu-20261022/test_plan.py
+Result: exit 0; ruff/mypy hooks report no files because knowledge/ is outside
+their configured scope. The same checks were applied manually above.
