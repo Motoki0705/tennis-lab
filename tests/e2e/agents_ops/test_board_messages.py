@@ -789,7 +789,7 @@ def test_cli_all_commands_and_safe_errors(world: World) -> None:
     )
     assert created.returncode == 0, created.stderr
     root = json.loads(created.stdout)["post"]
-    assert root["recipients"][0]["delivery_reason"] == "notifier_unconfigured"
+    assert root["recipients"][0]["delivery_reason"] == "route_unavailable"
     for env, args in [
         (w.env(2), ["inbox", "--unread"]),
         (w.env(2), ["read", root["id"]]),

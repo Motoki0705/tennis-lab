@@ -11,6 +11,7 @@ from typing import NoReturn
 
 from . import messages
 from .errors import BoardError
+from .notifiers import configured, receipts
 from .service import agents, whoami
 
 
@@ -51,6 +52,9 @@ def main(argv: list[str] | None = None) -> int:
             "--state", choices=("accepted", "declined", "done"), required=True
         )
         commands.add_parser("status", help="show per-recipient states of sent posts")
+        commands.add_parser(
+            "receipts", help="refresh Codex queue receipt phases without sending"
+        )
         args = parser.parse_args(argv)
         env = os.environ
         if args.command in {"post", "reply"}:
@@ -58,10 +62,21 @@ def main(argv: list[str] | None = None) -> int:
                 body = source.read(60001)
             if args.command == "post":
                 result = messages.post(
-                    env, to=args.to, kind=args.kind, subject=args.subject, body=body
+                    env,
+                    to=args.to,
+                    kind=args.kind,
+                    subject=args.subject,
+                    body=body,
+                    notifiers=configured(env),
                 )
             else:
-                result = messages.reply(env, post_id=args.post, to=args.to, body=body)
+                result = messages.reply(
+                    env,
+                    post_id=args.post,
+                    to=args.to,
+                    body=body,
+                    notifiers=configured(env),
+                )
         elif args.command == "read":
             result = messages.read(env, args.post_id)
         elif args.command == "thread":
@@ -72,6 +87,8 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.ack(env, post_id=args.post, state=args.state)
         elif args.command == "status":
             result = messages.status(env)
+        elif args.command == "receipts":
+            result = receipts(env)
         else:
             result = whoami(env) if args.command == "whoami" else agents(env)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
