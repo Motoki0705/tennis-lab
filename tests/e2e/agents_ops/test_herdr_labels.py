@@ -460,21 +460,34 @@ def test_clear_start_never_restores_registered_parent(
 
 
 @pytest.mark.parametrize("display", ["#42 · 関連", "親未登録"])
-@pytest.mark.parametrize("event", ["clear", "SessionEnd", "SessionStart"])
+@pytest.mark.parametrize(
+    "agent,event",
+    [
+        ("claude", "clear"),
+        ("claude", "SessionEnd"),
+        ("claude", "SessionStart"),
+        ("codex", "clear"),
+    ],
+)
 def test_clear_removes_initial_migration_label(
-    labels: Labels, display: str, event: str
+    labels: Labels, display: str, agent: str, event: str
 ) -> None:
+    if agent == "codex":
+        labels.env.pop("CLAUDE_CODE_SESSION_ID")
+        labels.env.update(CODEX_SESSION_ID="test-owner", CODEX_THREAD_ID="test-owner")
+        labels.set_registry({"o/r#42": labels.owner(identity="codex:test-owner")})
     state = labels.read()
     pane = state["panes"]["w1:p1"]
+    pane["agent"] = agent
     pane["display_agent"] = display
-    pane["tokens"].update(tl_topic="初回設定", tl_engine="claude")
+    pane["tokens"].update(tl_topic="初回設定", tl_engine=agent)
     if display == "#42 · 関連":
         pane["tokens"]["tl_parent"] = "o/r#42"
-    # The actual parent may share this Claude ID in another pane.
+    # The actual parent may share this session ID in another pane.
     state["panes"]["w1:p2"].update(
-        agent="claude",
+        agent=agent,
         display_agent="#42 · 親",
-        tokens={"tl_owner": hashlib.sha256(b"claude:test-owner").hexdigest()},
+        tokens={"tl_owner": hashlib.sha256(f"{agent}:test-owner".encode()).hexdigest()},
     )
     labels.write(state)
     original_registry = labels.registry.read_bytes()
@@ -490,7 +503,7 @@ def test_clear_removes_initial_migration_label(
     after = labels.read()["panes"]
     assert "display_agent" not in after["w1:p1"]
     assert after["w1:p1"]["tokens"] == {"other": "keep"}
-    assert after["w1:p1"]["agent"] == "claude"
+    assert after["w1:p1"]["agent"] == agent
     assert after["w1:p2"] == original_parent
     assert labels.registry.read_bytes() == original_registry
 
