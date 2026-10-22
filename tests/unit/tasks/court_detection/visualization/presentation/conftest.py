@@ -12,6 +12,7 @@ from numpy.typing import NDArray
 
 from src.tasks.court_detection.geometry.confidence_homography import (
     ConfidenceHomographyResult,
+    ProsacOrientation,
 )
 from src.tasks.court_detection.geometry.homography import court_template_xy
 from src.tasks.court_detection.geometry.hybrid_homography import (
@@ -60,6 +61,7 @@ def hybrid_prediction() -> tuple[CourtPrediction, NDArray[np.uint8]]:
         inliers,
         np.zeros(14),
         "ok",
+        prosac_orientation=ProsacOrientation.IDENTITY,
     )
     result = HybridHomographyResult(
         matrix=matrix,

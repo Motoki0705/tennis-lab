@@ -51,13 +51,13 @@ tags:
 - presentation
 - hybrid-homography
 - gpu-validation
-- candidate-for-user-review
+- selected-for-presentation
 ---
 
 ## 観察
 
 TennisCourtDetector valの`BiOnysEJdYE_2200`を、探索と同じcheckpoint・CUDAで再推論し、
-14秒の段階描画を生成した。探索順位は1位で、採用は未確定である。
+14秒の段階描画を生成した。探索順位は1位である。
 GPUのKPだけの誤差は16.396553305626206px、KP＋LINEは1.7338136461290754px、
 改善量は14.66273965949713px。いずれも同じ可視GT点への原画像pixelの平均距離であり、
 GPU探索の値と完全一致した。
@@ -69,6 +69,18 @@ GIFは全70 frameをRGBへ復号し、幅960・高さ540・総尺14秒を確認�
 最後の静止画はmanifestに保存したHから描いた結果と画素が完全一致した。
 MP4・GIF・PNG6枚・manifestのSHA-256は
 [検証記録](../../runs/run-court-hybrid-fit-bionys-20261021/artifact-verification.json)へ保存した。
+
+## 素材の採用（2026-10-22）
+
+[ユーザーの判断](https://github.com/Motoki0705/tennis-lab/issues/1207#issuecomment-6331369515)に従い、
+このrunの描画済みGPU版を発表素材として採用する。次点の`UwuccciC0Jg_100`は採用しない。
+採用対象は`artifacts.output_dir`配下の`hybrid_fit.mp4`・`hybrid_fit.gif`・`stills/*.png`で、
+再描画は行わない。素材に添える誤差は上記のGPU版の値を使う。
+[READMEの再生成手順](../../../src/tasks/court_detection/visualization/README.md)に
+sample・checkpoint・CUDA・解像度・fpsを固定したコマンドを記録した。
+生成時のcommit・manifest・SHA-256・検証結果は当時の証拠として維持する。
+後続のPROSAC向きmetadata追加は推定値を変えないことを163件で確認済みとの親の報告に基づき、
+この素材の誤差は変更しない。
 
 ## CPU参考版との比較と限界
 

@@ -51,13 +51,15 @@ tags:
 - presentation
 - hybrid-homography
 - gpu-validation
-- candidate-for-user-review
+- not-selected-for-presentation
 ---
 
 ## 観察
 
 TennisCourtDetector valの`UwuccciC0Jg_100`を、探索と同じcheckpoint・CUDAで再推論し、
-14秒の段階描画を生成した。探索順位は2位で、採用は未確定である。
+14秒の段階描画を生成した。探索順位は2位である。
+[2026-10-22のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/1207#issuecomment-6331369515)で
+この素材は採用せず、1位の`BiOnysEJdYE_2200`のGPU版を採用した。比較・検証記録は保持する。
 GPUのKPだけの誤差は10.625403295558375px、KP＋LINEは2.8945211888325653px、
 改善量は7.73088210672581px。いずれも同じ可視GT点への原画像pixelの平均距離であり、
 GPU探索の値と完全一致した。

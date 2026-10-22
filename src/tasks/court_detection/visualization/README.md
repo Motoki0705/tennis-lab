@@ -102,17 +102,26 @@ ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
 同時当てはめで改善する実画像を探し、1枚の画像で推論の各段階を描きます。
 GPUを使う以下のコマンドは、コードのあるworktreeをcwdにして
 [training queue](../../../../.agents/skills/training-queue/SKILL.md)へhalf枠で登録します。
-workerは親セッションが管理します。`ROOT` は上記と同じ元リポジトリです。
+workerは親セッションが管理します。
+
+採用素材は TennisCourtDetector val の `BiOnysEJdYE_2200`（2026-10-22のユーザー決定）です。
+描画済みのGPU版（960×540・14秒）をそのまま使います。素材のpath・SHA-256・GPU誤差は
+[採用記録](../../../../knowledge/nodes/court_detection/000046-run-court-hybrid-fit-bionys-20261021.md)を参照してください。
+以下のrenderコマンドで、同じsample・checkpoint・解像度の素材を新しいrunへ再生成できます。
 
 ```bash
+ROOT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+
 # 候補探索（TennisCourtDetector valの先頭300件。条件を自動で緩めません）
 .venv/bin/python -m src.tasks.court_detection.scripts.visualize_hybrid_fit \
   mode=search paths.data_root="$ROOT/data" paths.checkpoint_root="$ROOT/ckpt" \
   paths.external_asset_root="$ROOT/third_party" paths.output_root="$ROOT/outputs"
 
-# ranking.jsonから選んだsampleを14秒・30fpsで描画
+# 採用素材を14秒・30fpsで再生成（実行はtraining queue経由）
 .venv/bin/python -m src.tasks.court_detection.scripts.visualize_hybrid_fit \
-  mode=render sample_id=CHOSEN_SAMPLE \
+  mode=render sample_id=BiOnysEJdYE_2200 device=cuda \
+  checkpoint=court_detection/multiscale_depth3/b863df1f01f0.ckpt \
+  output.width=960 output.height=540 output.fps=30 output.gif_width=960 output.gif_fps=15 \
   paths.data_root="$ROOT/data" paths.checkpoint_root="$ROOT/ckpt" \
   paths.external_asset_root="$ROOT/third_party" paths.output_root="$ROOT/outputs"
 ```
@@ -122,7 +131,7 @@ checkpointはpipelineと同じ `court_detection/multiscale_depth3/b863df1f01f0.c
 成功例を、改善量の降順で最大 `search.top_k=20` 件残します。両誤差は同じ可視GT14点での
 原画像pixelの平均距離です。`search.max_samples` が探索予算です。
 0件なら空のrankingとcontact sheetを保存したうえでエラー終了します。
-sampleの最終採用はユーザーが行います。
+別素材を採用するときも、searchの候補を比較してユーザーが決めます。
 
 出力先は `<OUTPUT>/court_detection/visualize/hybrid_fit/<run-id>/presentation/`。
 Hydraログは同じrunの `hydra/` に置き、既存のpresentationは上書きしません。

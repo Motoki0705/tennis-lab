@@ -49,7 +49,7 @@ tags:
 - presentation
 - hybrid-homography
 - gpu-validation
-- candidate-for-user-review
+- material-selected
 ---
 
 ## 観察
@@ -70,8 +70,10 @@ KPだけのHとhybridはともに300件で成立し、hybridの3px以下は282�
 | 2 | UwuccciC0Jg_100 | 10.625403295558375 | 2.8945211888325653 | 7.73088210672581 |
 
 順位は改善量の降順、hybrid誤差の昇順、sample IDの昇順で決めた。
-2件だけなので3件目は追加していない。1位は改善量が大きく、手前の外周のずれが見えやすい
-説明候補として推奨するが、素材の採用は未確定である。
+2件だけなので3件目は追加していない。
+[2026-10-22のユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/1207#issuecomment-6331369515)で、
+1位の`BiOnysEJdYE_2200`の描画済みGPU版を採用し、2位は採用しないことが決まった。
+採用した素材と再生成手順は[描画runの採用記録](000046-run-court-hybrid-fit-bionys-20261021.md)を参照する。
 
 [全300件の結果](../../runs/run-court-hybrid-fit-search-20261021/ranking.json)と
 [候補一覧](../../runs/run-court-hybrid-fit-search-20261021/contact_sheet.png)を保存した。
