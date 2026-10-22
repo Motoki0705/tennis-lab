@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -92,6 +92,10 @@ class PlacementRankCandidate:
     yaw_correction_range_deg: float
     scale: float
     shortened: bool
+    # Filled in by select_top_candidates for the candidates written to
+    # ranking.json; values on a freshly evaluated window are placeholders.
+    overall_rank: int = 0
+    selected_by: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -107,6 +111,8 @@ class PlacementRankCandidate:
             "yaw_correction_range_deg": self.yaw_correction_range_deg,
             "scale": self.scale,
             "shortened": self.shortened,
+            "overall_rank": self.overall_rank,
+            "selected_by": list(self.selected_by),
         }
 
 
@@ -381,7 +387,13 @@ def select_top_candidates(
     identities: Sequence[int],
     top_k: int,
 ) -> tuple[tuple[PlacementRankCandidate, ...], dict[str, Any]]:
-    """Select ``top_k`` while guaranteeing up to three per identity."""
+    """Select the union of the global ``top_k`` and each identity's top three.
+
+    The union may exceed ``top_k``.  Selected candidates are kept in global rank
+    order and annotated with their 1-based ``overall_rank`` and the reasons they
+    were selected.  Duplicate input windows are rejected: they indicate a window
+    enumeration bug upstream.
+    """
     if type(top_k) is not int or top_k < 1:
         raise ValueError("top_k must be a positive integer.")
     identity_values = tuple(int(identity) for identity in identities)
@@ -396,67 +408,93 @@ def select_top_candidates(
     )
     if unknown:
         raise ValueError(f"Candidates reference unknown identities: {unknown}.")
+    seen_windows: set[tuple[int, int, int, int]] = set()
+    duplicate_windows: set[tuple[int, int, int, int]] = set()
+    for candidate in candidates:
+        window = (
+            int(candidate.identity),
+            int(candidate.segment_id),
+            int(candidate.start),
+            int(candidate.stop),
+        )
+        if window in seen_windows:
+            duplicate_windows.add(window)
+        seen_windows.add(window)
+    if duplicate_windows:
+        duplicates = ", ".join(
+            f"identity={identity} segment_id={segment_id} "
+            f"start={start} stop={stop}"
+            for identity, segment_id, start, stop in sorted(duplicate_windows)
+        )
+        raise ValueError(
+            "Duplicate rank candidates for the same window: "
+            f"{duplicates}. Window enumeration must return each window once."
+        )
     ordered = sort_candidates(candidates)
-    available: dict[int, list[PlacementRankCandidate]] = {
-        identity: [c for c in ordered if c.identity == identity]
-        for identity in identity_values
+    positions_by_identity: dict[int, list[int]] = {
+        identity: [] for identity in identity_values
     }
-    quotas = {
-        identity: min(IDENTITY_QUOTA, len(available[identity]))
-        for identity in identity_values
-    }
-    required = sum(quotas.values())
-    selected: set[PlacementRankCandidate] = set()
-    if top_k >= required:
-        for identity in identity_values:
-            selected.update(available[identity][: quotas[identity]])
-        for candidate in ordered:
-            if len(selected) >= top_k:
-                break
-            selected.add(candidate)
-    else:
-        # The quota cannot fit inside top_k.  Select the global top_k and report
-        # the shortfall instead of dropping or fabricating candidates.
-        selected.update(ordered[:top_k])
-    selected_ordered = tuple(
-        candidate for candidate in ordered if candidate in selected
-    )
+    for index, candidate in enumerate(ordered):
+        positions_by_identity[int(candidate.identity)].append(index)
+    overall_indices = set(range(min(top_k, len(ordered))))
+    identity_quota_indices: set[int] = set()
+    for identity in identity_values:
+        identity_quota_indices.update(
+            positions_by_identity[identity][:IDENTITY_QUOTA]
+        )
+    selected_indices = sorted(overall_indices | identity_quota_indices)
+    selected_list: list[PlacementRankCandidate] = []
+    for index in selected_indices:
+        selected_by: list[str] = []
+        if index in overall_indices:
+            selected_by.append("overall")
+        if index in identity_quota_indices:
+            selected_by.append("identity_quota")
+        selected_list.append(
+            replace(
+                ordered[index],
+                overall_rank=index + 1,
+                selected_by=tuple(selected_by),
+            )
+        )
+    selected = tuple(selected_list)
     selected_counts = {
-        identity: sum(1 for candidate in selected if candidate.identity == identity)
+        identity: sum(
+            1 for candidate in selected if candidate.identity == identity
+        )
         for identity in identity_values
     }
-    identity_shortages = [
-        {
-            "identity": identity,
-            "available": len(available[identity]),
-            "required": IDENTITY_QUOTA,
-            "missing": max(0, IDENTITY_QUOTA - len(available[identity])),
-        }
-        for identity in identity_values
-        if len(available[identity]) < IDENTITY_QUOTA
-    ]
-    under_quota = [
-        {
-            "identity": identity,
-            "selected": selected_counts[identity],
-            "quota": quotas[identity],
-        }
-        for identity in identity_values
-        if selected_counts[identity] < quotas[identity]
-    ]
     document = {
         "top_k": top_k,
         "identity_quota": IDENTITY_QUOTA,
-        "required_for_three_per_identity": required,
         "candidate_count": len(ordered),
-        "selected_count": len(selected_ordered),
-        "feasible": top_k <= len(ordered) and top_k >= required,
-        "quota_shortage": max(0, required - top_k),
+        "selected_count": len(selected),
+        "selected_by_overall": len(overall_indices),
+        "added_by_identity_quota": len(selected_indices) - len(overall_indices),
         "capacity_shortage": max(0, top_k - len(ordered)),
-        "identity_shortages": identity_shortages,
-        "under_quota": under_quota,
+        "identity_shortages": [
+            {
+                "identity": identity,
+                "available": len(positions_by_identity[identity]),
+                "required": IDENTITY_QUOTA,
+                "missing": max(
+                    0,
+                    IDENTITY_QUOTA - len(positions_by_identity[identity]),
+                ),
+            }
+            for identity in identity_values
+            if len(positions_by_identity[identity]) < IDENTITY_QUOTA
+        ],
+        "identities": [
+            {
+                "identity": identity,
+                "candidates": len(positions_by_identity[identity]),
+                "selected": selected_counts[identity],
+            }
+            for identity in identity_values
+        ],
     }
-    return selected_ordered, document
+    return selected, document
 
 
 def _identity_ids(inputs: PlacementInputs) -> tuple[int, ...]:

@@ -342,7 +342,7 @@ def test_sort_order_is_yaw_then_valid_ratio_then_start() -> None:
     assert [candidate.start for candidate in ordered] == [2, 1, 3, 0]
 
 
-def test_quota_keeps_low_ranked_identity_top3_then_fills_globally() -> None:
+def test_selection_unions_global_top_k_with_each_identity_top3() -> None:
     candidates = [
         *[
             _candidate(0, start, yaw_variation_deg=100.0 - start, valid_ratio=0.9)
@@ -353,24 +353,13 @@ def test_quota_keeps_low_ranked_identity_top3_then_fills_globally() -> None:
             for start in range(10)
         ],
     ]
-    # The global top 10 would all belong to identity 0.  Identity 1's top 3
-    # must be protected, then the four remaining slots follow the global order.
+    # The global top 10 all belong to identity 0.  Identity 1's top 3 are added
+    # instead of replacing slots in the global top 10.
     selected, quota = select_top_candidates(
         candidates, identities=(0, 1), top_k=10
     )
 
-    assert [candidate.identity for candidate in selected] == [
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        1,
-        1,
-    ]
+    assert [candidate.identity for candidate in selected] == [0] * 10 + [1] * 3
     assert [candidate.yaw_variation_deg for candidate in selected] == [
         100.0,
         99.0,
@@ -379,22 +368,63 @@ def test_quota_keeps_low_ranked_identity_top3_then_fills_globally() -> None:
         96.0,
         95.0,
         94.0,
+        93.0,
+        92.0,
+        91.0,
         10.0,
         9.0,
         8.0,
     ]
-    assert {candidate.start for candidate in selected if candidate.identity == 1} == {
-        0,
-        1,
-        2,
-    }
-    assert quota["feasible"] is True
-    assert quota["required_for_three_per_identity"] == 6
-    assert quota["quota_shortage"] == 0
+    assert [candidate.start for candidate in selected] == list(range(10)) + [0, 1, 2]
+    assert [candidate.overall_rank for candidate in selected] == list(range(1, 14))
+    assert [candidate.selected_by for candidate in selected] == (
+        [("overall", "identity_quota")] * 3
+        + [("overall",)] * 7
+        + [("identity_quota",)] * 3
+    )
+    assert len({(candidate.identity, candidate.start) for candidate in selected}) == 13
+    assert quota["top_k"] == 10
+    assert quota["identity_quota"] == 3
+    assert quota["candidate_count"] == 20
+    assert quota["selected_count"] == 13
+    assert quota["selected_by_overall"] == 10
+    assert quota["added_by_identity_quota"] == 3
     assert quota["capacity_shortage"] == 0
+    assert quota["identity_shortages"] == []
+    assert quota["identities"] == [
+        {"identity": 0, "candidates": 10, "selected": 10},
+        {"identity": 1, "candidates": 10, "selected": 3},
+    ]
+    assert set(quota) == {
+        "top_k",
+        "identity_quota",
+        "candidate_count",
+        "selected_count",
+        "selected_by_overall",
+        "added_by_identity_quota",
+        "capacity_shortage",
+        "identity_shortages",
+        "identities",
+    }
 
 
-def test_quota_shortage_when_top_k_is_smaller_than_the_quota() -> None:
+def test_duplicate_input_candidates_are_rejected() -> None:
+    candidate = _candidate(2, 5, yaw_variation_deg=10.0, valid_ratio=0.9)
+    same_window = _candidate(2, 5, yaw_variation_deg=99.0, valid_ratio=0.5)
+
+    for duplicate in (candidate, same_window):
+        with pytest.raises(ValueError, match="Duplicate rank candidates") as error:
+            select_top_candidates(
+                [candidate, duplicate], identities=(2,), top_k=3
+            )
+        message = str(error.value)
+        assert "identity=2" in message
+        assert "segment_id=0" in message
+        assert "start=5" in message
+        assert "stop=9" in message
+
+
+def test_top_k_smaller_than_the_identity_quota_still_adds_each_top3() -> None:
     candidates = [
         _candidate(identity, start, yaw_variation_deg=10.0, valid_ratio=0.9)
         for identity in (0, 1)
@@ -404,10 +434,33 @@ def test_quota_shortage_when_top_k_is_smaller_than_the_quota() -> None:
         candidates, identities=(0, 1), top_k=4
     )
 
-    assert len(selected) == 4
-    assert quota["feasible"] is False
-    assert quota["quota_shortage"] == 2
-    assert quota["under_quota"]
+    # The global top 4 still wins its slots; each identity's top 3 is added on
+    # top of that, so the output exceeds top_k without dropping a global pick.
+    assert [(candidate.identity, candidate.start) for candidate in selected] == [
+        (0, 0),
+        (1, 0),
+        (0, 1),
+        (1, 1),
+        (0, 2),
+        (1, 2),
+    ]
+    assert [candidate.overall_rank for candidate in selected] == list(range(1, 7))
+    assert [candidate.selected_by for candidate in selected] == [
+        ("overall", "identity_quota"),
+        ("overall", "identity_quota"),
+        ("overall", "identity_quota"),
+        ("overall", "identity_quota"),
+        ("identity_quota",),
+        ("identity_quota",),
+    ]
+    assert quota["selected_count"] == 6
+    assert quota["selected_by_overall"] == 4
+    assert quota["added_by_identity_quota"] == 2
+    assert quota["capacity_shortage"] == 0
+    assert quota["identities"] == [
+        {"identity": 0, "candidates": 4, "selected": 3},
+        {"identity": 1, "candidates": 4, "selected": 3},
+    ]
 
 
 def test_identity_candidate_shortage_is_reported() -> None:
@@ -425,11 +478,56 @@ def test_identity_candidate_shortage_is_reported() -> None:
         candidates, identities=(0, 1), top_k=5
     )
 
-    assert len(selected) == 5
+    # The global top 5 keeps identity 1's four and identity 0's first; the
+    # identity quota adds identity 0's remaining candidate.
+    assert len(selected) == 6
+    assert [candidate.overall_rank for candidate in selected] == list(range(1, 7))
+    assert [candidate.selected_by for candidate in selected] == [
+        ("overall", "identity_quota"),
+        ("overall", "identity_quota"),
+        ("overall", "identity_quota"),
+        ("overall",),
+        ("overall", "identity_quota"),
+        ("identity_quota",),
+    ]
+    assert quota["selected_by_overall"] == 5
+    assert quota["added_by_identity_quota"] == 1
     assert quota["identity_shortages"] == [
         {"identity": 0, "available": 2, "required": 3, "missing": 1}
     ]
     assert quota["capacity_shortage"] == 0
+    assert quota["identities"] == [
+        {"identity": 0, "candidates": 2, "selected": 2},
+        {"identity": 1, "candidates": 4, "selected": 4},
+    ]
+
+
+def test_capacity_shortage_when_candidates_are_fewer_than_top_k() -> None:
+    candidates = [
+        _candidate(0, start, yaw_variation_deg=10.0 - start, valid_ratio=0.9)
+        for start in range(3)
+    ]
+    selected, quota = select_top_candidates(
+        candidates, identities=(0, 1), top_k=10
+    )
+
+    assert len(selected) == 3
+    assert [candidate.overall_rank for candidate in selected] == [1, 2, 3]
+    assert all(
+        candidate.selected_by == ("overall", "identity_quota")
+        for candidate in selected
+    )
+    assert quota["selected_count"] == 3
+    assert quota["selected_by_overall"] == 3
+    assert quota["added_by_identity_quota"] == 0
+    assert quota["capacity_shortage"] == 7
+    assert quota["identity_shortages"] == [
+        {"identity": 1, "available": 0, "required": 3, "missing": 3}
+    ]
+    assert quota["identities"] == [
+        {"identity": 0, "candidates": 3, "selected": 3},
+        {"identity": 1, "candidates": 0, "selected": 0},
+    ]
 
 
 class _UnusedBody:
@@ -612,9 +710,17 @@ def test_rank_writes_only_ranking_json_with_verification(
     }
     assert document["exclusions"][EXCLUSION_NO_T0] == 0
     assert document["exclusions"][EXCLUSION_LOW_VALID_RATIO] == 0
-    assert document["quota"]["feasible"] is False
-    assert document["quota"]["capacity_shortage"] == 3
-    assert document["quota"]["quota_shortage"] == 0
+    assert document["quota"] == {
+        "top_k": 10,
+        "identity_quota": 3,
+        "candidate_count": 7,
+        "selected_count": 7,
+        "selected_by_overall": 7,
+        "added_by_identity_quota": 0,
+        "capacity_shortage": 3,
+        "identity_shortages": [],
+        "identities": [{"identity": IDENTITY, "candidates": 7, "selected": 7}],
+    }
     assert document["verification"][str(IDENTITY)]["status"] == "ok"
     assert document["verification"][str(IDENTITY)]["saved_placement_check"] == "ok"
     assert (
@@ -636,11 +742,25 @@ def test_rank_writes_only_ranking_json_with_verification(
         "yaw_correction_range_deg",
         "scale",
         "shortened",
+        "overall_rank",
+        "selected_by",
     }
     assert candidate["identity"] == IDENTITY
     assert candidate["gvhmr_camera_id"] == "cam0"
     assert candidate["t0_valid_joints"] == 17
     assert candidate["shortened"] is False
+    assert [item["overall_rank"] for item in document["candidates"]] == list(
+        range(1, 8)
+    )
+    assert document["candidates"][0]["selected_by"] == [
+        "overall",
+        "identity_quota",
+    ]
+    assert document["candidates"][2]["selected_by"] == [
+        "overall",
+        "identity_quota",
+    ]
+    assert document["candidates"][3]["selected_by"] == ["overall"]
     yaw_values = [
         item["yaw_variation_deg"] for item in document["candidates"]
     ]
@@ -772,7 +892,19 @@ def test_rank_reports_no_scale_when_saved_mesh_has_no_valid_frames(
     assert document["counts"]["candidates"] == 0
     assert document["counts"]["selected"] == 0
     assert document["exclusions"][EXCLUSION_NO_T0] == 7
-    assert document["quota"]["capacity_shortage"] == 10
+    assert document["quota"] == {
+        "top_k": 10,
+        "identity_quota": 3,
+        "candidate_count": 0,
+        "selected_count": 0,
+        "selected_by_overall": 0,
+        "added_by_identity_quota": 0,
+        "capacity_shortage": 10,
+        "identity_shortages": [
+            {"identity": IDENTITY, "available": 0, "required": 3, "missing": 3}
+        ],
+        "identities": [{"identity": IDENTITY, "candidates": 0, "selected": 0}],
+    }
 
 
 def test_rank_rejects_root_validity_mismatch(
