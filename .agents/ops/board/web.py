@@ -102,9 +102,14 @@ def create_app(env: Mapping[str, str]) -> FastAPI:
         return FileResponse(STATIC / name)
 
     def changes(
-        cursor: str | None = None, name: str = "", direction: str = "both"
+        cursor: str | None = None,
+        name: str = "",
+        direction: str = "both",
+        refresh_roster: bool = False,
     ) -> dict[str, Any]:
-        return reader.changes(cursor=cursor, name=name, direction=direction)
+        return reader.changes(
+            cursor=cursor, name=name, direction=direction, refresh_roster=refresh_roster
+        )
 
     def thread(post_id: str) -> dict[str, Any]:
         return reader.thread(post_id)

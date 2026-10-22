@@ -16,7 +16,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.e2e.agents_ops.test_board import board as board
-from tests.e2e.agents_ops.test_board import private_output_absent
+from tests.e2e.agents_ops.test_board import prepare_roster, private_output_absent
 from tests.e2e.agents_ops.test_board_messages import World
 from tests.e2e.agents_ops.test_board_messages import world as world
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
@@ -65,7 +65,7 @@ def test_roster_posts_threads_and_delivery_problems(
     assert roster[2]["unread_count"] == 2
     assert roster[2]["last_activity"] == reply["created_at"]
     posts = {post["id"]: post for post in result["posts"]}
-    assert posts[root["id"]]["mentions_all"] is True
+    assert posts[root["id"]]["broadcast"] is True
     assert [row["parent"] for row in posts[root["id"]]["recipients"]] == [2, 3]
     assert (
         posts[held["id"]]["recipients"][0]["delivery_message"] == "担当不在・配送保留"
@@ -84,6 +84,28 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][1]["in_reply_to"] == root["id"]
     # The other recipient still needs to respond to the broadcast question.
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
+
+
+@pytest.mark.parametrize("broadcast", [False, True])
+def test_saved_broadcast_is_returned_without_body_or_recipient_inference(
+    world: World, client: TestClient, broadcast: bool
+) -> None:
+    # Both choices resolve to exactly the same recipients; neither body mentions all.
+    root = world.post(
+        to=["all"]
+        if broadcast
+        else [world.assignments[2].name, world.assignments[3].name],
+    )
+    reply = world.board.messages.reply(
+        world.env(2), post_id=root["id"], body="確認しました。", notifiers=world.routes
+    )["post"]
+    posts = client.get("/api/changes").json()["posts"]
+    assert posts[1]["broadcast"] is broadcast
+    assert [row["parent"] for row in posts[1]["recipients"]] == [2, 3]
+    assert posts[0]["broadcast"] is False  # A reply does not inherit all.
+    thread = client.get(f"/api/thread/{reply['id']}").json()["posts"]
+    assert [post["broadcast"] for post in thread] == [broadcast, False]
+    assert all("mentions_all" not in post for post in posts + thread)
 
 
 def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> None:
@@ -212,6 +234,7 @@ def test_db_read_mode_and_all_gets_leave_bytes_and_unread_unchanged(
             "/static/app.js",
             "/static/style.css",
             "/api/changes",
+            "/api/changes?refresh_roster=true",
             f"/api/thread/{post['id']}",
         ):
             assert client.get(url).status_code == 200
@@ -270,7 +293,7 @@ def test_security_headers_hosts_assets_and_html_text(
         assert client.get(url).status_code == 404
 
 
-def test_no_external_source_polling_after_startup(
+def test_no_external_source_polling_without_explicit_roster_refresh(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     root = world.post()
@@ -290,6 +313,112 @@ def test_no_external_source_polling_after_startup(
             == 200
         )
         assert client.get(f"/api/thread/{root['id']}").status_code == 200
+        assert (
+            client.get("/api/changes", params={"direction": "sent"}).status_code == 200
+        )
+
+
+def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
+    world: World, web: SimpleNamespace
+) -> None:
+    prepare_roster(world.board, world.labels)
+    with TestClient(
+        web.app.create_app(world.labels.env), base_url="http://localhost"
+    ) as client:
+        initial = client.get("/api/changes", params={"refresh_roster": "true"}).json()
+        assert [(row["parent"], row["state"]) for row in initial["agents"]] == [
+            (42, "working"),
+            (43, "idle"),
+        ]
+        parents = json.loads(world.labels.registry.read_text())["parents"]
+        parents["o/r#42"]["status"] = "released"
+        parents["o/r#44"]["status"] = "active"
+        world.labels.set_registry(parents)
+        runtime = world.labels.read()
+        runtime["panes"]["w1:p2"]["state"] = "blocked"
+        world.labels.write(runtime)
+        registry_before = world.labels.registry.read_bytes()
+        db_before = world.store.path.read_bytes()
+        owners = world.labels.registry.parent.parent / "herdr-labels/owners"
+        owners_before = {path: path.read_bytes() for path in owners.iterdir()}
+
+        cached = client.get("/api/changes", params={"cursor": initial["cursor"]}).json()
+        assert cached["agents"] is None
+        assert cached["roster_observed_at"] == initial["roster_observed_at"]
+        assert world.labels.read()["calls"] == runtime["calls"]
+
+        refreshed = client.get(
+            "/api/changes",
+            params={"cursor": initial["cursor"], "refresh_roster": "true"},
+        ).json()
+        assert refreshed["reset"] is False
+        assert refreshed["posts"] == []
+        assert [
+            (row["parent"], row["engine"], row["state"]) for row in refreshed["agents"]
+        ] == [
+            (43, "codex", "blocked"),
+            (44, "claude", "unknown"),
+        ]
+        assert refreshed["agents"][1]["name_status"] == "unassigned"
+        assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
+        assert len(world.labels.read()["calls"]) > len(runtime["calls"])
+        # A repeated page load still observes current sources, even with no row changes.
+        reloaded = client.get("/api/changes", params={"refresh_roster": "true"}).json()
+        assert reloaded["agents"] == refreshed["agents"]
+        assert reloaded["roster_observed_at"] > refreshed["roster_observed_at"]
+        assert world.labels.registry.read_bytes() == registry_before
+        assert world.store.path.read_bytes() == db_before
+        assert all(path.read_bytes() == value for path, value in owners_before.items())
+        assert world.labels.read()["panes"] == runtime["panes"]
+        assert all(
+            call
+            in (
+                ["session", "list", "--json"],
+                ["--session", "default", "agent", "list"],
+            )
+            for call in world.labels.read()["calls"]
+        )
+        private_output_absent(json.dumps(reloaded), world.labels.env)
+
+
+def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
+    world: World, web: SimpleNamespace
+) -> None:
+    prepare_roster(world.board, world.labels)
+    with TestClient(
+        web.app.create_app(world.labels.env), base_url="http://localhost"
+    ) as client:
+        initial = client.get("/api/changes").json()
+        assert initial["agents"][0]["state"] == "working"
+        (world.labels.root / "bin/herdr").write_text(
+            "#!/bin/sh\necho 'private runtime details' >&2\nexit 3\n"
+        )
+        before = world.labels.registry.read_bytes()
+        response = client.get("/api/changes", params={"refresh_roster": "true"})
+        assert response.status_code == 200
+        refreshed = response.json()
+        assert [row["state"] for row in refreshed["agents"]] == ["unknown", "unknown"]
+        assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
+        assert "private runtime details" not in response.text
+        assert world.labels.registry.read_bytes() == before
+
+
+def test_failed_roster_refresh_is_explicit_and_preserves_last_observation(
+    world: World, client: TestClient
+) -> None:
+    initial = client.get("/api/changes").json()
+    saved = world.labels.registry.read_bytes()
+    world.labels.registry.write_text("invalid registry with private details")
+    response = client.get("/api/changes", params={"refresh_roster": "true"})
+    assert response.status_code == 503
+    assert "private details" not in response.text
+    cached = client.get("/api/changes").json()
+    assert cached["agents"] == initial["agents"]
+    assert cached["roster_observed_at"] == initial["roster_observed_at"]
+    world.labels.registry.write_bytes(saved)
+    retry = client.get("/api/changes", params={"refresh_roster": "true"}).json()
+    assert retry["agents"] == initial["agents"]
+    assert retry["roster_observed_at"] > initial["roster_observed_at"]
 
 
 @pytest.mark.parametrize(

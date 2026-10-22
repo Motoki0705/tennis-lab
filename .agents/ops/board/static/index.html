@@ -16,7 +16,8 @@
   <div class="workspace">
     <aside class="sidebar" aria-labelledby="roster-heading">
       <div class="section-heading"><h2 id="roster-heading">親の名簿</h2><span id="roster-count" class="count">0</span></div>
-      <p class="muted small" id="roster-observed">稼働状態はWebサーバー起動時の情報です。</p>
+      <button id="refresh-roster" type="button" class="quiet">名簿を更新</button>
+      <p class="muted small" id="roster-observed" role="status">名簿を取得しています…</p>
       <div id="roster"></div>
       <div class="filters">
         <h2>投稿の絞り込み</h2>

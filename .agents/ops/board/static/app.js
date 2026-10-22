@@ -1,6 +1,6 @@
 "use strict";
 
-const state = { cursor: null, posts: new Map(), names: new Set(), view: "timeline", selected: null, threadId: null, threadRequest: 0, busy: false, timer: null };
+const state = { cursor: null, posts: new Map(), names: new Set(), view: "timeline", selected: null, threadId: null, threadRequest: 0, busy: false, timer: null, refreshRoster: true, rosterError: null };
 const labels = { info: "共有", question: "質問", request: "依頼", reply: "返信", pending: "通知待ち", held: "配送保留", notified: "呼び鈴の受理", delivery_failed: "配送失敗", answered: "回答済み", accepted: "承諾", declined: "辞退", done: "完了", idle: "待機中", working: "作業中", blocked: "確認待ち", unknown: "不明" };
 const byId = (id) => document.getElementById(id);
 const element = (tag, text = "", className = "") => {
@@ -53,7 +53,7 @@ function postCard(post, full = false) {
   node.dataset.postId = post.id;
   const meta = element("div", "", "post-meta");
   meta.append(badge(post.kind));
-  if (post.mentions_all) meta.append(badge("@all（本文の指定）"));
+  if (post.broadcast) meta.append(badge("@all"));
   const time = element("time", formatTime(post.created_at), "post-time");
   time.dateTime = post.created_at;
   meta.append(time);
@@ -104,7 +104,7 @@ function rememberNames(posts, roster) {
 
 function renderRoster(rows, observed) {
   byId("roster-count").textContent = rows.length;
-  byId("roster-observed").textContent = `担当・稼働状態は起動時（${formatTime(observed)}）の情報です。変更後はサーバーを再起動してください。`;
+  byId("roster-observed").textContent = `名簿の取得時刻: ${formatTime(observed)}`;
   const cards = rows.map((row) => {
     const card = element("article", "", "agent");
     const name = element("div", "", "agent-name");
@@ -115,7 +115,7 @@ function renderRoster(rows, observed) {
     card.append(meta, element("p", `最終投稿: ${formatTime(row.last_activity)}`, "activity"));
     return card;
   });
-  byId("roster").replaceChildren(...(cards.length ? cards : [element("p", "起動時点で担当中の親はいません。", "empty")]));
+  byId("roster").replaceChildren(...(cards.length ? cards : [element("p", "取得時点で担当中の親はいません。", "empty")]));
 }
 
 function renderFeed() {
@@ -176,9 +176,13 @@ async function poll() {
   if (document.visibilityState !== "visible") return;
   state.busy = true;
   const key = filterKey();
+  const refreshRoster = state.refreshRoster;
+  state.refreshRoster = false;
+  byId("refresh-roster").disabled = refreshRoster;
   try {
     const query = new URLSearchParams({ name: byId("name").value, direction: byId("direction").value });
     if (state.cursor) query.set("cursor", state.cursor);
+    if (refreshRoster) query.set("refresh_roster", "true");
     const data = await getJSON(`/api/changes?${query}`);
     if (key !== filterKey()) return;
     if (data.reset) state.posts.clear();
@@ -189,14 +193,18 @@ async function poll() {
     if (data.reset || data.posts.length) renderFeed();
     document.querySelectorAll("[data-age]").forEach((node) => { node.textContent = elapsed(node.dataset.age); });
     byId("connection").textContent = `最終取得 ${new Date().toLocaleTimeString("ja-JP", { hour12: false })} · 3秒間隔`;
-    byId("error").hidden = true;
+    if (refreshRoster) state.rosterError = null;
+    if (state.rosterError) showError(state.rosterError);
+    else byId("error").hidden = true;
     if (state.selected && (data.reset || !state.threadId || data.changed_threads.includes(state.threadId))) await openThread(state.selected);
   } catch (error) {
+    if (refreshRoster) state.rosterError = error;
     showError(error);
     byId("connection").textContent = "更新に失敗しました · 再接続を待っています";
   } finally {
     state.busy = false;
-    if (document.visibilityState === "visible") state.timer = setTimeout(poll, key === filterKey() ? 3000 : 0);
+    byId("refresh-roster").disabled = state.refreshRoster;
+    if (document.visibilityState === "visible") state.timer = setTimeout(poll, state.refreshRoster || key !== filterKey() ? 0 : 3000);
   }
 }
 
@@ -212,6 +220,11 @@ document.addEventListener("click", (event) => {
   }
 });
 byId("close-thread").addEventListener("click", () => { location.hash = ""; });
+byId("refresh-roster").addEventListener("click", () => {
+  state.refreshRoster = true;
+  byId("refresh-roster").disabled = true;
+  poll();
+});
 for (const id of ["name", "direction"]) {
   byId(id).addEventListener("change", () => {
     state.cursor = null;

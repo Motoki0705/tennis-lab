@@ -24,7 +24,6 @@ from .storage import Store, directory
 
 POST_ID = re.compile(r"[0-9a-f]{32}")
 CURSOR = re.compile(r"([0-9a-f]{16})\.([0-9a-f]{16})\.([0-9]{1,20})")
-ALL_MENTION = re.compile(r"(?<![\w@.+/\-])@all(?![\w@\-])", re.ASCII | re.IGNORECASE)
 
 
 class InvalidQuery(ValueError):
@@ -50,7 +49,7 @@ def matches(post: dict[str, Any], name: str, direction: str) -> bool:
 
 
 class BoardReader:
-    """Cache external roster sources once; subsequent reads touch only SQLite.
+    """Cache external roster sources until an explicit refresh is requested.
 
     Cursors track recipient/delivery updates as well as appended posts. Each
     post keeps its latest revision, so clients do not need a retained event log.
@@ -60,11 +59,7 @@ class BoardReader:
     def __init__(self, env: Mapping[str, str]) -> None:
         self.env = dict(env)
         self.store = Store(directory(env))
-        self.parents = registry(env)
-        self.roster = agents(env)["agents"]
-        if registry(env) != self.parents:
-            raise BoardError("parent registry changed during web startup; retry")
-        self.roster_observed_at = datetime.now(UTC).isoformat()
+        self._refresh_roster()
         self.epoch = secrets.token_hex(8)
         self.revision = 0
         self.versions: dict[str, int] = {}
@@ -72,6 +67,18 @@ class BoardReader:
         self.roster_hash = ""
         self.roster_revision = 0
         self.lock = Lock()
+
+    def _refresh_roster(self) -> None:
+        parents = registry(self.env)
+        roster = agents(self.env)["agents"]
+        if registry(self.env) != parents:
+            raise BoardError("parent registry changed during roster lookup; retry")
+        # Publish the replacement only after all source reads and validation
+        # succeed. A failed refresh leaves the last successful observation intact.
+        public(roster, parents, self.env)
+        self.parents = parents
+        self.roster = roster
+        self.roster_observed_at = datetime.now(UTC).isoformat()
 
     def _snapshot(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         with self.store.read() as connection:
@@ -88,9 +95,6 @@ class BoardReader:
                 )
                 for recipient in post["recipients"]:
                     recipient["attempted_at"] = attempts[recipient["assignment_id"]]
-                # The schema stores resolved recipients, not the --to all flag.
-                # Only an explicit, validated @all in the body is identifiable.
-                post["mentions_all"] = bool(ALL_MENTION.search(post["body"]))
                 posts.append(post)
             roster = deepcopy(self.roster)
             for row in roster:
@@ -115,7 +119,12 @@ class BoardReader:
         return posts, roster
 
     def changes(
-        self, *, cursor: str | None = None, name: str = "", direction: str = "both"
+        self,
+        *,
+        cursor: str | None = None,
+        name: str = "",
+        direction: str = "both",
+        refresh_roster: bool = False,
     ) -> dict[str, Any]:
         if direction not in {"both", "sent", "received"}:
             raise InvalidQuery
@@ -127,9 +136,11 @@ class BoardReader:
         name = name.casefold()
         scope = fingerprint([name, direction])[:16]
         with self.lock:
+            if refresh_roster:
+                self._refresh_roster()
             posts, roster = self._snapshot()
             hashes = {post["id"]: fingerprint(post) for post in posts}
-            roster_hash = fingerprint(roster)
+            roster_hash = fingerprint([roster, self.roster_observed_at])
             changed = [
                 post_id
                 for post_id, value in hashes.items()
@@ -169,7 +180,8 @@ class BoardReader:
     def thread(self, post_id: str) -> dict[str, Any]:
         if POST_ID.fullmatch(post_id) is None:
             raise InvalidQuery
-        posts, _ = self._snapshot()
+        with self.lock:
+            posts, _ = self._snapshot()
         selected = next((post for post in posts if post["id"] == post_id), None)
         if selected is None:
             raise MissingPost

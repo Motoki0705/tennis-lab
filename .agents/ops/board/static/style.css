@@ -22,6 +22,8 @@ h3 { font-size: 16px; line-height: 1.6; overflow-wrap: anywhere; }
 .small { font-size: 11px; }
 .count { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 21px; padding: 0 6px; border-radius: 6px; background: #e8edef; color: #596c76; font-size: 11px; }
 #roster-observed { margin-bottom: 16px; }
+#refresh-roster { margin-bottom: 6px; }
+#refresh-roster:disabled { opacity: .6; cursor: wait; }
 .agent { border: 1px solid #e0e7e8; border-radius: 8px; background: #fff; padding: 12px; margin-bottom: 9px; }
 .agent-name { font-weight: 650; font-size: 15px; }
 .agent-meta { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 11px; margin: 6px 0; }
