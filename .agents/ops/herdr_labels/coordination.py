@@ -111,6 +111,11 @@ class Guard:
             if pid == native:
                 return
             stat = (Path("/proc") / str(pid) / "stat").read_text()
+            command = stat.split("(", 1)[1].rsplit(")", 1)[0]
+            if command == self.pane.get("agent"):
+                raise ValueError(
+                    "nested agent cannot report lifecycle for its ancestor's pane"
+                )
             pid = int(stat.rsplit(")", 1)[1].split()[1])
         raise ValueError("lifecycle hook is not a descendant of this pane's agent")
 

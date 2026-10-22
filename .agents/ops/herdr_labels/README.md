@@ -23,6 +23,7 @@ Herdr環境・bindのないheadless実行は`not_configured`を明示し、担�
 
 `.claude/settings.json`のSessionStart/SessionEnd hookは、Claudeが渡す実session_idを用いる。
 hookがそのpaneのforeground agentの子孫であることも確認する。
+途中に別の同種agentがある場合は子のhookとして拒否し、親の表示を変更しない。
 SessionStartは`CLAUDE_ENV_FILE`へ識別子を追記し、担当済みなら表示を復元する。
 新しいSessionStartがHerdr内から届いた場合は、そのpaneに残った前セッションの表示も解除・更新する。
 通常のsync/clearは別セッションの`tl_owner`を見つけたら拒否する。

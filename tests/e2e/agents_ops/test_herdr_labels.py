@@ -507,6 +507,31 @@ def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) 
             sibling.wait(timeout=5)
 
 
+def test_headless_claude_child_cannot_clear_its_parent_pane(labels: Labels) -> None:
+    assert labels.run("sync").returncode == 0
+    count = len(labels.mutations())
+    # A second Claude below the interactive agent owns this hook, despite
+    # inheriting the parent's Herdr environment and being its descendant.
+    script = """
+import ctypes,json,subprocess,sys
+ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
+r=subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':'SessionStart','session_id':'headless-child'}),text=True)
+raise SystemExit(r.returncode)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script, str(OPS / "herdr_labels/claude_hook.py")],
+        env=labels.env,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=20,
+    )
+    assert result.returncode == 1
+    assert "nested agent" in result.stderr
+    assert len(labels.mutations()) == count
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
+
+
 @pytest.mark.parametrize("race", ["process", "metadata"])
 def test_replacement_during_title_lookup_rejects_old_write(
     labels: Labels, race: str
