@@ -129,7 +129,7 @@ def test_reuse_29_and_30_day_boundary_and_pending_state(
         post_id = "0" * 32
         stamp = board.names.timestamp(NOW)
         connection.execute(
-            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 post_id,
                 stamp,
@@ -138,6 +138,7 @@ def test_reuse_29_and_30_day_boundary_and_pending_state(
                 first.repo,
                 first.parent,
                 "question" if waiting else "info",
+                0,
                 "Reuse guard",
                 "Keep this history",
                 None,

@@ -70,6 +70,7 @@ def post_view(
             "parent": row["sender_parent"],
         },
         "kind": row["kind"],
+        "broadcast": bool(row["broadcast"]),
         "subject": row["subject"],
         "in_reply_to": row["in_reply_to"],
         "thread_id": row["thread_id"],

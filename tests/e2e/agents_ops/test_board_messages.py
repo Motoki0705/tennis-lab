@@ -181,6 +181,57 @@ def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
 
 
 @pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("audience", ["named", "all", "mixed"])
+def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
+    world: World, command: str, audience: str
+) -> None:
+    w = world
+    root = w.post(to=["all"]) if command == "reply" else None
+    caller = 2 if root else 1
+    recipients = [parent for parent in (1, 2, 3) if parent != caller]
+    names = {
+        "named": [w.assignments[parent].name for parent in recipients],
+        "all": ["all"],
+        "mixed": [w.assignments[3].name.lower(), "aLl"],
+    }[audience]
+    body_file = w.labels.root / "input.md"
+    body_file.write_text("A public update without body mentions.")
+    args = [command, "--body-file", str(body_file)]
+    if root:
+        args += ["--post", root["id"]]
+    else:
+        args += ["--kind", "info", "--subject", "Public"]
+    for name in names:
+        args += ["--to", name]
+    created = run_board(w.env(caller), *args)
+    assert created.returncode == 0, created.stderr
+    post = json.loads(created.stdout)["post"]
+    broadcast = audience != "named"
+    assert post["broadcast"] is broadcast
+    # Explicit names and all expand to the same recipients, but keep their intent.
+    assert [row["parent"] for row in post["recipients"]] == recipients
+    with w.store.read() as connection:
+        assert connection.execute(
+            "SELECT broadcast, typeof(broadcast) FROM posts WHERE id=?",
+            (post["id"],),
+        ).fetchone() == (int(broadcast), "integer")
+    for env, operation in [
+        (w.env(3), ["inbox", "--unread"]),
+        (w.env(caller), ["status"]),
+        (w.env(3), ["read", post["id"]]),
+        (w.env(3), ["thread", post["id"]]),
+        (w.env(3), ["ack", "--post", post["id"], "--state", "accepted"]),
+    ]:
+        result = run_board(env, *operation)
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        views = [data["post"]] if "post" in data else data["posts"]
+        target = next(view for view in views if view["id"] == post["id"])
+        assert target["broadcast"] is broadcast
+        private_output_absent(result.stdout + result.stderr, env)
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize("audience", ["self", "other-self", "all-self"])
 def test_cli_self_recipient_is_rejected_atomically(
     world: World, command: str, audience: str
@@ -943,6 +994,36 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
         assert connection.execute("SELECT * FROM name_assignments").fetchall() == before
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+        columns = {
+            row[1]: row for row in connection.execute("PRAGMA table_info(posts)")
+        }
+        assert columns["broadcast"][2:4] == ("INTEGER", 1)
+
+
+@pytest.mark.parametrize("broadcast", [None, -1, 2])
+def test_posts_reject_non_boolean_broadcast(world: World, broadcast: int | None) -> None:
+    w = world
+    root = w.post()
+    with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
+        connection.execute(
+            """INSERT INTO posts
+               SELECT ?, created_at, sender_assignment_id, sender_name, sender_repo,
+                      sender_parent, kind, ?, subject, body, in_reply_to, thread_id
+               FROM posts WHERE id=?""",
+            ("f" * 32, broadcast, root["id"]),
+        )
+    with w.store.read() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 1
+
+
+def test_v2_schema_without_broadcast_is_rejected(world: World) -> None:
+    w = world
+    with sqlite3.connect(w.store.path) as connection:
+        connection.execute("ALTER TABLE posts DROP COLUMN broadcast")
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+    for access in (w.store.read, w.store.transaction):
+        with pytest.raises(w.board.errors.BoardError, match="inconsistent"), access():
+            pass
 
 
 @pytest.mark.parametrize(

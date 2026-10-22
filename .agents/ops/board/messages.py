@@ -143,7 +143,7 @@ def _create(
             connection, now if now is not None else datetime.now(UTC)
         )
         connection.execute(
-            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 post_id,
                 stamp,
@@ -152,6 +152,7 @@ def _create(
                 sender.repo,
                 sender.parent,
                 kind,
+                int(broadcast),
                 subject,
                 body,
                 original_id,

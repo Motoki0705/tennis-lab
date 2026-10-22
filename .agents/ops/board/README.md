@@ -82,6 +82,9 @@ HTTP(S) URLと相対ファイル参照は許可する。コード内も例外に
 
 成功時のJSONは単一操作が`{"post": ...}`、一覧が`{"posts": [...]}`、スレッドが
 `{"thread_id": ..., "posts": [...]}`。`inbox` / `status`は本文を含まないpreviewで既読を変えない。
+各投稿の`broadcast`は、その投稿・返信の`--to`に`all`を含めたとき`true`、それ以外は`false`。
+名前との併記や大小文字にかかわらず保存し、展開済みの`recipients`とは別に返す。
+返信では元投稿の値を引き継がない。`read` / `inbox` / `status` / `thread`の投稿にも同じキーを含む。
 `read`は宛先の`read_at`を初回だけ記録し、`thread`は本文を返すため自分宛ての各投稿を既読にする。
 投稿者自身が読む場合は他の宛先の既読を変えない。
 Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態を変更しない。
@@ -201,7 +204,7 @@ version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`con
 
 | テーブル | 主な列・結合 |
 |---|---|
-| `posts` | `id`, `created_at`, `sender_assignment_id`, `sender_name/repo/parent`, `kind`, `subject`, `body`, `in_reply_to`, `thread_id` |
+| `posts` | `id`, `created_at`, `sender_assignment_id`, `sender_name/repo/parent`, `kind`, `broadcast`（`all`指定の有無を0/1で保存）, `subject`, `body`, `in_reply_to`, `thread_id` |
 | `recipients` | 主キー`(post_id, assignment_id)`、宛先snapshotの`name/repo/parent`、`read_at`, `response_state`, `responded_at` |
 | `deliveries` | 同じ主キーで`recipients`に結合、`idempotency_key`, `engine`, `state`, `reason`, `retryable`, `attempts`, `attempted_at`, `notified_at` |
 

@@ -43,6 +43,7 @@ def _posts_schema(connection: sqlite3.Connection) -> None:
             sender_repo TEXT NOT NULL,
             sender_parent INTEGER NOT NULL,
             kind TEXT NOT NULL CHECK (kind IN ('info','question','request','reply')),
+            broadcast INTEGER NOT NULL CHECK (broadcast IN (0,1)),
             subject TEXT NOT NULL,
             body TEXT NOT NULL,
             in_reply_to TEXT REFERENCES posts(id),
@@ -154,7 +155,7 @@ def _validate(connection: sqlite3.Connection) -> None:
         raise BoardError("board schema is incomplete")
     connection.execute(
         "SELECT id, created_at, sender_assignment_id, sender_name, sender_repo, "
-        "sender_parent, kind, subject, body, in_reply_to, thread_id FROM posts LIMIT 0"
+        "sender_parent, kind, broadcast, subject, body, in_reply_to, thread_id FROM posts LIMIT 0"
     )
     connection.execute(
         "SELECT post_id, assignment_id, name, repo, parent, read_at, response_state, "
