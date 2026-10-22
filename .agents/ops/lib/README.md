@@ -58,7 +58,7 @@ runner=.agents/ops/lib/agent_exec.sh
 log dir既定は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/logs/`。
 task ID省略時は初回promptのSHA-256をキーにする。後続workflowは明示キーとrun dirを使う。
 
-再開では初回と同じagent/profile/mode/task/worktree/branch/configを指定する。
+再開では初回と同じagent/profile/mode/task/worktree/branch/read_dirs/configを指定する。
 前回の明示model/effort overrideは省略すれば保持し、異なる値の指定は拒否する。
 configはパスとファイル全体のSHA-256も照合するため、コメントだけの変更でも再開を止める。
 初回sessionのlockを全ターンで共有し、稼働中・古いrunからの再開を拒否する。
@@ -72,6 +72,40 @@ WSLでCODEX_HOMEがdrvfs上にあるとdaemonのUnix socketが作れないため
 Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数でsandboxを指定する。
 `--last`、fork、新sessionへの自動振替は使わない。
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
+
+### checkout外の入力ディレクトリ
+
+`--read-dir DIR` は複数回指定できる。各値は呼出元のcwd基準で絶対実体パスへ解決し、
+存在するディレクトリでなければ終了値2でCLI起動・run dir作成前に拒否する。
+同じ実体への重複指定（symlinkを含む）は1件にまとめ、パス順に並べる。
+`--cwd` の変更は相対read-dirの解決基準を変えない。
+
+```bash
+"$runner" --role parent --mode read-only --task-id assignment-judgement \
+  --cwd "$checkout" --read-dir "$input_dir" --read-dir "$context_dir" \
+  --prompt-file "$task_dir/prompt.md" --run-dir "$task_dir/agent-runtime"
+```
+
+Claudeはread-only/writeの両方で各ディレクトリを `--add-dir DIR` として渡す。
+Claude Code 2.1.308の `claude --help` でツールアクセス用の追加ディレクトリであることを確認した。
+公式の [CLI reference](https://code.claude.com/docs/en/cli-reference#cli-flags) はファイルアクセスの付与、
+[Working directories](https://code.claude.com/docs/en/permissions#working-directories) は追加先も
+作業ディレクトリと同じ規則でプロンプトなしに読めることを説明している。
+[Permission modes](https://code.claude.com/docs/en/permissions#permission-modes) にも、
+`dontAsk` では作業ディレクトリ内の読み取りを実行できると明記されている。
+この組合せで、既存の `--tools Read Grep Glob --permission-mode dontAsk` のまま追加先を読む。
+明示的なdeny/ask規則やhooks等による拒否はCLIの規則に従う。writeでの編集許可も既存modeに従う。
+
+Codexはread-only/writeとも追加引数を付けない。
+read-only sandboxはOSの権限で読めるファイルシステム全体を読み取れる前提を使う。
+公式 [Sandbox read access](https://learn.chatgpt.com/docs/app-server#sandbox-read-access-readonlyaccess)
+では `readOnly.access` の既定は `fullAccess`、限定する場合は `restricted` と読取rootを指定する契約である。
+read-dirによってCodexのwriteに追加の書込権限は与えない。
+read-dir省略時は空リストで、review / ops_reportを含む既存のCLI引数は変わらない。
+
+`invocation.json` と `result.json` の `contract.read_dirs` に同じ正規化済みリストを保存する。
+resumeでも同じ集合を明示指定する（順序・重複は問わない）。追加・削除・symlink先の変更は
+cwd/branch等と同様に契約不一致として終了値2で拒否する。read_dirsのない旧記録も不一致になる。
 
 子へ渡す環境から `CLAUDE_CODE_SESSION_ID`、`CLAUDE_CODE_PARENT_SESSION_ID`、
 `CLAUDE_CODE_AGENT_ID`、`CLAUDECODE`、`CODEX_SESSION_ID`、`CODEX_THREAD_ID` を除く。
@@ -87,7 +121,7 @@ run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renam
 | 保存先 | 内容 |
 |---|---|
 | `prompt.md` | そのターンの入力原文。`prompt_sha256` と対応 |
-| `invocation.json` | 実引数と除去した環境変数の名前。環境の値は保存しない |
+| `invocation.json` | contract、実引数と除去した環境変数の名前。環境の値は保存しない |
 | `events.jsonl` / `stderr.log` | CLIの構造化stdout原文 / stderr原文。失敗・途中切れも残す |
 | `final.md` | 最終文。CodexではCLIのlast-messageファイルとイベント本文を照合。正常終了時は `--out` にもコピー |
 | `result.json` | run ID、contract、runtime情報、process情報、終了理由 |
@@ -97,7 +131,7 @@ run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renam
 
 - `result`: `running` / `completed` / `failed`。`completed` はCLIターンの正常終了だけ。
   `task_success` は常に `null`。親が差分・受入条件・テスト・PRなどを照合する。
-- `contract`: `task_id`, `cwd`, `branch`, `detached_head`, `mode`, `runtime_home`, `settings`。
+- `contract`: `task_id`, `cwd`, `read_dirs`, `branch`, `detached_head`, `mode`, `runtime_home`, `settings`。
   settingsはconfig出典/hash、role/agent/profile、`defaults`、`overrides`、`selected`、
   `selection_sources`、ops_reportのthreadsを区別する。
 - `runtime`: 実session/turn ID、再開要求のsession ID（観測値とは別）、`effective`、`usage`、`runtime_errors`。

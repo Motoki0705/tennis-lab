@@ -99,7 +99,12 @@ def resolve(
 
 
 def command(
-    settings: dict[str, Any], mode: str, cwd: Path, out: Path, session: str | None
+    settings: dict[str, Any],
+    mode: str,
+    cwd: Path,
+    out: Path,
+    session: str | None,
+    read_dirs: list[str],
 ) -> list[str]:
     selected = settings["selected"]
     if settings["agent"] == "claude":
@@ -119,6 +124,8 @@ def command(
             cmd += ["--tools", "Read", "Grep", "Glob", "--permission-mode", "dontAsk"]
         else:
             cmd += ["--permission-mode", "bypassPermissions"]
+        for directory in read_dirs:
+            cmd += ["--add-dir", directory]
         if session:
             cmd += ["--resume", session]
         return cmd

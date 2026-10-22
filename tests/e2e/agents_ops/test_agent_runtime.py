@@ -186,6 +186,7 @@ def test_role_pins_and_runtime_evidence(
     assert result["task_success"] is None
     assert result["result"] == "completed" and result["turn_end_reason"] == "completed"
     assert result["contract"]["branch"] == "test-branch"
+    assert result["contract"]["read_dirs"] == []
     assert result["prompt_sha256"]
     for path in (h.root / "initial").iterdir():
         assert path.stat().st_mode & 0o077 == 0
@@ -299,6 +300,150 @@ def test_resume_refuses_changed_contract_before_launch(h: Harness, change: str) 
     assert proc.returncode == 2, proc.stderr
     assert not (h.root / "args.txt").exists()
     assert not (h.root / "rejected").exists()
+
+
+@pytest.mark.parametrize("agent", ["codex", "claude"])
+@pytest.mark.parametrize("mode", ["read-only", "write"])
+def test_read_dirs_are_normalized_recorded_and_preserved_on_resume(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, agent: str, mode: str
+) -> None:
+    first = h.root / "input one"
+    second = h.root / "input two"
+    first.mkdir()
+    second.mkdir()
+    (h.root / "input-link").symlink_to(first, target_is_directory=True)
+    monkeypatch.chdir(h.root)
+    expected = sorted([str(first), str(second)])
+    proc = h.run(
+        agent=agent,
+        extra=(
+            "--mode", mode,
+            "--read-dir", "input two",
+            "--read-dir", "./input-link",
+            "--read-dir", str(first),
+        ),
+    )  # fmt: skip
+    assert proc.returncode == 0, proc.stderr
+    resumed = h.run(
+        "continued",
+        agent=agent,
+        action="resume",
+        extra=(
+            "--resume-from", str(h.root / "initial"),
+            "--mode", mode,
+            "--read-dir", "input one/../input one",
+            "--read-dir", str(second),
+        ),
+    )  # fmt: skip
+    assert resumed.returncode == 0, resumed.stderr
+    assert h.result("continued")["contract"] == h.result()["contract"]
+    for name in ("initial", "continued"):
+        result = h.result(name)
+        invocation = json.loads((h.root / name / "invocation.json").read_text())
+        assert result["contract"]["read_dirs"] == expected
+        assert invocation["contract"] == result["contract"]
+        args = invocation["argv"]
+        assert "--read-dir" not in args
+        if agent == "claude":
+            assert [
+                args[i + 1] for i, flag in enumerate(args) if flag == "--add-dir"
+            ] == expected
+            assert args[args.index("--permission-mode") + 1] == (
+                "dontAsk" if mode == "read-only" else "bypassPermissions"
+            )
+            if mode == "read-only":
+                assert args[
+                    args.index("--tools") + 1 : args.index("--permission-mode")
+                ] == ["Read", "Grep", "Glob"]
+        else:
+            assert "--add-dir" not in args
+            assert not set(expected) & set(args)
+            if mode == "read-only":
+                assert args[args.index("--sandbox") + 1] == "read-only"
+            else:
+                assert "--dangerously-bypass-approvals-and-sandbox" in args
+
+
+@pytest.mark.parametrize("agent", ["codex", "claude"])
+@pytest.mark.parametrize("kind", ["missing", "file", "broken_link", "symlink_loop"])
+def test_invalid_read_dir_is_rejected_before_launch(
+    h: Harness, agent: str, kind: str
+) -> None:
+    invalid = h.root / "invalid"
+    if kind == "file":
+        invalid.write_text("input file\n")
+    elif kind == "broken_link":
+        invalid.symlink_to(h.root / "missing", target_is_directory=True)
+    elif kind == "symlink_loop":
+        invalid.symlink_to(invalid, target_is_directory=True)
+    proc = h.run(
+        agent=agent,
+        extra=("--read-dir", str(h.root), "--read-dir", str(invalid)),
+    )
+    assert proc.returncode == 2 and "--read-dir" in proc.stderr
+    assert not (h.root / "args.txt").exists()
+    assert not (h.root / "initial").exists()
+
+
+@pytest.mark.parametrize("agent", ["codex", "claude"])
+@pytest.mark.parametrize(
+    "change", ["added", "omitted", "replaced", "retargeted", "deleted"]
+)
+def test_resume_refuses_changed_read_dirs_before_launch(
+    h: Harness, agent: str, change: str
+) -> None:
+    first = h.root / "input"
+    second = h.root / "other-input"
+    first.mkdir()
+    second.mkdir()
+    selected = first
+    if change == "retargeted":
+        selected = h.root / "input-link"
+        selected.symlink_to(first, target_is_directory=True)
+    initial_dirs = () if change == "added" else ("--read-dir", str(selected))
+    initial = h.run(agent=agent, extra=initial_dirs)
+    assert initial.returncode == 0, initial.stderr
+    current_dirs: tuple[str, ...] = ("--read-dir", str(selected))
+    if change == "omitted":
+        current_dirs = ()
+    elif change == "replaced":
+        current_dirs = ("--read-dir", str(second))
+    elif change == "retargeted":
+        selected.unlink()
+        selected.symlink_to(second, target_is_directory=True)
+    elif change == "deleted":
+        first.rmdir()
+    (h.root / "args.txt").unlink()
+    proc = h.run(
+        "rejected",
+        agent=agent,
+        action="resume",
+        extra=("--resume-from", str(h.root / "initial"), *current_dirs),
+    )
+    assert proc.returncode == 2, proc.stderr
+    assert ("--read-dir" if change == "deleted" else "read_dirs") in proc.stderr
+    assert not (h.root / "args.txt").exists()
+    assert not (h.root / "rejected").exists()
+
+
+@pytest.mark.parametrize("profile", ["review", "ops_report"])
+def test_read_dirs_do_not_change_codex_profile_arguments(
+    h: Harness, profile: str
+) -> None:
+    initial = h.run(extra=("--profile", profile))
+    assert initial.returncode == 0, initial.stderr
+    assert h.result()["contract"]["read_dirs"] == []
+    expected = h.args()
+    proc = h.run(
+        "with-input",
+        extra=("--profile", profile, "--read-dir", str(h.root)),
+    )
+    assert proc.returncode == 0, proc.stderr
+    expected[expected.index("--output-last-message") + 1] = str(
+        h.root / "with-input" / "final.md"
+    )
+    assert h.args() == expected
+    assert h.result("with-input")["contract"]["read_dirs"] == [str(h.root)]
 
 
 @pytest.mark.parametrize(

@@ -117,6 +117,13 @@ def parser() -> argparse.ArgumentParser:
     group.add_argument("--agent", choices=("claude", "codex"))
     group.add_argument("--role", choices=("parent", "implementation"))
     result.add_argument("--cwd", type=Path)
+    result.add_argument(
+        "--read-dir",
+        type=Path,
+        action="append",
+        default=[],
+        help="additional input directory (repeatable; relative to caller cwd)",
+    )
     result.add_argument("--prompt-file", help="UTF-8 prompt path, or - for stdin")
     result.add_argument("--out", type=Path)
     result.add_argument("--mode", choices=("read-only", "write"), default="read-only")
@@ -249,6 +256,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     cwd = args.cwd.resolve(strict=True)
     if not cwd.is_dir():
         raise ValueError("--cwd is not a directory")
+    try:
+        read_dirs = sorted({str(path.resolve(strict=True)) for path in args.read_dir})
+    except (OSError, RuntimeError) as exc:
+        raise ValueError("--read-dir must name an existing directory") from exc
+    if any(not Path(path).is_dir() for path in read_dirs):
+        raise ValueError("--read-dir must name an existing directory")
     prompt = (
         sys.stdin.buffer.read()
         if args.prompt_file == "-"
@@ -277,6 +290,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     contract = {
         "task_id": args.task_id or hashlib.sha256(prompt).hexdigest(),
         "cwd": str(cwd),
+        "read_dirs": read_dirs,
         "branch": branch,
         "detached_head": None,
         "mode": args.mode,
@@ -296,7 +310,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         contract["detached_head"] = head.stdout.strip()
     if previous and contract != previous["contract"]:
         raise ValueError(
-            "resume task/worktree/branch/settings differ from the saved contract"
+            "resume task/worktree/branch/read_dirs/settings differ from the saved contract"
         )
     run_id = str(uuid.uuid4())
     log_dir = (
@@ -425,11 +439,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             enable_child_subreaper()
             out.parent.mkdir(parents=True, exist_ok=True)
             out.unlink(missing_ok=True)
-            cmd = command(settings, args.mode, cwd, final, state["session_id"])
+            cmd = command(
+                settings, args.mode, cwd, final, state["session_id"], read_dirs
+            )
             write_json(
                 run_dir / "invocation.json",
                 {
                     "schema_version": VERSION,
+                    "contract": contract,
                     "argv": cmd,
                     "removed_environment_keys": sorted(
                         IDENTITY_ENV & os.environ.keys()
