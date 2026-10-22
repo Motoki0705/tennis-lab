@@ -7,8 +7,24 @@ name = "tennis-lab"
 version = "0.1.0"
 description = "ML components for tennis video analysis: ball/court/player detection and 3D scene reconstruction"
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE"]
+# The expression covers original code AND all bundled third-party code in each
+# sdist/wheel. LICENSES.md maps each LicenseRef to its scope and the full license
+# text included by license-files; third-party terms remain in force.
+license = "Apache-2.0 AND MIT AND BSD-3-Clause AND ISC AND CC-BY-NC-4.0 AND LicenseRef-GVHMR AND LicenseRef-HL3-LAW-MEDIA-MIL-SOC-SV"
+license-files = [
+    "LICENSE",
+    "NOTICE",
+    "LICENSES.md",
+    "src/submodules/vendor/gvhmr/LICENSE*",
+    "src/tasks/person_tracking/deep_ocsort_vendor/LICENSE",
+    "src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md",
+    "src/tasks/person_tracking/strongsort_NOTICE.md",
+    "src/tasks/player_association/appearance/solider_vendor/LICENSE",
+    "src/tasks/player_association/appearance/solider_vendor/NOTICE.md",
+    "src/tasks/player_association/appearance/kpr_vendor/LICENSE",
+    "src/tasks/player_association/appearance/kpr_vendor/NOTICE.md",
+    "src/tasks/base/visualization/shared/LICENSE-*.txt",
+]
 requires-python = ">=3.11"
 dependencies = [
     "accelerate>=1.14.0",
@@ -47,6 +63,9 @@ dependencies = [
     "requests>=2.34.2",
     "lap>=0.5.12",
 ]
+
+[project.urls]
+"License scope" = "https://github.com/Motoki0705/tennis-lab/blob/main/LICENSES.md"
 
 [tool.uv]
 default-groups = ["dev", "gpu"]

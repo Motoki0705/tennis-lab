@@ -8,7 +8,7 @@ vendored from `Motoki0705/GVHMR` @ `900e8c4471e80bb6db5cb14c404c1a0766aba5f4`)
 
 GVHMR由来のコードは同梱の [LICENSE](LICENSE) に従う。
 教育・研究・非営利目的に限り使用・複製・改変・配布でき、改変物もソース公開と
-商用利用禁止、著作権等の表示の保持が必要になる。ルートのMITの対象には含まれない。
+商用利用禁止、著作権等の表示の保持が必要になる。ルートのApache-2.0の対象には含まれない。
 LICENSEは [zju3dv/GVHMR の固定commit](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/LICENSE)
 から全文を変更せず取得した。
 

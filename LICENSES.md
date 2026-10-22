@@ -1,16 +1,35 @@
 # ライセンスと出典 / Licenses and attribution
 
-## コードのMIT適用範囲
+<a id="コードのmit適用範囲"></a>
+
+## コードのApache-2.0適用範囲
 
 Tennis-Labの独自コード・文書は、個別の表示があるものを除き、ルートの
-[MIT License](LICENSE) に従います。第三者のコードの著作権・ライセンスを置き換えるものではありません。
+[Apache License 2.0](LICENSE) に従います。著作権表示と適用範囲の注記は [NOTICE](NOTICE) を参照してください。
+第三者のコードの著作権・ライセンスを置き換えるものではありません。
 `third_party/`、移植コード、重み、body model資産、映像・注釈・motion data、論文には
-下記の条件があり、リポジトリ全体やパイプライン全体をMITとして扱うことはできません。
+下記の条件があり、リポジトリ全体やパイプライン全体をApache-2.0として扱うことはできません。
 MITの第三者コードも、元の著作権表示と許諾文を保持してください。
 
-Original Tennis-Lab code and documentation are MIT licensed unless stated otherwise.
+Original Tennis-Lab code and documentation are licensed under Apache-2.0 unless stated otherwise.
 Third-party materials retain their own terms, including restrictions on research use,
-commercial use, and redistribution. The root MIT license does not license those materials.
+commercial use, and redistribution. The root Apache-2.0 license does not license those materials.
+
+sdist・wheelの `License-Expression` は、[`pyproject.toml`](pyproject.toml) で独自コードと
+実際に同梱する第三者コードの条件を `AND` で結合しています。各条件の適用範囲と全文は
+本節と以下の第三者コードの一覧に従います。GVHMRの独自条件とKPRの
+HL3-LAW-MEDIA-MIL-SOC-SV全体に対応する識別子は
+[SPDX License List](https://spdx.org/licenses/) にないため、次の `LicenseRef-` を使います。
+SPDXの `Hippocratic-3.0-core` は、KPRが採用する追加条項を含む条件全体を表しません。
+この対応表とリンク先のライセンス全文は、`license-files` によって両配布物に同梱します。
+
+| メタデータの識別子 | 適用範囲 | 同梱するライセンス全文 |
+| --- | --- | --- |
+| `LicenseRef-GVHMR` | `src/submodules/vendor/gvhmr/` のGVHMR由来部分。内包する第三者部分の個別条件は下表を参照。 | [`src/submodules/vendor/gvhmr/LICENSE`](src/submodules/vendor/gvhmr/LICENSE) |
+| `LicenseRef-HL3-LAW-MEDIA-MIL-SOC-SV` | `src/tasks/player_association/appearance/kpr_vendor/` のKPR移植コード。 | [`src/tasks/player_association/appearance/kpr_vendor/LICENSE`](src/tasks/player_association/appearance/kpr_vendor/LICENSE) |
+
+独自部分のApache-2.0への移行は、[#1313](https://github.com/Motoki0705/tennis-lab/issues/1313) の対応PRのmerge commitから適用します。
+それ以前にMITで配布した版の許諾は取り消さず、過去のtag・履歴は変更しません。
 
 以下は2026-10-19時点の出典の棚卸しです。取込元が記録されているコードはそのcommitを、
 submoduleはgitlinkのcommitを示します。「比較用」「確認用」は今回参照した版であり、
@@ -27,13 +46,13 @@ Git以外で配布される資産のcommitは「該当なし」とし、配布�
 
 | パス | 出典URL・取込元commit | ライセンス・表示 |
 | --- | --- | --- |
-| `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/src/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | コンテナの `__init__.py` は独自コード、MIT。配下のGVHMRは次行の条件。 |
+| `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/src/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | コンテナの `__init__.py` は独自コード、Apache-2.0。配下のGVHMRは次行の条件。 |
 | `src/submodules/vendor/gvhmr` | [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR) の [Motoki0705/GVHMR fork](https://github.com/Motoki0705/GVHMR/tree/900e8c4471e80bb6db5cb14c404c1a0766aba5f4)、取込元 `900e8c4471e80bb6db5cb14c404c1a0766aba5f4` | GVHMR独自の非商用条件。[LICENSE全文](src/submodules/vendor/gvhmr/LICENSE)、[移植内容](src/submodules/vendor/gvhmr/README.md)。内包する第三者部分は下表も参照。 |
 | `src/tasks/person_tracking/deep_ocsort_vendor` | [GerardMaggiolino/Deep-OC-SORT](https://github.com/GerardMaggiolino/Deep-OC-SORT/tree/6bb51d027b137233f5c520b6fcc4f2ae387a6ba9)、`6bb51d027b137233f5c520b6fcc4f2ae387a6ba9` | MIT。Roger R. Labbe Jr.のKalman実装のMIT表示も保持。[LICENSE](src/tasks/person_tracking/deep_ocsort_vendor/LICENSE)・[NOTICE](src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md)。 |
 | `src/tasks/player_association/appearance/solider_vendor` | [tinyvision/SOLIDER-REID](https://github.com/tinyvision/SOLIDER-REID/tree/8c08e1c3255e8e1e51e006bf189e52cc57b009ed)、`8c08e1c3255e8e1e51e006bf189e52cc57b009ed` | MIT。[LICENSE](src/tasks/player_association/appearance/solider_vendor/LICENSE)・[NOTICE](src/tasks/player_association/appearance/solider_vendor/NOTICE.md)。 |
-| `src/tasks/player_association/appearance/kpr_vendor` | [VlSomers/keypoint_promptable_reidentification](https://github.com/VlSomers/keypoint_promptable_reidentification/tree/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa)、`e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa` | Hippocratic License 3.0 **HL3-LAW-MEDIA-MIL-SOC-SV**。倫理上の条件と派生物の条件を含み、MITの対象外。[LICENSE](src/tasks/player_association/appearance/kpr_vendor/LICENSE)・[NOTICE](src/tasks/player_association/appearance/kpr_vendor/NOTICE.md)。 |
-| `tests/unit/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | MIT。移植コードを検証する独自テスト。上流コードの配布ディレクトリではありません。 |
-| `tests/unit/submodules/vendor/gvhmr` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor/gvhmr)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | MIT。上記テストのGVHMR用パッケージ。 |
+| `src/tasks/player_association/appearance/kpr_vendor` | [VlSomers/keypoint_promptable_reidentification](https://github.com/VlSomers/keypoint_promptable_reidentification/tree/e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa)、`e3e6ee2ffb74fd86a39518ce9a25ff91fbd973fa` | Hippocratic License 3.0 **HL3-LAW-MEDIA-MIL-SOC-SV**。倫理上の条件と派生物の条件を含み、ルートのApache-2.0の対象外。[LICENSE](src/tasks/player_association/appearance/kpr_vendor/LICENSE)・[NOTICE](src/tasks/player_association/appearance/kpr_vendor/NOTICE.md)。 |
+| `tests/unit/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | Apache-2.0。移植コードを検証する独自テスト。上流コードの配布ディレクトリではありません。 |
+| `tests/unit/submodules/vendor/gvhmr` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/tests/unit/submodules/vendor/gvhmr)（確認用 `37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | Apache-2.0。上記テストのGVHMR用パッケージ。 |
 
 GVHMRのLICENSEは、教育・研究・非営利目的のみの使用・複製・改変・配布を許し、
 改変物のソース公開と商用利用禁止、著作権・帰属表示等の保持を求めます。
@@ -82,10 +101,10 @@ commitはこのリポジトリまたは親submoduleのgitlinkが固定する値�
 | 対象 | 出典URL・commit / 版 | ライセンス・取扱い |
 | --- | --- | --- |
 | `src/utils/geometry/rotation_conversions.py` | [PyTorch3D rotation_conversions.py](https://github.com/facebookresearch/pytorch3d/blob/88e182f989c80836f4bd744e0d9cb1852762ce01/pytorch3d/transforms/rotation_conversions.py)。取込時commitは未記録、リンクは確認用 `88e182f989c80836f4bd744e0d9cb1852762ce01`。 | BSD-3-Clause、Meta Platforms, Inc. and affiliates。移植である旨はファイル先頭に表示。[許諾文は下記](#pytorch3dのbsd-3-clause表示)。 |
-| `src/tasks/person_tracking/strongsort*.py` | [StrongSORT論文 arXiv:2202.13514v2](https://arxiv.org/abs/2202.13514v2)。定数の参照先は [dyhBUPT/StrongSORT `ee995076da5083e28d0da1f885297df62705ebd7`](https://github.com/dyhBUPT/StrongSORT/tree/ee995076da5083e28d0da1f885297df62705ebd7)。 | 論文はCC BY 4.0。本repoの数式からの再実装はMIT。GPL-3.0の参照コードはコピーしていない。[出典・相違・検証方法のNOTICE](src/tasks/person_tracking/strongsort_NOTICE.md)。重みは別扱い。 |
+| `src/tasks/person_tracking/strongsort*.py` | [StrongSORT論文 arXiv:2202.13514v2](https://arxiv.org/abs/2202.13514v2)。定数の参照先は [dyhBUPT/StrongSORT `ee995076da5083e28d0da1f885297df62705ebd7`](https://github.com/dyhBUPT/StrongSORT/tree/ee995076da5083e28d0da1f885297df62705ebd7)。 | 論文はCC BY 4.0。本repoの数式からの再実装はApache-2.0。GPL-3.0の参照コードはコピーしていない。[出典・相違・検証方法のNOTICE](src/tasks/person_tracking/strongsort_NOTICE.md)。重みは別扱い。 |
 | `src/tasks/base/visualization/shared/{three.core.js,three.module.js,OrbitControls.js}` | [mrdoob/three.js r180](https://github.com/mrdoob/three.js/tree/0af9729d0c143a86a1d725d6e2c3ad83301f3f34)、`0af9729d0c143a86a1d725d6e2c3ad83301f3f34`。core/moduleはbyte一致、OrbitControlsはimport先のみ変更。 | MIT、three.js authors。[全文](src/tasks/base/visualization/shared/LICENSE-three.txt)。 |
 | `src/tasks/base/visualization/detection/static/icons.mjs` | [Lucide](https://github.com/lucide-icons/lucide)。取得時commitは未記録。確認用 [LICENSE `1ef60af944de207e0d5176905a0759ba12e6ee8d`](https://github.com/lucide-icons/lucide/blob/1ef60af944de207e0d5176905a0759ba12e6ee8d/LICENSE)。 | ISC、Feather由来部分はMIT。[両方の全文・著作権表示](src/tasks/base/visualization/shared/LICENSE-lucide.txt)。 |
-| `src/utils/models/kimi_delta_attention.py` | [Kimi Linear論文 arXiv:2510.26692](https://arxiv.org/abs/2510.26692)、[FLA naive recurrence](https://github.com/fla-org/flash-linear-attention/blob/9e97506c338769e8031966fb22fe31780addd8fa/fla/ops/kda/naive.py)（確認用 `9e97506c338769e8031966fb22fe31780addd8fa`、取込commitは該当なし）。 | 論文・recurrenceを参照した本repoの再実装はMIT。参照コードFLAも [MIT](https://github.com/fla-org/flash-linear-attention/blob/9e97506c338769e8031966fb22fe31780addd8fa/LICENSE)。 |
+| `src/utils/models/kimi_delta_attention.py` | [Kimi Linear論文 arXiv:2510.26692](https://arxiv.org/abs/2510.26692)、[FLA naive recurrence](https://github.com/fla-org/flash-linear-attention/blob/9e97506c338769e8031966fb22fe31780addd8fa/fla/ops/kda/naive.py)（確認用 `9e97506c338769e8031966fb22fe31780addd8fa`、取込commitは該当なし）。 | 論文・recurrenceを参照した本repoの再実装はApache-2.0。参照コードFLAも [MIT](https://github.com/fla-org/flash-linear-attention/blob/9e97506c338769e8031966fb22fe31780addd8fa/LICENSE)。 |
 | `.agents/skills/research-loop` のARIS由来部分 | [wanshuiyin/Auto-claude-code-research-in-sleep](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/tree/3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d)、`3b19a22dc5a64c983d2eafd6c2c94000fadc4f8d`。 | MIT。対象ファイルと著作権表示は [LICENSE.ARIS.txt](.agents/skills/research-loop/LICENSE.ARIS.txt)。 |
 
 ### PyTorch3DのBSD-3-Clause表示
@@ -136,10 +155,10 @@ URLは公式の案内先です。コードのLICENSEと、重み・学習元デ�
 
 | 資産 | 公式の入手先・出典commit / 版 | ライセンス・条件 |
 | --- | --- | --- |
-| DINO 4-scale Swin-L（`checkpoint0029_4scale_swin.pth`） | [公式model zooのREADME](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/README.md#model-zoo)、[公式Google Drive](https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_)。参照commit `d84a491d41898b3befd8294d1cf2614661fc0953`。 | 公式repoは [Apache-2.0](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/LICENSE)。重み専用の別許諾は上記案内に見当たらない。元データの権利までMITで付与するものではない。 |
+| DINO 4-scale Swin-L（`checkpoint0029_4scale_swin.pth`） | [公式model zooのREADME](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/README.md#model-zoo)、[公式Google Drive](https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_)。参照commit `d84a491d41898b3befd8294d1cf2614661fc0953`。 | 公式repoは [Apache-2.0](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/LICENSE)。重み専用の別許諾は上記案内に見当たらない。コードのライセンスが元データの権利を付与するものではない。 |
 | ViTPose-H（COCO 256×192） | [ViTPose公式model zoo](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/README.md)、参照commit `c050ed29112da7704797cc1a65af0234b525010d`。GVHMR用の配布名は `vitpose-h-multi-coco.pth`。 | ViTPose公式repoは [Apache-2.0](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/LICENSE)。コードの置き換えは、COCO等の学習元データや重みの利用条件を変更するものではない。 |
 | HMR2.0（`epoch=10-step=25000.ckpt`） | [4D-Humans公式README](https://github.com/shubham-goel/4D-Humans/blob/efe18deff163b29dff87ddbd575fa29b716a356c/README.md)、参照commit `efe18deff163b29dff87ddbd575fa29b716a356c`。 | repoは [MIT](https://github.com/shubham-goel/4D-Humans/blob/efe18deff163b29dff87ddbd575fa29b716a356c/LICENSE.md)。公式READMEはSMPL本体を別途登録して取得するよう指定。MITがSMPLモデルを再許諾するものではない。 |
-| GVHMR（`gvhmr_siga24_release.ckpt`） | [公式installation](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md)、[公式Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD)。参照commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1`。 | [GVHMR非商用条件](src/submodules/vendor/gvhmr/LICENSE)。配布フォルダにはHMR2・ViTPoseも含まれるが、それぞれの条件への同意が必要で、一括したMIT許諾ではない。 |
+| GVHMR（`gvhmr_siga24_release.ckpt`） | [公式installation](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md)、[公式Google Drive](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD)。参照commit `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1`。 | [GVHMR非商用条件](src/submodules/vendor/gvhmr/LICENSE)。配布フォルダにはHMR2・ViTPoseも含まれるが、それぞれの条件への同意が必要で、一括したApache-2.0許諾ではない。 |
 | CLIP-ReID ViT-B/16 Market-1501 | [公式READMEのtrained models](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/README.md#trained-models-and-test-logs)、[公式Google DriveのMarketモデル](https://drive.google.com/file/d/1GnyAVeNOg3Yug1KBBWMKKbT2x43O5Ch7/view)。参照commit `eb1898b72c882875f478bebfc6d41644eece0a5d`。 | 公式repoは [MIT](https://github.com/Syliz517/CLIP-ReID/blob/eb1898b72c882875f478bebfc6d41644eece0a5d/LICENSE)。Market-1501等の元データ条件は別途確認する。2026-10-18合意により正式な案内先はこの公式Drive。 |
 | AFLink（`AFLink_epoch20.pth`） | [StrongSORT公式README](https://github.com/dyhBUPT/StrongSORT/blob/ee995076da5083e28d0da1f885297df62705ebd7/README.md)、[公式Google Drive](https://drive.google.com/drive/folders/1Zk6TaSJPbpnqbz1w4kfhkKFCEzQbjfp_)。参照commit `ee995076da5083e28d0da1f885297df62705ebd7`。 | **利用条件は一次情報で未確認。ユーザー判断（2026-10-19）により標準経路で使い続ける。** 参照コードはGPL-3.0だが、重み専用の条件は確認できていない。[既存NOTICE](src/tasks/person_tracking/strongsort_NOTICE.md) の暫定利用判断は、再配布許諾ではない。 |
 | SMPL-X（`SMPLX_NEUTRAL.npz`） | [SMPL-X公式](https://smpl-x.is.tue.mpg.de/)、Git commitは該当なし。登録時のモデル配布版・同意した契約を確認する。 | [SMPL-X Model License](https://smpl-x.is.tue.mpg.de/modellicense.html)。非商用の科学研究・教育・芸術目的。個人に付与される非移転の権利で、第三者への全部・一部の再配布を許可しない。各利用者が登録・同意して取得する。 |
@@ -194,7 +213,7 @@ indexや平均統計量すべてにモデル本体と同じ条件が及ぶとの
 
 ## 第三者のデータ・論文
 
-学習元の映像・画像・注釈・motion dataは、独自コードのMIT許諾に含まれません。
+学習元の映像・画像・注釈・motion dataは、独自コードのApache-2.0許諾に含まれません。
 下記の外部データ本体は本repoから再配布しません。公開サンプルは末尾の別節で扱います。
 
 | 対象 | 出典URL・commit / 版 | ライセンス・取扱い |
@@ -203,8 +222,8 @@ indexや平均統計量すべてにモデル本体と同じ条件が及ぶとの
 | TrackNetのフレーム・ボール注釈 | [yastrebksv/TrackNet README](https://github.com/yastrebksv/TrackNet/blob/730ea17a324321c553c480179caa8ff13e4cf553/README.md)。確認用commit `730ea17a324321c553c480179caa8ff13e4cf553`、放送動画10本・19835フレームの配布。データ自体のGit commitは該当なし。 | LICENSEなし。リポジトリが公開されていることをデータの自由な再利用・再配布の許諾とは扱わない。 |
 | YouTube由来の映像・独自注釈 | [YouTube利用規約](https://www.youtube.com/static?template=terms)、データのGit commitは該当なし。動画ごとの出典・版は各datasetのprovenanceで管理する。 | 動画ごとの権利・表示条件と利用規約がある。独自注釈を付けても映像の権利や契約条件は消えない。学習利用に関する著作権法第30条の4の判断範囲と契約の論点は[学習データと公開判断](#学習データと公開判断)を参照。 |
 | ACCAD / AMASS motion | [ACCAD公式](https://accad.osu.edu/research/motion-lab/mocap-system-and-data)、[AMASS公式](https://amass.is.tue.mpg.de/)、Git commitは該当なし。AMASSのACCAD配布を使う場合はその版・契約に従う。 | ACCAD Open Motion Projectの公式表示は [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)。一方、AMASS版には [非商用科学研究用のDataset License](https://amass.is.tue.mpg.de/license.html) と再配布制限がある。元データとAMASSのSMPL形式への変換物を混同しない。 |
-| Meijiのマルチカメラ映像・注釈 | [本プロジェクトの公開準備・合意 #1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公開収録データ、Git commitは該当なし。動画・clip単位の識別はdatasetのmanifestによる。 | 被撮影者の同意を取得済み（プロジェクト側の記録）。MITの対象外。公開サンプルの範囲・ライセンスは[サンプルdatasetの利用条件](#サンプルdatasetの利用条件)を参照。 |
-| `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)、Git commitは該当なし、論文版はv1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。著者の原PDFを保持。[同梱の出典表示](knowledge/Papers/paper-2024-gvhmr/paper.md)。論文本体にMITは適用しない。 |
+| Meijiのマルチカメラ映像・注釈 | [本プロジェクトの公開準備・合意 #1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公開収録データ、Git commitは該当なし。動画・clip単位の識別はdatasetのmanifestによる。 | 被撮影者の同意を取得済み（プロジェクト側の記録）。Apache-2.0の対象外。公開サンプルの範囲・ライセンスは[サンプルdatasetの利用条件](#サンプルdatasetの利用条件)を参照。 |
+| `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)、Git commitは該当なし、論文版はv1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。著者の原PDFを保持。[同梱の出典表示](knowledge/Papers/paper-2024-gvhmr/paper.md)。論文本体にルートのApache-2.0は適用しない。 |
 
 ## 公開物（自作の重み・サンプルdataset）のライセンス
 
@@ -291,7 +310,7 @@ CCは肖像・プライバシー等の権利を一律に許諾するものでは
 README用の同梱素材 [`assets/tennis_scene/multiview_reconstruction.gif`](assets/tennis_scene/multiview_reconstruction.gif)
 は、ライセンス元である本プロジェクトが上記サンプル映像を縮小・間引きし、3視点と3D再構成を
 合成して別途提供するGIFです。© 2026 Motoki0705。GIFに関してプロジェクトが持つ権利は
-[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)で提供し、MITの対象外です。
+[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)で提供し、Apache-2.0の対象外です。
 研究・デモ確認は想定用途であり、ライセンスに追加の用途制限を設けるものではありません。
 このGIFの提供は、第三者が元動画から作った任意の改変物の共有を許諾するものではありません。
 人物はGVHMRによるSMPL復元を描画しています。SMPL-Bodyの出典は
@@ -311,7 +330,7 @@ license_link: LICENSE
 ```
 
 Model repoのルート `LICENSE` にファイルごとの適用範囲と両ライセンスの全文を収録します。
-ここでの `LICENSE` はHugging Face側のファイルであり、コード用の本repoのMIT Licenseとは別です。
+ここでの `LICENSE` はHugging Face側のファイルであり、コード用の本repoのApache License 2.0とは別です。
 `license_name` は条件一覧の識別名で、独自の追加条件を作るものではありません。
 異なる条件の重みを含むため、Model repo全体を `cc-by-nc-4.0` と表示しません。
 メタデータの書式は[HF公式仕様](https://huggingface.co/docs/hub/model-cards#specifying-a-license)を参照してください。

@@ -50,9 +50,9 @@ For development environment checks, linting, type checking and tests, see the [s
 
 ## 参照リポジトリとライセンス / References and licenses
 
-独自コード・文書は、個別の表示があるものを除き [MIT License](LICENSE) です。移植・参照したリポジトリ、第三者のコード・重み・body model資産・データ・論文の出典と条件は [LICENSES.md](LICENSES.md) にまとめています。これらの第三者素材と、下記の公開重み・サンプル・GIFにはルートのMITは適用されず、それぞれの条件が適用されます。
+独自コード・文書は、個別の表示があるものを除き [Apache License 2.0](LICENSE) です。移植・参照したリポジトリ、第三者のコード・重み・body model資産・データ・論文の出典と条件は [LICENSES.md](LICENSES.md) にまとめています。これらの第三者素材と、下記の公開重み・サンプル・GIFにはルートのApache-2.0は適用されず、それぞれの条件が適用されます。
 
-Original code and documentation are under the [MIT License](LICENSE) unless stated otherwise. [LICENSES.md](LICENSES.md) records the repositories used or adapted and the sources and terms for third-party code, weights, body-model assets, data and papers. These third-party materials and the published weights, sample and GIF below retain their respective terms and are outside the root MIT license.
+Original code and documentation are under the [Apache License 2.0](LICENSE) unless stated otherwise. [LICENSES.md](LICENSES.md) records the repositories used or adapted and the sources and terms for third-party code, weights, body-model assets, data and papers. These third-party materials and the published weights, sample and GIF below retain their respective terms and are outside the root Apache-2.0 license.
 
 - **ボール検出の重み / Ball detector weights:** [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/legalcode.en)。帰属表示等の条件に従い、非商用の複製・共有・改変物の共有ができます。<br/>
   Noncommercial copying, sharing and sharing of adaptations are permitted subject to attribution and the other license terms.
