@@ -127,11 +127,13 @@ class Labels:
         return [x for x in self.read()["calls"] if "report-metadata" in x]
 
     def hook(
-        self, event: str, identity: str = "test-owner"
+        self, event: str, identity: str = "test-owner", **fields: str
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
-            input=json.dumps({"hook_event_name": event, "session_id": identity}),
+            input=json.dumps(
+                {"hook_event_name": event, "session_id": identity, **fields}
+            ),
             text=True,
             capture_output=True,
             env=self.env,
@@ -440,6 +442,87 @@ def test_claude_hooks_use_real_payload_and_never_release_registry(
     assert "display_agent" not in labels.read()["panes"]["w1:p1"]
 
 
+@pytest.mark.parametrize("identity", ["test-owner", "new-session"])
+@pytest.mark.parametrize("end_first", [False, True])
+def test_clear_start_never_restores_registered_parent(
+    labels: Labels, identity: str, end_first: bool
+) -> None:
+    assert labels.run("sync").returncode == 0
+    original = labels.registry.read_bytes()
+    if end_first:
+        assert labels.hook("SessionEnd", reason="clear").returncode == 0
+    result = labels.hook("SessionStart", identity, source="clear")
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    assert "display_agent" not in pane
+    assert pane["tokens"] == {"other": "keep"}
+    assert labels.registry.read_bytes() == original
+
+
+@pytest.mark.parametrize("display", ["#42 · 関連", "親未登録"])
+@pytest.mark.parametrize("event", ["clear", "SessionEnd", "SessionStart"])
+def test_clear_removes_initial_migration_label(
+    labels: Labels, display: str, event: str
+) -> None:
+    state = labels.read()
+    pane = state["panes"]["w1:p1"]
+    pane["display_agent"] = display
+    pane["tokens"].update(tl_topic="初回設定", tl_engine="claude")
+    if display == "#42 · 関連":
+        pane["tokens"]["tl_parent"] = "o/r#42"
+    # The actual parent may share this Claude ID in another pane.
+    state["panes"]["w1:p2"].update(
+        agent="claude",
+        display_agent="#42 · 親",
+        tokens={"tl_owner": hashlib.sha256(b"claude:test-owner").hexdigest()},
+    )
+    labels.write(state)
+    original_registry = labels.registry.read_bytes()
+    original_parent = state["panes"]["w1:p2"]
+    result = (
+        labels.run("clear")
+        if event == "clear"
+        else labels.hook(
+            event, **{"source" if event == "SessionStart" else "reason": "clear"}
+        )
+    )
+    assert result.returncode == 0, result.stderr
+    after = labels.read()["panes"]
+    assert "display_agent" not in after["w1:p1"]
+    assert after["w1:p1"]["tokens"] == {"other": "keep"}
+    assert after["w1:p1"]["agent"] == "claude"
+    assert after["w1:p2"] == original_parent
+    assert labels.registry.read_bytes() == original_registry
+
+
+def test_clear_keeps_display_without_managed_metadata(labels: Labels) -> None:
+    state = labels.read()
+    state["panes"]["w1:p1"]["display_agent"] = "別の用途の表示"
+    labels.write(state)
+    result = labels.hook("SessionStart", "new-session", source="clear")
+    assert result.returncode == 0, result.stderr
+    assert labels.read()["panes"]["w1:p1"] == state["panes"]["w1:p1"]
+    assert not labels.mutations()
+
+
+@pytest.mark.parametrize("display", ["#42 · 親", "#42 · 関連", "親未登録"])
+def test_compaction_preserves_display_and_runtime(labels: Labels, display: str) -> None:
+    assert labels.run("sync", "--topic", "手動で選んだ題名").returncode == 0
+    state = labels.read()
+    state["panes"]["w1:p1"]["display_agent"] = display
+    if display != "#42 · 親":
+        state["panes"]["w1:p1"]["tokens"].pop("tl_owner")
+        labels.set_registry({})
+    labels.write(state)
+    private = Path(labels.env["XDG_STATE_HOME"])
+    records = {p: p.read_bytes() for p in private.rglob("*.json")}
+    result = labels.hook("SessionStart", source="compact")
+    assert result.returncode == 0, result.stderr
+    assert labels.read() == state  # No Herdr calls, even read-only lookups.
+    assert {p: p.read_bytes() for p in private.rglob("*.json")} == records
+    assert json.loads(result.stdout)["herdr_label"]["status"] == "preserved"
+
+
 @pytest.mark.parametrize("ending", ["clear", "SessionEnd"])
 def test_clearing_parent_display_does_not_authorize_helper(
     labels: Labels, ending: str
@@ -476,7 +559,7 @@ def test_end_fences_old_commands_and_start_restores_same_parent(labels: Labels) 
     count = len(labels.mutations())
     assert labels.run("sync").returncode == 2
     assert len(labels.mutations()) == count
-    assert labels.hook("SessionStart").returncode == 0
+    assert labels.hook("SessionStart", source="resume").returncode == 0
     assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
 
 

@@ -201,7 +201,9 @@ def _sync(
     if clear or not active:
         if expected_parent is not None and not clear:
             raise ValueError("the caller does not own the requested active parent")
-        if not previous_owner:
+        # Initial related/unassigned labels have our tokens but no parent owner.
+        # Clearing them must not claim the parent or remove unrelated metadata.
+        if not any(existing.get(key) for key in TOKEN_KEYS):
             return {"status": "unassigned", "pane": pane["pane_id"]}
         if registry(env) != snapshot:
             raise ValueError("parent registry changed before label cleanup; retry sync")

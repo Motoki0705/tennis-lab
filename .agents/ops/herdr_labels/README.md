@@ -25,10 +25,15 @@ Herdr環境・bindのないheadless実行は`not_configured`を明示し、担�
 hookがそのpaneのforeground agentの子孫であることも確認する。
 途中に別の同種agentがある場合は子のhookとして拒否し、親の表示を変更しない。
 SessionStartは`CLAUDE_ENV_FILE`へ識別子を追記し、担当済みなら表示を復元する。
+ただし`source: clear`（Claudeの`/clear`）では表示を解除し、同じsession IDに担当が残っていても復元しない。
+`source: compact`（手動・自動のコンテキスト圧縮）は作業の継続なので、Herdrへの同期を行わず
+現在の表示・表示先の対応を保持する。親・関連・未登録のいずれも再命名・解除しない。
 新しいSessionStartがHerdr内から届いた場合は、そのpaneに残った前セッションの表示も解除・更新する。
 通常のsync/clearは別セッションの`tl_owner`を見つけたら拒否する。
 終了・引継ぎ待ち・未担当では自分が付けた表示だけを解除する。hookは担当の生死を推測せず、
 registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使う。
+解除時は`tl_owner`のない初回設定の「関連」「親未登録」も、管理対象の`tl_*`トークンで識別して消す。
+管理対象トークンのない別用途の表示名と、他のトークンは保持する。
 
 registryはatomic renameで保存されるJSONを読む。取得中に担当が変わったら更新を拒否する。
 Herdrの対象はcaller contextか明示bindだけで、フォーカスや作業ディレクトリから選ばない。

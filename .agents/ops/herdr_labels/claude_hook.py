@@ -33,9 +33,24 @@ def main() -> int:
         if event == "SessionStart" and env.get("CLAUDE_ENV_FILE"):
             with Path(env["CLAUDE_ENV_FILE"]).open("a", encoding="utf-8") as stream:
                 stream.write(f"\nexport CLAUDE_CODE_SESSION_ID={shlex.quote(sid)}\n")
+        if event == "SessionStart" and payload.get("source") == "compact":
+            # Compaction continues this conversation; it is not an assignment
+            # transition and must not restore or discard any existing label.
+            print(
+                json.dumps(
+                    {
+                        "herdr_label": {
+                            "status": "preserved",
+                            "reason": "compaction keeps the existing session display",
+                        }
+                    }
+                )
+            )
+            return 0
         result = sync(
             env,
-            clear=event == "SessionEnd",
+            clear=event == "SessionEnd"
+            or (event == "SessionStart" and payload.get("source") == "clear"),
             session_start=event == "SessionStart",
             session_end=event == "SessionEnd",
         )
