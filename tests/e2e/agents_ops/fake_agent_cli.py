@@ -36,6 +36,18 @@ def main() -> None:
         )
     agent = Path(sys.argv[0]).name
     scenario = os.environ.get("FAKE_SCENARIO", "success")
+    if agent == "claude" and "--json-schema" in args:
+        schema = json.loads(args[args.index("--json-schema") + 1])
+        if (
+            schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
+            or scenario == "schema_cli_error"
+        ):
+            print(
+                "Error: --json-schema is not a valid JSON Schema: no schema with key or ref "
+                '"https://json-schema.org/draft/2020-12/schema"',
+                file=sys.stderr,
+            )
+            sys.exit(1)
     model = args[args.index("--model") + 1]
     prompt = sys.stdin.read()
     session = "private-" + agent + "-session"

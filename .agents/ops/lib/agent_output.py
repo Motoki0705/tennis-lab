@@ -10,7 +10,7 @@ from agent_events import parse_json
 
 
 class OutputSchema:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, agent: str) -> None:
         # Keep ordinary text/profile runs independent of this optional feature.
         try:
             from jsonschema import (  # type: ignore[import-untyped]
@@ -29,9 +29,14 @@ class OutputSchema:
             raise ValueError("--json-schema must contain a JSON Schema object")
         validator = validators.validator_for(schema, default=None)
         if "$schema" not in schema:
-            validator = validators.Draft202012Validator
+            validator = validators.Draft7Validator
         if validator is None:
             raise ValueError("--json-schema declares an unsupported schema dialect")
+        if agent == "claude" and validator is not validators.Draft7Validator:
+            raise ValueError(
+                f"--json-schema dialect {schema['$schema']!r} is not supported by "
+                "Claude CLI (Ajv default); declare draft-07 or omit $schema"
+            )
         try:
             validator.check_schema(schema)
         except SchemaError as exc:

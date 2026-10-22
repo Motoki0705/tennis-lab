@@ -199,6 +199,99 @@ def test_json_schema_is_pinned_passed_and_validated(
     assert out.read_bytes() == (runtime / "final.md").read_bytes()
 
 
+@pytest.mark.parametrize("agent", ["claude", "codex"])
+@pytest.mark.parametrize("declare_dialect", [False, True])
+def test_schema_defaults_to_draft_seven_and_honors_its_dependencies(
+    h: Harness, output_schema: Path, agent: str, declare_dialect: bool
+) -> None:
+    schema = json.loads(output_schema.read_text())
+    if declare_dialect:
+        schema["$schema"] = "http://json-schema.org/draft-07/schema#"
+    # Draft 2020-12 ignores this draft-07 keyword.
+    schema["dependencies"] = {
+        "message": {"properties": {"message": {"const": "allowed"}}}
+    }
+    output_schema.write_text(json.dumps(schema))
+    accepted = h.run(
+        "accepted",
+        agent=agent,
+        prompt="allowed",
+        extra=("--json-schema", str(output_schema)),
+    )
+    assert accepted.returncode == 0, accepted.stderr
+    refused = h.run(
+        "refused",
+        agent=agent,
+        prompt="denied",
+        extra=("--json-schema", str(output_schema)),
+    )
+    assert refused.returncode == 1, refused.stderr
+    assert h.result("refused")["turn_end_reason"] == "invalid_output"
+    assert "does not match --json-schema" in h.result("refused")["error"]
+
+
+@pytest.mark.parametrize("draft", ["2019-09", "2020-12"])
+def test_claude_incompatible_schema_dialect_is_rejected_before_launch(
+    h: Harness, output_schema: Path, draft: str
+) -> None:
+    schema = json.loads(output_schema.read_text())
+    schema["$schema"] = f"https://json-schema.org/draft/{draft}/schema"
+    output_schema.write_text(json.dumps(schema))
+    proc = h.run(agent="claude", extra=("--json-schema", str(output_schema)))
+    assert proc.returncode == 2
+    assert "Claude CLI (Ajv default)" in proc.stderr and "draft-07" in proc.stderr
+    assert schema["$schema"] in proc.stderr
+    assert not (h.root / "initial").exists() and not (h.root / "args.txt").exists()
+
+
+def test_fake_claude_reproduces_draft_202012_refusal_before_first_event(
+    h: Harness,
+) -> None:
+    proc = subprocess.run(
+        [
+            str(h.root / "bin/claude"),
+            "--json-schema",
+            '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object"}',
+        ],
+        env=h.env,
+        input="",
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=5,
+    )
+    assert proc.returncode == 1 and proc.stdout == ""
+    assert (
+        'no schema with key or ref "https://json-schema.org/draft/2020-12/schema"'
+        in proc.stderr
+    )
+
+
+def test_unanticipated_cli_schema_refusal_is_failed_with_stderr_evidence(
+    h: Harness, output_schema: Path
+) -> None:
+    out = h.root / "accepted.json"
+    proc = h.run(
+        agent="claude",
+        scenario="schema_cli_error",
+        extra=("--json-schema", str(output_schema), "--out", str(out)),
+    )
+    assert proc.returncode == 1, proc.stderr
+    result = h.result()
+    assert result["result"] == "failed" and result["turn_end_reason"] == "cli_error"
+    assert result["cli_exit_code"] == 1 and result["task_success"] is None
+    assert (
+        result["runtime"]["session_id"] is None and result["cleanup_complete"] is True
+    )
+    assert (
+        'no schema with key or ref "https://json-schema.org/draft/2020-12/schema"'
+        in result["error"]
+    )
+    assert (h.root / "initial/stderr.log").read_text().strip() in result["error"]
+    assert (h.root / "initial/events.jsonl").read_bytes() == b""
+    assert not out.exists() and not (h.root / "initial/final.md").exists()
+
+
 @pytest.mark.parametrize(
     ("agent", "scenario"),
     [

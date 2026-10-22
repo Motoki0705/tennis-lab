@@ -266,8 +266,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("--read-dir must name an existing directory") from exc
     if any(not Path(path).is_dir() for path in read_dirs):
         raise ValueError("--read-dir must name an existing directory")
+    agent = args.agent or ("claude" if args.role == "parent" else "codex")
     output_schema = (
-        OutputSchema(args.json_schema) if args.json_schema is not None else None
+        OutputSchema(args.json_schema, agent=agent)
+        if args.json_schema is not None
+        else None
     )
     prompt = (
         sys.stdin.buffer.read()
@@ -286,7 +289,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 setattr(
                     args, key, previous["contract"]["settings"]["overrides"].get(key)
                 )
-    agent = args.agent or ("claude" if args.role == "parent" else "codex")
     settings = resolve(
         args.config_file, agent, args.profile, args.model, args.effort, args.mode
     )
@@ -510,6 +512,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         reason = "completed"
                 if reason != "completed" and status == 0:
                     status = 1
+                if reason == "cli_error":
+                    with (run_dir / "stderr.log").open("rb") as stderr:
+                        stderr_head = (
+                            stderr.read(1024).decode("utf-8", errors="replace").strip()
+                        )
+                    result["error"] = (
+                        f"CLI exited with status {status}; stderr: {stderr_head or '(empty)'}"
+                    )
         except FileNotFoundError:
             status, reason = 127, "startup_failed"
             result["error"] = "required executable or runtime file is missing"

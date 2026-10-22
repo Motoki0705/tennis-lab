@@ -631,14 +631,109 @@ def test_output_schema_keeps_decision_fields_and_classifications(h: Harness) -> 
     schema = json.loads(
         (ROOT / ".agents/ops/dispatcher/judgement.schema.json").read_text()
     )
-    decision_schema = schema["$defs"]["decision"]
+    decision_schema = schema["definitions"]["decision"]
     assert set(decision_schema["required"]) == h.schema.DECISION_KEYS
     assert set(decision_schema["properties"]) == h.schema.DECISION_KEYS
     assert (
         set(decision_schema["properties"]["disposition"]["enum"])
         == h.schema.DISPOSITIONS
     )
-    assert set(schema["$defs"]["requirements"]["required"]) == h.schema.REQUIREMENTS
+    assert (
+        set(schema["definitions"]["requirements"]["required"]) == h.schema.REQUIREMENTS
+    )
+
+
+def test_output_schema_uses_cli_compatible_dialect_and_explicit_array_types() -> None:
+    from jsonschema import Draft7Validator  # type: ignore[import-untyped]
+
+    schema = json.loads(
+        (ROOT / ".agents/ops/dispatcher/judgement.schema.json").read_text()
+    )
+    assert schema["$schema"] == "http://json-schema.org/draft-07/schema#"
+    Draft7Validator.check_schema(schema)
+
+    def check(value: Any) -> None:
+        if isinstance(value, dict):
+            if {
+                "items",
+                "minItems",
+                "maxItems",
+                "contains",
+                "uniqueItems",
+            } & value.keys():
+                assert value.get("type") == "array", value
+            if "$ref" in value:
+                # Draft-07 ignores validation keywords beside $ref.
+                assert set(value) == {"$ref"}, value
+            for child in value.values():
+                check(child)
+        elif isinstance(value, list):
+            for child in value:
+                check(child)
+
+    check(schema)
+
+
+@pytest.mark.parametrize(
+    ("status", "field", "value"),
+    [
+        ("information_needed", "facts", []),
+        ("information_needed", "sources", []),
+        ("information_needed", "missing_information", []),
+        ("startable", "missing_information", ["未決事項"]),
+        ("startable", "sources", ["issue:1"]),
+        ("startable", "facts", [123]),
+        ("startable", "facts", ["同じ事実", "同じ事実"]),
+    ],
+)
+def test_output_schema_preserves_array_and_conditional_constraints(
+    h: Harness, status: str, field: str, value: Any
+) -> None:
+    row = decision(1, status)
+    row[field] = value
+    h.response(row)
+    result = h.run()
+    assert result["result"] == "failed" and result["candidates"] == []
+    evidence = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert evidence["turn_end_reason"] == "invalid_output"
+    assert "does not match --json-schema" in evidence["error"]
+    assert h.gh.writes == []
+
+
+def test_schema_preflight_refusal_is_diagnosed_without_starting_cli(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    agent = importlib.import_module("dispatcher.agent")
+    incompatible = h.root / "incompatible.schema.json"
+    schema = json.loads(agent.OUTPUT_SCHEMA.read_text())
+    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    incompatible.write_text(json.dumps(schema))
+    monkeypatch.setattr(agent, "OUTPUT_SCHEMA", incompatible)
+    h.response(decision(1))
+    result = h.run()
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert "failed with exit 2" in result["diagnostics"][0]
+    assert "Claude CLI (Ajv default)" in result["diagnostics"][0]
+    assert not h.calls.exists() and not (h.run_dir / "agent-runtime").exists()
+    assert h.gh.writes == []
+
+
+def test_cli_schema_refusal_before_first_turn_has_diagnostic_stderr(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "schema_cli_error")
+    h.response(decision(1))
+    result = h.run()
+    assert result["result"] == "failed" and result["candidates"] == []
+    evidence = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert evidence["turn_end_reason"] == "cli_error"
+    assert evidence["runtime"]["session_id"] is None
+    assert "turn_end_reason=cli_error" in result["diagnostics"][0]
+    assert (
+        'no schema with key or ref "https://json-schema.org/draft/2020-12/schema"'
+        in result["diagnostics"][0]
+    )
+    assert h.gh.writes == []
 
 
 @pytest.mark.parametrize(

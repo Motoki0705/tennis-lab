@@ -27,6 +27,13 @@ def main() -> None:
     with Path(os.environ["FAKE_JUDGEMENT_CALLS"]).open("a") as stream:
         stream.write(json.dumps({"args": args, "prompt": prompt}) + "\n")
     scenario = os.environ.get("FAKE_JUDGEMENT_SCENARIO", "success")
+    if scenario == "schema_cli_error":
+        print(
+            "Error: --json-schema is not a valid JSON Schema: no schema with key or ref "
+            '"https://json-schema.org/draft/2020-12/schema"',
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     model = args[args.index("--model") + 1]
     session = "private-judgement-session"
     emit(

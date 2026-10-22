@@ -52,8 +52,16 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
     (run_dir / "runner.stdout").write_text(result.stdout, encoding="utf-8")
     (run_dir / "runner.stderr").write_text(result.stderr, encoding="utf-8")
     if result.returncode:
+        diagnostic = result.stderr.strip()[:2048]
+        failure_path = runtime_dir / "result.json"
+        if failure_path.is_file():
+            failure = object_value(read_json(failure_path.read_text(encoding="utf-8")))
+            diagnostic = f"turn_end_reason={failure.get('turn_end_reason')}; " + str(
+                failure.get("error") or diagnostic
+            )
         raise ValueError(
-            f"judgement runner failed with exit {result.returncode}; inspect private runtime logs"
+            f"judgement runner failed with exit {result.returncode}; {diagnostic}; "
+            "inspect private runtime logs"
         )
     summary = object_value(read_json(result.stdout))
     evidence = object_value(

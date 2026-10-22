@@ -38,6 +38,9 @@ Claudeの`--add-dir`への変換とCodexのsandbox契約は共通ランナーが
 `--json-schema judgement.schema.json`で構造化出力を必須にし、runtimeの`contract.json_schema_sha256`を
 渡したschemaと照合する。Claudeの自由文からJSONを探さず、ランナーが保存した検証済みの`final.md`を厳格に読む。
 返却形式のschema検査に加え、`schema.py`による全subjects・出典・routing・依存等の検証を続ける。
+schemaの方言と配列制約は[共通ランナーの契約](../lib/README.md#json-schemaによる構造化出力)に従う。
+ランナーの起動前拒否はrunnerのstderr、`cli_error`はprivateなruntimeの`error`（CLI stderr先頭を含む）を
+判定結果の`diagnostics`に残す。これらから判断コメントや割当候補を生成しない。
 ランナーの正常終了、run ID・実行契約・選択値と観測model・プロセス回収を確認した後に最終JSONを読む。
 exit 0や`task_success:null`をタスク成功に読み替えない。失敗時に別モデルや別sessionへ振り替えない。
 

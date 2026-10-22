@@ -80,6 +80,14 @@ JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.
 `output-schema.json`へ固定する。検証にはproject依存の`jsonschema`を使う（導入時は`uv sync --locked`）。
 未指定のreview / ops_reportを含む既存呼出しの引数・テキスト出力・profile設定は変わらない。
 
+Claude/Codex共通の方言はdraft-07とし、`$schema`省略時もローカル検証には`Draft7Validator`を使う。
+Claude Code 2.1.308はAjv既定のmeta-schemaだけを受理するため、draft-07以外の宣言を起動前に終了値2で拒否する。
+2020-12の宣言を削除するだけで新しいkeywordの意味を保てるとは限らない。
+[Ajvの方言](https://ajv.js.org/json-schema.html#json-schema-versions)と
+[strictTypes](https://ajv.js.org/strict-mode.html#require-applicable-types)に合わせ、配列制約には`type: array`を明示する。
+[draft-07の参照](https://json-schema.org/understanding-json-schema/structuring#ref)では`$ref`の兄弟制約を無視するため、
+参照に制約を加えるときは`allOf`を使う。Codex向けに別の方言を明示した場合は、宣言に対応するvalidatorで検証する。
+
 - Claude Code 2.1.308の`--help`で`--json-schema <schema>`を確認した。ファイル名ではなく
   固定schemaのJSON文字列を渡す。stream-jsonの最終`result`イベントにある`structured_output`だけを
   検証して`final.md`へJSONとして保存する。`result`の自由文やtool_useから補完しない。
@@ -94,6 +102,8 @@ JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.
 `invalid_output`で失敗し、`--out`へコピーしない。前置きやfenceを読み飛ばさない。
 schema内の参照は固定ファイル内だけで解決し、外部ファイル・URLのschemaを取得しない。
 出力との照合エラーと生イベントはprivateなrun記録に残す。
+事前検査を通ってもCLIがschema等を拒否した場合は`cli_error`で失敗し、`result.json`の`error`へ
+stderr先頭1024 bytes（UTF-8の不正byteは置換）を保存する。stdoutの短い要約へは本文を出さない。
 
 指定時だけ`contract.json_schema_sha256`にschema原文のSHA-256を記録する。
 resumeでも同じ内容のschemaを明示指定する。別パスの同一バイト列は許容するが、
