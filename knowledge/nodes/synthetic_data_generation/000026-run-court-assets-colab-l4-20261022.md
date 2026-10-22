@@ -31,7 +31,7 @@ metrics:
   renderer_visible_points: 498
   kp_disagreements: 0
   within_device_repeat_max_abs_error: 0
-  equivalence_accepted: false
+  equivalence_accepted: true
   l4_setup_corrected_warm_seconds: 898.111
   l4_peak_allocated_bytes: 491267072
   l4_peak_reserved_bytes: 658505728
@@ -40,7 +40,9 @@ artifacts:
   run_dir: knowledge/runs/run-court-assets-colab-l4-20261022
   raw_colab: gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-assets-verify/renders-native
   raw_local: gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-assets-verify/local-reference
-  input_assets: gdrive:tennis_lab/staging/court-scene-assets-a9281d9a41e39fc9
+  input_assets: gdrive:tennis_lab/data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified
+  staging_assets: gdrive:tennis_lab/staging/court-scene-assets-a9281d9a41e39fc9
+  adoption: knowledge/runs/run-court-assets-colab-l4-20261022/adoption.json
 parents: []
 relations: []
 papers: []
@@ -53,7 +55,7 @@ tags:
 
 ## 結論
 
-資産転送・旧alignmentの読み取り・固定版NHTのL4描画は確認できた。ただし、RGB/alpha/depth全体の等価性を合格にする許容差は正当化できず、#1351の第3受入条件は未完了。資産はstagingに維持し、採用先へのcopyは実行していない。後続の本番生成には未承認の候補資産として渡す。
+資産転送・旧alignmentの読み取り・固定版NHTのL4描画を確認し、**2026-10-22のユーザー判断を出典として、教師一致とRGBのPSNR下限による等価性を受け入れた**。判断の原文は [#1351のコメント](https://github.com/Motoki0705/tennis-lab/issues/1351#issuecomment-6341401581)。全alpha/depth rasterの一致を合格に変更したわけではない。2回分のKP投影・renderer可視判定は完全一致し、RGBはREADMEに定義した下限を通過した。資産は入力データの採用位置へ検証付きでcopyし、stagingも保持する。後続の本番生成はColab L4・固定runtimeへ統一する。
 
 これは完了した数値比較の記録であり、Court Detectionの精度実験ではない。同じGPUでの2回は全float32配列が完全一致したが、GPUを変えたときの差は2回とも再現した。GPU内のランダムな非決定性で説明できる証拠はない。
 
@@ -82,7 +84,7 @@ depthは `nht_scene_units_per_metre` で割ってメートルへ変換した。K
 
 392 KPの幾何・renderer判定は全点一致し、画像内かつrenderer-visibleは249点。投影UVとKP camera depthの差も0だった。2回分では784 KP、renderer-visible 498点を検査した。local/local、L4/L4のRGB・alpha・depth差は全画素0。local/L4の2回の比較結果は一致した。
 
-全画像でRGBのRMSEは0.000161〜0.001261で、同じローカル画像をquality=95のJPEGへencodeするRMSE 0.003537〜0.004983より小さい。ただし最大RGB差はB02の0.166748であり、JPEG平均誤差より小さいことだけをdepthや教師の等価性へ拡張しない。JPEG化は本番assemblerと同じ `np.round(rgb * 255).astype(np.uint8)` を使い、JPEG差をraw RGB差と分けた。JPEG RGBのGPU間PSNRは51.31〜54.24 dB。過去の異なる視点のJPEGとの比較ではない。
+シーン集計のRGB RMSEは0.000161〜0.001261で、同じローカル画像をquality=95のJPEGへencodeするRMSE 0.003537〜0.004983より小さい。ただし最大RGB差はB02の0.166748であり、JPEG平均誤差より小さいことだけをdepthや教師の等価性へ拡張しない。JPEG化は本番assemblerと同じ `np.round(rgb * 255).astype(np.uint8)` を使い、JPEG差をraw RGB差と分けた。シーン集計のJPEG RGBのGPU間PSNRは51.31〜54.24 dB。過去の異なる視点のJPEGとの比較ではない。
 
 B01/frame_000088の(x=481,y=6)では、localのalpha=0.004035・depth=401.809mに対し、L4はalpha=0・depth=16,214,958,705.176mだった。この視点にはlocalで8画素、L4で10画素の「alpha=0かつpositive depth」があり、いずれも有効surfaceとは扱えない。gsplatのexpected depthがalphaを最小1e-10にclampして除算する実装と整合するが、除算前の量は今回保存しておらず原因の確定ではない。alpha=0の画素を除いても差は残り、両画像alpha>=0.99のB02でもdepth最大差12.124m。巨大値の除外だけでは全体の一致を説明できない。
 
@@ -97,9 +99,19 @@ B01のalpha=0.01閾値を跨ぐ画素は2点で、(505,6)は0.010164→0.009974�
 | B02 | 505,829 | 0.0341797 | 0.000491203 / 0.00478158 / 0.0361511 |
 | B03 | 366,027 | 0.000976562 | 9.40341e-06 / 4.1375e-05 / 0.0475549 |
 
-同じGPU内の繰返し差が0なので、観測したGPU間差をそのまま「ノイズ床」として最大値以上の許容差へ広げる根拠はない。全画素合格には上表のRGB/alpha/depth最大差以上を認める必要があり、背景の極大depthに加えてコート上の最大13.7cmも含まれる。コートdepthのP99.9は最大4.78mmだが、上位0.1%を無条件に切り捨てる方針は合意されていない。
+同じGPU内の繰返し差が0なので、観測したGPU間差をそのまま「ノイズ床」として最大値以上の許容差へ広げる根拠はない。全rasterの最大差を許容するなら、背景の極大depthに加えてコート上の最大13.7cmも含まれる。コートdepthのP99.9は最大4.78mmだが、上位0.1%を削除したり値を補正したりしていない。ユーザー判断は教師一致を基準とする採用であり、これらのdepth値を一致・正確と認定するものではない。
 
-診断の物差しとしてRGB 1/255、depth 1cmを使うと、コート領域で閾値を超える画素はB00が2/13、B01が0/57、B02が2951/114、B03が0/3（RGB/depth）。これらは原因を絞るための集計で、承認済みの受入閾値ではない。現時点で根拠をもって合格にできるのはbyte照合、同GPUでの再現、今回のKP inventory一致まで。全rasterのGPU間許容差は未確定として返す。
+診断の物差しとしてRGB 1/255、depth 1cmを使うと、コート領域で閾値を超える画素はB00が2/13、B01が0/57、B02が2951/114、B03が0/3（RGB/depth）。これらは原因を絞るための集計で、受入閾値ではない。alpha/depthの差、閾値跨ぎ、外れ画素を含む元の比較JSON・図・raw配列はすべて保持する。
+
+### ユーザー判断に基づく採用基準とJPEG誤差の比較
+
+再利用する契約の正本は [Court READMEのRendering equivalence contract](../../../src/synthetic_data_generation/dataset/court/README.md#rendering-equivalence-contract)。ユーザーが指定したのは「KP投影・renderer可視判定の完全一致＋RGBのPSNR下限」という判断軸であり、PSNRの数値自体は実測とJPEG保存誤差から具体化した。
+
+シーン集計の最小PSNRはB02の57.985743 dB、個別視点の最小は同シーンframe_000104の55.858970 dBだった。「約58dB」を全視点の下限と取り違えない。4視点のRGB二乗誤差をまとめたシーン単位の下限を57 dB、平均に隠れる劣化を拒否する個別視点の下限を55 dBとし、実測最小値から整数dBへ切り下げた。同GPU内のノイズを推定して広げた許容差ではない。
+
+quality=95保存の誤差は、raw RGBから本番と同じuint8丸め・JPEG encode/decodeまで含むRMSE 0.003537〜0.004983（PSNR 46.050958〜49.026667 dB）。57 dBの下限が許すRMSE 0.001413は、この最小JPEG RMSEの約0.399倍、55 dBの個別下限でも約0.503倍である。最悪視点の実測RMSE 0.001611は同じ視点のJPEG保存RMSE 0.004573の約0.352倍だった。JPEG量子化・圧縮より小さいRGB誤差予算として根拠を置くが、局所最大RGB差0.166748やalpha/depth差を消したり、学習精度への無影響を主張したりしない。
+
+添付 `court_assets_acceptance.py` は元の比較JSON・両GPUの完全な教師inventoryを読み、2回を別々に判定した。`acceptance.json` に入力SHA-256、各シーンと最悪視点のPSNR、合否を保存し、2回とも合格した。微小なUV/depth・物理ID・可視判定の変化、RGB下限未達、欠落・重複視点、非有限値を拒否するCPUテストを追加した。従来の `run.json`・`verification.json`・測定sourceは当初の未受理状態を示す履歴として改変せず、現在の採用状態と判断の出典は `adoption.json` に追記する。
 
 ![各シーンでRGB最大差を持つ視点。Local/L4 RGB＋可視KP、RGB差×32、alpha差×4、対数scaleのdepth差](../../runs/run-court-assets-colab-l4-20261022/comparison.png)
 
@@ -134,6 +146,8 @@ Colabのuv syncは26.430s。最初のrender-only setupは951.585sでhelp/import�
 
 `run.json`、`render-inventory.json`、`colab-operations/`、`local-queue/` が実行版・コマンド・hash・状態の根拠。raw配列はDriveの `outputs/synthetic_data_generation/profile/court-assets-verify/{renders-native,local-reference}` に置き、Gitには含めない。取得した資産rootと両raw出力を指定し、添付 `recompute.sh` でCPU比較を再実行できる。学習していないためTensorBoard・収束曲線は対象外。
 
-親への推奨は、資産をstagingのまま保持し、固定した単一camera・外れ画素でrasterizerの数値差を切り分けること。renderer/precisionを修正するか、背景depthの有効性と領域別の誤差上限を明示して許容するかは、今回の結果を左右する未合意の判断である。既存のrenderer設定やalpha/depthの意味を黙って変更して合格にしない。新Colabが必要なら、まず未pushのinstaller修正を親がpushし、そのcommitと新しい一意sessionを使う。今回回収した32枚を全て再描画する必要はない。
+ユーザー判断後の採用先・Drive ID・照合結果は `adoption.json` とそこから参照するreceiptが正本。初回copy後のB01 `scene.json`同名重複と、別の新規先へのcopy中のDrive 500エラーを検出した。重複先を採用せず保持し、新規先のinventoryで1ファイルだけの欠落を確認してそのファイルだけをcopyした。最終inventoryは元と同じ25ファイル・958,152,199 bytesで、全path・サイズ・内容hashが一致し、重複なし。全量の再取得・内容照合と、元のSHA-256 manifest・全資産・幾何の再検証も通った。stagingも削除していない。
 
-軌道生成・大規模生成・学習・alignment再推定・wheel cacheは対象外。NHTのimage-free変更はoriginのbranchへpush済みだがmainには未mergeで、NHT側のPRが必要である。
+今回の仕上げではColab/GPUを起動せず、保存済みの各GPU32枚とCPU判定だけを使用した。関連テスト73件とNHT exportテスト46件が成功した。NHTテストの最初のcollectionは学習venvに`jsonschema`がなく失敗したが、既存NHT分離環境の依存を明示して成功し、環境の再installは行っていない。コマンド・ログは `adoption-checks.json` が参照する。外れ画素のrenderer/precision調査は今後の改善候補で、現在の採用条件では前提ではない。新しい軌道・品質gateの判断は後続へ残り、この既存撮影点の照合だけで新規視点を合格にしない。
+
+軌道生成・大規模生成・学習・alignment再推定・wheel cacheは対象外。NHTのimage-free変更はoriginのbranchへpush済みだがmainには未mergeで、NHT側のPRが必要である。`nht-upstream.json` にremote refと包含確認を記録した。PRの作成とpushは親が行う。

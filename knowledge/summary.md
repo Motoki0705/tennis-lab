@@ -1,7 +1,7 @@
-<!-- knowledge-review: b287f5cc21de7c9d11a193289ce868ccffde468ba16bc7178d807fd590fce8fa on 2026-10-22 -->
+<!-- knowledge-review: 5644b567d258eabb8249e3c245169d81de97e4686f4d2f6c1ec6931169bf858c on 2026-10-22 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court資産のColab L4描画照合を追加。全rasterのGPU間等価性は保留し、既存の採用判断は維持）
+更新日: 2026-10-22（Court資産はユーザー判断により教師一致とRGB下限を基準に採用。alpha/depth差の記録を保持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -15,9 +15,10 @@
 
 [B00〜B03の可搬資産とL4描画](nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md)は、
 資産のbyte照合と固定runtimeでの32枚の描画・Drive保存を確認した。各GPU内の2回の描画と
-投影・可視KPは一致したが、GPU間のalpha/depth外れ値とコート領域の数値差が残る。
-全rasterの一致を認める許容差を正当化できず、入力資産はstagingに維持する。
-次は外れ画素の数値差と背景depthの有効性を切り分け、受入方針を決める。
+投影・可視KPは一致し、ユーザーの2026-10-22の判断により教師の完全一致とRGBのPSNR下限を
+受入基準にした。2回とも基準を通り、入力資産をDriveの採用位置へcopyし、再取得後の内容と幾何も照合した。
+GPU間のalpha/depth外れ値とコート領域の差、staging資産は保持し、全raster一致は主張しない。
+本番生成をL4へ統一し、次は後続の分割生成と新規視点の品質・採択率を確認する。
 既存モデルの採用判断、3DGSの品質、合成画像数による精度改善の判断は更新していない。
 
 ## 2026-10-21の公開3カメラサンプル

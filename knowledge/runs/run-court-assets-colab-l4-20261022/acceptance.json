@@ -1,0 +1,82 @@
+{
+  "schema": "court_render_equivalence_acceptance_v1",
+  "accepted": true,
+  "reference_visibility": {
+    "path": "local-visibility.json",
+    "sha256": "50d9a0bdc60a9ea5e7cc5b0b9a1a4ce70d8f2d8719015ffb464e7a4b6e96d4a9"
+  },
+  "candidate_visibility": {
+    "path": "colab-visibility.json",
+    "sha256": "50d9a0bdc60a9ea5e7cc5b0b9a1a4ce70d8f2d8719015ffb464e7a4b6e96d4a9"
+  },
+  "comparisons": [
+    {
+      "path": "cross-gpu-comparison.json",
+      "sha256": "279ec73a1b907737db704d433a5a5da7e43bfc02c4af6524dc2a920c6717f97e",
+      "accepted": true,
+      "scene_psnr_min_db": 57.0,
+      "view_psnr_min_db": 55.0,
+      "scenes": {
+        "B00": {
+          "views": 4,
+          "points": 112,
+          "scene_psnr_db": 75.2305874396306,
+          "min_view_psnr_db": 74.70463492240482
+        },
+        "B01": {
+          "views": 4,
+          "points": 168,
+          "scene_psnr_db": 73.47997464995878,
+          "min_view_psnr_db": 69.39781030613068
+        },
+        "B02": {
+          "views": 4,
+          "points": 56,
+          "scene_psnr_db": 57.985742562044166,
+          "min_view_psnr_db": 55.85896982225229
+        },
+        "B03": {
+          "views": 4,
+          "points": 56,
+          "scene_psnr_db": 75.85066744899032,
+          "min_view_psnr_db": 75.64605541987628
+        }
+      },
+      "failures": []
+    },
+    {
+      "path": "cross-gpu-repeat-comparison.json",
+      "sha256": "5c14a97958c951869954d588b2343e34b08eef6b561b79f0ec30056eac797327",
+      "accepted": true,
+      "scene_psnr_min_db": 57.0,
+      "view_psnr_min_db": 55.0,
+      "scenes": {
+        "B00": {
+          "views": 4,
+          "points": 112,
+          "scene_psnr_db": 75.2305874396306,
+          "min_view_psnr_db": 74.70463492240482
+        },
+        "B01": {
+          "views": 4,
+          "points": 168,
+          "scene_psnr_db": 73.47997464995878,
+          "min_view_psnr_db": 69.39781030613068
+        },
+        "B02": {
+          "views": 4,
+          "points": 56,
+          "scene_psnr_db": 57.985742562044166,
+          "min_view_psnr_db": 55.85896982225229
+        },
+        "B03": {
+          "views": 4,
+          "points": 56,
+          "scene_psnr_db": 75.85066744899032,
+          "min_view_psnr_db": 75.64605541987628
+        }
+      },
+      "failures": []
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "path": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "type": "directory",
+  "size_bytes": 958152199,
+  "modified": "2026-10-22T13:15:08.332Z",
+  "id": "1ce2GM7XmHH1m85j9Zw4mpUW74UIaZEfT",
+  "mime_type": null,
+  "file_count": 25
+}
