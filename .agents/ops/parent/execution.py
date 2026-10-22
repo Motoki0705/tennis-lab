@@ -71,6 +71,14 @@ def validate_basis(value: Any) -> dict[str, Any]:
 
 def human_basis(event: Mapping[str, Any]) -> dict[str, Any]:
     agreement = object_value(event["agreement"])
+    inputs = event["agreement_sha256"]
+    if "requirements_sha256" in event:
+        inputs = digest(
+            {
+                "agreement_sha256": inputs,
+                "requirements_sha256": sha256(event["requirements_sha256"]),
+            }
+        )
     return validate_basis(
         {
             "schema_version": 1,
@@ -78,7 +86,7 @@ def human_basis(event: Mapping[str, Any]) -> dict[str, Any]:
             **agreement,
             "rationale": "人間との要件合意",
             "sources": [f"parent-session:agreed:revision:{event.get('revision')}"],
-            "input_sha256": event["agreement_sha256"],
+            "input_sha256": inputs,
             "policy_version": "human-agreement/v1",
         }
     )
@@ -263,6 +271,18 @@ def _current_basis(session: ParentSession, generation: int) -> dict[str, Any]:
         from .agreement_comments import require_fresh
 
         require_fresh(session, current)
+        if "requirements_sha256" not in current:
+            raise ValueError(
+                "legacy human agreement lacks requirements_sha256; "
+                "合意時点の要件本文を検証できないため実行を停止しました。"
+                "checking → agree で現在の本文を人間と確認し、実際の再合意を記録してください"
+            )
+        body = session.gh.issue(session.parent).get("body") or ""
+        if sha256(current["requirements_sha256"]) != digest(requirement_body(body)):
+            raise ValueError(
+                f"#{session.parent}: human agreement requirements changed; "
+                "checking → agree で変更後の本文を人間と確認し、再合意してください"
+            )
         return human_basis(current)
     validate_event(current)
     if current["generation"] != generation:
@@ -313,7 +333,17 @@ def authorization(
     if request is not None and request["schema_version"] == 1:
         if basis["kind"] != "human_agreement":
             raise ValueError("legacy review requires a human agreement")
-        return {"generation": generation, "agreement_sha256": basis["input_sha256"]}
+        agreement = {
+            key: basis[key]
+            for key in (
+                "purpose",
+                "scope",
+                "behavior",
+                "acceptance",
+                "human_confirmation",
+            )
+        }
+        return {"generation": generation, "agreement_sha256": digest(agreement)}
     return validate_authorization(
         {
             "generation": generation,

@@ -68,6 +68,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 `checking` → 会話で認識合わせ・合意 → `agree` の順。担当指定だけでは「担当指定のみ」、
 `checking` で「要件確認中」、有効な合意コメントで「要件合意済み」となる。
 再度 `checking` に戻したら、新しい合意の記録まで分割・委任を拒否する。
+`checking` / `agreed` のrevisionは両イベントの過去最大値から進め、取消の連番とは分ける。
+取消後の `checking` は新しいrevisionを作り、人間が同じ内容へ再合意しても新しい `agreed` を残す。
+取消による要件確認中の状態から直接 `agree` で実際の再合意を記録する場合も、新しいrevisionを使う。
+同じ確認中の `checking` と、有効な同一合意への `agree` の再送は冪等で、新しい合意に数えない。
 会話に実際の合意があるかを判断する責任は親agentにあり、CLIは人間の確認を捏造しない。
 既存issueにマーカーなしの人間との合意がある場合は、その発言と合意内容を読み、
 `checking` / `agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
@@ -80,8 +84,11 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 再実行時は同一イベントを再投稿しない。別ghアカウントへの移管は自動で信用せず、
 新しい担当アカウントで改めて要件確認・合意を記録する。
 
-人間合意でも親コメントの鮮度を分割・委任・レビュー・merge前に検査する。
-新しい `agreed` は通常コメントのID/login/digestを `comment_inputs` に固定する。
+人間合意でも親の要件本文とコメントの鮮度を分割・委任・レビュー・merge前に検査する。
+新しい `agreed` は要件本文の `requirements_sha256` と、通常コメントのID/login/digestを `comment_inputs` に固定する。
+本文は自律根拠・reviewと共通の `requirement_body` 射影を使い、進捗の除外範囲も
+[自律着手の実行根拠](#自律着手の実行根拠と呼出契約)と同じ。実質的な本文変更は `checking` → 実際の認識合わせ → `agree` を要する。
+同じ `agree` の再送やコメントの無関係分類で変更後の本文を取り込まず、review-prepare前にも拒否する。
 現在のpublisherによる先頭行の `parent-session:v1` / `parent-review:v1` 記録を除き、
 コメントの追加・編集・削除は未分類の変更として操作を拒否する。
 エラーは対象のID・URL・変更種別と解除方法を示す。`status` や旧記録の読取は維持し、
@@ -137,7 +144,14 @@ note後の通常コメントも毎回検査し、同じ本文でもマーカー�
 
 ### 稼働中の親への移行
 
-導入前の親（#1204・#1216等）に合意後の素の進捗コメントがある場合、merge後の次の委任・レビュー・mergeで
+`requirements_sha256` がない旧合意（#1204・#1216・#1261・#1318等を含む）は、`status` と履歴の読取を維持する。
+ただし合意時点の本文を証明できないため、分割・委任・レビュー準備/指示・merge等の実行根拠検証は
+`legacy human agreement lacks requirements_sha256` と復旧手順を示して停止する。従来動作への黙った切替は行わない。
+担当親は現在の本文・指示を人間と確認し、`checking` → 実際の再合意 → `agree` で本文digestを記録する。
+現在の本文digestを旧記録へ自動補完せず、registry・既存task・旧reviewを読み取りや移行で書き換えない。
+再合意後も旧reviewを新しい根拠へ付け替えず、現在の要件で成果を検証し、新しい理由付きrunでレビューする。
+
+本文digestを持つ親に合意後の素の進捗コメントがある場合、merge後の次の委任・レビュー・mergeで
 未分類コメントとして停止する。registryや合意を一括で書き換えず、担当親が次を一度行う。
 
 1. 拒否メッセージの全ID・URL・変更種別から本文を読み、進捗だけか、要件変更・停止指示かを確認する。
@@ -210,6 +224,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 `basis_sha256` はbasis全体のcanonical JSON digest。人間合意は既存のagreedイベントを
 `kind=human_agreement, policy_version=human-agreement/v1` の同形式（実際のhuman_confirmation付き）へ
 読み替える。合意原文・agreement digest・公開マーカーは保持し、自律判断からagreedを作らない。
+本文digestを持つ人間合意の `input_sha256` は `{agreement_sha256, requirements_sha256}` のcanonical JSON digestとする。
+本文digestのない旧合意は読取時だけ従来のagreement digestで表現し、実行操作には使わない。
+旧review schema version=1のauthorizationは従来どおりagreement digestと照合する。
 
 `inputs` はrepo・親番号・タイトル・要件本文digest・needs-human・指示コメントのID/login/digest・contextを含む。
 長い本文・議論を公開マーカーへ複製せず、元の判断入力は収集側が保存する。contextにも小さな参照/digestを渡す。

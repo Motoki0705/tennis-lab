@@ -34,6 +34,7 @@ from .policy import (
     digest,
     events,
     marker,
+    next_agreement_revision,
     nonempty,
     note_body,
     number,
@@ -243,14 +244,22 @@ class ParentSession:
     def checking(self) -> dict[str, Any]:
         self.owner()
         history = self.history()
-        if phase(history) == "checking":
+        latest = next(
+            (
+                e
+                for e in reversed(history)
+                if e["event"]
+                in {"checking", "agreed", "execution_basis", "basis_revoked"}
+            ),
+            {},
+        )
+        if latest.get("event") == "checking":
             return self.status()
-        revision = sum(e.get("event") == "checking" for e in history) + 1
         self.post(
             {
                 "event": "checking",
                 "generation": self.row["generation"],
-                "revision": revision,
+                "revision": next_agreement_revision(history),
             },
             "要件確認中。目的・範囲・期待する動作・受入条件と不明点を人間と認識合わせします。",
         )
@@ -347,8 +356,15 @@ class ParentSession:
 
             event = {
                 "event": "agreed",
-                "revision": last_phase.get("revision"),
+                "revision": next_agreement_revision(history)
+                if last_phase.get("event") == "basis_revoked"
+                else last_phase["revision"],
                 "comment_inputs": comment_inputs(self),
+                "requirements_sha256": digest(
+                    execution.requirement_body(
+                        self.gh.issue(self.parent).get("body") or ""
+                    )
+                ),
             }
         titles = {
             "purpose": "目的",

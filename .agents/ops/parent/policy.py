@@ -141,6 +141,10 @@ def events(
                 nonempty(value, key)
             if event.get("agreement_sha256") != digest(agreement):
                 raise ValueError("agreement marker digest mismatch")
+            if "requirements_sha256" in event:
+                from .execution import sha256
+
+                sha256(event["requirements_sha256"])
         if "comment_inputs" in event or event.get("event") == "agreement_comments":
             from .agreement_comments import validate_inputs
 
@@ -187,6 +191,20 @@ def phase(history: Sequence[Mapping[str, Any]]) -> str:
         elif kind == "basis_revoked":
             current = "checking"
     return current
+
+
+def next_agreement_revision(history: Sequence[Mapping[str, Any]]) -> int:
+    return (
+        max(
+            (
+                number(e.get("revision"))
+                for e in history
+                if e.get("event") in {"checking", "agreed"}
+            ),
+            default=0,
+        )
+        + 1
+    )
 
 
 def require_agreement(history: Sequence[Mapping[str, Any]]) -> None:
