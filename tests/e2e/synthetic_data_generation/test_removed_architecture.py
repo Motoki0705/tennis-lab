@@ -95,6 +95,16 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/dataset/court/migration.py"): frozenset(
         {"sha256"}
     ),
+    # Portable assets verify copied bytes and the explicitly pinned input bundle;
+    # their digests never derive scene IDs or choose scene-workspace owners.
+    Path("src/synthetic_data_generation/dataset/court/assets.py"): frozenset(
+        {"sha256", "sha-256"}
+    ),
+    # The asset CLI forwards the caller's expected transfer-verification digest;
+    # the source scenes and destination remain explicit paths.
+    Path("src/synthetic_data_generation/scripts/court_scene_assets.py"): frozenset(
+        {"sha256"}
+    ),
     Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset({"sha256"}),
     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
         {"sha256"}
@@ -145,6 +155,7 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "compact_court_storage.py",
+        "court_scene_assets.py",
         "edit_alignment.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",
