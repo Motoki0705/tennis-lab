@@ -5,7 +5,7 @@ from __future__ import annotations
 import itertools
 import math
 from collections.abc import Iterator, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from fractions import Fraction
 from typing import Any
 
@@ -203,6 +203,9 @@ def iter_trajectory_plans(
     require_integer(density_level, "density_level", minimum=0)
     if density_level > 20:
         raise ValueError("density_level exceeds the explicit planning limit of 20.")
+    layout = replace(
+        layout, courts=tuple(sorted(layout.courts, key=lambda c: c.court_instance_id))
+    )
     geometry_id = scene_geometry_id(layout, cameras)
     sequence = CurveSequence(
         method=method,
@@ -218,7 +221,17 @@ def iter_trajectory_plans(
         "scene_id": scene_id,
         "geometry_id": geometry_id,
         "method": method.value,
-        "recipe": recipe.to_dict(),
+        "curve_recipe": {
+            "hull_expansion_percent": recipe.hull_expansion_percent,
+            "hull_margin_m": recipe.hull_margin_m,
+        },
+        "arc_recipe": {
+            "base_step_m": recipe.base_step_m,
+            "minimum_points": recipe.minimum_points,
+            "count_multiple": recipe.count_multiple,
+            "arc_intervals": recipe.arc_intervals,
+            "arc_tolerance_m": recipe.arc_tolerance_m,
+        },
         "strategy": strategy_definition(),
         "seed": seed,
         "replay_configuration": replay,
@@ -249,7 +262,10 @@ def iter_trajectory_plans(
             "duplicate_of": None,
         }
         if curve is not None:
-            physical = stable_id("physical_curve_view", curve.to_dict(), view)
+            physical_curve = curve.physical_key()
+            if len(layout.courts) == 1:
+                physical_curve["center_court_id"] = layout.courts[0].court_instance_id
+            physical = stable_id("physical_curve_view", physical_curve, view)
             if physical in physical_curves:
                 entry["duplicate_of"] = physical_curves[physical]
                 entry["reasons"].append("exact_duplicate_curve_view")
@@ -271,7 +287,36 @@ def iter_trajectory_plans(
                 )
                 if entry["duplicate_of"] is not None:
                     record["reasons"].append("exact_duplicate_curve_view")
+                record["scale"]["comparison_pair_id"] = stable_id(
+                    "comparison_pair",
+                    scene_id,
+                    geometry_id,
+                    method.value,
+                    seed,
+                    candidate.provenance,
+                    [q.numerator, q.denominator],
+                )
                 entry["samples"].append(record)
+            positions = np.stack(
+                [
+                    np.asarray(s["camera"]["camera_to_scene"]).reshape(4, 4)[:3, 3]
+                    for s in entry["samples"]
+                ]
+            )
+            final = positions[:1] if curve.closed else curve.at(np.array([1.0]))
+            steps = np.linalg.norm(
+                np.diff(np.vstack([positions, final]), axis=0), axis=1
+            )
+            maximum = float(steps.max())
+            if maximum > recipe.base_step_m / 2**density_level + recipe.arc_tolerance_m:
+                raise ValueError(
+                    "Frozen arc sampling exceeds the configured maximum step tolerance."
+                )
+            entry["sampling_diagnostics"] = {
+                "maximum_adjacent_step_m": maximum,
+                "minimum_adjacent_step_m": float(steps.min()),
+                "unsampled_endpoint_gap_m": 0.0 if curve.closed else float(steps[-1]),
+            }
         yield entry
     if emitted != trajectory_count:
         raise ValueError(
@@ -286,6 +331,14 @@ def build_candidate_plan(**kwargs: Any) -> dict[str, Any]:
     if len(ids) != len(set(ids)):
         raise ValueError("Stable point ID collision.")
     return {
+        **candidate_plan_header(**kwargs),
+        "trajectory_storage": "inline_v1",
+        "trajectory_groups": groups,
+    }
+
+
+def candidate_plan_header(**kwargs: Any) -> dict[str, Any]:
+    return {
         "schema": PLAN_SCHEMA,
         "scene_id": kwargs["scene_id"],
         "method": kwargs["method"].value,
@@ -297,5 +350,4 @@ def build_candidate_plan(**kwargs: Any) -> dict[str, Any]:
         "split": "train",
         "strategy": strategy_definition(),
         "scene_geometry_id": scene_geometry_id(kwargs["layout"], kwargs["cameras"]),
-        "trajectory_groups": groups,
     }

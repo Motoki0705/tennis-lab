@@ -62,10 +62,13 @@ def test_every_method_retains_common_camera_target_and_projection(
     method, captured_cameras, multi_court_layout
 ):
     kwargs = inputs(method, captured_cameras, multi_court_layout)
-    coarse = build_candidate_plan(**kwargs, trajectory_count=2, density_level=0)
+    prefix = len(kwargs["cameras"]) if method is TrajectoryMethod.CAPTURE_LOCAL else 2
+    coarse = build_candidate_plan(**kwargs, trajectory_count=prefix, density_level=0)
     # Reversing captured input order is part of the same plan, not a new asset.
     kwargs["cameras"] = list(reversed(kwargs["cameras"]))
-    larger = build_candidate_plan(**kwargs, trajectory_count=3, density_level=1)
+    larger = build_candidate_plan(
+        **kwargs, trajectory_count=prefix + 1, density_level=1
+    )
     before = {
         s["sample_id"]: s for g in coarse["trajectory_groups"] for s in g["samples"]
     }

@@ -131,13 +131,7 @@ class CurveSequence:
             + recipe.hull_expansion_percent / 100 * distances
             - recipe.hull_margin_m
         )
-        self.scope = [
-            STRATEGY_SCHEMA,
-            method.value,
-            scene_geometry_id,
-            recipe.to_dict(),
-            seed,
-        ]
+        self.scope = [STRATEGY_SCHEMA, method.value, scene_geometry_id, seed]
 
     def inside(self, xy: np.ndarray) -> bool:
         return bool(np.all(np.asarray(xy) @ self.normals.T <= self.allowance + 1e-9))

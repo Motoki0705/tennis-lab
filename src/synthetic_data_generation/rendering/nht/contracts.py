@@ -259,8 +259,13 @@ class NHTRenderCommandRequest:
     arbitrary_cameras: NHTRenderRequest | None = None
     arbitrary_request_path: Path | None = None
     executable: str | Path = NHT_RENDER_COMMAND
+    batch_size: int | None = None
 
     def __post_init__(self) -> None:
+        if self.batch_size is not None and (
+            type(self.batch_size) is not int or not 1 <= self.batch_size <= 32
+        ):
+            raise ValueError("NHT batch_size must be an integer in 1..32.")
         for name, path in (
             ("scene_path", self.scene_path),
             ("output_directory", self.output_directory),
@@ -351,6 +356,8 @@ class NHTRenderCommandRequest:
         if self.arbitrary_request_path is not None:
             arguments.extend(("--cameras", str(self.arbitrary_request_path)))
         arguments.extend(("--output", str(self.output_directory)))
+        if self.batch_size is not None:
+            arguments.extend(("--batch-size", str(self.batch_size)))
         return tuple(arguments)
 
 

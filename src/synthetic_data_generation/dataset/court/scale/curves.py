@@ -74,6 +74,46 @@ class Curve:
     def closed(self) -> bool:
         return self.kind == "orbit"
 
+    def physical_key(self) -> dict[str, Any]:
+        """Remove equivalent path parameterizations, including open-path reversal."""
+        descriptor = self.to_dict()
+        parameters = dict(self.parameters)
+        if self.closed:
+            if parameters["shape"] == "circle":
+                period = 0.0
+            elif parameters["radius_x_m"] == parameters["radius_y_m"] and parameters[
+                "shape"
+            ] in {"rectangle", "superellipse"}:
+                period = math.pi / 2
+            else:
+                period = math.pi
+            angle = parameters["orientation"]
+            normalized = angle % period if period else 0.0
+            parameters["orientation"] = normalized
+            parameters["phase"] = (
+                (
+                    (parameters["phase"] - parameters["cycles"] * (angle - normalized))
+                    % (2 * math.pi)
+                )
+                if parameters["amplitude"]
+                else 0.0
+            )
+        else:
+            controls = parameters["controls"]
+            parameters["controls"] = min(controls, controls[::-1])
+        descriptor["parameters"] = parameters
+
+        def rounded(value: Any) -> Any:
+            if isinstance(value, float):
+                return round(value, 12)
+            if isinstance(value, list):
+                return [rounded(v) for v in value]
+            if isinstance(value, dict):
+                return {k: rounded(v) for k, v in value.items()}
+            return value
+
+        return dict(rounded(descriptor))
+
     def at(self, t: NDArray[np.float64]) -> NDArray[np.float64]:
         t = np.asarray(t, dtype=np.float64)
         p = self.parameters
