@@ -5,9 +5,11 @@ from __future__ import annotations
 import copy
 import json
 import math
+import shutil
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import numpy as np
@@ -61,6 +63,11 @@ from src.synthetic_data_generation.dataset.court.sample_store import (
     read_court_manifest,
     read_court_rgb,
 )
+from src.synthetic_data_generation.dataset.court.scale import (
+    publication as scale_publication,
+)
+from src.synthetic_data_generation.dataset.court.scale import runtime as scale_runtime
+from src.synthetic_data_generation.dataset.court.scale.core import digest
 from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SEMANTIC_CLASS_NAMES_V2,
 )
@@ -77,13 +84,18 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
     NHT_RGB_OUTPUT_SEMANTICS,
     NHT_SCENE_COORDINATE_CONVENTION,
 )
-from src.synthetic_data_generation.rendering.nht import NHTRenderClient
+from src.synthetic_data_generation.rendering.nht import (
+    NHTRenderArrays,
+    NHTRenderClient,
+    NHTRenderCommandRequest,
+)
 from src.synthetic_data_generation.scene_contract import (
     CourtInstance,
     MultiCourtLayout,
     RigidTransform,
     SceneCamera,
 )
+from src.synthetic_data_generation.scripts import generate_court_scale
 from src.utils.io import load_json
 from src.utils.paths import PROJECT_ROOT
 
@@ -1020,3 +1032,229 @@ def test_portable_assets_reject_corruption(tmp_path: Path, mutation: str) -> Non
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError):
         verify_scene_assets(root)
+
+
+def _freeze_scale_production(
+    tmp_path: Path,
+    scenes_root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    asset_options: tuple[str, ...] = (),
+) -> tuple[Path, Path]:
+    root = tmp_path / "scale"
+    fingerprint = {"schema": "fixture_renderer_v1", "executable": str(tmp_path / "nht-render")}
+    monkeypatch.setattr(generate_court_scale, "renderer_fingerprint", lambda: fingerprint)
+    monkeypatch.setattr(scale_runtime, "renderer_fingerprint", lambda: fingerprint)
+    monkeypatch.setattr(sys, "argv", [
+        "generate_court_scale", "plan", "--scenes-root", str(scenes_root),
+        "--scenes", "B00", "--output-root", str(root),
+        "--production-recipe", str(_CONFIG_ROOT / "dataset/court/scale_stratified_counter_production_v1.json"),
+        "--generation-seed", "24", "--trajectory-count", "1", "--density-level", "0",
+        *asset_options,
+    ])
+    generate_court_scale.main()
+    requests = scale_publication.read_json(root / "planned-requests.json")
+    return root, Path(requests["requests"][0])
+
+
+@pytest.mark.parametrize("portable", [False, True])
+def test_scale_production_from_scene_inputs_to_nht_request_and_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, portable: bool,
+) -> None:
+    workspace, bundle, receipt = _portable_assets(tmp_path)
+    scene_root = bundle / "scenes/B00" if portable else workspace
+    assert not (scene_root / "resolved-config.yaml").exists()
+    asset_options = (
+        "--asset-manifest", str(bundle / "assets.json"),
+        "--asset-manifest-sha256", str(receipt["manifest_sha256"]),
+    ) if portable else ()
+    root, request_path = _freeze_scale_production(
+        tmp_path, scene_root.parent, monkeypatch, asset_options,
+    )
+    request = scale_publication.read_json(request_path)
+    scene = request["scenes"][0]
+    asset = scale_publication.read_json(root / scene["asset_manifest_path"])
+    assert asset["schema"] == "court_scale_scene_assets_v2"
+    assert asset["configuration_authority"] == "recipe"
+    assert asset["without_source_images"] is portable
+    assert all(Path(item["path"]).name != "resolved-config.yaml" for item in asset["files"])
+    if portable:
+        assert not (scene_root / "reconstruction/export/images").exists()
+        assert asset["portable_asset_manifest"] == {
+            "path": str(bundle / "assets.json"), "sha256": receipt["manifest_sha256"],
+        }
+    else:
+        # Production neither reads nor pins even an invalid saved preset.
+        (workspace / "resolved-config.yaml").write_text("invalid: [")
+        assert scale_runtime.load_scene_inputs(workspace, replay=False)["asset"] == asset
+
+    calls: list[NHTRenderCommandRequest] = []
+
+    def render(client: NHTRenderClient, command: NHTRenderCommandRequest, **kwargs):
+        # Only the GPU boundary is replaced. Public scene validation still runs.
+        client.validate_scene(command.scene_path, without_source_images=command.without_source_images)
+        calls.append(command)
+        assert command.arbitrary_cameras is not None
+
+        def records():
+            for camera in command.arbitrary_cameras.cameras:
+                h, w = camera.height, camera.width
+                yield SimpleNamespace(
+                    camera_id=camera.camera_id,
+                    arrays=NHTRenderArrays(
+                        rgb=np.full((h, w, 3), 0.5, dtype=np.float32),
+                        alpha=np.ones((h, w, 1), dtype=np.float32),
+                        depth=np.ones((h, w, 1), dtype=np.float32),
+                    ),
+                )
+
+        return SimpleNamespace(records=records())
+
+    monkeypatch.setattr(NHTRenderClient, "render", render)
+    monkeypatch.setenv("TENNIS_RUN_ID", "cpu-fixture")
+    executable = tmp_path / "nht-render"
+    executable.write_text("#!/bin/sh\nexit 1\n")
+    executable.chmod(0o755)
+    backend = scale_runtime.LocalNHTRenderer(root, fingerprint=request["renderer"])
+    published = scale_publication.execute_request(root, request_path, backend)
+    version = scale_publication.load_dataset_version(published, verify_images=True)
+    assert calls
+    assert all(command.without_source_images is portable for command in calls)
+    assert all(("--without-source-images" in command.argv()) is portable for command in calls)
+    assert all(command.batch_size == 1 for command in calls)
+    assert version["schema"] == "court_scale_dataset_version_v2"
+    assert version["recipe_sha256"] == digest(request["production_recipe"])
+    assert version["scenes"][0]["asset_manifest_sha256"] == file_sha256(root / scene["asset_manifest_path"])
+    assert version["scenes"][0]["counts"]["qa_accepted"] > 0
+
+
+@pytest.mark.parametrize("case,match", [
+    ("missing_hash", "required together"),
+    ("missing_path", "required together"),
+    ("hash_mismatch", "manifest SHA-256 mismatch"),
+    ("source_workspace", "does not belong"),
+    ("extra_source_image", "inventory mismatch"),
+    ("wrong_filename", "must be named assets.json"),
+])
+def test_scale_production_rejects_wrong_explicit_bundle_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str, match: str,
+) -> None:
+    workspace, bundle, receipt = _portable_assets(tmp_path)
+    scenes_root = bundle / "scenes"
+    manifest = bundle / "assets.json"
+    expected_hash = str(receipt["manifest_sha256"])
+    if case == "hash_mismatch":
+        expected_hash = "0" * 64
+    elif case == "source_workspace":
+        scenes_root = workspace.parent
+    elif case == "extra_source_image":
+        images = bundle / "scenes/B00/reconstruction/export/images"
+        images.mkdir()
+        Image.new("RGB", (16, 12)).save(images / "extra.png")
+    elif case == "wrong_filename":
+        manifest = bundle / "other.json"
+    options: list[str] = []
+    if case != "missing_path":
+        options.extend(("--asset-manifest", str(manifest)))
+    if case != "missing_hash":
+        options.extend(("--asset-manifest-sha256", expected_hash))
+    with pytest.raises(ValueError, match=match):
+        _freeze_scale_production(tmp_path, scenes_root, monkeypatch, tuple(options))
+    assert not (tmp_path / "scale/planned-requests.json").exists()
+
+
+def test_image_free_bundle_requires_manifest_and_rejects_saved_preset_replay(tmp_path: Path) -> None:
+    _, bundle, receipt = _portable_assets(tmp_path)
+    scene_root = bundle / "scenes/B00"
+    with pytest.raises(FileNotFoundError, match="images"):
+        scale_runtime.load_scene_inputs(scene_root, replay=False)
+    with pytest.raises(ValueError, match="replay requires a local scene workspace"):
+        scale_runtime.load_scene_inputs(
+            scene_root, replay=True, asset_manifest=bundle / "assets.json",
+            asset_manifest_sha256=str(receipt["manifest_sha256"]),
+        )
+
+
+def test_scale_production_does_not_write_inside_immutable_bundle(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, bundle, receipt = _portable_assets(tmp_path)
+    with pytest.raises(ValueError, match="outside the read-only asset bundle"):
+        _freeze_scale_production(bundle, bundle / "scenes", monkeypatch, (
+            "--asset-manifest", str(bundle / "assets.json"),
+            "--asset-manifest-sha256", str(receipt["manifest_sha256"]),
+        ))
+    assert verify_scene_assets(bundle) == receipt
+
+
+def test_local_replay_pins_saved_configuration(tmp_path: Path) -> None:
+    workspace, _, _ = _portable_assets(tmp_path)
+    with pytest.raises(FileNotFoundError, match="resolved-config.yaml"):
+        scale_runtime.load_scene_inputs(workspace, replay=True)
+    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
+        config = compose(config_name="run_scene_pipeline", overrides=["dataset/court=sfm_bounded"])
+    saved = workspace / "resolved-config.yaml"
+    saved.write_text(OmegaConf.to_yaml(config, resolve=True))
+    inputs = scale_runtime.load_scene_inputs(workspace, replay=True)
+    assert inputs["replay_configuration"] == _configuration("sfm_bounded")
+    assert inputs["asset"]["configuration_authority"] == "saved_preset"
+    assert inputs["asset"]["without_source_images"] is False
+    assert {"path": str(saved), "sha256": file_sha256(saved)} in inputs["asset"]["files"]
+
+
+@pytest.mark.parametrize("mutation,match", [
+    ("manifest", "manifest SHA-256 mismatch"),
+    ("image", "inventory mismatch"),
+    ("image_policy", "omission requires an explicit asset manifest"),
+])
+def test_frozen_portable_inputs_are_rechecked_before_nht_render(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mutation: str, match: str,
+) -> None:
+    _, bundle, receipt = _portable_assets(tmp_path)
+    root, request_path = _freeze_scale_production(tmp_path, bundle / "scenes", monkeypatch, (
+        "--asset-manifest", str(bundle / "assets.json"),
+        "--asset-manifest-sha256", str(receipt["manifest_sha256"]),
+    ))
+    request = scale_publication.read_json(request_path)
+    scene = request["scenes"][0]
+    plan = scale_publication.read_json(root / scene["plan_path"])
+    records = next(scale_publication.iter_plan_groups(root, plan))["samples"][:1]
+    if mutation == "manifest":
+        with (bundle / "assets.json").open("a") as stream:
+            stream.write("\n")
+    elif mutation == "image":
+        (bundle / "extra-image.png").write_bytes(b"undeclared source image")
+    else:
+        path = root / scene["asset_manifest_path"]
+        asset = scale_publication.read_json(path)
+        asset["without_source_images"] = False
+        path.write_text(json.dumps(asset))
+
+    def unexpected_render(*args, **kwargs):
+        pytest.fail("NHT must not be invoked for unverified assets.")
+
+    monkeypatch.setattr(NHTRenderClient, "render", unexpected_render)
+    monkeypatch.setenv("TENNIS_RUN_ID", "cpu-fixture")
+    backend = scale_runtime.LocalNHTRenderer(root, fingerprint=request["renderer"])
+    with pytest.raises(ValueError, match=match):
+        list(backend(scene, records))
+
+
+def test_production_plan_is_unchanged_when_bundle_moves_or_source_config_changes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, bundle, receipt = _portable_assets(tmp_path)
+    relocated = tmp_path / "another-location/bundle"
+    shutil.copytree(bundle, relocated)
+    plans = []
+    for index, source in enumerate((bundle, relocated)):
+        root, request_path = _freeze_scale_production(tmp_path / str(index), source / "scenes", monkeypatch, (
+            "--asset-manifest", str(source / "assets.json"),
+            "--asset-manifest-sha256", str(receipt["manifest_sha256"]),
+        ))
+        scene = scale_publication.read_json(request_path)["scenes"][0]
+        plans.append(scale_publication.read_json(root / scene["plan_path"]))
+    (workspace / "resolved-config.yaml").write_text("invalid: [")
+    root, request_path = _freeze_scale_production(tmp_path / "local", workspace.parent, monkeypatch)
+    scene = scale_publication.read_json(request_path)["scenes"][0]
+    local_plan = scale_publication.read_json(root / scene["plan_path"])
+    assert plans[0] == plans[1] == local_plan

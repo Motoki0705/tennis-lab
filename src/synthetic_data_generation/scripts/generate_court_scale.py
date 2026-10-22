@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+from typing import Any
 
 from src.synthetic_data_generation.dataset.court.scale.core import (
     GeometryRecipe,
@@ -32,6 +33,8 @@ def main() -> None:
     plan = commands.add_parser("plan")
     plan.add_argument("--scenes-root", type=Path, required=True)
     plan.add_argument("--scenes", nargs="+", required=True)
+    plan.add_argument("--asset-manifest", type=Path)
+    plan.add_argument("--asset-manifest-sha256")
     selection = plan.add_mutually_exclusive_group(required=True)
     selection.add_argument("--methods", nargs="+", choices=list(TrajectoryMethod))
     selection.add_argument("--production-recipe", type=Path)
@@ -97,6 +100,12 @@ def main() -> None:
         args.scenes_root.resolve()
     ) or args.scenes_root.resolve().is_relative_to(root):
         raise ValueError("Output root must be outside the read-only scene root.")
+    if (args.asset_manifest is None) != (args.asset_manifest_sha256 is None):
+        raise ValueError("--asset-manifest and --asset-manifest-sha256 are required together.")
+    if args.asset_manifest is not None:
+        asset_root = args.asset_manifest.parent.resolve()
+        if root.is_relative_to(asset_root) or asset_root.is_relative_to(root):
+            raise ValueError("Output root must be outside the read-only asset bundle.")
     production_recipe = None
     if args.production_recipe is not None:
         if (
@@ -161,18 +170,26 @@ def main() -> None:
         ):
             raise ValueError("Invalid or duplicate scene-specific prefix setting.")
         scene_prefixes[key] = int(value)
+    if overrides and TrajectoryMethod.GRID_BUDGET_REPLAY not in args.methods:
+        raise ValueError("Legacy config additions require saved-preset replay.")
     fingerprint = renderer_fingerprint()
-    inputs = [
-        load_scene_inputs(
-            args.scenes_root / sid,
-            replay=TrajectoryMethod.GRID_BUDGET_REPLAY in args.methods,
-            legacy_hull_center=overrides.get(sid),
-        )
-        for sid in args.scenes
-    ]
+    inputs_by_replay: dict[bool, list[dict[str, Any]]] = {}
     requests = []
     for text in args.methods:
         method = TrajectoryMethod(text)
+        replay = method is TrajectoryMethod.GRID_BUDGET_REPLAY
+        if replay not in inputs_by_replay:
+            inputs_by_replay[replay] = [
+                load_scene_inputs(
+                    args.scenes_root / sid,
+                    replay=replay,
+                    legacy_hull_center=overrides.get(sid) if replay else None,
+                    asset_manifest=args.asset_manifest,
+                    asset_manifest_sha256=args.asset_manifest_sha256,
+                )
+                for sid in args.scenes
+            ]
+        inputs = inputs_by_replay[replay]
         plans = [
             persist_candidate_plan(
                 root,

@@ -15,6 +15,10 @@ import yaml
 
 from src.synthetic_data_generation.alignment.contracts import AlignmentResult
 from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.dataset.court.assets import (
+    MANIFEST_FILE,
+    verify_scene_assets,
+)
 from src.synthetic_data_generation.reconstruction.scene_export import (
     validate_standard_scene_export,
 )
@@ -32,21 +36,46 @@ from .publication import read_json
 
 
 def load_scene_inputs(
-    scene_root: Path, *, replay: bool, legacy_hull_center: bool | None = None
+    scene_root: Path,
+    *,
+    replay: bool,
+    legacy_hull_center: bool | None = None,
+    asset_manifest: Path | None = None,
+    asset_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
+    if (asset_manifest is None) != (asset_manifest_sha256 is None):
+        raise ValueError("Asset manifest path and expected SHA-256 are required together.")
+    if replay and asset_manifest is not None:
+        raise ValueError("Saved-preset replay requires a local scene workspace.")
+    if not replay and legacy_hull_center is not None:
+        raise ValueError("Legacy config additions require saved-preset replay.")
     scene_root = scene_root.resolve(strict=True)
+    portable_manifest = None
+    if asset_manifest is not None:
+        assert asset_manifest_sha256 is not None
+        _verify_portable_scene(scene_root, asset_manifest, asset_manifest_sha256)
+        portable_manifest = {
+            "path": str(asset_manifest.absolute()),
+            "sha256": asset_manifest_sha256,
+        }
     alignment_path = scene_root / "alignment/alignment.json"
     alignment_raw = read_json(alignment_path)
     alignment = AlignmentResult.from_dict(alignment_raw)
     export = validate_standard_scene_export(
-        scene_root / "reconstruction/export/scene.json"
+        scene_root / "reconstruction/export/scene.json",
+        without_source_images=portable_manifest is not None,
     )
+    if export.scene_id != scene_root.name:
+        raise ValueError("Scene workspace ID disagrees with its public export.")
     cameras = tuple(
         replace(
             c,
             camera_to_scene=alignment.metric_adapter.metric_from_nht_camera(
                 c.camera_to_scene
             ),
+            image_path=c.image_path
+            if replay
+            else Path(c.image_path).relative_to(export.export_root).as_posix(),
         )
         for c in export.cameras
     )
@@ -73,16 +102,21 @@ def load_scene_inputs(
         export.export_root / "points_scene.npy",
         export.checkpoint_path,
         export.runtime_config_path,
-        scene_root / "resolved-config.yaml",
     ]
+    if replay:
+        paths.append(scene_root / "resolved-config.yaml")
     inventory = [{"path": str(p), "sha256": file_sha256(p)} for p in paths]
     assets = {
-        "schema": "court_scale_local_assets_v1",
+        "schema": "court_scale_scene_assets_v2",
         "scene_id": export.scene_id,
         "alignment": alignment_raw,
         "source_scene_path": str(export.scene_path),
         "files": inventory,
         "explicit_legacy_config_additions": changes,
+        "configuration_authority": "saved_preset" if replay else "recipe",
+        "camera_image_reference": "export_absolute" if replay else "export_relative",
+        "without_source_images": portable_manifest is not None,
+        "portable_asset_manifest": portable_manifest,
     }
     return {
         "scene_id": export.scene_id,
@@ -91,6 +125,45 @@ def load_scene_inputs(
         "replay_configuration": config,
         "asset": assets,
     }
+
+
+def _verify_portable_scene(
+    scene_root: Path, manifest_path: Path, expected_sha256: str
+) -> None:
+    if manifest_path.name != MANIFEST_FILE:
+        raise ValueError(f"Portable asset manifest must be named {MANIFEST_FILE}.")
+    receipt = verify_scene_assets(
+        manifest_path.parent, manifest_sha256=expected_sha256
+    )
+    if (
+        scene_root.name not in receipt["scene_ids"]
+        or scene_root != manifest_path.parent.resolve() / "scenes" / scene_root.name
+    ):
+        raise ValueError("Scene root does not belong to the explicit asset manifest.")
+
+
+def _without_source_images(asset: dict[str, Any]) -> bool:
+    # Historical comparison assets retain their original image/config contract.
+    if asset["schema"] == "court_scale_local_assets_v1":
+        return False
+    if asset["schema"] != "court_scale_scene_assets_v2":
+        raise ValueError("Unknown scale scene asset schema.")
+    omitted = asset["without_source_images"]
+    manifest = asset["portable_asset_manifest"]
+    if type(omitted) is not bool or omitted != (manifest is not None):
+        raise ValueError("Source-image omission requires an explicit asset manifest.")
+    if asset["configuration_authority"] not in {"recipe", "saved_preset"} or (
+        omitted and asset["configuration_authority"] != "recipe"
+    ):
+        raise ValueError("Invalid scale scene configuration authority.")
+    expected_reference = (
+        "export_relative"
+        if asset["configuration_authority"] == "recipe"
+        else "export_absolute"
+    )
+    if asset["camera_image_reference"] != expected_reference:
+        raise ValueError("Invalid scale camera image reference policy.")
+    return omitted
 
 
 def renderer_fingerprint() -> dict[str, Any]:
@@ -167,7 +240,15 @@ class LocalNHTRenderer:
     ) -> Iterator[tuple[str, NHTRenderArrays]]:
         asset_path = self.root / scene["asset_manifest_path"]
         asset = read_json(asset_path)
+        without_source_images = _without_source_images(asset)
         if scene["scene_id"] not in self.verified:
+            if without_source_images:
+                manifest = asset["portable_asset_manifest"]
+                _verify_portable_scene(
+                    Path(asset["source_scene_path"]).parents[2],
+                    Path(manifest["path"]),
+                    manifest["sha256"],
+                )
             for item in asset["files"]:
                 if file_sha256(Path(item["path"])) != item["sha256"]:
                     raise ValueError("Pinned scene asset changed before rendering.")
@@ -200,6 +281,7 @@ class LocalNHTRenderer:
                 arbitrary_request_path=directory / "request.json",
                 executable=Path(self.fingerprint["executable"]),
                 batch_size=self.batch_size,
+                without_source_images=without_source_images,
             )
             result = self.client.render(request, timeout_seconds=1800)
             for record in result.records:

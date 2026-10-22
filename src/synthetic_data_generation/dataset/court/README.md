@@ -1042,15 +1042,38 @@ a small verification condition, not the main experiment size):
 
 ```bash
 .venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale plan \
-  --scenes-root /path/to/scenes --scenes B00 B01 B02 B03 \
+  --scenes-root /path/to/court-assets/scenes --scenes B00 B01 B02 B03 \
+  --asset-manifest /path/to/court-assets/assets.json \
+  --asset-manifest-sha256 EXPECTED_ASSET_MANIFEST_SHA256 \
   --production-recipe src/synthetic_data_generation/configs/dataset/court/scale_stratified_counter_production_v1.json \
   --output-root tmp/court-scale-production \
   --generation-seed 42 --trajectory-count 6 --density-level 0
 ```
 
+Use the image-free bundle and its externally pinned manifest hash from the
+[portable asset workflow](#portable-scene-assets-and-colab-rendering).
+Both asset options are required together. Planning verifies the manifest's schema, exact file inventory,
+hashes and geometry through `verify_scene_assets`; every selected scene must
+belong to that bundle's `scenes/`. An image-bearing source workspace cannot be
+substituted for the declared bundle. No manifest or image-omission policy is
+discovered from nearby files. The verified omission policy is frozen with each
+scene and passed explicitly to scene-export validation and NHT's
+`without_source_images` render request (`--without-source-images`). Rendering
+rechecks the bundle and its expected manifest hash before its first invocation.
+
+Production uses the complete recipe and pinned scene assets; it never reads or
+hashes `resolved-config.yaml`. Captured-camera image references are export-relative
+metadata in recipe plans, so moving an identical bundle does not change cameras,
+trajectory/point IDs or plan hashes. Saved configuration is required only for
+`grid_budget_replay`, which requires the original local workspace and rejects
+the portable-bundle options. Local image-bearing workspaces remain usable by
+omitting both asset options; they retain strict source-image validation.
+
 `planned-requests.json` lists the frozen production request. The render command
 below consumes that exact request. A distributed caller can instead load
-`scale.recipes.ProductionRecipe.from_dict`, pass its `method/geometry` to
+scene inputs with `scale.runtime.load_scene_inputs(scene_root, replay=False,
+asset_manifest=manifest_path, asset_manifest_sha256=expected_digest)` and the
+recipe with `scale.recipes.ProductionRecipe.from_dict`, pass its `method/geometry` to
 `persist_candidate_plan`, and call `freeze_request(...,
 quality=recipe.quality, production_recipe=recipe, renderer=...)`. Both entrypoints
 check that every candidate plan and quality policy match the production recipe.
@@ -1156,6 +1179,19 @@ counts, rejection reasons and the number of empty trajectories.
 In v1, `recipe_sha256` identifies geometry only; in v2 it identifies the complete
 production recipe as described above. Readers dispatch by schema without
 reinterpreting historical comparison versions or their QA records.
+
+New per-scene asset descriptors use `court_scale_scene_assets_v2` and declare
+`configuration_authority` (`recipe` or `saved_preset`), `without_source_images`
+and `portable_asset_manifest` (explicit path/hash, or `null` for local inputs).
+`camera_image_reference` explicitly distinguishes new `export_relative` recipe
+inputs from the `export_absolute` references retained by saved-preset replay.
+The descriptor is pinned by `scenes[].asset_manifest_path/sha256` in both request
+and dataset version, so the external bundle manifest hash contributes to the
+data version. `recipe_sha256` remains the complete production recipe hash;
+saved workspace settings cannot change it. Historical
+`court_scale_local_assets_v1` descriptors retain their strict image-bearing
+workspace contract and saved-config hashes, including the run-03/run-04
+comparison artifacts. They are read without rewriting or reinterpretation.
 
 Candidate plans stream one trajectory/table at a time into hash-pinned `curves/`
 files (`trajectory_storage=curve_files_v1`); the plan header retains references

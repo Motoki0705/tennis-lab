@@ -230,7 +230,12 @@ def test_local_renderer_uses_a_path_for_the_pinned_executable(
     root = tmp_path / "output"
     root.mkdir()
     (root / "asset.json").write_bytes(
-        canonical_bytes({"source_scene_path": str(source / "scene.json")})
+        canonical_bytes(
+            {
+                "schema": "court_scale_local_assets_v1",
+                "source_scene_path": str(source / "scene.json"),
+            }
+        )
     )
     backend = object.__new__(LocalNHTRenderer)
     backend.root = root
