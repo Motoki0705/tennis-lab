@@ -443,7 +443,9 @@ def test_unassigned_or_stopped_parent_then_manual_assignment_receives_once(
     result = ops.run("triage")
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["unassigned"] == ["R-20261012-02"]
-    assert "未割当" in _issue(ops)["body"]
+    assert ("未割当" if stopped else "保留: 評価対象の選択が不足") in _issue(ops)[
+        "body"
+    ]
     assert _events(ops, "proposal_pending") == []
     _receive(ops, ok=False)
     _edit(ops, lambda b: b.replace("関連親issue: 未指定", "関連親issue: #1"))

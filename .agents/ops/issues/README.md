@@ -145,8 +145,9 @@ parent_body = render_parent_body(
 `parse_title` / `parent_reference` / `parse_child_tasks` / `parse_sections` は検査・更新に再利用できる。
 `PARENT_LABEL` / `CHILD_LABEL` をimportして付与し、作業種別・起票元ラベルを維持する。
 
-レポート経由でも、親は**レポートissueではなく担当親issue**。採用と要件合意は別に扱い、起票の可否は
-[parent CLI](../parent/README.md#採用提案の受領) が受領・要件合意・現在の採用から判定する。書式・重複検出には以下を使う。
+レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
+区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
+[triage](../ops-report/README.md#採用提案の自動issue化) が扱う。書式・重複検出には以下を使う。
 
 1. `render_child_body(..., source=ProposalSource(proposal_id, report_number, option))` を使う。
    提案IDは周期に依存しない不透明なASCII tokenとして受け取り、ID生成はレポート側に任せる。
@@ -156,6 +157,29 @@ parent_body = render_parent_body(
    戻り値は `(report_number, proposal_id) -> issue_number`。タイトルやprefixから検索・重複判定しない。
    同じキーの複数issue、不正・重複メタデータはエラー。`parse_proposal_source(body)` で現在の選択肢まで
    比較し、一致しない既存issueを再利用しない。タイトル改名・親付替えで重複起票しないことをテスト済み。
+
+## triageによる出典と復旧契約
+
+`render_standalone_body(sections)` は子の具体的な必須節・Acceptanceを持ち、親参照・親子ラベルを持たない
+単独作業を生成する。親・子は従来の共通APIを使い、`ai-proposed` と役割ラベル、正式なsub-issue、親一覧を揃える。
+レポートの `ops-report` ラベルと容器メタデータは作業issueへコピーしない。
+
+既存の `ProposalSource` / `index_proposals` は1提案→1つの**索引anchor**を維持する。
+1提案を複数子へ分ける場合は親をanchorにする。複数提案を共通親へまとめる場合は各提案の子に別anchorを置く。
+親には全提案のcontextを持たせる。1つのissueへの複数の提案markerや同一提案の複数issueへの登録は拒否する。
+正式な親子の閉包から全anchorと出典レポートを辿れるため、dispatcherの単一出典抽出を変更しない。
+
+`bind_task(body, plan=SHA256, node=KEY, bindings=[...], source=ProposalSource|None)` が生成する
+`ops-report-task:v1` markerは本文先頭（anchorでは従来のproposal markerの直後）に置く。
+`parse_task_metadata(body)` は位置・未知キー・canonical JSON・重複・digest・sourceとの一致を検査する。
+各bindingは `source: {report_number, proposal_id, option}` と `proposal_sha256` を持ち、report番号・ID順に並べる。
+内容digestは `ParsedProposal.snapshot()` のcanonical JSON SHA-256で、全選択肢・タイトル・目的・本文・受入条件を含む。
+採用チェック・選択値・関連親・見送りは別途現在値を照合する。digestから人間合意・共有基盤承認を生成しない。
+
+`plan_sha256` と `node` は、作成応答を失ったときに同じ計画のissueを全open/closed状態から復旧する識別子。
+actor/sessionの所有権を表さない。既存作業をreuseするときは内容・タイトル・state・正式親・labelsを保持し、
+出典markerと元提案の出典節だけを追加する。他の提案で索引済みのissueや取消された作業へ無断で統合しない。
+計画の保存・書込前の再照合・中断復旧の手順は上記triage READMEを正本とする。
 
 ## CLIと整合検査
 

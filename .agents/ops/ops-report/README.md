@@ -1,8 +1,9 @@
 # ops-report: 運用レポートと逆提案（#1057）
 
 プロジェクト本体とAI制御（AGENTS.md・`.agents/`・skill・memory・GitHub運用・この自動化自体）を
-共同で改善し続けるため、3日おきに「運用レポート」issueを作り、人間が方向性を採用した提案を担当親へ戻し、別途の要件合意後に子issueにする。
-設計原則は [../../README.md](../../README.md)、今回の合意事項は親issue #1216 を参照する。
+共同で改善し続けるため、3日おきに「運用レポート」issueを作り、人間が方向性を採用した提案をtriageで作業issueへ整理する。
+着手判断・親割当は半日ごとの外部ループが行う。設計原則は [../../README.md](../../README.md)、
+全体方針は親issue #1329、既存の手動受領経路の背景は #1216 を参照する。
 
 ## 構成
 
@@ -17,7 +18,9 @@
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
 | `opsreport/memory_pr.py` | 公開確認のjournal、専用worktreeでのcommit/PR、必須CI・パス・HEADを照合する専用マージ処理 |
 | `opsreport/report.py` | issue本文（日本語）の組み立て |
-| `opsreport/triage.py` | 採用提案 → 担当親の受領待ち、既存子issue照合、採否のmemory入力 |
+| `opsreport/triage.py` | 採用チェック・既存受領の記録、既存issue照合、採否のmemory入力 |
+| `opsreport/organization.py` / `organize_prompt.md` | 全open/closed issueとコードの固定入力、read-only整理agent、構造化計画の検証 |
+| `opsreport/organization_apply.py` | 計画journal、作業issue生成・再利用、正式親子・親一覧・出典リンクの復旧 |
 | `prompt.md` | agentへの依頼文（分析観点・品質基準・出力JSON形式） |
 | `systemd/` | `report --if-due`（毎日 08:00 JST に予定判定）と `triage`（毎日 09:00 JST）の service / timer |
 
@@ -83,23 +86,17 @@ serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。�
 - 通常の提案は行頭のチェックボックスで選ぶ。選択肢つきの提案（放置PRの「継続 / rebaseして仕上げ / close」など）は
   **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
 - 提案には目的・根拠・変更範囲・期待効果・受入条件・関連親issue・関連既存issueを描画する。
-  agent出力の必須フィールドと型は `prompt.md` と検証器が定義する。親未指定は `関連親issue: 未指定`。
-  人間が関連親を決めたらこの行を `関連親issue: #番号` に編集する。別セッションを自動選定・起動しない。
-- **チェックは方向性の採用。要件合意ではない。** 日次 `triage` はopenの完了レポートだけを走査し、
-  指定親のactiveな担当が登録済みなら、その親へ「採用済み提案の受領待ち」をコメントする。
-  コメントは [親CLI](../parent/README.md#採用提案の受領) の共通メタデータを使う。
-  親未指定・未登録・停止中はレポートの `引渡し` 行とJSONの `unassigned` に「未割当」を表示する。
-- 親自身が [parent CLI](../parent/README.md#採用提案の受領) の `receive-proposal` で一度だけ受領する。
-  受領は要件確認の対象を登録するだけ。人間との別途の合意を提案指定付き `agree` に記録して `create-child` する。
-  未合意提案の保留はその提案由来の作業だけに適用し、既存の独立作業は継続する。
-  triageは子を作らず、分割・委任・実装も起動しない。停止・再開後も同じ入口で受領し、再送は冪等。
-- 子の本文1行目の提案メタデータを共通 `index_proposals` で全open/closed issueから索引化する。
-  タイトルprefixに依存しないため、改名・親付替えでも同じ提案を再起票しない。
-  起票は親CLIの共通書式・正式なsub-issue登録を使い、triageは既存子を確認後に `→ #番号` を追記する。
-- 受領待ち・受領・起票と本文追記は別操作なので、中断後は同じ入力で再実行する。
-  既存子の提案ID・レポート・選択肢、受領済みの提案本文、現在の採用を毎回照合し、変更・重複を明示エラーにする。
-  追記直前も最新本文を読み、採用・選択・親・提案の変更時は上書きしない。既存子の親を自動付替えしない。
-  採用取消・選択変更後の過去の受領記録は黙って書換えず、担当親が元の選択へ戻すか別提案として再整理する。
+  agent出力の必須フィールドと型は `prompt.md` と検証器が定義する。関連親issueは指定できるが、
+  親未指定・親セッション未登録でもIssue化する。**チェックは方向性の採用であり、要件合意・共有基盤承認ではない。**
+- 日次triageはopenの完了レポートだけを対象にする。既存の提案メタデータを全open/closed issueから
+  `index_proposals` で照合し、対応済みの提案はタイトル改名・close・正式親変更後も再利用する。
+  新たな整理対象がない回は整理agentを起動しない。
+- 未対応の採用提案を [Issue整理agent](organize_prompt.md) に渡す。単独作業、既存作業の再利用、
+  既存親への子追加、新規親と複数子、理由付き保留を表現する。単独作業に不要な階層を作らない。
+  既存担当・assignee・open PRの競合、重要な未決事項、明示停止は保留する。親の強制付替え・issue削除はしない。
+- 既に明示指定された親のregistry行や過去の受領記録がある提案は、その親の受領経路を維持する。
+  activeなら `proposal_pending` を記録し、親自身が `receive-proposal` で受領する。停止・引継ぎ待ちでは
+  状態を表示する。既存の人間合意経路を自律根拠へ書き換えず、triageが担当を引き受けることもない。
 - 未チェックかつ `見送り理由: 未記入` は未判断。人間が理由を書いたものだけ明示的な見送りとする。
   採用と見送り理由の併記はエラー。採否と参照の専用memoryへの入力は下記「専用memoryの保存」を参照。
 - レポートをcloseすると日次triage対象外。完了レポートの採否はclose後も次回調査の入力に含める。
@@ -175,6 +172,54 @@ SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子�
 （収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。初回の開始境界はanchorの3日前で、初回が遅延してもその境界を維持する。merge済みPRは
 `--search merged:>=<日付>` でmerge期間を検索条件に含めて取得し、件数上限に達したらエラーにする。
 
+## 採用提案の自動Issue化
+
+整理agentは [共通ランナー](../lib/README.md) の `--role implementation --mode read-only` を使う。
+モデル値を複製せず役割既定のSol/maxを選び、設定出典・既定値・選択値・観測model/effort・終了理由を
+`organization-runtime/` に保存する。正常なターンと実効設定・プロセス回収を照合してから計画を検証する。
+`task_success:null` やexit 0だけでIssue化成功とは判定しない。別モデルや新sessionへの自動振替はない。
+
+選定理由: `ops_report` のAstra/maxとnative scoutは全repoの並列調査用であり、提案済み要件を整理する
+この限定処理には使わない。Opusは自律着手・開発親の統括を担う。整理は担当・着手の権限を持たず、
+既存作業との比較と共通書式への具体化を実装子の既定で行い、機械的検証後にスクリプトだけが反映する。
+実agentの意味的な整理品質は実機検証で別途確認する。
+
+固定入力 `organization-input.json` は提案本文・全選択肢・選択値・内容digest・関連親と、全open/closed issue、
+コメント、正式親子関係、先行依存、registryの担当/委任予約の投影、全状態PR、cleanなtrackedコードのcommitを含む。
+既存 [dispatcherの収集API](../dispatcher/README.md#入力契約とdigest) を読み取り利用し、判定agentは起動しない。
+全ページと参照先を取得し、取得失敗・重複・不正型・コード変更を空入力へ置き換えない。
+計画の正本は `organize_prompt.md`。全対象・未知キー・出典・循環・共通本文書式・担当競合を全件検証する。
+
+出典の正本は [issuesの出典契約](../issues/README.md#triageによる出典と復旧契約)。各提案は1つの索引anchorを持ち、
+分割時の親または実作業子へ対応付ける。複数提案をまとめる親は各提案の別anchorを子に持ち、contextの出典を保持する。
+これにより従来の単一出典索引とdispatcherの `source_reports` を変更せず、別レポートの提案も同じ正式親から辿れる。
+目的・範囲・受入条件・選択肢・元の提案内容とdigestはスクリプトが出典節へ引き継ぐ。
+
+既存のホスト共通triage lockとparent registry lock内で、計画をstate dirの `triage-<repo digest>.json` へ
+0600のatomic replaceで保存してから起票する。これは担当台帳ではなく、Issue反映のjournalである。
+各書込前後に採用・選択肢・提案本文・全入力・担当を照合し、自分の正確な書込みだけを差し引く。
+親一覧やレポートの `引渡し` / `→ #N` は自分の表示として区別し、人間の本文・通常コメントを無視しない。
+作成応答を失っても、本文の計画digestとnode識別子から全open/closed issueを探し、不足する正式関係・親一覧・リンクだけを揃える。
+既存issueのstate・担当・親を戻さない。同一ホストの同時実行・手動親CLIとの競合は同じlockで直列化する。
+POST試行前もjournalへ記録する。応答が曖昧で全ページにも同じissueが見つからない場合は再POSTせず停止する。
+作成されていないことをGitHub・runログで明示確認できた場合だけ、そのnodeのattempted記録を退避付きで修復する。
+
+保留には理由・根拠・再開条件・次の対応を `引渡し` に残す。同じ入力の保留は計画を再利用し、agentもコメントも連投しない。
+採用取消・本文/選択変更後は既存作業を保持して停止し、元の採用へ戻すか別提案として整理する。
+journal破損・欠落や出典矛盾は自動初期化しない。run dirとGitHubの計画marker・実番号を照合してjournalを復元し、
+同じtriageを再実行する。未照合のissueを消したり、別提案ID・別nodeで作り直したりしない。
+
+生成した通常の作業issueは、次の08:00・20:00 JSTの予定回にdispatcherが収集する。専用enqueueやreadyラベルは不要。
+triageから割当判定agent・開発親・実装子・レビュー・mergeは起動しない。採用・Issue整理・自律着手根拠は別物で、
+後の委任では [parentの出典検証](../parent/README.md#子の作成委任再開) と有効な実行根拠を照合する。
+開発workflowは、単一anchorのないcontext出典も含め `parent.adopted_tasks.check_task_adoptions(gh, body)` を
+親・対象子の両本文へ実行直前とmerge直前に適用する。この返却は出典の現状確認であり、実行許可ではない。
+#1335のworkflowがこの呼出しとdispatcherの外部入力鮮度検査を担う。先行parent/reviewの根拠・gateは書き換えない。
+
+検証は `test_adopted_proposal_issues.py` と既存 `test_ops_report_triage.py`。fake GitHub・fake Codex CLI・一時state・
+使い捨てgitで生成/再利用/集約、全ページ、保留、応答喪失・中断・再実行、出典/採用変更、既存の受領記録を検証する。
+実レポート #1280 の採用4件から予定回の割当までの実CLI/GitHub/systemd証拠は #1336 に引き継ぐ。
+
 ## 設定
 
 CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/ops-report.env`（任意）に書く。
@@ -186,7 +231,8 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/ops-report
 | `OPS_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
 | `OPS_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
 | `OPS_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
-| `OPS_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | agentラッパー（テストで差し替える） |
+| `OPS_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | 全体調査のagentラッパー（テストで差し替える） |
+| `OPS_REPORT_ORGANIZER_EXEC` | `../lib/agent_exec.sh` | 提案整理の共通ランナー（テストで差し替える） |
 | `OPS_REPORT_LOCK_FILE` | `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/ops-report.lock` | issue書き込みの排他ロック（下記） |
 | `OPS_REPORT_LOCK_TIMEOUT` | `600` | ロック待ちの上限（秒）。超えたら非ゼロ終了 |
 
@@ -321,11 +367,11 @@ unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` �
 この検証を完了扱いにしない。証拠は親issueにリンクをまとめ、子の実装詳細は各子issueへ置く。
 
 1. 完了レポートの提案ID・本文・採用チェックと、未採用時に起票/実装0件である証拠を記録する。
-2. 親未指定/停止中でtriageを実行し、レポート行とJSONに未割当が出ることを確認する。
-   人間が関連親を指定して担当親自身がregister/再開し、triageの受領待ちとreceive-proposalの受領を確認する。
-   再送で受領1回、受領後・要件未合意でcreate-child/delegate拒否、子作成・実装0件を確認する。
-3. 会話の要件合意と人間の確認を提案指定付きagreeへ記録し、追加の分割承認なしで複数子を起票する。
-   正式なsub-issue・本文メタデータ・親一覧を確認し、複数PRと検証結果を各子に記録する。
+2. 親未指定でtriageを実行し、採用提案だけが作業issueへ生成・再利用されること、出典digestとレポートリンクを確認する。
+   同じtriageを再実行し、重複起票・予定外の割当判定agent/開発親起動が0回であることを記録する。
+3. 次の08:00・20:00 JST予定回で作業issueが収集され、独立した自律着手根拠と担当が記録されることを確認する。
+   人間合意・共有基盤承認が生成されないこと、取消・重要情報不足・既存担当では理由付きで停止することを確認する。
+   既存の手動親への受領・人間合意経路も、独立した作業を止めず継続できることを確認する。
 4. 親が対象PR群を確定して明示指示し、統合Codexレビューが1回だけ実行される証拠を保存する。
    未指示時は0回、指摘を担当へ戻して修正・CI/差分確認した後の自動再レビューも0回とする。
 5. #1219のgateでcoverage・最新HEAD/base/diff・個別CI・共有基盤条件・依存関係を照合する。
