@@ -75,20 +75,18 @@ def test_readme_has_language_hub_and_license_badges_in_three_centered_rows(
         assert len(re.findall(r'alt="[^"]+"', row)) == len(destinations)
 
 
-def test_readme_opens_with_the_centered_logo_and_title(
+def test_readme_opens_with_the_centered_logo_and_name_header(
     readme: tuple[str, str],
 ) -> None:
     filename, document = readme
-    logo = "assets/branding/tennis-lab-logo.png"
+    header = "assets/branding/tennis-lab-header.png"
     above_rule = document.partition("<hr>")[0]
-    block = re.fullmatch(
-        r'<div align="center">\s*<img\b([^>]*)>\s*<h1>Tennis-Lab</h1>\s*</div>\s*',
-        above_rule,
-    )
-    assert block is not None, f"{filename}: logo block must precede the badges"
-    assert f'src="{logo}"' in block.group(1)
-    assert re.search(r'alt="[^"]+"', block.group(1)) is not None
-    assert (REPOSITORY_ROOT / logo).is_file()
+    # The header image already carries the name, so no separate title follows it.
+    block = re.fullmatch(r'<div align="center">\s*<img\b([^>]*)>\s*</div>\s*', above_rule)
+    assert block is not None, f"{filename}: header image block must precede the badges"
+    attributes = dict(re.findall(r'(\w+)="([^"]*)"', block.group(1)))
+    assert attributes == {"src": header, "width": "420", "alt": "Tennis-Lab"}
+    assert (REPOSITORY_ROOT / header).is_file()
 
 
 def test_readme_has_five_numbered_sections_and_shared_explicit_anchors(
