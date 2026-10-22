@@ -174,6 +174,12 @@ class FakeGitHub:
             importlib.import_module("parent.github").GitHub.issue(self, n),
         )
 
+    def family(self, n: int) -> dict[int, Any]:
+        return cast(
+            dict[int, Any],
+            importlib.import_module("parent.github").GitHub.family(self, n),
+        )
+
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/o/r/issues/{n}/comments")
 
