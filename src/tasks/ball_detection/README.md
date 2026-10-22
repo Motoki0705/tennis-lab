@@ -56,6 +56,7 @@ SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../..
 | `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画（overlayはMP4も出力） |
+| `visualize_annotation_correction` | 既存のモデル候補とCodex確定注釈をrank／左右比較。手順は[可視化ガイド](visualization/README.md#モデル候補とcodex確定注釈の発表用比較) |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
 
 BLCS損失比較の入口もこの`scripts/`配下に集約する。`train_blcs_ablation`は明示した条件・seed・更新数で学習し、`evaluate_blcs_ablation`はcheckpoint／対照を保存評価する。実装と仕様は[BLCS ablation](../blcs/ablation/README.md)に置く。

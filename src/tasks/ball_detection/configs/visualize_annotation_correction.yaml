@@ -1,0 +1,35 @@
+defaults:
+  - paths: default
+  - _self_
+
+paths:
+  # Existing artifacts only. Pass absolute paths to the shared input tree.
+  annotation_root: ???
+  campaign_dir: ???
+
+# Selected presentation material. Override these explicitly to explore other clips.
+mode: render
+clip_id: csu_MWYHS8k__3b250a3c0ef22d47__f000002998-000003776
+frames:
+  source: store  # Explicit choice: video | store. Never switches automatically.
+  # Source display frames, zero-based and half-open; required in render mode.
+  range: "217:517"
+  store_dir: ball_detection/ball-mix-v2  # DATA-root-relative; source=video requires null.
+radius_px: 8.0  # Source pixels at width 1920, scaled by actual source width.
+resolution:
+  width: 1920
+  height: 1080
+playback:
+  hold_on_change_frames: 0
+gif:
+  width: 960
+  fps: 15
+run:
+  output_dir: ${tennis_output:ball_detection,visualize,annotation_correction,${tennis_run_id:}}
+
+hydra:
+  run:
+    dir: ${tennis_lab_path:output,${paths.output_root},${run.output_dir},hydra}
+  output_subdir: null
+  job:
+    chdir: false
