@@ -25,7 +25,7 @@ from issues import (
 )
 from issues.cli import render_spec
 
-from . import proposals
+from . import execution, proposals
 from .github import GitHub
 from .policy import (
     PHASES,
@@ -42,7 +42,6 @@ from .policy import (
     raw_section,
     registration,
     replace_section,
-    require_agreement,
     review_state,
 )
 from .state import Store
@@ -81,8 +80,7 @@ class ParentSession:
         raw = self.gh.issue(self.parent)
         if raw["state"] != "open":
             raise ValueError("parent issue is not open")
-        history = self.history()
-        require_agreement(history)
+        execution.current_basis(self)
         return row
 
     def public(self, value: Any) -> None:
@@ -114,6 +112,7 @@ class ParentSession:
         if not self.row or self.row["status"] != "active":
             previous = self.row
             self.store.parents[self.key] = {
+                **previous,
                 "session": self.session,
                 "status": "active",
                 "generation": previous.get("generation", 0) + 1,
@@ -140,6 +139,16 @@ class ParentSession:
             "review": self.review_status(history),
             "proposal_receipts": proposals.receipts(history),
             "proposal_agreements": proposals.agreed_receipts(history),
+            "execution_basis": next(
+                (
+                    e["basis"]
+                    if e["event"] == "execution_basis"
+                    else execution.human_basis(e)
+                    for e in reversed(history)
+                    if e["event"] in {"execution_basis", "agreed"}
+                ),
+                None,
+            ),
         }
 
     def review_status(self, history: list[dict[str, Any]]) -> Any:
@@ -236,6 +245,42 @@ class ParentSession:
         )
         return self.status()
 
+    def revoke_basis(self, reason: str) -> dict[str, Any]:
+        self.owner()
+        reason = nonempty(reason, "revocation reason")
+        history = self.history()
+        latest = next(
+            (
+                e
+                for e in reversed(history)
+                if e["event"]
+                in {"checking", "agreed", "execution_basis", "basis_revoked"}
+            ),
+            {},
+        )
+        revision = (
+            latest["revision"]
+            if latest.get("event") == "basis_revoked"
+            and latest.get("reason") == reason
+            and latest.get("generation") == self.row["generation"]
+            else max(
+                (e["revision"] for e in history if e["event"] == "basis_revoked"),
+                default=0,
+            )
+            + 1
+        )
+        self.post(
+            {
+                "event": "basis_revoked",
+                "generation": self.row["generation"],
+                "reason": reason,
+                "revision": revision,
+            },
+            "実行根拠を取り消しました。人間との要件確認・合意まで自律着手しません。\n\n"
+            + reason,
+        )
+        return self.status()
+
     def agree(
         self,
         agreement: dict[str, Any],
@@ -252,7 +297,11 @@ class ParentSession:
         history = self.history()
         sha = digest(agreement)
         last_phase = next(
-            (e for e in reversed(history) if e.get("event") in {"agreed", "checking"}),
+            (
+                e
+                for e in reversed(history)
+                if e.get("event") in {"agreed", "checking", "basis_revoked"}
+            ),
             {},
         )
         if report is not None and pid is not None:
@@ -366,6 +415,7 @@ class ParentSession:
 
     def create_child(self, value: dict[str, Any]) -> dict[str, Any]:
         self.agreed()  # Must precede render, search and every possible write.
+        auth = execution.authorization(self)
         if (
             set(value) - {"key", "spec", "dependencies"}
             or not {"key", "spec"} <= value.keys()
@@ -473,6 +523,8 @@ class ParentSession:
             ):
                 raise ValueError("existing child title no longer matches its spec")
         else:
+            if execution.authorization(self) != auth:
+                raise ValueError("execution basis changed before child creation")
             if source is not None:
                 proposals.require_source(self, source)
             child = self.gh.write(
@@ -498,6 +550,7 @@ class ParentSession:
             )
         task = self.row["tasks"].setdefault(str(n), {})
         task["dependencies"] = deps
+        task.setdefault("creation_authorization", auth)
         self.store.save()
         states = self.sync_progress()
         if source is not None:
@@ -570,6 +623,7 @@ class ParentSession:
         restart: str | None,
     ) -> dict[str, Any]:
         self.agreed()
+        auth = execution.authorization(self)
         parent, children = self.family()
         if child not in children:
             raise ValueError("delegate requires a direct child of this parent")
@@ -618,11 +672,25 @@ class ParentSession:
             if deps is not None
             else dependencies(children[child].body),
             "stopped": False,
+            "authorization": auth,
+            "requirements_sha256": digest(
+                execution.requirement_body(
+                    replace_section(
+                        children[child].body,
+                        "依存関係",
+                        "\n".join(f"- #{n}" for n in deps) or "なし。",
+                    )
+                    if deps is not None
+                    else children[child].body
+                )
+            ),
         }
         if restart:
             task["restart_evidence"] = restart
         if source is not None:
             proposals.require_source(self, source)
+        if execution.authorization(self) != auth:
+            raise ValueError("execution basis changed before delegation")
         # Claim durably before returning permission to launch; crash never causes automatic relaunch.
         self.row["tasks"][str(child)] = task
         self.store.save()
@@ -735,6 +803,13 @@ class ParentSession:
     def record_result(self, child: int, evidence: str) -> dict[str, Any]:
         self.owner()
         nonempty(evidence, "verification evidence")
+        # During checking this remains a factual record, without implementation
+        # authorization. In an execution phase, stale inputs are an explicit error.
+        auth = (
+            execution.authorization(self)
+            if phase(self.history()) in {"agreed", "autonomous"}
+            else None
+        )
         _, children = self.family()
         if child not in children:
             raise ValueError("result requires a direct child")
@@ -770,6 +845,8 @@ class ParentSession:
         self.row["tasks"].setdefault(str(child), {})["verification"] = {
             "prs": [p["number"] for p in prs],
             "evidence": evidence,
+            "authorization": auth,
+            "requirements_sha256": digest(execution.requirement_body(body)),
         }
         self.store.save()
         return {

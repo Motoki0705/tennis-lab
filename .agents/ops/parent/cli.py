@@ -11,6 +11,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
 from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
@@ -38,6 +39,14 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     for command in ("register", "status", "checking", "reconcile", "sync"):
         commands.add_parser(command)
+    inputs = commands.add_parser("basis-input")
+    inputs.add_argument("--ignored-comments")
+    inputs.add_argument("--context")
+    commands.add_parser("basis-record").add_argument("--spec", required=True)
+    candidate = commands.add_parser("basis-check")
+    candidate.add_argument("--basis-sha256", required=True)
+    candidate.add_argument("--generation", type=int, required=True)
+    commands.add_parser("basis-revoke").add_argument("--reason-file", required=True)
     release = commands.add_parser("release")
     release.add_argument("--ended", action="store_true")
     release.add_argument("--note-file", required=True)
@@ -95,7 +104,9 @@ def main(argv: list[str] | None = None) -> int:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.
         identity = (
-            None if args.command == "status" else session_identity(dict(os.environ))
+            None
+            if args.command in {"status", "basis-input", "basis-record", "basis-check"}
+            else session_identity(dict(os.environ))
         )
         gh = GitHub(args.repo)
         parent = issue_number(args.parent, gh.repo)
@@ -103,7 +114,31 @@ def main(argv: list[str] | None = None) -> int:
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
-            if command == "register":
+            if command == "basis-input":
+                ignored = (
+                    json.loads(read_text(args.ignored_comments))
+                    if args.ignored_comments
+                    else []
+                )
+                if not isinstance(ignored, list):
+                    raise ValueError("ignored comments must be a list")
+                result = execution_input(
+                    session,
+                    ignored,
+                    read_object(args.context) if args.context else None,
+                )
+            elif command == "basis-record":
+                if any(
+                    os.environ.get(name, "").strip()
+                    for name in ("CLAUDE_CODE_SESSION_ID", "CODEX_SESSION_ID")
+                ):
+                    session.session = session_identity(dict(os.environ))
+                result = record_autonomous(session, read_object(args.spec))
+            elif command == "basis-revoke":
+                result = session.revoke_basis(read_text(args.reason_file))
+            elif command == "basis-check":
+                result = validate_candidate(session, args.basis_sha256, args.generation)
+            elif command == "register":
                 result = session.register()
             elif command == "status":
                 # Status works outside a live session; disclose no raw session identifiers.

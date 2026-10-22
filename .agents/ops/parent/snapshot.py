@@ -9,6 +9,12 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from .execution import (
+    authorization,
+    require_run_authorization,
+    requirement_body,
+    task_errors,
+)
 from .policy import (
     REVIEW_LABELS,
     REVIEW_STATES,
@@ -109,9 +115,23 @@ def prepare(
     session: ParentSession, selected: list[int], reason: str | None
 ) -> dict[str, Any]:
     row = session.agreed()
+    auth = authorization(session)
     parent, children = session.family()
     child_numbers = set(children) or {parent.number}
     prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
+    from .policy import closing_issues
+
+    for pr in prs:
+        for child in closing_issues(pr.get("body") or "", session.gh.repo) & set(
+            children
+        ):
+            errors = task_errors(
+                row["tasks"].get(str(child), {}), auth, children[child].body
+            )
+            if errors:
+                raise ValueError(
+                    f"#{child}: stale delegation/result: {errors}; verify it with record-result before preparing review"
+                )
     entries, diffs = [], {}
     for item in prs:
         entry, diff = snapshot(dict(item))
@@ -132,6 +152,10 @@ def prepare(
             raise ValueError(
                 "PR changed while freezing review targets; retry explicitly"
             )
+    requirements = {str(parent.number): digest(requirement_body(parent.body))}
+    for pr in prs:
+        for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
+            requirements[str(n)] = digest(requirement_body(children[n].body))
     reviews = row["reviews"]
     if reviews:
         public_state = review_state(session.history(), reviews[-1]["request"])
@@ -141,8 +165,16 @@ def prepare(
         reviews
         and reviews[-1]["state"] == "targets_fixed"
         and reviews[-1]["request"]["prs"] == entries
+        and (
+            (
+                reviews[-1]["request"].get("authorization") == auth
+                and reviews[-1]["request"].get("requirements") == requirements
+            )
+            or reviews[-1]["request"]["schema_version"] == 1
+        )
     ):
         request = object_value(reviews[-1]["request"])
+        require_run_authorization(session, request)
         publish_targets(session, request)
         return request
     if reviews and not reason:
@@ -153,7 +185,9 @@ def prepare(
         nonempty(reason, "new review reason")
     run_id = "parent-" + str(session.parent) + "-" + uuid.uuid4().hex
     request = {
-        "schema_version": 1,
+        "schema_version": 2,
+        "authorization": auth,
+        "requirements": requirements,
         "review_run_id": run_id,
         "repo": session.gh.repo,
         "parent_issue": session.parent,
@@ -161,6 +195,7 @@ def prepare(
         "reason": reason or "親が初回の対象PR群を確定",
     }
     session.public(request)
+    require_run_authorization(session, request)
     run_dir = session.store.directory / "reviews" / run_id
     run_dir.mkdir(parents=True, mode=0o700)
     for n, diff in diffs.items():
@@ -181,21 +216,12 @@ def publish_targets(session: ParentSession, request: dict[str, Any]) -> None:
             "state": "targets_fixed",
             "review_run_id": request["review_run_id"],
             "request_sha256": digest(request),
-            **authorization(session),
+            **require_run_authorization(session, request),
         },
         "レビュー対象確定。実行は未指示。\n\n```json\n"
         + json.dumps(request, ensure_ascii=False, indent=2, sort_keys=True)
         + "\n```",
     )
-
-
-def authorization(session: ParentSession) -> dict[str, Any]:
-    """Bind a public instruction to the current owner generation and agreement."""
-    agreement = next(e for e in reversed(session.history()) if e["event"] == "agreed")
-    return {
-        "generation": session.owner()["generation"],
-        "agreement_sha256": agreement["agreement_sha256"],
-    }
 
 
 def transition(
@@ -208,6 +234,13 @@ def transition(
     if not row["reviews"] or row["reviews"][-1]["request"]["review_run_id"] != run_id:
         raise ValueError("unknown or superseded review run")
     run = row["reviews"][-1]
+    # A run's progress does not grant coverage to a changed child. Gate checks
+    # each PR separately so a stopped child does not stop independent work.
+    auth = require_run_authorization(
+        session,
+        run["request"],
+        required_issues=None if target == "instructed" else set(),
+    )
     current = review_state(session.history(), run["request"])
     if current is None:
         raise ValueError("review target record is missing from the parent issue")
@@ -253,7 +286,7 @@ def transition(
             "state": target,
             "review_run_id": run_id,
             "request_sha256": digest(run["request"]),
-            **authorization(session),
+            **auth,
         },
         f"レビュー状態: {REVIEW_LABELS[target]}\n\n{evidence}",
     )

@@ -17,6 +17,7 @@ PHASES = {
     "assigned": "担当指定のみ",
     "checking": "要件確認中",
     "agreed": "要件合意済み",
+    "autonomous": "自律着手根拠あり",
 }
 REVIEW_STATES = (
     "targets_fixed",
@@ -95,6 +96,8 @@ def events(
         if not isinstance(body, str) or not body:
             continue
         first = body.splitlines()[0]
+        if first.startswith("<!-- parent-session:v") and not first.startswith(PREFIX):
+            raise ValueError("unknown parent-session marker version")
         if not first.startswith(PREFIX):
             continue
         if not first.endswith(" -->"):
@@ -118,6 +121,14 @@ def events(
                 nonempty(value, key)
             if event.get("agreement_sha256") != digest(agreement):
                 raise ValueError("agreement marker digest mismatch")
+        if event.get("event") == "execution_basis":
+            from .execution import validate_event
+
+            validate_event(event)
+        if event.get("event") == "basis_revoked":
+            number(event.get("generation"))
+            number(event.get("revision"))
+            nonempty(event.get("reason"), "revocation reason")
         result.append({**event, "body": body})
     return result
 
@@ -128,6 +139,10 @@ def phase(history: Sequence[Mapping[str, Any]]) -> str:
         kind = event.get("event")
         if kind in {"checking", "agreed"}:
             current = str(kind)
+        elif kind == "execution_basis":
+            current = "autonomous"
+        elif kind == "basis_revoked":
+            current = "checking"
     return current
 
 
