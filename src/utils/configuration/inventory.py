@@ -453,6 +453,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "synthetic.court_scene_assets",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.synthetic_data_generation.scripts.generate_court_scale": (
+        "synthetic.court_scale_generation",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.synthetic_data_generation.scripts.review_court_dataset": (
         "synthetic.court_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -622,6 +626,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.synthetic_data_generation.scripts.court_scene_assets",
+        "main",
+        domain="synthetic_data_generation",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.generate_court_scale",
         "main",
         domain="synthetic_data_generation",
         executable_module=True,

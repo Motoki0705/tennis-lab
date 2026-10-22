@@ -254,6 +254,9 @@ def test_production_qa_membership_and_versioned_cache_cannot_reuse_legacy_qa(
 def test_production_cli_requires_explicit_selection_and_rejects_comparison_overrides(
     production, tmp_path, monkeypatch
 ):
+    (tmp_path / "scenes").mkdir()
+    comparison = tmp_path / "comparison.json"
+    comparison.write_text("{}")
     common = [
         "generate_court_scale",
         "plan",
@@ -288,7 +291,7 @@ def test_production_cli_requires_explicit_selection_and_rejects_comparison_overr
             "--production-recipe",
             str(RECIPE_PATH),
             "--quality",
-            "comparison.json",
+            str(comparison),
         ],
     )
     with pytest.raises(ValueError, match="comparison overrides"):
@@ -322,6 +325,7 @@ def test_production_request_rejects_different_plan_or_quality(
 def test_production_cli_freezes_the_named_recipe(
     production, tmp_path, captured_cameras, multi_court_layout, monkeypatch
 ):
+    (tmp_path / "scenes").mkdir()
     root = tmp_path / "out"
     monkeypatch.setattr(
         generate_court_scale,
