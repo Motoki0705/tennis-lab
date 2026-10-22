@@ -1713,20 +1713,27 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
             h.gh.issues[1]["body"] += "\n新しい要件"
 
     h.gh.on_get = concurrent_edit
-    code = h.mod.main(
-        [
-            "--repo",
-            "o/r",
-            "--cwd",
-            str(h.work),
-            "--run-dir",
-            str(h.root / "cli"),
-            "--parent-state-dir",
-            str(h.store.directory),
-            "--timeout",
-            "15",
-        ]
-    )
+    # main() sets the process umask; restore it so later tests in this worker
+    # (e.g. dsh's public-directory checks) see the original value.
+    umask = os.umask(0o022)
+    os.umask(umask)
+    try:
+        code = h.mod.main(
+            [
+                "--repo",
+                "o/r",
+                "--cwd",
+                str(h.work),
+                "--run-dir",
+                str(h.root / "cli"),
+                "--parent-state-dir",
+                str(h.store.directory),
+                "--timeout",
+                "15",
+            ]
+        )
+    finally:
+        os.umask(umask)
     output = capsys.readouterr().out
     summary = json.loads(output)
     assert code == 0 and summary["result"] == ("deferred" if changed else "preview")
