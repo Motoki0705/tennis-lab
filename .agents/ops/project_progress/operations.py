@@ -61,8 +61,8 @@ def setup_plan(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
         elif (
             current["layout"] != spec["layout"]
             or (current["filter"] or "") != spec["filter"]
-            or current["visible"]
-            != [fields[name]["id"] for name in visible if name in fields]
+            or sorted(current["visible"])
+            != sorted(fields[name]["id"] for name in visible if name in fields)
             or any(name not in fields for name in visible)
         ):
             plan.append(
@@ -89,7 +89,7 @@ def setup(
     writable(snapshot)
     plan = setup_plan(snapshot)
     if any(action.get("columns") for action in plan):
-        number(snapshot["project"]["owner"].get("databaseId"))
+        nonempty(snapshot["project"]["owner"].get("login"), "Project owner login")
         for field in snapshot["fields"]:
             if field["name"] in (*BUILTINS, *FIELDS):
                 number(field.get("databaseId"))
@@ -129,7 +129,7 @@ def setup(
                 }
                 if action.get("columns"):
                     api.create_board(
-                        snapshot["project"]["owner"]["databaseId"],
+                        snapshot["project"]["owner"]["login"],
                         project_number,
                         {
                             "name": action["name"],

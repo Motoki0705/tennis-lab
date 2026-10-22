@@ -80,11 +80,20 @@ def main() -> None:
 
     if not graphql:
         if rest_write:
-            assert "users/42/projectsV2/3/views" in args
+            assert (
+                f"users/{state['project']['owner']['login']}/projectsV2/3/views" in args
+            )
             assert "X-GitHub-Api-Version: 2026-03-10" in args
             assert payload is not None
             if os.environ.get("PROGRESS_FAIL_WRITE") == "createProjectView":
                 fail()
+            response = {
+                **payload,
+                **{
+                    key: sorted(payload[key])
+                    for key in ("visible_fields", "group_by", "vertical_group_by")
+                },
+            }
             by_id = {raw["databaseId"]: raw for raw in state["fields"]}
             row = {
                 "id": "V" + str(len(state["views"]) + 1),
@@ -92,9 +101,9 @@ def main() -> None:
                 "name": payload["name"],
                 "layout": "BOARD_LAYOUT",
                 "filter": payload["filter"],
-                "visible": [by_id[n]["id"] for n in payload["visible_fields"]],
-                "groups": [by_id[n]["name"] for n in payload["group_by"]],
-                "columns": [by_id[n]["name"] for n in payload["vertical_group_by"]],
+                "visible": [by_id[n]["id"] for n in response["visible_fields"]],
+                "groups": [by_id[n]["name"] for n in response["group_by"]],
+                "columns": [by_id[n]["name"] for n in response["vertical_group_by"]],
             }
             state["views"].append(row)
             save()
@@ -106,7 +115,12 @@ def main() -> None:
                 lost.append("createProjectView")
                 save()
                 fail()
-            respond({"value": {**payload, "node_id": row["id"]}})
+            mismatch = os.environ.get("PROGRESS_BOARD_RESPONSE_MISMATCH")
+            if mismatch:
+                response[mismatch] = (
+                    [] if isinstance(response[mismatch], list) else "unexpected"
+                )
+            respond({**response, "node_id": row["id"]})
         if args[:2] == ["repo", "view"]:
             respond({"nameWithOwner": "o/r"})
         assert args[0] == "api", args
@@ -132,7 +146,11 @@ def main() -> None:
         if os.environ.get("PROGRESS_PARTIAL_ERROR") == operation:
             respond({"data": {}, "errors": [{"message": "partial failure"}]})
         if operation == "ProgressProject":
-            assert variables == {"owner": "Motoki0705", "number": 3}
+            assert (
+                variables["owner"].casefold()
+                == state["project"]["owner"]["login"].casefold()
+            )
+            assert variables["number"] == 3
             respond({"data": {"user": {"projectV2": state["project"]}}})
         for key in ("fields", "views", "items", "workflows"):
             if operation == f"Progress{key.title()}":

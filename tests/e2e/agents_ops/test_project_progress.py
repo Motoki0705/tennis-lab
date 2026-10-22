@@ -64,7 +64,7 @@ def base_state() -> dict[str, Any]:
     fields = [
         {
             "id": f"F{i}",
-            "databaseId": 1000 + i,
+            "databaseId": (1000, 1001, 1004, 1005, 1002, 1006, 1003)[i],
             "name": name,
             "dataType": "SINGLE_SELECT" if name == "Status" else "TEXT",
             **(
@@ -353,6 +353,94 @@ def test_setup_plan_and_apply_preserve_existing_project_and_workflows(
     assert len(p.mutations()) == count
 
 
+def test_rest_board_uses_project_login_and_accepts_sorted_bare_response(
+    project_env: ProjectEnv,
+) -> None:
+    p = project_env
+    state = p.state()
+    state["project"]["owner"].pop("databaseId")
+    p.save(state)
+    p.run("project-setup", "--owner", "motoki0705", "--apply")
+    call = next(row for row in p.calls() if "POST" in row["args"])
+    assert "users/Motoki0705/projectsV2/3/views" in call["args"]
+    field_ids = call["payload"]["visible_fields"]
+    assert field_ids != sorted(field_ids)
+    state = p.state()
+    by_id = {row["databaseId"]: row["id"] for row in state["fields"]}
+    board = next(row for row in state["views"] if row["name"] == "子タスクのカンバン")
+    assert board["visible"] == [by_id[n] for n in sorted(field_ids)]
+
+
+@pytest.mark.parametrize("grouping_reported", [True, False])
+def test_setup_resumes_with_existing_overview_and_manually_created_board(
+    project_env: ProjectEnv, grouping_reported: bool
+) -> None:
+    p = project_env
+    p.run("project-setup", "--apply")
+    state = p.state()
+    state["views"] = [
+        row for row in state["views"] if row["name"] != "判断/ブロック一覧"
+    ]
+    overview = next(
+        row for row in state["views"] if row["name"] == "研究開発全体の一覧"
+    )
+    overview["number"] = 6
+    board = next(row for row in state["views"] if row["name"] == "子タスクのカンバン")
+    board["number"] = 7
+    if not grouping_reported:
+        board.update(groups=[], columns=[])
+    p.save(state)
+    count = len(p.mutations())
+    result = json.loads(p.run("project-setup", "--dry-run").stdout)
+    assert [(row["operation"], row["name"]) for row in result["plan"]] == [
+        ("create_view", "判断/ブロック一覧")
+    ]
+    assert [row["url"].rsplit("/", 1)[1] for row in result["views"]] == ["6", "7"]
+    assert len(result["manual_steps"]) == (0 if grouping_reported else 2)
+    if not grouping_reported:
+        assert "Column field → 段階" in result["manual_steps"][0]
+        assert "Group by → Parent issue" in result["manual_steps"][1]
+    assert len(p.mutations()) == count and p.state() == state
+    p.run("project-setup", "--apply")
+    assert p.state()["views"][:3] == state["views"]
+    assert len(p.state()["views"]) == 4
+    assert not json.loads(p.run("project-setup", "--dry-run").stdout)["plan"]
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["name", "layout", "filter", "visible_fields", "group_by", "vertical_group_by"],
+)
+def test_rest_board_rejects_response_configuration_mismatches(
+    project_env: ProjectEnv, key: str
+) -> None:
+    result = project_env.run(
+        "project-setup", "--apply", ok=False, PROGRESS_BOARD_RESPONSE_MISMATCH=key
+    )
+    assert "created REST board configuration mismatch" in result.stderr
+
+
+@pytest.mark.parametrize("change", ["missing", "extra", "duplicate"])
+def test_existing_board_visible_fields_must_match_despite_order(
+    project_env: ProjectEnv, change: str
+) -> None:
+    p = project_env
+    p.run("project-setup", "--apply")
+    state = p.state()
+    board = next(row for row in state["views"] if row["name"] == "子タスクのカンバン")
+    if change == "missing":
+        board["visible"].pop()
+    else:
+        board["visible"].append("F6" if change == "extra" else board["visible"][0])
+    p.save(state)
+    count = len(p.mutations())
+    result = json.loads(p.run("project-setup", "--dry-run").stdout)
+    assert [(row["operation"], row["id"]) for row in result["plan"]] == [
+        ("update_view", board["id"])
+    ]
+    assert len(p.mutations()) == count
+
+
 def test_initial_registration_and_honest_denominators(project_env: ProjectEnv) -> None:
     p = project_env
     p.run("project-setup", "--apply")
@@ -546,16 +634,12 @@ def test_setup_recovers_after_lost_mutation_response(
     assert not json.loads(p.run("project-setup").stdout)["plan"]
 
 
-@pytest.mark.parametrize("missing", ["owner", "field"])
-def test_rest_creation_requires_numeric_ids_before_any_write(
-    project_env: ProjectEnv, missing: str
+def test_rest_creation_requires_numeric_field_ids_before_any_write(
+    project_env: ProjectEnv,
 ) -> None:
     p = project_env
     state = p.state()
-    if missing == "owner":
-        state["project"]["owner"].pop("databaseId")
-    else:
-        state["fields"][0].pop("databaseId")
+    state["fields"][0].pop("databaseId")
     p.save(state)
     p.run("project-setup", "--apply", ok=False)
     assert not p.mutations()

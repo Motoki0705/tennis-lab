@@ -103,7 +103,8 @@ stop/resumeは既存の段階と同じstageを指定する。停止前の段階�
 ビュー作成・layout・filter・visibleFieldIdsを扱える。configuration入力にグループや列の指定はない。
 カンバンの初回作成には [RESTのビュー作成](https://docs.github.com/en/rest/projects/views#create-a-view-for-a-user-owned-project) の
 `group_by` / `vertical_group_by` を使い、Parent issueグループと段階列も設定する。
-RESTへ渡すユーザー・項目の数値IDはGraphQLで取得する。API versionは2026-03-10。
+RESTのユーザーパスには取得済みProjectの `owner.login`、項目にはGraphQLで取得した数値IDを使う。
+API versionは2026-03-10。作成応答はビューobjectを直接読み、表示項目・グループ・列のIDは順序を問わず照合する。
 ユーザーProjectのこのREST入口はclassic tokenのProject権限を使い、fine-grained token／GitHub Appは非対応。
 失敗時に別の認証やGraphQLによる列未設定の作成へ切り替えない。
 

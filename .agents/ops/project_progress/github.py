@@ -245,7 +245,7 @@ class Projects:
         return result
 
     def create_board(
-        self, owner_id: int, project_number: int, payload: dict[str, Any]
+        self, owner_login: str, project_number: int, payload: dict[str, Any]
     ) -> str:
         # REST supports column/group fields at creation. GraphQL's view update
         # has no equivalent; never delete/recreate an existing view to repair it.
@@ -259,7 +259,7 @@ class Projects:
                 "Accept: application/vnd.github+json",
                 "--header",
                 "X-GitHub-Api-Version: 2026-03-10",
-                f"users/{number(owner_id)}/projectsV2/{number(project_number)}/views",
+                f"users/{nonempty(owner_login, 'Project owner login')}/projectsV2/{number(project_number)}/views",
                 "--input",
                 "-",
             ],
@@ -273,17 +273,13 @@ class Projects:
             raise ValueError(
                 f"gh REST Project view creation failed: {result.stderr.strip()}"
             )
-        view = object_value(object_value(json.loads(result.stdout)).get("value"))
+        view = object_value(json.loads(result.stdout))
         if any(
-            view.get(key) != payload[key]
-            for key in (
-                "name",
-                "layout",
-                "filter",
-                "visible_fields",
-                "group_by",
-                "vertical_group_by",
-            )
+            view.get(key) != payload[key] for key in ("name", "layout", "filter")
+        ) or any(
+            not isinstance(view.get(key), list)
+            or sorted(number(value) for value in view[key]) != sorted(payload[key])
+            for key in ("visible_fields", "group_by", "vertical_group_by")
         ):
             raise ValueError(
                 "created REST board configuration mismatch; inspect before retry"
