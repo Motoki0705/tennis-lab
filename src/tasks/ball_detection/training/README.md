@@ -18,6 +18,26 @@ JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`�
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
 
+## 共通heatmap objective
+
+`training/heatmap_objective.py` の `heatmap_objective(logits, batch, sigma_ratio=.012, gamma=2.)`
+をDPTとheatmap専用hybridで共用する。既存 `dpt_pretrain.objective` は同じ関数の再exportで、
+従来DPTの教師・演算順・数値を維持する。存在head付きhybridもこのheatmap項を共用し、
+従来どおり存在BCEを別に加える。
+
+logitsはnative /4格子の `(B,T,H,W)`、batchはnormalized `uv: (B,T,2)` と
+boolean `position_valid` / `heatmap_valid: (B,T)` を持つ。
+position_validはheatmap_validの部分集合で、位置教師は有限の[0,1]座標を要求する。
+位置教師には格子対角比sigmaのGaussian、確認済み不在（heatmap_validのみtrue）には全面0を作る。
+未知・座標不明・教師領域外はdatasetがheatmap_validをfalseにし、目的関数で除外する。
+目的関数は領域・不在ラベルを推測せず、渡されたmaskだけを使う。
+空間平均のFocal BCEを求め、heatmap_validなframeだけで平均する。教師・損失はFP32。
+返り値はscalar lossと `(B,T)` のper-frame lossで、後者の集計にも必ずmaskを使う。
+全不在のbatchは有効、教師0件のbatchは拒否する。
+
+任意Tのモデルと重み専用artifactは [MDDモデル](../models/mdd/README.md#任意長のheatmap専用モデル) を参照。
+このモデルAPIは、既存3段学習のrunnerやscene既定モデルを切り替えない。
+
 ## 実行例
 
 窓/FPSの仕様と`prepare_data`による凍結手順は[data/windows](../data/windows/README.md)を参照。
