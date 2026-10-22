@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from src.submodules.configuration import BundledModelAssetPaths
+from src.submodules.configuration import SmplAssetPaths
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.body_types import BodyGeometry, BodyParameters
 from src.tennis_scene.pipeline.components.gvhmr import (
@@ -500,7 +500,7 @@ def _integration_inputs(
         diagnostics={},
     )
     joint_regressor: NDArray[np.float32] = np.zeros((1, VERTICES), np.float32)
-    assets = BundledModelAssetPaths(
+    assets = SmplAssetPaths(
         hmr2_mean_params=tmp_path / "hmr2_mean_params.npz",
         smplx_to_smpl=tmp_path / "smplx_to_smpl.pt",
         smpl_coco17_regressor=tmp_path / "smpl_coco17.pt",
@@ -565,7 +565,7 @@ def _write_ranking(
     monkeypatch: pytest.MonkeyPatch,
 ) -> Path:
     _patch_trace(monkeypatch, trace)
-    return rank_placement_candidates(
+    ranking: Path = rank_placement_candidates(
         inputs,
         body=_UnusedBody(),
         config=_rank_config(),
@@ -575,6 +575,7 @@ def _write_ranking(
         resolved_config={"mode": "rank", "rank": {"top_k": 10}},
         git_commit="d" * 40,
     )
+    return ranking
 
 
 def test_rank_writes_only_ranking_json_with_verification(

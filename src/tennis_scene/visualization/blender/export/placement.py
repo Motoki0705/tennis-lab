@@ -41,7 +41,7 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from src.submodules.configuration import BundledModelAssetPaths
+from src.submodules.configuration import SmplAssetPaths
 from src.submodules.vendor.gvhmr.body_model import load_smpl_faces
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.body_placement import (
@@ -197,7 +197,7 @@ class PlacementInputs:
     placed: ReconstructedPlayers
     placement_config: TemporalPlacementConfig
     joint_regressor: NDArray[np.float32]
-    body_assets: BundledModelAssetPaths
+    body_assets: SmplAssetPaths
     body_models_dir: Path
     asset_provenance: Mapping[str, Any]
     artifact_provenance: Mapping[str, Any]
@@ -214,7 +214,7 @@ class _BodyModelBinding:
     """The subset of ``PeopleModelConfig`` that ``SmplGeometry`` reads."""
 
     body_models_dir: Path
-    bundled_assets: BundledModelAssetPaths
+    smpl_assets: SmplAssetPaths
     runtime: _CpuRuntime
 
 
@@ -265,7 +265,7 @@ def _clip_source(document: Mapping[str, Any]) -> ClipSource:
 
 def _asset_binding(
     descriptor: Mapping[str, Any],
-) -> tuple[BundledModelAssetPaths, Path, dict[str, Any]]:
+) -> tuple[SmplAssetPaths, Path, dict[str, Any]]:
     """Bind the saved SMPL assets, verifying every recorded SHA-256."""
     identity = descriptor.get("identity")
     if not isinstance(identity, Mapping):
@@ -300,14 +300,14 @@ def _asset_binding(
             "Saved body_model asset must be <body_models>/smplx/SMPLX_NEUTRAL.npz, "
             f"got {body_model}."
         )
-    bundled = BundledModelAssetPaths(
+    smpl_assets = SmplAssetPaths(
         hmr2_mean_params=resolved["hmr2_mean_params"],
         smplx_to_smpl=resolved["smplx_to_smpl"],
         smpl_coco17_regressor=resolved["smpl_coco17_regressor"],
         smplx_verts437=resolved["smplx_verts437"],
         smpl_neutral_joint_regressor=resolved["smpl_neutral_joint_regressor"],
     )
-    return bundled, body_model.parent.parent, provenance
+    return smpl_assets, body_model.parent.parent, provenance
 
 
 def _placement_config(descriptor: Mapping[str, Any], source: ClipSource) -> TemporalPlacementConfig:
