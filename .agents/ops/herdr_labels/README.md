@@ -35,6 +35,58 @@ registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使�
 解除時は`tl_owner`のない初回設定の「関連」「親未登録」も、管理対象の`tl_*`トークンで識別して消す。
 管理対象トークンのない別用途の表示名と、他のトークンは保持する。
 
+## Codexのclear通知
+
+Codex 0.163.0の標準`SessionStart` hookは、実機では`/clear`直後ではなく次の入力時に実行される。
+共通daemonで動く場合はHerdrの端末環境も継承しないため、このhookを表示解除には使わない。
+同版へ適用する[TUI側のパッチ](codex-0.163.0-terminal-clear.patch)を同梱する。
+新しい会話への切り替えが成功した後、次の入力を処理する前に、端末側から一度だけ通知する。
+clearに失敗した場合、`/compact`、自動圧縮、単なる画面消去では通知しない。
+
+起動元で`CODEX_TUI_SESSION_CLEAR_COMMAND`へ、実行可能な`codex_terminal_clear.py`の絶対パスを指定する。
+設定値は単一の実行ファイルで、引数・シェル式・repo由来のhook設定として解釈しない。
+通常のCodex hookの承認状態は変更しない。
+
+```bash
+CODEX_TUI_SESSION_CLEAR_COMMAND="$(realpath .agents/ops/herdr_labels/codex_terminal_clear.py)" \
+  /absolute/path/to/patched/codex
+```
+
+通知はstdinの`{"version":1,"event":"clear","session_id":"新しいroot threadのUUID"}`。
+callbackは継承したHerdr paneとforeground Codexの子孫関係を検証し、管理表示だけを解除する。
+旧会話から遅れて届くsyncを拒否し、新しい会話の表示先をprivate stateへ保存する。
+その後はHerdr環境のないdaemon上のツールからも、通常のparent CLIで自分の表示を更新できる。
+担当registryの割当は変更しない。Herdr外では`not_configured`を返して何もしない。
+
+callbackの非ゼロ終了・起動失敗・10秒のtimeoutはCodex画面にエラーを表示する。
+Python側の直近の失敗理由はprivate stateの`herdr-labels/terminal-clear-error.json`に記録する。
+失敗を放置せず接続先・プロセス・設定を確認する。フォーカスや題名による代替先の推測は行わない。
+
+この変更が必要なのはTUIクライアントで、共通daemonの再起動は不要。
+起動済みTUIにはバイナリの差し替えだけでは反映されない。稼働中の会話を勝手に終了せず、
+新規起動から適用するか、会話を保存して再開するタイミングを人間と決める。
+Codexの更新時は、その版のclear経路を再確認してパッチ・実機検証を更新する。
+
+### パッチの再現
+
+Codexの別worktreeを`rust-v0.163.0`から作り、パッチを適用する。
+既存のCodex checkoutの変更を上書きしない。Rust toolchainとシステム依存は同版の`docs/install.md`に従う。
+このリリースtagはCargoのworkspace versionとlock内のローカルpackage versionが異なるため、
+パッチにはこの版表記の正規化も含む。外部依存のversion・checksumは変更しない。
+
+```bash
+# Codexの専用worktree内
+git apply /absolute/path/to/tennis-lab/.agents/ops/herdr_labels/codex-0.163.0-terminal-clear.patch
+cd codex-rs
+cargo test -p codex-tui --profile dev-small --locked
+cargo build -p codex-cli --profile dev-small --locked
+```
+
+TUIテストはclear成功・失敗、通知失敗、new/compactの保持を検証する。
+実機でも共通daemonへ接続した使い捨ての会話で、次の入力前の解除を確認する。
+
+## 同期時の照合
+
 registryはatomic renameで保存されるJSONを読む。取得中に担当が変わったら更新を拒否する。
 Herdrの対象はcaller contextか明示bindだけで、フォーカスや作業ディレクトリから選ばない。
 更新直前にterminal/agentを照合し、更新後に全表示項目を読み戻す。同じ表示への再送は無変更。

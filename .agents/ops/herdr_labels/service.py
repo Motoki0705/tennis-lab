@@ -139,7 +139,10 @@ def sync(
     session_start: bool = False,
     session_end: bool = False,
     confirm_parent: bool = False,
+    bind_native: bool = False,
 ) -> dict[str, Any]:
+    if bind_native and (not session_start or session_end):
+        raise ValueError("native binding requires a SessionStart event")
     identity = session_identity(dict(env))
     destination = target(env, identity)
     if destination is None:
@@ -154,7 +157,7 @@ def sync(
     if session_start or session_end:
         guard.require_native_ancestor()
     with guard.hold(start=session_start, end=session_end):
-        return _sync(
+        result = _sync(
             env,
             identity,
             client,
@@ -166,6 +169,40 @@ def sync(
             session_start=session_start,
             confirm_parent=confirm_parent,
         )
+        if bind_native:
+            _bind_native(env, identity, client, guard)
+        return result
+
+
+def _bind_native(
+    env: Mapping[str, str], identity: str, client: Herdr, guard: Guard
+) -> None:
+    """Let daemon-hosted tools reuse the destination verified by their own TUI."""
+    socket = client.socket_path()
+    sessions = client.call("session", "list", "--json").get("sessions", [])
+    matches = [
+        row
+        for row in sessions
+        if row.get("running")
+        and row.get("socket_path")
+        and str(Path(row["socket_path"]).resolve()) == socket
+    ]
+    if len(matches) != 1 or not matches[0].get("name"):
+        raise ValueError("cannot identify the inherited Herdr server for binding")
+    record = {
+        "version": 1,
+        "herdr_session": matches[0]["name"],
+        "pane_id": guard.pane["pane_id"],
+        "terminal_id": guard.pane["terminal_id"],
+        "processes": guard.stamp,
+    }
+    path = binding_path(env, identity)
+    previous = json.loads(path.read_text()) if path.exists() else None
+    if previous is not None and previous != record:
+        raise ValueError("native session is already bound to another destination")
+    guard.check()
+    guard.claim(allow_create=True)
+    Store.write_json(path, record)
 
 
 def _sync(
