@@ -112,7 +112,7 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
         draft = tx["drafts"].get(name)
         if draft is None:
             raise ValueError("task exists without a saved publication draft")
-        if org.occupied(current, n):
+        if org.occupied(current, n, completed_reuse=node["role"] == "reuse"):
             raise ValueError(
                 "task acquired an owner/assignee/PR during issue publication"
             )

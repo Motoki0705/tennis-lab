@@ -549,6 +549,7 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
         title="既存の具体的な作業",
         state="closed" if closed else "open",
         state_reason="completed" if closed else None,
+        assignees=[{"login": "historical-owner"}] if closed else [],
     )
     node = task_node(role="reuse")
     node.update(issue=20, summary="", sections={})
@@ -558,9 +559,43 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
     assert h.gh.issues[20]["title"] == "既存の具体的な作業"
     assert h.gh.issues[20]["state"] == ("closed" if closed else "open")
     assert h.gh.issues[20]["labels"] == []
+    assert h.gh.issues[20]["assignees"] == (
+        [{"login": "historical-owner"}] if closed else []
+    )
     h.gh.issues[20]["title"] = "改名後の作業"
     assert not h.run().errors and len(h.calls()) == 1
     assert "→ #20" in h.gh.issues[100]["body"]
+
+
+@pytest.mark.parametrize("blocked", ["pr", "human"])
+def test_completed_reuse_still_preserves_active_pr_and_explicit_hold_boundaries(
+    harness: Harness, blocked: str
+) -> None:
+    h = harness
+    h.gh.issues[20] = raw_issue(
+        20,
+        state="closed",
+        state_reason="completed",
+        assignees=[{"login": "historical-owner"}],
+    )
+    if blocked == "human":
+        h.gh.issues[20]["labels"] = [{"name": "needs-human"}]
+    else:
+        h.gh.prs = [
+            {
+                "number": 2,
+                "state": "open",
+                "merged_at": None,
+                "body": "Closes #20",
+                "head": {"ref": "codex/existing", "sha": "a" * 40},
+            }
+        ]
+    node = task_node(role="reuse")
+    node.update(issue=20, summary="", sections={})
+    h.response(plan([node]))
+    with pytest.raises(ValueError, match="conflict"):
+        h.run()
+    assert not h.gh.writes
 
 
 def test_created_issue_renamed_and_completed_after_lost_response_is_recovered(

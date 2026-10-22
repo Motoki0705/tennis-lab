@@ -93,7 +93,8 @@ serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。�
   新たな整理対象がない回は整理agentを起動しない。
 - 未対応の採用提案を [Issue整理agent](organize_prompt.md) に渡す。単独作業、既存作業の再利用、
   既存親への子追加、新規親と複数子、理由付き保留を表現する。単独作業に不要な階層を作らない。
-  既存担当・assignee・open PRの競合、重要な未決事項、明示停止は保留する。親の強制付替え・issue削除はしない。
+  open作業の既存担当・assignee、open PRの競合、重要な未決事項、明示停止は保留する。
+  完了済み作業の過去のassigneeは保持して再利用できるが、open PR・明示停止はclosedでも保留する。親の強制付替え・issue削除はしない。
 - 既に明示指定された親のregistry行や過去の受領記録がある提案は、その親の受領経路を維持する。
   activeなら `proposal_pending` を記録し、親自身が `receive-proposal` で受領する。停止・引継ぎ待ちでは
   状態を表示する。既存の人間合意経路を自律根拠へ書き換えず、triageが担当を引き受けることもない。

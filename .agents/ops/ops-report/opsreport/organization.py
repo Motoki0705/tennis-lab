@@ -109,7 +109,21 @@ def material(snapshot: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def occupied(snapshot: dict[str, Any], n: int) -> bool:
+def occupied(
+    snapshot: dict[str, Any], n: int, *, completed_reuse: bool = False
+) -> bool:
+    raw = snapshot["issues"][str(n)]
+    if (
+        completed_reuse
+        and raw["state"] == "closed"
+        and raw["state_reason"] == "completed"
+    ):
+        # Provenance on completed work reserves no worker and preserves historical owners.
+        return bool(
+            "needs-human" in {label["name"] for label in raw["labels"]}
+            or child_stopped(raw["body"])
+            or any(p["state"] == "open" and n in p["issues"] for p in snapshot["pulls"])
+        )
     root = inputs.route(snapshot["issues"], n)
     family: set[int] = set()
     pending = [root]
@@ -419,7 +433,9 @@ def validate(plan: Any, fixed: dict[str, Any]) -> dict[str, Any]:
             anchors.add(target)
             node = nodes[target]
             candidate = node["issue"] if node["role"] == "reuse" else node["parent"]
-            if type(candidate) is int and occupied(snapshot, candidate):
+            if type(candidate) is int and occupied(
+                snapshot, candidate, completed_reuse=node["role"] == "reuse"
+            ):
                 raise ValueError(
                     "existing owner/assignee/PR conflict; return a reasoned hold"
                 )
