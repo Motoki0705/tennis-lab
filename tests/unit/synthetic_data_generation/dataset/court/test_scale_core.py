@@ -27,6 +27,7 @@ def test_frozen_arc_doubles_without_moving_existing_points(shape, amplitude):
             "height": 2.0,
             "amplitude": amplitude,
             "phase": 0.2,
+            "cycles": 1,
         },
         None,
     )

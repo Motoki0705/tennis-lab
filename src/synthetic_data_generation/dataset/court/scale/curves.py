@@ -38,6 +38,7 @@ class Curve:
                 "height",
                 "amplitude",
                 "phase",
+                "cycles",
             },
             "line": {"controls"},
             "bezier": {"controls"},
@@ -85,7 +86,11 @@ class Curve:
             c, s = math.cos(p["orientation"]), math.sin(p["orientation"])
             xy = xy @ np.array([[c, s], [-s, c]])
             local = np.column_stack(
-                [xy, p["height"] + p["amplitude"] * np.sin(theta + p["phase"])]
+                [
+                    xy,
+                    p["height"]
+                    + p["amplitude"] * np.sin(p["cycles"] * theta + p["phase"]),
+                ]
             )
         else:
             controls = np.asarray(p["controls"], dtype=np.float64)
@@ -165,7 +170,9 @@ class ArcMap:
         return [Fraction(j, n) for j in range(n)]
 
     def point_id(self, trajectory_id: str, view_id: str, q: Fraction) -> str:
-        return stable_id("point", trajectory_id, view_id, [q.numerator, q.denominator])
+        return str(
+            stable_id("point", trajectory_id, view_id, [q.numerator, q.denominator])
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
