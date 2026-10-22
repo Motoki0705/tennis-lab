@@ -242,3 +242,165 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 巨大な本文/コメント・100件超のPRでは、原文の完全な復元・関連PR限定・省略の明示・digest維持を検証する。
 本物のagent/GitHub書込/担当予約/systemdはこの試験で起動しない。
 実agentによる代表例の意味的評価、実issueへの保留コメント、予定回・予約・起動を含む通し検証は実機検証担当へ引き継ぐ。
+
+## 半日周期とsupervisor
+
+`python -m dispatcher` はschedule・割当・runtime管理の入口。systemd用の同じ入口は `dispatch.py`。
+`service.py` は判定agentの予定実行、`schedule.py` はAsia/Tokyoのslotとrun journal、
+`supervisor.py` はregistry内の担当予約・イベント・実行枠、`worker.py` / `runtime.py` は共通ランナーへの接続を担当する。
+上の `judgement.py` の明示入口は維持する。日程や実行枠を判定promptへ持ち込まない。
+
+毎日08:00・20:00 JSTに、正常に収集できた入力についてread-onlyの判定agentを1回呼ぶ。
+空入力・無変更でも起動する。issue更新・子の終了・supervisorの再起動は判定agentを起動しない。
+`run` は最新の未消費slotだけを消費し、PC停止中の複数slotを再生しない。
+同じslotの重複通知はnot_due、前のcontrollerがlockを保持する間はbusy。
+前のcontrollerを失っても、runtimeの終了・回収が未確認なら次のrunを始めない。
+失敗したslotも自動再試行せず、次の予定回または `run --explicit` で再判断する。
+
+schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/dispatcher/schedule.json`。
+初期化はdisabledで、初期化時点の直前slotまでを消費済みにする。過去の予定を導入直後に実行しない。
+`--state-dir` と `--parent-state-dir` は使い捨て試験用にも指定できる。
+scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
+supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init \
+  --repo Motoki0705/tennis-lab --cwd "$PWD" --max-parents 1 --max-children 2
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher status
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher enable
+# 通常はtimerがrun、常駐supervisorがsuperviseを呼ぶ
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher run
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher supervise --once
+# 明示的な再判断。disabled中や終了未確認runがある場合は実行しない
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher run --explicit
+# 今後の割当の設定。既存親の子上限・実行設定は黙って変更しない
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher configure --max-parents 2 --max-children 2
+```
+
+`status` はenabled、直近/次回/due slot、判定の結果・失敗、候補のstale/既存担当/枠待ち、
+親の担当状態と実行枠の使用、子の終了未確認予約、各jobのphaseを返す。
+run journalに候補の待機理由を残すが、担当の正本はregistryだけである。
+
+## 担当・実行枠・中断復旧
+
+registry外側のversionは1を維持し、既存の親行にversion付き `dispatch` を追加する。
+そこにassignment ID、候補、authorization、phase、child_limit、runtime jobs、順序付きeventsを保存する。
+既存の手動担当はreleased/endedを含め自動移管しない。既存行・task・reviewを削除しない。
+候補を予約する直前に、前述の `assert_candidate_fresh` → `validate_candidate` → 予約を同じlock内で行う。
+候補の変更はstaleとして保留し、agentを予定外に再起動しない。空いた枠へ保存済みの有効候補を優先順に渡す。
+
+初期予約はregistryのactive行に `session=dispatcher-reservation:<random token>` として保存する。
+これは起動権の予約であり、runtimeのsession identityではない。
+worker自身が同じlockでreserved→startingを取得するため、Popen直後の応答喪失や複数launcherでも実runnerは1つだけ。
+workerのlifetime lockはrunnerへFD継承する。workerが失われても起動途中のrunnerを見落として再起動しない。
+共通ランナーは親を `--role parent --mode write` で起動し、モデル値の正本は共通設定のまま使う。
+担当受理時だけ、観測した生存Claude runtimeとCLI環境のidentityを照合し、同じgenerationで予約に結合する。
+
+初期の開発親上限は1、各親の実装runtime上限は2。これは手動親の `launch_policy` の既定nullとは別である。
+自律親だけ予約上限も2に揃え、実runtimeの上限はさらに `start-child` で検査する。
+子の予約/停止/closeや親の待機だけでは枠を解放しない。taskの終了証拠と、過去の全runtime jobsを両方数える。
+再委任でdelegation_idやworker_endedを変えても、生存/終了未確認の旧jobを消せない。
+終了は共通ランナーのterminal結果・cleanup_complete・runner/CLI/group不在とworker lifetime lockの解放で確認する。
+確認後に現在のdelegation_idへだけparentの `worker_ended` 形式の証拠を記録する。
+子の結果は親へ終了イベントとして戻す。exit 0や子の最終文を成果物の合格に読み替えない。
+
+親のwaiting/failed/stoppedは担当activeを保持する。親runtimeも子も終了済みなら実行枠は空く。
+子終了イベントまたは明示resumeは既存親を再開待ちにし、枠とauthorizationを再確認して、最新runから同じsessionをresumeする。
+CI/人間判断待ちの解除はworkflow側の明示通知を使う。時間経過から解除しない。
+completedは子の終了確認後にだけ担当endedへ移す。GitHubのmerge/closeと受入条件の検証は親workflowの責務。
+
+```bash
+# 自動の新規判定・割当・起動を無効化（既存runtimeは継続）
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher disable
+# 判定と管理対象の全runtimeへ停止要求。担当・履歴は保持
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher shutdown
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher stop --parent 123
+# 状態を照合し、同じsessionで戻す。既存子の生存は枠に残る
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher resume --parent 123 --reason-file tmp/resume.md
+```
+
+停電・SIGKILL後は `status`、registry内のjob、privateなworker.log/runner.stderr/runtime記録を照合する。
+`supervise --once` は既存結果を照合する。失われたrunnerや残存CLIは `stop --parent` が共通ランナーのstopで照合する。
+workerが生存中なら終了後にもう一度superviseで確認する。launcherが返した終了値だけで枠を解放しない。
+予約保存後/実起動前なら同じ予約を取得するworkerへ戻る。起動後の応答喪失は保存済みrunへ結合する。
+runtime記録欠落・identity不明・回収未確認はrecovery_requiredで枠を保持する。
+sessionが取れなかったrunから別sessionを自動生成しない。このケースは実プロセスと成果物を人間が照合する。
+手動handoffで稼働中のregistry identityを書き換えない。旧workerの終了確認を先に行う。
+破損stateや起動記録の復元では原本を退避し、実プロセス・runtimeとの照合結果を残す。lockファイルを削除して排他を回避しない。
+
+判定controllerの中断は、保存済みresultとruntimeを照合できれば再利用する。
+欠落時は実プロセス不在を確認した証拠ファイルで `recover-judgement --evidence-file tmp/recovery.md` を明示実行する。
+稼働中controllerや未回収CLIがあれば拒否する。復旧後も勝手に再判断せず、次回または `run --explicit` を使う。
+
+## 親workflowへのbootstrap契約
+
+`parent_bootstrap.md` は担当受理・既存状態確認・構造化waitingまで実行する最小の入口。
+開発workflow担当が手順3を実装・検証・レビュー・mergeへ差し替える。接続前の待機を開発成功と扱わない。
+各jobのprivateな `input.json` は追加キーなしのschema_version=1で、以下を渡す。
+
+- repo、parent、assignment_id、job_id、候補JSON、authorization。
+- parent_state_dir、dispatcher_state_dir、runtime_dir、max_implementation_children。
+
+親は `accept --input <path>` を自身のCLI環境から呼ぶ。引数でsession IDを渡さない。
+`AGENT_RUNTIME_RUN_DIR/TASK_ID`、観測session、実行契約、候補/予約/generation/根拠が一致する場合だけ受理する。
+同じsessionのresumeでも同じ入口を使う。parent CLIは既定のXDG_STATE_HOMEのregistryを読むため、
+試験で任意のparent_state_dirを使う場合は同じStoreを渡したPython APIで親workflowを接続する。
+親workflowは外部依存・採用状態・正式関係を再取得し、委任・レビュー・merge前も根拠を再照合する。
+
+子の本文・worktree・モデル選定やdelegateはworkflowが行う。
+delegateで予約した後、受理済みの親環境から次を呼ぶ。起動自体はsupervisorが行い、子を直接spawnしない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
+  --parent 123 --child 124 --delegation-id <delegateが返すID> --prompt-file tmp/child.md
+# Astraを明示選択するときだけ --model gpt-6-astra を加える
+```
+
+モデル/effortの既定は共通ランナーを使う。既存子は終了照合後の証拠付き再delegateで新しいIDを得てからstart-childする。
+このとき以前の子の最新runから同じsessionをresumeする。モデル・worktree・branch・設定の不一致は共通ランナーが拒否する。
+子runtime記録がなく同じsessionへ戻せない場合も、別sessionへ振り替えない。
+
+親の最終文は追加キーなしのJSON:
+
+```json
+{"schema_version":1,"state":"waiting","reason":"CI待ち","resume_condition":"CIが完了したら明示resume"}
+```
+
+stateはwaiting/completed/failed。finalの不正・担当未受理・runner失敗はfailed。
+子の生存中はcompletedを拒否する。待機理由と再開条件・イベントはregistryに保持する。
+判定・予約・supervisorはレビューを直接起動しない。
+
+## systemdへの導入・有効化・停止
+
+merge後にmain checkoutで人間が実施する。worktreeからinstallerを実行すると、リンク作成前に拒否する。
+installerの既定はunitリンクとdaemon-reloadだけで、disabled状態から導入できる。
+`--enable` は全timerとdispatch-supervisorを有効化するため、対象だけ有効化する以下の手順を通常使う。
+
+```bash
+cd ~/projects/tennis-lab
+.agents/ops/install_units.sh --dry-run
+.agents/ops/install_units.sh
+systemd-analyze calendar '*-*-* 08:00:00 Asia/Tokyo' '*-*-* 20:00:00 Asia/Tokyo'
+systemd-analyze --user verify .agents/ops/dispatcher/systemd/*
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init --repo Motoki0705/tennis-lab --cwd "$PWD"
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher enable
+systemctl --user enable --now tennis-lab-dispatch-supervisor.service tennis-lab-dispatch-judgement.timer
+systemctl --user cat tennis-lab-dispatch-judgement.timer tennis-lab-dispatch-supervisor.service
+systemctl --user list-timers --all 'tennis-lab-dispatch-*'
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher status
+journalctl --user -u tennis-lab-dispatch-judgement.service -u tennis-lab-dispatch-supervisor.service
+
+# 停止。timerのdisableだけでは実行中のserviceは停止しない
+systemctl --user disable --now tennis-lab-dispatch-judgement.timer
+PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher shutdown
+systemctl --user stop tennis-lab-dispatch-judgement.service
+systemctl --user disable --now tennis-lab-dispatch-supervisor.service
+```
+
+再開時はinitを繰り返さず、status/実プロセスを照合してenableし、同じ2unitを有効化する。
+timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
+supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
+systemdのKillMode=control-groupは停止時の離脱子孫も対象にする。複数ホストの排他は行わない。
+
+検証は `test_dispatcher_supervisor.py`。fake GitHub/時計/CLI、一時registry、使い捨てgitとfake systemctlで行う。
+実エージェント・GitHub書込・ホストunit導入は実機検証へ引き継ぐ。
