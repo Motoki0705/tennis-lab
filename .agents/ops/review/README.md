@@ -2,7 +2,7 @@
 
 親が確定・指示したPR群を、Codexの実行1回で統合レビューする。
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
-入力の正本は [parentのreview-request契約](../parent/README.md#1218へのレビュー要求契約schema-version-1)。
+入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-2version-1読取互換)。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
@@ -49,10 +49,12 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
 
 ## 受理・実行・再送
 
-1. version=1の要求を厳密に検査する。prepareだけのJSONは拒否する。
-   ローカルregistryのactive担当、環境由来ID、openな親、最新の要件合意、最新run、
+1. version=2（旧version=1も読取可）の要求を厳密に検査する。prepareだけのJSONは拒否する。
+   ローカルregistryのactive担当、環境由来ID、openな親、有効な実行根拠、最新run、
    同じrun ID/request digestの公開指示を照合する。
-   公開指示の担当generation・agreement digestも一致させ、引継ぎ前の指示を流用しない。
+   公開指示の担当generation・根拠の種別/digestも一致させ、引継ぎ前の指示を流用しない。
+   自律根拠の入力が変われば起動・結果の受理・修正確認・mergeを停止する。
+   旧version=1はgeneration/agreement digestで人間合意と照合し、新たな自律根拠へ読み替えない。
 2. 実行前に `execution.json` をflock下で保存する。同run IDの再送は既存結果を返し、
    Codexは再実行しない。異なるスナップショット・古い指示・変更後の対象に再送した場合はエラー。
    他のセッションへの自動振替も行わない。
@@ -116,6 +118,16 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 findingはidに加えて `{severity,path,line,rule,detail}`。pathはrepo相対POSIXパスまたはnull、lineは正整数またはnull。
 PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各担当へ振り分ける。
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
+外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
+新requestのversion=2に含むauthorizationもrequest/result digestへ入り、coverage・修正確認を同じ根拠と担当世代へ結び付ける。
+requirementsに固定した親・対象子の要件本文digestも起動・状態遷移・修正確認・mergeで再照合する。
+指示・収集時のclosing対象は固定した要件集合と一致させ、収集中の対象変更も拒否する。
+結果の全 `child_issues` に対応する要件digestがなければ、結果受理・修正確認・gateでも拒否する。
+進捗更新は除外し、要件変更は親による結果の採用だけでは旧reviewへ取り込めない。
+親の要件変更は全件、子の要件変更はその子を含むPRのcoverageを止める。runの進捗記録は子のcoverageを承認しない。
+修正確認は当該PRの子を照合し、別の子の停止/変更を独立PRの確認へ持ち込まない。
+旧公開記録は書き換えず、保存済みrequest/result/executionと元のdigestで照合する。
+未知のrequest/basis/policy versionや破損は拒否し、未レビューの空記録へ移行しない。
 
 各PRの `kind=pr` は `{schema_version,kind,review_run_id,parent_issue,pr,request_sha256,
 result_sha256,snapshot,coverage,findings,parent_run_url}`。
@@ -210,13 +222,15 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 - 最新の正式な直属子とPRのclosing指示、review対象集合・子の割当、既知の作成agent、
   open・draft/fork・担当branchの整合。同じ子のopen PRが複数あれば停止する。
 - 最新の親runのローカルresult/request/executionと、同じgh loginによる親result・全対象PRの
-  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/合意との一致が必須。
+  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/実行根拠との一致が必須。
   pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
 - 親の公開review状態が `fixes_verified` または `complete`。結果受領だけ・修正中・中断・
   `needs-human` label（親/子/PR）・子の停止/依存保留ではmergeしない。
-  runの合意digest・担当generationを照合し、無関係な後続の提案合意や同じ合意内容の再記録では
+  runの実行根拠digest・担当generationを照合し、無関係な後続の提案合意や同じ根拠の再記録では
   既存の確認と共有基盤の許可を失効させない。親全体の明示的な `checking`、合意内容の変更、
   引継ぎ後は古い確認を流用しない。親issue全体の完了は要求しない。
+  新しい委任/結果のauthorizationと子要件digestも照合する。根拠変更後の既存成果は親がrecord-resultで
+  現在の要件へ明示的に結び付けるまで使わず、旧レビュー自体は新しい理由/runで取り直す。
 - #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
   他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
   merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
@@ -269,12 +283,15 @@ JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録�
 ```
 
 親issueにparentと同じ先頭行 `parent-session:v1` マーカーで `event=merge_permission` を記録する。
-キーは `parent,event,review_run_id,request_sha256,generation,agreement_sha256,
-allow_shared_foundation,evidence,revision`。許可フラグは真偽値、証拠は非空文章。
+キーは `parent,event,review_run_id,request_sha256,allow_shared_foundation,evidence,revision` と
+requestと同じauthorizationの3キー。旧requestでは従来のgeneration/agreement_sha256を使う。
+許可フラグは真偽値、証拠は非空文章。
 revisionは正整数の連番。同じ最新許可の再送は再投稿せず、取消後の再許可は新しいrevisionで記録する。
-現在のgh loginによる、同じ親/run/対象digest/担当generation/合意digestの最新記録だけを使う。
+現在のgh loginによる、同じ親/run/対象digest/担当generation/実行根拠digestの最新記録だけを使う。
 再合意・引継ぎ・新runで失効し、`false` の最新記録も免除しない。
 この操作は共有基盤条件だけの免除であり、CI・レビュー・coverage・依存・人間判断待ちは免除しない。
+`autonomous_decision` のrationale/sourcesや提案の採用チェックは、人間による共有基盤の許可ではない。
+自律根拠しかない共有基盤PRはneeds_humanとなり、人間の実際の明示許可をこの別操作で記録した場合だけ免除する。
 
 ## 共有基盤パスとCI部品
 
