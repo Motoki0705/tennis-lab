@@ -40,6 +40,7 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     for command in ("register", "status", "checking", "reconcile", "sync"):
         commands.add_parser(command)
+    commands.add_parser("note").add_argument("--body-file", required=True)
     inputs = commands.add_parser("basis-input")
     inputs.add_argument("--ignored-comments")
     inputs.add_argument("--context")
@@ -155,6 +156,8 @@ def main(argv: list[str] | None = None) -> int:
                 result = session.status()
             elif command == "checking":
                 result = session.checking()
+            elif command == "note":
+                result = session.note(read_text(args.body_file))
             elif command == "agree":
                 result = session.agree(
                     read_object(args.spec), args.report, args.proposal

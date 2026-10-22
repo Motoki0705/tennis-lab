@@ -13,6 +13,7 @@ from issues import Issue, parse_sections, task_status
 from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
+MAX_NOTE_CHARS = 60_000
 PHASES = {
     "assigned": "担当指定のみ",
     "checking": "要件確認中",
@@ -85,6 +86,17 @@ def marker(event: Mapping[str, Any]) -> str:
     return PREFIX + data.replace("<", r"\u003c").replace(">", r"\u003e") + " -->"
 
 
+def note_body(value: Any) -> str:
+    text = nonempty(value, "note body")
+    if len(text) > MAX_NOTE_CHARS:
+        raise ValueError(f"note body exceeds {MAX_NOTE_CHARS} characters")
+    if re.search(r"<!--|-->|parent-(?:session|review):", text, re.IGNORECASE):
+        raise ValueError(
+            "note body contains a reserved marker or HTML comment delimiter"
+        )
+    return text
+
+
 def events(
     comments: Sequence[Mapping[str, Any]], login: str, parent: int
 ) -> list[dict[str, Any]]:
@@ -105,6 +117,14 @@ def events(
         event = object_value(json.loads(first[len(PREFIX) : -4]))
         if event.get("parent") != parent:
             raise ValueError("parent-session marker refers to a different parent")
+        if event.get("event") == "note":
+            if set(event) != {"parent", "event", "generation", "body_sha256"}:
+                raise ValueError("malformed note marker")
+            number(event.get("generation"))
+            if not body.startswith(first + "\n\n") or event["body_sha256"] != digest(
+                note_body(body[len(first) + 2 :])
+            ):
+                raise ValueError("note marker body digest mismatch")
         if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {

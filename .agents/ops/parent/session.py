@@ -35,6 +35,7 @@ from .policy import (
     events,
     marker,
     nonempty,
+    note_body,
     number,
     object_value,
     phase,
@@ -102,6 +103,16 @@ class ParentSession:
         if any(item["body"] == body for item in self.history()):
             return
         self.gh.write("POST", self.endpoint + "/comments", {"body": body})
+
+    def note(self, body: str) -> dict[str, Any]:
+        row = self.owner()
+        text = note_body(body)
+        sha = digest(text)
+        self.post(
+            {"event": "note", "generation": row["generation"], "body_sha256": sha},
+            text,
+        )
+        return {"parent": self.parent, "body_sha256": sha}
 
     def register(self) -> dict[str, Any]:
         if self.session is None:

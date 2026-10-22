@@ -109,6 +109,69 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agreement-ignore
 単独で完結する既存issueは登録・合意してそのまま扱い、不要な親子階層を作らない。
 分割するときだけ、issues規約に従ってそのissueを親へ移行する。
 
+## 自由文の進捗・連絡
+
+担当親が親issueへ自由文の進捗・連絡を公開するときは、素のコメントではなく次の入口を使う。
+`sync` 等の既存マーカー付き記録は従来どおり使う。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 note --body-file tmp/note.md
+```
+
+activeな担当セッション本人だけが実行でき、要件確認中でも使える。本文の前後の空白を除き、
+空・60,000文字超・HTMLコメント記号（`<!--` / `-->`）または予約マーカー名
+（`parent-session:` / `parent-review:`、大文字小文字を問わない）を含む本文は拒否する。
+他の公開記録と同様、ローカルのセッションID・state/worktree情報を含む公開も拒否する。
+先頭行に現在のpublisherの `parent-session:v1` マーカーを付け、`event: "note"`、
+担当generation、正規化後の本文のcanonical JSON digest `body_sha256` を記録する。セッションIDは含めない。
+出力は `{parent, body_sha256}`。同じ担当generation・本文の再送は再投稿しない。
+
+noteは合意後コメント検査、自律根拠の指示コメント射影、review/mergeの要件digestから除外され、
+根拠・要件・既存レビュー・共有基盤許可を変更しない。noteに要件を書いても要件変更の合意にはならない。
+要件変更は従来どおり `checking` → 人間との認識合わせ → `agree` で扱う。
+note後の通常コメントも毎回検査し、同じ本文でもマーカーのないコメントは自動除外しない。
+
+人間とagentが同じGitHub loginを使うため、loginから両者を区別できない。
+人間が有効なnoteマーカーを偽装して書いた指示は進捗と区別できず、検出できない。
+この形式を人間の指示に使わず、親も人間の指示をnoteへ移して除外してはならない。
+
+### 稼働中の親への移行
+
+導入前の親（#1204・#1216等）に合意後の素の進捗コメントがある場合、merge後の次の委任・レビュー・mergeで
+未分類コメントとして停止する。registryや合意を一括で書き換えず、担当親が次を一度行う。
+
+1. 拒否メッセージの全ID・URL・変更種別から本文を読み、進捗だけか、要件変更・停止指示かを確認する。
+2. 要件と無関係な現存コメントだけなら、次の例で現在のsnapshotのdigestと個別理由を作る。
+   `reasons` は例のIDを、確認した全未分類コメントのIDと理由に置き換える。#1216では取得先とCLIの親番号も変える。
+
+```bash
+gh api --paginate --slurp repos/Motoki0705/tennis-lab/issues/1204/comments > tmp/parent-comments.json
+PYTHONPATH=.agents/ops .venv/bin/python - <<'PY'
+import json
+from pathlib import Path
+from parent.execution import comment_snapshot
+from parent.policy import digest
+
+pages = json.loads(Path("tmp/parent-comments.json").read_text(encoding="utf-8"))
+comments = {c["id"]: c for page in pages for c in page}
+reasons = {123: "本文を確認済み。合意済み範囲の進捗だけで、要件や停止の指示を含まない"}
+ignored = [
+    {"id": n, "sha256": digest(comment_snapshot(comments[n])), "reason": reason}
+    for n, reason in sorted(reasons.items())
+]
+Path("tmp/ignored-comments.json").write_text(
+    json.dumps(ignored, ensure_ascii=False, indent=2), encoding="utf-8"
+)
+PY
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1204 agreement-ignore-comments --ignored-comments tmp/ignored-comments.json
+```
+
+3. 元の操作を再実行する。分類は要件・根拠・担当generation・既存レビューを変更しない。
+   分類後の本文編集や新しい通常コメントは再検査する。以降の自由文の進捗には `note` を使う。
+
+要件変更・停止の指示や削除が含まれる場合は分類で解除せず、`checking` → 実際の認識合わせ → `agree` で再合意する。
+旧レビューを変更後の要件へ流用しない。人間の指示を無関係と自動分類する移行処理は設けない。
+
 ## 自律着手の実行根拠と呼出契約
 
 判定agentの出力を直接登録しない。着手判断側のスクリプトが出典・重要な未決事項・人間の停止/見送り/対象外・
