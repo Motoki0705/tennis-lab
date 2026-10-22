@@ -11,6 +11,7 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
 from .policy import issue_number, nonempty, number, object_value
@@ -47,6 +48,9 @@ def parser() -> argparse.ArgumentParser:
     candidate.add_argument("--basis-sha256", required=True)
     candidate.add_argument("--generation", type=int, required=True)
     commands.add_parser("basis-revoke").add_argument("--reason-file", required=True)
+    commands.add_parser("agreement-ignore-comments").add_argument(
+        "--ignored-comments", required=True
+    )
     release = commands.add_parser("release")
     release.add_argument("--ended", action="store_true")
     release.add_argument("--note-file", required=True)
@@ -134,6 +138,10 @@ def main(argv: list[str] | None = None) -> int:
                 ):
                     session.session = session_identity(dict(os.environ))
                 result = record_autonomous(session, read_object(args.spec))
+            elif command == "agreement-ignore-comments":
+                result = record_ignored(
+                    session, json.loads(read_text(args.ignored_comments))
+                )
             elif command == "basis-revoke":
                 result = session.revoke_basis(read_text(args.reason_file))
             elif command == "basis-check":

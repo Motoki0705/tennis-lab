@@ -121,6 +121,29 @@ def events(
                 nonempty(value, key)
             if event.get("agreement_sha256") != digest(agreement):
                 raise ValueError("agreement marker digest mismatch")
+        if "comment_inputs" in event or event.get("event") == "agreement_comments":
+            from .agreement_comments import validate_inputs
+
+            validate_inputs(event.get("comment_inputs"))
+        if event.get("event") == "agreement_comments":
+            from .execution import ignored_comment_map, sha256
+
+            if set(event) != {
+                "parent",
+                "event",
+                "agreement_sha256",
+                "revision",
+                "classification_revision",
+                "comment_inputs",
+                "ignored_comments",
+            }:
+                raise ValueError("malformed agreement comment classification")
+            sha256(event.get("agreement_sha256"))
+            number(event.get("revision"))
+            number(event.get("classification_revision"))
+            if not isinstance(event.get("ignored_comments"), list):
+                raise ValueError("ignored comments must be a list")
+            ignored_comment_map(event["ignored_comments"])
         if event.get("event") == "execution_basis":
             from .execution import validate_event
 

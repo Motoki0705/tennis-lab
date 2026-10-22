@@ -28,6 +28,21 @@ from tests.e2e.agents_ops.test_parent_session import (
 SCRIPT = OPS / "review/merge_gate.py"
 
 
+def assert_unclassified_agreement_comment(
+    response: subprocess.CompletedProcess[str], comment_id: int
+) -> None:
+    assert response.returncode == 2, response.stderr
+    result = json.loads(response.stderr)
+    assert result["decision"] == "blocked"
+    assert result["reasons"] == ["input_or_collection_error"]
+    assert result["agent_invocations"] == 0
+    error = result["error"]
+    assert "unclassified agreement comments" in error
+    assert f"ID={comment_id}" in error
+    assert f"https://github.com/o/r/issues/1#issuecomment-{comment_id}" in error
+    assert "agreement-ignore-comments" in error and "checking → agree" in error
+
+
 @dataclass
 class GateEnv:
     review: ReviewEnv
@@ -548,6 +563,12 @@ def test_rejections_never_merge_or_launch_agent(
             pr["statusCheckRollup"] = []
     p.save(state)
     result = g.cli("merge")
+    if case in {"parent_missing", "foreign_result", "quoted_result"}:
+        # These records have become ordinary, unclassified discussion. Freshness
+        # now refuses them before the public review/coverage checks are reached.
+        assert_unclassified_agreement_comment(result, comment["id"])
+        assert g.merge_calls() == [] and len(g.review.calls()) == 1
+        return
     assert result.returncode == 1, result.stderr
     rows = g.results(result)
     assert reason in rows[103 if case == "outside" else 100]["reasons"]
@@ -857,7 +878,12 @@ def test_shared_foundation_needs_explicit_current_parent_permission(
         elif permission == "new_agreement":
             # Same purpose/scope/confirmation yields the same agreement digest.
             p.agreed()
-    rows = g.results(g.cli("merge"))
+    response = g.cli("merge")
+    if permission in {"foreign", "quoted"}:
+        assert_unclassified_agreement_comment(response, comment["id"])
+        assert g.merge_calls() == [] and len(g.review.calls()) == 1
+        return
+    rows = g.results(response)
     if permission in {"allow", "reallow"}:
         assert [c[2] for c in g.merge_calls()] == ["100"]
         exemption = rows[100]["shared_exemption"]

@@ -891,6 +891,11 @@ def test_legacy_public_review_and_local_result_survive_migration(
                     + json.dumps(request)
                     + "\n```"
                 )
+            elif history and history[0]["event"] == "agreed":
+                event = history[0]
+                event.pop("body")
+                event.pop("comment_inputs")
+                comment["body"] = policy.marker(event)
             records = g.policy.records([comment], "operator")
             if records and records[0]["kind"] == "result":
                 comment["body"] = g.policy.marker(result)
@@ -919,3 +924,382 @@ def test_legacy_public_review_and_local_result_survive_migration(
     assert json.loads(registry(p).read_text())["version"] == 1
     assert (run_dir / "result.json").read_bytes() == result_bytes
     assert len(g.review.calls()) == 1
+
+
+def ordinary_comment(p: ParentEnv, body: str, login: str = "human") -> dict[str, Any]:
+    state = p.state()
+    comment = {
+        "id": 1 + max(c["id"] for rows in state["comments"].values() for c in rows),
+        "user": {"login": login},
+        "body": body,
+    }
+    state["comments"]["1"].append(comment)
+    p.save(state)
+    return comment
+
+
+def ignored_comment(comment: dict[str, Any]) -> dict[str, Any]:
+    execution = importlib.import_module("parent.execution")
+    return {
+        "id": comment["id"],
+        "sha256": execution.digest(execution.comment_snapshot(comment)),
+        "reason": "要件と関係しない雑談であることを本文から確認した。",
+    }
+
+
+@pytest.mark.parametrize("change", ["added", "edited", "deleted"])
+def test_human_agreement_comment_changes_block_delegation_review_and_merge(
+    gate_env: GateEnv, change: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    comment = ordinary_comment(
+        p, "作業を停止してください。" if change == "added" else "要件と関係しない雑談。"
+    )
+    if change != "added":
+        p.cli(
+            "agreement-ignore-comments",
+            "--ignored-comments",
+            p.spec([ignored_comment(comment)]),
+        )
+        state = p.state()
+        if change == "edited":
+            next(c for c in state["comments"]["1"] if c["id"] == comment["id"])[
+                "body"
+            ] = "作業を停止してください。"
+        else:
+            state["comments"]["1"] = [
+                c for c in state["comments"]["1"] if c["id"] != comment["id"]
+            ]
+        p.save(state)
+    worktree = p.worktree("unclassified")
+    before = p.state(), registry(p).read_bytes()
+    responses = [
+        p.child("unclassified", ok=False),
+        p.cli(
+            "delegate",
+            "--child",
+            "10",
+            "--agent",
+            "codex",
+            "--branch",
+            "codex/unclassified",
+            "--worktree",
+            str(worktree),
+            ok=False,
+        ),
+        p.cli(
+            "review-request",
+            "--run-id",
+            g.review.request["review_run_id"],
+            "--instruction-file",
+            p.note(),
+            ok=False,
+        ),
+        g.cli("merge"),
+    ]
+    for response in responses:
+        assert response.returncode == 2
+        error = (
+            json.loads(response.stderr)["error"]
+            if response.stderr.startswith("{")
+            else response.stderr
+        )
+        assert f"ID={comment['id']}" in error
+        assert f"https://github.com/o/r/issues/1#issuecomment-{comment['id']}" in error
+        assert f"({change})" in error
+        assert "agreement-ignore-comments" in error and "checking → agree" in error
+    p.cli("status")  # Stale authorization never prevents reading an existing parent.
+    assert (p.state(), registry(p).read_bytes()) == before
+    assert g.merge_calls() == [] and len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("gate_env", ["shared"], indirect=True)
+def test_human_unrelated_comment_classification_preserves_review_and_permission(
+    gate_env: GateEnv,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    assert (
+        g.cli(
+            "shared-permission",
+            "--allow-shared-foundation",
+            "--evidence-file",
+            p.note("人間が共有基盤を含むmergeを合意した発言。"),
+        ).returncode
+        == 0
+    )
+    frozen = (g.review.run_dir / "result.json").read_bytes(), registry(p).read_bytes()
+    comments = [
+        ordinary_comment(p, "要件と無関係な雑談。", login)
+        for login in ("operator", "human")
+    ]
+    entries = [ignored_comment(c) for c in comments]
+    for _ in range(2):
+        p.cli("agreement-ignore-comments", "--ignored-comments", p.spec(entries))
+    assert (
+        sum(
+            '"event": "agreement_comments"' in c["body"]
+            for c in p.state()["comments"]["1"]
+        )
+        == 1
+    )
+    assert (
+        (g.review.run_dir / "result.json").read_bytes(),
+        registry(p).read_bytes(),
+    ) == frozen
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert all(row["decision"] == "merge" for row in rows.values())
+    assert rows[100]["shared_exemption"] is not None
+    assert g.merge_calls() == [] and len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize(
+    "change", ["digest", "duplicate", "missing", "shape", "partial"]
+)
+def test_human_comment_classification_rejects_invalid_or_incomplete_input(
+    parent_env: ParentEnv, change: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    comment = ordinary_comment(p, "雑談。")
+    entries = [ignored_comment(comment)]
+    if change == "digest":
+        entries[0]["sha256"] = "a" * 64
+    elif change == "duplicate":
+        entries *= 2
+    elif change == "missing":
+        entries[0]["id"] += 100
+    elif change == "shape":
+        entries[0]["unexpected"] = True
+    else:
+        ordinary_comment(p, "別の未分類指示。")
+    before = p.state(), registry(p).read_bytes()
+    p.cli("agreement-ignore-comments", "--ignored-comments", p.spec(entries), ok=False)
+    assert (p.state(), registry(p).read_bytes()) == before
+
+
+def test_human_comment_reclassification_records_return_to_previous_text(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    comment = ordinary_comment(p, "要件と無関係な雑談A。")
+    for body in (
+        "要件と無関係な雑談A。",
+        "要件と無関係な雑談B。",
+        "要件と無関係な雑談A。",
+    ):
+        state = p.state()
+        comment = next(c for c in state["comments"]["1"] if c["id"] == comment["id"])
+        comment["body"] = body
+        p.save(state)
+        for _ in range(2):
+            p.cli(
+                "agreement-ignore-comments",
+                "--ignored-comments",
+                p.spec([ignored_comment(comment)]),
+            )
+    policy = importlib.import_module("parent.policy")
+    records = [
+        e
+        for e in policy.events(p.state()["comments"]["1"], "operator", 1)
+        if e["event"] == "agreement_comments"
+    ]
+    assert [e["classification_revision"] for e in records] == [1, 2, 3]
+    assert records[0]["comment_inputs"] == records[2]["comment_inputs"]
+    p.child("reclassified")
+
+
+@pytest.mark.parametrize("change", ["added", "edited"])
+def test_legacy_human_agreement_remains_readable_and_requires_reagreement_for_changes(
+    parent_env: ParentEnv, change: str
+) -> None:
+    p = parent_env
+    p.cli("register")
+    comment = ordinary_comment(p, "合意前の指示。")
+    p.agreed()
+    policy = importlib.import_module("parent.policy")
+    state = p.state()
+    agreed = next(c for c in state["comments"]["1"] if '"event": "agreed"' in c["body"])
+    [event] = policy.events([agreed], "operator", 1)
+    agreement = event["agreement"]
+    event.pop("body")
+    event.pop("comment_inputs")
+    agreed["body"] = policy.marker(event)
+    agreed["created_at"] = "2026-10-22T03:00:00Z"
+    p.save(state)
+    before = p.state(), registry(p).read_bytes()
+    p.cli("status")
+    assert (p.state(), registry(p).read_bytes()) == before
+    p.child("legacy-compatible")
+    if change == "added":
+        comment = ordinary_comment(p, "作業を止めてください。")
+    else:
+        state = p.state()
+        original = next(c for c in state["comments"]["1"] if c["id"] == comment["id"])
+        original.update(
+            body="対象範囲を変更します。", updated_at="2026-10-22T03:01:00Z"
+        )
+        p.save(state)
+    response = p.child("blocked", ok=False)
+    assert f"ID={comment['id']}" in response.stderr and f"({change})" in response.stderr
+    p.cli("status")
+    p.cli(
+        "agree", "--spec", p.spec(agreement), ok=False
+    )  # Retrying agree is not consent.
+    p.cli("checking")
+    p.cli("agree", "--spec", p.spec(agreement))
+    p.child("reagreed")
+
+
+@pytest.mark.parametrize("change", ["edited", "deleted"])
+def test_human_agreement_detects_changes_to_existing_instruction_comments(
+    parent_env: ParentEnv, change: str
+) -> None:
+    p = parent_env
+    p.cli("register")
+    comment = ordinary_comment(p, "合意に含まれた追加要件。")
+    p.agreed()
+    state = p.state()
+    if change == "edited":
+        next(c for c in state["comments"]["1"] if c["id"] == comment["id"])["body"] = (
+            "要件を変更する。"
+        )
+    else:
+        state["comments"]["1"] = [
+            c for c in state["comments"]["1"] if c["id"] != comment["id"]
+        ]
+    p.save(state)
+    response = p.child("stale-comment", ok=False)
+    assert f"ID={comment['id']}" in response.stderr and f"({change})" in response.stderr
+
+
+@pytest.mark.parametrize("change", ["replace", "add"])
+def test_changed_closing_targets_require_new_review_before_instruction(
+    parent_env: ParentEnv, change: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("original")
+    p.child("new-target")
+    state = p.state()
+    state["prs"] = [p.pr(100, 10)]
+    p.save(state)
+    frozen = json.loads(p.cli("review-prepare", "--prs", "100").stdout)
+    state = p.state()
+    state["prs"][0]["body"] = (
+        "Closes #11" if change == "replace" else "Closes #10\nCloses #11"
+    )
+    p.save(state)
+    before = p.state(), registry(p).read_bytes()
+    response = p.cli(
+        "review-request",
+        "--run-id",
+        frozen["review_run_id"],
+        "--instruction-file",
+        p.note(),
+        ok=False,
+    )
+    assert "closing targets differ from frozen requirements" in response.stderr
+    assert (p.state(), registry(p).read_bytes()) == before
+    new = json.loads(
+        p.cli(
+            "review-prepare",
+            "--prs",
+            "100",
+            "--reason-file",
+            p.note("closing対象の変更を確認したため新しいレビューを要求する。"),
+        ).stdout
+    )
+    assert (
+        "11" in new["requirements"] and new["review_run_id"] != frozen["review_run_id"]
+    )
+    p.cli(
+        "review-request",
+        "--run-id",
+        new["review_run_id"],
+        "--instruction-file",
+        p.note(),
+    )
+    state = p.state()
+    state["issues"]["11"]["body"] = state["issues"]["11"]["body"].replace(
+        "動作する", "追加の受入条件を満たす"
+    )
+    p.save(state)
+    p.cli("record-result", "--child", "11", "--evidence-file", p.note())
+    response = p.cli(
+        "review-request",
+        "--run-id",
+        new["review_run_id"],
+        "--instruction-file",
+        p.note(),
+        ok=False,
+    )
+    assert "#11: reviewed requirements changed" in response.stderr
+
+
+def test_review_collection_rejects_new_closing_child_after_result_adoption(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    r = make_review_env(p)
+    p.child("new-closing-target")
+    state = p.state()
+    state["prs"][0]["body"] = "Closes #13"
+    state["issues"]["13"]["body"] = state["issues"]["13"]["body"].replace(
+        "動作する", "変更された要件で動作する"
+    )
+    p.save(state)
+    p.cli("record-result", "--child", "13", "--evidence-file", p.note())
+    result = json.loads(r.run(ok=False).stdout)["result"]
+    assert result["status"] == "failed"
+    assert "closing targets differ from frozen requirements" in result["error"]
+    assert r.calls() == []
+
+
+def test_result_and_merge_gate_reject_missing_closing_child_requirements(
+    gate_env: GateEnv,
+) -> None:
+    g = gate_env
+    result_file = g.review.run_dir / "result.json"
+    result = json.loads(result_file.read_text())
+    result["request"]["requirements"].pop("11")
+    result["request_sha256"] = g.policy.digest(result["request"])
+    with pytest.raises(
+        ValueError, match="closing targets differ from frozen requirements"
+    ):
+        g.policy.validate_result(result)
+    # Persist a record accepted by the old reader to exercise the real gate too.
+    result_file.write_text(json.dumps(result))
+    response = g.cli("merge")
+    assert response.returncode == 2
+    assert "closing targets differ from frozen requirements" in response.stderr
+    assert g.merge_calls() == [] and len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("stage", ["prepare", "collect"])
+def test_closing_target_changes_during_snapshot_collection_are_rejected(
+    parent_env: ParentEnv, stage: str
+) -> None:
+    p = parent_env
+    r = make_review_env(p)
+    p.child("new-target")
+    p.env["PARENT_CHANGE_CLOSING_ON_READ"] = "Closes #13"
+    if stage == "prepare":
+        before = registry(p).read_bytes()
+        response = p.cli(
+            "review-prepare",
+            "--prs",
+            "100",
+            "101",
+            "102",
+            "--reason-file",
+            p.note(),
+            ok=False,
+        )
+        assert "PR changed while freezing" in response.stderr
+        assert registry(p).read_bytes() == before
+    else:
+        result = json.loads(r.run(ok=False).stdout)["result"]
+        assert result["status"] == "failed"
+        assert "PR set/snapshots changed during collection" in result["error"]
+    assert r.calls() == []

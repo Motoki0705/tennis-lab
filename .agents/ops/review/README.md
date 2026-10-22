@@ -120,6 +120,8 @@ PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各�
 外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
 新requestのversion=2に含むauthorizationもrequest/result digestへ入り、coverage・修正確認を同じ根拠と担当世代へ結び付ける。
 requirementsに固定した親・対象子の要件本文digestも起動・状態遷移・修正確認・mergeで再照合する。
+指示・収集時のclosing対象は固定した要件集合と一致させ、収集中の対象変更も拒否する。
+結果の全 `child_issues` に対応する要件digestがなければ、結果受理・修正確認・gateでも拒否する。
 進捗更新は除外し、要件変更は親による結果の採用だけでは旧reviewへ取り込めない。
 親の要件変更は全件、子の要件変更はその子を含むPRのcoverageを止める。runの進捗記録は子のcoverageを承認しない。
 修正確認は当該PRの子を照合し、別の子の停止/変更を独立PRの確認へ持ち込まない。

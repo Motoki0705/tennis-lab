@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -20,7 +21,10 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
 from opsproc import CommandError, run_process_group  # noqa: E402
-from parent.execution import require_run_authorization  # noqa: E402
+from parent.execution import (  # noqa: E402
+    require_requirement_targets,
+    require_run_authorization,
+)
 from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
     closing_issues,
@@ -104,6 +108,18 @@ def collect(
     prs = select_prs(
         selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
     )
+
+    def assignments(pulls: Sequence[Mapping[str, Any]]) -> dict[int, set[int]]:
+        return {
+            pr["number"]: closing_issues(pr.get("body") or "", session.gh.repo)
+            & (set(children) or {parent.number})
+            for pr in pulls
+        }
+
+    fixed_assignments = assignments(prs)
+    require_requirement_targets(
+        request, set().union(*fixed_assignments.values()), exact=True
+    )
     actual, diffs, details = [], {}, []
     for pr in prs:
         entry, diff = snapshot(dict(pr))
@@ -153,7 +169,9 @@ def collect(
     fresh = select_prs(
         selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
     )
-    if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"]:
+    if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"] or assignments(
+        fresh
+    ) != fixed_assignments:
         raise ValueError("PR set/snapshots changed during collection")
     return {
         "parent": {"number": parent.number, "title": parent.title, "body": parent.body},

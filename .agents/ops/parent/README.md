@@ -80,6 +80,29 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 再実行時は同一イベントを再投稿しない。別ghアカウントへの移管は自動で信用せず、
 新しい担当アカウントで改めて要件確認・合意を記録する。
 
+人間合意でも親コメントの鮮度を分割・委任・レビュー・merge前に検査する。
+新しい `agreed` は通常コメントのID/login/digestを `comment_inputs` に固定する。
+現在のpublisherによる先頭行の `parent-session:v1` / `parent-review:v1` 記録を除き、
+コメントの追加・編集・削除は未分類の変更として操作を拒否する。
+エラーは対象のID・URL・変更種別と解除方法を示す。`status` や旧記録の読取は維持し、
+snapshotのない旧合意は合意コメントのID・作成時刻と通常コメントのID・編集時刻で照合する。
+旧マーカー・registry・保存済みレビューを読取時に書き換えない。
+
+親が対象コメントを読んで要件と無関係と確認した場合だけ、次の明示入口で分類できる。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agreement-ignore-comments --ignored-comments tmp/ignored-comments.json
+```
+
+入力は自律根拠の `ignored_comments` と同じ
+`[{"id":123,"sha256":"parent.execution.comment_snapshotのcanonical JSON digest","reason":"要件と無関係な理由"}]`。
+未分類変更をすべて含め、現存する本文・login・IDのdigestを指定する。重複・古いdigest・欠落は拒否する。
+`event=agreement_comments` に元の合意digest/revision・分類連番・現在のsnapshot・分類理由を記録し、
+実行根拠・要件・担当generation・既存レビュー・共有基盤許可は変更しない。再送は冪等。
+分類済みコメントも編集・削除を再検査する。人間の指示を無関係として除外してはならない。
+要件変更・停止指示・削除への対応は `checking` → 実際の認識合わせ → `agree` で再合意する。
+同じ `agree` の再送だけでは鮮度不一致を解除せず、再合意後も旧レビューを流用しない。
+
 `create-child` と `delegate` は、ローカル担当がactiveであり、親がopenであり、
 親コメントに有効な人間合意または自律着手根拠があることを**書き込み前**に検査する。
 合意後の分割結果への追加承認は設けない。起票元が人間・レポートのどちらでも登録入口は同じ。
@@ -324,6 +347,9 @@ git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-col
 reviewイベントにもmanifestと同じauthorizationを記録する。
 requirementsは親と対象PRが閉じる子の要件本文digest。進捗表示を除く同じ射影を使い、
 子の要件変更をrecord-resultだけで旧レビューのcoverageへ持ち込まない。
+prepare中の再取得・指示・収集時にclosing対象と固定した要件集合を照合し、HEADが同じでも
+対象子の追加・差替え・欠落は新しい理由/runで固定し直す。結果の全 `child_issues` にdigestを必須とし、
+欠落する旧結果は結果受理・修正確認・merge gateでも拒否する（version=1の読取契約は維持）。
 起動/指示時は全対象、修正確認は当該PRの子、mergeはPRごとに照合する。親全体の要件/根拠変更は全件を止める。
 結果受領などのrun進捗だけでは子のcoverageを承認せず、子の停止・変更が独立PRを一律に止めないようgateで判定する。
 旧version=1は従来のgeneration/agreement_sha256を使い、human_agreement経路だけで照合する。

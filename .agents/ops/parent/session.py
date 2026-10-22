@@ -325,13 +325,20 @@ class ParentSession:
                 "revision": last_phase.get("revision"),
             }
         else:
-            if phase(history) != "checking" and not (
-                phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha
-            ):
+            if phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha:
+                self.agreed()  # Retrying agree must not silently accept new comments.
+                return self.status()
+            if phase(history) != "checking":
                 raise ValueError(
                     "run checking and obtain human confirmation before recording agreement"
                 )
-            event = {"event": "agreed", "revision": last_phase.get("revision")}
+            from .agreement_comments import snapshot as comment_inputs
+
+            event = {
+                "event": "agreed",
+                "revision": last_phase.get("revision"),
+                "comment_inputs": comment_inputs(self),
+            }
         titles = {
             "purpose": "目的",
             "scope": "範囲",
@@ -354,6 +361,7 @@ class ParentSession:
             },
             text,
         )
+        self.agreed()
         return self.status()
 
     def family(self) -> tuple[Issue, dict[int, Issue]]:

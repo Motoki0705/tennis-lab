@@ -137,12 +137,24 @@ def comment_snapshot(comment: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def execution_input(
-    session: ParentSession,
-    ignored_comments: Sequence[Mapping[str, Any]] = (),
-    context: Mapping[str, Any] | None = None,
-) -> dict[str, Any]:
-    """Collect stable material. Only the trusted controller classifies prose."""
+def instruction_comments(
+    session: ParentSession, comments: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    result = []
+    for comment in comments:
+        item = comment_snapshot(comment)
+        first = item["body"].splitlines()[0] if item["body"] else ""
+        if item["login"] == session.login and first.startswith(
+            ("<!-- parent-session:v1 ", "<!-- parent-review:v1 ")
+        ):
+            continue
+        result.append(item)
+    return result
+
+
+def ignored_comment_map(
+    ignored_comments: Sequence[Mapping[str, Any]],
+) -> dict[int, dict[str, Any]]:
     ignored = {}
     for raw in ignored_comments:
         entry = object_value(raw)
@@ -154,21 +166,22 @@ def execution_input(
         if n in ignored:
             raise ValueError("duplicate ignored comment")
         ignored[n] = entry
+    return ignored
+
+
+def execution_input(
+    session: ParentSession,
+    ignored_comments: Sequence[Mapping[str, Any]] = (),
+    context: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Collect stable material. Only the trusted controller classifies prose."""
+    ignored = ignored_comment_map(ignored_comments)
     raw = session.gh.issue(session.parent)
     if "ops-report" in {label["name"] for label in raw["labels"]}:
         raise ValueError("ops-report containers cannot receive an execution basis")
     comments = []
     observed = set()
-    for comment in session.gh.comments(session.parent):
-        item = comment_snapshot(comment)
-        first = item["body"].splitlines()[0] if item["body"] else ""
-        if item["login"] == session.login and first.startswith(
-            (
-                "<!-- parent-session:v1 ",
-                "<!-- parent-review:v1 ",
-            )
-        ):
-            continue
+    for item in instruction_comments(session, session.gh.comments(session.parent)):
         observed.add(item["id"])
         if item["id"] in ignored:
             if digest(item) != ignored[item["id"]]["sha256"]:
@@ -247,6 +260,9 @@ def _current_basis(session: ParentSession, generation: int) -> dict[str, Any]:
             "親issueの要件合意記録または有効な実行根拠がありません。分割・委任は拒否しました"
         )
     if current["event"] == "agreed":
+        from .agreement_comments import require_fresh
+
+        require_fresh(session, current)
         return human_basis(current)
     validate_event(current)
     if current["generation"] != generation:
@@ -368,6 +384,21 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
     }
 
 
+def require_requirement_targets(
+    request: Mapping[str, Any], targets: set[int], *, exact: bool = False
+) -> None:
+    if request["schema_version"] != 2:
+        return
+    expected = {str(n) for n in targets | {request["parent_issue"]}}
+    actual = set(object_value(request["requirements"]))
+    if expected - actual or (exact and actual != expected):
+        raise ValueError(
+            "review closing targets differ from frozen requirements: "
+            f"missing={sorted(expected - actual)}, extra={sorted(actual - expected)}; "
+            "prepare a new run with reason"
+        )
+
+
 def require_request_authorization(
     session: ParentSession,
     request: Mapping[str, Any],
@@ -378,6 +409,7 @@ def require_request_authorization(
     if request["schema_version"] == 2 and request.get("authorization") != auth:
         raise ValueError("review targets belong to an old execution basis/owner")
     if request["schema_version"] == 2:
+        require_requirement_targets(request, required_issues or set())
         for n, expected in object_value(request["requirements"]).items():
             if (
                 required_issues is not None

@@ -111,6 +111,11 @@ if comment_edit:
     save()
     response(comment)
 if path == "repos/o/r/pulls":
+    if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
+        state["closing_reads"] = state.get("closing_reads", 0) + 1
+        if state["closing_reads"] == 2:
+            state["prs"][0]["body"] = os.environ["PARENT_CHANGE_CLOSING_ON_READ"]
+        save()
     if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
         state["pull_reads"] = state.get("pull_reads", 0) + 1
         if state["pull_reads"] == 2:

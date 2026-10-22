@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any
 
-from parent.execution import validate_authorization
+from parent.execution import require_requirement_targets, validate_authorization
 from parent.policy import digest, nonempty, number, object_value
 from review_policy import parse_finding
 
@@ -313,6 +313,11 @@ def validate_result(value: Any) -> dict[str, Any]:
                 ],
             }
         )
+    require_requirement_targets(
+        request,
+        {n for p in data["prs"] for n in p["child_issues"]},
+        exact=data["status"] == "succeeded",
+    )
     parsed = parse_output(
         json.dumps(
             {

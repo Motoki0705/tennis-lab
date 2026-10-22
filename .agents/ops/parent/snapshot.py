@@ -11,6 +11,7 @@ from typing import Any
 
 from .execution import (
     authorization,
+    require_requirement_targets,
     require_run_authorization,
     requirement_body,
     task_errors,
@@ -18,6 +19,7 @@ from .execution import (
 from .policy import (
     REVIEW_LABELS,
     REVIEW_STATES,
+    closing_issues,
     digest,
     nonempty,
     object_value,
@@ -119,8 +121,6 @@ def prepare(
     parent, children = session.family()
     child_numbers = set(children) or {parent.number}
     prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
-    from .policy import closing_issues
-
     for pr in prs:
         for child in closing_issues(pr.get("body") or "", session.gh.repo) & set(
             children
@@ -148,6 +148,9 @@ def prepare(
                 ("base", "ref"),
                 ("head", "ref"),
             )
+        ) or (
+            closing_issues(before.get("body") or "", session.gh.repo) & child_numbers
+            != closing_issues(after.get("body") or "", session.gh.repo) & child_numbers
         ):
             raise ValueError(
                 "PR changed while freezing review targets; retry explicitly"
@@ -261,6 +264,16 @@ def transition(
             session.gh.pulls(),
             set(children) or {parent.number},
             session.gh.repo,
+        )
+        require_requirement_targets(
+            request,
+            {
+                n
+                for pr in prs
+                for n in closing_issues(pr.get("body") or "", session.gh.repo)
+                & (set(children) or {parent.number})
+            },
+            exact=True,
         )
         entries = [snapshot(dict(pr))[0] for pr in prs]
         if entries != request["prs"]:
