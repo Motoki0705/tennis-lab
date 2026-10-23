@@ -8,3 +8,4 @@
 - [注釈workerのeffortはmaxに固定する](annotation-worker-effort-max.md)
 - [テスト用の値を本番planに使わない](keep-test-values-out-of-production-plans.md)
 - [公開向け文書は英語版を既定にして日本語・簡体字中国語版を別ファイルに分け、ハッシュ値は書かない](public-docs-english-default.md)
+- [merge前にCIを起動せず、CIをmergeの条件にしない](no-ci-before-merge.md)
