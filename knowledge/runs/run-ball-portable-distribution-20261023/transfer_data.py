@@ -64,6 +64,7 @@ def fingerprints(files: dict[str, Path], expected: dict[str, dict[str, Any]], re
     # Rehash on every resume. Filesystem timestamp granularity can conceal a
     # rapid same-size rewrite, so an old stat tuple is insufficient evidence.
     result = {}
+    progress_at = time.monotonic()
     for name, path in files.items():
         before = file_version(path)
         sha, md5 = hashlib.sha256(), hashlib.md5()
@@ -75,6 +76,9 @@ def fingerprints(files: dict[str, Path], expected: dict[str, dict[str, Any]], re
                 or sha.hexdigest() != expected[name]["sha256"]):
             raise ValueError(f"Upload source differs from its immutable distribution: {name}")
         result[name] = dict(size_bytes=before[2], sha256=sha.hexdigest(), md5=md5.hexdigest(), stat=list(before))
+        if time.monotonic() - progress_at >= 30:
+            print(json.dumps(dict(status="hashing_sources", files=len(result), total_files=len(files), path=name)), flush=True)
+            progress_at = time.monotonic()
     save(receipts / "file-fingerprints.json", result)
     return result
 
@@ -115,7 +119,9 @@ def transfer(args: argparse.Namespace) -> None:
     files["distribution.json"] = args.distribution / "distribution.json"
     expected = {e["path"]: e for e in manifest["files"]}
     expected["distribution.json"] = dict(size_bytes=files["distribution.json"].stat().st_size, sha256=identity)
+    hash_started = time.monotonic()
     hashes = fingerprints(files, expected, args.receipts)
+    hash_seconds = time.monotonic() - hash_started
     checked(args.receipts, "mkdir", ["mkdir", args.drive_path])
     before = inventory(args.receipts, args.drive_path)
     if not owned and before["entries"]:
@@ -135,6 +141,7 @@ def transfer(args: argparse.Namespace) -> None:
         matched = matching(after, hashes)
         save(args.receipts / "interruption.json", dict(
             schema_version=1, file=name, size_bytes=expected[name]["size_bytes"],
+            source_hash_seconds=hash_seconds,
             receipt=receipt, completed_files=sorted(matched), status="interrupted" if receipt["returncode"] else "completed_before_timeout",
             resume_unit="whole uncompleted file; previously verified files are retained",
         ))
@@ -169,6 +176,7 @@ def transfer(args: argparse.Namespace) -> None:
     current = inventory(args.receipts, args.drive_path)
     complete = matching(current, hashes)
     summary = dict(schema_version=1, started_at=started_at, elapsed_seconds=time.monotonic() - started,
+                   source_hash_seconds=hash_seconds,
                    distribution_sha256=identity, completed_before=len(matching(before, hashes)),
                    uploaded_payloads=len(completed), failures=failures,
                    completed_files=len(complete), expected_files=len(files),

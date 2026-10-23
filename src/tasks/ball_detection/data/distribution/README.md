@@ -43,6 +43,8 @@ the exact file set, store structure, selected clips and original Chat annotation
 checksums. Normal `BallFrameStore(directory)` requires all payloads declared by the
 reduced metadata. Omitted source clips are no longer declared; missing selected
 shards still fail. Symlinks and paths escaping the root are rejected.
+`workers` defaults to one; an explicit larger value uses the existing process-shared
+file verifier to hash independent files concurrently. Verification has no GPU work.
 
 Chat annotation paths declare `annotation_path_base="store"` and are relative to
 the store root. Consumers must use `store.annotation_path(clip)` before checking

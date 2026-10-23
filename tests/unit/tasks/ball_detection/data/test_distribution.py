@@ -127,6 +127,15 @@ def test_omitting_a_middle_clip_remaps_instance_offsets(source: Path, tmp_path: 
     assert sample_windows(result, windows) == sample_windows(original, windows)
 
 
+def test_parallel_verification_matches_the_serial_receipt(source: Path, tmp_path: Path) -> None:
+    stage, destination = tmp_path / "stage", tmp_path / "distribution"
+    prepare(source, stage)
+    materialize(source, stage, destination)
+    assert verify_distribution(destination, workers=2) == verify_distribution(destination)
+    with pytest.raises(ValueError, match="positive"):
+        verify_distribution(destination, workers=0)
+
+
 @pytest.mark.parametrize("damage", ["missing", "same_size_corruption", "extra", "symlink"])
 def test_incomplete_or_changed_distribution_is_rejected(source: Path, tmp_path: Path, damage: str) -> None:
     stage, destination = tmp_path / "stage", tmp_path / "distribution"

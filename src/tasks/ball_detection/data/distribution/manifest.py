@@ -8,6 +8,7 @@ from typing import Any
 
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.utils.checksum import dual_sha256
+from src.utils.data.verification import SharedFileVerification
 
 DISTRIBUTION_SCHEMA = "ball_frame_store_distribution.v1"
 DISTRIBUTION_FILE = "distribution.json"
@@ -95,21 +96,23 @@ def distribution_files(
 
 
 def verify_distribution(
-    directory: Path, *, source_directory: Path | None = None,
+    directory: Path, *, source_directory: Path | None = None, workers: int = 1,
 ) -> dict[str, Any]:
     """Check every byte and the complete declaration; refuse partial transfers."""
     manifest = load_distribution(directory)
     files = distribution_files(directory, source_directory=source_directory)
     for entry in manifest["files"]:
         path = files[entry["path"]]
-        if path.stat().st_size != entry["size_bytes"] or dual_sha256(path) != entry["sha256"]:
-            raise ValueError(f"Distribution checksum or size mismatch: {entry['path']}")
+        if path.stat().st_size != entry["size_bytes"]:
+            raise ValueError(f"Distribution size mismatch: {entry['path']}")
     expected = set(files) | {DISTRIBUTION_FILE}
     if source_directory is not None:
         expected -= {c["payload"] for c in manifest["clips"]}
     actual = {p.relative_to(directory).as_posix() for p in directory.rglob("*") if p.is_file() or p.is_symlink()}
     if actual != expected:
         raise ValueError(f"Distribution file set mismatch: missing={sorted(expected - actual)}, extra={sorted(actual - expected)}")
+    verifier = SharedFileVerification({files[e["path"]]: e["sha256"] for e in manifest["files"]})
+    verifier.verify_all(workers)
     external = source_payloads(directory, source_directory) if source_directory is not None else None
     store = BallFrameStore(directory, external_payloads=external)
     if [(c.index, c.clip_id) for c in store.clips] != [(c["index"], c["clip_id"]) for c in manifest["clips"]]:
