@@ -125,6 +125,14 @@ from the completed knowledge record. Do not put all per-file logs into Git.
 The same driver accepts the separate test store and its own version/destination.
 Its upload is reserved for final evaluation.
 
+The observed completed upload and the verified Drive archive containing all
+transfer receipts and the frozen Colab source bundle are pinned in
+[drive-upload.json](drive-upload.json). The archive deliberately excludes the
+metadata-only upload stage. Individual durations use a monotonic clock; UTC
+timestamps are separate observations because their deltas differ on this host.
+The overall UTC span starts with the first payload attempt, includes interruptions
+and subsequent source rehashes, and excludes the first source-hash phase.
+
 ## Verify in two Colab VMs
 
 Use the [Colab skill](../../../.agents/skills/tennis-colab/SKILL.md). The current

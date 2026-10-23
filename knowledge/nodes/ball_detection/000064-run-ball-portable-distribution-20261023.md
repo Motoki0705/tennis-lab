@@ -30,6 +30,10 @@ metrics:
   local_source_files_stat_checked: 3336
   local_train_validation_sample_windows: 18
   local_test_sample_windows: 9
+  drive_verified_files: 2926
+  drive_verified_bytes: 157029428456
+  resume_retained_payloads: 963
+  resume_uploaded_payloads: 574
 repro:
   commit: 52f91b6ec0b5e728efe61ec085d91eeafcad87a4
   branch: codex/ball-temporal-distribution
@@ -68,12 +72,21 @@ test 9窓）で教師入力・原Chat注釈・JPEG・RGB・native PTSが元snaps
 既存窓helperの絶対path直接参照は並行する#1372で接続する。
 同梱catalog・interval・packのindexは元snapshotの番号のままなので、clip IDと配布manifestの対応表でjoinする。
 
-Driveへの初回全量uploadと2台のColab VMの実測は進行中であり、完了receiptで確定する。
+Driveへの初回全量uploadは[配置receipt](../../runs/run-ball-portable-distribution-20261023/drive-upload.json)で確定した。
+`data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1`の全2,926ファイル・157.03 GBが
+最終inventoryのsize/MD5と一致し、重複pathはない。内容のSHA-256は配布manifestで固定した。
+元snapshotのshardを直接uploadし、metadata転送用の追加stageは約258 MBでRGBを含まない。
+全receiptとColab実行用Git bundleは同receiptが示すDriveのoperations archiveへ保存・検証した。
+2台のColab VMでの取得・SHA-256・サンプル意味照合は未実施で、これから行う。
 最初の全量転送は962 shard・約104.03 GBの照合後、親の報告によるモデルcapacityエラーで
 sessionとともに終了した。全量成功のterminal receiptはなく、成功完了とは扱わない。
 [中断と再開の記録](../../runs/run-ball-portable-distribution-20261023/session-interruption.json)に従い、
 新しいOS sessionへ転送を切り離して再開した。元ファイルの再hashと新しいDrive inventoryで
-保持するファイルを決め、監督処理はPIDの起動識別子と実コマンドの終了コードを別receiptへ保存する。
+963ファイルを保持し、残り574 payloadだけを追加した。前回のログに残らなかった1ファイルも
+内容一致で保持したため、ログの962件とDriveの963件は異なる。
+[監督処理](../../runs/run-ball-portable-distribution-20261023/drive-supervisor.json)は終了コード0を記録した。
+初回の実転送開始から最終完了までのUTC差は約7.12時間で、途中の再hash・中断を含む。
+個別の所要時間は単調時計で計測し、hostのUTC差との不一致もreceiptへ残した。並列のファイル所要時間を合算しない。
 CPU runtimeを指定できない事前調査に対し、親からL4の例外許可を得た。
 これは今回の照合に限定した判断で、skill変更や学習実行の許可ではない。
 固定testのuploadは最終評価時へ回し、今回はtrain/validationの転送・再取得・検証を優先する。
