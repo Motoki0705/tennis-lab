@@ -12,6 +12,7 @@
 | `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有5層memory、`knowledge/`、AI制御ファイル |
 | `opsreport/agent.py` | プロンプト組み立て、`../lib/agent_exec.sh` による親Codexのread-only実行、集約JSONの検証 |
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
+| `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -66,6 +67,62 @@ checkpointを失ったら `collected.json` のaudit_runtimeを除いた入力と
 serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。個別ツール・fetch・掃除・ロック待ちの
 制限は別で、失敗を全体調査の成功へ読み替えない。agent失敗やSIGINT/SIGTERMはプロセスグループを回収して未完了公開する。
 強制終了・停電等で公開できない中断はrunning/failed状態とcheckpointから再開する。
+
+## native起動の実行証拠
+
+2026-10-24、Codex CLI **0.163.0**（`multi_agent` stable）を既存の
+`agent_exec.sh --agent codex --profile ops_report --mode read-only` で実行した。
+設定の変更・子の定義追加は行わず、profileの `agents.max_threads=3`、`agents.max_depth=1` を使った。
+この確認は以下の実行環境の契約であり、上の固定scout経路を切り替える実装は後続の統合で行う。
+
+- 実際に使えた起動引数は `spawn_agent(task_name=..., message=..., fork_turns="none")`。
+  `agent_type` や固定役割名は指定しない。戻り値の `task_name` は `/root/<名前>` というnativeの名前空間で、
+  子session IDそのものではない。`model` / `reasoning_effort` を省略した子4件すべての `turn_context` で、
+  親と同じ `gpt-6-astra` / `max`、read-only sandbox、`approval_policy=never`、作業ディレクトリを確認した。
+  子のmetadataのdepthは1。実効service tierは記録にないため未確認。
+- 親のほかに子3件を重ねて起動でき、4件目は `collab spawn failed: agent thread limit reached` で拒否された。
+  `wait_agent(timeout_ms=...)` の後、1件の完了を受領すると、残る子の完了前に後続を起動できた（成功総数4）。
+  同時枠は完了で解放され、総生成数の上限ではない。`list_agents()` で完了状態も確認した。
+  この環境に `close_agent` はなく、明示closeによる回収は未検証。完了した子を閉じる操作は後続起動に不要だった。
+
+再確認は短いprobe用promptを用意し、既存runnerだけを使う。promptでは子2〜3件に短いsleepと定型文の返却を依頼し、
+枠不足を1回確認後、完了受領と後続起動を行う。probeのためにprofileやCODEX_HOME設定を変更しない。
+run dirは新規のものを指定する（#1448の確認は以下の `initial/` に保存した）。
+
+```bash
+probe_root="${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/campaign-1349/probe-1448"
+bash .agents/ops/lib/agent_exec.sh --agent codex --profile ops_report --mode read-only \
+  --task-id probe-1448 --cwd "$PWD" --branch codex/audit-native-evidence \
+  --prompt-file "$probe_root/prompt.md" --run-dir "$probe_root/<新しいrun名>"
+```
+
+`native.inspect_run(Path(".../agent-runtime"))` はrunnerの `result.json` にある
+`contract.runtime_home`・`runtime.session_id`・`runtime.turn_id` を起点とする。現在の環境変数や最新turnへ切り替えず、
+`sessions/` と `archived_sessions/` の実transcriptを読む。親の `response_item` 内の
+`function_call`（namespace `collaboration`、name `spawn_agent`）と `function_call_output` を `call_id` で対応させる。
+子の `session_meta.source.subagent.thread_spawn` と `parent_thread_id`、`agent_path`、
+`task_started.turn_attribution.parent_turn_id` から親runとの対応を確定し、`session_meta.id` をnative IDとして返す。
+子の `session_meta.session_id` は親のIDであり、子threadのIDとは区別する。
+`task_complete` と最後のassistant本文を照合した結果、開始・完了時刻、実効設定、transcriptのパス・内容hashも返す。
+親の最終JSONは実行証拠として読まない。起動拒否は `rejections` に分け、起動成功へ読み替えない。
+
+`native.reconcile(run_dir, {"台帳タスクID": "native ID", ...})` は、そのrunで実際に起動した子と
+台帳の対応が一対一で全件完了している場合だけ、タスクIDをキーに実行証拠を返す。
+統合側は `inspect_run` の `NativeAgent.task_name` でspawn戻り値を照合して `agent_id` を取得・保存する。
+nativeの名前空間をsession IDの代わりに渡さない。複数runの台帳はrunごとに分けて照合する。
+このAPIは1タスクにつき新規spawnを扱う。同じ親turnでの `followup_task` は、最初の完了の流用を防ぐため明示エラーにする。
+タスクの問いと子の調査内容の意味的な一致は、このAPIでは証明しない。
+
+未完了・中断した子は `inspect_run` の `status=incomplete|aborted` として明示し、`reconcile` は拒否する。
+記録欠落、不正/重複JSON、spawn応答の欠落、親子/turn/ID/実効設定の不一致、重複transcript、
+対応しない子は `NativeEvidenceError`。未確認のfork形式や起動エラーの形式も推測で補わない。
+CODEX_HOME内のmetadata headerも厳格にparseし、破損があれば停止する。
+既存の `agent.py` / `audit.py` への接続は後続の統合が行う。
+
+自動テストは `tests/e2e/agents_ops/test_ops_report_native.py`。
+fixtureの `fixtures/native_transcripts.json` は上記実行の必要なrecordを抽出し、実session ID・tool call ID・
+filesystemパス・prompt本文を記号に置換したもの。`/root/...` はfilesystemパスではなくnativeの名前空間である。
+実agentやGitHub書き込みは起動しない。
 
 ## 提案ID・チェック・triage
 
