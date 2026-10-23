@@ -1,0 +1,18 @@
+{
+  "active_assignments_after_stop": 0,
+  "post_stop_phase": "stopped",
+  "raw_receipt": {
+    "archive_member": "vm-a-stop.stdout.json",
+    "archive_reference": "colab-a-closure.json",
+    "sha256": "9d1250fd1cf3514f5b15a310139481711dafb888eb475f1f257478b278708b49",
+    "size_bytes": 490874
+  },
+  "schema_version": 1,
+  "session": "ball-distribution-check-a-20261023",
+  "source_commit": "bae5402729cbfc2c331c8dd839659bd78b183b66",
+  "status": "stopped",
+  "stopped_at": "2026-10-23T12:24:25.084317+00:00",
+  "storage_excluded_files": 1542,
+  "tracked_patch_bytes": 0,
+  "untracked_source_files": 0
+}

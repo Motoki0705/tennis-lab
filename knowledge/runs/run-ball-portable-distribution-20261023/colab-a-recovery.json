@@ -1,0 +1,41 @@
+{
+  "dispatch_recovery": {
+    "cancelled_request": {
+      "drive_saved_at": "2026-10-23T12:10:36.113437+00:00",
+      "finished_at": "2026-10-23T12:10:36.113453+00:00",
+      "job_id": "install-source-fix",
+      "returncode": 130,
+      "started_at": null,
+      "status": "cancelled"
+    },
+    "error": "RuntimeError: Connection was lost.",
+    "reconnect_returncode": 0,
+    "replacement_job": "install-source-fixed"
+  },
+  "failed_job": {
+    "drive_saved_at": "2026-10-23T11:58:06.224140+00:00",
+    "finished_at": "2026-10-23T11:58:06.224155+00:00",
+    "job_id": "verify-data",
+    "returncode": 1,
+    "started_at": "2026-10-23T11:08:49.268991+00:00",
+    "status": "failed"
+  },
+  "fix_commit": "bae5402729cbfc2c331c8dd839659bd78b183b66",
+  "initial_execution_commit": "590d3283bfa69f1fab378bf2ad1e6d8b7f231508",
+  "partial_recovery": "colab-a-partial-recovery.json",
+  "recheck_job": "verify-data-recheck",
+  "recheck_mode": "verify_existing",
+  "retrieval_result": {
+    "action": "download",
+    "destination": "/content/tennis-lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "dry_run": false,
+    "rclone_config": "/content/.tennis-colab/ball-distribution-check-a-20261023/secrets/rclone.conf",
+    "schema_version": 1,
+    "source": "gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "status": "completed",
+    "verified": true
+  },
+  "retrieval_timing": "colab-a-download-resumed-timing.json",
+  "schema_version": 1,
+  "worker_error": "Traceback (most recent call last):\n  File \"/content/tennis-lab/knowledge/runs/run-ball-portable-distribution-20261023/colab_verify.py\", line 162, in <module>\n    run(parser.parse_args())\n  File \"/content/tennis-lab/knowledge/runs/run-ball-portable-distribution-20261023/colab_verify.py\", line 123, in run\n    verification = verify_distribution(args.destination, workers=args.hash_workers)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/tennis-lab/src/tasks/ball_detection/data/distribution/manifest.py\", line 114, in verify_distribution\n    verifier = SharedFileVerification({files[e[\"path\"]]: e[\"sha256\"] for e in manifest[\"files\"]})\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/content/tennis-lab/src/utils/data/verification.py\", line 38, in __init__\n    raise ValueError(\"Verification requires a nonempty absolute file set\")\nValueError: Verification requires a nonempty absolute file set"
+}

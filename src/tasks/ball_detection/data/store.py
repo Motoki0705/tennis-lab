@@ -49,7 +49,7 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Final, Literal, cast
 
 import cv2
@@ -211,7 +211,9 @@ def _clip_record(clip: Mapping[str, object]) -> ClipRecord:
 class BallFrameStore:
     """Read-only accessor for one generated ball frame store."""
 
-    def __init__(self, directory: Path) -> None:
+    def __init__(
+        self, directory: Path, *, external_payloads: Mapping[str, Path] | None = None,
+    ) -> None:
         if not directory.is_absolute():
             raise ValueError(f"Ball store directory must be absolute: {directory}")
         self.directory = directory
@@ -223,6 +225,22 @@ class BallFrameStore:
             )
         self.metadata: dict[str, object] = metadata
         self.clips: tuple[ClipRecord, ...] = tuple(_clip_record(clip) for clip in metadata["clips"])
+        # A distribution can be checked against immutable source payloads before
+        # upload, without copying or hardlinking them. This is an explicit view;
+        # normal readers still require every declared payload inside the store.
+        self.external_payloads = None if external_payloads is None else dict(external_payloads)
+        if self.external_payloads is not None and (
+            set(self.external_payloads) != {clip.clip_id for clip in self.clips}
+            or any(not path.is_absolute() for path in self.external_payloads.values())
+        ):
+            raise ValueError("External payloads must give one absolute path for every clip exactly")
+        annotation_base = metadata.get("annotation_path_base")
+        if annotation_base not in (None, "store"):
+            raise ValueError("Unknown ball annotation path base")
+        if annotation_base == "store":
+            for clip in self.clips:
+                if "annotation_path" in metadata["clips"][clip.index]:
+                    self.annotation_path(clip)
         self.video_frames: dict[str, VideoFrameStorage] = {}
         if metadata["schema_version"] == VIDEO_FRAME_SCHEMA:
             raw = metadata["video_frames"]
@@ -312,7 +330,7 @@ class BallFrameStore:
             if not clip.has_events and (self.frames["event"][rows] != EVENT_CODES["unlabeled"]).any():
                 raise ValueError(f"Clip {clip.clip_id} has events but is declared without them")
             shard = self.image_path(clip)
-            if not shard.resolve().is_relative_to(self.directory.resolve()):
+            if self.external_payloads is None and not shard.resolve().is_relative_to(self.directory.resolve()):
                 raise ValueError(f"Shard {shard} resolves outside the store root")
             offsets = self.frames["offset"][rows]
             ends = offsets + self.frames["length"][rows]
@@ -381,7 +399,7 @@ class BallFrameStore:
     def _shard(self, clip_index: int) -> np.memmap:
         shard = self._shards.get(clip_index)
         if shard is None:
-            path = self.directory / SHARDS_DIR / shard_name(clip_index)
+            path = self.image_path(self.clips[clip_index])
             shard = np.memmap(path, dtype=np.uint8, mode="r")
             self._shards[clip_index] = shard
         return shard
@@ -397,10 +415,34 @@ class BallFrameStore:
 
     def image_path(self, clip: ClipRecord) -> Path:
         """The one immutable physical image payload of a clip."""
+        if self.external_payloads is not None:
+            return self.external_payloads[clip.clip_id]
         if clip.clip_id in self.video_frames:
             path: Path = self.directory / "media" / video_name(clip.index)
             return path
         return self.directory / SHARDS_DIR / shard_name(clip.index)
+
+    def annotation_path(self, clip: ClipRecord) -> Path:
+        """Resolve explicitly relative distribution annotations or legacy paths."""
+        entries = cast(list[dict[str, object]], self.metadata["clips"])
+        value = entries[clip.index].get("annotation_path")
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"Clip {clip.clip_id} has no original annotation path")
+        part = PurePath(value)
+        relative = self.metadata.get("annotation_path_base") == "store"
+        if relative:
+            if part.is_absolute() or ".." in part.parts or part.as_posix() != value:
+                raise ValueError("Distribution annotation paths must be relative to the store")
+        elif not part.is_absolute():
+            raise ValueError("Legacy annotation paths must be absolute")
+        path: Path = self.directory / part
+        if relative and (
+            not path.resolve().is_relative_to(self.directory.resolve()) or path.is_symlink()
+        ):
+            raise ValueError("Distribution annotation resolves outside the store or is a symlink")
+        if not path.is_file():
+            raise ValueError(f"Original annotation is missing: {path}")
+        return path
 
     def read_video_window(
         self, clip: ClipRecord, indices: Sequence[int], *, version: FileVersion | None = None,

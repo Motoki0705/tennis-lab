@@ -1,0 +1,72 @@
+{
+  "disk_after_download": {
+    "free": 42662256640,
+    "total": 253055008768,
+    "used": 210375974912
+  },
+  "disk_after_verification": {
+    "free": 42662158336,
+    "total": 253055008768,
+    "used": 210376073216
+  },
+  "download_seconds": 2795.175334792,
+  "file_verification": {
+    "clips": 1537,
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "files": 2926,
+    "frames": 903807,
+    "mode": "self_contained",
+    "schema_version": 1,
+    "size_bytes": 157029428456,
+    "status": "verified",
+    "version": "ball-mix1800-720p-all-frame-train-val-v1"
+  },
+  "fresh_destination": true,
+  "interrupted_download": null,
+  "manifest_download": {
+    "argv": [
+      "/content/tennis-lab/.venv/bin/python",
+      ".agents/skills/tennis-drive/scripts/drive.py",
+      "--timeout-seconds",
+      "1800",
+      "download",
+      "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/distribution.json",
+      "outputs/ball_detection/distribution/portable-all-frame/vm-b/verification/distribution.json",
+      "--verify"
+    ],
+    "elapsed_seconds": 40.86570674500001,
+    "returncode": 0,
+    "schema_version": 1,
+    "started_at": "2026-10-23T12:32:56.655255+00:00"
+  },
+  "partial_recovery": {
+    "removed_known_incomplete_temporaries": [],
+    "restarted_incomplete_files": 0,
+    "retained_complete_files": 0
+  },
+  "reference_sha256": "8435adcd7a628fa66c5b29db596b6893e83cd1d5b4db9cdb2e2e94638fdf355e",
+  "resumed_download": {
+    "argv": [
+      "/content/tennis-lab/.venv/bin/python",
+      ".agents/skills/tennis-drive/scripts/drive.py",
+      "--timeout-seconds",
+      "10800",
+      "download",
+      "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+      "/content/tennis-lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+      "--verify"
+    ],
+    "elapsed_seconds": 2754.309628047,
+    "returncode": 0,
+    "schema_version": 1,
+    "started_at": "2026-10-23T12:33:37.605256+00:00"
+  },
+  "sample_seconds": 18.229908184000124,
+  "sampled_windows": 18,
+  "samples_equal": true,
+  "schema_version": 1,
+  "sha256_verification_seconds": 441.4833025070002,
+  "sha256_workers": 4,
+  "status": "verified",
+  "total_seconds": 3255.068282253
+}
