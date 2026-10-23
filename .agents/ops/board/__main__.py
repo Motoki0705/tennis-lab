@@ -12,6 +12,7 @@ from typing import NoReturn
 from . import messages
 from .errors import BoardError
 from .notifiers import configured, receipts
+from .reactions import react
 from .redelivery import dispatch_post
 from .renaming import rename
 from .service import agents, whoami
@@ -68,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         acknowledging.add_argument(
             "--state", choices=("accepted", "declined", "done"), required=True
         )
+        reacting = commands.add_parser("react", help="add or remove a free reaction")
+        reacting.add_argument("--post", required=True)
+        reacting.add_argument("--emoji", required=True)
+        reacting.add_argument("--remove", action="store_true")
         commands.add_parser("status", help="show per-recipient states of sent posts")
         dispatching = commands.add_parser(
             "dispatch", help="retry eligible notifications of a sent post"
@@ -120,6 +125,8 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.inbox(env, unread=args.unread)
         elif args.command == "ack":
             result = messages.ack(env, post_id=args.post, state=args.state)
+        elif args.command == "react":
+            result = react(env, post_id=args.post, emoji=args.emoji, remove=args.remove)
         elif args.command == "status":
             result = messages.status(env)
         elif args.command == "dispatch":

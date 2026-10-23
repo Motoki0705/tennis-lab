@@ -54,6 +54,9 @@ select { width: 100%; background: #fff; color: #253443; border: 1px solid #cdd9d
 .preview { max-height: 7.2em; overflow: hidden; }
 .recipient { border-top: 1px solid #edf1f2; padding-top: 9px; margin-top: 9px; }
 .recipient-line { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 11px; }
+.reactions { border-top: 1px solid #edf1f2; padding-top: 9px; margin-top: 9px; font-size: 11px; color: #596f7a; }
+.reaction-line { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 5px; }
+.badge.reaction { font-size: 12px; background: #e1f0eb; }
 .reason { color: #966126; font-size: 11px; margin-top: 4px; }
 .reason-code { color: #74858c; font-size: 10px; }
 details { margin-top: 5px; font-size: 10px; color: #667b86; }

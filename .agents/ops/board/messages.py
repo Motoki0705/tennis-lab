@@ -15,7 +15,12 @@ from .delivery import Notifiers, dispatch
 from .errors import BoardError
 from .names import Assignment, load_names, resolve_name, timestamp
 from .prose import without_code
-from .records import post_row, post_view, require_participant
+from .records import (
+    post_row,
+    post_view,
+    require_participant,
+    require_thread_participant,
+)
 from .safety import public, text
 from .service import _assigned, _reference
 from .storage import Store, directory
@@ -318,16 +323,7 @@ def status(env: Mapping[str, str]) -> dict[str, Any]:
 def thread(env: Mapping[str, str], post_id: str) -> dict[str, Any]:
     with as_parent(env, write=True) as (connection, caller, parents):
         root = post_row(connection, post_id)["thread_id"]
-        if (
-            connection.execute(
-                """SELECT 1 FROM posts p WHERE p.thread_id=? AND
-               (p.sender_assignment_id=? OR EXISTS
-                (SELECT 1 FROM recipients r WHERE r.post_id=p.id AND r.assignment_id=?))""",
-                (root, caller.id, caller.id),
-            ).fetchone()
-            is None
-        ):
-            raise BoardError("only a thread participant may read this thread")
+        require_thread_participant(connection, root, caller.id)
         ids = connection.execute(
             "SELECT id FROM posts WHERE thread_id=? ORDER BY id", (root,)
         ).fetchall()

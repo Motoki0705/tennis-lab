@@ -51,8 +51,8 @@ def matches(post: dict[str, Any], name: str, direction: str) -> bool:
 class BoardReader:
     """Cache external roster sources until an explicit refresh is requested.
 
-    Cursors track recipient/delivery updates as well as appended posts. Each
-    post keeps its latest revision, so clients do not need a retained event log.
+    Cursors track reactions, recipient/delivery updates and appended posts.
+    Each post keeps its latest revision, so clients need no retained event log.
     A process restart or changed name/direction requires a full reset.
     """
 
@@ -139,6 +139,8 @@ class BoardReader:
             if refresh_roster:
                 self._refresh_roster()
             posts, roster = self._snapshot()
+            # Include the complete projection, including reaction actors and
+            # timestamps, so additions/removals also refresh open threads.
             hashes = {post["id"]: fingerprint(post) for post in posts}
             roster_hash = fingerprint([roster, self.roster_observed_at])
             changed = [
