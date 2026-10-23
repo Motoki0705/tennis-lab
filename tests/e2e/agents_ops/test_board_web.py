@@ -108,6 +108,35 @@ def test_saved_broadcast_is_returned_without_body_or_recipient_inference(
     assert all("mentions_all" not in post for post in posts + thread)
 
 
+def test_rename_updates_roster_but_preserves_read_only_post_snapshots(
+    world: World, client: TestClient
+) -> None:
+    w = world
+    root = w.post()
+    first = client.get("/api/changes").json()
+    rename = importlib.import_module("board.renaming").rename
+    result = rename(w.env(), parent=2)
+    before = w.message_rows()
+    changed = client.get("/api/changes", params={"cursor": first["cursor"]}).json()
+    assert changed["posts"] == []
+    recipient = next(row for row in changed["agents"] if row["parent"] == 2)
+    assert recipient["name"] == result["new_name"]
+    assert recipient["unread_count"] == 1
+    thread = client.get(f"/api/thread/{root['id']}").json()["posts"]
+    assert thread[0]["recipients"][0]["name"] == w.assignments[2].name
+    assert thread[0]["recipients"][0]["assignment_id"] == w.assignments[2].id
+    assert thread[0]["recipients"][0]["read_at"] is None
+    historical = client.get(
+        "/api/changes", params={"name": result["old_name"], "direction": "received"}
+    ).json()
+    assert [post["id"] for post in historical["posts"]] == [root["id"]]
+    current = client.get(
+        "/api/changes", params={"name": result["new_name"], "direction": "received"}
+    ).json()
+    assert current["posts"] == []
+    assert w.message_rows() == before
+
+
 def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> None:
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#7"] = world.labels.owner(identity="codex:unassigned-owner")
