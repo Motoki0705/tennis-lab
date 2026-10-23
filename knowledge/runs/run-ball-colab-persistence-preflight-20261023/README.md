@@ -6,6 +6,14 @@ evidence, not a completed Colab save/resume experiment. The original training
 source revision is pinned by `code_commit` in the probe receipt. The diagnostic
 script was added locally; no uncommitted training implementation was executed.
 
+The upstream repair was integrated on 2026-10-24. The relocated-distribution
+integration test and five annotation-rejection cases passed in this checkout.
+The historical probe below deliberately calls the old raw-path `file_version`
+operation, so its `boundary_passed` field is not a post-repair acceptance gate.
+Current execution and actual VM paths are recorded in the
+[continuity experiment](../run-ball-colab-checkpoint-resume-20261024/README.md).
+The remaining-execution section below preserves the plan at the time of failure.
+
 ## Reproduce the boundary check
 
 Run from the active checkout. `DISTRIBUTION_STAGE` is the small prepared train/val

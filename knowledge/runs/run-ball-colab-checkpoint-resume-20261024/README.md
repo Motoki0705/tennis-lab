@@ -77,3 +77,37 @@ generations and are not copied again. Input snapshots include their whole tree.
 The proof measures transfer/storage cost and does not prune any generation.
 Only sessions created for this proof are stopped, with saved terminal-job and
 session-stop receipts. Account-wide assignment zero is not a completion condition.
+
+## Environment reconstruction
+
+Both training arms use the commit recorded in `receipts/baseline-a.json`, not the
+current branch tip. The input recipe checks that commit and the lockfile before
+training. Git bundles carry local commits without publishing a branch. The setup
+helper was added later; after running it, check out the training commit again.
+The helper does not change training source or the lockfile.
+
+VM A used uv 0.12.21 and CPython 3.11.16. VM B's default `uv sync --python 3.11`
+selected uv 0.13.4 and CPython 3.11.17, despite identical locked package versions.
+This attempt was rejected before data retrieval or training. Use
+`setup_pinned_environment.py` with explicit versions and an isolated managed
+Python directory. The helper checks the complete Python build string against
+the control receipt. Follow the official
+[versioned installer documentation](https://docs.astral.sh/uv/getting-started/installation/)
+and [unmanaged installation contract](https://docs.astral.sh/uv/reference/installer/).
+The image's `UV_INSTALL_DIR` overrides `UV_UNMANAGED_INSTALL`; the helper removes
+that conflicting installer option. Fetching the installer through urllib failed
+with HTTP 403, whereas the documented curl transport succeeded. Both failed jobs
+and their final Drive-save receipts are retained as operational evidence.
+
+```bash
+UV_PYTHON_INSTALL_DIR=/content/tennis-tools/python-3.11.16 python3 \
+  knowledge/runs/run-ball-colab-checkpoint-resume-20261024/setup_pinned_environment.py \
+  --uv-version 0.12.21 --python-version 3.11.16 \
+  --tool-dir /content/tennis-tools/uv-0.12.21 \
+  --receipts outputs/ball_detection/colab_persistence/environment-b-pinned-isolated \
+  --reference /content/baseline-training-reference.json
+```
+
+Select absent tool/receipt directories. The source helper revision and the final
+training checkout are separate, explicit Git operations. Do not accept the
+default Python patch selection as environment equality.

@@ -1,0 +1,29 @@
+{
+  "bundles": [
+    {
+      "commit": "768322617a9e3eb6c354bca834e90820ed0b6760",
+      "drive_id": "11GZSOle20ECV3ibn8TcwmeUakHgn9vPP",
+      "inventory_observed_at": "2026-10-23T17:31:35.834539+00:00",
+      "local_artifact": "source.bundle",
+      "md5": "3118c40f3a0fdef2820727a3f8de425d",
+      "prerequisite": "cca80ae6465e0571421de1abfae9fcd80188cde7",
+      "remote": "gdrive:tennis_lab/operations/colab/ball-resume-proof-a-20261024/source/tennis-lab.bundle",
+      "sha256": "9b412dd40dbb375a0fe7c78fbc487968bc1638d88400d04e173c2d96b4df20b3",
+      "size_bytes": 740764,
+      "verified": true
+    },
+    {
+      "commit": "1176954e50e482d3a71e4262b52fe6e92864725e",
+      "drive_id": "1qLpLDFB_hCBBYeLWjr_319R1_UdkfCZ9",
+      "inventory_observed_at": "2026-10-23T17:30:41.457478+00:00",
+      "local_artifact": "setup-environment.bundle",
+      "md5": "d0a5cf688ab9874a43615ed7fdabb1cd",
+      "prerequisite": "768322617a9e3eb6c354bca834e90820ed0b6760",
+      "remote": "gdrive:tennis_lab/operations/colab/ball-resume-proof-b-20261024/source/setup-environment.bundle",
+      "sha256": "d79d9710f06a0914ce6983ba510f0852fe94960853395912dcf591845a46cec0",
+      "size_bytes": 3349,
+      "verified": true
+    }
+  ],
+  "schema_version": 1
+}
