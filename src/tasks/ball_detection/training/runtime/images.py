@@ -78,8 +78,9 @@ def decode_coordinate_jpegs(batch: dict[str, Any], device: torch.device) -> Tens
     shape = tuple(batch["image_shape"])
     if ("rgb" in batch or packed.dtype != torch.uint8 or packed.device.type != "cpu"
             or packed.ndim != 1 or sum(lengths) != packed.numel()
-            or len(shape) != 5 or shape[1:3] != (32, 3) or len(lengths) != shape[0] * 32):
-        raise ValueError("Expected CPU packed JPEGs with declared B,32,3,H,W")
+            or len(shape) != 5 or shape[1] < 2 or shape[2] != 3 or min(shape) < 1
+            or len(lengths) != shape[0] * shape[1] or any(type(n) is not int or n < 1 for n in lengths)):
+        raise ValueError("Expected CPU packed JPEGs with declared B,T,3,H,W")
     # torchvision 0.28 allocates outputs on the caller stream but writes them
     # on an internal nvJPEG stream. Complete prior caller work before those
     # storage blocks can be reused by that internal stream (e.g. prior stack).
@@ -109,8 +110,8 @@ def jpeg_decoder_contract(decoder: str) -> dict[str, Any]:
 
 def image_input(batch: dict[str, Any], device: torch.device) -> Tensor:
     rgb = batch["rgb"].to(device, non_blocking=True) if "rgb" in batch else decode_coordinate_jpegs(batch, device)
-    if rgb.dtype != torch.uint8 or rgb.ndim != 5 or rgb.shape[1:3] != (32, 3):
-        raise ValueError("MDD models require RGB uint8 B,32,3,H,W")
+    if rgb.dtype != torch.uint8 or rgb.ndim != 5 or rgb.shape[1] < 2 or rgb.shape[2] != 3:
+        raise ValueError("MDD models require RGB uint8 B,T,3,H,W with T >= 2")
     return rgb
 
 

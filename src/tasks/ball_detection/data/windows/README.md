@@ -1,4 +1,82 @@
-# プレイ区間・32frame学習窓のレビュー
+# 凍結学習窓・共通区間と全フレーム教師
+
+## 全フレーム教師の可変長窓
+
+`all_frames.py`は、clip内のreference-only frameと大きいPTS gapを境界として、
+最大T以上の連続区間をすべて採る。プレイ密度・位置教師率では絞らない。
+`AllFrameWindowConfig`がパラメータの正本で、実行値を新schema
+`ball_all_frame_windows.v1`の`config`へ保存する。既定は最大T=pack長128、
+pack開始stride16、frame_step=1、gap factor=2.5。Tはpack長を割り切る2以上の偶数とする。
+
+- 学習は区間内のpack長の列をstrideで置き、未登録の末尾開始位置を1回足す。
+  observedまたは確認済み不在が1枚以上あるpackだけを採用し、T枚ずつに分割する。
+  128枚なら32×4・64×2・128×1で同じframe出現列になる。全maskの子窓も残す。
+- 評価は学習packと独立に、共通区間の全frameをstride T/2＋末尾補完の窓で覆う。
+  `(abs(2*frame-(2*start+T-1)), start)`が最小の窓がframeを所有する。
+  窓ごとの半開`owner_range`へ割当を凍結し、未知frameも含めて一度ずつ所有する。
+- 教師は単一observedを位置・heatmap正例、`reviewed_empty`と単一`out_of_frame`を
+  全0のheatmap負例とする。推定・未解決・複数球・未レビューはmaskのまま。
+  Chat空ラベルは`hybrid.reviewed_empty_evidence`で原注釈のhash・frame対応・notesを照合する。
+  採用済みteacher maskを持つstoreではその除外も維持する。不在専用集合は作らない。
+
+### 凍結入口
+
+既存snapshotから、新しい絶対pathへ生成する（学習は開始しない）:
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.prepare_data --mode all_frames \
+  --ball-store /absolute/immutable-ball-snapshot \
+  --output /absolute/new-all-frame-data --window-lengths 32 64 128 \
+  --max-window-length 128 --pack-length 128 --pack-stride 16 --timestamp-gap-factor 2.5
+```
+
+`all_frame_preparation.prepare_all_frame_training`はsnapshotを**読み取り専用で参照**する。
+RGBのコピー・hardlink・既存snapshotの変更は行わない。snapshotは生成後も同じpathで不変に保つ。
+`--rgb-manifest /absolute/mdd_only_windows.json`を明示すると、同一snapshotのindex/metadataと
+clip semantic identityを照合して既存のRGB hashを再利用する。未収録clipは実ファイルをhashする。
+datasetはどちらの場合も初回読込時に画像ファイルの内容を検証する。
+配布用storeへの移動・clip indexの変更は別工程で、clip_idによる明示的な対応付けが必要。
+
+出力はTごとの`train_T<T>.json`（pack単位）、`evaluation_T<T>.json`（所有範囲付き窓）、
+およびpath・hash・コード版を持つ`experiments.json`。
+すべてのmanifestを検証し、入力ファイルのinode/size/mtime/ctimeが変わっていないことを確認してから
+planを公開し、`PREPARATION_INCOMPLETE`を取り除く。失敗した出力は読込を拒否する。
+常設実装はsnapshotと注釈から再生成し、knowledgeの調査ファイルを実行時入力にしない。
+
+各manifestの`summaries[split]`には全共通区間の`common_intervals_sha256`、全frameの`target_identity_sha256`、
+frame key末尾に教師codeを加えた`teacher_identity_sha256`、既知教師だけの`scored_frame_sha256`、
+pack列の`training_packs_sha256`と件数を保存する。これらはT・学習/評価で一致する。
+frame keyはclip_id順・frame順のcompact JSONL `[clip_id, frame_index, 1, exact_native_fps]`。
+評価の`owner_identity_sha256`はTごとの所有開始列を別に記録する。
+
+### datasetとpack境界
+
+`FrozenBallWindowDataset`は旧`ball_play_windows.v1`・coordinate v1・hybrid v1を32枚のまま読み、
+新schemaでは宣言したT枚を読む。schemaの付替え・混在、区間・教師・pack・owner・hashの不一致は
+画像読込前に拒否する。新schemaでは原注釈の検証済みkindと来歴を凍結するため、
+dataset読込時にChat原注釈を開き直さない。RGBはnative解像度・uint8、時刻は実PTSからの秒とする。
+
+既存の`uv`・`position_valid`・`heatmap_valid`・`frame_indices`に加えて、新schemaは次を返す。
+
+| field | 意味 |
+|---|---|
+| `label_kind` | T枚のuint8。0=masked、1=observed、2=reviewed_empty、3=out_of_frame |
+| `pts` / `time_base` / `native_fps` | nativeの整数PTS、秒への分数係数、正確なFPS |
+| `pack_index` / `pack_id` / `pack_start` | split内のpack番号、clip/start/pack長によるID、開始frame。評価では`None` |
+| `child_index` / `children_per_pack` | pack内の子窓番号と個数。重なるpack間の同一子窓も別出現として保持 |
+| `owner_mask` / `score_mask` | 評価窓の所有mask / 所有かつheatmap教師あり。位置採点はさらに`position_valid`で選ぶ。学習では両方false |
+| `interval_start` / `interval_stop` | 所属する半開共通区間 |
+| `edge_distance` / `edge_bin` | 区間端までの最小frame数 / 0、1–7、8–15、16–31、32–63、64+のcode 0〜5 |
+| `edge_distance_seconds` | 実PTSでの最小区間端距離。窓内の左右contextは`frame_indices-start`とTから求める |
+
+`FrozenBallPackDataset(train_manifest, split="train", jpeg_decoder=...)`の1要素は全子窓のlist。
+`collate_pack_samples`は完全なpackを並べて通常の窓batchへまとめ、`pack_offsets`で
+各抽出出現の子窓境界を返す。同じpackを復元抽出しても出現を結合しない。
+組列のRNG・抽出位置、pack全体での拡張、更新全体の損失正規化は学習loopの責務。
+拡張を使う場合は分割前の共通packへ同じ変換を適用し、MDDは分割後の各RGB窓から再計算する。
+評価には`evaluation_T<T>.json`を窓datasetで読み、`score_mask`を使う。
+
+## 既存のプレイ区間レビュー
 
 公開済みの累積snapshotと固定validation/testを追加学習へ接続するAPIは
 [learning/](learning/README.md)を参照。新規clipの座標教師が不足する場合の停止と被覆記録もここが担当する。

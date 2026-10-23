@@ -1,5 +1,6 @@
 from dataclasses import replace
 
+import pytest
 import torch
 
 from src.tasks.ball_detection.data.augmentation.video import (
@@ -73,3 +74,22 @@ def test_excessive_camera_crop_is_explicitly_rejected_not_made_a_negative() -> N
     assert audit["camera_rejected"].all()
     torch.testing.assert_close(audit["matrix"], torch.eye(3).expand(1, 32, 3, 3))
     assert target["position_valid"].all()
+
+
+@pytest.mark.parametrize("length", [64, 128])
+def test_long_window_augmentation_keeps_all_frame_alignment(length: int) -> None:
+    torch.set_num_threads(1)
+    cfg = replace(AugmentationConfig.load(PROJECT_ROOT / "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml"),
+                  camera_probability=1., occlusion_probability=1., targeted_probability=1.)
+    labels = dict(uv=torch.full((1, length, 2), .5), position_valid=torch.ones(1, length, dtype=torch.bool),
+                  timestamps=torch.arange(length)[None].float() / 30, start=[4], frame_step=[1], clip_id=["clip"])
+    rgb = torch.full((1, length, 3, 16, 32), 255, dtype=torch.uint8)
+    augmenter = VideoAugmenter(cfg, 42)
+    output, target, audit = augmenter(rgb, labels, epoch=0)
+    again, second, repeated = augmenter(rgb, labels, epoch=0)
+    assert torch.equal(output, again) and torch.equal(target["uv"], second["uv"])
+    assert torch.equal(audit["matrix"], repeated["matrix"])
+    assert output.shape == rgb.shape and audit["matrix"].shape == (1, length, 3, 3)
+    torch.testing.assert_close(target["uv"], transform_uv(labels["uv"], audit["matrix"]))
+    assert not audit["artificially_occluded"][:, [0, -1]].any()
+    assert int(audit["artificially_occluded"].sum()) <= cfg.occlusion_max_frames
