@@ -1,6 +1,5 @@
 <div align="center">
-  <img src="assets/branding/tennis-lab-logo.png" width="280" alt="Tennis-Lab logo">
-  <h1>Tennis-Lab</h1>
+  <img src="assets/branding/tennis-lab-header.png" width="420" alt="Tennis-Lab">
 </div>
 
 <hr>

@@ -1,0 +1,18 @@
+{
+  "command": [
+    "nht-render",
+    "--scene",
+    "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json",
+    "--cameras",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/smoke-1.json",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/smoke-1",
+    "--batch-size",
+    "1"
+  ],
+  "wall_seconds": 7.540710236993618,
+  "gpu_used_peak_mib": 2446,
+  "gpu_used_initial_mib": 1634,
+  "cameras": 1,
+  "batch_size": 1
+}

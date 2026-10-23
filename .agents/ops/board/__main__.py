@@ -55,8 +55,18 @@ def main(argv: list[str] | None = None) -> int:
         commands.add_parser(
             "receipts", help="refresh Codex queue receipt phases without sending"
         )
+        viewing = commands.add_parser("web", help="serve the local read-only board")
+        viewing.add_argument("--port", type=int, default=8790)
         args = parser.parse_args(argv)
         env = os.environ
+        if args.command == "web":
+            if not 1 <= args.port <= 65535:
+                raise BoardError("board web port must be between 1 and 65535")
+            # Web dependencies stay outside all other CLI commands.
+            from .web import serve
+
+            serve(env, port=args.port)
+            return 0
         if args.command in {"post", "reply"}:
             with Path(args.body_file).open(encoding="utf-8") as source:
                 body = source.read(60001)
