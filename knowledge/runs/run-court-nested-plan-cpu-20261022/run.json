@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-22",
+  "base_commit": "7e307f0499be3a2511afaba51966ae3362ec81b1",
+  "commands": [
+    "PYTHONPATH=\"$PWD\" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-court-nested-plan-cpu-20261022/prototype.py --scenes-root /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes --output tmp/court-nested-plan/run-02 --visuals",
+    "PYTHONPATH=\"$PWD\" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-court-nested-plan-cpu-20261022/saved_trajectory_video.py --scenes-root /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes --output tmp/court-nested-plan/run-02"
+  ],
+  "command_note": "prototype command expanded from the initial repro.sh; the final repro.sh combines both successfully executed CPU commands",
+  "source_sha256": {
+    "prototype.py": "955e2d5c3dd7c5adec4d98e8526ed7a7e1d2129465f52091c2d7451d298923c1",
+    "saved_trajectory_video.py": "d1b38587d756cfd20fcd32dd46d3c0bd89ac40f2b4476c8b8be4506e4f88f438",
+    "test_plan.py": "3607ac2551d128bcb0a34bea75b98197e5eaab26cc7c829f523c46da8066f7be",
+    "repro.sh": "f352c572aab3ee0b74cc676d2e362ffc04f1f1077ccc5e504629ea8d7cdd97f1"
+  },
+  "inputs": "See metrics.json/input_sha256; inputs_unchanged=true",
+  "gpu_execution": false,
+  "new_render_execution": false,
+  "output_dir": "tmp/court-nested-plan/run-02",
+  "untracked_video_policy": "MP4 files remain outside knowledge/runs; reproduce using repro.sh"
+}

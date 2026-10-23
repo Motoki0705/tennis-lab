@@ -1,0 +1,170 @@
+{
+  "scope": "retained files, saved QA counts and complete video decoding; no rendering",
+  "verified_read_only_inputs": 32,
+  "byte_equal_replay_files": 36,
+  "media_hashes_verified": 34,
+  "fully_decoded_videos": 16,
+  "contact_sheets": 16,
+  "counts": [
+    {
+      "scene": "B00",
+      "condition": "recommended",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 113,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 113,
+      "target4_accepted_all": 106
+    },
+    {
+      "scene": "B00",
+      "condition": "hull5",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 116,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 116,
+      "target4_accepted_all": 108
+    },
+    {
+      "scene": "B00",
+      "condition": "hfov45_90",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 100,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 100,
+      "target4_accepted_all": 96
+    },
+    {
+      "scene": "B00",
+      "condition": "jitter0",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 118,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 118,
+      "target4_accepted_all": 110
+    },
+    {
+      "scene": "B01",
+      "condition": "recommended",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 113,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 113,
+      "target4_accepted_all": 111
+    },
+    {
+      "scene": "B01",
+      "condition": "hull5",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 113,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 113,
+      "target4_accepted_all": 112
+    },
+    {
+      "scene": "B01",
+      "condition": "hfov45_90",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 102,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 102,
+      "target4_accepted_all": 100
+    },
+    {
+      "scene": "B01",
+      "condition": "jitter0",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 112,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 112,
+      "target4_accepted_all": 110
+    },
+    {
+      "scene": "B02",
+      "condition": "recommended",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 120,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 120,
+      "target4_accepted_all": 120
+    },
+    {
+      "scene": "B02",
+      "condition": "hull5",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 120,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 120,
+      "target4_accepted_all": 120
+    },
+    {
+      "scene": "B02",
+      "condition": "hfov45_90",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 93,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 93,
+      "target4_accepted_all": 93
+    },
+    {
+      "scene": "B02",
+      "condition": "jitter0",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 122,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 122,
+      "target4_accepted_all": 122
+    },
+    {
+      "scene": "B03",
+      "condition": "recommended",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 113,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 113,
+      "target4_accepted_all": 113
+    },
+    {
+      "scene": "B03",
+      "condition": "hull5",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 114,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 114,
+      "target4_accepted_all": 114
+    },
+    {
+      "scene": "B03",
+      "condition": "hfov45_90",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 78,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 78,
+      "target4_accepted_all": 78
+    },
+    {
+      "scene": "B03",
+      "condition": "jitter0",
+      "logical_records": 132,
+      "candidate_unique": 130,
+      "geometry_pass": 111,
+      "rendered_unique": 130,
+      "existing_gate_accepted": 111,
+      "target4_accepted_all": 111
+    }
+  ]
+}

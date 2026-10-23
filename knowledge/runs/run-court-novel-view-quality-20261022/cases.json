@@ -1,0 +1,155 @@
+[
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 17,
+    "group": "clearer",
+    "label": "Clearer framing: 13 target KPs; remaining net blur is not certified away",
+    "camera_id": "v-d0c0357b38eadfa28aff27a6289c98991afa75c64e74701ba2eafb882f5d96ab",
+    "metrics": {
+      "geometry_target_kp": 13,
+      "renderer_target_kp": 13,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 1.0
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 5,
+    "group": "clearer",
+    "label": "Full geometry reference: 14 target KPs; inspect projected white lines",
+    "camera_id": "v-d7f0c97a50cf4426ae28d87672e4fec7157bb2039fbdd606995d8c85335cd54a",
+    "metrics": {
+      "geometry_target_kp": 14,
+      "renderer_target_kp": 14,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 1.0
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 9,
+    "group": "clearer",
+    "label": "Near-full geometry reference: 10 KPs; dark court still needs review",
+    "camera_id": "v-cbec1f52bb6a9283c852b50210cba2d26acb5f0e4da8186fb61f2dead1c7def5",
+    "metrics": {
+      "geometry_target_kp": 10,
+      "renderer_target_kp": 10,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 24.0
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 35,
+    "group": "clearer",
+    "label": "More target support: 10 KPs; far lines and dark near field remain uncertain",
+    "camera_id": "v-0217e68150e3f1654888baaf9ceab549201ed497f9a115c4d007cda09c012e0d",
+    "metrics": {
+      "geometry_target_kp": 10,
+      "renderer_target_kp": 10,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 24.0
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "kind": "continuous",
+    "index": 48,
+    "group": "failure",
+    "label": "Net/foreground blur and line discrepancy despite zero ROI holes",
+    "camera_id": "v-b7426f0d44449d725f49bb6307b8fad4ef185f6e9dad9b995bc08aafccbfd103",
+    "metrics": {
+      "geometry_target_kp": 4,
+      "renderer_target_kp": 4,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 3.0
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "kind": "continuous",
+    "index": 0,
+    "group": "failure",
+    "label": "Soft ground and net: existing + target4 gates both pass",
+    "camera_id": "v-9dd38c2433ba5820928d48e95dd5c8bc8fd2e568789f9d8059283fe0dbd60830",
+    "metrics": {
+      "geometry_target_kp": 4,
+      "renderer_target_kp": 4,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 9.39069938659668
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 12,
+    "group": "failure",
+    "label": "Target out of frame: zero visible target KP; no alpha/depth holes",
+    "camera_id": "v-c2439b4ebefd7fd6ef4af7a8b2487b0b3370483f3d15b110e15c28ecacc593c4",
+    "metrics": {
+      "geometry_target_kp": 0,
+      "renderer_target_kp": 0,
+      "roi_joint_hole": 0.0,
+      "existing_gate": false,
+      "candidate_target4": false,
+      "line_ridge_distance_median_px": 24.0
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "kind": "continuous",
+    "index": 0,
+    "group": "failure",
+    "label": "Dark weak line support: inspect green projection against RGB",
+    "camera_id": "v-c49784ba5e324181d390fc7775b62c8cbab2f88d82c7b063294e4b8e62a37470",
+    "metrics": {
+      "geometry_target_kp": 4,
+      "renderer_target_kp": 4,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": true,
+      "line_ridge_distance_median_px": 24.0
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "kind": "sparse",
+    "index": 18,
+    "group": "failure",
+    "label": "Weak projected-line/ridge agreement; not an independent alignment error",
+    "camera_id": "v-230a0cc3f8231152d5ea6ae2c653ad4dc82765e35593e5545b875f46567f3357",
+    "metrics": {
+      "geometry_target_kp": 1,
+      "renderer_target_kp": 1,
+      "roi_joint_hole": 0.0,
+      "existing_gate": true,
+      "candidate_target4": false,
+      "line_ridge_distance_median_px": 6.196899890899658
+    }
+  }
+]
