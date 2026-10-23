@@ -358,6 +358,33 @@ class Journal:
         self.save()
         return tx
 
+    def check_tasks(self, snapshot: dict[str, Any]) -> None:
+        """Require saved plans for context-only tasks as well as index anchors."""
+        checked: set[str] = set()
+        for raw in snapshot["issues"].values():
+            metadata = parse_task_metadata(raw["body"])
+            if metadata is None:
+                continue
+            plan_sha = metadata["plan_sha256"]
+            matches = [
+                tx for tx in self.data["transactions"] if tx["plan_sha256"] == plan_sha
+            ]
+            if len(matches) != 1:
+                reason = (
+                    "no journal transaction"
+                    if not matches
+                    else "multiple journal transactions"
+                )
+                raise ValueError(
+                    f"managed task issue #{raw['number']} has {reason} for plan {plan_sha}; "
+                    "restore the triage journal from saved organization-input.json, "
+                    "organization-plan.json, publication drafts and GitHub ops-report-task "
+                    "markers before retrying; do not create new issues"
+                )
+            if plan_sha not in checked:
+                _numbers(matches[0], snapshot)
+                checked.add(plan_sha)
+
 
 def _apply(
     gh: GitHub, store: Store, root: Path, journal: Journal, tx: dict[str, Any]
@@ -496,6 +523,12 @@ def run(
     """Caller holds the shared triage lock and the existing registry lock."""
     journal = Journal(gh.repo, journal_path)
     work_dir.chmod(0o700)
+    try:
+        snapshot = org.collect(gh, store, root)
+    except ValueError as exc:
+        result.errors.append(str(exc))
+        return
+    journal.check_tasks(snapshot)
     candidate_keys = {org.key(n, p.pid) for n, p in candidates}
     issued = {
         d["proposal"]
@@ -540,6 +573,7 @@ def run(
     if not pending:
         return
     snapshot = org.collect(gh, store, root)
+    journal.check_tasks(snapshot)
     index = index_proposals(
         (int(n), raw["body"]) for n, raw in snapshot["issues"].items()
     )

@@ -812,9 +812,10 @@ def test_all_pages_and_api_failures_are_not_replaced_by_empty_inputs(
     fixed = json.loads(h.tmp.joinpath("run-1/organization-input.json").read_text())
     assert len(fixed["snapshot"]["issues"]) == 204
     assert h.gh.issues[205]["labels"] == [{"name": "ai-proposed"}]
+    writes = len(h.gh.writes)
     h.gh.fail = "/dependencies/blocked_by"
     assert any("GET failure" in error for error in h.run().errors)
-    assert len(h.calls()) == 1
+    assert len(h.calls()) == 1 and len(h.gh.writes) == writes
 
 
 def test_corrupt_or_missing_journal_does_not_recreate_managed_issues(
@@ -830,6 +831,120 @@ def test_corrupt_or_missing_journal_does_not_recreate_managed_issues(
     with pytest.raises(ValueError, match="no journal"):
         h.run()
     assert len(h.gh.issues) == 2 and len(h.calls()) == 1
+
+
+@pytest.fixture
+def interrupted_shared_parent(harness: Harness) -> Harness:
+    h = harness
+    h.report(count=2)
+    h.response(
+        plan(
+            [
+                parent_node(),
+                task_node("first", "child", "improvements"),
+                task_node("second", "child", "improvements"),
+            ],
+            [decision(target="first"), decision("100/R-20261019-02", "second")],
+        )
+    )
+    h.gh.fail_after = "repos/o/r/issues"
+    assert any("response loss" in error for error in h.run().errors)
+    assert set(h.gh.issues) == {100, 101} and not h.gh.parents
+    assert fmt.parse_proposal_source(h.gh.issues[101]["body"]) is None
+    assert len(fmt.parse_task_metadata(h.gh.issues[101]["body"])["bindings"]) == 2
+    assert not fmt.index_proposals((n, r["body"]) for n, r in h.gh.issues.items())
+    return h
+
+
+@pytest.mark.parametrize("journal_state", ["missing", "empty"])
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_lost_shared_parent_journal_stops_before_agent_or_writes_and_can_be_restored(
+    interrupted_shared_parent: Harness, journal_state: str, dry_run: bool
+) -> None:
+    h = interrupted_shared_parent
+    journal = h.tmp / "triage.json"
+    saved = journal.read_bytes()
+    if journal_state == "missing":
+        journal.unlink()
+    else:
+        empty = json.loads(saved)
+        empty["transactions"] = []
+        journal.write_text(json.dumps(empty))
+    before = copy.deepcopy(h.gh.issues)
+    writes = len(h.gh.writes)
+    with pytest.raises(ValueError, match="no journal transaction") as error:
+        h.run(dry_run=dry_run)
+    assert "#101" in str(error.value)
+    assert "restore" in str(error.value) and "ops-report-task" in str(error.value)
+    assert h.gh.issues == before and len(h.gh.writes) == writes
+    assert len(h.calls()) == 1
+    if journal_state == "missing":
+        assert not journal.exists()
+    else:
+        assert json.loads(journal.read_text()) == empty
+
+    journal.write_bytes(saved)
+    assert not h.run().errors
+    assert set(h.gh.issues) == {100, 101, 102, 103}
+    assert h.gh.parents == {102: 101, 103: 101}
+    assert not fmt.check_consistency(h.gh.family(101))
+    assert len(h.calls()) == 1
+
+
+@pytest.mark.parametrize("change", ["plan", "node", "bindings"])
+def test_shared_parent_metadata_must_match_journal_before_any_publication(
+    interrupted_shared_parent: Harness, change: str
+) -> None:
+    h = interrupted_shared_parent
+    body = h.gh.issues[101]["body"]
+    metadata = fmt.parse_task_metadata(body)
+    if change == "plan":
+        metadata["plan_sha256"] = "0" * 64
+    elif change == "node":
+        metadata["node"] = "unknown-task"
+    else:
+        metadata["bindings"][0]["proposal_sha256"] = "0" * 64
+    adoption: Any = importlib.import_module("issues.adoption")
+    h.gh.issues[101]["body"] = body.replace(
+        body.splitlines()[0],
+        adoption.task_marker(
+            metadata["plan_sha256"], metadata["node"], metadata["bindings"]
+        ),
+    )
+    before = copy.deepcopy(h.gh.issues)
+    writes = len(h.gh.writes)
+    saved = h.tmp.joinpath("triage.json").read_bytes()
+    with pytest.raises(ValueError):
+        h.run()
+    assert h.gh.issues == before and len(h.gh.writes) == writes
+    assert h.tmp.joinpath("triage.json").read_bytes() == saved
+    assert len(h.calls()) == 1
+
+
+def test_newly_observed_shared_parent_requires_journal_before_organization(
+    interrupted_shared_parent: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h = interrupted_shared_parent
+    h.tmp.joinpath("triage.json").unlink()
+    published = h.gh.issues.pop(101)
+    collect = org.collect
+    observed = False
+
+    def collect_then_publish(*args: Any) -> Any:
+        nonlocal observed
+        snapshot = collect(*args)
+        if not observed:
+            observed = True
+            h.gh.issues[101] = published
+        return snapshot
+
+    monkeypatch.setattr(org, "collect", collect_then_publish)
+    writes = len(h.gh.writes)
+    with pytest.raises(ValueError, match="no journal transaction"):
+        h.run()
+    assert set(h.gh.issues) == {100, 101}
+    assert len(h.calls()) == 1 and len(h.gh.writes) == writes
+    assert not h.tmp.joinpath("triage.json").exists()
 
 
 def test_cross_report_group_is_visible_through_unchanged_dispatcher_collection(

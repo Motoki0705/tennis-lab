@@ -210,6 +210,11 @@ POST試行前もjournalへ記録する。応答が曖昧で全ページにも同
 採用取消・本文/選択変更後は既存作業を保持して停止し、元の採用へ戻すか別提案として整理する。
 journal破損・欠落や出典矛盾は自動初期化しない。run dirとGitHubの計画marker・実番号を照合してjournalを復元し、
 同じtriageを再実行する。未照合のissueを消したり、別提案ID・別nodeで作り直したりしない。
+既存計画の再開・新しい整理agentの起動・書込みの前に、全open/closed issueのtask markerをjournalへ照合する。
+索引anchorとなる子が未作成でも、contextだけの共通親から計画・node・bindingsの一致を検査する。dry-runも同じ検査を行う。
+取引が見つからなければissue番号・計画と復旧方法を示して停止する。空のtransactionsを作っても解除しない。
+保存済みの `organization-input.json`・`organization-plan.json`・公開draft・GitHubの `ops-report-task` markerを
+元のrunログと照合し、対応するjournalを復元してから同じtriageを再実行する。
 
 生成した通常の作業issueは、次の08:00・20:00 JSTの予定回にdispatcherが収集する。専用enqueueやreadyラベルは不要。
 triageから割当判定agent・開発親・実装子・レビュー・mergeは起動しない。採用・Issue整理・自律着手根拠は別物で、
