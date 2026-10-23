@@ -45,11 +45,12 @@ def source(tmp_path: Path) -> Path:
 
 
 def prepare(source: Path, destination: Path, *, clips: list[str] | None = None) -> dict[str, Any]:
-    return prepare_distribution(
+    result: dict[str, Any] = prepare_distribution(
         source, destination, version="train-val-v1",
         clip_ids=clips if clips is not None else ["tracknet/validation/clip", "chat_annotation/train/clip"],
         inputs={},
     )
+    return result
 
 
 def materialize(source: Path, staging: Path, destination: Path) -> None:
@@ -112,6 +113,18 @@ def test_explicit_teacher_masks_are_reindexed_and_preserved(source: Path, tmp_pa
     np.testing.assert_array_equal(result.teacher_masks.coordinate, [1, 1])
     assert sample_windows(result, [(store.clips[2].clip_id, 0, 2)]) == sample_windows(
         BallFrameStore(source), [(store.clips[2].clip_id, 0, 2)])
+
+
+def test_omitting_a_middle_clip_remaps_instance_offsets(source: Path, tmp_path: Path) -> None:
+    original = BallFrameStore(source)
+    selected = [original.clips[i].clip_id for i in (0, 2)]
+    stage = tmp_path / "stage"
+    manifest = prepare(source, stage, clips=selected)
+    assert [c["source_index"] for c in manifest["clips"]] == [0, 2]
+    result = BallFrameStore(stage, external_payloads=source_payloads(stage, source))
+    assert result.frames["inst_start"].tolist() == [0, 1, 2]
+    windows = [(c.clip_id, 0, c.frame_count) for c in result.clips]
+    assert sample_windows(result, windows) == sample_windows(original, windows)
 
 
 @pytest.mark.parametrize("damage", ["missing", "same_size_corruption", "extra", "symlink"])
