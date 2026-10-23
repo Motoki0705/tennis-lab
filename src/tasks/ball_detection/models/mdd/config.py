@@ -141,7 +141,7 @@ class MDDHybridConfig(MDDPretrainConfig):
         return cls(**raw)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MDDHeatmapConfig(MDDPretrainConfig):
     """Explicit temporal contract for direct RGB+MDD heatmap learning.
 
@@ -149,11 +149,12 @@ class MDDHeatmapConfig(MDDPretrainConfig):
     32-frame serialization. New heatmap artifacts always declare their length.
     """
 
-    frames: int = field(default=32)
-    frame_chunk_size: int | None = field(default=None)
+    # Slots override the legacy fixed properties without constructor defaults.
+    frames: int = field()
+    frame_chunk_size: int | None = field()
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MDDPretrainConfig.__post_init__(self)
         if self.input_channels != 5:
             raise ValueError("Heatmap comparison requires five-channel RGB+MDD input")
         if type(self.frames) is not int or self.frames < 1:

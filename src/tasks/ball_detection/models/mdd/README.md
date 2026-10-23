@@ -50,6 +50,7 @@ DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合し�
 720pの入力をresizeせずに渡すと、出力は180×320になる。
 CNNはConvNeXt V2系factorized、DPT幅128、queryは幅256・4層・8 heads・FFN704を維持する。
 Tを変えても、チャンネル数や層数は変えない。
+全設定はPython構築でも明示指定が必須。以下の既定値はYAMLが持ち、Python側では補完しない。
 
 | 設定 | 意味 |
 |---|---|
