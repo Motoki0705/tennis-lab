@@ -1,0 +1,943 @@
+{
+  "schema": "court_pilot_cost_scenarios_v1",
+  "production_decisions_approved": false,
+  "durable_non_generation_gap_seconds": {
+    "n": 94,
+    "mean": 14.226136392293304,
+    "median": 13.87231725015522,
+    "p95": 15.319909779336987
+  },
+  "render_fit": {
+    "per_scene_seconds_per_cache": {
+      "B00": 3.8137157233890946,
+      "B01": 3.207613207401583,
+      "B02": 3.023028294231542,
+      "B03": 2.992802397445392
+    },
+    "seconds_per_geometry_pass": 0.13952146702651735,
+    "mae_seconds_per_cache": 0.5205549347620575
+  },
+  "planning_fit_seconds_coefficients_constant_scenes_groups_candidates": [
+    8.327297120726755,
+    4.752169486040835,
+    0.027213052984421972,
+    0.004666338423172429
+  ],
+  "input_archive_fit_bytes_coefficients_scenes_groups_candidates": [
+    34835.64820559509,
+    291574.1459338712,
+    11281.936875741525
+  ],
+  "effective_upload_bytes_per_second_checkpoint_copyto": 22160114.025621206,
+  "effective_download_bytes_per_second_backbone_command": 9323593.858225506,
+  "calibrated_put_control_seconds_per_cache": 14.190584228658716,
+  "calibrated_get_control_seconds_per_cache": 7.196225394410534,
+  "calibrated_generation_fixed_seconds_per_request": 181.6810698795596,
+  "validation_train_seconds_including_forced_sync": 355.98737478256226,
+  "cold_setup_seconds_four_scenes": 1121.163455419,
+  "conditions": [
+    {
+      "name": "A1-0",
+      "scenes": {
+        "B00": {
+          "groups": 128,
+          "candidates": 1741.0,
+          "accepted_estimate": 1548.083044982699,
+          "caches_estimate": 128.0
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2080.0,
+          "accepted_estimate": 1912.6487252124646,
+          "caches_estimate": 128.0
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1479.0,
+          "accepted_estimate": 1353.0,
+          "caches_estimate": 128.0
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1368.0,
+          "accepted_estimate": 1235.0,
+          "caches_estimate": 128.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 6668.0,
+      "rendered_estimate": 6166.0,
+      "accepted_estimate": 6048.731770195163,
+      "caches_estimate": 512.0,
+      "planning_seconds": 72.3842027986279,
+      "render_seconds": 2529.04579736136,
+      "generation_with_persistence_seconds": 10005.246989217763,
+      "fetch_seconds": 3753.4489834876445,
+      "durable_bytes_estimate": 643156250.0651462
+    },
+    {
+      "name": "A1-1",
+      "scenes": {
+        "B00": {
+          "groups": 256,
+          "candidates": 3482.0,
+          "accepted_estimate": 3096.166089965398,
+          "caches_estimate": 256.0
+        },
+        "B01": {
+          "groups": 256,
+          "candidates": 4160.0,
+          "accepted_estimate": 3825.297450424929,
+          "caches_estimate": 256.0
+        },
+        "B02": {
+          "groups": 256,
+          "candidates": 2958.0,
+          "accepted_estimate": 2706.0,
+          "caches_estimate": 256.0
+        },
+        "B03": {
+          "groups": 256,
+          "candidates": 2736.0,
+          "accepted_estimate": 2470.0,
+          "caches_estimate": 256.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 13336.0,
+      "rendered_estimate": 12332.0,
+      "accepted_estimate": 12097.463540390327,
+      "caches_estimate": 1024.0,
+      "planning_seconds": 117.43243053236571,
+      "render_seconds": 5058.09159472272,
+      "generation_with_persistence_seconds": 19828.806620565178,
+      "fetch_seconds": 7506.883021816272,
+      "durable_bytes_estimate": 1286173157.53747
+    },
+    {
+      "name": "A1-2",
+      "scenes": {
+        "B00": {
+          "groups": 512,
+          "candidates": 6964.0,
+          "accepted_estimate": 6192.332179930796,
+          "caches_estimate": 512.0
+        },
+        "B01": {
+          "groups": 512,
+          "candidates": 8320.0,
+          "accepted_estimate": 7650.594900849858,
+          "caches_estimate": 512.0
+        },
+        "B02": {
+          "groups": 512,
+          "candidates": 5916.0,
+          "accepted_estimate": 5412.0,
+          "caches_estimate": 512.0
+        },
+        "B03": {
+          "groups": 512,
+          "candidates": 5472.0,
+          "accepted_estimate": 4940.0,
+          "caches_estimate": 512.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 26672.0,
+      "rendered_estimate": 24664.0,
+      "accepted_estimate": 24194.927080780653,
+      "caches_estimate": 2048.0,
+      "planning_seconds": 207.52888599984132,
+      "render_seconds": 10116.18318944544,
+      "generation_with_persistence_seconds": 39475.92588326001,
+      "fetch_seconds": 15013.751098473527,
+      "durable_bytes_estimate": 2572206972.482118
+    },
+    {
+      "name": "A1-3",
+      "scenes": {
+        "B00": {
+          "groups": 1024,
+          "candidates": 13928.0,
+          "accepted_estimate": 12384.664359861592,
+          "caches_estimate": 1024.0
+        },
+        "B01": {
+          "groups": 1024,
+          "candidates": 16640.0,
+          "accepted_estimate": 15301.189801699717,
+          "caches_estimate": 1024.0
+        },
+        "B02": {
+          "groups": 1024,
+          "candidates": 11832.0,
+          "accepted_estimate": 10824.0,
+          "caches_estimate": 1024.0
+        },
+        "B03": {
+          "groups": 1024,
+          "candidates": 10944.0,
+          "accepted_estimate": 9880.0,
+          "caches_estimate": 1024.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 53344.0,
+      "rendered_estimate": 49328.0,
+      "accepted_estimate": 48389.85416156131,
+      "caches_estimate": 4096.0,
+      "planning_seconds": 387.72179693479256,
+      "render_seconds": 20232.36637889088,
+      "generation_with_persistence_seconds": 78770.16440864968,
+      "fetch_seconds": 30027.487251788036,
+      "durable_bytes_estimate": 5144274602.371413
+    },
+    {
+      "name": "A1-4",
+      "scenes": {
+        "B00": {
+          "groups": 2048,
+          "candidates": 27856.0,
+          "accepted_estimate": 24769.328719723184,
+          "caches_estimate": 2048.0
+        },
+        "B01": {
+          "groups": 2048,
+          "candidates": 33280.0,
+          "accepted_estimate": 30602.379603399433,
+          "caches_estimate": 2048.0
+        },
+        "B02": {
+          "groups": 2048,
+          "candidates": 23664.0,
+          "accepted_estimate": 21648.0,
+          "caches_estimate": 2048.0
+        },
+        "B03": {
+          "groups": 2048,
+          "candidates": 21888.0,
+          "accepted_estimate": 19760.0,
+          "caches_estimate": 2048.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 106688.0,
+      "rendered_estimate": 98656.0,
+      "accepted_estimate": 96779.70832312261,
+      "caches_estimate": 8192.0,
+      "planning_seconds": 748.107618804695,
+      "render_seconds": 40464.73275778176,
+      "generation_with_persistence_seconds": 157358.641459429,
+      "fetch_seconds": 60054.95955841705,
+      "durable_bytes_estimate": 10288409862.150003
+    },
+    {
+      "name": "A2-1",
+      "scenes": {
+        "B00": {
+          "groups": 128,
+          "candidates": 3482.0,
+          "accepted_estimate": 3096.166089965398,
+          "caches_estimate": 256.0
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 4160.0,
+          "accepted_estimate": 3825.297450424929,
+          "caches_estimate": 256.0
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 2958.0,
+          "accepted_estimate": 2706.0,
+          "caches_estimate": 256.0
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 2736.0,
+          "accepted_estimate": 2470.0,
+          "caches_estimate": 256.0
+        }
+      },
+      "density_level": 1,
+      "candidates_estimate": 13336.0,
+      "rendered_estimate": 12332.0,
+      "accepted_estimate": 12097.463540390327,
+      "caches_estimate": 1024.0,
+      "planning_seconds": 103.49934740434166,
+      "render_seconds": 5058.09159472272,
+      "generation_with_persistence_seconds": 19822.069924059666,
+      "fetch_seconds": 7490.8713888571165,
+      "durable_bytes_estimate": 1136887194.819328
+    },
+    {
+      "name": "A2-2",
+      "scenes": {
+        "B00": {
+          "groups": 128,
+          "candidates": 6964.0,
+          "accepted_estimate": 6192.332179930796,
+          "caches_estimate": 384.0
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 8320.0,
+          "accepted_estimate": 7650.594900849858,
+          "caches_estimate": 384.0
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 5916.0,
+          "accepted_estimate": 5412.0,
+          "caches_estimate": 384.0
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 5472.0,
+          "accepted_estimate": 4940.0,
+          "caches_estimate": 384.0
+        }
+      },
+      "density_level": 2,
+      "candidates_estimate": 26672.0,
+      "rendered_estimate": 24664.0,
+      "accepted_estimate": 24194.927080780653,
+      "caches_estimate": 1536.0,
+      "planning_seconds": 165.72963661576918,
+      "render_seconds": 8447.426757769586,
+      "generation_with_persistence_seconds": 30521.38023699436,
+      "fetch_seconds": 11281.053544765651,
+      "durable_bytes_estimate": 2122528625.661025
+    },
+    {
+      "name": "A2-3",
+      "scenes": {
+        "B00": {
+          "groups": 128,
+          "candidates": 13928.0,
+          "accepted_estimate": 12384.664359861592,
+          "caches_estimate": 548.0
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 16640.0,
+          "accepted_estimate": 15301.189801699717,
+          "caches_estimate": 587.0
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 11832.0,
+          "accepted_estimate": 10824.0,
+          "caches_estimate": 519.0
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 10944.0,
+          "accepted_estimate": 9880.0,
+          "caches_estimate": 517.0
+        }
+      },
+      "density_level": 3,
+      "candidates_estimate": 53344.0,
+      "rendered_estimate": 49328.0,
+      "accepted_estimate": 48389.85416156131,
+      "caches_estimate": 2171.0,
+      "planning_seconds": 290.1902150386242,
+      "render_seconds": 13971.330618831438,
+      "generation_with_persistence_seconds": 45145.097132883624,
+      "fetch_seconds": 16061.937831721336,
+      "durable_bytes_estimate": 4092428365.4277525
+    },
+    {
+      "name": "A2-4",
+      "scenes": {
+        "B00": {
+          "groups": 128,
+          "candidates": 27856.0,
+          "accepted_estimate": 24769.328719723184,
+          "caches_estimate": 826.0
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 33280.0,
+          "accepted_estimate": 30602.379603399433,
+          "caches_estimate": 901.0
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 23664.0,
+          "accepted_estimate": 21648.0,
+          "caches_estimate": 775.0
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 21888.0,
+          "accepted_estimate": 19760.0,
+          "caches_estimate": 755.0
+        }
+      },
+      "density_level": 4,
+      "candidates_estimate": 106688.0,
+      "rendered_estimate": 98656.0,
+      "accepted_estimate": 96779.70832312261,
+      "caches_estimate": 3257.0,
+      "planning_seconds": 539.1113718843343,
+      "render_seconds": 24407.23127645703,
+      "generation_with_persistence_seconds": 71169.55636209084,
+      "fetch_seconds": 24299.530764053026,
+      "durable_bytes_estimate": 8031573617.627874
+    },
+    {
+      "name": "B-1",
+      "scenes": {
+        "B00": {
+          "groups": 1985,
+          "candidates": 26999.1015625,
+          "accepted_estimate": 24007.38159602076,
+          "caches_estimate": 1985.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 26999.1015625,
+      "rendered_estimate": 25138.1640625,
+      "accepted_estimate": 24007.38159602076,
+      "caches_estimate": 1985.0,
+      "planning_seconds": 193.08432179307374,
+      "render_seconds": 11077.53923928063,
+      "generation_with_persistence_seconds": 39560.24360976274,
+      "fetch_seconds": 14600.695192926414,
+      "durable_bytes_estimate": 2948006490.472428
+    },
+    {
+      "name": "B-2",
+      "scenes": {
+        "B00": {
+          "groups": 993,
+          "candidates": 13506.3515625,
+          "accepted_estimate": 12009.737997404844,
+          "caches_estimate": 993.0
+        },
+        "B01": {
+          "groups": 804,
+          "candidates": 13065.0,
+          "accepted_estimate": 12013.824805240794,
+          "caches_estimate": 804.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 26571.3515625,
+      "rendered_estimate": 24867.8203125,
+      "accepted_estimate": 24023.56280264564,
+      "caches_estimate": 1797.0,
+      "planning_seconds": 190.72441105753123,
+      "render_seconds": 9835.53550382807,
+      "generation_with_persistence_seconds": 35641.01641304805,
+      "fetch_seconds": 13225.40655881498,
+      "durable_bytes_estimate": 2739174211.453429
+    },
+    {
+      "name": "B-3",
+      "scenes": {
+        "B00": {
+          "groups": 662,
+          "candidates": 9004.234375,
+          "accepted_estimate": 8006.491998269896,
+          "caches_estimate": 662.0
+        },
+        "B01": {
+          "groups": 536,
+          "candidates": 8710.0,
+          "accepted_estimate": 8009.216536827196,
+          "caches_estimate": 536.0
+        },
+        "B02": {
+          "groups": 757,
+          "candidates": 8746.8984375,
+          "accepted_estimate": 8001.7265625,
+          "caches_estimate": 757.0
+        }
+      },
+      "density_level": 0,
+      "candidates_estimate": 26461.1328125,
+      "rendered_estimate": 24580.2734375,
+      "accepted_estimate": 24017.435097597092,
+      "caches_estimate": 1955.0,
+      "planning_seconds": 199.26192492703169,
+      "render_seconds": 9961.868716697043,
+      "generation_with_persistence_seconds": 38003.647926387166,
+      "fetch_seconds": 14348.651818673605,
+      "durable_bytes_estimate": 2610896920.9744725
+    }
+  ],
+  "supplementary_pair": {
+    "name": "B-pair-B02-B03",
+    "scenes": {
+      "B02": {
+        "groups": 1136,
+        "candidates": 13126.125,
+        "accepted_estimate": 12007.875,
+        "caches_estimate": 1136.0
+      },
+      "B03": {
+        "groups": 1244,
+        "candidates": 13295.25,
+        "accepted_estimate": 12002.65625,
+        "caches_estimate": 1244.0
+      }
+    },
+    "density_level": 0,
+    "candidates_estimate": 26421.375,
+    "rendered_estimate": 24010.53125,
+    "accepted_estimate": 24010.53125,
+    "caches_estimate": 2380.0,
+    "planning_seconds": 205.88977955128016,
+    "render_seconds": 10507.190868755139,
+    "generation_with_persistence_seconds": 44567.38762644219,
+    "fetch_seconds": 17377.30803686754,
+    "durable_bytes_estimate": 2333617207.4676323
+  },
+  "campaigns": [
+    {
+      "nominal_max_images": 24000,
+      "common_updates": 5000,
+      "validation_checkpoint_interval": 1000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A2-1",
+        "A2-2",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2",
+        "B-1"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2"
+      ],
+      "long_updates": 20000,
+      "training_run_count": 19,
+      "generation_hours_separate_roots": 65.02999521233987,
+      "fetch_hours_one_per_training_run": 57.37969802051348,
+      "setup_hours_cold_per_training_run": 5.917251570266944,
+      "training_evaluation_hours_fixed_preflight": 61.15191271498364,
+      "training_evaluation_hours_linear_preflight_scenario": 77.8373060415413,
+      "total_l4_hold_hours_fixed_preflight": 189.47885751810395,
+      "total_l4_hold_hours_linear_preflight_scenario": 206.1642508446616,
+      "dataset_bytes_logical_condition_roots": 16059029823.465416,
+      "checkpoint_bytes_all_retained": 368830361200,
+      "drive_bytes_increment_estimate": 384889391023.4654,
+      "main_only_l4_hold_hours_fixed_preflight": 109.92255047833763,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 116.86264367345345,
+      "threefold_control_stress_extra_hours": 206.16273199667344
+    },
+    {
+      "nominal_max_images": 24000,
+      "common_updates": 10000,
+      "validation_checkpoint_interval": 2000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A2-1",
+        "A2-2",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2",
+        "B-1"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2"
+      ],
+      "long_updates": 40000,
+      "training_run_count": 19,
+      "generation_hours_separate_roots": 65.02999521233987,
+      "fetch_hours_one_per_training_run": 57.37969802051348,
+      "setup_hours_cold_per_training_run": 5.917251570266944,
+      "training_evaluation_hours_fixed_preflight": 96.9963651001809,
+      "training_evaluation_hours_linear_preflight_scenario": 113.68175842673853,
+      "total_l4_hold_hours_fixed_preflight": 225.3233099033012,
+      "total_l4_hold_hours_linear_preflight_scenario": 242.00870322985884,
+      "dataset_bytes_logical_condition_roots": 16059029823.465416,
+      "checkpoint_bytes_all_retained": 368830361200,
+      "drive_bytes_increment_estimate": 384889391023.4654,
+      "main_only_l4_hold_hours_fixed_preflight": 120.16571404150112,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 127.10580723661695,
+      "threefold_control_stress_extra_hours": 206.16273199667344
+    },
+    {
+      "nominal_max_images": 24000,
+      "common_updates": 20000,
+      "validation_checkpoint_interval": 4000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A2-1",
+        "A2-2",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2",
+        "B-1"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-2",
+        "A2-2"
+      ],
+      "long_updates": 80000,
+      "training_run_count": 19,
+      "generation_hours_separate_roots": 65.02999521233987,
+      "fetch_hours_one_per_training_run": 57.37969802051348,
+      "setup_hours_cold_per_training_run": 5.917251570266944,
+      "training_evaluation_hours_fixed_preflight": 168.6918899564504,
+      "training_evaluation_hours_linear_preflight_scenario": 185.37728328300798,
+      "total_l4_hold_hours_fixed_preflight": 297.0188347595707,
+      "total_l4_hold_hours_linear_preflight_scenario": 313.7042280861283,
+      "dataset_bytes_logical_condition_roots": 16059029823.465416,
+      "checkpoint_bytes_all_retained": 368830361200,
+      "drive_bytes_increment_estimate": 384889391023.4654,
+      "main_only_l4_hold_hours_fixed_preflight": 140.65204116782812,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 147.59213436294394,
+      "threefold_control_stress_extra_hours": 206.16273199667344
+    },
+    {
+      "nominal_max_images": 48000,
+      "common_updates": 5000,
+      "validation_checkpoint_interval": 1000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3"
+      ],
+      "long_updates": 20000,
+      "training_run_count": 23,
+      "generation_hours_separate_roots": 99.63921008831396,
+      "fetch_hours_one_per_training_run": 95.01880596530987,
+      "setup_hours_cold_per_training_run": 7.162988742954723,
+      "training_evaluation_hours_fixed_preflight": 70.23845850754263,
+      "training_evaluation_hours_linear_preflight_scenario": 100.91163014768345,
+      "total_l4_hold_hours_fixed_preflight": 272.0594633041212,
+      "total_l4_hold_hours_linear_preflight_scenario": 302.73263494426203,
+      "dataset_bytes_logical_condition_roots": 25295732791.264584,
+      "checkpoint_bytes_all_retained": 421520412800,
+      "drive_bytes_increment_estimate": 446816145591.2646,
+      "main_only_l4_hold_hours_fixed_preflight": 162.5005249156877,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 174.06727091754385,
+      "threefold_control_stress_extra_hours": 329.1790060649462
+    },
+    {
+      "nominal_max_images": 48000,
+      "common_updates": 10000,
+      "validation_checkpoint_interval": 2000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3"
+      ],
+      "long_updates": 40000,
+      "training_run_count": 23,
+      "generation_hours_separate_roots": 99.63921008831396,
+      "fetch_hours_one_per_training_run": 95.01880596530987,
+      "setup_hours_cold_per_training_run": 7.162988742954723,
+      "training_evaluation_hours_fixed_preflight": 111.20449267432163,
+      "training_evaluation_hours_linear_preflight_scenario": 141.87766431446244,
+      "total_l4_hold_hours_fixed_preflight": 313.0254974709002,
+      "total_l4_hold_hours_linear_preflight_scenario": 343.698669111041,
+      "dataset_bytes_logical_condition_roots": 25295732791.264584,
+      "checkpoint_bytes_all_retained": 421520412800,
+      "drive_bytes_increment_estimate": 446816145591.2646,
+      "main_only_l4_hold_hours_fixed_preflight": 175.30447936964208,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 186.8712253714982,
+      "threefold_control_stress_extra_hours": 329.1790060649462
+    },
+    {
+      "nominal_max_images": 48000,
+      "common_updates": 20000,
+      "validation_checkpoint_interval": 4000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-3",
+        "A2-3"
+      ],
+      "long_updates": 80000,
+      "training_run_count": 23,
+      "generation_hours_separate_roots": 99.63921008831396,
+      "fetch_hours_one_per_training_run": 95.01880596530987,
+      "setup_hours_cold_per_training_run": 7.162988742954723,
+      "training_evaluation_hours_fixed_preflight": 193.14318109375466,
+      "training_evaluation_hours_linear_preflight_scenario": 223.8163527338954,
+      "total_l4_hold_hours_fixed_preflight": 394.9641858903332,
+      "total_l4_hold_hours_linear_preflight_scenario": 425.637357530474,
+      "dataset_bytes_logical_condition_roots": 25295732791.264584,
+      "checkpoint_bytes_all_retained": 421520412800,
+      "drive_bytes_increment_estimate": 446816145591.2646,
+      "main_only_l4_hold_hours_fixed_preflight": 200.91238827755083,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 212.47913427940696,
+      "threefold_control_stress_extra_hours": 329.1790060649462
+    },
+    {
+      "nominal_max_images": 96000,
+      "common_updates": 5000,
+      "validation_checkpoint_interval": 1000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A1-4",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "A2-4",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4"
+      ],
+      "long_updates": 20000,
+      "training_run_count": 25,
+      "generation_hours_separate_roots": 163.4768258694831,
+      "fetch_hours_one_per_training_run": 150.33816319846326,
+      "setup_hours_cold_per_training_run": 7.785857329298611,
+      "training_evaluation_hours_fixed_preflight": 74.78173140382212,
+      "training_evaluation_hours_linear_preflight_scenario": 129.0194466511134,
+      "total_l4_hold_hours_fixed_preflight": 396.3825778010671,
+      "total_l4_hold_hours_linear_preflight_scenario": 450.6202930483584,
+      "dataset_bytes_logical_condition_roots": 43615716271.04246,
+      "checkpoint_bytes_all_retained": 447865438600,
+      "drive_bytes_increment_estimate": 491481154871.0425,
+      "main_only_l4_hold_hours_fixed_preflight": 254.93608504683297,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 275.863956555532,
+      "threefold_control_stress_extra_hours": 527.362396818294
+    },
+    {
+      "nominal_max_images": 96000,
+      "common_updates": 10000,
+      "validation_checkpoint_interval": 2000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A1-4",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "A2-4",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4"
+      ],
+      "long_updates": 40000,
+      "training_run_count": 25,
+      "generation_hours_separate_roots": 163.4768258694831,
+      "fetch_hours_one_per_training_run": 150.33816319846326,
+      "setup_hours_cold_per_training_run": 7.785857329298611,
+      "training_evaluation_hours_fixed_preflight": 118.308556461392,
+      "training_evaluation_hours_linear_preflight_scenario": 172.5462717086833,
+      "total_l4_hold_hours_fixed_preflight": 439.909402858637,
+      "total_l4_hold_hours_linear_preflight_scenario": 494.14711810592826,
+      "dataset_bytes_logical_condition_roots": 43615716271.04246,
+      "checkpoint_bytes_all_retained": 447865438600,
+      "drive_bytes_increment_estimate": 491481154871.0425,
+      "main_only_l4_hold_hours_fixed_preflight": 270.30083039157824,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 291.2287019002772,
+      "threefold_control_stress_extra_hours": 527.362396818294
+    },
+    {
+      "nominal_max_images": 96000,
+      "common_updates": 20000,
+      "validation_checkpoint_interval": 4000,
+      "main_conditions": [
+        "A1-0",
+        "A1-1",
+        "A1-2",
+        "A1-3",
+        "A1-4",
+        "A2-1",
+        "A2-2",
+        "A2-3",
+        "A2-4",
+        "B-1",
+        "B-2",
+        "B-3"
+      ],
+      "extra_seed_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4",
+        "B-1",
+        "A1-2"
+      ],
+      "extra_training_seeds": [
+        43,
+        44
+      ],
+      "long_conditions": [
+        "A1-0",
+        "A1-4",
+        "A2-4"
+      ],
+      "long_updates": 80000,
+      "training_run_count": 25,
+      "generation_hours_separate_roots": 163.4768258694831,
+      "fetch_hours_one_per_training_run": 150.33816319846326,
+      "setup_hours_cold_per_training_run": 7.785857329298611,
+      "training_evaluation_hours_fixed_preflight": 205.3688266624068,
+      "training_evaluation_hours_linear_preflight_scenario": 259.6065419096981,
+      "total_l4_hold_hours_fixed_preflight": 526.9696730596518,
+      "total_l4_hold_hours_linear_preflight_scenario": 581.2073883069431,
+      "dataset_bytes_logical_condition_roots": 43615716271.04246,
+      "checkpoint_bytes_all_retained": 447865438600,
+      "drive_bytes_increment_estimate": 491481154871.0425,
+      "main_only_l4_hold_hours_fixed_preflight": 301.03032108106873,
+      "main_only_l4_hold_hours_linear_preflight_scenario": 321.9581925897677,
+      "threefold_control_stress_extra_hours": 527.362396818294
+    }
+  ],
+  "assumptions": [
+    "Scenario estimates only; not confidence bounds or adopted production conditions.",
+    "G=128 per scene is proposed. Base CPU plans are exact; future acceptance is extrapolated from 24 rendered trajectories per scene.",
+    "Birth-level cache counts use the exact base128 N0 values. A1 extrapolates their distribution to unseen trajectories.",
+    "Separate immutable Drive roots duplicate logical cache archives and acknowledgements; no global durable cache bank is assumed.",
+    "Reference budgets rerender every condition. Shared local caches can reduce rendering but not each request's durable acknowledgements.",
+    "One full fetch and cold setup per training run; omit fetch only when the same VM holds already-verified data. Generation-only restarts add setup/fetch costs.",
+    "Linear-preflight scenario scales the entire mixed fixed/variable observed preflight with N. The true slope has not been identified.",
+    "Both exact and best-val checkpoints retained at all validation events; retention bug must be fixed before these main runs.",
+    "Checkpoint sizes and L4 throughput fixed to this batch8 model; cold compiled validation cost reused conservatively.",
+    "Drive listing page costs at thousands of caches, VM failure/recovery, D2 redesign, supplementary pair and operator idle time are additional.",
+    "A factor-three control-plane stress scenario is a sensitivity case, not a measured upper bound."
+  ]
+}

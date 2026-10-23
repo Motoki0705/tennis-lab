@@ -1,0 +1,54 @@
+{
+  "val": {
+    "schema": "court_data_scaling_evaluation_v1",
+    "checkpoint_sha256": "d0081fca5023858aad70de5a87362cb1f4d89ce101899dc646e2dca8a82643a7",
+    "checkpoint": "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+    "global_step": 32,
+    "evaluation_compile": false,
+    "precision": "bf16-mixed",
+    "series": "pilot",
+    "split": {
+      "count": 4468,
+      "ordered_sample_ids_sha256": "31b0b45b5cd5d27f9ecd3242511cc26ba5e52d763e0b2037ffb8c0e904eb196d",
+      "source": "tennis_court_detector",
+      "split": "val",
+      "batch_size": 8,
+      "pose_supervised": false,
+      "metrics": {
+        "kp_mean_distance_px": 250.4821014404297,
+        "kp_median_distance_px": 234.70858764648438,
+        "seg_miou": 0.07133641093969345,
+        "line_dice": 0.0004380100581329316,
+        "semantic_line_miou": 0.08202064037322998
+      }
+    },
+    "full_evaluation_json_sha256": "a2eb2fb0af8a77b4a81cf8bba6b31b748af59f99ac0be9cc31fd4fe302bd3f1c",
+    "drive_path": "outputs/court_detection/evaluate/court-scale-pilot-val/s42/evaluation.json"
+  },
+  "test": {
+    "schema": "court_data_scaling_evaluation_v1",
+    "checkpoint_sha256": "d0081fca5023858aad70de5a87362cb1f4d89ce101899dc646e2dca8a82643a7",
+    "checkpoint": "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+    "global_step": 32,
+    "evaluation_compile": false,
+    "precision": "bf16-mixed",
+    "series": "pilot",
+    "split": {
+      "count": 4372,
+      "ordered_sample_ids_sha256": "15d8f6ff833253577b2e9f98432c80bac79fa7282d4afd04c2b35f7ec775c775",
+      "source": "tennis_court_detector",
+      "split": "test",
+      "batch_size": 8,
+      "pose_supervised": false,
+      "metrics": {
+        "kp_mean_distance_px": 250.3436737060547,
+        "kp_median_distance_px": 235.70913696289062,
+        "seg_miou": 0.07256757467985153,
+        "line_dice": 0.0004314350662752986,
+        "semantic_line_miou": 0.0819908156991005
+      }
+    },
+    "full_evaluation_json_sha256": "bf00288ee9d320b5169ac0bbafb50a35ededda60ac268e4f6d6cc9408a3da9d5",
+    "drive_path": "outputs/court_detection/evaluate/court-scale-pilot-test/s42/evaluation.json"
+  }
+}

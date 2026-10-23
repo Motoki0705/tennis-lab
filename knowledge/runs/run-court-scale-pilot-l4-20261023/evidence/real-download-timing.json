@@ -1,0 +1,20 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "download",
+    "data/court_detection/tennis_court_detector-v1",
+    "data/court_detection/tennis_court_detector-v1",
+    "--verify"
+  ],
+  "started_at": "2026-10-23T14:36:24.615359+00:00",
+  "wall_seconds": 52.49626202300033,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

@@ -1,0 +1,4593 @@
+{
+  "pilot": {
+    "root": "tmp/court-scale-pilot-resumed",
+    "input_files": 105,
+    "raw_input_bytes": 41628644,
+    "uncompressed_ustar_bytes": 41717760,
+    "scenes": {
+      "B00": [
+        {
+          "group_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "8cce2ca39ee4c15800b2cf86c33f4316471a0231a925090b5404be83e868f44f",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "6dc42a83ae42084889ca9383d24d10a3f4368c7fcd609d156224557af81c90f4",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c1ffcbc2a4e79cf5cf9a00cc7416f62b8aeef39c0c5f2e3af1da71b5139f95d5",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "bccf47a59e72884f1fee8cb5b1fb606713fbeb808374fdacf09d6e746ca52f11",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "ed6d166522a003c8ac0e9054c4aee60383259cff70e873790747c4109219e785",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f33cf05d0e29f117ab79a9e4d3b604bc1bd155968afec2175dacd5aa97d9aefb",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "a22ffb17188bb0470827304d9ca2b2cd7b2f6f06972b0d79713ab2af0d18188e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "44deecaa794a4eed7f8710e2e74abe126ab15fe1288387c2a50cf0838b25814f",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "98a6947e76b11a0c13ab04882210f07e73168d301705425539a693e29a8cb1bd",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "d2e315832d5a3abbd87800e247cac773ac0fbbe2268714258dd1188430221520",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a1046a2290c19b5284e20d3b3e6712978e4562149cd9d3b887d2cbc579b69010",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "4b739ec24f9e99e475d421b40a2a9e034d0d952c4a397e86c119b6c3bbf0db5a",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "1dd6873b090f62d4b5f096ad1ef9542f8fb9755bdd91ac4aa30b230ab474bfd6",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "79e8411f62be2cee3f02e566ced09c96063320797df183c7e9fa2db20bd3be0f",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "770fade1672e2b06b617a7d5f5957a7770fa6b692e797c1d3d307be0db7d47c9",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        }
+      ],
+      "B01": [
+        {
+          "group_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d6b7267ff1e6cfa5d19f9c37a083f412205a9e31073680918abdd661f35f234b",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "9f3dfdfd8d8049d29ad37fdf393f3011d2f45cf7a92173f12c854ebf7f452f8e",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "19947e253f4cb6121d4bcc4f583d4582dc179aa80ed43e954fa18810a9582840",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "d139f08a20c68ee335eebb4acd2b930ca714f295e9a906041e73ed23022d9b88",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "e136fa5d22152d407cf880eabe3923c491928659f78548751eb162ee3aa5b874",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "71c3a4e2da8dae71cd8acd2a400d323860a957559abe91f8ac6490bbf08ea7b0",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "33cd750e55b96dbf203a4ec515e40110ed7b86503398654915e788dfdaf5d8fa",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "83e647620017b1749698f1a32f6379711b5a8d3b816f8bce2f47aba579736adf",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "fd95ec208d8adaebc37f224883160c84d122158967f8c4a6bac8c086e370ebf4",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "33f561dc7c1b6c25df661974a3b3fce87d3bb6c1c7638f8a4d59f0078e1d5305",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "bea737177294738377cb706fe31dc1c19569a9db3640eda39953d8266a8f6bcb",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "60f04ef429eb0c191e99ce893d8ea273e89faea7dc51e8aff2d4262c392b9c63",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "a638d1f86aea87029f5c8308960cdf4cd4461d55d69e35d01debb1881a0a0a36",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "379ecd5e04fc7ead711616db00484b33c068f38b399fd210b7b1853d10efbd18",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "9785929885b6140bd7fcde7a9d3f953f243af96460e8cc0eee07a7aefbdb533e",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "9d9e4a6b585fad0316696bbd9c2862778910db946c91a410450811044bf6bf3b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "83d851d8746f365ead2185eb11b1bac920eb0ada0bb4de8749cdd9756989fb72",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "6b59645a83c0988881c6b5fb1876372edef396f12810fe8cd708dbd8d79bdbc4",
+          "base_count": 25,
+          "candidates": 25,
+          "geometry_pass": 25
+        },
+        {
+          "group_id": "b63df514fce77e7e60338e0c2791f6094ea47c1102ac067900af694a4db75b10",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "0fdebd585620b152efbd96362298eccf61a7b078153258527f40a8e367eda8c4",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "ea01b15f604b9c9154e3d382a375e714b5364f74974c30c8e9ec0975d3c7c5f3",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "c6c87d445e81c4de58bcfb780853699e0575a33b34e9f7ab69bfe0c1bde2dc11",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        }
+      ],
+      "B02": [
+        {
+          "group_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "2f99533270cc5a173ea6f62535d9b112115b7850b662088015a572d27be8c226",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "daafbca7e27409aef34f0a938c1ddb8f3d9dbf4ce7a243c943794bab6395c62e",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "aace67ebe7d6e566b225deb2b6b8b4a80dda6e5616205009a51d34eea3982542",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9e9d6b33076a53e1d27c3c905d17f7f6f62543819c5524c3cb7dce3a60c3195a",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "fac8e4e58a2b5e87f85a0885c06880504d9ca2c661c91f74e67cb529e4e453b9",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "c48995118b777be948786cf8acf6276f4c10832578ab324b34299efc8f7075ae",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "1d924fc766d9ecb6e41de89de8b132a75f993675784a9d7ac17254f15c760fe9",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "0e1137c974280b53d3f744ff7356e59c01a67296910012952bf89d2889cf981d",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2a18a09a1f9601494c944b1c162871b5fa7873e38044c6b3358465628b6b669f",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "e1835a2c16e2481caabd138bee96c812fe68352a918e00dce617bf884d140ada",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "fa80b2147086191e8f40bc4367d8851696fefcfbc4cdea54314c2f1e28c76c67",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "efea92606c66a28a6f9850ec41a0b0597619f79f7721d3dc27f46531a99abeff",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c437f777999c66003244ff34a4c83babec18a2c0c4b0df2654c436b4128523aa",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "e687b92d6a8bfe2c05c9c26dc628d254916211830ffba3f716d8eb7bd9d62bfb",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9447c8ba981c01969661417ade435352f6f07cec0524e077eb6370ecfc1d3b17",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9f75767ea4bddf6da41ae2105b475ca48444d8630ee1c7d9f5a8c4f3582c96d3",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "3b7ef12340e77f266aaa6ca2caf7001b6990c0f09ec66148c9609da3f0cd14a2",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "7d252acffe7e39ec3baa833acd87057a475b942b547be60952fe0aca3b8d1146",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "d0b06d11a0bc087160e33a1276ea885056b05f4db786eaa2d3cfad11bc1d9214",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "f7137aa90f264afe9114316dd3cf899f76c20c2dfb292a66aab732b4647489ab",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "022669ca0281cc35de5fcea2e86eb91f93ee69573263f9d9726c44ce1c579936",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "911b6ff4624ba5fbdcf5cf0d65d8c9272be7e1e7f58ec1cc911ed21eae5a969f",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "7487d4a34c18766e9bb1f7a0f31cd56bda28c253948b7efbad510021ceffd423",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        }
+      ],
+      "B03": [
+        {
+          "group_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "cdd3bfe58d16c6de3788e8b6e4f71b6b715cfd8312888bd0221eb21d4e4dd83f",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "0db5f5541dad65e41241fe03feff0a9d4139b7b61466704c810669887708728c",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "bc539a05e3991e028423d198b1a8c5f663f932b45e2074fc1d0a758c7410c638",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "4c9df20db8cbe09d6cd04c0290adbc3ae2e05723957a369bf6c10edbb386885e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "045157ac7e5fa95ca96e40907f15d9b05d467fa981e54fb4b3a65b30782f35ec",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "9f37fbe4ff46a9dc06072a668c427d50892d1dd8a10be29fcbdc96bfe21d61c1",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "4cd9220810f0a6cc88ac2ce417bc2e75da5e7ed08ee93736a1e1db20b23a88ce",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dbc0b8f330bfad5862ef669df508f68023d0c0ccb8fbc21fccb7aafc9208aa4b",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2d6aa7b95ab974e16dbbdf179aabd40478041f99f095d6f945a9fe8e66e8614d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "4c29a3b7cdbb0907ffc7d8ef2cf56786f98ce84a0c327ec8a8f6c8865bfb8486",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "8ba8bc0f9274e0daac3d9d2a730900ce631f8362696c3d14a35fc3b956ca0c14",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 4
+        },
+        {
+          "group_id": "8910dba6ce43c040aed142e9d660f275542f2fce4f9624a9ecbe83d001f895a1",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "d5185078a2fee6c2a76dfdcf4d989a702e84a7bdbf1a29bb1b60dd1b749549f4",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d383d98b276328cfdf9b315cfed3ee12fef7cc62a8833804615e197b017197b6",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f21055acf5180b16ee11479eccc3e29df568968ff4339340966188ac8e3a02b7",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "a01a6afda03fe13b8ccfbf9dd2753627c504ddbb5322db1ee5c41632e2efc643",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "6a4f556c546bfcb671e88d0447366d296856c01b6c01d696cafcb24989912037",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "633a23e9072f35a48d719809ec2f0f7a377071ff40572d4f8a0320c4315fd165",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "157e510089a9c8e5c1c6a9f3ca4b6edcdbe619bb4e48dfe9d0cfbb9fba34c74f",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ef37fe8f156fc389ad2bdd9e204f466e961b348c09a75f929b1d98ac670473bf",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c498d8149018ca76b12d3b6e538ac14d4c81bba25deffad789e28b41b004053e",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "b3ccf7787170a41238d5845bab222c8b97afc245fd92de530c1837cb34290b8a",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "bb45de8d562c2b102680430084e7450b23022e979f5a86c82337b9649f337c32",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        }
+      ]
+    },
+    "rendered": true
+  },
+  "small": {
+    "root": "tmp/court-pilot-plan-cost-resumed-small",
+    "input_files": 33,
+    "raw_input_bytes": 10542311,
+    "uncompressed_ustar_bytes": 10567680,
+    "scenes": {
+      "B00": [
+        {
+          "group_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        }
+      ],
+      "B01": [
+        {
+          "group_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d6b7267ff1e6cfa5d19f9c37a083f412205a9e31073680918abdd661f35f234b",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "9f3dfdfd8d8049d29ad37fdf393f3011d2f45cf7a92173f12c854ebf7f452f8e",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "19947e253f4cb6121d4bcc4f583d4582dc179aa80ed43e954fa18810a9582840",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "d139f08a20c68ee335eebb4acd2b930ca714f295e9a906041e73ed23022d9b88",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        }
+      ],
+      "B02": [
+        {
+          "group_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "2f99533270cc5a173ea6f62535d9b112115b7850b662088015a572d27be8c226",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "daafbca7e27409aef34f0a938c1ddb8f3d9dbf4ce7a243c943794bab6395c62e",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "aace67ebe7d6e566b225deb2b6b8b4a80dda6e5616205009a51d34eea3982542",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9e9d6b33076a53e1d27c3c905d17f7f6f62543819c5524c3cb7dce3a60c3195a",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "fac8e4e58a2b5e87f85a0885c06880504d9ca2c661c91f74e67cb529e4e453b9",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        }
+      ],
+      "B03": [
+        {
+          "group_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "cdd3bfe58d16c6de3788e8b6e4f71b6b715cfd8312888bd0221eb21d4e4dd83f",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "0db5f5541dad65e41241fe03feff0a9d4139b7b61466704c810669887708728c",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "bc539a05e3991e028423d198b1a8c5f663f932b45e2074fc1d0a758c7410c638",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "4c9df20db8cbe09d6cd04c0290adbc3ae2e05723957a369bf6c10edbb386885e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "045157ac7e5fa95ca96e40907f15d9b05d467fa981e54fb4b3a65b30782f35ec",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        }
+      ]
+    },
+    "rendered": false
+  },
+  "dense": {
+    "root": "tmp/court-pilot-plan-cost-resumed-dense",
+    "input_files": 105,
+    "raw_input_bytes": 55326120,
+    "uncompressed_ustar_bytes": 55408640,
+    "scenes": {
+      "B00": [
+        {
+          "group_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9",
+          "base_count": 18,
+          "candidates": 36,
+          "geometry_pass": 36
+        },
+        {
+          "group_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c",
+          "base_count": 12,
+          "candidates": 24,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4",
+          "base_count": 12,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "8cce2ca39ee4c15800b2cf86c33f4316471a0231a925090b5404be83e868f44f",
+          "base_count": 20,
+          "candidates": 40,
+          "geometry_pass": 40
+        },
+        {
+          "group_id": "6dc42a83ae42084889ca9383d24d10a3f4368c7fcd609d156224557af81c90f4",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "c1ffcbc2a4e79cf5cf9a00cc7416f62b8aeef39c0c5f2e3af1da71b5139f95d5",
+          "base_count": 17,
+          "candidates": 34,
+          "geometry_pass": 34
+        },
+        {
+          "group_id": "bccf47a59e72884f1fee8cb5b1fb606713fbeb808374fdacf09d6e746ca52f11",
+          "base_count": 16,
+          "candidates": 32,
+          "geometry_pass": 28
+        },
+        {
+          "group_id": "ed6d166522a003c8ac0e9054c4aee60383259cff70e873790747c4109219e785",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "f33cf05d0e29f117ab79a9e4d3b604bc1bd155968afec2175dacd5aa97d9aefb",
+          "base_count": 18,
+          "candidates": 36,
+          "geometry_pass": 36
+        },
+        {
+          "group_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2",
+          "base_count": 15,
+          "candidates": 30,
+          "geometry_pass": 26
+        },
+        {
+          "group_id": "a22ffb17188bb0470827304d9ca2b2cd7b2f6f06972b0d79713ab2af0d18188e",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "44deecaa794a4eed7f8710e2e74abe126ab15fe1288387c2a50cf0838b25814f",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "98a6947e76b11a0c13ab04882210f07e73168d301705425539a693e29a8cb1bd",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc",
+          "base_count": 15,
+          "candidates": 30,
+          "geometry_pass": 28
+        },
+        {
+          "group_id": "d2e315832d5a3abbd87800e247cac773ac0fbbe2268714258dd1188430221520",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "a1046a2290c19b5284e20d3b3e6712978e4562149cd9d3b887d2cbc579b69010",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "4b739ec24f9e99e475d421b40a2a9e034d0d952c4a397e86c119b6c3bbf0db5a",
+          "base_count": 16,
+          "candidates": 32,
+          "geometry_pass": 30
+        },
+        {
+          "group_id": "1dd6873b090f62d4b5f096ad1ef9542f8fb9755bdd91ac4aa30b230ab474bfd6",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387",
+          "base_count": 15,
+          "candidates": 30,
+          "geometry_pass": 29
+        },
+        {
+          "group_id": "79e8411f62be2cee3f02e566ced09c96063320797df183c7e9fa2db20bd3be0f",
+          "base_count": 17,
+          "candidates": 34,
+          "geometry_pass": 33
+        },
+        {
+          "group_id": "770fade1672e2b06b617a7d5f5957a7770fa6b692e797c1d3d307be0db7d47c9",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 14
+        }
+      ],
+      "B01": [
+        {
+          "group_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "d6b7267ff1e6cfa5d19f9c37a083f412205a9e31073680918abdd661f35f234b",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "9f3dfdfd8d8049d29ad37fdf393f3011d2f45cf7a92173f12c854ebf7f452f8e",
+          "base_count": 19,
+          "candidates": 38,
+          "geometry_pass": 37
+        },
+        {
+          "group_id": "19947e253f4cb6121d4bcc4f583d4582dc179aa80ed43e954fa18810a9582840",
+          "base_count": 24,
+          "candidates": 48,
+          "geometry_pass": 47
+        },
+        {
+          "group_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864",
+          "base_count": 24,
+          "candidates": 48,
+          "geometry_pass": 47
+        },
+        {
+          "group_id": "d139f08a20c68ee335eebb4acd2b930ca714f295e9a906041e73ed23022d9b88",
+          "base_count": 18,
+          "candidates": 36,
+          "geometry_pass": 36
+        },
+        {
+          "group_id": "e136fa5d22152d407cf880eabe3923c491928659f78548751eb162ee3aa5b874",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "71c3a4e2da8dae71cd8acd2a400d323860a957559abe91f8ac6490bbf08ea7b0",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "33cd750e55b96dbf203a4ec515e40110ed7b86503398654915e788dfdaf5d8fa",
+          "base_count": 19,
+          "candidates": 38,
+          "geometry_pass": 30
+        },
+        {
+          "group_id": "83e647620017b1749698f1a32f6379711b5a8d3b816f8bce2f47aba579736adf",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "fd95ec208d8adaebc37f224883160c84d122158967f8c4a6bac8c086e370ebf4",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "33f561dc7c1b6c25df661974a3b3fce87d3bb6c1c7638f8a4d59f0078e1d5305",
+          "base_count": 18,
+          "candidates": 36,
+          "geometry_pass": 34
+        },
+        {
+          "group_id": "bea737177294738377cb706fe31dc1c19569a9db3640eda39953d8266a8f6bcb",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "60f04ef429eb0c191e99ce893d8ea273e89faea7dc51e8aff2d4262c392b9c63",
+          "base_count": 24,
+          "candidates": 48,
+          "geometry_pass": 47
+        },
+        {
+          "group_id": "a638d1f86aea87029f5c8308960cdf4cd4461d55d69e35d01debb1881a0a0a36",
+          "base_count": 22,
+          "candidates": 44,
+          "geometry_pass": 44
+        },
+        {
+          "group_id": "379ecd5e04fc7ead711616db00484b33c068f38b399fd210b7b1853d10efbd18",
+          "base_count": 22,
+          "candidates": 44,
+          "geometry_pass": 43
+        },
+        {
+          "group_id": "9785929885b6140bd7fcde7a9d3f953f243af96460e8cc0eee07a7aefbdb533e",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "9d9e4a6b585fad0316696bbd9c2862778910db946c91a410450811044bf6bf3b",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "83d851d8746f365ead2185eb11b1bac920eb0ada0bb4de8749cdd9756989fb72",
+          "base_count": 19,
+          "candidates": 38,
+          "geometry_pass": 37
+        },
+        {
+          "group_id": "6b59645a83c0988881c6b5fb1876372edef396f12810fe8cd708dbd8d79bdbc4",
+          "base_count": 25,
+          "candidates": 50,
+          "geometry_pass": 50
+        },
+        {
+          "group_id": "b63df514fce77e7e60338e0c2791f6094ea47c1102ac067900af694a4db75b10",
+          "base_count": 17,
+          "candidates": 34,
+          "geometry_pass": 32
+        },
+        {
+          "group_id": "0fdebd585620b152efbd96362298eccf61a7b078153258527f40a8e367eda8c4",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "ea01b15f604b9c9154e3d382a375e714b5364f74974c30c8e9ec0975d3c7c5f3",
+          "base_count": 19,
+          "candidates": 38,
+          "geometry_pass": 33
+        },
+        {
+          "group_id": "c6c87d445e81c4de58bcfb780853699e0575a33b34e9f7ab69bfe0c1bde2dc11",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 16
+        }
+      ],
+      "B02": [
+        {
+          "group_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "2f99533270cc5a173ea6f62535d9b112115b7850b662088015a572d27be8c226",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "daafbca7e27409aef34f0a938c1ddb8f3d9dbf4ce7a243c943794bab6395c62e",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "aace67ebe7d6e566b225deb2b6b8b4a80dda6e5616205009a51d34eea3982542",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "9e9d6b33076a53e1d27c3c905d17f7f6f62543819c5524c3cb7dce3a60c3195a",
+          "base_count": 14,
+          "candidates": 28,
+          "geometry_pass": 28
+        },
+        {
+          "group_id": "fac8e4e58a2b5e87f85a0885c06880504d9ca2c661c91f74e67cb529e4e453b9",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "c48995118b777be948786cf8acf6276f4c10832578ab324b34299efc8f7075ae",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 26
+        },
+        {
+          "group_id": "1d924fc766d9ecb6e41de89de8b132a75f993675784a9d7ac17254f15c760fe9",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 26
+        },
+        {
+          "group_id": "0e1137c974280b53d3f744ff7356e59c01a67296910012952bf89d2889cf981d",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "2a18a09a1f9601494c944b1c162871b5fa7873e38044c6b3358465628b6b669f",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "e1835a2c16e2481caabd138bee96c812fe68352a918e00dce617bf884d140ada",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "fa80b2147086191e8f40bc4367d8851696fefcfbc4cdea54314c2f1e28c76c67",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "efea92606c66a28a6f9850ec41a0b0597619f79f7721d3dc27f46531a99abeff",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "c437f777999c66003244ff34a4c83babec18a2c0c4b0df2654c436b4128523aa",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "e687b92d6a8bfe2c05c9c26dc628d254916211830ffba3f716d8eb7bd9d62bfb",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "9447c8ba981c01969661417ade435352f6f07cec0524e077eb6370ecfc1d3b17",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "9f75767ea4bddf6da41ae2105b475ca48444d8630ee1c7d9f5a8c4f3582c96d3",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "3b7ef12340e77f266aaa6ca2caf7001b6990c0f09ec66148c9609da3f0cd14a2",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "7d252acffe7e39ec3baa833acd87057a475b942b547be60952fe0aca3b8d1146",
+          "base_count": 14,
+          "candidates": 28,
+          "geometry_pass": 25
+        },
+        {
+          "group_id": "d0b06d11a0bc087160e33a1276ea885056b05f4db786eaa2d3cfad11bc1d9214",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "f7137aa90f264afe9114316dd3cf899f76c20c2dfb292a66aab732b4647489ab",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 26
+        },
+        {
+          "group_id": "022669ca0281cc35de5fcea2e86eb91f93ee69573263f9d9726c44ce1c579936",
+          "base_count": 14,
+          "candidates": 28,
+          "geometry_pass": 25
+        },
+        {
+          "group_id": "911b6ff4624ba5fbdcf5cf0d65d8c9272be7e1e7f58ec1cc911ed21eae5a969f",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "7487d4a34c18766e9bb1f7a0f31cd56bda28c253948b7efbad510021ceffd423",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 12
+        }
+      ],
+      "B03": [
+        {
+          "group_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "cdd3bfe58d16c6de3788e8b6e4f71b6b715cfd8312888bd0221eb21d4e4dd83f",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 25
+        },
+        {
+          "group_id": "0db5f5541dad65e41241fe03feff0a9d4139b7b61466704c810669887708728c",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "bc539a05e3991e028423d198b1a8c5f663f932b45e2074fc1d0a758c7410c638",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "4c9df20db8cbe09d6cd04c0290adbc3ae2e05723957a369bf6c10edbb386885e",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "045157ac7e5fa95ca96e40907f15d9b05d467fa981e54fb4b3a65b30782f35ec",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "9f37fbe4ff46a9dc06072a668c427d50892d1dd8a10be29fcbdc96bfe21d61c1",
+          "base_count": 18,
+          "candidates": 36,
+          "geometry_pass": 36
+        },
+        {
+          "group_id": "4cd9220810f0a6cc88ac2ce417bc2e75da5e7ed08ee93736a1e1db20b23a88ce",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "dbc0b8f330bfad5862ef669df508f68023d0c0ccb8fbc21fccb7aafc9208aa4b",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "2d6aa7b95ab974e16dbbdf179aabd40478041f99f095d6f945a9fe8e66e8614d",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "4c29a3b7cdbb0907ffc7d8ef2cf56786f98ce84a0c327ec8a8f6c8865bfb8486",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "8ba8bc0f9274e0daac3d9d2a730900ce631f8362696c3d14a35fc3b956ca0c14",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "8910dba6ce43c040aed142e9d660f275542f2fce4f9624a9ecbe83d001f895a1",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "d5185078a2fee6c2a76dfdcf4d989a702e84a7bdbf1a29bb1b60dd1b749549f4",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "d383d98b276328cfdf9b315cfed3ee12fef7cc62a8833804615e197b017197b6",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "f21055acf5180b16ee11479eccc3e29df568968ff4339340966188ac8e3a02b7",
+          "base_count": 9,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "a01a6afda03fe13b8ccfbf9dd2753627c504ddbb5322db1ee5c41632e2efc643",
+          "base_count": 14,
+          "candidates": 28,
+          "geometry_pass": 28
+        },
+        {
+          "group_id": "6a4f556c546bfcb671e88d0447366d296856c01b6c01d696cafcb24989912037",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "633a23e9072f35a48d719809ec2f0f7a377071ff40572d4f8a0320c4315fd165",
+          "base_count": 8,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "157e510089a9c8e5c1c6a9f3ca4b6edcdbe619bb4e48dfe9d0cfbb9fba34c74f",
+          "base_count": 13,
+          "candidates": 26,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "ef37fe8f156fc389ad2bdd9e204f466e961b348c09a75f929b1d98ac670473bf",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "c498d8149018ca76b12d3b6e538ac14d4c81bba25deffad789e28b41b004053e",
+          "base_count": 15,
+          "candidates": 30,
+          "geometry_pass": 26
+        },
+        {
+          "group_id": "b3ccf7787170a41238d5845bab222c8b97afc245fd92de530c1837cb34290b8a",
+          "base_count": 11,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "bb45de8d562c2b102680430084e7450b23022e979f5a86c82337b9649f337c32",
+          "base_count": 10,
+          "candidates": 20,
+          "geometry_pass": 15
+        }
+      ]
+    },
+    "rendered": false
+  },
+  "single": {
+    "root": "tmp/court-pilot-plan-cost-resumed-single",
+    "input_files": 27,
+    "raw_input_bytes": 10672123,
+    "uncompressed_ustar_bytes": 10700800,
+    "scenes": {
+      "B00": [
+        {
+          "group_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "8cce2ca39ee4c15800b2cf86c33f4316471a0231a925090b5404be83e868f44f",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "6dc42a83ae42084889ca9383d24d10a3f4368c7fcd609d156224557af81c90f4",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c1ffcbc2a4e79cf5cf9a00cc7416f62b8aeef39c0c5f2e3af1da71b5139f95d5",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "bccf47a59e72884f1fee8cb5b1fb606713fbeb808374fdacf09d6e746ca52f11",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "ed6d166522a003c8ac0e9054c4aee60383259cff70e873790747c4109219e785",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f33cf05d0e29f117ab79a9e4d3b604bc1bd155968afec2175dacd5aa97d9aefb",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "a22ffb17188bb0470827304d9ca2b2cd7b2f6f06972b0d79713ab2af0d18188e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "44deecaa794a4eed7f8710e2e74abe126ab15fe1288387c2a50cf0838b25814f",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "98a6947e76b11a0c13ab04882210f07e73168d301705425539a693e29a8cb1bd",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "d2e315832d5a3abbd87800e247cac773ac0fbbe2268714258dd1188430221520",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a1046a2290c19b5284e20d3b3e6712978e4562149cd9d3b887d2cbc579b69010",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "4b739ec24f9e99e475d421b40a2a9e034d0d952c4a397e86c119b6c3bbf0db5a",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "1dd6873b090f62d4b5f096ad1ef9542f8fb9755bdd91ac4aa30b230ab474bfd6",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "79e8411f62be2cee3f02e566ced09c96063320797df183c7e9fa2db20bd3be0f",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "770fade1672e2b06b617a7d5f5957a7770fa6b692e797c1d3d307be0db7d47c9",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        }
+      ]
+    },
+    "rendered": false
+  },
+  "base": {
+    "root": "tmp/court-pilot-plan-cost-resumed-base",
+    "input_files": 521,
+    "raw_input_bytes": 224251656,
+    "uncompressed_ustar_bytes": 224655360,
+    "scenes": {
+      "B00": [
+        {
+          "group_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "8cce2ca39ee4c15800b2cf86c33f4316471a0231a925090b5404be83e868f44f",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "6dc42a83ae42084889ca9383d24d10a3f4368c7fcd609d156224557af81c90f4",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c1ffcbc2a4e79cf5cf9a00cc7416f62b8aeef39c0c5f2e3af1da71b5139f95d5",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "bccf47a59e72884f1fee8cb5b1fb606713fbeb808374fdacf09d6e746ca52f11",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "ed6d166522a003c8ac0e9054c4aee60383259cff70e873790747c4109219e785",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f33cf05d0e29f117ab79a9e4d3b604bc1bd155968afec2175dacd5aa97d9aefb",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "a22ffb17188bb0470827304d9ca2b2cd7b2f6f06972b0d79713ab2af0d18188e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "44deecaa794a4eed7f8710e2e74abe126ab15fe1288387c2a50cf0838b25814f",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "98a6947e76b11a0c13ab04882210f07e73168d301705425539a693e29a8cb1bd",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "d2e315832d5a3abbd87800e247cac773ac0fbbe2268714258dd1188430221520",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a1046a2290c19b5284e20d3b3e6712978e4562149cd9d3b887d2cbc579b69010",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "4b739ec24f9e99e475d421b40a2a9e034d0d952c4a397e86c119b6c3bbf0db5a",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "1dd6873b090f62d4b5f096ad1ef9542f8fb9755bdd91ac4aa30b230ab474bfd6",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "79e8411f62be2cee3f02e566ced09c96063320797df183c7e9fa2db20bd3be0f",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "770fade1672e2b06b617a7d5f5957a7770fa6b692e797c1d3d307be0db7d47c9",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "d86c99129f39af2644c226ea6e58901b9ccd86c43e6357ee52a2b111ec4940af",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "21bd81c934ff522ecc1c76c3ad479dfbdd6fb55d7048d703972a777806da78fe",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "663ffd40b1c20ca86551775e1fc623e25e86944289e85636011b7fb4a1e6771f",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "fe12505adb8b8472232ce1633a3ac8e924b2cee51f9c9a3fef6f6fbd5f48dcbf",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "7fbf044e43a4f23813bf150e0dbdd119029a936837d4ffc3d2a1b2f44b218321",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "9777ea496a534483bfe98104130c8305a4d54b92ea8a702aa575e75ea1e321cc",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "3406f3516507980460f014503aca77b9b2fbd4e3b3956c29f6a028c3a31adf97",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "715a210d6abc639ff01b3a4f927858f5e035c84b70b0aa7137a02e5362fae651",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "ad3911c9bc3447861b63ffec604267c72fa6ba14ce938e5b105dbc49fd7dbcbb",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d8107b6de4cb4bcbf06c0e3264925109c43293ba038cd9dee955eb13207f561e",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "7bb8bef5174c44eb474951ebbb2a22449d1f4cb02df98fceb3599ee626199eec",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "2af8e552e5cd95d23099c7e1e002d2c00522d76baf587dc80a81331c145b92ab",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "e83c4a6127ba491b53a8faf1e910760c0e0b69f0b4ad45278ebaee87e9bbb84c",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ca1c05bb13f6d3d41a35ac5794c08e6dc3aaefdeb94f9a9c5e92c5a47fcb8cc0",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "13d77a4554a8b37f14a450cd81e9f06863500c376ae81a62b6e291801f84e79b",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "5f5cf0a7b57ea90ad66cfb987ce00505851782b98aa6370561bd9fd445bfc035",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "002cf24fd8cf8fc4b18e5f0f558f53138bc2312e21d871839e754dd125b6e9ef",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "19b2c29c61a139bf2db9008b88e1a05a94313a92e66562e4d18b0f8ac8c641b4",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "238eb5cc4901b6bcd565d1d9d7eef3d1a68a3e4fbb23141252a53a9a166b8d46",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "3445a9fa673ebf4b8b79337802269b8102a53df8af04a25e4698b6e8305d36f9",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "013091ed91069518b13553d7e217ade16cb7ce42e1cebc6c39d9cb895d7aa121",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "409f29c637d9d1ed24f9b3f8e969b621cc2114acc6f81e752fe60a5bb3789c56",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "14732354fb804e86ba907cbf92b1405de7ec6aa90c62befc77f8424f5f219966",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "d48cdafb31ac6720a2612e6fbd4b89de67f8c14002b1cda6b1f66d81033749a4",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "b55f49cce6ad368cade1add3dc243daa88272e0832b7fdaf6bba4eda99176ea7",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "d8e563c41a522de667ce87a612f0474317c56c6bab8bd826960b212421bc2ac0",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "fd6f05d4c47c0d506cb6962e4919b5663c675396c01f6efa53e8f7ed4ab4edd2",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "0626ec64aba38858284a16a4aca82891f3ea5f16c40146c63eea165d77253df1",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "b2989566519b4fbab43e4f2938a968fea4c6a3f15e41264d126a505206d70060",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "85414076364a8c9638cdeb24adb98e2405e479585c2f48f4dbe871de7898e48f",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "1e4b7bbf9f520d70a832b676820cfbcf07a134ac34c20748389ec6edbde6d7d3",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "d26e64d2f3a00df87538daeb6e8f1ff6c452ab68dba3bc5b78197b699ddf1b7c",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "474a348f02c14686cf3fb7e31717aa1215fdd45c2f1fc5cdad64ec73e5a1776b",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "4f7400826f008297e7cf565441e1d43789da3e6a9d2f6329e1c147239132dd90",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "8dd14d782e320ad7f462328432488133b2df67aa826e504771174787eb95a070",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "e8e88a10a68db49c3868473cbc7dc6e08a0afa9f455865431bcfb39bcc3cae34",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "4590c6d0ac0dab0948f3c542b55c49a116ff6e7d9bf4279e0e0684564645f3ad",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "8f018c2b0cf0137325f362eb1d2bb8260c40f4e6335f1522f8df2e34cc461391",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "ebe23bbca8130be4b7889e68ca418fa6d60fade0a436fdc33efc7fa929bbcc53",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "45e885d4919cef771b2261a21c877f14304d12410fe4567b12a4e578de198a10",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "fb469dd20fc482580f4c4def3c364967940249322f8d80719e29d34c4a510c0b",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "1f35651d76cc5c323345f3585f23b300a5df754eff8ed70f369941038e37be47",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "58a37849081f9dfe9a80f0b077a9f7025868cee57ea701c36dce6708e79a3d6d",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "1cee080166e5e872ed35f6bf106b85e491c679bfed0c9cf41e639fdd55ec69d8",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "e3c6b4033a6c53a6543ec675cfc14e56336066f028695f943320948abc2c1947",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9a7010cdcf52df7c2ea26c2fc5ff0e493bc092fd3d8521a58ffc054b0254cb5d",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "547b487ee6c1e09c647ef08418befe6fbe1f27e2996d8bf30ee234ddd630ee83",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "85fde99cf2fb6f914911b098a624ced8c818e98185bb3f18d30934b61605e8f9",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "971d7be7cdb14d6c66e79a6511609a7da90a30fc9e4a9b3692ba833b3a64c457",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "67112f536a28a7a23d4f6002c49471b4e70ac83a31690c65feecb125a8fd03fc",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "4468e01a58aef49f51fd529eec7cbc4fbeff7fd1691e6797d3e0e5e8b5b5d603",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "19f768b7284505debeead73d794d95374bf568fc7f0a878f1a1c27d0d91e5923",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "3a8ce6adfc164ce8c48ec64d17a217dff07d2f907094faebcd8f2ed35dc54e0d",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "f910a20591a90f6bf702ed80c1047e7f6f8ec28ec46d764fb91f0c6b1057bca4",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "7616e49f7a5596e67de4e48e729410054de4436ea4ed46527a30d1a471849364",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "2c25aa1ccc4481d39c69a738eb57f27fa8af6e8c9897fee9b62202b2701f96cb",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "de34be61006edc99978f1e8c41c36b90b5afc93924d076b2fca8020d014aba94",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "3dfbc3e7f580403e2a19dbb73a23a261f697ba5f8932a94b34946fd8e9e52576",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "a6540e81db505538dd51b2432a276e6f64f203cf3c048f270718839cf9543ca0",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "ee9b4dc91668d73e7375ed2a573b8fabb094c50a64ca1cb4258a34aa924f39e7",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "a3121d9ad37a3f0bba14d9bc2dcd1c3dc6af3817130c9fbc555bbfd52ff23ec7",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "dc62d83813fe362ce8113104fe61bdbfe1b640361951ff4683c8cf5a25ebcc68",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "5a2389de941988055264b1ca304dccc492808f46396635623b1aeaca5fbc0767",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "88b13ee7d821d028d9cc3d6bf2f6224fe2ee1e3ea99b7d6665e02662f53be886",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "de3e7a03ece5b792a42f09e6e79e842a39f83c62f1025ce32cfc7c0dc438d439",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "d9ef5f724b7ccdf8073705faea51f75aeebbece60fc3ee8d88957d14b887979b",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "9fd45dd0f9a9d94370f36d37269f5ce60e6cee1a9f4878bf3784c62a384fa2d6",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "db1251cb10c00cac67d0b8bc8f8a3681c03533fbbb44e14a9ec9cb2dae3c83b9",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "4797e0c2502778aa8bc0c9b5753d8f312b3875eadde9f2a7eb275cce038ab88f",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "0739a20138ad744000068116d8ff4380765f3712c965cd0b9916d1670da1d46a",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "fcb8c418f18d8db40d1e5d8134e97ee652bf3f27d4623c8b5fcc2c54429210b0",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "35a9af63d341f015db3e3fc573b1b880842791b1474a2c740d64158cf543f92b",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "07f43f8b60e3eb471b5b7c725e9a14b1ed4e155e1de12741b1badd1182e2df7a",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "928d5b8fdf9e1707611f5a1722aa4e4ea7a45814ef7f65a5679000d15c0ea19b",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "ceaa43e2699f908d4f13864b4848d52c4465f745825579a6381c8778db9cb591",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "975ef7ed76329d0015196d18df5d41bd6c68186d41267baf7c2c6949c2b38461",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "98398e72b304d1d40ddd3815a9bfd6d096884a34da4613a7211aaffe5ea581e3",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "68f0d28f17ab6760539b18f1b394476a6ff9f51eeae6511340ad8b0c6ed198fb",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "13718e40c49d58bf96d1ee10a53511b90a9aaa2bb86f162f4b18f53bb79e521a",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "baefd671acd0505bc377f9d673e97aa803eb29361977705af7f5afdb577f86de",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "8add6524f6c53d6239d4a7ad92f9549331db78f34b9b98860f42757e3fcff7b1",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "ef4a5e596676ed929a6f148a9e2fb09297bf676fe11467ac030717dd8fb44dd0",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "89fff319070045cf82d5cb7aff007b22c73ea44c59ee64c3d233d60a75274f40",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "5ca99d1bec56ac11029ea2a3613ad91a9a0bd6fa85a6fa36884150350485551e",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "eb8413e568769b2df5b5e3f43fe3ffdb394c0dc0a07826f9ba01b82e98148ab1",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "266f00bd63e4a55a3b4caba9d121f60fb8afdb7980ff660ed22ea00b589acd75",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "b11f1c7dbbd0842c4406c1eccefa5deeff9736a46df25619bb0c554f62d84b79",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "7ba18b5bc8d50f734405455924dcd71510214c6ceba0a97a95c0a01fec64d751",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "858e78b83a44d6586aa76193c61cec31231f6e9789eddbd86ce4938331724210",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "a537a3ecb44502a3911a89eaa4397c29e7ce9697caba0cef66725532afd79374",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "5c82a4373c2f37a41c1455a7dc04344417da7898d91a640e7a96b92cef576bf5",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "aaa5935b1890fb336b2f82d5c70329e808fea7f93f7af090d7fe28ad9a7206cb",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "39ff2c2b4ad93a83961e3cb6f506201905b2dac5409b60b0ea613d4955544c06",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "c58d8fcdf7a674ad6d7d637362fd120a14eee9f06d05ab12f0369048de288a71",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "0d4f9f07a1ff0f0a697a44b3470cb6d64e4abeec249edd388a0ac073be9bda82",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "f596549c6e3c1a55ae992f4028b045140a9c4f04abab879b905624d157288301",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a8ea2fa1223e6851fa1bbbb07cb7119fdf8083900aca0fb4c36fff7e8ef16f8c",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "478bbfa9cd3764f7dc81c8416b94c63960f74da68d2166ebc694ab92960b45de",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "c6a8b6025a91449a8fea5ffb2648a304dfc3a353e736496c718073bcbf51ca69",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "98a0ed957e21b7a46667ca0c612aa4d5b53f8a5feb742bbbd2f04ddd030bd94a",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "f8f89df22e7889b8d73e7fa2c45cd4f0ae7c324cd9a9bc788b1f4f89058483e6",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "94196f2a74a3d6c8bc5d01702a37bc42592167874bbc528d76265c93d91ecc79",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "680899720ea7d20cd79805df7b5a34cd13c01177723fe4bf5a43ad57e471b652",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "e257504e57e72cdd9d6d8db6b66f9a82c9f9b45be3c1ea1a7e2c81dacc345257",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        }
+      ],
+      "B01": [
+        {
+          "group_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d6b7267ff1e6cfa5d19f9c37a083f412205a9e31073680918abdd661f35f234b",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "9f3dfdfd8d8049d29ad37fdf393f3011d2f45cf7a92173f12c854ebf7f452f8e",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "19947e253f4cb6121d4bcc4f583d4582dc179aa80ed43e954fa18810a9582840",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "d139f08a20c68ee335eebb4acd2b930ca714f295e9a906041e73ed23022d9b88",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "e136fa5d22152d407cf880eabe3923c491928659f78548751eb162ee3aa5b874",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "71c3a4e2da8dae71cd8acd2a400d323860a957559abe91f8ac6490bbf08ea7b0",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "33cd750e55b96dbf203a4ec515e40110ed7b86503398654915e788dfdaf5d8fa",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "83e647620017b1749698f1a32f6379711b5a8d3b816f8bce2f47aba579736adf",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "fd95ec208d8adaebc37f224883160c84d122158967f8c4a6bac8c086e370ebf4",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "33f561dc7c1b6c25df661974a3b3fce87d3bb6c1c7638f8a4d59f0078e1d5305",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "bea737177294738377cb706fe31dc1c19569a9db3640eda39953d8266a8f6bcb",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "60f04ef429eb0c191e99ce893d8ea273e89faea7dc51e8aff2d4262c392b9c63",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "a638d1f86aea87029f5c8308960cdf4cd4461d55d69e35d01debb1881a0a0a36",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "379ecd5e04fc7ead711616db00484b33c068f38b399fd210b7b1853d10efbd18",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "9785929885b6140bd7fcde7a9d3f953f243af96460e8cc0eee07a7aefbdb533e",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "9d9e4a6b585fad0316696bbd9c2862778910db946c91a410450811044bf6bf3b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "83d851d8746f365ead2185eb11b1bac920eb0ada0bb4de8749cdd9756989fb72",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "6b59645a83c0988881c6b5fb1876372edef396f12810fe8cd708dbd8d79bdbc4",
+          "base_count": 25,
+          "candidates": 25,
+          "geometry_pass": 25
+        },
+        {
+          "group_id": "b63df514fce77e7e60338e0c2791f6094ea47c1102ac067900af694a4db75b10",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "0fdebd585620b152efbd96362298eccf61a7b078153258527f40a8e367eda8c4",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "ea01b15f604b9c9154e3d382a375e714b5364f74974c30c8e9ec0975d3c7c5f3",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "c6c87d445e81c4de58bcfb780853699e0575a33b34e9f7ab69bfe0c1bde2dc11",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "a8e87bb0acf895ec058f43089504fbcdad0015c6cd558cadad5d08e228615fc3",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "478de9beed1de694caccd5bc0e598be85fef0a76d5303f640785a5b0c766efac",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "9762b0dff851196e744f741b388657814ab841fe6023974beb845f12df2a3ef6",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "a901337c901091a8a223a546fcd163f22723c087ea664f65c0fa50b1b67eaa2d",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 4
+        },
+        {
+          "group_id": "f7d208cc0a1d0a3daf9dbbbc6252510ec7c5e09aa5dc5b104afdb0172bea81a0",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "b8cfdc59d3e5d2eec1c794d5fa2cd1f0c2a4bdddc07c7922e21712555124a0f1",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "dcaa7ed062c1d233f8115060c8f78e2807f9079229610905affdbf57b9358e83",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "1322c09dd206eeb54e8febbc00df9722851a8200a5ba7da90f9f8b46497b2826",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "4f925e8efedf47d84275d071e7b8e67abe084faf50d493499882a680fd082d37",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "3aa9b224daecc82fdc4b68a91a5bae079b2574c30452516722f7e103c3c12f44",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "7c8c44a2cc848b9004509cee8b8d708498c4fee9735906a2bc3df228df32e89d",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "7fdcdf818006e57123915bcb1f9a6fc24e4cdcccbed686130f353e42a17e9102",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "5b265e504d1fb11eceaa28cdc6e7e5e4c4f61788a94937275e46d032b0bf6da2",
+          "base_count": 23,
+          "candidates": 23,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "e81b3f20d92bae9cc95762239c831e8b0f8b2842859ac6d2001a1fe2b0c2e3fd",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "67052147fc278534b89de25c8f7b62473a516a0293660476461b619b9162dd43",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "46caec10a2f027d4bd030fcb16326a48ab7e3fc39f879516736270c727199e25",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "e073ad779de96aee57e519fb2287c32c6cc9412845720c54407e7db41303db74",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "fb54f4b3889d94d19d819f17badb7e2415fb2c9a589023cc523798d150ae63fe",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "3237915070513c732d0e20c56ccf6cfe8503df27f74cad00a45fa77e6bb7ba0b",
+          "base_count": 23,
+          "candidates": 23,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "9fdba246a3fe6784ebea414189b7a352f35cfaf6ec123d08e2182a2146cdb8a3",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 2
+        },
+        {
+          "group_id": "7f8e1f6431deecba11b2a8be8611c748e9f57d461ea64d29acd0c193c120e947",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "e4a030c700809444bbfdc57c43d40a30e373a98f8f62ba394f7a8e7a9d3c96d9",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "028be0f2ca22466c92f1decdafdfaa9cc23577b336a9f3f4457098fa38b626b9",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "40d6387fa3b69e3fd42aa36529c0d5746f532efeb814dca6d7ecd8ca5ac09651",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "f7fa1202ff02b96ff26039b86906c77c0167baf603c20adf151ed1b057f9be80",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "813389df227bb915ca488bb898f65e10f9c3a16de971b2309c0799489b7937eb",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "98b6fc3a6f6d85991c9eab8037a558ae3ae51c4aac3323891992afdc7956bed5",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "fa50731e6da2f951bcadf44aab3735a4b3ec2156d5101ef647c641a5dc191921",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "92269b913738ac42007ebb2eea8840454f647a308d651706ddd4d0c52356854e",
+          "base_count": 23,
+          "candidates": 23,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "721f31e03a452279f60129f8f1ff25755f2c11fb0824bdb9c90587c23d09c168",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "6f9caf6644a075ead414e8ea66cbea603b1a7410dc22f7390de980c663b24b96",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "5b2542b45e0110860f37db4e6406decc04337c7334f9a2e10b28a4496a5d64a0",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "13ed8f18579e5813183e347ae1c2fa895cf2457f1e75834e20a6d495031781b8",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "28996db412877fb9cf0b08c9795f8fd467e7f630097edb886bdc00a895e24414",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "e94126747b7599f3215a7188616cfe07a0cdb1eb6134d75592ab0f9ec2e40035",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "dcf8328fc4ec3d6cbd2aaeb627aa751e7e215b50487caaaaa600f67e1fc9bbfc",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "a91d04e2bccad84965ff0d6e2c6cfcaec4af685b776db210a490e4e3645ab7f2",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "f159ccb71120145100829767a4a970806381b0c2d5a4a8e5e04e8b42fe2faa4b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "1a36f51d62c7cac3294eb007016c7e5e64495e4fe3af8007fbb1bb7d85b52e7c",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "264fe33a9f447e43910b0916df0754995cd18cbfefbab8453abba3ce8fbdea40",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "d92f382d1ff170cacafd760bf2a8212d5deed47e3a9d1c75303fafcd86d8c6f0",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "4c09f9c10780ceb48f63016f253d82b884eedfa28786ab61ac14e3fd294c9579",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "5e54204199a14c43b277c424c763b5b24e0fe676c1690d1e98bd346c0114bb2e",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "4e568ef4136ba1efd37dec7576b4a8302da45e90706a27e3acf279b2f57def9b",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "021daadc99f0321ecc78327dd66c6675f4a29d547e3b1a4d75350ea8093963ad",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "bdc152ecc0b565a242804618dbb3cb376d2303362a5d123aecfea009d440bc9d",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "28b8e93a9b8ac8d106b80e724fc2b0d4b67b47fa12a5a611a4b530e59afe1a5a",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "8d4e7f5d819408c05141338f8a902c033e48ff2a96f7637d7359df6fe933a8b0",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "3cdb74f05f2f08b5341933a0c71a87ce0a93e0fdf98b443329bbe1f768870afe",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "58c580aadd97b7326826e7fd90701a06bfd7d3538467cf7c7840c1bac7d62895",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "53485f68a5bacb8e82de9ecbae1d2c9ac80887ef686edd58a1d5623ad01fcef5",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "12d5f7ccf13c405d1dd8bdf459f9790de122b265fb6a3526c180845d035275c6",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "4841cc1875de68ec133dff17be42f144b83e769c92883348771c746fd79d1dd7",
+          "base_count": 23,
+          "candidates": 23,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "5bf38fe0489c536a14a51104b84e0f8e24952612d369ff02c27fd3f5a34ca1fc",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "03bedc6f786c5ca6339889aef66570a4e4a818f1746474b7df1edf56954d6d44",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "428bb31d9fd6d29fa42cf8a2b33da7b1d34110f5750253204f59577be7339906",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "05cb6358c93139e39b51cfedfa66cc126b62727b9b017b1c04a4646cf485f016",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "d609232733f3984b09a51a56a0df7d33069381f5a71bbbeee38843455284b333",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "5a7756769ba962914e0e421d0e9541ebe620e1ea5c2f9b78495d619737a52ea8",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "8bf665ccf7c2df04719749eb56dac785b0ab946da3cdaf6cc52cfa2e1f9e9c31",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "782f2da2aa4dc652f9516028bfde84baa4653e5c06b1abcc734a29103e2a9b53",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "95588e15730ce73eac09c986cec11e64bfef9c10706f179be038e063d988a3f5",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "580f3ffb4b078aff4dbdaca60389ed56a9186a9045849bba3d740ef64689ef26",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "f117a947d1a9d4a160576bf892397c161ae6bf271f6ad99d189a65cdb9332626",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "bc38b563e9dc1335879c082d2ad11be07b3904ea6057bcd9c5c3bf267967699e",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 23
+        },
+        {
+          "group_id": "49b4298693b3d85a0555c618755cc163016a958ce1cf0bd325bda5f9edd30784",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6848825157566aa7a76b3b7d5f5eb54aefe854f8160ec65888cb639ea66a64bc",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "f5cfc20c771aca33f603d588b03b8afd91812e92d744d3de1edcb062798b275a",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "408738e5abaee7bbf7093586154bc8032d41aa3a43b3fbefdf1a9fdf44bda953",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "7c99735143069a2842ae53fa406a6d5c45d956c795ef330e24797667e5745300",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "b70d1766dd5957bd4b7e7050751218b65d8c1a4344d5e3b0869dd52560fd19ad",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "3a161809b8c9612fae6c8c7495a1e2e165e01026567c27efddb49f23a4ea36d1",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "2f82fabadabfb0f74dd567739ee6bf9e5ceed4dcb05c5af00ce0d59d23f22cc4",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "e7b07787572218807b6e965855b0d6f6b36aa72789b18b9099db4410cb123581",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "1b7b404e8edc933ceb777ea43c3fd50aa7e7c3d5ab363acce8a4d0f5e87dc205",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "0ab4edabefd03394ba3a92cfc3de0d6d8096bc0f136d77f45c07815a9a87d47a",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "38c81cd0db2e25d1661c96561b59ec8b4b9f3e79156737a87036644452943205",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "e19fe78201424532877a801d18b46d7839ab33ca5137e47acc1b997e1fe86cf6",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "9f3fea36f96253b15677bbcc68a8033b192d0257edbb5ffcf776ef1c0e0dedf0",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "a7e35f35a2c518f9b389558001cc798e332cf076cb32c04b4c367298b1fc92b4",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "dc126318592c7af2ca094ff5bf6b37c282332339755fccee719ea0fc0d6c813f",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "b23102d6544123ebd9e7759eedf547be685f54e4bc5e1f558990d450ca1b7da5",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "90b5f2f4780738adefddc8ebcf9552a48abeb16dc5dbdba49efb795c27b46f4b",
+          "base_count": 24,
+          "candidates": 24,
+          "geometry_pass": 24
+        },
+        {
+          "group_id": "8e24a71b9d12c51b85ad383d1bc1616cd3a9a6db15d2b7b6c5acdfa1bf627d1e",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "2d1fd433dfd57c85f45a6efe33feac3872be764d30373cb1f1661fda277a821b",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "72d60a62fce90624dc1c2694eadf772fe30981a3b527bc4f0e36ab1ebc75e9a9",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 22
+        },
+        {
+          "group_id": "4f829306a9e800279dbee989969e0456b8d1da57181bc77dd01dcf20278b62ce",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "aa21b8ac0aaaf5f40fe9477f975aa9bf1fff1e16de7bbab434df3d94583baf53",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "8990e62b7720877170c7d4d88e6ef17286a2f217305306317381c31e3acdeeac",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "2abf6b9a8f9143275a263aaeea4f09ded25645cd35798733392af990393bc432",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "662580e5b6bf0ec7792e3a580eb9ab379b2de97b2dcdca1e97b8673a88430200",
+          "base_count": 20,
+          "candidates": 20,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "ed517cdc684d323a0d1e22ffa42bf2f6044eb5b71a15b9edc1771ea9bb8b8305",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "ab48413776d986965a750150aff0be95ae3693e4f9bb79a107c10fd76a303579",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "a04aa18704fa133965b8246bc99689a9b60cf91bdd88aa30633cf087ebfbf894",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 20
+        },
+        {
+          "group_id": "d45f0580cc7a38e568598d1d885f00071690b78c181786c9134cd9bb20c6ca7f",
+          "base_count": 22,
+          "candidates": 22,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "7d14d2bb61ab320bc534c44020f376390e0d1ec1686532d093d62b0af038a2c9",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "c02efc7f7e3786d3c24f171d7ccabafb97bdbe4adb50d26de2bb21f4982c5dde",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "f6054eab3bd56fa52643c8c089f4860ed76c8148f859fee1da0d3787fa594e2c",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "d2959628484b4c37c6cbd6919cb07e5fd345921882f3027b7afcf1c5e901dabe",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "16b7bfe1d975dc8c687d49cf1e37772ce7d34191b953cb4b4cef8a387eadf4a2",
+          "base_count": 29,
+          "candidates": 29,
+          "geometry_pass": 29
+        },
+        {
+          "group_id": "b081d6031e4a1df3f12d1d0b23f696ac77ce5c90f08e435d94f8e99ad8726261",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "0a0062727e2b7950b3ca5eaa4a43b816c3bf69f469af055e9e5e16c115aefdb7",
+          "base_count": 21,
+          "candidates": 21,
+          "geometry_pass": 21
+        },
+        {
+          "group_id": "0ca0520abe82d3e69779496778bdb1f15ce77b3a8d4e19a4f3a03fc1624a2875",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "c1041f9206a0bd846299f753ac4f89c7c4c71ea3070da5c88f2fdebd3442944d",
+          "base_count": 23,
+          "candidates": 23,
+          "geometry_pass": 22
+        }
+      ],
+      "B02": [
+        {
+          "group_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "2f99533270cc5a173ea6f62535d9b112115b7850b662088015a572d27be8c226",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "daafbca7e27409aef34f0a938c1ddb8f3d9dbf4ce7a243c943794bab6395c62e",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "aace67ebe7d6e566b225deb2b6b8b4a80dda6e5616205009a51d34eea3982542",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9e9d6b33076a53e1d27c3c905d17f7f6f62543819c5524c3cb7dce3a60c3195a",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "fac8e4e58a2b5e87f85a0885c06880504d9ca2c661c91f74e67cb529e4e453b9",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "c48995118b777be948786cf8acf6276f4c10832578ab324b34299efc8f7075ae",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "1d924fc766d9ecb6e41de89de8b132a75f993675784a9d7ac17254f15c760fe9",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "0e1137c974280b53d3f744ff7356e59c01a67296910012952bf89d2889cf981d",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2a18a09a1f9601494c944b1c162871b5fa7873e38044c6b3358465628b6b669f",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "e1835a2c16e2481caabd138bee96c812fe68352a918e00dce617bf884d140ada",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "fa80b2147086191e8f40bc4367d8851696fefcfbc4cdea54314c2f1e28c76c67",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "efea92606c66a28a6f9850ec41a0b0597619f79f7721d3dc27f46531a99abeff",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c437f777999c66003244ff34a4c83babec18a2c0c4b0df2654c436b4128523aa",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "e687b92d6a8bfe2c05c9c26dc628d254916211830ffba3f716d8eb7bd9d62bfb",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9447c8ba981c01969661417ade435352f6f07cec0524e077eb6370ecfc1d3b17",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9f75767ea4bddf6da41ae2105b475ca48444d8630ee1c7d9f5a8c4f3582c96d3",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "3b7ef12340e77f266aaa6ca2caf7001b6990c0f09ec66148c9609da3f0cd14a2",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "7d252acffe7e39ec3baa833acd87057a475b942b547be60952fe0aca3b8d1146",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "d0b06d11a0bc087160e33a1276ea885056b05f4db786eaa2d3cfad11bc1d9214",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "f7137aa90f264afe9114316dd3cf899f76c20c2dfb292a66aab732b4647489ab",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "022669ca0281cc35de5fcea2e86eb91f93ee69573263f9d9726c44ce1c579936",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "911b6ff4624ba5fbdcf5cf0d65d8c9272be7e1e7f58ec1cc911ed21eae5a969f",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "7487d4a34c18766e9bb1f7a0f31cd56bda28c253948b7efbad510021ceffd423",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "e73957692ef60a4d0f1a0554da4582e029efe14f91d71495692bddf7a4799cc1",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "4d8a1a206dcbdf8d22d0217b9ff830b3fa6722f84a66b070313a8400b7463777",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "8e337d1b638634d8c90e4fe59266ad2ce9776bae087fa313b51fe97f1cbd6b49",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "ff888faed1ff13aefb182c349a93b06c97a8c57a472f9750e78c743031b896b4",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "b34506dbfd5f3bd0ce48b3cd2f023e57923fc818eb435b654b2689ec4ae13673",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "9c1dfedf3a3d9f3db4d00b2666922d5ded0903e36452c102c78455e9dc42a456",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "e9d4848b4ac7ffdb48eb5b67a5eac9fa8c243d4a31f2ff86e94b66cc73740692",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "fae80775d60c7aaf09e5e51958c88cae3e6e9864ec28e393b7b48b488f660815",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "aa5089f80d5327930484aae98f3933c482bf3dc98fafc2f20f1eabfe2925f68d",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "f49b3504aab58c97fb75a07b119163cc6966242b16d2cb00be76d6be08c8390c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "7ec722c492ce7bcd0eaa51cc7c5d5cbe011b51f65472fa34449e3badc5d2fc39",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "f157377c1c6cbfe9b05c8aaefa4cc485358bfdad0c23a69fe16ff6faf66d9868",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "8a46f636a59d26a3fddc974c24135c059f971c49f9dc02343b79c6c3b0390cd0",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "4eeb0559ee3a13ff8a214bd0a0e8126d466c33170eb32277838d2b644e7d58ec",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "fd92b99988164d595a57c787dd28dcbbb5f177ba3b059653b2fb4766735d73c9",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "eb5aaaff00c79d96bcc04446d364ed96e9114e742f02a3e300e8e486494497bd",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "db4f0a6ca216412f097d43580976b2d96e361915367162930e71e69a79523310",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "142b691341f472e798d06db532ec8ffdc1cc8efab44d64aac6623e78aa5d12c3",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "090397ac5f44135c0d61fdec293f735bc11d28b032501f482faba0b865afeb64",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "2294b7b1207bbf223afafd7bf31f22f6f432a88c6a7dc216cf54d7e58838927b",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "62daea060f45579e617e7709c1b4be4912f37fc88e93db5120cf716eb7090c6a",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 2
+        },
+        {
+          "group_id": "833ceec24a75dcb11568cfcbb0d04068bfe6e2a43646c12883e82170e75868d0",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ba5ac2ad6aebfba8e1fe45d1483bd5c9862c6cf96e6452537dfdcb7c11efcd79",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "422dbafbe0d5c7f42ad1a0199a5ca6c8a252e4c413f5999f6dc1cdd51edcf04c",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ec7ea8b00862b9ba7275304fb31a670d0bc8771d7cb06cc5896df01397bbe673",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "ef6b95fb811675b5f98e2631959a3dfb24572c6e7f5f513224d4ef7b21e54d86",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9165fe1cae3d27cce7180193ea07b56099f0e8742d52fc9c44633335663c1071",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "189fb3841df5cd76dc90fc6e9ea38914cf2a616f048f8659d99f39f3ca57ff1e",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "5be2ef2e784fc4acbd16fd6ea4e5eaf5f58598a224dba8a34a338960f4d0f204",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "afa00eeace7b4437629367580b7730b1c7d88d2c2e239ffa6f85bda2ef4807b4",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "4ecc88adefd7b047fdc5c2836393bf29ac08397430fad3fbc0f1677d6d755ca0",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "182e93ee4accb6468f487705345aa237b487830d1bd269caa1674a9c0f2c5e0c",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "114ea8b16d4038e785c190bde896cd67ff147fdcb75542b952ece16d5b1830cf",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "897cb3429b1859c467866b320658d8e0c21b9377c35b8ae1efb6a6124bcea66d",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "d86cc5dd9da36148844426922365ad21294751b7b06f43added1c06ff87ca918",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "9999bc260c5bbd763fd7bfd8575679bbae17f419e47ed6edb575b08146591af3",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "34ed5352a672a99ebcddeb17902e15d1aed627eaa51d69aacfe57ea1809f12a2",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "827b6bd4b82c2f1c6c822a4d235f966151c2039b2c0b1f5f05866813e38db271",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "30d3cf33dba457dc4d2976e39a812358dfe5f0ee22a1ed0ddc0987a34ac82b8b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9073286599dfc272b389809b9d12e5beeb26904b4e5c01e711f34c36105dd329",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "212ed338810dcdcf7f9250476adb99d345d2eb7db69ab55d19c368dc68cd486c",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "c4a3084da9ecb9449c0dd1418c07fd09b0886b8782638a066ec663284805637f",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "829ff680831bed2b01efce78d98ad108a7a1efeb165ada7026ae563e61a0e761",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "01a6e44da98031213e342819f7e5c8f90c79ebb0c4147a61bf002503648384d7",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "8ae3a1110f3dddaf7f711c749221c985040ab0cb6093137c099d53bdc8d9187e",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "8ec78dade271c64c7598e521557e7d8d528fd8289f3a58f30595cc5b04371e6d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "21ef0a43c7b653a5dd01de514b7b26f9c90a55cb478380d7f5b6f62651153b7a",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "1bd8650a7687eec5fc53e20ba1ac9890976358e4870bc08c8c7f05258b534331",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "f0a434ee27db77af5a4e55cb7329a557f9baf12113fefaa4e36194c7a6bb20b9",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "0c0819f4f6a91efb9166581351ac5625c0c95418123759cc56611cbc35486761",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "ba8d94fe7d4626baae9de5ed44a0306d2025e10615fab82a8c29c2294b3f0468",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "bc595b5c739365bb033ebd4532013d07bb163560f8910664c15be2bb9731705f",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "3a782e8b0c877d0f3045f40c234114d6cfbd9aedccb2f020be4ddec9e80fcbab",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "b27e238cb0740be1375d24c101ad73d3e57eca9a0a17f8b761396b822577ef32",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "18bb4abfef544d8745a879f163dc47b6a52c33cf1d26417ed74757fcef431e73",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "d56cf8b283d279810107d99aa10ae83edfcb4adfe7547213a4b417787b749c57",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "491270505f26e1d648d71340fe19bdab7aff155536dfcef6d4b46655edda8d37",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a86a92372333856c6cd6c4ab1cd6cbab37926cc6a294129c45afbde64b9ec14a",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "debcfcb7f139b85f4b38f3170da1188e1690321092954b0f1550e42dae97a7e8",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "8c6fbf8c908726c8f9ddb748c972bd8fca81cd8fcac843a75680cbcc3e11eec1",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "7468f37a17088a0c6d5cd6860b2ac78931010f881fea59c4b13cd8637ae49a7e",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f8d77bd70f50e91b1bcbea580218281c3a2779252d4ebe4953d62cfafd166446",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "e79c7b445a678c11335f6c8a1556f8fe5d428a06003d1266f1192056d67da401",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "119358f2775be41369e30f0e86853b40662e107ef7902550d6520d84055aefde",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "caabdf679d294139bad52b7d5f39685cd8461f6f9d7e3bd8a6126aafc1e05752",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "4703557f3c98021043a6bbb0f31ffd6e86c47a87f68f044a19830a41e75db581",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "d5d432c0f3adc8359062562c0741d494cc08efae04cc70610429df1d94c4ca70",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "c637c316b7681d4ff1a90c5a68279865446c1066d9cb5ccd3ba3840a9ab23173",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d6f5ff16ec3ca1a1a6b5ae12c91a4415dcbf4d3a63578beacfa362cbff470116",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "ee429c799d667a47b08af308c168782ee02498299e7f3ddb5f077fb32a7934e1",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "5ea9d00e4cef6e951046a7430c187af2aad8c10bf05b8d84aa02115437adac3a",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "5b520332cbc7ec953679369d8fd6279039298520ddd455fefe933918c8f4823a",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 3
+        },
+        {
+          "group_id": "90556487416a74ed8e835963df140fa43a7f3ee346e12c3e22c9677a50091d2c",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "b405bdec2a8faa13dbef62434b7de4314b0903bc73701f9ae5e8a4be6bc7f80f",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "1aae40912863c5fdcafaaf65977b19c78d928297cf308d23c142f118729bcdbf",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "5739afe30eba07446707bf172a10900ba026ea03fe9631538a4ddc12713d345a",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "a9b08b9022c78ae237d848cd8fadaa2f2d8b5083ed75eb537291fb9ed5e4c14b",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "ff7db27ec66c634f77ec3d72b990001d08a438d707403db6a585ac05ea4ab2bf",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "c01d4e51d8709d33ab871240725448a741bbdcfe3f9f6682a7989ac6e99d186d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "9baa41587c6ebeb814c45d7fd25e878dd8296c46ffea2db8edfd80a5044de73b",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "752b91174c759a6343855ca17acd4c8d009c90906b8bb0b8034d1dd722a0d691",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "79d91f01b104c64e631bcfa2da67b5dbdf6fa2aac49488a19fe71f4fc8f38c41",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "f0e2e9fc338a0663c5838f889c400c472cee514f8b8fdb644ee51c665278e927",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "88746b9f2bb23bba31652f7f8922bb57d8d90132956f4c142d57ab53dfd76425",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "d03f383137d65f689b030f2fd53cea690b859618a5a50882008ee6419b84daac",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 15
+        },
+        {
+          "group_id": "fc95616dd92434a7f03816e8c846457b251178c869700692c17c42b8d8e18c58",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "38ced0cf6de5b156556d4478d6a3a291faba58dbe6a2ec446841a13d9f726658",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "695ef5ad29f2aa68d172c8e384655777cfd21f07572435519a203aae32924f76",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "3e045ba04ffe9874ba2eaae27731a95a9f8ebadcd27f4a756298941b1fbd3188",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "8fa1ccc5140a4f20a392018cc8ec5ff6748bdad86d548fa2826f2c1c7c5ca7ca",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "5be0d2e7e354bda3d194a40f14e4f77e9600a149d52cf3578a20dc86f750e22a",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "910efa1b41264ea743f50d45a51dfd39f4fd345ed40c114d5ee0e7d8f652a4fe",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "5ac5692399d5bf64c4caaf567a76ddbcf8e0faa45bef0ae86fbc5c0e4253fb9d",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 17
+        },
+        {
+          "group_id": "cd0d04854ab8e6667639c24ecdabca352dfe91509861a03d133843a8117579d3",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "b69d4a184269aee565934ad1f1492b1a4ca6cfe759333e200d64f395c441bbd6",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "7c92d6f0991112165e4d57e3b4cfbb91ab4c93a4c49289eb6564a793716e6b41",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "314faafb3c7c6e23dd165da895fbdd2f99056281fa1d3f1d334ec44069c0f3f4",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "60cb56ba0dc3a2c143db7573cfb5ae69d9f0e03fecfa726e242a6693c4bd462b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "c0dead63377f4c89d3d15026299c996104ee514ad378e95ac57d56a0fd740cf3",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "4ada9a879858de5d285032f5c9b9d5e781235555843464bce76ab22b2130e5ef",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "7dfba619c4082fca3505840b48bf2a85de5732a702330ef053ad5f1cd2506596",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "c18e4fa229975330b77aec77f61e0b2d90dc98384dc87389653e8ae3fb359c69",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 3
+        },
+        {
+          "group_id": "40ab854633911a4f689a3c2305da24e1c03c9868674c3f6abe429bc4db22bd4b",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "7497e0552d4db109bd281174e7baff68abf1d4db80567d844ef044d32f355400",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        }
+      ],
+      "B03": [
+        {
+          "group_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "cdd3bfe58d16c6de3788e8b6e4f71b6b715cfd8312888bd0221eb21d4e4dd83f",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "0db5f5541dad65e41241fe03feff0a9d4139b7b61466704c810669887708728c",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "bc539a05e3991e028423d198b1a8c5f663f932b45e2074fc1d0a758c7410c638",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "4c9df20db8cbe09d6cd04c0290adbc3ae2e05723957a369bf6c10edbb386885e",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "045157ac7e5fa95ca96e40907f15d9b05d467fa981e54fb4b3a65b30782f35ec",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "9f37fbe4ff46a9dc06072a668c427d50892d1dd8a10be29fcbdc96bfe21d61c1",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "4cd9220810f0a6cc88ac2ce417bc2e75da5e7ed08ee93736a1e1db20b23a88ce",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "dbc0b8f330bfad5862ef669df508f68023d0c0ccb8fbc21fccb7aafc9208aa4b",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2d6aa7b95ab974e16dbbdf179aabd40478041f99f095d6f945a9fe8e66e8614d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "4c29a3b7cdbb0907ffc7d8ef2cf56786f98ce84a0c327ec8a8f6c8865bfb8486",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "8ba8bc0f9274e0daac3d9d2a730900ce631f8362696c3d14a35fc3b956ca0c14",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 4
+        },
+        {
+          "group_id": "8910dba6ce43c040aed142e9d660f275542f2fce4f9624a9ecbe83d001f895a1",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "d5185078a2fee6c2a76dfdcf4d989a702e84a7bdbf1a29bb1b60dd1b749549f4",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "d383d98b276328cfdf9b315cfed3ee12fef7cc62a8833804615e197b017197b6",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f21055acf5180b16ee11479eccc3e29df568968ff4339340966188ac8e3a02b7",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "a01a6afda03fe13b8ccfbf9dd2753627c504ddbb5322db1ee5c41632e2efc643",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "6a4f556c546bfcb671e88d0447366d296856c01b6c01d696cafcb24989912037",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "633a23e9072f35a48d719809ec2f0f7a377071ff40572d4f8a0320c4315fd165",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "157e510089a9c8e5c1c6a9f3ca4b6edcdbe619bb4e48dfe9d0cfbb9fba34c74f",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ef37fe8f156fc389ad2bdd9e204f466e961b348c09a75f929b1d98ac670473bf",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "c498d8149018ca76b12d3b6e538ac14d4c81bba25deffad789e28b41b004053e",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "b3ccf7787170a41238d5845bab222c8b97afc245fd92de530c1837cb34290b8a",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "bb45de8d562c2b102680430084e7450b23022e979f5a86c82337b9649f337c32",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "3031bb487f4d68f07218e015310b7f5345f7e3133f7198a335fc29195fa71325",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "7405a5fcc6ac44ec9eda18689061f18d6d8a673d03fa33654d3389224cf662af",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "31b31cee3db1fa3ffe76faeddcd4431a08ecbd2295d99eecc799a222837f8ac3",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "fdc2a64a708fc59f4347f43ff5e61d39fd3b611e7b22042d67b2c089f7cc1fc7",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "769c9e6cad7a1e0fd62930aeb0f134852532c3e634494dd230d09ae209b9ee21",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "20380bc90395df595fdb2fc04a0c4a3b8f23e174bb0fca07af45a49588bb9ffb",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "555df2456ab6e4898d5aa705109dd41e8b9cbc793b61c747a112c437acc94fb9",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "5397bb0a46280ecbd34607f783754e5630100dec5482924e0e84c5e505e6bac9",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "6f322150163ad2a81316798125a297bc91a05d10f6bd9ec39f3a7b238be9347b",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f73c149f626bf283265e5ee3fc3cc0b10576c6a6baa3d4627b21ff90be45b06f",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ea63d1d76c482bd3e67d18cdd498b8a90af9369517b557fdccef56658b462756",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "ce0432f7e583e797de50cb4b59003691f656a5a47c838266e47fa1d7daa4432a",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "da9beba09764a8284b39a4121ac4fc7ecd2a5a4579b71c4ab5a2d3019e822d43",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "0cc74eebf70d20b2a909f3b13d613fd85e9683f648d691b25838425bac6fe9cc",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "a958f56a13b1b9635fd01d80278d9206d54a76b6abb3b1b0510e247868d5bd93",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "438520ebbe50c9772db1c3e569e269a712581ae170c06b66340a3aab04f786ec",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "60bcf942a3fcb1ec941d0629924e5e78a735b578e110db1fc3a1bd944269b12b",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "133d7e69e70cb5727c449cc983bbbbff8f2a92d8ec24f066cf18686209e13816",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "f166b22ca57c22233a3d941aba761cf8639b866b3800703ff9b6376c51a83f06",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "a7f7278650cd875224b63e8720313e70ab30500c9c1ca9fd6111fcbb04909dc3",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "edf20df91fee8b8123a83d4c3f447db792f71c11652bb501afb291b7eeb8ddf1",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "1ba6fec87825a495a7b4ed89bfed594e028b25014dd91cd01f9c628595c5fb41",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "19b5972578d6ff2faa2ef4f59e6b0e70caa5933c228a19ca0662242f64f540ae",
+          "base_count": 15,
+          "candidates": 15,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "61ca01e6b42b0c9f51d7fa8ab99adf4dd36803b4022717c62d0502a827d5cefe",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "60480a5ad65469a15f518af14c9303a8f77ccaecd86b6f9e907959bd2ec3e7aa",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "befd8a3705bd35af4866e147803285a3b2faf6f697a826116afe7dfaf36895c3",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "372a11d2c0589ccb2f7483f8622b27e749b3e7811675d568a54232da02738d16",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "0282fbd37d6ef45a7e118f440c3236aff7e880f67d9f9f92232d356421200e06",
+          "base_count": 18,
+          "candidates": 18,
+          "geometry_pass": 18
+        },
+        {
+          "group_id": "c4d822050873d91d6053dfccdbd3dd6c00219ae9a6bf4944fc3ca0b180402361",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "ec97338fe0389f7389cbc17d775b2c4b279cf604c6909e9f5849e93a782ee2b6",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "f6fbe49847b45b48ce0639469c22d6da37f4ac97a51e6b1de54f06188880a380",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "ef04cfeb86da576b77b382e72991da88fac9bf58daad2f351500df21f23c285a",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "f78c74bf962c78b88c65bd103621c6e7175d69361254caa9fe87b386d200762a",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "4a772de61ff6c170c25f500ac56d626093dd5729b5d3e4333501ffe3f81f9f3c",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "1a0da520f1d263a5d831910dcf4bc24cd38e413fe29451b0d20292cf3552a406",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "49364c213c56eff153f5e3cb76811bafb8560f24130f260665270c89c0d77ee3",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "4381909324a2ab27bf95d3c865ff3c0da8b871b96a0103460899b7513da31b19",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "184acfb251c16ab04df20f562eaf1d98ba1f2e820a770d918518c109361a6684",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "e8b8e64d4b2dabe87220ad393878d9af3a83eb749e32b731c64a097255e8a83c",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "8b0023420f148c3cbc00fc8ef5aa6ff629f49bd8f8ee3b57d026ebe4a273c838",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "3be8c69ac8485113691ceb3ed4ca4e5ec76fd2f2a35bdd14fc38d48c4fba29e2",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "be555b0f7c9d35eeb470a07317f465a5bc727734c9f85dd40829c0bd7f48f89a",
+          "base_count": 17,
+          "candidates": 17,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "3819c7cac8f82aa8ab00037e152f7ceb77fd1c6e2fdfc4230b96a1e735eadb90",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "52216cf78765f1b24c12b813800621d5e19407fa69bfadbfd8abe81529bdbacd",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "106b21d80afd3a5e486b9a81ef8974d49b3a0faa2fbca9aa4181885dbcac91e3",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "cef32a7233d1a20046a754c68901ae7d5797824fdfb160b6cef3b5653e973277",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "26edcfe8bf83e0463499ca9d5bb213a956fc62d9eff8dd063e062c76279f299b",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "21793b67a3738fa8bef77adebf9968c30c3595fecb44caddc153967406eb0c06",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "6001ba819bba926d67999d8b522e363bc130704c89b25caa94df0f4f3bcd0e34",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "9d06e0f19652d89e6daff11dccbdd72aff07ac8d595f9e44756a6842b1ab29dc",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "48da640aa30cc684e3cc22899acef2733d518345fb099febcf271fb2dc16d10d",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 3
+        },
+        {
+          "group_id": "15097ad4282306e71d14ec39bfca0bc8c47635d69db03f30404b9308d1067a97",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "adffb16da052350506bf23eee72ddff87fca3b28d26c5e31b1b4f642ecad1962",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "a36e0f1ebbddca9783e8ad7e1f783adb2a46080e986be19a0ccef832c1248662",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "1401779201aa2280454ad6bc5aaf60fa450c5f149c866d05a14e3ea8611c0cc5",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2b0e0527015c215897bdabb47bd1b15f6ddc7587fc57d498d1d72b39ecdc6c99",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "b3b5d79bb5d2a065492182663b1a43efad943cb9c6f6e167d7b771e96904dcee",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "5e741ff52f082c58e59c635fe02816968b39e74e274fb4c42dfaf49029d05b53",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "93dbb927b862ecdcb44209d2e93f43c9d93ed527f217d1cd5e3930194e5e8b95",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "a23561f4c63ffdb07e0b0d23e90c94346b43f4adaea5baa766191756436b85c8",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "572571c7c66910103a299117af68ac759f3ca1d5262391d68f472a7dc640313d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "6d64edd400bf1d93057c9ddc712538128829baf14e5c6d6045191fb8c70769cd",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "85a509540f1dd4200a4d865448f9f6ba6e4feebd77b87016309bb54d09a8ee60",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "66e8f136b8b1c13841a35278112f6da896b5f0bb514adac3d2380a64cc713b1d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "9f037fa925abd88a4c01fa58c5cf4815feb74e59d50fab13f1dfb1bd36c6b2b0",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "d9b9ac168c9a34fc250d30cbae08c40ce45dd1430d65ea4e2fd51054c9af496f",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "76be171f3d56cec662e5b4eeeb5b02bce80ac3115672960f1f7b209014dce988",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "d9c30389bdf733dc8fc467e5ac91f36ccb713471d92ead30e4d632f4e22d4d3a",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "2359fba8dfe3f0679c4903856542f96b084f229e3369049584d1284cfa8d68c1",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 3
+        },
+        {
+          "group_id": "ae110b01c1ea3e89750fb7f93597c41fe6bf491529e80f28bb44ac8dad2e711d",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "0c24968ec188c7f3fdc784215022a13e9c069f9f093b2b1544322ba115bcd0db",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "7a43263d7050673519ea1b91363fc65a153c25ab3714689d1ed0107907f8676a",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "28378f9bb3fc64e0e98118e22188d15fcbf446b2f977bdc90990f0e2c83a1296",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "c55dc27cab8a5e5a5973ff78f0a2134551a10b1081ec651edd944afcb083899f",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "19d180d0c10be3c8abd70362a8f29d1674cb5affb8e8c1f1f0b93d8dd4d897c8",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "5014e677652d6820f6574532e4a60b181ff37a34eb83a6a28ecd042b4c1a8196",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "279f65cf3b794f8c9a16a04cfe0482c0ddac261d6927aaaa75ace8cde670fef3",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "bf0805091d202dae4bc7f9405a4e3dc655e1281042149d361b379fdd9a95e8c5",
+          "base_count": 19,
+          "candidates": 19,
+          "geometry_pass": 19
+        },
+        {
+          "group_id": "7e10d893aa2f46a173c1eb64cf30910c7b9aef4e32b6a9d84560ad1098abd6b8",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "a197bda2e8382709081b18d1d96d895bc6921a931ca1a9cb35689ca70d4ddd12",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "da6dcae0c64e9b5051f57bf5d8431933ba1325e711ae9b3042ec297e88f51993",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 6
+        },
+        {
+          "group_id": "d2d706cd785ce1d7de7e6713e4a57a94aeb8b8c9e632d1d076f8e5ec7b424044",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "83ee90ae7f5052acc166d477b004a8fdebf66b0202bf7280b4ae09191e306712",
+          "base_count": 9,
+          "candidates": 9,
+          "geometry_pass": 9
+        },
+        {
+          "group_id": "58abe3a485e7571d731b5e7543664b34691f72b76f96d6701e23accba769983b",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 3
+        },
+        {
+          "group_id": "ffebd6efa139946ec73f64d66bc2146ca9ac502de7bfbca6643ac7115923bd50",
+          "base_count": 13,
+          "candidates": 13,
+          "geometry_pass": 13
+        },
+        {
+          "group_id": "aa26d4b8030c09796350d5cc4b35d53b687b79274ab68f766528e4f0cdfd7c3b",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "2790f10cc2cd049ea7ac0d7112da24884002855d2147b3cb14e375b4e79e23cc",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "3ca7182b123cebc1b149b06a58fb51bac12b83b35002adc8ea41285545dc9a22",
+          "base_count": 16,
+          "candidates": 16,
+          "geometry_pass": 16
+        },
+        {
+          "group_id": "e8a7bf757fe9b508b1f59afa7690a54cbe24d5321b3ad4575cebe4386d9e4ea4",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        },
+        {
+          "group_id": "43709b47030050246f72d357c9a59dcb6be242b5330300433cd70cc6025c74ed",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "7b15d3ae83aa91c87e151c4c8328939eca948317c38f7939b7e401f0c4ca265a",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "5c6f60acccf6ca5f873fd9490cbc843c5b54628e6b335c7587cab510dd8f2d80",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "0df96c63266603041104985b1d49a080d5988242c67d89393879207bdea76200",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 5
+        },
+        {
+          "group_id": "7ad94067b15eece80702972164550e6ebfd544d71d50c44620e2ac00d22f6c01",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "44da71f19039a2c3ef448b3913ee7fc1cf4f65ca8db80cdc356bce0101d4d14d",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 10
+        },
+        {
+          "group_id": "764cea0b990dd4db52068df2a6e2cd44708845a8726ae33e71b13ca0ddeacdd0",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "ad5615aadef513d549b15d65afb526cefac2ec3a59349eb04aa58ea03a756839",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 7
+        },
+        {
+          "group_id": "823b31e897c2320f62acc53ebb068d9e89cf97faa2880380d0ca39438693ec33",
+          "base_count": 12,
+          "candidates": 12,
+          "geometry_pass": 12
+        },
+        {
+          "group_id": "ab7feb8721be42c0584c75a9d6522f01d9da10a9650c41750d9bbe9e32f43f1f",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 4
+        },
+        {
+          "group_id": "044cef33727984fac56689d5c4d4ccbd35c92ef58605182145fb1b7364afabcd",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "9dae39edcd2c5a54b57863986d6ee2143b88a66dcc3ca34a7b5873889f4f6611",
+          "base_count": 8,
+          "candidates": 8,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "afd76a98c227b2060439a4caaf7baa4b33da0326dd0dfd355263a55343ccc3bc",
+          "base_count": 11,
+          "candidates": 11,
+          "geometry_pass": 11
+        },
+        {
+          "group_id": "ca45d47988fe48b978625f54d8794f4da5d6e686ac7136d1f5c0463d24660036",
+          "base_count": 10,
+          "candidates": 10,
+          "geometry_pass": 8
+        },
+        {
+          "group_id": "c6bdaf0aa0fdf910ebe6842ac8161d1a699fbf083bd2b5c050934ea6748fd098",
+          "base_count": 14,
+          "candidates": 14,
+          "geometry_pass": 14
+        }
+      ]
+    },
+    "rendered": false
+  }
+}

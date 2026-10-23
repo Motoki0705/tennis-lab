@@ -1,0 +1,60 @@
+{
+  "schema": "court_pilot_validation_v1",
+  "application_source_changed_in_this_stage": false,
+  "checks": [
+    {
+      "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/synthetic_data_generation/dataset/court/test_scale_durability.py tests/unit/synthetic_data_generation/dataset/court/test_scale_durable_storage.py tests/unit/tasks/court_detection/scaling/test_real_split.py -n 4 -q",
+      "returncode": 0,
+      "result": "47 passed in 25.49s; CPU tests only",
+      "log": "pytest.log"
+    },
+    {
+      "command": "bash knowledge/runs/run-court-scale-pilot-l4-20261023/repro.sh",
+      "returncode": 0,
+      "result": "Framing bounds, same-batch metric aggregation, unchanged I/O/datamodule argument forwarding, failed/successful command receipts, deterministic cost recomputation and evidence agreement passed."
+    },
+    {
+      "command": ".venv/bin/ruff check knowledge/runs/run-court-scale-pilot-l4-20261023/*.py",
+      "returncode": 0,
+      "result": "All checks passed; 11 reporting/reproduction scripts."
+    },
+    {
+      "command": ".venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-scale-pilot-l4-20261023/*.py",
+      "returncode": 0,
+      "result": "Success: no issues found in 11 source files."
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py --json",
+      "returncode": 0,
+      "result": "407 repro.sh, 513 script references; 0 missing, 0 unverifiable. This run has 3 valid bundle-file references."
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed",
+      "returncode": 0,
+      "result": "Court synthetic generation and Court Detection conclusions reviewed; production/model decisions remain pending or unchanged."
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main",
+      "returncode": 0,
+      "result": "No ERRORs or WARNs emitted."
+    },
+    {
+      "command": "colab.py status --session court-scale-pilot-l4-20261023-dc5c253",
+      "returncode": 0,
+      "result": "All eight jobs terminal and Drive-saved; successful generation, resumed training/evaluation and final-evidence have returncode 0. Failed/cancelled jobs are retained.",
+      "evidence": "evidence/all-jobs-terminal.json"
+    },
+    {
+      "command": "colab.py stop --session court-scale-pilot-l4-20261023-dc5c253",
+      "returncode": 0,
+      "result": "Own session stopped; recovered tracked patch 0 bytes. Other assignment left running.",
+      "evidence": "evidence/stop-summary.json"
+    }
+  ],
+  "validator_agents": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  },
+  "pre_commit_note": "Repository hooks match src/tests/.spin Python files. This stage changes knowledge only, so manual ruff/mypy above cover all new reporting scripts; normal git commit still runs its hooks without --no-verify."
+}

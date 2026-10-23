@@ -1,0 +1,26 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    "outputs/synthetic_data_generation/profile/court-scale-pilot/scripts/evaluate_framing.py",
+    "--checkpoint",
+    "outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+    "--expected-step",
+    "32",
+    "--split",
+    "val",
+    "--assignments",
+    "outputs/synthetic_data_generation/profile/court-scale-pilot/framing/assignments.jsonl",
+    "--output",
+    "/content/court-pilot-evaluation-val-completed"
+  ],
+  "started_at": "2026-10-23T15:56:05.734224+00:00",
+  "wall_seconds": 370.92804085700027,
+  "returncode": 0,
+  "sampled_gpu": true,
+  "gpu_samples": 701,
+  "gpu_peak_used_mib": 2890,
+  "gpu_utilization_mean_percent": 46.796005706134096,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

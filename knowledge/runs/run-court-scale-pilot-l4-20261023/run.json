@@ -1,0 +1,69 @@
+{
+  "schema": "court_scale_l4_pilot_run_v1",
+  "outcome": "pilot_complete_production_decisions_pending_session_stopped",
+  "issue": 1356,
+  "parent_issue": 1343,
+  "application_commit": "dc5c253ee4d502e7d78e904c49dbd3f2dd9e7833",
+  "application_tracked_diff": "",
+  "session": "court-scale-pilot-l4-20261023-dc5c253",
+  "adopted_asset_bundle": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+  "asset_manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b",
+  "production_recipe": "stratified_counter_production_v1",
+  "generation_seed": 42,
+  "training_seed": 42,
+  "drive_dataset_path": "data/synthetic_data_generation/court-scale/pilot-l4-20261023-dc5c253",
+  "drive_dataset_id": "1SrkIQ8NSbfQnj1qv2ipP6Do2cxzJrBzl",
+  "request_sha256": "0e4a507a63382d2df1ab40e1294d943317665f219d2e631b32a8888ab2ea0350",
+  "dataset_version_path": "81a43b5070bf293b2d196677bf17555ec4d61ec2e9f7de6cd4be22b5b27c6671.dataset.json",
+  "dataset_version_file_sha256": "5a879b3f371d10792613d9f19beb5b2bba96c4154f609bbc4c10a07995ff452e",
+  "checkpoint_path": "outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+  "checkpoint_sha256": "d0081fca5023858aad70de5a87362cb1f4d89ce101899dc646e2dca8a82643a7",
+  "real_evaluation_registry_canonical_sha256": "d943d569c87e0974590eeaf01cdc1b526da4f6eeb0ca65bbd54c05a12c32d60a",
+  "real_evaluation_registry_file_sha256": "64f57b15e7277860ef04ec589f2347b661e6e4b70724a5dac600de8c95bdfe23",
+  "drive_report_root": "outputs/synthetic_data_generation/profile/court-scale-pilot",
+  "drive_training_root": "outputs/court_detection/train/court-scale-pilot-l4/s42",
+  "drive_evaluation_roots": [
+    "outputs/court_detection/evaluate/court-scale-pilot-val/s42",
+    "outputs/court_detection/evaluate/court-scale-pilot-test/s42"
+  ],
+  "drive_job_operations_root": "operations/colab/court-scale-pilot-l4-20261023-dc5c253",
+  "source_environment": "evidence/final/environment.json",
+  "renderer_environment": {
+    "python": "3.11",
+    "torch": "2.9.1+cu130",
+    "nht": "0.0.0",
+    "nht_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+    "gsplat": "1.5.3",
+    "gsplat_commit": "c8d5acd22314c1c1144a30e635e08d9c738a8b39",
+    "evidence": "evidence/setup-observations.json"
+  },
+  "exact_job_requests": "job-requests.json",
+  "runtime_script_hashes": "runtime-script-hashes.json",
+  "generation_recovery_verification": "evidence/verification.json",
+  "all_accepted_teacher_roundtrip": "review/review.json",
+  "checkpoint_drive_verification": "evidence/final/checkpoint-drive-verify.json",
+  "evaluation_summary": "evidence/evaluation-summary.json",
+  "cost_scenarios": "cost-scenarios.json",
+  "human_decision_request": "decision-request.md",
+  "all_jobs_terminal": "evidence/all-jobs-terminal.json",
+  "stop": "evidence/stop-summary.json",
+  "known_source_issue": "best-val callback hardcodes save_top_k=1; pilot single validation has no deletes, fix before multi-validation main runs.",
+  "failure_record": {
+    "unexecuted_transport_jobs": [
+      "setup",
+      "setup-reconnected",
+      "inputs"
+    ],
+    "failed_command": "training-evaluation: nht-render PATH missing during a CPU-only plan probe, before learning",
+    "successful_replacement": "training-evaluation-resumed"
+  },
+  "excluded_from_git": [
+    "RGB and sample stores",
+    "weights and checkpoints",
+    "raw TensorBoard event",
+    "MP4 trajectories",
+    "complete evaluator qualitative PNG trees",
+    "full operation logs"
+  ],
+  "production_choices_approved": false
+}

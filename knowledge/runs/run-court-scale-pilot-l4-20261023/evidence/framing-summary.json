@@ -1,0 +1,140 @@
+{
+  "schema": "court_pilot_framing_v1",
+  "rule": {
+    "version": "in_frame_kp14_v1",
+    "full": "14 KP in frame",
+    "near_full": "12 or 13 KP in frame",
+    "partial": "0 through 11 KP in frame",
+    "in_frame": "0 <= u < width and 0 <= v < height; positive camera depth for synthetic",
+    "scope": "original-image target-court geometry; renderer occlusion is not framing"
+  },
+  "real": {
+    "test": {
+      "images": 4372,
+      "groups": {
+        "full": 4210,
+        "near_full": 142,
+        "partial": 20
+      },
+      "in_frame_kp_histogram": {
+        "8": 2,
+        "9": 2,
+        "10": 11,
+        "11": 5,
+        "12": 55,
+        "13": 87,
+        "14": 4210
+      },
+      "videos_per_group": {
+        "full": 247,
+        "near_full": 35,
+        "partial": 14
+      }
+    },
+    "val": {
+      "images": 4468,
+      "groups": {
+        "full": 4400,
+        "near_full": 55,
+        "partial": 13
+      },
+      "in_frame_kp_histogram": {
+        "8": 1,
+        "9": 1,
+        "10": 7,
+        "11": 4,
+        "12": 17,
+        "13": 38,
+        "14": 4400
+      },
+      "videos_per_group": {
+        "full": 248,
+        "near_full": 27,
+        "partial": 11
+      }
+    }
+  },
+  "synthetic": {
+    "B00": {
+      "images": 276,
+      "groups": {
+        "full": 0,
+        "near_full": 1,
+        "partial": 275
+      },
+      "in_frame_kp_histogram": {
+        "4": 46,
+        "5": 20,
+        "6": 13,
+        "7": 119,
+        "8": 12,
+        "9": 18,
+        "10": 47,
+        "12": 1
+      }
+    },
+    "B01": {
+      "images": 345,
+      "groups": {
+        "full": 6,
+        "near_full": 8,
+        "partial": 331
+      },
+      "in_frame_kp_histogram": {
+        "4": 48,
+        "5": 25,
+        "6": 19,
+        "7": 104,
+        "8": 24,
+        "9": 29,
+        "10": 80,
+        "11": 2,
+        "12": 3,
+        "13": 5,
+        "14": 6
+      }
+    },
+    "B02": {
+      "images": 243,
+      "groups": {
+        "full": 0,
+        "near_full": 0,
+        "partial": 243
+      },
+      "in_frame_kp_histogram": {
+        "4": 48,
+        "5": 27,
+        "6": 19,
+        "7": 99,
+        "8": 20,
+        "9": 24,
+        "10": 6
+      }
+    },
+    "B03": {
+      "images": 238,
+      "groups": {
+        "full": 2,
+        "near_full": 1,
+        "partial": 235
+      },
+      "in_frame_kp_histogram": {
+        "4": 43,
+        "5": 27,
+        "6": 25,
+        "7": 90,
+        "8": 23,
+        "9": 12,
+        "10": 15,
+        "13": 1,
+        "14": 2
+      }
+    }
+  },
+  "assignments": {
+    "path": "assignments.jsonl",
+    "count": 9942,
+    "bytes": 1410991,
+    "sha256": "6c8ad58c559a7e1ca2273b7e344363ef8bf74ad85dc2c9835a1c44323cf4c118"
+  }
+}

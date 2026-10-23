@@ -1,0 +1,475 @@
+{
+  "schema": "court_pilot_generation_review_v1",
+  "pose_kp_roundtrip_verified_images": 1102,
+  "selection_rule": "max target geometry KP; min target renderer-visible KP; max ROI alpha-below-0.9 (diagnostic only). Stable sample ID breaks ties.",
+  "scenes": [
+    {
+      "scene_id": "B00",
+      "counts": {
+        "candidate_unique": 311,
+        "failed": 0,
+        "geometry_pass": 289,
+        "geometry_rejected": 22,
+        "logical_records": 311,
+        "pending": 0,
+        "qa_accepted": 276,
+        "qa_rejected": 13,
+        "render_cache_reused": 10,
+        "rendered_unique": 279
+      },
+      "rejection_reasons": {
+        "ambiguous_camera_relative_near_far:court-000": 5,
+        "insufficient_in_frame_semantic_points": 17,
+        "target_visible_kp_below_explicit_threshold": 13
+      },
+      "empty_trajectory_count": 0,
+      "accepted_diagnostics": {
+        "target_geometry_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 12.0
+        },
+        "target_visible_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 12.0
+        },
+        "roi_hole_fraction": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.0
+        },
+        "roi_alpha_lt_0_9": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.020966620088102416
+        }
+      },
+      "cases": [
+        {
+          "criterion": "max geometry KP",
+          "sample_id": "4152caea30e74c6263f3901f0acae2693d7dbb4519a382976dda2d4af17f6c50",
+          "trajectory_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 12,
+            "target_visible_kp": 12,
+            "all_visible_kp": 16,
+            "target_coverage": "near_full",
+            "roi_pixels": 59247,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0,
+            "roi_alpha_p05": 0.9996018409729004,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "min visible KP",
+          "sample_id": "00aa3eac06c8efbcabf7e752da9f0a38dc182b321a3e4500f98103082243ccaf",
+          "trajectory_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 4,
+            "target_coverage": "partial",
+            "roi_pixels": 154643,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0,
+            "roi_alpha_p05": 0.9772316813468933,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "max low-alpha area",
+          "sample_id": "7c271b3d1cc9d48328a952289a2afe5b26d3a5fe6b0c04e6295f0dce72390aa0",
+          "trajectory_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 11,
+            "target_coverage": "partial",
+            "roi_pixels": 159587,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.020966620088102416,
+            "roi_alpha_p05": 0.9650224447250366,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        }
+      ],
+      "contact_sheet": "B00-cases.png",
+      "video": {
+        "path": "B00-trajectory.mp4",
+        "trajectory_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de",
+        "accepted_frames": 10,
+        "order": "increasing exact arc fraction; rejected frames remain gaps"
+      }
+    },
+    {
+      "scene_id": "B01",
+      "counts": {
+        "candidate_unique": 376,
+        "failed": 0,
+        "geometry_pass": 353,
+        "geometry_rejected": 23,
+        "logical_records": 376,
+        "pending": 0,
+        "qa_accepted": 345,
+        "qa_rejected": 8,
+        "render_cache_reused": 0,
+        "rendered_unique": 353
+      },
+      "rejection_reasons": {
+        "ambiguous_camera_relative_near_far:court-000": 7,
+        "insufficient_in_frame_semantic_points": 16,
+        "target_visible_kp_below_explicit_threshold": 8
+      },
+      "empty_trajectory_count": 0,
+      "accepted_diagnostics": {
+        "target_geometry_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 14.0
+        },
+        "target_visible_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 14.0
+        },
+        "roi_hole_fraction": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.0
+        },
+        "roi_alpha_lt_0_9": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.38027298377850227
+        }
+      },
+      "cases": [
+        {
+          "criterion": "max geometry KP",
+          "sample_id": "2f5992dc307c1d5d166e1bcb1fc16a99b9681650a5519a6b60932b24bddabe6e",
+          "trajectory_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 14,
+            "target_visible_kp": 14,
+            "all_visible_kp": 30,
+            "target_coverage": "full",
+            "roi_pixels": 31962,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0,
+            "roi_alpha_p05": 0.9874609112739563,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "min visible KP",
+          "sample_id": "0734a4dacb73f50a31aea0c2a6bef2a6525a6854a7531e54298ef49a7aac1b22",
+          "trajectory_id": "33cd750e55b96dbf203a4ec515e40110ed7b86503398654915e788dfdaf5d8fa",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 12,
+            "target_coverage": "partial",
+            "roi_pixels": 143494,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.00034147769244707095,
+            "roi_alpha_p05": 0.9823315739631653,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "max low-alpha area",
+          "sample_id": "64ec33c8e5cff330cb6e56a16896b2dd11d1e8dbfc2a11f9d5893cc7e5c1d79d",
+          "trajectory_id": "83d851d8746f365ead2185eb11b1bac920eb0ada0bb4de8749cdd9756989fb72",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 4,
+            "target_coverage": "partial",
+            "roi_pixels": 100299,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.38027298377850227,
+            "roi_alpha_p05": 0.8069364428520203,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        }
+      ],
+      "contact_sheet": "B01-cases.png",
+      "video": {
+        "path": "B01-trajectory.mp4",
+        "trajectory_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657",
+        "accepted_frames": 8,
+        "order": "increasing exact arc fraction; rejected frames remain gaps"
+      }
+    },
+    {
+      "scene_id": "B02",
+      "counts": {
+        "candidate_unique": 263,
+        "failed": 0,
+        "geometry_pass": 243,
+        "geometry_rejected": 20,
+        "logical_records": 263,
+        "pending": 0,
+        "qa_accepted": 243,
+        "qa_rejected": 0,
+        "render_cache_reused": 0,
+        "rendered_unique": 243
+      },
+      "rejection_reasons": {
+        "insufficient_in_frame_semantic_points": 20
+      },
+      "empty_trajectory_count": 0,
+      "accepted_diagnostics": {
+        "target_geometry_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 10.0
+        },
+        "target_visible_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 10.0
+        },
+        "roi_hole_fraction": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.0
+        },
+        "roi_alpha_lt_0_9": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.07027510538886828
+        }
+      },
+      "cases": [
+        {
+          "criterion": "max geometry KP",
+          "sample_id": "3671cd73cdc41caf7769e2fcd4e1f252020502d5a9339dde66642b257698af65",
+          "trajectory_id": "022669ca0281cc35de5fcea2e86eb91f93ee69573263f9d9726c44ce1c579936",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 10,
+            "target_visible_kp": 10,
+            "all_visible_kp": 10,
+            "target_coverage": "near_full",
+            "roi_pixels": 77345,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0,
+            "roi_alpha_p05": 0.9814575910568237,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "min visible KP",
+          "sample_id": "037afea2479b6ffec779610e862b73d9b989cd238e95808483e76780acac082a",
+          "trajectory_id": "e1835a2c16e2481caabd138bee96c812fe68352a918e00dce617bf884d140ada",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 4,
+            "target_coverage": "partial",
+            "roi_pixels": 85362,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0004217333239614817,
+            "roi_alpha_p05": 0.9705386757850647,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "max low-alpha area",
+          "sample_id": "013facf9ce155000a801319a29985dba3e593bcfc2fc94acc1bad2c86c4db98d",
+          "trajectory_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 7,
+            "target_visible_kp": 7,
+            "all_visible_kp": 7,
+            "target_coverage": "partial",
+            "roi_pixels": 105087,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.07027510538886828,
+            "roi_alpha_p05": 0.8789381980895996,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        }
+      ],
+      "contact_sheet": "B02-cases.png",
+      "video": {
+        "path": "B02-trajectory.mp4",
+        "trajectory_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5",
+        "accepted_frames": 11,
+        "order": "increasing exact arc fraction; rejected frames remain gaps"
+      }
+    },
+    {
+      "scene_id": "B03",
+      "counts": {
+        "candidate_unique": 259,
+        "failed": 0,
+        "geometry_pass": 238,
+        "geometry_rejected": 21,
+        "logical_records": 259,
+        "pending": 0,
+        "qa_accepted": 238,
+        "qa_rejected": 0,
+        "render_cache_reused": 0,
+        "rendered_unique": 238
+      },
+      "rejection_reasons": {
+        "insufficient_in_frame_semantic_points": 21
+      },
+      "empty_trajectory_count": 0,
+      "accepted_diagnostics": {
+        "target_geometry_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 14.0
+        },
+        "target_visible_kp": {
+          "min": 4.0,
+          "median": 7.0,
+          "max": 14.0
+        },
+        "roi_hole_fraction": {
+          "min": 0.0,
+          "median": 0.0,
+          "max": 0.0
+        },
+        "roi_alpha_lt_0_9": {
+          "min": 0.0,
+          "median": 0.0016878124249787236,
+          "max": 0.3462493014199953
+        }
+      },
+      "cases": [
+        {
+          "criterion": "max geometry KP",
+          "sample_id": "8e38b9bc526d0d3ca85c2529f479de4f2fc4d68c46d28e78bbb3b44bed0d6da9",
+          "trajectory_id": "9f37fbe4ff46a9dc06072a668c427d50892d1dd8a10be29fcbdc96bfe21d61c1",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 14,
+            "target_visible_kp": 14,
+            "all_visible_kp": 14,
+            "target_coverage": "full",
+            "roi_pixels": 34307,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.0,
+            "roi_alpha_p05": 0.9911456108093262,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "min visible KP",
+          "sample_id": "000ffba7d5553c5edbad36aa406cb8c1f0846929f853270d09ac3e3cd80f7107",
+          "trajectory_id": "d383d98b276328cfdf9b315cfed3ee12fef7cc62a8833804615e197b017197b6",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 4,
+            "target_coverage": "partial",
+            "roi_pixels": 158444,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.0,
+            "roi_alpha_lt_0_9": 0.02051829037388604,
+            "roi_alpha_p05": 0.9272012710571289,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        },
+        {
+          "criterion": "max low-alpha area",
+          "sample_id": "31fd7664300221c9f05ea4dbbb66294565903fdc396e5e2dd18972c369edc050",
+          "trajectory_id": "f21055acf5180b16ee11479eccc3e29df568968ff4339340966188ac8e3a02b7",
+          "qa": {
+            "schema": "court_scale_render_diagnostics_v2",
+            "target_geometry_kp": 4,
+            "target_visible_kp": 4,
+            "all_visible_kp": 4,
+            "target_coverage": "partial",
+            "roi_pixels": 166409,
+            "roi_hole_fraction": 0.0,
+            "roi_alpha_lt_0_5": 0.00012619509762092193,
+            "roi_alpha_lt_0_9": 0.3462493014199953,
+            "roi_alpha_p05": 0.718092143535614,
+            "positive_depth_fraction": 1.0,
+            "sensitivity_target_kp_ge_4": true,
+            "sensitivity_roi_holes_le_0_01": true,
+            "rule_version": "target_kp4_roi_holes_1pct_v1",
+            "quality_policy_sha256": "f6fd4a76e1ddeace8092fd60cf53d19fbd6185e91b185109bf48684ec599b3f8"
+          }
+        }
+      ],
+      "contact_sheet": "B03-cases.png",
+      "video": {
+        "path": "B03-trajectory.mp4",
+        "trajectory_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39",
+        "accepted_frames": 11,
+        "order": "increasing exact arc fraction; rejected frames remain gaps"
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.tasks.court_detection.scripts.freeze_real_evaluation",
+    "--root",
+    "data/court_detection/tennis_court_detector-v1",
+    "--output",
+    "outputs/court_detection/evaluate/real-video-split-v1/s42",
+    "--version",
+    "real-video-v1",
+    "--seed",
+    "42"
+  ],
+  "started_at": "2026-10-23T14:37:53.977287+00:00",
+  "wall_seconds": 8.947668279000027,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}
