@@ -45,6 +45,7 @@ def main(receipts: Path) -> None:
         bootstrap_python=sys.version, uv_version=subprocess.check_output(["uv", "--version"], text=True).strip(),
         disk_before=before, disk_after=shutil.disk_usage(Path.cwd())._asdict(),
         cpu_count=os.cpu_count(), memory_bytes=os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES"),
+        kernel_boot_id=Path("/proc/sys/kernel/random/boot_id").read_text().strip(),
     )
     if result.returncode == 0:
         probe = subprocess.check_output([
