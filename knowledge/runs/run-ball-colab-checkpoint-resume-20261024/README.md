@@ -111,3 +111,48 @@ UV_PYTHON_INSTALL_DIR=/content/tennis-tools/python-3.11.16 python3 \
 Select absent tool/receipt directories. The source helper revision and the final
 training checkout are separate, explicit Git operations. Do not accept the
 default Python patch selection as environment equality.
+
+## Evidence map
+
+| Receipt | Purpose |
+| --- | --- |
+| `receipts/git-bundles.json` | Exact training/setup commits, bundle prerequisites, byte hashes and Drive file IDs |
+| `receipts/execution-plan-a.json`, `receipts/execution-plan-b.json`, `receipts/execution-plan-b-recovery.json` | Ordered command plans; session receipts identify which jobs actually ran. Each next job requires the preceding job's terminal state and Drive-save receipt |
+| `receipts/environment-comparison.json` | Different VM boot IDs, equal Python build, uv version and principal package versions |
+| `receipts/data-a.json`, `receipts/data-b.json` | Complete distribution retrieval on both VMs, independent SHA-256 and semantic sample checks |
+| `receipts/preparation-a.json`, `receipts/full-manifest-comparison.json` | Fresh distribution manifests, diagnostic selection, input immutability and common-frame identities |
+| `receipts/restore-references.json` | Pinned input/run generations, marker hashes, actual Drive marker IDs and verified byte counts |
+| `receipts/baseline-a.json`, `receipts/interrupted-a.json`, `receipts/resumed-b.json` | Committed source, original schedule, optimizer steps, complete pack/loss records, RNG/model hashes and publication timings |
+| `receipts/comparison-b.json`, `receipts/prefix-comparison-b.json` | All 12 updates within the predeclared loss tolerance, identical sample/teacher/LR sequence and RNG, and byte-identical committed five-line log prefix |
+| `receipts/failure-injection-a.json` | Real update followed by a failing publisher, with no successful completion marker |
+| `receipts/restore-inputs-b.json`, `receipts/restore-run-b.json` | Verified restoration at the original absolute paths |
+| `receipts/notebook-recovery.json`, `receipts/notebook-transport-failure.log` | A connection-loss attempt that never started its user command, its saved cancellation and same-VM recovery |
+| `receipts/local-verification.json`, `receipts/pytest.log` | Final CPU tests and static-check arguments/results; local home prefixes are normalized |
+| `receipts/session-a.json`, `receipts/session-b.json` | Owned-session starts, saved terminal jobs, confirmed stops, and A stopping before B was created |
+| `receipts/compute-units.json`, `receipts/doctor-*.json` | Owned-session cost estimate with assumptions, plus account-wide balance/rate observations |
+| `receipts/input-inventory.json`, `receipts/run-inventory.json` | Final scoped Drive IDs, sizes and hashes; all 14 published markers matched their saved receipt IDs and MD5 values |
+| `receipts/evidence-archive.json` | Verified Drive backup of the normalized receipt/driver bundle, with archive hash and actual Drive file ID |
+
+Operation logs live under `gdrive:tennis_lab/operations/colab/<session>/<job-id>`.
+Declared receipt trees live under `gdrive:tennis_lab/outputs/ball_detection/colab_persistence/`.
+The run/input snapshots have their separate roots in the restore references.
+Do not merge a periodic worker mirror into an immutable snapshot generation.
+Only small summaries enter this bundle; checkpoint bytes and complete worker
+logs remain on Drive. The four-clip recipe is specific to continuity diagnostics;
+prepare a separate full-data recipe and budget for scientific training.
+
+`advance_saved_jobs.py` preserves the local orchestration source used for these
+plans. It accepts a plan JSON and an absent audit directory, submits sequential
+managed jobs, and fails if the expected terminal result or Drive-save receipt is
+missing. A null `argv` means to verify an already submitted job, not resubmit it.
+Historical job/session IDs must not be reused as a fresh experiment.
+
+After VM B's data job completed, the Notebook transport lost its connection while
+preparing `restore-inputs`. The job remained pending without a worker start.
+The original plan stopped after cancellation and its Drive save; reconnecting the
+existing assignment preserved the boot ID and downloaded distribution. The input
+destination and its old receipt directory were absent before recovery. The
+recovery plan reuses the verified data job and a new restoration job/receipt ID.
+It does not repeat a possibly running command. The
+[runtime contract](../../../.agents/skills/tennis-colab/references/runtime.md)
+defines cancellation and reconnection; the receipts record this occurrence.

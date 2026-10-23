@@ -1,0 +1,25 @@
+{
+  "limitations": [
+    "Not per-session billing from the provider",
+    "Includes setup, data retrieval, debugging, idle transfer time and stop acknowledgement",
+    "Account balance differences include activity of a pre-existing unknown assignment and are not attributed to this experiment",
+    "A session uses the observed B-only L4 rate as an estimate; the rate may vary"
+  ],
+  "method": "Estimate from owned-session wall time and the observed B-only L4 account rate",
+  "observed_rate_cu_per_hour": 1.54,
+  "rate_receipt": "doctor-b-running.json",
+  "schema_version": 1,
+  "sessions": [
+    {
+      "estimated_compute_units": 2.745869139688889,
+      "seconds": 6418.914872,
+      "session": "ball-resume-proof-a-20261024"
+    },
+    {
+      "estimated_compute_units": 2.5409076316555557,
+      "seconds": 5939.784074,
+      "session": "ball-resume-proof-b-20261024"
+    }
+  ],
+  "total_estimated_compute_units": 5.286776771344444
+}

@@ -1,0 +1,238 @@
+{
+  "action": "inventory",
+  "ambiguous_paths": [],
+  "entries": [
+    {
+      "hashes": {},
+      "id": "1JXJ5jutFRpGbdRgvcTGL6qgRLLEwK1XR",
+      "modified": "2026-10-23T16:50:18.830Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "50fcdc414bb997a1f1c7d43db8a87573"
+      },
+      "id": "1hPA91u9-CuWWH56dmr0SGHG9Lgc9RVE9",
+      "modified": "2026-10-23T16:50:42.235Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/_SNAPSHOT.json",
+      "size_bytes": 3060,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1mzLp8wAZZ1TIDfRpuU_4QaRwIUSRX3fh",
+      "modified": "2026-10-23T16:50:20.596Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {},
+      "id": "1NLxDHxaO4Gm3j9-dNr7D0shUxtHqXQ3_",
+      "modified": "2026-10-23T16:50:34.888Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/annotations",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "285f0ee7b11ec91318b621d36313360c"
+      },
+      "id": "152HDiQBDtH5Y8XxhrvAPAjaAepOyaJRt",
+      "modified": "2026-10-23T16:49:58.630Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/annotations/clip-00002.json",
+      "size_bytes": 49058,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "223af7a8458e3a607fd912987cba3dc3"
+      },
+      "id": "1WY4ghDGrM1QOwkw8JwEu8dpQEJaN2EmP",
+      "modified": "2026-10-23T16:49:58.631Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/annotations/clip-00003.json",
+      "size_bytes": 75696,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "cb4c1d5ec5e426e1177e3836e576bf86"
+      },
+      "id": "1RIL0lkdgphoVdJGse-pyhU3DgCYWhmXO",
+      "modified": "2026-10-23T16:49:59.598Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/distribution.json",
+      "size_bytes": 1997,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "81137c3f08f07c6b171d43a3eb5cc5a9"
+      },
+      "id": "1mnq3O_p6YVfb0qPPPEG6h-H1x34xcWv9",
+      "modified": "2026-10-23T16:49:58.632Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/index.npz",
+      "size_bytes": 54126,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "9eeb273874863acaed5ab7ca5595ad5a"
+      },
+      "id": "1b31zTqo5zRfjDH0hLWnnWvDwLlDzGdap",
+      "modified": "2026-10-23T16:49:58.631Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/metadata.json",
+      "size_bytes": 3111,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1qIZFAzFQAkPWu6-mtUfoy-dWmCSTheGl",
+      "modified": "2026-10-23T16:50:29.344Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/shards",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "eb03fff5e5429cd2bd0e15ca30ab172d"
+      },
+      "id": "12WajdaooYva4Kiadg0sO2gWaarlKrpWe",
+      "modified": "2026-10-23T16:50:00.561Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/shards/clip-00000.bin",
+      "size_bytes": 11778383,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "ee23f1c8002e022ad442834b0151c743"
+      },
+      "id": "124n5Rna-0Cso5YpwUhXTcx7z2zjlet1o",
+      "modified": "2026-10-23T16:50:00.577Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/shards/clip-00001.bin",
+      "size_bytes": 31074498,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "bc7b9c78c47b1b3c43bb1264aebb5856"
+      },
+      "id": "1-31K5XZNBQT_TSCThKAXuUaTxFSk5CKW",
+      "modified": "2026-10-23T16:50:00.592Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/shards/clip-00002.bin",
+      "size_bytes": 26379605,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6cf348611ccb6ad364d72b4a0bcb52f7"
+      },
+      "id": "1K08drqWC7k5VmBhmpmvfeZI48OJtkZKq",
+      "modified": "2026-10-23T16:50:00.616Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_store/shards/clip-00003.bin",
+      "size_bytes": 44749403,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "18MXajSSkPddCvIbx79tT2qV0c-H2muSL",
+      "modified": "2026-10-23T16:50:25.963Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_windows",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1-JFqCx828MBvSk_kow0EUuEKi0kEz3II",
+      "modified": "2026-10-23T16:50:01.616Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_windows/evaluation_T32.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "9b223d27332914220ba51f2afb4d1ddd"
+      },
+      "id": "10S9KF96awtm0Js59XlQ79rcWBH5uQvwE",
+      "modified": "2026-10-23T16:50:01.627Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_windows/experiments.json",
+      "size_bytes": 26930,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1yEm7ozardLpk6HIEGlPtD1PqIpVDR6wz",
+      "modified": "2026-10-23T16:50:01.601Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/diagnostic_windows/train_T32.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1L_M2tFgKc8l6b_kLAsAdtUkiCXmdL5W9",
+      "modified": "2026-10-23T16:50:24.244Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/full_windows",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "f7467d4eab230a3808d1ab1afbc1cd7c"
+      },
+      "id": "1pkgJVarg_R41Fm8SySFJGOcPwY260ZLk",
+      "modified": "2026-10-23T16:49:57.536Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/full_windows/evaluation_T32.json",
+      "size_bytes": 4704030,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "fa47744ba63725e77bb175e584d984b6"
+      },
+      "id": "18ZERlLw70oRS3KQaf2Q9SPVNaDKI1TXj",
+      "modified": "2026-10-23T16:49:57.614Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/full_windows/experiments.json",
+      "size_bytes": 27037,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f78e4263850fdc13d00da802a045f45"
+      },
+      "id": "1tfR54N8QGt0eGMtuQoz9ZaPpbnzkodon",
+      "modified": "2026-10-23T16:49:44.603Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/full_windows/train_T32.json",
+      "size_bytes": 3223368,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "7c10f8f3095b314f014071fafc47db4a"
+      },
+      "id": "1AvrsuGpFpECnnLXT98VwM8QRIIi2tz_5",
+      "modified": "2026-10-23T16:50:01.631Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/model.yaml",
+      "size_bytes": 362,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "ec0eeab3284c2f38ef04085fc7dc8d74"
+      },
+      "id": "1wRyPLFofPsmZUV3ms_vvwGblYQfOdenV",
+      "modified": "2026-10-23T16:50:01.669Z",
+      "path": "inputs-2b202d6f833d4b4db43e830b85053125/recipe.json",
+      "size_bytes": 1311,
+      "type": "file"
+    }
+  ],
+  "observed_at": "2026-10-23T18:46:38.665017+00:00",
+  "path": "outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024/inputs",
+  "remote_root": "gdrive:tennis_lab",
+  "schema_version": 1
+}

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 80d69c2bb9e6b6408804b6f99922e89a920551c0256d27f6ae4cf12818dff60d on 2026-10-24 -->
+<!-- knowledge-review: dd9372e97700bb9b4835351ff42a20b217675d2dc879a0fd4b879d2c982c2e29 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習とColab保存再開の事前検査を反映。既存のcheckpoint採用判断は維持）
@@ -322,7 +322,7 @@ validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きo
 CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
 両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
 これは低解像度の機能確認で、既存の採用判断を変えない。
-実データ720p・長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+本学習用の速度・メモリ・精度の比較は未実施。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
 2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
 合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
@@ -345,7 +345,13 @@ PR前の設定監査対応と記録pathの修正を確認し、配布物・測�
 
 2026-10-24に両消費側のresolver接続と実データの6 manifest照合が反映され、保存再開の阻害は解消した。
 [720pの保存復旧検査](nodes/ball_detection/000067-run-ball-colab-checkpoint-resume-20261024.md)を再開し、
-同期した世代保存とサイズ/hash検証・失敗伝播・CPUでの実モデル復元を確認した。L4での新VM再開は検証中である。
+同期した世代保存とサイズ/hash検証・失敗伝播を確認した。最初のL4を5更新で止めて停止し、
+新L4へ固定pathで復元して12更新を完了した。対照とpack・教師・LR・元予算・optimizer step・CPU/CUDA RNGが一致し、
+全損失列は事前許容差内で、過去5行のlogもbyte一致した。最終重みのbit一致はせず、中断前から微差がある。
+既定Pythonのパッチ版の変化を検出し、builderとPythonを固定して環境を再構築した。
+Notebook接続断の未実行要求はcancel・保存確認後に同じVMで再提出し、取得データを保持した。
+両所有sessionの停止を確認した。これは4 clip・native 720p・本番幅の保存復旧診断であり、
+精度の採否や長系列の速度・VRAM・本学習予算は引き続き後続の試走で判断する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
