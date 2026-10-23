@@ -29,6 +29,7 @@ from parent_review_policy import (
 )
 from review_policy import (
     AuthorConflictError,
+    Check,
     GateDecision,
     GateInput,
     ReviewOutcome,
@@ -285,7 +286,6 @@ class MergeInput:
     changed_paths: tuple[str, ...]
     review_state: str | None
     evidence_errors: tuple[str, ...]
-    required_checks: tuple[str, ...]
     shared_patterns: tuple[str, ...]
     base_advances: Sequence[BaseAdvance] = ()
     permission: Mapping[str, Any] | None = None
@@ -299,6 +299,8 @@ class MergeResult:
     shared_hits: tuple[tuple[str, str], ...] = ()
     shared_exemption: Mapping[str, Any] | None = None
     dependency_statuses: Mapping[int, str] = field(default_factory=dict)
+    ci_checks: tuple[Check, ...] | None = None
+    ci_head_sha: str | None = None
 
 
 def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
@@ -403,8 +405,6 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             else "CONFLICTING"
             if mergeable is False
             else "UNKNOWN",
-            checks=normalize_rollup(pr["statusCheckRollup"]),
-            required_checks=gate.required_checks,
             review=review,
             changed_paths=gate.changed_paths,
             shared_patterns=gate.shared_patterns,
@@ -432,5 +432,13 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
         else GateDecision.MERGE
     )
     return MergeResult(
-        decision, tuple(reasons), base.shared_hits, exemption, dependency_statuses
+        decision,
+        tuple(reasons),
+        base.shared_hits,
+        exemption,
+        dependency_statuses,
+        ci_checks=normalize_rollup(pr["statusCheckRollup"])
+        if pr["state"] == "open"
+        else None,
+        ci_head_sha=pr["ci_head_sha"],
     )

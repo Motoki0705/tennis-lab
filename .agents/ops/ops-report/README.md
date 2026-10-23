@@ -17,6 +17,7 @@
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
 | `opsreport/memory_pr.py` | 公開確認のjournal、専用worktreeでのcommit/PR、必須CI・パス・HEADを照合する専用マージ処理 |
+| `required_checks.txt` | 専用memory PRの自動mergeに限って必須とするCI check名 |
 | `opsreport/report.py` | issue本文（日本語）の組み立て |
 | `opsreport/triage.py` | 採用チェック・既存受領の記録、既存issue照合、採否のmemory入力 |
 | `opsreport/organization.py` / `organize_prompt.md` | 全open/closed issueとコードの固定入力、read-only整理agent、構造化計画の検証 |
@@ -282,9 +283,10 @@ agentはread-onlyのまま、`memory_update`（`summary` / `upsert` / 理由付�
 5. 変更commitが期待したmainを唯一の親とし、追加・削除・rename元を含む全変更が `.agents/memory/ops-report/**` に閉じること、
    PRのbranch・base・同一repo・本文マーカー・HEADが記録と一致することを検証する。
    mainの専用memoryが入力後に進んでいれば古い更新で上書きせず停止する。
-6. [`../review/required_checks.txt`](../review/required_checks.txt) の必須CIがすべて存在し成功し、他のcheckも成功、競合なしの場合だけ、
+6. [`required_checks.txt`](required_checks.txt) の必須CIがすべて存在し成功し、他のcheckも成功、競合なしの場合だけ、
    PRとCIを再取得してHEADを照合し `gh pr merge --merge --match-head-commit <head>`。
    CI状態の正規化は既存の `review_policy.normalize_rollup` を使い、PRレビューgateは呼ばない。
+   通常PRのmerge gateがCIを条件にしなくても、この専用経路のCI要件は維持する。
    GitHubのmergeとorigin/mainへの取り込みを確認して初めて `merged` と記録し、cleanな専用worktreeを削除する。
 
 この専用経路は人間と合意済みのメモリ限定の例外で、Codexレビューや `AGENT_AUTO_MERGE` を要件にしない。
