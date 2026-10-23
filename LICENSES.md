@@ -1,6 +1,6 @@
 # Licenses and attribution
 
-[English](LICENSES.md) | [日本語](LICENSES.ja.md)
+[English](LICENSES.md) | [日本語](LICENSES.ja.md) | [简体中文](LICENSES.zh-CN.md)
 
 <a id="code-license-scope"></a>
 
