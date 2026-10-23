@@ -117,6 +117,13 @@ def fetch_completed_dataset(
 ) -> Path:
     """Recover only acknowledged bundles, then strictly decode all JPEG stores."""
     restore_inputs(root, remote, request_sha256=request_sha256)
+    return _fetch_completed_publication(root, remote, request_sha256=request_sha256)
+
+
+def _fetch_completed_publication(
+    root: Path, remote: RemoteFiles, *, request_sha256: str
+) -> Path:
+    """Recover a publication after this attempt has verified its frozen inputs."""
     store = BundleStore(root, remote)
     receipt = store.receipt(FINAL_RECEIPT)
     if receipt is None:
@@ -424,7 +431,7 @@ class DurableGeneration:
                 if retry.get("request_sha256") == self.sha:
                     self._save_failed_staging(retry_path.parent, retry_path.parent.name)
             if self.store.remote.exists(FINAL_RECEIPT):
-                version_path = fetch_completed_dataset(
+                version_path = _fetch_completed_publication(
                     self.root, self.store.remote, request_sha256=self.sha
                 )
                 release = self.telemetry.released()

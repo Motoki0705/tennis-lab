@@ -235,6 +235,21 @@ def test_vm_loss_after_ack_restores_and_never_redraws_completed_cache(frozen, tm
     assert all("qa_accepted" not in g for g in scene["groups"])
 
 
+def test_completed_request_recovery_downloads_inputs_only_once(frozen, tmp_path):
+    root, request, remote = frozen
+    version_path = DurableGeneration(root, request, remote, Telemetry()).run(Renderer())
+    assert version_path is not None
+    remote.downloaded.clear()
+    recovered = tmp_path / "completed-recovery"
+    restored = restore_inputs(recovered, remote, request_sha256=file_sha256(request))
+    renderer = Renderer()
+    result = DurableGeneration(recovered, restored, remote, Telemetry()).run(renderer)
+    assert result is not None and file_sha256(result) == file_sha256(version_path)
+    assert not renderer.ids
+    receipt = publication.read_json(remote.root / "receipts/request.json")
+    assert remote.downloaded.count(receipt["archive_path"]) == 1
+
+
 def test_renderer_failure_needs_explicit_retry_and_preserves_failure(frozen):
     root, request, remote = frozen
     failed = Renderer(fail_call=2)
