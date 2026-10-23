@@ -54,7 +54,7 @@ def _prepare_all_frames(args: argparse.Namespace, parser: argparse.ArgumentParse
     if not all(path.is_absolute() for path in declarations.values()):
         parser.error("Snapshot, output and RGB manifest paths must be absolute")
     roots = RuntimePathRoots(
-        project_root=Path.cwd(), data_root=args.ball_store.parent, output_root=args.output.parent,
+        project_root=args.ball_store.parent, data_root=args.ball_store.parent, output_root=args.output.parent,
         artifact_root=args.rgb_manifest.parent if args.rgb_manifest is not None else args.output.parent,
         checkpoint_root=args.output.parent, cache_root=args.output.parent, external_asset_root=args.output.parent,
     )
