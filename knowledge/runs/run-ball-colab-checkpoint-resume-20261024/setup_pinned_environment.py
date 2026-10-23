@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import time
-import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -29,8 +28,10 @@ def main() -> None:
     started = time.monotonic()
     installer = args.receipts / "uv-install.sh"
     url = f"https://astral.sh/uv/{args.uv_version}/install.sh"
-    with urllib.request.urlopen(url, timeout=60) as response:
-        installer.write_bytes(response.read())
+    subprocess.run([
+        "curl", "--fail", "--location", "--silent", "--show-error", "--max-time", "60",
+        url, "--output", str(installer),
+    ], check=True)
     environment = dict(os.environ, UV_UNMANAGED_INSTALL=str(args.tool_dir))
     with (args.receipts / "installer.log").open("wb") as log:
         subprocess.run(["sh", str(installer)], env=environment, stdout=log, stderr=log, check=True)
