@@ -12,6 +12,7 @@
 | `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有5層memory、`knowledge/`、AI制御ファイル |
 | `opsreport/agent.py` | プロンプト組み立て、`../lib/agent_exec.sh` による親Codexのread-only実行、集約JSONの検証 |
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
+| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 固定版・GitHubの範囲取得、取得記録の追記、GET専用stdio MCP。profileへの接続は統合側が行う |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -66,6 +67,56 @@ checkpointを失ったら `collected.json` のaudit_runtimeを除いた入力と
 serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。個別ツール・fetch・掃除・ロック待ちの
 制限は別で、失敗を全体調査の成功へ読み替えない。agent失敗やSIGINT/SIGTERMはプロセスグループを回収して未完了公開する。
 強制終了・停電等で公開できない中断はrunning/failed状態とcheckpointから再開する。
+
+## オンデマンドの読み取り経路
+
+`opsreport.mcp_server` はagentのsandbox外で起動するstdio MCP。調査親とnative子のsandboxはread-onlyのままにする。
+起動時にホスト側でrepo・調査回・完全な基準commit SHA・GitHubの `owner/name`・外部のprivateな記録先を固定する。
+`--ops-memory-sha` は専用memoryの別の固定版を指定する入口で、省略時は基準SHAを使う。
+
+```bash
+PYTHONPATH=.agents/ops/ops-report .venv/bin/python -B -m opsreport.mcp_server \
+  --repo "$PWD" --base-sha "$base_sha" --repository "$repository" \
+  --round-id "$round_id" --journal-dir "$journal_dir"
+```
+
+MCPのcommandにはこのcheckoutのPython、argsには `-B -m opsreport.mcp_server` と上記引数、
+envの `PYTHONPATH` にはこのcheckoutの `.agents/ops/ops-report` の絶対パスを渡す。
+Codex CLI 0.163.0の `-c mcp_servers.*` は **`exec` の後**に置く。
+`exec` より前では登録が見えてもサーバーが起動されなかった。共通ランナー・profileへの恒久接続は統合側で行う。
+Codexの `tools/list` は標準の `_meta` を伴うため受理する。空cursorも受理し、非空cursorと未知の引数は拒否する。
+
+| tool | 取得する範囲 |
+|---|---|
+| `code_paths` / `code_search` / `code_file` | 基準commitのパス、リテラル検索、UTF-8ファイルの行・文字範囲。symlinkを辿らず、gitlinkは境界として列挙する |
+| `git_history` / `commit_diff` | 基準commitから辿れる履歴とcommit差分。shallow履歴、基準版の後のcommit、外部diff/textconvは許可しない |
+| `record_paths` / `record_file` | `knowledge` / 共有 `memory` / 専用 `ops_memory`。ファイルのpathはscopeからの相対指定 |
+| `github_items` / `github_item` | issue/PRの検索・一覧と本文。リテラル句、state・label・author・更新日で絞る |
+| `github_comments` / `github_comment` | discussion・review comment・reviewの一覧と選択した本文。一覧には本文を入れない |
+| `pr_diff` | 期待する完全なhead SHAを必須にして差分を範囲取得。取得前後のhead/baseとファイル・hunk数を照合する |
+| `ci_runs` / `ci_jobs` / `ci_log` | run一覧、取得時に固定したattemptのjob一覧、jobログの範囲。run/job IDとコードのhead SHAを保持する |
+
+`page` / `per_page` で一覧を、`start_line` / `line_count` と `offset` / `max_chars` で本文を選ぶ。
+文字offsetは選択した行範囲内のUnicode文字位置。`pagination.next` は元の絞り込みを含む次回のargumentsで、
+同じtoolへそのまま渡す。本文の続きには `expected_sha256` が付き、取得途中の本文更新は `SOURCE_CHANGED` にする。
+GitHub一覧は取得時点ごとに変化するため、複数ページを単一時点のsnapshotとみなさない。
+
+全取得応答に出典、取得時刻、基準SHA、該当するPR/CIのhead、ページ/省略情報、実行権限を変更しない調査資料である旨を付ける。
+1応答64 KiB・1回のbackend取得64 MiB・個別コマンド45秒を上限とし、到達時は構造化エラーを返す。
+GitHub検索の1000件上限・run一覧の安全上限・incomplete応答、403/5xx、欠落ログ、PR更新、部分差分も成功に変換しない。
+応答上限には小さいページ/範囲で対応し、backend上限やGitHub上限で取得できない範囲は未確認として残す。
+任意のコマンド・HTTP endpoint・書込みmethodはtool引数に存在せず、GitHubには `gh api --method GET` だけを使う。
+
+外部記録先は0700のディレクトリとし、`retrieval.jsonl` は0600・flock・追記・fsyncで親子のサーバー間で共有する。
+要求と応答をreceiptで結び、応答全文と内容のSHA-256を保存する。記録失敗時は取得前に止めるか、未記録の本文を返さずエラーにする。
+別の調査回/基準版の混在、途中で切れた末尾、記録の消失も停止対象。調査台帳への書込みtoolは提供しない。
+
+自動検証は `test_ops_report_retrieval.py`（fake gh・使い捨てGit repo・実stdioプロセス。実agent/GitHub書込みなし）。
+2026-10-24の接続probeでは、既存 `agent_exec.sh --agent codex --profile ops_report --mode read-only` と一時PATH shimを使い、
+親と `spawn_agent(task_name=..., fork_turns="none", message=...)` のnative子が同じ追加MCPを呼び、両者のreceiptをサーバー側記録と照合した。
+完成版では親が固定版の `AGENTS.md`、子がGitHubの #1447 本文を範囲取得した。両者の実記録でread-only / approval never / Astra / maxを確認した。
+role選択引数・model/effortの上書き・設定ファイルの変更は行っていない。実効service tierは記録がなく未確認。
+privateな実行記録と `evidence-summary.json` は指定campaignのprobe領域に保存する。
 
 ## 提案ID・チェック・triage
 
