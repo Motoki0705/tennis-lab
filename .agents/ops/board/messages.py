@@ -193,7 +193,9 @@ def _create(
         public(post_view(connection, post_id), parents, env)
     # Commit the post and all recipient rows before attempting any bells.
     dispatch(env, notifiers if notifiers is not None else {}, post_id=post_id)
-    return _created(env, post_id)
+    from .display import posted
+
+    return posted(env, _created(env, post_id))
 
 
 def post(
@@ -248,7 +250,9 @@ def read(env: Mapping[str, str], post_id: str) -> dict[str, Any]:
         _mark_read(connection, post_id, caller.id, timestamp(datetime.now(UTC)))
         result = {"post": post_view(connection, post_id)}
         public(result, parents, env)
-        return result
+    from .display import read_by_caller
+
+    return read_by_caller(env, result)
 
 
 def ack(env: Mapping[str, str], *, post_id: str, state: str) -> dict[str, Any]:
@@ -276,7 +280,9 @@ def ack(env: Mapping[str, str], *, post_id: str, state: str) -> dict[str, Any]:
             )
         result = {"post": post_view(connection, post_id)}
         public(result, parents, env)
-        return result
+    from .display import read_by_caller
+
+    return read_by_caller(env, result)
 
 
 def inbox(env: Mapping[str, str], *, unread: bool = False) -> dict[str, Any]:
@@ -331,4 +337,6 @@ def thread(env: Mapping[str, str], post_id: str) -> dict[str, Any]:
             "posts": [post_view(connection, item) for (item,) in ids],
         }
         public(result, parents, env)
-        return result
+    from .display import read_by_caller
+
+    return read_by_caller(env, result)

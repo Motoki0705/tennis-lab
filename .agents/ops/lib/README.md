@@ -7,12 +7,28 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | ファイル | 責務 |
 |---|---|
 | `identity.py` | parent・board・Herdr表示・レビューが共有する環境由来のroot session識別。IDの引数指定や推測をせず、混在と子agentを拒否する |
+| `codex_queue.py` | boardとcodex-scheduled-followupが共有するqueue投入と実行証拠の照合。timerや担当操作は持たない |
 | `agents.conf` | 役割の既定値・実装子の代替モデル・用途別の固定プロファイル |
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
+
+## Codex queueの共通部品
+
+`codex_queue.py`は、呼出元が固定したthread/cwd/rollout/実行環境を使う。
+`enqueue(task, marker, persist=..., command=...)`は保存済みの完全なrollout境界を前提とし、
+uncertainを永続化してからqueueを1回だけ実行する。受理行を得ればqueued、
+timeout・異常終了でも受理行があればその証拠を保持する。
+`reconcile(task, persist)`はmarkerをuser入力で照合し、対応turnのstarted/completedを記録する。
+ファイル置換・切詰め・境界付近の改変・不正なturn対応はblocked_reasonを残す。
+保存方法・排他・宛先の発見・再送を許す条件は呼出元の責務。
+timer・systemd操作やagent起動は含まない。
+
+呼出元は[codex-scheduled-followup](../../skills/codex-scheduled-followup/references/cli-heartbeat.md)と
+[board](../board/README.md#呼び鈴の実経路と受信hook)。
+既存helperのhistory/acknowledge/reconcile公開関数とstate versionは保持する。
 
 ## モデルと設定の優先順位
 

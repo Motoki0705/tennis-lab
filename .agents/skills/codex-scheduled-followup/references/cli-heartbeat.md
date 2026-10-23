@@ -8,6 +8,10 @@ This route was investigated against `codex-cli 0.161.0`; check `codex queue --he
 
 The receiving session's **rollout** is its append-only JSONL log under `$CODEX_HOME/sessions/`. Its first record is `session_meta` (thread ID and cwd); later records are user input, responses, tool calls and turn events. The helper reads it to prove receipt and completion.
 
+Queue submission and rollout receipt verification are implemented by the repository's
+[shared queue component](../../../ops/lib/README.md#codex-queueの共通部品), also used by the parent board.
+The helper retains its state format, public receipt functions, timer management and recovery policy.
+
 The helper calls `codex` with an argument array (never a shell) and with the `CODEX_HOME`, `CODEX_SQLITE_HOME` and `PATH` captured at creation. In Windows/WSL setups these can deliberately select different state databases even when conversation history is shared, so forward the current values and do not change the global shell configuration. It passes `--disable daemon_auto_start`, does not edit native databases, and does not start another model session.
 
 ## Prepare

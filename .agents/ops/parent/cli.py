@@ -324,6 +324,28 @@ def main(argv: list[str] | None = None) -> int:
                 }
                 integration_failed = True
             result = {**result, "board_sync": name_sync}
+            if name_sync.get("name") and (
+                command == "register" or (command == "handoff" and args.accept)
+            ):
+                from board.lifecycle import restored
+
+                try:
+                    delivery = restored(dict(os.environ), name_sync["name"])
+                except (
+                    BoardError,
+                    ValueError,
+                    OSError,
+                    KeyError,
+                    TypeError,
+                    subprocess.SubprocessError,
+                ):
+                    delivery = {
+                        "status": "error",
+                        "reason": "route_unavailable",
+                    }
+                if delivery["status"] == "error":
+                    integration_failed = True
+                result = {**result, "board_delivery": delivery}
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 1 if integration_failed else 0
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:

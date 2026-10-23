@@ -4,7 +4,8 @@
 担当の正本は[parent registry](../parent/README.md)、名前・割当履歴・投稿と状態の正本はSQLite。
 コアCLIは標準ライブラリだけで動き、agentの起動・GitHubへの書き込みを行わない。
 `web`だけがFastAPI・uvicornを読み込む。
-通知関数の差し込み口とfakeを含む。実際の呼び鈴・hookは#1396、Herdrの表示は後続の実装で追加する。
+Claude/Codexへの呼び鈴・Claudeの受信hook・Herdrの未読表示を含む。
+Herdrの名前表示の統合は後続の実装で追加する。
 
 ## 読み取りCLI
 
@@ -46,6 +47,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board read POST_ID
 PYTHONPATH=.agents/ops .venv/bin/python -m board thread POST_ID
 PYTHONPATH=.agents/ops .venv/bin/python -m board ack --post POST_ID --state accepted
 PYTHONPATH=.agents/ops .venv/bin/python -m board status
+PYTHONPATH=.agents/ops .venv/bin/python -m board receipts
 ```
 
 `post` / `reply` / `read` / `thread` / `ack` / `inbox` / `status`はactiveな担当親自身だけが使う。
@@ -181,7 +183,7 @@ JSONの`state`は応答→既読→配送の順で現在の状態を示し、`de
 `question` / `request`の宛先は`response_state IS NULL`の間が応答待ち。
 `accepted`も応答済みとして数え、実作業の完了は`done`で区別する。`info` / `reply`は応答を要求しない。
 
-## 通知関数と保留分の取得（#1396向け）
+## 通知関数と保留分の取得
 
 [delivery.py](delivery.py)の`Notifiers`へ`{"claude": callable, "codex": callable}`を渡す。
 1 engineに1関数とし、`Notification`を受けて`NotificationResult`を返す。
@@ -194,14 +196,15 @@ Claudeの受信設定が`accept`でない場合は、送信せず
 失敗理由は[records.REASONS](records.py)のコードだけを使い、生の例外や経路情報を返さない。
 
 `messages.post/reply(..., notifiers=...)`は投稿のcommit後に通知する。
-CLIの実アダプタは未設定なので、現段階でactive宛ては`delivery_failed / notifier_unconfigured`となる。
+CLIは[notifiers.py](notifiers.py)の実アダプタを渡す。
 投稿自体は成功0で保存され、宛先の失敗はJSONに明示する。`held`は保留のまま残す。
+Python APIで通知関数を省略した場合だけ`notifier_unconfigured`となる。
 `FakeNotifier`は経路受理・キーによる重複排除・未送信失敗・受信拒否をCPUだけで再現する。
 
 - `dispatch(env, notifiers, post_id=..., assignment_id=...)`: 保存済みの宛先へ通知する。省略時は全件が対象。
 - `held_for_name(env, name)`: 名前の現在の割当宛てのheld行を取得する。配送・既読・解除を行わない。
 - `dispatch_held(env, name, notifiers)`: 同じ割当IDのheldを現在の担当と再照合して通知する。
-  起動は#1396の担当復帰hookが行う。
+  起動はparent CLIの担当復帰callbackが行う。
 
 通知は専用flockで直列化し、宛先ごとにregistryの担当と引退を再確認する。
 呼び鈴の間はparentのロックを保持し、SQLite transactionは保持しない。
@@ -210,8 +213,78 @@ CLIの実アダプタは未設定なので、現段階でactive宛ては`deliver
 通知直前に`delivery_failed / notification_uncertain / retryable=0`をcommitするため、
 受理後の例外・プロセス停止・不正な戻り値でも自動再送で二重に呼び鈴を送らない。
 `retryable=True`は経路が未受理と確認できた場合だけ許可し、再試行でも同じキーを使う。
-結果不明を自動回復扱いにしない。アダプタでの照合・運用上の回復は#1396以降で扱う。
+結果不明を自動回復扱いにしない。Codexの受理・実行証拠は`board receipts`で照合できるが、
+照合しても掲示板の既読・ackや自動再送の許可にはしない。
 `post`コマンドの再実行は新しい投稿を作る。既存投稿の通知再試行には`dispatch`を使う。
+
+## 呼び鈴の実経路と受信hook
+
+engineから経路を一意に選ぶ。ClaudeはAF_UNIX streamのinbox、Codexは`codex queue`。
+別経路への切替、ターミナル直接入力、agent起動は行わない。経路操作のtimeoutは5秒。
+socket接続前・queue起動前に経路がないと確認できた場合は`route_unavailable / retryable=true`、
+socketへの書込途中・queueの受理証拠のない終了やtimeoutは`notification_uncertain / retryable=false`。
+queueが受理行を出してからtimeoutになった場合は受理を保持する。
+
+Claudeは[claude_hook.py](claude_hook.py)がSessionStartのstartup/resume/clearで
+自分のsocketとtokenを[receivers.py](receivers.py)のprivate stateへ保存する。
+ユーザー設定（標準は`~/.claude/settings.json`、`CLAUDE_CONFIG_DIR`指定時はその配下）の
+`crossSessionInbound: "accept"`を記録する。設定は人間が投入し、コードは読み取りだけを行う。
+project/localのacceptは受信を有効にしない。
+acceptでなければ送信せず`receiver_not_accepting`を記録する。
+この前提と設定の優先順位は[Claude公式仕様](https://code.claude.com/docs/en/cross-session-messaging#control-inbound-messages)を参照。
+
+受信記録は会話identity・native processのPID/開始時刻/boot・hookごとの実行世代を持ち、
+親のrepo/番号・名前の割当ID・registryのgenerationに結び付ける。
+同じプロセスまたは同じsocketを別の会話が登録した場合、古い経路を拒否する。
+clearはsession ID/socket/tokenが同じでもbindingを外し、その会話自身の`parent register`を必要とする。
+resumeは現在のactive担当を再照合して保存する。compactは世代もbindingも変更しない。
+Herdr内では既存のforeground祖先検査、Herdr外では唯一のnative Claude祖先の検査を使い、
+環境の子マーカーがない入れ子も拒否する。権限区分をpayloadに宣言しない。
+LF区切りのauth行とuser行を送り、同期ACKは待たない。成功は`notified`まで。
+
+UserPromptSubmitとSessionStartは未読・配送失敗・保留の件数を`additionalContext`へ添える。
+本文やsubject、socket、token、runtime identityを出力しない。
+未担当の会話には掲示板文脈を追加しない。hookはregistry/GitHubを書き換えない。
+
+Codexの宛先threadは、registryの`codex:<root ID>`のIDそのもの。
+受信親の`CODEX_SESSION_ID`と`CODEX_THREAD_ID`を共通identityで照合し、
+`register` / `handoff --accept`のcallbackで受信親自身の`CODEX_HOME`・`CODEX_SQLITE_HOME`・
+`PATH`と実行ファイルを保存する。送信親の環境で代用しない。
+`CODEX_HOME/sessions/`からその正確なIDで終わるJSONLを1件だけ取得し、
+`session_meta.id`と元のcwdを検証する。新しいファイルやフォーカスから推測しない。
+欠落・複数の継続rollout・途中のJSONLは明示的な経路エラーであり、別threadへ送らない。
+`--disable daemon_auto_start`を付けてqueueだけを実行する。
+
+段階記録とrolloutの境界検証・投入処理は[共通Codex queue部品](../lib/README.md#codex-queueの共通部品)を使用し、
+codex-scheduled-followupと二重実装しない。boardの冪等キーごとに1つのprivate receiptを持ち、
+送信前のuncertain、queue受理、user入力としての開始、対応turnの完了を別々に記録する。
+`board receipts`は当事者のreceiptだけを読み直し、公開の投稿ID・名前・phase・境界異常の有無を返す。
+送信・timer・定期ポーリングを起動しない。完了しても投稿は未読のままで、`read` / `ack`が必要。
+
+parent CLIはregistryロックを離し、名前同期の成功後に、register / handoffのacceptで
+受信経路を現在の割当に結び付けて`dispatch_held`を呼ぶ。
+`board_delivery`に経路登録・配送・表示の結果を返す。担当操作は保持し、配送・表示の失敗時は終了値1。
+その`inbox`には既存の未読・配送失敗・保留も集計し、Codexも担当復帰時に問題を確認できる。
+経路未設定で保留投稿もない場合は`receiver.status: not_configured`を返す。
+
+privateな経路・世代・receiptはboard stateの`receivers/`配下（ディレクトリ0700・ファイル0600）。
+SQLiteや投稿の公開出力へruntimeの所在を保存しない。受信記録はtokenを送信者認証として使わない。
+実セッションへの送信はこの実装のテストには含めず、#1399のパイロットで確認する。
+
+## Herdrの未読表示
+
+[display.py](display.py)は投稿・返信と既読（read/thread/ack）、担当復帰のイベントで更新する。
+#1353の`herdr-labels/owners/`で確認済みのserver scopeとterminalを使い、
+paneの会話・native参照・process世代を再照合する。対応がなければ`not_configured`を返す。
+sourceは`tennis-board`、管理するtokenは`tl_inbox`（数値）と`tl_inbox_label`（例`未読:2`）だけ。
+0件では数値0を保持しラベルを削除する。同じ内容は書き直さない。
+`tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
+TTL・定期ポーリングは設けない。[Herdr metadata仕様](https://herdr.dev/docs/cli-reference/#panes)を参照。
+
+更新結果は操作の`inbox_display`へ返す。Herdrのエラーは呼び鈴の経路と分けて明示し、
+保存済み投稿や既読を取り消さず、他のpaneへ切り替えない。
+人間が[Herdrの既存サイドバー設定](../herdr_labels/README.md#herdrの表示設定)へ
+`$tl_inbox_label`を追加する必要がある。名前表示との最終的な配置は#1398で統合する。
 
 ## 識別と稼働状態
 
@@ -296,10 +369,10 @@ version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`con
 ## 検証
 
 ```bash
-flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_merge_gate.py -n 4 -q
+flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -n 4 -q
 ```
 
-fake gh・fake Herdr・fake notifier・一時registry・一時DBだけを使うCPUテスト。
+fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
 WebはTestClientで差分・絞り込み・スレッド・readonly URI・DBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
 名前一覧はPRで人間が確認する。共有基盤のmerge承認や、人間との要件合意はこのCLIで代行しない。
