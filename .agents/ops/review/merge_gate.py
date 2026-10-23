@@ -77,6 +77,7 @@ def attempt_path(session: ParentSession, n: int, head: str) -> Path:
 class Collection:
     parent: Issue
     children: dict[int, Issue]
+    default_branch: str
     pulls: list[dict[str, Any]]
     candidates: list[int]
     details: dict[int, dict[str, Any]]
@@ -87,8 +88,14 @@ class Collection:
     errors: dict[int, list[str]]
 
 
+def repository_default_branch(session: ParentSession) -> str:
+    repo = object_value(session.gh.get(f"repos/{session.gh.repo}"))
+    return nonempty(repo.get("default_branch"), "repository default_branch")
+
+
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
     parent, children = session.family()
+    default_branch = repository_default_branch(session)
     pulls = session.gh.pulls()
     if len({p["number"] for p in pulls}) != len(pulls):
         raise ValueError("duplicate PR records from GitHub")
@@ -181,6 +188,7 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
     return Collection(
         parent,
         children,
+        default_branch,
         pulls,
         candidates,
         details,
@@ -323,6 +331,7 @@ def evaluate(
         n: evaluate_parent_gate(
             MergeInput(
                 repo=session.gh.repo,
+                default_branch=view.default_branch,
                 parent_issue=session.parent,
                 pr=view.details[n],
                 children=view.children,
@@ -352,6 +361,8 @@ def completion(
 ) -> tuple[str, ...]:
     if not pr.get("merged_at"):
         return ("merge_not_confirmed",)
+    if pr["base"]["ref"] != repository_default_branch(session):
+        return ("base_not_default_branch",)
     parent, children = session.family()
     issue_targets = set(children) or {parent.number}
     linked = closing_issues(pr.get("body") or "", session.gh.repo) & issue_targets
