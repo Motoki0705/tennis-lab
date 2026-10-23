@@ -118,20 +118,50 @@ def test_name_resolution_rejects_reserved_outside_unassigned_and_retired(
 def test_reuse_29_and_30_day_boundary_and_pending_state(
     board: SimpleNamespace,
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
     unread: int,
     waiting: bool,
 ) -> None:
     store = board.storage.Store(tmp_path / "board")
-    monkeypatch.setattr(
-        board.activity,
-        "summary",
-        lambda connection, assignment_id: board.activity.Activity(unread, waiting),
-    )
     with store.transaction() as connection:
         first = board.names.ensure_name(
             connection, "o/r", 1, "first", now=NOW, catalog=["Alice"]
         )
+        post_id = "0" * 32
+        stamp = board.names.timestamp(NOW)
+        connection.execute(
+            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                post_id,
+                stamp,
+                first.id,
+                first.name,
+                first.repo,
+                first.parent,
+                "question" if waiting else "info",
+                0,
+                "Reuse guard",
+                "Keep this history",
+                None,
+                post_id,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO recipients(post_id,assignment_id,name,repo,parent,read_at) VALUES(?,?,?,?,?,?)",
+            (
+                post_id,
+                first.id,
+                first.name,
+                first.repo,
+                first.parent,
+                None if unread else stamp,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,?,?,?)",
+            (post_id, first.id, "reuse-key", "pending"),
+        )
+        assert board.activity.summary(connection, first.id).unread_count == unread
+        assert board.activity.summary(connection, first.id).awaiting_response == waiting
         board.names.retire_name(connection, "o/r", 1, now=NOW)
         for age in (timedelta(days=29), timedelta(days=30) - timedelta(microseconds=1)):
             with pytest.raises(board.errors.BoardError, match="exhausted"):
@@ -270,22 +300,25 @@ def test_version_migration_is_atomic_and_unknown_or_corrupt_is_not_replaced(
     store = board.storage.Store(tmp_path / "board")
     with store.transaction() as connection:
         board.names.ensure_name(connection, "o/r", 1, "kept", now=NOW)
+    base_version = board.storage.SCHEMA_VERSION
 
     def posting_schema(connection: sqlite3.Connection) -> None:
         connection.execute(
-            "CREATE TABLE posts(id INTEGER PRIMARY KEY, sender INTEGER REFERENCES name_assignments(id))"
+            "CREATE TABLE extension_witness(id INTEGER PRIMARY KEY, sender INTEGER REFERENCES name_assignments(id))"
         )
 
     monkeypatch.setattr(
         board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS, posting_schema)
     )
-    monkeypatch.setattr(board.storage, "SCHEMA_VERSION", 2)
+    monkeypatch.setattr(board.storage, "SCHEMA_VERSION", base_version + 1)
     with pytest.raises(board.errors.BoardError, match="migration"), store.read():
         pass
     with store.transaction() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0] == base_version + 1
+        )
         assert board.names.for_parent(connection, "o/r", 1).identifier == "kept"
-        connection.execute("INSERT INTO posts(sender) VALUES(1)")
+        connection.execute("INSERT INTO extension_witness(sender) VALUES(1)")
 
     def broken_schema(connection: sqlite3.Connection) -> None:
         connection.execute("CREATE TABLE should_rollback(id INTEGER)")
@@ -294,11 +327,13 @@ def test_version_migration_is_atomic_and_unknown_or_corrupt_is_not_replaced(
     monkeypatch.setattr(
         board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS, broken_schema)
     )
-    monkeypatch.setattr(board.storage, "SCHEMA_VERSION", 3)
+    monkeypatch.setattr(board.storage, "SCHEMA_VERSION", base_version + 2)
     with pytest.raises(RuntimeError), store.transaction():
         pass
     with sqlite3.connect(store.path) as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0] == base_version + 1
+        )
         assert (
             connection.execute(
                 "SELECT name FROM sqlite_master WHERE name='should_rollback'"
@@ -526,7 +561,7 @@ def test_name_failure_does_not_undo_parent_or_skip_display(
     assert data["board_sync"]["status"] == "error"
     assert json.loads(p.cli("status").stdout)["assignment"] == "active"
     with sqlite3.connect(store.path) as connection:
-        connection.execute("PRAGMA user_version=1")
+        connection.execute(f"PRAGMA user_version={board.storage.SCHEMA_VERSION}")
     repaired = p.cli("register")
     assert json.loads(repaired.stdout)["board_sync"]["status"] == "assigned"
     assert len(p.state()["comments"]["1"]) == 1
