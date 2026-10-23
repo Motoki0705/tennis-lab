@@ -153,8 +153,12 @@ environment with `uv sync --locked --python 3.11 --no-cache` and records elapsed
 time, disk usage and the resulting package versions separately. Python 3.11 matches the locally
 validated independent `_sha256` checksum provider. A different Python/default
 Colab environment must not silently replace that provider or its verification.
-Upload the small local sample specification and reference receipt with the Colab
-skill. Large input files must use the Drive CLI.
+The recorded execution obtains the small sample specification and reference
+receipt from the frozen Git commit; both JSON files are tracked in that bundle.
+The exact bootstrap/execution commits and archived bundle are referenced by
+`source_plan` in [drive-upload.json](drive-upload.json). Do not overwrite those
+references after fixing the execution revision. Large input files use the Drive
+CLI.
 
 Run `colab_verify.py` from the repository with `PYTHONPATH` set to its root. Its
 required arguments are `--drive-path`, a fresh `--destination`, a new `--receipts`

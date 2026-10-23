@@ -77,7 +77,10 @@ Driveへの初回全量uploadは[配置receipt](../../runs/run-ball-portable-dis
 最終inventoryのsize/MD5と一致し、重複pathはない。内容のSHA-256は配布manifestで固定した。
 元snapshotのshardを直接uploadし、metadata転送用の追加stageは約258 MBでRGBを含まない。
 全receiptとColab実行用Git bundleは同receiptが示すDriveのoperations archiveへ保存・検証した。
-2台のColab VMでの取得・SHA-256・サンプル意味照合は未実施で、これから行う。
+[Colab実行記録](../../runs/run-ball-portable-distribution-20261023/colab-execution.json)の1台目は
+実機のL4を確認し、固定commitのPython 3.11 locked環境を約26秒で構築した。
+環境構築後の空きは約199.8 GBで、配布量を置ける。取得の意図した中断では129ファイル・約75 MBを記録して再開した。
+全件SHA-256・サンプル意味照合は実行中で、2台目の新VMでの再取得はまだ始めていない。
 最初の全量転送は962 shard・約104.03 GBの照合後、親の報告によるモデルcapacityエラーで
 sessionとともに終了した。全量成功のterminal receiptはなく、成功完了とは扱わない。
 [中断と再開の記録](../../runs/run-ball-portable-distribution-20261023/session-interruption.json)に従い、

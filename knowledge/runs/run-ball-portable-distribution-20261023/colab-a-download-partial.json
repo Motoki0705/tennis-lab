@@ -1,0 +1,657 @@
+{
+  "disk": {
+    "free": 199622418432,
+    "total": 253055008768,
+    "used": 53415813120
+  },
+  "files": [
+    {
+      "path": "distribution.json",
+      "sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+      "size_bytes": 672909
+    },
+    {
+      "path": "index.npz",
+      "sha256": "0bb00facd10f9961081f9c47af1b62f5c3ca4f5d349a2ac011573d9e510a9feb",
+      "size_bytes": 53378860
+    },
+    {
+      "path": "metadata.json",
+      "sha256": "7a804cc4e3b3006d0128fbd953b0696712d45acee9dcef8a96c02ec46379037c",
+      "size_bytes": 1106415
+    },
+    {
+      "path": "annotations/clip-00181.json",
+      "sha256": "028dbed12ebc1a5b84ee7320c40844a57e79e91d07fdc36263c229f90d58a1e8",
+      "size_bytes": 227408
+    },
+    {
+      "path": "annotations/clip-00259.json",
+      "sha256": "42cd32228dafd3be1b045b906d8509e14c65ae8f8c5ee4ddf9b2e635e9d15121",
+      "size_bytes": 91221
+    },
+    {
+      "path": "annotations/clip-00202.json",
+      "sha256": "5c55b3d89ef369b8f6ee5e0981888a98fb525654b3a5331c3527954d0a7a9003",
+      "size_bytes": 43997
+    },
+    {
+      "path": "annotations/clip-00257.json",
+      "sha256": "a732711a4e73c8cc831c950d3ba0514f32f9020f576fc22e3074c8f6485f2f46",
+      "size_bytes": 105384
+    },
+    {
+      "path": "annotations/clip-00242.json",
+      "sha256": "892d75439306c8eb37860e8c7f3bbfda002153fa2c249ed619b4f5518d9c0bcb",
+      "size_bytes": 226121
+    },
+    {
+      "path": "annotations/clip-00275.json",
+      "sha256": "13b6bcb16ec84f815fc12a9c4f9baeb8993807fe893c7cce74d710bc126a83d7",
+      "size_bytes": 155224
+    },
+    {
+      "path": "annotations/clip-00272.json",
+      "sha256": "d7e442dcadc8300c36c8c7683a524b958c03532e3902cf282686373ee23891bc",
+      "size_bytes": 105071
+    },
+    {
+      "path": "annotations/clip-00199.json",
+      "sha256": "515481d8f9751b76a7386a06357d4f3aa0df0225f75d511324ceec5ab0b2cbc3",
+      "size_bytes": 93652
+    },
+    {
+      "path": "annotations/clip-00194.json",
+      "sha256": "d6c881cef20c6de478870cd08964c79272d067daa4a47076c96e5b001eb65af7",
+      "size_bytes": 136338
+    },
+    {
+      "path": "annotations/clip-00164.json",
+      "sha256": "4bbab7a855615ecd21347d5edb4ecbb002e661d9902992027d1b9ce5405dbc7b",
+      "size_bytes": 177612
+    },
+    {
+      "path": "annotations/clip-00222.json",
+      "sha256": "e17e122ea166e50033afcd6f37bfe703a650382ce685e209a851941f3232d729",
+      "size_bytes": 101098
+    },
+    {
+      "path": "annotations/clip-00217.json",
+      "sha256": "23a614ced6d676be88d56c7d8acb72959a1e497663640bfefe29272d7636efbb",
+      "size_bytes": 102072
+    },
+    {
+      "path": "annotations/clip-00248.json",
+      "sha256": "2eb4b7c4fa032e213e992f2c917b1919155e0db32921fe0d1c0916af602a0715",
+      "size_bytes": 184179
+    },
+    {
+      "path": "annotations/clip-00274.json",
+      "sha256": "2a446ba5cde19251fb25ed7155ce989c6516408b5e19f55d2d347ec88e9faa49",
+      "size_bytes": 249347
+    },
+    {
+      "path": "annotations/clip-00254.json",
+      "sha256": "acb21aaad4a9ae665d140ed21053449a9fb371b223f9ce9c31c87424c0f7e4d9",
+      "size_bytes": 124979
+    },
+    {
+      "path": "annotations/clip-00263.json",
+      "sha256": "25a4eeda2c6733f844590d20358c6c1562c6869c96a1ff278f13e1ed37978919",
+      "size_bytes": 85940
+    },
+    {
+      "path": "annotations/clip-00201.json",
+      "sha256": "cb5ff046fafe3f380d976aed7b9d32f005e089cde4ee41c40e9dcb1e1d38574c",
+      "size_bytes": 103800
+    },
+    {
+      "path": "annotations/clip-00243.json",
+      "sha256": "d638923cf876ffeca65855c0a670304f368335a57e448192c39b33cadf77e2d9",
+      "size_bytes": 151265
+    },
+    {
+      "path": "annotations/clip-00169.json",
+      "sha256": "519c47ca942a1e8187b0210fd2be53e9d2d377a29d8c74640fe449a052abf705",
+      "size_bytes": 190117
+    },
+    {
+      "path": "annotations/clip-00271.json",
+      "sha256": "196e6222cc094ee701b3affa3770e08c16677b06100f206058ae2ff8f1748e29",
+      "size_bytes": 202989
+    },
+    {
+      "path": "annotations/clip-00213.json",
+      "sha256": "63b2aafaf386e2a8c834290ee5e77e916f909e877c12a5cfd248713d45444681",
+      "size_bytes": 113139
+    },
+    {
+      "path": "annotations/clip-00188.json",
+      "sha256": "9e9906da58458b99008b6fdccb6ad97646d239b09f9478ca9f5457995f4582e5",
+      "size_bytes": 306806
+    },
+    {
+      "path": "annotations/clip-00268.json",
+      "sha256": "ed9799a6ccfc85d95d32e9a7f3de4bcbaa46283f919573a3137f2cbc658c79e9",
+      "size_bytes": 105071
+    },
+    {
+      "path": "annotations/clip-00247.json",
+      "sha256": "1b6dab56235f68eaef2608a58a0b4bb630caa3dee22a42fde95fea838f1970e0",
+      "size_bytes": 112710
+    },
+    {
+      "path": "annotations/clip-00241.json",
+      "sha256": "6f9a513cb523367f6c051254b7564c216d568545aa33fa3c6d1a8ab8b55b674e",
+      "size_bytes": 236539
+    },
+    {
+      "path": "annotations/clip-00204.json",
+      "sha256": "4abb593708009f9422e6d456c3f82f0da3e7af45c18b59a64b875e4d8937839b",
+      "size_bytes": 115915
+    },
+    {
+      "path": "annotations/clip-00206.json",
+      "sha256": "04c180e95d447df7b20b142fffed27690ba1826e772783d2d73b6afa13b6578b",
+      "size_bytes": 133415
+    },
+    {
+      "path": "annotations/clip-00180.json",
+      "sha256": "21bdd9cec7d496d2be1e1d6c3694c1e5a906be7a7d81199355a1c20962352ba4",
+      "size_bytes": 269206
+    },
+    {
+      "path": "annotations/clip-00195.json",
+      "sha256": "2a31379b928bf8dcc350cec71caac8926c04058ac2867959c462a968c0e112b0",
+      "size_bytes": 153314
+    },
+    {
+      "path": "annotations/clip-00224.json",
+      "sha256": "0057585c63a2048aea6fc71bafc492edf882dedc56a9ae0b93a2162f5d8a2127",
+      "size_bytes": 142754
+    },
+    {
+      "path": "annotations/clip-00261.json",
+      "sha256": "c3da6e42d4a3056b71577f820f8e179e827ebd4e1c4818a08cde02659a9dcff8",
+      "size_bytes": 81681
+    },
+    {
+      "path": "annotations/clip-00198.json",
+      "sha256": "329eb36ae67a2f67332d558066cba49faf57f3d06ce17e45005c041f6568c0b9",
+      "size_bytes": 98169
+    },
+    {
+      "path": "annotations/clip-00273.json",
+      "sha256": "c80474a8427d0f50a47e04eae71dc4fcc1c65f8d35a6cab92740110cc81e3a5a",
+      "size_bytes": 223259
+    },
+    {
+      "path": "annotations/clip-00234.json",
+      "sha256": "55799ceb86ebae83f7216371c3e30fb6a96569bd9ba1353f14fd323900fdd478",
+      "size_bytes": 108248
+    },
+    {
+      "path": "annotations/clip-00173.json",
+      "sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+      "size_bytes": 202225
+    },
+    {
+      "path": "annotations/clip-00172.json",
+      "sha256": "870c38b40156ba1956534d29a3f7cb647ecaa01123c34890eb7001e650c5f52f",
+      "size_bytes": 215338
+    },
+    {
+      "path": "annotations/clip-00227.json",
+      "sha256": "b21ee4cc04f3a4e753e9b8255f4afd39ca29576ea76dfec757a1d89a353f8dac",
+      "size_bytes": 141998
+    },
+    {
+      "path": "annotations/clip-00193.json",
+      "sha256": "1458f9d01bb8c98eae628330bb7e5e3376fd7c697f7e40492bb7334a4a2402e6",
+      "size_bytes": 117782
+    },
+    {
+      "path": "annotations/clip-00175.json",
+      "sha256": "c1836a6cea76de10e81c8280bb3fff4c694631d3d55bfd7a83a4cc0d2c32005b",
+      "size_bytes": 160475
+    },
+    {
+      "path": "annotations/clip-00269.json",
+      "sha256": "5cb0ebfcd9f29dee0662dffe586b3930b593a7015964ee2c097e334ae13e6b8d",
+      "size_bytes": 105070
+    },
+    {
+      "path": "annotations/clip-00165.json",
+      "sha256": "e6b06e4cb60b20caad2d19e8cc478c7bfc2536942ad37d197ec1cb4ff4445196",
+      "size_bytes": 214779
+    },
+    {
+      "path": "annotations/clip-00170.json",
+      "sha256": "e0e074f2c58cb52d1b5b4f36c169967f36535e1014cc89bcca6e690cec2ebd64",
+      "size_bytes": 218189
+    },
+    {
+      "path": "annotations/clip-00166.json",
+      "sha256": "fa8e34339c8c77b33850fc8ef3c8672cc26e0381a17661ea5483dc5b6164a349",
+      "size_bytes": 190540
+    },
+    {
+      "path": "annotations/clip-00252.json",
+      "sha256": "3323b46a190b94e9164548010853e48527266afc14a537db9cea9c4eecb0093b",
+      "size_bytes": 184284
+    },
+    {
+      "path": "annotations/clip-00187.json",
+      "sha256": "62d6eb3556384c63697458be7bd12d9380e1bd12292dc2fd86037440240ee0d7",
+      "size_bytes": 194424
+    },
+    {
+      "path": "annotations/clip-00232.json",
+      "sha256": "6749e99a6c2f91948661e61b602ca0ca3a24ae5cc84d6ddb814001c5754f3e36",
+      "size_bytes": 177162
+    },
+    {
+      "path": "annotations/clip-00159.json",
+      "sha256": "22113dd675bf2325ca5b1713aeeed8cfe5998b71935e88bafbc40ba5df54c6ac",
+      "size_bytes": 66912
+    },
+    {
+      "path": "annotations/clip-00190.json",
+      "sha256": "8a8b8826a36c4bfb240cfe77f462a6232fd67759fc548169bd21bfe5c6fdb3a0",
+      "size_bytes": 295906
+    },
+    {
+      "path": "annotations/clip-00211.json",
+      "sha256": "068c9fac04b5e7829bd9a026c853a194b26b3529b736071a7bfd27eb87569ce6",
+      "size_bytes": 274207
+    },
+    {
+      "path": "annotations/clip-00239.json",
+      "sha256": "090671a0238b9d5ae558221d9288ff3aa84e2ae7352a65ed48d88a7b3fe57d75",
+      "size_bytes": 250838
+    },
+    {
+      "path": "annotations/clip-00189.json",
+      "sha256": "e0f5b26aba26eaa42fe322cdae8389a0baac60a32aeb81680acca8c7c0eaeceb",
+      "size_bytes": 305699
+    },
+    {
+      "path": "annotations/clip-00230.json",
+      "sha256": "e3f33220f5cb21af47d67cf419ccef1c42f709c1ca615cbb2dcac1a6a75480c3",
+      "size_bytes": 221795
+    },
+    {
+      "path": "annotations/clip-00212.json",
+      "sha256": "8df3f5c13c58081059a166f0dfe7e00e8b461d6241e90e57fb91e37ae790f5f5",
+      "size_bytes": 281233
+    },
+    {
+      "path": "annotations/clip-00163.json",
+      "sha256": "bcb0e5acefee00b96df07d6cf9d2d7c222f01e07bfd3650326b6787a08e4bae6",
+      "size_bytes": 184692
+    },
+    {
+      "path": "annotations/clip-00186.json",
+      "sha256": "affe67289ebc28eb811a033f335c196ffbd691e8492d843d3a7fda4d6f44f084",
+      "size_bytes": 192118
+    },
+    {
+      "path": "annotations/clip-00262.json",
+      "sha256": "f60a0baba30df053e5ea511b7753ecc4da1704098c5d43395c6dff917963a42c",
+      "size_bytes": 104650
+    },
+    {
+      "path": "annotations/clip-00228.json",
+      "sha256": "437f7e9b0e39abe304f94b14423929a851bee511dc86acc6cdc54157baa675b0",
+      "size_bytes": 222612
+    },
+    {
+      "path": "annotations/clip-00244.json",
+      "sha256": "02498d28257871eacd090b8c92a93fbb8f1122f8a1c23b7b3fdfedc019dc8fbd",
+      "size_bytes": 76171
+    },
+    {
+      "path": "annotations/clip-00251.json",
+      "sha256": "f3df442570abab6c9adfb50a3662fad285a7d7d7d64ae0aa0bb7cda2250ce5fa",
+      "size_bytes": 415245
+    },
+    {
+      "path": "annotations/clip-00178.json",
+      "sha256": "ca5f5291f1cb2043bedd5659f16b8d770fa5a820506481e92e22e6a3cbd81c39",
+      "size_bytes": 222252
+    },
+    {
+      "path": "annotations/clip-00196.json",
+      "sha256": "75148194463e4c2ba7a51d6893f3e32de40a52b76356a8bb772fc77559eb3d7e",
+      "size_bytes": 123422
+    },
+    {
+      "path": "annotations/clip-00231.json",
+      "sha256": "449a97c9fbaca04602dc99bc1ac8b011c743cdfc0ea6f5c0e2778a99e6116718",
+      "size_bytes": 244943
+    },
+    {
+      "path": "annotations/clip-00177.json",
+      "sha256": "50fd0a43827f90e311a8bf96fccc8da154211b56963dc367ca8e63756f735965",
+      "size_bytes": 87869
+    },
+    {
+      "path": "annotations/clip-00207.json",
+      "sha256": "2704e609b858cbf2786b700e04ed1e533f7b4fbcd0c5a82998089e2aed765f89",
+      "size_bytes": 116185
+    },
+    {
+      "path": "annotations/clip-00205.json",
+      "sha256": "6c5365511e4546dd07d3f9fd8597d1db21718e39b3cbc7ee446b443e9c94d497",
+      "size_bytes": 123899
+    },
+    {
+      "path": "annotations/clip-00253.json",
+      "sha256": "ae5c1c1ea91b764d0fb50bd6cd86f9891c13821c0043dae3dbca4666606a0214",
+      "size_bytes": 70007
+    },
+    {
+      "path": "annotations/clip-00233.json",
+      "sha256": "7045f73cebdcb9bf82f62512a0f11a33da0add4dbd75c2ec67608909b58415e9",
+      "size_bytes": 123276
+    },
+    {
+      "path": "annotations/clip-00240.json",
+      "sha256": "3c2d41ed205c0b7f54157468afaa4c6e36f22c7ae6fc46762ee89c6ff357072e",
+      "size_bytes": 228965
+    },
+    {
+      "path": "annotations/clip-00221.json",
+      "sha256": "a0bb7ad8df54f364384f8e815e39fbd4d4b7fb471ffc608cbd3d1ee8266adf52",
+      "size_bytes": 147740
+    },
+    {
+      "path": "annotations/clip-00238.json",
+      "sha256": "c949c96fa67df696e1e79100fac238b837df47bdccabd8a414165195a1ad56b4",
+      "size_bytes": 245583
+    },
+    {
+      "path": "annotations/clip-00182.json",
+      "sha256": "0f0f5b22164a9f685fccbcf3c737bbbafb3eafc88df01cdcdf2e340de0d7c9ab",
+      "size_bytes": 232278
+    },
+    {
+      "path": "annotations/clip-00171.json",
+      "sha256": "f9a2218a2dfd198274be5bd11785c2e2dcfe284eb43f89099855c9c6e0984404",
+      "size_bytes": 199330
+    },
+    {
+      "path": "annotations/clip-00161.json",
+      "sha256": "8023eb7f6737d40f8eaab160b97da014fd793ebadd12a41d2c99d78c007ba69a",
+      "size_bytes": 108265
+    },
+    {
+      "path": "annotations/clip-00264.json",
+      "sha256": "924f839c0a04a06504b3fb0bda6fbc9c84488151074acd7b65ff2faf1cbe9939",
+      "size_bytes": 73919
+    },
+    {
+      "path": "annotations/clip-00200.json",
+      "sha256": "e3b0d3c48a5ef81d9add7628f46d1648fdddf560b901dec7509d3668f524c3d9",
+      "size_bytes": 98763
+    },
+    {
+      "path": "annotations/clip-00167.json",
+      "sha256": "57b0f0a44ea4e8e7c183b6d81030caa12bc47c0cda879e62b69c35627d583c52",
+      "size_bytes": 226659
+    },
+    {
+      "path": "annotations/clip-00235.json",
+      "sha256": "c3122515620ebc636ee5e8074cec717c4b89ced27d3bea30bc53d39b4a4ed5fa",
+      "size_bytes": 115204
+    },
+    {
+      "path": "annotations/clip-00160.json",
+      "sha256": "4e2b7fa44d3cae6aecb969908a3a7dac69baeb21f29ef82c62fc008096ef21d3",
+      "size_bytes": 81076
+    },
+    {
+      "path": "annotations/clip-00162.json",
+      "sha256": "28f07b4281518fd0a06e68731a1d525f27b4a3b1beabc976ee0430ae2a7a80bf",
+      "size_bytes": 56376
+    },
+    {
+      "path": "annotations/clip-00191.json",
+      "sha256": "4fbe15aa6429bd7fb8c343a5a930a5bd143232ad4305d26b723e5ed900544f97",
+      "size_bytes": 292644
+    },
+    {
+      "path": "annotations/clip-00237.json",
+      "sha256": "ec393ddbf3ca0cc372f9ce1accab438fd07e5243c30d4016ee9ce1955543fbb2",
+      "size_bytes": 91141
+    },
+    {
+      "path": "annotations/clip-00250.json",
+      "sha256": "d35e802c5c7bab02a96cedcbc625b5da1574163fe7af69b834d8a623142ef7cb",
+      "size_bytes": 311692
+    },
+    {
+      "path": "annotations/clip-00276.json",
+      "sha256": "11f9899707f1579a0ece93d25852053c03080fbcc37e97216e72574f655199ac",
+      "size_bytes": 189629
+    },
+    {
+      "path": "annotations/clip-00225.json",
+      "sha256": "1724a29ce4ccb654adb1427287628b7a8ccde21fb8382d1c08ab676e3ace6436",
+      "size_bytes": 82235
+    },
+    {
+      "path": "annotations/clip-00215.json",
+      "sha256": "10ca746e77d4130e6cf003eb938ab5808e08ac86b492fb5991e0474b4de3574a",
+      "size_bytes": 115993
+    },
+    {
+      "path": "annotations/clip-00183.json",
+      "sha256": "60cc1f614ff674ca94f105a9f8c0f106a39826f69ef9d5164c5175e8e7a4eb6e",
+      "size_bytes": 245926
+    },
+    {
+      "path": "annotations/clip-00216.json",
+      "sha256": "8da271176b98f50262dc7dc0c07d8da1879490159037d60d7c241409259b501d",
+      "size_bytes": 111713
+    },
+    {
+      "path": "annotations/clip-00214.json",
+      "sha256": "628ee24e65c9759bc298c6b53528a0a5cc4abeac6cdccbed8aaad94e5e9d598b",
+      "size_bytes": 101030
+    },
+    {
+      "path": "annotations/clip-00255.json",
+      "sha256": "982f16d52bc1a1279fab059795b0f78d840c4fa868e4733c760e2d015c7289f6",
+      "size_bytes": 115708
+    },
+    {
+      "path": "annotations/clip-00158.json",
+      "sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+      "size_bytes": 90733
+    },
+    {
+      "path": "annotations/clip-00223.json",
+      "sha256": "b2a90339e58be86c3bd3f94325d66759df3dfeca1738604d43c74a8766537d86",
+      "size_bytes": 134398
+    },
+    {
+      "path": "annotations/clip-00174.json",
+      "sha256": "e0da64f5ad73d5d16644be8b0e93b075484e5c6ada0d12a346ac9fbc44a14a52",
+      "size_bytes": 158262
+    },
+    {
+      "path": "annotations/clip-00246.json",
+      "sha256": "c839f6677e22ed2e52ee2c6846c3727a5dab7c0cd5a6b4539e6c3e11988e90a0",
+      "size_bytes": 142861
+    },
+    {
+      "path": "annotations/clip-00266.json",
+      "sha256": "88a0911ea3ab7a0822eea5897e14f6d151a76ae1f38d24ff31b6b99b3cbd8142",
+      "size_bytes": 87833
+    },
+    {
+      "path": "annotations/clip-00179.json",
+      "sha256": "bce75d5ef261c009c90f89d52d3059cf9d932521c40611f0619f30d4a02473b2",
+      "size_bytes": 232473
+    },
+    {
+      "path": "annotations/clip-00270.json",
+      "sha256": "ce9d3529b2ca8e542590135550f74ce4f03f57876186d12921e2d89686c59c0a",
+      "size_bytes": 159855
+    },
+    {
+      "path": "annotations/clip-00209.json",
+      "sha256": "377de3ffd82fe9198ddca0875669ecaba6f9acddb3e5d43800c95644e6ce2229",
+      "size_bytes": 315659
+    },
+    {
+      "path": "annotations/clip-00192.json",
+      "sha256": "50f8d8aead50c5f52cd3534f401d3f52911ca69d3d58096aa17660a3256e99b3",
+      "size_bytes": 171886
+    },
+    {
+      "path": "annotations/clip-00219.json",
+      "sha256": "f1be3d2e437fd9bb70c41cdc72ec842b1d40e12e9720d0b5e37603a876c06c9a",
+      "size_bytes": 145077
+    },
+    {
+      "path": "annotations/clip-00229.json",
+      "sha256": "6f258031857e5220c1a0bca444f467b721cc8a0c826c01b6f8c5c3df1a3383ad",
+      "size_bytes": 244020
+    },
+    {
+      "path": "annotations/clip-00249.json",
+      "sha256": "7c21d1c07d6ea892436f9be24d2d49081d2271f9ef6db26423332168461e58bc",
+      "size_bytes": 317244
+    },
+    {
+      "path": "annotations/clip-00220.json",
+      "sha256": "b6506322c98c02bec14eb68abb7344f047593d32220415802fd778f186dd2922",
+      "size_bytes": 163007
+    },
+    {
+      "path": "annotations/clip-00185.json",
+      "sha256": "3ff85d498b32fff156aaaf0cccff82b63ba750b5e902ae2571f3e4e5d6d9c24b",
+      "size_bytes": 150856
+    },
+    {
+      "path": "annotations/clip-00256.json",
+      "sha256": "4768a899dccc920c3a943c3b31c773deee8df70b179477459070245eb726f407",
+      "size_bytes": 95890
+    },
+    {
+      "path": "annotations/clip-00210.json",
+      "sha256": "a2f4e5676adac385310121fba348cbf0fd7b6fc239058f70f6fbad760121d88a",
+      "size_bytes": 311457
+    },
+    {
+      "path": "annotations/clip-00197.json",
+      "sha256": "67c9fb1d8beb72e2e7b7191822a2350fce179775a380e513ef5baeff2afad2b7",
+      "size_bytes": 139339
+    },
+    {
+      "path": "annotations/clip-00245.json",
+      "sha256": "38cc5fd2bbd4fc00bfd876663f14ae02a289e2f4498aabb694f1cf4d15a8f9ff",
+      "size_bytes": 146798
+    },
+    {
+      "path": "annotations/clip-00184.json",
+      "sha256": "1eb259dc7ef1d39b26a0254e13792fed2668870108e64b0dbcd98a2d571f466f",
+      "size_bytes": 253689
+    },
+    {
+      "path": "annotations/clip-00267.json",
+      "sha256": "9fb41b1a45cddd8b8994b30f984794006f358c2c4c8fd5cf0dcb49eb16f024c7",
+      "size_bytes": 51128
+    },
+    {
+      "path": "annotations/clip-00218.json",
+      "sha256": "f01db7700d068bc2de7cfa9886b57cad4eeb13a7066337090fa165a7b547e484",
+      "size_bytes": 151082
+    },
+    {
+      "path": "annotations/clip-00203.json",
+      "sha256": "5a5b194163a4b41a81555509e5380ed4b1bab3b52d580fd0e38e889b1b446c2e",
+      "size_bytes": 121737
+    },
+    {
+      "path": "annotations/clip-00260.json",
+      "sha256": "1cbab2883266149440897435be38ec5a3e0a077b6620d18293d3aacd7e4435be",
+      "size_bytes": 111944
+    },
+    {
+      "path": "annotations/clip-00208.json",
+      "sha256": "3bb8c9af4b3fde07848e26d431f1ad69b5e85a5185be67cd8217a655273bb2b8",
+      "size_bytes": 320142
+    },
+    {
+      "path": "annotations/clip-00226.json",
+      "sha256": "491bd70b6c61c2ebe34e898a0bc3c5740e122bbb2c3e21d44152a76b348d5883",
+      "size_bytes": 133497
+    },
+    {
+      "path": "annotations/clip-00236.json",
+      "sha256": "3f01beadeb7769203b60830dac8f9c08dc8d2b626147bdb78828c4686425d71b",
+      "size_bytes": 124291
+    },
+    {
+      "path": "annotations/clip-00176.json",
+      "sha256": "a8cfc426f964296e67efe332d1e026ef218386a7bcbf7e14304db2d814162605",
+      "size_bytes": 202878
+    },
+    {
+      "path": "annotations/clip-00258.json",
+      "sha256": "c2dc36eda0d2b2295faf5cc7a64e1b75750e64f99427d7cd03e48ce9cfb9ad55",
+      "size_bytes": 118216
+    },
+    {
+      "path": "annotations/clip-00265.json",
+      "sha256": "aca666a2bff8325af3275ac69b77f969663b24314942160451822be5344b7b88",
+      "size_bytes": 95790
+    },
+    {
+      "path": "annotations/clip-00168.json",
+      "sha256": "939eba5feb019db5f4c2d83924ab675c627836e97c41519e2eb7a78d3ee8725a",
+      "size_bytes": 210053
+    },
+    {
+      "path": "inputs/protocol-source.json",
+      "sha256": "9f0cb18fec2b5acd2cfcd5516c62fea493a7426c91ee3fa0fdd7100762098024",
+      "size_bytes": 994
+    },
+    {
+      "path": "inputs/common-intervals-val.jsonl",
+      "sha256": "0999eb0cf853e9314c0e36e1a19a0f8d68cb9d7c2fd83a86328bb523bd663cae",
+      "size_bytes": 3310
+    },
+    {
+      "path": "inputs/assignment-rules.json",
+      "sha256": "f8de0f2cc47e346c758fb375bc1ff55e378ff1b39a1f2a111c57f8fa65818c84",
+      "size_bytes": 2533
+    },
+    {
+      "path": "inputs/train-packs-train.jsonl",
+      "sha256": "aad6eed8d60a3ceb7086d04b44b5c44d843b272201a2d32e24f16de13702e8ed",
+      "size_bytes": 44408
+    },
+    {
+      "path": "inputs/common-intervals-train.jsonl",
+      "sha256": "30298377fe400de69cc6268325f2e2d34561e68ed5517bb6178dcd6ee3a1a7de",
+      "size_bytes": 23365
+    },
+    {
+      "path": "inputs/train-packs-val.jsonl",
+      "sha256": "07d5b7c095f677632912e27df3fedc650ce2cbd6dd589b7aab4281c010295be6",
+      "size_bytes": 6446
+    },
+    {
+      "path": "inputs/clip-catalog.csv",
+      "sha256": "712ec0ee04157bf806bf52654ae094ce542eb6a58c25d2e2c1fe07f8a1753f2f",
+      "size_bytes": 170613
+    }
+  ],
+  "returncode": 1,
+  "schema_version": 1,
+  "status": "interrupted"
+}

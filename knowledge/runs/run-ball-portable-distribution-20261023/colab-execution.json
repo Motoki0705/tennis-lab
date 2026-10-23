@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "sessions": [
+    {
+      "download_interruption": "colab-a-download-interrupted-timing.json",
+      "environment": "colab-a-environment.json",
+      "output_root": "outputs/ball_detection/distribution/portable-all-frame/vm-a",
+      "partial_copy": "colab-a-download-partial.json",
+      "session": "ball-distribution-check-a-20261023",
+      "start": "colab-a-start.json",
+      "status": "verification_running",
+      "tag": "vm-a"
+    },
+    {
+      "output_root": "outputs/ball_detection/distribution/portable-all-frame/vm-b",
+      "session": "ball-distribution-check-b-20261023",
+      "status": "not_started",
+      "tag": "vm-b"
+    }
+  ],
+  "source_plan_reference": "drive-upload.json#/source_plan",
+  "status": "in_progress"
+}

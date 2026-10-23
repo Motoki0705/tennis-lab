@@ -1,4 +1,4 @@
-<!-- knowledge-review: 3f7f7635f7a69c7f911660c6901a805b81ab13fc771cd18d170207ff50ef00af on 2026-10-23 -->
+<!-- knowledge-review: 1fbc407b383fea331f4c8397378260b9f64a7a0766627d1a5fac52e88e43344f on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -324,7 +324,7 @@ validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きo
 2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
 合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
 既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
-Driveへの全量uploadは最終inventoryで確認済み。2台のColab VMでの取得・検証はこれから行う。
+Driveへの全量uploadは最終inventoryで確認済み。Colabの1台目で取得を中断・再開し、全件照合を実行中。2台目は未開始。
 長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
 窓側はstore相対の原注釈pathをresolverで解決する必要がある。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。

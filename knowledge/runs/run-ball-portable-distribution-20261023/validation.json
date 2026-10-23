@@ -1,5 +1,5 @@
 {
-  "actual_colab_execution": false,
+  "actual_colab_execution": true,
   "actual_external_transfer": true,
   "code_commits": {
     "additional_test": "26b61c4c03ed7a8fc7569235b77d9b576558b1db",
@@ -7,6 +7,8 @@
     "recipes": "1e420c51bfb21a0172f029e3ebab5cdeb89ee321",
     "store_api": "4e1a5c2fc96fddeb8ec4d7aa68f729cf8c10a631"
   },
+  "colab_evidence": "colab-execution.json",
+  "colab_status": "in_progress",
   "counts_overlap": true,
   "external_transfer_evidence": "drive-upload.json",
   "external_transfer_status": "verified",
