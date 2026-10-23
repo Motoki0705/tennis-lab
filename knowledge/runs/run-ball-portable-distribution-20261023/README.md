@@ -155,10 +155,11 @@ validated independent `_sha256` checksum provider. A different Python/default
 Colab environment must not silently replace that provider or its verification.
 The recorded execution obtains the small sample specification and reference
 receipt from the frozen Git commit; both JSON files are tracked in that bundle.
-The exact bootstrap/execution commits and archived bundle are referenced by
-`source_plan` in [drive-upload.json](drive-upload.json). Do not overwrite those
-references after fixing the execution revision. Large input files use the Drive
-CLI.
+The final bootstrap/execution commits and verified archived bundle are pinned in
+[colab-code-revisions.json](colab-code-revisions.json). The original upload's
+`source_plan` in [drive-upload.json](drive-upload.json) retains the initial revision
+as historical evidence. Do not overwrite the sample references after fixing the
+execution revision. Large input files use the Drive CLI.
 
 Run `colab_verify.py` from the repository with `PYTHONPATH` set to its root. Its
 required arguments are `--drive-path`, a fresh `--destination`, a new `--receipts`

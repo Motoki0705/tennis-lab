@@ -34,6 +34,9 @@ metrics:
   drive_verified_bytes: 157029428456
   resume_retained_payloads: 963
   resume_uploaded_payloads: 574
+  colab_a_sha256_seconds: 459.4853404579999
+  colab_a_samples_equal: true
+  colab_a_free_after_verification_bytes: 42658000896
 repro:
   commit: 52f91b6ec0b5e728efe61ec085d91eeafcad87a4
   branch: codex/ball-temporal-distribution
@@ -85,7 +88,11 @@ Driveへの初回全量uploadは[配置receipt](../../runs/run-ball-portable-dis
 [修復記録](../../runs/run-ball-portable-distribution-20261023/colab-a-recovery.json)に従い、
 検査後のpath正規化とJSON往復でのreceipt型の統一を修正し、回帰テストを通した。
 Notebook接続断でpendingになった修正版の提出はcancel・保存確認・既存VMへのreconnectを経て新jobへ置き換えた。
-取得済みデータを再転送せず全件SHA-256・意味照合を実行中で、2台目の新VMでの再取得はまだ始めていない。
+取得済みデータを再転送せずに照合し、全2,926ファイルのSHA-256/sizeと18窓の教師入力・RGB・PTSが一致した。
+SHA-256は約7.66分、サンプル照合は18.1秒で、照合後の空きは約42.66 GBだった。
+[1台目の停止](../../runs/run-ball-portable-distribution-20261023/colab-a-stop.json)はCLI成功と停止後status、
+割当0件で確認した。修正版bundleと全receiptは検証済みのDrive運用archiveに保存した。
+2台目の新VMではlocked環境を構築中で、取得・全件照合と停止確認は未完了である。
 最初の全量転送は962 shard・約104.03 GBの照合後、親の報告によるモデルcapacityエラーで
 sessionとともに終了した。全量成功のterminal receiptはなく、成功完了とは扱わない。
 [中断と再開の記録](../../runs/run-ball-portable-distribution-20261023/session-interruption.json)に従い、

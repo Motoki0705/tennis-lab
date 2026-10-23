@@ -1,11 +1,13 @@
 {
   "bootstrap_commit": "0b89c173542c90433e8f30a311c90d3b62146b50",
   "bundle": {
+    "archive_member": "source/ball-distribution-colab-fixed.bundle",
     "path": "tmp/ball-distribution-colab-fixed.bundle",
     "prerequisite": "cca80ae6465e0571421de1abfae9fcd80188cde7",
     "ref": "refs/heads/codex/ball-temporal-distribution",
     "sha256": "40f7439d5e192d613e9b053c5fb8f427e5091cce780f6a7457d34666d049e770",
-    "size_bytes": 552718
+    "size_bytes": 552718,
+    "verified_drive_archive": "colab-a-closure.json"
   },
   "execution_commit": "bae5402729cbfc2c331c8dd839659bd78b183b66",
   "fixes": [
