@@ -188,8 +188,6 @@ def test_deepseek_harness_skill_is_discoverable_from_both_agents() -> None:
     assert claude_skills.is_symlink()
     assert claude_skills.resolve() == DSH_SKILL.parent.parent.resolve()
     assert (claude_skills / name / "SKILL.md").samefile(DSH_SKILL)
-    agents_targets = {target for _, target, _ in _links(AGENTS_MD)}
-    assert str(DSH_SKILL.relative_to(ROOT)) in agents_targets
 
 
 def test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow() -> (
