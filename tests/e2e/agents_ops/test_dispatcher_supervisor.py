@@ -1478,8 +1478,34 @@ def test_installer_disabled_install_and_main_source_only(tmp_path: Path) -> None
     assert (
         "--user enable --now tennis-lab-dispatch-supervisor.service" in log.read_text()
     )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "fixture",
+        ],
+        check=True,
+    )
+    linked = tmp_path / "linked-worktree"
+    subprocess.run(
+        ["git", "-C", str(repo), "worktree", "add", "--detach", str(linked)],
+        check=True,
+    )
+    shutil.copytree(source, linked / ".agents/ops")
     refusal = subprocess.run(
-        [str(ROOT / ".agents/ops/install_units.sh"), "--dry-run"],
+        [str(linked / ".agents/ops/install_units.sh"), "--dry-run"],
         env=env,
         capture_output=True,
         text=True,
