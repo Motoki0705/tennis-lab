@@ -1,0 +1,18 @@
+{
+  "bootstrap_commit": "0b89c173542c90433e8f30a311c90d3b62146b50",
+  "bundle": {
+    "path": "tmp/ball-distribution-colab-fixed.bundle",
+    "prerequisite": "cca80ae6465e0571421de1abfae9fcd80188cde7",
+    "ref": "refs/heads/codex/ball-temporal-distribution",
+    "sha256": "40f7439d5e192d613e9b053c5fb8f427e5091cce780f6a7457d34666d049e770",
+    "size_bytes": 552718
+  },
+  "execution_commit": "bae5402729cbfc2c331c8dd839659bd78b183b66",
+  "fixes": [
+    "Resolve validated distribution roots and upload sources to absolute paths before opening the store or shared verifier.",
+    "Represent track_ids as a JSON-native list so sample receipts compare after JSON round trips.",
+    "Explicit verify-existing mode repeats all hashes and samples without another download."
+  ],
+  "initial_execution_commit": "590d3283bfa69f1fab378bf2ad1e6d8b7f231508",
+  "schema_version": 1
+}

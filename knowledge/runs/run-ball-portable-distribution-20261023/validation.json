@@ -5,11 +5,14 @@
     "additional_test": "26b61c4c03ed7a8fc7569235b77d9b576558b1db",
     "parallel_verification_and_recovery": "52f91b6ec0b5e728efe61ec085d91eeafcad87a4",
     "recipes": "1e420c51bfb21a0172f029e3ebab5cdeb89ee321",
+    "relative_roots_and_json_receipts": "bae5402729cbfc2c331c8dd839659bd78b183b66",
     "store_api": "4e1a5c2fc96fddeb8ec4d7aa68f729cf8c10a631"
   },
   "colab_evidence": "colab-execution.json",
+  "colab_recovery_evidence": "colab-a-recovery.json",
   "colab_status": "in_progress",
   "counts_overlap": true,
+  "distinct_tests": 56,
   "external_transfer_evidence": "drive-upload.json",
   "external_transfer_status": "verified",
   "knowledge_precheck": [
@@ -61,10 +64,23 @@
       "elapsed_seconds": 0.57,
       "passed": 4,
       "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py -n 1 -q",
+      "elapsed_seconds": 10.25,
+      "passed": 26,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q",
+      "elapsed_seconds": 69.15,
+      "passed": 56,
+      "returncode": 0
     }
   ],
   "schema_version": 1,
   "static_checks": {
+    "changed_source_files_checked": 7,
     "knowledge_source_files_checked": 12,
     "mypy": "passed",
     "ruff": "passed"

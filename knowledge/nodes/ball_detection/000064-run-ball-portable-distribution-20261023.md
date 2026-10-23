@@ -80,7 +80,12 @@ Driveへの初回全量uploadは[配置receipt](../../runs/run-ball-portable-dis
 [Colab実行記録](../../runs/run-ball-portable-distribution-20261023/colab-execution.json)の1台目は
 実機のL4を確認し、固定commitのPython 3.11 locked環境を約26秒で構築した。
 環境構築後の空きは約199.8 GBで、配布量を置ける。取得の意図した中断では129ファイル・約75 MBを記録して再開した。
-全件SHA-256・サンプル意味照合は実行中で、2台目の新VMでの再取得はまだ始めていない。
+初回の再取得はCLI照合込み約47.2分で成功し、途中の129ファイルを保持した。
+その後の全件検証は相対pathを扱うAPIの不備で失敗したため、成功完了とは扱わない。
+[修復記録](../../runs/run-ball-portable-distribution-20261023/colab-a-recovery.json)に従い、
+検査後のpath正規化とJSON往復でのreceipt型の統一を修正し、回帰テストを通した。
+Notebook接続断でpendingになった修正版の提出はcancel・保存確認・既存VMへのreconnectを経て新jobへ置き換えた。
+取得済みデータを再転送せず全件SHA-256・意味照合を実行中で、2台目の新VMでの再取得はまだ始めていない。
 最初の全量転送は962 shard・約104.03 GBの照合後、親の報告によるモデルcapacityエラーで
 sessionとともに終了した。全量成功のterminal receiptはなく、成功完了とは扱わない。
 [中断と再開の記録](../../runs/run-ball-portable-distribution-20261023/session-interruption.json)に従い、

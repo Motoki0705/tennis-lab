@@ -1,4 +1,5 @@
 {
+  "corrected_source_plan_reference": "colab-code-revisions.json",
   "schema_version": 1,
   "sessions": [
     {
@@ -6,10 +7,13 @@
       "environment": "colab-a-environment.json",
       "output_root": "outputs/ball_detection/distribution/portable-all-frame/vm-a",
       "partial_copy": "colab-a-download-partial.json",
+      "recovery": "colab-a-recovery.json",
       "session": "ball-distribution-check-a-20261023",
       "start": "colab-a-start.json",
-      "status": "verification_running",
-      "tag": "vm-a"
+      "status": "verification_recheck_running",
+      "tag": "vm-a",
+      "verification_job": "verify-data-recheck",
+      "verification_root": "outputs/ball_detection/distribution/portable-all-frame/vm-a/verification-recheck"
     },
     {
       "output_root": "outputs/ball_detection/distribution/portable-all-frame/vm-b",
