@@ -5,7 +5,10 @@ from __future__ import annotations
 import importlib
 import json
 import sqlite3
+import threading
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -679,6 +682,110 @@ def test_sender_dispatch_rechecks_recipient_before_attempt(
         == recipient["delivery_reason"]
         == ("recipient_retired" if status == "ended" else "recipient_unavailable")
     )
+
+
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+@pytest.mark.parametrize(
+    "change", ["released", "ended", "replaced", "assignment", "identity"]
+)
+def test_sender_dispatch_rechecks_authority_after_notification_lock_wait(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+    change: str,
+) -> None:
+    w = world
+    w.fake.fail_once_for.update(w.assignments[p].id for p in (2, 3))
+    root = w.post(to=[w.assignments[p].name for p in (2, 3)])
+    w.fake.calls.clear()
+    before = w.message_rows()
+    env = w.env()  # Keep the original caller even after the owner is replaced.
+    waiting = threading.Event()
+    original_lock = w.board.delivery.locked
+
+    @contextmanager
+    def observed_lock(path: Path) -> Iterator[None]:
+        assert path == w.store.directory / "notifications.lock"
+        waiting.set()  # dispatch_post has released its initial registry lock.
+        with original_lock(path):
+            yield
+
+    monkeypatch.setattr(w.board.delivery, "locked", observed_lock)
+    cli = importlib.import_module("board.__main__")
+    monkeypatch.setattr(cli, "os", SimpleNamespace(environ=env))
+    monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+
+    def retry() -> Any:
+        if entrypoint == "cli":
+            return cli.main(["dispatch", "--post", root["id"]])
+        return w.board.redelivery.dispatch_post(env, w.routes, post_id=root["id"])
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with original_lock(w.store.directory / "notifications.lock"):
+            future = pool.submit(retry)
+            assert waiting.wait(timeout=5)
+            assert not future.done()
+            if change == "replaced":
+                w.change(1, session="claude:replacement-owner", generation=2)
+            elif change == "assignment":
+                with w.store.transaction() as connection:
+                    w.board.names.retire_name(connection, "o/r", 1, now=NOW)
+                    connection.execute(
+                        """INSERT INTO name_assignments
+                           (name, repo, parent, identifier, assigned_at, retired_at)
+                           VALUES (?, 'o/r', 1, NULL, ?, NULL)""",
+                        (w.board.names.load_names()[10], w.board.names.timestamp(NOW)),
+                    )
+            elif change == "identity":
+                env.update(w.env(3))
+            else:
+                w.change(1, status=change)
+        if entrypoint == "cli":
+            assert future.result(timeout=5) == 2
+            output = capsys.readouterr()
+            assert output.out == ""
+            assert "only the active post sender" in output.err
+            private_output_absent(output.err, env)
+        else:
+            with pytest.raises(
+                w.board.errors.BoardError, match="only the active post sender"
+            ):
+                future.result(timeout=5)
+    assert w.fake.calls == []
+    assert w.message_rows() == before  # Includes state, attempts, reason and times.
+
+
+@pytest.mark.parametrize("change", ["released", "replaced"])
+def test_sender_dispatch_rechecks_authority_before_each_recipient(
+    world: World, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    w = world
+    root = w.post(to=[w.assignments[p].name for p in (2, 3)], notifiers={})
+    before = w.message_rows()["deliveries"]
+    env = w.env()
+    original_parent_state = w.board.delivery.parent_state
+    completed = 0
+
+    @contextmanager
+    def change_after_first_recipient(values: Any) -> Iterator[dict[str, Any]]:
+        nonlocal completed
+        with original_parent_state(values) as parents:
+            yield parents
+        completed += 1
+        if completed == 1:
+            if change == "replaced":
+                w.change(1, session="claude:replacement-owner", generation=2)
+            else:
+                w.change(1, status=change)
+
+    monkeypatch.setattr(w.board.delivery, "parent_state", change_after_first_recipient)
+    with pytest.raises(w.board.errors.BoardError, match="only the active post sender"):
+        w.board.redelivery.dispatch_post(env, w.routes, post_id=root["id"])
+    assert [n.assignment_id for n in w.fake.calls] == [w.assignments[2].id]
+    after = w.message_rows()["deliveries"]
+    assert after[0] != before[0]  # The first attempt was still authorized.
+    assert after[1:] == before[1:]
 
 
 def test_concurrent_sender_dispatch_reports_only_its_own_attempt(world: World) -> None:

@@ -8,10 +8,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 from herdr_labels.coordination import locked
+from lib.identity import session_identity
 
 from .access import parent_state
 from .errors import BoardError
-from .names import resolve_name, timestamp
+from .names import for_parent, resolve_name, timestamp
 from .records import REASONS, post_row, recipient_views
 from .safety import public
 from .storage import Store, directory
@@ -124,8 +125,9 @@ def dispatch(
     A durable uncertainty marker is committed BEFORE calling a route. A process
     crash, exception or malformed result therefore cannot cause automatic
     duplicate sends. Only a certified unsent failure may be retried. Never hold
-    a SQLite transaction while calling a notifier. With retry_only, leave held
-    rows alone and report attempts/skips from inside the notification lock.
+    a SQLite transaction while calling a notifier. With retry_only, recheck the
+    active sender under each parent lock, leave held rows alone and report
+    attempts/skips from inside the notification lock.
     """
     if set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
@@ -155,6 +157,34 @@ def dispatch(
             reports[target_post, target_id] = report
             with parent_state(env) as parents:
                 with store.transaction() as connection:
+                    if retry_only:
+                        # Initial CLI authorization predates notifications.lock.
+                        # Fence the caller again before any delivery mutation;
+                        # this parent lock also spans the notifier and its result.
+                        try:
+                            caller_identity = session_identity(env)
+                        except ValueError:
+                            raise BoardError(
+                                "invalid notification retry identity"
+                            ) from None
+                        post = post_row(connection, target_post)
+                        sender = parents.get(
+                            f"{post['sender_repo']}#{post['sender_parent']}"
+                        )
+                        sender_assignment = for_parent(
+                            connection, post["sender_repo"], post["sender_parent"]
+                        )
+                        if (
+                            sender is None
+                            or sender["status"] != "active"
+                            or sender["session"] != caller_identity
+                            or sender_assignment is None
+                            or sender_assignment.retired_at is not None
+                            or sender_assignment.id != post["sender_assignment_id"]
+                        ):
+                            raise BoardError(
+                                "only the active post sender may retry its notifications"
+                            )
                     row = connection.execute(
                         "SELECT state, retryable, idempotency_key, reason FROM deliveries WHERE post_id=? AND assignment_id=?",
                         (target_post, target_id),
