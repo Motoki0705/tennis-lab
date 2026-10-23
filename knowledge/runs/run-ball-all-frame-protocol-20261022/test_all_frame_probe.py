@@ -117,7 +117,7 @@ def test_negative_targets_roundtrip_and_do_not_include_unknowns_or_observed() ->
 
 
 def test_absence_overlap_is_complete_for_the_full_safe_span_definition() -> None:
-    # Logical consequence of the proposed common definition, not independent data.
+    # Logical consequence of the agreed common definition, not independent data.
     codes = np.asarray([2, 3, 0, 1] * 64, dtype=np.uint8)
     spans = [(0, 128), (128, 256)]
     common: NDArray[np.bool_] = np.zeros(256, dtype=np.bool_)
@@ -137,6 +137,7 @@ def test_saved_common_and_negative_membership_reconstruct_the_published_counts_a
         negatives = dict(json.loads(line) for line in (root / f"absence-targets-{split}.jsonl").read_text().splitlines())
         common_row = next(r for r in summary if r["split"] == split and r["scope"] == "common")
         negative_row = next(r for r in summary if r["split"] == split and r["scope"] == "absence")
+        overlap_row = next(r for r in summary if r["split"] == split and r["scope"] == "absence_overlap")
         exclusive_row = next(r for r in summary if r["split"] == split and r["scope"] == "absence_exclusive")
         assert exclusive_row["frames"] == 0
         hashes = {key: hashlib.sha256() for key in ("common", "absence", "absence_teacher")}
@@ -168,6 +169,9 @@ def test_saved_common_and_negative_membership_reconstruct_the_published_counts_a
         assert set(negatives) <= set(intervals)
         assert frames == common_row["frames"]
         assert class_counts == {2: negative_row["reviewed_empty"], 3: negative_row["out_of_frame"]}
+        assert class_counts == {2: common_row["reviewed_empty"], 3: common_row["out_of_frame"]}
+        assert negative_row["target_identity_sha256"] == overlap_row["target_identity_sha256"]
+        assert negative_row["teacher_identity_sha256"] == overlap_row["teacher_identity_sha256"]
         assert hashes["common"].hexdigest() == common_row["target_identity_sha256"]
         assert hashes["absence"].hexdigest() == negative_row["target_identity_sha256"]
         assert hashes["absence_teacher"].hexdigest() == negative_row["teacher_identity_sha256"]

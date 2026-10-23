@@ -1,10 +1,16 @@
 {
-  "schema": "ball_all_frame_assignment_proposal.v1",
-  "status": "awaiting_human_agreement",
+  "schema": "ball_all_frame_assignment.v1",
+  "status": "confirmed_by_user",
+  "decision_date": "2026-10-23",
+  "decision_source": "https://github.com/Motoki0705/tennis-lab/issues/1367",
+  "downstream_inputs": [
+    "common-intervals-<split>.jsonl",
+    "train-packs-<split>.jsonl",
+    "clip-catalog.csv"
+  ],
   "common_intervals": "all hybrid.eligible_spans of length >=128; no play/label-density filter",
   "interval_encoding": "JSONL [snapshot_clip_index, [[start,stop_exclusive],...]]; never merge adjacent PTS-separated intervals",
   "pack_encoding": "JSONL [snapshot_clip_index, [[first_start,last_start_inclusive,stride],...]]",
-  "absence_encoding": "JSONL [snapshot_clip_index, [[start,stop_exclusive,class_code],...]]; 2=reviewed_empty,3=out_of_frame",
   "training": {
     "pack_length": 128,
     "pack_start_stride": 16,
@@ -14,7 +20,12 @@
     "sampling": "uniform over accepted train packs, with replacement; same seeded pack stream for all T/models",
     "update": "one shared pack for F=128, q packs for F=128*q; every child is forwarded",
     "zero_teacher_child": "zero contribution, normalized by the whole update's known teacher count",
-    "absence_mixture": "not set; auxiliary absence targets are not an additional training sampler"
+    "absence_mixture": "natural frequency within common packs; no additional absence sampler"
+  },
+  "input_budget": {
+    "initial_frames_per_update": 128,
+    "frames_per_update_multiple": 128,
+    "finalize_in": "https://github.com/Motoki0705/tennis-lab/issues/1376"
   },
   "evaluation": {
     "start_stride": "T//2",
@@ -31,7 +42,16 @@
       "32-63",
       "64+"
     ],
-    "absence": "confirmed negatives in any safe span length>=128; all overlap common",
-    "overlap": "report common and absence scopes separately; union counts each frame once; exclusive has support 0"
+    "absence": "kind-specific FPR within common confirmed negatives; FNR on common observed",
+    "negative_kinds": [
+      "reviewed_empty",
+      "out_of_frame"
+    ]
+  },
+  "historical_evidence": {
+    "absence_files": "absence-targets-<split>.jsonl",
+    "downstream_input": false,
+    "encoding": "JSONL [snapshot_clip_index, [[start,stop_exclusive,class_code],...]]; 2=reviewed_empty,3=out_of_frame",
+    "purpose": "rejected separate-set proposal; audit equality with common confirmed negatives; exclusive support is 0"
   }
 }

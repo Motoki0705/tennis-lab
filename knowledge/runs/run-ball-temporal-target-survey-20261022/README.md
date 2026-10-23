@@ -1,7 +1,9 @@
 # 中央target・文脈条件のCPU調査bundle
 
 結果・考察は[knowledge node](../../nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)、
-未合意の評価規則は[protocol.md](protocol.md)が正本。ここは再現手順とartifactの読み方を扱う。
+当時の評価規則案は[protocol.md](protocol.md)に保持する。ここは再現手順とartifactの読み方を扱う。
+**後続runにより置き換え（不採用案の記録）**。
+現行規則は[全フレーム教師のprotocol](../run-ball-all-frame-protocol-20261022/protocol.md)を参照する。
 このbundleは常設の窓生成APIではない。CPU集計で、RGB復号・GPU・Colab/Drive操作は行わない。
 
 ## 再現

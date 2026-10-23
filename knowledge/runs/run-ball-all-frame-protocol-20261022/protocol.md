@@ -1,10 +1,12 @@
-# 全フレーム教師での長系列比較プロトコル改訂案
+# 全フレーム教師での長系列比較プロトコル
 
-**規則案はユーザー確認待ち。** 比較目的・固定軸・実験行列は
+**決定（2026-10-23、ユーザー確認）。** 合意の正本は
+[親issueの再調査を受けた決定](https://github.com/Motoki0705/tennis-lab/issues/1367#2026-10-23-1369-の再調査を受けた決定)。
+比較目的・固定軸・実験行列は
 [親issueの実験設計](https://github.com/Motoki0705/tennis-lab/issues/1367#実験設計)と
 [評価条件](https://github.com/Motoki0705/tennis-lab/issues/1367#目標指標評価条件)を参照する。
-親で決定済みのclip内文脈、入力全フレーム教師、T=32/64/128、不在評価の追加を前提に、
-ここでは集合・窓・採点・予算を具体化する。初回runの中央16案は履歴として残す。
+ここでは合意を実装・検証するための集合・窓・採点・予算の具体規則を定める。
+初回runの中央16案は不採用案の履歴として残す。
 
 ## 入力と共通区間
 
@@ -16,7 +18,7 @@
   `timestamp_gap_factor × clip全体のmedian(ΔPTS秒)` より大きいgapを跨がない。
   隣り合うframe indexでもPTS境界を挟んだ区間を結合しない。`segment_break`を一律には切らない。
 - 旧play区間や旧32窓への重なりは追加条件にしない。これは「clip内条件(b)で128枚を置ける区間」
-  という指定をそのまま区間へ適用する案で、play外の位置教師・不在も含む。
+  という決定を区間へ適用し、play外の位置教師・不在も含む。
   全Tの入力をこの区間内に閉じ、32/64だけが使える短い区間は学習・採点から除く。
 - 共通frame集合Cは区間内の全frame。位置採点Pはそのobserved部分、共通不在Nはその確認済み不在部分。
   C内でも教師不明のframeはmaskのまま入力する。区間・frameのidentityをT・モデル間で一致させる。
@@ -37,7 +39,7 @@ TrackNet/Meijiは統一storeの既存契約を使い、不要な元CSVの存在�
 `position_valid=observed`、`heatmap_valid=observed OR confirmed_negative`を**全T枚**に適用する。
 中央専用maskは設けない。これは固定v1 snapshotについての調査であり、明示teacher maskを持つ別schemaは対象外。
 
-## 学習窓と採用条件の推奨案
+## 学習窓と採用条件
 
 Tごとに窓を独立抽出せず、先に**共通の128枚の組**を固定する。
 
@@ -55,12 +57,12 @@ Tごとに窓を独立抽出せず、先に**共通の128枚の組**を固定す
    長い区間や128枚の組の重なりによる重みは全Tで一致する。source等の再重み付けは加えない。
 5. 子窓が全maskでも128枚の組から捨てず、forwardには含め、損失の分子・分母への寄与を0にする。
    optimizer更新全体の分母は必ず正。負例のみの組も自然な出現頻度で残る。
-   不在集合からの追加抽出・不在のoversampling比率は今回決めない。
+   共通集合の不在はその自然な頻度で使い、不在の追加抽出・oversamplingは行わない。
 
 例えば同じ128枚にobserved 80、不在20、mask28があれば、32×4・64×2・128×1のどれも
 1更新で80/20/28となる。この規則は期待値だけでなく、同じ組列の実教師数も一致させる。
 各T独立の「教師1枚以上」や「observed率25%以上」の案は`budget.csv`で比較したが、
-Tによる採用とframe出現重みの差が残るため推奨しない。
+Tによる採用とframe出現重みの差が残るため採用しない。
 子窓の全maskを許容するための学習loop対応は #1373 が必要。
 
 拡張を使う場合は、共通128枚の組・出現番号・seedに空間変換と人工遮蔽を結び付け、
@@ -87,24 +89,18 @@ Tが短いほどMDD先頭0と時間処理の窓端が増える効果は残るの
 - owner窓内のframe offsetと前後の実context枚数、MDD先頭に当たるかも評価記録へ残す。
   区間端距離と窓端距離は別の量である。
 
-## 確認済み不在の評価専用scope
+## 共通集合内の確認済み不在
 
-snapshot全体の確認済み不在から、条件(b)で128枚を置ける連続区間に属するものをAとする。
-そのframeが入る窓で採点し、**窓全128枚が不在である必要はない**。
-位置教師・未知が混じる窓も許し、各Tの評価ownerは上と同じ規則を使う。
-区間長128未満の不在は、短いTだけで足さない。
+不在評価はC内の確認済み不在Nをkind別に別集計する。専用の集合・ファイルは作らない。
+上記の評価ownerをそのまま使い、**窓全T枚が不在である必要はない**。
+位置教師・未知が混じる窓も許す。区間長128未満の不在を短いTだけで足さない。
+splitは保持し、trainは支持数監査・学習用、validationは閾値較正用、testは固定評価用とする。
 
-今回のCを全適格区間と定義すると、集合の定義から**A=N**となる。
-不在の専用artifact・専用レポートは追加できるが、新しいframeは増えない。
-`A∩C`と`A\C`を明示し、後者の支持数0を隠さない。
-共通scopeと不在scopeの成績は別に示してよいが、両者を足して分母を倍にしたり、
-独立した2組の証拠と解釈したりしない。統合するときはframe keyの和集合で一度だけ数える。
-ユーザーが共通集合外の新しい不在frameを必要とするなら、Cにplay等の追加条件を課すなど
-共通区間の範囲を変える再判断が必要。今回はその変更を勝手に採らない。
-
-splitは保持する。trainの不在一覧は支持数監査・診断用で、閾値較正やholdout成績には使わない。
-専用scopeを新しい学習samplerへ追加しない。共通trainに元からある不在は上の自然頻度で教師に使う。
-「評価専用scope」は、commonと教師が重ならない独立holdoutという意味ではない。
+調査時に列挙した`absence-targets-*.jsonl`は、採用されなかった専用集合案の証拠としてのみ残す。
+snapshot全体から同じ文脈条件で評価可能な不在を列挙してもNと同一となり、共通集合外は0だった。
+この同一性の監査を再現可能にするために保持し、#1372への入力・追加sampler・独立holdoutには使わない。
+`summary.json`やCSVの`absence`・`absence_overlap`・`absence_exclusive`もこの調査の集計名であり、
+現行評価に別scopeを増やす指示ではない。共通集合と不在部分の支持数を足して二重計上しない。
 
 ## 指標・不在閾値
 
@@ -121,13 +117,14 @@ source/FPS/group平均への置き換えはしない。副指標は中央値、P
 
 `score=max(sigmoid(native_heatmap_logits))`、`present=(score ≥ τ)`。
 scoreを存在確率とは呼ばず、hybridだけ存在headやgateを追加しない。
-共通Nと専用Aについて、それぞれ確認済み不在に対するpresent数/支持数をFPRとし、
-`reviewed_empty` / `out_of_frame` / 合算を出す。observedのabsent数/共通observed数をFNRとする。
-不在だけのAにはobservedがないため、A単独のFNRと位置指標は`null`。
-共通observedのFNRを添えて、不在scopeのFPRと対応づける。
+共通集合内で`FPR_kind = presentと判定したkindの確認済み不在数 / そのkindの支持数`とし、
+`reviewed_empty` / `out_of_frame` / 合算を出す。
+`FNR = absentと判定した共通observed数 / 共通observed支持数`とする。
+不在kindの行にはFPRと支持数を出し、正例のないkind行のFNR・位置指標は`null`。
+共通observedのFNRを併記し、kind別FPRとの対応を示す。source/FPS/区間端距離別にも同じ分母規則を使う。
 
-各固定予算checkpoint・モデル・T・seedのτはvalidationの共通observed Pと
-`A∪N`の一意負例（今回はA=N）から、`(FPR+FNR)/2`を最小化して決定する。
+各固定予算checkpoint・モデル・T・seedのτはvalidationの共通observed Pと共通不在Nだけから、
+`(FPR_all_negative+FNR_observed)/2`を最小化して決定する。負例は両kindを合算し、frameごとに1回だけ数える。
 score変化点を全探索し、同scoreを分割せず、all-present/all-absentも端点modeとして評価する。
 同値ならFPRが小さい点、さらに同値なら高いτ。source別閾値を後付けしない。
 閾値・端点mode・混同行列・支持数を保存し、そのままtestへ適用する。
@@ -148,7 +145,7 @@ seed42で全条件。主要対比較は両モデルの32対128を推奨し、see
 10,000回のbootstrapを推奨し、乱数seed・各学習seedの値を残す。1 groupしかないsourceの
 会場間変動を多数frameから推定したかのように扱わない。
 
-1更新の入力予算Fは128枚（または共通の128の整数倍）を推奨する。
+1更新の入力予算Fは128枚を初期値とし、#1376の試走で全条件共通の128の整数倍として確定する。
 `B_eff(T)=F/T`窓、固定microbatchなら`B_eff=b×A×W`（b=窓/device、A=蓄積、W=device数）。
 変則microbatchは実窓数を合計する。F=128なら4/2/1窓で、同じ128枚の組を1つ処理する。
 不足した更新を黙って小さくせず、全条件でU回の完全な更新を完了する。
@@ -166,10 +163,10 @@ Fと更新数を揃えてもFLOPs・wall time・VRAMは等しくならない。
 
 ## 後続への受け渡し
 
-`common-intervals-*.jsonl`、`train-packs-*.jsonl`、`absence-targets-*.jsonl`と
-`clip-catalog.csv`が小さな候補入力。機械向けの形式・規則は`assignment-rules.json`にある。
+`common-intervals-*.jsonl`、`train-packs-*.jsonl`と`clip-catalog.csv`を入力として渡す。
+機械向けの確定した形式・規則は`assignment-rules.json`にある。`absence-targets-*`は入力に含めない。
 #1372で正式manifestへ変換し、区間・教師・採点集合のidentityと支持数を本runに照合する。
 可搬storeへのclip index変更は`clip_id`で明示的に対応付け、FPS・教師・実PTSを維持する。
 hash形式が異なる場合は値を直接比べず、復号したframe key・class集合で照合する。
 #1374はChat原注釈から検証した不在mask・来歴も配布版へ凍結する。
-本案の合意前にsrcの常設規則として採用しない。
+常設実装・配布は後続の子で行い、本runはその入力と照合基準を提供する。

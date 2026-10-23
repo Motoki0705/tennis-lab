@@ -1,7 +1,8 @@
 # 全フレーム共通区間のCPU再調査bundle
 
 結論・数値は[knowledge node](../../nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)、
-ユーザー確認待ちの規則は[protocol.md](protocol.md)を正本とする。
+具体規則は[protocol.md](protocol.md)を正本とする。
+**決定（2026-10-23、ユーザー確認）**。合意は[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367#2026-10-23-1369-の再調査を受けた決定)を参照する。
 初回の中央16調査から独立した新run。入力・教師APIの分類関数は初回bundleを再利用し、
 旧runのスクリプト・結果・protocolは書き換えていない。
 
@@ -30,24 +31,33 @@ inode/size/mtime/ctimeの不変を検査した。画像payloadのopen・復号�
 `execution.json`のcommitは読んだsrcの版であり、再現scriptは本bundleの版を使う。
 APIが変わったcheckoutでは開始時に止まるため、該当するGit版で再現する。
 
-## 後続へ渡す小さい入力
+## #1372へ渡す入力
 
 | file | 内容 |
 |---|---|
 | `common-intervals-<split>.jsonl` | `[snapshot_clip_index, [[start, stop_exclusive], ...]]`。PTSで分けた隣接区間も結合しない |
 | `train-packs-<split>.jsonl` | `[snapshot_clip_index, [[first_start, last_start_inclusive, stride], ...]]`。採用済み128枚の組の開始列。strideは入力frame_stepではない |
-| `absence-targets-<split>.jsonl` | `[snapshot_clip_index, [[start, stop_exclusive, class], ...]]`。class 2=reviewed_empty、3=out_of_frame。全適格不在の一意列 |
 | `clip-catalog.csv` | snapshot indexとclip_id/split/source/group/native FPS/frame数の対応 |
-| `assignment-rules.json` | 区間、学習分割、採用、抽出、評価owner、区間端、不在重複の機械向け規則案 |
+| `assignment-rules.json` | 区間、学習分割、採用、抽出、評価owner、区間端、共通集合内の不在集計の確定規則 |
 
 `train-packs`の各行はclip_id順、開始位置は昇順。一様抽出の母集団はtrainの行をこの順で展開した全開始位置。
 val/test版は支持数の対照計算用で学習しない。採点は`train-packs`による選別を使わず、共通区間を全て覆う。
 入力の子窓に独立の再採用条件を課すと、更新全体の教師一致が壊れる。
 共有するsample RNGはモデル初期化や拡張のRNGと分け、そのstateと消費位置を保存する。
 
-不在集合は共通集合と全重複する。同じframeを2回集計せず、専用scopeは学習への追加samplerにしない。
 正式manifest・配布storeへ変換するときはclip indexを黙って持ち越さず、clip_idで対応を検証する。
-候補を正式採用する判断と、可変Tの常設実装はそれぞれ親・#1372の責任。
+可変Tの常設実装は #1372 の担当。
+
+## 採用しなかった不在専用集合案の証拠
+
+`absence-targets-<split>.jsonl`は#1372への入力から外し、調査の証拠として残す。
+形式は`[snapshot_clip_index, [[start, stop_exclusive, class], ...]]`、class 2=reviewed_empty、3=out_of_frame。
+共通集合内の確認済み不在と同一であることを、再現スクリプト・テストで監査できるために保持する。
+不在専用集合・専用ファイルを採用したものではなく、追加sampler・較正入力・独立holdoutに使わない。
+現行評価は共通集合の教師からkind別に別集計する（指標と分母はprotocolを参照）。
+`summary.json`とCSVの`absence`・`absence_overlap`・`absence_exclusive`も、不採用案の計数・重複監査として保つ。
+2026-10-23の確定に合わせ、`assignment-rules.json`とその生成コードの状態・用途を更新した。
+教師・集合・支持数などの数値証拠は変更していない。
 
 ## 集計と照合用のartifact
 
@@ -89,6 +99,8 @@ MYPYPATH=knowledge/runs/run-ball-temporal-target-survey-20261022 \
   .venv/bin/python -m mypy --follow-imports=skip \
   knowledge/runs/run-ball-all-frame-protocol-20261022/all_frame_probe.py \
   knowledge/runs/run-ball-all-frame-protocol-20261022/test_all_frame_probe.py
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main
+.venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
 ```
 
 synthetic timelineでreference/PTS境界・短区間・非整列末尾・同距離owner・全mask子窓を検査する。

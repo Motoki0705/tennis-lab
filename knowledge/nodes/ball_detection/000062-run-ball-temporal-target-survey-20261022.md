@@ -4,7 +4,7 @@ type: run
 task: ball_detection
 sequence: 62
 recorded_at: '2026-10-22'
-title: 中央16教師と長系列文脈のCPU被覆調査・評価規則案
+title: 中央16教師と長系列文脈のCPU被覆調査（後続runにより置き換え・不採用案の記録）
 issue: 1369
 provider: codex
 date: '2026-10-22'
@@ -30,7 +30,9 @@ artifacts:
   run_dir: knowledge/runs/run-ball-temporal-target-survey-20261022
 parents:
 - run-ball-colab-transfer-feasibility-20261022
-relations: []
+relations:
+- to: run-ball-all-frame-protocol-20261022
+  rel: superseded_by
 papers: []
 tags: []
 repro:
@@ -40,14 +42,17 @@ repro:
 
 ## 結論と状態
 
-初回CPU調査の記録。2026-10-22のユーザー判断で、文脈はreference/PTS境界を守るclip内、
+**後続runにより置き換え（不採用案の記録）。** `status: done`は初回CPU調査の完了を表し、採用状態ではない。
+2026-10-22のユーザー判断で、文脈はreference/PTS境界を守るclip内、
 T上限は128、確認済み不在の専用評価scopeを追加すると決まった。
 **中央16枚案は採用せず、入力Tの全フレームに存在する教師を使う**。
 更新した[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)が合意の正本。
 本runの数値・以下の考察・同runのprotocolは初回提案の履歴として残し、現在の採用規則として使わない。
 全フレーム教師での共通区間・更新予算・不在評価の再調査は
 [新run](000063-run-ball-all-frame-protocol-20261022.md)へ分離した。
-新しい具体規則はユーザー確認待ちであり、#1369の最終合意はまだ残る。
+後続runの具体規則は**決定（2026-10-23、ユーザー確認）**。
+不在専用集合案も採用せず共通集合内の別集計とした最終合意は、
+[親issueの決定記録](https://github.com/Motoki0705/tennis-lab/issues/1367#2026-10-23-1369-の再調査を受けた決定)を参照する。
 
 ## 入力・列挙・分母
 

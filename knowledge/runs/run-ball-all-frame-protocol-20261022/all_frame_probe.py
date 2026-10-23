@@ -1,4 +1,4 @@
-"""CPU-only proposal: common safe spans, paired updates and absence evaluation."""
+"""CPU audit of the agreed common spans, paired updates and absence metrics."""
 
 from __future__ import annotations
 
@@ -258,6 +258,8 @@ def survey(source_repo: Path, output: Path) -> None:
             compact[f"common-intervals-{clip.split}.jsonl"].append([clip.index, common_spans])
         if pack_starts:
             compact[f"train-packs-{clip.split}.jsonl"].append([clip.index, compress_starts(pack_starts)])
+        # Retain the rejected separate-set proposal only as an equality audit.
+        # These historical absence lists are not inputs to the window implementation.
         if negative.any():
             runs = [[a + x, a + y, code] for a, b in common_spans
                     for x, y, code in class_runs(codes[a:b], negative[a:b])]
@@ -370,24 +372,32 @@ def survey(source_repo: Path, output: Path) -> None:
                     accepted_packs_cover_all_common_teachers=True, paired_frame_teacher_multiplicities_equal=True,
                     evaluation_covers_every_common_frame=True, image_payloads_opened=0)))
     write_json(output / "assignment-rules.json", dict(
-        schema="ball_all_frame_assignment_proposal.v1", status="awaiting_human_agreement",
+        schema="ball_all_frame_assignment.v1", status="confirmed_by_user",
+        decision_date="2026-10-23", decision_source="https://github.com/Motoki0705/tennis-lab/issues/1367",
+        downstream_inputs=["common-intervals-<split>.jsonl", "train-packs-<split>.jsonl", "clip-catalog.csv"],
         common_intervals="all hybrid.eligible_spans of length >=128; no play/label-density filter",
         interval_encoding="JSONL [snapshot_clip_index, [[start,stop_exclusive],...]]; never merge adjacent PTS-separated intervals",
         pack_encoding="JSONL [snapshot_clip_index, [[first_start,last_start_inclusive,stride],...]]",
-        absence_encoding="JSONL [snapshot_clip_index, [[start,stop_exclusive,class_code],...]]; 2=reviewed_empty,3=out_of_frame",
         training=dict(pack_length=128, pack_start_stride=16, tail="append stop-128 once",
                       accept="at least one known teacher in the shared 128-frame pack; min observed=0",
                       child_starts="pack_start + j*T, j=0..128/T-1; no child-level rejection",
                       sampling="uniform over accepted train packs, with replacement; same seeded pack stream for all T/models",
                       update="one shared pack for F=128, q packs for F=128*q; every child is forwarded",
                       zero_teacher_child="zero contribution, normalized by the whole update's known teacher count",
-                      absence_mixture="not set; auxiliary absence targets are not an additional training sampler"),
+                      absence_mixture="natural frequency within common packs; no additional absence sampler"),
+        input_budget=dict(initial_frames_per_update=128, frames_per_update_multiple=128,
+                          finalize_in="https://github.com/Motoki0705/tennis-lab/issues/1376"),
         evaluation=dict(start_stride="T//2", tail="append stop-T once; no padding or cropping",
                         owner="argmin over covering windows of (abs(2*frame_index-(2*start+T-1)),start)",
                         key="clip_id,frame_index,frame_step=1,exact_native_fps", score="all labeled frames once, never gate observed",
                         edge_distance="min(frame_index-interval_start,interval_stop-1-frame_index)",
-                        edge_bins=list(EDGE_NAMES), absence="confirmed negatives in any safe span length>=128; all overlap common",
-                        overlap="report common and absence scopes separately; union counts each frame once; exclusive has support 0")))
+                        edge_bins=list(EDGE_NAMES),
+                        absence="kind-specific FPR within common confirmed negatives; FNR on common observed",
+                        negative_kinds=["reviewed_empty", "out_of_frame"]),
+        historical_evidence=dict(
+            absence_files="absence-targets-<split>.jsonl", downstream_input=False,
+            encoding="JSONL [snapshot_clip_index, [[start,stop_exclusive,class_code],...]]; 2=reviewed_empty,3=out_of_frame",
+            purpose="rejected separate-set proposal; audit equality with common confirmed negatives; exclusive support is 0")))
     write_json(output / "execution.json", dict(
         inspected_code_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
         elapsed_seconds=time.perf_counter() - began, max_rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
