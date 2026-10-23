@@ -18,7 +18,7 @@
 - **`training_queue.py`**: queueの新旧IDの登録順・名前と終了記録を読む共有API。保持・移行・状態ファイルの契約は [training-queue skill](../../.agents/skills/training-queue/SKILL.md) を参照する。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
-- **`artifact_store/`**: taskやLightningに依存しないlocal artifact treeの永続化契約と、headlessな`RcloneArtifactStore`。credentialはconfig値ではなく呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
+- **[`artifact_store/`](artifact_store/README.md)**: taskやLightningに依存しないlocal artifact treeの永続化契約。`RcloneSnapshotStore`は世代を上書きせずサイズ・hashを照合し、receiptで固定した世代を復元する。credentialは呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
 
 ### `configuration/`
 - **`cli.py`**: 明示されたselectorで操作を選ぶ。literalな委譲先mapを`discovery.py`が再帰的に追跡し、全ての終端のschema/path validatorをcatalogと監査へ結び付ける。未知・動的・循環する経路は検証済みとして扱わない。

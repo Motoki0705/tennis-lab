@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8208fcefb3bbe126b52da6a837c3cb1ac0916fc9818ffbd8f8e9c0e47695e5d2 on 2026-10-24 -->
+<!-- knowledge-review: 80d69c2bb9e6b6408804b6f99922e89a920551c0256d27f6ae4cf12818dff60d on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習とColab保存再開の事前検査を反映。既存のcheckpoint採用判断は維持）
@@ -342,6 +342,10 @@ PR前の設定監査対応と記録pathの修正を確認し、配布物・測�
 相対pathを直接読むためmanifest生成で停止した。先行範囲は修正せず親へ返し、Colabは割り当てていない。
 既存の配布・窓テスト44件の成功はこの接続を保証しない。次は両消費側のresolver接続と移動済みstoreの
 統合テストを揃え、その後にcheckpoint直後の保存・失敗注入・新VM再開を実証する。採用判断は維持する。
+
+2026-10-24に両消費側のresolver接続と実データの6 manifest照合が反映され、保存再開の阻害は解消した。
+[720pの保存復旧検査](nodes/ball_detection/000067-run-ball-colab-checkpoint-resume-20261024.md)を再開し、
+同期した世代保存とサイズ/hash検証・失敗伝播・CPUでの実モデル復元を確認した。L4での新VM再開は検証中である。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、

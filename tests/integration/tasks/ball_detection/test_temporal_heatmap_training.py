@@ -54,6 +54,29 @@ def checkpoint(output: Path) -> dict[str, Any]:
     return saved
 
 
+def test_persistence_failure_stops_at_the_completed_checkpoint(prepared: Path, tmp_path: Path) -> None:
+    output = tmp_path / "save-failure"
+    stages = []
+
+    def persist(directory: Path, stage: str) -> None:
+        stages.append(stage)
+        assert (directory / "run.json").is_file()
+        assert (directory / "train_manifest.json").is_file()
+        assert (directory / "evaluation_manifest.json").is_file()
+        if stage == "checkpoint":
+            assert checkpoint(directory)["updates_completed"] == 1
+            raise ConnectionError("Injected Drive connection failure")
+
+    with pytest.raises(ConnectionError, match="Injected Drive"):
+        train(prepared, output, "hybrid", persist=persist)
+    assert stages == ["initialized", "checkpoint"]
+    assert [r["update"] for r in logs(output)] == [1]
+    assert not (output / "COMPLETED.json").exists()
+    assert not (output / "STOPPED.json").exists()
+    train(prepared, output, "hybrid", resume=output / "checkpoint-update-00000001.pt")
+    assert [r["update"] for r in logs(output)] == [1, 2, 3]
+
+
 def logs(output: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in (output / "train.jsonl").read_text().splitlines()]
 

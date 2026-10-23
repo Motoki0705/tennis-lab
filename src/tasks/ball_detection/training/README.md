@@ -114,6 +114,12 @@ pack抽出位置を復元する。manifest内のsnapshot pathを含む入力iden
 checkpointへ記録し、再開時にはそのprefixを検証する。checkpoint公開前に書かれた末尾だけを
 切り戻して再実行する。停止中の更新を二重に数えず、過去checkpointからの巻戻し再開を拒否する。
 
+Python APIの`persist(output, stage)` callbackはrun初期化後、完成checkpointと`latest.json`の公開直後、
+停止/完了記録後に同期して呼ぶ。例外はそのまま学習を停止させ、次の更新へ進めない。
+保存先・世代名・receiptの管理は呼出側が担当し、汎用のサイズ/hash照合付き保存・復元には
+[`RcloneSnapshotStore`](../../../utils/artifact_store/README.md)を使える。
+callbackは学習予算・モデル・入力identityを変更せず、実験用controllerはknowledge側に置く。
+
 ### 共通frame評価と比較動画
 
 ```bash
