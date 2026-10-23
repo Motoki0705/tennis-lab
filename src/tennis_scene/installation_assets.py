@@ -8,13 +8,32 @@ This catalog adds the third-party files needed for a complete installation.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 from src.submodules.smpl_assets import SMPL_ASSET_SOURCES
 from src.utils.model_weights import MODEL_REPO, PUBLISHED_WEIGHTS
 from src.utils.sample_dataset import DATASET_REPO, PUBLISHED_FILES
 
-AssetTableLanguage = Literal["en", "ja"]
+AssetTableLanguage = Literal["en", "ja", "zh-CN"]
+ASSET_TABLE_LANGUAGE_SUFFIXES: dict[AssetTableLanguage, str] = {
+    "en": ".md",
+    "ja": ".ja.md",
+    "zh-CN": ".zh-CN.md",
+}
+
+
+def asset_table_language_from_filename(filename: str | Path) -> AssetTableLanguage:
+    """Resolve a Markdown filename using the shared public-document suffixes.
+
+    Bare ``.md`` filenames use English. Any additional suffix must be a supported
+    language qualifier; unknown qualifiers never fall back to English.
+    """
+    suffix = "".join(Path(filename).suffixes)
+    for language, expected in ASSET_TABLE_LANGUAGE_SUFFIXES.items():
+        if suffix == expected:
+            return language
+    raise ValueError(f"Unsupported asset table document suffix: {suffix!r}")
 
 
 @dataclass(frozen=True)
@@ -25,6 +44,7 @@ class InstallationAsset:
     source: str
     license_en: str
     license_ja: str
+    license_zh_cn: str
     local_acquisition: bool = True
 
 
@@ -39,12 +59,14 @@ THIRD_PARTY_ASSETS = (
         "https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_",
         "DINO / Apache-2.0¹",
         "DINO / Apache-2.0¹",
+        "DINO / Apache-2.0¹",
     ),
     InstallationAsset(
         "vitpose",
         "vitpose/vitpose-h-multi-coco.pth",
         "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc",
         _GVHMR_DOWNLOAD,
+        "ViTPose / Apache-2.0¹",
         "ViTPose / Apache-2.0¹",
         "ViTPose / Apache-2.0¹",
     ),
@@ -55,6 +77,7 @@ THIRD_PARTY_ASSETS = (
         _GVHMR_DOWNLOAD,
         "HMR2 / MIT¹; separate SMPL terms apply",
         "HMR2 / MIT¹; SMPL条件は別",
+        "HMR2 / MIT¹；SMPL 条款另行适用",
     ),
     InstallationAsset(
         "gvhmr",
@@ -63,6 +86,7 @@ THIRD_PARTY_ASSETS = (
         _GVHMR_DOWNLOAD,
         "GVHMR non-commercial terms",
         "GVHMR非商用条件",
+        "GVHMR 非商业用途条款",
     ),
     InstallationAsset(
         "body_model",
@@ -71,6 +95,7 @@ THIRD_PARTY_ASSETS = (
         "https://smpl-x.is.tue.mpg.de/",
         "SMPL-X Model License / registration and acceptance",
         "SMPL-X Model License / 登録・同意",
+        "SMPL-X Model License / 注册并同意条款",
     ),
     InstallationAsset(
         "aflink",
@@ -79,12 +104,14 @@ THIRD_PARTY_ASSETS = (
         "https://drive.google.com/file/d/1DFMUkL-dc-j8-fibcJIq-46Xoq_bFoO9/view",
         "AFLink weight terms unconfirmed",
         "AFLink重みの条件は未確認",
+        "AFLink 权重条款尚未核实",
     ),
     InstallationAsset(
         "tracking_encoder",
         "player_association/person_vit_clip_reid.pth",
         "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc",
         "https://drive.google.com/file/d/1GnyAVeNOg3Yug1KBBWMKKbT2x43O5Ch7/view",
+        "CLIP-ReID / MIT¹",
         "CLIP-ReID / MIT¹",
         "CLIP-ReID / MIT¹",
     ),
@@ -95,6 +122,7 @@ THIRD_PARTY_ASSETS = (
         "https://mano.is.tue.mpg.de/",
         "MANO / SMPL+H License / registration and acceptance",
         "MANO / SMPL+H License / 登録・同意",
+        "MANO / SMPL+H License / 注册并同意条款",
     ),
     InstallationAsset(
         "dinov3",
@@ -103,12 +131,13 @@ THIRD_PARTY_ASSETS = (
         "https://ai.meta.com/resources/models-and-libraries/dinov3-downloads/",
         "DINOv3 License / application required",
         "DINOv3 License / 申請",
+        "DINOv3 License / 需提交申请",
     ),
 )
 
 _PUBLISHED_WEIGHT_LICENSES = {
-    "court": ("DINOv3 License", "DINOv3 License"),
-    "ball": ("CC BY-NC 4.0", "CC BY-NC 4.0"),
+    "court": ("DINOv3 License", "DINOv3 License", "DINOv3 License"),
+    "ball": ("CC BY-NC 4.0", "CC BY-NC 4.0", "CC BY-NC 4.0"),
 }
 
 INSTALLATION_ASSETS = (
@@ -132,6 +161,7 @@ INSTALLATION_ASSETS = (
             source.source_url,
             "GVHMR / SMPL / SMPL-X terms",
             "GVHMR・SMPL・SMPL-X条件",
+            "GVHMR / SMPL / SMPL-X 条款",
         )
         for name, source in SMPL_ASSET_SOURCES.items()
     ),
@@ -139,31 +169,37 @@ INSTALLATION_ASSETS = (
 
 
 def _require_language(language: AssetTableLanguage) -> None:
-    if language not in ("en", "ja"):
+    if language not in ASSET_TABLE_LANGUAGE_SUFFIXES:
         raise ValueError(
-            f"Unsupported asset table language: {language!r}; expected 'en' or 'ja'"
+            f"Unsupported asset table language: {language!r}; "
+            f"expected one of {tuple(ASSET_TABLE_LANGUAGE_SUFFIXES)}"
         )
 
 
 def asset_table(language: AssetTableLanguage) -> str:
     """Render checkpoint destinations, sources and terms without exposing byte pins.
 
-    Use ``en`` for Markdown files and ``ja`` for their ``.ja.md`` counterparts.
+    Languages and filename suffixes follow ``ASSET_TABLE_LANGUAGE_SUFFIXES``.
     The ¹ markers refer to the guide's note about upstream code licenses.
     """
     _require_language(language)
     header = {
         "en": "| Asset | Destination (relative to `ckpt/`) | Source | License / terms |",
         "ja": "| 資産 | 配置先（`ckpt/`相対） | 入手先 | ライセンス・条件 |",
+        "zh-CN": "| 资产 | 保存位置（相对于 `ckpt/`） | 下载来源 | 许可证 / 条款 |",
     }[language]
-    source_label = "Source" if language == "en" else "配布元"
+    source_label = {"en": "Source", "ja": "配布元", "zh-CN": "下载来源"}[language]
     rows = [header, "| --- | --- | --- | --- |"]
-    rows.extend(
-        f"| {asset.name} | `{asset.filename}` | "
-        f"[{source_label}]({asset.source}) | "
-        f"{asset.license_en if language == 'en' else asset.license_ja} |"
-        for asset in INSTALLATION_ASSETS
-    )
+    for asset in INSTALLATION_ASSETS:
+        terms = {
+            "en": asset.license_en,
+            "ja": asset.license_ja,
+            "zh-CN": asset.license_zh_cn,
+        }[language]
+        rows.append(
+            f"| {asset.name} | `{asset.filename}` | "
+            f"[{source_label}]({asset.source}) | {terms} |"
+        )
     return "\n".join(rows)
 
 
@@ -173,8 +209,13 @@ def sample_asset_table(language: AssetTableLanguage) -> str:
     header = {
         "en": "| Destination | Source / terms |",
         "ja": "| 配置先 | 入手先・条件 |",
+        "zh-CN": "| 保存位置 | 下载来源 / 条款 |",
     }[language]
-    source_label = "Published dataset" if language == "en" else "公開Dataset"
+    source_label = {
+        "en": "Published dataset",
+        "ja": "公開Dataset",
+        "zh-CN": "公开数据集",
+    }[language]
     rows = [header, "| --- | --- |"]
     rows.extend(
         f"| `data/samples/{sample.filename}` | "
