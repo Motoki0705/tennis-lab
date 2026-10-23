@@ -1109,6 +1109,22 @@ main-experiment authority.
 `scale_geometry.json` owns the explicit geometry/arc settings for comparison
 previews. Saved grid replay
 retains the source config's footprint, HFOV and target-height distribution.
+New grid groups declare
+`provenance.replay_rule_version=saved_preset_parameterization_v2`: the saved
+orientation and vertical phase are preserved together, including the starting
+point of non-planar circles. Circle orientation and planar phase are set to zero
+only when constructing new counter/Sobol samples; conversion to a scale curve
+does not normalize saved parameters. Duplicate fingerprints use the separate
+curve-preserving normalization in `Curve.physical_key()`.
+
+Historical grid groups without this rule version retain their recorded geometry;
+they are not corrected when read. The run-03/run-04 comparison artifacts remain
+immutable, and their grid baseline does not establish exact saved-preset replay.
+Generate corrected comparisons in a new output root. The replay version changes
+grid trajectory/point IDs; counter/Sobol plans and the named production recipe's
+hash, cameras and IDs are unchanged. A new generator commit/source fingerprint
+still gives newly frozen requests and dataset publications their own identity.
+
 `scale_quality.json` keeps the existing all-court geometry/renderer gates and
 records target KP count and clipped target ROI alpha/depth holes as diagnostics.
 New target-KP/ROI hard thresholds default to `null`; selecting them creates an
