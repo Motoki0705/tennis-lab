@@ -52,8 +52,12 @@ class FilesystemStore(RcloneSnapshotStore):
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, destination)
             else:
+                selection = (set(Path(args[args.index("--files-from-raw") + 1]).read_text().splitlines())
+                             if "--files-from-raw" in args else None)
                 for item in source.rglob("*"):
                     if item.is_file() and not ("--exclude" in args and item.name == "_SNAPSHOT.json"):
+                        if selection is not None and item.relative_to(source).as_posix() not in selection:
+                            continue
                         target = destination / item.relative_to(source)
                         target.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copyfile(item, target)
@@ -157,6 +161,26 @@ def test_snapshot_refuses_local_symlinks(store: FilesystemStore) -> None:
     (store.local_root / "alias").symlink_to(store.local_root / "latest.json")
     with pytest.raises(ArtifactStoreError, match="symlink"):
         store.publish("unsafe")
+
+
+def test_explicit_file_selection_keeps_previous_generations_without_recopying_them(store: FilesystemStore) -> None:
+    previous = store.publish("previous")
+    (store.local_root / "checkpoint-new.pt").write_bytes(b"new checkpoint")
+    (store.local_root / "latest.json").write_text('{"checkpoint":"checkpoint-new.pt"}')
+    current = store.publish("current", include=["checkpoint-new.pt", "latest.json", "train.jsonl"])
+    assert current["files"] == 3
+    assert not (store.storage / "runs/proof/current/checkpoint.pt").exists()
+    assert (store.storage / "runs/proof/previous/checkpoint.pt").is_file()
+    assert previous["generation"] == "previous"
+    store.local_root = store.local_root.with_name("selected-restore")
+    store.restore("current", manifest_sha256=current["manifest_sha256"])
+    assert json.loads((store.local_root / "latest.json").read_text())["checkpoint"] == "checkpoint-new.pt"
+
+
+@pytest.mark.parametrize("include", [["missing"], ["latest.json", "latest.json"], []])
+def test_invalid_file_selection_is_rejected(store: FilesystemStore, include: list[str]) -> None:
+    with pytest.raises(ArtifactStoreError):
+        store.publish("invalid", include=include)
 
 
 def test_snapshot_restoration_preserves_training_budget_rng_and_samples(store: FilesystemStore, tmp_path: Path) -> None:

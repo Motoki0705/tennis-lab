@@ -189,7 +189,10 @@ def train(args: argparse.Namespace) -> None:
             def disconnected(*arguments: str, timeout: int | None = None) -> str:
                 raise ArtifactStoreError("Injected Drive communication failure at checkpoint publication")
             publisher._output = disconnected  # type: ignore[method-assign]
-        receipt = publisher.publish(f"{stage}-{update:08d}-{uuid.uuid4().hex}")
+        current = {f"checkpoint-update-{update:08d}.pt", f"weights-update-{update:08d}.pt"}
+        include = [p.relative_to(output).as_posix() for p in sorted(output.rglob("*")) if p.is_file()
+                   and (not p.name.startswith(("checkpoint-update-", "weights-update-")) or p.name in current)]
+        receipt = publisher.publish(f"{stage}-{update:08d}-{uuid.uuid4().hex}", include=include)
         receipt.update(stage=stage, update=update)
         receipts.append(receipt)
         write(args.receipts / "publications.json", receipts)

@@ -8,6 +8,7 @@ import os
 import re
 import tempfile
 import time
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -25,7 +26,8 @@ _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}")
 def _relative(name: str) -> Path:
     path = PurePosixPath(name)
     if (not name or path.is_absolute() or path.as_posix() != name
-            or any(part in {"", ".", ".."} for part in name.split("/")) or "\\" in name or ":" in name):
+            or any(part in {"", ".", ".."} for part in name.split("/")) or "\\" in name or ":" in name
+            or any(ord(char) < 32 for char in name)):
         raise ArtifactStoreError("Snapshot file paths must be canonical relative paths")
     return Path(name)
 
@@ -88,7 +90,7 @@ class RcloneSnapshotStore(RcloneArtifactStore):
                 raise ArtifactStoreError(f"Remote snapshot size/hash differs or is unavailable: {name}")
         return actual
 
-    def publish(self, generation: str) -> dict[str, Any]:
+    def publish(self, generation: str, *, include: Sequence[str] | None = None) -> dict[str, Any]:
         started = time.monotonic()
         destination = self._destination(generation)
         # Inventory the parent first: a reused or partially uploaded generation
@@ -100,14 +102,23 @@ class RcloneSnapshotStore(RcloneArtifactStore):
             raise ArtifactStoreError("Snapshot generation already exists or its parent is ambiguous")
         paths = self._paths()
         versions = {path: file_version(path) for path in paths}
-        files = {path.relative_to(self.local_root).as_posix(): _identity(path) for path in paths}
+        local = {path.relative_to(self.local_root).as_posix(): path for path in paths}
+        names = list(local) if include is None else list(include)
+        if len(set(names)) != len(names) or not set(names) <= local.keys():
+            raise ArtifactStoreError("Snapshot selection must name unique existing files")
+        for name in names:
+            _relative(name)
+        files = {name: _identity(local[name]) for name in names}
         if not files or MARKER in files:
             raise ArtifactStoreError("Snapshot requires files and reserves its completion marker name")
-        self._run("copy", str(self.local_root), destination, "--immutable", "--checksum")
-        self._verify(destination, files)
-        self._unchanged(versions)
         manifest = dict(schema=SCHEMA, generation=generation, files=files)
         with tempfile.TemporaryDirectory(prefix="artifact-snapshot-") as temporary:
+            selection = Path(temporary) / "files.txt"
+            selection.write_text("\n".join(names) + "\n")
+            self._run("copy", str(self.local_root), destination, "--immutable", "--checksum",
+                      "--files-from-raw", str(selection))
+            self._verify(destination, files)
+            self._unchanged(versions)
             marker = Path(temporary) / MARKER
             marker.write_text(json.dumps(manifest, sort_keys=True, separators=(",", ":")) + "\n")
             marker_identity = _identity(marker)

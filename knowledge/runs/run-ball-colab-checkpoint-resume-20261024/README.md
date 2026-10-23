@@ -71,7 +71,9 @@ original 12-update schedule. The comparison checks all updates and sample/teache
 counts, cumulative input, LR, optimizer steps and loss with atol=1e-6, rtol=1e-4.
 It additionally reports final model-state and CPU/CUDA RNG identity.
 
-Snapshots retain their complete file trees, including prior checkpoints. The
-proof measures that transfer/storage cost; it does not silently prune generations.
+Each training snapshot explicitly selects the current checkpoint and weights plus
+configuration, manifests and logs. Prior checkpoints remain in their own immutable
+generations and are not copied again. Input snapshots include their whole tree.
+The proof measures transfer/storage cost and does not prune any generation.
 Only sessions created for this proof are stopped, with saved terminal-job and
 session-stop receipts. Account-wide assignment zero is not a completion condition.

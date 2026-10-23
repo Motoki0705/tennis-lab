@@ -41,7 +41,10 @@ directory, and verifies local SHA-256 before exposing the tree by rename. Existi
 local trees are rejected. The snapshot API does not relocate paths inside files:
 strict training resume must restore inputs and outputs at their original paths.
 
-Use a single owner for a run's persistence. Generation snapshots retain all files
-in each published tree, including older checkpoint generations. Their transfer
-and storage costs are explicit; no checkpoint retention or deduplication policy
-is inferred. Publication and restoration receipts include elapsed time.
+Use a single owner for a run's persistence. `publish(..., include=["relative/file", ...])`
+can select an explicit file set. A checkpoint owner can include its latest
+checkpoint/weights, both manifests, configuration and logs, while retaining older
+checkpoints in their previous immutable generations. Omit `include` to publish
+the entire tree. Selection never deletes prior generations or local files and
+is recorded exactly in the marker. Publication and restoration receipts include
+elapsed time; no retention policy is inferred.
