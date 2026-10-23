@@ -1,0 +1,45 @@
+{
+  "checks": {
+    "build_all_frame_manifests": {
+      "exception": "ValueError",
+      "message": "Chat reviewed-empty annotation missing or checksum differs from the snapshot",
+      "outcome": "raised",
+      "seconds": 0.27689583000028506
+    },
+    "preparation_file_version": {
+      "exception": "FileNotFoundError",
+      "message": "[Errno 2] No such file or directory: 'annotations/clip-00158.json'",
+      "outcome": "raised",
+      "seconds": 5.498399696080014e-05
+    },
+    "reviewed_empty_evidence": {
+      "exception": "ValueError",
+      "message": "Chat reviewed-empty annotation missing or checksum differs from the snapshot",
+      "outcome": "raised",
+      "seconds": 0.004367380999610759
+    }
+  },
+  "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+  "clips": 1537,
+  "code_commit": "37a8a59984bd48e2a9b399ccc34dd0c25e7863de",
+  "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+  "elapsed_seconds": 3.113649674000044,
+  "eligible_chat_clips": 987,
+  "input_file_versions_checked": 2921,
+  "input_file_versions_unchanged": true,
+  "mode": "source_payloads",
+  "observed_at": "2026-10-23T14:20:03.444305+00:00",
+  "raw_annotation_path": "annotations/clip-00158.json",
+  "raw_annotation_path_is_absolute": false,
+  "resolved_annotation_path": "annotations/clip-00158.json",
+  "resolved_annotation_sha256_matches": true,
+  "rgb_payload_bytes_copied_or_linked": 0,
+  "schema_version": 1,
+  "source_control": {
+    "accepted_empty_frames": 100,
+    "outcome": "returned",
+    "same_reviewed_target_instance_counts": true
+  },
+  "status": "blocked",
+  "version": "ball-mix1800-720p-all-frame-train-val-v1"
+}

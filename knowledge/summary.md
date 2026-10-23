@@ -1,7 +1,7 @@
-<!-- knowledge-review: 53b435e45aab3283ed1cba9bbc1389d03c5217168e7c365be375a9dea864f5f4 on 2026-10-23 -->
+<!-- knowledge-review: 9d5efe4aef316d76231933ae19f3b5bf56497d81be0b3cf06c277fe0823c7e30 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-23（ボールの全フレーム学習経路の診断を反映。既存のcheckpoint採用判断は維持）
+更新日: 2026-10-23（ボールの全フレーム学習とColab保存再開の事前検査を反映。既存のcheckpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -334,6 +334,12 @@ Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256�
 窓側はstore相対の原注釈pathをresolverで解決する必要がある。
 PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
+
+続く[保存再開の事前検査](nodes/ball_detection/000066-run-ball-colab-persistence-preflight-20261023.md)では、
+実配布storeの原注釈がresolverで取得・hash照合できる一方、窓準備と空frame証拠の消費側が
+相対pathを直接読むためmanifest生成で停止した。先行範囲は修正せず親へ返し、Colabは割り当てていない。
+既存の配布・窓テスト44件の成功はこの接続を保証しない。次は両消費側のresolver接続と移動済みstoreの
+統合テストを揃え、その後にcheckpoint直後の保存・失敗注入・新VM再開を実証する。採用判断は維持する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
