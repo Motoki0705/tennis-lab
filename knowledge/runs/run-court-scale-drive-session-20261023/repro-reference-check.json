@@ -1,0 +1,15 @@
+{
+  "schema": "court_scale_repro_reference_check_v1",
+  "repro_sha256": "0627a8451151cc9bb099e1512fbb09befb4e0363cc7267099f61063c8ef9b330",
+  "native_parser_reference_count": 0,
+  "continued_line_joined_findings": [
+    {
+      "kind": "file",
+      "reference": "$SCRIPT_DIR/measure_transport.py",
+      "status": "ok",
+      "detail": "saved in a run bundle"
+    }
+  ],
+  "all_resolved": true,
+  "benchmark_script_executed_successfully": true
+}

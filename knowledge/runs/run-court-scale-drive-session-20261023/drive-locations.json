@@ -1,0 +1,24 @@
+[
+  {
+    "kind": "optimized",
+    "path": "data/synthetic_data_generation/court-scale/transport-session-20261023-74900149c",
+    "directory_id": "1xQRqtJ_t25Knhnl6HxLvYLdZaeN1CDqo",
+    "receipt_paths": [
+      "request.json",
+      "caches/dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f.json",
+      "completed.json"
+    ],
+    "session_pid": 3408521,
+    "session_exit_code": 143
+  },
+  {
+    "kind": "baseline",
+    "path": "data/synthetic_data_generation/court-scale/transport-baseline-20261023-74900149c",
+    "directory_id": "1IrqVGQ8Lk6YxF2ViPe84ygf5yMbTMLVl",
+    "receipt_paths": [
+      "caches/dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f.json"
+    ],
+    "session_pid": 3408610,
+    "session_exit_code": 143
+  }
+]

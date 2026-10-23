@@ -1,0 +1,67 @@
+{
+  "schema": "court_scale_transport_analysis_v1",
+  "new_cache_count": 24,
+  "steady_cache_seconds": {
+    "median": 13.519391346002521,
+    "min": 13.018299274997844,
+    "max": 17.960310287999164,
+    "p95_nearest_rank": 16.329438978005783,
+    "mean": 13.795213824869437
+  },
+  "steady_cache_mean_listing_busy_seconds": 5.894537049610454,
+  "steady_cache_mean_copy_busy_seconds": 7.881716948000679,
+  "steady_cache_mean_local_residual_seconds": 0.018959827258304755,
+  "first_cache_seconds": 16.735347374000412,
+  "same_host_cache_save_speedup": 24.338730183536683,
+  "identical_cache_save_speedup": 19.661666463355964,
+  "same_host_cache_recovery_speedup": 22.96954434984411,
+  "cache_save_seconds_sum": 334.02526534599747,
+  "replayed_initial_attempt_seconds": 44.23871208499622,
+  "replayed_resume_attempt_seconds": 351.73006164000253,
+  "full_fetch_seconds": 179.38068070499867,
+  "full_fetch_vs_prior_colab_ratio": 20.420749802060058,
+  "cross_host_ratio_is_descriptive_only": true,
+  "cost_model": "T = Tinputs + sum(render_seconds_i) + cache_seconds*Knew + Trestore + Tpublication + Tattempt + Tlocal_validation; replay did not render",
+  "assumptions": {
+    "accepted_in_smoke": 282,
+    "candidate_in_smoke": 303,
+    "caches_in_smoke": 24,
+    "smoke_cache_archive_bytes": 19537920,
+    "same_fill_K": "ceil(24*N/282)",
+    "full_chunk_K": "ceil(N/(64*(282/303))); optimistic, ignores trajectory/birth-level ends"
+  },
+  "illustrative_storage_overhead_only": [
+    {
+      "accepted_images": 6000,
+      "same_fill_caches": 511,
+      "same_fill_save_hours": 1.9190024938353578,
+      "full_chunk_caches": 101,
+      "full_chunk_save_hours": 0.37929403498507075,
+      "cache_archive_GB": 0.4157004255319149
+    },
+    {
+      "accepted_images": 12000,
+      "same_fill_caches": 1022,
+      "same_fill_save_hours": 3.8380049876707156,
+      "full_chunk_caches": 202,
+      "full_chunk_save_hours": 0.7585880699701415,
+      "cache_archive_GB": 0.8314008510638298
+    },
+    {
+      "accepted_images": 24000,
+      "same_fill_caches": 2043,
+      "same_fill_save_hours": 7.672254588856431,
+      "full_chunk_caches": 403,
+      "full_chunk_save_hours": 1.5134207534552822,
+      "cache_archive_GB": 1.6628017021276595
+    },
+    {
+      "accepted_images": 48000,
+      "same_fill_caches": 4086,
+      "same_fill_save_hours": 15.344509177712862,
+      "full_chunk_caches": 806,
+      "full_chunk_save_hours": 3.0268415069105643,
+      "cache_archive_GB": 3.325603404255319
+    }
+  ]
+}

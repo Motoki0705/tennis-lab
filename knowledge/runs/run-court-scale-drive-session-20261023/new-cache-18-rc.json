@@ -1,0 +1,327 @@
+[
+  {
+    "operation": "operations/list",
+    "start": 37771.3074484,
+    "seconds": 0.36104108399740653
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.308810813,
+    "seconds": 0.36217899099574424
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.310570014,
+    "seconds": 0.3812682260031579
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.309487682,
+    "seconds": 0.3940131989947986
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.310081174,
+    "seconds": 0.39424163899820996
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.307795283,
+    "seconds": 0.4024410380006884
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.308334022,
+    "seconds": 0.44791465300659183
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.307176676,
+    "seconds": 0.6183718419997604
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.930871065,
+    "seconds": 0.3663895229983609
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.930390349,
+    "seconds": 0.39482245100225555
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.929802961,
+    "seconds": 0.4017413339970517
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.932077475,
+    "seconds": 0.40577971399761736
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.930058296,
+    "seconds": 0.40841215300315525
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.931410853,
+    "seconds": 0.4357434359990293
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.92949243,
+    "seconds": 0.5828313900055946
+  },
+  {
+    "operation": "operations/list",
+    "start": 37771.929428638,
+    "seconds": 0.7054581729971687
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.637883678,
+    "seconds": 0.34523928300041007
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.63703094,
+    "seconds": 0.3548143559964956
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.638420555,
+    "seconds": 0.3729021180042764
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.639740103,
+    "seconds": 0.38058568900305545
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.63746345,
+    "seconds": 0.39795872299873736
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.639106077,
+    "seconds": 0.46761781900568167
+  },
+  {
+    "operation": "operations/list",
+    "start": 37772.63674086,
+    "seconds": 0.7257357589987805
+  },
+  {
+    "operation": "operations/copyfile",
+    "start": 37773.362874463,
+    "seconds": 2.9758826800025417
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.342268449,
+    "seconds": 0.3474561749972054
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.340333961,
+    "seconds": 0.36448693499551155
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.340989145,
+    "seconds": 0.38042596299783327
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.343102877,
+    "seconds": 0.38358315599907655
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.341594433,
+    "seconds": 0.3960784959999728
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.340655642,
+    "seconds": 0.3984662059956463
+  },
+  {
+    "operation": "operations/list",
+    "start": 37776.340283992,
+    "seconds": 0.7650334060017485
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.109314129,
+    "seconds": 0.3538473540029372
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.107544108,
+    "seconds": 0.3826323030007188
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.107946826,
+    "seconds": 0.3876382980015478
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.10855196,
+    "seconds": 0.3926865169996745
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.107893554,
+    "seconds": 0.42306905500299763
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.111432036,
+    "seconds": 0.42541409200202907
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.110845833,
+    "seconds": 0.4452704069990432
+  },
+  {
+    "operation": "operations/list",
+    "start": 37777.107279242,
+    "seconds": 0.6397996629966656
+  },
+  {
+    "operation": "operations/copyfile",
+    "start": 37777.747548584,
+    "seconds": 2.9408040500056813
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.690129767,
+    "seconds": 0.3615894130052766
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.689227278,
+    "seconds": 0.36590448399510933
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.689555058,
+    "seconds": 0.4056669290002901
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.692230905,
+    "seconds": 0.403642723998928
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.690893399,
+    "seconds": 0.44101804900128627
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.691310465,
+    "seconds": 0.44666142099595163
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.691517944,
+    "seconds": 0.46005443400645163
+  },
+  {
+    "operation": "operations/list",
+    "start": 37780.688844582,
+    "seconds": 0.7010985829983838
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.392609396,
+    "seconds": 0.34953624499758007
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.39145814,
+    "seconds": 0.3544369250012096
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.392146837,
+    "seconds": 0.4449110329951509
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.391793518,
+    "seconds": 0.44641245999810053
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.394225948,
+    "seconds": 0.4463711759963189
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.392078745,
+    "seconds": 0.4490251090028323
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.394931126,
+    "seconds": 0.531631183999707
+  },
+  {
+    "operation": "operations/list",
+    "start": 37781.391176229,
+    "seconds": 1.0450820889964234
+  },
+  {
+    "operation": "operations/copyfile",
+    "start": 37782.43657022,
+    "seconds": 1.56700043699675
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.005495293,
+    "seconds": 0.33394737700291444
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.005169943,
+    "seconds": 0.34594376099994406
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.004667875,
+    "seconds": 0.3979460010014009
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.006580293,
+    "seconds": 0.4014970930002164
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.007435992,
+    "seconds": 0.4041448499992839
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.00762138,
+    "seconds": 0.42529704000480706
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.004304507,
+    "seconds": 0.435442501999205
+  },
+  {
+    "operation": "operations/list",
+    "start": 37784.003960695,
+    "seconds": 0.8213843100020313
+  }
+]

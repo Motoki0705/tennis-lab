@@ -1,7 +1,7 @@
-<!-- knowledge-review: cd568ba8741d09cc193ea8df904fa47fe310cf8fcbd6f8c33352343e11ab69b2 on 2026-10-23 -->
+<!-- knowledge-review: ade7bf52404d44ddf876fc83003b324fe7820235a1971131b739edcaa5b0aa29 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-23（CourtのDrive永続化コスト内訳調査を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-23（CourtのDrive永続化改善と24 cacheの比較計測を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -21,7 +21,11 @@ seed42・各6軌道・密度0の303候補から282枚をtrainへ採択し、Driv
 [後続の費用内訳調査](nodes/synthetic_data_generation/000028-run-court-scale-durability-cost-20261023.md)では、
 既存cache 1件の読み取り147.6秒のうち、path解決の一覧38回が110.8秒を占めた。
 verified put/get内の重複処理をまとめる修正案を示し、#1356の指示に従って生成・学習前に停止した。
-修正は未実装で、HTTP API単位の正確な件数や改善後の速度は未測定。親が範囲を決め、保存完了・QA・hashの境界を保って改善を検証してから試走を再開する。
+[接続・親folder再利用の実装と24 cache再演](nodes/synthetic_data_generation/000029-run-court-scale-drive-session-20261023.md)では、
+保存完了・QA・hashの境界を維持し、同じローカルhostで新規cache保存を329.0秒から定常中央値13.52秒へ短縮した。
+新しいDrive pathで中断後の接続切替・復元・残り23 cache保存と、別rootへの全量fetch179.4秒を検証し、
+24 store・282画像の内容一致を確認した。これは既存L4生成物の保存replayで、Colabでの新規生成throughputではない。
+HTTP件数は未測定で、画像数だけでなくcache充填率を費用モデルに残す。段階2は親がpushした後にL4で再開する。
 実画像への汎化・精度スケーリング・規模上限・写り方別評価は未評価で、既存モデルの採用判断は維持する。
 
 ## 2026-10-22のCourt資産Colab照合

@@ -1,0 +1,112 @@
+[
+  {
+    "operation": "operations/list",
+    "start": 37528.262391376,
+    "seconds": 0.3582297179964371
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.260731339,
+    "seconds": 0.3737245729935239
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.263138866,
+    "seconds": 0.3749259179967339
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.261909369,
+    "seconds": 0.3774084370015771
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.260419492,
+    "seconds": 0.3846565729982103
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.262660768,
+    "seconds": 0.43417028600379126
+  },
+  {
+    "operation": "operations/list",
+    "start": 37528.260083125,
+    "seconds": 0.6149013199974434
+  },
+  {
+    "operation": "operations/copyfile",
+    "start": 37528.875261839,
+    "seconds": 1.3672677430004114
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.243343079,
+    "seconds": 0.377789837999444
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.245195484,
+    "seconds": 0.38088001999858534
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.244606603,
+    "seconds": 0.3928957949974574
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.244301973,
+    "seconds": 0.3943734440035769
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.245741965,
+    "seconds": 0.40805494799860753
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.243693123,
+    "seconds": 0.4333656670060009
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.24303122,
+    "seconds": 0.698530005000066
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.962218565,
+    "seconds": 0.3683593169989763
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.961791349,
+    "seconds": 0.3695914060008363
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.962664017,
+    "seconds": 0.368998013997043
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.9636066,
+    "seconds": 0.3683130200006417
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.963035266,
+    "seconds": 0.4215938239940442
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.961871269,
+    "seconds": 0.4286678150019725
+  },
+  {
+    "operation": "operations/list",
+    "start": 37530.961460809,
+    "seconds": 0.6255068180034868
+  }
+]
