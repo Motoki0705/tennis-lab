@@ -1,0 +1,448 @@
+{
+  "artifacts": [
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-compare-hfov45_90.mp4",
+      "bytes": 3432171,
+      "sha256": "6f40141d3bc69046dc09f8f6efc5569b9397929b36f43d185b33cb6134299f79"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-compare-hull5.mp4",
+      "bytes": 3764408,
+      "sha256": "3ab53ea056c3ee9833bb34d55c23e924eef7896467be4e87d267f0a031695fe0"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-compare-jitter0.mp4",
+      "bytes": 3686451,
+      "sha256": "d007b0086ae6e05828e1334a02326c39df1468afbd31b073bf2d4e51cc51147c"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-hfov45_90-contact.jpg",
+      "bytes": 294390,
+      "sha256": "eaba0758a2c7e16883f1f31b1c93bd0808c0b79703048ced113f242295caee94"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-hull5-contact.jpg",
+      "bytes": 323526,
+      "sha256": "5ab637929a38a41c11fa44b40542383782cf69612f468025199ee0fa10dd9940"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-jitter0-contact.jpg",
+      "bytes": 324663,
+      "sha256": "fe05b02683f273976ac73eb42267b7b4632dc7304d26bebaa036b4a74c538d1d"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-recommended-contact.jpg",
+      "bytes": 320602,
+      "sha256": "c62bb8cf756c63f6793a686b629007fa0cc376b5f02149f28ae77e3d168a714f"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B00-recommended-rgb-overlay.mp4",
+      "bytes": 1865203,
+      "sha256": "1f086e785d0068b01b7c609585106b02f9ecdbae1a5ecacd0b21b1eb83b71cd3"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-compare-hfov45_90.mp4",
+      "bytes": 2345598,
+      "sha256": "f3f634fab785da7e93563a4a334d85fc4a50329cebdf53caf83eddf2d116b582"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-compare-hull5.mp4",
+      "bytes": 2600140,
+      "sha256": "dab3ca94988ad9f11838e979a815337d9c9042762d250c60a7bbb2cd75a3f866"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-compare-jitter0.mp4",
+      "bytes": 2530950,
+      "sha256": "e05f8c6de1d73ca53fadd41f823843c470868667f48c8c6cd2e7fb9ca0242016"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-hfov45_90-contact.jpg",
+      "bytes": 249899,
+      "sha256": "cd3142550d795ef0eaecff9d44d86846d0436ef9a0c168fb07a7df2caccf5f61"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-hull5-contact.jpg",
+      "bytes": 257854,
+      "sha256": "1d0dbd5396674f510fed05977efd6c9a8924508285a2c4c5f35cdaac6f91aaef"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-jitter0-contact.jpg",
+      "bytes": 270881,
+      "sha256": "e960e8b69ecc249ebdf5ba74e7eaf6d18a440fcccc55c94da8e53095d89a23cf"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-recommended-contact.jpg",
+      "bytes": 274439,
+      "sha256": "dfd17b9d76e830db298149c1cd6f85e61b65fe680065ecbf8cbe3ab569e87309"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B01-recommended-rgb-overlay.mp4",
+      "bytes": 1285558,
+      "sha256": "0dcfaeb2084d14c2e3bdad0eb25187cfd0a7d11c5340033dfb35e21244f426a0"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-compare-hfov45_90.mp4",
+      "bytes": 2145946,
+      "sha256": "590e3f61ebe36e61128141a6f07561451375daee6f479a739898088a7e81b6d0"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-compare-hull5.mp4",
+      "bytes": 2423905,
+      "sha256": "49f87935410946b712a53bf1a782a2d4a883738a4868681edcb41233abf477e3"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-compare-jitter0.mp4",
+      "bytes": 2318973,
+      "sha256": "5d356e67a97992c6743c2e6297767fbced55f56ee2f5fd652aa60536f08a7709"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-hfov45_90-contact.jpg",
+      "bytes": 223536,
+      "sha256": "50e49e05e720f78467455f34d19048f1c69d66891eba0ec06c76d25b64b41f91"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-hull5-contact.jpg",
+      "bytes": 272864,
+      "sha256": "14d4765bd5d793a0d8ee6fbe71765106242178638bc258f1ec8a868a541942bb"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-jitter0-contact.jpg",
+      "bytes": 284048,
+      "sha256": "cb922b48a55b1c4fd7e1a6c724525894ed6a639821eb8f6c0bf876214cc0f852"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-recommended-contact.jpg",
+      "bytes": 270272,
+      "sha256": "921b127dc9e6349aedc2cfd31613bd8d45585612436f8d6ddb1350a3635d5998"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B02-recommended-rgb-overlay.mp4",
+      "bytes": 1200164,
+      "sha256": "77404aaddeab8f6a5f3fb33b2f10b23cec4083d97690491c4b5a1232abfbc811"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-compare-hfov45_90.mp4",
+      "bytes": 1735360,
+      "sha256": "bce7dce9c0a3de784eae66f308b70ebf4ca715c60a0e7ab5632b8286a1ebeb95"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-compare-hull5.mp4",
+      "bytes": 1941046,
+      "sha256": "6a1a6ec08b588083259096118f8fb2dbf1deb6b7089336724ff0de316c8b2901"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-compare-jitter0.mp4",
+      "bytes": 1847430,
+      "sha256": "fc23327a55e856a4038a8f9498e321b57f562a24cf3da13030556b4f6294dabf"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-hfov45_90-contact.jpg",
+      "bytes": 224451,
+      "sha256": "b10466dea2cde4a1effa9ee32358b156a99aec6b15ae8a336d7a55779e018742"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-hull5-contact.jpg",
+      "bytes": 242765,
+      "sha256": "0f0ef8bd91e5376f7b6dfa9ffd4a3a46ce10a31a88147163fd105da577afa0b2"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-jitter0-contact.jpg",
+      "bytes": 237974,
+      "sha256": "372db4f4c461830953effeb508aeeacf30a8bd529d342b838e07ad8707889d58"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-recommended-contact.jpg",
+      "bytes": 245583,
+      "sha256": "9296dc398b020a1f7dda0e5152e914ef4877a523608e769a1f6fe172216b4146"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/B03-recommended-rgb-overlay.mp4",
+      "bytes": 959431,
+      "sha256": "b81290f86ffed1169ac12ae632ac9ba21fceac11e3097d68b06b20dbede24eae"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/index.html",
+      "bytes": 7423,
+      "sha256": "416660512011a0e74b73e7fce572fb1c4b8697de46c582ae0504393bc144954b"
+    },
+    {
+      "path": "tmp/court-render-quality/run-01/review/representative-cases.jpg",
+      "bytes": 571693,
+      "sha256": "9e1785dcdcf0a03d51148d69e8725141680a8921cb5d5fbd30a5cb33eb3a18d7"
+    }
+  ],
+  "videos": [
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B00-recommended-rgb-overlay.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 338,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B00-compare-hull5.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B00-compare-hfov45_90.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B00-compare-jitter0.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B01-recommended-rgb-overlay.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 338,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B01-compare-hull5.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B01-compare-hfov45_90.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B01-compare-jitter0.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B02-recommended-rgb-overlay.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 338,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B02-compare-hull5.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B02-compare-hfov45_90.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B02-compare-jitter0.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B03-recommended-rgb-overlay.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 338,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B03-compare-hull5.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B03-compare-hfov45_90.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    },
+    {
+      "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/review/B03-compare-jitter0.mp4",
+      "frames": 96,
+      "programs": [],
+      "streams": [
+        {
+          "codec_name": "h264",
+          "width": 960,
+          "height": 676,
+          "pix_fmt": "yuv420p",
+          "nb_frames": "96"
+        }
+      ],
+      "format": {
+        "duration": "8.000000"
+      }
+    }
+  ]
+}

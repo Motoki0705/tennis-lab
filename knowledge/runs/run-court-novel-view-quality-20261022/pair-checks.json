@@ -1,0 +1,74 @@
+[
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "logical_pairs": 132,
+    "passed": true
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "logical_pairs": 132,
+    "passed": true
+  }
+]

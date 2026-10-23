@@ -87,6 +87,8 @@ method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
 if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET":
     fail()
+if os.environ.get("PARENT_FAIL_GET_PATH") == endpoint and method == "GET":
+    fail()
 payload = json.load(sys.stdin) if method != "GET" else None
 path, _, query = endpoint.partition("?")
 path = path.casefold()
@@ -95,6 +97,8 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+if path == "repos/o/r":
+    response({"default_branch": state["default_branch"]})
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
     if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
@@ -419,7 +423,14 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     state_path = tmp_path / "github.json"
     state_path.write_text(
         json.dumps(
-            {"issues": issues, "parents": {}, "comments": {}, "prs": [], "next": 10}
+            {
+                "issues": issues,
+                "parents": {},
+                "comments": {},
+                "prs": [],
+                "next": 10,
+                "default_branch": "main",
+            }
         )
     )
     calls_path = tmp_path / "calls.jsonl"
@@ -1339,6 +1350,9 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
     p.agreed()
     p.child("a")
     p.child("b")
+    state = p.state()
+    state["prs"] = [p.pr(100, 10)]
+    p.save(state)
     worktree = p.worktree("b")
     p.cli(
         "delegate",

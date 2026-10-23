@@ -1,0 +1,59 @@
+2026-10-22: 中断後の成果確認と合意反映（再描画なし）
+checkout: codex/court-scale-trajectory-design
+src base: 53e5a6336a660cada3694f1532fc24bbf5daaee3
+読み取り専用入力: /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00..B03
+動画・画像・raw出力: このworktreeのtmp/court-render-quality/run-01
+
+$ PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest knowledge/runs/run-court-nested-plan-cpu-20261022/test_plan.py knowledge/runs/run-court-novel-view-quality-20261022/test_probe.py tests/unit/synthetic_data_generation/dataset/court/review -n 4 -q
+32 passed, 4 warnings in 10.55s
+（旧CPU prototype 8、描画QA 4、Court Review 20。新5方式の実装テストではない。）
+
+$ PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-court-novel-view-quality-20261022/verify_evidence.py --scenes-root /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes --plan-root tmp/court-render-quality/run-01 --replay-root tmp/court-render-quality/plan-replay-01 --output knowledge/runs/run-court-novel-view-quality-20261022/resume-audit.json
+inputs=32, replay=36, media=34, videos=16, sheets=16: verified
+（保存plan/request・入力hash・QA計数・media hash・ffprobe・ffmpeg全frame decode。
+raw RGB/alpha/depthの再QAや再描画は行わない。）
+
+$ .venv/bin/ruff format knowledge/runs/run-court-novel-view-quality-20261022/*.py
+1 file reformatted, 5 files left unchanged
+$ .venv/bin/ruff check knowledge/runs/run-court-novel-view-quality-20261022/*.py
+All checks passed!
+$ .venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-novel-view-quality-20261022/*.py
+Success: no issues found in 6 source files
+（pyproject.tomlのunused-section noteのみ。）
+
+$ bash -n knowledge/runs/run-court-novel-view-quality-20261022/repro.sh knowledge/runs/run-court-novel-view-quality-20261022/render_stage.sh
+exit 0
+$ git diff --check
+exit 0
+
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed
+exit 0
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
+587 nodes (545 run, 42 group) — 0 error(s), 218 warning(s)
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref 7e307f0499be3a2511afaba51966ae3362ec81b1
+587 nodes (545 run, 42 group) — 0 error(s), 218 warning(s)
+比較元はHEADとorigin/mainのmerge-base。既存ID・採番・削除記録の今回の差分を検査した。
+
+初回の --base-ref origin/main は23 errorsだった。
+2件は旧CPU bundleにも残った自動生成pycで、今回の新bundleのpycとともに除去した。
+残り21件は分岐後にmainへ追加された別作業（Court hybrid-fit）のrun 20ファイルと
+court_detectionの.sequence=47を、古いbranchに存在しないため削除/縮小と判定したもの。
+origin/main=2b7520f9e42eedc7ad7eac334ca86a80bafb18b7。
+本担当はそれらを削除・変更していない。親は最新mainの統合後、tip比較を再実行する。
+synthetic_data_generationのmain予約番号は23で、今回の24/25との衝突はなかった。
+
+$ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
+399 repro.sh, 500 script references — 0 missing, 8 unverifiable
+8件は既存のball_refiner履歴commit未取得によるWARNで、本変更の参照欠損はない。
+
+$ .venv/bin/pre-commit run --files knowledge/runs/run-court-novel-view-quality-20261022/verify_evidence.py knowledge/runs/run-court-novel-view-quality-20261022/test_probe.py knowledge/runs/run-court-novel-view-quality-20261022/plan_probe.py knowledge/runs/run-court-novel-view-quality-20261022/render_probe.py knowledge/runs/run-court-novel-view-quality-20261022/analyze_probe.py knowledge/runs/run-court-novel-view-quality-20261022/review_bundle.py
+exit 0: ruff/mypyはrepoの対象filterがsrc/tests/.spinのためSkipped。
+上記の通り、knowledge内のPython 6件にはruff/mypyを別途手動適用して全件合格した。
+
+新規ファイルをstageした後の git diff --cached --check で、strata.csvのCRLFを検出した。
+CSVの387データ行をcsv.readerで比較して全field一致を確認し、LFへ正規化。
+review_bundle.pyもlineterminator='\n'を明示し、再作成時に同じ改行を使うよう修正した。
+$ .venv/bin/ruff check knowledge/runs/run-court-novel-view-quality-20261022/review_bundle.py
+All checks passed!
+$ .venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-novel-view-quality-20261022/review_bundle.py
+Success: no issues found in 1 source file

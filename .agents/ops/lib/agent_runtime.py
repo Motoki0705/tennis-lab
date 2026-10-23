@@ -24,6 +24,7 @@ from agent_events import (
     interrupted_codex_turn,
     parse_json,
 )
+from agent_output import OutputSchema
 from agent_settings import command, resolve
 from opsproc import (
     _live_group_members,
@@ -126,6 +127,9 @@ def parser() -> argparse.ArgumentParser:
     )
     result.add_argument("--prompt-file", help="UTF-8 prompt path, or - for stdin")
     result.add_argument("--out", type=Path)
+    result.add_argument(
+        "--json-schema", type=Path, help="JSON Schema file for the final response"
+    )
     result.add_argument("--mode", choices=("read-only", "write"), default="read-only")
     result.add_argument("--profile")
     result.add_argument("--model")
@@ -262,6 +266,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("--read-dir must name an existing directory") from exc
     if any(not Path(path).is_dir() for path in read_dirs):
         raise ValueError("--read-dir must name an existing directory")
+    agent = args.agent or ("claude" if args.role == "parent" else "codex")
+    output_schema = (
+        OutputSchema(args.json_schema, agent=agent)
+        if args.json_schema is not None
+        else None
+    )
     prompt = (
         sys.stdin.buffer.read()
         if args.prompt_file == "-"
@@ -279,7 +289,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 setattr(
                     args, key, previous["contract"]["settings"]["overrides"].get(key)
                 )
-    agent = args.agent or ("claude" if args.role == "parent" else "codex")
     settings = resolve(
         args.config_file, agent, args.profile, args.model, args.effort, args.mode
     )
@@ -297,6 +306,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "settings": settings,
         "runtime_home": str(home) if agent == "codex" else str(Path.home() / ".claude"),
     }
+    if output_schema is not None:
+        contract["json_schema_sha256"] = output_schema.sha256
     if branch == "(detached)":
         head = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
@@ -310,7 +321,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         contract["detached_head"] = head.stdout.strip()
     if previous and contract != previous["contract"]:
         raise ValueError(
-            "resume task/worktree/branch/read_dirs/settings differ from the saved contract"
+            "resume task/worktree/branch/read_dirs/json_schema/settings differ from the saved contract"
         )
     run_id = str(uuid.uuid4())
     log_dir = (
@@ -327,6 +338,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("prompt and output paths must differ")
     if out.resolve() == args.config_file.resolve():
         raise ValueError("config and output paths must differ")
+    if args.json_schema is not None and out.resolve() == args.json_schema.resolve():
+        raise ValueError("schema and output paths must differ")
     if out.parent.resolve() == run_dir and out.name != "final.md":
         raise ValueError("output inside --run-dir must be named final.md")
     final = run_dir / "final.md"
@@ -391,7 +404,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "last_turn_id": None,
             }
         state["latest_run"] = str(run_dir)
-        events = Events(agent, settings["selected"], state["session_id"])
+        events = Events(agent, settings["selected"], state["session_id"], output_schema)
         previous_turn = state["last_turn_id"]
         result: dict[str, Any] = {
             "schema_version": VERSION,
@@ -427,6 +440,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             write_json(root / "session.json", state)
 
         (run_dir / "prompt.md").write_bytes(prompt)
+        schema_path = (
+            run_dir / "output-schema.json" if output_schema is not None else None
+        )
+        if schema_path is not None:
+            assert output_schema is not None
+            schema_path.write_bytes(output_schema.raw)
         save()
         env = {k: v for k, v in os.environ.items() if k not in IDENTITY_ENV}
         env.update(
@@ -440,7 +459,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             out.parent.mkdir(parents=True, exist_ok=True)
             out.unlink(missing_ok=True)
             cmd = command(
-                settings, args.mode, cwd, final, state["session_id"], read_dirs
+                settings,
+                args.mode,
+                cwd,
+                final,
+                state["session_id"],
+                read_dirs,
+                schema_path,
             )
             write_json(
                 run_dir / "invocation.json",
@@ -458,7 +483,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             )
             if reason is None:
                 reason = "cli_error" if status else "invalid_output"
-                if events.failed:
+                if events.invalid_structured_output:
+                    reason = "invalid_output"
+                elif events.failed:
                     raw_errors = json.dumps(events.errors).lower()
                     reason = (
                         "usage_limit"
@@ -485,6 +512,14 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         reason = "completed"
                 if reason != "completed" and status == 0:
                     status = 1
+                if reason == "cli_error":
+                    with (run_dir / "stderr.log").open("rb") as stderr:
+                        stderr_head = (
+                            stderr.read(1024).decode("utf-8", errors="replace").strip()
+                        )
+                    result["error"] = (
+                        f"CLI exited with status {status}; stderr: {stderr_head or '(empty)'}"
+                    )
         except FileNotFoundError:
             status, reason = 127, "startup_failed"
             result["error"] = "required executable or runtime file is missing"

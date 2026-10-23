@@ -1,7 +1,7 @@
-<!-- knowledge-review: 28238fd7a0f0ee040a824b5a02b020e00afda62e45663b023d90eea8f096a882 on 2026-10-22 -->
+<!-- knowledge-review: 301555d490b6d20da609d8d7d5cf07411b59563fbdfdf00f6f94edfb1fbe1ecb on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
+更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断と、Court発表素材の採用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -468,6 +468,21 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+[B00〜B03のCPU軌道計画診断](nodes/synthetic_data_generation/000024-run-court-nested-plan-cpu-20261022.md)では、
+固定弧長表の2倍細分と点IDによって共通視点を保てたが、軌道長・棄却により単純な軌道prefixだけでは等枚数にならず、
+評価軌道近傍の保守的な除外で形状・中心の分布も大きく偏った。
+当時の採択後選択・評価guardは旧案の観測として保持し、新しい生成仕様には用いない。
+[4sceneの新規視点描画診断](nodes/synthetic_data_generation/000025-run-court-novel-view-quality-20261022.md)では、
+推奨と拡張5%・狭角・jitter0の計2080視点、QAと比較/連続動画16本を作成した。
+狭角で対象KP支持が減り、ROI穴0でもぼけ・線の不一致を通した。対象4KP以上で対象外の支持を除いても、
+B02/B03はほぼpartialのままで、強いalpha条件も分布を偏らせた。
+0mは動画の視線の振れを減らすが、複数courtのtarget切替とぼけは残る。
+2026-10-22のユーザー判断で、合成は全てtrain、実画像は動画単位val/testの評価専用、
+poseは学習するが主評価外、枚数は全採択候補の実測値とした。枚数揃えのquota/補充と合成評価guardは不要。
+[設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
+#1352で実装してCourt Review Web UIからユーザーが選ぶ。D2/D5/D6も診断動画を材料に同UI比較で最終判断する。
+既存モデルの採用判断は維持し、診断標本の棄却率を本番へ流用せず、方式/品質の合意と全分布の試走を規模比較に先行させる。
 
 2026-10-21の[発表素材用の再探索](nodes/court_detection/000045-run-court-hybrid-fit-search-20261021.md)では、
 PROSACの向き修正を含む版と固定b863 checkpointを使い、以前と同じval先頭300件・入力hash・

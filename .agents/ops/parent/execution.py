@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
+from .judgement_comments import owned_comment
 from .policy import digest, nonempty, number, object_value, phase, section_span
 
 if TYPE_CHECKING:
@@ -151,6 +152,8 @@ def instruction_comments(
     result = []
     for comment in comments:
         item = comment_snapshot(comment)
+        if owned_comment(comment, session.login, session.gh.repo, session.parent):
+            continue
         first = item["body"].splitlines()[0] if item["body"] else ""
         if item["login"] == session.login and first.startswith(
             ("<!-- parent-session:v1 ", "<!-- parent-review:v1 ")
@@ -187,9 +190,17 @@ def execution_input(
     raw = session.gh.issue(session.parent)
     if "ops-report" in {label["name"] for label in raw["labels"]}:
         raise ValueError("ops-report containers cannot receive an execution basis")
+    raw_comments = session.gh.comments(session.parent)
+    # Older dispatcher records pinned the display's digest in ignored_comments.
+    # Revalidate its complete current format before allowing a display update.
+    for comment in raw_comments:
+        if comment["id"] in ignored and owned_comment(
+            comment, session.login, session.gh.repo, session.parent
+        ):
+            del ignored[comment["id"]]
     comments = []
     observed = set()
-    for item in instruction_comments(session, session.gh.comments(session.parent)):
+    for item in instruction_comments(session, raw_comments):
         observed.add(item["id"])
         if item["id"] in ignored:
             if digest(item) != ignored[item["id"]]["sha256"]:
