@@ -7,6 +7,7 @@ fixtures exercise I/O and masking; their metrics do not measure tennis accuracy.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import statistics
 import subprocess
@@ -23,7 +24,17 @@ from src.tasks.ball_detection.data.windows.all_frames import AllFrameWindowConfi
 from src.tasks.ball_detection.visualization.presentation.temporal_heatmap import (
     render_temporal_heatmap_comparison,
 )
-from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+
+
+def fixture_helpers():
+    # tests/ is not a package outside pytest's import context.
+    path = Path("tests/support/tasks/ball_detection/store.py").resolve()
+    spec = importlib.util.spec_from_file_location("diagnostic_store_fixture", path)
+    if spec is None or spec.loader is None:
+        raise ValueError("Cannot load the pinned store fixture file")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ball, module.frame, module.write_store_clip
 
 
 def run(command: list[str]) -> None:
@@ -47,6 +58,7 @@ def main() -> None:
     (output / "environment.json").write_text(json.dumps(dict(torch=str(torch.__version__), cuda=torch.version.cuda,
         gpu=torch.cuda.get_device_name(), free_vram_bytes=free, total_vram_bytes=total), indent=2))
     store = output / "store"
+    ball, frame, write_store_clip = fixture_helpers()
     for split in ("train", "val", "test"):
         labels = [frame(i, ball(xy=(20., 30.))) if i < 48 or i >= 96 else
                   frame(i) if i < 72 else frame(i, ball("out_of_frame", None)) for i in range(128)]
