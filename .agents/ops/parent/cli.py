@@ -12,6 +12,8 @@ from contextlib import suppress
 from pathlib import Path
 from typing import Any
 
+from lib.identity import session_identity
+
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
@@ -19,7 +21,7 @@ from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
 from .snapshot import prepare, transition
-from .state import Store, session_identity, state_directory
+from .state import Store, state_directory
 
 
 def read_text(path: str) -> str:
@@ -277,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
-        display_failed = False
+        integration_failed = False
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
             # The parent mutation is already durable. Display I/O must never keep
             # the shared registry lock, or obscure whether that mutation applied.
@@ -299,10 +301,31 @@ def main(argv: list[str] | None = None) -> int:
                 subprocess.SubprocessError,
             ) as exc:
                 display = {"status": "error", "error": str(exc)}
-                display_failed = True
+                integration_failed = True
             result = {**result, "display_sync": display, "parent_action_applied": True}
+            from board.errors import BoardError
+            from board.service import sync_parent
+
+            try:
+                name_sync = sync_parent(dict(os.environ), gh.repo, parent)
+            except BoardError as exc:
+                name_sync = {"status": "error", "error": str(exc)}
+                integration_failed = True
+            except (
+                ValueError,
+                OSError,
+                KeyError,
+                TypeError,
+                subprocess.SubprocessError,
+            ):
+                name_sync = {
+                    "status": "error",
+                    "error": "board name synchronization failed; inspect storage and parent configuration",
+                }
+                integration_failed = True
+            result = {**result, "board_sync": name_sync}
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
-        return 1 if display_failed else 0
+        return 1 if integration_failed else 0
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)

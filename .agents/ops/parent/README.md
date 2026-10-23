@@ -7,6 +7,7 @@
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
+同じ位置で[board](../board/README.md)の名前も同期し、結果を`board_sync`へ返す。
 
 ## 責務と状態の正本
 

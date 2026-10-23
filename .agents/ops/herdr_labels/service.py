@@ -9,8 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_title
+from lib.identity import session_identity
 from parent.github import GitHub
-from parent.state import Store, session_identity
+from parent.state import Store
 
 from .client import Herdr
 from .coordination import Guard, owner_token, process_stamp, state_root
