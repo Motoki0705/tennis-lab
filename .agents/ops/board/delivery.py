@@ -117,13 +117,15 @@ def dispatch(
     post_id: str | None = None,
     assignment_id: int | None = None,
     held_only: bool = False,
+    retry_only: bool = False,
 ) -> list[dict[str, Any]]:
     """Trusted hook/API entry. Recheck the destination owner for every attempt.
 
     A durable uncertainty marker is committed BEFORE calling a route. A process
     crash, exception or malformed result therefore cannot cause automatic
     duplicate sends. Only a certified unsent failure may be retried. Never hold
-    a SQLite transaction while calling a notifier.
+    a SQLite transaction while calling a notifier. With retry_only, leave held
+    rows alone and report attempts/skips from inside the notification lock.
     """
     if set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
@@ -140,6 +142,7 @@ def dispatch(
         filters.append("state='held'")
     where = " WHERE " + " AND ".join(filters) if filters else ""
     with locked(store.directory / "notifications.lock"):
+        reports: dict[tuple[str, int], dict[str, Any]] = {}
         with store.read() as connection:
             items = connection.execute(
                 "SELECT post_id, assignment_id FROM deliveries"
@@ -148,15 +151,23 @@ def dispatch(
                 params,
             ).fetchall()
         for target_post, target_id in items:
+            report = {"attempted": False, "outcome": "skipped", "skip_reason": None}
+            reports[target_post, target_id] = report
             with parent_state(env) as parents:
                 with store.transaction() as connection:
                     row = connection.execute(
-                        "SELECT state, retryable, idempotency_key FROM deliveries WHERE post_id=? AND assignment_id=?",
+                        "SELECT state, retryable, idempotency_key, reason FROM deliveries WHERE post_id=? AND assignment_id=?",
                         (target_post, target_id),
                     ).fetchone()
-                    if row[0] == "notified" or (
-                        row[0] == "delivery_failed" and not row[1]
-                    ):
+                    if row[0] == "notified":
+                        report["skip_reason"] = "already_notified"
+                        continue
+                    if row[0] == "delivery_failed" and not row[1]:
+                        report["skip_reason"] = (
+                            "notification_uncertain"
+                            if row[3] == "notification_uncertain"
+                            else "not_retryable"
+                        )
                         continue
                     recipient = next(
                         r
@@ -164,7 +175,12 @@ def dispatch(
                         if r["assignment_id"] == target_id
                     )
                     if recipient["read_at"] is not None:
+                        report["skip_reason"] = "already_read"
                         continue  # Explicit read/response already made the bell unnecessary.
+                    if retry_only and row[0] == "held":
+                        report["skip_reason"] = "held"
+                        continue
+                    report["outcome"] = "failed"
                     owner = parents.get(f"{recipient['repo']}#{recipient['parent']}")
                     retired = connection.execute(
                         "SELECT retired_at FROM name_assignments WHERE id=?",
@@ -175,12 +191,14 @@ def dispatch(
                         or owner is None
                         or owner["status"] == "ended"
                     ):
+                        report["skip_reason"] = "recipient_retired"
                         connection.execute(
                             "UPDATE deliveries SET state='delivery_failed', reason='recipient_retired', retryable=0 WHERE post_id=? AND assignment_id=?",
                             (target_post, target_id),
                         )
                         continue
                     if owner["status"] != "active":
+                        report["skip_reason"] = "recipient_unavailable"
                         connection.execute(
                             "UPDATE deliveries SET state='held', reason='recipient_unavailable', retryable=1 WHERE post_id=? AND assignment_id=?",
                             (target_post, target_id),
@@ -191,6 +209,7 @@ def dispatch(
                         raise BoardError("invalid recipient engine identity")
                     notifier = notifiers.get(engine)
                     if notifier is None:
+                        report["skip_reason"] = "notifier_unconfigured"
                         connection.execute(
                             "UPDATE deliveries SET state='delivery_failed', reason='notifier_unconfigured', retryable=1, engine=? WHERE post_id=? AND assignment_id=?",
                             (engine, target_post, target_id),
@@ -220,11 +239,13 @@ def dispatch(
                            engine=?, attempts=attempts+1, attempted_at=? WHERE post_id=? AND assignment_id=?""",
                         (engine, timestamp(datetime.now(UTC)), target_post, target_id),
                     )
+                report["attempted"] = True
                 try:
                     outcome = _result(notifier(notification))
                 except Exception:
                     # Exception text may contain private runtime destinations.
                     outcome = NotificationResult(False, "notification_uncertain")
+                report["outcome"] = "notified" if outcome.accepted else "failed"
                 with store.transaction() as connection:
                     connection.execute(
                         "UPDATE deliveries SET state=?, reason=?, retryable=?, notified_at=? WHERE post_id=? AND assignment_id=?",
@@ -239,7 +260,7 @@ def dispatch(
                     )
         with parent_state(env) as parents, store.read() as connection:
             result = [
-                dict(post_id=p, **row)
+                dict(post_id=p, **row, **(reports[p, a] if retry_only else {}))
                 for p, a in items
                 for row in recipient_views(connection, p)
                 if row["assignment_id"] == a

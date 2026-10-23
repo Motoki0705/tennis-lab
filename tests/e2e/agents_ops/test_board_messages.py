@@ -90,7 +90,7 @@ class World:
 
 @pytest.fixture
 def world(board: SimpleNamespace, labels: Labels) -> World:
-    for name in ("messages", "delivery", "records"):
+    for name in ("messages", "delivery", "records", "redelivery"):
         setattr(board, name, importlib.import_module("board." + name))
     statuses = ("active", "active", "active", "released", "handoff_pending", "ended")
     labels.set_registry(
@@ -550,6 +550,195 @@ def test_partial_failure_retry_preserves_keys_and_never_resends_success(
     assert len(w.fake.calls) == 3 and len(w.fake.accepted) == 2
     assert w.fake.calls[-1].idempotency_key == original_key
     assert w.fake.calls[0].idempotency_key != original_key
+
+
+def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
+    world: World,
+) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=[w.assignments[2].name, w.assignments[3].name])
+    original_key = w.fake.calls[-1].idempotency_key
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    notified, retried = result["recipients"]
+    assert notified["outcome"] == "skipped"
+    assert notified["skip_reason"] == "already_notified"
+    assert not notified["attempted"] and notified["attempts"] == 1
+    assert retried["outcome"] == "notified" and retried["attempted"]
+    assert retried["skip_reason"] is None and retried["attempts"] == 2
+    assert len(w.fake.calls) == 3 and w.fake.calls[-1].idempotency_key == original_key
+    assert all(r["read_at"] is None for r in result["recipients"])
+    again = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert again["status"] == "no_targets" and len(w.fake.calls) == 3
+    private_output_absent(json.dumps(result), w.env())
+
+
+def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    w = world
+    # Simulate interruption after the post commit and before initial dispatch.
+    with monkeypatch.context() as patch:
+        patch.setattr(w.board.messages, "dispatch", lambda *_args, **_kwargs: [])
+        root = w.post(to=[w.assignments[2].name, w.assignments[3].name])
+    assert all(
+        r["delivery_state"] == "pending" and not r["retryable"]
+        for r in root["recipients"]
+    )
+    result = w.board.redelivery.dispatch_post(
+        w.env(), w.routes, post_id=root["id"], to=w.assignments[3].name.swapcase()
+    )
+    assert result["status"] == "notified" and len(result["recipients"]) == 1
+    assert result["recipients"][0]["parent"] == 3
+    assert len(w.fake.calls) == 1 and w.fake.calls[0].parent == 3
+    assert [r["delivery_state"] for r in w.own_state(root["id"])["recipients"]] == [
+        "pending",
+        "notified",
+    ]
+
+
+@pytest.mark.parametrize("state", ["notified", "read", "uncertain", "terminal", "held"])
+def test_sender_dispatch_reports_skips_without_notifying(
+    world: World, state: str
+) -> None:
+    w = world
+    if state == "held":
+        root = w.post(to=[w.assignments[4].name])
+        w.change(
+            4, status="active"
+        )  # Only the restoration hook may dispatch held rows.
+    elif state in {"uncertain", "terminal"}:
+        reason = (
+            "notification_uncertain"
+            if state == "uncertain"
+            else "notification_rejected"
+        )
+        root = w.post(
+            notifiers={
+                "codex": lambda _n: w.board.delivery.NotificationResult(False, reason)
+            }
+        )
+    else:
+        if state == "read":
+            w.fake.accepting = False
+        root = w.post()
+        if state == "read":
+            w.board.messages.read(w.env(2), root["id"])
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "no_targets"
+    recipient = result["recipients"][0]
+    assert recipient["outcome"] == "skipped" and not recipient["attempted"]
+    assert (
+        recipient["skip_reason"]
+        == {
+            "notified": "already_notified",
+            "read": "already_read",
+            "uncertain": "notification_uncertain",
+            "terminal": "not_retryable",
+            "held": "held",
+        }[state]
+    )
+    assert w.message_rows() == before and w.fake.calls == calls
+
+
+def test_sender_dispatch_reports_retry_failure_and_keeps_it_retryable(
+    world: World,
+) -> None:
+    w = world
+    w.fake.accepting = False
+    root = w.post()
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "failed"
+    recipient = result["recipients"][0]
+    assert recipient["attempted"] and recipient["outcome"] == "failed"
+    assert (
+        recipient["delivery_reason"] == "receiver_not_accepting"
+        and recipient["retryable"]
+    )
+    assert recipient["attempts"] == len(w.fake.calls) == 2
+    assert w.fake.calls[0].idempotency_key == w.fake.calls[1].idempotency_key
+
+
+@pytest.mark.parametrize("status", ["handoff_pending", "ended"])
+def test_sender_dispatch_rechecks_recipient_before_attempt(
+    world: World, status: str
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    w.change(2, status=status)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "failed" and w.fake.calls == []
+    recipient = result["recipients"][0]
+    assert recipient["outcome"] == "failed" and not recipient["attempted"]
+    assert (
+        recipient["skip_reason"]
+        == recipient["delivery_reason"]
+        == ("recipient_retired" if status == "ended" else "recipient_unavailable")
+    )
+
+
+def test_concurrent_sender_dispatch_reports_only_its_own_attempt(world: World) -> None:
+    w = world
+    root = w.post(notifiers={})
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(
+            pool.map(
+                lambda _: w.board.redelivery.dispatch_post(
+                    w.env(), w.routes, post_id=root["id"]
+                ),
+                range(4),
+            )
+        )
+    assert len(w.fake.calls) == 1
+    assert sorted(r["status"] for r in results) == ["no_targets"] * 3 + ["notified"]
+    assert sum(r["recipients"][0]["attempted"] for r in results) == 1
+
+
+@pytest.mark.parametrize("caller", [2, 3])
+def test_cli_dispatch_rejects_recipients_and_other_parents(
+    world: World, caller: int
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    before = w.message_rows()
+    result = run_board(w.env(caller), "dispatch", "--post", root["id"])
+    assert result.returncode == 2 and result.stdout == ""
+    assert "only the post sender" in result.stderr
+    assert w.message_rows() == before
+    private_output_absent(result.stderr, w.env(caller))
+
+
+@pytest.mark.parametrize("post_id", ["f" * 32, "invalid"])
+def test_cli_dispatch_rejects_missing_or_invalid_post(
+    world: World, post_id: str
+) -> None:
+    w = world
+    before = w.message_rows()
+    result = run_board(w.env(), "dispatch", "--post", post_id)
+    assert result.returncode == 2 and result.stdout == ""
+    assert (
+        "does not exist" if len(post_id) == 32 else "invalid board post ID"
+    ) in result.stderr
+    assert w.message_rows() == before
+
+
+@pytest.mark.parametrize("to", ["all", "unknown", "self", "nonrecipient"])
+def test_cli_dispatch_rejects_names_outside_saved_recipients(
+    world: World, to: str
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    name = {"self": w.assignments[1].name, "nonrecipient": w.assignments[3].name}.get(
+        to, to
+    )
+    before = w.message_rows()
+    result = run_board(w.env(), "dispatch", "--post", root["id"], "--to", name)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "saved post recipient" in result.stderr and w.message_rows() == before
 
 
 @pytest.mark.parametrize("crash", [False, True])
@@ -1071,7 +1260,9 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
 
 
 @pytest.mark.parametrize("broadcast", [None, -1, 2])
-def test_posts_reject_non_boolean_broadcast(world: World, broadcast: int | None) -> None:
+def test_posts_reject_non_boolean_broadcast(
+    world: World, broadcast: int | None
+) -> None:
     w = world
     root = w.post()
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
