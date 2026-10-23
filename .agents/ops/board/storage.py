@@ -33,9 +33,98 @@ def _names_schema(connection: sqlite3.Connection) -> None:
     )
 
 
+def _posts_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """CREATE TABLE posts (
+            id TEXT PRIMARY KEY,
+            created_at TEXT NOT NULL,
+            sender_assignment_id INTEGER NOT NULL REFERENCES name_assignments(id),
+            sender_name TEXT NOT NULL,
+            sender_repo TEXT NOT NULL,
+            sender_parent INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('info','question','request','reply')),
+            broadcast INTEGER NOT NULL CHECK (broadcast IN (0,1)),
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            in_reply_to TEXT REFERENCES posts(id),
+            thread_id TEXT NOT NULL REFERENCES posts(id),
+            CHECK ((kind = 'reply') = (in_reply_to IS NOT NULL))
+        )"""
+    )
+    connection.execute("CREATE INDEX posts_thread ON posts(thread_id, id)")
+    connection.execute("CREATE INDEX posts_sender ON posts(sender_assignment_id, id)")
+    connection.execute(
+        """CREATE TABLE recipients (
+            post_id TEXT NOT NULL REFERENCES posts(id),
+            assignment_id INTEGER NOT NULL REFERENCES name_assignments(id),
+            name TEXT NOT NULL,
+            repo TEXT NOT NULL,
+            parent INTEGER NOT NULL,
+            read_at TEXT,
+            response_state TEXT CHECK (response_state IN ('answered','accepted','declined','done')),
+            responded_at TEXT,
+            PRIMARY KEY (post_id, assignment_id),
+            CHECK ((response_state IS NULL) = (responded_at IS NULL)),
+            CHECK (response_state IS NULL OR read_at IS NOT NULL)
+        )"""
+    )
+    connection.execute(
+        "CREATE INDEX recipients_inbox ON recipients(assignment_id, post_id)"
+    )
+    connection.execute(
+        """CREATE TABLE deliveries (
+            post_id TEXT NOT NULL,
+            assignment_id INTEGER NOT NULL,
+            idempotency_key TEXT NOT NULL UNIQUE,
+            engine TEXT CHECK (engine IN ('claude','codex')),
+            state TEXT NOT NULL CHECK (state IN ('pending','held','notified','delivery_failed')),
+            reason TEXT,
+            retryable INTEGER NOT NULL DEFAULT 0 CHECK (retryable IN (0,1)),
+            attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+            attempted_at TEXT,
+            notified_at TEXT,
+            PRIMARY KEY (post_id, assignment_id),
+            FOREIGN KEY (post_id, assignment_id) REFERENCES recipients(post_id, assignment_id),
+            CHECK (state != 'notified' OR notified_at IS NOT NULL)
+        )"""
+    )
+    # Text and recipient identity are append-only even for direct SQL clients.
+    for table in ("posts", "recipients", "deliveries"):
+        connection.execute(
+            f"CREATE TRIGGER {table}_no_delete BEFORE DELETE ON {table} "
+            "BEGIN SELECT RAISE(ABORT, 'board history is append-only'); END"
+        )
+    connection.execute(
+        "CREATE TRIGGER posts_no_update BEFORE UPDATE ON posts "
+        "BEGIN SELECT RAISE(ABORT, 'board posts are immutable'); END"
+    )
+    # SQLite REPLACE can bypass delete triggers when recursive_triggers is off.
+    for table, existing in (
+        ("posts", "id=NEW.id"),
+        ("recipients", "post_id=NEW.post_id AND assignment_id=NEW.assignment_id"),
+        ("deliveries", "post_id=NEW.post_id AND assignment_id=NEW.assignment_id"),
+    ):
+        connection.execute(
+            f"CREATE TRIGGER {table}_no_replace BEFORE INSERT ON {table} "
+            f"WHEN EXISTS(SELECT 1 FROM {table} WHERE {existing}) "
+            "BEGIN SELECT RAISE(ABORT, 'board history cannot be replaced'); END"
+        )
+    for table, columns in (
+        ("recipients", "post_id, assignment_id, name, repo, parent"),
+        ("deliveries", "post_id, assignment_id, idempotency_key"),
+    ):
+        connection.execute(
+            f"CREATE TRIGGER {table}_identity BEFORE UPDATE OF {columns} ON {table} "
+            "BEGIN SELECT RAISE(ABORT, 'board recipient identity is immutable'); END"
+        )
+
+
 # Entry N upgrades user_version N to N+1. Append migrations; never edit a
-# released migration. Posting/state tables belong in the next migration.
-MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (_names_schema,)
+# released migration.
+MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
+    _names_schema,
+    _posts_schema,
+)
 SCHEMA_VERSION = len(MIGRATIONS)
 
 
@@ -64,6 +153,18 @@ def _validate(connection: sqlite3.Connection) -> None:
     }
     if not {"live_name", "live_parent"} <= indexes:
         raise BoardError("board schema is incomplete")
+    connection.execute(
+        "SELECT id, created_at, sender_assignment_id, sender_name, sender_repo, "
+        "sender_parent, kind, broadcast, subject, body, in_reply_to, thread_id FROM posts LIMIT 0"
+    )
+    connection.execute(
+        "SELECT post_id, assignment_id, name, repo, parent, read_at, response_state, "
+        "responded_at FROM recipients LIMIT 0"
+    )
+    connection.execute(
+        "SELECT post_id, assignment_id, idempotency_key, engine, state, reason, retryable, "
+        "attempts, attempted_at, notified_at FROM deliveries LIMIT 0"
+    )
 
 
 class Store:

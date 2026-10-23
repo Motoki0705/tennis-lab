@@ -1,4 +1,4 @@
-"""Read-only board identity and parent roster CLI."""
+"""Parent board identity, messages and recipient state CLI."""
 
 from __future__ import annotations
 
@@ -6,8 +6,10 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 from typing import NoReturn
 
+from . import messages
 from .errors import BoardError
 from .service import agents, whoami
 
@@ -23,8 +25,55 @@ def main(argv: list[str] | None = None) -> int:
         commands = parser.add_subparsers(dest="command", required=True)
         commands.add_parser("whoami", help="show the caller's active parent name")
         commands.add_parser("agents", help="list registered active parents")
+        posting = commands.add_parser("post", help="append a post to board names")
+        posting.add_argument("--to", action="append", required=True)
+        posting.add_argument(
+            "--kind", choices=("info", "question", "request"), required=True
+        )
+        posting.add_argument("--subject", required=True)
+        posting.add_argument("--body-file", required=True)
+        replying = commands.add_parser("reply", help="reply to the original author")
+        replying.add_argument("--post", required=True)
+        replying.add_argument("--to", action="append", default=[])
+        replying.add_argument("--body-file", required=True)
+        commands.add_parser(
+            "read", help="retrieve a post and mark it read"
+        ).add_argument("post_id")
+        commands.add_parser(
+            "thread", help="read a thread and mark addressed posts read"
+        ).add_argument("post_id")
+        commands.add_parser("inbox", help="list received post previews").add_argument(
+            "--unread", action="store_true"
+        )
+        acknowledging = commands.add_parser("ack", help="acknowledge a received post")
+        acknowledging.add_argument("--post", required=True)
+        acknowledging.add_argument(
+            "--state", choices=("accepted", "declined", "done"), required=True
+        )
+        commands.add_parser("status", help="show per-recipient states of sent posts")
         args = parser.parse_args(argv)
-        result = whoami(os.environ) if args.command == "whoami" else agents(os.environ)
+        env = os.environ
+        if args.command in {"post", "reply"}:
+            with Path(args.body_file).open(encoding="utf-8") as source:
+                body = source.read(60001)
+            if args.command == "post":
+                result = messages.post(
+                    env, to=args.to, kind=args.kind, subject=args.subject, body=body
+                )
+            else:
+                result = messages.reply(env, post_id=args.post, to=args.to, body=body)
+        elif args.command == "read":
+            result = messages.read(env, args.post_id)
+        elif args.command == "thread":
+            result = messages.thread(env, args.post_id)
+        elif args.command == "inbox":
+            result = messages.inbox(env, unread=args.unread)
+        elif args.command == "ack":
+            result = messages.ack(env, post_id=args.post, state=args.state)
+        elif args.command == "status":
+            result = messages.status(env)
+        else:
+            result = whoami(env) if args.command == "whoami" else agents(env)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except BoardError as exc:
