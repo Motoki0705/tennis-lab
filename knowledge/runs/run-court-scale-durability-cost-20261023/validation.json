@@ -1,0 +1,47 @@
+{
+  "schema": "court_scale_durability_cost_validation_v1",
+  "pytest": {
+    "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/synthetic_data_generation/dataset/court/test_scale_durable_storage.py tests/unit/synthetic_data_generation/dataset/court/test_scale_durability.py -n 4 -q",
+    "returncode": 0,
+    "passed": 25,
+    "elapsed_seconds": 21.02
+  },
+  "measurement": {
+    "returncode": 0,
+    "receipt_equals_recorded": true,
+    "restored_files": 6,
+    "rclone_processes": 44
+  },
+  "analysis": {
+    "returncode": 0,
+    "cache_count": 24,
+    "archive_members": 184,
+    "fetch_call_breakdown_assertion": true
+  },
+  "ruff": {
+    "command": ".venv/bin/ruff check knowledge/runs/run-court-scale-durability-cost-20261023",
+    "returncode": 0
+  },
+  "mypy": {
+    "command": ".venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-scale-durability-cost-20261023/*.py",
+    "returncode": 0,
+    "checked_files": 3
+  },
+  "bash_syntax": {
+    "command": "bash -n knowledge/runs/run-court-scale-durability-cost-20261023/repro.sh",
+    "returncode": 0
+  },
+  "knowledge": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref 1eedc16ac23418eefd88dfb7dbfc9dfb7bae1211",
+    "returncode": 0,
+    "errors": 0,
+    "warnings": 218
+  },
+  "repro_paths": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+    "returncode": 0,
+    "script_references": 510,
+    "missing": 0,
+    "unverifiable": 0
+  }
+}
