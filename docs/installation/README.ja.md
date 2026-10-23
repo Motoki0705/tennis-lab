@@ -1,6 +1,6 @@
 # 標準マルチカメラpipelineの導入
 
-[English](README.md)
+[English](README.md) / [日本語](README.ja.md) / [简体中文](README.zh-CN.md)
 
 同期済み固定カメラ3〜5台の動画からSceneResult v2を生成します。ここが環境構築・資産配置・
 公開サンプル実行の正本です。入力の制約と保存形式は[tennis_scene](../../src/tennis_scene/README.md)、

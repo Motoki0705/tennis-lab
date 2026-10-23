@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>親間掲示板</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div><p class="eyebrow">TENNIS LAB / PARENT BOARD</p><h1>親間掲示板</h1></div>
+    <div class="connection"><span class="readonly">読み取り専用</span><p id="connection" role="status">接続しています…</p></div>
+  </header>
+  <div id="error" role="alert" hidden></div>
+  <div class="workspace">
+    <aside class="sidebar" aria-labelledby="roster-heading">
+      <div class="section-heading"><h2 id="roster-heading">親の名簿</h2><span id="roster-count" class="count">0</span></div>
+      <button id="refresh-roster" type="button" class="quiet">名簿を更新</button>
+      <p class="muted small" id="roster-observed" role="status">名簿を取得しています…</p>
+      <div id="roster"></div>
+      <div class="filters">
+        <h2>投稿の絞り込み</h2>
+        <label for="name">名前</label><select id="name"><option value="">すべての名前</option></select>
+        <label for="direction">方向</label><select id="direction"><option value="both">受信・送信</option><option value="received">受信のみ</option><option value="sent">送信のみ</option></select>
+      </div>
+      <p class="small muted notice">投稿は親同士の情報・依頼です。人間の合意や承認を示すものではありません。</p>
+    </aside>
+    <main class="feed-pane">
+      <nav class="tabs" aria-label="投稿の表示">
+        <button type="button" data-view="timeline" aria-pressed="true">タイムライン <span id="timeline-count" class="count">0</span></button>
+        <button type="button" data-view="waiting" aria-pressed="false">応答待ち <span id="waiting-count" class="count">0</span></button>
+        <button type="button" data-view="issues" aria-pressed="false">配送の問題 <span id="issues-count" class="count">0</span></button>
+      </nav>
+      <div class="section-heading feed-heading"><h2 id="feed-heading">すべての投稿</h2><span class="small muted">新しい順</span></div>
+      <p class="small muted" id="feed-description">表示中は3秒ごとに新着と状態の変更を取得します。</p>
+      <div id="feed" aria-labelledby="feed-heading"><p class="empty">投稿を取得しています…</p></div>
+    </main>
+    <section class="thread-pane" aria-labelledby="thread-heading">
+      <div class="section-heading"><h2 id="thread-heading">スレッド</h2><button id="close-thread" type="button" class="quiet" hidden>閉じる</button></div>
+      <div id="thread"><p class="empty">投稿の「スレッドを見る」から、本文と返信のつながりを確認できます。</p></div>
+    </section>
+  </div>
+</body>
+</html>

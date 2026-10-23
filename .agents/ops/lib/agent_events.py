@@ -6,7 +6,10 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from agent_output import OutputSchema
 
 
 class EvidenceError(ValueError):
@@ -164,7 +167,11 @@ def interrupted_codex_turn(
 
 class Events:
     def __init__(
-        self, agent: str, selected: dict[str, str], expected_session: str | None
+        self,
+        agent: str,
+        selected: dict[str, str],
+        expected_session: str | None,
+        output_schema: OutputSchema | None = None,
     ) -> None:
         self.agent, self.selected = agent, selected
         self.expected_session = expected_session
@@ -174,6 +181,10 @@ class Events:
         self.failed = False
         self.errors: list[Any] = []
         self.final: str | None = None
+        self.output_schema = output_schema
+        self.structured_output: Any = None
+        self.has_structured_output = False
+        self.invalid_structured_output = False
         self.turn: str | None = None
         self.usage: dict[str, Any] = unavailable("runtime has not reported usage")
         self.effective = {
@@ -253,6 +264,12 @@ class Events:
                     or event.get("subtype") != "success"
                 )
                 self.final = event.get("result")
+                self.has_structured_output = "structured_output" in event
+                self.structured_output = event.get("structured_output")
+                self.invalid_structured_output = (
+                    self.output_schema is not None
+                    and event.get("subtype") == "error_max_structured_output_retries"
+                )
                 if self.failed:
                     self.errors.append(event)
                 self.token_usage(event.get("usage"), "result")
@@ -288,6 +305,19 @@ class Events:
             raise ValueError("runtime reported an unsuccessful turn")
         if not self.started or not self.completed:
             raise ValueError("CLI stream is missing session/turn completion")
+        if self.output_schema is not None and self.agent == "claude":
+            if not self.has_structured_output:
+                raise ValueError("result event is missing structured_output")
+            self.output_schema.validate(self.structured_output)
+            self.final = (
+                json.dumps(
+                    self.structured_output,
+                    ensure_ascii=False,
+                    allow_nan=False,
+                    indent=2,
+                )
+                + "\n"
+            )
         if not isinstance(self.final, str) or not self.final.strip():
             raise ValueError("agent produced an empty final message")
         if self.agent == "codex":
@@ -295,6 +325,8 @@ class Events:
                 raise ValueError("agent produced an empty final message")
             if out.read_text(encoding="utf-8").strip() != self.final.strip():
                 raise ValueError("final file and completed agent message disagree")
+            if self.output_schema is not None:
+                self.output_schema.validate(parse_json(self.final))
         else:
             out.write_text(self.final, encoding="utf-8")
 

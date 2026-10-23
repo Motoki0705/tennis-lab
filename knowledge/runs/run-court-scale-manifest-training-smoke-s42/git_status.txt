@@ -1,0 +1,14 @@
+M  src/tasks/court_detection/README.md
+M  src/tasks/court_detection/ablation/evaluation.py
+A  src/tasks/court_detection/configs/data/source/synthetic_court_dataset_version.yaml
+M  src/tasks/court_detection/configs/train_data_scaling.yaml
+M  src/tasks/court_detection/configuration.py
+M  src/tasks/court_detection/data/inputs/factory.py
+M  src/tasks/court_detection/data/inputs/synthetic_court.py
+A  src/tasks/court_detection/data/inputs/synthetic_court_dataset_version.py
+M  src/tasks/court_detection/data/mixed.py
+M  src/tasks/court_detection/scaling/README.md
+M  src/tasks/court_detection/scaling/provenance.py
+M  src/tasks/court_detection/training/runner.py
+M  tests/integration/tasks/court_detection/test_data_scaling.py
+A  tests/integration/tasks/court_detection/test_scale_dataset_version.py

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 16a99dc6bd010cbbc5956c78adbd5e89388d4538718f269481fc74f9947d803e on 2026-10-23 -->
+<!-- knowledge-review: 537463de8deaa5fd30e52008060a77c50cf4de8c60c4fb779fb5afdb30254e1b on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
@@ -488,6 +488,10 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
+
+2026-10-22の[合成専用・固定20更新のGPU起動確認](nodes/court_detection/000048-run-court-data-scaling-smoke-s42.md)で、ViT-B＋幅768・長辺512、B00の8枚・batch 1・compile無効から指定更新数checkpointの実画像val/test別評価と集計まで通した。実画像全体の固定一覧は498動画を249動画ずつへ分け、退化注釈除外後val 4,468枚・test 4,372枚、動画重複0を記録した。全体testは未評価で、起動確認の少数fixtureから精度や本番batch 8の容量は判断しない。既存の採用判断は維持し、次は#1356のColab試走で本番更新数・評価間隔と容量を固定する。
 
 [B00〜B03のCPU軌道計画診断](nodes/synthetic_data_generation/000024-run-court-nested-plan-cpu-20261022.md)では、
 固定弧長表の2倍細分と点IDによって共通視点を保てたが、軌道長・棄却により単純な軌道prefixだけでは等枚数にならず、

@@ -1,6 +1,6 @@
 # Standard multiview pipeline installation
 
-[日本語](README.ja.md)
+[English](README.md) / [日本語](README.ja.md) / [简体中文](README.zh-CN.md)
 
 Generate SceneResult v2 from synchronized videos recorded by 3–5 fixed cameras.
 This is the canonical guide for environment setup, asset placement and running the published sample.

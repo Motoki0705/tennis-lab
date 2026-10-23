@@ -221,6 +221,8 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 
 - 最新の正式な直属子とPRのclosing指示、review対象集合・子の割当、既知の作成agent、
   open・draft/fork・担当branchの整合。同じ子のopen PRが複数あれば停止する。
+- repository情報から取得した既定branchとREST PRの `base.ref` が一致すること。
+  不一致は `base_not_default_branch` で停止し、baseは自動で付け替えない。既存のmerge済み対象も確認する。
 - 最新の親runのローカルresult/request/executionと、同じgh loginによる親result・全対象PRの
   projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/実行根拠との一致が必須。
   pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
@@ -240,7 +242,15 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 - `required_checks.txt` の全必須checkが存在し、rollup全件に失敗・未完了がないこと。
   CI取得時のheadも一致させる。競合・mergeable不明は停止する。
 - `shared_paths.txt` の一致は既定で `needs_human`。下記の明示合意だけで免除できる。
-- 子本文の最新依存欄を使い、依存先子のPRが実mergeされ、その子がclosed/completedになるまで保留する。
+- 子本文の最新依存欄を使い、依存先子がclosed・`state_reason=completed`（`task_status=completed`）であり、
+  その子を閉じるPRが既定branchへmerge済みであることを求める。PR一覧は全状態・全ページを取得する。
+  closing PRがopen・merged・closed未mergeのいずれにも存在しない完了子は、調査だけの成果として依存を満たす。
+  判定根拠はJSONの `dependency_statuses` に子番号ごとに記録し、充足は `completed_without_pr` または
+  `merged_into_default_branch`。停止理由は `dependency_<N>_not_completed`、`dependency_<N>_open_pr`、
+  `dependency_<N>_unmerged`、`dependency_<N>_base_not_default_branch` で区別する。既定branchへのmerge済みPRが
+  あってもopen PRが残れば停止する。PRの状態・merge先が不明なら `dependency_<N>_pr_state_unknown` /
+  `dependency_<N>_pr_base_unknown`、issueの完了理由が不明・取得失敗・既定branchが不明なら
+  `input_or_collection_error`（終了コード2）で停止する。
   循環・親の外への依存も拒否する。状態の正本と停止/再開は [parent](../parent/README.md)。
 
 依存順で判定し、他の独立PRのCI待ちで合格済みPRを止めない。

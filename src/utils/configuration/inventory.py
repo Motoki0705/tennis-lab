@@ -425,6 +425,14 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "court_detection.ablation_comparison",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.court_detection.scripts.compare_data_scaling": (
+        "court_detection.scaling_comparison",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.court_detection.scripts.freeze_real_evaluation": (
+        "court_detection.freeze_real_evaluation",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.court_detection.scripts.profile_ablation": (
         "court_detection.ablation_profile",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -601,6 +609,14 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tasks.court_detection.scripts.compare_ablation", "main",
+        domain="court_detection", executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.compare_data_scaling", "main",
+        domain="court_detection", executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.freeze_real_evaluation", "main",
         domain="court_detection", executable_module=True,
     ),
     _non_hydra_boundary(

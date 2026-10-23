@@ -6,14 +6,20 @@ Herdr 0.9.3の表示用metadataへ、parent registryの担当を投影する。
 
 ## 表示と同期
 
-上段は`#1353 · 親`、下段は`セッション表示 · claude`。
+上段は`Alice · #1353 · 親`、下段は`セッション表示 · claude`。
+名前は[board](../board/README.md#名前とライフサイクル)の有効な割当を読み取り専用で参照する。
+名前のない親（`name_status: unassigned`）は従来の`#1353 · 親`を表示し、名前を推測・割当しない。
+DBの破損や未知schemaはエラーにし、未割当として隠さない。
 `display_agent`は表示名だけを変更し、実際のagent種別と稼働状態には触れない。
-`tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`だけを管理する。
+source `tennis-parent`で`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`を管理する。
+`tl_name`は有効な名前だけを持ち、未割当では削除する。
 `tl_owner`はセッション識別子のSHA-256で、サイドバーには表示しない。
 短い題名は親issueタイトルの識別名。`--topic`で明示変更でき、同じ担当の同期では保持する。
 日本語の表示幅を数えて最大20桁に短縮する。
 
-`parent register/reconcile/sync/handoff/release`の担当操作後に、registryのロックを離して同期する。
+`parent register/reconcile/sync/handoff/release`の担当操作後に、registryのロックを離し、
+boardの名前同期→担当表示→担当復帰時の未読表示の順で同期する。
+名前同期と担当表示は、一方が失敗しても他方を試みる。
 register・handoffの受領時に、担当sessionと確認済みterminalの対応をprivate stateへ保存する。
 この対応は表示トークンを消しても終了hook後も保持する。未確認の表示先をsyncや起動hookだけで推測しない。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
@@ -34,6 +40,12 @@ SessionStartは`CLAUDE_ENV_FILE`へ識別子を追記し、担当済みなら表
 registryやGitHubを書き換えない。Codexも同じparent CLIとskillを使う。
 解除時は`tl_owner`のない初回設定の「関連」「親未登録」も、管理対象の`tl_*`トークンで識別して消す。
 管理対象トークンのない別用途の表示名と、他のトークンは保持する。
+
+未読表示の正本と通常の更新は[boardの未読表示](../board/README.md#herdrの未読表示)を参照する。
+通常の担当表示syncは`tl_inbox` / `tl_inbox_label`を保持する。
+表示解除と別の会話へのSessionStartでは、同じpaneロック内でsource `tennis-board`の
+未読トークンも解除し、前の親の未読数を残さない。DBの未読は変更しない。
+同じ担当のresumeでは名前を復元し、未読表示を保持する。compactでは両方とも保持する。
 
 ## Codexのclear通知
 
@@ -97,14 +109,20 @@ foreground PID・開始時刻・paneの現在sessionを更新前後に確認し�
 
 ## Herdrの表示設定
 
-ユーザーのHerdr設定で、既存項目を残してAgent行を次にする。
+人間がユーザーのHerdr設定で、既存項目を残してAgent行を次にする。コードは設定ファイルを書き換えない。
 編集前に設定を退避し、別のrows_by_agent設定があれば競合を確認する。
 
 ```toml
 [ui.sidebar.agents]
-rows = [["state_icon", "agent"], ["$tl_topic", "$tl_engine"]]
+rows = [
+  ["state_icon", "agent"],
+  ["$tl_topic", "$tl_engine"],
+  ["$tl_inbox_label"],
+]
 ```
 
+名前は`agent`の表示名に含まれるため、`$tl_name`を重ねて配置する必要はない。
+未読は専用行にし、長い題名で隠れにくくする。0件ではラベルがなく、行も消える。
 メタデータのないagentは標準のagent名を表示する。親未登録を親として表示しない。
 Space一覧と状態表示は既存設定を使う。
 `herdr config check`で検証し、`herdr server reload-config`で再読込する。

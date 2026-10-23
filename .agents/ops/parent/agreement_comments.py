@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from .execution import ignored_comment_map, instruction_comments, sha256
+from .judgement_comments import owned_comment
 from .policy import digest, events, nonempty, number, object_value
 
 if TYPE_CHECKING:
@@ -58,6 +59,13 @@ def _observations(
     legacy_edits = set()
     if "comment_inputs" in latest:
         baseline = validate_inputs(latest["comment_inputs"])
+        # Preserve agreements whose snapshots predate the shared display filter.
+        displays = {
+            c["id"]
+            for c in raw
+            if owned_comment(c, session.login, session.gh.repo, session.parent)
+        }
+        baseline = [c for c in baseline if c["id"] not in displays]
     else:
         # Old markers have no snapshot. Preserve them and use GitHub's comment
         # identity/edit time to detect later instructions without rewriting reads.

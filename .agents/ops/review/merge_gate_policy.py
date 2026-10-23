@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from issues import Issue, task_status
@@ -227,9 +227,51 @@ def dependency_order(
     return result
 
 
+def dependency_status(
+    child: Issue,
+    pulls: Sequence[Mapping[str, Any]],
+    repo: str,
+    default_branch: str,
+) -> str:
+    """Distinguish a completed investigation from unfinished or misplaced code."""
+    if task_status(child) != "completed":
+        return "not_completed"
+    related = [
+        p for p in pulls if child.number in closing_issues(p.get("body") or "", repo)
+    ]
+    if not related:
+        return "completed_without_pr"
+    if any(
+        p.get("state") not in {"open", "closed"}
+        or "merged_at" not in p
+        or (
+            p["merged_at"] is not None
+            and (not isinstance(p["merged_at"], str) or not p["merged_at"].strip())
+        )
+        for p in related
+    ):
+        return "pr_state_unknown"
+    if any(p["state"] == "open" for p in related):
+        return "open_pr"
+    merged = [p for p in related if p["merged_at"] is not None]
+    if not merged:
+        return "unmerged"
+    if any(
+        not isinstance(p.get("base"), Mapping)
+        or not isinstance(p["base"].get("ref"), str)
+        or not p["base"]["ref"].strip()
+        for p in merged
+    ):
+        return "pr_base_unknown"
+    if any(p["base"]["ref"] == default_branch for p in merged):
+        return "merged_into_default_branch"
+    return "base_not_default_branch"
+
+
 @dataclass(frozen=True)
 class MergeInput:
     repo: str
+    default_branch: str
     parent_issue: int
     pr: Mapping[str, Any]
     children: Mapping[int, Issue]
@@ -256,6 +298,7 @@ class MergeResult:
     reasons: tuple[str, ...]
     shared_hits: tuple[tuple[str, str], ...] = ()
     shared_exemption: Mapping[str, Any] | None = None
+    dependency_statuses: Mapping[int, str] = field(default_factory=dict)
 
 
 def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
@@ -263,6 +306,8 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
     reasons = list(gate.evidence_errors)
     labels = {label["name"] for label in pr["labels"]}
     needs_human = gate.parent_needs_human or "needs-human" in labels
+    if pr["base"]["ref"] != gate.default_branch:
+        reasons.append("base_not_default_branch")
     if pr["state"] != "open" or pr.get("merged_at") is not None:
         reasons.append("pr_not_open")
     if type(pr.get("draft")) is not bool:
@@ -277,6 +322,7 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
     if not linked:
         reasons.append("not_direct_child_pr")
     states = progress(gate.children, gate.tasks)
+    dependency_statuses = {}
     for child in sorted(linked & set(gate.children)):
         needs_human |= "needs-human" in gate.children[child].labels
         if states[child] != "continue":
@@ -302,13 +348,12 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
         for dep in dependencies(gate.children[child].body):
             if dep in linked:
                 continue
-            merged = any(
-                p.get("merged_at")
-                and dep in closing_issues(p.get("body") or "", gate.repo)
-                for p in gate.pulls
+            status = dependency_status(
+                gate.children[dep], gate.pulls, gate.repo, gate.default_branch
             )
-            if task_status(gate.children[dep]) != "completed" or not merged:
-                reasons.append(f"dependency_{dep}_unmerged")
+            dependency_statuses[dep] = status
+            if status not in {"completed_without_pr", "merged_into_default_branch"}:
+                reasons.append(f"dependency_{dep}_{status}")
     review = None
     if gate.result is not None:
         result = validate_result(dict(gate.result))
@@ -386,4 +431,6 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
         if reasons
         else GateDecision.MERGE
     )
-    return MergeResult(decision, tuple(reasons), base.shared_hits, exemption)
+    return MergeResult(
+        decision, tuple(reasons), base.shared_hits, exemption, dependency_statuses
+    )

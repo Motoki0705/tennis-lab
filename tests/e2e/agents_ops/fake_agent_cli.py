@@ -36,6 +36,18 @@ def main() -> None:
         )
     agent = Path(sys.argv[0]).name
     scenario = os.environ.get("FAKE_SCENARIO", "success")
+    if agent == "claude" and "--json-schema" in args:
+        schema = json.loads(args[args.index("--json-schema") + 1])
+        if (
+            schema.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
+            or scenario == "schema_cli_error"
+        ):
+            print(
+                "Error: --json-schema is not a valid JSON Schema: no schema with key or ref "
+                '"https://json-schema.org/draft/2020-12/schema"',
+                file=sys.stderr,
+            )
+            sys.exit(1)
     model = args[args.index("--model") + 1]
     prompt = sys.stdin.read()
     session = "private-" + agent + "-session"
@@ -127,13 +139,23 @@ def main() -> None:
     if scenario == "exit_error":
         print("configured model unavailable", file=sys.stderr)
         sys.exit(7)
+    structured = "--json-schema" in args or "--output-schema" in args
+    payload = {"message": prompt.strip()}
+    if scenario == "schema_mismatch":
+        payload = {"message": 123}
+    final = json.dumps(payload) if structured else prompt
+    if scenario == "schema_preamble":
+        final = "I'm writing the final JSON now.\n\n" + final
     if agent == "codex":
         out = Path(args[args.index("--output-last-message") + 1])
-        out.write_text("different final" if scenario == "different_final" else prompt)
+        if scenario != "schema_missing":
+            out.write_text(
+                "different final" if scenario == "different_final" else final
+            )
         emit(
             {
                 "type": "item.completed",
-                "item": {"id": "item-0", "type": "agent_message", "text": prompt},
+                "item": {"id": "item-0", "type": "agent_message", "text": final},
             }
         )
         if scenario != "missing_completion":
@@ -149,13 +171,21 @@ def main() -> None:
                 }
             )
     else:
+        output = {}
+        if structured and scenario != "schema_missing":
+            output["structured_output"] = None if scenario == "schema_null" else payload
         emit(
             {
                 "type": "result",
-                "subtype": "success",
+                "subtype": "error_max_structured_output_retries"
+                if scenario == "schema_retries"
+                else "success",
                 "session_id": session,
-                "is_error": False,
-                "result": prompt,
+                "is_error": scenario == "schema_retries",
+                "result": "I'm writing the final JSON now.\n\n" + final
+                if structured
+                else final,
+                **output,
                 "usage": None
                 if scenario == "no_usage"
                 else {
