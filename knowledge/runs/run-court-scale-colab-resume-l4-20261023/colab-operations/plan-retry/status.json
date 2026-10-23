@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "plan-retry",
+  "status": "completed",
+  "updated_at": "2026-10-23T06:11:23.700845+00:00",
+  "returncode": 0,
+  "worker_pid": 13271,
+  "worker_token": "231965",
+  "launch_guarded": true,
+  "pid": 13485,
+  "process_token": "235543",
+  "started_at": "2026-10-23T06:10:53.621068+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T06:11:36.464438+00:00",
+  "finished_at": "2026-10-23T06:11:36.464454+00:00"
+}

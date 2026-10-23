@@ -1376,6 +1376,11 @@ four-scene run under `knowledge/runs/` with the
 [knowledge-control skill](../../../../.agents/skills/knowledge-control/SKILL.md).
 The command itself does not claim that a Colab verification run has occurred.
 
+The [four-scene L4 verification](../../../../knowledge/nodes/synthetic_data_generation/000027-run-court-scale-colab-resume-l4-20261023.md)
+records an acknowledged-cache interruption, recovery and fetch into fresh roots,
+strict image/store verification, generation and durability costs, and GPU release
+followed by session shutdown.
+
 ### Reports and renderer release
 
 `cache-metrics/<cache_key>.json` (`court_scale_cache_metrics_v1`) records the

@@ -1,7 +1,7 @@
-<!-- knowledge-review: 3d6691bde594b373c73a3850ee0294b477a7d07a6989b91396e9d39bb3b663a0 on 2026-10-23 -->
+<!-- knowledge-review: 16a99dc6bd010cbbc5956c78adbd5e89388d4538718f269481fc74f9947d803e on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断、教師一致・RGB下限による可搬資産の採用判断と、Court発表素材の採用を反映。alpha/depth差の記録と既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-23（CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,6 +11,16 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
+## 2026-10-23のCourt分割生成・Drive復旧検証
+
+[固定production recipeの4シーンL4生成](nodes/synthetic_data_generation/000027-run-court-scale-colab-resume-l4-20261023.md)で、
+seed42・各6軌道・密度0の303候補から282枚をtrainへ採択し、Drive版として再取得・厳格再読込できた。
+1 cache保存後に中断し、元の出力pathを使わず空のrootへ復旧して、完了cacheを再描画せず未完了23 cacheだけを生成した。
+取得後の24 store・282画像と184ファイルの内容一致、GPU解放、全jobのDrive保存、Colab停止を確認した。
+生成本体137秒に対し、durable commandやfetchのwall timeが大きく、本番規模の見積りでは永続化・確認の費用を含める。
+Drive操作をまとめる効率化は未profileの改善候補で、品質・hash・保存完了の境界を維持して調べる。
+実画像への汎化・精度スケーリング・規模上限は未評価。次は#1356で写り方別評価と生成・学習費用を確認し、既存モデルの採用判断は維持する。
+
 ## 2026-10-22のCourt資産Colab照合
 
 [B00〜B03の可搬資産とL4描画](nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md)は、
@@ -18,7 +28,7 @@
 投影・可視KPは一致し、ユーザーの2026-10-22の判断により教師の完全一致とRGBのPSNR下限を
 受入基準にした。2回とも基準を通り、入力資産をDriveの採用位置へcopyし、再取得後の内容と幾何も照合した。
 GPU間のalpha/depth外れ値とコート領域の差、staging資産は保持し、全raster一致は主張しない。
-本番生成をL4へ統一し、次は後続の分割生成と新規視点の品質・採択率を確認する。
+本番生成をL4へ統一した。後続の分割生成・採択率・Drive復旧の確認は上記のrunへ記録した。
 既存モデルの採用判断、3DGSの品質、合成画像数による精度改善の判断は更新していない。
 
 ## 2026-10-21の公開3カメラサンプル
@@ -491,8 +501,9 @@ B02/B03はほぼpartialのままで、強いalpha条件も分布を偏らせた�
 2026-10-22のユーザー判断で、合成は全てtrain、実画像は動画単位val/testの評価専用、
 poseは学習するが主評価外、枚数は全採択候補の実測値とした。枚数揃えのquota/補充と合成評価guardは不要。
 [設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
-#1352で実装してCourt Review Web UIからユーザーが選ぶ。D2/D5/D6も診断動画を材料に同UI比較で最終判断する。
-既存モデルの採用判断は維持し、診断標本の棄却率を本番へ流用せず、方式/品質の合意と全分布の試走を規模比較に先行させる。
+#1352のUI比較後は#1343の合意による層別counterのproduction recipeを固定した。
+その条件でのL4分割生成・Drive復旧を上記runで検証したが、コート全体が写る視点が少ない制約の実画像への影響は未評価。
+既存モデルの採用判断は維持し、今回の小規模採択率を本番全分布へ流用せず、#1356の試走を規模比較に先行させる。
 
 2026-10-21の[発表素材用の再探索](nodes/court_detection/000045-run-court-hybrid-fit-search-20261021.md)では、
 PROSACの向き修正を含む版と固定b863 checkpointを使い、以前と同じval先頭300件・入力hash・

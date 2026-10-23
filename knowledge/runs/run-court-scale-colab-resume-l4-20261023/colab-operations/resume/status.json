@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "resume",
+  "status": "completed",
+  "updated_at": "2026-10-23T08:50:39.485233+00:00",
+  "returncode": 0,
+  "worker_pid": 21693,
+  "worker_token": "326890",
+  "launch_guarded": true,
+  "pid": 21889,
+  "process_token": "330209",
+  "started_at": "2026-10-23T06:26:40.280820+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T08:50:50.105816+00:00",
+  "finished_at": "2026-10-23T08:50:50.105831+00:00"
+}
