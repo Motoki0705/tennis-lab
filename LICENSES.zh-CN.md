@@ -8,7 +8,7 @@
 
 除非另有说明，Tennis-Lab 的原创代码和文档均遵循仓库根目录的
 [Apache License 2.0](LICENSE)。版权声明和适用范围说明见 [NOTICE](NOTICE)。
-这不会取代第三方代码的版权或许可证。`third_party/`、移植代码、权重、人体模型资源、
+这不会取代第三方代码的版权或许可证。`third_party/`、移植代码、权重、人体模型资产、
 视频、标注、动作数据和论文分别适用下文所列条款，不能将整个仓库或流水线视为均采用 Apache-2.0。
 对于采用 MIT 的第三方代码，也须保留原有版权声明和许可声明。
 
@@ -30,7 +30,7 @@ SPDX 标识符 `Hippocratic-3.0-core` 不能代表包含 KPR 所采用附加条�
 
 以下为截至 2026-10-19 的来源清单。对于已记录移植来源版本的代码，列出相应提交；
 子模块则列出其 gitlink 固定的提交。标为“用于比较”或“用于核对”的版本是编制本清单时参考的版本，
-并非历史移植来源或模型权重的版本。对于在 Git 之外分发的资源，Git 提交不适用，改为列出分发名称或版本。
+并非历史移植来源或模型权重的版本。对于在 Git 之外分发的资产，Git 提交不适用，改为列出分发名称或版本。
 **将许可尚未核实的项目列入清单，并不表示允许再次分发。**
 
 <a id="third-party-code"></a>
@@ -100,7 +100,7 @@ ViTPose 的预测头和模型构建器已替换：此前经由 GPL-3.0 ViTPose-P
 
 <a id="other-adapted-code-and-assets"></a>
 
-### 其他移植或参考实现及展示资源
+### 其他移植或参考实现及展示资产
 
 | 项目 | 来源 URL 与提交 / 版本 | 许可证与处理方式 |
 | --- | --- | --- |
@@ -153,7 +153,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 <a id="third-party-weights"></a>
 
-## 第三方权重与人体模型资源
+## 第三方权重与人体模型资产
 
 <a id="separately-obtained-weights"></a>
 
@@ -163,7 +163,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 请区分代码许可证与权重、训练数据各自的条款。
 下表的 Git 提交标识核查条款和说明时参考的版本，不能代替检查点的校验和。
 
-| 资源 | 官方来源与来源提交 / 版本 | 许可证与条款 |
+| 资产 | 官方来源与来源提交 / 版本 | 许可证与条款 |
 | --- | --- | --- |
 | DINO 4-scale Swin-L（`checkpoint0029_4scale_swin.pth`） | [官方模型库 README](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/README.md#model-zoo)、[官方 Google Drive](https://drive.google.com/drive/folders/1qD5m1NmK0kjE5hh-G17XUX751WsEG-h_)。参考提交：`d84a491d41898b3befd8294d1cf2614661fc0953`。 | 官方仓库采用 [Apache-2.0](https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/LICENSE)。在上述说明中未发现专门针对权重的单独许可。代码许可证不授予原始数据的相关权利。 |
 | ViTPose-H（COCO 256×192） | [ViTPose 官方模型库](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/README.md)，参考提交：`c050ed29112da7704797cc1a65af0234b525010d`。供 GVHMR 使用的分发文件名为 `vitpose-h-multi-coco.pth`。 | ViTPose 官方仓库采用 [Apache-2.0](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/LICENSE)。替换代码不会改变 COCO 等训练数据或权重的使用条款。 |
@@ -180,7 +180,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 <a id="smpl-auxiliary-assets"></a>
 
-### 用户自行获取的 SMPL 辅助资源
+### 用户自行获取的 SMPL 辅助资产
 
 本仓库不分发以下 5 个文件。用户须从 [GVHMR 官方仓库](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)
 的固定提交 `ee960bb6e2ea2d381aa97f08e9b71ef320b624b1` 获取，并以原文件名
@@ -205,7 +205,7 @@ GVHMR 适用[教育、研究和非营利目的条款](src/submodules/vendor/gvhm
 以及 [SMPL-X Model License 的对应条款](https://smpl-x.is.tue.mpg.de/modellicense.html)。
 两份模型许可证均要求：向第三方提供时须事先取得书面许可，并限制全部或任何部分的复制、共享和分发等行为。
 已核实官方 GVHMR 公开了这些文件，但尚未核实 SMPL 权利人是否书面允许向第三方再次分发，
-也未核实每项辅助资源的生成历史和单独许可。
+也未核实每项辅助资产的生成历史和单独许可。
 用户从官方来源获取文件，与 Tennis-Lab 是否获准再次分发，是两回事。
 本说明也未断定所有索引或平均统计量均适用模型本身的条款。
 请勿将获取或生成的文件加入本仓库的 Git 历史或发行包。
@@ -225,7 +225,7 @@ GVHMR 适用[教育、研究和非营利目的条款](src/submodules/vendor/gvhm
 ## 第三方数据与论文
 
 训练视频、图像、标注和动作数据不属于原创代码的 Apache-2.0 许可范围。
-本仓库不再次分发下列外部数据集。公开样例的条款在后文单独说明。
+本仓库不再次分发下列外部数据集。公开示例的条款在后文单独说明。
 
 | 项目 | 来源 URL 与提交 / 版本 | 许可证与处理方式 |
 | --- | --- | --- |
@@ -233,12 +233,12 @@ GVHMR 适用[教育、研究和非营利目的条款](src/submodules/vendor/gvhm
 | TrackNet 视频帧与球位置标注 | [yastrebksv/TrackNet README](https://github.com/yastrebksv/TrackNet/blob/730ea17a324321c553c480179caa8ff13e4cf553/README.md)。用于核对的提交：`730ea17a324321c553c480179caa8ff13e4cf553`；分发内容包含 10 段转播视频和 19835 帧图像。数据本身的 Git 提交不适用。 | 无 LICENSE。仓库公开并不代表允许自由复用或再次分发其中的数据。 |
 | 来自 YouTube 的视频与原创标注 | [YouTube 服务条款](https://www.youtube.com/static?template=terms)；数据的 Git 提交不适用。各数据集的来源记录按视频管理来源和版本。 | 须遵守各视频的相关权利、声明要求及服务条款。添加原创标注不会消除视频的相关权利或合同条款。关于《著作权法》第 30 条之 4 对训练用途的判断范围及合同问题，见[训练数据与公开决定](#training-data-publication)。 |
 | ACCAD / AMASS 动作数据 | [ACCAD 官方网站](https://accad.osu.edu/research/motion-lab/mocap-system-and-data)、[AMASS 官方网站](https://amass.is.tue.mpg.de/)；Git 提交不适用。使用 AMASS 分发的 ACCAD 数据时，须遵循该版本及协议。 | ACCAD Open Motion Project 的官方声明采用 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)。AMASS 版本另有[限于非商业性科学研究的 Dataset License](https://amass.is.tue.mpg.de/license.html) 及再次分发限制。请区分原始数据与 AMASS 转换为 SMPL 格式后的数据。 |
-| Meiji 多相机视频与标注 | [本项目的公开准备及已达成的一致意见，#1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公开录制数据；Git 提交不适用。数据集清单标识各视频和片段。 | 已取得被拍摄者的同意（据项目记录）。不属于 Apache-2.0 的适用范围。公开样例的范围及许可证见[样例数据集使用条款](#sample-dataset-terms)。 |
+| Meiji 多相机视频与标注 | [本项目的公开准备及已达成的一致意见，#1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公开录制数据；Git 提交不适用。数据集清单标识各视频和片段。 | 已取得被拍摄者的同意（据项目记录）。不属于 Apache-2.0 的适用范围。公开示例的范围及许可证见[示例数据集使用条款](#sample-dataset-terms)。 |
 | `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)；Git 提交不适用；论文版本为 v1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。保留作者的原始 PDF。[随附的来源说明](knowledge/Papers/paper-2024-gvhmr/paper.md)。仓库根目录的 Apache-2.0 不适用于论文本身。 |
 
 <a id="published-artifacts"></a>
 
-## 公开文件的许可证：本项目权重与样例数据集
+## 公开文件的许可证：本项目权重与示例数据集
 
 以下公开条款基于[用户于 2026-10-19 作出的决定](https://github.com/Motoki0705/tennis-lab/issues/1278)。
 预期用途为研究和非商业演示；此用途说明不为各许可证增加额外的用途限制。
@@ -307,15 +307,15 @@ GVHMR 适用[教育、研究和非营利目的条款](src/submodules/vendor/gvhm
 
 <a id="sample-dataset-terms"></a>
 
-### 样例数据集使用条款
+### 示例数据集使用条款
 
-样例发布于 Hugging Face 数据集仓库
+示例发布于 Hugging Face 数据集仓库
 [`Motoki098/tennis-lab-multiview-sample`](https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample)。
 范围为 Meiji 已导出的 `video_000/clip_000` 中全部 3 个相机的视频及公开版 `clip.json`，
 采用 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en)。
 被拍摄者同意的记录见[第三方数据与论文](#third-party-data)中的 Meiji 行。
 公开文件名、SHA-256 信息、拍摄条件、同步信息和 cam0 的 letterbox 填充方式见分发页面的数据集卡片；
-获取和验证见[样例获取 CLI](src/utils/README.md#published-multiview-sample)。
+获取和验证见[示例获取 CLI](src/utils/README.md#published-multiview-sample)。
 公开清单已移除本地绝对路径，不包含原始视频、标注或推理结果。
 
 根据该许可证第 2、3 节，在满足署名等条件时，允许出于非商业用途共享。
@@ -329,7 +329,7 @@ CC 不统一授予肖像权、隐私权等权利的许可。
 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)。
 
 随附的 README 素材 [`assets/tennis_scene/multiview_reconstruction.gif`](assets/tennis_scene/multiview_reconstruction.gif)
-是本项目作为许可方另行提供的 GIF：对上述样例视频缩小尺寸、抽帧，再将三个视角与 3D 重建结果合成。
+是本项目作为许可方另行提供的 GIF：对上述示例视频缩小尺寸、抽帧，再将三个视角与 3D 重建结果合成。
 © 2026 Motoki0705。本项目对该 GIF 拥有的权利按
 [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.en) 提供，不属于 Apache-2.0 的适用范围。
 研究和演示查看是预期用途，并不增加额外的用途限制。
@@ -370,9 +370,9 @@ license: cc-by-nc-nd-4.0
 
 ### 流水线输出
 
-上述公开条款不会对另行使用的第三方资源或流水线输出统一重新授予许可。
-GVHMR、SMPL、SMPL-X 等资源的获取和使用条款、继续使用 AFLink 的决定及 SMPL 辅助资源获取步骤，
-见[第三方权重与人体模型资源](#third-party-weights)。
+上述公开条款不会对另行使用的第三方资产或流水线输出统一重新授予许可。
+GVHMR、SMPL、SMPL-X 等资产的获取和使用条款、继续使用 AFLink 的决定及 SMPL 辅助资产获取步骤，
+见[第三方权重与人体模型资产](#third-party-weights)。
 
 在 GVHMR 的 [LICENSE](src/submodules/vendor/gvhmr/LICENSE) 中，未发现要求所有估计数值均采用相同许可证的明确条款。
 使用 SMPL / SMPL-X 生成输出时，须遵守各自 Model License 的条款，包括对生成商业用途成果的限制。
@@ -382,4 +382,4 @@ GVHMR、SMPL、SMPL-X 等资源的获取和使用条款、继续使用 AFLink �
 Body 不包括体型混合形状（shape blendshapes）或使用这些混合形状生成人体的工具；
 Body License 不会取代模型本身的条款。
 仅共享估计参数时适用的条款，尚无法根据已核查的一手资料确定。
-请区分模型、辅助矩阵等资源与输出的参数、人体网格。
+请区分模型、辅助矩阵等资产与输出的参数、人体网格。
