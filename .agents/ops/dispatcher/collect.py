@@ -9,7 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
-from issues import parse_proposal_source, parse_sections
+from issues import parse_proposal_source, parse_sections, parse_task_metadata
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
 from parent.policy import closing_issues, digest, events, nonempty, number, object_value
@@ -178,12 +178,19 @@ def collect(
                     "body": item["body"],
                 }
             )
-        source = (
-            None
-            if is_container({"labels": labels, "body": raw.get("body") or ""})
-            else parse_proposal_source(raw.get("body") or "")
-        )
-        source_reports = [source.report_number] if source is not None else []
+        source_reports: set[int] = set()
+        if not is_container({"labels": labels, "body": raw.get("body") or ""}):
+            source = parse_proposal_source(raw.get("body") or "")
+            if source is not None:
+                source_reports.add(source.report_number)
+            metadata = parse_task_metadata(raw.get("body") or "")
+            if metadata is not None:
+                # Context-only parents/split tasks must retain source freshness
+                # even when their proposal's index anchor is moved or closed.
+                source_reports.update(
+                    binding["source"]["report_number"]
+                    for binding in metadata["bindings"]
+                )
         issues[str(n)] = {
             "number": n,
             "title": nonempty(raw.get("title"), "issue title"),
@@ -203,7 +210,7 @@ def collect(
             "parent": parent,
             "children": children,
             "dependencies": deps,
-            "source_reports": source_reports,
+            "source_reports": sorted(source_reports),
             "comments": sorted(normalized_comments, key=lambda x: x["id"]),
         }
         pending.extend(

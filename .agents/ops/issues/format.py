@@ -114,7 +114,9 @@ def parse_title(title: str) -> ParsedTitle:
     raise ValueError("title must be '[識別名] 要約' or '[親識別名 #番号] 要約'")
 
 
-def _scan_markdown(body: str) -> tuple[list[str], list[tuple[int, str]]]:
+def _scan_markdown(
+    body: str, *, prefix: str = _SOURCE_PREFIX
+) -> tuple[list[str], list[tuple[int, str]]]:
     """Separate visible lines and reserved metadata, respecting comments/fences."""
     lines: list[str] = []
     metadata: list[tuple[int, str]] = []
@@ -131,7 +133,7 @@ def _scan_markdown(body: str) -> tuple[list[str], list[tuple[int, str]]]:
         if not comment and opening:
             fence = opening[1]
             continue
-        if not comment and line.lstrip().startswith(_SOURCE_PREFIX):
+        if not comment and line.lstrip().startswith(prefix):
             metadata.append((index, line))
         remaining = line
         visible = ""
