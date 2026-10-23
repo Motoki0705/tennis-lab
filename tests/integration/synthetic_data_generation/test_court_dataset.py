@@ -1151,6 +1151,7 @@ def test_scale_production_rejects_wrong_explicit_bundle_inputs(
         images.mkdir()
         Image.new("RGB", (16, 12)).save(images / "extra.png")
     elif case == "wrong_filename":
+        shutil.copyfile(manifest, bundle / "other.json")
         manifest = bundle / "other.json"
     options: list[str] = []
     if case != "missing_path":
