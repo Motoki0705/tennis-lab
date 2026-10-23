@@ -292,8 +292,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
         integration_failed = False
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
-            # The mutation is durable and its registry lock is released. Allocate
-            # the name before projecting it; attempt both integrations on failure.
+            # The mutation is durable and its registry lock is released. Sync
+            # the caller and unnamed active peers before projecting the name.
             result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent
@@ -314,6 +314,8 @@ def main(argv: list[str] | None = None) -> int:
                     "status": "error",
                     "error": "board name synchronization failed; inspect storage and parent configuration",
                 }
+                integration_failed = True
+            if name_sync["status"] == "error":
                 integration_failed = True
             result = {**result, "board_sync": name_sync}
             from herdr_labels.service import sync as sync_display

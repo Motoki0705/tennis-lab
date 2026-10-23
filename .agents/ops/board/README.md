@@ -40,7 +40,8 @@ issueタイトルの親子書式を検査して取得し、名前表へ保存す
 名前のあるactive担当は`"name_status": "assigned"`、名前がまだない担当は
 `"name": null`・`"name_status": "unassigned"`・`"identifier": null`として名簿に表示する。
 DBが未作成でも未割当行を表示し、未割当行の未読数は0、最終投稿時刻はnull。
-既存の親は、次の`register` / `reconcile` / `sync`などの担当操作で名前が付く。
+既存の親は、いずれかの親の次の`register` / `reconcile` / `sync`などの担当操作で名前が付く。
+名前のないactiveな親全員が同期対象になり、担当本人の操作やセッションの再開は必要ない。
 `whoami`は自分に有効な名前がなければエラーにし、担当親自身による`parent register`の再実行を求める。
 名簿と自己名の取得はregistryも名前表も書き換えない。
 
@@ -68,7 +69,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board receipts
 `--to`は繰り返せる。照合は大小文字を区別せず、重複を除き、名前集合の表記で保存・表示する。
 自分の名前を`--to`に明示指定すると、他の宛先や`all`との併記でも終了値2で拒否し、投稿・宛先・配送の行を保存しない。
 `all`は投稿時点でactiveな親を送信者以外すべて展開する。一時不在・終了済みの親は含めない。
-activeな親に名前が未割当なら、一部だけ送らず投稿全体を拒否する。展開後に登録・復帰した親は後から追加しない。
+担当操作の同期後もactiveな親に名前が未割当なら、一部だけ送らず投稿全体を拒否し、
+エラーに該当するrepo・親番号と有効な名前がないことを示す。投稿時には名前を割り当てない。
+名前を付けられなかった原因は担当操作の`board_sync`で確認し、修復後に担当操作を再実行する。
+展開後に登録・復帰した親は後から追加しない。
 個別の未割当・引退済み・registryに存在しない宛先も拒否する。
 `released` / `handoff_pending`の個別宛先は`held`で受理し、送信者の`status`に
 `delivery_reason: recipient_unavailable`と「担当不在・配送保留」を返す。
@@ -185,6 +189,9 @@ installerの`--enable`はtimerだけが対象なので、このserviceを自動�
 
 JSONの`state`は応答→既読→配送の順で現在の状態を示し、`delivery_state`・理由・各時刻も常に別で返す。
 通知に失敗していても本文を読める。既読・返信・ackは通知成功を偽装しない。
+名前のあるactiveな親は、担当セッションが止まっていても全員宛ての宛先に含める。
+受信経路がなければ`delivery_failed / route_unavailable`・`retryable: true`を記録し、
+送信者の`status`とWebの配送の問題に表示する。成功した宛先への配送は保持する。
 返信とackは既読も記録する。再読・同じackは時刻を変えない。
 返信は既存のackを上書きせず、`accepted`から`done`へ進められる。
 `declined` / `done`から異なるackへの変更は拒否する。訂正は新しい投稿で行う。
@@ -327,6 +334,15 @@ GitHubのタイトル・ラベル取得はDBの書き込みトランザクショ
 `board_sync`に結果と名前が入り、`parent_action_applied: true`は担当操作が適用済みであることを示す。
 名前処理だけが失敗した場合も担当操作は保持し、`board_sync.status: error`とエラーを返して終了値1。
 名前同期の失敗時にもHerdr表示を試みる。修復後は同じ担当親が同じ操作を再実行する。
+
+操作した親のライフサイクルを同期してから、名前のないactiveな親全員をrepo・親番号順に同期する。
+各親についてGitHubのタイトル・ラベル取得とtransaction内の担当・状態・世代の再確認を行い、
+名前のある他の親とactive以外の他の親は更新しない。他の親への割当はboard DBだけを更新し、
+registryの担当や受信経路を変更しない。GitHub取得中にregistry・boardの書き込みロックを保持しない。
+他の親を同期した場合は`board_sync.additional_parents`にrepo・親番号・名前・結果を返す。
+失敗した親には`status: error`と理由を返し、残りの親の同期を続ける。
+この場合も`board_sync.status: error`・終了値1とし、操作した親の名前は`board_sync.name`に残す。
+成功済みのライフサイクル・名前の割当は取り消さず、操作した親の表示・受信経路の連携も続ける。
 
 - activeな親に名前がなければ、上の頭文字の規則で空き名を割り当てる。名前はホスト内で重複しない。
 - 一時解除・引継ぎ待ち・引継ぎ受領では名前と割当IDを保持する。
