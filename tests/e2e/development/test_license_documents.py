@@ -10,14 +10,19 @@ from urllib.parse import unquote, urlsplit
 
 import pytest
 
+from src.tennis_scene.installation_assets import (
+    PUBLIC_DOCUMENT_LANGUAGES,
+    public_document_language_from_filename,
+)
 from src.utils.paths import PROJECT_ROOT
 
-LANGUAGES = (("English", ".md"), ("日本語", ".ja.md"), ("简体中文", ".zh-CN.md"))
-LICENSE_DOCUMENTS = tuple(f"LICENSES{suffix}" for _, suffix in LANGUAGES)
+LICENSE_DOCUMENTS = tuple(
+    f"LICENSES{locale.suffix}" for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
+)
 LOCALIZED_DOCUMENTS = {
-    f"{stem}{suffix}": f"{stem}.md"
+    f"{stem}{locale.suffix}": f"{stem}.md"
     for stem in ("README", "docs/installation/README", "LICENSES")
-    for _, suffix in LANGUAGES
+    for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
 }
 REQUIRED_ANCHORS = {
     "code-license-scope",
@@ -118,7 +123,8 @@ def test_license_translations_preserve_structure_and_references(name: str) -> No
 
 
 def _assert_local_link_languages(name: str, text: str) -> None:
-    suffix = next(suffix for _, suffix in LANGUAGES if name == f"LICENSES{suffix}")
+    language = public_document_language_from_filename(name)
+    suffix = PUBLIC_DOCUMENT_LANGUAGES[language].suffix
     for target in LINK.findall(text):
         parsed = urlsplit(target)
         if parsed.scheme or parsed.netloc:
@@ -135,7 +141,10 @@ def test_license_document_links_resolve_without_checksum_values(name: str) -> No
     document = PROJECT_ROOT / name
     text = document.read_text(encoding="utf-8")
     introduction, _, body = text.partition("<a id=")
-    hub = " | ".join(f"[{label}](LICENSES{suffix})" for label, suffix in LANGUAGES)
+    hub = " | ".join(
+        f"[{locale.label}](LICENSES{locale.suffix})"
+        for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
+    )
     assert hub in introduction.splitlines(), f"{name}: language links"
     _assert_local_link_languages(name, body)
     assert not re.search(r"\b[0-9a-fA-F]{64}\b", text)
@@ -248,10 +257,10 @@ def test_reordered_license_table_rows_are_detected(name: str) -> None:
 def test_localized_license_links_require_the_document_language(
     name: str, stem: str
 ) -> None:
-    for _, suffix in LANGUAGES:
-        target = f"{stem.removesuffix('.md')}{suffix}#shared-anchor"
+    for locale in PUBLIC_DOCUMENT_LANGUAGES.values():
+        target = f"{stem.removesuffix('.md')}{locale.suffix}#shared-anchor"
         text = f"[document]({target})"
-        if name == f"LICENSES{suffix}":
+        if name == f"LICENSES{locale.suffix}":
             _assert_local_link_languages(name, text)
         else:
             with pytest.raises(AssertionError, match="wrong document language"):
