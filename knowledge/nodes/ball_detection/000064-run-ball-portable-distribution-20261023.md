@@ -45,7 +45,7 @@ metrics:
 repro:
   commit: 52f91b6ec0b5e728efe61ec085d91eeafcad87a4
   branch: codex/ball-temporal-distribution
-  command: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" .venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/prepare_data.py --source-repo-root /home/kamimura/projects/tennis-lab --output-root "$PWD/tmp/ball-portable-distribution"
+  command: PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD" .venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/prepare_data.py --source-repo-root "$SOURCE_REPO_ROOT" --output-root "$PWD/tmp/ball-portable-distribution"
 artifacts:
   run_dir: knowledge/runs/run-ball-portable-distribution-20261023
   output_dir: tmp/ball-portable-distribution
@@ -126,5 +126,9 @@ CPU runtimeを指定できない事前調査に対し、親が今回のL4照合�
 同梱catalog・interval・packのindexは元snapshotの番号のままなので、clip IDと配布manifestの対応表でjoinする。
 原注釈の内容hashで空ラベルのnotesも保持・照合したが、不在教師policyと最終窓manifestは#1372の範囲である。
 固定testのuploadは最終評価時へ回した。今回はtrain/validation全量と2台のVM照合を優先し、比較条件を縮めていない。
-再現コマンドと56件の回帰テストの詳細は[run手順](../../runs/run-ball-portable-distribution-20261023/README.md)と
+PR前の修正では、注釈pathの字句検査とstore rootからの解決を分け、設定監査に適合させた。
+ローカルのlegacy絶対path・相対path逸脱・symlinkの回帰テストを追加した。
+記録のローカルpathはplaceholderへ置き換え、配布物・件数・サイズ・内容hash・測定時間は変更していない。
+この修正でDrive・Colabは再実行しておらず、上記の照合結果と実行commitは当時の記録である。
+再現コマンドとローカル回帰テストの詳細は[run手順](../../runs/run-ball-portable-distribution-20261023/README.md)と
 [validation](../../runs/run-ball-portable-distribution-20261023/validation.json)を参照する。

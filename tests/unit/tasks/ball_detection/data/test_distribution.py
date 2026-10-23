@@ -236,18 +236,52 @@ def test_selection_and_version_are_explicit(source: Path, tmp_path: Path) -> Non
         prepare(source, tmp_path / "stage")
 
 
-def test_relative_annotation_paths_require_a_declared_base_and_stay_inside(source: Path, tmp_path: Path) -> None:
+def test_legacy_annotations_require_an_explicit_absolute_path(source: Path, tmp_path: Path) -> None:
+    store = BallFrameStore(source)
+    clip = store.clip_by_id("chat_annotation/train/clip")
+    assert store.annotation_path(clip) == tmp_path / "original.json"
+    metadata = json.loads((source / "metadata.json").read_text())
+    metadata["clips"][clip.index]["annotation_path"] = "../original.json"
+    (source / "metadata.json").write_text(json.dumps(metadata))
+    store = BallFrameStore(source)
+    with pytest.raises(ValueError, match="Legacy annotation paths must be absolute"):
+        store.annotation_path(clip)
+
+
+@pytest.mark.parametrize("value", [
+    "../original.json", "/absolute.json", "annotations/../original.json",
+    "annotations//original.json", "./annotations/original.json",
+])
+def test_relative_annotation_paths_require_a_declared_base_and_stay_inside(
+    source: Path, tmp_path: Path, value: str,
+) -> None:
     stage, destination = tmp_path / "stage", tmp_path / "distribution"
     prepare(source, stage)
     materialize(source, stage, destination)
     metadata = json.loads((destination / "metadata.json").read_text())
-    metadata["clips"][0]["annotation_path"] = "../original.json"
+    metadata["clips"][0]["annotation_path"] = value
     (destination / "metadata.json").write_text(json.dumps(metadata))
     with pytest.raises(ValueError, match="relative to the store"):
         BallFrameStore(destination)
-    metadata["clips"][0]["annotation_path"] = str(tmp_path / "original.json")
-    (destination / "metadata.json").write_text(json.dumps(metadata))
-    with pytest.raises(ValueError, match="relative to the store"):
+
+
+@pytest.mark.parametrize("symlink", ["annotation", "parent"])
+def test_distribution_annotations_reject_symlinks_and_parent_escapes(
+    source: Path, tmp_path: Path, symlink: str,
+) -> None:
+    stage, destination = tmp_path / "stage", tmp_path / "distribution"
+    prepare(source, stage)
+    materialize(source, stage, destination)
+    store = BallFrameStore(destination)
+    annotation = store.annotation_path(store.clip_by_id("chat_annotation/train/clip"))
+    if symlink == "annotation":
+        annotation.unlink()
+        annotation.symlink_to(tmp_path / "original.json")
+    else:
+        moved = tmp_path / "moved-annotations"
+        annotation.parent.rename(moved)
+        annotation.parent.symlink_to(moved, target_is_directory=True)
+    with pytest.raises(ValueError, match="outside the store or is a symlink"):
         BallFrameStore(destination)
 
 

@@ -22,12 +22,12 @@
     "file": "shards/clip-00772.bin",
     "receipt": {
       "argv": [
-        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-distribution/.venv/bin/python",
+        "<worktree>/.venv/bin/python",
         ".agents/skills/tennis-drive/scripts/drive.py",
         "--timeout-seconds",
         "20",
         "upload",
-        "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00985.bin",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00985.bin",
         "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/shards/clip-00772.bin",
         "--verify"
       ],

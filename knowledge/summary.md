@@ -1,4 +1,4 @@
-<!-- knowledge-review: 0ed5a2ba4a2352b89bc11a802d37f50d60dd415efd0b43105f146cdc5d1b172f on 2026-10-23 -->
+<!-- knowledge-review: fc7db5206dc49ade50c561c953d35670bee16c52710568cb68bc90181647b5dc on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -329,6 +329,7 @@ Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256�
 初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
 長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
 窓側はstore相対の原注釈pathをresolverで解決する必要がある。
+PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。

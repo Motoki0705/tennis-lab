@@ -1,19 +1,19 @@
 {
   "argv": [
-    "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-distribution/.venv/bin/python",
+    "<worktree>/.venv/bin/python",
     "knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py",
     "--distribution",
-    "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-distribution/tmp/ball-portable-distribution/train-val",
+    "<worktree>/tmp/ball-portable-distribution/train-val",
     "--source-store",
-    "/home/kamimura/projects/tennis-lab/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+    "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
     "--drive-path",
     "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
     "--receipts",
-    "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-distribution/tmp/ball-distribution-transfer"
+    "<worktree>/tmp/ball-distribution-transfer"
   ],
   "boot_id": "41fa84dd-f4de-45d5-88de-f5f4e61d2649",
   "command_pid": 1122193,
-  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-distribution",
+  "cwd": "<worktree>",
   "elapsed_seconds": 10245.5819996,
   "finished_at": "2026-10-23T10:54:42.313559+00:00",
   "pid": 1122192,

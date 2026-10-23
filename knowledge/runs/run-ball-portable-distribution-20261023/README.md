@@ -7,6 +7,11 @@ The historical runtime preflight is retained in [preflight.json](preflight.json)
 The parent subsequently authorized L4 for verification in
 [runtime-decision.json](runtime-decision.json); the skill itself is unchanged.
 
+Tracked receipts use `<worktree>` for the active checkout and `<source-repo>` for
+the repository holding the pinned snapshot. Only local location strings are
+normalized; counts, sizes, hashes and timestamps retain their observed values.
+The Drive archives preserve the original receipts.
+
 The permanent API is documented in
 [data/distribution](../../../src/tasks/ball_detection/data/distribution/README.md).
 It prepares small files and hashes original payloads in place. Neither preparation
@@ -206,6 +211,8 @@ PYTHONDONTWRITEBYTECODE=1 flock "$PYTEST_LOCK" .venv/bin/python -m pytest \
   tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py \
   tests/unit/tasks/ball_detection/data/test_store_datamodule.py \
   tests/integration/tasks/ball_detection/test_store_pipeline.py \
+  tests/unit/utils/configuration \
+  tests/e2e/development/test_configuration_audit.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q

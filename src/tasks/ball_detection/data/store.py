@@ -49,7 +49,7 @@ import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from fractions import Fraction
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Final, Literal, cast
 
 import cv2
@@ -428,15 +428,18 @@ class BallFrameStore:
         value = entries[clip.index].get("annotation_path")
         if not isinstance(value, str) or not value:
             raise ValueError(f"Clip {clip.clip_id} has no original annotation path")
-        path = Path(value)
-        if self.metadata.get("annotation_path_base") == "store":
-            if path.is_absolute() or ".." in path.parts or path.as_posix() != value:
+        part = PurePath(value)
+        relative = self.metadata.get("annotation_path_base") == "store"
+        if relative:
+            if part.is_absolute() or ".." in part.parts or part.as_posix() != value:
                 raise ValueError("Distribution annotation paths must be relative to the store")
-            path = self.directory / path
-            if not path.resolve().is_relative_to(self.directory.resolve()) or path.is_symlink():
-                raise ValueError("Distribution annotation resolves outside the store or is a symlink")
-        elif not path.is_absolute():
+        elif not part.is_absolute():
             raise ValueError("Legacy annotation paths must be absolute")
+        path: Path = self.directory / part
+        if relative and (
+            not path.resolve().is_relative_to(self.directory.resolve()) or path.is_symlink()
+        ):
+            raise ValueError("Distribution annotation resolves outside the store or is a symlink")
         if not path.is_file():
             raise ValueError(f"Original annotation is missing: {path}")
         return path
