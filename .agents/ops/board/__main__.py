@@ -34,7 +34,12 @@ def main(argv: list[str] | None = None) -> int:
         renaming.add_argument("--parent", type=int, required=True)
         renaming.add_argument("--name")
         posting = commands.add_parser("post", help="append a post to board names")
-        posting.add_argument("--to", action="append", required=True)
+        posting.add_argument(
+            "--to",
+            action="append",
+            default=[],
+            help="optional recipient name or all; combined with body @mentions; repeatable",
+        )
         posting.add_argument(
             "--kind", choices=("info", "question", "request"), required=True
         )
@@ -42,7 +47,12 @@ def main(argv: list[str] | None = None) -> int:
         posting.add_argument("--body-file", required=True)
         replying = commands.add_parser("reply", help="reply to the original author")
         replying.add_argument("--post", required=True)
-        replying.add_argument("--to", action="append", default=[])
+        replying.add_argument(
+            "--to",
+            action="append",
+            default=[],
+            help="additional name or all; combined with body @mentions and the original author; repeatable",
+        )
         replying.add_argument("--body-file", required=True)
         commands.add_parser(
             "read", help="retrieve a post and mark it read"
