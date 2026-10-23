@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -42,6 +43,21 @@ STORE_PROFILE = "court_scale_train_store_v1"
 Render = Callable[
     [dict[str, Any], list[dict[str, Any]]], Iterable[tuple[str, NHTRenderArrays]]
 ]
+
+
+@dataclass(frozen=True)
+class RenderCacheContext:
+    """Existing fixed birth-level chunk; hooks must not change its identity."""
+
+    cache_key: str
+    scene_id: str
+    trajectory_id: str
+    birth_level: int
+    offset: int
+
+
+PrepareCache = Callable[[RenderCacheContext], None]
+CompleteCache = Callable[[RenderCacheContext, dict[str, Any], bool], None]
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -366,6 +382,9 @@ def _render_cache(
     recipe: GeometryRecipe,
     layout: MultiCourtLayout,
     render: Render,
+    birth_level: int,
+    offset: int,
+    prepare_cache: PrepareCache | None = None,
 ) -> tuple[dict[str, Any], bool]:
     key = stable_id(
         "render_cache",
@@ -376,6 +395,12 @@ def _render_cache(
     )
     destination = root / "stores" / key
     member_ids = [s["sample_id"] for s in members]
+    if prepare_cache is not None:
+        prepare_cache(
+            RenderCacheContext(
+                key, scene["scene_id"], group["trajectory_id"], birth_level, offset
+            )
+        )
     if destination.exists():
         return _read_cache(
             root, destination, key, member_ids, quality=quality, verify_images=True
@@ -508,8 +533,21 @@ def _render_cache(
     return {**completion, "records": ledger}, False
 
 
-def execute_request(root: Path, request_path: Path, render: Render) -> Path:
-    """Local publication; Drive durability/retry orchestration belongs to the caller."""
+def execute_request(
+    root: Path,
+    request_path: Path,
+    render: Render,
+    *,
+    prepare_cache: PrepareCache | None = None,
+    complete_cache: CompleteCache | None = None,
+) -> Path:
+    """Publish locally; optional synchronous hooks own Drive durability/retry.
+
+    Preparation runs before cache lookup, so a caller can restore remote bytes.
+    Completion runs only after a validated reuse or atomic local publication,
+    and must return successfully before the next cache or dataset publication.
+    Neither hook runs when a validated completed-request receipt already exists.
+    """
     root = root.resolve(strict=True)
     request_path = request_path.resolve(strict=True)
     if not request_path.is_relative_to(root):
@@ -560,7 +598,22 @@ def execute_request(root: Path, request_path: Path, render: Render) -> Path:
                         recipe=recipe,
                         layout=alignment.layout,
                         render=render,
+                        birth_level=birth,
+                        offset=offset,
+                        prepare_cache=prepare_cache,
                     )
+                    if complete_cache is not None:
+                        complete_cache(
+                            RenderCacheContext(
+                                completed["cache_key"],
+                                scene["scene_id"],
+                                group["trajectory_id"],
+                                birth,
+                                offset,
+                            ),
+                            completed,
+                            reused,
+                        )
                     for item in completed["records"]:
                         reasons.update(item["reasons"])
                         if item["state"] == "accepted":

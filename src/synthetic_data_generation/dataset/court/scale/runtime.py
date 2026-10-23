@@ -44,7 +44,9 @@ def load_scene_inputs(
     asset_manifest_sha256: str | None = None,
 ) -> dict[str, Any]:
     if (asset_manifest is None) != (asset_manifest_sha256 is None):
-        raise ValueError("Asset manifest path and expected SHA-256 are required together.")
+        raise ValueError(
+            "Asset manifest path and expected SHA-256 are required together."
+        )
     if replay and asset_manifest is not None:
         raise ValueError("Saved-preset replay requires a local scene workspace.")
     if not replay and legacy_hull_center is not None:
@@ -132,9 +134,7 @@ def _verify_portable_scene(
 ) -> None:
     if manifest_path.name != MANIFEST_FILE:
         raise ValueError(f"Portable asset manifest must be named {MANIFEST_FILE}.")
-    receipt = verify_scene_assets(
-        manifest_path.parent, manifest_sha256=expected_sha256
-    )
+    receipt = verify_scene_assets(manifest_path.parent, manifest_sha256=expected_sha256)
     if (
         scene_root.name not in receipt["scene_ids"]
         or scene_root != manifest_path.parent.resolve() / "scenes" / scene_root.name
@@ -219,14 +219,12 @@ def renderer_fingerprint() -> dict[str, Any]:
     }
 
 
-class LocalNHTRenderer:
-    """One bounded CPU payload at a time; GPU microbatch is explicit (default 1)."""
+class _NHTRenderer:
+    """One bounded CPU payload; the blocking public command exits per cache."""
 
     def __init__(
         self, root: Path, *, fingerprint: dict[str, Any], batch_size: int = 1
     ) -> None:
-        if not os.environ.get("TENNIS_RUN_ID"):
-            raise RuntimeError("Local GPU rendering must run through training queue.")
         if type(batch_size) is not int or not 1 <= batch_size <= 4:
             raise ValueError("Local preview batch_size must be in 1..4.")
         if renderer_fingerprint() != fingerprint:
@@ -286,3 +284,23 @@ class LocalNHTRenderer:
             result = self.client.render(request, timeout_seconds=1800)
             for record in result.records:
                 yield record.camera_id, record.arrays
+
+
+class LocalNHTRenderer(_NHTRenderer):
+    """Local previews require the training queue's reservation."""
+
+    def __init__(
+        self, root: Path, *, fingerprint: dict[str, Any], batch_size: int = 1
+    ) -> None:
+        if not os.environ.get("TENNIS_RUN_ID"):
+            raise RuntimeError("Local GPU rendering must run through training queue.")
+        super().__init__(root, fingerprint=fingerprint, batch_size=batch_size)
+
+
+class ColabNHTRenderer(_NHTRenderer):
+    """Explicit Colab boundary; the caller verifies the L4 and its release."""
+
+    def __init__(self, root: Path, *, fingerprint: dict[str, Any]) -> None:
+        if not os.environ.get("COLAB_RELEASE_TAG"):
+            raise RuntimeError("Colab rendering requires the Colab VM environment.")
+        super().__init__(root, fingerprint=fingerprint, batch_size=1)

@@ -120,6 +120,14 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/dataset/court/scale/publication.py"): frozenset(
         {"sha256", "content-addressed"}
     ),
+    # Durable transport pins copied cache bytes inside an explicit experiment
+    # output root; it does not select or change canonical scene-workspace owners.
+    Path("src/synthetic_data_generation/dataset/court/scale/durable_storage.py"): frozenset(
+        {"sha256", "sha-256"}
+    ),
+    Path("src/synthetic_data_generation/dataset/court/scale/durability.py"): frozenset(
+        {"sha256"}
+    ),
     # Each QA record binds the experiment's exact quality-policy version.
     Path("src/synthetic_data_generation/dataset/court/scale/quality.py"): frozenset(
         {"sha256"}

@@ -1078,7 +1078,8 @@ recipe with `scale.recipes.ProductionRecipe.from_dict`, pass its `method/geometr
 quality=recipe.quality, production_recipe=recipe, renderer=...)`. Both entrypoints
 check that every candidate plan and quality policy match the production recipe.
 `execute_request(root, request_path, render_callback)` owns the same acceptance
-and publication contract; #1355 owns Colab sharding and Drive durability.
+and publication contract. Its synchronous `prepare_cache` / `complete_cache`
+hooks support the [durable Colab workflow](#durable-generation-on-colab-l4).
 
 D5 is versioned as `target_kp4_roi_holes_1pct_v1` in
 `court_scale_quality_policy_v2`. Production requests and dataset versions use
@@ -1250,3 +1251,158 @@ Counts distinguish `logical_records`, `candidate_unique`,
 `pending=failed=0`. All accepted rows are train; zero-accepted scene conditions
 fail and zero-accepted trajectories remain diagnostic. Counts are measured,
 without quota selection, refill or synthetic validation/test sets.
+
+## Durable generation on Colab L4
+
+`generate_court_scale render-colab` connects the frozen production request to
+`scale/durability.py`. It requires the Colab VM environment, exactly one L4 with
+no pre-existing compute processes, and the pinned renderer/runtime. GPU
+microbatch is fixed to one. Local previews continue to require the training queue;
+setting a local queue run ID does not authorize the Colab entrypoint.
+
+### Processing and acknowledgement unit
+
+A trajectory group owns geometric identity and density nesting. Its processing
+units are the existing render caches: **at most 64 consecutive candidates from
+one trajectory's density birth level**. A group can have several caches; a cache
+never combines groups or birth levels. Geometry rejections remain in that cache's
+QA ledger, and an all-rejected cache has no fabricated JPEG store. This retains
+the existing cache keys, QA schemas, dataset-version schemas and nesting rules.
+There is no second shard partition or scheduler. GPU batching bounds device
+memory; the cache boundary bounds CPU payloads, elapsed work and transfer size.
+
+Each cache follows the existing render → QA → JPEG/sparse-index → atomic
+`stores/<cache_key>/` publication, followed synchronously by a verified Drive
+upload and receipt readback. Only then can the next cache begin. The callback
+also runs for validated reuse. A failed upload prevents dataset publication.
+`completion.json` alone proves local completion; Drive completion additionally
+requires `receipts/caches/<cache_key>.json`.
+
+Choose a **new**, explicit Drive path under
+`data/synthetic_data_generation/court-scale/<run-id>`. These generated datasets
+are future training inputs, which is the input-data role in the
+[Drive storage policy](../../../../.agents/skills/tennis-drive/references/storage-policy.md).
+Quality/cost reports and transfer receipts accompany that input version. Commands,
+stdout and worker status belong to `operations/colab/<session>/<job-id>` as owned
+by the Colab skill. The accepted scene-asset bundle is read only.
+
+Drive transfers use the tennis-drive CLI and its duplicate-aware lookup library.
+The durable tree contains immutable `objects/<archive digest>.tar` files and:
+
+| Receipt | Meaning |
+|---|---|
+| `receipts/request.json` | Verified frozen request, plans, curves and asset descriptors; pins one request for this Drive path. |
+| `receipts/caches/<cache_key>.json` | Verified completed cache and original generation metrics. |
+| `receipts/completed.json` | Verified dataset version, memberships, local completed-request receipt and generation report. |
+| `receipts/failures/<attempt>-<cache_key>.json` | Preserved failed staging explicitly archived before retry. |
+
+Receipts pin archive SHA-256, size, exact file inventory, Drive path/ID and
+verification time. They use `court_scale_durable_bundle_v1`; these are transport
+records, not replacements for the existing dataset/QA authorities. No output is
+overwritten or deleted on Drive. An object uploaded without its receipt is
+unacknowledged, retained, and ignored on VM recovery. Only that unfinished work
+is redrawn. An existing immutable object must match before it can be reused;
+conflicting bytes or ambiguous Drive paths stop execution.
+
+### Small verification and recovery
+
+Follow the [portable-asset setup](#portable-scene-assets-and-colab-rendering) and
+the [Colab skill](../../../../.agents/skills/tennis-colab/SKILL.md) for an exact
+**pushed** commit, L4 allocation, `uv sync --locked`, render-only NHT installation,
+and verified asset download. Do not repackage or regenerate B00–B03. Freeze the
+small production request using the example above (`seed=42`, six trajectories,
+density zero). Record its filename stem as `REQUEST_SHA256` before rendering.
+Use one writer per local/Drive output root and the same code, NHT/input bundle
+and absolute checkout/asset paths after VM replacement; frozen paths and runtime
+identities are verified, never rewritten during recovery.
+
+The following commands run **inside** the managed Colab checkout. `FROZEN_REQUEST`
+is the single path in `planned-requests.json`; `DRIVE_DATASET_PATH` is the new run
+path chosen above. The environment inherits `RCLONE_CONFIG` from the Colab skill;
+repeat the tool-bin PATH export in each shell job.
+
+```bash
+export PATH="$(uv tool dir --bin):$PATH"
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale render-colab \
+  --output-root tmp/court-scale-production --request "$FROZEN_REQUEST" \
+  --drive-path "$DRIVE_DATASET_PATH" --stop-after-caches 1
+```
+
+This deliberate interruption returns zero after one acknowledged cache, writes
+an attempt with `outcome=interrupted`, and creates no completed dataset receipt.
+It is not completed generation. To exercise recovery without deleting the first
+attempt, restore into a fresh output directory in the same VM; a replacement VM
+uses the identical command after setup and verified input download:
+
+```bash
+export PATH="$(uv tool dir --bin):$PATH"
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale render-colab \
+  --output-root tmp/court-scale-resumed --request-sha256 "$REQUEST_SHA256" \
+  --drive-path "$DRIVE_DATASET_PATH"
+```
+
+Preparation downloads acknowledged cache bundles, verifies archive hashes and
+exact inventory, refuses conflicting local bytes, and lets `execute_request`
+strictly validate the existing cache before reuse. Missing receipts never cause
+a completed cache to be guessed from filenames. Keep both attempt records and
+check `caches[].reused`, `restored_from_drive`, and `drive_acknowledged` in the
+resumed attempt. Original per-cache timing/memory metrics are retained on reuse.
+
+A remaining `.staging/<cache_key>` is **always an error by default**, whether it
+contains `failure.json` or was interrupted before that diagnostic could be written.
+Inspect it, then explicitly add `--retry-staging` to archive the entire directory
+under `failed-attempts/<attempt>/<cache_key>`, save its failure/retry evidence to
+Drive, and redraw the unfinished cache. It is never accepted as a completed cache
+and is never silently deleted. After VM loss, staging that never reached Drive is
+unavailable and unacknowledged; that cache is drawn again. Upload errors stop the
+command. Inspect conflicting receipts/objects using the Drive skill rather than
+overwriting or automatically cleaning them up.
+
+After completion, fetch the **Drive copy** into a new root, locally or on Colab:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale fetch \
+  --output-root tmp/court-scale-from-drive --request-sha256 "$REQUEST_SHA256" \
+  --drive-path "$DRIVE_DATASET_PATH"
+```
+
+`fetch` refuses an absent completed receipt, verifies all transferred archive
+hashes, runs `load_dataset_version(..., verify_images=True)`, checks the recovered
+completed-request receipt, and strictly reopens/decodes every `sample_store`.
+The resulting explicit `*.dataset.json` is the training consumer interface. No
+renderer or GPU is used for this check. Preserve the input/final receipts,
+attempt records and report as small experiment evidence; register the actual
+four-scene run under `knowledge/runs/` with the
+[knowledge-control skill](../../../../.agents/skills/knowledge-control/SKILL.md).
+The command itself does not claim that a Colab verification run has occurred.
+
+### Reports and renderer release
+
+`cache-metrics/<cache_key>.json` (`court_scale_cache_metrics_v1`) records the
+scene/trajectory/birth-level chunk, completion digest, generation wall time,
+sampled GPU memory, JPEG shard bytes and sparse-index bytes. Time covers rendering,
+QA and local publication, excluding transfer, cache recovery and failed attempts.
+`reports/<request digest>.json` (`court_scale_generation_report_v1`) derives
+group/scene time, memory and storage aggregates plus scene acceptance rates.
+Accepted/rejected counts and reason frequencies are references to the existing
+version counts and QA ledgers, rather than another mutable inventory. Empty
+trajectories and geometry/QA rejections remain visible in those authorities.
+
+GPU memory is device-wide `nvidia-smi memory.used`, sampled every 0.5 seconds
+during cache execution. Its peak is a lower bound; PyTorch allocator peaks are
+explicitly unavailable across the public renderer subprocess boundary. The
+public NHT call is blocking and its process exits before arrays are consumed;
+no resident renderer is kept between caches. Completion verifies that the same
+L4 has no compute processes and records device memory before/after in
+`renderer_release`. Failed release verification prevents the final Drive receipt.
+Each command also saves an immutable `attempts/<attempt>.json` with its outcome,
+acknowledged cache reuse and release evidence.
+
+The generation root contains live `.render`, `.staging` and transfer scratch
+files. Do not point the worker's periodic `--persist` at that whole live root.
+The command owns cache-by-cache Drive durability; declare a separate evidence
+directory with `--persist`, and copy only completed JSON/log snapshots there by
+atomic rename. Verify every Colab job's terminal return code and `drive_saved_at`,
+then always run the skill's `stop`, including after failed/interrupted generation.
+GPU release evidence permits the next task; it does not replace stopping the VM
+at the end of this generation-only session.
