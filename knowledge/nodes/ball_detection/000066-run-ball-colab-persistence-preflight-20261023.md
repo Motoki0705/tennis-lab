@@ -65,3 +65,10 @@ notes付き空frameの除外を確認する。その版をこのbranchへ反映�
 checkpoint直後のhash照合付き保存・失敗注入、720pの短いL4 runと新VM復旧を再開する。
 これは従来の配布・CPU学習経路の証拠を否定するものではなく、両者を接続した際の未検証境界を示す。
 精度・モデル優劣・採用checkpointの判断は変更しない。
+
+2026-10-24に再開条件を確認した。親が先行修正をこのbranchへmergeし、両消費側がresolverを使う状態になった。
+[先行の実データ照合](../../runs/run-ball-portable-distribution-20261023/consumer-verification.json)では、
+6 manifestの共通793,017 frame・39,185 pack・owner・教師kindの一致と入力不変を確認済みである。
+このcheckoutでも移動済み配布版の窓生成・dataset読込と注釈破損拒否を含む6テストが成功した。
+停止時のreceiptは当時の証拠として維持し、Colab保存・新VM再開の作業を再開する。
+既存割当の所有者は引き続き未確認であり、親の追加指示に従い今回作成するsessionだけを停止対象とする。
