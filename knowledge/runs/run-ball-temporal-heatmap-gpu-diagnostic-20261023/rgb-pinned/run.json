@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207271893258046926_2026-10-23T04-01-46-741953073Z_266552_ball-temporal-heatmap-bf16-rgb-pinned",
+  "name": "ball-temporal-heatmap-bf16-rgb-pinned",
+  "command": "PYTHONPATH=. .venv/bin/python knowledge/runs/run-ball-temporal-heatmap-gpu-diagnostic-20261023/diagnose.py --output /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-training-path/tmp/temporal-heatmap-gpu-rgb-pinned",
+  "provider": "codex",
+  "session": "01a16652-1727-7203-87e8-9cccc2d3fd70",
+  "issue": "1373",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "29286104d19998e6f67c1512e1d0588bdb80adff",
+  "branch": "codex/ball-temporal-training-path",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-training-path",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-training-path",
+  "captured_at": "2026-10-23T13:01:54+09:00"
+}
