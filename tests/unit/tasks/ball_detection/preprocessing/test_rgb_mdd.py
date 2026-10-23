@@ -62,3 +62,19 @@ def test_contract_rejects_changed_semantics(field: str, value: object) -> None:
         input_transform_from_contract(dict(contract, **{field: value}), input_channels=5)
     with pytest.raises(ValueError, match="input contract"):
         input_transform_from_contract(contract, input_channels=2)
+
+
+@pytest.mark.parametrize("frames", [1, 7, 32, 64, 128, 256])
+def test_explicit_temporal_contract_and_mdd_do_not_reset_inside_long_clip(frames: int) -> None:
+    torch.set_num_threads(1)
+    transform = RGBToRGBMDD(frames=frames)
+    rgb = torch.randint(256, (1, frames, 3, 9, 13), dtype=torch.uint8)
+    actual = transform(rgb)
+    torch.testing.assert_close(actual[:, 3:], RGBToMDD()(rgb), rtol=0, atol=0)
+    assert actual.shape == (1, 5, frames, 9, 13)
+    contract = transform.input_contract()
+    assert contract["frames"] == frames
+    restored = input_transform_from_contract(contract, input_channels=5, frames=frames)
+    torch.testing.assert_close(restored(rgb), actual, rtol=0, atol=0)
+    with pytest.raises(ValueError, match="input contract"):
+        input_transform_from_contract(contract, input_channels=5, frames=frames + 1)

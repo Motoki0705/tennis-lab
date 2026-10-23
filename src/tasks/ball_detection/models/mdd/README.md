@@ -9,7 +9,8 @@
 | `pose.py` | DeepSets / Attention Pooling / Hierarchical Transformer / Skeleton GNNによるframeごとのpose token |
 | `attention.py` | 同時刻のCross-Attentionと実時間RoPEのSelf-Attention。pose融合とquery-onlyの違いは明示する |
 | `detectors.py` | MDDPoseDetector、MDDQueryDetector、MDDDPTDetector、DeepMDDQueryDetector |
-| `hybrid.py` | DeepMDDHybridDetector。時間queryを最下層にconcatし、DPT heatmapと存在logitを返す |
+| `hybrid.py` | 時間queryを最下層にconcat。heatmap専用と、既存の存在head付きhybridを別classで構築 |
+| `execution.py` | frame分割とactivation checkpointing。学習parameterや時間長依存のstateを持たない |
 | `variants.py` | 有効なpose32条件＋poseなしquery-only4条件を列挙 |
 
 圧縮比較用encoderと深いCNNは異なる構造として維持する。深いCNN候補を圧縮方式と無条件に直積しない。
@@ -33,12 +34,64 @@ MDD-only DPT/queryのstate_dict名・計算順は維持する。
 RGB特徴の並列branchはない。圧縮比較・pose系は従来の2ch契約のまま。
 mask/実PTSはmetadataであり、pose不要モデルはpose artifactを開かない。court入力なし。
 query-onlyは同時刻MDDへの片方向Cross→query列の時間Self→FFN。poseありの双方向融合は別構造。
-RGBのdtype・shape・32フレーム契約は`model_io`で検証する。DPTの学習・評価もこの境界を通し、
+RGBのdtype・shape・設定したフレーム数は`model_io`で検証する。DPTの学習・評価もこの境界を通し、
 5ch変換・CNNのforwardには検証分岐を置かない。CNNの入力チャンネル数は設定と固定変換で決まる。
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
 
 DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合して入力1/4のheatmap logitsを出す。
 2段目の事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
+
+## 任意長のheatmap専用モデル
+
+`MDDHeatmapConfig` / `configs/model/mdd_dpt_heatmap.yaml` はDPT、
+`MDDHeatmapHybridConfig` / `configs/model/mdd_heatmap_hybrid.yaml` は
+`DeepMDDHeatmapHybridDetector` を選ぶ。両方とも5ch入力とnative /4 logits
+`(B,T,ceil(H/4),ceil(W/4))` を持ち、存在head・存在loss・存在gateを持たない。
+720pの入力をresizeせずに渡すと、出力は180×320になる。
+CNNはConvNeXt V2系factorized、DPT幅128、queryは幅256・4層・8 heads・FFN704を維持する。
+Tを変えても、チャンネル数や層数は変えない。
+
+| 設定 | 意味 |
+|---|---|
+| `frames` | 保存する入力長T。1以上の整数。MDDの最初のframeは0、T=1も有効 |
+| `frame_chunk_size` | nullで分割無効、正整数でCNNとframe-local DPTを時間分割。既定null |
+| `activation_checkpointing` | CNNの各spatial stage、queryの各block、DPTからheatmap headまでの各frame chunkを再計算。既定false |
+
+CNNは2層の時間方向kernel=3、stride=1で、特徴の時間半径は順に0/0/1/2。
+分割時は前後2枚の実frameをhaloとして読み、4特徴すべてからhaloを除いて結合する。
+実clip端だけでzero paddingを行う。RGB→MDDは分割前に実行するため、chunk先頭で差分を0へ戻さない。
+GroupNorm・GRNはframeごとで、halo外への時間依存を作らない。
+DPTはhaloなしで分割し、hybridのqueryは分割せず全Tの実PTSをRoPEへ渡す。
+checkpointingは学習中かつ勾配有効時に適用し、dropoutのRNGを保存する。
+CNNは分割なしでもhalo付きchunk内でもspatial stageごとにcheckpointする。
+stage境界の入力は保持するが、backwardでencoder全体の中間activationを一度に再生成せず、
+再計算時のactivationを1 stage分に区切る。低解像度の/32・/64にある時間混合層は従来どおりcheckpoint対象外。
+DPTはframe-localなのでchunk全体を1区間にし、chunkの4特徴入力だけを保持して、
+広い/4特徴を含むdecoder・headの中間activationを再計算する。
+分割なしではDPTの区間は全Tとなるため、長いTで再計算時のpeakも抑える場合はframe_chunk_sizeを明示する。
+queryはblock入力のquery・共有patch・PTSを保持し、attention・FFNの中間activationをblockごとに再計算する。
+分割だけではbackward用activationの保持は減らないため、学習時の保持削減にはcheckpointingも使う。
+前処理のFP32 5ch入力・4段のCNN特徴・全Tのqueryはメモリに保持する。720pの実行上限は別途実測する。
+
+入力検証・推論は `model_io/mdd_heatmap.py` の `build_mdd_heatmap_detector(config)` を使う。
+両モデルとも `MDDQueryInput(rgb, timestamps)` を受け取り、学習にはadapterの
+`build_call`から得た引数で生logitsを使う。DPTはtimestampsを検証し、forwardにはRGBだけを渡す。
+推論は `BallPrediction` のnative sigmoid heatmap・座標・候補を返す。弱い出力も存在判定で除外しない。
+教師は [共通heatmap objective](../../training/README.md#共通heatmap-objective) が担当する。
+
+`heatmap_model_payload(model)` / `restore_heatmap_model(payload)` は重み専用artifact
+`schema=mdd_heatmap_model.v1` を保存・復元する。model kindはDPTが `mdd_dpt_heatmap`、
+hybridが `mdd_heatmap_hybrid`。`model_config`の全項目（framesとframe_chunk_sizeを含む）、
+`input_contract`、`state_dict`を持つ。設定のTと入力契約のTの不一致・欠落は拒否する。
+ファイルから推論する場合は `load_mdd_heatmap_detector(path)` を使う。
+optimizer・学習予算・resume状態の保存は学習側の責任である。
+
+同じ構成のstate_dictはT=32/64/128/256へ補間なしでstrict loadできる。
+Conv3dのkernel、空間座標投影、query、RoPEの周波数bufferはTに依存しない。
+系列長を変えるfine-tuningは、保存モデルを元のTで検証してから、明示した新しいTのモデルへ
+全stateをstrict転送する。artifactのTを書き換えて読込やresumeに見せない。
+既存 `MDDPretrainConfig` と存在head付き `MDDHybridConfig` は従来の32frame保存形式のまま。
+新artifactへ暗黙に変換せず、存在head付きstateをheatmap専用モデルへ読むとstrict loadで拒否する。
 
 ## Query＋DPTハイブリッド
 

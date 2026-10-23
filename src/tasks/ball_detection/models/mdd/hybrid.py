@@ -6,10 +6,13 @@ from dataclasses import dataclass
 
 import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 
-from src.tasks.ball_detection.models.mdd.config import MDDHybridConfig
+from src.tasks.ball_detection.models.mdd.config import (
+    MDDHeatmapHybridConfig,
+    MDDHybridConfig,
+)
 from src.tasks.ball_detection.models.mdd.detectors import DeepMDDQueryTrunk
+from src.tasks.ball_detection.models.mdd.execution import decode_frame_heatmaps
 from src.utils.models.dpt import DPTDecoder
 
 
@@ -25,12 +28,8 @@ class MDDHybridOutput:
     presence_logits: Tensor
 
 
-class DeepMDDHybridDetector(DeepMDDQueryTrunk):
-    config: MDDHybridConfig
-
-    def __init__(self, config: MDDHybridConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
-        if not isinstance(config, MDDHybridConfig):
-            raise ValueError("Hybrid detector requires an explicit MDDHybridConfig")
+class _HybridHeatmapTrunk(DeepMDDQueryTrunk):
+    def __init__(self, config: MDDHybridConfig | MDDHeatmapHybridConfig, *, mdd_a: float, mdd_b: float) -> None:
         super().__init__(config, mdd_a=mdd_a, mdd_b=mdd_b)
         channels = (*self.encoder.feature_channels[:-1], self.encoder.feature_channels[-1] + config.dim)
         # DPT already projects each input with 1x1 Conv2d. Widen only its deepest
@@ -40,18 +39,41 @@ class DeepMDDHybridDetector(DeepMDDQueryTrunk):
         self.heatmap_head = nn.Sequential(
             nn.Conv2d(config.decoder_channels, config.decoder_channels // 2, 3, padding=1),
             nn.GELU(), nn.Conv2d(config.decoder_channels // 2, 1, 1))
+
+    def decode_heatmaps(self, rgb: Tensor, features: tuple[Tensor, ...], query: Tensor) -> Tensor:
+        deepest = features[-1]
+        broadcast = query[..., None, None].expand(-1, -1, -1, *deepest.shape[-2:])
+        conditioned = torch.cat((deepest, broadcast), dim=2)
+        return decode_frame_heatmaps(self.decoder, self.heatmap_head, (*features[:-1], conditioned),
+            output_size=((rgb.shape[-2] + 3) // 4, (rgb.shape[-1] + 3) // 4),
+            frame_chunk_size=self.config.frame_chunk_size, activation_checkpointing=self.config.activation_checkpointing)
+
+
+class DeepMDDHybridDetector(_HybridHeatmapTrunk):
+    config: MDDHybridConfig
+
+    def __init__(self, config: MDDHybridConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
+        if not isinstance(config, MDDHybridConfig):
+            raise ValueError("Hybrid detector requires an explicit MDDHybridConfig")
+        super().__init__(config, mdd_a=mdd_a, mdd_b=mdd_b)
         self.presence_head = nn.Sequential(nn.LayerNorm(config.dim), nn.Linear(config.dim, 1))
 
     def forward(self, rgb: Tensor, timestamps: Tensor) -> MDDHybridOutput:
         features, query = self.encode_queries(rgb, timestamps)
-        deepest = features[-1]
-        broadcast = query[..., None, None].expand(-1, -1, -1, *deepest.shape[-2:])
-        conditioned = torch.cat((deepest, broadcast), dim=2)
-        fused = self.decoder([f.flatten(0, 1) for f in (*features[:-1], conditioned)])
-        logits = self.heatmap_head(F.interpolate(
-            fused, size=((rgb.shape[-2] + 3) // 4, (rgb.shape[-1] + 3) // 4),
-            mode="bilinear", align_corners=False))
         return MDDHybridOutput(
-            heatmap_logits=logits.reshape(*rgb.shape[:2], *logits.shape[-2:]),
+            heatmap_logits=self.decode_heatmaps(rgb, features, query),
             presence_logits=self.presence_head(query).squeeze(-1).float(),
         )
+
+
+class DeepMDDHeatmapHybridDetector(_HybridHeatmapTrunk):
+    config: MDDHeatmapHybridConfig
+
+    def __init__(self, config: MDDHeatmapHybridConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
+        if not isinstance(config, MDDHeatmapHybridConfig):
+            raise ValueError("Heatmap-only hybrid requires an explicit MDDHeatmapHybridConfig")
+        super().__init__(config, mdd_a=mdd_a, mdd_b=mdd_b)
+
+    def forward(self, rgb: Tensor, timestamps: Tensor) -> Tensor:
+        features, query = self.encode_queries(rgb, timestamps)
+        return self.decode_heatmaps(rgb, features, query)

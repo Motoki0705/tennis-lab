@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -44,8 +44,8 @@ class MDDPoseConfig:
                 raise ValueError("query_only requires pose_pooling: null; no pose branch is constructed")
         elif self.pose_pooling not in {"deepsets", "attention", "hierarchical", "gnn"}:
             raise ValueError("Pose-conditioned readouts require a known pose pooling")
-        if self.frames != 32:
-            raise ValueError("This review architecture uses 32 real frames")
+        if type(self.frames) is not int or self.frames < 1:
+            raise ValueError("MDD requires a positive number of real frames")
         if len(self.stem_channels) != 4 or len(self.mixed_channels) != 2:
             raise ValueError("Require four spatial-stem widths and two mixed-block widths")
         if any(type(v) is not int or v < 1 for v in (*self.stem_channels, *self.mixed_channels)):
@@ -79,6 +79,10 @@ class MDDPretrainConfig:
     @property
     def frames(self) -> int:
         return 32
+
+    @property
+    def frame_chunk_size(self) -> int | None:
+        return None
 
     def __post_init__(self) -> None:
         if type(self.input_channels) is not int or self.input_channels not in (2, 5):
@@ -135,3 +139,52 @@ class MDDHybridConfig(MDDPretrainConfig):
         for name in ("stem_channels", "mixed_channels", "residual_blocks"):
             raw[name] = tuple(raw[name])
         return cls(**raw)
+
+
+@dataclass(frozen=True)
+class MDDHeatmapConfig(MDDPretrainConfig):
+    """Explicit temporal contract for direct RGB+MDD heatmap learning.
+
+    Historical pretraining and presence-hybrid configs retain their implicit
+    32-frame serialization. New heatmap artifacts always declare their length.
+    """
+
+    frames: int = field(default=32)
+    frame_chunk_size: int | None = field(default=None)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.input_channels != 5:
+            raise ValueError("Heatmap comparison requires five-channel RGB+MDD input")
+        if type(self.frames) is not int or self.frames < 1:
+            raise ValueError("MDD requires a positive number of real frames")
+        if self.frame_chunk_size is not None and (type(self.frame_chunk_size) is not int or self.frame_chunk_size < 1):
+            raise ValueError("frame_chunk_size must be null or a positive integer")
+        if type(self.activation_checkpointing) is not bool:
+            raise ValueError("activation_checkpointing must be boolean")
+        if self.decoder_channels < 2:
+            raise ValueError("Heatmap DPT decoder_channels must be at least two")
+
+    @classmethod
+    def load(cls, path: Path) -> MDDHeatmapConfig:
+        return cls(**_heatmap_config_fields(path, "mdd_dpt_heatmap", cls))
+
+
+@dataclass(frozen=True)
+class MDDHeatmapHybridConfig(MDDHeatmapConfig):
+    """Query-conditioned heatmaps without a presence head, loss or gate."""
+
+    @classmethod
+    def load(cls, path: Path) -> MDDHeatmapHybridConfig:
+        return cls(**_heatmap_config_fields(path, "mdd_heatmap_hybrid", cls))
+
+
+def _heatmap_config_fields(path: Path, name: str, config_type: type[MDDHeatmapConfig]) -> dict[str, Any]:
+    raw = yaml.safe_load(path.read_text())
+    if not isinstance(raw, dict) or raw.pop("name", None) != name:
+        raise ValueError(f"Expected {name} model config")
+    if set(raw) != set(config_type.__dataclass_fields__):
+        raise ValueError("Heatmap configuration must declare every field exactly")
+    for key in ("stem_channels", "mixed_channels", "residual_blocks"):
+        raw[key] = tuple(raw[key])
+    return raw
