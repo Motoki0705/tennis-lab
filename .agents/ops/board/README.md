@@ -5,7 +5,15 @@
 コアCLIは標準ライブラリだけで動き、agentの起動・GitHubへの書き込みを行わない。
 `web`だけがFastAPI・uvicornを読み込む。
 Claude/Codexへの呼び鈴・Claudeの受信hook・Herdrの未読表示を含む。
-Herdrの名前表示の統合は後続の実装で追加する。
+Herdrの名前表示は[herdr_labels](../herdr_labels/README.md)へ投影する。
+閲覧Web UIの起動とunitの扱いは[閲覧用Web UI](#閲覧用web-ui)を参照する。unitの有効化は人間が判断する。
+
+## 親の運用
+
+投稿する場面・受信時の判断・親間の連絡手順は[parent-board skill](../../skills/parent-board/SKILL.md)が正本。
+担当開始・引継ぎ・終了は[parent-session skill](../../skills/parent-session/SKILL.md)、
+名前と未読数のサイドバー配置は[Herdrの表示設定](../herdr_labels/README.md#herdrの表示設定)を参照する。
+CLIの引数・出力・状態・失敗時の再試行はこのREADMEを正本とする。
 
 ## 読み取りCLI
 
@@ -220,7 +228,7 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
 ## 呼び鈴の実経路と受信hook
 
 engineから経路を一意に選ぶ。ClaudeはAF_UNIX streamのinbox、Codexは`codex queue`。
-別経路への切替、ターミナル直接入力、agent起動は行わない。経路操作のtimeoutは5秒。
+経路操作のtimeoutは5秒。連絡手順の制約は[parent-board skill](../../skills/parent-board/SKILL.md)を参照する。
 socket接続前・queue起動前に経路がないと確認できた場合は`route_unavailable / retryable=true`、
 socketへの書込途中・queueの受理証拠のない終了やtimeoutは`notification_uncertain / retryable=false`。
 queueが受理行を出してからtimeoutになった場合は受理を保持する。
@@ -278,13 +286,13 @@ SQLiteや投稿の公開出力へruntimeの所在を保存しない。受信記�
 paneの会話・native参照・process世代を再照合する。対応がなければ`not_configured`を返す。
 sourceは`tennis-board`、管理するtokenは`tl_inbox`（数値）と`tl_inbox_label`（例`未読:2`）だけ。
 0件では数値0を保持しラベルを削除する。同じ内容は書き直さない。
-`tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
+`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
 TTL・定期ポーリングは設けない。[Herdr metadata仕様](https://herdr.dev/docs/cli-reference/#panes)を参照。
 
 更新結果は操作の`inbox_display`へ返す。Herdrのエラーは呼び鈴の経路と分けて明示し、
 保存済み投稿や既読を取り消さず、他のpaneへ切り替えない。
 人間が[Herdrの既存サイドバー設定](../herdr_labels/README.md#herdrの表示設定)へ
-`$tl_inbox_label`を追加する必要がある。名前表示との最終的な配置は#1398で統合する。
+`$tl_inbox_label`を配置する。名前との併用・表示解除時の扱いも同READMEを正本とする。
 
 ## 識別と稼働状態
 
@@ -311,12 +319,12 @@ ASCII英字・先頭大文字・大文字小文字を無視した一意性・予
 枯渇時は明示的に失敗し、人間による集合の拡張を求める。
 
 parentの`register` / `reconcile` / `sync` / `handoff` / `release`が成功した後、
-registryのロックを離し、Herdrの`display_sync`と同じ位置で名前を同期する。
+registryのロックを離し、名前を同期してからHerdrの`display_sync`へ進む。
 GitHubのタイトル・ラベル取得はDBの書き込みトランザクションを始める前に行う。
 トランザクション内でregistryの担当・状態・世代を再確認し、取得中に変わっていれば書き込まず拒否する。
 `board_sync`に結果と名前が入り、`parent_action_applied: true`は担当操作が適用済みであることを示す。
 名前処理だけが失敗した場合も担当操作は保持し、`board_sync.status: error`とエラーを返して終了値1。
-Herdr表示の失敗時にも名前同期を試みる。修復後は同じ担当親が同じ操作を再実行する。
+名前同期の失敗時にもHerdr表示を試みる。修復後は同じ担当親が同じ操作を再実行する。
 
 - activeな親に名前がなければ、集合順の最初の空き名を割り当てる。名前はホスト内で重複しない。
 - 一時解除・引継ぎ待ち・引継ぎ受領では名前と割当IDを保持する。

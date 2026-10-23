@@ -16,7 +16,40 @@ from parent.state import Store
 from .client import Herdr
 from .coordination import Guard, owner_token, process_stamp, state_root
 
-TOKEN_KEYS = ("tl_parent", "tl_topic", "tl_engine", "tl_owner")
+TOKEN_KEYS = ("tl_name", "tl_parent", "tl_topic", "tl_engine", "tl_owner")
+INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
+
+
+def board_name(env: Mapping[str, str], repo: str, parent: int) -> str | None:
+    """Read an existing live assignment; display sync never allocates a name."""
+    from board.names import canonical_name, for_parent
+    from board.storage import Store as BoardStore
+    from board.storage import directory
+
+    store = BoardStore(directory(env))
+    if not store.path.exists() and not store.path.is_symlink():
+        return None
+    with store.read() as connection:
+        assignment = for_parent(connection, repo, parent)
+        if assignment is None or assignment.retired_at is not None:
+            return None
+        return canonical_name(assignment.name)
+
+
+def clear_inbox(client: Herdr, pane: dict[str, Any], guard: Guard) -> dict[str, Any]:
+    """Lifecycle cleanup uses the board source while holding the pane guard."""
+    if any(key in pane.get("tokens", {}) for key in INBOX_KEYS):
+        client.publish(
+            pane,
+            agent=pane["agent"],
+            display=pane.get("display_agent"),
+            tokens={key: "" for key in INBOX_KEYS},
+            validate=guard.check,
+            source="tennis-board",
+            tokens_only=True,
+        )
+        return client.pane(pane["pane_id"])
+    return pane
 
 
 def short_topic(text: str, columns: int = 20) -> str:
@@ -241,10 +274,14 @@ def _sync(
             raise ValueError("the caller does not own the requested active parent")
         # Initial related/unassigned labels have our tokens but no parent owner.
         # Clearing them must not claim the parent or remove unrelated metadata.
-        if not any(existing.get(key) for key in TOKEN_KEYS):
+        has_label = any(existing.get(key) for key in TOKEN_KEYS)
+        if not has_label and not any(key in existing for key in INBOX_KEYS):
             return {"status": "unassigned", "pane": pane["pane_id"]}
         if registry(env) != snapshot:
             raise ValueError("parent registry changed before label cleanup; retry sync")
+        pane = clear_inbox(client, pane, guard)
+        if not has_label:
+            return {"status": "updated", "pane": pane["pane_id"]}
         return client.publish(
             pane,
             agent=identity.split(":", 1)[0],
@@ -288,14 +325,18 @@ def _sync(
                 )
             topic = parsed.identifier
     label = short_topic(topic)
+    name = board_name(env, repo, int(number))
     # Do not project an assignment that changed while fetching its issue title.
     if registry(env) != snapshot:
         raise ValueError("parent registry changed during label preparation; retry sync")
+    if session_start and previous_owner != token:
+        pane = clear_inbox(client, pane, guard)
     result = client.publish(
         pane,
         agent=identity.split(":", 1)[0],
-        display=f"#{number} · 親",
+        display=f"{name} · #{number} · 親" if name else f"#{number} · 親",
         tokens={
+            "tl_name": name or "",
             "tl_parent": key,
             "tl_topic": label,
             "tl_engine": identity.split(":", 1)[0],
@@ -303,4 +344,10 @@ def _sync(
         },
         validate=guard.check,
     )
-    return {**result, "parent": int(number), "topic": label}
+    return {
+        **result,
+        "parent": int(number),
+        "topic": label,
+        "name": name,
+        "name_status": "assigned" if name else "unassigned",
+    }

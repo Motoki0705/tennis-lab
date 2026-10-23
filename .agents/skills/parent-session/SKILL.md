@@ -12,6 +12,7 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
 共通運用は [.agents/README.md](../../README.md)、CLIの入出力と再試行・引継ぎ契約は
 [parent README](../../ops/parent/README.md)、書式は [issues README](../../ops/issues/README.md) を参照する。
 研究テーマ固有のサイクル設計はresearch-loopの範囲とし、このskillで停止基準を新設しない。
+担当開始後の親同士の連絡・受信への応答は[parent-board](../parent-board/SKILL.md)に従う。
 
 ## 担当と要件を確定する
 
@@ -19,7 +20,8 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
    CLIの `status` で対応を確認し、`register` で担当登録する。別の担当や別の親が表示されたら
    黙って切り替えない。既存担当の解除・終了・明示引継ぎをREADMEに従って扱う。
    Herdrでは結果の`display_sync`を確認する。表示の設定・修復には
-   [herdr-session-label](../herdr-session-label/SKILL.md)を使い、担当番号と短い題名を表示する。
+   [herdr-session-label](../herdr-session-label/SKILL.md)を使い、名前・担当番号・短い題名を表示する。
+   `board_sync`と`board_delivery`の成否も確認し、未読・配送の問題はparent-boardの手順で扱う。
 2. 採用済みのレポート提案は `receive-proposal` で要件確認の対象として明示受領する（契約はparent README）。
    受領の再送は冪等で、以前の親合意を新しい提案へ流用しない。人間作成issueも同じ登録入口から進める。
    親自体の初回合意・見直しでは `checking` を記録する。合意済みの親へ追加提案を受領した場合は
