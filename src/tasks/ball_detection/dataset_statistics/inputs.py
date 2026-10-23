@@ -17,15 +17,18 @@ from src.utils.checksum import dual_sha256
 from .contracts import AnnotationDetails, ClipInput, PoseInput
 
 
-def annotation_details(meta: dict[str, Any], clip: ClipRecord, trusted_root: Path) -> AnnotationDetails:
+def annotation_details(store: BallFrameStore, meta: dict[str, Any], clip: ClipRecord, trusted_root: Path) -> AnnotationDetails:
     provenance = meta.get('provenance', {})
     issues = tuple(str(x) for x in provenance.get('annotation_issues', []))
     if clip.source == 'tracknet':
         return AnnotationDetails('unsupported_source', 'TrackNet has no notes/interpolation endpoints in its schema', issues)
     if 'annotation_path' not in meta:
         return AnnotationDetails('missing_path', 'Snapshot has no original annotation path', issues)
-    path = Path(meta['annotation_path'])
-    if not path.is_absolute() or not path.resolve().is_relative_to(trusted_root.resolve()):
+    try:
+        path = store.annotation_path(clip, must_exist=False)
+    except ValueError as error:
+        return AnnotationDetails('outside_root', str(error), issues)
+    if not path.resolve().is_relative_to(trusted_root.resolve()):
         return AnnotationDetails('outside_root', 'Original annotation is outside the configured project root', issues)
     if not path.is_file():
         return AnnotationDetails('missing_file', 'Original annotation file is not present', issues)
@@ -96,4 +99,4 @@ def read_clip(store: BallFrameStore, clip: ClipRecord, meta: dict[str, Any], tru
     # A target/reference transition is also a continuity boundary.
     breaks[1:] |= states.target[1:] != states.target[:-1]
     pose, reason = read_pose(pose_reader, clip.clip_id)
-    return ClipInput(clip, states, durations, breaks, annotation_details(meta, clip, trusted_root), pose, reason)
+    return ClipInput(clip, states, durations, breaks, annotation_details(store, meta, clip, trusted_root), pose, reason)

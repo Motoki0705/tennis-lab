@@ -42,6 +42,11 @@ metrics:
   colab_b_samples_equal: true
   colab_b_free_after_verification_bytes: 42662158336
   stopped_colab_sessions: 2
+  local_window_manifests_compared: 6
+  local_window_common_frames: 793017
+  local_window_training_packs: 39185
+  local_window_inputs_stat_checked: 4726
+  local_window_source_versions_unchanged: true
 repro:
   commit: 52f91b6ec0b5e728efe61ec085d91eeafcad87a4
   branch: codex/ball-temporal-distribution
@@ -122,13 +127,36 @@ Notebook接続断でpendingになった修正版の提出はcancel・保存確�
 大きい運用receiptは各sessionの検証済みDrive archiveへ保存し、credential・registry・鍵は記録へ含めていない。
 CPU runtimeを指定できない事前調査に対し、親が今回のL4照合を例外許可した。skill変更や学習は行っていない。
 
-消費側は原Chat注釈を`store.annotation_path(clip)`で解決する必要がある。
+親が`codex/ball-temporal-windows`をmergeした後、全フレーム準備・hybrid不在教師・統計readerの
+原Chat注釈を`store.annotation_path(clip)`で解決するよう統一した。
+必要な原注釈の欠落・hash/frame/notes不整合がある窓生成は停止し、不在教師を外して続行しない。
+統計の任意provenance読込みだけは存在検査を後段へ渡し、missing-file等の明示的な状態を維持する。
 同梱catalog・interval・packのindexは元snapshotの番号のままなので、clip IDと配布manifestの対応表でjoinする。
-原注釈の内容hashで空ラベルのnotesも保持・照合したが、不在教師policyと最終窓manifestは#1372の範囲である。
+窓選択・不在教師policyは#1372の実装を使い、このrunでは消費側との接続と集合同一性を検証した。
+
+移動fixtureでは元snapshotから配布storeを作り、別directoryへ移動してfixtureの元Chat注釈を削除した。
+それでも全T・train/evaluation・全splitの窓生成とdataset読込が通り、clip IDで揃えた共通区間・pack・
+owner・教師kind・RGB・PTSが元snapshotの凍結結果と一致した。注釈の異常4種で停止することも確認した。
+[実データ照合](../../runs/run-ball-portable-distribution-20261023/consumer-verification.json)では、
+公開`prepare_data --mode all_frames`を元snapshotとローカル配布stageの両方へ実行した。
+未配置RGBは`--distribution-source-store`で固定元snapshotを明示し、元shardを再hashした。
+全6manifestで1,537 clipの共通793,017 frame・39,185 pack・採点owner・教師kind・原注釈証拠が一致した。
+1,535 clipのindexが異なっていても集合は同じだった。
+元snapshot側は約159.38秒、配布側は約953.98秒、比較全体は約1,115.21秒だった。
+入力4,726ファイルのinode/size/mtime/ctimeが前後で一致し、RGB複製・hardlinkは0である。
+新しいOS sessionで実行し、[終了receipt](../../runs/run-ball-portable-distribution-20261023/consumer-supervisor.json)の成功も確認した。
+ローカルstageのplanは`external_source_view`であり、通常dataset読込には全payloadの配置が必要である。
+Colabで配置済みのstoreではこのローカル照合optionを使わない。
+
 固定testのuploadは最終評価時へ回した。今回はtrain/validation全量と2台のVM照合を優先し、比較条件を縮めていない。
 PR前の修正では、注釈pathの字句検査とstore rootからの解決を分け、設定監査に適合させた。
 ローカルのlegacy絶対path・相対path逸脱・symlinkの回帰テストを追加した。
 記録のローカルpathはplaceholderへ置き換え、配布物・件数・サイズ・内容hash・測定時間は変更していない。
 この修正でDrive・Colabは再実行しておらず、上記の照合結果と実行commitは当時の記録である。
 再現コマンドとローカル回帰テストの詳細は[run手順](../../runs/run-ball-portable-distribution-20261023/README.md)と
-[validation](../../runs/run-ball-portable-distribution-20261023/validation.json)を参照する。
+[validation](../../runs/run-ball-portable-distribution-20261023/validation.json)、接続修正後の
+[consumer validation](../../runs/run-ball-portable-distribution-20261023/consumer-validation.json)を参照する。
+
+今回の調査では、metadataの`provenance`は元snapshotの全1,800 clipにあり、現配布版には含まれないことも確認した。
+原Chat注釈の内容・今回の教師集合は一致している。統計画面等でmetadata provenanceを再利用する拡張は、
+可搬な項目を選んだ別の配布versionとして検討し、公開済み資産は変更しない。

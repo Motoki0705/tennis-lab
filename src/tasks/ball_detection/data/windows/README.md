@@ -36,6 +36,15 @@ RGBのコピー・hardlink・既存snapshotの変更は行わない。snapshot�
 clip semantic identityを照合して既存のRGB hashを再利用する。未収録clipは実ファイルをhashする。
 datasetはどちらの場合も初回読込時に画像ファイルの内容を検証する。
 配布用storeへの移動・clip indexの変更は別工程で、clip_idによる明示的な対応付けが必要。
+原Chat注釈は`store.annotation_path(clip)`で解決し、元snapshotの絶対pathと配布storeの
+store相対pathの両方で同じhash・frame対応・notes検査を行う。
+
+RGBを未配置の配布stageでローカル検証する場合だけ、`--distribution-source-store`へ
+固定された元snapshotの絶対pathを明示する。配布manifestの元index/metadataとclip対応を検証し、
+元RGBを読み取り専用で参照する。自動探索・複製・hardlinkは行わない。
+planの`payload_mode`は`external_source_view`となり、出力manifestの通常dataset読込には
+配布先への全payload配置が必要である。配置済みstoreではこのoptionを省き、
+`self_contained`として生成・読込する。`--rgb-manifest`とは併用しない。
 
 出力はTごとの`train_T<T>.json`（pack単位）、`evaluation_T<T>.json`（所有範囲付き窓）、
 およびpath・hash・コード版を持つ`experiments.json`。
