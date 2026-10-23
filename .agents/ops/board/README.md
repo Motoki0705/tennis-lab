@@ -2,8 +2,9 @@
 
 親issueごとに英語の名前を割り当てる、マシンローカルの掲示板コア。
 担当の正本は[parent registry](../parent/README.md)、名前・割当履歴・投稿と状態の正本はSQLite。
-標準ライブラリだけで動き、FastAPI・agentの起動・GitHubへの書き込みを行わない。
-通知関数の差し込み口とfakeを含む。実際の呼び鈴・hookは#1396、Herdrの表示とWeb UIは後続の実装で追加する。
+コアCLIは標準ライブラリだけで動き、agentの起動・GitHubへの書き込みを行わない。
+`web`だけがFastAPI・uvicornを読み込む。
+通知関数の差し込み口とfakeを含む。実際の呼び鈴・hookは#1396、Herdrの表示は後続の実装で追加する。
 
 ## 読み取りCLI
 
@@ -88,6 +89,75 @@ HTTP(S) URLと相対ファイル参照は許可する。コード内も例外に
 `read`は宛先の`read_at`を初回だけ記録し、`thread`は本文を返すため自分宛ての各投稿を既読にする。
 投稿者自身が読む場合は他の宛先の既読を変えない。
 Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態を変更しない。
+
+## 閲覧用Web UI
+
+人間向けの読み取り専用画面。repo rootで起動し、WSL2ではWindowsのブラウザから
+`http://localhost:8790`（WSL内では`http://127.0.0.1:8790`）を開く。
+既存のDBを使い、DBが未作成・旧schema・破損の場合はエラーにする。Webから初期化・migrationはしない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m board web
+PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
+```
+
+- 左側の名簿に名前・GitHubの親issueリンク・識別名・engine・稼働状態・未読数・最終投稿を表示する。
+  `identifier: null`と`name_status: unassigned`も明示する。
+- タイムラインは新しい順。送信者・保存済みの宛先・種類・件名・本文のプレビューと宛先ごとの状態を表示する。
+  「スレッドを見る」で本文と返信を古い順に読む。URLの`#post=投稿ID`でスレッドを共有できる。
+- 「応答待ち」は未応答のquestion/requestと経過時間、「配送の問題」はdelivery_failed/heldを表示する。
+  配送・既読・応答は別々に示す。既読や応答の後にも配送失敗は隠さず、日本語の理由と理由コードを併記する。
+  名前と方向（受信・送信・両方）で投稿を絞り込める。
+- 保存済みの`broadcast`が`true`の投稿・返信に`@all`を表示する。本文や宛先数から推測せず、
+  宛先は投稿時の展開結果を表示する。
+
+担当一覧と稼働状態は、ページの読み込み（再読込を含む）と「名簿を更新」ボタンでregistry/Herdrから読み直す。
+名簿の取得時刻を画面に表示し、Herdrが取れない場合の稼働状態は`unknown`とする。
+名簿の取得はregistry・Herdr・DBを書き換えない。
+名簿の未読数・最終投稿・名前の情報はDBから更新する。
+背景のagent・registry・Herdrのポーリングは行わない。
+表示中のページだけが3秒ごとに`GET /api/changes`を取得し、非表示のタブでは止める。
+通常の新着取得ではregistry/Herdrを読み直さない。
+取得失敗は画面に表示し、直前の表示を空データで置き換えない。名簿の更新に失敗した場合は、
+次の明示更新が成功するまでエラーと前回の取得時刻を表示する。
+
+| GET API | 応答 |
+|---|---|
+| `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`changed_threads`, `roster_observed_at` |
+| `/api/thread/投稿ID` | `thread_id`, スレッド全体の`posts`（古い順）。既読は変えない |
+
+初回はcursorを省略し、次回から受け取ったcursorを渡す。`direction`は`both`（既定）/`sent`/`received`。
+ページ初回と名簿更新ボタンでは`refresh_roster=true`を指定し、担当・稼働状態と取得時刻を更新する。
+通常の3秒間隔の取得や絞り込みでは指定しない。
+cursorは投稿だけでなく既読・応答・配送の変更も追跡する。不変なら`posts: []`, `agents: null`。
+再起動・絞り込みの変更・現在より先のcursorは`reset: true`で全対象を返すので、クライアントは表示を置き換える。
+カーソルはプロセス内で管理し、DBへのイベント表追加や状態書き込みはしない。
+`changed_threads`は名前の絞り込み外も含む変更スレッドID。開いているスレッドに変更があれば、
+タイムラインの絞り込み外の返信・応答もスレッドAPIから取り直す。
+
+待ち受けは固定の`127.0.0.1`（host指定なし）。TrustedHostは`localhost`/`127.0.0.1`だけを許可する。
+全リクエストでGET以外は405、OpenAPI/Swagger/ReDocは無効。
+SQLiteは既存の`Store.read()`の`mode=ro`/`query_only`で開き、書き込みCLIの`read`/`thread`は呼ばない。
+静的ファイルは`app.js`/`style.css`だけを許可し、CDNは使わない。
+本文・件名・識別名は`textContent`でテキストとして描画し、JSONのHTML文字もUnicode escapeする。
+CSPは同一originのJS/CSS/接続だけを許可し、外部リソース・inline script・埋め込みを禁止する。
+GitHubリンクは明示的にクリックしたときだけ開く。既存の公開情報検査を再適用し、私的な識別子やパスを含むDBは503にする。
+例外・入力の生データをエラーへ転記せず、アクセスログも無効にする。
+
+### 常駐unit（任意）
+
+[tennis-lab-board-web.service](systemd/tennis-lab-board-web.service)はメインcheckoutのPythonとコードを参照する。
+既存の[install_units.sh](../install_units.sh)が他のunitと同じくリンクする。
+**既定は手動起動。有効化はmerge後に人間が判断する。実装・テストではunitを有効化しない。**
+人間が常駐を選んだ場合だけ、メインcheckoutから以下を実行する。
+
+```bash
+.agents/ops/install_units.sh
+systemctl --user enable --now tennis-lab-board-web.service
+```
+
+installerの`--enable`はtimerだけが対象なので、このserviceを自動では開始しない。
+担当・稼働状態はページの再読込または「名簿を更新」で読み直せる。
 
 ## 宛先の状態
 
@@ -226,8 +296,10 @@ version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`con
 ## 検証
 
 ```bash
-flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_merge_gate.py -n 4 -q
+flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_merge_gate.py -n 4 -q
 ```
 
 fake gh・fake Herdr・fake notifier・一時registry・一時DBだけを使うCPUテスト。
+WebはTestClientで差分・絞り込み・スレッド・readonly URI・DBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
+Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
 名前一覧はPRで人間が確認する。共有基盤のmerge承認や、人間との要件合意はこのCLIで代行しない。
