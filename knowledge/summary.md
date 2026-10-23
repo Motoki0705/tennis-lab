@@ -1,4 +1,4 @@
-<!-- knowledge-review: 8f1ef1ef463c98a15cea07677dcf448e88f3953148ad3b9906e08a8eb910b7e3 on 2026-10-23 -->
+<!-- knowledge-review: 17ef3073bbc55b7215a6b7c5edde5ea8dad5748c03ca69b3b71e15284a227e62 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習経路の診断を反映。既存のcheckpoint採用判断は維持）
@@ -318,7 +318,7 @@ RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量
 validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
 具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
 共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
-可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000064-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
+可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000065-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
 CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
 両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
 これは低解像度の機能確認で、既存の採用判断を変えない。

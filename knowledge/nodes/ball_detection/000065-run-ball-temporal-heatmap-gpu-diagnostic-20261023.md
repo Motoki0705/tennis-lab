@@ -2,7 +2,7 @@
 id: run-ball-temporal-heatmap-gpu-diagnostic-20261023
 type: run
 task: ball_detection
-sequence: 64
+sequence: 65
 recorded_at: '2026-10-23'
 title: 全フレームheatmap学習経路のCPU統合検証と小解像度BF16診断
 issue: 1373
