@@ -1,0 +1,27 @@
+{
+  "schema": "court_scale_smoke_verification_v1",
+  "request_sha256": "a751e6ade3e30698ce4c5e234cf08f496d4bae755e88ccc490fa64de31675ce7",
+  "dataset_version_path": "50bb4f33f1a85e9a0afd35b6fd3ce8f3f0a1b0827b56af574e1fd6f59862537e.dataset.json",
+  "dataset_version_sha256": "b790b1b0c252526062ef0fb24c7d71311ee449079452be9034523ddb9179c625",
+  "generation_report_path": "reports/a751e6ade3e30698ce4c5e234cf08f496d4bae755e88ccc490fa64de31675ce7.json",
+  "checks": {
+    "original_output_root_unavailable": true,
+    "fresh_resume_and_fetch_roots": true,
+    "interruption_has_no_completed_receipt": true,
+    "completed_cache_restored_without_rendering": true,
+    "only_unacknowledged_caches_generated": true,
+    "drive_roundtrip_inventory_identical": true,
+    "load_dataset_version_verify_images": true,
+    "every_sample_store_validate_decode": true,
+    "renderer_contexts_released": true
+  },
+  "interrupted_cache_key": "dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f",
+  "cache_count": 24,
+  "restored_cache_count": 1,
+  "new_cache_count": 23,
+  "sample_store_count": 24,
+  "decoded_image_count": 282,
+  "compared_file_count": 184,
+  "compared_inventory_sha256": "0ed32b707410e64adb0462f7797e982d8fc1188a8f861976f6f6cf2757869c1b",
+  "torch_allocator_peak_measured": false
+}

@@ -12,7 +12,7 @@ from src.synthetic_data_generation.scripts import generate_court_scale
 from src.utils.configuration.errors import PathContractError
 
 
-@pytest.mark.parametrize("command", ["plan", "render", "validate"])
+@pytest.mark.parametrize("command", ["plan", "render", "render-colab", "validate"])
 @pytest.mark.parametrize("input_kind", ["missing", "directory"])
 def test_invalid_file_inputs_fail_before_loading_or_rendering(
     command: str,
@@ -50,6 +50,14 @@ def test_invalid_file_inputs_fail_before_loading_or_rendering(
             "0",
         ],
         "render": ["--output-root", str(output), "--request", str(invalid)],
+        "render-colab": [
+            "--output-root",
+            str(output),
+            "--request",
+            str(invalid),
+            "--drive-path",
+            "data/synthetic_data_generation/fixture",
+        ],
         "validate": ["--dataset-version", str(invalid)],
     }[command]
 
@@ -146,3 +154,39 @@ def test_validate_passes_the_explicit_version_and_checks_images(
     generate_court_scale.main()
 
     assert capsys.readouterr().out.strip() == "verified fixture"
+
+
+def test_fetch_passes_explicit_drive_path_and_request_to_cpu_recovery(
+    tmp_path, monkeypatch, capsys
+):
+    remote = object()
+    output = tmp_path / "recovered"
+    drive_path = "data/synthetic_data_generation/court-scale/fixture"
+
+    def drive(path):
+        assert path == drive_path
+        return remote
+
+    def fetch(root, received, *, request_sha256):
+        assert root == output and received is remote
+        assert request_sha256 == "a" * 64
+        return output / "fixture.dataset.json"
+
+    monkeypatch.setattr(generate_court_scale, "SkillDriveFiles", drive)
+    monkeypatch.setattr(generate_court_scale, "fetch_completed_dataset", fetch)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "generate_court_scale",
+            "fetch",
+            "--output-root",
+            str(output),
+            "--drive-path",
+            drive_path,
+            "--request-sha256",
+            "a" * 64,
+        ],
+    )
+    generate_court_scale.main()
+    assert "verified Drive dataset" in capsys.readouterr().out

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "setup",
+  "status": "completed",
+  "updated_at": "2026-10-23T05:59:50.999737+00:00",
+  "returncode": 0,
+  "worker_pid": 4104,
+  "worker_token": "73603",
+  "launch_guarded": true,
+  "pid": 4281,
+  "process_token": "76752",
+  "started_at": "2026-10-23T05:44:25.713890+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T06:00:05.265253+00:00",
+  "finished_at": "2026-10-23T06:00:05.265269+00:00"
+}

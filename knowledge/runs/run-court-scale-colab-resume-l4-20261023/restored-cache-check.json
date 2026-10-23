@@ -1,0 +1,12 @@
+{
+  "schema": "court_scale_restored_cache_check_v1",
+  "cache_key": "dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f",
+  "original_metrics": "first-cache-metrics.json",
+  "restored_root": "/content/tennis-lab/tmp/court-scale-resumed-smoke",
+  "metrics_sha256": "3820ab5f9f84d549b7278f175d155269038f7efffea86a839336423c354db45a",
+  "completion_sha256": "69e4f4a653d0c1f2d361247f0d18e145157bde80dbf2b17af1fb6b64d97de083",
+  "metrics_equal_original": true,
+  "completion_matches_original_metric": true,
+  "initial_root_isolation": "isolation.json",
+  "scope": "Immutable completion/metrics match in the fresh root; final attempt verification additionally checks the reused/restored flags."
+}

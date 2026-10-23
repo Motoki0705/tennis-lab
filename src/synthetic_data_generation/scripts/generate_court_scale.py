@@ -12,7 +12,16 @@ from src.synthetic_data_generation.dataset.court.scale.core import (
     TrajectoryMethod,
     canonical_bytes,
 )
+from src.synthetic_data_generation.dataset.court.scale.durability import (
+    DurableGeneration,
+    fetch_completed_dataset,
+    restore_inputs,
+)
+from src.synthetic_data_generation.dataset.court.scale.durable_storage import (
+    SkillDriveFiles,
+)
 from src.synthetic_data_generation.dataset.court.scale.publication import (
+    PRODUCTION_REQUEST_SCHEMA,
     execute_request,
     freeze_request,
     load_dataset_version,
@@ -21,9 +30,13 @@ from src.synthetic_data_generation.dataset.court.scale.publication import (
 )
 from src.synthetic_data_generation.dataset.court.scale.recipes import ProductionRecipe
 from src.synthetic_data_generation.dataset.court.scale.runtime import (
+    ColabNHTRenderer,
     LocalNHTRenderer,
     load_scene_inputs,
     renderer_fingerprint,
+)
+from src.synthetic_data_generation.dataset.court.scale.telemetry import (
+    NvidiaL4Telemetry,
 )
 from src.utils.configuration import (
     BoundaryPathField,
@@ -159,6 +172,35 @@ def main() -> None:
     render.add_argument("--output-root", type=Path, required=True)
     render.add_argument("--request", type=Path, nargs="+", required=True)
     render.add_argument("--batch-size", type=int, default=1)
+    colab = commands.add_parser(
+        "render-colab",
+        help="Durable production rendering on an explicitly allocated Colab L4",
+    )
+    colab.add_argument("--output-root", type=Path, required=True)
+    source = colab.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--request", type=Path, nargs="+", help="One frozen production request"
+    )
+    source.add_argument(
+        "--request-sha256", help="Restore this request from Drive after VM loss"
+    )
+    colab.add_argument("--drive-path", required=True)
+    colab.add_argument(
+        "--retry-staging",
+        action="store_true",
+        help="Archive failed staging to Drive before redrawing; never delete it",
+    )
+    colab.add_argument(
+        "--stop-after-caches",
+        type=int,
+        help="Intentional stop after this many verified cache acknowledgements",
+    )
+    fetch = commands.add_parser(
+        "fetch", help="Recover a completed Drive dataset and strictly decode every JPEG"
+    )
+    fetch.add_argument("--output-root", type=Path, required=True)
+    fetch.add_argument("--drive-path", required=True)
+    fetch.add_argument("--request-sha256", required=True)
     check = commands.add_parser("validate")
     check.add_argument("--dataset-version", type=Path, required=True)
     args = parser.parse_args()
@@ -172,6 +214,8 @@ def main() -> None:
             "quality",
         ),
         "render": ("output_root", "request"),
+        "render-colab": ("output_root", "request"),
+        "fetch": ("output_root",),
         "validate": ("dataset_version",),
     }[args.command]
     arguments: dict[str, Path | list[Path]] = {}
@@ -212,6 +256,50 @@ def main() -> None:
         print(f"verified {version['dataset_version']}", flush=True)
         return
     root = args.output_root.resolve()
+    if args.command in {"render-colab", "fetch"}:
+        if (
+            args.command == "render-colab"
+            and args.request is not None
+            and len(args.request) != 1
+        ):
+            raise ValueError(
+                "Colab durability requires exactly one frozen production request."
+            )
+        remote = SkillDriveFiles(args.drive_path)
+        if args.command == "fetch":
+            path = fetch_completed_dataset(
+                root, remote, request_sha256=args.request_sha256
+            )
+            print(f"verified Drive dataset {path}", flush=True)
+            return
+        request_path = (
+            args.request[0]
+            if args.request is not None
+            else restore_inputs(root, remote, request_sha256=args.request_sha256)
+        )
+        request_value = read_json(request_path)
+        if request_value["schema"] != PRODUCTION_REQUEST_SCHEMA:
+            raise ValueError(
+                "Colab generation requires an explicit production recipe request."
+            )
+        telemetry = NvidiaL4Telemetry()
+        colab_backend = ColabNHTRenderer(root, fingerprint=request_value["renderer"])
+        generation = DurableGeneration(
+            root,
+            request_path,
+            remote,
+            telemetry,
+            retry_staging=args.retry_staging,
+            stop_after_caches=args.stop_after_caches,
+        )
+        version_path = generation.run(colab_backend)
+        print(
+            f"published Drive dataset {version_path}"
+            if version_path is not None
+            else "interrupted after verified Drive acknowledgement; no dataset version published",
+            flush=True,
+        )
+        return
     if args.command == "render":
         paths = []
         for request_path in args.request:

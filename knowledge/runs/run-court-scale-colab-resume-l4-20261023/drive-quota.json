@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "action": "quota",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-23T05:43:19.066414+00:00",
+  "scope": "account",
+  "bytes": {
+    "total": 5497558138880,
+    "used": 751689962637,
+    "trashed": 150427013608,
+    "other": 34799862912,
+    "free": 4711068313331
+  }
+}
