@@ -177,7 +177,14 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
             )
             return 0
-        with Store(args.state_dir).locked() as store:
+        parent_store: Store
+        if args.command == "workflow-report":
+            from .development import workflow_store
+
+            parent_store = workflow_store(args.state_dir, args.dispatcher_state_dir)
+        else:
+            parent_store = Store(args.state_dir)
+        with parent_store.locked() as store:
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any

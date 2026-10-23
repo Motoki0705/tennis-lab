@@ -11,7 +11,8 @@ from typing import Any, cast
 
 from dispatcher.runtime import Runtime, alive, gate, load
 from dispatcher.schedule import Schedule
-from dispatcher.supervisor import Supervisor, children_pending, managed
+from dispatcher.state import DispatchStore
+from dispatcher.supervisor import Supervisor, children_pending, managed, unstarted
 from issues import task_status
 
 from .adopted_tasks import check_task_adoptions
@@ -19,9 +20,14 @@ from .execution import authorization, require_request_authorization, task_errors
 from .github import GitHub
 from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
-from .state import Store
 
 OPS = Path(__file__).resolve().parents[1]
+
+
+def workflow_store(directory: Path, dispatcher_directory: Path | None) -> DispatchStore:
+    return DispatchStore(
+        directory, Schedule(dispatcher_directory or directory.parent / "dispatcher")
+    )
 
 
 def controller(session: ParentSession, directory: Path | None) -> Supervisor:
@@ -33,7 +39,7 @@ def controller(session: ParentSession, directory: Path | None) -> Supervisor:
 
 
 def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
-    dispatch = managed(session.owner())
+    dispatch: dict[str, Any] | None = managed(session.owner())
     if not dispatch or dispatch["phase"] != "running":
         raise ValueError("accept the running dispatcher parent before worker actions")
     job = dispatch["jobs"][dispatch["active_job"]]
@@ -42,7 +48,7 @@ def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
         or env.get("AGENT_RUNTIME_TASK_ID") != job["task_id"]
     ):
         raise ValueError("worker action belongs to another parent runtime")
-    return cast(dict[str, Any], dispatch)
+    return dispatch
 
 
 def worker_jobs(dispatch: dict[str, Any], child: int) -> list[dict[str, Any]]:
@@ -59,8 +65,15 @@ def check_dependencies(session: ParentSession, dispatch: dict[str, Any]) -> None
             raise ValueError(f"candidate dependency #{n} is no longer completed")
 
 
-def ended(job: dict[str, Any]) -> dict[str, Any]:
+def ended(job: dict[str, Any]) -> dict[str, Any] | None:
     directory = Path(job["directory"])
+    if job.get("cancelled_before_start"):
+        with gate(directory / "lifetime.lock") as fd:
+            if job["phase"] != "ended" or fd is None or not unstarted(job):
+                raise ValueError(
+                    "cancelled reservation has unconfirmed launch evidence"
+                )
+        return None
     evidence = Runtime(Path(job["runner"])).inspect(directory / "runtime")
     with gate(directory / "lifetime.lock") as fd:
         if (
@@ -109,11 +122,30 @@ def start_worker(
                     "no existing worker session; never create a replacement"
                 )
             for job in jobs:
-                record = ended(job)
-            if not record["runtime"].get("session_id"):
-                raise ValueError("previous worker has no resumable session")
-            if model and model != record["contract"]["settings"]["selected"]["model"]:
-                raise ValueError("continuation cannot change the worker model")
+                ended(job)
+            source = control.resume_source(session.row, jobs[-1])
+            if source is None:
+                if any(not job.get("cancelled_before_start") for job in jobs):
+                    raise ValueError(
+                        "cancelled reservation lost its saved resume source"
+                    )
+                if any(
+                    child in closing_issues(p.get("body") or "", session.gh.repo)
+                    for p in session.gh.pulls()
+                ):
+                    raise ValueError(
+                        "existing PR has no implementation session to resume"
+                    )
+                if model is not None and model != jobs[-1]["model"]:
+                    raise ValueError("continuation cannot change the worker model")
+                model = jobs[-1]["model"]
+            else:
+                record = load(Path(source) / "result.json")
+                if (
+                    model
+                    and model != record["contract"]["settings"]["selected"]["model"]
+                ):
+                    raise ValueError("continuation cannot change the worker model")
             task = session.row["tasks"][str(child)]
             branch, worktree = task["branch"], Path(task["worktree"])
         elif jobs:
@@ -177,8 +209,12 @@ def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
         "delegation_id": job["delegation_id"],
         "task_success": None,
         "termination_confirmed": False,
+        "cancelled_before_start": bool(job.get("cancelled_before_start")),
     }
-    if (directory / "result.json").exists():
+    if job.get("cancelled_before_start"):
+        ended(job)
+        result["termination_confirmed"] = True
+    elif (directory / "result.json").exists():
         evidence = Runtime(Path(job["runner"])).inspect(directory)
         record = evidence["record"]
         result.update(
@@ -203,13 +239,9 @@ def stop_worker(
         if job["phase"] == "ended":
             continue
         if job["phase"] == "reserved":
-            job.update(phase="ended", diagnostic="cancelled by parent before launch")
-            task = session.row["tasks"][str(child)]
-            if task["delegation_id"] == job["delegation_id"]:
-                task["worker_ended"] = {
-                    "delegation_id": job["delegation_id"],
-                    "evidence": "parent cancelled the dispatcher reservation before runner launch",
-                }
+            Supervisor.cancel_reservation(
+                session.row, job, "cancelled by parent before launch"
+            )
         elif (Path(job["directory"]) / "runtime/result.json").exists():
             Runtime(Path(job["runner"])).inspect(
                 Path(job["directory"]) / "runtime", stop=True
@@ -352,7 +384,7 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def worker_command(args: Any, gh: GitHub, parent: int, identity: str) -> dict[str, Any]:
-    store = Store(args.state_dir)
+    store = workflow_store(args.state_dir, args.dispatcher_state_dir)
     session = ParentSession(gh, store, parent, identity)
     if args.command in {"start-worker", "continue-worker"}:
         return start_worker(

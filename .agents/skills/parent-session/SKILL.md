@@ -67,7 +67,8 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 3. PRに各子を閉じる指示を記載し、`record-result` で子の成果物欄にPRと検証結果を残す。
    `reconcile` と `sync` で子⇔担当/branch/worktree⇔PRと全体進捗を照合する。
    単独issueのworkerには自身の番号を使う。PR作成後の修正も自律親の `continue-worker` で同じsessionへ戻し、
-   終了・差分・テスト・PRの確認を省略しない。dshの明示指定はAGENTS.mdの規定に従う。
+   終了・差分・テスト・PRの確認を省略しない。dshを案件で明示指定された場合は
+   [deepseek-harness skill](../deepseek-harness/SKILL.md) に従う。
 
 ### 並列にしない理由と資源の扱い
 

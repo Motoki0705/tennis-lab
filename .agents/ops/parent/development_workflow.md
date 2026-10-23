@@ -4,6 +4,7 @@
 担当・実行根拠・子・PR・worktreeと受入条件を先に照合する。人間合意と自律根拠は別のまま扱い、
 通常の実装判断は親が具体化する。結果を左右する未決事項・停止指示・情報不足は理由付きで待機する。
 これは親の判断手順であり、timerやsupervisorがレビューを起動する仕組みではない。
+worker操作CLIはdispatcherで受理済みの親が使う。手動親の起動は [delegateの契約](README.md#子の作成委任再開) に従う。
 
 ## 引受・分割・起動
 
@@ -36,6 +37,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 [dispatcher start-child](../dispatcher/README.md#親workflowへのbootstrap契約) へ接続する。
 新しい予約・別sessionで迂回しない。既存の手動worker/PRにmanaged runtimeがなければ、その担当へ戻すか
 理由と明示的な引継ぎ条件を記録する。既存PRから新しいworker sessionを自動生成しない。
+予約は起動許可の確定ではない。supervisorがscheduleの場所をworkerへ渡し、workerは同じregistry lock内で
+担当generation・委任ID・親/子の停止・要件・採用・入力鮮度を再検査してから共通ランナーを呼ぶ。
+起動直前の変更は `runtime_cancelled` と理由を残して取消し、予定外の判定agentや別sessionで回避しない。
 
 ## 結果確認・修正・部分停止
 
@@ -57,6 +61,10 @@ continuation証拠には終了・既存PR/HEAD・差分確認・残る指摘・�
 同じbranch/worktree・現在の根拠/要件・正式関係・採用・停止・上限を再検査して新しいdelegation_idを予約し、
 dispatcherが前の最新runから同じsessionをresumeする。モデル省略時は前回の選択を保持し、変更指定は拒否する。
 旧runtimeの終了未確認・session欠落・設定不一致を新規sessionへ置換しない。
+未起動の取消は `cancelled_before_start` として実行済みrunから区別する。修正turnの予約だけを取り消した場合、
+`continue-worker` は保存された元runをたどり、元のsession・モデルから再開する。
+一度もCLIを起動していないことを全jobの取消記録と起動証拠の不在で確認でき、PRもない場合だけ、
+同じbranch/worktree・モデルで明示的に再予約して初回起動できる。起動証拠や再開元が曖昧なら復旧待ちにする。
 runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態確認停止中断からの復旧) に従い、
 全子孫の回収根拠を `stop --cleanup-confirmation` へ渡してからsupervisorで終了を照合する。
 `stop-worker` の停止要求やPID/CLI groupの不在だけでは `cleanup_complete` を補わず、予約枠を保持する。
@@ -65,6 +73,9 @@ runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態�
 その子のruntimeだけへ停止要求する。親全体を止めず、依存子への保留と独立子の起動可能性を `launch_plan` で確認する。
 停止要求は終了証拠ではない。supervisorの照合後、解除証拠をparentの `resume --child N --spec ...` へ記録してから
 `continue-worker` を使う。根拠の鮮度不一致は明示再判断/再合意へ戻す。
+単独issue自身の停止・再開で根拠の本文が変わった場合も、古い自律判断を流用しない。
+予約取消もdispatcher共通の検査で行い、既に起動証拠がある予約は解放しない。
+`inspect-worker` は起動前取消を明示し、実行結果・最終文を捏造しない。
 
 CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfailedとして、理由・事実・影響・再開条件・次の対応を残す。
 子が追加の修正で進展しない、対象外へ広がる、同じ失敗を繰り返す場合も待機へ移し、
@@ -121,10 +132,13 @@ dry-run結果、子の成功JSON、PR作成やチェック数だけではcomplet
 自律親は生存中にreleaseせず、最終イベント受領後にsupervisorが担当をendedへ移す。
 waiting/failedは担当を保持し、子終了イベントまたは理由付きの明示dispatcher resumeで同じ親sessionへ戻す。
 手動親は全体受入を確認後、従来の `release --ended` を使う。
+worker操作とworkflow-reportはdispatcherと同じregistry欠落検査を使う。
+scheduleやworker履歴が残っているのにregistryだけが欠落・空になった場合は保存・起動を止め、
+[復旧手順](../dispatcher/README.md#registry欠落からの復旧)へ戻す。空stateの作成やinitで迂回しない。
 
 ## Projectへの節目の反映
 
-Project機能を含む統合checkoutで、担当親が以下の節目ごとにparent CLIを明示呼出しする。
+担当親が以下の節目ごとにparent CLIを明示呼出しする。
 Projectの導入・権限・初期登録を [Project README](../project_progress/README.md#導入更新の入口) で確認する。
 初期登録前は `--event initial` で正式な親と全子孫を指定し、子の追加時も未登録の全issueをspecへ含める。
 未導入・権限不足・更新失敗は理由と次の対応を `note` に残し、Project更新済みと扱わない。
