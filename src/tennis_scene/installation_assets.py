@@ -15,25 +15,35 @@ from src.submodules.smpl_assets import SMPL_ASSET_SOURCES
 from src.utils.model_weights import MODEL_REPO, PUBLISHED_WEIGHTS
 from src.utils.sample_dataset import DATASET_REPO, PUBLISHED_FILES
 
-AssetTableLanguage = Literal["en", "ja", "zh-CN"]
-ASSET_TABLE_LANGUAGE_SUFFIXES: dict[AssetTableLanguage, str] = {
-    "en": ".md",
-    "ja": ".ja.md",
-    "zh-CN": ".zh-CN.md",
+PublicDocumentLanguage = Literal["en", "ja", "zh-CN"]
+
+
+@dataclass(frozen=True)
+class PublicDocumentLocale:
+    suffix: str
+    label: str
+
+
+PUBLIC_DOCUMENT_LANGUAGES: dict[PublicDocumentLanguage, PublicDocumentLocale] = {
+    "en": PublicDocumentLocale(".md", "English"),
+    "ja": PublicDocumentLocale(".ja.md", "日本語"),
+    "zh-CN": PublicDocumentLocale(".zh-CN.md", "简体中文"),
 }
 
 
-def asset_table_language_from_filename(filename: str | Path) -> AssetTableLanguage:
+def public_document_language_from_filename(
+    filename: str | Path,
+) -> PublicDocumentLanguage:
     """Resolve a Markdown filename using the shared public-document suffixes.
 
     Bare ``.md`` filenames use English. Any additional suffix must be a supported
     language qualifier; unknown qualifiers never fall back to English.
     """
     suffix = "".join(Path(filename).suffixes)
-    for language, expected in ASSET_TABLE_LANGUAGE_SUFFIXES.items():
-        if suffix == expected:
+    for language, locale in PUBLIC_DOCUMENT_LANGUAGES.items():
+        if suffix == locale.suffix:
             return language
-    raise ValueError(f"Unsupported asset table document suffix: {suffix!r}")
+    raise ValueError(f"Unsupported public document suffix: {suffix!r}")
 
 
 @dataclass(frozen=True)
@@ -168,18 +178,18 @@ INSTALLATION_ASSETS = (
 )
 
 
-def _require_language(language: AssetTableLanguage) -> None:
-    if language not in ASSET_TABLE_LANGUAGE_SUFFIXES:
+def _require_language(language: PublicDocumentLanguage) -> None:
+    if language not in PUBLIC_DOCUMENT_LANGUAGES:
         raise ValueError(
             f"Unsupported asset table language: {language!r}; "
-            f"expected one of {tuple(ASSET_TABLE_LANGUAGE_SUFFIXES)}"
+            f"expected one of {tuple(PUBLIC_DOCUMENT_LANGUAGES)}"
         )
 
 
-def asset_table(language: AssetTableLanguage) -> str:
+def asset_table(language: PublicDocumentLanguage) -> str:
     """Render checkpoint destinations, sources and terms without exposing byte pins.
 
-    Languages and filename suffixes follow ``ASSET_TABLE_LANGUAGE_SUFFIXES``.
+    Languages and filename suffixes follow ``PUBLIC_DOCUMENT_LANGUAGES``.
     The ¹ markers refer to the guide's note about upstream code licenses.
     """
     _require_language(language)
@@ -203,7 +213,7 @@ def asset_table(language: AssetTableLanguage) -> str:
     return "\n".join(rows)
 
 
-def sample_asset_table(language: AssetTableLanguage) -> str:
+def sample_asset_table(language: PublicDocumentLanguage) -> str:
     """Render the acquisition CLI's fixed sample file list without byte pins."""
     _require_language(language)
     header = {

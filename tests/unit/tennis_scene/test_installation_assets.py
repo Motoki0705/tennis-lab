@@ -14,11 +14,11 @@ import pytest
 
 from src.tennis_scene import installation_assets
 from src.tennis_scene.installation_assets import (
-    ASSET_TABLE_LANGUAGE_SUFFIXES,
     INSTALLATION_ASSETS,
-    AssetTableLanguage,
+    PUBLIC_DOCUMENT_LANGUAGES,
+    PublicDocumentLanguage,
     asset_table,
-    asset_table_language_from_filename,
+    public_document_language_from_filename,
     sample_asset_table,
 )
 from src.utils.paths import PROJECT_ROOT
@@ -29,13 +29,14 @@ REQUIRED_ASSET_TABLE_DOCUMENTS = (
     # Add one consumer per line; each required document must contain both tables.
     "README.md",
     "README.ja.md",
+    "README.zh-CN.md",
     "docs/installation/README.md",
     "docs/installation/README.ja.md",
     "docs/installation/README.zh-CN.md",
 )
 INSTALLATION_GUIDE_DOCUMENTS = tuple(
-    f"docs/installation/README{suffix}"
-    for suffix in ASSET_TABLE_LANGUAGE_SUFFIXES.values()
+    f"docs/installation/README{locale.suffix}"
+    for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
 )
 ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
 LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
@@ -84,7 +85,7 @@ def _assert_markdown_asset_tables(
         if not consumed_tables:
             continue
         try:
-            language = asset_table_language_from_filename(filename)
+            language = public_document_language_from_filename(filename)
         except ValueError as error:
             problems.append(f"{filename}: {error}")
             continue
@@ -129,7 +130,7 @@ def _assert_markdown_asset_tables(
     ],
 )
 def test_checkpoint_table_has_all_assets_and_localized_terms_without_hashes(
-    language: AssetTableLanguage,
+    language: PublicDocumentLanguage,
     header: str,
     source_label: str,
 ) -> None:
@@ -172,7 +173,7 @@ def test_license_footnotes_identify_the_same_assets_in_all_languages() -> None:
     ],
 )
 def test_sample_table_uses_the_acquisition_manifest_without_hashes(
-    language: AssetTableLanguage,
+    language: PublicDocumentLanguage,
     header: str,
     source_label: str,
 ) -> None:
@@ -191,10 +192,10 @@ def test_sample_table_uses_the_acquisition_manifest_without_hashes(
     assert re.search(r"[0-9a-f]{64}", table) is None
 
 
-@pytest.mark.parametrize("language", ASSET_TABLE_LANGUAGE_SUFFIXES)
+@pytest.mark.parametrize("language", PUBLIC_DOCUMENT_LANGUAGES)
 def test_sample_table_reads_the_manifest_instead_of_a_separate_file_list(
     monkeypatch: pytest.MonkeyPatch,
-    language: AssetTableLanguage,
+    language: PublicDocumentLanguage,
 ) -> None:
     monkeypatch.setattr(
         installation_assets,
@@ -210,17 +211,17 @@ def test_sample_table_reads_the_manifest_instead_of_a_separate_file_list(
 @pytest.mark.parametrize("render", TABLE_RENDERERS.values())
 @pytest.mark.parametrize("language", ("fr", "zh", "zh-TW", "zh-cn", ""))
 def test_table_rejects_unsupported_language(
-    render: Callable[[AssetTableLanguage], str],
+    render: Callable[[PublicDocumentLanguage], str],
     language: str,
 ) -> None:
     with pytest.raises(ValueError, match="Unsupported asset table language"):
-        render(cast(AssetTableLanguage, language))
+        render(cast(PublicDocumentLanguage, language))
 
 
 def test_public_filename_suffixes_cover_every_supported_language() -> None:
-    assert set(ASSET_TABLE_LANGUAGE_SUFFIXES) == set(get_args(AssetTableLanguage))
-    assert len(set(ASSET_TABLE_LANGUAGE_SUFFIXES.values())) == len(
-        ASSET_TABLE_LANGUAGE_SUFFIXES
+    assert set(PUBLIC_DOCUMENT_LANGUAGES) == set(get_args(PublicDocumentLanguage))
+    assert len({locale.suffix for locale in PUBLIC_DOCUMENT_LANGUAGES.values()}) == len(
+        PUBLIC_DOCUMENT_LANGUAGES
     )
 
 
@@ -238,10 +239,10 @@ def test_public_filename_suffixes_cover_every_supported_language() -> None:
 )
 @pytest.mark.parametrize("as_path", (False, True))
 def test_public_filename_language_uses_only_the_document_suffix(
-    filename: str, language: AssetTableLanguage, as_path: bool
+    filename: str, language: PublicDocumentLanguage, as_path: bool
 ) -> None:
     value = Path(filename) if as_path else filename
-    assert asset_table_language_from_filename(value) == language
+    assert public_document_language_from_filename(value) == language
 
 
 @pytest.mark.parametrize(
@@ -258,8 +259,8 @@ def test_public_filename_language_uses_only_the_document_suffix(
     ),
 )
 def test_public_filename_language_rejects_unknown_suffixes(filename: str) -> None:
-    with pytest.raises(ValueError, match="Unsupported asset table document suffix"):
-        asset_table_language_from_filename(filename)
+    with pytest.raises(ValueError, match="Unsupported public document suffix"):
+        public_document_language_from_filename(filename)
 
 
 def test_tracked_markdown_asset_tables_match_authoritative_catalogs() -> None:
@@ -274,7 +275,7 @@ def test_installation_translations_preserve_sections_commands_and_references(
         encoding="utf-8"
     )
     translated = (PROJECT_ROOT / filename).read_text(encoding="utf-8")
-    language = asset_table_language_from_filename(filename)
+    language = public_document_language_from_filename(filename)
     assert re.findall(r"^(#{1,3}) ", english, re.MULTILINE) == re.findall(
         r"^(#{1,3}) ", translated, re.MULTILINE
     )
@@ -301,7 +302,7 @@ def test_installation_translations_preserve_sections_commands_and_references(
         ), anchor
         normalized_links = [
             target.replace(
-                f"LICENSES{ASSET_TABLE_LANGUAGE_SUFFIXES[language]}", "LICENSES.md"
+                f"LICENSES{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}", "LICENSES.md"
             )
             for target in LINK.findall(localized)
         ]
@@ -332,16 +333,12 @@ def test_installation_guides_have_language_navigation_and_valid_local_links(
     text = document.read_text(encoding="utf-8")
     introduction = ANCHOR.split(text)[0]
     navigation = " / ".join(
-        f"[{label}](README{suffix})"
-        for label, suffix in zip(
-            ("English", "日本語", "简体中文"),
-            ASSET_TABLE_LANGUAGE_SUFFIXES.values(),
-            strict=True,
-        )
+        f"[{locale.label}](README{locale.suffix})"
+        for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
     )
     assert navigation in introduction
     assert re.search(r"[0-9a-fA-F]{64}", text) is None
-    language = asset_table_language_from_filename(filename)
+    language = public_document_language_from_filename(filename)
     license_links = []
     for target in LINK.findall(text):
         parsed = urlsplit(target)
@@ -352,7 +349,7 @@ def test_installation_guides_have_language_navigation_and_valid_local_links(
         ).resolve()
         if destination.name.startswith("LICENSES"):
             assert destination.name == (
-                f"LICENSES{ASSET_TABLE_LANGUAGE_SUFFIXES[language]}"
+                f"LICENSES{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}"
             ), target
             license_links.append(parsed.fragment)
             # The Chinese LICENSES document is supplied by a parallel child.
@@ -401,7 +398,7 @@ def _write_tracked_document(root: Path, filename: str, content: str) -> None:
 def test_markdown_check_discovers_consumers_and_uses_filename_language(
     markdown_repo: Path,
     filename: str,
-    language: AssetTableLanguage,
+    language: PublicDocumentLanguage,
 ) -> None:
     blocks = "\n\n".join(
         _table_block(marker, render(language))
@@ -411,14 +408,14 @@ def test_markdown_check_discovers_consumers_and_uses_filename_language(
     _assert_markdown_asset_tables(markdown_repo, (filename,))
 
 
-@pytest.mark.parametrize("language", ASSET_TABLE_LANGUAGE_SUFFIXES)
+@pytest.mark.parametrize("language", PUBLIC_DOCUMENT_LANGUAGES)
 @pytest.mark.parametrize("marker", TABLE_RENDERERS)
 def test_markdown_check_also_checks_optional_consumers_with_one_table(
-    markdown_repo: Path, marker: str, language: AssetTableLanguage
+    markdown_repo: Path, marker: str, language: PublicDocumentLanguage
 ) -> None:
     _write_tracked_document(
         markdown_repo,
-        f"nested/notes{ASSET_TABLE_LANGUAGE_SUFFIXES[language]}",
+        f"nested/notes{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}",
         _table_block(marker, TABLE_RENDERERS[marker](language)),
     )
     _assert_markdown_asset_tables(markdown_repo, ())
@@ -440,7 +437,7 @@ def test_markdown_check_ignores_unrelated_markdown_suffixes(
 def test_markdown_check_reports_modified_rows_and_pasteable_expected_blocks(
     markdown_repo: Path,
     filename: str,
-    language: AssetTableLanguage,
+    language: PublicDocumentLanguage,
 ) -> None:
     expected = _table_block("sample-assets", sample_asset_table(language))
     _write_tracked_document(
@@ -460,7 +457,7 @@ def test_markdown_check_reports_unknown_language_suffixes(
         markdown_repo, filename, _table_block("checkpoint-assets", asset_table("en"))
     )
     with pytest.raises(
-        AssertionError, match="Unsupported asset table document suffix"
+        AssertionError, match="Unsupported public document suffix"
     ) as error:
         _assert_markdown_asset_tables(markdown_repo, ())
     assert filename in str(error.value)
@@ -507,11 +504,11 @@ def test_markdown_check_rejects_incomplete_or_ambiguous_markers(
 
 
 @pytest.mark.parametrize("fault", ["absent", "untracked", "no-markers", "one-table"])
-@pytest.mark.parametrize("language", ASSET_TABLE_LANGUAGE_SUFFIXES)
+@pytest.mark.parametrize("language", PUBLIC_DOCUMENT_LANGUAGES)
 def test_markdown_check_requires_tracked_consumers_with_both_tables(
-    markdown_repo: Path, fault: str, language: AssetTableLanguage
+    markdown_repo: Path, fault: str, language: PublicDocumentLanguage
 ) -> None:
-    filename = f"required{ASSET_TABLE_LANGUAGE_SUFFIXES[language]}"
+    filename = f"required{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}"
     if fault == "untracked":
         (markdown_repo / filename).write_text("# Guide", encoding="utf-8")
     elif fault == "no-markers":
