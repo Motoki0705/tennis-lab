@@ -3,7 +3,9 @@
 親issueを1セッションで統括するための明示CLI。人間合意と自律着手判断を別の実行根拠として扱う。
 会話の解釈・質問・委任・完了確認は [parent-session skill](../../skills/parent-session/SKILL.md)、
 親子issueの書式・ラベル・段階移行は [issues](../issues/README.md) が正本。
-このCLIは agent・レビュー・CI・merge を実行しない。timer・poll・hookへの登録も行わない。
+`start-worker` / `continue-worker` は委任予約をdispatcherへ渡す。実agentの起動はsupervisor、
+レビュー・mergeは親が明示する既存入口で行う。timer・poll・hookへの登録は行わない。
+自律親の開発手順とworker/reportコマンドの契約は [development workflow](development_workflow.md) が正本。
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
@@ -59,6 +61,8 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 以下のコマンドは会話を受けたagentが実行する。人間に実行させる手順ではない。
 共通引数はサブコマンドの前に置く。`--repo` 省略時は `gh repo view` で特定する。
 `--parent` は番号、`#番号`、同じrepoのHTTPS issue URLを受け取る。
+`--state-dir` でdispatcher/review/mergeと同じregistryを明示できる。省略時は従来のXDG state。
+workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
@@ -336,6 +340,7 @@ triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](.
 親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
+未分割の単独issueは自身の番号を `--child` に指定でき、正式な子を新しい親として扱うことは拒否する。
 `action: launch` を受けた親がサブエージェントを起動する。CLI自身は起動しない。
 既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
@@ -351,6 +356,7 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠/担当/子の要件が変わった既存成果は、親が現在の要件で確認してrecord-resultを実行するまで新review/mergeへ渡さない。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
+単独issueの結果も同じ入口を使い、親用の子一覧は生成しない。
 
 ### 並列起動の選択と予約上限
 

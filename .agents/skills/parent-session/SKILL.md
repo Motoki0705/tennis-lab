@@ -1,6 +1,6 @@
 ---
 name: parent-session
-description: 人間が会話で親issueの番号またはURLを伝え、そのセッションに担当・統括させる意図を示したときに使う。要件合意後の子issue分割・サブエージェント委任・進捗・明示レビュー要求を管理する。単なるissueの参照、説明・要約の依頼では発動しない。
+description: 人間が会話で親issueの番号・URLと担当意図を示すか、dispatcherのbootstrapが予約済みの親へ開発を指示したときに使う。実行根拠を照合し、子issue分割・Codex委任・進捗・明示レビュー要求とmergeを管理する。単なるissue参照や説明・要約の依頼では発動しない。
 ---
 
 # 親issueを担当する
@@ -13,6 +13,14 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
 [parent README](../../ops/parent/README.md)、書式は [issues README](../../ops/issues/README.md) を参照する。
 研究テーマ固有のサイクル設計はresearch-loopの範囲とし、このskillで停止基準を新設しない。
 担当開始後の親同士の連絡・受信への応答は[parent-board](../parent-board/SKILL.md)に従う。
+
+## 自律割当から担当する
+
+dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept` で結合してから
+[開発workflow](../../ops/parent/development_workflow.md) に従う。下の手動担当のregister/checking/agreeを繰り返さない。
+既存の自律根拠とissue/コメント・正式関係・依存・採用状態を照合し、通常の実装判断は親が具体化する。
+人間合意や共有基盤許可を生成せず、重要な未決事項は理由・再開条件付きで待機する。
+同じprivate stateでworkerとreview/mergeを扱う。Projectへの節目の接続予定も開発workflowを参照する。
 
 ## 担当と要件を確定する
 
@@ -49,13 +57,17 @@ description: 人間が会話で親issueの番号またはURLを伝え、その�
 2. `status` / `reconcile` の `launch_plan` で完了済み・既存PR・既存委任と起動対象を照合する。
    **依存が許す子は、設定された枠内ですべて並列に起動するのが既定。** 手動親の既定枠は全子であり、
    固定3件にはしない。自律ループの各親の実装子2件という初期値は別の実行枠で、その設定を守る。
-   各子の専用worktreeを作り、`delegate` の `action: launch` ごとに、この親セッション内で直ちに起動する。
+   各子の専用worktreeを作り、既定のCodexへ共通ランナー経由で委任する。
+   自律親は開発workflowの `start-worker`（delegate → dispatcher start-child）、
+   手動親は `delegate` の `action: launch` 後に [共通ランナー](../../ops/lib/README.md) を使い、この親セッション内で直ちに起動する。
    先に起動した子の完了を待たず、残る `launchable_children` を再計算してすべて委任する。
    子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件と共有pytest lockを渡す。
    子が実装・検証・PRを作り、親が成果物と検証記録を集約する。workerの終了はrunnerの証拠と照合し、
    `record-worker-ended` で当該 `delegation_id` の予約枠を解放する。PR作成や停止記録だけから終了を推測しない。
 3. PRに各子を閉じる指示を記載し、`record-result` で子の成果物欄にPRと検証結果を残す。
    `reconcile` と `sync` で子⇔担当/branch/worktree⇔PRと全体進捗を照合する。
+   単独issueのworkerには自身の番号を使う。PR作成後の修正も自律親の `continue-worker` で同じsessionへ戻し、
+   終了・差分・テスト・PRの確認を省略しない。dshの明示指定はAGENTS.mdの規定に従う。
 
 ### 並列にしない理由と資源の扱い
 
@@ -121,7 +133,8 @@ merge後の子の自動closeと親進捗への反映を確認する。停止・�
 
 全体の受入条件、未解決の停止・人間判断、子の検証・PRの完了を照合する。
 チェック数だけを完了根拠にしない。全体が完了したら親へ証拠と残した改善候補を記録し、
-`release --ended` で担当を終了する。
+手動親は `release --ended` で担当を終了する。自律親は開発workflowの `workflow-report` で実merge/closeと証拠を照合し、
+4キーの最終イベントを返す。supervisorが子の終了と最終イベントを確認してから担当を終了する。
 
 ## 中断・引継ぎから再開する
 

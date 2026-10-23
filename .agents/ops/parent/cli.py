@@ -36,6 +36,10 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     root.add_argument("--repo", help="owner/repo; default: gh repo view")
     root.add_argument(
+        "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
+    )
+    root.add_argument("--dispatcher-state-dir", type=Path)
+    root.add_argument(
         "--parent",
         required=True,
         help="issue number or https://github.com/owner/repo/issues/N",
@@ -60,6 +64,20 @@ def parser() -> argparse.ArgumentParser:
         if command == "project-sync":
             project.add_argument("--event", choices=EVENTS, required=True)
             project.add_argument("--spec", required=True)
+    commands.add_parser("workflow-report").add_argument("--spec", required=True)
+    for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
+        worker = commands.add_parser(name)
+        worker.add_argument("--child", type=int, required=True)
+        if name in {"start-worker", "continue-worker"}:
+            worker.add_argument("--prompt-file", required=True)
+            worker.add_argument("--model", choices=("gpt-6.1-sol", "gpt-6-astra"))
+        if name == "start-worker":
+            worker.add_argument("--branch", required=True)
+            worker.add_argument("--worktree", type=Path, required=True)
+        if name == "continue-worker":
+            worker.add_argument("--evidence-file", required=True)
+        if name == "stop-worker":
+            worker.add_argument("--spec", required=True)
     inputs = commands.add_parser("basis-input")
     inputs.add_argument("--ignored-comments")
     inputs.add_argument("--context")
@@ -143,7 +161,23 @@ def main(argv: list[str] | None = None) -> int:
         )
         gh = GitHub(args.repo)
         parent = issue_number(args.parent, gh.repo)
-        with Store(state_directory()).locked() as store:
+        args.state_dir = (args.state_dir or state_directory()).resolve()
+        if args.command in {
+            "start-worker",
+            "continue-worker",
+            "inspect-worker",
+            "stop-worker",
+        }:
+            from .development import worker_command
+
+            worker_result = worker_command(
+                args, gh, parent, nonempty(identity, "parent identity")
+            )
+            print(
+                json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
+            )
+            return 0
+        with Store(args.state_dir).locked() as store:
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
@@ -198,6 +232,10 @@ def main(argv: list[str] | None = None) -> int:
                 result = session.checking()
             elif command == "note":
                 result = session.note(read_text(args.body_file))
+            elif command == "workflow-report":
+                from .development import load, report
+
+                result = report(session, load(Path(args.spec)))
             elif command == "agree":
                 result = session.agree(
                     read_object(args.spec), args.report, args.proposal
