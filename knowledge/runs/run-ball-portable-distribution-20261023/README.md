@@ -87,9 +87,24 @@ distribution_args=(
   "${distribution_args[@]}" --interrupt-largest
 .venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py \
   "${distribution_args[@]}" --max-files 3
-.venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py \
+DIST_TRANSFER_STAMP=$(date -u +%Y%m%dT%H%M%S)
+.venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/transfer_supervisor.py \
+  --detach --state "$DISTRIBUTION_RECEIPTS/supervisor-$DIST_TRANSFER_STAMP.json" \
+  --stdout "$PWD/tmp/distribution-upload-resume-$DIST_TRANSFER_STAMP.stdout.log" \
+  --stderr "$PWD/tmp/distribution-upload-resume-$DIST_TRANSFER_STAMP.stderr.log" -- \
+  .venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py \
   "${distribution_args[@]}"
 ```
+
+Before restarting, check that the previous supervisor and its command have exited;
+inspect the recorded boot ID, PID and process start token to avoid PID reuse.
+The original full attempt was interrupted when the model session ended, after
+962 payloads had logged successful verification. The resumed transfer uses a
+separate OS session and file-backed standard streams. Its supervisor keeps an
+atomic terminal receipt with the actual command return code. A running receipt
+whose process vanished is an interrupted attempt, not a successful completion.
+The dataset is complete only when the transfer's final `verified` attempt and
+full inventory also match; a supervisor return code alone is insufficient.
 
 The first invocation bounds one attempted upload with the Drive CLI's timeout.
 Its receipt distinguishes interruption from completion before the timeout; do not

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-23T08:14:17.097559+00:00",
+  "cause_source": "parent report",
+  "reported_error": "Selected model is at capacity",
+  "legacy_full_attempt": {
+    "status": "interrupted_without_terminal_receipt",
+    "verified_payloads_logged": 962,
+    "verified_payload_bytes_logged": 104028455770,
+    "owned_processes_remaining": false
+  },
+  "resume": {
+    "launcher": "subprocess.Popen(start_new_session=True, close_fds=True)",
+    "supervisor_pid": 1122192,
+    "supervisor_session_id": 1122192,
+    "supervisor_process_group_id": 1122192,
+    "state": "tmp/ball-distribution-transfer/supervisor-20261023T080913.json",
+    "stdout": "tmp/distribution-upload-resume-20261023T080913.stdout.log",
+    "stderr": "tmp/distribution-upload-resume-20261023T080913.stderr.log",
+    "status": "rehashing_before_fresh_inventory"
+  }
+}

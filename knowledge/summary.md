@@ -1,4 +1,4 @@
-<!-- knowledge-review: 5a79d50c9cd8ffa7a356678c1c7ab2873c637775638eb6abf1334e813a23d15a on 2026-10-23 -->
+<!-- knowledge-review: 266027f40fd4b90b90f4f193666f3df5846496c7eb82fd2473b4313e04965934 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -325,6 +325,7 @@ validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きo
 合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
 既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
 Driveへの全量uploadと2台のColab VMでの取得・検証は進行中。窓側はstore相対の原注釈pathをresolverで解決する必要がある。
+長時間uploadはモデルsession終了による中断を経験したため、receiptを再照合し、独立したOS sessionで再開している。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。

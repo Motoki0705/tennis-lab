@@ -69,6 +69,11 @@ test 9窓）で教師入力・原Chat注釈・JPEG・RGB・native PTSが元snaps
 同梱catalog・interval・packのindexは元snapshotの番号のままなので、clip IDと配布manifestの対応表でjoinする。
 
 Driveへの初回全量uploadと2台のColab VMの実測は進行中であり、完了receiptで確定する。
+最初の全量転送は962 shard・約104.03 GBの照合後、親の報告によるモデルcapacityエラーで
+sessionとともに終了した。全量成功のterminal receiptはなく、成功完了とは扱わない。
+[中断と再開の記録](../../runs/run-ball-portable-distribution-20261023/session-interruption.json)に従い、
+新しいOS sessionへ転送を切り離して再開した。元ファイルの再hashと新しいDrive inventoryで
+保持するファイルを決め、監督処理はPIDの起動識別子と実コマンドの終了コードを別receiptへ保存する。
 CPU runtimeを指定できない事前調査に対し、親からL4の例外許可を得た。
 これは今回の照合に限定した判断で、skill変更や学習実行の許可ではない。
 固定testのuploadは最終評価時へ回し、今回はtrain/validationの転送・再取得・検証を優先する。
