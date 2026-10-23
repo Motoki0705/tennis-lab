@@ -47,6 +47,7 @@ def main() -> None:
         raise ValueError("Evaluation must use the training artifact's saved JPEG decoder/version and precision")
     manifest = json.loads(args.manifest.read_text())
     if (manifest["ball_store"] != training["data"]["snapshot"]
+            or {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in manifest["clips"]} != training["data"]["rgb_shards_sha256"]
             or any(manifest["summaries"][split][key] != digest
                    for split, identities in training["data"]["summaries"].items() for key, digest in identities.items())):
         raise ValueError("Evaluation snapshot/common sets differ from the training artifact")

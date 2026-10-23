@@ -92,8 +92,11 @@ def _data_recipe(train: FrozenBallWindowDataset, validation: FrozenBallWindowDat
             raise ValueError("Train and evaluation manifests disagree on the common frame/teacher/pack sets")
     if train.manifest["ball_store"] != validation.manifest["ball_store"]:
         raise ValueError("Train and validation must reference the same immutable snapshot")
+    rgb = {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in train.manifest["clips"]}
+    if rgb != {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in validation.manifest["clips"]}:
+        raise ValueError("Train and validation RGB shard identities differ")
     splits = {clip.clip_id: clip.split for clip in train.store.clips}
-    return dict(snapshot=train.manifest["ball_store"], summaries=summaries, splits=splits,
+    return dict(snapshot=train.manifest["ball_store"], rgb_shards_sha256=rgb, summaries=summaries, splits=splits,
                 split_sha256=hashlib.sha256(json_bytes(splits)).hexdigest())
 
 

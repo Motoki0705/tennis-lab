@@ -32,7 +32,7 @@ from tests.support.tasks.ball_detection.temporal_heatmap import (
 
 @pytest.fixture
 def prepared(tmp_path: Path) -> Path:
-    return prepare_fixture(tmp_path)
+    return Path(prepare_fixture(tmp_path))
 
 
 def train(prepared: Path, output: Path, architecture: str, *, frames: int = 32, **kwargs: Any) -> dict[str, Any]:
@@ -171,3 +171,13 @@ def test_pretraining_cannot_change_t_and_finetuning_needs_explicit_parent(prepar
     with pytest.raises(ValueError, match="initial heatmap artifact"):
         train(prepared, tmp_path / "bad", "dpt", frames=64)
     assert not (tmp_path / "bad").exists()
+
+
+def test_train_and_validation_must_pin_the_same_rgb_contents(prepared: Path, tmp_path: Path) -> None:
+    raw = json.loads((prepared / "evaluation_T32.json").read_text())
+    raw["clips"][0]["rgb_shard_sha256"] = "0" * 64
+    changed = tmp_path / "changed-evaluation.json"
+    changed.write_text(json.dumps(raw))
+    with pytest.raises(ValueError, match="RGB shard identities differ"):
+        train(prepared, tmp_path / "bad-rgb", "dpt", evaluation_manifest=changed)
+    assert not (tmp_path / "bad-rgb").exists()
