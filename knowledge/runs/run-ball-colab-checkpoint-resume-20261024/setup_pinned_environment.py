@@ -33,6 +33,9 @@ def main() -> None:
         url, "--output", str(installer),
     ], check=True)
     environment = dict(os.environ, UV_UNMANAGED_INSTALL=str(args.tool_dir))
+    # Colab's UV_INSTALL_DIR takes precedence over the unmanaged destination.
+    for name in ("UV_INSTALL_DIR", "CARGO_DIST_FORCE_INSTALL_DIR"):
+        environment.pop(name, None)
     with (args.receipts / "installer.log").open("wb") as log:
         subprocess.run(["sh", str(installer)], env=environment, stdout=log, stderr=log, check=True)
     uv = args.tool_dir / "uv"
