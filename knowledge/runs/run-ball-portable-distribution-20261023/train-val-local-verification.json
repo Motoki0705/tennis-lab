@@ -1,0 +1,11 @@
+{
+  "clips": 1537,
+  "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+  "files": 2926,
+  "frames": 903807,
+  "mode": "source_payloads",
+  "schema_version": 1,
+  "size_bytes": 157029428456,
+  "status": "verified",
+  "version": "ball-mix1800-720p-all-frame-train-val-v1"
+}

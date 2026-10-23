@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4a8da288ee61c7ca14aa10216439b8c5fe1f59e115d12cf1a0b98989bee429d4 on 2026-10-23 -->
+<!-- knowledge-review: 5a79d50c9cd8ffa7a356678c1c7ab2873c637775638eb6abf1334e813a23d15a on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -320,6 +320,12 @@ validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きo
 共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
 可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
 長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+
+2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
+合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
+既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
+Driveへの全量uploadと2台のColab VMでの取得・検証は進行中。窓側はstore相対の原注釈pathをresolverで解決する必要がある。
+精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "not_started",
+  "owned_session_allocated": false,
+  "remote_verification_completed": false,
+  "observed_at": "2026-10-23T01:23:08.217500+00:00",
+  "doctor_after_local_work": {
+    "schema_version": 1,
+    "ok": true,
+    "version": "Version: 0.7.4",
+    "usage": "[colab] A new version of Colab CLI is available: 0.7.5 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\nCurrent balance: 358.73 compute units\nUsage rate: 0.00/hr\nActive assignments: 0"
+  },
+  "active_assignments_observed": 0,
+  "reason": "CPU runtime required for verification; the current skill supports GPU runtimes only. Parent decision on an L4 exception is outstanding. No session was started, so no stop command was issued."
+}
