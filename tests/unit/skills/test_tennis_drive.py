@@ -67,6 +67,28 @@ def test_duplicate_ancestor_stops_before_descending(
     assert len(calls) == 1
 
 
+def test_failed_session_start_reaps_process_and_hides_diagnostics(
+    modules: tuple[ModuleType, ModuleType],
+    backend: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    core, _ = modules
+    processes = []
+    popen = core.subprocess.Popen
+
+    def start(*args: Any, **kwargs: Any) -> Any:
+        process = popen(*args, **kwargs)
+        processes.append(process)
+        return process
+
+    monkeypatch.setattr(core.subprocess, "Popen", start)
+    # The fixture executable is Python, so it rejects the rclone arguments.
+    with pytest.raises(core.DriveToolError, match="diagnostics withheld") as error:
+        core.RcloneSession(backend)
+    assert len(processes) == 1 and processes[0].poll() is not None
+    assert "config" not in str(error.value)
+
+
 def test_duplicate_leaf_is_not_silently_collapsed_in_verification(
     modules: tuple[ModuleType, ModuleType],
     monkeypatch: pytest.MonkeyPatch,

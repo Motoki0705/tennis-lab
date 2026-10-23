@@ -67,6 +67,87 @@ def drive_module(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     return importlib.import_module("drive")
 
 
+def test_session_reuses_one_process_and_copy_never_overwrites_existing_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, drive_module: ModuleType
+) -> None:
+    core = importlib.import_module("drive_core")
+    executable = shutil.which("rclone")
+    if executable is None:
+        pytest.skip("rclone executable required for isolated session integration")
+    config = tmp_path / "session.conf"
+    config.write_text("[fixture]\ntype = local\n")
+    backend = core.RcloneBackend(
+        remote_root="fixture:project",
+        executable=executable,
+        config_path=config,
+        timeout=10,
+    )
+    starts = []
+    real_popen = core.subprocess.Popen
+
+    def popen(*args, **kwargs):
+        starts.append(args[0])
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(core.subprocess, "Popen", popen)
+    source, destination = tmp_path / "source", tmp_path / "destination"
+    source.write_bytes(b"frozen")
+    with core.RcloneSession(backend) as session:
+        process = session.process
+        assert session.url.startswith("http://127.0.0.1:")
+        params = {
+            "srcFs": str(tmp_path),
+            "srcRemote": source.name,
+            "dstFs": str(tmp_path),
+            "dstRemote": destination.name,
+            "_config": {
+                "Immutable": True,
+                "IgnoreExisting": True,
+                "IgnoreChecksum": True,
+                "IgnoreSize": True,
+            },
+        }
+        session.call("operations/copyfile", **params)
+        session.call("operations/copyfile", **params)
+        assert destination.read_bytes() == b"frozen"
+        source.write_bytes(b"change")
+        session.call("operations/copyfile", **params)
+        assert destination.read_bytes() == b"frozen"
+        with pytest.raises(core.DriveToolError, match="diagnostics withheld") as error:
+            session.call("operations/stat", fs="not_configured:", remote="secret-name")
+        assert "secret-name" not in str(error.value)
+        assert session.process is process
+    assert process.poll() is not None
+    assert len(starts) == 1
+    assert "127.0.0.1:0" in starts[0]
+    with pytest.raises(core.DriveToolError, match="closed"):
+        session.call("rc/noop")
+
+
+def test_session_stops_its_process_when_caller_fails(
+    tmp_path: Path, drive_module: ModuleType
+) -> None:
+    core = importlib.import_module("drive_core")
+    executable = shutil.which("rclone")
+    if executable is None:
+        pytest.skip("rclone executable required for isolated session integration")
+    config = tmp_path / "session.conf"
+    config.write_text("[fixture]\ntype = local\n")
+    backend = core.RcloneBackend(
+        remote_root="fixture:project",
+        executable=executable,
+        config_path=config,
+        timeout=10,
+    )
+    with (
+        pytest.raises(RuntimeError, match="caller failed"),
+        core.RcloneSession(backend) as session,
+    ):
+        process = session.process
+        raise RuntimeError("caller failed")
+    assert process.poll() is not None
+
+
 def test_transfer_verify_relocate_and_inventory(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
     tmp_path: Path,

@@ -159,13 +159,15 @@ def test_validate_passes_the_explicit_version_and_checks_images(
 def test_fetch_passes_explicit_drive_path_and_request_to_cpu_recovery(
     tmp_path, monkeypatch, capsys
 ):
+    from contextlib import nullcontext
+
     remote = object()
     output = tmp_path / "recovered"
     drive_path = "data/synthetic_data_generation/court-scale/fixture"
 
     def drive(path):
         assert path == drive_path
-        return remote
+        return nullcontext(remote)
 
     def fetch(root, received, *, request_sha256):
         assert root == output and received is remote

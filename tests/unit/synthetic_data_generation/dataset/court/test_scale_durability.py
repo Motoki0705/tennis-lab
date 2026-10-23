@@ -35,6 +35,7 @@ class Remote:
         self.uploaded = []
         self.fail_cache_ack = False
         self.fail_failure_ack = False
+        self.downloaded = []
 
     def exists(self, relative):
         return (self.root / relative).exists()
@@ -58,9 +59,22 @@ class Remote:
             "verified": True,
         }
 
-    def get(self, relative, local):
+    def verify(self, local, relative):
+        if (self.root / relative).read_bytes() != local.read_bytes():
+            raise ValueError("immutable remote conflict")
+        return {
+            "path": relative,
+            "id": f"fixture-{file_sha256(local)}",
+            "verified": True,
+        }
+
+    def get(self, relative, local, *, missing_ok=False):
         assert not local.exists()
+        if missing_ok and not self.exists(relative):
+            return False
         shutil.copyfile(self.root / relative, local)
+        self.downloaded.append(relative)
+        return True
 
 
 class Telemetry:
@@ -181,6 +195,8 @@ def test_vm_loss_after_ack_restores_and_never_redraws_completed_cache(frozen, tm
     assert version_path is not None
     assert set(before.ids).isdisjoint(after.ids)
     assert resumed.events[0]["reused"] and resumed.events[0]["restored_from_drive"]
+    input_receipt = publication.read_json(remote.root / "receipts/request.json")
+    assert remote.downloaded.count(input_receipt["archive_path"]) == 1
     assert all(
         (recovered / "cache-metrics" / name).read_bytes() == raw
         for name, raw in first_metrics.items()

@@ -11,6 +11,13 @@
 選択した設定の絶対pathを返す。設定未指定のエラーでは `null` になる。
 内容は表示せず、認証手順は [authentication.md](authentication.md) を参照する。
 
+多数の小さな不変ファイルを扱う呼出元は、`drive_core.RcloneSession(backend)`を
+context managerとして使える。同じ明示設定で、認証付き・loopback限定の`rcd`を1つ
+起動し、`call(endpoint, **parameters)`でRC APIを呼ぶ。正常終了・例外の双方で停止する。
+これは接続の再利用だけを担当し、path・重複・ID・内容hash・上書き防止・完了確認は
+呼出元が保証する。RCの`copyfile`は`Immutable`だけでは既存先を保護しないため、
+`IgnoreExisting`と転送後の新鮮な内容照合を組み合わせる。既定CLIの動作は変更しない。
+
 ```bash
 export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.conf"
 ```

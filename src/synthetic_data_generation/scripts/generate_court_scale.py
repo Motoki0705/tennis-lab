@@ -265,40 +265,40 @@ def main() -> None:
             raise ValueError(
                 "Colab durability requires exactly one frozen production request."
             )
-        remote = SkillDriveFiles(args.drive_path)
-        if args.command == "fetch":
-            path = fetch_completed_dataset(
-                root, remote, request_sha256=args.request_sha256
+        with SkillDriveFiles(args.drive_path) as remote:
+            if args.command == "fetch":
+                path = fetch_completed_dataset(
+                    root, remote, request_sha256=args.request_sha256
+                )
+                print(f"verified Drive dataset {path}", flush=True)
+                return
+            request_path = (
+                args.request[0]
+                if args.request is not None
+                else restore_inputs(root, remote, request_sha256=args.request_sha256)
             )
-            print(f"verified Drive dataset {path}", flush=True)
-            return
-        request_path = (
-            args.request[0]
-            if args.request is not None
-            else restore_inputs(root, remote, request_sha256=args.request_sha256)
-        )
-        request_value = read_json(request_path)
-        if request_value["schema"] != PRODUCTION_REQUEST_SCHEMA:
-            raise ValueError(
-                "Colab generation requires an explicit production recipe request."
+            request_value = read_json(request_path)
+            if request_value["schema"] != PRODUCTION_REQUEST_SCHEMA:
+                raise ValueError(
+                    "Colab generation requires an explicit production recipe request."
+                )
+            telemetry = NvidiaL4Telemetry()
+            colab_backend = ColabNHTRenderer(root, fingerprint=request_value["renderer"])
+            generation = DurableGeneration(
+                root,
+                request_path,
+                remote,
+                telemetry,
+                retry_staging=args.retry_staging,
+                stop_after_caches=args.stop_after_caches,
             )
-        telemetry = NvidiaL4Telemetry()
-        colab_backend = ColabNHTRenderer(root, fingerprint=request_value["renderer"])
-        generation = DurableGeneration(
-            root,
-            request_path,
-            remote,
-            telemetry,
-            retry_staging=args.retry_staging,
-            stop_after_caches=args.stop_after_caches,
-        )
-        version_path = generation.run(colab_backend)
-        print(
-            f"published Drive dataset {version_path}"
-            if version_path is not None
-            else "interrupted after verified Drive acknowledgement; no dataset version published",
-            flush=True,
-        )
+            version_path = generation.run(colab_backend)
+            print(
+                f"published Drive dataset {version_path}"
+                if version_path is not None
+                else "interrupted after verified Drive acknowledgement; no dataset version published",
+                flush=True,
+            )
         return
     if args.command == "render":
         paths = []

@@ -78,7 +78,7 @@ def restore_inputs(root: Path, remote: RemoteFiles, *, request_sha256: str) -> P
     ):
         raise ValueError("Invalid durable input inventory.")
     store.restore(receipt)
-    request_path = contained(root, request_relative)
+    request_path: Path = contained(root, request_relative)
     if (
         file_sha256(request_path) != request_sha256
         or sorted(_input_files(root, request_path)) != receipt["files"]
@@ -91,8 +91,15 @@ def _cache_receipt(key: str) -> str:
     return f"receipts/caches/{key}.json"
 
 
-def _restore_cache(store: BundleStore, key: str, request_sha: str) -> dict[str, Any]:
-    receipt = store.receipt(_cache_receipt(key))
+def _restore_cache(
+    store: BundleStore,
+    key: str,
+    request_sha: str,
+    *,
+    receipt: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if receipt is None:
+        receipt = store.receipt(_cache_receipt(key))
     if receipt is None:
         raise ValueError(f"Drive has no acknowledged cache: {key}.")
     _check_receipt(receipt, kind="cache", cache_key=key, request_sha256=request_sha)
@@ -133,7 +140,7 @@ def fetch_completed_dataset(
     ):
         raise ValueError("Invalid durable publication inventory.")
     store.restore(receipt)
-    version_path = contained(root, version_name)
+    version_path: Path = contained(root, version_name)
     if file_sha256(version_path) != receipt["dataset_version_sha256"]:
         raise ValueError("Drive dataset-version hash mismatch.")
     version = read_json(version_path)
@@ -169,7 +176,9 @@ def _storage_bytes(root: Path, completion: dict[str, Any]) -> dict[str, int]:
 
 
 def _metrics(root: Path, context: RenderCacheContext) -> dict[str, Any]:
-    value = read_json(contained(root, f"cache-metrics/{context.cache_key}.json"))
+    value: dict[str, Any] = read_json(
+        contained(root, f"cache-metrics/{context.cache_key}.json")
+    )
     if (
         value.get("schema") != "court_scale_cache_metrics_v1"
         or value.get("cache") != asdict(context)
@@ -329,10 +338,11 @@ class DurableGeneration:
                 },
             )
             self._save_failed_staging(archive_path, key)
-        self.restored = self.store.remote.exists(_cache_receipt(key))
+        receipt = self.store.receipt(_cache_receipt(key))
+        self.restored = receipt is not None
         self.restored_receipt = None
         if self.restored:
-            receipt = _restore_cache(self.store, key, self.sha)
+            receipt = _restore_cache(self.store, key, self.sha, receipt=receipt)
             _check_receipt(receipt, cache=asdict(context))
             _metrics(self.root, context)
             self.restored_receipt = receipt

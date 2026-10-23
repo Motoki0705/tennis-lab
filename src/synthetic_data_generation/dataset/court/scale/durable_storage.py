@@ -1,12 +1,11 @@
-"""Verified immutable bundles through the tennis-drive skill's public CLI."""
+"""Verified immutable bundles through the tennis-drive skill's session library."""
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
-import json
 import os
 import shutil
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -19,6 +18,7 @@ from src.utils.data.image_record_store import file_sha256
 from src.utils.paths import PROJECT_ROOT
 
 from .core import canonical_bytes
+from .drive_folders import DriveFolders
 from .publication import read_json
 
 
@@ -29,7 +29,9 @@ class RemoteFiles(Protocol):
 
     def put(self, local: Path, relative: str) -> dict[str, Any]: ...
 
-    def get(self, relative: str, local: Path) -> None: ...
+    def get(self, relative: str, local: Path, *, missing_ok: bool = False) -> bool: ...
+
+    def verify(self, local: Path, relative: str) -> dict[str, Any]: ...
 
 
 def relative_path(value: str) -> str:
@@ -45,11 +47,13 @@ def relative_path(value: str) -> str:
 
 
 class SkillDriveFiles:
-    """No overwrite, deletion, or independent rclone command construction."""
+    """Immutable files over one skill-library session, scoped to one attempt."""
 
     def __init__(self, drive_path: str) -> None:
         self.drive_path = relative_path(drive_path)
-        if not self.drive_path.startswith("data/synthetic_data_generation/court-scale/"):
+        if not self.drive_path.startswith(
+            "data/synthetic_data_generation/court-scale/"
+        ):
             raise ValueError(
                 "Choose a new generated dataset path under data/synthetic_data_generation/court-scale/."
             )
@@ -71,60 +75,124 @@ class SkillDriveFiles:
         self.remote_root = os.environ.get(
             "TENNIS_LAB_DRIVE_REMOTE", core.DEFAULT_REMOTE_ROOT
         )
-        self.backend = core.RcloneBackend(
+        backend = core.RcloneBackend(
             remote_root=self.remote_root,
             executable=os.environ.get("RCLONE_BIN", "rclone"),
             config_path=Path(config),
         )
+        self.session = core.RcloneSession(backend)
+        self.folders = DriveFolders(self.session, self.remote_root)
+
+    def __enter__(self) -> SkillDriveFiles:
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
+
+    def close(self) -> None:
+        try:
+            self.folders.close()
+        finally:
+            self.session.close()
 
     def _path(self, relative: str) -> str:
         return f"{self.drive_path}/{relative_path(relative)}"
 
-    def _call(self, *args: str) -> dict[str, Any]:
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(self.script),
-                "--remote-root",
-                self.remote_root,
-                *args,
-            ],
-            check=True,
-            text=True,
-            stdout=subprocess.PIPE,
-        )
-        value = json.loads(result.stdout)
-        if not isinstance(value, dict) or value.get("schema_version") != 1:
-            raise ValueError("Unexpected tennis-drive CLI result schema.")
-        return value
-
     def exists(self, relative: str) -> bool:
-        return self.backend.resolve(self._path(relative), must_exist=False) is not None
+        found = self.folders.lookup(self._path(relative))
+        return found is not None and found[1] is not None
+
+    @staticmethod
+    def _content(local: Path) -> tuple[int, str]:
+        if local.is_symlink() or not local.is_file():
+            raise ValueError("Drive transfer requires an ordinary local file.")
+        digest = hashlib.md5(usedforsecurity=False)
+        with local.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return local.stat().st_size, digest.hexdigest()
+
+    @staticmethod
+    def _check(entry: dict[str, Any] | None, content: tuple[int, str]) -> None:
+        if entry is None or entry.get("IsDir") or not entry.get("ID"):
+            raise ValueError("Drive file is absent or has no file identity.")
+        hashes = {k.lower(): v.lower() for k, v in entry.get("Hashes", {}).items()}
+        if not hashes.get("md5"):
+            raise ValueError("Drive file has no content hash; cannot acknowledge it.")
+        if (entry.get("Size"), hashes["md5"]) != content:
+            raise ValueError(
+                "Drive bytes conflict with the immutable output (size/hash)."
+            )
+
+    def verify(self, local: Path, relative: str) -> dict[str, Any]:
+        content = self._content(local)
+        found = self.folders.lookup(self._path(relative))
+        entry = found[1] if found else None
+        self._check(entry, content)
+        assert entry is not None
+        return {"path": self._path(relative), "id": entry["ID"], "verified": True}
 
     def put(self, local: Path, relative: str) -> dict[str, Any]:
-        path = self._path(relative)
-        if self.exists(relative):
-            result = self._call("verify", str(local), path, "--download")
-            if result.get("matches") is not True:
-                raise ValueError(
-                    "Existing Drive bytes conflict with the immutable output."
-                )
+        content = self._content(local)
+        found = self.folders.lookup(self._path(relative), create_parents=True)
+        assert found is not None
+        parent_fs, before = found
+        if before is not None:
+            self._check(before, content)
         else:
-            result = self._call("upload", str(local), path, "--verify")
-            if (
-                result.get("status") != "completed"
-                or result.get("verified") is not True
-            ):
-                raise ValueError("Drive upload was not verified.")
-        info = self._call("inspect", path, "--metadata-only")
-        if not info.get("id"):
-            raise ValueError("Drive did not return an output file ID.")
-        return {"path": path, "id": info["id"], "verified": True}
+            self.session.call(
+                "operations/copyfile",
+                srcFs=str(local.resolve().parent),
+                srcRemote=local.name,
+                dstFs=parent_fs,
+                dstRemote=PurePosixPath(relative).name,
+                # IgnoreExisting protects the preflight-to-copy race. Success
+                # alone is not acknowledgement: the fresh readback below must
+                # still match. Immutable alone does not guard RC copyfile.
+                # Rclone's post-copy mismatch cleanup deletes its destination.
+                # Keep failed objects for diagnosis; our readback owns both checks.
+                _config={
+                    "Immutable": True,
+                    "IgnoreExisting": True,
+                    "IgnoreChecksum": True,
+                    "IgnoreSize": True,
+                },
+            )
+        result = self.verify(local, relative)
+        if self._content(local) != content:
+            raise ValueError("Local file changed during immutable put.")
+        if before is not None and result["id"] != before["ID"]:
+            raise ValueError("Drive file ID changed during immutable put.")
+        return result
 
-    def get(self, relative: str, local: Path) -> None:
-        result = self._call("download", self._path(relative), str(local), "--verify")
-        if result.get("status") != "completed" or result.get("verified") is not True:
-            raise ValueError("Drive download was not verified.")
+    def get(self, relative: str, local: Path, *, missing_ok: bool = False) -> bool:
+        if local.exists() or local.is_symlink():
+            raise ValueError("Drive download destination must be new.")
+        found = self.folders.lookup(self._path(relative))
+        if found is None or found[1] is None:
+            if missing_ok:
+                return False
+            raise ValueError("Drive file does not exist.")
+        parent_fs, before = found
+        assert before is not None
+        self.session.call(
+            "operations/copyfile",
+            srcFs=parent_fs,
+            srcRemote=PurePosixPath(relative).name,
+            dstFs=str(local.absolute().parent),
+            dstRemote=local.name,
+            _config={
+                "Immutable": True,
+                "IgnoreExisting": True,
+                "IgnoreChecksum": True,
+                "IgnoreSize": True,
+            },
+        )
+        self._check(before, self._content(local))
+        after = self.verify(local, relative)
+        if after["id"] != before["ID"]:
+            raise ValueError("Drive file ID changed during download.")
+        return True
 
 
 def tree_files(root: Path, directory: Path) -> list[str]:
@@ -152,12 +220,11 @@ class BundleStore:
         self.scratch.mkdir(parents=True, exist_ok=True)
 
     def receipt(self, relative: str) -> dict[str, Any] | None:
-        if not self.remote.exists(relative):
-            return None
         with tempfile.TemporaryDirectory(dir=self.scratch) as temporary:
             local = Path(temporary) / "receipt.json"
-            self.remote.get(relative, local)
-            value = read_json(local)
+            if not self.remote.get(relative, local, missing_ok=True):
+                return None
+            value: dict[str, Any] = read_json(local)
         if value.get("schema") != "court_scale_durable_bundle_v1":
             raise ValueError("Unknown durable bundle receipt schema.")
         return value
@@ -198,7 +265,9 @@ class BundleStore:
                     raise ValueError(
                         "Existing durable receipt conflicts with local bytes."
                     )
-                self.restore(previous)
+                # The reconstructed archive already matches the pinned SHA-256.
+                # Verify remote content afresh without downloading it a second time.
+                self.remote.verify(archive, value["archive_path"])
                 return previous
             value["archive_drive"] = self.remote.put(archive, value["archive_path"])
             value["verified_at"] = datetime.now(UTC).isoformat()
