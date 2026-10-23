@@ -146,6 +146,7 @@ def evaluate_temporal_heatmap(
             raise ValueError("Validation calibration does not match this artifact, target set or decoding runtime")
     report = dict(schema=EVALUATION_SCHEMA, split=split, artifact_sha256=artifact_sha256,
                   manifest_sha256=dual_sha256(manifest), snapshot=dataset.manifest["ball_store"],
+                  rgb_shards_sha256={r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in dataset.manifest["clips"]},
                   model_config=asdict(model.config), model_kind=heatmap_model_kind(model.config),
                   runtime=asdict(runtime), image_decode=jpeg_decoder_contract(runtime.jpeg_decoder),
                   calibration=calibration, identities=identities,

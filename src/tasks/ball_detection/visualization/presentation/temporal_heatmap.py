@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str,
     for report in reports:
         if (report["schema"] != EVALUATION_SCHEMA or report["split"] != first["split"]
                 or report["identities"] != first["identities"] or report["snapshot"] != first["snapshot"]
+                or report["rgb_shards_sha256"] != first["rgb_shards_sha256"]
                 or report["image_decode"] != first["image_decode"] or report["runtime"]["precision"] != first["runtime"]["precision"]):
             raise ValueError("Compare evaluations on identical frames, teachers, snapshot, decoder and precision")
     store_root = Path(first["snapshot"]["directory"])
@@ -39,6 +41,8 @@ def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str,
         raise ValueError("Comparison snapshot identity changed")
     store = BallFrameStore(store_root)
     clip = store.clip_by_id(clip_id)
+    if dual_sha256(store.image_path(clip)) != first["rgb_shards_sha256"][clip_id]:
+        raise ValueError("Comparison RGB shard changed since evaluation")
     if clip.split != first["split"] or stop > clip.frame_count:
         raise ValueError("Comparison range leaves the evaluated split/clip")
     selected = []
@@ -61,7 +65,7 @@ def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str,
     height = max(2, round(clip.height * panel_width / clip.width / 2) * 2)
     draw = DrawStyle(gt_radius=4, pred_radius=4, thickness=1, gt_color_rgb=(0, 255, 0),
                      pred_color_rgb=(255, 140, 0), text_color_rgb=(245, 245, 245), muted_text_color_rgb=(170, 170, 170))
-    with VideoWriter(output, fps=float(clip.fps)) as writer:
+    with VideoWriter(output, fps=float(Fraction(clip.fps))) as writer:
         for frame in range(start, stop):
             rgb = store.read_bgr(store.row_of(clip, frame))[..., ::-1].copy()
             rgb = cv2.resize(rgb, (panel_width, height))

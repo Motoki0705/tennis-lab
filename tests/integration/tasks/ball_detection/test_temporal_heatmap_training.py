@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import replace
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ import torch
 
 from src.tasks.ball_detection.checkpoints.temporal_heatmap import initialize_finetuning
 from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
+from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.evaluation.temporal_heatmap import (
     evaluate_temporal_heatmap,
 )
@@ -32,7 +34,7 @@ from tests.support.tasks.ball_detection.temporal_heatmap import (
 
 @pytest.fixture
 def prepared(tmp_path: Path) -> Path:
-    return Path(prepare_fixture(tmp_path))
+    return Path(prepare_fixture(tmp_path, native_fps="30000/1001"))
 
 
 def train(prepared: Path, output: Path, architecture: str, *, frames: int = 32, **kwargs: Any) -> dict[str, Any]:
@@ -42,7 +44,8 @@ def train(prepared: Path, output: Path, architecture: str, *, frames: int = 32, 
                    budget=update_budget(), runtime=CoordinateRuntime(cpu_threads=1), device=torch.device("cpu"),
                    augmentation=None, distance_px=20.)
     options.update(kwargs)
-    return train_temporal_heatmap(**options)
+    result: dict[str, Any] = train_temporal_heatmap(**options)
+    return result
 
 
 def checkpoint(output: Path) -> dict[str, Any]:
@@ -114,6 +117,7 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
     capture = cv2.VideoCapture(str(video))
     assert capture.isOpened() and int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) == 8
     assert int(capture.get(cv2.CAP_PROP_FRAME_WIDTH)) == 328
+    assert capture.get(cv2.CAP_PROP_FPS) == pytest.approx(float(Fraction("30000/1001")), rel=1e-5)
     capture.release()
     with pytest.raises(ValueError, match="test requires"):
         evaluate_temporal_heatmap(model, prepared / "evaluation_T64.json", split="test", runtime=CoordinateRuntime(),
@@ -123,6 +127,15 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
             device=torch.device("cpu"), artifact_sha256="different-checkpoint", distance_px=20., calibration_report=val)
     with pytest.raises(ValueError, match="Resume recipe changed"):
         train(prepared, post, architecture, frames=128, resume=post / "checkpoint-update-00000003.pt")
+    store = BallFrameStore(Path(val["snapshot"]["directory"]))
+    shard = store.image_path(store.clip_by_id("tracknet/val/dense"))
+    payload = bytearray(shard.read_bytes())
+    payload[len(payload) // 2] ^= 1
+    shard.write_bytes(payload)
+    with pytest.raises(ValueError, match="RGB shard changed"):
+        render_temporal_heatmap_comparison(
+            [pre / "validation-update-00000003.json", post / "validation-update-00000003.json"],
+            clip_id="tracknet/val/dense", start=0, stop=8, output=tmp_path / "changed-rgb.mp4")
 
 
 def test_both_architectures_share_pack_draws_augmentation_and_input_budget(prepared: Path, tmp_path: Path) -> None:

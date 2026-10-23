@@ -1,6 +1,8 @@
 """Small complete-pack stores and explicit recipes for CPU/GPU diagnostics."""
 
+import json
 from dataclasses import asdict
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +17,7 @@ from src.tasks.ball_detection.training.temporal_heatmap.configuration import (
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
 
 
-def prepare_fixture(directory: Path) -> Path:
+def prepare_fixture(directory: Path, *, native_fps: str = "30") -> Path:
     root = directory / "store"
     for split in ("train", "val", "test"):
         frames = [frame(i, ball(xy=(10., 12.))) if i < 40 or i >= 96 else
@@ -24,6 +26,11 @@ def prepare_fixture(directory: Path) -> Path:
     # Three of the T=32 children have no teachers but must still be processed.
     sparse = [frame(i, ball(xy=(10., 12.))) if i == 5 else frame(i, annotated=False) for i in range(128)]
     write_store_clip(root, "tracknet/train/sparse", sparse, size=(24, 24))
+    metadata_path = root / "metadata.json"
+    metadata = json.loads(metadata_path.read_text())
+    for clip in metadata["clips"]:
+        clip.update(fps=native_fps, time_base=str(1 / Fraction(native_fps)))
+    metadata_path.write_text(json.dumps(metadata))
     prepared = directory / "prepared"
     prepare_all_frame_training(root, prepared, configs=[AllFrameWindowConfig(t) for t in (32, 64, 128)])
     return prepared
