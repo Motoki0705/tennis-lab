@@ -404,6 +404,7 @@ class CurveSequence:
             yield CandidateCurve(
                 ordinal,
                 {
+                    "replay_rule_version": "saved_preset_parameterization_v2",
                     "saved_trajectory": item.trajectory.to_dict(),
                     "saved_view": views[0].to_dict(),
                 },
@@ -414,10 +415,8 @@ class CurveSequence:
 
 
 def _orbit_curve(spec: OrbitTrajectorySpec, center: OrbitCenter) -> Curve:
-    # Remove circle orientation and irrelevant planar phase from physical identity.
-    angle = (
-        0.0 if spec.shape is OrbitShape.CIRCLE else spec.orientation_radians % math.pi
-    )
+    # Preserve the saved 3-D parameterization. New samples normalize at construction;
+    # duplicate identity is handled separately by Curve.physical_key().
     return Curve(
         "orbit",
         center.scene_from_center,
@@ -425,10 +424,10 @@ def _orbit_curve(spec: OrbitTrajectorySpec, center: OrbitCenter) -> Curve:
             "shape": spec.shape.value,
             "radius_x_m": spec.radius_x_m,
             "radius_y_m": spec.radius_y_m,
-            "orientation": angle,
+            "orientation": spec.orientation_radians,
             "height": spec.base_height_m,
             "amplitude": spec.vertical_amplitude_m,
-            "phase": 0.0 if spec.vertical_cycles == 0 else spec.vertical_phase_radians,
+            "phase": spec.vertical_phase_radians,
             "cycles": spec.vertical_cycles,
         },
         spec.center_court_instance_id,

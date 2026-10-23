@@ -8,8 +8,15 @@ from omegaconf import OmegaConf
 
 from src.synthetic_data_generation.alignment.contracts import MetricSceneAdapter
 from src.synthetic_data_generation.configuration import CourtDatasetConfiguration
+from src.synthetic_data_generation.dataset.court.components.camera_sampling.sampling import (
+    sample_uniform_arc_length,
+)
 from src.synthetic_data_generation.dataset.court.components.camera_sampling.selection import (
     build_court_dataset_plan,
+)
+from src.synthetic_data_generation.dataset.court.contracts import (
+    OrbitSamplingPolicy,
+    OrbitShape,
 )
 from src.synthetic_data_generation.dataset.court.scale.core import (
     GeometryRecipe,
@@ -21,7 +28,7 @@ from src.synthetic_data_generation.dataset.court.scale.planning import (
 from src.synthetic_data_generation.scene_contract import RigidTransform
 
 
-def inputs(method, captured_cameras, multi_court_layout):
+def inputs(method, captured_cameras, multi_court_layout, preset="sfm_bounded"):
     cameras = list(captured_cameras)
     for i, (x, y) in enumerate(
         ((-4, -4), (0, -4), (4, -4), (-4, 0), (0, 0), (4, 0), (-4, 4), (0, 4), (4, 4))
@@ -41,7 +48,7 @@ def inputs(method, captured_cameras, multi_court_layout):
         with initialize_config_dir(config_dir=str(config_dir), version_base=None):
             cfg = compose(
                 config_name="run_scene_pipeline",
-                overrides=["dataset/court=sfm_bounded"],
+                overrides=[f"dataset/court={preset}"],
             )
         config = CourtDatasetConfiguration.from_mapping(
             OmegaConf.to_container(cfg.dataset.court, resolve=True)
@@ -106,6 +113,64 @@ def test_every_method_retains_common_camera_target_and_projection(
                 == group.trajectory.to_dict()
             )
             assert candidate["provenance"]["saved_view"] == group.views[0].to_dict()
+            assert (
+                candidate["provenance"]["replay_rule_version"]
+                == "saved_preset_parameterization_v2"
+            )
+
+
+@pytest.mark.parametrize("preset", ["v3", "sfm_bounded"])
+def test_grid_replay_preserves_nonplanar_circle_xyz_at_every_arc_point(
+    preset, captured_cameras, multi_court_layout, identity_metric_adapter
+):
+    kwargs = inputs(
+        TrajectoryMethod.GRID_BUDGET_REPLAY,
+        captured_cameras,
+        multi_court_layout,
+        preset,
+    )
+    config = kwargs["replay_configuration"]
+    # Both legacy vertical frequencies must have a non-trivial saved phase.
+    config = replace(config, sampling=replace(config.sampling, seed=1))
+    kwargs["replay_configuration"] = config
+    original = build_court_dataset_plan(
+        scene_id="fixture",
+        profile="test",
+        cameras=kwargs["cameras"],
+        layout=multi_court_layout,
+        configuration=config,
+        metric_adapter=identity_metric_adapter,
+    )
+    policy = OrbitSamplingPolicy.from_configuration(config.sampling)
+    # Match the legacy arc table and counts so every stored camera is comparable.
+    kwargs["recipe"] = replace(
+        kwargs["recipe"],
+        arc_intervals=4096,
+        base_step_m=policy.max_arc_step_m,
+        minimum_points=policy.minimum_sample_count,
+        count_multiple=policy.sample_count_multiple,
+    )
+    replay = build_candidate_plan(
+        **kwargs, trajectory_count=len(original.groups), density_level=0
+    )
+    by_id = {g.trajectory.trajectory_id: g for g in original.groups}
+    checked = set()
+    for candidate in replay["trajectory_groups"]:
+        group = by_id[candidate["provenance"]["saved_trajectory"]["trajectory_id"]]
+        spec = group.trajectory
+        if spec.shape is not OrbitShape.CIRCLE or spec.vertical_amplitude_m == 0:
+            continue
+        if spec.orientation_radians == 0 or spec.vertical_phase_radians == 0:
+            continue
+        old_path = sample_uniform_arc_length(spec, group.center, policy)
+        positions = np.asarray(
+            [s["camera"]["camera_to_scene"] for s in candidate["samples"]]
+        ).reshape(-1, 4, 4)[:, :3, 3]
+        np.testing.assert_allclose(
+            positions, old_path.points_scene_m, rtol=0, atol=1e-9
+        )
+        checked.add(spec.vertical_cycles)
+    assert checked
 
 
 def test_method_requires_explicit_selection_and_no_fallback(
