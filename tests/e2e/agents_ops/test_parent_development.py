@@ -99,6 +99,7 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
 ) -> None:
     mod, session, env = workflow(d, monkeypatch)
     tree = child_tree(d)
+    env["PYTEST_LOCK"] = str(d.h.root / "shared-pytest.lock")
     result = mod.start_worker(
         session,
         d.schedule.directory,
@@ -123,8 +124,10 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
         assert record["contract"]["cwd"] == str(tree)
         assert record["contract"]["branch"] == "codex/parser"
         assert job["child"] == 1 and d.h.gh.parents == {}
-        assert "担当issue: #1" in (Path(job["directory"]) / "prompt.md").read_text()
-        assert "pytest_locked.sh" in (Path(job["directory"]) / "prompt.md").read_text()
+        prompt = (Path(job["directory"]) / "prompt.md").read_text()
+        assert "担当issue: #1" in prompt
+        assert "pytest_locked.sh" in prompt
+        assert f"PYTEST_LOCK: {env['PYTEST_LOCK']}" in prompt
         with d.h.store.locked():
             state = mod.inspect_worker(session, 1)
             assert state["termination_confirmed"] and state["task_success"] is None
@@ -329,6 +332,53 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     assert not (d.h.root / "runtime-calls.jsonl").exists()
 
 
+@pytest.mark.parametrize("change", ["requirements", "adoption"])
+def test_changed_inputs_after_delegation_keep_claim_but_do_not_reserve_runtime(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    mod, session, env = workflow(d, monkeypatch)
+    delegate = session.delegate
+
+    def changed(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        claim = cast(dict[str, Any], delegate(*args, **kwargs))
+        if change == "requirements":
+            d.h.gh.issues[1]["body"] += "\n## 追加の受入条件\n\n境界の検証を追加する。\n"
+        else:
+            report, bindings = adoption_source()
+            d.h.gh.issues[90] = {
+                **d.h.gh.issues[1],
+                "number": 90,
+                "id": 10090,
+                "body": report.replace("- [x] **", "- [ ] **"),
+                "labels": [{"name": "ops-report"}],
+            }
+            formats = importlib.import_module("issues")
+            d.h.gh.issues[1]["body"] = formats.bind_task(
+                d.h.gh.issues[1]["body"],
+                plan="a" * 64,
+                node="parser",
+                bindings=bindings,
+            )
+        return claim
+
+    monkeypatch.setattr(session, "delegate", changed)
+    with pytest.raises(ValueError, match="inputs changed|adoption"):
+        mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=1,
+            prompt="予約後も根拠を確認してから実装する。",
+            model=None,
+            branch="codex/parser",
+            worktree=child_tree(d),
+        )
+    row = d.row()
+    assert row["tasks"]["1"]["delegated"] is True
+    assert all(j["role"] == "parent" for j in row["dispatch"]["jobs"].values())
+    assert not (d.h.root / "runtime-calls.jsonl").exists()
+
+
 def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -417,14 +467,17 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
         assert session.launch_plan()["tasks"][0]["state"] == "continue"
 
 
-def test_explicit_state_path_and_waiting_report_keep_owner_and_use_note(
-    parent_env: ParentEnv,
+@pytest.mark.parametrize("state", ["waiting", "failed"])
+def test_explicit_state_path_and_report_keep_owner_and_use_note(
+    parent_env: ParentEnv, state: str
 ) -> None:
     p = parent_env
     p.agreed()
+    p.child("parser")
     actual = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
     alternate = p.root / "explicit-registry"
     shutil.copytree(actual, alternate)
+    reason = "CI待ち" if state == "waiting" else "検証失敗"
     response = p.cli(
         "--state-dir",
         str(alternate),
@@ -433,8 +486,8 @@ def test_explicit_state_path_and_waiting_report_keep_owner_and_use_note(
         p.spec(
             {
                 "schema_version": 1,
-                "state": "waiting",
-                "reason": "CI待ち",
+                "state": state,
+                "reason": reason,
                 "resume_condition": "CI完了の証拠で明示resume",
                 "evidence": "PR #100 のCIが未完了。",
             }
@@ -443,8 +496,8 @@ def test_explicit_state_path_and_waiting_report_keep_owner_and_use_note(
     )
     assert json.loads(response.stdout) == {
         "schema_version": 1,
-        "state": "waiting",
-        "reason": "CI待ち",
+        "state": state,
+        "reason": reason,
         "resume_condition": "CI完了の証拠で明示resume",
     }
     assert not (p.root / "unused-state").exists()
@@ -455,6 +508,21 @@ def test_explicit_state_path_and_waiting_report_keep_owner_and_use_note(
     )[-1]
     assert marker["event"] == "note"
     assert "human_confirmation" not in json.dumps(marker)
+    # Workflow progress must leave the agreement usable for the next action.
+    result = p.cli(
+        "--state-dir",
+        str(alternate),
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/parser",
+        "--worktree",
+        str(p.worktree("parser")),
+    )
+    assert json.loads(result.stdout)["action"] == "launch"
 
 
 def test_standalone_external_dependency_is_rechecked_without_a_fake_child(
@@ -577,7 +645,7 @@ def test_completed_report_requires_gate_real_merge_close_and_parent_verification
     assert len(g.review.calls()) == 1
 
 
-def bind_adoption(p: ParentEnv, target: int) -> None:
+def adoption_source() -> tuple[str, list[dict[str, Any]]]:
     props = importlib.import_module("opsreport.proposals")
     policy = importlib.import_module("parent.policy")
     proposal = props.Proposal(
@@ -599,6 +667,20 @@ def bind_adoption(p: ParentEnv, target: int) -> None:
         + "\n"
     )
     _, parsed = importlib.import_module("parent.proposals").parse_report(body)
+    return body, [
+        {
+            "source": {
+                "proposal_id": "R-20261019-01",
+                "report_number": 90,
+                "option": None,
+            },
+            "proposal_sha256": policy.digest(parsed[0].snapshot()),
+        }
+    ]
+
+
+def bind_adoption(p: ParentEnv, target: int) -> None:
+    body, bindings = adoption_source()
     state = p.state()
     state["issues"]["90"] = {
         **state["issues"]["1"],
@@ -612,16 +694,7 @@ def bind_adoption(p: ParentEnv, target: int) -> None:
         state["issues"][str(target)]["body"],
         plan="a" * 64,
         node="parser",
-        bindings=[
-            {
-                "source": {
-                    "proposal_id": "R-20261019-01",
-                    "report_number": 90,
-                    "option": None,
-                },
-                "proposal_sha256": policy.digest(parsed[0].snapshot()),
-            }
-        ],
+        bindings=bindings,
     )
     p.save(state)
 
@@ -634,6 +707,8 @@ def test_delegate_checks_context_adoption_on_parent_and_child(
     p.agreed()
     p.child("parser")
     bind_adoption(p, target)
+    if target == 1:
+        p.agreed()  # Freeze the fixture's provenance before revoking its adoption.
     state = p.state()
     state["issues"]["90"]["body"] = state["issues"]["90"]["body"].replace(
         "- [x] **", "- [ ] **"
@@ -662,6 +737,16 @@ def test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible(
     p = parent_env
     review = make_review_env(p, independent=True)
     bind_adoption(p, target)
+    if target == 1:
+        p.agreed()
+    for child in (10, 11, 12):
+        p.cli(
+            "record-result",
+            "--child",
+            str(child),
+            "--evidence-file",
+            p.note("出典を含む現在の要件で差分・テスト・PRを確認した。"),
+        )
     manifest = json.loads(
         p.cli(
             "review-prepare",

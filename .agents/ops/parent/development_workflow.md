@@ -57,6 +57,9 @@ continuation証拠には終了・既存PR/HEAD・差分確認・残る指摘・�
 同じbranch/worktree・現在の根拠/要件・正式関係・採用・停止・上限を再検査して新しいdelegation_idを予約し、
 dispatcherが前の最新runから同じsessionをresumeする。モデル省略時は前回の選択を保持し、変更指定は拒否する。
 旧runtimeの終了未確認・session欠落・設定不一致を新規sessionへ置換しない。
+runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態確認停止中断からの復旧) に従い、
+全子孫の回収根拠を `stop --cleanup-confirmation` へ渡してからsupervisorで終了を照合する。
+`stop-worker` の停止要求やPID/CLI groupの不在だけでは `cleanup_complete` を補わず、予約枠を保持する。
 
 `stop-worker --child N --spec tmp/stop.json` はparentのstopと同じ5項目specを使い、子への詳細・親進捗を記録してから、
 その子のruntimeだけへ停止要求する。親全体を止めず、依存子への保留と独立子の起動可能性を `launch_plan` で確認する。
@@ -101,7 +104,9 @@ CI・回帰テストと指摘解消を親が確認して既存の `parent_review
 
 ## 待機・完了・担当終了
 
-自由文は `note`、親進捗は `sync` を使う。最終イベントは同じstateで `workflow-report --spec tmp/report.json` を呼んで得る。
+自由文は `note --body-file`、親進捗は `sync` を使う。素の進捗コメントを人間の指示と自動分類しない。
+合意後の未分類コメントは [既存の分類手順](README.md#稼働中の親への移行) で確認する。
+最終イベントは同じstateで `workflow-report --spec tmp/report.json` を呼んで得る。
 specは追加キーなしの次のJSON（evidenceも非空）。CLIの最終JSONはdispatcherの4キー契約を維持する。
 
 ```json
@@ -117,18 +122,39 @@ dry-run結果、子の成功JSON、PR作成やチェック数だけではcomplet
 waiting/failedは担当を保持し、子終了イベントまたは理由付きの明示dispatcher resumeで同じ親sessionへ戻す。
 手動親は全体受入を確認後、従来の `release --ended` を使う。
 
-## Projectへの接続予定
+## Projectへの節目の反映
 
-Project機能のmerge後、担当親が次の節目でparent CLIの `project-sync --event EVENT --spec FILE` を明示呼出しする。
-このcheckoutはProjectコードに依存せず、呼出しはまだ行わない。spec・apply・表示項目の正本はProject機能のREADME。
+Project機能を含む統合checkoutで、担当親が以下の節目ごとにparent CLIを明示呼出しする。
+Projectの導入・権限・初期登録を [Project README](../project_progress/README.md#導入更新の入口) で確認する。
+初期登録前は `--event initial` で正式な親と全子孫を指定し、子の追加時も未登録の全issueをspecへ含める。
+未導入・権限不足・更新失敗は理由と次の対応を `note` に残し、Project更新済みと扱わない。
 
-| workflowの節目 | event | 確認する事実 |
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
+  --state-dir "$parent_state" project-sync --event pr --spec tmp/project-pr.json --dry-run
+# 計画を照合して同じevent/specに --apply を指定する。省略時はdry-run。
+```
+
+`tmp/project-pr.json` の例（PR番号は単一の整数）:
+
+```json
+{"schema_version":1,"items":[{"issue":124,"stage":"レビュー中","wait_reason":"","next_action":"親が差分・テストを照合してレビュー対象を固定する","pr":200}]}
+```
+
+CLI共通引数はサブコマンドの前、`--event` / `--spec` / `--apply` は後。
+各itemは `issue/stage/wait_reason/next_action` を持ち、親の行（単独issueを含む）には `acceptance` も必須。
+`pr` はpr/mergeイベントだけに付け、`--prs` や配列は渡さない。specの正本はProject README。
+
+| workflowの節目 | event | specに反映する事実 |
 |---|---|---|
-| 引受・委任予約後 | start | 担当・起動対象・次の作業 |
-| 親がPRと検証結果を受領 | pr | PR作成と親の受入待ちを区別 |
-| 子停止・CI待ち・権限/情報不足 | stop | 作業段階を保持して待ち理由・再開条件を表示 |
-| 解除証拠を記録し継続 | resume | 解消した待ち理由と次の作業 |
-| 実mergeと子close確認 | merge | PR merge・子完了を親受入と分離 |
-| 全体受入・workflow-report completed | accept | 親が確認した受入証拠 |
+| 引受・委任予約後 | start | openの対象を `stage: 作業中`、親の受入は未確認のまま |
+| 親がPRと検証結果を受領 | pr | 関連open PRを `pr: 200`、`stage: レビュー中` |
+| 子停止・CI待ち・権限/情報不足 | stop | 既存stageを維持し、非空のwait_reasonと次の対応 |
+| 解除証拠を記録し継続 | resume | 既存stageを維持し、`wait_reason: ""` で解除 |
+| 実mergeと子close確認 | merge | 関連merged PR番号をprへ。closed/completedの子は完了、親は受入待ち |
+| 全体受入・最終イベントを返す前 | accept | 親だけ `stage: 完了, acceptance: 受入済み, wait_reason: ""`。全体受入の証拠はworkflow-reportへ |
 
-更新責任は担当親。定期PMは読み取り専用を維持し、Projectを別の担当台帳にしない。
+単独issueのmergeでも親行の受入待ちと全体受入を区別する。子PRだけを閉じるmergeイベントでは、
+関連PRのない親をitemsへ追加しない。親の集計はProject側が更新する。
+自律親はactiveの間にacceptのProject更新とworkflow-reportを終え、その4キーJSONを最終文にする。
+更新責任は担当親。定期PMは読み取り専用を維持する。Projectは担当・実行枠・実mergeの正本にしない。

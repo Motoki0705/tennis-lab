@@ -20,7 +20,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 [開発workflow](../../ops/parent/development_workflow.md) に従う。下の手動担当のregister/checking/agreeを繰り返さない。
 既存の自律根拠とissue/コメント・正式関係・依存・採用状態を照合し、通常の実装判断は親が具体化する。
 人間合意や共有基盤許可を生成せず、重要な未決事項は理由・再開条件付きで待機する。
-同じprivate stateでworkerとreview/mergeを扱う。Projectへの節目の接続予定も開発workflowを参照する。
+同じprivate stateでworkerとreview/mergeを扱う。Projectへの節目の反映も開発workflowを参照する。
 
 ## 担当と要件を確定する
 

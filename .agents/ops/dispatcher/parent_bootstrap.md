@@ -8,8 +8,7 @@
    `accept --input <bootstrap_inputのパス>` を実行する。実CLIが設定したsession環境を使う。
    入力の親番号・候補・authorization・予約・runtimeが一致しない場合は作業を止める。
 2. 同じstate引数でdispatcherの `status` を実行し、GitHubの親・正式な子・既存PRを読み取り、担当・根拠と照合する。
-   parent CLIを使う場合は、その既定registryが入力のparent_state_dirと同じであることを先に確認する。
-   試験用の別registryなら、そのStoreを渡したParentSessionのPython APIを使う。
+   parent CLIには `--state-dir <parent_state_dir>` を指定し、同じregistryを使う。
    内容に不一致・停止・不足情報があれば具体的な理由と再開条件を記録して待機する。
 3. [親の開発workflow](../parent/development_workflow.md) と
    [parent-session skill](../../skills/parent-session/SKILL.md) を読み、実装・検証・レビュー・mergeを進める。
@@ -20,13 +19,14 @@
    `--dispatcher-state-dir <dispatcher_state_dir>` を渡し、review/mergeも同じprivate stateを使う。
    `start-worker` はparentのdelegate予約後にdispatcherのstart-childを呼び、supervisorが共通ランナーで起動する。
    指定省略のSol/max、必要時のAstra/maxを使い、既存workerの修正は終了照合後に `continue-worker` で同じsessionへ戻す。
-   差分・受入条件・テスト・PRを親が確認してrecord-resultを残す。停止した作業と依存先だけを保留し、独立作業を進める。
+   差分・受入条件・テスト・PRを親が確認してrecord-resultを残す。停止した作業と依存作業だけを保留し、独立作業を進める。
    親がPR群を固定して既存の親単位レビューを明示要求し、指摘修正・通常検証とmerge gateを通す。
    自動再レビュー・別session・無制限の修正で停止を回避しない。
    最後に `workflow-report --spec <JSONファイル>` で理由・再開条件・検証証拠をnoteへ残し、その出力を最終文にする。
    completedは実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。
    CI待ち・情報不足・権限不足はwaiting、実行失敗はfailedにして、証拠と再開条件をissueへ残す。
    担当終了は最終イベントを確認したsupervisorが行うため、生存中の親から `release --ended` しない。
+   自由文の進捗・連絡は `note --body-file` を使い、合意後のコメント検査を素のコメントで止めない。
 
 子の選択はparentの `launch_plan` に従い、起動可能な子を実行枠内で並列に進める。
 待機理由とstacked_onはparentの契約を使い、別の起動計画を作らない。

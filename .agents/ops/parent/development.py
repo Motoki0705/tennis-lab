@@ -42,7 +42,7 @@ def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
         or env.get("AGENT_RUNTIME_TASK_ID") != job["task_id"]
     ):
         raise ValueError("worker action belongs to another parent runtime")
-    return dispatch
+    return cast(dict[str, Any], dispatch)
 
 
 def worker_jobs(dispatch: dict[str, Any], child: int) -> list[dict[str, Any]]:
@@ -133,7 +133,16 @@ def start_worker(
             continuation,
             continue_existing=continuation is not None,
         )
-        _, items = session.work_items()
+        parent, items = session.work_items()
+        check_task_adoptions(session.gh, parent.body)
+        check_task_adoptions(session.gh, items[child].body)
+        check_dependencies(session, dispatch)
+        if authorization(session) != dispatch["authorization"] or task_errors(
+            claim["assignment"], dispatch["authorization"], items[child].body
+        ):
+            raise ValueError(
+                "worker inputs changed after delegation; reconcile the saved reservation"
+            )
         text = Path(__file__).with_name("worker_prompt.md").read_text(encoding="utf-8")
         text += (
             f"\n\n親issue: #{session.parent}\n担当issue: #{child}\n"
