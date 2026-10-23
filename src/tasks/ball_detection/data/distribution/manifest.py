@@ -29,7 +29,7 @@ def local_file(root: Path, value: str) -> Path:
         raise ValueError(f"Distribution file escapes its root or uses a symlink: {value}")
     if not path.is_file():
         raise ValueError(f"Distribution file is missing: {value}")
-    return path
+    return path.resolve()
 
 
 def load_distribution(directory: Path) -> dict[str, Any]:
@@ -69,6 +69,7 @@ def source_payloads(directory: Path, source_directory: Path) -> dict[str, Path]:
             raise ValueError("Distribution source store differs from its pinned identity")
     if set(manifest["source"]["hashes"]) != {"metadata.json", "index.npz"}:
         raise ValueError("Distribution source must pin metadata and index")
+    source_directory = source_directory.resolve()
     store = BallFrameStore(source_directory)
     result = {}
     for entry in manifest["clips"]:
@@ -100,6 +101,7 @@ def verify_distribution(
 ) -> dict[str, Any]:
     """Check every byte and the complete declaration; refuse partial transfers."""
     manifest = load_distribution(directory)
+    directory = directory.resolve()
     files = distribution_files(directory, source_directory=source_directory)
     for entry in manifest["files"]:
         path = files[entry["path"]]

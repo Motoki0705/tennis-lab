@@ -127,6 +127,12 @@ def test_omitting_a_middle_clip_remaps_instance_offsets(source: Path, tmp_path: 
     assert sample_windows(result, windows) == sample_windows(original, windows)
 
 
+def test_sample_receipts_survive_json_round_trip(source: Path) -> None:
+    store = BallFrameStore(source)
+    receipt = sample_windows(store, [(clip.clip_id, 0, clip.frame_count) for clip in store.clips])
+    assert json.loads(json.dumps(receipt)) == receipt
+
+
 def test_parallel_verification_matches_the_serial_receipt(source: Path, tmp_path: Path) -> None:
     stage, destination = tmp_path / "stage", tmp_path / "distribution"
     prepare(source, stage)
@@ -134,6 +140,30 @@ def test_parallel_verification_matches_the_serial_receipt(source: Path, tmp_path
     assert verify_distribution(destination, workers=2) == verify_distribution(destination)
     with pytest.raises(ValueError, match="positive"):
         verify_distribution(destination, workers=0)
+
+
+def test_relative_roots_verify_source_preview_and_relocated_store(
+    source: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stage, destination = tmp_path / "stage", tmp_path / "distribution"
+    prepare(source, stage)
+    materialize(source, stage, destination)
+    expected_preview = verify_distribution(stage, source_directory=source)
+    expected_store = verify_distribution(destination)
+    monkeypatch.chdir(tmp_path)
+    assert verify_distribution(Path("stage"), source_directory=Path("source")) == expected_preview
+    assert verify_distribution(Path("distribution")) == expected_store
+    assert all(p.is_absolute() for p in distribution_files(Path("distribution")).values())
+
+
+def test_root_symlink_is_rejected_before_path_normalization(source: Path, tmp_path: Path) -> None:
+    stage, destination = tmp_path / "stage", tmp_path / "distribution"
+    prepare(source, stage)
+    materialize(source, stage, destination)
+    alias = tmp_path / "alias"
+    alias.symlink_to(destination, target_is_directory=True)
+    with pytest.raises(ValueError, match="symlink"):
+        verify_distribution(alias)
 
 
 @pytest.mark.parametrize("damage", ["missing", "same_size_corruption", "extra", "symlink"])

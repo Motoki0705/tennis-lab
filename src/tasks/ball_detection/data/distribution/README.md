@@ -24,7 +24,9 @@ prepare_distribution(
 files = distribution_files(staging_directory, source_directory=source_directory)
 ```
 
-All directories and source input files in this API must have absolute paths.
+Preparation requires absolute directories and source input files. Verification
+and upload-source resolution also accept roots relative to the current working
+directory; returned upload sources are absolute, after path/symlink validation.
 `files` maps each **relative destination** to its local upload source. Transfer
 these exact files with the [Drive skill](../../../../../.agents/skills/tennis-drive/SKILL.md),
 then transfer `distribution.json`. An interrupted copy remains incomplete until
@@ -54,7 +56,8 @@ does not change the teacher policy or generate windows.
 
 `sample_windows(store, [(clip_id, start, length), ...])` produces small receipts
 for unaugmented RGB, JPEG bytes, actual PTS, all teacher inputs and original Chat
-annotations. It ignores store-global row/index offsets. Compare receipts before
+annotations. It ignores store-global row/index offsets and survives JSON round
+trips without type changes. Compare receipts before
 and after relocation with the same OpenCV version; a different decoder version
 is explicit and cannot be silently treated as the same RGB result.
 

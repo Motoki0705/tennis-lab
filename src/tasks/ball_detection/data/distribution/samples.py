@@ -56,6 +56,7 @@ def sample_windows(
             rgb.update(cv2.cvtColor(store.read_bgr(int(row)), cv2.COLOR_BGR2RGB).tobytes())
         descriptor = asdict(clip)
         descriptor.pop("index")
+        descriptor["track_ids"] = list(clip.track_ids)
         receipts.append(dict(
             clip=descriptor, start=start, length=length, pts_sha256=pts.hexdigest(),
             teacher_inputs_sha256=teacher.hexdigest(), annotation_sha256=annotation,

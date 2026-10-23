@@ -67,11 +67,39 @@ def reconcile_partial(destination: Path, partial: list[dict[str, Any]], manifest
                 removed_known_incomplete_temporaries=removed)
 
 
+def verify_inputs(args: argparse.Namespace) -> dict[str, Any]:
+    """Check downloaded bytes independently of whether another copy is needed."""
+    if dual_sha256(args.destination / "distribution.json") != args.manifest_sha256:
+        raise ValueError("Downloaded distribution manifest differs from the pinned local manifest")
+    manifest = load_distribution(args.destination)
+    size = sum(e["size_bytes"] for e in manifest["files"]) + (args.destination / "distribution.json").stat().st_size
+    if size != args.expected_size_bytes:
+        raise ValueError("Expected distribution size differs from its pinned manifest")
+    started = time.monotonic()
+    verification = verify_distribution(args.destination, workers=args.hash_workers)
+    verification_seconds = time.monotonic() - started
+    write(args.receipts / "file-verification.json", verification)
+    sample_started = time.monotonic()
+    windows = [tuple(value) for value in json.loads(args.windows.read_text())]
+    expected = json.loads(args.reference.read_text())
+    actual = sample_windows(BallFrameStore(args.destination), windows)
+    write(args.receipts / "samples.json", actual)
+    if actual != expected:
+        raise ValueError("Colab and local sample teacher inputs/RGB/JPEG/native PTS differ")
+    return dict(
+        sha256_workers=args.hash_workers, sha256_verification_seconds=verification_seconds,
+        sample_seconds=time.monotonic() - sample_started, samples_equal=True,
+        file_verification=verification, disk_after_verification=shutil.disk_usage(args.destination)._asdict(),
+        reference_sha256=dual_sha256(args.reference), sampled_windows=len(windows),
+    )
+
+
 def run(args: argparse.Namespace) -> None:
     if not os.environ.get("RCLONE_CONFIG"):
         raise ValueError("The Colab worker must supply its managed Drive configuration")
-    if args.receipts.exists() or args.destination.exists() != args.resume_existing:
-        raise FileExistsError("Use a new receipt directory; explicitly select fresh retrieval or resume-existing")
+    args.destination = args.destination.absolute()
+    if args.receipts.exists() or args.destination.exists() != (args.resume_existing or args.verify_existing):
+        raise FileExistsError("Use new receipts and explicitly select fresh retrieval, resume-existing or verify-existing")
     args.receipts.mkdir(parents=True)
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
@@ -81,6 +109,15 @@ def run(args: argparse.Namespace) -> None:
         python=sys.version, disk_before_download=shutil.disk_usage(args.destination.parent)._asdict(),
         uv_lock_sha256=dual_sha256(Path("uv.lock")),
     ))
+    if args.verify_existing:
+        # Keep the earlier retrieval receipts intact. This mode performs no
+        # transfer and repeats every file hash and semantic sample check.
+        summary = dict(schema_version=1, status="verified", fresh_destination=False,
+                       mode="verify_existing", download_seconds=0, **verify_inputs(args),
+                       total_seconds=time.monotonic() - started)
+        write(args.receipts / "summary.json", summary)
+        print(json.dumps(summary), flush=True)
+        return
     manifest_fetch = download(args.drive_path + "/distribution.json", args.receipts / "distribution.json",
                               args.receipts, attempt="manifest-download", seconds=1800, resume=False)
     if manifest_fetch["returncode"] or dual_sha256(args.receipts / "distribution.json") != args.manifest_sha256:
@@ -119,28 +156,12 @@ def run(args: argparse.Namespace) -> None:
         raise ValueError("Downloaded distribution manifest differs from the pinned local manifest")
     partial_recovery = reconcile_partial(args.destination, partial, manifest)
     write(args.receipts / "partial-recovery.json", partial_recovery)
-    verify_started = time.monotonic()
-    verification = verify_distribution(args.destination, workers=args.hash_workers)
-    verification_seconds = time.monotonic() - verify_started
-    write(args.receipts / "file-verification.json", verification)
-    sample_started = time.monotonic()
-    windows = [tuple(value) for value in json.loads(args.windows.read_text())]
-    expected = json.loads(args.reference.read_text())
-    actual = sample_windows(BallFrameStore(args.destination), windows)
-    write(args.receipts / "samples.json", actual)
-    if actual != expected:
-        raise ValueError("Colab and local sample teacher inputs/RGB/JPEG/native PTS differ")
     summary = dict(
         schema_version=1, status="verified", fresh_destination=not args.resume_existing,
         interrupted_download=interrupted, resumed_download=resumed,
         manifest_download=manifest_fetch, partial_recovery=partial_recovery,
         download_seconds=manifest_fetch["elapsed_seconds"] + (interrupted["elapsed_seconds"] if interrupted else 0) + (resumed["elapsed_seconds"] if resumed else 0),
-        sha256_workers=args.hash_workers,
-        sha256_verification_seconds=verification_seconds, sample_seconds=time.monotonic() - sample_started,
-        total_seconds=time.monotonic() - started, samples_equal=True,
-        file_verification=verification, disk_after_download=disk_downloaded,
-        disk_after_verification=shutil.disk_usage(args.destination)._asdict(),
-        reference_sha256=dual_sha256(args.reference), sampled_windows=len(windows),
+        **verify_inputs(args), total_seconds=time.monotonic() - started, disk_after_download=disk_downloaded,
     )
     write(args.receipts / "summary.json", summary)
     print(json.dumps(summary), flush=True)
@@ -159,4 +180,5 @@ if __name__ == "__main__":
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--interrupt-download", action="store_true")
     mode.add_argument("--resume-existing", action="store_true")
+    mode.add_argument("--verify-existing", action="store_true")
     run(parser.parse_args())

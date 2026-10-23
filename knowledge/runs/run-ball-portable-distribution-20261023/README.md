@@ -173,6 +173,12 @@ measure re-download from Drive. If a real retrieval fails, inspect its saved
 receipts before using a new job/receipt directory with `--resume-existing`.
 Never interpret a failed download as a verified dataset.
 
+If retrieval completed with CLI verification but a later check failed, preserve
+that attempt and its timings. After committing the fix, `--verify-existing` with
+new receipts verifies the pinned manifest, every file and all samples without
+another transfer. Its `download_seconds=0` is verification-only work; report the
+original retrieval separately and never count this as a fresh-VM download.
+
 The script checks available capacity before retrieval.
 It pins the downloaded manifest to the local content identity, verifies the exact
 file set and every SHA-256/size, then compares complete local/remote sample receipts.
