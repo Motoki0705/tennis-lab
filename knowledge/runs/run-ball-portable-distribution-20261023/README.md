@@ -192,16 +192,23 @@ separately. Failure preserves evidence and does not count as verification succes
 Confirm terminal job status, returncode and `drive_saved_at`, retrieve the small
 receipts and stop the session. Save and check the stop result. A never-started
 session is recorded as `not_started`, not as a stopped VM or successful retrieval.
+The completed two-VM checks, separated timings/capacities, fresh boot identities,
+stop confirmations and verified operation archives are indexed in
+[colab-execution.json](colab-execution.json).
 
 ## Ordinary validation
 
 Run pytest through the campaign's shared `PYTEST_LOCK`, with at most four workers:
 
 ```bash
-flock "$PYTEST_LOCK" .venv/bin/python -m pytest \
+PYTHONDONTWRITEBYTECODE=1 flock "$PYTEST_LOCK" .venv/bin/python -m pytest \
   tests/unit/tasks/ball_detection/data/test_distribution.py \
+  tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py \
+  tests/unit/tasks/ball_detection/data/test_store_datamodule.py \
+  tests/integration/tasks/ball_detection/test_store_pipeline.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py \
-  knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py -n 4 -q
+  knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py \
+  knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q
 .venv/bin/python -m ruff check src/tasks/ball_detection/data/distribution \
   src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py \
   knowledge/runs/run-ball-portable-distribution-20261023

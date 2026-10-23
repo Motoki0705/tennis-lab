@@ -1,6 +1,10 @@
 {
+  "all_sessions_stopped": true,
   "corrected_source_plan_reference": "colab-code-revisions.json",
   "distinct_vm_boot_ids": true,
+  "distribution_reference": "train-val-local-verification.json",
+  "drive_reference": "drive-upload.json",
+  "samples_reference": "train-val-local-samples.json",
   "schema_version": 1,
   "sessions": [
     {
@@ -41,17 +45,43 @@
       "verification_root": "outputs/ball_detection/distribution/portable-all-frame/vm-a/verification-recheck"
     },
     {
+      "capacity": {
+        "free_after_environment_bytes": 199804997632,
+        "free_after_verification_bytes": 42662158336,
+        "free_before_download_bytes": 199698448384,
+        "venv_size_bytes": 6554414967
+      },
+      "closure": "colab-b-closure.json",
       "environment": "colab-b-environment.json",
       "environment_job": "environment",
+      "files_before_copy": 0,
+      "fresh_destination": true,
       "kernel_boot_id": "6c122498-5086-4eee-8063-cd3b77794c92",
       "output_root": "outputs/ball_detection/distribution/portable-all-frame/vm-b",
+      "sampled_windows": 18,
+      "samples": "colab-b-samples.json",
+      "samples_equal": true,
       "session": "ball-distribution-check-b-20261023",
       "start": "colab-b-start.json",
-      "status": "verification_running",
+      "status": "verified_and_stopped",
+      "stop": "colab-b-stop.json",
       "tag": "vm-b",
-      "verification_job": "verify-data"
+      "timing": {
+        "download_seconds": 2795.175334792,
+        "environment_seconds": 29.63226932500004,
+        "manifest_download_seconds": 40.86570674500001,
+        "note": "Fresh VM and destination, without intentional interruption. Download includes Drive CLI content verification; session span includes bootstrap, source installation, persistence and operator gaps.",
+        "resumed_download_seconds": 2754.309628047,
+        "sample_seconds": 18.229908184000124,
+        "session_utc_seconds": 3802.496721,
+        "sha256_verification_seconds": 441.4833025070002,
+        "workload_seconds": 3255.068282253
+      },
+      "verification": "colab-b-verification.json",
+      "verification_job": "verify-data",
+      "verification_root": "outputs/ball_detection/distribution/portable-all-frame/vm-b/verification"
     }
   ],
   "source_plan_reference": "drive-upload.json#/source_plan",
-  "status": "in_progress"
+  "status": "verified_and_stopped"
 }

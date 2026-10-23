@@ -1,4 +1,4 @@
-<!-- knowledge-review: ffb760c17b475780a2d2643c7a23e4a67dbe0660f3bbfc4570fe69da164b24a7 on 2026-10-23 -->
+<!-- knowledge-review: 0ed5a2ba4a2352b89bc11a802d37f50d60dd415efd0b43105f146cdc5d1b172f on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
@@ -324,9 +324,9 @@ validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きo
 2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
 合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
 既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
-Driveへの全量uploadは最終inventoryで確認済み。Colabの1台目で中断・再開を含む取得は成功した。
-検証APIの相対path・receiptのJSON型を修正し、1台目で全ファイルのSHA-256・18窓の意味一致と停止を確認した。
-2台目の新VMで再取得・照合を進めているため、繰返し費用の結論はその完了後に確定する。
+Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256・18窓の意味一致・停止を確認した。
+新VMでは取得＋CLI照合が約46.6分、全件SHA-256が約7.4分で、取得後の空きは約42.7 GBだった。
+初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
 長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
 窓側はstore相対の原注釈pathをresolverで解決する必要がある。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。

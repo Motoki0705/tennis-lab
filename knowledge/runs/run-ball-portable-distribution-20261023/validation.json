@@ -1,4 +1,13 @@
 {
+  "acceptance": {
+    "colab_full_hash_and_samples": "verified_in_two_distinct_vms",
+    "download_interruption_resume": "verified",
+    "drive_inventory": "verified",
+    "fresh_vm_retrieval_time": "measured",
+    "local_distribution": "verified",
+    "sessions_stopped": "both_confirmed_with_zero_active_assignments",
+    "upload_interruption_resume": "verified"
+  },
   "actual_colab_execution": true,
   "actual_external_transfer": true,
   "code_commits": {
@@ -10,11 +19,17 @@
   },
   "colab_evidence": "colab-execution.json",
   "colab_recovery_evidence": "colab-a-recovery.json",
-  "colab_status": "in_progress",
+  "colab_status": "verified_and_stopped",
   "counts_overlap": true,
   "distinct_tests": 56,
   "external_transfer_evidence": "drive-upload.json",
   "external_transfer_status": "verified",
+  "knowledge_final_check": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref 743721e41d0e4a09125d43a00cdbf36a3c5b158d",
+    "errors": 0,
+    "returncode": 0,
+    "warnings": 218
+  },
   "knowledge_precheck": [
     {
       "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --base-ref origin/main",
@@ -78,11 +93,20 @@
       "returncode": 0
     }
   ],
+  "repro_paths_final_check": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+    "missing": 0,
+    "repro_scripts": 402,
+    "returncode": 0,
+    "script_references": 496,
+    "unverifiable": 0
+  },
   "schema_version": 1,
   "static_checks": {
-    "changed_source_files_checked": 7,
-    "knowledge_source_files_checked": 12,
+    "checked_source_files": 15,
     "mypy": "passed",
-    "ruff": "passed"
+    "mypy_command": ".venv/bin/python -m mypy --follow-imports=skip src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023",
+    "ruff": "passed",
+    "ruff_command": ".venv/bin/python -m ruff check src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023"
   }
 }
