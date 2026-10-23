@@ -19,6 +19,32 @@ from src.tasks.ball_detection.training.temporal_heatmap.configuration import (
 from src.tasks.ball_detection.training.temporal_heatmap.runner import (
     train_temporal_heatmap,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="ball_detection.train_temporal_heatmap",
+    fields=(
+        BoundaryPathField("manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, allow_role_root=True),
+        BoundaryPathField("evaluation_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, allow_role_root=True),
+        BoundaryPathField("model_config", PathRole.PROJECT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+        BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY),
+        BoundaryPathField("augmentation_config", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, allow_role_root=True, required=False),
+        BoundaryPathField("initial_artifact", PathRole.CHECKPOINT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, required=False),
+        BoundaryPathField("resume", PathRole.OUTPUT, PathDirection.INPUT, PathKind.FILE, must_exist=True, required=False),
+    ),
+)
 
 
 def main() -> None:
@@ -43,6 +69,18 @@ def main() -> None:
     if (args.augmentation == "video") != (args.augmentation_config is not None):
         parser.error("Specify --augmentation-config exactly when --augmentation video")
     budget = UpdateBudget(**{key: getattr(args, key) for key in UpdateBudget.__dataclass_fields__})
+    declared = {field.name: getattr(args, field.name) for field in PATH_BOUNDARY.fields
+                if getattr(args, field.name) is not None}
+    if not all(path.is_absolute() for path in declared.values()):
+        parser.error("Training input and output paths must be absolute")
+    model_root, output_root = args.model_config.parent.resolve(), args.output.parent.resolve()
+    checkpoint_root = args.initial_artifact.parent.resolve() if args.initial_artifact is not None else output_root
+    roots = RuntimePathRoots(project_root=model_root, data_root=model_root, artifact_root=model_root,
+                             checkpoint_root=checkpoint_root, output_root=output_root,
+                             cache_root=output_root, external_asset_root=model_root)
+    paths = PATH_BOUNDARY.validate(declared, resolver=PathResolver(roots), independent_artifact_inputs=True)
+    for name in declared:
+        setattr(args, name, paths.declared(name).path)
     train_temporal_heatmap(architecture=args.architecture, phase=args.phase, manifest=args.manifest,
         evaluation_manifest=args.evaluation_manifest, model_config=load_model_config(args.model_config, args.architecture),
         output=args.output, budget=budget, runtime=runtime_from_arguments(args), device=torch.device(args.device),

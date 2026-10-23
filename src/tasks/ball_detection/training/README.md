@@ -43,6 +43,9 @@ position_validはheatmap_validの部分集合で、位置教師は有限の[0,1]
 
 `--stage temporal_heatmap`は存在headを持たないDPT/hybridの直接32frame事前学習と、
 その全重みからの独立fine-tuningを行う。実験行列・本学習の予算は呼出側で決める。
+学習・評価・比較動画のCLIは、任意入力を含む全pathに絶対pathを要求し、共通の
+`NonHydraPathBoundary`で存在・role・入力/出力方向を処理開始前に検証する。
+異なるdirectoryのmanifest・較正結果・比較runは、それぞれ明示したartifactとして読める。
 窓と採点集合は[data/windows](../data/windows/README.md#全フレーム教師の可変長窓)、
 閾値・指標の規則は[確定プロトコル](../../../../knowledge/runs/run-ball-all-frame-protocol-20261022/protocol.md)を参照。
 

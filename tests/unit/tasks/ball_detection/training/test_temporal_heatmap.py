@@ -4,9 +4,11 @@ import subprocess
 import sys
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 import torch
+import yaml
 
 from src.tasks.ball_detection.data.augmentation.video import (
     AugmentationConfig,
@@ -26,6 +28,7 @@ from src.tasks.ball_detection.training.temporal_heatmap.packs import (
     supervised_loss_sum,
 )
 from tests.support.tasks.ball_detection.temporal_heatmap import (
+    model_yaml,
     prepare_fixture,
     update_budget,
 )
@@ -104,3 +107,101 @@ def test_missing_budget_has_no_training_default(tmp_path: Path) -> None:
                             capture_output=True, text=True, timeout=30)
     assert result.returncode != 0 and "--updates" in result.stderr and "--warmup-updates" in result.stderr
     assert not (tmp_path / "run").exists()
+
+
+def test_training_cli_validates_disjoint_inputs_and_optional_paths_before_learning(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.ball_detection.training.temporal_heatmap import cli
+
+    paths = {name: tmp_path / name / filename for name, filename in (
+        ("manifest", "train.json"), ("evaluation_manifest", "val.json"), ("model_config", "model.yaml"),
+        ("augmentation_config", "augmentation.yaml"), ("initial_artifact", "parent.pt"),
+    )}
+    for path in paths.values():
+        path.parent.mkdir()
+        path.touch()
+    paths["model_config"].write_text(yaml.safe_dump(model_yaml("dpt", frames=64)))
+    augmentation = Path("src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml")
+    paths["augmentation_config"].write_text(augmentation.read_text())
+    output = tmp_path / "new-run" / "output"
+    values = {key.replace("_", "-"): str(path) for key, path in paths.items()}
+    values.update({"architecture": "dpt", "phase": "finetune", "output": str(output), "augmentation": "video",
+                   "initial-artifact-sha256": "f" * 64, "parent-update": "3", "distance-px": "20",
+                   "device": "cpu", "precision": "fp32", "jpeg-decoder": "opencv", "compile-mode": "off",
+                   "input-verification": "lazy"})
+    values.update({key.replace("_", "-"): str(value) for key, value in vars(update_budget()).items()})
+    called: dict[str, Any] = {}
+
+    def capture(**kwargs: Any) -> None:
+        called.update(kwargs)
+
+    monkeypatch.setattr(cli, "train_temporal_heatmap", capture)
+    argv = ["train", *(item for name, value in values.items() for item in (f"--{name}", value))]
+    monkeypatch.setattr(sys, "argv", argv)
+    cli.main()
+    assert all(called[name] == paths[name] for name in ("manifest", "evaluation_manifest", "initial_artifact"))
+    assert called["augmentation"] is not None and called["resume"] is None and called["output"] == output
+    assert not output.parent.exists()
+    called.clear()
+    monkeypatch.setattr(sys, "argv", [*argv, "--resume", "relative/checkpoint.pt"])
+    with pytest.raises(SystemExit) as error:
+        cli.main()
+    assert error.value.code == 2 and not called
+
+
+@pytest.mark.parametrize("calibration", ["relative/calibration.json", "missing"])
+def test_evaluation_cli_rejects_invalid_optional_calibration_before_loading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, calibration: str,
+) -> None:
+    from src.tasks.ball_detection.evaluation import temporal_heatmap_cli as cli
+    from src.utils.configuration import PathContractError
+
+    artifact, manifest = tmp_path / "weights.pt", tmp_path / "evaluation.json"
+    artifact.touch()
+    manifest.touch()
+    output = tmp_path / "new-output" / "report.json"
+    selected = str(tmp_path / "missing.json") if calibration == "missing" else calibration
+    monkeypatch.setattr(sys, "argv", ["evaluate", "--artifact", str(artifact), "--manifest", str(manifest),
+        "--output", str(output), "--split", "test", "--calibration", selected, "--distance-px", "20",
+        "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv", "--compile-mode", "off",
+        "--input-verification", "lazy"])
+
+    def unexpected_runtime(_: Any) -> None:
+        pytest.fail("Runtime must not be configured before path validation")
+
+    monkeypatch.setattr(cli, "runtime_from_arguments", unexpected_runtime)
+    with pytest.raises((SystemExit, PathContractError)):
+        cli.main()
+    assert not output.parent.exists()
+
+
+def test_comparison_cli_accepts_independent_reports_and_rejects_duplicate_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.ball_detection.scripts import visualize_temporal_heatmaps as cli
+    from src.utils.configuration import PathContractError
+
+    reports = [tmp_path / name / "evaluation.json" for name in ("first-run", "second-run")]
+    for report in reports:
+        report.parent.mkdir()
+        report.touch()
+    output = tmp_path / "new-output" / "comparison.mp4"
+    called: dict[str, Any] = {}
+
+    def capture(evaluations: list[Path], **kwargs: Any) -> None:
+        called.update(evaluations=evaluations, **kwargs)
+
+    monkeypatch.setattr(cli, "render_temporal_heatmap_comparison", capture)
+    argv = ["visualize", "--evaluations", *(str(path) for path in reports), "--clip-id", "clip",
+            "--start", "0", "--stop", "32", "--output", str(output)]
+    monkeypatch.setattr(sys, "argv", argv)
+    cli.main()
+    assert called["evaluations"] == reports and called["output"] == output
+    assert not output.parent.exists()
+    called.clear()
+    argv[3] = argv[2]
+    monkeypatch.setattr(sys, "argv", argv)
+    with pytest.raises(PathContractError, match="duplicate paths"):
+        cli.main()
+    assert not called and not output.parent.exists()

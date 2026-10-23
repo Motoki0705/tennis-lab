@@ -21,6 +21,27 @@ from src.tasks.ball_detection.training.runtime.compilation import (
 )
 from src.tasks.ball_detection.training.runtime.images import jpeg_decoder_contract
 from src.utils.checksum import dual_sha256
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="ball_detection.evaluate_temporal_heatmap",
+    fields=(
+        BoundaryPathField("artifact", PathRole.CHECKPOINT, PathDirection.INPUT, PathKind.FILE, must_exist=True),
+        BoundaryPathField("manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, allow_role_root=True),
+        BoundaryPathField("calibration", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                          must_exist=True, allow_role_root=True, required=False),
+        BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE),
+    ),
+)
 
 
 def main() -> None:
@@ -34,6 +55,17 @@ def main() -> None:
     args = parser.parse_args()
     if args.split == "test" and args.calibration is None:
         parser.error("Test requires --calibration from validation; never calibrate on test")
+    declared = {field.name: getattr(args, field.name) for field in PATH_BOUNDARY.fields
+                if getattr(args, field.name) is not None}
+    if not all(path.is_absolute() for path in declared.values()):
+        parser.error("Evaluation input and output paths must be absolute")
+    artifact_root, output_root = args.artifact.parent.resolve(), args.output.parent.resolve()
+    roots = RuntimePathRoots(project_root=artifact_root, data_root=artifact_root, artifact_root=artifact_root,
+                             checkpoint_root=artifact_root, output_root=output_root,
+                             cache_root=output_root, external_asset_root=artifact_root)
+    paths = PATH_BOUNDARY.validate(declared, resolver=PathResolver(roots), independent_artifact_inputs=True)
+    for name in declared:
+        setattr(args, name, paths.declared(name).path)
     if args.output.exists() or args.output.with_suffix(".frames.jsonl").exists():
         parser.error("Evaluation output already exists")
     runtime = runtime_from_arguments(args)
