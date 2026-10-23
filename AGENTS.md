@@ -14,17 +14,26 @@
 
 ## プロジェクト概要
 
-テニスシーンの3次元再構成をAIで解く。入力はマルチカメラの動画である。各カメラでのボール位置・プレーヤーposeの2次元検出から始め、2D → 3Dの再構築モデルで3D空間へ写像する。
+テニス動画から、コート座標系でプレーヤーの3D動作とボール軌道を再構成する研究プロジェクト。同期済みの複数固定カメラ動画を使うシーン再構成と、検出・追跡・3D推定モデルの開発、学習データの生成・注釈・評価を行う。
+
+標準のシーン再構成では、各カメラのコート・人物・pose・ボールの2D観測から、カメラ校正とカメラ間の人物対応を求め、人物の関節とボールを三角測量する。GVHMRで復元した身体を3D関節に合わせて配置し、プレーヤーとボールを共通のコート座標系へ統合する。出力には欠測・有効性maskと品質診断を保持する。
 
 | モジュール | 役割 |
 |---|---|
-| `src/tasks/ball_detection` | 2Dボール検出 |
-| `src/tasks/court_detection` | 2Dコート検出 |
-| `src/submodules` | 2Dプレーヤーpose検出、3Dプレーヤーpose推定（GVHMR 移植版。重み・body model は `ckpt/`） |
-| `src/tasks/blcs` | 2D ball + 2D court から3Dボール軌道を推論 |
-| `src/tasks/plcs` | 2D pose + 2D court から3Dプレーヤーの位置・回転を推論 |
+| `src/tennis_scene` | シーン再構成pipeline、実動画からの学習データ生成、結果の可視化 |
+| `src/tasks/court_detection` | コートkeypoint・ラインの2D検出 |
+| `src/tasks/ball_detection` | ボールの2D検出 |
+| `src/tasks/player_detection` | テニス選手検出器の学習・推論 |
+| `src/tasks/person_tracking` | カメラ内の人物追跡・選手候補の選別 |
+| `src/tasks/court_side` / `player_association` | カメラ間のコート向きの解決・同一人物の対応付け |
+| `src/submodules` | 人物検出・2D pose・画像特徴・GVHMRの推論モデル |
+| `src/tasks/blcs` / `plcs` | 複数カメラの2D観測とコートkeypointから、ボール軌道／プレーヤー位置・向きなどを推定する学習モデル |
+| `src/tasks/slcs` | 単眼の2D観測と画像特徴から、プレーヤーとボールの3D時系列を同時推定する学習モデル |
+| `src/tasks/ball_refiner_3d` | 三角測量したボール軌道の補正・欠損補完とイベント推定 |
+| `src/synthetic_data_generation` | 実映像のシーン復元・描画を利用した合成学習データ生成 |
+| `src/tasks/base` / `src/utils` | 学習・注釈・可視化の共通基盤、幾何・物理・モデルなどの共通部品 |
 
-最終的に、GVHMRの3D poseとplcsの3D位置・回転を統合し、コート座標系でプレーヤーの軌跡を3D上に再構築する。
+標準pipelineの構成・入出力は [tennis_scene README](src/tennis_scene/README.md)、各モデルの仕様と実行方法は各モジュールのREADMEを参照する。
 
 ## 開発環境
 
