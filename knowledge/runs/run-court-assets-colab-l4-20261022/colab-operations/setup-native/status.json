@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "setup-native",
+  "status": "cancelled",
+  "updated_at": "2026-10-22T07:11:08.938939+00:00",
+  "returncode": -15,
+  "worker_pid": 13050,
+  "worker_token": "225115",
+  "launch_guarded": true,
+  "pid": 13228,
+  "process_token": "228302",
+  "started_at": "2026-10-22T07:10:14.030293+00:00",
+  "completion_target": "cancelled",
+  "drive_saved_at": "2026-10-22T07:11:24.468253+00:00",
+  "finished_at": "2026-10-22T07:11:24.468268+00:00"
+}

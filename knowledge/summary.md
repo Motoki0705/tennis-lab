@@ -1,7 +1,7 @@
-<!-- knowledge-review: 301555d490b6d20da609d8d7d5cf07411b59563fbdfdf00f6f94edfb1fbe1ecb on 2026-10-23 -->
+<!-- knowledge-review: 3d6691bde594b373c73a3850ee0294b477a7d07a6989b91396e9d39bb3b663a0 on 2026-10-23 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断と、Court発表素材の採用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断、教師一致・RGB下限による可搬資産の採用判断と、Court発表素材の採用を反映。alpha/depth差の記録と既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,16 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-22のCourt資産Colab照合
+
+[B00〜B03の可搬資産とL4描画](nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md)は、
+資産のbyte照合と固定runtimeでの32枚の描画・Drive保存を確認した。各GPU内の2回の描画と
+投影・可視KPは一致し、ユーザーの2026-10-22の判断により教師の完全一致とRGBのPSNR下限を
+受入基準にした。2回とも基準を通り、入力資産をDriveの採用位置へcopyし、再取得後の内容と幾何も照合した。
+GPU間のalpha/depth外れ値とコート領域の差、staging資産は保持し、全raster一致は主張しない。
+本番生成をL4へ統一し、次は後続の分割生成と新規視点の品質・採択率を確認する。
+既存モデルの採用判断、3DGSの品質、合成画像数による精度改善の判断は更新していない。
 
 ## 2026-10-21の公開3カメラサンプル
 

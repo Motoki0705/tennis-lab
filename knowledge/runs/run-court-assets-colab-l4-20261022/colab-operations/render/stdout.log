@@ -1,0 +1,45 @@
+Traceback (most recent call last):
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/_backend.py", line 56, in <module>
+    from gsplat import csrc as _C
+ImportError: /content/tennis-lab/third_party/nht/gsplat/gsplat/csrc.so: undefined symbol: _ZN3c104cuda19CUDAErrorLogCaptureC1Ev
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/content/tennis-lab/tmp/court_assets_probe.py", line 124, in <module>
+    main()
+  File "/content/tennis-lab/tmp/court_assets_probe.py", line 97, in main
+    manifest = nht.render_scene(args.scenes / scene_id / 'reconstruction/export/scene.json', target, camera_ids=ids, batch_size=1, without_source_images=True)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/third_party/nht/nht_pipeline/render.py", line 370, in render_scene
+    renderer = ResidentSceneRenderer(
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/tmp/court_assets_probe.py", line 72, in measured_init
+    original_init(self, *a, **kw)
+  File "/content/tennis-lab/third_party/nht/nht_pipeline/render.py", line 110, in __init__
+    shader = DeferredShaderModule(
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/nht/deferred_shader.py", line 83, in __init__
+    self.encoded_dim = (feature_dim // get_feature_divisor()) * get_encoding_expansion_factor()
+                                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/_wrapper.py", line 107, in get_feature_divisor
+    return _make_lazy_cuda_obj("feature_divisor")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/_wrapper.py", line 53, in _make_lazy_cuda_obj
+    from ._backend import _C
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/_backend.py", line 60, in <module>
+    _C = build_and_load_gsplat()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/build.py", line 254, in build_and_load_gsplat
+    gsplat_module = jit.load(
+                    ^^^^^^^^^
+  File "/root/.local/share/uv/tools/nht/lib/python3.11/site-packages/torch/utils/cpp_extension.py", line 1692, in load
+    return _jit_compile(
+           ^^^^^^^^^^^^^
+  File "/root/.local/share/uv/tools/nht/lib/python3.11/site-packages/torch/utils/cpp_extension.py", line 2134, in _jit_compile
+    _write_ninja_file_and_build_library(
+  File "/root/.local/share/uv/tools/nht/lib/python3.11/site-packages/torch/utils/cpp_extension.py", line 2244, in _write_ninja_file_and_build_library
+    verify_ninja_availability()
+  File "/root/.local/share/uv/tools/nht/lib/python3.11/site-packages/torch/utils/cpp_extension.py", line 2305, in verify_ninja_availability
+    raise RuntimeError("Ninja is required to load C++ extensions (pip install ninja to get it)")
+RuntimeError: Ninja is required to load C++ extensions (pip install ninja to get it)

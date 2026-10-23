@@ -8,6 +8,202 @@ authority for the camera-view KP14 semantics and their migration policy.
 
 See [Court Review](review/README.md) for the local 3D trajectory and image-label browser.
 
+## Portable scene assets and Colab rendering
+
+`assets.py` packages immutable rendering inputs with schema
+`court_scene_assets_v1`. Each scene carries exactly six files: the public NHT
+`scene.json`, `cameras.json`, `points_scene.npy`, the checkpoint and runtime config
+referenced by that scene, and the accepted `alignment/alignment.json`. Camera
+calibration, normalization, metric similarities, court poses and accepted
+candidate inventories remain in their original authorities. All six files are
+copied byte for byte, including automatic and human-confirmed alignment schemas;
+there is no geometry migration or alignment rerun. Unknown alignment formats fail
+in the existing reader.
+
+The manifest records size and SHA-256 for every carried file and pins the producing
+tennis-lab/NHT commits. Existing run/config/dataset descriptors, the sparse index,
+and alignment evidence remain source-relative references with digests, rather than
+copied inventories. These references describe provenance; they do not claim that
+the full alignment evidence has been transferred or refitted. Captured images,
+videos, extracted frames, SfM intermediates, duplicate PLYs, training logs and
+alignment heatmap rasters are excluded. The public sparse points are retained
+because both scene validators require them.
+
+This bundle is a rendering/label dependency closure, not a completed scene-pipeline
+workspace. Load the public export and stored alignment directly; do not fabricate
+missing ingest, reconstruction or alignment owners to pass pipeline validation.
+Use `load_alignment_result` for every supported stored alignment schema. Convert
+exported camera poses with `alignment.metric_adapter.metric_from_nht_camera` and
+divide rendered depth by `nht_scene_units_per_metre` before comparing metric depth.
+
+Package into a **new** directory outside the source workspace, then pin the
+returned manifest digest for every subsequent verification. The packaging CLI
+requires a clean, committed worktree so its producer commit identifies the code:
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets pack \
+  --source-root /read-only/data/synthetic_data_generation/scenes \
+  --scene-ids B00 B01 B02 B03 --destination tmp/court-scene-assets-v1
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets verify \
+  --root tmp/court-scene-assets-v1 --manifest-sha256 MANIFEST_SHA256
+```
+
+The verifier checks exact inventory, every size/hash, exported geometry and the
+stored accepted alignment. Missing/extra files, duplicate paths, symlinks, unknown
+schemas and changed manifests fail. It never writes to the input or re-creates a
+missing file. The source workspaces remain read only.
+
+Use [tennis-drive](../../../../.agents/skills/tennis-drive/SKILL.md) for transfer,
+authentication and verification. Choose the role/path according to its
+[storage policy](../../../../.agents/skills/tennis-drive/references/storage-policy.md).
+A new bundle awaiting Colab verification is a staging candidate; promote by a
+verified copy into a new input-data version after rendering equivalence passes.
+Never overwrite an existing asset version. After upload, verify the remote bytes
+with the Drive CLI; after download, run the manifest verifier again with the
+original digest. Retain the Drive ID and transfer receipts outside the bundle.
+
+The accepted B00–B03 input is
+`data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified`
+(relative to the Drive project root and the repository checkout). Its manifest
+SHA-256 is `a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b`.
+The [adoption record](../../../../knowledge/runs/run-court-assets-colab-l4-20261022/adoption.json)
+owns the Drive ID, user-decision source and verification receipts; `assets.json`
+remains the file/geometry authority. The staging copy is retained.
+
+Colab session creation, exact Git checkout, persistence and GPU release follow
+[tennis-colab](../../../../.agents/skills/tennis-colab/SKILL.md). Use an explicitly
+requested L4 and a pushed tennis-lab commit whose pinned NHT commit is also
+fetchable. In the disposable VM, prepare the repository and NHT with:
+
+```bash
+export PATH="$(uv tool dir --bin):$PATH"
+uv sync --locked
+.venv/bin/python -m spin setup-nht --render-only
+nht-render --help
+```
+
+Repeat the explicit tool-bin `PATH` export in every Colab shell job that invokes
+`nht-render`; a fresh login shell does not inherit another job's environment.
+
+`spin setup-nht` owns the pinned Python/Torch/tiny-cuda-nn versions and recursive
+NHT/gsplat checkout; do not duplicate those versions in an alternate installer.
+The explicit `--render-only` mode skips the trainer environment; see the
+[development CLI](../../../../.spin/README.md).
+Run it only inside the Colab checkout for this workflow. A local worktree must
+not replace the shared editable NHT tool. For setup timing, bash `time` is
+available even when `/usr/bin/time` is absent. Preserve installation stderr,
+CUDA/compiler versions and the observed GPU in the session's declared outputs.
+Measured setup/transfer/render times and the failed first installation are in the
+[L4 verification record](../../../../knowledge/nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md).
+The successful setup measurement used an already warmed VM; it is not a cold
+installation estimate. The pinned NHT image-free change must be fetchable even
+while its upstream PR is pending; until it is merged, NHT `main` does not supply it.
+Keep actively growing installation logs outside the `--persist` tree and publish
+them by rename after each command exits; copying an actively changing file can
+fail the worker's periodic Drive save and stop the command.
+
+After setup, download the accepted input to the disposable VM and verify it
+before passing any scene to a generator. Use the configured Drive connection
+from the skill above; never embed its credentials in a notebook or manifest:
+
+```bash
+COURT_ASSET_PATH=data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified
+COURT_ASSET_SHA256=a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py download \
+  "$COURT_ASSET_PATH" "$COURT_ASSET_PATH" --verify
+.venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets verify \
+  --root "$COURT_ASSET_PATH" --manifest-sha256 "$COURT_ASSET_SHA256"
+```
+
+The equivalent Python preflight is
+`verify_scene_assets(Path(asset_root), manifest_sha256=expected_digest)` from
+`src.synthetic_data_generation.dataset.court.assets`. Both the root and expected
+digest are explicit generator inputs. Download into a new directory; a prior
+directory's presence is not proof of a completed, verified transfer.
+Then render existing exported cameras:
+
+```bash
+nht-render --scene "$COURT_ASSET_PATH/scenes/B00/reconstruction/export/scene.json" \
+  --without-source-images --camera-id EXPORTED_CAMERA_ID --batch-size 1 \
+  --output outputs/synthetic_data_generation/profile/assets-check/B00
+```
+
+The explicit image-free mode retains camera/reference/model validation and records
+`source_images_explicitly_omitted` in the NHT result. Default export validation
+still requires the captured images. In Python, use
+`NHTRenderCommandRequest(..., without_source_images=True)` and
+`NHTRenderClient.validate_scene(..., without_source_images=True)`;
+`CourtNHTRenderer(..., without_source_images=True)` propagates that choice.
+Image-free and complete validations have separate process-local cache entries.
+
+### Rendering equivalence contract
+
+For equivalence, render the **same camera requests** locally and on L4, with the
+same checkpoint/runtime and camera batch size. Local GPU rendering must use the
+shared training queue. Compare original float32 RGB, alpha and depth before JPEG
+encoding, plus projected/renderer-visible KP. Packed publications retain JPEG
+quality 95 and sparse labels, but no alpha/depth rasters; JPEG differences alone
+cannot validate depth or visibility. A queue-rendered baseline supplies that
+missing evidence. Report both raw and JPEG RGB errors. Record per-scene results,
+setup/transfer/render times, transferred bytes and GPU memory in the experiment
+record. Declare probe outputs with Colab `--persist`, verify terminal job/Drive
+receipts, and always `stop` the session when finished.
+
+Separate checkpoint deserialization, resident renderer initialization, the first
+camera (including lazy CUDA compilation), subsequent render calls, and the public
+call including validation/PNG/array writes. A few existing-camera probes measure
+runtime compatibility; they do not establish production generation throughput or
+unseen-view quality. Record PyTorch peak allocated/reserved memory separately from
+sampled device memory, with the sampling interval; sampled peaks are lower bounds.
+
+Keep full-frame distributions and worst-pixel coordinates when checking numeric
+agreement. Inspect RGB, alpha, metric depth and the production visibility threshold
+at those coordinates. Court polygons and common alpha masks are useful diagnostic
+subsets, but do not replace the full-frame result. In particular, finite positive
+depth at zero alpha is not evidence of a valid surface. Repeat each GPU's render to
+separate repeat variation from reproducible differences between devices. If the
+acceptance checks below fail, retain the staging inputs and report the unresolved
+comparison before promoting them.
+
+The user decision on 2026-10-22 in
+[#1351](https://github.com/Motoki0705/tennis-lab/issues/1351) accepts cross-GPU
+equivalence by teacher agreement and RGB error. All checks must pass separately
+for each repeat, without excluding background pixels or outliers:
+
+- The complete scene/camera/court/KP inventory, class and physical IDs, projected
+  UV, metric KP camera depth, `in_front`, `in_frame` and `renderer_visible` must
+  match exactly. Renderer visibility retains the production alpha >= 0.01,
+  positive-depth, radius-1px rule. There is no epsilon for teacher agreement.
+- Raw float32 RGB in [0, 1] must have **PSNR >= 57 dB per scene**, pooling all
+  full-frame RGB channel errors of the declared probe cameras before computing
+  RMSE. Every individual full-frame view must also have **PSNR >= 55 dB**, so a
+  good average cannot hide a degraded camera. PSNR is `-20 log10(RMSE)` with
+  peak=1; exact RGB equality passes with infinite PSNR (JSON `null` only when
+  RMSE=0). Missing views or non-finite evidence fail.
+- Alpha/depth distributions, threshold crossings, full-frame and court-region
+  outliers remain diagnostic evidence. Raster equality between GPUs is not an
+  acceptance condition. Generation still applies its normal alpha/depth quality
+  gates to each L4 output; this decision does not change those gates.
+
+The thresholds round down the measured minimum scene PSNR 57.986 dB and minimum
+individual-view PSNR 55.859 dB to whole-dB floors. The scene floor limits RGB
+RMSE to 0.001413, and the view floor to 0.001778. The measured JPEG quality-95
+round trip (including uint8 quantization) has RMSE 0.003537–0.004983, or
+PSNR 46.05–49.03 dB. Even the view floor permits roughly half the smallest
+observed JPEG RMSE; this is the input-image error budget justification, not a
+claim that GPU depth differences are noise or that training accuracy is unchanged.
+The approximately 58 dB value is a pooled scene result, not a per-view minimum.
+Measurements, maxima and limitations remain in the L4 verification record above.
+
+The saved comparison can be checked without a GPU using
+[`court_assets_acceptance.py`](../../../../knowledge/runs/run-court-assets-colab-l4-20261022/court_assets_acceptance.py)
+(`--help`). It checks the exact teacher inventories and the two RGB floors for
+each supplied comparison; it does not rerender or modify the original evidence.
+Use the recorded B00–B03 probe inventory and both repeats when validating these
+assets. Production generation uses **Colab L4 only** with the pinned runtime;
+new-view quality, throughput and chunked generation/restart belong to the
+generator and Colab generation workflow.
+
 ## JPEG shard publication
 
 Generation evaluates the original renderer RGB, alpha and depth before accepting
@@ -812,3 +1008,245 @@ Implementation is complete only when all of the following hold:
     not depend on projected left/right order.
 11. V2 artifacts and checkpoints are rejected by V3 readers and target-bundle
     checks; migration requires regeneration and retraining.
+
+## Explicit scale generation profile
+
+`generate_court_scale` is a separate **train-only** generation entrypoint. It does
+not change the `v1/v2/v3/sfm_bounded` presets or the scene's fixed
+`datasets/court` owner. Production and comparison recipes are selected explicitly;
+neither has an implicit method or quality-policy fallback.
+
+### Production recipe and downstream entrypoint
+
+The production recipe agreed in #1343 is **`stratified_counter_production_v1`**,
+stored in
+[`scale_stratified_counter_production_v1.json`](../../configs/dataset/court/scale_stratified_counter_production_v1.json).
+It selects `stratified_counter` alone and pins:
+
+- **D2:** captured-camera hull expansion 0%, inward margin 0.5 m, HFOV layers
+  75/92.5/110 degrees.
+- **D5:** target-court **renderer-visible KP >= 4 AND ROI hole fraction <= 0.01**.
+  A hole is `alpha < 0.01 OR depth <= 0` inside the clipped target-court ROI.
+  An absent ROI (`roi_hole_fraction=null`) fails the gate, including when other
+  courts have visible KP. Alpha-below-0.9 area remains diagnostic only.
+  Target-KP-zero negatives are rejected. Rejected candidates are never refilled.
+- **D6:** stable-point-ID-derived uniform-area disk jitter, radius 1 m.
+
+The recipe also explicitly specifies target heights, resolution and arc precision.
+Its SHA-256 covers the **complete** name/version, method, geometry, jitter rule
+and QA policy. Production planning rejects changes to D2/D5/D6, missing fields,
+other methods, and comparison geometry/quality/method overrides.
+
+#1355 should freeze its requests with this entrypoint (the n/k values below are
+a small verification condition, not the main experiment size):
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale plan \
+  --scenes-root /path/to/court-assets/scenes --scenes B00 B01 B02 B03 \
+  --asset-manifest /path/to/court-assets/assets.json \
+  --asset-manifest-sha256 EXPECTED_ASSET_MANIFEST_SHA256 \
+  --production-recipe src/synthetic_data_generation/configs/dataset/court/scale_stratified_counter_production_v1.json \
+  --output-root tmp/court-scale-production \
+  --generation-seed 42 --trajectory-count 6 --density-level 0
+```
+
+Use the image-free bundle and its externally pinned manifest hash from the
+[portable asset workflow](#portable-scene-assets-and-colab-rendering).
+Both asset options are required together. Planning verifies the manifest's schema, exact file inventory,
+hashes and geometry through `verify_scene_assets`; every selected scene must
+belong to that bundle's `scenes/`. An image-bearing source workspace cannot be
+substituted for the declared bundle. No manifest or image-omission policy is
+discovered from nearby files. The verified omission policy is frozen with each
+scene and passed explicitly to scene-export validation and NHT's
+`without_source_images` render request (`--without-source-images`). Rendering
+rechecks the bundle and its expected manifest hash before its first invocation.
+
+Production uses the complete recipe and pinned scene assets; it never reads or
+hashes `resolved-config.yaml`. Captured-camera image references are export-relative
+metadata in recipe plans, so moving an identical bundle does not change cameras,
+trajectory/point IDs or plan hashes. Saved configuration is required only for
+`grid_budget_replay`, which requires the original local workspace and rejects
+the portable-bundle options. Local image-bearing workspaces remain usable by
+omitting both asset options; they retain strict source-image validation.
+
+`planned-requests.json` lists the frozen production request. The render command
+below consumes that exact request. A distributed caller can instead load
+scene inputs with `scale.runtime.load_scene_inputs(scene_root, replay=False,
+asset_manifest=manifest_path, asset_manifest_sha256=expected_digest)` and the
+recipe with `scale.recipes.ProductionRecipe.from_dict`, pass its `method/geometry` to
+`persist_candidate_plan`, and call `freeze_request(...,
+quality=recipe.quality, production_recipe=recipe, renderer=...)`. Both entrypoints
+check that every candidate plan and quality policy match the production recipe.
+`execute_request(root, request_path, render_callback)` owns the same acceptance
+and publication contract; #1355 owns Colab sharding and Drive durability.
+
+D5 is versioned as `target_kp4_roi_holes_1pct_v1` in
+`court_scale_quality_policy_v2`. Production requests and dataset versions use
+their explicit `v2` schemas, with the complete `production_recipe`, its
+`recipe_sha256`, the separate `geometry_recipe_sha256`, `quality_rule_version`
+and `quality_policy_sha256`. The latter two fields also bind each v2 QA ledger
+and cache completion; each rendered sample's v2 diagnostics pins `rule_version`
+and the policy hash. D5 failures become `qa_rejected` with explicit reasons and
+are absent from accepted membership and JPEG stores. Existing comparison QA is
+not production evidence: its schema, policy and cache key differ. RGB/alpha/depth
+must be evaluated under D5 explicitly; JPEG-only legacy caches cannot be
+re-certified from their old diagnostics. QA does not change cameras or point IDs.
+
+The selected method rarely shows a whole court in the preview. #1356 must check
+real-image metrics by court framing before fixing main-experiment conditions;
+the decision and its rationale remain in #1343.
+
+### Comparison recipes
+
+Select every comparison method explicitly:
+`grid_budget_replay`, `stratified_counter`, `sobol`, `capture_local`, or
+`open_bezier`. Unknown methods and exhausted finite sequences fail; rejected
+candidates keep their original ordinal and are never replaced to reach a quota.
+The five methods are defined by `scale/strategies.py` and remain available for
+Court Review comparisons. Only the named production recipe above is the
+main-experiment authority.
+
+`scale_geometry.json` owns the explicit geometry/arc settings for comparison
+previews. Saved grid replay
+retains the source config's footprint, HFOV and target-height distribution.
+New grid groups declare
+`provenance.replay_rule_version=saved_preset_parameterization_v2`: the saved
+orientation and vertical phase are preserved together, including the starting
+point of non-planar circles. Circle orientation and planar phase are set to zero
+only when constructing new counter/Sobol samples; conversion to a scale curve
+does not normalize saved parameters. Duplicate fingerprints use the separate
+curve-preserving normalization in `Curve.physical_key()`.
+
+Historical grid groups without this rule version retain their recorded geometry;
+they are not corrected when read. The run-03/run-04 comparison artifacts remain
+immutable, and their grid baseline does not establish exact saved-preset replay.
+Generate corrected comparisons in a new output root. The replay version changes
+grid trajectory/point IDs; counter/Sobol plans and the named production recipe's
+hash, cameras and IDs are unchanged. A new generator commit/source fingerprint
+still gives newly frozen requests and dataset publications their own identity.
+
+`scale_quality.json` keeps the existing all-court geometry/renderer gates and
+records target KP count and clipped target ROI alpha/depth holes as diagnostics.
+New target-KP/ROI hard thresholds default to `null`; selecting them creates an
+explicit new quality recipe. QA never changes camera IDs or geometry.
+
+The geometry identity uses versioned sorted UTF-8 canonical JSON, round-trippable
+binary64 numbers, full SHA-256, reduced rational arc fractions and field-local
+PCG64/SeedSequence randomness. NumPy/SciPy versions, Sobol bits/directions
+implementation and distributions are pinned in each plan. A trajectory's frozen
+arc table and base count `N0` are independent of n, k, worker and shard counts;
+level k has exactly `N0*2**k` half-open points. Both open and closed paths exclude
+q=1 as a camera; the Review curve can display the open endpoint. Point IDs omit
+birth level, storage order, frame index and QA. Curve/view fingerprints diagnose
+cyclic/orientation and open-path reverse duplicates (binary64 canonical geometry
+rounded to 12 decimals); later duplicates are explicitly rejected. Near points
+are retained. D2/D6 variants carry a separate `comparison_pair_id`; different
+methods never claim index correspondence.
+
+Freeze the complete request before queueing any GPU work (run from this
+worktree; choose a fresh output root outside the read-only scenes root):
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale plan \
+  --scenes-root /path/to/scenes --scenes B00 B01 B02 B03 \
+  --methods grid_budget_replay stratified_counter sobol capture_local open_bezier \
+  --output-root tmp/court-scale-preview \
+  --recipe src/synthetic_data_generation/configs/dataset/court/scale_geometry.json \
+  --quality src/synthetic_data_generation/configs/dataset/court/scale_quality.json \
+  --generation-seed 42 --trajectory-count 6 --density-level 0 \
+  --method-prefix capture_local=16 --method-prefix open_bezier=4 --method-density open_bezier=1 \
+  --scene-prefix capture_local:B01=80 --scene-prefix capture_local:B02=157 \
+  --scene-prefix capture_local:B03=153 \
+  --legacy-hull-center B01=false
+```
+
+The B01 option explicitly adds the missing legacy
+`sfm_complex_center_on_hull=false` to an in-memory copy and records the addition;
+it neither rewrites the saved config nor supplies an implicit default. Do not
+pass it for an input that already declares this field. Prefixes are fixed before
+rendering. `planned-requests.json` lists the frozen request paths. Queue the
+following command using the shared [training queue](../../../../.agents/skills/training-queue/SKILL.md):
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale render \
+  --output-root /absolute/path/to/tmp/court-scale-preview \
+  --request /absolute/path/to/requests/HASH.json ... --batch-size 1
+```
+
+The GPU entrypoint requires the queue's `TENNIS_RUN_ID`. NHT's GPU microbatch is
+explicitly 1 by default (local preview allows 1–4); one validated RGB/alpha/depth
+payload is evaluated and JPEG encoded at a time. Rendering uses the public NHT
+file boundary and checks pinned scene assets, launcher/runtime sources and
+Court generator sources before running. No assets or source images are modified.
+Failures leave a diagnostic staging directory and prevent version publication;
+this local entrypoint does not implement automatic retry or Drive durability.
+Those orchestration responsibilities remain with the distributed caller.
+
+### Dataset-version consumer contract
+
+A version is an explicit `*.dataset.json` under the output root. Its
+explicit `schema=court_scale_dataset_version_v1` (comparison) or
+`court_scale_dataset_version_v2` (production), content-derived `dataset_version`,
+`request_path/sha256`, aggregate `plan_sha256`, `method`, `recipe_sha256`,
+`generation_seed`, `split=train`, and `scenes[]` pin the complete condition.
+Every scene includes its asset and candidate-plan references/hashes,
+`stores[]`, `accepted_ids_path/sha256`, render-cache completion references,
+counts, rejection reasons and the number of empty trajectories.
+In v1, `recipe_sha256` identifies geometry only; in v2 it identifies the complete
+production recipe as described above. Readers dispatch by schema without
+reinterpreting historical comparison versions or their QA records.
+
+New per-scene asset descriptors use `court_scale_scene_assets_v2` and declare
+`configuration_authority` (`recipe` or `saved_preset`), `without_source_images`
+and `portable_asset_manifest` (explicit path/hash, or `null` for local inputs).
+`camera_image_reference` explicitly distinguishes new `export_relative` recipe
+inputs from the `export_absolute` references retained by saved-preset replay.
+The descriptor is pinned by `scenes[].asset_manifest_path/sha256` in both request
+and dataset version, so the external bundle manifest hash contributes to the
+data version. `recipe_sha256` remains the complete production recipe hash;
+saved workspace settings cannot change it. Historical
+`court_scale_local_assets_v1` descriptors retain their strict image-bearing
+workspace contract and saved-config hashes, including the run-03/run-04
+comparison artifacts. They are read without rewriting or reinterpretation.
+
+Candidate plans stream one trajectory/table at a time into hash-pinned `curves/`
+files (`trajectory_storage=curve_files_v1`); the plan header retains references
+only. Planning and strict rereading do not retain all dense arc tables or sparse
+projections in RAM.
+
+All references are relative to **the version file's parent (the explicit output
+root)**. Absolute paths, `..` and escaping symlinks are rejected. Each store
+entry contains `path`, `dataset_sha256`, `index_sha256`; training's minimum input
+is the explicit list `[version.parent / store['path'] for scene in
+version['scenes'] for store in scene['stores']]`. There is no latest-version or
+scene-owner discovery. Every row of these stores belongs to that condition's
+accepted membership, exactly once; the consumer must not mix roots from other
+versions. `scale.publication.load_dataset_version(path, verify_images=True)`
+validates membership, counts, hashes, the pinned RNG/Sobol runtime, the explicit
+QA policy, ledger/store record agreement, v3 cameras/targets/KP and all JPEGs
+before training. `verify_images=False` omits JPEG decoding for bounded Review reads.
+
+Stores use the existing `court_image_store_v1` JPEG shards plus sparse index and
+`canonical_court_dataset_v3` geometry. Metadata explicitly declares
+`scale_schema=court_scale_train_store_v1`; its RNG/trajectory and train-only
+contract requires the scale validator, rather than the legacy index-jitter /
+three-split validator. Sparse `scale` and `qa` records have their own schemas;
+v3 KP14, metric camera pose, target binding and on-the-fly dense/pose teachers
+retain their meanings. No dense teacher rasters are saved.
+
+Shared stores are immutable. Each cache shard covers a fixed 64-candidate chunk
+of one trajectory's density **birth level**, independent of requested n/k and
+worker completion order. Common IDs reference the same JPEG and sparse row;
+expanding a condition renders only new chunks. A shard's fingerprint includes
+assets, renderer, QA recipe and exact planned points. Empty shards retain a QA
+ledger without fabricating an image store. Identical completed requests reuse
+the same data version. Reordered completion yields the same packed row order.
+
+Counts distinguish `logical_records`, `candidate_unique`,
+`geometry_pass/rejected`, `rendered_unique`, `render_cache_reused`,
+`qa_accepted/rejected`, `pending/failed`. Completed versions require
+`candidate_unique=geometry_pass+geometry_rejected`,
+`geometry_pass=qa_accepted+qa_rejected=rendered_unique+render_cache_reused`, and
+`pending=failed=0`. All accepted rows are train; zero-accepted scene conditions
+fail and zero-accepted trajectories remain diagnostic. Counts are measured,
+without quota selection, refill or synthetic validation/test sets.

@@ -43,10 +43,10 @@ from src.synthetic_data_generation.reconstruction.scene_export import (
 )
 from src.synthetic_data_generation.rendering.nht import (
     NHTRenderCamera,
-    NHTRenderClient,
     NHTRenderCommandRequest,
     NHTRenderRequest,
 )
+from src.synthetic_data_generation.rendering.nht.client import NHTRenderClient
 from src.synthetic_data_generation.scene_contract import SceneCamera
 
 
@@ -67,6 +67,7 @@ class CourtNHTRenderer:
     client: NHTRenderClient
     environment: Mapping[str, str]
     timeout_seconds: float
+    without_source_images: bool = False
 
     def preflight(self, scene_path: Path) -> StandardSceneExport:
         """Validate the executable and prime the exact-session scene cache."""
@@ -87,7 +88,9 @@ class CourtNHTRenderer:
             raise FileNotFoundError(
                 f"Court nht-render executable is unavailable: {self.executable}"
             )
-        return self.client.validate_scene(scene_path)
+        return self.client.validate_scene(
+            scene_path, without_source_images=self.without_source_images
+        )
 
     def render(
         self,
@@ -170,6 +173,7 @@ class CourtNHTRenderer:
                 arbitrary_cameras=request,
                 arbitrary_request_path=request_path,
                 executable=self.executable,
+                without_source_images=self.without_source_images,
             )
             result = self.client.render(
                 command,

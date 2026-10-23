@@ -95,6 +95,62 @@ ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
     Path("src/synthetic_data_generation/dataset/court/migration.py"): frozenset(
         {"sha256"}
     ),
+    # Portable assets verify copied bytes and the explicitly pinned input bundle;
+    # their digests never derive scene IDs or choose scene-workspace owners.
+    Path("src/synthetic_data_generation/dataset/court/assets.py"): frozenset(
+        {"sha256", "sha-256"}
+    ),
+    # The asset CLI forwards the caller's expected transfer-verification digest;
+    # the source scenes and destination remain explicit paths.
+    Path("src/synthetic_data_generation/scripts/court_scene_assets.py"): frozenset(
+        {"sha256"}
+    ),
+    # Stable scale-point IDs and field-local RNG streams pin experimental views;
+    # the explicit source scene ID and canonical workspace remain unchanged.
+    Path("src/synthetic_data_generation/dataset/court/scale/core.py"): frozenset(
+        {"sha256"}
+    ),
+    # Candidate plans bind source geometry and the experiment's recipe to stable
+    # views; these keys never derive source scene IDs or choose workspace owners.
+    Path("src/synthetic_data_generation/dataset/court/scale/planning.py"): frozenset(
+        {"sha256"}
+    ),
+    # Hash-addressed requests/stores live under an explicitly selected experiment
+    # output root, outside the scene workspace's fixed datasets/court owner.
+    Path("src/synthetic_data_generation/dataset/court/scale/publication.py"): frozenset(
+        {"sha256", "content-addressed"}
+    ),
+    # Each QA record binds the experiment's exact quality-policy version.
+    Path("src/synthetic_data_generation/dataset/court/scale/quality.py"): frozenset(
+        {"sha256"}
+    ),
+    # Production recipe digests verify the explicitly selected experiment policy.
+    Path("src/synthetic_data_generation/dataset/court/scale/recipes.py"): frozenset(
+        {"sha256"}
+    ),
+    # Asset and renderer hashes verify frozen experimental inputs/runtime;
+    # source scenes are read only and retain their explicit IDs and owners.
+    Path("src/synthetic_data_generation/dataset/court/scale/runtime.py"): frozenset(
+        {"sha256", "sha-256", "fingerprint"}
+    ),
+    # The serialized RNG algorithm version fixes experimental sampling streams.
+    Path("src/synthetic_data_generation/dataset/court/scale/strategies.py"): frozenset(
+        {"sha256"}
+    ),
+    # Strict plan validation checks the experiment's frozen geometry recipe.
+    Path("src/synthetic_data_generation/dataset/court/scale/validation.py"): frozenset(
+        {"sha256"}
+    ),
+    # Review exposes the selected experiment's request/recipe digests; its
+    # catalog keys and cache revisions never choose canonical scene owners.
+    Path("src/synthetic_data_generation/dataset/court/review/scale_service.py"): frozenset(
+        {"sha256"}
+    ),
+    # The CLI pins asset bytes and renderer conditions for an explicit data
+    # version outside canonical scene publication.
+    Path("src/synthetic_data_generation/scripts/generate_court_scale.py"): frozenset(
+        {"sha256", "fingerprint"}
+    ),
     Path("src/synthetic_data_generation/alignment/heatmaps.py"): frozenset({"sha256"}),
     Path("src/synthetic_data_generation/dataset/court/review/service.py"): frozenset(
         {"sha256"}
@@ -145,7 +201,9 @@ def test_old_files_and_production_entrypoints_are_deleted() -> None:
     assert scripts == {
         "__init__.py",
         "compact_court_storage.py",
+        "court_scene_assets.py",
         "edit_alignment.py",
+        "generate_court_scale.py",
         "generate_publication_visualizations.py",
         "review_court_dataset.py",
         "run_appearance_variant.py",

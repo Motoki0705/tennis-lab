@@ -87,6 +87,8 @@ def test_catalog_does_not_publish_legacy_synthetic_boundaries() -> None:
 
     assert synthetic == {
         "src.synthetic_data_generation.scripts.compact_court_storage:main",
+        "src.synthetic_data_generation.scripts.court_scene_assets:main",
+        "src.synthetic_data_generation.scripts.generate_court_scale:main",
         "src.synthetic_data_generation.scripts.edit_alignment:main",
         "src.synthetic_data_generation.scripts.generate_publication_visualizations:main",
         "src.synthetic_data_generation.scripts.review_court_dataset:main",

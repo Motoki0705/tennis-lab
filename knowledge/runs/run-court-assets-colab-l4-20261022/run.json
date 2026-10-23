@@ -1,0 +1,92 @@
+{
+  "schema": "court_assets_verification_run_v1",
+  "tennis_lab_commit": "5d2ffbb692e68e0c0093e1358ba7fa6f7ab19f7d",
+  "nht_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+  "asset_manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b",
+  "asset_file_count": 24,
+  "asset_size_bytes": 958142735,
+  "staging_path": "gdrive:tennis_lab/staging/court-scene-assets-a9281d9a41e39fc9",
+  "staging_id": "1TRAOGHD6PVyoY0Vfq56gLIyKGMzWC2S-",
+  "colab_session": "court-assets-verify-20261022-02",
+  "local_queue_jobs": [
+    "0-8207348900882875649_2026-10-22T06-38-19-117124350Z_2409410_court-assets-float32-comparison",
+    "0-8207348556832534680_2026-10-22T06-44-03-167465319Z_2484940_court-assets-memory-comparison"
+  ],
+  "earlier_transfer_timings_seconds": {
+    "local_pack": 8.919,
+    "colab_uv_sync": 25.554,
+    "drive_upload_and_verify": 135.532,
+    "drive_download_and_verify": 115.386,
+    "roundtrip_manifest_verify": 8.502,
+    "nht_package_preparation_reported_by_uv": 631,
+    "tinycudann_preparation_reported_by_uv": 210,
+    "full_setup_until_trainer_cancellation": 1136.831965
+  },
+  "source_sha256": {
+    "court_assets_probe.py": "af21c5b541e5ae5c29c5e3fd9a875bdf6225cc1c4b5ca124dc1fb17566328158",
+    "court_assets_visibility.py": "e6a84cba76a24e12b2a12dad45085fa448ea3f0e9a98c1857fb3e1188ecaad84",
+    "court_assets_compare.py": "cd7b8e35b31cba71c6ee2e1e88b13ea70afc4667ddc16462a89b8e79d8348dcc",
+    "court_assets_outliers.py": "757bacc1e115b56e72d5ab612a4b8a1b7dcea1473c8e8516b495c919862e6a01",
+    "court_assets_figure.py": "b7d20b90d366d519ef752c5c97be78d78b79a421148cc91fb79d28a89df65af2",
+    "court_assets_render_native_colab.sh": "0232c6e4911d89e5f4e331384d5c5aa7fc67768a2a308fc5e929713ed5a35448",
+    "court_assets_download_colab.sh": "4b9031def1563a562c8e45eaee301278df2fb44a32b7eea97fb2ceafd245c05a",
+    "recompute.sh": "0789da5a522765356770d78ed903764f371933aa85caf34ded4807288f0c5fb0"
+  },
+  "gsplat_commit": "c8d5acd22314c1c1144a30e635e08d9c738a8b39",
+  "setup_timings_seconds": {
+    "uv_sync": 26.43,
+    "setup_nht_render_only": 951.585,
+    "setup_nht_render_only_corrected_warm_environment": 898.111
+  },
+  "bundle_file_count": 25,
+  "bundle_size_bytes": 958152199,
+  "asset_manifest_size_bytes": 9464,
+  "colab_asset_timings_seconds": {
+    "drive_download_and_verify": 49.987,
+    "manifest_and_geometry_verify": 22.592
+  },
+  "setup_fix_commit": "7e8c926fe76c02d59c92b03c00e846297a2e2551",
+  "setup_fix": "Build gsplat with --no-build-isolation after pinned Torch, and import gsplat.csrc explicitly before declaring success.",
+  "colab_candidate_outputs": "gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-assets-verify/renders-native",
+  "setup_patch_sha256": "83e7970f8f30f5d1ffc078710e891d12e5e1a0a75468d64ceb747e641028e331",
+  "observed_colab_render_environment": {
+    "python": "3.11.16",
+    "gpu": "NVIDIA L4",
+    "cuda": "13.0",
+    "packages": {
+      "torch": "2.9.1+cu130",
+      "gsplat": "1.5.3",
+      "numpy": "2.4.6",
+      "tinycudann": "2.0"
+    },
+    "nvidia_smi": "NVIDIA L4, 580.82.07, 23034 MiB"
+  },
+  "observed_local_render_environment": {
+    "python": "3.11.15",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "cuda": "13.0",
+    "packages": {
+      "torch": "2.9.1+cu130",
+      "gsplat": "1.5.3",
+      "numpy": "2.4.6",
+      "tinycudann": "2.0"
+    },
+    "nvidia_smi": "NVIDIA GeForce RTX 5060 Ti, 610.88, 16311 MiB"
+  },
+  "outcome": "comparison_complete_equivalence_not_accepted",
+  "promoted": false,
+  "adopted_path": null,
+  "render_recovery_verified": true,
+  "operation_recovery_verified": true,
+  "local_baseline_drive_path": "gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-assets-verify/local-reference",
+  "colab_render_drive_path": "gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-assets-verify/renders-native",
+  "setup_patch_hunks_match_commit": true,
+  "render_job_drive_saved_at": "2026-10-22T07:38:48.404027+00:00",
+  "remote_assignment_count_at_recovery": 0,
+  "stop_result": "refused_absent_registry",
+  "comparison": "cross-gpu-comparison.json",
+  "outlier_audit": "outlier-audit.json",
+  "local_baseline_drive_id": "1_GbMOYNGs4MeVEyqxz1980nYs3--1J7E",
+  "colab_render_drive_id": "1HRY3zmC1Eey83njm6Q4ZeykHPZ0_yAFa",
+  "recomputed_comparisons_equal_recorded": true
+}
