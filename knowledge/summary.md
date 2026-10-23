@@ -1,4 +1,4 @@
-<!-- knowledge-review: 9d5efe4aef316d76231933ae19f3b5bf56497d81be0b3cf06c277fe0823c7e30 on 2026-10-23 -->
+<!-- knowledge-review: 8208fcefb3bbe126b52da6a837c3cb1ac0916fc9818ffbd8f8e9c0e47695e5d2 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習とColab保存再開の事前検査を反映。既存のcheckpoint採用判断は維持）
@@ -331,7 +331,9 @@ Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256�
 新VMでは取得＋CLI照合が約46.6分、全件SHA-256が約7.4分で、取得後の空きは約42.7 GBだった。
 初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
 長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
-窓側はstore相対の原注釈pathをresolverで解決する必要がある。
+窓生成・hybrid不在教師・統計readerの原注釈pathをstore resolverへ統一した。
+移動fixtureのdataset読込と、実データの全T・train/evaluationで、共通区間・pack・owner・教師kindの一致を確認した。
+ローカルの未配置stageは元payloadを明示する読み取り専用の照合経路を使い、通常読込のshard不足は引き続き失敗する。
 PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
 

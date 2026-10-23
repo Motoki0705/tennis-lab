@@ -6,6 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
+from src.tasks.ball_detection.data.distribution import source_payloads
 from src.tasks.ball_detection.data.windows.all_frame_preparation import (
     prepare_all_frame_training,
 )
@@ -41,6 +42,7 @@ ALL_FRAME_PATH_BOUNDARY = NonHydraPathBoundary(
         BoundaryPathField("ball_store", PathRole.DATA, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True),
         BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.DIRECTORY),
         BoundaryPathField("rgb_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE, must_exist=True, required=False),
+        BoundaryPathField("distribution_source_store", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.DIRECTORY, must_exist=True, required=False),
     ),
 )
 
@@ -48,14 +50,23 @@ ALL_FRAME_PATH_BOUNDARY = NonHydraPathBoundary(
 def _prepare_all_frames(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     if any(value is not None for value in (args.poses, args.model_config, args.frame_steps, args.window_stride)):
         parser.error("all_frames uses native frames and shared packs; coordinate/pose options are incompatible")
+    if args.distribution_source_store is not None and args.rgb_manifest is not None:
+        parser.error("distribution-source-store and rgb-manifest cannot be combined")
     declarations = dict(ball_store=args.ball_store, output=args.output)
     if args.rgb_manifest is not None:
         declarations["rgb_manifest"] = args.rgb_manifest
+    if args.distribution_source_store is not None:
+        declarations["distribution_source_store"] = args.distribution_source_store
     if not all(path.is_absolute() for path in declarations.values()):
         parser.error("Snapshot, output and RGB manifest paths must be absolute")
+    artifact_root = args.output.parent
+    if args.rgb_manifest is not None:
+        artifact_root = args.rgb_manifest.parent
+    if args.distribution_source_store is not None:
+        artifact_root = args.distribution_source_store.parent
     roots = RuntimePathRoots(
         project_root=args.ball_store.parent, data_root=args.ball_store.parent, output_root=args.output.parent,
-        artifact_root=args.rgb_manifest.parent if args.rgb_manifest is not None else args.output.parent,
+        artifact_root=artifact_root,
         checkpoint_root=args.output.parent, cache_root=args.output.parent, external_asset_root=args.output.parent,
     )
     resolved = ALL_FRAME_PATH_BOUNDARY.validate(declarations, resolver=PathResolver(roots))
@@ -73,9 +84,12 @@ def _prepare_all_frames(args: argparse.Namespace, parser: argparse.ArgumentParse
     plan = prepare_all_frame_training(
         resolved.declared("ball_store").path, resolved.declared("output").path, configs=configs,
         rgb_manifest=resolved.declared("rgb_manifest").path if args.rgb_manifest is not None else None,
+        external_payloads=source_payloads(
+            resolved.declared("ball_store").path, resolved.declared("distribution_source_store").path,
+        ) if args.distribution_source_store is not None else None,
         progress=progress,
     )
-    print(json.dumps(dict(output=str(args.output), status=plan["status"],
+    print(json.dumps(dict(output=str(args.output), status=plan["status"], payload_mode=plan["payload_mode"],
                           manifests={length: {mode: entry["path"] for mode, entry in modes.items()}
                                      for length, modes in plan["datasets"].items()})), flush=True)
 
@@ -95,6 +109,8 @@ def main() -> None:
     parser.add_argument("--pack-stride", type=int, help="Shared pack start stride (default: 16)")
     parser.add_argument("--timestamp-gap-factor", type=float, help="Native median-PTS gap factor (default: 2.5)")
     parser.add_argument("--rgb-manifest", type=Path, help="Reuse RGB hashes from this exact snapshot's coordinate manifest")
+    parser.add_argument("--distribution-source-store", type=Path,
+                        help="Explicitly use the pinned original payloads of an unmaterialized distribution for local verification")
     args = parser.parse_args()
     if args.mode == "all_frames":
         _prepare_all_frames(args, parser)
@@ -102,7 +118,8 @@ def main() -> None:
     if args.poses is None or args.model_config is None:
         parser.error("coordinates requires --poses and --model-config")
     if any(value is not None for value in (args.window_lengths, args.max_window_length, args.pack_length,
-                                           args.pack_stride, args.timestamp_gap_factor, args.rgb_manifest)):
+                                           args.pack_stride, args.timestamp_gap_factor, args.rgb_manifest,
+                                           args.distribution_source_store)):
         parser.error("All-frame options require --mode all_frames")
     if not all(path.is_absolute() for path in (args.ball_store, args.poses, args.model_config, args.output)):
         parser.error("Data, model configuration and output paths must be absolute")

@@ -422,8 +422,8 @@ class BallFrameStore:
             return path
         return self.directory / SHARDS_DIR / shard_name(clip.index)
 
-    def annotation_path(self, clip: ClipRecord) -> Path:
-        """Resolve explicitly relative distribution annotations or legacy paths."""
+    def annotation_path(self, clip: ClipRecord, *, must_exist: bool = True) -> Path:
+        """Resolve declared annotation paths; provenance reports may defer the file check."""
         entries = cast(list[dict[str, object]], self.metadata["clips"])
         value = entries[clip.index].get("annotation_path")
         if not isinstance(value, str) or not value:
@@ -440,7 +440,7 @@ class BallFrameStore:
             not path.resolve().is_relative_to(self.directory.resolve()) or path.is_symlink()
         ):
             raise ValueError("Distribution annotation resolves outside the store or is a symlink")
-        if not path.is_file():
+        if must_exist and not path.is_file():
             raise ValueError(f"Original annotation is missing: {path}")
         return path
 

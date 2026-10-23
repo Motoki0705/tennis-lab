@@ -213,9 +213,16 @@ PYTHONDONTWRITEBYTECODE=1 flock "$PYTEST_LOCK" .venv/bin/python -m pytest \
   tests/integration/tasks/ball_detection/test_store_pipeline.py \
   tests/unit/utils/configuration \
   tests/e2e/development/test_configuration_audit.py \
+  tests/unit/tasks/ball_detection/data/windows \
+  tests/integration/tasks/ball_detection/test_all_frame_windows.py \
+  tests/integration/tasks/ball_detection/test_pose_windows.py \
+  tests/integration/tasks/ball_detection/test_hybrid_training.py \
+  tests/integration/tasks/ball_detection/test_dataset_statistics.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py \
   knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q
+PYTHONDONTWRITEBYTECODE=1 flock "$PYTEST_LOCK" .venv/bin/python -m pytest \
+  knowledge/runs/run-ball-portable-distribution-20261023/test_verify_window_consumers.py -n 1 -q
 .venv/bin/python -m ruff check src/tasks/ball_detection/data/distribution \
   src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py \
   knowledge/runs/run-ball-portable-distribution-20261023
@@ -233,7 +240,42 @@ and checked stop results.
 
 Resolve original Chat annotations with `store.annotation_path(clip)`. The new
 metadata declares `annotation_path_base="store"`; directly interpreting its
-`annotation_path` string as a host-absolute path is invalid. The parallel window
-implementation owns this caller update and note-based teacher policy. This run
-compares the complete teacher inputs and original notes, without implementing
-that policy or generating the final window manifests.
+`annotation_path` string as a host-absolute path is invalid. The all-frame
+preparation, hybrid absence evidence and statistics readers use this resolver.
+The window implementation owns the note-based teacher policy; the distribution
+integration keeps its original hash, frame and notes checks.
+
+## Verify the window consumer connection locally
+
+The parent merged `codex/ball-temporal-windows` before this correction. A small
+fixture covers source snapshot, a separately versioned distribution, relocation,
+train/evaluation preparation and dataset loading for every T and split. It removes
+the fixture's original Chat annotation before preparing the relocated store and
+compares clip-ID-aligned intervals, packs, owner ranges, label kinds, RGB and PTS.
+Missing, changed or mismatched annotation evidence must stop preparation.
+
+The local train/validation directory is a metadata-only distribution stage. The
+public preparation CLI accepts `--distribution-source-store` explicitly for this
+read-only source view. The normal loader still rejects missing payloads. It writes
+`payload_mode=external_source_view` to the plan; normal dataset loading requires
+materializing the distribution's complete payload set. Colab's complete store
+does not require this local verification option.
+
+```bash
+export PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD"
+SOURCE_REPO_ROOT=<absolute-source-repository>
+.venv/bin/python knowledge/runs/run-ball-portable-distribution-20261023/verify_window_consumers.py \
+  --source-repo-root "$SOURCE_REPO_ROOT" \
+  --distribution "$PWD/tmp/ball-portable-distribution/train-val" \
+  --output "$PWD/tmp/ball-window-consumer-verification-repro"
+```
+
+Use a fresh output. The recipe executes the actual `prepare_data --mode all_frames`
+CLI on the pinned original snapshot and the distribution, with T=32/64/128. Only
+the source snapshot reuses its exact coordinate RGB manifest. The distribution
+view hashes the original shards in place. It compares all common clips for
+train/validation, per-clip intervals, label runs, pack/owner lists, RGB and semantic
+hashes, original note evidence, and every split summary identity. Store-global
+clip indices and the resolved annotation location may differ. Before/after file
+versions include inode, size, mtime and ctime. Full manifests and logs stay in tmp;
+the small comparison receipt is promoted to this run after successful completion.

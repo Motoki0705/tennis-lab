@@ -240,6 +240,10 @@ def test_legacy_annotations_require_an_explicit_absolute_path(source: Path, tmp_
     store = BallFrameStore(source)
     clip = store.clip_by_id("chat_annotation/train/clip")
     assert store.annotation_path(clip) == tmp_path / "original.json"
+    (tmp_path / "original.json").unlink()
+    assert store.annotation_path(clip, must_exist=False) == tmp_path / "original.json"
+    with pytest.raises(ValueError, match="Original annotation is missing"):
+        store.annotation_path(clip)
     metadata = json.loads((source / "metadata.json").read_text())
     metadata["clips"][clip.index]["annotation_path"] = "../original.json"
     (source / "metadata.json").write_text(json.dumps(metadata))

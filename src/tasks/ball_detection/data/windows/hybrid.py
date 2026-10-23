@@ -71,12 +71,11 @@ def reviewed_empty_evidence(store: BallFrameStore, clip: ClipRecord, states: Ann
     empty = states.reviewed & states.target & (states.count == 0)
     if clip.source != "chat_annotation" or not empty.any():
         return empty, dict(rule="normalized reviewed target with zero instances", source=clip.source)
-    metadata = json.loads((store.directory / "metadata.json").read_text())
-    entry = next(c for c in metadata["clips"] if c["clip_id"] == clip.clip_id)
-    if "annotation_path" not in entry:
-        raise ValueError("Chat reviewed-empty supervision requires the original hashed annotation; notes are absent from the store")
-    path = Path(entry["annotation_path"])
-    if not path.is_absolute() or not path.is_file() or dual_sha256(path) != clip.annotation_sha256:
+    try:
+        path = store.annotation_path(clip)
+    except ValueError as error:
+        raise ValueError("Chat reviewed-empty annotation missing or checksum differs from the snapshot") from error
+    if dual_sha256(path) != clip.annotation_sha256:
         raise ValueError("Chat reviewed-empty annotation missing or checksum differs from the snapshot")
     raw = json.loads(path.read_text())
     if (raw["schema_version"] != "tennis_chat_ball_annotation.v1" or f"chat_annotation/{raw['clip_id']}" != clip.clip_id
@@ -144,7 +143,7 @@ def build_hybrid_manifest(base_path: Path, policy: AbsencePolicy) -> dict[str, A
         previous = known.get(clip.clip_id)
         if previous is not None and previous["windows"] != [asdict(w) for w in original]:
             raise ValueError("Base manifest play windows disagree with the frozen annotations")
-        play_mask = np.zeros(clip.frame_count, dtype=np.bool_)
+        play_mask: NDArray[np.bool_] = np.zeros(clip.frame_count, dtype=np.bool_)
         for start, stop in play:
             play_mask[start:stop] = True
         empty, evidence = (reviewed_empty_evidence(store, clip, states) if "reviewed_empty" in policy.negative_kinds

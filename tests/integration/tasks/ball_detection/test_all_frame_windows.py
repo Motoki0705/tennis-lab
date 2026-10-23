@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections import Counter
@@ -17,6 +18,8 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_detection.data.annotation_states import annotation_states
+from src.tasks.ball_detection.data.distribution import prepare_distribution
+from src.tasks.ball_detection.data.distribution.manifest import distribution_files
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.data.windows.all_frame_manifest import (
     ALL_FRAME_MANIFEST_SCHEMA,
@@ -101,6 +104,103 @@ def prepared(snapshot: Path, tmp_path: Path) -> tuple[Path, dict]:
 
 def manifest_path(plan: dict, length: int, mode: str) -> Path:
     return Path(plan["datasets"][str(length)][mode]["path"])
+
+
+def materialize_distribution(snapshot: Path, stage: Path) -> None:
+    for name, source in distribution_files(stage, source_directory=snapshot).items():
+        destination = stage / name
+        if destination != source:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+
+
+def test_relocated_distribution_preserves_all_frame_manifests_and_dataset(
+    snapshot: Path, tmp_path: Path,
+) -> None:
+    configs = [AllFrameWindowConfig(t) for t in (32, 64, 128)]
+    reference = prepare_all_frame_training(snapshot, tmp_path / "reference", configs=configs)
+    selected = {"chat_annotation/example", "tracknet/negative/clip", "tracknet/validation/clip", "tracknet/test/clip"}
+    stage = tmp_path / "stage"
+    prepare_distribution(snapshot, stage, version="relocated-v1", clip_ids=sorted(selected), inputs={})
+    materialize_distribution(snapshot, stage)
+    moved = tmp_path / "moved"
+    stage.rename(moved)
+    (tmp_path / "chat.json").unlink()
+    result = prepare_all_frame_training(moved, tmp_path / "distribution-windows", configs=configs)
+    store = BallFrameStore(moved)
+    assert store.annotation_path(store.clip_by_id("chat_annotation/example")).is_relative_to(moved)
+    assert store.clip_by_id("chat_annotation/example").index != BallFrameStore(snapshot).clip_by_id("chat_annotation/example").index
+    for length in (32, 64, 128):
+        for mode in ("train", "evaluation"):
+            expected = json.loads(manifest_path(reference, length, mode).read_text())
+            actual = json.loads(manifest_path(result, length, mode).read_text())
+            records = {r["clip"]["clip_id"]: r for r in expected["clips"] if r["clip"]["clip_id"] in selected}
+            assert {r["clip"]["clip_id"] for r in actual["clips"]} == selected
+            for record in actual["clips"]:
+                original = records[record["clip"]["clip_id"]]
+                for key in ("common_intervals", "label_runs", "packs" if mode == "train" else "windows"):
+                    assert record[key] == original[key]
+                assert record["negative_evidence"].get("annotation_sha256") == original["negative_evidence"].get("annotation_sha256")
+            for split in ("train", "val", "test"):
+                before = FrozenBallWindowDataset(manifest_path(reference, length, mode), split=split, requires_pose=False)
+                after = FrozenBallWindowDataset(manifest_path(result, length, mode), split=split, requires_pose=False)
+                indices = [i for i, (r, _) in enumerate(before.windows) if before.records[r]["clip"]["clip_id"] in selected]
+                assert len(indices) == len(after) > 0
+                for i, j in enumerate(indices):
+                    sample, original_sample = after[i], before[j]
+                    assert sample["clip_id"] == original_sample["clip_id"]
+                    for key in ("rgb", "uv", "pts", "timestamps", "frame_indices", "label_kind",
+                                "position_valid", "heatmap_valid", "owner_mask", "score_mask"):
+                        assert torch.equal(sample[key], original_sample[key]), key
+                    assert sample["pack_id"] == original_sample["pack_id"]
+
+
+@pytest.mark.parametrize("damage", ["missing", "checksum", "frame", "notes"])
+def test_distribution_annotation_failures_never_remove_negative_supervision_silently(
+    snapshot: Path, tmp_path: Path, damage: str,
+) -> None:
+    stage = tmp_path / "stage"
+    prepare_distribution(snapshot, stage, version="negative-v1", clip_ids=["chat_annotation/example"], inputs={})
+    materialize_distribution(snapshot, stage)
+    store = BallFrameStore(stage)
+    annotation = store.annotation_path(store.clips[0])
+    raw = json.loads(annotation.read_text())
+    if damage == "missing":
+        annotation.unlink()
+    else:
+        if damage == "frame":
+            raw["frames"][10]["frame_index"] = 11
+        else:
+            raw["frames"][10]["notes"] = 42
+        annotation.write_text(json.dumps(raw))
+        if damage != "checksum":
+            metadata = json.loads((stage / "metadata.json").read_text())
+            metadata["clips"][0]["annotation_sha256"] = dual_sha256(annotation)
+            (stage / "metadata.json").write_text(json.dumps(metadata))
+    output = tmp_path / "failed"
+    with pytest.raises(ValueError, match="missing|checksum|frame identity"):
+        prepare_all_frame_training(stage, output, configs=[AllFrameWindowConfig(32)])
+    assert not (output / "experiments.json").exists()
+
+
+def test_prepare_cli_requires_explicit_source_for_distribution_stage(snapshot: Path, tmp_path: Path) -> None:
+    stage = tmp_path / "stage"
+    prepare_distribution(snapshot, stage, version="preview-v1", clip_ids=["chat_annotation/example"], inputs={})
+    paths = [p for root in (snapshot, stage) for p in root.rglob("*") if p.is_file()] + [tmp_path / "chat.json"]
+    versions = {p: file_version(p) for p in paths}
+    output = tmp_path / "preview"
+    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.prepare_data", "--mode", "all_frames",
+               "--ball-store", str(stage), "--output", str(output), "--window-lengths", "32", "64", "128"]
+    env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1")
+    missing = subprocess.run(command, env=env, capture_output=True, text=True, timeout=60)
+    assert missing.returncode != 0 and "Shard size" in missing.stderr
+    completed = subprocess.run(command + ["--distribution-source-store", str(snapshot)], env=env,
+                               capture_output=True, text=True, timeout=60)
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    plan = json.loads((output / "experiments.json").read_text())
+    assert plan["payload_mode"] == "external_source_view"
+    assert not (stage / "shards").exists()
+    assert {p: file_version(p) for p in paths} == versions
 
 
 def test_preparation_references_snapshot_without_changing_files_or_links(snapshot: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

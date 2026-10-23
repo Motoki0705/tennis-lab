@@ -1,0 +1,81 @@
+{
+  "annotation_consumer_search": {
+    "command": "rg -n annotation_path src",
+    "other_matches": "Central store resolver, distribution and store writers, and original source annotation readers.",
+    "updated_consumers": [
+      "src/tasks/ball_detection/data/windows/all_frame_preparation.py",
+      "src/tasks/ball_detection/data/windows/hybrid.py",
+      "src/tasks/ball_detection/dataset_statistics/inputs.py"
+    ]
+  },
+  "code_source_hashes_match_final_worktree": true,
+  "distinct_tests": 533,
+  "external_operations_rerun": false,
+  "knowledge_checks": {
+    "repro_paths": {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+      "missing": 0,
+      "repro_scripts": 402,
+      "returncode": 0,
+      "script_references": 496,
+      "unverifiable": 0
+    },
+    "validation": {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref codex/ball-temporal-windows",
+      "errors": 0,
+      "returncode": 0,
+      "warnings": 218
+    }
+  },
+  "out_of_scope_provenance": {
+    "action": "Consider portable metadata provenance in a separate distribution version; do not modify published assets.",
+    "distribution_clips": 1537,
+    "distribution_clips_with_provenance": 0,
+    "source_clips": 1800,
+    "source_clips_with_provenance": 1800
+  },
+  "precommit": {
+    "command": ".venv/bin/python -m pre_commit run --files src/tasks/ball_detection/data/store.py src/tasks/ball_detection/data/windows/all_frame_preparation.py src/tasks/ball_detection/data/windows/hybrid.py src/tasks/ball_detection/dataset_statistics/inputs.py src/tasks/ball_detection/scripts/prepare_data.py tests/integration/tasks/ball_detection/test_all_frame_windows.py tests/integration/tasks/ball_detection/test_dataset_statistics.py tests/unit/tasks/ball_detection/data/test_distribution.py",
+    "mypy": "passed",
+    "returncode": 0,
+    "ruff": "passed"
+  },
+  "previous_json_receipts_byte_identical": 44,
+  "pytest": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/utils/configuration tests/e2e/development/test_configuration_audit.py tests/unit/tasks/ball_detection/data/windows tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py tests/integration/tasks/ball_detection/test_all_frame_windows.py tests/integration/tasks/ball_detection/test_pose_windows.py tests/integration/tasks/ball_detection/test_hybrid_training.py tests/integration/tasks/ball_detection/test_dataset_statistics.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q",
+      "elapsed_seconds": 442.61,
+      "passed": 523,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest knowledge/runs/run-ball-portable-distribution-20261023/test_verify_window_consumers.py -n 1 -q",
+      "elapsed_seconds": 8.21,
+      "passed": 10,
+      "returncode": 0
+    }
+  ],
+  "real_data": {
+    "distribution_identity_unchanged": true,
+    "manifests_compared": 6,
+    "public_cli_executed": true,
+    "receipt": "consumer-verification.json",
+    "rgb_payload_bytes_copied_or_linked": 0,
+    "source_versions_unchanged": true,
+    "supervisor": "consumer-supervisor.json"
+  },
+  "schema_version": 1,
+  "stacked_base": {
+    "branch": "codex/ball-temporal-windows",
+    "commit": "04fb51aa2ff44063622ce96b29a673c060e370dd",
+    "parent_merge_commit": "26ad838c397cf90520e3cfd443216ceedaac1d8d"
+  },
+  "static_checks": {
+    "checked_source_files": 10,
+    "mypy": "passed",
+    "mypy_command": ".venv/bin/python -m mypy --follow-imports=skip src/tasks/ball_detection/data/store.py src/tasks/ball_detection/data/windows/all_frame_preparation.py src/tasks/ball_detection/data/windows/hybrid.py src/tasks/ball_detection/dataset_statistics/inputs.py src/tasks/ball_detection/scripts/prepare_data.py tests/integration/tasks/ball_detection/test_all_frame_windows.py tests/integration/tasks/ball_detection/test_dataset_statistics.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023/verify_window_consumers.py knowledge/runs/run-ball-portable-distribution-20261023/test_verify_window_consumers.py",
+    "ruff": "passed",
+    "ruff_command": ".venv/bin/python -m ruff check src/tasks/ball_detection/data/store.py src/tasks/ball_detection/data/windows/all_frame_preparation.py src/tasks/ball_detection/data/windows/hybrid.py src/tasks/ball_detection/dataset_statistics/inputs.py src/tasks/ball_detection/scripts/prepare_data.py tests/integration/tasks/ball_detection/test_all_frame_windows.py tests/integration/tasks/ball_detection/test_dataset_statistics.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023/verify_window_consumers.py knowledge/runs/run-ball-portable-distribution-20261023/test_verify_window_consumers.py"
+  },
+  "status": "verified"
+}
