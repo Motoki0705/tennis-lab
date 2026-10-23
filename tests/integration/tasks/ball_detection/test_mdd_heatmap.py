@@ -35,9 +35,9 @@ from tests.integration.tasks.ball_detection.test_rgb_mdd_contract import (
 )
 
 
-def config(kind: str, **kwargs: Any) -> MDDHeatmapConfig:
+def config(kind: str, *, frames: int, frame_chunk_size: int | None, **kwargs: Any) -> MDDHeatmapConfig:
     cls = MDDHeatmapHybridConfig if kind == "hybrid" else MDDHeatmapConfig
-    return cls(**dict(asdict(legacy_config()), **kwargs))
+    return cls(**dict(asdict(legacy_config()), frames=frames, frame_chunk_size=frame_chunk_size, **kwargs))
 
 
 def inputs(frames: int, batch: int = 1, height: int = 17, width: int = 25) -> MDDQueryInput:
@@ -49,11 +49,11 @@ def inputs(frames: int, batch: int = 1, height: int = 17, width: int = 25) -> MD
 @pytest.mark.parametrize("kind", ["dpt", "hybrid"])
 def test_same_all_weights_load_strictly_and_forward_at_each_temporal_length(kind: str) -> None:
     torch.set_num_threads(1)
-    pair = build_mdd_heatmap_detector(config(kind, frames=32))
+    pair = build_mdd_heatmap_detector(config(kind, frames=32, frame_chunk_size=None))
     state = pair.model.state_dict()
     assert not any("presence" in name for name in state)
     for frames in (1, 3, 32, 64, 128, 256):
-        target = build_mdd_heatmap_detector(config(kind, frames=frames))
+        target = build_mdd_heatmap_detector(config(kind, frames=frames, frame_chunk_size=None))
         result = target.model.load_state_dict(state, strict=True)
         assert not result.missing_keys and not result.unexpected_keys
         source = inputs(frames)
@@ -77,7 +77,7 @@ def test_same_all_weights_load_strictly_and_forward_at_each_temporal_length(kind
 def test_memory_controls_preserve_full_model_outputs_and_heatmap_gradients(kind: str, mixing: str, chunk_size: int | None, checkpointing: bool) -> None:
     torch.set_num_threads(1)
     torch.manual_seed(42)
-    cfg = config(kind, frames=9, temporal_mixing=mixing, dropout=.2)
+    cfg = config(kind, frames=9, frame_chunk_size=None, temporal_mixing=mixing, dropout=.2)
     full = build_mdd_heatmap_detector(cfg)
     optimized = build_mdd_heatmap_detector(replace(cfg, frame_chunk_size=chunk_size, activation_checkpointing=checkpointing))
     optimized.model.load_state_dict(full.model.state_dict(), strict=True)
@@ -136,7 +136,7 @@ def test_model_artifact_roundtrip_keeps_explicit_length_contract_and_all_weights
 
 @pytest.mark.parametrize("damage", ["missing_frames", "missing_chunk_size", "changed_frames", "changed_contract", "old_schema", "old_kind", "wrong_architecture", "extra_presence", "missing_weight"])
 def test_artifacts_never_guess_length_or_reinterpret_presence_models(damage: str) -> None:
-    saved = deepcopy(heatmap_model_payload(build_mdd_heatmap_detector(config("hybrid", frames=64)).model))
+    saved = deepcopy(heatmap_model_payload(build_mdd_heatmap_detector(config("hybrid", frames=64, frame_chunk_size=None)).model))
     if damage == "missing_frames":
         saved["model_config"].pop("frames")
     elif damage == "missing_chunk_size":
@@ -169,7 +169,7 @@ def test_legacy_presence_hybrid_state_and_configuration_stay_separate() -> None:
         heatmap_model_payload(legacy)
     with pytest.raises(ValueError, match="explicit"):
         MDDHeatmapAdapter(cast(Any, cfg))
-    pair = build_mdd_heatmap_detector(config("hybrid"))
+    pair = build_mdd_heatmap_detector(config("hybrid", frames=32, frame_chunk_size=None))
     with pytest.raises(RuntimeError, match="presence_head"):
         pair.model.load_state_dict(legacy.state_dict(), strict=True)
 
@@ -190,14 +190,14 @@ def test_typed_heatmap_call_compiles_with_memory_controls(kind: str, checkpointi
 
 
 def test_io_rejects_wrong_rgb_length_timestamps_model_pair_and_output() -> None:
-    pair = build_mdd_heatmap_detector(config("hybrid", frames=64))
+    pair = build_mdd_heatmap_detector(config("hybrid", frames=64, frame_chunk_size=None))
     source = inputs(64)
     with pytest.raises(ValueError, match="64 frames"):
         pair.adapter.build_call(inputs(32))
     with pytest.raises(ValueError, match="increase"):
         pair.adapter.build_call(MDDQueryInput(source.rgb, torch.zeros_like(source.timestamps)))
     with pytest.raises(ValueError, match="mismatch"):
-        pair.adapter.validate_model_pair(MDDDPTDetector(config("dpt", frames=64)))
+        pair.adapter.validate_model_pair(MDDDPTDetector(config("dpt", frames=64, frame_chunk_size=None)))
     for out in (torch.zeros(1, 32, 5, 7), torch.zeros(1, 64, 5, 7, dtype=torch.long), torch.full((1, 64, 5, 7), float("nan"))):
         with pytest.raises(ValueError, match="64"):
             pair.adapter.decode_output(out)

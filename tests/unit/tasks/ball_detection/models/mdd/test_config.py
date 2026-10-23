@@ -20,6 +20,8 @@ def test_shipped_configs_require_explicit_input_channels(
     config = MDDPretrainConfig.load(path)
     assert config.input_channels == channels
     raw = asdict(config)
+    assert config.frames == 32 and config.frame_chunk_size is None
+    assert "frames" not in raw and "frame_chunk_size" not in raw
     raw.pop("input_channels")
     with pytest.raises(TypeError, match="input_channels"):
         MDDPretrainConfig(**raw)
@@ -34,6 +36,8 @@ def test_hybrid_requires_explicit_input_channels(tmp_path: Path) -> None:
     config = MDDHybridConfig.load(path)
     assert config.input_channels == 5
     raw = asdict(config)
+    assert config.frames == 32 and config.frame_chunk_size is None
+    assert "frames" not in raw and "frame_chunk_size" not in raw
     raw.pop("input_channels")
     with pytest.raises(TypeError, match="input_channels"):
         MDDHybridConfig(**raw)
@@ -62,7 +66,11 @@ def test_temporal_heatmap_configs_keep_widths_and_require_explicit_saved_fields(
     assert config.dim == 256 and config.layers == 4 and config.heads == 8 and config.ffn_dim == 704
     assert config.decoder_channels == 128 and config.encoder_variant == "convnext_v2" and config.temporal_mixing == "factorized"
     assert not config.activation_checkpointing
-    for missing in ("frames", "frame_chunk_size", "input_channels"):
+    for missing in asdict(config):
+        constructor_fields = asdict(config)
+        constructor_fields.pop(missing)
+        with pytest.raises(TypeError, match=missing):
+            cls(**constructor_fields)
         raw = yaml.safe_load((root / filename).read_text())
         raw.pop(missing)
         path = tmp_path / "incomplete.yaml"

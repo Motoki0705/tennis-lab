@@ -15,7 +15,7 @@ from tests.unit.tasks.ball_detection.models.mdd.test_cnn import small_config
 def test_chunk_halos_preserve_every_feature_and_input_parameter_gradients(variant: str, mixing: str, chunk_size: int, checkpointing: bool) -> None:
     torch.set_num_threads(1)
     torch.manual_seed(43)
-    config = MDDHeatmapConfig(**dict(asdict(small_config()), input_channels=5, encoder_variant=variant, temporal_mixing=mixing), frames=9)
+    config = MDDHeatmapConfig(**dict(asdict(small_config()), input_channels=5, encoder_variant=variant, temporal_mixing=mixing), frames=9, frame_chunk_size=None)
     full = DeepMDDEncoder(config)
     chunked = DeepMDDEncoder(replace(config, frame_chunk_size=chunk_size, activation_checkpointing=checkpointing))
     chunked.load_state_dict(full.state_dict(), strict=True)
