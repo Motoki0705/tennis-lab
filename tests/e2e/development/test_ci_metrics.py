@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from scripts.ci_metrics import runner as measurement_runner
 from scripts.ci_metrics.actions import summarize_attempts
 from scripts.ci_metrics.report import summarize
 from scripts.ci_metrics.runner import test_environment as headless_environment
@@ -60,6 +61,9 @@ def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
             "outcome": "failed" if outcome == "teardown_failed" else "passed",
         },
     ]
+    if outcome in {"xfailed", "xpassed"}:
+        reports[1]["outcome"] = "skipped" if outcome == "xfailed" else "passed"
+        reports[1]["wasxfail"] = ""  # An empty reason still identifies xfail/xpass.
     events = [
         {
             "event": "configured",
@@ -94,7 +98,7 @@ def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
         '<error message="fixture failure"/>'
         if exitcode
         else "<skipped/>"
-        if "skipped" in outcome
+        if any(report["outcome"] == "skipped" for report in reports)
         else ""
     )
     (root / "junit.xml").write_text(
@@ -119,6 +123,8 @@ def _events(root: Path, events: list[dict[str, Any]], name: str = "controller") 
         ("setup_failed", "failed"),
         ("failed", "failed"),
         ("teardown_failed", "failed"),
+        ("xfailed", "xfailed"),
+        ("xpassed", "xpassed"),
     ],
 )
 def test_normal_failure_and_setup_skip_are_complete_observations(
@@ -240,6 +246,35 @@ def _attempt(attempt: int = 1, conclusion: str = "success") -> dict[str, Any]:
     }
 
 
+@pytest.mark.parametrize("changed_identity", [False, True])
+def test_collection_skip_does_not_disable_junit_identity_or_time_checks(
+    tmp_path: Path, changed_identity: bool
+) -> None:
+    events = _observation(tmp_path)
+    events.append(
+        {
+            "event": "collection_result",
+            "at": 1.2,
+            "nodeid": "tests/test_skip.py",
+            "outcome": "skipped",
+        }
+    )
+    _events(tmp_path, events)
+    xml = tmp_path / "junit.xml"
+    text = xml.read_text().replace(
+        "</testsuite>",
+        '<testcase classname="" name="tests.test_skip" time="0"><skipped/></testcase></testsuite>',
+    )
+    if changed_identity:
+        text = text.replace('name="test_one"', 'name="wrong_identity"')
+    xml.write_text(text)
+    result = summarize(tmp_path)
+    assert result["successful_test_baseline"] is not changed_identity
+    assert result["issues"] == (
+        ["JUnit test identities differ from phase reports"] if changed_identity else []
+    )
+
+
 def test_attempts_separate_check_wait_from_all_runner_time_and_include_cancelled() -> (
     None
 ):
@@ -357,6 +392,30 @@ def test_test_subprocess_is_headless_and_cpu_bounded() -> None:
         "PATH": "keep",
     }
     assert original["HERDR_ENV"] == "1"
+
+
+def test_source_change_while_queued_requires_a_fresh_measurement(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    before = {"workers": 0, "source": {"revision": "before"}}
+    after = {"workers": 0, "source": {"revision": "after"}}
+    observations = iter([before, after, after])
+    monkeypatch.setattr(
+        measurement_runner, "environment_metadata", lambda *args: next(observations)
+    )
+
+    def must_not_start(*args: Any, **kwargs: Any) -> None:
+        pytest.fail(
+            "pytest must not start with already imported stale measurement code"
+        )
+
+    monkeypatch.setattr(measurement_runner.subprocess, "Popen", must_not_start)
+    output = tmp_path / "measurement"
+    with pytest.raises(RuntimeError, match="source changed while waiting"):
+        measurement_runner.run(output, 0, [], tmp_path / "nested.lock")
+    summary = json.loads((output / "summary.json").read_text())
+    assert summary["successful_test_baseline"] is False
+    assert summary["run"]["status"] == "launcher_error"
 
 
 def test_runner_cancellation_while_waiting_for_lock_leaves_partial_artifacts(

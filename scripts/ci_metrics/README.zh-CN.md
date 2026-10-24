@@ -21,6 +21,9 @@
 临时绝对路径锁。GitHub-hosted runner 无需本地主机锁。普通回归 wrapper 仍固定使用 4 个
 worker，本工具不改变它。
 
+从启动起（包括锁等待）须固定源码。等待期间发生变化时，应重新启动进程，避免已导入的
+测量代码仍是旧版本。
+
 部分测试可放在 `--` 后，例如 `-- tests/unit/utils/geometry/test_angles.py`。任何额外参数都会使
 `full_cpu_target` 为 false，部分执行不能建立完整 CPU baseline。不要覆盖 worker、marker、
 JUnit、输出目录或 plugin 参数。

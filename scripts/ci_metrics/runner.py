@@ -177,7 +177,12 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
             lock.parent.mkdir(parents=True, exist_ok=True)
             lock_stream = lock.open("a")
             fcntl.flock(lock_stream, fcntl.LOCK_EX)
-        metadata.update(environment_metadata(workers, command))
+        acquired_metadata = environment_metadata(workers, command)
+        if acquired_metadata["source"] != metadata["source"]:
+            raise RuntimeError(
+                "source changed while waiting for pytest lock; start a fresh measurement"
+            )
+        metadata.update(acquired_metadata)
         write_json(output / "environment.json", metadata)
         state.update(started_at=time.time(), status="running")
         state["lock_wait_s"] = state["started_at"] - state["requested_at"]

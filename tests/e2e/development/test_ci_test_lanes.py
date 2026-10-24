@@ -135,6 +135,11 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     assert summary["successful_test_baseline"] is not failing_test
     assert summary["issues"] == []
     assert summary["counts"]["skipped"] == 1
+    skipped = next(
+        item for item in summary["fixtures"] if "skipped_fixture" in item["fixture"]
+    )
+    assert skipped["errors"] == 0
+    assert skipped["skipped"] == 1
     if failing_test:
         assert summary["counts"]["failed"] == 2
         broken = next(

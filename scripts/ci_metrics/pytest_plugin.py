@@ -112,6 +112,12 @@ def pytest_fixture_setup(
     outcome = "passed"
     try:
         return (yield)
+    except pytest.skip.Exception:
+        outcome = "skipped"
+        raise
+    except pytest.xfail.Exception:
+        outcome = "xfailed"
+        raise
     except BaseException:
         outcome = "error"
         raise

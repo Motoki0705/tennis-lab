@@ -22,6 +22,9 @@
 回帰テスト内だけ一時lockを使い、入れ子待機を避けます。GitHub-hosted runnerには
 ローカルlockは不要です。通常の回帰用wrapperの固定4 workerは変更しません。
 
+lock待ちを含め、起動後のsourceは固定します。待機中に変わった場合は、import済みの計測
+コードが古いまま動かないよう新しいprocessで起動し直します。
+
 部分実行は `-- tests/unit/utils/geometry/test_angles.py` のように指定します。追加引数があれば
 `full_cpu_target` はfalseとなり、全件baselineにはできません。worker、marker、JUnit、
 出力先、pluginを追加引数で上書きしないでください。

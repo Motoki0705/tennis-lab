@@ -17,6 +17,14 @@ def _json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
+def _junit_address(nodeid: str) -> tuple[str, str]:
+    address, bracket, parameters = nodeid.partition("[")
+    parts = address.split("::")
+    parts[0] = parts[0].replace("/", ".").removesuffix(".py")
+    parts[-1] += bracket + parameters
+    return ".".join(parts[:-1]), parts[-1]
+
+
 def summarize(root: Path) -> dict[str, Any]:
     report_started = time.perf_counter()
     issues: list[str] = []
@@ -72,11 +80,21 @@ def summarize(root: Path) -> dict[str, Any]:
                 continue
             key = f"{event['source']} [{event['scope']}]"
             item = fixtures.setdefault(
-                key, {"fixture": key, "count": 0, "setup_s": 0.0, "errors": 0}
+                key,
+                {
+                    "fixture": key,
+                    "count": 0,
+                    "setup_s": 0.0,
+                    "errors": 0,
+                    "skipped": 0,
+                    "xfailed": 0,
+                },
             )
             item["count"] += 1
             item["setup_s"] += event["setup_s"]
-            item["errors"] += event["outcome"] != "passed"
+            item["errors"] += event["outcome"] == "error"
+            item["skipped"] += event["outcome"] == "skipped"
+            item["xfailed"] += event["outcome"] == "xfailed"
     metadata = _json(root / "environment.json")
     run = _json(root / "run.json")
     if not metadata:
@@ -84,7 +102,7 @@ def summarize(root: Path) -> dict[str, Any]:
     if not run or run.get("finished_at") is None:
         issues.append("missing runner completion")
     if run.get("source_unchanged") is False:
-        issues.append("source changed during test execution")
+        issues.append("source changed after measurement launch")
     workers = metadata.get("workers")
     worker_collections = [e for e in controller if e["event"] == "worker_collection"]
     if workers is not None and workers > 0:
@@ -128,7 +146,7 @@ def summarize(root: Path) -> dict[str, Any]:
             status = "incomplete"
         elif "failed" in outcomes:
             status = "failed"
-        elif any(e.get("wasxfail") for e in reports):
+        elif any(e.get("wasxfail") is not None for e in reports):
             status = "xfailed" if "skipped" in outcomes else "xpassed"
         elif "skipped" in outcomes:
             status = "skipped"
@@ -139,6 +157,7 @@ def summarize(root: Path) -> dict[str, Any]:
                 "nodeid": nodeid,
                 "status": status,
                 "phase_s": {e["phase"]: e["duration_s"] for e in reports},
+                "phase_outcomes": {e["phase"]: e["outcome"] for e in reports},
                 "worker": reports[0]["worker"] if reports else None,
                 "torch_threads": [e.get("torch_threads") for e in reports],
             }
@@ -159,37 +178,41 @@ def summarize(root: Path) -> dict[str, Any]:
             ),
             "skipped": sum(case.find("skipped") is not None for case in cases),
         }
-        if len(cases) != len(phases) + len(collection_results):
+        double_failures = {
+            nodeid
+            for nodeid, events in phases.items()
+            if {e["phase"] for e in events if e["outcome"] == "failed"}
+            >= {"call", "teardown"}
+        }
+        if len(cases) != len(phases) + len(collection_results) + len(double_failures):
             issues.append(
                 "JUnit testcase count differs from execution/collection reports"
             )
-        if not collection_results and junit["failed"] != counts.get("failed", 0):
+        failed_cases = sum(
+            any(e["outcome"] == "failed" for e in events) for events in phases.values()
+        )
+        failed_cases += len(double_failures) + sum(
+            e["outcome"] == "failed" for e in collection_results
+        )
+        skipped_cases = sum(
+            any(e["outcome"] == "skipped" for e in events) for events in phases.values()
+        )
+        skipped_cases += sum(e["outcome"] == "skipped" for e in collection_results)
+        if junit["failed"] != failed_cases:
             issues.append("JUnit failure count differs from phase reports")
-        if not collection_results and junit["skipped"] != counts.get(
-            "skipped", 0
-        ) + counts.get("xfailed", 0):
+        if junit["skipped"] != skipped_cases:
             issues.append("JUnit skip count differs from phase reports")
-        if not collection_results:
-            addresses = []
-            for nodeid in phases:
-                address, bracket, parameters = nodeid.partition("[")
-                address_parts = address.split("::")
-                address_parts[0] = (
-                    address_parts[0].replace("/", ".").removesuffix(".py")
-                )
-                address_parts[-1] += bracket + parameters
-                addresses.append((".".join(address_parts[:-1]), address_parts[-1]))
-            if Counter(addresses) != Counter(
-                (case.get("classname"), case.get("name")) for case in cases
-            ):
-                issues.append("JUnit test identities differ from phase reports")
-            phase_total = sum(
-                e["duration_s"] for events in phases.values() for e in events
+        addresses = [_junit_address(nodeid) for nodeid in [*phases, *double_failures]]
+        addresses.extend(_junit_address(e["nodeid"]) for e in collection_results)
+        if Counter(addresses) != Counter(
+            (case.get("classname"), case.get("name")) for case in cases
+        ):
+            issues.append("JUnit test identities differ from phase reports")
+        phase_total = sum(e["duration_s"] for events in phases.values() for e in events)
+        if abs(junit["time_s"] - phase_total) > 0.001 * len(cases) + 0.01:
+            issues.append(
+                "JUnit total time differs from phase reports (beyond XML rounding)"
             )
-            if abs(junit["time_s"] - phase_total) > 0.001 * len(cases) + 0.01:
-                issues.append(
-                    "JUnit total time differs from phase reports (beyond XML rounding)"
-                )
     except (FileNotFoundError, ET.ParseError, ValueError) as error:
         issues.append(f"missing/invalid JUnit: {type(error).__name__}")
     phase_s = {

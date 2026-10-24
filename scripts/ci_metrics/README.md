@@ -25,6 +25,9 @@ measurements. Only isolated regression fixtures use temporary locks. GitHub-host
 Actions runners need no local host lock. Ordinary regression still uses the
 existing wrapper with its fixed four workers; this tool does not change it.
 
+Keep the source unchanged from launch, including lock wait. If it changes while
+queued, start a fresh process so already imported measurement code cannot be stale.
+
 An optional subset goes after `--`, for example `-- tests/unit/utils/geometry/test_angles.py`.
 Any extra arguments make `full_cpu_target` false. A subset cannot establish the
 full CPU baseline. Do not add worker, marker, JUnit, output, or plugin overrides.
