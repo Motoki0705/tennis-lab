@@ -16,6 +16,7 @@
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
 | `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
+| `opsreport/reproduction.py` / `repro_isolation.py` / `repro_linux.py` / `repro_sandbox.py` / `reproduction_server.py` | CPUテスト要求の制限、使い捨てclone・台帳根拠・ログ、実機proofで許可するOS隔離backend |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -126,6 +127,47 @@ PR差分はhunk境界で切れた場合も独立した追加/削除行数で検�
 完成版では親が固定版の `AGENTS.md`、子がGitHubの #1447 本文を範囲取得した。両者の実記録でread-only / approval never / Astra / maxを確認した。
 role選択引数・model/effortの上書き・設定ファイルの変更は行っていない。実効service tierは記録がなく未確認。
 privateな実行記録と `evidence-summary.json` は指定campaignのprobe領域に保存する。
+
+## 隔離されたCPUテスト要求
+
+`opsreport.reproduction_server serve` は上の取得サーバーに `cpu_test_status` と `cpu_test_log` を追加する別入口。
+同じ `--repo` / `--base-sha` / `--repository` / `--round-id` / `--journal-dir` / `--ops-memory-sha` に加え、
+既存台帳の `--ledger` と、ホスト側でCPU用と確認したJSONの `--cpu-tests-file` を指定する。
+調査回は台帳と同じ `YYYYMMDD`。JSONは `{"base_sha":"完全な基準SHA","nodeids":["tests/test_example.py::test_example"]}`。
+allowlistの変更権限はagentに渡さない。agentから受けるのは既存の `finding_id` と、このリストに一致する `nodeids` だけ。
+任意コード、shell、pytestオプション、ネットワーク・環境変数・版・上限の指定、パス脱出、symlinkは拒否する。
+
+`cpu_tests` は既定では非公開・実行拒否。ホスト担当者が次の固定probeを実行し、全challengeが成功した
+privateな `probe.json` を `serve --isolation-proof PATH` に渡した場合だけ公開する。環境変数による迂回はない。
+proofは同じboot・UID・backendコード・Python環境に限り24時間有効で、各要求でも照合する。
+欠落・期限切れ・不一致・検査失敗は理由付きの未完了とし、実行しない。
+
+```bash
+PYTHONPATH=.agents/ops/ops-report .venv/bin/python -B -m opsreport.reproduction_server \
+  probe --directory tmp/reproduction-probe
+```
+
+probeは本番と同じscope・namespace・chrootで、ホストの一時localhost listenerへの接続拒否、
+資格情報sentinelとHOME配下の不可視、GPUデバイスの不可視、権限除去・runtimeのread-onlyを検査する。
+192MiB scopeでは単独なら入る128MiBの子を2つ起動し、合計でOOMになることを確認する。
+離脱した子孫を残す通常終了・1秒のscope期限・stdout閉鎖後のwatchdogも検査し、scopeの無人化を照合する。
+ログと `probe.json` を保存し、全件成功だけ終了値0。GPU・Blender・任意の再現コードは起動しない。
+
+無効な `cpu_tests` の直接呼出しも結果と「要再現」を記録する。独立cloneは基準SHAに固定し、
+元repoへworktreeを登録せず、objectsもhardlink・alternatesを共有しない。基準版と配備版のwrapperが違えば停止する。
+共有 `pytest_locked.sh` はsandboxの**外**で実行する。一時的な `.venv/bin/python` launcherで共有lock取得後に
+scopeを作り、sandbox内の実Pythonへpytest引数を渡す。worker数はwrapperの固定値を使い、launcherは終了後に照合・除去する。
+隔離CPUテストの同時1件制限は専用の `isolated-cpu-tests.lock` で守る。通常のpytestはこの制限を受けない。実行全体は15分・4GiB・swapなしの一時user scopeで制限し、
+終了時にはそのscopeだけを停止して空であることを確認する。永続systemd設定やtimerは変更しない。
+user・mount・net・PID namespaceと最小chrootを使い、ホストHOME・データ・サービスsocketを公開せず、
+cloneとread-onlyのPython runtime/venvだけを渡す。`/dev` はCPU用の4デバイスだけ、WSL GPUライブラリも隠す。
+capabilityを全て除去してno-new-privilegesを設定し、実行前にも制約を検査する。tmpfsは64MiB、process数は256が上限。
+実行後はHEAD不変かつignoredを含めcleanなcloneだけを削除し、dirty・回収未確認なら保持してエラーにする。
+要求・結果・ログはprivateな記録先へ保存し、内容の検査値付き参照を台帳の不変根拠と既存発見へ追加する。
+拒否・失敗で発見を確定へ進めない。台帳の競合・書込失敗、根拠やログの欠落・改変は明示エラー。
+
+`test_ops_report_reproduction.py` はfake runnerと実gitで管理経路・proof拒否・scope条件を検証する。
+fakeの成功はOS隔離の証明ではない。profile・現行report CLIへの接続と、CPU allowlist・proofの配布は統合担当の責務。
 
 ## 調査台帳ライブラリ
 
