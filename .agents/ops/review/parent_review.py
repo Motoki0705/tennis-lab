@@ -166,9 +166,13 @@ def collect(
             "head/base/merge-base/diff changed since the instructed snapshot; 対象の縮約／親判断待ち"
         )
     # Recollect after all GitHub/git I/O. Never review a partially collected PR set.
-    fresh = select_prs(
-        selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
-    )
+    with session.gh.fresh_reads():
+        fresh = select_prs(
+            selected,
+            session.gh.pulls(),
+            set(children) or {parent.number},
+            session.gh.repo,
+        )
     if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"] or assignments(
         fresh
     ) != fixed_assignments:

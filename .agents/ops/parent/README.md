@@ -15,7 +15,7 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 
 | 対象 | 正本 |
 |---|---|
-| 親issueと担当セッションの対応、解除・終了・引継ぎ待ち、委任の起動予約、worktree | マシンローカルの `registry.json` |
+| 親issueと担当セッションの対応、解除・終了・引継ぎ待ち、委任の起動予約、worktree | マシンローカルの `registry.json` と `parents/` |
 | 担当開始、要件確認、要件合意と人間の確認の引用 | 親issueコメント |
 | 自律着手の根拠・入力・コメント分類・取消 | 親issueコメントの `execution_basis` / `basis_revoked` イベント |
 | 正式な親子関係、子のopen/closedと理由 | GitHub sub-issue / issue |
@@ -24,31 +24,49 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 | レビュー対象のバイト列 | ローカル `reviews/<run ID>/pr-<N>.diff` と `request.json` |
 
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
-同じホストの全worktree・Claude/Codexで共有し、state内のflockで登録・起票・更新を直列化する。
-parent CLIはGitHubの各GET・ProjectのGraphQL queryの間だけregistryロックを離し、取得後に同じロックを取り直して
-registryの保存内容全体が一致することを検査する。担当・generation・tasks・委任予約・reviewsや
-他の親の記録が変わっていれば、古い結果を使わず終了値2で停止する。同じコマンドを再実行して取得し直す。
-未保存の変更や既存の参照を保つため、取得後にregistryを読み直して上書き・部分統合はしない。
-`status`もGitHub取得中にはロックを保持せず、registryを書き換えない。
-GitHubへの書き込みとregistryの検査・予約・保存は引き続きロック内で行い、担当の衝突・二重予約を防ぐ。
-更新操作は親ごとの操作ロックをregistryロックより先に取り、同じ親への委任・上限変更などの順序を維持する。
-`status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らず、他の親とも並行して取得する。
-Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取り、同じProjectへの更新も直列化する。
-途中まで保存・公開済みの操作は取り消さない。非ゼロ終了後は既存記録を照合して不足分だけ再実行する。
-`registry.json` の外側はversion=1を維持し、`parents` のキーは `owner/repo#親番号`。
-キーの `owner/repo` は大文字小文字を区別せず、小文字に正規化する。
-既存キーも読込時に正規化し、同じ親の別名レコードが衝突した場合は、統合・上書きせず読込を拒否する。
-各行に `session`（実行環境の識別子）、`status`、`generation`、`tasks`（子番号→担当/branch/worktree/依存/委任予約）、
-`reviews` を持つ。ファイルは0600、ディレクトリは0700で作り、fsyncとrenameで保存する。
-破損・未知version・取得失敗を空の状態に置き換えない。
+同じホストの全worktree・Claude/Codexで共有する。更新操作は親ごとの操作ロックを先に取り、
+registryロックで担当の衝突・二重予約を防ぐ。GitHub通信中はregistryロックを離す。
+取得前後で対象親の担当・generation・tasks・reviewsが変われば終了値2で停止する。
+他の親だけの変更は、その親の保存済み行を取り込み、自分の未保存の変更と参照を保持して続行する。
+`status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らない。
+Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
+途中まで保存・公開済みの操作は取り消さず、非ゼロ終了後は不足分だけ再実行する。
 
-移行はtasks/reviews内へのversion付き根拠・要求の追加だけとし、外側のversionを上げて運用中の旧CLIを読込不能にしない。
-旧行へ架空のauthorizationを補わず、新しい操作時だけ新形式を記録する。読み取りだけでは書き換えない。
-担当・generation・tasks（委任予約を含む）・reviews・拡張フィールドを保持し、過去の証拠を最新の根拠に付け替えない。
-旧taskにauthorizationが無い場合も予約は維持する。自律根拠で既存成果を使うときは、親が差分・要件・検証を確認し
-`record-result` で現在の根拠へ明示的に結び付ける。JSONの重複キー・不正型・未知のreview schemaは読込エラー。
-旧公開マーカーと保存済みrequest/result/executionは書き換えず、旧request version=1を引き続き照合する。
-導入前の全担当停止や実registryの削除・一括再登録は不要。
+状態のキーは小文字の `owner/repo#親番号`。version=1も読み書きできる。
+version=2では `registry.json` に担当・status・generationの最小索引だけを持ち、
+`parents/` 内の親ごとのJSONにtasks・reviews・拡張フィールドを保存する。
+通常の子・レビュー更新では他の親のファイルも索引も書き換えない。
+ファイル0600・ディレクトリ0700、fsyncとrenameで保存する。
+破損・重複キー・別名衝突・未知version・索引との不一致を空の状態に置き換えない。
+旧公開記録、実行根拠、委任予約、レビュー証拠は書き換えない。
+
+### 状態の移行
+
+全親のCLI呼出元をこの版へ更新してから、次を明示実行する。
+旧worktreeを更新できない場合は、mainの `.agents/ops` を `PYTHONPATH` に指定して新CLIを使う。
+子workerのコード・会話や学習ジョブを停止する必要はない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
+```
+
+元の全記録を `registry-v1.backup.json` に保存し、親別ファイルを作成した後、索引をversion=2へ切り替える。
+既存担当・世代・委任・レビュー・拡張フィールドをすべて保持する。再送は冪等。
+移行後に旧CLIを使うと未知versionで停止する。旧CLIへ戻すためにversionだけを書き換えてはならない。
+移行中の旧CLIは取得前後の比較で停止する。失敗時は新CLIで保存済み状態を照合して再実行する。
+移行前のbackupは移行後の更新を含まないため、復旧では新しい親別記録と照合する。
+
+### 取得範囲と計測
+
+親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
+親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
+sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
+ページ内・ページ間の重複は最大3回取り直し、解消しなければ失敗する。空結果への変換はしない。
+
+`PARENT_METRICS_FILE` にローカルJSONLの保存先を指定すると、コマンド・経過秒・lock待機秒・
+GitHub要求数/ページ数/通信秒・cache hit・処理秒・競合数・終了値を記録する。
+再実行時は `PARENT_METRICS_ATTEMPT=2` などで試行番号を渡し、retry_countを記録できる。
+本文・取得URL・識別子・資格情報は記録しない。未指定ならファイルを作らない。
 
 識別子は実行agentの環境から取得する。Claudeは `CLAUDE_CODE_SESSION_ID`、Codexは `CODEX_SESSION_ID`。
 欠落・空値・両方の混在はエラーにする。人間にIDを聞いたり、引数・PID・作業パスで補ったりしない。

@@ -138,7 +138,8 @@ def prepare(
         entries.append(entry)
         diffs[item["number"]] = diff
     # Protect the collection window: changes during git I/O are not covered.
-    fresh = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
+    with session.gh.fresh_reads():
+        fresh = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
     for before, after in zip(prs, fresh, strict=True):
         if any(
             before[part][field] != after[part][field]

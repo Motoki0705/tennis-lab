@@ -14,6 +14,7 @@ from typing import Any
 
 from lib.identity import session_identity
 
+from . import metrics
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
@@ -45,7 +46,14 @@ def parser() -> argparse.ArgumentParser:
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
-    for command in ("register", "status", "checking", "reconcile", "sync"):
+    for command in (
+        "register",
+        "status",
+        "checking",
+        "reconcile",
+        "sync",
+        "state-migrate",
+    ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
     from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
@@ -151,9 +159,21 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == "state-migrate":
+            with Store(args.state_dir or state_directory()).locked() as migration_store:
+                migration_store.migrate()
+                print(
+                    json.dumps(
+                        {
+                            "version": migration_store.data["version"],
+                            "parents": len(migration_store.parents),
+                        }
+                    )
+                )
+                return 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.
@@ -419,6 +439,17 @@ def main(argv: list[str] | None = None) -> int:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    destination = os.environ.get("PARENT_METRICS_FILE")
+    with metrics.command(
+        args.command, Path(destination) if destination else None
+    ) as row:
+        result = _main(argv)
+        row["exit_code"] = result
+        return result
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import fcntl
 import json
 import os
@@ -12,6 +13,7 @@ from typing import Any, TextIO
 
 from lib.identity import session_identity as session_identity
 
+from . import metrics
 from .execution import validate_authorization
 from .policy import digest, object_value
 
@@ -35,6 +37,12 @@ class Store:
         self.path = directory / "registry.json"
         self.data: dict[str, Any] = {}
         self._lock: TextIO | None = None
+        self._focus: str | None = None
+        self._saved: dict[str, Any] = {}
+        self.transaction_epoch = 0
+
+    def focus(self, key: str) -> None:
+        self._focus = key.casefold()
 
     @contextmanager
     def operation(self, key: str) -> Iterator[None]:
@@ -44,7 +52,7 @@ class Store:
             "a", encoding="utf-8"
         ) as lock:
             os.chmod(lock.name, 0o600)
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
     @contextmanager
@@ -52,21 +60,14 @@ class Store:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
             os.chmod(lock.name, 0o600)
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            self.data = (
-                object_value(
-                    json.loads(
-                        self.path.read_text(encoding="utf-8"),
-                        object_pairs_hook=unique_object,
-                    )
-                )
-                if self.path.exists() or self.path.is_symlink()
-                else {"version": 1, "parents": {}}
-            )
+            metrics.flock(lock, fcntl.LOCK_EX)
+            self.transaction_epoch += 1
+            self.data = self.read_data()
+            self._saved = copy.deepcopy(self.data)
             if (
                 set(self.data) != {"version", "parents"}
                 or type(self.data["version"]) is not int
-                or self.data["version"] != 1
+                or self.data["version"] not in {1, 2}
             ):
                 raise ValueError("unknown or malformed parent-session state")
             parents: dict[str, Any] = {}
@@ -135,32 +136,128 @@ class Store:
         lock = self._lock
         if lock is None:
             raise ValueError("GitHub read requires an active registry transaction")
-        before = (
-            self.path.read_bytes()
-            if self.path.exists() or self.path.is_symlink()
-            else None
-        )
-        fcntl.flock(lock, fcntl.LOCK_UN)
+        before = self.read_data()
+        metrics.flock(lock, fcntl.LOCK_UN)
         try:
             yield
         finally:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            after = (
-                self.path.read_bytes()
-                if self.path.exists() or self.path.is_symlink()
-                else None
-            )
+            metrics.flock(lock, fcntl.LOCK_EX)
+            after = self.read_data()
             if after != before:
-                raise ValueError(
-                    "parent registry changed during GitHub retrieval; retry the command to fetch current state"
-                )
+                key = self._focus
+                if (
+                    key is None
+                    or before.get("version") != after.get("version")
+                    or before["parents"].get(key) != after["parents"].get(key)
+                ):
+                    metrics.count("conflicts")
+                    raise ValueError(
+                        "parent registry changed during GitHub retrieval; retry the command to fetch current state"
+                    )
+                # Preserve this parent's live objects, including unsaved changes.
+                # Merge only unrelated durable rows; never overwrite them later.
+                for peer in set(before["parents"]) | set(after["parents"]):
+                    if peer == key:
+                        continue
+                    if before["parents"].get(peer) != after["parents"].get(peer):
+                        if self.parents.get(peer) != before["parents"].get(peer):
+                            raise ValueError("concurrent changes to a peer parent")
+                        if peer in after["parents"]:
+                            self.parents[peer] = copy.deepcopy(after["parents"][peer])
+                            self._saved["parents"][peer] = copy.deepcopy(
+                                after["parents"][peer]
+                            )
+                        else:
+                            self.parents.pop(peer, None)
+                            self._saved["parents"].pop(peer, None)
+                owners = [
+                    r["session"]
+                    for r in self.parents.values()
+                    if r["status"] in {"active", "handoff_pending"}
+                ]
+                if len(owners) != len(set(owners)):
+                    raise ValueError("another parent claimed the same session")
 
     @property
     def parents(self) -> dict[str, Any]:
         return object_value(self.data["parents"])
 
+    def read_data(self) -> dict[str, Any]:
+        if not self.path.exists() and not self.path.is_symlink():
+            return {"version": 1, "parents": {}}
+        data = object_value(
+            json.loads(
+                self.path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
+            )
+        )
+        if data.get("version") != 2:
+            return data
+        if set(data) != {"version", "parents"} or type(data["version"]) is not int:
+            raise ValueError("unknown or malformed parent-session state")
+        parents = {}
+        for key, owner in object_value(data["parents"]).items():
+            path = self.directory / "parents" / (digest(key) + ".json")
+            row = object_value(
+                json.loads(
+                    path.read_text(encoding="utf-8"), object_pairs_hook=unique_object
+                )
+            )
+            if {
+                field: row.get(field) for field in ("session", "status", "generation")
+            } != owner:
+                raise ValueError(
+                    "parent ownership index disagrees with its record; restore the saved migration/transaction backup"
+                )
+            parents[key] = row
+        return {"version": 2, "parents": parents}
+
+    def migrate(self) -> None:
+        """Explicit migration under the global lock; never discard old evidence."""
+        if self._lock is None:
+            raise ValueError("migration requires the registry lock")
+        if self.data["version"] == 2:
+            return
+        backup = self.directory / "registry-v1.backup.json"
+        if backup.exists():
+            if json.loads(backup.read_text()) != self.data:
+                raise ValueError(
+                    "migration backup exists for different state; inspect before retry"
+                )
+        else:
+            self.write_json(backup, self.data)
+        self.data["version"] = 2
+        self.save()
+
     def save(self) -> None:
-        self.write_json(self.path, self.data)
+        if self._lock is None:
+            raise ValueError("save requires an active registry transaction")
+        owners = [
+            row["session"]
+            for row in self.parents.values()
+            if row["status"] in {"active", "handoff_pending"}
+        ]
+        if len(owners) != len(set(owners)):
+            raise ValueError(
+                "registry contains multiple active parents for one session"
+            )
+        if self.data["version"] == 1:
+            self.write_json(self.path, self.data)
+        else:
+            ownership_index: dict[str, Any] = {}
+            for key, row in self.parents.items():
+                path = self.directory / "parents" / (digest(key) + ".json")
+                if (
+                    self._saved.get("version") != 2
+                    or self._saved.get("parents", {}).get(key) != row
+                ):
+                    self.write_json(path, row)
+                ownership_index[key] = {
+                    field: row[field] for field in ("session", "status", "generation")
+                }
+            index = {"version": 2, "parents": ownership_index}
+            if not self.path.exists() or json.loads(self.path.read_text()) != index:
+                self.write_json(self.path, index)
+        self._saved = copy.deepcopy(self.data)
 
     @staticmethod
     def write_json(path: Path, value: Any) -> None:

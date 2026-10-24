@@ -111,6 +111,17 @@ if pull:
         if state["detail_reads"] == 2:
             next(p for p in state["prs"] if p["number"] == 100)["head"]["sha"] = os.environ["PARENT_READ_HEAD_RACE"]
         save()
+    if int(pull[1]) == state["prs"][0]["number"]:
+        if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
+            state["closing_reads"] = state.get("closing_reads", 0) + 1
+            if state["closing_reads"] == 2:
+                state["prs"][0]["body"] = os.environ["PARENT_CHANGE_CLOSING_ON_READ"]
+            save()
+        if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
+            state["pull_reads"] = state.get("pull_reads", 0) + 1
+            if state["pull_reads"] == 2:
+                state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+            save()
     response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
@@ -119,6 +130,10 @@ if comment_edit:
     comment["body"] = payload["body"]
     save()
     response(comment)
+timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", path)
+if timeline:
+    rows = [{"event": "cross-referenced", "created_at": "2026-10-24T00:00:00Z", "source": {"issue": {"id": p["number"] + 10000, "number": p["number"], "body": p.get("body", ""), "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "pr"}}}} for p in state["prs"] if re.search(r"#" + timeline[1] + r"\b", p.get("body", ""))]
+    response(rows[(page-1)*100:page*100])
 if path == "repos/o/r/pulls":
     if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
         state["closing_reads"] = state.get("closing_reads", 0) + 1
@@ -819,7 +834,9 @@ def test_concurrent_registration_never_owns_two_parents(parent_env: ParentEnv) -
         results = list(
             pool.map(lambda n: p.cli("register", parent=str(n), ok=None), (1, 2))
         )
-    assert sorted(r.returncode for r in results) == [0, 2]
+    assert sorted(r.returncode for r in results) == [0, 2], [
+        (r.stdout, r.stderr) for r in results
+    ]
     registry = (
         Path(p.env["XDG_STATE_HOME"])
         / "tennis-lab-agents/parent-sessions/registry.json"

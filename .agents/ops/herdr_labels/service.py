@@ -78,7 +78,7 @@ def registry(env: Mapping[str, str]) -> dict[str, Any]:
     if not path.exists():
         return {}
     data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict) or data.get("version") != 1:
+    if not isinstance(data, dict) or data.get("version") not in {1, 2}:
         raise ValueError("invalid parent registry version")
     parents = data.get("parents")
     if not isinstance(parents, dict):
