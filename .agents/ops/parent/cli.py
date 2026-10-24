@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
@@ -141,9 +141,20 @@ def main(argv: list[str] | None = None) -> int:
             if args.command in {"status", "basis-input", "basis-record", "basis-check"}
             else session_identity(dict(os.environ))
         )
-        gh = GitHub(args.repo)
+        store = Store(state_directory())
+        gh = GitHub(args.repo, store=store)
         parent = issue_number(args.parent, gh.repo)
-        with Store(state_directory()).locked() as store:
+        operation = (
+            nullcontext()
+            if args.command in {"status", "reconcile", "basis-input", "basis-check"}
+            else store.operation(f"{gh.repo.casefold()}#{parent}")
+        )
+        project_operation = (
+            store.operation(f"project:{args.owner.casefold()}#{args.project}")
+            if args.command in {"project-setup", "project-sync"}
+            else nullcontext()
+        )
+        with operation, project_operation, store.locked():
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
@@ -281,8 +292,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
         integration_failed = False
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
-            # The mutation is durable and its registry lock is released. Allocate
-            # the name before projecting it; attempt both integrations on failure.
+            # The mutation is durable and its registry lock is released. Sync
+            # the caller and unnamed active peers before projecting the name.
             result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent
@@ -303,6 +314,8 @@ def main(argv: list[str] | None = None) -> int:
                     "status": "error",
                     "error": "board name synchronization failed; inspect storage and parent configuration",
                 }
+                integration_failed = True
+            if name_sync["status"] == "error":
                 integration_failed = True
             result = {**result, "board_sync": name_sync}
             from herdr_labels.service import sync as sync_display

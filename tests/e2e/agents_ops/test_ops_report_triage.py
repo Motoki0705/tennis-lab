@@ -179,6 +179,8 @@ def _events(ops: Any, kind: str) -> list[dict[str, Any]]:
     found = []
     for comment in ops.state.get("comments", {}).get("1", []):
         first = comment["body"].splitlines()[0]
+        if not first.startswith("<!-- parent-session:v1 "):
+            continue
         event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
         if event["event"] == kind:
             found.append(event)
@@ -267,7 +269,9 @@ def test_old_parent_agreement_does_not_authorize_newly_received_proposal(
     _create(ops)
 
 
-def test_proposal_agreement_checks_plain_comment_after_parent_note(ops_env: Any) -> None:
+def test_proposal_agreement_checks_plain_comment_after_parent_note(
+    ops_env: Any,
+) -> None:
     ops = ops_env
     _setup(ops)
     _parent(ops, "register")
@@ -275,6 +279,9 @@ def test_proposal_agreement_checks_plain_comment_after_parent_note(ops_env: Any)
     _receive(ops)
     _agree(ops, pid="R-20261012-02")
     body = "調査を終えたので、合意済みの範囲で子issueを作成します。"
+    agreement = _events(ops, "agreed")[0]
+    assert len(agreement["requirements_sha256"]) == 64
+    assert agreement["comment_inputs"] == []
     note = ops.tmp / "note.md"
     note.write_text(body, encoding="utf-8")
     _parent(ops, "note", "--body-file", str(note))
@@ -306,6 +313,27 @@ def test_proposal_agreement_checks_plain_comment_after_parent_note(ops_env: Any)
     assert comment["html_url"] in rejected.stderr and "(added)" in rejected.stderr
     assert ops.state == before
     assert len(_children(ops)) == 1
+    execution = importlib.import_module("parent.execution")
+    policy = importlib.import_module("parent.policy")
+    _parent(
+        ops,
+        "agreement-ignore-comments",
+        "--ignored-comments",
+        _json(
+            ops,
+            [
+                {
+                    "id": comment["id"],
+                    "sha256": policy.digest(execution.comment_snapshot(comment)),
+                    "reason": "合意済み範囲の進捗だけで、要件や停止の指示を含まない。",
+                }
+            ],
+        ),
+    )
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert _events(ops, "agreed") == [agreement]
+    assert len(_events(ops, "proposal_received")) == 1
+    assert len(_events(ops, "proposal_agreed")) == 1
 
 
 def test_pending_proposal_preserves_independent_creation_and_delegation(
@@ -443,7 +471,9 @@ def test_unassigned_or_stopped_parent_then_manual_assignment_receives_once(
     result = ops.run("triage")
     assert result.returncode == 0, result.stderr
     assert json.loads(result.stdout)["unassigned"] == ["R-20261012-02"]
-    assert "未割当" in _issue(ops)["body"]
+    assert ("未割当" if stopped else "保留: 評価対象の選択が不足") in _issue(ops)[
+        "body"
+    ]
     assert _events(ops, "proposal_pending") == []
     _receive(ops, ok=False)
     _edit(ops, lambda b: b.replace("関連親issue: 未指定", "関連親issue: #1"))

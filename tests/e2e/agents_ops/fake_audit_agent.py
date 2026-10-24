@@ -8,7 +8,7 @@ import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -42,12 +42,20 @@ def payload(
             }
         )
 
+    # A host wall-clock correction must not turn an offline scout interval negative.
+    wall_start, monotonic_start = datetime.now(UTC), time.monotonic()
+
+    def stamp() -> str:
+        return (
+            wall_start + timedelta(seconds=time.monotonic() - monotonic_start)
+        ).isoformat()
+
     def scout(key: str) -> dict[str, Any]:
-        start = datetime.now(UTC).isoformat()
+        start = stamp()
         with log.open("a") as fh:
             fh.write(json.dumps({"id": key, "event": "start", "time": start}) + "\n")
         time.sleep(float(os.environ.get("FAKE_AUDIT_SCOUT_DELAY", "0.04")))
-        end = datetime.now(UTC).isoformat()
+        end = stamp()
         with log.open("a") as fh:
             fh.write(json.dumps({"id": key, "event": "finish", "time": end}) + "\n")
         row = {

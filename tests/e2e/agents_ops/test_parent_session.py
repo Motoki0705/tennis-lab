@@ -40,6 +40,8 @@ def fail():
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["pr", "view"]:
+    if os.environ.get("PARENT_FAIL_CI_VIEW"):
+        fail()
     pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
     values = {"statusCheckRollup": pr.get("statusCheckRollup", []),
               "headRefOid": pr["head"]["sha"]}
@@ -77,7 +79,10 @@ if args[:2] == ["pr", "merge"]:
                 other["head"]["sha"] = subprocess.check_output(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "rev-parse", "HEAD"], text=True).strip()
     if os.environ.get("PARENT_MERGE_CI_PENDING"):
         target = int(os.environ["PARENT_MERGE_CI_PENDING"])
-        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []
+        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = [
+            {"__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+             "status": "QUEUED", "conclusion": ""}
+        ]
     save()
     if os.environ.get("PARENT_MERGE_RESPONSE_LOST"):
         fail()

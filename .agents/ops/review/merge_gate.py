@@ -157,6 +157,7 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
                 full_diff(before, current["head_sha"])
             ).hexdigest()
         raw["statusCheckRollup"] = []
+        raw["ci_head_sha"] = None
         if raw["state"] == "open":
             ci = subprocess.run(
                 [
@@ -182,6 +183,7 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
             if data["headRefOid"] != current["head_sha"]:
                 errors[n].append("head_changed_during_ci")
             raw["statusCheckRollup"] = data["statusCheckRollup"]
+            raw["ci_head_sha"] = data["headRefOid"]
         details[n] = raw
     # Use the fresh individual PRs for dependency/duplicate checks, too.
     pulls = [details.get(p["number"], p) for p in pulls]
@@ -318,7 +320,6 @@ def evaluate(
                 # Keep this PR's failure explicit without blocking an unrelated
                 # eligible PR. Coverage also reports the changed snapshot fields.
                 view.errors[n].append("base_advance_unverified")
-    required = load_list_file(HERE / "required_checks.txt")
     patterns = load_list_file(HERE / "shared_paths.txt")
     for n in view.candidates:
         pr = view.details[n]
@@ -345,7 +346,6 @@ def evaluate(
                 changed_paths=view.paths[n],
                 review_state=state,
                 evidence_errors=(*errors, *view.errors[n]),
-                required_checks=required,
                 shared_patterns=patterns,
                 base_advances=tuple(advances),
                 permission=permission,

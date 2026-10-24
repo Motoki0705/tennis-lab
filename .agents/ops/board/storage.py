@@ -119,11 +119,37 @@ def _posts_schema(connection: sqlite3.Connection) -> None:
         )
 
 
+def _renames_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """CREATE TABLE name_renames (
+            id INTEGER PRIMARY KEY,
+            assignment_id INTEGER NOT NULL REFERENCES name_assignments(id),
+            old_name TEXT NOT NULL COLLATE NOCASE,
+            new_name TEXT NOT NULL COLLATE NOCASE,
+            renamed_at TEXT NOT NULL,
+            CHECK (old_name != new_name)
+        )"""
+    )
+    connection.execute("CREATE INDEX renamed_names ON name_renames(old_name)")
+    for operation in ("UPDATE", "DELETE"):
+        connection.execute(
+            f"CREATE TRIGGER name_renames_no_{operation.lower()} "
+            f"BEFORE {operation} ON name_renames "
+            "BEGIN SELECT RAISE(ABORT, 'board rename history is append-only'); END"
+        )
+    connection.execute(
+        "CREATE TRIGGER name_renames_no_replace BEFORE INSERT ON name_renames "
+        "WHEN EXISTS(SELECT 1 FROM name_renames WHERE id=NEW.id) "
+        "BEGIN SELECT RAISE(ABORT, 'board rename history cannot be replaced'); END"
+    )
+
+
 # Entry N upgrades user_version N to N+1. Append migrations; never edit a
 # released migration.
 MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _names_schema,
     _posts_schema,
+    _renames_schema,
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -164,6 +190,9 @@ def _validate(connection: sqlite3.Connection) -> None:
     connection.execute(
         "SELECT post_id, assignment_id, idempotency_key, engine, state, reason, retryable, "
         "attempts, attempted_at, notified_at FROM deliveries LIMIT 0"
+    )
+    connection.execute(
+        "SELECT id, assignment_id, old_name, new_name, renamed_at FROM name_renames LIMIT 0"
     )
 
 

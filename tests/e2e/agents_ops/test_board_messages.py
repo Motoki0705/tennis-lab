@@ -5,7 +5,10 @@ from __future__ import annotations
 import importlib
 import json
 import sqlite3
+import threading
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -90,7 +93,7 @@ class World:
 
 @pytest.fixture
 def world(board: SimpleNamespace, labels: Labels) -> World:
-    for name in ("messages", "delivery", "records"):
+    for name in ("messages", "delivery", "records", "redelivery"):
         setattr(board, name, importlib.import_module("board." + name))
     statuses = ("active", "active", "active", "released", "handoff_pending", "ended")
     labels.set_registry(
@@ -178,6 +181,67 @@ def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
         [root["id"], response["id"], nested["id"]]
     )
     private_output_absent(json.dumps(conversation), w.env())
+
+
+def test_renamed_parents_keep_message_identity_state_and_reply_routes(
+    world: World,
+) -> None:
+    w = world
+    rename = importlib.import_module("board.renaming").rename
+    unread = w.post()
+    read = w.post()
+    acknowledged = w.post(kind="request")
+    read_at = w.board.messages.read(w.env(2), read["id"])["post"]["recipients"][0][
+        "read_at"
+    ]
+    w.board.messages.ack(w.env(2), post_id=acknowledged["id"], state="accepted")
+    outgoing = w.board.messages.post(
+        w.env(2),
+        to=[w.assignments[1].name],
+        kind="info",
+        subject="確認結果",
+        body="確認しました。",
+        notifiers=w.routes,
+        now=NOW,
+    )["post"]
+    before = w.message_rows()
+    with w.store.read() as connection:
+        activity = w.board.activity.summary(connection, w.assignments[2].id)
+    assert activity.unread_count == 1 and activity.awaiting_response
+    changed = {
+        parent: rename(w.env(), parent=parent, now=NOW + timedelta(days=1))
+        for parent in (1, 2)
+    }
+    assert w.message_rows() == before
+    for parent in (1, 2):
+        assert changed[parent]["assignment_id"] == w.assignments[parent].id
+        assert changed[parent]["old_name"] == w.assignments[parent].name
+        assert changed[parent]["new_name"] != w.assignments[parent].name
+    assert w.board.service.whoami(w.env(2))["name"] == changed[2]["new_name"]
+    with w.store.read() as connection:
+        assert w.board.activity.summary(connection, w.assignments[2].id) == activity
+    inbox = w.board.messages.inbox(w.env(2), unread=True)["posts"]
+    assert [post["id"] for post in inbox] == [unread["id"]]
+    sent = w.own_state(outgoing["id"], parent=2)
+    assert sent["sender"]["name"] == w.assignments[2].name
+    root = w.own_state(unread["id"])
+    assert root["sender"]["name"] == w.assignments[1].name
+    assert root["recipients"][0]["name"] == w.assignments[2].name
+    acknowledged_row = w.own_state(acknowledged["id"])["recipients"][0]
+    assert acknowledged_row["state"] == "accepted"
+    read_again = w.board.messages.read(w.env(2), read["id"])["post"]
+    assert read_again["recipients"][0]["read_at"] == read_at
+    thread = w.board.messages.thread(w.env(2), unread["id"])["posts"]
+    assert thread[0]["sender"]["name"] == w.assignments[1].name
+    reply = w.board.messages.reply(
+        w.env(2), post_id=unread["id"], body="対応します。", notifiers=w.routes
+    )["post"]
+    assert reply["sender"]["name"] == changed[2]["new_name"]
+    assert reply["sender"]["assignment_id"] == w.assignments[2].id
+    recipient = reply["recipients"][0]
+    assert recipient["name"] == changed[1]["new_name"]
+    assert recipient["assignment_id"] == w.assignments[1].id
+    assert w.own_state(unread["id"])["recipients"][0]["response_state"] == "answered"
 
 
 @pytest.mark.parametrize("command", ["post", "reply"])
@@ -395,7 +459,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
-    with pytest.raises(w.board.errors.BoardError, match="no live board name"):
+    with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}
     assert w.fake.calls == []
@@ -491,6 +555,299 @@ def test_partial_failure_retry_preserves_keys_and_never_resends_success(
     assert w.fake.calls[0].idempotency_key != original_key
 
 
+def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
+    world: World,
+) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=[w.assignments[2].name, w.assignments[3].name])
+    original_key = w.fake.calls[-1].idempotency_key
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    notified, retried = result["recipients"]
+    assert notified["outcome"] == "skipped"
+    assert notified["skip_reason"] == "already_notified"
+    assert not notified["attempted"] and notified["attempts"] == 1
+    assert retried["outcome"] == "notified" and retried["attempted"]
+    assert retried["skip_reason"] is None and retried["attempts"] == 2
+    assert len(w.fake.calls) == 3 and w.fake.calls[-1].idempotency_key == original_key
+    assert all(r["read_at"] is None for r in result["recipients"])
+    again = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert again["status"] == "no_targets" and len(w.fake.calls) == 3
+    private_output_absent(json.dumps(result), w.env())
+
+
+def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    w = world
+    # Simulate interruption after the post commit and before initial dispatch.
+    with monkeypatch.context() as patch:
+        patch.setattr(w.board.messages, "dispatch", lambda *_args, **_kwargs: [])
+        root = w.post(to=[w.assignments[2].name, w.assignments[3].name])
+    assert all(
+        r["delivery_state"] == "pending" and not r["retryable"]
+        for r in root["recipients"]
+    )
+    result = w.board.redelivery.dispatch_post(
+        w.env(), w.routes, post_id=root["id"], to=w.assignments[3].name.swapcase()
+    )
+    assert result["status"] == "notified" and len(result["recipients"]) == 1
+    assert result["recipients"][0]["parent"] == 3
+    assert len(w.fake.calls) == 1 and w.fake.calls[0].parent == 3
+    assert [r["delivery_state"] for r in w.own_state(root["id"])["recipients"]] == [
+        "pending",
+        "notified",
+    ]
+
+
+@pytest.mark.parametrize("state", ["notified", "read", "uncertain", "terminal", "held"])
+def test_sender_dispatch_reports_skips_without_notifying(
+    world: World, state: str
+) -> None:
+    w = world
+    if state == "held":
+        root = w.post(to=[w.assignments[4].name])
+        w.change(
+            4, status="active"
+        )  # Only the restoration hook may dispatch held rows.
+    elif state in {"uncertain", "terminal"}:
+        reason = (
+            "notification_uncertain"
+            if state == "uncertain"
+            else "notification_rejected"
+        )
+        root = w.post(
+            notifiers={
+                "codex": lambda _n: w.board.delivery.NotificationResult(False, reason)
+            }
+        )
+    else:
+        if state == "read":
+            w.fake.accepting = False
+        root = w.post()
+        if state == "read":
+            w.board.messages.read(w.env(2), root["id"])
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "no_targets"
+    recipient = result["recipients"][0]
+    assert recipient["outcome"] == "skipped" and not recipient["attempted"]
+    assert (
+        recipient["skip_reason"]
+        == {
+            "notified": "already_notified",
+            "read": "already_read",
+            "uncertain": "notification_uncertain",
+            "terminal": "not_retryable",
+            "held": "held",
+        }[state]
+    )
+    assert w.message_rows() == before and w.fake.calls == calls
+
+
+def test_sender_dispatch_reports_retry_failure_and_keeps_it_retryable(
+    world: World,
+) -> None:
+    w = world
+    w.fake.accepting = False
+    root = w.post()
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "failed"
+    recipient = result["recipients"][0]
+    assert recipient["attempted"] and recipient["outcome"] == "failed"
+    assert (
+        recipient["delivery_reason"] == "receiver_not_accepting"
+        and recipient["retryable"]
+    )
+    assert recipient["attempts"] == len(w.fake.calls) == 2
+    assert w.fake.calls[0].idempotency_key == w.fake.calls[1].idempotency_key
+
+
+@pytest.mark.parametrize("status", ["handoff_pending", "ended"])
+def test_sender_dispatch_rechecks_recipient_before_attempt(
+    world: World, status: str
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    w.change(2, status=status)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "failed" and w.fake.calls == []
+    recipient = result["recipients"][0]
+    assert recipient["outcome"] == "failed" and not recipient["attempted"]
+    assert (
+        recipient["skip_reason"]
+        == recipient["delivery_reason"]
+        == ("recipient_retired" if status == "ended" else "recipient_unavailable")
+    )
+
+
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+@pytest.mark.parametrize(
+    "change", ["released", "ended", "replaced", "assignment", "identity"]
+)
+def test_sender_dispatch_rechecks_authority_after_notification_lock_wait(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+    change: str,
+) -> None:
+    w = world
+    w.fake.fail_once_for.update(w.assignments[p].id for p in (2, 3))
+    root = w.post(to=[w.assignments[p].name for p in (2, 3)])
+    w.fake.calls.clear()
+    before = w.message_rows()
+    env = w.env()  # Keep the original caller even after the owner is replaced.
+    waiting = threading.Event()
+    original_lock = w.board.delivery.locked
+
+    @contextmanager
+    def observed_lock(path: Path) -> Iterator[None]:
+        assert path == w.store.directory / "notifications.lock"
+        waiting.set()  # dispatch_post has released its initial registry lock.
+        with original_lock(path):
+            yield
+
+    monkeypatch.setattr(w.board.delivery, "locked", observed_lock)
+    cli = importlib.import_module("board.__main__")
+    monkeypatch.setattr(cli, "os", SimpleNamespace(environ=env))
+    monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+
+    def retry() -> Any:
+        if entrypoint == "cli":
+            return cli.main(["dispatch", "--post", root["id"]])
+        return w.board.redelivery.dispatch_post(env, w.routes, post_id=root["id"])
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with original_lock(w.store.directory / "notifications.lock"):
+            future = pool.submit(retry)
+            assert waiting.wait(timeout=5)
+            assert not future.done()
+            if change == "replaced":
+                w.change(1, session="claude:replacement-owner", generation=2)
+            elif change == "assignment":
+                with w.store.transaction() as connection:
+                    w.board.names.retire_name(connection, "o/r", 1, now=NOW)
+                    connection.execute(
+                        """INSERT INTO name_assignments
+                           (name, repo, parent, identifier, assigned_at, retired_at)
+                           VALUES (?, 'o/r', 1, NULL, ?, NULL)""",
+                        (w.board.names.load_names()[10], w.board.names.timestamp(NOW)),
+                    )
+            elif change == "identity":
+                env.update(w.env(3))
+            else:
+                w.change(1, status=change)
+        if entrypoint == "cli":
+            assert future.result(timeout=5) == 2
+            output = capsys.readouterr()
+            assert output.out == ""
+            assert "only the active post sender" in output.err
+            private_output_absent(output.err, env)
+        else:
+            with pytest.raises(
+                w.board.errors.BoardError, match="only the active post sender"
+            ):
+                future.result(timeout=5)
+    assert w.fake.calls == []
+    assert w.message_rows() == before  # Includes state, attempts, reason and times.
+
+
+@pytest.mark.parametrize("change", ["released", "replaced"])
+def test_sender_dispatch_rechecks_authority_before_each_recipient(
+    world: World, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    w = world
+    root = w.post(to=[w.assignments[p].name for p in (2, 3)], notifiers={})
+    before = w.message_rows()["deliveries"]
+    env = w.env()
+    original_parent_state = w.board.delivery.parent_state
+    completed = 0
+
+    @contextmanager
+    def change_after_first_recipient(values: Any) -> Iterator[dict[str, Any]]:
+        nonlocal completed
+        with original_parent_state(values) as parents:
+            yield parents
+        completed += 1
+        if completed == 1:
+            if change == "replaced":
+                w.change(1, session="claude:replacement-owner", generation=2)
+            else:
+                w.change(1, status=change)
+
+    monkeypatch.setattr(w.board.delivery, "parent_state", change_after_first_recipient)
+    with pytest.raises(w.board.errors.BoardError, match="only the active post sender"):
+        w.board.redelivery.dispatch_post(env, w.routes, post_id=root["id"])
+    assert [n.assignment_id for n in w.fake.calls] == [w.assignments[2].id]
+    after = w.message_rows()["deliveries"]
+    assert after[0] != before[0]  # The first attempt was still authorized.
+    assert after[1:] == before[1:]
+
+
+def test_concurrent_sender_dispatch_reports_only_its_own_attempt(world: World) -> None:
+    w = world
+    root = w.post(notifiers={})
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(
+            pool.map(
+                lambda _: w.board.redelivery.dispatch_post(
+                    w.env(), w.routes, post_id=root["id"]
+                ),
+                range(4),
+            )
+        )
+    assert len(w.fake.calls) == 1
+    assert sorted(r["status"] for r in results) == ["no_targets"] * 3 + ["notified"]
+    assert sum(r["recipients"][0]["attempted"] for r in results) == 1
+
+
+@pytest.mark.parametrize("caller", [2, 3])
+def test_cli_dispatch_rejects_recipients_and_other_parents(
+    world: World, caller: int
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    before = w.message_rows()
+    result = run_board(w.env(caller), "dispatch", "--post", root["id"])
+    assert result.returncode == 2 and result.stdout == ""
+    assert "only the post sender" in result.stderr
+    assert w.message_rows() == before
+    private_output_absent(result.stderr, w.env(caller))
+
+
+@pytest.mark.parametrize("post_id", ["f" * 32, "invalid"])
+def test_cli_dispatch_rejects_missing_or_invalid_post(
+    world: World, post_id: str
+) -> None:
+    w = world
+    before = w.message_rows()
+    result = run_board(w.env(), "dispatch", "--post", post_id)
+    assert result.returncode == 2 and result.stdout == ""
+    assert (
+        "does not exist" if len(post_id) == 32 else "invalid board post ID"
+    ) in result.stderr
+    assert w.message_rows() == before
+
+
+@pytest.mark.parametrize("to", ["all", "unknown", "self", "nonrecipient"])
+def test_cli_dispatch_rejects_names_outside_saved_recipients(
+    world: World, to: str
+) -> None:
+    w = world
+    root = w.post(notifiers={})
+    name = {"self": w.assignments[1].name, "nonrecipient": w.assignments[3].name}.get(
+        to, to
+    )
+    before = w.message_rows()
+    result = run_board(w.env(), "dispatch", "--post", root["id"], "--to", name)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "saved post recipient" in result.stderr and w.message_rows() == before
+
+
 @pytest.mark.parametrize("crash", [False, True])
 def test_ambiguous_acceptance_or_process_interrupt_is_durable_and_not_retried(
     world: World, crash: bool
@@ -582,6 +939,12 @@ def test_claude_receiver_must_accept_and_notified_does_not_read_or_answer(
 def test_known_name_mentions_include_code_but_ignore_email_and_unknown_handles(
     world: World, body: str, allowed: bool
 ) -> None:
+    recipient = world.assignments[2].name
+    body = (
+        body.replace("Adam", recipient)
+        .replace("adam", recipient.lower())
+        .replace("ADAM", recipient.upper())
+    )
     if allowed:
         assert world.post(body=body)["body"] == body
     else:
@@ -990,7 +1353,10 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
     with pytest.raises(board.errors.BoardError, match="migration"), store.read():
         pass
     with store.transaction() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
         assert connection.execute("SELECT * FROM name_assignments").fetchall() == before
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
@@ -1001,7 +1367,9 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
 
 
 @pytest.mark.parametrize("broadcast", [None, -1, 2])
-def test_posts_reject_non_boolean_broadcast(world: World, broadcast: int | None) -> None:
+def test_posts_reject_non_boolean_broadcast(
+    world: World, broadcast: int | None
+) -> None:
     w = world
     root = w.post()
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
@@ -1020,24 +1388,43 @@ def test_v2_schema_without_broadcast_is_rejected(world: World) -> None:
     w = world
     with sqlite3.connect(w.store.path) as connection:
         connection.execute("ALTER TABLE posts DROP COLUMN broadcast")
+        connection.execute("DROP TABLE name_renames")
+        connection.execute("PRAGMA user_version=2")
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
-    for access in (w.store.read, w.store.transaction):
-        with pytest.raises(w.board.errors.BoardError, match="inconsistent"), access():
-            pass
+    with pytest.raises(w.board.errors.BoardError, match="migration"), w.store.read():
+        pass
+    with (
+        pytest.raises(w.board.errors.BoardError, match="inconsistent"),
+        w.store.transaction(),
+    ):
+        pass
+    with sqlite3.connect(w.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name='name_renames'"
+            ).fetchall()
+            == []
+        )
 
 
 @pytest.mark.parametrize(
     "statement",
     [
         "UPDATE posts SET body='overwrite'",
+        "UPDATE posts SET sender_name='Barry'",
         "DELETE FROM posts",
         "DELETE FROM recipients",
         "DELETE FROM deliveries",
         "UPDATE recipients SET parent=999",
+        "UPDATE recipients SET name='Barry'",
         "UPDATE deliveries SET idempotency_key='replacement'",
         "INSERT OR REPLACE INTO posts SELECT * FROM posts",
         "INSERT OR REPLACE INTO recipients SELECT * FROM recipients",
         "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries",
+        "UPDATE name_renames SET old_name='Barry'",
+        "DELETE FROM name_renames",
+        "INSERT OR REPLACE INTO name_renames SELECT * FROM name_renames",
     ],
 )
 def test_history_cannot_be_edited_deleted_or_retargeted(
@@ -1045,6 +1432,7 @@ def test_history_cannot_be_edited_deleted_or_retargeted(
 ) -> None:
     w = world
     root = w.post()
+    importlib.import_module("board.renaming").rename(w.env(), parent=1)
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
         connection.execute(statement)
     assert w.board.messages.read(w.env(), root["id"])["post"]["body"] == root["body"]
