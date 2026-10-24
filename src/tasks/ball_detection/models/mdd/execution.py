@@ -42,4 +42,4 @@ def decode_frame_heatmaps(
         logits = checkpoint_call(decode, *(level[:, start:stop] for level in features),
                                  enabled=activation_checkpointing and decoder.training)
         chunks.append(logits.reshape(batch, stop - start, *output_size))
-    return chunks[0] if len(chunks) == 1 else torch.cat(chunks, dim=1)
+    return torch.cat(chunks, dim=1)
