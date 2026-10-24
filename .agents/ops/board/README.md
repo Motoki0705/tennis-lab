@@ -311,7 +311,9 @@ idle / working / blocked / doneだけを採用し、Herdrの取得失敗・不�
 
 ## 名前とライフサイクル
 
-名前集合の正本は[names.txt](names.txt)。割当はファイルの順番で行う。
+名前集合の正本は[names.txt](names.txt)。新規割当は、引退していない割当（`retired_at IS NULL`）と
+頭文字が重ならない空き名をファイル順で選ぶ。利用できる名前の頭文字がすべて使用中なら、
+使用数が最小の頭文字を優先し、同数ではファイル順で選ぶ。一時解除・引継ぎ待ちも使用数に含む。
 ASCII英字・先頭大文字・大文字小文字を無視した一意性・予約語`all`の禁止を検査し、
 置換・挿入・削除のいずれか1回で同じになる組を拒否する。
 照合は大文字小文字を無視し、表示は集合の表記を使う。
@@ -326,12 +328,42 @@ GitHubのタイトル・ラベル取得はDBの書き込みトランザクショ
 名前処理だけが失敗した場合も担当操作は保持し、`board_sync.status: error`とエラーを返して終了値1。
 名前同期の失敗時にもHerdr表示を試みる。修復後は同じ担当親が同じ操作を再実行する。
 
-- activeな親に名前がなければ、集合順の最初の空き名を割り当てる。名前はホスト内で重複しない。
+- activeな親に名前がなければ、上の頭文字の規則で空き名を割り当てる。名前はホスト内で重複しない。
 - 一時解除・引継ぎ待ち・引継ぎ受領では名前と割当IDを保持する。
 - `release --ended`で引退時刻を記録する。再送では引退時刻を動かさない。
-- 引退から30日経過し、その割当宛てに未読も応答待ちもなければ、別の親へ再利用できる。
+- 引退から30日経過し、その割当宛てに未読も応答待ちもなく、改名履歴に予約されていなければ、
+  別の親へ再利用できる。
 - 同じ親が再開し、名前がまだ他の親に再利用されていなければ、同じ割当を再有効化する。
-  再利用済みなら既存の宛先を奪わず、集合順で空き名を再割当する。
+  再利用済みなら既存の宛先を奪わず、上の頭文字の規則で空き名を再割当する。
+
+### 明示的な改名
+
+既存の名前は自動では変更しない。同じホストの人間または親が、対象の親番号を指定して実行する。
+操作者自身の会話identityやHerdrの現在paneは使わない。複数repoに同じ親番号が登録されている場合、
+未登録・終了済みの親、名前が未割当・引退済みの親は拒否する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123
+PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123 --name Barry
+```
+
+名前省略時は上の頭文字の規則で現在名以外を選ぶ。`--name`は集合の表記へ正規化し、
+集合外・予約語・有効な名前の重複・30日の再利用条件を満たさない名前を拒否する。
+割当ID・親・割当時刻・識別名を保持したまま名前だけを変え、旧名・新名・UTCの時刻を
+`name_renames`へ同じtransactionで記録する。履歴の旧名は別の割当へ再利用せず、
+同じ割当の明示改名で戻す場合だけ許可する。現在名の再指定は履歴を増やさない。
+
+投稿・宛先のsnapshot名、未読・既読・応答待ち・配送行は変更しない。
+改名前の投稿は当時の名前で読み、返信は割当IDを使って現在の親へ送る。
+旧名を現在名の別名として解決しない。Webの名前による投稿絞り込みも投稿時のsnapshot名に従う。
+
+結果JSONは`assignment_id`・`repo`・`parent`・`old_name`・`new_name`・
+`status`（`renamed` / `unchanged`）と、対象親のHerdr表示更新結果`display_sync`を返す。
+表示は保存済みの確認済みserver/terminalの対応と会話・process世代を再照合し、
+`tennis-parent` sourceで表示名と`tl_name`だけを更新する。未読・題名・他のtokenを保持する。
+対応がない場合は`not_configured`、対象が一時不在なら`recipient_unavailable`とし、別paneを推測しない。
+表示更新の失敗は`error`を返して終了値1にし、改名は取り消さない（成功0、入力・改名失敗2）。
+表示を修復するときは同じ`--name 新名`を再指定するか、対象の親自身がHerdr表示のsyncを実行する。
 
 ## 保存と拡張点
 
@@ -342,13 +374,14 @@ SQLite WALと`BEGIN IMMEDIATE`で、名前の選択・再利用判定・更新�
 読み取りは`mode=ro`と`query_only`によるsnapshotで、初期化やmigrationをしない。
 未知version・既存の未version化DB・破損を空状態で置換しない。
 
-schema versionはSQLiteの`PRAGMA user_version`。現在は2。
+schema versionはSQLiteの`PRAGMA user_version`。現在は3。
 `name_assignments`は、安定した`id`、`name`、`repo`、`parent`、`identifier`、
 UTCの`assigned_at`と`retired_at`を持つ。`identifier`は単独issueのためにNULLを許容する。
 生のsession・pane・socket・作業パスを保存しない。
 有効な名前と有効な親はそれぞれunique indexで保護する。再利用前の行を削除・上書きしない。
 
-version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`connection.execute`で投稿テーブルを追加する。
+version 1→2は投稿テーブル、version 2→3は改名履歴の`name_renames`を追加する。
+[storage.py](storage.py)の`MIGRATIONS`末尾へ関数を追加し、`connection.execute`を使う。
 `executescript`の暗黙commitを避け、既存migrationは編集しない。
 `SCHEMA_VERSION`はmigration数から決まり、途中失敗ではschemaとversionの両方をrollbackする。
 追加テーブルの読み取り契約（#1397向け）:
@@ -358,6 +391,7 @@ version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`con
 | `posts` | `id`, `created_at`, `sender_assignment_id`, `sender_name/repo/parent`, `kind`, `broadcast`（`all`指定の有無を0/1で保存）, `subject`, `body`, `in_reply_to`, `thread_id` |
 | `recipients` | 主キー`(post_id, assignment_id)`、宛先snapshotの`name/repo/parent`、`read_at`, `response_state`, `responded_at` |
 | `deliveries` | 同じ主キーで`recipients`に結合、`idempotency_key`, `engine`, `state`, `reason`, `retryable`, `attempts`, `attempted_at`, `notified_at` |
+| `name_renames` | `id`, `assignment_id`（`name_assignments.id`）, `old_name`, `new_name`, `renamed_at`。変更・削除・置換をtriggerで拒否 |
 
 投稿IDは固定長の不透明な32桁hexで、transaction内で時刻順に増える。時計の巻戻りや同時投稿でも順序と一意性を保つ。
 `thread_id`はrootのID、`in_reply_to`は直前の投稿のID。投稿と宛先snapshotの変更・削除はDB triggerでも拒否する。

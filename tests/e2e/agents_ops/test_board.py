@@ -239,6 +239,360 @@ def test_resume_preserves_name_until_it_is_reused(
         )
 
 
+def test_allocations_distinguish_initials_across_retirement_and_reuse(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    store = board.storage.Store(tmp_path / "board")
+    with store.transaction() as connection:
+        assignments = [
+            board.names.ensure_name(connection, "o/r", parent, None, now=NOW)
+            for parent in range(1, 7)
+        ]
+        assert [item.name for item in assignments] == [
+            "Aaron",
+            "Barry",
+            "Caleb",
+            "Daisy",
+            "Edith",
+            "Faith",
+        ]
+        assert len({item.name[0] for item in assignments}) == 6
+        board.names.retire_name(connection, "o/r", 1, now=NOW)
+        interim = board.names.ensure_name(
+            connection, "o/r", 7, None, now=NOW + timedelta(days=29)
+        )
+        assert interim.name == "Adam"
+        board.names.retire_name(connection, "o/r", 7, now=NOW + timedelta(days=29))
+        reused = board.names.ensure_name(
+            connection, "o/r", 8, None, now=NOW + timedelta(days=30)
+        )
+        assert reused.name == assignments[0].name
+        assert reused.id != assignments[0].id
+        assert len({item.name[0] for item in [*assignments[1:], reused]}) == 6
+
+
+def test_used_initials_are_balanced_with_catalog_order_as_tiebreaker(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    catalog = ["Aaron", "Adam", "Alice", "Barry", "Basil", "Beatrice"]
+    with board.storage.Store(tmp_path / "board").transaction() as connection:
+        allocated = [
+            board.names.ensure_name(
+                connection, "o/r", parent, None, now=NOW, catalog=catalog
+            ).name
+            for parent in range(1, 7)
+        ]
+        assert allocated == ["Aaron", "Barry", "Adam", "Basil", "Alice", "Beatrice"]
+        with pytest.raises(board.errors.BoardError, match="exhausted"):
+            board.names.ensure_name(
+                connection, "o/r", 7, None, now=NOW, catalog=catalog
+            )
+
+
+def test_rename_preserves_assignment_and_reserves_old_names(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    store = board.storage.Store(tmp_path / "board")
+    with store.transaction() as connection:
+        first = board.names.ensure_name(connection, "o/r", 1, "開発", now=NOW)
+        renamed = board.names.rename_name(
+            connection, "o/r", 1, now=NOW + timedelta(days=1), name="bARRY"
+        )
+        assert renamed == board.names.Assignment(
+            first.id,
+            "Barry",
+            first.repo,
+            first.parent,
+            first.identifier,
+            first.assigned_at,
+            first.retired_at,
+        )
+        assert (
+            board.names.rename_name(
+                connection, "o/r", 1, now=NOW + timedelta(days=2), name="barry"
+            )
+            == renamed
+        )
+        assert connection.execute(
+            "SELECT assignment_id,old_name,new_name,renamed_at FROM name_renames"
+        ).fetchall() == [
+            (
+                first.id,
+                first.name,
+                renamed.name,
+                board.names.timestamp(NOW + timedelta(days=1)),
+            )
+        ]
+        second = board.names.ensure_name(connection, "o/r", 2, None, now=NOW)
+        assert (
+            second.name == "Adam"
+        )  # Aaron remains reserved, despite having no live row.
+        with pytest.raises(board.errors.BoardError, match="reserved"):
+            board.names.rename_name(connection, "o/r", 2, now=NOW, name="aaron")
+        # Returning to the same assignment's own historical name is safe.
+        board.names.rename_name(connection, "o/r", 1, now=NOW, name="Aaron")
+        board.names.retire_name(connection, "o/r", 1, now=NOW)
+        with pytest.raises(board.errors.BoardError, match="exhausted"):
+            board.names.ensure_name(
+                connection,
+                "o/r",
+                3,
+                None,
+                now=NOW + timedelta(days=30),
+                catalog=["Aaron", "Barry"],
+            )
+    with store.read() as connection:
+        assert (
+            connection.execute("SELECT COUNT(*) FROM name_assignments").fetchone()[0]
+            == 2
+        )
+        assert (
+            connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0] == 2
+        )
+
+
+@pytest.mark.parametrize(
+    "name", ["all", "ALL", "human", "UnknownName", "Barry", "barry"]
+)
+def test_rename_rejects_reserved_unknown_and_assigned_names(
+    board: SimpleNamespace, tmp_path: Path, name: str
+) -> None:
+    store = board.storage.Store(tmp_path / "board")
+    with store.transaction() as connection:
+        for parent in (1, 2):
+            board.names.ensure_name(connection, "o/r", parent, None, now=NOW)
+    with pytest.raises(board.errors.BoardError), store.transaction() as connection:
+        board.names.rename_name(connection, "o/r", 1, now=NOW, name=name)
+    with store.read() as connection:
+        assert board.names.for_parent(connection, "o/r", 1).name == "Aaron"
+        assert (
+            connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0] == 0
+        )
+
+
+def test_automatic_rename_distinguishes_legacy_initials_and_retains_ids(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    with board.storage.Store(tmp_path / "board").transaction() as connection:
+        previous = [
+            board.names.ensure_name(
+                connection, "o/r", parent, None, now=NOW, catalog=[name]
+            )
+            for parent, name in enumerate(("Aaron", "Adrian", "Aidan", "Alan"), 1)
+        ]
+        renamed = [
+            board.names.rename_name(connection, "o/r", parent, now=NOW)
+            for parent in range(1, 5)
+        ]
+        assert [item.name for item in renamed] == ["Barry", "Caleb", "Daisy", "Edith"]
+        assert [item.id for item in previous] == [item.id for item in renamed]
+        assert len({item.name[0] for item in renamed}) == 4
+
+
+def test_rename_waits_for_retired_name_reuse_delay(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    with board.storage.Store(tmp_path / "board").transaction() as connection:
+        first = board.names.ensure_name(connection, "o/r", 1, None, now=NOW)
+        second = board.names.ensure_name(connection, "o/r", 2, None, now=NOW)
+        board.names.retire_name(connection, "o/r", 2, now=NOW)
+        with pytest.raises(board.errors.BoardError, match="awaiting reuse"):
+            board.names.rename_name(
+                connection, "o/r", 1, name=second.name, now=NOW + timedelta(days=29)
+            )
+        renamed = board.names.rename_name(
+            connection, "o/r", 1, name=second.name, now=NOW + timedelta(days=30)
+        )
+        assert renamed.id == first.id and renamed.name == second.name
+
+
+def test_rename_failure_rolls_back_history_and_name_together(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    store = board.storage.Store(tmp_path / "board")
+    with store.transaction() as connection:
+        first = board.names.ensure_name(connection, "o/r", 1, None, now=NOW)
+        connection.execute(
+            "CREATE TRIGGER reject_rename BEFORE UPDATE OF name ON name_assignments "
+            "BEGIN SELECT RAISE(ABORT, 'injected rename failure'); END"
+        )
+    with pytest.raises(board.errors.BoardError), store.transaction() as connection:
+        board.names.rename_name(connection, "o/r", 1, now=NOW)
+    with store.read() as connection:
+        assert board.names.for_parent(connection, "o/r", 1) == first
+        assert (
+            connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0] == 0
+        )
+
+
+def test_original_parent_cannot_resume_a_reused_then_renamed_name(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    with board.storage.Store(tmp_path / "board").transaction() as connection:
+        original = board.names.ensure_name(connection, "o/r", 1, None, now=NOW)
+        board.names.retire_name(connection, "o/r", 1, now=NOW)
+        reused = board.names.ensure_name(
+            connection, "o/r", 2, None, now=NOW + timedelta(days=30)
+        )
+        assert reused.name == original.name
+        board.names.rename_name(
+            connection, "o/r", 2, name="Barry", now=NOW + timedelta(days=31)
+        )
+        resumed = board.names.ensure_name(
+            connection, "o/r", 1, None, now=NOW + timedelta(days=32)
+        )
+        assert resumed.name == "Adam" and resumed.id != original.id
+        assert board.names.for_parent(connection, "o/r", 2).name == "Barry"
+        assert board.names.resolve_name(connection, resumed.name).id == resumed.id
+
+
+def test_rename_into_a_reused_name_uses_its_live_and_latest_retired_lifetime(
+    board: SimpleNamespace, tmp_path: Path
+) -> None:
+    with board.storage.Store(tmp_path / "board").transaction() as connection:
+        first = board.names.ensure_name(connection, "o/r", 1, None, now=NOW)
+        second = board.names.ensure_name(connection, "o/r", 2, None, now=NOW)
+        board.names.retire_name(connection, "o/r", 2, now=NOW)
+        board.names.rename_name(
+            connection, "o/r", 1, name=second.name, now=NOW + timedelta(days=30)
+        )
+        assert first.id < second.id
+        assert board.names.resolve_name(connection, second.name).id == first.id
+        with pytest.raises(board.errors.BoardError, match="exhausted"):
+            board.names.ensure_name(
+                connection,
+                "o/r",
+                3,
+                None,
+                now=NOW + timedelta(days=30),
+                catalog=[second.name],
+            )
+        board.names.retire_name(connection, "o/r", 1, now=NOW + timedelta(days=31))
+        resumed = board.names.ensure_name(
+            connection, "o/r", 2, None, now=NOW + timedelta(days=32)
+        )
+        assert resumed.name != second.name and resumed.id != second.id
+        with pytest.raises(board.errors.BoardError, match="exhausted"):
+            board.names.ensure_name(
+                connection,
+                "o/r",
+                3,
+                None,
+                now=NOW + timedelta(days=60),
+                catalog=[second.name],
+            )
+        reused = board.names.ensure_name(
+            connection,
+            "o/r",
+            3,
+            None,
+            now=NOW + timedelta(days=61),
+            catalog=[second.name],
+        )
+        assert reused.id not in {first.id, second.id}
+        assert board.names.resolve_name(connection, second.name).id == reused.id
+
+
+@pytest.fixture
+def v2_store(board: SimpleNamespace, tmp_path: Path) -> SimpleNamespace:
+    store = board.storage.Store(tmp_path / "board")
+    store.directory.mkdir()
+    stamp = board.names.timestamp(NOW)
+    post_id = "0" * 32
+    with sqlite3.connect(store.path) as connection:
+        for migration in board.storage.MIGRATIONS[:2]:
+            migration(connection)
+        connection.execute("PRAGMA user_version=2")
+        connection.executemany(
+            "INSERT INTO name_assignments VALUES(?,?,?,?,?,?,?)",
+            [
+                (1, "Aaron", "o/r", 1, None, stamp, None),
+                (2, "Adam", "o/r", 2, "開発", stamp, None),
+            ],
+        )
+        connection.execute(
+            "INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                post_id,
+                stamp,
+                1,
+                "Aaron",
+                "o/r",
+                1,
+                "question",
+                0,
+                "依存の確認",
+                "確認してください。",
+                None,
+                post_id,
+            ),
+        )
+        connection.execute(
+            "INSERT INTO recipients VALUES(?,?,?,?,?,?,?,?)",
+            (post_id, 2, "Adam", "o/r", 2, stamp, "accepted", stamp),
+        )
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,?,?,?)",
+            (post_id, 2, "kept-delivery-key", "pending"),
+        )
+        rows = {
+            table: connection.execute(f"SELECT * FROM {table}").fetchall()
+            for table in ("name_assignments", "posts", "recipients", "deliveries")
+        }
+        schema = connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+    return SimpleNamespace(store=store, rows=rows, schema=schema)
+
+
+def test_version_two_migration_preserves_assignments_posts_and_recipient_state(
+    board: SimpleNamespace, v2_store: SimpleNamespace
+) -> None:
+    with (
+        pytest.raises(board.errors.BoardError, match="migration"),
+        v2_store.store.read(),
+    ):
+        pass
+    with v2_store.store.transaction() as connection:
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
+        for table, rows in v2_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        assert connection.execute("SELECT * FROM name_renames").fetchall() == []
+        renamed = board.names.rename_name(connection, "o/r", 2, now=NOW)
+        assert renamed.id == 2 and renamed.name == "Barry"
+        assert connection.execute("SELECT name FROM recipients").fetchone()[0] == "Adam"
+
+
+def test_version_two_migration_failure_rolls_back_schema_version_and_rows(
+    board: SimpleNamespace, v2_store: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    migration = board.storage.MIGRATIONS[2]
+
+    def fail_after_schema(connection: sqlite3.Connection) -> None:
+        migration(connection)
+        raise RuntimeError("injected rename migration failure")
+
+    monkeypatch.setattr(
+        board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS[:2], fail_after_schema)
+    )
+    with pytest.raises(RuntimeError, match="injected"), v2_store.store.transaction():
+        pass
+    with sqlite3.connect(v2_store.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+            ).fetchall()
+            == v2_store.schema
+        )
+        for table, rows in v2_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+
+
 def test_private_permissions_wal_and_rollback(
     board: SimpleNamespace, tmp_path: Path
 ) -> None:
@@ -291,7 +645,17 @@ print(value.name)
     with ThreadPoolExecutor(max_workers=4) as pool:
         names = list(pool.map(allocate, range(1, 9)))
     assert len(set(names)) == 8
-    assert set(names) == set(board.names.load_names()[:8])
+    assert len({name[0] for name in names}) == 8
+    assert set(names) == {
+        "Aaron",
+        "Barry",
+        "Caleb",
+        "Daisy",
+        "Edith",
+        "Faith",
+        "Gabriel",
+        "Hamish",
+    }
 
 
 def test_version_migration_is_atomic_and_unknown_or_corrupt_is_not_replaced(
@@ -416,6 +780,68 @@ def test_parent_lifecycle_names_and_board_failure_recovery(
     p.cli("register", parent="2")
     with board.storage.Store(board.storage.directory(p.env)).read() as connection:
         assert board.names.for_parent(connection, "o/r", 2).name != first["name"]
+
+
+def test_renamed_assignment_survives_parent_sync_and_handoff(
+    board: SimpleNamespace, parent_env: ParentEnv
+) -> None:
+    p = parent_env
+    first = json.loads(p.cli("register").stdout)["board_sync"]["name"]
+    result = run_board(p.env, "rename", "--parent", "1")
+    assert result.returncode == 0, result.stderr
+    renamed = json.loads(result.stdout)
+    assert renamed["old_name"] == first
+    assert renamed["new_name"][0] != first[0]
+    assert renamed["display_sync"]["status"] == "not_configured"
+    assert json.loads(p.cli("sync").stdout)["board_sync"]["name"] == renamed["new_name"]
+    p.cli("handoff", "--note-file", p.note())
+    accepted = p.cli(
+        "handoff",
+        "--accept",
+        "--note-file",
+        p.note(),
+        extra={"CLAUDE_CODE_SESSION_ID": "replacement-parent"},
+    )
+    assert json.loads(accepted.stdout)["board_sync"]["name"] == renamed["new_name"]
+    with board.storage.Store(board.storage.directory(p.env)).read() as connection:
+        assert (
+            board.names.for_parent(connection, "o/r", 1).id == renamed["assignment_id"]
+        )
+
+
+@pytest.mark.parametrize(
+    "condition", ["missing", "ambiguous", "ended", "retired", "unassigned"]
+)
+def test_rename_requires_an_unambiguous_registered_live_name(
+    board: SimpleNamespace, labels: Labels, condition: str
+) -> None:
+    store = board.storage.Store(board.storage.directory(labels.env))
+    with store.transaction() as connection:
+        if condition != "unassigned":
+            board.names.ensure_name(connection, "o/r", 42, None, now=NOW)
+        if condition == "retired":
+            board.names.retire_name(connection, "o/r", 42, now=NOW)
+        before = list(connection.iterdump())
+    if condition == "ambiguous":
+        labels.set_registry(
+            {
+                "o/r#42": labels.owner(),
+                "other/repo#42": labels.owner(identity="codex:other-parent"),
+            }
+        )
+    elif condition in {"missing", "ended"}:
+        labels.set_registry(
+            {} if condition == "missing" else {"o/r#42": labels.owner(status="ended")}
+        )
+    registry = labels.registry.read_bytes()
+    result = run_board(labels.env, "rename", "--parent", "42")
+    assert result.returncode == 2
+    assert not result.stdout
+    private_output_absent(result.stderr, labels.env)
+    with store.read() as connection:
+        assert list(connection.iterdump()) == before
+    assert labels.registry.read_bytes() == registry
+    assert labels.mutations() == []
 
 
 @pytest.mark.parametrize("title", ["人間が作成した単独タスク", "[Bug] 単独タスク"])

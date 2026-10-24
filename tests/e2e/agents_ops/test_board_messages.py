@@ -180,6 +180,67 @@ def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
     private_output_absent(json.dumps(conversation), w.env())
 
 
+def test_renamed_parents_keep_message_identity_state_and_reply_routes(
+    world: World,
+) -> None:
+    w = world
+    rename = importlib.import_module("board.renaming").rename
+    unread = w.post()
+    read = w.post()
+    acknowledged = w.post(kind="request")
+    read_at = w.board.messages.read(w.env(2), read["id"])["post"]["recipients"][0][
+        "read_at"
+    ]
+    w.board.messages.ack(w.env(2), post_id=acknowledged["id"], state="accepted")
+    outgoing = w.board.messages.post(
+        w.env(2),
+        to=[w.assignments[1].name],
+        kind="info",
+        subject="確認結果",
+        body="確認しました。",
+        notifiers=w.routes,
+        now=NOW,
+    )["post"]
+    before = w.message_rows()
+    with w.store.read() as connection:
+        activity = w.board.activity.summary(connection, w.assignments[2].id)
+    assert activity.unread_count == 1 and activity.awaiting_response
+    changed = {
+        parent: rename(w.env(), parent=parent, now=NOW + timedelta(days=1))
+        for parent in (1, 2)
+    }
+    assert w.message_rows() == before
+    for parent in (1, 2):
+        assert changed[parent]["assignment_id"] == w.assignments[parent].id
+        assert changed[parent]["old_name"] == w.assignments[parent].name
+        assert changed[parent]["new_name"] != w.assignments[parent].name
+    assert w.board.service.whoami(w.env(2))["name"] == changed[2]["new_name"]
+    with w.store.read() as connection:
+        assert w.board.activity.summary(connection, w.assignments[2].id) == activity
+    inbox = w.board.messages.inbox(w.env(2), unread=True)["posts"]
+    assert [post["id"] for post in inbox] == [unread["id"]]
+    sent = w.own_state(outgoing["id"], parent=2)
+    assert sent["sender"]["name"] == w.assignments[2].name
+    root = w.own_state(unread["id"])
+    assert root["sender"]["name"] == w.assignments[1].name
+    assert root["recipients"][0]["name"] == w.assignments[2].name
+    acknowledged_row = w.own_state(acknowledged["id"])["recipients"][0]
+    assert acknowledged_row["state"] == "accepted"
+    read_again = w.board.messages.read(w.env(2), read["id"])["post"]
+    assert read_again["recipients"][0]["read_at"] == read_at
+    thread = w.board.messages.thread(w.env(2), unread["id"])["posts"]
+    assert thread[0]["sender"]["name"] == w.assignments[1].name
+    reply = w.board.messages.reply(
+        w.env(2), post_id=unread["id"], body="対応します。", notifiers=w.routes
+    )["post"]
+    assert reply["sender"]["name"] == changed[2]["new_name"]
+    assert reply["sender"]["assignment_id"] == w.assignments[2].id
+    recipient = reply["recipients"][0]
+    assert recipient["name"] == changed[1]["new_name"]
+    assert recipient["assignment_id"] == w.assignments[1].id
+    assert w.own_state(unread["id"])["recipients"][0]["response_state"] == "answered"
+
+
 @pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize("audience", ["named", "all", "mixed"])
 def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
@@ -582,6 +643,12 @@ def test_claude_receiver_must_accept_and_notified_does_not_read_or_answer(
 def test_known_name_mentions_include_code_but_ignore_email_and_unknown_handles(
     world: World, body: str, allowed: bool
 ) -> None:
+    recipient = world.assignments[2].name
+    body = (
+        body.replace("Adam", recipient)
+        .replace("adam", recipient.lower())
+        .replace("ADAM", recipient.upper())
+    )
     if allowed:
         assert world.post(body=body)["body"] == body
     else:
@@ -990,7 +1057,10 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
     with pytest.raises(board.errors.BoardError, match="migration"), store.read():
         pass
     with store.transaction() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
         assert connection.execute("SELECT * FROM name_assignments").fetchall() == before
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
@@ -1020,24 +1090,43 @@ def test_v2_schema_without_broadcast_is_rejected(world: World) -> None:
     w = world
     with sqlite3.connect(w.store.path) as connection:
         connection.execute("ALTER TABLE posts DROP COLUMN broadcast")
+        connection.execute("DROP TABLE name_renames")
+        connection.execute("PRAGMA user_version=2")
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
-    for access in (w.store.read, w.store.transaction):
-        with pytest.raises(w.board.errors.BoardError, match="inconsistent"), access():
-            pass
+    with pytest.raises(w.board.errors.BoardError, match="migration"), w.store.read():
+        pass
+    with (
+        pytest.raises(w.board.errors.BoardError, match="inconsistent"),
+        w.store.transaction(),
+    ):
+        pass
+    with sqlite3.connect(w.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert (
+            connection.execute(
+                "SELECT name FROM sqlite_master WHERE name='name_renames'"
+            ).fetchall()
+            == []
+        )
 
 
 @pytest.mark.parametrize(
     "statement",
     [
         "UPDATE posts SET body='overwrite'",
+        "UPDATE posts SET sender_name='Barry'",
         "DELETE FROM posts",
         "DELETE FROM recipients",
         "DELETE FROM deliveries",
         "UPDATE recipients SET parent=999",
+        "UPDATE recipients SET name='Barry'",
         "UPDATE deliveries SET idempotency_key='replacement'",
         "INSERT OR REPLACE INTO posts SELECT * FROM posts",
         "INSERT OR REPLACE INTO recipients SELECT * FROM recipients",
         "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries",
+        "UPDATE name_renames SET old_name='Barry'",
+        "DELETE FROM name_renames",
+        "INSERT OR REPLACE INTO name_renames SELECT * FROM name_renames",
     ],
 )
 def test_history_cannot_be_edited_deleted_or_retargeted(
@@ -1045,6 +1134,7 @@ def test_history_cannot_be_edited_deleted_or_retargeted(
 ) -> None:
     w = world
     root = w.post()
+    importlib.import_module("board.renaming").rename(w.env(), parent=1)
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
         connection.execute(statement)
     assert w.board.messages.read(w.env(), root["id"])["post"]["body"] == root["body"]
