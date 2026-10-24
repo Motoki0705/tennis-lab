@@ -6,9 +6,9 @@ The public contract and lifecycle rules live in README.md beside this module.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeVar
 from urllib.parse import quote, unquote
 
 PARENT_LABEL = "issue:parent"
@@ -34,6 +34,37 @@ CHILD_REQUIRED = (
 )
 ACCEPTANCE_FIELDS = ("文脈", "下流への影響", "検証方法・証拠")
 _SOURCE_PREFIX = "<!-- ops-report-proposal:"
+SourceKey = TypeVar("SourceKey", bound=Hashable)
+
+
+def first_source_marker(body: str, prefix: str) -> str | None:
+    """Use the same authoritative first-line contract for every issue source."""
+    if prefix not in body:
+        return None
+    _, markers = _scan_markdown(body, prefix=prefix)
+    if not markers:
+        return None
+    if len(markers) != 1 or markers[0][0] != 0:
+        raise ValueError("source metadata must occur exactly once, on the first line")
+    return markers[0][1]
+
+
+def index_sources(
+    bodies: Iterable[tuple[int, str]],
+    parse_key: Callable[[str], SourceKey | None],
+    *,
+    kind: str = "source",
+) -> dict[SourceKey, int]:
+    """Index all states; reject ambiguous anchors rather than choosing one."""
+    result: dict[SourceKey, int] = {}
+    for number, body in bodies:
+        key = parse_key(body)
+        if key is None:
+            continue
+        if key in result:
+            raise ValueError(f"duplicate {kind} {key}: #{result[key]} and #{number}")
+        result[key] = _number(number)
+    return result
 
 
 def _line(value: str, field: str) -> str:
@@ -314,17 +345,14 @@ def proposal_marker(source: ProposalSource) -> str:
 
 def parse_proposal_source(body: str) -> ProposalSource | None:
     # A metadata marker is authoritative only as the first line, never in examples.
-    if _SOURCE_PREFIX not in body:
+    marker = first_source_marker(body, _SOURCE_PREFIX)
+    if marker is None:
         return None
-    _, markers = _scan_markdown(body)
-    if not markers:
-        return None
-    index, marker = markers[0]
     match = re.fullmatch(
         r"<!-- ops-report-proposal: ([^ ]+) report=#([1-9][0-9]*) option=([^ ]*) -->",
         marker,
     )
-    if len(markers) != 1 or index != 0 or not match:
+    if not match:
         raise ValueError("proposal metadata must occur exactly once, on the first line")
     source = ProposalSource(
         match[1], int(match[2]), unquote(match[3], errors="strict") or None
@@ -339,16 +367,12 @@ def index_proposals(bodies: Iterable[tuple[int, str]]) -> dict[tuple[int, str], 
 
     Callers must also compare the recorded ``option`` before reusing an issue.
     """
-    result: dict[tuple[int, str], int] = {}
-    for number, body in bodies:
+
+    def key(body: str) -> tuple[int, str] | None:
         source = parse_proposal_source(body)
-        if source is None:
-            continue
-        key = (source.report_number, source.proposal_id)
-        if key in result:
-            raise ValueError(f"duplicate proposal {key}: #{result[key]} and #{number}")
-        result[key] = _number(number)
-    return result
+        return (source.report_number, source.proposal_id) if source else None
+
+    return index_sources(bodies, key, kind="proposal")
 
 
 def validate_body(body: str, *, is_parent: bool, is_child: bool) -> tuple[str, ...]:
