@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,6 +26,7 @@ PACKAGE = ROOT / ".agents/ops/ops-report"
 sys.path.insert(0, str(PACKAGE))
 repro: Any = importlib.import_module("opsreport.reproduction")
 isolation: Any = importlib.import_module("opsreport.repro_isolation")
+linux: Any = importlib.import_module("opsreport.repro_linux")
 ledger: Any = importlib.import_module("opsreport.ledger")
 server: Any = importlib.import_module("opsreport.reproduction_server")
 transport: Any = importlib.import_module("opsreport.mcp_server")
@@ -232,6 +234,19 @@ def test_pinned_clone_log_evidence_and_clean_removal(scenario: Scenario) -> None
     assert log.pagination["has_more"]
     assert "fake CPU test" in log.data["log"]["text"]
     assert log.pagination["next"]["run_id"] == result.data["run_id"]
+
+
+def test_clone_objects_do_not_depend_on_the_source_checkout(scenario: Scenario) -> None:
+    scenario.runner.dirty = "ignored"
+    with pytest.raises(repro.RetrievalError, match="checkout retained"):
+        request(scenario.client)
+    checkout = Path(scenario.manifests()[0]["checkout"])
+    assert not (checkout / ".git/objects/info/alternates").exists()
+    source_objects = scenario.repo / ".git/objects"
+    for source in source_objects.glob("[0-9a-f][0-9a-f]/*"):
+        clone = checkout / ".git/objects" / source.relative_to(source_objects)
+        if clone.exists():
+            assert source.stat().st_ino != clone.stat().st_ino
 
 
 @pytest.mark.parametrize("dirty", ["tracked", "ignored", "head"])
@@ -607,6 +622,7 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
         timeout=0.5,
     )
     assert result.reason == "timeout" and result.exit_code != 0
+    assert result.cleanup_complete is None  # A process group alone is insufficient.
     pid = int(child.read_text())
     status = Path(f"/proc/{pid}/status")
     assert not status.exists() or "State:\tZ" in status.read_text()
@@ -630,3 +646,181 @@ def test_log_limit_kills_the_process(tmp_path: Path) -> None:
     assert result.reason == "log_limit"
     assert result.log_bytes == 1024
     assert (tmp_path / "process.log").stat().st_size == 1024
+
+
+def test_scope_uses_aggregate_limits_deadline_and_pid_namespace(tmp_path: Path) -> None:
+    argv = linux.scope_argv(
+        "tennis-audit-cpu-example.scope",
+        tmp_path / "config.json",
+        memory=isolation.MEMORY_BYTES,
+        deadline=isolation.TIMEOUT_SECONDS,
+    )
+    assert {
+        "--user",
+        "--scope",
+        "MemoryMax=4294967296",
+        "MemorySwapMax=0",
+        "RuntimeMaxSec=900s",
+    } <= set(argv)
+    assert {
+        "--map-root-user",
+        "--mount",
+        "--net",
+        "--pid",
+        "--fork",
+        "--kill-child=KILL",
+    } <= set(argv)
+    assert "--shell" not in argv
+    with pytest.raises(ValueError, match="policy"):
+        linux.scope_argv(
+            "tennis-audit-cpu-example.scope",
+            tmp_path / "config.json",
+            memory=2 * isolation.MEMORY_BYTES,
+            deadline=900,
+        )
+
+
+def proof_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    identity = {"boot": "fake-boot", "backend": "fake-backend"}
+    monkeypatch.setattr(linux, "fingerprint", lambda: identity)
+    path = tmp_path / "proof.json"
+    linux.private_json(
+        path,
+        {
+            "schema_version": 1,
+            "verified": True,
+            "fingerprint": identity,
+            "verified_at_epoch": time.time(),
+            "challenges": {
+                name: {"passed": True, "process": {"cleanup_complete": True}}
+                for name in linux.CHALLENGES
+            },
+        },
+    )
+    return path
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "missing",
+        "failed",
+        "stale",
+        "future",
+        "different-boot",
+        "missing-challenge",
+        "cleanup",
+        "permissions",
+        "symlink",
+    ],
+)
+def test_proof_gate_rejects_incomplete_or_changed_enforcement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+) -> None:
+    path = proof_file(tmp_path, monkeypatch)
+    assert linux.inspect_proof(path) == (True, "")
+    value = json.loads(path.read_bytes())
+    if tamper == "missing":
+        path.unlink()
+    elif tamper == "permissions":
+        path.chmod(0o644)
+    elif tamper == "symlink":
+        linked = path.with_name("linked.json")
+        linked.symlink_to(path)
+        path = linked
+    else:
+        if tamper == "failed":
+            value["verified"] = False
+        elif tamper == "stale":
+            value["verified_at_epoch"] -= linux.PROOF_MAX_AGE + 1
+        elif tamper == "future":
+            value["verified_at_epoch"] += 600
+        elif tamper == "different-boot":
+            value["fingerprint"]["boot"] = "another-boot"
+        elif tamper == "missing-challenge":
+            del value["challenges"][
+                "network" if "network" in value["challenges"] else "isolation"
+            ]
+        elif tamper == "cleanup":
+            value["challenges"]["descendants"]["process"]["cleanup_complete"] = False
+        path.write_text(json.dumps(value))
+    assert linux.inspect_proof(path)[0] is False
+    runner = isolation.LinuxRunner(path)
+    assert runner.inspect()["enabled"] is False
+    with pytest.raises(RuntimeError, match="disabled"):
+        runner.run(None)
+
+
+def test_proof_is_rechecked_before_each_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = proof_file(tmp_path, monkeypatch)
+    runner = isolation.LinuxRunner(path)
+    assert runner.inspect()["enabled"] is True
+    monkeypatch.setattr(linux, "fingerprint", lambda: {"backend": "changed"})
+    with pytest.raises(RuntimeError, match="disabled"):
+        runner.run(None)
+
+
+@pytest.mark.parametrize("cleanup", [True, False])
+def test_host_wrapper_precedes_scope_and_cleanup_is_required(
+    scenario: Scenario,
+    monkeypatch: pytest.MonkeyPatch,
+    cleanup: bool,
+) -> None:
+    directory = scenario.path.parent / "sandbox"
+    log = scenario.path.parent / "host-launcher.log"
+    # A fake fixed execution: no real namespaces, scopes, pytest or agents.
+    job = isolation.TestJob(scenario.repo, (NODE,), scenario.lock, log)
+    stopped: list[str] = []
+
+    def fake_run(argv: list[str], **kwargs: Any) -> Any:
+        assert argv == job.argv
+        assert kwargs["env"] == job.env
+        launcher = scenario.repo / ".venv/bin/python"
+        assert "systemd-run" in launcher.read_text()
+        assert "-m" in launcher.read_text() and "expected=" in launcher.read_text()
+        config = json.loads((directory / "config.json").read_bytes())
+        assert config["pytest_argv"][:5] == [
+            "/checkout/.venv/bin/python",
+            "-m",
+            "pytest",
+            "-n",
+            "4",
+        ]
+        assert "PYTEST_LOCK" not in config["environment"]
+        assert "DBUS_SESSION_BUS_ADDRESS" not in config["environment"]
+        (directory / "attestation.json").write_text('{"verified":true}')
+        log.write_text("simulated scope\n")
+        return isolation.ProcessResult(0, "exited", 0.01, log.stat().st_size)
+
+    def fake_stop(unit: str) -> bool:
+        stopped.append(unit)
+        return cleanup
+
+    monkeypatch.setattr(linux, "run_bounded", fake_run)
+    monkeypatch.setattr(linux, "stop_scope", fake_stop)
+    if cleanup:
+        result, _ = linux.execute(directory, scenario.repo, log, mode="pytest", job=job)
+        assert result.cleanup_complete and result.scope == stopped[0]
+        assert not (scenario.repo / ".venv").exists()
+        assert not (directory / "root").exists()
+    else:
+        with pytest.raises(RuntimeError, match="scope cleanup could not be verified"):
+            linux.execute(directory, scenario.repo, log, mode="pytest", job=job)
+        assert (scenario.repo / ".venv/bin/python").exists()
+    assert len(stopped) == 1
+
+
+def test_scope_cleanup_never_targets_an_unrelated_unit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def unexpected(*args: Any, **kwargs: Any) -> None:
+        raise AssertionError("systemctl must not be called")
+
+    monkeypatch.setattr(linux, "manager", unexpected)
+    with pytest.raises(ValueError, match="unexpected transient scope"):
+        linux.stop_scope("some-other-session.scope")

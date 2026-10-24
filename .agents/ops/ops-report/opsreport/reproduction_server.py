@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from .mcp_server import serve
-from .repro_isolation import TestRunner, probe
+from .repro_isolation import LinuxRunner, TestRunner, probe
 from .reproduction import Reproduction
 from .retrieval import (
     MAX_RESPONSE_BYTES,
@@ -132,7 +132,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     inspection = subparsers.add_parser(
-        "probe", help="fixed local probes; no tests, cgroup or systemd writes"
+        "probe", help="fixed enforcement challenges in temporary scopes and namespaces"
     )
     inspection.add_argument("--directory", type=Path, required=True)
     server = subparsers.add_parser(
@@ -153,11 +153,17 @@ def main() -> int:
         help="host-reviewed JSON: base_sha and nodeids",
     )
     server.add_argument("--ops-memory-sha")
+    server.add_argument(
+        "--isolation-proof",
+        type=Path,
+        help="private probe.json from a successful matching OS probe (maximum age: 24h)",
+    )
     args = parser.parse_args()
     try:
         if args.command == "probe":
-            print(json.dumps(probe(args.directory), ensure_ascii=False))
-            return 1  # Probe observations never certify an executable sandbox.
+            result = probe(args.directory)
+            print(json.dumps(result, ensure_ascii=False))
+            return 0 if result["verified"] else 1
         raw = args.cpu_tests_file.read_bytes()
         if len(raw) > 64 * 1024:
             raise ValueError("CPU allowlist exceeds byte limit")
@@ -177,6 +183,7 @@ def main() -> int:
             args.ledger,
             allowlist["nodeids"],
             ops_memory_sha=args.ops_memory_sha,
+            runner=LinuxRunner(args.isolation_proof),
         )
         serve(retrieval, sys.stdin.buffer, sys.stdout.buffer)
     except (OSError, ValueError, RetrievalError) as exc:

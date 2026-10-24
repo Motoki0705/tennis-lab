@@ -427,12 +427,12 @@ class Reproduction:
         log = directory / "pytest.log"
         result["checkout"] = str(checkout)
         try:
-            # A standalone clone does not register a worktree in the source's
-            # .git directory. Alternates are host-side only, never test mounts.
+            # Independent objects and no registered source worktree. Test code
+            # never gets alternates/hardlinks pointing into the source checkout.
             git(
                 self.repo,
                 "clone",
-                "--shared",
+                "--no-hardlinks",
                 "--no-checkout",
                 "--no-recurse-submodules",
                 "--",

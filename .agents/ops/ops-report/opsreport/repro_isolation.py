@@ -1,21 +1,14 @@
-"""Bounded process primitives and honest, fail-closed Linux capability inspection.
-
-There is deliberately no production CPU-test backend until aggregate memory,
-device and credential-file isolation have been implemented and verified.
-"""
+"""Bounded processes and the proof-gated Linux CPU-test backend."""
 
 from __future__ import annotations
 
 import contextlib
-import json
 import os
 import selectors
-import shutil
 import signal
 import subprocess
-import sys
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -45,6 +38,9 @@ class ProcessResult:
     reason: str
     elapsed_seconds: float
     log_bytes: int
+    cleanup_complete: bool | None = None
+    scope: str | None = None
+    attestation: dict[str, Any] | None = None
 
 
 def run_bounded(
@@ -58,9 +54,9 @@ def run_bounded(
 ) -> ProcessResult:
     """Kill the process group even after a leader exits or closes its output.
 
-    This does not claim to catch descendants that escape into another session.
-    A future CPU backend must additionally contain those in a PID namespace or
-    cgroup. Only trusted host code builds argv; this is not an agent tool.
+    This primitive does not confirm cleanup of descendants in another session.
+    The CPU backend adds PID namespace/cgroup containment and confirms cleanup.
+    Only trusted host code builds argv; this is not an agent tool.
     """
     if not 0 < timeout <= TIMEOUT_SECONDS or not 0 < max_log_bytes <= LOG_BYTES:
         raise ValueError("process limits must be positive and within policy")
@@ -146,88 +142,61 @@ class TestRunner(Protocol):
 
 
 class LinuxRunner:
-    """Inspection only. No flag, environment override or CLI can enable execution."""
+    """Only a matching, successful OS probe can enable the execution backend."""
+
+    def __init__(self, proof: Path | None = None) -> None:
+        self.proof = proof
 
     def inspect(self) -> dict[str, Any]:
-        membership = Path("/proc/self/cgroup").read_text().strip()
+        from .repro_linux import inspect_proof
+
+        verified, reason = inspect_proof(self.proof)
         return {
-            "enabled": False,
-            "backend": "linux-preflight-only",
+            "enabled": verified,
+            "backend": "linux-systemd-namespaces",
             "required_limits": {
                 "timeout_seconds": TIMEOUT_SECONDS,
                 "memory_bytes": MEMORY_BYTES,
                 "concurrent_runs": 1,
                 "log_bytes": LOG_BYTES,
             },
-            "implemented_primitives": [
+            "enforcement": [
                 "environment_allowlist",
-                "bounded_process_group",
+                "systemd_scope_memory_and_swap",
+                "systemd_scope_deadline_and_cleanup",
+                "user_mount_network_pid_namespaces",
+                "minimal_chroot_and_readonly_runtime",
+                "empty_gpu_devices_and_hidden_host_home",
+                "capability_drop_and_no_new_privileges",
+                "pytest_lock_outside_sandbox",
             ],
-            "unverified": {
-                "aggregate_memory": (
-                    "No verified per-run cgroup backend. RLIMIT_AS/prlimit alone "
-                    "is per process and cannot bound pytest workers and descendants "
-                    f"to 4 GiB in aggregate. Current membership: {membership}"
+            "unverified": {}
+            if verified
+            else dict.fromkeys(
+                (
+                    "aggregate_memory",
+                    "credential_files",
+                    "gpu",
+                    "network",
+                    "descendants",
                 ),
-                "credential_files": "No verified minimal filesystem for test execution",
-                "gpu": "Environment masking alone does not deny GPU device access",
-                "network": "A namespace probe does not install a CPU-test sandbox",
-                "descendants": "No verified PID/cgroup containment for escaping descendants",
-            },
+                reason,
+            ),
+            "proof": str(self.proof) if self.proof else None,
         }
 
     def run(self, job: TestJob) -> ProcessResult:
-        raise RuntimeError("CPU-test execution is disabled: isolation is unverified")
+        from .repro_linux import run_job
+
+        if self.inspect()["enabled"] is not True:
+            raise RuntimeError(
+                "CPU-test execution is disabled: isolation is unverified"
+            )
+        return run_job(job)
 
 
 def probe(directory: Path) -> dict[str, Any]:
-    """Run fixed, small namespace/rlimit probes without cgroup or systemd writes."""
-    directory.mkdir(mode=0o700, parents=True, exist_ok=False)
-    results: dict[str, Any] = {"execution": LinuxRunner().inspect(), "probes": {}}
-    scripts = {
-        "namespaces": [
-            "unshare",
-            "--user",
-            "--map-root-user",
-            "--net",
-            "--mount",
-            "--pid",
-            "--fork",
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            "import json,os,socket; "
-            "s=socket.socket(); s.settimeout(0.2); "
-            "code=s.connect_ex(('192.0.2.1',9)); "
-            "print(json.dumps({'pid':os.getpid(),'network_namespace':"
-            "os.readlink('/proc/self/ns/net'),'connect_errno':code})); "
-            "assert os.getpid()==1 and code!=0",
-        ],
-        "per_process_memory": [
-            "prlimit",
-            "--as=67108864:67108864",
-            sys.executable,
-            "-I",
-            "-S",
-            "-c",
-            "import resource; print(resource.getrlimit(resource.RLIMIT_AS)); "
-            "bytearray(128*1024*1024)",
-        ],
-    }
-    for name, argv in scripts.items():
-        log = directory / f"{name}.log"
-        if not shutil.which(argv[0], path="/usr/bin:/bin"):
-            results["probes"][name] = {"available": False, "reason": "binary missing"}
-            continue
-        result = run_bounded(
-            argv, cwd=directory, log=log, env=clean_environment(), timeout=5
-        )
-        results["probes"][name] = {
-            **asdict(result),
-            "output": log.read_text(errors="replace"),
-            "scope": "fixed probe only; not a verified CPU-test backend",
-        }
-    results["host_network_namespace"] = os.readlink("/proc/self/ns/net")
-    (directory / "probe.json").write_text(json.dumps(results, indent=2) + "\n")
-    return results
+    """Exercise the same backend using fixed, small enforcement challenges."""
+    from .repro_linux import probe_backend
+
+    return probe_backend(directory)
