@@ -61,18 +61,43 @@ def body_value(value: Any) -> str:
     return value
 
 
-def check_diff(text: str, changed_files: int) -> None:
-    """Detect omitted files and incomplete unified hunks in the raw diff response."""
-    files = 0
+def metadata_only_diff(lines: list[str]) -> bool:
+    if any(line.startswith(("--- ", "+++ ")) for line in lines):
+        return False
+    index = next((line for line in lines if line.startswith("index ")), None)
+    blobs = re.fullmatch(r"index ([0-9a-f]+)\.\.([0-9a-f]+)(?: [0-7]{6})?", index or "")
+    same_blobs = index is None or (blobs is not None and blobs[1] == blobs[2])
+    renamed = "similarity index 100%" in lines and any(
+        all(
+            any(line.startswith(f"{kind} {side} ") for line in lines)
+            for side in ("from", "to")
+        )
+        for kind in ("rename", "copy")
+    )
+    mode_changed = all(
+        any(line.startswith(f"{side} mode ") for line in lines)
+        for side in ("old", "new")
+    )
+    if same_blobs and (renamed or mode_changed):
+        return True
+    # Empty file creation/deletion has no hunk; binary files also have zero line
+    # counts, so a mode/index header alone cannot establish an empty text file.
+    empty_blob = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    return blobs is not None and any(
+        any(line.startswith(f"{kind} file mode ") for line in lines)
+        and set(blobs[absent]) == {"0"}
+        and len(blobs[present]) >= 7
+        and empty_blob.startswith(blobs[present])
+        for kind, absent, present in (("new", 1, 2), ("deleted", 2, 1))
+    )
+
+
+def diff_changes(block: str) -> tuple[int, int]:
     old = new = 0
-    for line in text.splitlines():
-        if line.startswith("diff --git "):
-            if old or new:
-                raise RetrievalError(
-                    "INCOMPLETE_DIFF", "diff hunk ended before its declared range"
-                )
-            files += 1
-        elif line.startswith("@@ "):
+    additions = deletions = hunks = 0
+    metadata = []
+    for line in block.split("\n")[1:]:
+        if line.startswith("@@ "):
             if old or new:
                 raise RetrievalError(
                     "INCOMPLETE_DIFF", "diff hunk ended before its declared range"
@@ -83,14 +108,17 @@ def check_diff(text: str, changed_files: int) -> None:
             old, new = (
                 int(count) if count is not None else 1 for count in match.groups()
             )
+            hunks += 1
         elif old or new:
             if line.startswith(" "):
                 old -= 1
                 new -= 1
             elif line.startswith("+"):
                 new -= 1
+                additions += 1
             elif line.startswith("-"):
                 old -= 1
+                deletions += 1
             elif not line.startswith("\\ No newline at end of file"):
                 raise RetrievalError(
                     "INCOMPLETE_DIFF", "unexpected line inside diff hunk"
@@ -99,12 +127,64 @@ def check_diff(text: str, changed_files: int) -> None:
                 raise RetrievalError(
                     "INVALID_SOURCE", "diff hunk exceeds its declared range"
                 )
-    if old or new or files != changed_files:
+        elif line == "\\ No newline at end of file" and hunks:
+            continue
+        elif line:
+            if not re.fullmatch(
+                r"(?:index [0-9a-f]+\.\.[0-9a-f]+(?: [0-7]{6})?|"
+                r"(?:old mode|new mode|new file mode|deleted file mode) [0-7]{6}|"
+                r"(?:similarity|dissimilarity) index [0-9]+%|"
+                r"(?:rename|copy) (?:from|to) .+|--- .+|\+\+\+ .+|"
+                r"Binary files .+ and .+ differ)",
+                line,
+            ):
+                raise RetrievalError(
+                    "INCOMPLETE_DIFF", "diff contains unverifiable content"
+                )
+            metadata.append(line)
+    if old or new:
+        raise RetrievalError(
+            "INCOMPLETE_DIFF", "diff hunk ended before its declared range"
+        )
+    binary = any(line.startswith("Binary files ") for line in metadata)
+    text_headers = all(
+        any(line.startswith(prefix) for line in metadata) for prefix in ("--- ", "+++ ")
+    )
+    if (
+        (hunks and (binary or not text_headers))
+        or (not hunks and not binary and not metadata_only_diff(metadata))
+        or (binary and any(line.startswith(("--- ", "+++ ")) for line in metadata))
+    ):
         raise RetrievalError(
             "INCOMPLETE_DIFF",
-            "diff does not cover PR files/hunk ranges",
+            "diff file has no verifiable complete text/binary/metadata change",
+        )
+    return additions, deletions
+
+
+def check_diff(text: str, changed_files: int, additions: int, deletions: int) -> None:
+    """Check hunk ranges and independent PR totals, including hunk-boundary cuts."""
+    prefix, *files = re.split(r"(?m)(?=^diff --git )", text)
+    if prefix or len(files) != changed_files:
+        raise RetrievalError(
+            "INCOMPLETE_DIFF",
+            "diff does not cover PR files",
             expected_files=changed_files,
-            received_files=files,
+            received_files=len(files),
+        )
+    received_additions = received_deletions = 0
+    for block in files:
+        added, deleted = diff_changes(block)
+        received_additions += added
+        received_deletions += deleted
+    if (received_additions, received_deletions) != (additions, deletions):
+        raise RetrievalError(
+            "INCOMPLETE_DIFF",
+            "diff line counts disagree with independent PR metadata",
+            expected_additions=additions,
+            received_additions=received_additions,
+            expected_deletions=deletions,
+            received_deletions=received_deletions,
         )
 
 
@@ -523,15 +603,17 @@ class GitHubReader:
                 sources=sources,
             )
         text = response.body.decode("utf-8")
-        if (pr["changed_files"] and not text.startswith("diff --git ")) or pr[
-            "changed_files"
-        ] != current["changed_files"]:
+        counts = {
+            key: total_value(pr[key])
+            for key in ("changed_files", "additions", "deletions")
+        }
+        if counts != {key: total_value(current[key]) for key in counts}:
             raise RetrievalError(
                 "INCOMPLETE_DIFF",
                 "GitHub diff is absent or inconsistent with PR metadata",
                 sources=sources,
             )
-        check_diff(text, total_value(pr["changed_files"]))
+        check_diff(text, **counts)
         data, paging = text_page(text, **ranges)
         return Retrieved(data, sources, paging)
 

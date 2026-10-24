@@ -99,7 +99,7 @@ Codexの `tools/list` は標準の `_meta` を伴うため受理する。cursor�
 | `record_paths` / `record_file` | `knowledge` / 共有 `memory` / 専用 `ops_memory`。ファイルのpathはscopeからの相対指定 |
 | `github_items` / `github_item` | issue/PRの検索・一覧と本文。リテラル句、state・label・author・更新日で絞る |
 | `github_comments` / `github_comment` | discussion・review comment・reviewの一覧と選択した本文。一覧には本文を入れない |
-| `pr_diff` | 期待する完全なhead SHAを必須にして差分を範囲取得。取得前後のhead/baseとファイル・hunk数を照合する |
+| `pr_diff` | 期待する完全なhead SHAを必須にして差分を範囲取得。取得前後のhead/base・変更量と本文のhunk範囲を検証し、ファイル数・追加/削除行数をPRメタデータと照合する |
 | `ci_runs` / `ci_jobs` / `ci_log` | run一覧、取得時に固定したattemptのjob一覧、jobログの範囲。run/job IDとコードのhead SHAを保持する |
 
 `page` / `per_page` で一覧を、`start_line` / `line_count` と `offset` / `max_chars` で本文を選ぶ。
@@ -110,6 +110,8 @@ GitHub一覧は取得時点ごとに変化するため、複数ページを単�
 全取得応答に出典、取得時刻、基準SHA、該当するPR/CIのhead、ページ/省略情報、実行権限を変更しない調査資料である旨を付ける。
 1応答64 KiB・1回のbackend取得64 MiB・個別コマンド45秒を上限とし、到達時は構造化エラーを返す。
 GitHub検索の1000件上限・run一覧の安全上限・incomplete応答、403/5xx、欠落ログ、PR更新、部分差分も成功に変換しない。
+PR差分はhunk境界で切れた場合も独立した追加/削除行数で検出する。hunkを持たない変更は、binary marker、
+完全一致rename/copy、mode変更、空ファイルの作成/削除を区別し、本文の完全性を照合できなければ `INCOMPLETE_DIFF` にする。
 応答上限には小さいページ/範囲で対応し、backend上限やGitHub上限で取得できない範囲は未確認として残す。
 任意のコマンド・HTTP endpoint・書込みmethodはtool引数に存在せず、GitHubには `gh api --method GET` だけを使う。
 

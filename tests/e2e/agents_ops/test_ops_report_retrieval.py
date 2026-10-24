@@ -86,12 +86,15 @@ elif path == "repos/o/r/issues/17":
 elif path == "repos/o/r/pulls/17":
     if "Accept: application/vnd.github.diff" in args:
         count = 1999 if failure == "partial_diff" else 2000
-        emit("diff --git a/model.py b/model.py\n--- a/model.py\n+++ b/model.py\n@@ -0,0 +1,2000 @@\n"+"+change\n"*count, text=True)
+        default = "diff --git a/model.py b/model.py\n--- a/model.py\n+++ b/model.py\n@@ -0,0 +1,2000 @@\n"+"+change\n"*count
+        emit(state.get("diff", default), text=True)
     else:
         prior = [json.loads(l) for l in calls.read_text().splitlines()]
         meta = [c for c in prior if c[-1] == path and "Accept: application/vnd.github+json" in c]
         actual = "b"*40 if failure == "head_moves" and len(meta)>1 else head
-        emit({**issue(17),"head":{"sha":actual},"base":{"sha":"c"*40},"changed_files":1})
+        stats = {"changed_files":1,"additions":2000,"deletions":0,**state.get("pr_stats",{})}
+        if len(meta)>1: stats.update(state.get("after_stats",{}))
+        emit({**issue(17),"head":{"sha":actual},"base":{"sha":"c"*40},**stats})
 elif path in ("repos/o/r/issues/17/comments","repos/o/r/pulls/17/comments","repos/o/r/pulls/17/reviews"):
     emit(page_rows(113, lambda i: {"id":i,"body":"COMMENT_BODY"*10000,"user":{"login":"reviewer"}}),113)
 elif path in ("repos/o/r/issues/comments/9","repos/o/r/pulls/comments/9","repos/o/r/pulls/17/reviews/9"):
@@ -431,6 +434,175 @@ def test_pr_head_mismatch_and_mid_acquisition_update_are_errors(
 def test_partial_diff_is_not_returned_as_complete(scenario: Scenario) -> None:
     scenario.fail("partial_diff")
     error(scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40)
+
+
+@pytest.mark.parametrize("changes", ["+new\n", "-old\n", "-old\n+new\n"])
+@pytest.mark.parametrize("hunks_received", [0, 1])
+def test_pr_diff_rejects_complete_hunk_prefix(
+    scenario: Scenario, changes: str, hunks_received: int
+) -> None:
+    additions = int("+new" in changes)
+    deletions = int("-old" in changes)
+    hunks = [
+        f"@@ -{line},{deletions} +{line},{additions} @@\n" + changes for line in (1, 20)
+    ]
+    scenario.fail(
+        "diff_fixture",
+        diff="diff --git a/model.py b/model.py\n--- a/model.py\n+++ b/model.py\n"
+        + "".join(hunks[:hunks_received]),
+        pr_stats={
+            "changed_files": 1,
+            "additions": additions * 2,
+            "deletions": deletions * 2,
+        },
+    )
+    response = error(
+        scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40
+    )
+    assert response["pagination"]["has_more"] is None
+    assert all(source["pr_head_sha"] == "a" * 40 for source in response["sources"])
+    if hunks_received:
+        assert response["error"]["details"] == {
+            "expected_additions": additions * 2,
+            "received_additions": additions,
+            "expected_deletions": deletions * 2,
+            "received_deletions": deletions,
+        }
+    assert scenario.records()[-1]["response"] == response
+
+
+def test_pr_diff_counts_changes_in_multiple_complete_hunks(scenario: Scenario) -> None:
+    text = (
+        "diff --git a/model.py b/model.py\nindex 1234567..abcdef0 100644\n"
+        "--- a/model.py\n+++ b/model.py\n@@ -1,2 +1,2 @@\n context\n-old\n+new\n"
+        "@@ -20 +20 @@\n--- old header text\n\\ No newline at end of file\n"
+        "+++ new header text\n\\ No newline at end of file\n"
+    )
+    scenario.fail(
+        "diff_fixture",
+        diff=text,
+        pr_stats={"changed_files": 1, "additions": 2, "deletions": 2},
+    )
+    response = ok(scenario, "pr_diff", number=17, head_sha="a" * 40)
+    assert response["data"]["text"] == text
+    assert response["pagination"]["has_more"] is False
+    assert scenario.records()[-1]["response"] == response
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        "similarity index 100%\nrename from old.py\nrename to model.py\n",
+        "old mode 100644\nnew mode 100755\n",
+        "index 1234567..abcdef0 100644\nBinary files a/model.py and b/model.py differ\n",
+        "new file mode 100644\nindex 0000000..e69de29\n",
+        "deleted file mode 100644\nindex e69de29..0000000\n",
+    ],
+    ids=["rename", "mode", "binary", "new-empty", "deleted-empty"],
+)
+def test_pr_diff_accepts_verifiable_changes_without_text_hunks(
+    scenario: Scenario, metadata: str
+) -> None:
+    old_path = "old.py" if metadata.startswith("similarity index ") else "model.py"
+    text = f"diff --git a/{old_path} b/model.py\n" + metadata
+    scenario.fail(
+        "diff_fixture",
+        diff=text,
+        pr_stats={"changed_files": 1, "additions": 0, "deletions": 0},
+    )
+    response = ok(scenario, "pr_diff", number=17, head_sha="a" * 40)
+    assert response["data"]["text"] == text
+    assert response["pagination"]["has_more"] is False
+
+
+def test_pr_diff_matches_mixed_text_binary_rename_and_mode_changes(
+    scenario: Scenario,
+) -> None:
+    text = (
+        "diff --git a/old.py b/model.py\nsimilarity index 80%\n"
+        "rename from old.py\nrename to model.py\nindex 1234567..abcdef0 100644\n"
+        "--- a/old.py\n+++ b/model.py\n@@ -1 +1 @@\n-old\n+new\n"
+        "diff --git a/image.bin b/image.bin\nindex 1234567..abcdef0 100644\n"
+        "Binary files a/image.bin and b/image.bin differ\n"
+        "diff --git a/script b/script\nold mode 100644\nnew mode 100755\n"
+    )
+    scenario.fail(
+        "diff_fixture",
+        diff=text,
+        pr_stats={"changed_files": 3, "additions": 1, "deletions": 1},
+    )
+    assert ok(scenario, "pr_diff", number=17, head_sha="a" * 40)["data"]["text"] == text
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        "",
+        "index 1234567..abcdef0 100644\n",
+        "--- a/model.py\n+++ b/model.py\n",
+        "similarity index 80%\nrename from old.py\nrename to model.py\n",
+        "similarity index 100%\nrename from old.py\n",
+        "old mode 100644\n",
+        "old mode 100644\nnew mode 100755\nindex 1234567..abcdef0\n",
+        "new file mode 100644\nindex 0000000..abcdef0\n",
+        "deleted file mode 100644\nindex abcdef0..0000000\n",
+        "index 1234567..abcdef0 100644\nGIT binary patch\nliteral 3\nabc\n",
+    ],
+    ids=[
+        "header-only",
+        "missing-binary-marker",
+        "missing-text-hunks",
+        "modified-rename",
+        "incomplete-rename",
+        "incomplete-mode",
+        "mode-with-missing-content",
+        "new-nonempty",
+        "deleted-nonempty",
+        "unverifiable-binary-payload",
+    ],
+)
+def test_pr_diff_rejects_unverifiable_hunkless_changes(
+    scenario: Scenario, metadata: str
+) -> None:
+    scenario.fail(
+        "diff_fixture",
+        diff="diff --git a/model.py b/model.py\n" + metadata,
+        pr_stats={"changed_files": 1, "additions": 0, "deletions": 0},
+    )
+    error(scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40)
+
+
+def test_pr_diff_binary_marker_does_not_substitute_for_text_line_counts(
+    scenario: Scenario,
+) -> None:
+    scenario.fail(
+        "diff_fixture",
+        diff="diff --git a/image.bin b/image.bin\nindex 1234567..abcdef0 100644\n"
+        "Binary files a/image.bin and b/image.bin differ\n",
+        pr_stats={"changed_files": 1, "additions": 1, "deletions": 1},
+    )
+    response = error(
+        scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40
+    )
+    assert response["error"]["details"]["received_additions"] == 0
+    assert response["error"]["details"]["received_deletions"] == 0
+
+
+@pytest.mark.parametrize("field", ["changed_files", "additions", "deletions"])
+def test_pr_diff_requires_stable_independent_metadata(
+    scenario: Scenario, field: str
+) -> None:
+    scenario.fail("diff_fixture", after_stats={field: 100})
+    error(scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40)
+
+
+@pytest.mark.parametrize("field", ["additions", "deletions"])
+@pytest.mark.parametrize("value", [None, True, -1, "2000"])
+def test_pr_diff_rejects_invalid_independent_line_counts(
+    scenario: Scenario, field: str, value: Any
+) -> None:
+    scenario.fail("diff_fixture", pr_stats={field: value})
+    error(scenario, "pr_diff", "INVALID_SOURCE", number=17, head_sha="a" * 40)
 
 
 def test_body_edit_between_ranges_requires_fresh_acquisition(
