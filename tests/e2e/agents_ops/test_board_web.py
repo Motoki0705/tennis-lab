@@ -434,6 +434,41 @@ def test_security_headers_hosts_assets_and_html_text(
         assert client.get(url).status_code == 404
 
 
+@pytest.mark.parametrize("human_sender", [False, True])
+def test_human_posts_render_in_timeline_and_thread(
+    world: World, client: TestClient, human_sender: bool
+) -> None:
+    if human_sender:
+        response = client.post(
+            "/api/posts",
+            headers=write_headers(client),
+            json={
+                "kind": "question",
+                "subject": "Human question",
+                "body": f"@{world.assignments[2].name} Please check this post.",
+            },
+        )
+        assert response.status_code == 200
+    else:
+        world.post(to=["human"], body="@human Please check this post.")
+    posts = client.get("/api/changes").json()["posts"]
+    assert len(posts) == 1
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("board_rendering.cjs")),
+            str(Path(__file__).resolve().parents[3] / ".agents/ops/board/static/app.js"),
+        ],
+        input=json.dumps(posts[0]),
+        env=world.env(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_no_external_source_polling_without_explicit_roster_refresh(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:

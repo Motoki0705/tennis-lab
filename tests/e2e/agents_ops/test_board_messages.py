@@ -726,6 +726,43 @@ def test_sender_dispatch_never_rings_the_human_recipient(world: World) -> None:
     assert states["human"] == "available"
 
 
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+def test_dispatch_to_human_leaves_retryable_parent_deliveries_unchanged(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    parent = next(row for row in root["recipients"] if row["parent"] == 3)
+    assert parent["delivery_state"] == "delivery_failed" and parent["retryable"]
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    if entrypoint == "cli":
+        cli = importlib.import_module("board.__main__")
+        monkeypatch.setattr(cli, "os", SimpleNamespace(environ=w.env()))
+        monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+        assert cli.main(["dispatch", "--post", root["id"], "--to", "HuMaN"]) == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        result = json.loads(captured.out)
+    else:
+        result = w.board.redelivery.dispatch_post(
+            w.env(), w.routes, post_id=root["id"], to="human"
+        )
+    assert result["status"] == "no_targets"
+    assert len(result["recipients"]) == 1
+    human = result["recipients"][0]
+    assert human["name"] == "human" and human["assignment_id"] is None
+    assert human["post_id"] == root["id"]
+    assert human["outcome"] == "skipped" and not human["attempted"]
+    assert human["skip_reason"] == "human_recipient"
+    assert w.fake.calls == calls
+    assert w.message_rows() == before
+
+
 def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
     world: World,
     monkeypatch: pytest.MonkeyPatch,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from herdr_labels.coordination import locked
 from lib.identity import session_identity
@@ -118,7 +118,7 @@ def dispatch(
     notifiers: Notifiers,
     *,
     post_id: str | None = None,
-    assignment_id: int | None = None,
+    assignment_id: int | None | Literal["all"] = "all",
     held_only: bool = False,
     retry_only: bool = False,
 ) -> list[dict[str, Any]]:
@@ -129,7 +129,8 @@ def dispatch(
     duplicate sends. Only a certified unsent failure may be retried. Never hold
     a SQLite transaction while calling a notifier. With retry_only, recheck the
     active sender under each parent lock, leave held rows alone and report
-    attempts/skips from inside the notification lock.
+    attempts/skips from inside the notification lock. Omitting assignment_id
+    selects all recipients; explicit None selects only the reserved human.
     """
     if set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
@@ -139,14 +140,14 @@ def dispatch(
     if post_id is not None:
         filters.append("post_id=?")
         params.append(post_id)
-    if assignment_id is not None:
-        filters.append("assignment_id=?")
+    if assignment_id != "all":
+        filters.append("assignment_id IS ?")
         params.append(assignment_id)
     if held_only:
         filters.append("state='held'")
     where = " WHERE " + " AND ".join(filters) if filters else ""
     with locked(store.directory / "notifications.lock"):
-        reports: dict[tuple[str, int], dict[str, Any]] = {}
+        reports: dict[tuple[str, int | None], dict[str, Any]] = {}
         with store.read() as connection:
             items = connection.execute(
                 "SELECT post_id, assignment_id FROM deliveries"

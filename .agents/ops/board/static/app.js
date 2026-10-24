@@ -21,6 +21,10 @@ const elapsed = (value) => {
 };
 
 function party(person) {
+  if (person.name === "human") return element("span", "@human", "party");
+  if (typeof person.repo !== "string" || !/^[^/]+\/[^/]+$/.test(person.repo) || !Number.isSafeInteger(person.parent) || person.parent <= 0) {
+    throw new Error("親のリポジトリまたはissue番号が不正です。");
+  }
   const node = element("span", person.name ? `@${person.name} · ` : "未割当 · ", "party");
   const link = element("a", `#${person.parent}`);
   const [owner, repo] = person.repo.split("/");

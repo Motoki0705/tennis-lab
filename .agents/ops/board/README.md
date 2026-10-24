@@ -292,7 +292,8 @@ CLIとWebは[notifiers.py](notifiers.py)の実アダプタを渡す。
 Python APIで通知関数を省略した場合だけ`notifier_unconfigured`となる。
 `FakeNotifier`は経路受理・キーによる重複排除・未送信失敗・受信拒否をCPUだけで再現する。
 
-- `dispatch(env, notifiers, post_id=..., assignment_id=...)`: 保存済みの宛先へ通知する。省略時は全件が対象。
+- `dispatch(env, notifiers, post_id=..., assignment_id=...)`: 保存済みの宛先へ通知する。
+  `assignment_id`の省略時は全件が対象。明示的な`None`は人間1件だけを選ぶ。
 - `held_for_name(env, name)`: 名前の現在の割当宛てのheld行を取得する。配送・既読・解除を行わない。
 - `dispatch_held(env, name, notifiers)`: 同じ割当IDのheldを現在の担当と再照合して通知する。
   起動はparent CLIの担当復帰callbackが行う。
@@ -545,6 +546,8 @@ bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_board.py tests/e2e/a
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
 WebはTestClientで差分・絞り込み・スレッド・GETのreadonly URIとDBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
+人間が送信者・宛先の投稿は、Node.jsの組み込みモジュールと一時DOMで実際の`app.js`を実行し、
+タイムライン・スレッドで人間をリンクなしで表示できることと、親情報の欠落を明示的に拒否することを検査する。
 書き込みは一時の`XDG_STATE_HOME`とfake notifierで、人間の投稿・返信・既読・スタンプ、
 CSRF/Origin/Host・私的情報・許可外methodの拒否と行数不変を検査する。
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
