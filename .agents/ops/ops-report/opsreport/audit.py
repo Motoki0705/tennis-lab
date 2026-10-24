@@ -69,7 +69,9 @@ def load_checkpoint(path: Path, repo: Path) -> dict[str, Any]:
             and data["version"] == 1
         ):
             raise ValueError(
-                "checkpoint version 1 requires explicit migration by #1458; do not replace the round or its issue"
+                "checkpoint version 1 requires explicit migration by #1458: "
+                f"migrate-checkpoint --slot {path.stem} --report-issue NUMBER; "
+                "do not replace the round or its issue"
             )
         if (
             not isinstance(data, dict)
@@ -90,7 +92,13 @@ def load_checkpoint(path: Path, repo: Path) -> dict[str, Any]:
         ledger_path = Path(data["ledger"])
         if ledger_path != path.with_suffix(".ledger.json").absolute():
             raise ValueError("checkpoint ledger path mismatch")
-        Ledger.load(ledger_path, slot=path.stem, base_sha=base)
+        book = Ledger.load(ledger_path, slot=path.stem, base_sha=base)
+        from . import migration
+
+        if "migration" in c:
+            migration.verify_checkpoint(path, data, book)
+        elif migration.SOURCE_ID in book.snapshot["evidence"]:
+            raise ValueError("legacy provenance requires explicit migration input")
         if (
             not isinstance(data["attempts"], list)
             or len(set(data["attempts"])) != len(data["attempts"])
@@ -244,6 +252,14 @@ def verify(
 ) -> tuple[list[str], set[str]]:
     """Cross-check every current success and retain older attempts as evidence."""
     errors = []
+    from . import migration
+
+    imported_tasks: set[str] = set()
+    imported_evidence: set[str] = set()
+    try:
+        imported_tasks, imported_evidence = migration.verify_import(book)
+    except (ValueError, KeyError, TypeError, OSError) as exc:
+        errors.append(f"旧checkpoint移行根拠の照合: {exc}")
     observed: dict[str, native.NativeAgent] = {}
     history = strict_json(book.path.read_bytes())["events"]
     owners: dict[str, str] = {}
@@ -288,6 +304,8 @@ def verify(
     tasks = book.snapshot["tasks"]
     invalid_tasks = set()
     for key, row in tasks.items():
+        if key in imported_tasks:
+            continue
         current_child = observed.get(row["agent_id"])
         if row["status"] == "completed" and (
             current_child is None or current_child.status != "completed"
@@ -296,7 +314,7 @@ def verify(
                 f"{key}: completed task has no completed native execution evidence"
             )
             invalid_tasks.add(key)
-    if not observed:
+    if not observed and not imported_tasks:
         errors.append("native起動0件: 実行証拠を確認できない")
     invalid_evidence = set()
     try:
@@ -304,6 +322,8 @@ def verify(
             journal, slot=book.snapshot["slot"], base_sha=book.snapshot["base_sha"]
         )
         for key, row in book.snapshot["evidence"].items():
+            if key in imported_evidence:
+                continue
             if row["source_kind"] == "isolated-cpu-test":
                 try:
                     usable = verify_cpu_evidence(row, journal, acquired)

@@ -237,7 +237,7 @@ def _origin_chain(state: dict[str, Any], task: dict[str, Any]) -> str:
     while len(chain) < 8:
         kind, key = origin["kind"], origin["id"]
         chain.append(f"{kind}:{key}")
-        if kind == "goal":
+        if kind in {"goal", "legacy"}:
             break
         if kind == "finding":
             origin = {"kind": "task", "id": state["findings"][key]["task_id"]}
