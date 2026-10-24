@@ -497,7 +497,7 @@ version 3→4は自由な反応の`reactions`を追加する。既存の投稿�
 ## 検証
 
 ```bash
-flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -n 4 -q
 ```
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。

@@ -32,7 +32,7 @@
 
 子の選択はparentの `launch_plan` に従い、起動可能な子を実行枠内で並列に進める。
 待機理由とstacked_onはparentの契約を使い、別の起動計画を作らない。
-pytestは `.agents/ops/pytest_locked.sh` を使い、指定された `PYTEST_LOCK` を全子に継承する。
+pytestは共有lockなしで親・子間の並列実行を許可する。実行方法はparent READMEの「pytestの並列実行」に従う。
 予約上限とpytest排他の正本は `.agents/ops/parent/README.md` を参照する。
 最終文は追加キーのない `schema_version/state/reason/resume_condition` のJSON objectにする。
 stateはwaiting/completed/failed。completedはworkflow自身が受入条件・実merge/closeを確認した場合だけ使う。

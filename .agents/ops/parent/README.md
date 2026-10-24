@@ -411,7 +411,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-worker-en
 
 上の4件は設定方法の例で、推奨初期値ではない。固定3件の根拠だった事故は、ホストRAM上限24GB・GPU 16GBの環境で
 2026-10-18にpytestとtraining jobが重なってPCが落ちた事例。子の数の実測上限ではないため、
-pytestは下記lock、GPU・Blenderはtraining queueの既存 `half` / `all` 枠で調停し、子の上限は追加の実測に基づき設定する。
+pytestは他の親・子と並列実行できる。GPU・Blenderはtraining queueの既存 `half` / `all` 枠で調停し、子の上限は追加の実測に基づき設定する。
 自律ループの「各親の実装子2件」という初期値と実プロセスの稼働枠・担当排他はdispatcherの責務で、ここでは変更しない。
 dispatcher/親workflowはその実行枠内でこの計画を使い、必要なら同じ予約上限を明示設定する。
 
@@ -455,21 +455,28 @@ git -C .claude/worktrees/downstream diff origin/main...HEAD
 競合は親が解消・検証し、判断が必要ならその子を停止する。head/base/diff変更は既存review coverageで承認済みにせず、
 rebase後にレビュー対象を固定する。既にレビューした対象の変更には理由付きの新しい明示要求が必要で、自動再レビューしない。
 
-### pytest共有lock
+### pytestの並列実行
+
+pytestのホスト全体の共有lock制約は廃止した。親・子・worktree間で並列実行してよい。
+GPU・Blenderのtraining queueは従来どおり使用する。
 
 ```bash
 bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
-# キャンペーンが専用の共有lockを指定している場合は、全子に同じ絶対パスを渡す
-PYTEST_LOCK=/absolute/shared/pytest.lock bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
+# worker数も実行内容に合わせて指定できる
+bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -n 2 -q
 ```
 
-ラッパーは自身のworktree rootへ移動し、その `.venv/bin/python -m pytest -n 4` を実行する。
-lockは `PYTEST_LOCK`、未指定なら `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/pytest.lock`。
-全worktreeで同じホストstateを使い、**1つのpytestだけ**をflockで通す。worktreeごとのlockは作らない。
-`-n` / `--numprocesses` の上書きと相対lockを拒否し、pytestの終了値をそのまま返す。
-`flock --no-fork` でlockを実行プロセスに保持し、正常終了・異常終了後に解放する。
-lockを取らない直接実行は排他の対象にならないため、親・全子・通常の手動テストもこの入口を使う。
-テストではfake Pythonを使って2つのworktreeから同時要求し、実行区間が重ならないことと失敗後の解放を検査する。
+既存の呼出元のためファイル名は維持するが、`pytest_locked.sh` はlockを取得しない。
+自身のworktree rootへ移動し、その `.venv/bin/python -m pytest` を実行する。
+worker数は指定がなければ `-n 4`、指定があればその値を使い、pytestの終了値を返す。
+`PYTEST_LOCK` と `XDG_STATE_HOME` は実行制御に使わない。
+`.venv/bin/python -m pytest` の直接実行も許可する。
+
+旧版のworktreeや起動済みの `flock` はmainの更新だけでは変わらない。
+待機中の検証はその起動元で中止してから、変更を取り込むか、同じworktreeで
+lockなしのpytestコマンドを起動する。lockファイルの削除による解除は行わない。
+テストでは2つのworktreeの同時実行、旧lockの保持中でも開始できること、
+worker数の指定と失敗終了値の保持を検査する。
 
 ## 停止・再開・改善候補
 

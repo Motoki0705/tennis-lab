@@ -61,7 +61,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    自律親は開発workflowの `start-worker`（delegate → dispatcher start-child）、
    手動親は `delegate` の `action: launch` 後に [共通ランナー](../../ops/lib/README.md) を使い、この親セッション内で直ちに起動する。
    先に起動した子の完了を待たず、残る `launchable_children` を再計算してすべて委任する。
-   子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件と共有pytest lockを渡す。
+   子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件を渡す。
    子が実装・検証・PRを作り、親が成果物と検証記録を集約する。workerの終了はrunnerの証拠と照合し、
    `record-worker-ended` で当該 `delegation_id` の予約枠を解放する。PR作成や停止記録だけから終了を推測しない。
 3. PRに各子を閉じる指示を記載し、`record-result` で子の成果物欄にPRと検証結果を残す。
@@ -79,7 +79,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
   親issueの進捗に起動予約の一覧・起動可能な子・待機理由が表示されることを確認する。
 - 人間の判断待ちは**その子だけを `stop`** し、影響する依存子だけを保留する。
   起動時にも適用し、独立した子は同じターンで起動・継続する。
-- pytestは [共有lockラッパー](../../ops/parent/README.md#pytest共有lock) で1件ずつ実行する。
+- pytestは [並列実行の手順](../../ops/parent/README.md#pytestの並列実行) に従い、親・子・worktree間で並列実行してよい。共有lockは使わない。
   テスト待ちはworker全体を逐次にする理由にしない。GPU・Blenderは既存の
   [training queue](../training-queue/SKILL.md) の `half` / `all` 枠とメインrepoの共有stateを使う。
 
