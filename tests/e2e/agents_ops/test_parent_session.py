@@ -39,6 +39,16 @@ def fail():
     sys.exit(1)
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
+if args[:2] == ["issue", "list"]:
+    rows = list(state["issues"].values())
+    requested = args[args.index("--state") + 1] if "--state" in args else "open"
+    if requested != "all":
+        rows = [r for r in rows if r["state"] == requested]
+    if "--label" in args:
+        label = args[args.index("--label") + 1]
+        rows = [r for r in rows if {"name": label} in r["labels"]]
+    fields = args[args.index("--json") + 1].split(",")
+    response([{k: r[k] for k in fields} for r in rows[:int(args[args.index("--limit") + 1])]])
 if args[:2] == ["pr", "view"]:
     if os.environ.get("PARENT_FAIL_CI_VIEW"):
         fail()
@@ -136,13 +146,17 @@ assert match, endpoint
 n, tail = match.groups()
 if n is None:
     if method == "GET":
-        response(paged(list(state["issues"].values())))
+        rows = list(state["issues"].values())
+        requested = re.search(r"(?:^|&)state=(open|closed)(?:&|$)", query)
+        if requested:
+            rows = [r for r in rows if r["state"] == requested[1]]
+        response(paged(rows))
     assert method == "POST", method
     n = str(state["next"])
     state["next"] += 1
     row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
            "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
-           "state": "open", "state_reason": None}
+           "state": "open", "state_reason": None, "assignees": []}
     state["issues"][n] = row
     save()
     if os.environ.get("PARENT_FAIL_AFTER_CREATE"):
@@ -1671,6 +1685,11 @@ def make_review_env(
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
     selected = review_setup(p, independent=independent, standalone=standalone)
+    return request_review(p, selected)
+
+
+def request_review(p: ParentEnv, selected: list[int]) -> ReviewEnv:
+    """Request a real review of existing PRs, with only the reviewer kept offline."""
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(
@@ -1678,7 +1697,7 @@ def make_review_env(
             "--run-id",
             manifest["review_run_id"],
             "--instruction-file",
-            p.note("この3PRと親の受入条件・依存を1回で確認する。"),
+            p.note(f"この{len(selected)}PRと親の受入条件・依存を1回で確認する。"),
         ).stdout
     )
     request_path = p.root / "review-request.json"
