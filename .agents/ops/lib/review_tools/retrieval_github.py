@@ -188,7 +188,7 @@ def check_diff(text: str, changed_files: int, additions: int, deletions: int) ->
         )
 
 
-def summary(row: dict[str, Any]) -> dict[str, Any]:
+def summary(row: dict[str, Any], *, runner_labels: bool = False) -> dict[str, Any]:
     keys = (
         "id",
         "number",
@@ -218,7 +218,15 @@ def summary(row: dict[str, Any]) -> dict[str, Any]:
         user = object_value(result["user"])
         result["user"] = {"login": user["login"]}
     if "labels" in result:
-        result["labels"] = [object_value(label)["name"] for label in row["labels"]]
+        labels = row["labels"]
+        if not isinstance(labels, list):
+            raise RetrievalError("INVALID_SOURCE", "GitHub labels must be a list")
+        if runner_labels:
+            if any(not isinstance(label, str) for label in labels):
+                raise RetrievalError("INVALID_SOURCE", "runner labels must be strings")
+            result["labels"] = labels
+        else:
+            result["labels"] = [object_value(label)["name"] for label in labels]
     if "pull_request" in result:
         result["pull_request"] = {
             k: row["pull_request"][k]
@@ -688,7 +696,7 @@ class GitHubReader:
         for source in (run_response.source, response.source):
             source.update(head_sha=head, run_id=run_id, run_attempt=attempt)
         return Retrieved(
-            [summary(row) for row in rows],
+            [summary(row, runner_labels=True) for row in rows],
             [run_response.source, response.source],
             self.page(
                 response, rows, page, per_page, total_value(payload["total_count"])
@@ -703,9 +711,7 @@ class GitHubReader:
                 "SOURCE_MISMATCH", "job identity mismatch", sources=[metadata.source]
             )
         head = sha_value(row["head_sha"])
-        response = self.api(
-            f"{self.root}/actions/jobs/{job_id}/logs", accept="text/plain"
-        )
+        response = self.api(f"{self.root}/actions/jobs/{job_id}/logs")
         if not response.body:
             raise RetrievalError(
                 "EMPTY_LOG",
@@ -715,5 +721,5 @@ class GitHubReader:
         for source in (metadata.source, response.source):
             source.update(head_sha=head, job_id=job_id, run_id=row["run_id"])
         data, paging = text_page(response.body.decode("utf-8"), **ranges)
-        data["metadata"] = summary(row)
+        data["metadata"] = summary(row, runner_labels=True)
         return Retrieved(data, [metadata.source, response.source], paging)
