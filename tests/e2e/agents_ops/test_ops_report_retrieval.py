@@ -60,7 +60,10 @@ def emit(value, total=None, text=False):
     print()
     print(value if text else json.dumps(value, ensure_ascii=False), end="" if text else "\n")
 def page_rows(total, make):
-    return [make(i) for i in range((page-1)*size+1, min(page*size, total)+1)]
+    rows = [make(i) for i in range((page-1)*size+1, min(page*size, total)+1)]
+    if failure == "empty_page": return []
+    if failure == "partial_page": return rows[:-1]
+    return rows
 def issue(i):
     return {"id":1000+i,"number":i,"title":"issue "+str(i),"body":"UNREQUESTED_BODY"*1000,
             "state":"open","user":{"login":"researcher"},"labels":[{"name":"audit"}],
@@ -70,7 +73,6 @@ def job(i):
 if path == "search/issues":
     total = state.get("total", 421)
     rows = page_rows(total, issue)
-    if failure == "empty_page": rows = []
     if failure == "huge_titles":
         for row in rows: row["title"] = "t"*30000
     emit({"total_count": total,"incomplete_results":failure == "incomplete", "items":rows}, total)
@@ -101,7 +103,8 @@ elif path == "repos/o/r/actions/runs":
 elif path == "repos/o/r/actions/runs/70":
     emit({"id":70,"head_sha":head,"run_attempt":2})
 elif path == "repos/o/r/actions/runs/70/attempts/2/jobs":
-    emit({"total_count":211,"jobs":page_rows(211,job)},211)
+    total=state.get("total",211)
+    emit({"total_count":total,"jobs":page_rows(total,job)},total)
 elif path == "repos/o/r/actions/jobs/9":
     emit(job(9))
 elif path == "repos/o/r/actions/jobs/9/logs":
@@ -518,6 +521,55 @@ def test_malformed_and_incomplete_sources_fail_closed(
         error(scenario, "github_items", code, kind="issue")
 
 
+@pytest.mark.parametrize(
+    "name,args",
+    [("github_items", {"kind": "issue"}), ("ci_runs", {}), ("ci_jobs", {"run_id": 70})],
+)
+@pytest.mark.parametrize(
+    "total,page,failure",
+    [
+        (1, 1, "empty_page"),
+        (3, 1, "partial_page"),
+        (101, 3, "empty_page"),
+        (103, 3, "partial_page"),
+    ],
+)
+def test_counted_single_and_final_pages_reject_missing_rows(
+    scenario: Scenario,
+    name: str,
+    args: dict[str, Any],
+    total: int,
+    page: int,
+    failure: str,
+) -> None:
+    scenario.fail(failure, total=total)
+    response = error(scenario, name, "INCOMPLETE_PAGE", **args, page=page, per_page=50)
+    assert response["error"]["details"] == {"total": total, "page": page}
+    assert scenario.records()[-1]["response"] == response
+
+
+@pytest.mark.parametrize(
+    "name,args",
+    [("github_items", {"kind": "issue"}), ("ci_runs", {}), ("ci_jobs", {"run_id": 70})],
+)
+@pytest.mark.parametrize(
+    "total,page,count", [(0, 1, 0), (1, 1, 1), (3, 1, 3), (100, 2, 50), (103, 3, 3)]
+)
+def test_counted_single_and_final_pages_accept_expected_rows(
+    scenario: Scenario,
+    name: str,
+    args: dict[str, Any],
+    total: int,
+    page: int,
+    count: int,
+) -> None:
+    scenario.fail("none", total=total)
+    response = ok(scenario, name, **args, page=page, per_page=50)
+    assert len(response["data"]) == count
+    assert response["pagination"]["total"] == total
+    assert response["pagination"]["has_more"] is False
+
+
 def test_search_and_run_ceiling_is_not_silent_omission(scenario: Scenario) -> None:
     scenario.fail("none", total=1201)
     for name, args in [("github_items", {"kind": "issue"}), ("ci_runs", {})]:
@@ -690,17 +742,22 @@ def test_mcp_lists_only_read_operations_and_rejects_command_routes(
         ]["code"]
         == -32601
     )
-    assert (
-        server.dispatch(scenario.client, request("tools/list", {"cursor": "ignored"}))[
-            "error"
-        ]["code"]
-        == -32602
-    )
     denied = server.dispatch(
         scenario.client,
         request("tools/call", {"name": "shell", "arguments": {"command": "id"}}),
     )
     assert denied["result"]["isError"] is True
+    assert not scenario.calls()
+
+
+@pytest.mark.parametrize(
+    "params", [{"cursor": ""}, {"cursor": "ignored"}, {"unexpected": None}]
+)
+def test_mcp_tool_list_rejects_cursor_and_unknown_parameters(
+    scenario: Scenario, params: dict[str, Any]
+) -> None:
+    response = server.dispatch(scenario.client, request("tools/list", params))
+    assert response["error"]["code"] == -32602
     assert not scenario.calls()
 
 

@@ -347,7 +347,8 @@ class GitHubReader:
                     total=total,
                 )
             expected = page * per_page < total
-            if more != expected or (expected and len(rows) < per_page):
+            expected_count = min(per_page, total - (page - 1) * per_page)
+            if more != expected or len(rows) != expected_count:
                 raise RetrievalError(
                     "INCOMPLETE_PAGE",
                     "GitHub pagination disagrees with total_count",

@@ -84,7 +84,8 @@ MCPのcommandにはこのcheckoutのPython、argsには `-B -m opsreport.mcp_ser
 envの `PYTHONPATH` にはこのcheckoutの `.agents/ops/ops-report` の絶対パスを渡す。
 Codex CLI 0.163.0の `-c mcp_servers.*` は **`exec` の後**に置く。
 `exec` より前では登録が見えてもサーバーが起動されなかった。共通ランナー・profileへの恒久接続は統合側で行う。
-Codexの `tools/list` は標準の `_meta` を伴うため受理する。空cursorも受理し、非空cursorと未知の引数は拒否する。
+Codexの `tools/list` は標準の `_meta` を伴うため受理する。cursorは省略または `null` のみ受理し、
+空文字を含むcursor値と未知の引数は拒否する。tool一覧は1回で全件返すため、cursorを黙って無視しない。
 
 | tool | 取得する範囲 |
 |---|---|
