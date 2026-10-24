@@ -41,7 +41,7 @@ tags: []
 repro:
   commit: b5d983cff98c29d26f8d6bbc5972297bc40bbaef
   command: PYTHONPATH=. .venv/bin/python knowledge/runs/run-ball-temporal-heatmap-gpu-diagnostic-20261023/diagnose.py
-    --output /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-training-path/tmp/temporal-heatmap-gpu-diagnostic
+    --output tmp/temporal-heatmap-gpu-diagnostic
 ---
 
 ## 結果と適用範囲

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 17ef3073bbc55b7215a6b7c5edde5ea8dad5748c03ca69b3b71e15284a227e62 on 2026-10-23 -->
+<!-- knowledge-review: 0571c8c582675cd031dd8f87ce7291b8374a82f06a91b0c8de21a6d132e2ef57 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習経路の診断を反映。既存のcheckpoint採用判断は維持）

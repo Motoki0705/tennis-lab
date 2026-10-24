@@ -1,5 +1,5 @@
 {
-  "cpu_command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1367/pytest.lock .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py tests/unit/tasks/ball_detection/training/test_cli_arguments.py tests/unit/tasks/ball_detection/training/test_heatmap_objective.py tests/integration/tasks/ball_detection/test_mdd_heatmap.py tests/integration/tasks/ball_detection/test_all_frame_windows.py -n 4 -q",
+  "cpu_command": "flock $PYTEST_LOCK .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py tests/unit/tasks/ball_detection/training/test_cli_arguments.py tests/unit/tasks/ball_detection/training/test_heatmap_objective.py tests/integration/tasks/ball_detection/test_mdd_heatmap.py tests/integration/tasks/ball_detection/test_all_frame_windows.py -n 4 -q",
   "cpu_tests_passed": 116,
   "cpu_test_seconds": 31.18,
   "pre_commit": [
@@ -43,5 +43,5 @@
   "final_scoped_cpu_tests": 21,
   "final_scoped_cpu_seconds": 15.24,
   "final_source_commit": "ca8745b82",
-  "final_cpu_command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1367/pytest.lock .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py -n 4 -q"
+  "final_cpu_command": "flock $PYTEST_LOCK .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py -n 4 -q"
 }
