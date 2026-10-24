@@ -13,6 +13,7 @@
 | `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有5層memory、`knowledge/`、AI制御ファイル |
 | `opsreport/agent.py` | プロンプト組み立て、`../lib/agent_exec.sh` による親Codexのread-only実行、集約JSONの検証 |
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
+| `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -70,6 +71,83 @@ checkpointを失ったら `collected.json` のaudit_runtimeを除いた入力と
 serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。個別ツール・fetch・掃除・ロック待ちの
 制限は別で、失敗を全体調査の成功へ読み替えない。agent失敗やSIGINT/SIGTERMはプロセスグループを回収して未完了公開する。
 強制終了・停電等で公開できない中断はrunning/failed状態とcheckpointから再開する。
+
+## 調査台帳ライブラリ
+
+`opsreport.ledger.Ledger` は調査回の永続記録だけを扱う。現行の `audit.py` / CLIとはまだ接続しておらず、
+旧checkpointの移行、情報取得、agent起動、レポート描画、GitHubへの引渡しは呼出元の責務。
+native agent IDの記録だけで実起動や正式レビューを証明したことにはならない。
+
+```python
+from pathlib import Path
+from opsreport.ledger import Ledger
+
+book = Ledger.create(
+    Path("audit-ledger.json"), slot="20261024", base_sha=base_sha,
+    goal="潜在的な問題を根拠付きで発見する", at=now,
+)
+# 再開時はcreateせず、元の契約を明示して読む。
+book = Ledger.load(Path("audit-ledger.json"), slot="20261024", base_sha=base_sha)
+page = book.summary(limit=20, offset=0)
+record = book.original(page["run"]["ref"])
+```
+
+`slot` は `YYYYMMDD`、SHAは完全な小文字のcommit SHA、時刻はtimezone付きISO日時。
+`create(..., report_issue=番号)` または `bind_report(番号, at=now)` で公開先を1回だけ結び付ける。
+公開が後になる場合は、調査終了後にも結び付けられる。`snapshot` は再構成した全状態のコピーを返す。
+
+各 `record_*(record, at=now)` は下表の全フィールドを持つ辞書を受け取る。
+差分のpatchではない。未設定の値も `None`、空文字列、空配列として明示する。根拠参照は台帳内の根拠ID。
+IDは種類ごとに一意とし、更新時は同じIDで新しい記録を追記する。根拠は不変で、再取得には新しいIDを使う。
+
+| API | recordのフィールド |
+|---|---|
+| `record_task` | `id`, `question`, `scope`（文字列配列）, `origin`（`kind`, `id`）, `agent_id`, `status`, `started_at`, `finished_at`, `conclusion`, `evidence`, `next_questions`（`question`, `scope` の配列）, `unconfirmed`（`scope`, `reason`, `resume` の配列） |
+| `record_finding` | `id`, `task_id`, `kind`, `status`, `conclusion`, `evidence`, `counterevidence`, `details` |
+| `record_evidence` | `id`, `source_kind`, `reference`, `acquired_at`, `target_version`, `pr_head`（版とPR headは少なくとも一方を記録） |
+| `record_handoff` | `id`, `finding_id`, `kind`（`issue` / `pr` / `proposal` / `unassigned`）, `reference`（未割当のみ `None`）, `related_parents`（issue番号配列）, `reason` |
+| `end` | `status`（`completed` / `incomplete`）, `reason`, `checked_scope`, `excluded_scope`（範囲の文字列配列）, `unverified_risks`（`scope`, `reason`, `resume` の配列）, `further_investigation`（理由の文字列配列） |
+
+タスクの起点 `origin.kind` は `goal` / `task` / `finding`。全体目的のIDはslotとし、他は既存のIDを参照する。
+タスクは `planned` で登録して `running` へ進み、`completed` / `failed` / `interrupted` / `cancelled` で終了する。
+起動前の失敗・中断・取消も記録できる。`failed` / `interrupted` は同じIDで `running` へ戻し、
+新しい開始時刻・native IDを記録する。成功には根拠と結論、失敗・中断・取消には未確認範囲・理由・再開方法が必須。
+問いと範囲は登録後に変えず、起点は起動後に変えない。NFKC・空白統一・casefoldした問いと、
+順序を除いた正規化scopeが同じ別タスクは登録できない。scopeの大文字・小文字は区別する。
+完了・取消したタスクも重複判定に残り、別IDで同じ問いを再起動できない。
+
+発見は `suspected` / `unverified` で登録する。`confirmed` には根拠、`refuted` には反証が必須。
+`design` / `duplicate` / `stale-dependency` / `ops` 等の `details` は空辞書。
+以下の2種類は専用の構造を持つ。
+
+- `unused-code`: `details` に `decision`（`delete-candidate` / `keep` / `unverified`）と `usage_paths` を記録する。
+  利用経路の種類はコードの `USAGE_PATHS` が正本で、動的import・registry・文字列・設定/CLI・生成コード・
+  学習/評価/再現スクリプト・公開入口を区別する。各経路は `kind`, `outcome`
+  （`used` / `unused` / `not-applicable` / `unverified`）, `evidence`, `reason` を持つ。
+  `unverified` 以外の経路判定には根拠が必須。削除候補の確定には全経路で未使用または対象外の確認が必要で、
+  維持の確定には少なくとも1つの利用経路が必要。未確認の判定は確定へ昇格できない。
+- `bug` / `vulnerability`: `details` に `target_version`, `conditions`（文字列配列）, `reachability`, `impact`,
+  `remediation`, `verification`, `usage_paths` を区別する。確定には全項目、到達できる利用経路の根拠、
+  対象版と一致する根拠の `target_version` または `pr_head` が必要。反証は共通の `counterevidence` に残す。
+
+`source_kind="code"` の根拠は調査基準SHAと一致させる。PR上のコードは別の出典種別でPR headを明記する。
+台帳は参照先を取得しないため、根拠の内容・意味的な妥当性や保存先の存在確認は取得側と親が担う。
+
+未完了タスク・未検証の発見・重要な未検証リスクが残る回は `completed` にできない。
+取消したタスクのscopeも、完了回では `excluded_scope` に明記する。
+`end` 後の追記は `resume(reason, at=now)` で未完了回を明示的に再開してから行う。
+過去の終了理由も履歴に残り、完了回は再開できない。総数・段階数・同時枠の上限は台帳に持たない。
+
+`summary(limit=20, offset=0)` は未完了タスク・未検証仮説・次の候補を各カテゴリでページングし、
+件数と残数を返す。長文は240文字の抜粋にし、原本参照である `ref` を添える。
+候補の `kind` は `planned-task` / `resume-task` / `followup`。登録済みの問いを追加調査として重複提示しない。
+`reference(種類, ID)` / `original(ref)` で要約に載らない記録も取得でき、後続の更新後も参照時点の原本を返す。
+`ref` は保存先・種類・ID・履歴番号・その時点までの履歴の検査値を含むローカル参照であり、公開本文へそのまま掲載しない。
+
+保存は隣接する `.lock` で直列化し、追記した履歴を一時ファイルのfsync・atomic replace・親directoryのfsyncで確定する。
+別writerの更新後は `LedgerConflictError` とし、再読込と判断のやり直しを要求する。
+途中切れ・重複JSONキー・未知version・不正な参照や遷移は `LedgerCorruptError` で停止する。
+元ファイルを保存し、検証済みbackupと原本記録を照合して明示復旧する。空状態への置換や末尾イベントの自動切捨ては行わない。
 
 ## 提案ID・チェック・triage
 
