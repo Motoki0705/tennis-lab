@@ -35,6 +35,7 @@ training:
     checkpoint_every_n_steps: ???
   checkpoint:
     enabled: false
+    save_top_k: -1
   early_stopping:
     enabled: false
   qualitative_logging:
