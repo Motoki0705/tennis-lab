@@ -26,6 +26,8 @@ class Container:
     # indentation, including the marker's indentation and its following padding.
     indent: int = 0
     empty: bool = False
+    # Sibling items share a bullet character or an ordered list's delimiter.
+    marker: str = ""
 
 
 def _list_start(line: str, *, paragraph: bool) -> tuple[Container, str] | None:
@@ -43,7 +45,7 @@ def _list_start(line: str, *, paragraph: bool) -> tuple[Container, str] | None:
     if not content or padding > 4:
         padding = 1
     width = len(marker[1]) + len(marker[2]) + padding
-    return Container(width, not content), line[width:]
+    return Container(width, not content, marker[2][-1]), line[width:]
 
 
 def _opening_fence(line: str) -> re.Match[str] | None:
@@ -61,7 +63,7 @@ def _interrupts(line: str) -> bool:
         or THEMATIC.fullmatch(line)
         or HEADING.match(line)
         or SETEXT.fullmatch(line)
-        or _list_start(line, paragraph=False)
+        or _list_start(line, paragraph=True)
     )
 
 
@@ -85,7 +87,9 @@ def _blocks(body: str) -> Iterator[str]:
             elif line.startswith(" " * container.indent):
                 line = line[container.indent :]
                 if container.empty and line.strip(" "):
-                    containers[matched] = Container(container.indent)
+                    containers[matched] = Container(
+                        container.indent, marker=container.marker
+                    )
             elif not line.strip(" "):
                 line = ""
             else:
@@ -107,10 +111,14 @@ def _blocks(body: str) -> Iterator[str]:
             fence = None
 
         if not continued and paragraph and not _interrupts(line):
-            # Lazy continuation belongs to an existing paragraph only. It can
-            # never continue a fenced or indented code block.
-            paragraph.append(line.lstrip(" "))
-            continue
+            item = _list_start(line, paragraph=False)
+            # A sibling can end the current item without interrupting a
+            # paragraph, but only when its enclosing containers all matched.
+            # A missing quote or a different list marker stays lazy prose.
+            if item is None or item[0].marker != containers[matched].marker:
+                # Lazy continuation never continues a code block.
+                paragraph.append(line.lstrip(" "))
+                continue
         if not continued:
             yield "\n".join(paragraph)
             paragraph.clear()

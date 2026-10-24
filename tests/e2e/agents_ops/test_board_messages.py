@@ -1107,6 +1107,16 @@ def test_code_mentions_are_neither_destinations_nor_recipient_errors(
         "- > {fence}text\n  > {mentions}\n  > {fence}",
         "-\t{fence}text\n\t{mentions}\n\t{fence}",
         ">\t{fence}text\n>\t{mentions}\n>\t{fence}",
+        "> Example\n1. {fence}text\n   {mentions}\n   {fence}",
+        "> Example\n- {fence}text\n  {mentions}\n  {fence}",
+        "> Example\n{fence}text\n{mentions}\n{fence}",
+        "- Example\n{fence}text\n{mentions}\n{fence}",
+        "1. Example\n2. {fence}text\n   {mentions}\n   {fence}",
+        "1) Example\n0) {fence}text\n   {mentions}\n   {fence}",
+        "1. Example\n2.\n   Example\n3. {fence}text\n   {mentions}\n   {fence}",
+        "> 1. Example\n> 2. {fence}text\n>    {mentions}\n>    {fence}",
+        "- 1. Example\n  2. {fence}text\n     {mentions}\n     {fence}",
+        "1. > Example\n2. {fence}text\n   {mentions}\n   {fence}",
     ],
 )
 def test_container_code_mentions_do_not_change_post_or_reply_delivery(
@@ -1161,9 +1171,9 @@ def test_container_code_mentions_do_not_change_post_or_reply_delivery(
         "> - {fence}\n>   {mentions}\n> - @{other}",
         "- > {fence}\n  > {mentions}\n  @{other}",
         "- Example\n  - {fence}\n    {mentions}\n  @{other}",
-        "> Example\n2. {fence}\n   {mentions}\n@{other}",
-        "> - Example\n2. {fence}\n   {mentions}\n@{other}",
-        "- Example\n2. {fence}\n   {mentions}\n@{other}",
+        "> Example\n1. {fence}\n   {mentions}\n@{other}",
+        "> - Example\n1. {fence}\n   {mentions}\n@{other}",
+        "1. Example\n2. {fence}\n   {mentions}\n@{other}",
     ],
 )
 def test_unclosed_container_fence_ends_with_its_container(
@@ -1185,6 +1195,58 @@ def test_unclosed_container_fence_ends_with_its_container(
     else:
         post = w.post(to=[], body=body)
         expected = [3]
+    assert post["broadcast"] is False
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> Example\n2. ~~~\n   @{other}",
+        "> Example\n2. ```\n   @{other}",
+        "> Example\n0) ~~~\n   @{other}",
+        "> Example\n02. ~~~\n    @{other}",
+        "> > Example\n2. ~~~\n   @{other}",
+        "> - Example\n2. ~~~\n   @{other}",
+        "> 1. Example\n2. ~~~\n   @{other}",
+        "- Example\n2. ~~~\n   @{other}",
+        "* Example\n2. ```\n   @{other}",
+        "1. Example\n2) ~~~\n   @{other}",
+        "1) Example\n0. ~~~\n   @{other}",
+        "- > Example\n  2. ~~~\n     @{other}",
+        "- 1. Example\n2. ~~~\n   @{other}",
+        "> - 1. Example\n> 2. ~~~\n>    @{other}",
+        "> Example\n*\n2. ~~~\n   @{other}",
+        "> Example\n+\n2. ~~~\n   @{other}",
+        "> Example\n1.\n2. ~~~\n   @{other}",
+        "+ Example\n*\n2. ~~~\n   @{other}",
+        "- Example\n1.\n2. ~~~\n   @{other}",
+        "> Example\n~~\n@{other}",
+        "- Example\n~~\n@{other}",
+        "> Example\n```invalid`info\n@{other}",
+        "- Example\n```invalid`info\n@{other}",
+        "> Example\n    ~~~\n    @{other}",
+        "- Example\n  2. ~~~\n     @{other}",
+    ],
+)
+def test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery(
+    world: World, command: str, template: str
+) -> None:
+    w = world
+    root = w.post(to=[w.assignments[3].name]) if command == "reply" else None
+    body = template.format(other=w.assignments[2].name)
+    # Another explicit or automatic recipient would let a missing mention
+    # silently succeed; check the saved recipients and actual deliveries too.
+    if root:
+        post = w.board.messages.reply(
+            w.env(3), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 2]
+    else:
+        post = w.post(to=[w.assignments[3].name], body=body)
+        expected = [2, 3]
+    assert post["body"] == body
     assert post["broadcast"] is False
     w.assert_delivered(post, expected)
 
