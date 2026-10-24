@@ -567,3 +567,36 @@ def test_rebase_inherits_resolved_findings_only_with_verified_fixed_snapshot(
     assert coverage.covered and not coverage.unresolved
     absent = policy.evaluate_coverage(run, [rebased], [proof], {}, fix_diff_digests={})
     assert not absent.covered and absent.unresolved
+
+
+def test_output_schema_uses_supported_strict_api_keywords_and_parser_checks_uniqueness(
+    policy: Any,
+) -> None:
+    schema = json.loads((OPS / "review/result_schema.json").read_text())
+
+    def check(value: Any) -> None:
+        if isinstance(value, dict):
+            assert "uniqueItems" not in value
+            if value.get("type") == "object":
+                assert value["additionalProperties"] is False
+                assert set(value["required"]) == set(value["properties"])
+            for item in value.values():
+                check(item)
+        elif isinstance(value, list):
+            for item in value:
+                check(item)
+
+    check(schema)
+    data = output()
+    data["cross_findings"] = [
+        {
+            "prs": [100, 100],
+            "severity": "major",
+            "path": None,
+            "line": None,
+            "rule": "duplicate",
+            "detail": "invalid duplicate target",
+        }
+    ]
+    with pytest.raises(ValueError, match="unique covered"):
+        policy.parse_output(json.dumps(data), [100, 101, 102])
