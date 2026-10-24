@@ -182,6 +182,16 @@ actor/sessionの所有権を表さない。既存作業をreuseするときは�
 出典markerと元提案の出典節だけを追加する。他の提案で索引済みのissueや取消された作業へ無断で統合しない。
 計画の保存・書込前の再照合・中断復旧の手順は上記triage READMEを正本とする。
 
+## CI失敗の出典
+
+`ci_failure_marker(signature)` は本文1行目の `<!-- ci-failure: ci-failure-v1:... -->` を生成する。
+`parse_ci_failure_source(body)` と `index_ci_failures([(number, body), ...])` は、
+提案と同じ共通の先頭行解析・全状態の索引契約を使う。署名の未知版・不正形式、先頭以外や複数marker、
+同じ署名の複数Issueを拒否する。fence内の例示は出典にしない。
+CI出典をレポート提案に見立てず、`ProposalSource` やdispatcherの `source_reports` に混ぜない。
+起票書式は `render_standalone_body` を使い、役割ラベルを持たない通常の不具合Issueとする。
+PRへの出典付与、投稿応答喪失からの復旧、回復確認の運用は [ci_failures](../ci_failures/README.md) を正本とする。
+
 ## CLIと整合検査
 
 ```bash
