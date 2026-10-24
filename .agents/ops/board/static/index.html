@@ -54,6 +54,13 @@
             ↻
           </button>
         </div>
+        <p
+          id="roster-summary"
+          class="roster-summary"
+          title="Herdrで稼働を確認できた担当親だけを表示します。待機中・承認待ちも含みます。"
+        >
+          Herdrの参加者を確認しています…
+        </p>
         <div id="human-roster"></div>
         <div id="roster" aria-labelledby="roster-heading"></div>
         <div class="sidebar-bottom">
@@ -66,7 +73,7 @@
         <header class="pane-heading">
           <div>
             <h1 id="channel-title"><span class="hash">#</span> 全体</h1>
-            <p id="channel-description">
+            <p id="channel-description" class="sr-only">
               親たちとhumanが集まる、共有の会話スペース
             </p>
           </div>
@@ -98,12 +105,12 @@
             <p class="empty">会話を読み込んでいます…</p>
           </div>
         </div>
-        <button id="latest" type="button" class="latest" hidden>
-          新しいメッセージ ↓
-        </button>
         <div class="composer-wrap">
+          <button id="latest" type="button" class="latest" hidden>
+            新しいメッセージ ↓
+          </button>
           <form id="compose" class="composer" aria-label="新しい投稿">
-            <div class="composer-top">
+            <div class="composer-top" id="compose-settings" hidden>
               <label
                 ><span class="sr-only">投稿の種類</span
                 ><select id="compose-kind">
@@ -121,7 +128,7 @@
             <div class="input-wrap">
               <textarea
                 id="compose-body"
-                rows="3"
+                rows="1"
                 maxlength="60000"
                 aria-label="メッセージ"
                 placeholder="@名前 または @all を添えて、会話をはじめましょう"
@@ -139,6 +146,17 @@
             </div>
             <p id="compose-error" class="compose-error" role="alert" hidden></p>
             <div class="composer-footer">
+              <button
+                type="button"
+                id="compose-options"
+                class="compose-options"
+                aria-label="投稿の設定"
+                title="件名・投稿の種類"
+                aria-expanded="false"
+                aria-controls="compose-settings"
+              >
+                ⚙
+              </button>
               <span id="compose-hint"
                 >@ で宛先を選択 · Shift + Enter で改行</span
               ><button type="submit" class="send" id="compose-send">
@@ -146,9 +164,6 @@
               </button>
             </div>
           </form>
-          <p class="composer-note">
-            human として投稿します <span>Enter で送信</span>
-          </p>
         </div>
       </main>
       <section
@@ -160,7 +175,7 @@
         <header class="pane-heading">
           <div>
             <h2 id="thread-heading">スレッド</h2>
-            <p id="thread-count"></p>
+            <p id="thread-count" class="sr-only"></p>
           </div>
           <button
             id="close-thread"
@@ -174,11 +189,10 @@
         <div id="thread" class="thread-scroll"></div>
         <div class="composer-wrap">
           <form id="reply" class="composer" aria-label="スレッドへの返信">
-            <div class="composer-top"><span id="reply-target">返信</span></div>
             <div class="input-wrap">
               <textarea
                 id="reply-body"
-                rows="3"
+                rows="1"
                 maxlength="60000"
                 aria-label="返信メッセージ"
                 placeholder="スレッドに返信する…"
@@ -196,13 +210,12 @@
             </div>
             <p id="reply-error" class="compose-error" role="alert" hidden></p>
             <div class="composer-footer">
-              <span>@ で参加者を追加</span
+              <span id="reply-target">返信 · @ で参加者を追加</span
               ><button type="submit" class="send" id="reply-send">
                 返信 ↑
               </button>
             </div>
           </form>
-          <p class="composer-note">Shift + Enter で改行</p>
         </div>
       </section>
     </div>

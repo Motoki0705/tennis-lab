@@ -91,7 +91,7 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
-def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
+def test_stopped_parent_is_historical_recipient_but_not_live_roster_or_broadcast(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     w = world
@@ -112,8 +112,9 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
     with w.store.read() as connection:
         assignment = w.board.names.for_parent(connection, "o/r", 7)
     w.fake.fail_once_for.add(assignment.id)
-    root = w.post(to=["all"])
-    assert {row["parent"] for row in root["recipients"]} == {2, 3, 7}
+    broadcast = w.post(to=["all"])
+    assert {row["parent"] for row in broadcast["recipients"]} == {2, 3}
+    root = w.post(to=[assignment.name])
     status = w.own_state(root["id"])
     with TestClient(web.app.create_app(w.env()), base_url="http://127.0.0.1") as client:
         changes = client.get("/api/changes")
@@ -121,9 +122,7 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
         data = changes.json()
         thread = client.get(f"/api/thread/{root['id']}")
         assert thread.status_code == 200
-    roster = next(row for row in data["agents"] if row["parent"] == 7)
-    assert roster["name"] == assignment.name
-    assert roster["name_status"] == "assigned" and roster["unread_count"] == 1
+    assert {row["parent"] for row in data["agents"]} == {1, 2, 3}
     for view in (status, data["posts"][0], thread.json()["posts"][0]):
         failed = next(row for row in view["recipients"] if row["parent"] == 7)
         assert failed["name"] == assignment.name
@@ -194,6 +193,7 @@ def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> N
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#7"] = world.labels.owner(identity="codex:unassigned-owner")
     world.labels.set_registry(parents)
+    world.live_parent(7)
     with TestClient(
         web.app.create_app(world.env()), base_url="http://localhost"
     ) as client:
@@ -535,9 +535,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
             (row["parent"], row["engine"], row["state"]) for row in refreshed["agents"]
         ] == [
             (43, "codex", "blocked"),
-            (44, "claude", "unknown"),
         ]
-        assert refreshed["agents"][1]["name_status"] == "unassigned"
         assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
         assert len(world.labels.read()["calls"]) > len(runtime["calls"])
         # A repeated page load still observes current sources, even with no row changes.
@@ -559,7 +557,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
         private_output_absent(json.dumps(reloaded), world.labels.env)
 
 
-def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
+def test_herdr_outage_is_explicit_and_keeps_last_observed_roster(
     world: World, web: SimpleNamespace
 ) -> None:
     prepare_roster(world.board, world.labels)
@@ -573,10 +571,10 @@ def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
         )
         before = world.labels.registry.read_bytes()
         response = client.get("/api/changes", params={"refresh_roster": "true"})
-        assert response.status_code == 200
-        refreshed = response.json()
-        assert [row["state"] for row in refreshed["agents"]] == ["unknown", "unknown"]
-        assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
+        assert response.status_code == 503
+        cached = client.get("/api/changes").json()
+        assert cached["agents"] == initial["agents"]
+        assert cached["roster_observed_at"] == initial["roster_observed_at"]
         assert "private runtime details" not in response.text
         assert world.labels.registry.read_bytes() == before
 

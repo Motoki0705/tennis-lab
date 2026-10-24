@@ -61,8 +61,6 @@ const button = (text, className, action) => {
   if (action) node.addEventListener("click", action);
   return node;
 };
-const badge = (text, kind = "") =>
-  element("span", labels[text] || text, `badge ${kind || text}`);
 const formatTime = (value) =>
   value ? new Date(value).toLocaleString("ja-JP", { hour12: false }) : "—";
 const clockTime = (value) =>
@@ -85,17 +83,6 @@ const nearBottom = (node) =>
 const scrollBottom = (node) => {
   node.scrollTop = node.scrollHeight;
 };
-const elapsed = (value) => {
-  const minutes = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(value).getTime()) / 60000),
-  );
-  return minutes < 60
-    ? `${minutes}分経過`
-    : minutes < 1440
-      ? `${Math.floor(minutes / 60)}時間経過`
-      : `${Math.floor(minutes / 1440)}日経過`;
-};
 
 function avatar(name, presence) {
   const code =
@@ -114,12 +101,12 @@ function avatar(name, presence) {
 }
 
 function party(person) {
-  if (person.name === "human") return element("span", "@human", "party");
+  if (person.name === "human") return element("span", "human", "party");
   if (!person.repo || !person.parent)
     throw new Error("親のリポジトリまたはissue番号が不正です。");
   const node = element(
     "span",
-    person.name ? `@${person.name} · ` : "未割当 · ",
+    person.name ? `${person.name} · ` : "未割当 · ",
     "party",
   );
   const link = element("a", `#${person.parent}`);
@@ -142,6 +129,24 @@ function mentionBody(post) {
   ]);
   const regex =
     /(?<![A-Za-z0-9_.+@-])@([A-Za-z]+)(?![A-Za-z0-9_@-]|\.[A-Za-z0-9])/g;
+  const mentioned = new Set(
+    [...post.body.matchAll(regex)].map((m) => m[1].toLowerCase()),
+  );
+  // Older CLI posts, channel posts and replies can have explicit recipients
+  // without @ text. Project those frozen recipients into the message itself.
+  const destinations = post.broadcast
+    ? [
+        "all",
+        ...post.recipients.filter((p) => p.name === "human").map((p) => p.name),
+      ]
+    : post.recipients.map((p) => p.name);
+  for (const name of destinations) {
+    if (!mentioned.has(name.toLowerCase())) {
+      const mention = element("span", `@${name}`, "mention recipient-mention");
+      mention.title = "この投稿の宛先";
+      node.append(mention, document.createTextNode(" "));
+    }
+  }
   let start = 0;
   for (const match of post.body.matchAll(regex)) {
     if (!known.has(match[1].toLowerCase())) continue;
@@ -152,33 +157,6 @@ function mentionBody(post) {
     start = match.index + match[0].length;
   }
   node.append(document.createTextNode(post.body.slice(start)));
-  return node;
-}
-
-function recipient(row, kind) {
-  const node = element("div", "", "recipient");
-  const line = element("div", "", "recipient-line");
-  line.append(
-    party(row),
-    badge(row.delivery_state),
-    badge(row.read_at ? "既読" : "未読"),
-  );
-  if (row.response_state) line.append(badge(row.response_state));
-  else if (["question", "request"].includes(kind))
-    line.append(badge("応答待ち", "waiting"));
-  node.append(line);
-  if (row.delivery_reason)
-    node.append(
-      element("p", row.delivery_message, "reason"),
-      element("p", row.delivery_reason, "reason-code"),
-    );
-  node.append(
-    element(
-      "p",
-      `通知試行 ${row.attempts}回 · ${row.retryable ? "再試行可能" : "自動再試行なし"}\n最終試行: ${formatTime(row.attempted_at)} · 通知受理: ${formatTime(row.notified_at)}\n既読: ${formatTime(row.read_at)} · 応答: ${formatTime(row.responded_at)}`,
-      "details",
-    ),
-  );
   return node;
 }
 
@@ -202,6 +180,25 @@ function reactionControls(post) {
     stamp.disabled = state.reactionBusy.has(`${post.id}:${reaction.code}`);
     node.append(stamp);
   }
+  const readers = post.recipients.filter((p) => p.read_at);
+  if (readers.length) {
+    const seen = element(
+      "span",
+      `👀 ${readers.length}`,
+      "reaction read-receipt",
+    );
+    seen.title = `既読: ${readers.map((p) => p.name).join("、")}`;
+    seen.setAttribute("aria-label", seen.title);
+    seen.tabIndex = 0;
+    node.append(seen);
+  }
+  return node;
+}
+
+function postActions(post) {
+  const node = element("div", "", "post-actions");
+  node.setAttribute("role", "toolbar");
+  node.setAttribute("aria-label", "メッセージの操作");
   const picker = element("div", "", "reaction-picker");
   picker.hidden = true;
   picker.setAttribute("role", "group");
@@ -219,7 +216,7 @@ function reactionControls(post) {
     choice.setAttribute("aria-pressed", String(mine));
     picker.append(choice);
   }
-  const add = button("☺ ＋", "reaction-add", () => {
+  const add = button("☺", "reaction-add", () => {
     const open = picker.hidden;
     document.querySelectorAll(".reaction-picker").forEach((p) => {
       p.hidden = true;
@@ -237,13 +234,15 @@ function reactionControls(post) {
     }
   });
   node.append(add, picker);
-  for (const row of post.recipients.filter((r) => r.response_state)) {
-    const ack = badge(
-      `${row.name} · ${labels[row.response_state] || row.response_state}`,
-      row.response_state,
-    );
-    ack.title = `応答: ${formatTime(row.responded_at)}（スタンプとは別）`;
-    node.append(ack);
+  const reply = button("↩", "reply-action", () => selectThread(post.id));
+  reply.setAttribute("aria-label", "スレッドで返信");
+  reply.title = "スレッドで返信";
+  node.append(reply);
+  if (post.recipients.some((p) => p.name === "human" && !p.read_at)) {
+    const read = button("👀", "read-action", () => markRead(post.id));
+    read.setAttribute("aria-label", "既読にする");
+    read.title = "既読にする";
+    node.append(read);
   }
   return node;
 }
@@ -255,14 +254,14 @@ function postCard(post, full = false) {
     `post${post.sender.name === "human" ? " human" : ""}`,
   );
   node.dataset.postId = post.id;
+  node.tabIndex = 0;
   node.append(avatar(post.sender.name));
   const content = element("div", "", "post-content");
   const meta = element("div", "", "post-meta");
   const time = element("time", clockTime(post.created_at), "post-time");
   time.dateTime = post.created_at;
   time.title = formatTime(post.created_at);
-  meta.append(party(post.sender), time, badge(post.kind));
-  if (post.broadcast) meta.append(badge("@all"));
+  meta.append(party(post.sender), time);
   content.append(meta);
   if (full && post.in_reply_to) {
     const parent = state.threadPosts.find((p) => p.id === post.in_reply_to);
@@ -281,50 +280,28 @@ function postCard(post, full = false) {
   if (!full) body.classList.add("preview");
   bubble.append(body);
   content.append(bubble);
-  const route = element("div", "", "route");
-  route.append(element("span", "宛先"));
-  post.recipients.forEach((row) => route.append(party(row)));
-  content.append(route);
-  const details = element("details", "", "delivery-summary");
-  details.dataset.receiptId = post.id;
-  const seen = post.recipients.filter((r) => r.read_at).length;
-  const problems = post.recipients.filter((r) =>
-    ["held", "delivery_failed"].includes(r.delivery_state),
-  ).length;
-  details.append(
-    element(
-      "summary",
-      `配送・既読 ${seen}/${post.recipients.length}${problems ? ` · 配送の問題 ${problems}件` : ""}`,
-    ),
-  );
-  post.recipients.forEach((row) => details.append(recipient(row, post.kind)));
-  content.append(details, reactionControls(post));
-  const footer = element("div", "", "post-footer");
+  const reactions = reactionControls(post);
+  if (reactions.children.length) content.append(reactions);
   const replies = sortedPosts().filter(
     (p) => p.thread_id === post.thread_id && p.id !== post.thread_id,
   );
-  const replyLabel = full
-    ? "この投稿に返信"
-    : replies.length
-      ? `${replies.length}件の返信 · 最後: ${replies[replies.length - 1].sender.name} →`
-      : "スレッドで返信 →";
-  const open = button(replyLabel, "thread-link", () => selectThread(post.id));
-  open.dataset.openPost = post.id;
-  footer.append(open);
-  if (waiting(post)) {
-    const age = element("span", elapsed(post.created_at), "elapsed");
-    age.dataset.age = post.created_at;
-    footer.append(age);
+  if (!full && replies.length) {
+    const open = button(
+      `${replies.length}件の返信 · ${replies[replies.length - 1].sender.name}`,
+      "thread-link",
+      () => selectThread(post.id),
+    );
+    open.dataset.openPost = post.id;
+    content.append(open);
   }
-  if (post.recipients.some((p) => p.name === "human" && !p.read_at))
-    footer.append(button("既読にする", "read-action", () => markRead(post.id)));
-  content.append(footer);
-  node.append(content);
+  node.append(content, postActions(post));
   return node;
 }
 
 function renderRoster() {
   byId("roster-count").textContent = String(state.roster.length + 1);
+  byId("roster-summary").textContent =
+    `Herdrの親 ${state.roster.length} · human 1`;
   const card = (row) => {
     const node = button(
       "",
@@ -382,16 +359,31 @@ function matches(post) {
   );
 }
 
-function replacePreservingDetails(container, children) {
+function replaceMessages(container, children) {
   const opened = new Set(
-    [...container.querySelectorAll("details[open][data-receipt-id]")].map(
-      (node) => node.dataset.receiptId,
+    [...container.querySelectorAll(".reaction-picker:not([hidden])")].map(
+      (node) => node.closest("article").dataset.postId,
     ),
   );
+  const active = document.activeElement;
+  const focusedPost =
+    active && container.contains(active)
+      ? active.closest("article")?.dataset.postId
+      : null;
+  const focusedLabel = focusedPost ? active.getAttribute("aria-label") : null;
   container.replaceChildren(...children);
-  container.querySelectorAll("details[data-receipt-id]").forEach((node) => {
-    node.open = opened.has(node.dataset.receiptId);
-  });
+  for (const post of container.querySelectorAll("article")) {
+    if (opened.has(post.dataset.postId)) {
+      post.querySelector(".reaction-picker").hidden = false;
+      post.querySelector(".reaction-add").setAttribute("aria-expanded", "true");
+    }
+    if (post.dataset.postId === focusedPost) {
+      const target = [...post.querySelectorAll("[aria-label]")].find(
+        (node) => node.getAttribute("aria-label") === focusedLabel,
+      );
+      (target || post).focus({ preventScroll: true });
+    }
+  }
 }
 
 function renderFeed() {
@@ -436,12 +428,12 @@ function renderFeed() {
       document.createTextNode(
         state.view === "timeline"
           ? "@名前で宛先を選び、メッセージを送れます。"
-          : "配送・既読・応答は、それぞれの投稿で確認できます。",
+          : "絞り込みや検索条件を変えると、ほかの会話が表示されます。",
       ),
     );
     nodes.push(empty);
   }
-  replacePreservingDetails(byId("feed"), nodes);
+  replaceMessages(byId("feed"), nodes);
   document
     .querySelectorAll("[data-view]")
     .forEach((node) =>
@@ -465,6 +457,7 @@ function setChannel(name) {
     kind: "info",
   };
   byId("compose-body").value = draft.body;
+  resizeComposer(byId("compose-body"));
   byId("compose-subject").value = draft.subject;
   byId("compose-kind").value = draft.kind;
   byId("compose-suggestions").hidden = true;
@@ -559,7 +552,7 @@ function renderThread() {
       );
     nodes.push(postCard(post, true));
   });
-  replacePreservingDetails(byId("thread"), nodes);
+  replaceMessages(byId("thread"), nodes);
   byId("thread-count").textContent =
     `${Math.max(0, state.threadPosts.length - 1)}件の返信`;
   const target = state.threadPosts.find((p) => p.id === state.selected);
@@ -586,6 +579,7 @@ async function openThread(postId) {
   state.selected = postId;
   byId("thread-pane").hidden = !postId;
   byId("workspace").classList.toggle("thread-open", Boolean(postId));
+  resizeComposer(byId("reply-body"));
   if (!postId) {
     state.threadId = null;
     state.threadPosts = [];
@@ -657,6 +651,10 @@ async function markRead(postId) {
 }
 
 const composers = {};
+function resizeComposer(input) {
+  input.style.height = "0px";
+  input.style.height = `${input.scrollHeight}px`;
+}
 function setupComposer(prefix) {
   const form = byId(prefix),
     input = byId(`${prefix}-body`),
@@ -679,6 +677,7 @@ function setupComposer(prefix) {
     if (!match) return;
     const end = input.selectionStart;
     input.setRangeText(`@${name} `, match.index, end, "end");
+    resizeComposer(input);
     hide();
     input.focus();
   };
@@ -723,7 +722,19 @@ function setupComposer(prefix) {
     if (!list.hidden)
       input.setAttribute("aria-activedescendant", `${prefix}-option-0`);
   };
-  input.addEventListener("input", suggest);
+  input.addEventListener("input", () => {
+    resizeComposer(input);
+    suggest();
+  });
+  let width = 0;
+  new ResizeObserver((entries) => {
+    const next = entries[0].contentRect.width;
+    if (next !== width) {
+      width = next;
+      resizeComposer(input);
+    }
+  }).observe(input);
+  resizeComposer(input);
   input.addEventListener("click", suggest);
   input.addEventListener("blur", () => setTimeout(hide, 150));
   input.addEventListener("keydown", (event) => {
@@ -792,6 +803,7 @@ function setupComposer(prefix) {
       composer.drafts.delete(reply ? target : channel);
       if (reply ? target === state.selected : channel === state.name) {
         input.value = "";
+        resizeComposer(input);
         if (!reply) byId("compose-subject").value = "";
       }
       toast(reply ? "返信しました" : "投稿しました");
@@ -845,9 +857,6 @@ async function poll() {
       if (bottom) scrollBottom(byId("feed-scroll"));
       else if (data.posts.length) byId("latest").hidden = false;
     }
-    document.querySelectorAll("[data-age]").forEach((node) => {
-      node.textContent = elapsed(node.dataset.age);
-    });
     byId("connection").textContent = `接続中 · ${clockTime(new Date())} 更新`;
     if (refreshRoster) state.rosterError = null;
     if (state.rosterError) showError(state.rosterError);
@@ -877,6 +886,14 @@ async function poll() {
 
 setupComposer("compose");
 setupComposer("reply");
+byId("compose-options").addEventListener("click", () => {
+  const settings = byId("compose-settings");
+  settings.hidden = !settings.hidden;
+  byId("compose-options").setAttribute(
+    "aria-expanded",
+    String(!settings.hidden),
+  );
+});
 byId("all-channel").addEventListener("click", () => setChannel(""));
 byId("close-thread").addEventListener("click", () => {
   location.hash = "";

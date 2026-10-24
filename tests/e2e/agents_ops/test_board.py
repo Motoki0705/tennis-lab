@@ -1158,7 +1158,8 @@ def test_peer_lookup_failure_is_explicit_and_broadcast_remains_atomic(
         p.note("全員に共有します。"),
     )
     assert blocked.returncode == 2 and blocked.stdout == ""
-    assert "o/r#2" in blocked.stderr and "no live board name" in blocked.stderr
+    # None of these registrations has a confirmed running Herdr conversation.
+    assert "post requires at least one recipient" in blocked.stderr
     with board.storage.Store(board.storage.directory(p.env)).read() as connection:
         for table in ("posts", "recipients", "deliveries"):
             assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (
@@ -1219,10 +1220,7 @@ def test_standalone_parent_has_a_name_and_null_identifier(
         assert board.names.resolve_name(connection, first["name"]) == assignment
     roster = run_board(p.env, "agents")
     assert roster.returncode == 0
-    entry = json.loads(roster.stdout)["agents"][0]
-    assert entry["identifier"] is None
-    assert entry["name"] == first["name"]
-    assert entry["name_status"] == "assigned"
+    assert json.loads(roster.stdout)["agents"] == []  # No confirmed Herdr session.
     identity = run_board(p.env, "whoami")
     assert identity.returncode == 0
     assert json.loads(identity.stdout)["name"] == first["name"]
@@ -1394,10 +1392,12 @@ def test_codex_root_identity_and_unassigned_human_reading(
     assert run_board(env, "whoami").returncode == 2
     roster = run_board(env, "agents")
     assert roster.returncode == 0
-    assert json.loads(roster.stdout)["agents"][0]["engine"] == "codex"
+    assert json.loads(roster.stdout)["agents"] == []
 
 
-def prepare_roster(board: SimpleNamespace, labels: Labels) -> tuple[str, str]:
+def prepare_roster(
+    board: SimpleNamespace, labels: Labels, *, assign_names: bool = True
+) -> tuple[str, str]:
     identities = ("claude:test-owner", "codex:private-second-owner")
     labels.set_registry(
         {
@@ -1410,13 +1410,14 @@ def prepare_roster(board: SimpleNamespace, labels: Labels) -> tuple[str, str]:
             "o/r#46": labels.owner(status="ended", identity="claude:ended-owner"),
         }
     )
-    with board.storage.Store(
-        board.storage.directory(labels.env)
-    ).transaction() as connection:
-        for number in (42, 43):
-            board.names.ensure_name(
-                connection, "o/r", number, "開発" + str(number), now=NOW
-            )
+    if assign_names:
+        with board.storage.Store(
+            board.storage.directory(labels.env)
+        ).transaction() as connection:
+            for number in (42, 43):
+                board.names.ensure_name(
+                    connection, "o/r", number, "開発" + str(number), now=NOW
+                )
     owners = labels.registry.parent.parent / "herdr-labels/owners"
     for identity, terminal in zip(identities, ("term-a", "term-b"), strict=True):
         (owners / (board.service.owner_token(identity) + ".json")).write_text(
@@ -1469,6 +1470,7 @@ def test_roster_joins_only_active_parents_and_never_mutates_registry(
 def test_roster_includes_unassigned_active_parents(
     board: SimpleNamespace, labels: Labels, database: str
 ) -> None:
+    prepare_roster(board, labels, assign_names=False)
     labels.set_registry(
         {
             "o/r#42": labels.owner(),
@@ -1523,13 +1525,18 @@ def test_roster_includes_unassigned_active_parents(
     assert "private-second-owner" not in result.stdout + response.stderr
 
 
+@pytest.mark.parametrize("field", ["state", "agent_status"])
 @pytest.mark.parametrize("status", ["idle", "working", "blocked", "done"])
 def test_runtime_states_and_post_activity_boundary(
-    board: SimpleNamespace, labels: Labels, status: str, monkeypatch: pytest.MonkeyPatch
+    board: SimpleNamespace,
+    labels: Labels,
+    status: str,
+    field: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     prepare_roster(board, labels)
     state = labels.read()
-    state["panes"]["w1:p1"]["state"] = status
+    state["panes"]["w1:p1"][field] = status
     labels.write(state)
     monkeypatch.setattr(
         board.activity,
@@ -1558,7 +1565,7 @@ def test_runtime_states_and_post_activity_boundary(
         "ended_runtime",
     ],
 )
-def test_runtime_unknown_when_it_cannot_be_verified(
+def test_unverified_sessions_are_excluded_and_runtime_errors_are_explicit(
     board: SimpleNamespace, labels: Labels, cause: str
 ) -> None:
     identities = prepare_roster(board, labels)
@@ -1609,11 +1616,15 @@ def test_runtime_unknown_when_it_cannot_be_verified(
         executable.chmod(0o755)
     labels.write(state)
     result = run_board(labels.env, "agents")
+    if cause in {"bad_owner", "unavailable"}:
+        assert result.returncode == 2 and not result.stdout
+        assert "private runtime details" not in result.stderr
+        return
     assert result.returncode == 0
-    assert json.loads(result.stdout)["agents"][0]["state"] == "unknown"
+    assert [
+        (row["parent"], row["state"]) for row in json.loads(result.stdout)["agents"]
+    ] == [(43, "idle")]
     assert "private runtime details" not in result.stderr
-    if cause != "unavailable":
-        assert json.loads(result.stdout)["agents"][1]["state"] == "idle"
 
 
 @pytest.mark.parametrize(
@@ -1717,6 +1728,9 @@ def test_cleared_display_uses_current_pane_record(
                 "version": 1,
                 "owner": board.service.owner_token(identities[0]),
                 "state": "active",
+                "processes": board.service.process_stamp(
+                    board.service.Herdr(labels.env), state["panes"]["w1:p1"]
+                ),
             }
         )
     )

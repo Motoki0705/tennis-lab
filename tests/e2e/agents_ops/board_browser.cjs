@@ -30,6 +30,23 @@ async function main() {
     await page.goto(url);
     await page.waitForSelector(`#feed article[data-post-id="${rootId}"]`);
     assert.equal(
+      await page.locator(".route, .delivery-summary, .post-footer").count(),
+      0,
+    );
+    assert.ok(
+      await page.locator(".topbar").evaluate((node) => node.offsetHeight <= 44),
+    );
+    assert.ok(
+      await page
+        .locator(".feed-pane .pane-heading")
+        .evaluate((node) => node.offsetHeight <= 42),
+    );
+    assert.ok(
+      await page
+        .locator("#feed-scroll")
+        .evaluate((node) => node.clientHeight > innerHeight * 0.7),
+    );
+    assert.equal(
       await page.locator("#feed article").count(),
       1,
       "replies stay in threads",
@@ -49,6 +66,7 @@ async function main() {
     await page.waitForSelector("#thread article:nth-of-type(2)");
     assert.equal(await page.locator("#thread article").count(), 2);
     const root = page.locator(`#thread article[data-post-id="${rootId}"]`);
+    await root.hover();
     await root.getByRole("button", { name: "既読にする", exact: true }).click();
     await root
       .getByRole("button", { name: "既読にする", exact: true })
@@ -57,10 +75,24 @@ async function main() {
       await (await page.request.get(`${url}/api/thread/${rootId}`)).json()
     ).posts[0];
     assert.ok(read.recipients.find((p) => p.name === "human").read_at);
+    assert.ok(
+      (await root.locator(".read-receipt").getAttribute("title")).includes(
+        "human",
+      ),
+    );
+    assert.ok(
+      (await root.locator(".read-receipt").textContent()).includes("👀"),
+    );
+    assert.deepEqual(
+      read.reactions,
+      [],
+      "read receipts do not invent manual reactions",
+    );
     assert.equal(
       read.recipients.find((p) => p.name === "human").response_state,
       null,
     );
+    await root.hover();
     await root
       .getByRole("button", { name: "スタンプを追加", exact: true })
       .click();
@@ -78,16 +110,18 @@ async function main() {
       .locator("#thread article")
       .nth(1)
       .getAttribute("data-post-id");
+    await page.locator(`#thread article[data-post-id="${secondId}"]`).hover();
     await page
-      .locator(`#thread article[data-post-id="${secondId}"] .thread-link`)
+      .locator(`#thread article[data-post-id="${secondId}"] .reply-action`)
       .click();
     await page.waitForFunction(
       (id) => state.selected === id && state.threadId,
       secondId,
     );
     assert.equal(await replyInput.inputValue(), "");
+    await root.hover();
     await page
-      .locator(`#thread article[data-post-id="${rootId}"] .thread-link`)
+      .locator(`#thread article[data-post-id="${rootId}"] .reply-action`)
       .click();
     await page.waitForFunction(
       (id) => state.selected === id && state.threadId,
@@ -116,6 +150,18 @@ async function main() {
     // Autocomplete accepts a candidate; IME Enter never sends; Shift+Enter
     // inserts a line break. Failures preserve input and are not auto-retried.
     const compose = page.locator("#compose-body");
+    const initialHeight = await compose.evaluate((node) => node.offsetHeight);
+    assert.ok(initialHeight <= 40, "composer starts at one line");
+    await compose.fill(
+      Array(15).fill("長いメッセージを入力します。").join("\n"),
+    );
+    const grownHeight = await compose.evaluate((node) => node.offsetHeight);
+    assert.ok(grownHeight > initialHeight * 2 && grownHeight <= 220);
+    await compose.fill("短文");
+    assert.equal(
+      await compose.evaluate((node) => node.offsetHeight),
+      initialHeight,
+    );
     await compose.fill(`@${recipient.slice(0, 2)}`);
     await page.locator("#compose-suggestions").waitFor({ state: "visible" });
     const before = writes.length;
@@ -156,6 +202,10 @@ async function main() {
     await page.waitForFunction(
       () => document.getElementById("compose-body").value === "",
     );
+    assert.equal(
+      await compose.evaluate((node) => node.offsetHeight),
+      initialHeight,
+    );
     assert.equal(saved.body, draft);
     assert.equal(saved.sender.name, "human");
     assert.deepEqual(
@@ -195,8 +245,9 @@ async function main() {
     await page.locator('[data-view="waiting"]').click();
     assert.equal(await page.locator("#feed article").count(), 0);
     await page.locator('[data-view="timeline"]').click();
+    await card.hover();
     await page
-      .locator(`#feed article[data-post-id="${saved.id}"] .thread-link`)
+      .locator(`#feed article[data-post-id="${saved.id}"] .reply-action`)
       .click();
     await page.waitForFunction((id) => state.threadId === id, saved.id);
     // Roster failures retain the previous display and remain visible until

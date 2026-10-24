@@ -10,6 +10,8 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from herdr_labels.service import registry
+
 from .access import as_parent, as_participant, parent_state
 from .delivery import Notifiers, dispatch
 from .errors import BoardError
@@ -23,7 +25,7 @@ from .records import (
     require_thread_participant,
 )
 from .safety import public, text
-from .service import _assigned, _reference
+from .service import _assigned, _reference, _runtime_states
 from .storage import Store, directory
 
 # A word/email/path prefix prevents an @ token from becoming a board mention.
@@ -59,6 +61,7 @@ def _destinations(
     sender: Participant,
     to: Sequence[str],
     original: dict[str, Any] | None,
+    live_sessions: set[str] | None = None,
 ) -> tuple[list[Participant], bool]:
     destinations: dict[int | None, Participant] = {}
     if original is not None and original["sender_assignment_id"] != sender.id:
@@ -76,7 +79,9 @@ def _destinations(
     for value in to:
         if value.casefold() == "all":
             for key, owner in sorted(parents.items()):
-                if owner["status"] == "active":
+                if owner["status"] == "active" and (
+                    live_sessions is not None and owner["session"] in live_sessions
+                ):
                     repo, parent = _reference(key)
                     if (repo, parent) != (sender.repo, sender.parent):
                         assignment = _assigned(connection, repo, parent)
@@ -145,7 +150,26 @@ def _create(
 ) -> dict[str, Any]:
     if notifiers is not None and set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
+    destinations = [*to, *_mentions(body)]
+    observed_parents = None
+    live_sessions = None
+    if any(value.casefold() == "all" for value in destinations):
+        # Herdr subprocesses must run before taking the registry/SQLite locks.
+        observed_parents = registry(env)
+        states = _runtime_states(
+            env,
+            [
+                row["session"]
+                for row in observed_parents.values()
+                if row["status"] == "active"
+            ],
+        )
+        live_sessions = {
+            identity for identity, state in states.items() if state != "unknown"
+        }
     with as_participant(env, human=human, write=True) as (connection, sender, parents):
+        if observed_parents is not None and parents != observed_parents:
+            raise BoardError("parent registry changed during recipient lookup; retry")
         original = (
             post_row(connection, original_id) if original_id is not None else None
         )
@@ -155,7 +179,7 @@ def _create(
         text(body, parents, env)
         text(subject, parents, env, subject=True)
         recipients, broadcast = _destinations(
-            connection, parents, sender, [*to, *_mentions(body)], original
+            connection, parents, sender, destinations, original, live_sessions
         )
         post_id, stamp = _identity(
             connection, now if now is not None else datetime.now(UTC)

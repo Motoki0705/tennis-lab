@@ -104,6 +104,35 @@ class World:
         data["parents"][f"o/r#{parent}"].update(values)
         self.labels.set_registry(data["parents"])
 
+    def live_parent(self, parent: int, *, status: str = "idle") -> str:
+        """A confirmed parent in the fake Herdr, independent of registry status."""
+        owner = json.loads(self.labels.registry.read_text())["parents"][f"o/r#{parent}"]
+        identity = owner["session"]
+        token = self.board.service.owner_token(identity)
+        terminal = f"board-terminal-{parent}"
+        owners = self.labels.registry.parent.parent / "herdr-labels/owners"
+        owners.mkdir(parents=True, exist_ok=True)
+        (owners / f"{token}.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "scope": self.board.service.owner_token("/fake/herdr.sock"),
+                    "terminal_id": terminal,
+                }
+            )
+        )
+        pane = f"w1:board-{parent}"
+        runtime = self.labels.read()
+        runtime["panes"][pane] = {
+            "pane_id": pane,
+            "terminal_id": terminal,
+            "agent": identity.partition(":")[0],
+            "agent_status": status,
+            "tokens": {"tl_owner": token},
+        }
+        self.labels.write(runtime)
+        return pane
+
     def post(self, **values: Any) -> dict[str, Any]:
         return cast(
             dict[str, Any],
@@ -180,7 +209,10 @@ def world(board: SimpleNamespace, labels: Labels) -> World:
                 connection, "o/r", parent, None, now=NOW
             )
         board.names.retire_name(connection, "o/r", 6, now=NOW)
-    return World(board, labels, assignments, board.delivery.FakeNotifier())
+    world = World(board, labels, assignments, board.delivery.FakeNotifier())
+    for parent in (1, 2, 3):
+        world.live_parent(parent)
+    return world
 
 
 def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
@@ -588,6 +620,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
+    w.live_parent(7)
     with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}

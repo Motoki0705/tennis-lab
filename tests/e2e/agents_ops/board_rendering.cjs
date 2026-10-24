@@ -13,6 +13,8 @@ class Element {
     this.dataset = {};
     this.text = "";
     this.value = "";
+    this.style = {};
+    this.scrollHeight = 38;
     this.classList = { toggle() {}, add() {} };
   }
   set textContent(value) {
@@ -67,6 +69,9 @@ const context = vm.createContext({
   clearTimeout() {},
   setTimeout() {},
   AbortSignal,
+  ResizeObserver: class {
+    observe() {}
+  },
   post,
   fetch: async (url) => {
     assert.equal(url, `/api/thread/${post.id}`);
@@ -86,8 +91,9 @@ function checkCard(card) {
   const parties = descendants(card).filter(
     (node) => node.className === "party",
   );
-  const humans = parties.filter((node) => node.textContent === "@human");
-  assert.ok(humans.length >= 1);
+  assert.equal(parties.length, 1, "only the author remains in the header");
+  const humans = parties.filter((node) => node.textContent === "human");
+  assert.equal(humans.length, post.sender.name === "human" ? 1 : 0);
   for (const human of humans) {
     assert.equal(
       descendants(human).filter((node) => node.tagName === "A").length,
@@ -95,7 +101,7 @@ function checkCard(card) {
     );
   }
   const parents = parties.filter((node) => !humans.includes(node));
-  assert.ok(parents.length > 0);
+  assert.equal(parents.length, post.sender.name === "human" ? 0 : 1);
   const parent =
     post.sender.name === "human" ? post.recipients[0] : post.sender;
   for (const party of parents) {
@@ -107,6 +113,19 @@ function checkCard(card) {
     );
   }
   assert.ok(!card.textContent.includes("#null"));
+  assert.ok(
+    descendants(card).some(
+      (node) =>
+        (node.className || "").includes("mention") &&
+        node.textContent === `@${post.recipients[0].name}`,
+    ),
+  );
+  assert.equal(
+    descendants(card).filter((node) =>
+      ["route", "delivery-summary", "post-footer"].includes(node.className),
+    ).length,
+    0,
+  );
 }
 
 async function main() {

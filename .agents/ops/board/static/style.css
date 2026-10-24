@@ -70,7 +70,7 @@ a:hover {
   clip: rect(0, 0, 0, 0);
 }
 .topbar {
-  height: 60px;
+  height: 44px;
   flex: none;
   background: #211c2d;
   color: #f5f3fa;
@@ -154,7 +154,7 @@ kbd {
   background: #fff3d7;
   color: #79581a;
   font-size: 12px;
-  padding: 7px 24px;
+  padding: 4px 24px;
   flex: none;
 }
 .error {
@@ -197,6 +197,11 @@ kbd {
   font-weight: 500;
   color: #8f849f;
   margin-top: 7px;
+}
+.roster-summary {
+  margin: 0 12px 8px;
+  font-size: 10px;
+  color: #a79cb8;
 }
 .sidebar-label {
   margin: 20px 12px 10px;
@@ -397,14 +402,14 @@ kbd {
   position: relative;
 }
 .pane-heading {
-  height: 84px;
+  height: 42px;
   flex: none;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 26px;
+  padding: 6px 26px;
 }
 .pane-heading h1,
 .pane-heading h2 {
@@ -438,7 +443,7 @@ kbd {
   gap: 24px;
   padding: 0 26px;
   border-bottom: 1px solid var(--border);
-  height: 47px;
+  height: 32px;
   align-items: stretch;
   flex: none;
 }
@@ -484,7 +489,7 @@ kbd {
   overscroll-behavior: contain;
 }
 .feed-scroll {
-  padding: 12px 26px 18px;
+  padding: 8px 26px 12px;
 }
 .day-separator {
   display: flex;
@@ -492,7 +497,7 @@ kbd {
   gap: 14px;
   color: #8b8794;
   font-size: 10px;
-  margin: 16px 0 25px;
+  margin: 10px 0 16px;
 }
 .day-separator::before,
 .day-separator::after {
@@ -504,7 +509,9 @@ kbd {
 .post {
   display: flex;
   gap: 12px;
-  margin: 0 0 24px;
+  margin: 0 0 14px;
+  padding: 3px 0;
+  position: relative;
   min-width: 0;
   scroll-margin-top: 14px;
 }
@@ -517,7 +524,7 @@ kbd {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 0 0 7px;
+  margin: 0 0 2px;
   min-height: 20px;
 }
 .party {
@@ -534,53 +541,11 @@ kbd {
   font-size: 10px;
   color: #9c98a4;
 }
-.badge {
-  display: inline-block;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 450;
-  background: #f2f1f5;
-  color: #85808d;
-}
-.badge.question,
-.badge.waiting {
-  background: #fff3db;
-  color: #9b7829;
-}
-.badge.request {
-  background: #f1eafa;
-  color: #80649d;
-}
-.badge.info {
-  background: #edf2f9;
-  color: #72839c;
-}
-.badge.answered,
-.badge.accepted,
-.badge.done,
-.badge.available {
-  background: #e9f4ee;
-  color: #57856d;
-}
-.badge.held,
-.badge.delivery_failed,
-.badge.declined {
-  background: #fff0eb;
-  color: #b67960;
-}
 .bubble {
-  background: #f7f7fa;
-  border: 1px solid #f0eff5;
-  border-radius: 0 10px 10px 10px;
-  padding: 13px 15px;
+  padding: 0;
   line-height: 1.85;
   font-size: 12px;
   overflow-wrap: anywhere;
-}
-.post.human .bubble {
-  background: #f1f7f4;
-  border-color: #e7f0eb;
 }
 .bubble h3 {
   font-size: 12px;
@@ -599,66 +564,12 @@ kbd {
   font-weight: 550;
   padding: 1px 3px;
 }
-.route {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  align-items: center;
-  margin: 8px 0;
-  font-size: 10px;
-  color: #8c8793;
-}
-.route .party {
-  font-size: 10px;
-  font-weight: 450;
-}
-.route .party a {
-  font-size: 9px;
-}
-.delivery-summary {
-  margin: 8px 0 0;
-  color: #96909e;
-  font-size: 10px;
-}
-.delivery-summary > summary {
-  cursor: pointer;
-  list-style: none;
-}
-.delivery-summary > summary::before {
-  content: "›";
-  display: inline-block;
-  margin-right: 5px;
-}
-.delivery-summary[open] > summary::before {
-  transform: rotate(90deg);
-}
-.recipient {
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-.recipient-line {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-.reason {
-  color: #ae7355;
-  font-size: 10px;
-  margin: 6px 0 0;
-}
-.reason-code,
-.details {
-  font-size: 10px;
-  white-space: pre-line;
-  color: #938b9b;
-}
 .reactions {
   display: flex;
   align-items: center;
   gap: 5px;
   flex-wrap: wrap;
-  margin-top: 9px;
+  margin-top: 4px;
   position: relative;
 }
 .reaction {
@@ -676,18 +587,10 @@ kbd {
 .reaction:hover {
   border-color: #a6a0b1;
 }
-.reaction-add {
-  font-size: 11px;
-  border: 1px dashed #d9d5e0;
-  background: #fff;
-  border-radius: 12px;
-  color: #8e8599;
-  padding: 3px 8px;
-}
 .reaction-picker {
   position: absolute;
-  bottom: 100%;
-  left: 0;
+  top: 100%;
+  right: 0;
   display: flex;
   gap: 2px;
   background: white;
@@ -707,33 +610,54 @@ kbd {
 .reaction-picker button:hover {
   background: #f1edf6;
 }
-.post-footer {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 8px;
-}
 .thread-link {
+  display: block;
   border: 0;
   background: none;
   color: #61799c;
-  font-size: 10px;
-  padding: 0;
-  line-height: 1.8;
+  font-size: 11px;
+  padding: 3px 0 0;
+  line-height: 1.6;
 }
 .thread-link:hover {
   text-decoration: underline;
 }
-.elapsed {
-  font-size: 10px;
-  color: #b1945b;
+.post-actions {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  display: flex;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  box-shadow: 0 2px 6px #29233812;
+  padding: 2px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
 }
-.read-action {
+.post:hover .post-actions,
+.post:focus-within .post-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.post-actions > button {
   border: 0;
   background: none;
-  color: #648678;
-  font-size: 10px;
-  padding: 0;
+  border-radius: 4px;
+  min-width: 32px;
+  height: 30px;
+  font-size: 18px;
+  padding: 2px 6px;
+  color: #6d6478;
+}
+.post-actions > button:hover {
+  background: #f0edf5;
+}
+.read-receipt {
+  color: #527565;
+  background: #f2f7f4;
+  cursor: default;
 }
 .reply-link {
   border: 0;
@@ -758,7 +682,7 @@ kbd {
 }
 .latest {
   position: absolute;
-  bottom: 225px;
+  bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   background: #514263;
@@ -771,7 +695,8 @@ kbd {
   z-index: 3;
 }
 .composer-wrap {
-  padding: 0 26px 13px;
+  position: relative;
+  padding: 0 26px 10px;
   flex: none;
 }
 .composer {
@@ -817,16 +742,17 @@ kbd {
 }
 .composer textarea {
   display: block;
-  resize: vertical;
-  max-height: 220px;
-  min-height: 70px;
+  resize: none;
+  max-height: min(220px, 25dvh);
+  min-height: 38px;
+  overflow-y: auto;
   width: 100%;
   background: none;
   border: 0;
   outline: 0;
-  padding: 12px 14px 5px;
-  font-size: 12px;
-  line-height: 1.8;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 22px;
   color: #393340;
 }
 .composer textarea::placeholder {
@@ -837,16 +763,26 @@ kbd {
   align-items: center;
   gap: 10px;
   justify-content: space-between;
-  padding: 5px 10px 10px;
+  padding: 2px 8px 6px;
   font-size: 10px;
   color: #aaa1b3;
+}
+.compose-options {
+  background: none;
+  border: 0;
+  padding: 2px 5px;
+  font-size: 16px;
+  color: #8e8599;
+}
+.composer-footer > span {
+  flex: 1;
 }
 .send {
   border: 0;
   background: var(--accent);
   color: white;
   border-radius: 6px;
-  padding: 7px 12px;
+  padding: 5px 11px;
   font-size: 11px;
   white-space: nowrap;
 }
@@ -855,13 +791,6 @@ kbd {
 }
 .send:hover {
   background: #1e6255;
-}
-.composer-note {
-  font-size: 9px;
-  color: #aaa3b1;
-  display: flex;
-  justify-content: space-between;
-  margin: 8px 2px 0;
 }
 .compose-error {
   color: #b24f54;
@@ -909,14 +838,14 @@ kbd {
   background: #fcfbfd;
 }
 .thread-pane .pane-heading {
-  padding: 16px 20px;
+  padding: 6px 20px;
   background: white;
 }
 .thread-pane .pane-heading h2 {
   font-size: 15px;
 }
 .thread-scroll {
-  padding: 22px 18px;
+  padding: 12px 18px;
 }
 .thread-pane .post {
   gap: 9px;
@@ -929,7 +858,7 @@ kbd {
 }
 .thread-pane .bubble {
   font-size: 11px;
-  padding: 11px 12px;
+  padding: 0;
 }
 .thread-pane .composer-wrap {
   padding: 0 16px 13px;
@@ -945,9 +874,6 @@ kbd {
 }
 .thread-pane .party {
   font-size: 11px;
-}
-.thread-pane .route .party {
-  font-size: 9px;
 }
 .thread-divider {
   font-size: 10px;
@@ -1016,7 +942,7 @@ kbd {
 }
 @media (max-width: 700px) {
   .topbar {
-    height: 52px;
+    height: 40px;
     padding: 0 12px;
     gap: 14px;
   }
@@ -1044,6 +970,7 @@ kbd {
   }
   .workspace-name,
   .sidebar-label,
+  .roster-summary,
   .roster-info,
   .roster-button .count,
   .sidebar-bottom,
@@ -1069,8 +996,8 @@ kbd {
     font-size: 24px;
   }
   .pane-heading {
-    padding: 14px 16px;
-    height: 78px;
+    padding: 6px 14px;
+    height: 38px;
   }
   .pane-heading h1 {
     font-size: 16px;
@@ -1084,7 +1011,7 @@ kbd {
   .tabs {
     padding: 0 14px;
     gap: 16px;
-    height: 44px;
+    height: 32px;
   }
   .tabs > button {
     font-size: 11px;
@@ -1105,8 +1032,8 @@ kbd {
     border-radius: 8px;
   }
   .bubble {
-    font-size: 11px;
-    padding: 10px;
+    font-size: 12px;
+    padding: 0;
   }
   .composer-wrap {
     padding: 0 12px 10px;
@@ -1126,9 +1053,6 @@ kbd {
   .environment {
     font-size: 10px;
     padding: 5px 12px;
-  }
-  .route .party {
-    font-size: 9px;
   }
   .post-meta {
     gap: 6px;
