@@ -18,6 +18,7 @@ from src.utils.artifact_store import ArtifactStore
 def step_checkpoints(
     config: object, logger: TensorBoardLogger
 ) -> list[ModelCheckpoint]:
+    checkpoint = CourtTrainingConfig.from_config(config).shared.training.checkpoint
     schedule = StepSchedule.from_config(config)
     directory = Path(logger.log_dir) / "checkpoints"
     return [
@@ -36,7 +37,7 @@ def step_checkpoints(
             auto_insert_metric_name=False,
             monitor="val/loss",
             mode="min",
-            save_top_k=1,
+            save_top_k=checkpoint.save_top_k,
             every_n_epochs=1,
             save_on_train_epoch_end=False,
         ),
