@@ -1,96 +1,34 @@
-"""Pinned audit plans and validation of native scout results and integration.
-
-The parent CLI is the only publisher. Untrusted or absent scout results reduce
-coverage; they never make a scheduled run successful. A retry retains validated
-results and asks only the outstanding scouts (or just the parent integration).
-"""
+"""Pinned round checkpoints and verification before ledger publication."""
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
-import re
-from collections import Counter
+import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import agent, shell
+from . import handoff, native, shell
+from .ledger import Ledger
+from .retrieval import RetrievalError, strict_json
 
-AREAS = {
-    "code": "コード・モデル・データの流れ",
-    "platform": "開発・実験基盤・CI・依存・掃除",
-    "governance": "文書・AI運用・共有/専用memory",
-    "direction": "issue・PR・knowledge・研究の次の一手",
-}
-_KEY = re.compile(r"[a-z][a-z0-9-]*")
-
-
-def _owner(path: str) -> str:
-    if path.startswith("knowledge/"):
-        return "direction"
-    if path.startswith((".agents/", ".claude/", ".codex/", ".github/agents/")):
-        return "governance"
-    if path.startswith(("src/", "configs/", "config/")):
-        return "code"
-    if path.endswith(".md"):
-        return "governance"
-    return "platform"
+VERSION = 2
+GOAL = (
+    "Tennis-Lab全体の潜在的な問題を発見し、根拠と反証を確認して既存の改善経路へ戻す。"
+)
 
 
-def plan(repo: Path, base: str) -> dict[str, Any]:
-    entries = []
-    gitlinks = []
-    for row in shell.git(["ls-tree", "-r", "-z", base], cwd=repo).split("\0"):
-        if not row:
-            continue
-        metadata, path = row.split("\t", 1)
-        mode, kind, sha = metadata.split()
-        entries.append(path)
-        if mode == "160000" and kind == "commit":
-            gitlinks.append({"path": path, "sha": sha})
-    targets = sorted(entries)
-    digest = hashlib.sha256(
-        json.dumps([base, targets], ensure_ascii=False).encode()
-    ).hexdigest()
-    return {
-        "base_sha": base,
-        "inventory_sha256": digest,
-        "gitlinks": gitlinks,
-        "assignments": [
-            {
-                "id": key,
-                "purpose": label + "の根拠付き改善候補を調べる",
-                "targets": [p for p in targets if _owner(p) == key],
-                "inputs": {
-                    "code": ["git", "github"],
-                    "platform": ["github.ci_runs_in_period", "cleanup", "workspace"],
-                    "governance": ["ai_env", "memory", "ops_memory"],
-                    "direction": [
-                        "github",
-                        "knowledge",
-                        "previous_reports",
-                        "ops_memory.decisions",
-                    ],
-                }[key],
-                "excludes": [other for other in AREAS if other != key],
-                "end_condition": "担当対象と入力を精査し、結論・根拠・反証・未確認範囲・改善候補を返す。未確認が残ればcompletedにしない。",
-            }
-            for key, label in AREAS.items()
-        ],
-    }
+def timestamp() -> str:
+    return datetime.now(UTC).isoformat()
 
 
 @contextmanager
 def checkout(repo: Path, base: str, path: Path) -> Iterator[Path]:
-    """Disposable detached checkout; every native scout inherits this same cwd.
-
-    The sandbox enforces read-only access. Never reset or forcibly remove a tree
-    changed by a faulty runner; leave it for explicit recovery instead.
-    """
+    """Never force-remove a checkout changed by a faulty runner."""
     path.parent.mkdir(parents=True, exist_ok=True)
     shell.git(["worktree", "add", "--detach", str(path), base], cwd=repo)
     try:
@@ -116,372 +54,430 @@ def worktree_path(repo: Path, run_id: str) -> Path:
 
 
 def input_digest(collected: dict[str, Any]) -> str:
-    frozen = {
-        k: v
-        for k, v in collected.items()
-        if k not in {"audit_input_sha256", "audit_runtime"}
-    }
+    frozen = {k: v for k, v in collected.items() if k != "audit_input_sha256"}
     return hashlib.sha256(
         json.dumps(frozen, sort_keys=True, ensure_ascii=False).encode()
     ).hexdigest()
 
 
-def load_checkpoint(path: Path, repo: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+def load_checkpoint(path: Path, repo: Path) -> dict[str, Any]:
     try:
-        data = json.loads(
-            path.read_text(encoding="utf-8"), object_pairs_hook=agent._unique_keys
-        )
+        data = strict_json(path.read_bytes())
+        if (
+            isinstance(data, dict)
+            and type(data.get("version")) is int
+            and data["version"] == 1
+        ):
+            raise ValueError(
+                "checkpoint version 1 requires explicit migration by #1458; do not replace the round or its issue"
+            )
         if (
             not isinstance(data, dict)
-            or set(data) != {"version", "collected", "results"}
+            or set(data) != {"version", "collected", "ledger", "attempts"}
             or type(data["version"]) is not int
-            or data["version"] != 1
+            or data["version"] != VERSION
         ):
             raise ValueError("invalid audit checkpoint schema/version")
-        collected, results = data["collected"], data["results"]
-        if input_digest(collected) != collected["audit_input_sha256"]:
+        c = data["collected"]
+        if input_digest(c) != c["audit_input_sha256"]:
             raise ValueError("audit checkpoint input hash mismatch")
-        if collected["audit_plan"] != plan(repo, collected["meta"]["base_sha"]):
-            raise ValueError("audit checkpoint plan/base mismatch")
-        if not isinstance(results, dict) or not results.keys() <= AREAS.keys():
-            raise ValueError("invalid audit checkpoint assignments")
-        for key, row in results.items():
-            _result(row, key, collected["meta"]["base_sha"])
-        return collected, results
-    except (ValueError, KeyError, TypeError, AttributeError) as exc:
+        base = c["meta"]["base_sha"]
+        if (
+            shell.git(["rev-parse", "--verify", f"{base}^{{commit}}"], cwd=repo).strip()
+            != base
+        ):
+            raise ValueError("pinned base commit is missing")
+        ledger_path = Path(data["ledger"])
+        if ledger_path != path.with_suffix(".ledger.json").absolute():
+            raise ValueError("checkpoint ledger path mismatch")
+        Ledger.load(ledger_path, slot=path.stem, base_sha=base)
+        if (
+            not isinstance(data["attempts"], list)
+            or len(set(data["attempts"])) != len(data["attempts"])
+            or any(not Path(p).is_absolute() for p in data["attempts"])
+        ):
+            raise ValueError("invalid or duplicate native attempt paths")
+        return data
+    except (ValueError, KeyError, TypeError, OSError) as exc:
         raise ValueError(
             f"corrupt audit checkpoint at {path}: {exc}; repair explicitly"
         ) from exc
 
 
-def _text(row: dict[str, Any], key: str) -> str:
-    return agent._req_str(row, key, "audit")
+def ensure_quiescent(attempts: list[str]) -> None:
+    """Resume only after the existing runner has confirmed process cleanup."""
+    from opsproc import process_identity
+
+    for directory in attempts:
+        value = strict_json((Path(directory) / "result.json").read_bytes())
+        for name in ("runner", "process"):
+            identity = value.get(name)
+            if identity is not None and process_identity(identity["pid"]) == identity:
+                raise ValueError(
+                    "previous audit runner/CLI is still active; use the existing runner's status/stop before resuming"
+                )
+        if value.get("cleanup_complete") is not True:
+            raise ValueError(
+                "previous audit cleanup is unconfirmed; reconcile the existing runner before resuming"
+            )
 
 
-def _strings(value: Any, name: str, *, empty: bool = True) -> list[str]:
+def interrupt_tasks(book: Ledger, reason: str) -> None:
+    for task in book.snapshot["tasks"].values():
+        if task["status"] == "running":
+            book.record_task(
+                {
+                    **task,
+                    "status": "interrupted",
+                    "finished_at": timestamp(),
+                    "conclusion": reason,
+                    "unconfirmed": [
+                        {
+                            "scope": " / ".join(task["scope"]),
+                            "reason": reason,
+                            "resume": "同じタスクIDの新しいnative子で再開",
+                        }
+                    ],
+                },
+                at=timestamp(),
+            )
+
+
+def capture_unreceived(book: Ledger, runtime_dir: Path) -> None:
+    """Keep a spawn interrupted before MCP binding traceable, without declaring success."""
+    eligible = {
+        key: row
+        for key, row in book.snapshot["tasks"].items()
+        if row["status"] in {"planned", "failed", "interrupted"}
+    }
+    if not eligible:
+        return
+    try:
+        observed = native.inspect_run(runtime_dir)
+    except native.NativeEvidenceError:
+        return  # verify() reports the missing evidence; it is never accepted here.
+    history = strict_json(book.path.read_bytes())["events"]
+    bound = {e["data"]["agent_id"] for e in history if e["kind"] == "task.recorded"}
+    for child in observed.agents:
+        key = child.task_name.removeprefix("/root/")
+        if child.agent_id not in bound and key in eligible:
+            book.record_task(
+                {
+                    **eligible[key],
+                    "status": "running",
+                    "agent_id": child.agent_id,
+                    "started_at": child.started_at,
+                    "finished_at": None,
+                    "conclusion": "",
+                    "evidence": [],
+                    "next_questions": [],
+                    "unconfirmed": [],
+                },
+                at=timestamp(),
+            )
+
+
+def _failed_before_session(path: Path) -> bool:
+    value = strict_json((path / "result.json").read_bytes())
+    return bool(
+        type(value.get("schema_version")) is int
+        and value["schema_version"] == 1
+        and value.get("contract", {}).get("mode") == "read-only"
+        and value.get("contract", {}).get("settings", {}).get("agent") == "codex"
+        and value.get("result") == "failed"
+        and value.get("cleanup_complete") is True
+        and value.get("runtime", {}).get("session_id") is None
+        and value.get("turn_end_reason")
+        in {"startup_failed", "cli_error", "usage_limit"}
+    )
+
+
+def receipts(path: Path, *, slot: str, base_sha: str) -> dict[str, dict[str, Any]]:
+    """Recheck stored content hashes; never replace missing receipts with live data."""
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH)
+        with os.fdopen(os.dup(fd), "rb") as reader:
+            rows = reader.read()
+    finally:
+        os.close(fd)
+    if not rows.endswith(b"\n"):
+        raise ValueError("retrieval journal is truncated")
+    records = [strict_json(line) for line in rows.splitlines()]
+    context = records[0]
     if (
-        not isinstance(value, list)
-        or (not value and not empty)
-        or not all(isinstance(v, str) and v.strip() for v in value)
+        context.get("event") != "context"
+        or context.get("round_id") != slot
+        or context.get("base_sha") != base_sha
     ):
-        raise ValueError(f"{name} must be a list of non-empty strings")
-    if len(value) != len(set(value)):
-        raise ValueError(f"{name} contains duplicates")
-    return value
+        raise ValueError("retrieval journal round/base mismatch")
+    requests: dict[str, dict[str, Any]] = {}
+    responses = {}
+    for row in records[1:]:
+        key = row["receipt"]
+        if row["event"] == "requested":
+            if key in requests:
+                raise ValueError("duplicate retrieval request")
+            requests[key] = row
+        elif row["event"] == "received":
+            response = row["response"]
+            from .retrieval import encode
+
+            if (
+                key not in requests
+                or key in responses
+                or response["receipt"] != key
+                or response["round_id"] != slot
+                or response["base_sha"] != base_sha
+                or hashlib.sha256(encode(response)).hexdigest()
+                != row["response_sha256"]
+            ):
+                raise ValueError("retrieval receipt/hash mismatch")
+            responses[key] = {"request": requests[key], "response": response}
+        else:
+            raise ValueError("unknown retrieval journal event")
+    return responses
 
 
-def _result(row: Any, key: str, base: str) -> dict[str, Any]:
-    if not isinstance(row, dict) or set(row) != {
-        "id",
-        "agent_id",
-        "agent_type",
-        "base_sha",
-        "started_at",
-        "finished_at",
-        "status",
-        "conclusion",
-        "evidence",
-        "counterevidence",
-        "unconfirmed",
-        "findings",
-    }:
-        raise ValueError(f"{key}: invalid scout result fields")
-    if row["id"] != key or row["base_sha"] != base or row["agent_type"] != "scout":
-        raise ValueError(f"{key}: assignment/base/role mismatch")
-    _text(row, "agent_id")
-    start, end = (
-        datetime.fromisoformat(_text(row, field))
-        for field in ("started_at", "finished_at")
-    )
-    if start.tzinfo is None or end.tzinfo is None or end <= start:
-        raise ValueError(f"{key}: invalid scout time interval")
-    if row["status"] not in {"completed", "failed", "interrupted"}:
-        raise ValueError(f"{key}: invalid status")
-    _text(row, "conclusion")
-    _strings(row["evidence"], "evidence", empty=row["status"] != "completed")
-    _strings(row["counterevidence"], "counterevidence")
-    gaps = row["unconfirmed"]
-    if not isinstance(gaps, list):
-        raise ValueError(f"{key}: unconfirmed must be a list")
-    for gap in gaps:
-        if not isinstance(gap, dict) or set(gap) != {"scope", "reason", "resume"}:
-            raise ValueError(f"{key}: unconfirmed requires scope, reason and resume")
-        for field in ("scope", "reason", "resume"):
-            _text(gap, field)
-    if row["status"] == "completed" and row["unconfirmed"]:
-        raise ValueError(f"{key}: completed scout has unconfirmed scope")
-    if row["status"] != "completed" and not row["unconfirmed"]:
-        raise ValueError(f"{key}: failure must explain scope, reason and resumption")
-    if not isinstance(row["findings"], list):
-        raise ValueError(f"{key}: findings must be a list")
-    seen = set()
-    for finding in row["findings"]:
-        if not isinstance(finding, dict) or set(finding) != {
-            "topic",
-            "position",
-            "conclusion",
-            "evidence",
-        }:
-            raise ValueError(f"{key}: invalid finding")
-        topic = _text(finding, "topic")
-        if not _KEY.fullmatch(topic) or topic in seen:
-            raise ValueError(f"{key}: invalid/duplicate finding topic")
-        seen.add(topic)
-        if finding["position"] not in {"support", "oppose"}:
-            raise ValueError(f"{key}: invalid finding position")
-        _text(finding, "conclusion")
-        _text(finding, "evidence")
-    return row
-
-
-def _overlap(results: dict[str, dict[str, Any]]) -> bool:
-    intervals = [
-        (
-            datetime.fromisoformat(row["started_at"]),
-            datetime.fromisoformat(row["finished_at"]),
-        )
-        for row in results.values()
-        if row["status"] == "completed"
-    ]
-    return any(
-        max(a[0], b[0]) < min(a[1], b[1])
-        for i, a in enumerate(intervals)
-        for b in intervals[i + 1 :]
-    )
-
-
-def requested(results: dict[str, dict[str, Any]]) -> list[str]:
-    keys = [
-        key
-        for key in AREAS
-        if key not in results or results[key]["status"] != "completed"
-    ]
-    if not _overlap(results):
-        # A serial or single-result attempt needs two scouts again to establish
-        # concurrency. Otherwise a retry could remain incomplete forever.
-        keys += [key for key in AREAS if key not in keys][: max(0, 2 - len(keys))]
-    return keys
-
-
-@dataclass
-class Audit:
-    results: dict[str, dict[str, Any]]
-    errors: list[str]
-    decisions: list[dict[str, Any]]
-    complete: bool
-    analysis: agent.AgentReport
-
-    def record(self) -> dict[str, Any]:
-        return {k: v for k, v in asdict(self).items() if k != "analysis"}
-
-
-def integrate(
-    text: str,
-    plan: dict[str, Any],
-    stale: set[int],
-    *,
-    previous: dict[str, Any] | None = None,
-    failure: str | None = None,
-) -> Audit:
-    """Validate each result independently and keep only traceable proposals.
-
-    A malformed parent integration suppresses its proposals/memory, while valid
-    scout conclusions remain publishable. Duplicate assignment returns invalidate
-    that assignment, rather than arbitrarily choosing a winner.
-    """
-    results = dict(previous or {})
-    for key, row in results.items():
-        if key not in AREAS:
-            raise ValueError("checkpoint contains an unknown assignment")
-        _result(row, key, plan["base_sha"])
-    pending = set(requested(results))
+def verify(
+    book: Ledger, attempts: list[str], journal: Path, max_threads: int
+) -> tuple[list[str], set[str]]:
+    """Cross-check every current success and retain older attempts as evidence."""
     errors = []
-    try:
-        if failure:
-            raise ValueError(failure)
-        data = agent._extract_json(text)
-        if not isinstance(data, dict) or set(data) != {
-            "summary",
-            "proposals",
-            "stale_pr_notes",
-            "memory_update",
-            "assignments",
-            "decisions",
-        }:
-            raise ValueError("invalid parent JSON fields")
-        rows = data["assignments"]
-        if not isinstance(rows, list):
-            raise ValueError("assignments must be a list")
-    except ValueError as exc:
-        data, rows = {}, []
-        errors.append(f"親の実行/返却: {exc}")
-    counts = Counter(
-        row.get("id")
-        for row in rows
-        if isinstance(row, dict) and isinstance(row.get("id"), str)
-    )
-    if any(
-        not isinstance(row, dict)
-        or not isinstance(row.get("id"), str)
-        or row["id"] not in pending
-        for row in rows
-    ):
-        errors.append("担当外または不正な返却（再利用済み担当の再返却を含む）")
-    for key in sorted(pending):
-        results.pop(key, None)
-        if counts[key] != 1:
-            errors.append(f"{key}: 返却{counts[key]}件（欠落/重複）")
-            continue
+    observed: dict[str, native.NativeAgent] = {}
+    history = strict_json(book.path.read_bytes())["events"]
+    owners: dict[str, str] = {}
+    for event in history:
+        if event["kind"] == "task.recorded" and event["data"]["agent_id"]:
+            row = event["data"]
+            key = row["agent_id"]
+            if key in owners and owners[key] != row["id"]:
+                errors.append("native ID is assigned to multiple ledger tasks")
+            owners[key] = row["id"]
+    for path in attempts:
         try:
-            results[key] = _result(
-                next(
-                    row
-                    for row in rows
-                    if isinstance(row, dict) and row.get("id") == key
-                ),
-                key,
-                plan["base_sha"],
-            )
-        except (ValueError, TypeError) as exc:
-            errors.append(f"{key}: 不正な返却: {exc}")
-    identities = [row["agent_id"] for row in results.values()]
-    if len(identities) != len(set(identities)):
-        repeated = {value for value, count in Counter(identities).items() if count > 1}
-        for key in list(results):
-            if results[key]["agent_id"] in repeated:
-                errors.append(f"{key}: native agent_idの重複")
-                del results[key]
-    done = {key: row for key, row in results.items() if row["status"] == "completed"}
-    for key in AREAS.keys() - done.keys():
-        if key in results:
-            errors.append(
-                f"{key}: {results[key]['status']}: "
-                + "; ".join(
-                    f"{gap['scope']}: {gap['reason']} / 再開: {gap['resume']}"
-                    for gap in results[key]["unconfirmed"]
-                )
-            )
-    if not _overlap(done):
-        errors.append("2つ以上のnative scoutの実行時間が重なる記録がない")
-    decisions: list[dict[str, Any]] = []
-    analysis = agent.AgentReport(
-        "確認済みの担当結果を以下に掲載。親の統合は未完了。", [], {}, None
-    )
-    try:
-        findings = {
-            f"{key}:{f['topic']}": f
-            for key, row in done.items()
-            for f in row["findings"]
-        }
-        raw_decisions = data.get("decisions")
-        if not isinstance(raw_decisions, list):
-            raise ValueError("decisions must be a list")
-        seen: set[str] = set()
-        publishable = []
-        for decision in raw_decisions:
-            if not isinstance(decision, dict) or set(decision) != {
-                "sources",
-                "outcome",
-                "reason",
-                "evidence",
-            }:
-                raise ValueError("invalid integration decision fields")
-            sources = _strings(decision["sources"], "decision.sources", empty=False)
-            if not set(sources) <= findings.keys() or seen.intersection(sources):
-                raise ValueError(
-                    "integration refers to missing/invalid/duplicate findings"
-                )
-            seen.update(sources)
-            group = [findings[s] for s in sources]
-            topic = group[0]["topic"]
-            if any(f["topic"] != topic for f in group) or set(sources) != {
-                s for s, f in findings.items() if f["topic"] == topic
-            }:
-                raise ValueError("same topic must be integrated together exactly once")
-            outcome = decision["outcome"]
-            _text(decision, "reason")
-            _text(decision, "evidence")
-            if outcome not in {
-                "propose",
-                "duplicate",
-                "resolved",
-                "existing_issue",
-                "deferred",
-                "conflict",
-            }:
-                raise ValueError("invalid integration outcome")
-            opposed = len({f["position"] for f in group}) > 1
-            if opposed and outcome not in {"resolved", "conflict"}:
-                raise ValueError(
-                    "contradictory findings require resolved evidence or conflict"
-                )
-            if outcome in {"resolved", "conflict"} and not opposed:
-                raise ValueError("resolved/conflict must refer to opposing findings")
-            if outcome == "duplicate" and len(group) < 2:
-                raise ValueError("duplicate requires multiple findings")
-            if outcome == "conflict":
-                errors.append(
-                    f"未解決の矛盾 {topic}: {decision['reason']} / 再開: 親が根拠を照合して再統合"
-                )
-            if outcome in {"propose", "duplicate", "resolved"}:
-                if len(group) > 1 and not opposed and outcome != "duplicate":
-                    raise ValueError(
-                        "duplicate findings require one duplicate decision"
+            run = native.inspect_run(Path(path))
+            run_agents = {}
+            for child in run.agents:
+                if child.agent_id in observed or owners.get(
+                    child.agent_id
+                ) != child.task_name.removeprefix("/root/"):
+                    raise native.NativeEvidenceError(
+                        "unassigned/duplicate native launch or task name mismatch"
                     )
-                publishable.append(frozenset(sources))
-            decisions.append(decision)
-        if seen != findings.keys():
-            raise ValueError("integration is missing scout findings")
-        props = data["proposals"]
-        if not isinstance(props, list):
-            raise ValueError("proposals must be a list")
-        links = [
-            frozenset(_strings(p.get("sources"), "proposal.sources", empty=False))
-            for p in props
-            if isinstance(p, dict)
-        ]
-        if len(links) != len(props) or Counter(links) != Counter(publishable):
-            raise ValueError("proposals must match publishable decisions exactly once")
-        titles = [" ".join(_text(p, "title").split()).casefold() for p in props]
-        if len(titles) != len(set(titles)):
-            raise ValueError("duplicate proposal titles must be integrated")
-        notes = data["stale_pr_notes"]
-        if not isinstance(notes, dict) or any(not k.isdigit() for k in notes):
-            raise ValueError("invalid stale_pr_notes")
-        note_keys = {int(k) for k in notes}
-        if not note_keys <= stale:
-            raise ValueError("unexpected stale PR notes")
-        if note_keys != stale:
-            errors.append(f"放置PRの未確認: {sorted(stale - note_keys)}")
-        aggregate = {
-            k: data[k]
-            for k in ("summary", "proposals", "stale_pr_notes", "memory_update")
-        }
-        analysis = agent.parse_agent_output(json.dumps(aggregate), note_keys)
-        # This source link is script-written and survives Markdown neutralization.
-        analysis = agent.AgentReport(
-            analysis.summary,
-            [
-                agent.Proposal(
-                    **{
-                        **asdict(prop),
-                        "evidence": prop.evidence
-                        + " / 担当: "
-                        + ", ".join(raw["sources"])
-                        + f" / base={plan['base_sha']}",
+                run_agents[child.agent_id] = child
+            intervals = [(datetime.fromisoformat(c.started_at), 1) for c in run.agents]
+            intervals += [
+                (datetime.fromisoformat(c.completed_at), -1)
+                for c in run.agents
+                if c.completed_at
+            ]
+            active = 0
+            for _, delta in sorted(intervals):
+                active += delta
+                if active > max_threads:
+                    raise native.NativeEvidenceError(
+                        "native concurrency exceeds OPS_REPORT_MAX_THREADS"
+                    )
+            observed.update(run_agents)
+        except native.NativeEvidenceError as exc:
+            # A prior startup failure remains recorded as a failed attempt, but
+            # does not invalidate a later run that actually completed the work.
+            if path == attempts[-1] or not _failed_before_session(Path(path)):
+                errors.append(str(exc))
+    tasks = book.snapshot["tasks"]
+    invalid_tasks = set()
+    for key, row in tasks.items():
+        current_child = observed.get(row["agent_id"])
+        if row["status"] == "completed" and (
+            current_child is None or current_child.status != "completed"
+        ):
+            errors.append(
+                f"{key}: completed task has no completed native execution evidence"
+            )
+            invalid_tasks.add(key)
+    if not observed:
+        errors.append("native起動0件: 実行証拠を確認できない")
+    invalid_evidence = set()
+    try:
+        acquired = receipts(
+            journal, slot=book.snapshot["slot"], base_sha=book.snapshot["base_sha"]
+        )
+        for key, row in book.snapshot["evidence"].items():
+            if row["source_kind"] == "isolated-cpu-test":
+                try:
+                    usable = verify_cpu_evidence(row, journal, acquired)
+                    affected = {
+                        f["id"]
+                        for f in book.snapshot["findings"].values()
+                        if f["status"] in {"confirmed", "refuted"}
+                        and key in [*f["evidence"], *f["counterevidence"]]
                     }
+                    if not usable and affected:
+                        raise ValueError("CPU test remains needs-reproduction")
+                except (
+                    OSError,
+                    ValueError,
+                    KeyError,
+                    TypeError,
+                    RetrievalError,
+                ) as exc:
+                    invalid_evidence.add(key)
+                    errors.append(f"{key}: 隔離テストの根拠が未確認/不一致: {exc}")
+                continue
+            receipt = row["reference"].rsplit(" / receipt=", 1)[-1]
+            found = acquired.get(receipt)
+            if (
+                found is None
+                or not found["response"]["ok"]
+                or evidence_record(key, found) != row
+            ):
+                invalid_evidence.add(key)
+                errors.append(
+                    f"{key}: 根拠の取得記録が欠落/不一致。原本receiptを復元して同じ回で再開する"
                 )
-                for prop, raw in zip(analysis.proposals, props, strict=True)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        invalid_evidence.update(book.snapshot["evidence"])
+        errors.append(f"取得記録の照合: {exc}")
+    invalid_findings = {
+        key
+        for key, f in book.snapshot["findings"].items()
+        if f["task_id"] in invalid_tasks
+        or invalid_evidence.intersection([*f["evidence"], *f["counterevidence"]])
+    }
+    return errors, invalid_findings
+
+
+def verify_cpu_evidence(
+    row: dict[str, Any], journal: Path, acquired: dict[str, dict[str, Any]]
+) -> bool:
+    """Verify the shared executor's manifest/log without running a test again."""
+    from lib.review_tools.reproduction import RUN_ID, digest, recorded_bytes
+
+    run_id = row["id"].removeprefix("cpu-test-")
+    if not row["id"].startswith("cpu-test-") or not RUN_ID.fullmatch(run_id):
+        raise ValueError("invalid CPU evidence ID")
+    directory = journal.parent / "reproduction" / run_id
+    manifest = directory / "result.json"
+    if directory.is_symlink() or manifest.is_symlink():
+        raise ValueError("CPU record must not be a symlink")
+    raw = recorded_bytes(manifest)
+    result = strict_json(raw)
+    reference = manifest.as_uri() + "#sha256=" + digest(raw)
+    expected = {
+        "id": "cpu-test-" + run_id,
+        "source_kind": "isolated-cpu-test",
+        "reference": reference,
+        "acquired_at": result["finished_at"],
+        "target_version": result["base_sha"],
+        "pr_head": None,
+    }
+    linked = [
+        acquisition
+        for acquisition in acquired.values()
+        if acquisition["request"]["tool"] == "cpu_tests"
+        and any(
+            s.get("reference") == reference for s in acquisition["response"]["sources"]
+        )
+    ]
+    if (
+        row != expected
+        or len(linked) != 1
+        or result["run_id"] != run_id
+        or result["slot"] != linked[0]["response"]["round_id"]
+        or result["base_sha"] != linked[0]["response"]["base_sha"]
+    ):
+        raise ValueError("CPU manifest/ledger/receipt identity mismatch")
+    if (
+        result["log_sha256"] is not None
+        and digest(recorded_bytes(directory / "pytest.log")) != result["log_sha256"]
+    ):
+        raise ValueError("CPU test log content changed")
+    usable = bool(result["disposition"] == "test-result")
+    if usable and (
+        not linked[0]["response"]["ok"]
+        or result["status"] != "passed"
+        or result["cleanup"] != "removed-clean"
+        or result["source_before"] != result["source_after"]
+        or result["process"]["reason"] != "exited"
+        or result["process"]["exit_code"] != 0
+        or result["log_sha256"] is None
+    ):
+        raise ValueError("CPU test completion/cleanup is unverified")
+    return usable
+
+
+def evidence_record(key: str, acquisition: dict[str, Any]) -> dict[str, Any]:
+    response = acquisition["response"]
+    sources = response["sources"]
+    versions = {s["sha"] for s in sources if s.get("kind") == "git"}
+    heads = {s["pr_head_sha"] for s in sources if s.get("pr_head_sha")}
+    if len(versions) > 1 or len(heads) > 1:
+        raise ValueError("a ledger evidence record must identify a single version")
+    args = acquisition["request"]["arguments"]
+    return {
+        "id": key,
+        "source_kind": "code"
+        if versions == {response["base_sha"]}
+        else "record"
+        if versions
+        else "github",
+        "reference": " / ".join(s["url"] for s in sources)
+        + " / range="
+        + json.dumps(args, ensure_ascii=False, sort_keys=True)
+        + " / receipt="
+        + response["receipt"],
+        "acquired_at": response["retrieved_at"],
+        "target_version": next(
+            iter(versions),
+            next(
+                (s["head_sha"] for s in sources if s.get("head_sha")),
+                response["base_sha"],
+            ),
+        ),
+        "pr_head": next(iter(heads), None),
+    }
+
+
+def finish(
+    book: Ledger,
+    ending: dict[str, Any] | None,
+    errors: list[str],
+    invalid_findings: set[str],
+) -> bool:
+    """Only the host ends the round, after execution and source verification."""
+    for key in invalid_findings:
+        finding = book.snapshot["findings"][key]
+        if finding["status"] in {"confirmed", "refuted"}:
+            book.record_finding({**finding, "status": "unverified"}, at=timestamp())
+    interrupt_tasks(book, "親終了時に子の結果が未受領（親中断または子の失敗）")
+    if ending is None:
+        errors.append("親の終了理由が未記録")
+        ending = {
+            "status": "incomplete",
+            "reason": "親の調査が中断した",
+            "checked_scope": [],
+            "excluded_scope": [],
+            "unverified_risks": [],
+            "further_investigation": [],
+        }
+    if errors:
+        ending = {
+            **ending,
+            "status": "incomplete",
+            "reason": ending["reason"] + " / " + "; ".join(errors),
+            "unverified_risks": [
+                *ending["unverified_risks"],
+                *[
+                    {
+                        "scope": "実行・取得根拠の照合",
+                        "reason": e,
+                        "resume": "原本記録を確認し report --if-due で同じissueを再開",
+                    }
+                    for e in errors
+                ],
             ],
-            analysis.stale_pr_notes,
-            analysis.memory_update,
-        )
-    except (ValueError, TypeError, KeyError) as exc:
-        errors.append(f"親の統合: {exc}")
-    complete = len(done) == len(AREAS) and not errors
-    if not complete:
-        # Defer *all* memory writes until complete, including summary/date updates.
-        analysis = agent.AgentReport(
-            analysis.summary, analysis.proposals, analysis.stale_pr_notes, None
-        )
-    return Audit(results, errors, decisions, complete, analysis)
+        }
+    handoff.record_proposal_handoffs(book, at=timestamp())
+    book.end(ending, at=timestamp())
+    return bool(ending["status"] == "completed")

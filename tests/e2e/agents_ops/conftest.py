@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import stat
@@ -10,6 +11,7 @@ import subprocess
 import sys
 from collections.abc import Iterator
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -264,6 +266,7 @@ out="" prompt="" agent=""
 while (($#)); do
   case "$1" in
     --out) out="$2"; shift 2 ;;
+    --mcp-config) export FAKE_AUDIT_MCP_CONFIG="$2"; shift 2 ;;
     --prompt-file) prompt="$2"; shift 2 ;;
     --agent) agent="$2"; shift 2 ;;
     *) shift ;;
@@ -276,13 +279,6 @@ if [[ -n "${FAKE_AGENT_SPAWN:-}" ]]; then
   # A descendant like the tools a real agent CLI starts; it must not outlive the run.
   sleep 300 >/dev/null 2>&1 &
   echo $! > "$FAKE_AGENT_SPAWN"
-fi
-if [[ -n "${FAKE_AGENT_HANG:-}" ]]; then
-  sleep 300
-fi
-if [[ -n "${FAKE_AGENT_FAIL:-}" ]]; then
-  echo "fake agent: quota exhausted" >&2
-  exit 3
 fi
 "$FAKE_AUDIT_PYTHON" "$FAKE_AUDIT_SCRIPT" "$prompt" "$FAKE_AGENT_OUTPUT" "$out"
 """
@@ -478,6 +474,69 @@ class OpsEnv:
             else json.dumps(payload, ensure_ascii=False)
         )
         Path(self.env["FAKE_AGENT_OUTPUT"]).write_text(text, encoding="utf-8")
+
+    def publish_proposal_fixture(self) -> None:
+        """Feed triage's published-proposal contract independently of audit routing."""
+        sys.path.insert(0, str(ROOT / ".agents/ops/ops-report"))
+        proposals = importlib.import_module("opsreport.proposals")
+        payload = json.loads(Path(self.env["FAKE_AGENT_OUTPUT"]).read_text())
+        props = [
+            proposals.Proposal(
+                section=proposals.STALE_PR_SECTION,
+                title="#7 放置されたPR",
+                detail="推奨: rebaseして仕上げ",
+                evidence="#7",
+                options=proposals.STALE_PR_OPTIONS,
+                purpose="PRの対応を判断する。",
+                scope="PR #7",
+                expected_effect="放置状態を解消する。",
+                acceptance=("対応結果を記録する。",),
+            )
+        ]
+        for raw in payload["proposals"]:
+            args = {k: v for k, v in raw.items() if k != "category"}
+            props.append(
+                proposals.Proposal(
+                    section=proposals.CATEGORIES[raw["category"]], **args
+                )
+            )
+        markdown, ids = proposals.render_proposals(props, "20261012")
+        base = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=self.repo, text=True
+        ).strip()
+        body = proposals.report_marker(
+            slot="20261012",
+            since=datetime.fromisoformat("2026-10-09T08:00:00+09:00"),
+            until=datetime.fromisoformat(NOW),
+            proposals=len(ids),
+            base=base,
+        )
+        body += (
+            "\n# 運用レポート\n"
+            + proposals.PROPOSALS_BEGIN
+            + "\n"
+            + markdown
+            + "\n"
+            + proposals.PROPOSALS_END
+            + "\n"
+        )
+        state = self.state
+        number = state["next_number"]
+        state["next_number"] += 1
+        state["issues"].append(
+            {
+                "number": number,
+                "title": "運用レポート 2026-10-12",
+                "body": body,
+                "labels": ["ops-report"],
+                "state": "OPEN",
+                "createdAt": "2026-10-12T00:00:00Z",
+                "updatedAt": "2026-10-12T00:00:00Z",
+                "url": f"https://github.com/o/r/issues/{number}",
+                "author": {"login": "bot"},
+            }
+        )
+        self.write_state(state)
 
     def _cmd(self, args: tuple[str, ...]) -> list[str]:
         cmd = [sys.executable, str(OPS_REPORT), *args]
