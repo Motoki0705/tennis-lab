@@ -14,6 +14,7 @@ from .access import as_parent, parent_state
 from .delivery import Notifiers, dispatch
 from .errors import BoardError
 from .names import Assignment, load_names, resolve_name, timestamp
+from .prose import without_code
 from .records import post_row, post_view, require_participant
 from .safety import public, text
 from .service import _assigned, _reference
@@ -21,37 +22,14 @@ from .storage import Store, directory
 
 # A word/email/path prefix prevents an @ token from becoming a board mention.
 MENTION = re.compile(r"(?<![\w@.+/\-])@([A-Za-z]+)(?![\w@\-])", re.ASCII)
-CODE_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)\r?\n?$")
-INLINE_CODE = re.compile(r"(?<![\\`])(?:\\\\)*(`+)(?!`).*?(?<!`)\1(?!`)", re.DOTALL)
 
 
 def _mentions(body: str) -> list[str]:
     """Extract catalog names and all from prose, leaving code as documentation."""
-    prose: list[str] = []
-    parts: list[str] = []
-    fence: str | None = None
-    for line in body.splitlines(keepends=True):
-        marker = CODE_FENCE.fullmatch(line)
-        if fence is not None:
-            if (
-                marker is not None
-                and marker[1][0] == fence[0]
-                and len(marker[1]) >= len(fence)
-                and not marker[2].strip(" \t")
-            ):
-                fence = None
-        elif marker is not None and (marker[1][0] == "~" or "`" not in marker[2]):
-            # Inline spans cannot cross a fenced code block. An unclosed fence
-            # keeps the rest of the body in code, as in Markdown.
-            parts.append(INLINE_CODE.sub(" ", "".join(prose)))
-            prose.clear()
-            fence = marker[1]
-        else:
-            prose.append(line)
-    parts.append(INLINE_CODE.sub(" ", "".join(prose)))
     catalog = {name.casefold() for name in load_names()} | {"all"}
     return sorted(
-        {match[1].casefold() for match in MENTION.finditer("\n".join(parts))} & catalog
+        {match[1].casefold() for match in MENTION.finditer(without_code(body))}
+        & catalog
     )
 
 

@@ -1084,6 +1084,156 @@ def test_code_mentions_are_neither_destinations_nor_recipient_errors(
 
 
 @pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+@pytest.mark.parametrize("outside", [False, True])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> {fence}text\n> {mentions}\n> {fence}",
+        "> > {fence}text\n> > {mentions}\n> > {fence}",
+        ">>>{fence}text\n>>>{mentions}\n>>>{fence}",
+        "   >   > {fence}text\n > > {mentions}\n> > {fence}",
+        "- {fence}text\n  {mentions}\n  {fence}",
+        "* {fence}text\n  {mentions}\n  {fence}",
+        "+ {fence}text\n  {mentions}\n  {fence}",
+        "1. {fence}text\n   {mentions}\n   {fence}",
+        "12) {fence}text\n    {mentions}\n    {fence}",
+        "123456789. {fence}text\n           {mentions}\n           {fence}",
+        "- Example\n\n  {fence}text\n  {mentions}\n  {fence}",
+        "12. Example\n\n    {fence}text\n    {mentions}\n    {fence}",
+        "-    Example\n\n     {fence}text\n     {mentions}\n     {fence}",
+        "- Example\n  1. {fence}text\n     {mentions}\n     {fence}",
+        "> - {fence}text\n>   {mentions}\n>   {fence}",
+        "- > {fence}text\n  > {mentions}\n  > {fence}",
+        "-\t{fence}text\n\t{mentions}\n\t{fence}",
+        ">\t{fence}text\n>\t{mentions}\n>\t{fence}",
+    ],
+)
+def test_container_code_mentions_do_not_change_post_or_reply_delivery(
+    world: World, command: str, fence: str, outside: bool, template: str
+) -> None:
+    w = world
+    # A fourth active parent makes accidental @all expansion observable even
+    # when a prose mention adds the third parent intentionally.
+    w.change(4, status="active")
+    root = w.post() if command == "reply" else None
+    sender, target = (2, 1) if root else (1, 2)
+    mentions = " ".join(
+        f"@{name}"
+        for name in (
+            "aLl",
+            w.assignments[sender].name,
+            w.assignments[4].name,
+            w.assignments[6].name,
+            w.board.names.load_names()[10],
+            "NotInTheCatalog",
+        )
+    )
+    body = template.format(fence=fence, mentions=mentions)
+    if outside:
+        body += f"\n\n宛先は@{w.assignments[3].name}です。"
+    arguments = {
+        "body": body,
+        "to": [w.assignments[target].name],
+        "notifiers": w.routes,
+    }
+    if root:
+        post = w.board.messages.reply(w.env(sender), post_id=root["id"], **arguments)[
+            "post"
+        ]
+    else:
+        post = w.post(**arguments)
+    assert post["body"] == body
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [target, 3] if outside else [target])
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> {fence}\n> {mentions}\n@{other}",
+        "> > {fence}\n> > {mentions}\n> @{other}",
+        "- {fence}\n  {mentions}\n@{other}",
+        "- {fence}\n  {mentions}\n- @{other}",
+        "1. {fence}\n   {mentions}\n2. @{other}",
+        "> - {fence}\n>   {mentions}\n> - @{other}",
+        "- > {fence}\n  > {mentions}\n  @{other}",
+        "- Example\n  - {fence}\n    {mentions}\n  @{other}",
+        "> Example\n2. {fence}\n   {mentions}\n@{other}",
+        "> - Example\n2. {fence}\n   {mentions}\n@{other}",
+        "- Example\n2. {fence}\n   {mentions}\n@{other}",
+    ],
+)
+def test_unclosed_container_fence_ends_with_its_container(
+    world: World, command: str, fence: str, template: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    sender = 2 if root else 1
+    body = template.format(
+        fence=fence,
+        mentions=f"@all @{w.assignments[sender].name}",
+        other=w.assignments[3].name,
+    )
+    if root:
+        post = w.board.messages.reply(
+            w.env(sender), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 3]
+    else:
+        post = w.post(to=[], body=body)
+        expected = [3]
+    assert post["broadcast"] is False
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "- Example\nlazy paragraph\n  ~~~\n  {mentions}\n  ~~~\n@{other}",
+        "> > Example\n    lazy paragraph\n> > ~~~\n> > {mentions}\n> > ~~~\n> > @{other}",
+        "> ~~~\n> > ~~~\n> {mentions}\n> ~~~\n> @{other}",
+        "> ~~~~\n> ~~~\n> {mentions}\n> ~~~~\n> @{other}",
+        "- ~~~\n  ~~~ suffix\n  {mentions}\n  ~~~\n  @{other}",
+        "-\n\n    ~~~\n    {mentions}\n    ~~~\n@{other}",
+        "-     ~~~\n      {mentions}\n      ~~~\n@{other}",
+        "- Example\n\n      ~~~\n      {mentions}\n      ~~~\n@{other}",
+    ],
+)
+def test_container_and_fence_boundaries_preserve_prose_destinations(
+    world: World, template: str
+) -> None:
+    w = world
+    body = template.format(
+        mentions=f"@all @{w.assignments[1].name}", other=w.assignments[3].name
+    )
+    post = w.post(to=[], body=body)
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [3])
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> ~~text\n> @{other}\n> ~~",
+        "> ```invalid`info\n> @{other}",
+        "- ```invalid`info\n  @{other}",
+        "text\n2. ~~~\n   @{other}",
+        "1234567890. ~~~\n   @{other}",
+    ],
+)
+def test_invalid_fence_or_list_syntax_keeps_prose_mentions(
+    world: World, template: str
+) -> None:
+    w = world
+    post = w.post(to=[], body=template.format(other=w.assignments[3].name))
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [3])
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
 def test_code_mentions_do_not_hide_adjacent_prose_destinations(
     world: World, command: str
 ) -> None:
