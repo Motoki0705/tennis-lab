@@ -34,6 +34,9 @@ subjectsの全issueについて1件ずつ結果を返してください。ops-re
 単独issueは自分の番号をtarget_parentにし、不要な階層を作りません。親候補は既存子の停止・依存と独立作業を区別してください。
 issue:childラベルだけがあって正式親がない場合はhuman_holdとして整合確認へ戻します。
 既存の担当、GitHub assignee、委任予約、関連PR（未mergeのclosedを含む）があればexisting_ownerとして照合・再開へ戻します。
+ただし、mechanical_guardが許容する `ops-report-memory-task:v1` の単独作業issueは、公開処理が作った既存memory PRの正式reviewへの引渡しです。
+未担当で対応するopen PRのslot/HEADが一致する場合、公開レポート・journal・ローカル検証を確認して自律着手を判断できます。
+マーカーだけを合意・review済み・merge許可の証拠にしません。着手する親は既存PRを正式review/gateへ進め、新しい実装workerを起動しません。
 担当親の乗っ取り・新しい親の重複起動は行いません。人間合意のある既存経路は自律根拠で上書きせずhuman_holdとして引き継ぎます。
 dependenciesは正式blocked_byと「依存関係」節の和集合です。同repoの別親の依存も確認してください。
 closed/completedだけを満たされた依存とし、not_planned/duplicate/理由不明は取消・未解決です。未解決ならdependency_waitとします。

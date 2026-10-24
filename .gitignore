@@ -205,3 +205,8 @@ paper/reference/
 # local and immutable at the paths recorded by STATE.md.
 .codex-loop/**/artifacts/
 .codex-loop/**/logs/
+
+# Versioned daily CI consumer contract examples.
+!tests/e2e/agents_ops/fixtures/daily_ci/**/*.json
+!tests/e2e/agents_ops/fixtures/daily_ci/**/*.xml
+!tests/e2e/agents_ops/fixtures/daily_ci/**/*.jsonl

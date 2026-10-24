@@ -1,8 +1,7 @@
-"""Publication journal and a narrow, non-blocking merge path for report memory.
+"""Publish report memory and hand it to the ordinary issue/review/merge loop.
 
-The caller holds schedule.lock (including triage). Only a published issue matching
-the prepared report and author authorizes git/PR writes. CI is inspected once per
-invocation; no agent or PR-review gate is invoked here.
+The caller holds schedule.lock. No CI polling, reviewer launch or merge occurs
+here. The ordinary gate revalidates this journal immediately before merging.
 """
 
 from __future__ import annotations
@@ -20,15 +19,13 @@ from typing import Any
 
 from . import memory, schedule, shell
 
-REVIEW_DIR = Path(__file__).resolve().parents[2] / "review"
-sys.path.insert(0, str(REVIEW_DIR))
-from review_policy import CheckState, normalize_rollup  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from parent.execution import requirement_body  # noqa: E402
 
 LOG = logging.getLogger("ops_report.memory")
-REQUIRED_CHECKS_FILE = Path(__file__).resolve().parents[1] / "required_checks.txt"
 PR_FIELDS = (
     "number,url,state,body,headRefName,headRefOid,baseRefName,baseRefOid,"
-    "isDraft,isCrossRepository,mergeable,statusCheckRollup"
+    "isDraft,isCrossRepository,mergeable"
 )
 TERMINAL = {"merged", "unchanged", "failed"}
 
@@ -63,12 +60,21 @@ class Store:
                 if (
                     set(data) != {"version", "records"}
                     or type(data["version"]) is not int
-                    or data["version"] != 2
+                    or data["version"] not in {2, 3}
                 ):
                     raise ValueError("invalid journal schema/version")
                 if not isinstance(data["records"], dict):
                     raise ValueError("records must be an object")
                 self.records = data["records"]
+                if data["version"] == 2:
+                    # Keep pinned observations/HEAD/terminal outcomes. The former
+                    # waiting stage becomes a handoff, never a legacy merge path.
+                    for row in self.records.values():
+                        row["work_issue"] = None
+                        row["work_issue_create_attempted"] = False
+                        row["validation"] = None
+                        if row["stage"] == "ci_wait":
+                            row["stage"] = "handoff_pending"
                 for slot, row in self.records.items():
                     if (
                         not re.fullmatch(r"\d{8}", slot)
@@ -87,6 +93,13 @@ class Store:
                         or not re.fullmatch(r"[a-f0-9]{64}", publication["body_sha256"])
                     ):
                         raise ValueError("invalid journal publication identity")
+                    if row["work_issue"] is not None and not re.fullmatch(
+                        r"https://github\.com/[^/\s]+/[^/\s]+/issues/[1-9]\d*",
+                        row["work_issue"],
+                    ):
+                        raise ValueError("invalid work issue URL")
+                    if type(row["work_issue_create_attempted"]) is not bool:
+                        raise ValueError("invalid work issue creation journal")
                     memory.parse_update(row["update"])
                     if row["update"] is not None:
                         if not re.fullmatch(r"[a-f0-9]{40}", row["base_sha"]):
@@ -110,7 +123,7 @@ class Store:
                 ) from exc
 
     def save(self) -> None:
-        _atomic_json(self.path, {"version": 2, "records": self.records})
+        _atomic_json(self.path, {"version": 3, "records": self.records})
 
     def prepare(
         self,
@@ -148,6 +161,9 @@ class Store:
             "report_url": None,
             "head": None,
             "pr_url": None,
+            "work_issue": None,
+            "work_issue_create_attempted": False,
+            "validation": None,
         }
         self.save()
 
@@ -181,7 +197,7 @@ class Store:
                         key,
                         "記録なし（公開後の中断を要確認）" if key == "state" else None,
                     )
-                    for key in ("state", "stage", "pr_url", "error")
+                    for key in ("state", "stage", "pr_url", "work_issue", "error")
                 },
             }
             for slot, url in sorted(slots.items())
@@ -253,6 +269,12 @@ class Store:
             row["head"] = self._commit(slot, branch, row, expected)
             self.save()  # persist exact HEAD before any push
         self._verify_commit(row, expected)
+        row["validation"] = self._validation(row, expected)
+        self.save()
+        # Closed/merged legacy PRs are reconciled before creating a new work item.
+        if row["pr_url"] and self._reconcile(slot, branch, row):
+            return
+        self._ensure_work_issue(slot, row, run_dir)
         if not row["pr_url"]:
             row["stage"] = "push"
             self.save()
@@ -274,8 +296,7 @@ class Store:
             else:
                 body_file = run_dir / f"memory-pr-{slot}.md"
                 body_file.write_text(
-                    self._marker(slot, row) + f"\n\n{row['report_url']} の継続観察。\n"
-                    f"変更は `{memory.DIRECTORY}/` のみ。必須CI通過後に専用処理がHEADを照合してマージする。\n",
+                    self._pr_body(slot, row),
                     encoding="utf-8",
                 )
                 pr_url = shell.gh(
@@ -298,9 +319,10 @@ class Store:
                 ):
                     raise ValueError("gh pr create printed no memory PR URL")
                 row["pr_url"] = pr_url
-            row["stage"] = "ci_wait"
-            return  # first publication never waits/polls for CI
-        self._merge(slot, branch, row)
+        pr = self._view(slot, branch, row)
+        self._link_issue(slot, row, pr, run_dir)
+        row["stage"] = "review_handoff"
+        self.save()
 
     @staticmethod
     def _marker(slot: str, row: dict[str, Any]) -> str:
@@ -363,7 +385,7 @@ class Store:
             (target / name).write_text(text, encoding="utf-8")
         shell.git(["add", "--", memory.DIRECTORY], cwd=worktree)
         shell.run_process_group(
-            ["git", "commit", "-m", f"Update ops report memory for {slot}"],
+            ["git", "commit", "-m", f"Update ops report memory for {slot} [skip ci]"],
             cwd=worktree,
             timeout=600,
         )
@@ -387,6 +409,7 @@ class Store:
             raise ValueError(
                 "memory PR changes must be confined to .agents/memory/ops-report/**"
             )
+        shell.git(["diff", "--check", base, head], cwd=self.repo_root)
         if memory.read_tree(self.repo_root, head) != expected:
             raise ValueError("memory commit differs from the published observations")
 
@@ -408,27 +431,7 @@ class Store:
             )
         return pr
 
-    @staticmethod
-    def _ci_ready(pr: dict[str, Any]) -> bool:
-        if pr["mergeable"] not in {"MERGEABLE", "UNKNOWN", "CONFLICTING"}:
-            raise ValueError(f"unknown memory PR mergeable state: {pr['mergeable']!r}")
-        required = [
-            line.split("#", 1)[0].strip()
-            for line in REQUIRED_CHECKS_FILE.read_text().splitlines()
-        ]
-        required = [name for name in required if name]
-        if not required:
-            raise ValueError("memory merge requires a non-empty required_checks.txt")
-        checks = normalize_rollup(pr["statusCheckRollup"] or ())
-        if any(check.state == CheckState.FAILURE for check in checks):
-            raise ValueError("memory PR CI failed; main memory was not changed")
-        return (
-            pr["mergeable"] == "MERGEABLE"
-            and set(required) <= {check.name for check in checks}
-            and all(check.state == CheckState.SUCCESS for check in checks)
-        )
-
-    def _merge(self, slot: str, branch: str, row: dict[str, Any]) -> None:
+    def _reconcile(self, slot: str, branch: str, row: dict[str, Any]) -> bool:
         from .collect import pin_base
 
         pr = self._view(slot, branch, row)
@@ -440,49 +443,156 @@ class Store:
             )
             row.update(state="merged", stage="merged")
             self._remove_clean_worktree(slot, row["head"])
-            return
+            return True
+        self._check_open(row, pr, main.sha)
+        return False
+
+    def _check_open(
+        self, row: dict[str, Any], pr: dict[str, Any], main_sha: str
+    ) -> None:
         if pr["state"] != "OPEN":
             raise ObsoletePR(
                 "memory PR closed without merging; main memory was not changed"
             )
-        if memory.read_tree(self.repo_root, main.sha) != row["files"]:
+        if memory.read_tree(self.repo_root, main_sha) != row["files"]:
             raise ObsoletePR(
                 "main memory advanced after observation; regenerate from its latest version"
             )
         if pr["mergeable"] == "CONFLICTING":
             raise ValueError("memory PR conflicts; main memory was not changed")
-        row["stage"] = "ci_wait"
-        if not self._ci_ready(pr):
-            return
-        # Fresh HEAD and CI immediately before the atomic --match-head merge.
-        fresh = self._view(slot, branch, row)
+
+    @staticmethod
+    def _validation(row: dict[str, Any], expected: dict[str, str]) -> dict[str, str]:
+        return {
+            "head": row["head"],
+            "files_sha256": hashlib.sha256(
+                json.dumps(expected, sort_keys=True, ensure_ascii=False).encode()
+            ).hexdigest(),
+            "checks": "memory.apply_update; exact parent/path/tree; git diff --check",
+        }
+
+    @staticmethod
+    def _work_marker(slot: str, row: dict[str, Any]) -> str:
+        return f"<!-- ops-report-memory-task:v1 slot={slot} publication={row['publication']['body_sha256']} report={row['report_url'].rsplit('/', 1)[1]} -->"
+
+    def _work_body(self, slot: str, row: dict[str, Any]) -> str:
+        return (
+            self._work_marker(slot, row)
+            + f"\n\n## 目的・背景\n\n完了公開レポート {row['report_url']} の観察を専用memoryへ反映する。\n"
+            + f"\n## 対象範囲\n\n`{memory.DIRECTORY}/` のみ。branch `ops-report-memory/{slot}`、HEAD `{row['head']}`。\n"
+            + "公開元とjournalを照合し、既存PRの内容・ローカル検証を確認して正式reviewと通常merge gateへ進める。\n"
+            + "新規実装workerや別PRの作成は不要。HEAD変更・観察の上書き・直接mergeは対象外。\n"
+            + "\n## 完了条件\n\n公開identity・限定path・HEAD・ローカル検証、親の正式review、通常gate、実merge/closeを確認する。\n"
+            + "保守枠の通常merge停止を維持する。PR CIの有無は条件にしない。\n"
+            + f"\n## 検証証拠\n\n{row['validation']['checks']} をHEADに対して実行済み。\n"
+            + "\n## 実行根拠\n\nAIの提案として既存dispatcherの自律着手判断へ渡す。人間の要件合意や担当予約を作成した記録ではない。\n"
+        )
+
+    def _ensure_work_issue(self, slot: str, row: dict[str, Any], run_dir: Path) -> None:
+        body = self._work_body(slot, row)
+        fields = "number,url,state,body,author"
+        if not row["work_issue"]:
+            candidates = shell.gh_list(
+                [
+                    "issue",
+                    "list",
+                    "--state",
+                    "all",
+                    "--search",
+                    f'"ops-report-memory-task:v1 slot={slot}" in:body',
+                    "--json",
+                    fields,
+                ],
+                limit=100,
+                cwd=self.repo_root,
+            )
+            matches = [
+                r
+                for r in candidates
+                if r["body"].split("\n", 1)[0] == self._work_marker(slot, row)
+            ]
+            if len(matches) > 1:
+                raise ValueError("multiple memory work issues; reconcile explicitly")
+            if matches:
+                row["work_issue"] = matches[0]["url"]
+            else:
+                if row["work_issue_create_attempted"]:
+                    raise ValueError(
+                        "memory work issue creation unconfirmed; search again, never resend"
+                    )
+                path = run_dir / f"memory-task-{slot}.md"
+                path.write_text(body, encoding="utf-8")
+                row["work_issue_create_attempted"] = True
+                self.save()
+                row["work_issue"] = shell.gh(
+                    [
+                        "issue",
+                        "create",
+                        "--title",
+                        f"運用レポート {slot} の専用memoryを正式reviewで反映する",
+                        "--label",
+                        "ai-proposed",
+                        "--body-file",
+                        str(path),
+                    ],
+                    cwd=self.repo_root,
+                ).strip()
+            self.save()  # response loss is recovered by the stable marker, not a new issue
+        self._verify_work_issue(slot, row)
+
+    def _verify_work_issue(self, slot: str, row: dict[str, Any]) -> None:
+        issue_url = row["work_issue"]
+        prefix = row["report_url"].rsplit("/", 1)[0] + "/"
         if (
-            fresh["state"] != "OPEN"
-            or fresh["baseRefOid"] != main.sha
-            or not self._ci_ready(fresh)
+            not isinstance(issue_url, str)
+            or not issue_url.startswith(prefix)
+            or not issue_url.removeprefix(prefix).isdigit()
         ):
-            return
-        shell.gh(
+            raise ValueError("memory work issue repository/URL mismatch")
+        issue = shell.gh_json(
             [
-                "pr",
-                "merge",
-                row["pr_url"],
-                "--merge",
-                "--match-head-commit",
-                row["head"],
+                "issue",
+                "view",
+                issue_url.rsplit("/", 1)[1],
+                "--json",
+                "number,url,state,body,author",
             ],
             cwd=self.repo_root,
         )
-        # Success is recorded only after GitHub and origin/main confirm it.
-        merged = self._view(slot, branch, row)
-        main = pin_base(self.repo_root, "origin/main")
-        if merged["state"] != "MERGED":
-            raise ValueError("memory merge not confirmed")
-        shell.git(
-            ["merge-base", "--is-ancestor", row["head"], main.sha], cwd=self.repo_root
+        if (
+            issue["url"] != issue_url
+            or issue["state"] != "OPEN"
+            or issue["author"]["login"] != row["publication"]["author"]
+            or requirement_body(issue["body"])
+            != requirement_body(self._work_body(slot, row))
+        ):
+            raise ValueError("memory work issue changed/closed; reconcile explicitly")
+
+    def _pr_body(self, slot: str, row: dict[str, Any]) -> str:
+        return (
+            self._marker(slot, row)
+            + f"\n\n{row['report_url']} の継続観察。\n"
+            + f"変更は `{memory.DIRECTORY}/` のみ。検証: {row['validation']['checks']}。\n"
+            + "既存dispatcherの自律判断・親の正式review・通常merge gateで進める。\n"
+            + f"\nCloses #{row['work_issue'].rsplit('/', 1)[1]}\n"
         )
-        row.update(state="merged", stage="merged")
-        self._remove_clean_worktree(slot, row["head"])
+
+    def _link_issue(
+        self, slot: str, row: dict[str, Any], pr: dict[str, Any], run_dir: Path
+    ) -> None:
+        body = self._pr_body(slot, row)
+        if pr["body"] != body:
+            if row["stage"] == "review_handoff":
+                raise ValueError("memory PR handoff changed; reconcile explicitly")
+            # Includes migration of old PRs; never change branch/HEAD/content.
+            path = run_dir / f"memory-pr-{slot}.md"
+            path.write_text(body, encoding="utf-8")
+            shell.gh(
+                ["pr", "edit", row["pr_url"], "--body-file", str(path)],
+                cwd=self.repo_root,
+            )
+        if self._view(slot, f"ops-report-memory/{slot}", row)["body"] != body:
+            raise ValueError("memory PR work issue link not confirmed")
 
     def _remove_clean_worktree(self, slot: str, head: str) -> None:
         path = self._worktree(slot)
@@ -494,3 +604,59 @@ class Store:
             ).strip()
         ):
             shell.git(["worktree", "remove", str(path)], cwd=self.repo_root)
+
+
+def validate_for_gate(repo_root: Path, pr: dict[str, Any]) -> None:
+    """Additional content validation inside the ordinary gate, never a merge path.
+
+    Review/coverage/authorization/dependencies/deadline remain the gate's job.
+    The same XDG journal is read without modifying it or acquiring schedule.lock.
+    Atomic journal replacement prevents a partially published handoff being read.
+    """
+    from . import proposals
+    from .collect import pin_base
+
+    store = Store(repo_root)
+    matches = [
+        (slot, row)
+        for slot, row in store.records.items()
+        if row["pr_url"] == pr["html_url"]
+    ]
+    if len(matches) != 1:
+        raise ValueError("memory PR has no unique publication journal")
+    slot, row = matches[0]
+    if (
+        row["state"] != "pending"
+        or row["stage"] != "review_handoff"
+        or row["head"] != pr["head"]["sha"]
+    ):
+        raise ValueError("memory PR handoff/HEAD mismatch")
+    expected = memory.apply_update(
+        row["files"], row["update"], source=row["report_url"], today=date.today()
+    )
+    store._verify_commit(row, expected)
+    if row["validation"] != store._validation(row, expected):
+        raise ValueError("memory PR local validation mismatch")
+    store._verify_work_issue(slot, row)
+    current = store._view(slot, f"ops-report-memory/{slot}", row)
+    if current["body"] != store._pr_body(slot, row) or pr["body"] != current["body"]:
+        raise ValueError("memory PR closing link/identity mismatch")
+    store._check_open(row, current, pin_base(repo_root, "origin/main").sha)
+    report = shell.gh_json(
+        [
+            "issue",
+            "view",
+            row["report_url"].rsplit("/", 1)[1],
+            "--json",
+            "url,body,author",
+        ],
+        cwd=repo_root,
+    )
+    meta, _ = proposals.parse_report(report["body"])
+    if (
+        report["url"] != row["report_url"]
+        or report["author"]["login"] != row["publication"]["author"]
+        or meta.slot != slot
+        or meta.status != "complete"
+    ):
+        raise ValueError("memory publication no longer confirmed")

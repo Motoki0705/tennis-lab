@@ -293,8 +293,8 @@ workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最
 成功扱いはSUCCESS/NEUTRAL/SKIPPEDのみ。不明値はエラー。
 `evaluate_gate(GateInput)` はdraft/fork・競合を判定する部品で、CIは判定入力に含めない。
 `review` 引数には呼出側が親run/coverage/解消証拠から確認した `ReviewOutcome` を渡す。
-専用memory PRの必須CI一覧は [ops-report/required_checks.txt](../ops-report/required_checks.txt) で管理し、
-その限定経路のCI要件は維持する。通常PRのmerge gateはこの一覧を読まない。
+専用memory PRも同じgateを使う。[公開journal](../ops-report/README.md#専用memoryの保存)の照合を追加し、
+成功した投稿identityを作者の根拠にする。agentラベルを捏造せず、review/coverage・HEAD・依存・保守枠の条件を維持する。
 
 作成agentのbranch prefixは `claude/` / `codex/`、補助labelは `agent:claude` / `agent:codex`。
 `detect_author_agent` は矛盾をエラーにするが、親の明示対象を作成agentで自動選別しない。

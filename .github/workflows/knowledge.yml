@@ -1,72 +1,130 @@
 name: Knowledge library
+run-name: daily-ci:${{ inputs.request_id }}
 on:
-  pull_request:
-    paths:
-      - 'knowledge/**'
-      - '.agents/skills/knowledge-control/**'
-      - 'tests/e2e/skills/test_knowledge*.py'
-      - '.github/workflows/knowledge.yml'
-      - '.github/workflows/ci.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'knowledge/**'
-      - '.agents/skills/knowledge-control/**'
-      - 'tests/e2e/skills/test_knowledge*.py'
-      - '.github/workflows/knowledge.yml'
-      - '.github/workflows/ci.yml'
   workflow_dispatch:
+    inputs:
+      cycle_id:
+        required: true
+        type: string
+      generation:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+      target_sha:
+        required: true
+        type: string
+      baseline_sha:
+        required: true
+        type: string
+      deadline_at:
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: knowledge-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: daily-ci-knowledge.yml-${{ inputs.request_id }}
+  cancel-in-progress: false
+env:
+  PYTHONPATH: ${{ github.workspace }}/.agents/ops
+  DAILY_CI_WORKFLOW: knowledge.yml
+  DAILY_CI_SHARD: all
+  DAILY_CI_CYCLE_ID: ${{ inputs.cycle_id }}
+  DAILY_CI_GENERATION: ${{ inputs.generation }}
+  DAILY_CI_REQUEST_ID: ${{ inputs.request_id }}
+  DAILY_CI_TARGET_SHA: ${{ inputs.target_sha }}
+  DAILY_CI_BASELINE_SHA: ${{ inputs.baseline_sha }}
+  DAILY_CI_DEADLINE_AT: ${{ inputs.deadline_at }}
 jobs:
   knowledge:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.target_sha }}
           fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Validate daily request and checkout
+        run: python3 -m daily_ci.workflow init
       - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install CPU validation tools
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install PyYAML pytest
+        run: >-
+          python3 -m daily_ci.workflow run environment -- bash -e -c
+          'python -m venv .venv && .venv/bin/python -m pip install PyYAML pytest'
       - name: Validate graph, run sizes and types, deletion records, references and history
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          args=(--check-summary)
-          if [[ -n "$BASE_REF" ]]; then
-            args+=(--base-ref "$BASE_REF")
-          fi
-          .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py "${args[@]}"
+        run: >-
+          python3 -m daily_ci.workflow run graph --
+          .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py
+          --check-summary --base-ref "$DAILY_CI_BASELINE_SHA"
       - name: Check that repro.sh files reference only reproducible scripts
-        run: .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
+        run: >-
+          python3 -m daily_ci.workflow run repro-paths --
+          .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
       - name: Test storage boundaries, pinned exceptions, deletion integrity and registration
-        run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge*.py
+        run: >-
+          python3 -m daily_ci.workflow run test --
+          .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts=''
+          tests/e2e/skills/test_knowledge*.py
+          -p daily_ci.pytest_evidence --junitxml=.daily-ci-evidence/pytest.junit.xml
+      - name: Finalize evidence
+        if: always()
+        run: python3 -m daily_ci.workflow finalize
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-ci-knowledge.yml-${{ github.job }}-all-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.request_id }}
+          path: .daily-ci-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
   knowledge-webui:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: knowledge/webui
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+          submodules: false
+          persist-credentials: false
+      - name: Validate daily request and checkout
+        run: python3 -m daily_ci.workflow init
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
           cache-dependency-path: knowledge/webui/package-lock.json
-      - name: Validate Web UI
-        run: |
-          npm ci
-          npm run lint
-          npm run test
-          npm run build
-          npx playwright install --with-deps chromium
-          npm run test:e2e
+      - name: Install Web UI dependencies
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui environment -- npm ci
+      - name: Lint Web UI
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui lint -- npm run lint
+      - name: Test Web UI
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui test -- npm run test
+      - name: Build Web UI
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui build -- npm run build
+      - name: Install browser
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui browser-install -- npx playwright install --with-deps chromium
+      - name: Test Web UI end to end
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: ${{ github.workspace }}/.daily-ci-evidence/playwright.junit.xml
+        run: python3 -m daily_ci.workflow run --cwd knowledge/webui test-e2e -- npm run test:e2e -- --reporter=line,junit
+      - name: Finalize evidence
+        if: always()
+        run: python3 -m daily_ci.workflow finalize
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-ci-knowledge.yml-${{ github.job }}-all-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.request_id }}
+          path: .daily-ci-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

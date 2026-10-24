@@ -1,15 +1,41 @@
 name: CI
-
+run-name: daily-ci:${{ inputs.request_id }}
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
-
+    inputs:
+      cycle_id:
+        required: true
+        type: string
+      generation:
+        required: true
+        type: string
+      request_id:
+        required: true
+        type: string
+      target_sha:
+        required: true
+        type: string
+      baseline_sha:
+        required: true
+        type: string
+      deadline_at:
+        required: true
+        type: string
+permissions:
+  contents: read
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+  group: daily-ci-ci.yml-${{ inputs.request_id }}
+  cancel-in-progress: false
+env:
+  PYTHONPATH: ${{ github.workspace }}/.agents/ops
+  DAILY_CI_WORKFLOW: ci.yml
+  DAILY_CI_SHARD: all
+  DAILY_CI_CYCLE_ID: ${{ inputs.cycle_id }}
+  DAILY_CI_GENERATION: ${{ inputs.generation }}
+  DAILY_CI_REQUEST_ID: ${{ inputs.request_id }}
+  DAILY_CI_TARGET_SHA: ${{ inputs.target_sha }}
+  DAILY_CI_BASELINE_SHA: ${{ inputs.baseline_sha }}
+  DAILY_CI_DEADLINE_AT: ${{ inputs.deadline_at }}
 jobs:
   lint-and-test:
     name: Python
@@ -25,8 +51,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.target_sha }}
           fetch-depth: 0
           submodules: false
+          persist-credentials: false
+      - name: Validate daily request and checkout
+        run: python3 -m daily_ci.workflow init
 
       - name: Set up uv and Python 3.11
         uses: astral-sh/setup-uv@v7
@@ -35,29 +65,34 @@ jobs:
           prune-cache: false
           cache-dependency-glob: uv.lock
           cache-suffix: cpu
-
       - name: Install locked CPU environment
-        run: uv sync --locked --no-group gpu --group cpu
-
+        run: python3 -m daily_ci.workflow run environment -- uv sync --locked --no-group gpu --group cpu
       - name: Verify CPU backend
-        run: |
-          .venv/bin/python - <<'PY'
-          import torch
-          import torchvision
-          assert torch.version.cuda is None, torch.__version__
-          print(f"torch={torch.__version__}, torchvision={torchvision.__version__}")
-          PY
-
+        run: >-
+          python3 -m daily_ci.workflow run cpu-backend -- .venv/bin/python -c
+          'import torch, torchvision; assert torch.version.cuda is None, torch.__version__; print(f"torch={torch.__version__}, torchvision={torchvision.__version__}")'
       - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg rclone
-
+        run: >-
+          python3 -m daily_ci.workflow run system-dependencies -- bash -e -c
+          'sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg rclone'
       - name: Lint
-        run: .venv/bin/python -m spin lint
-
+        run: python3 -m daily_ci.workflow run lint -- .venv/bin/python -m spin lint
       - name: Test
         # Long dataset generation/recovery integrations are run explicitly.
         run: >-
+          python3 -m daily_ci.workflow run test --
           .venv/bin/python -m spin test -q --no-cov --dist=worksteal
           --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
+          -p daily_ci.pytest_evidence --junitxml=.daily-ci-evidence/pytest.junit.xml
+      - name: Finalize evidence
+        if: always()
+        run: python3 -m daily_ci.workflow finalize
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-ci-ci.yml-${{ github.job }}-all-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.request_id }}
+          path: .daily-ci-evidence/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

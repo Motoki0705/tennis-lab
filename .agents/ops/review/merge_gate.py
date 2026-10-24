@@ -15,6 +15,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "ops-report"))
 
 from daily_ci import CycleAPI, CycleStore  # noqa: E402
 from daily_ci.model import instant  # noqa: E402
@@ -28,6 +29,7 @@ from merge_gate_policy import (  # noqa: E402
     evaluate_parent_gate,
     publication_errors,
 )
+from opsreport.memory_pr import validate_for_gate as validate_memory_pr  # noqa: E402
 from parent.adopted_tasks import check_task_adoptions  # noqa: E402
 from parent.execution import (  # noqa: E402
     authorization,
@@ -91,6 +93,7 @@ class Collection:
     fix_paths: dict[int, list[str]]
     fix_hashes: dict[int, str]
     errors: dict[int, list[str]]
+    verified_publications: frozenset[int] = frozenset()
 
 
 def repository_default_branch(session: ParentSession) -> str:
@@ -133,6 +136,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
     )
     details, snapshots, paths, fix_paths, fix_hashes = {}, [], {}, {}, {}
     errors: dict[int, list[str]] = {}
+    verified_publications = set()
     for n in candidates:
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
         if raw.get("number") != n:
@@ -169,6 +173,18 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
                 errors[n].append("merged_snapshot_identity_mismatch")
         else:
             current, _ = snapshot(raw)
+        if raw["state"] == "open" and (
+            raw["head"]["ref"].startswith("ops-report-memory/")
+            or "<!-- ops-report-memory:" in (raw.get("body") or "")
+        ):
+            # Publication integrity is an additional input to this same gate.
+            # It never grants review, execution authority or a merge exemption.
+            try:
+                with session.store.unlocked_read():
+                    validate_memory_pr(Path.cwd(), raw)
+                verified_publications.add(n)
+            except (ValueError, OSError, RuntimeError) as exc:
+                errors[n].append(f"memory_publication_invalid: {exc}")
         snapshots.append(current)
         paths[n] = tuple(changed_paths(current["merge_base_sha"], current["head_sha"]))
         if n in targets:
@@ -221,6 +237,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         fix_paths,
         fix_hashes,
         errors,
+        frozenset(verified_publications),
     )
 
 
@@ -347,6 +364,7 @@ def evaluate(
                 base_advances=tuple(advances),
                 inherited_snapshots=frozenset(inherited),
                 parent_needs_human="needs-human" in view.parent.labels,
+                publication_verified=n in view.verified_publications,
             )
         )
         for n in view.candidates

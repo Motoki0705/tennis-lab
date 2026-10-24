@@ -111,6 +111,28 @@ def _collected(ops: Any, slot: str) -> dict[str, Any]:
     raise AssertionError(f"no collected data for {slot}")
 
 
+def _external_merge(ops: Any, slot: str = "20261012") -> None:
+    """Remote fixture only: the exporter must observe, never perform this write.
+
+    Formal gate acceptance/refusal is covered separately by test_memory_gate.
+    """
+    row = _journal(ops)["records"][slot]
+    _git(
+        ops.tmp,
+        "--git-dir",
+        str(ops.tmp / "upstream.git"),
+        "update-ref",
+        "refs/heads/main",
+        row["head"],
+    )
+    state = ops.state
+    pr = next(p for p in state["memory_prs"] if p["url"] == row["pr_url"])
+    pr["state"] = "MERGED"
+    work = next(i for i in state["issues"] if i["url"] == row["work_issue"])
+    work["state"] = "CLOSED"
+    ops.write_state(state)
+
+
 def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) -> None:
     ops = memory_env
     shared = _shared_hashes(ops)
@@ -149,6 +171,7 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
             ]
         )
     )
+    _external_merge(ops)
     _payload(ops, 2)
     second = ops.run(
         "report",
@@ -181,7 +204,8 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
     assert _shared_hashes(ops) == shared
     assert len(ops.state["memory_prs"]) == 2
 
-    # Daily triage does one CI check and merges the second version, without agent.
+    # Daily triage observes the ordinary gate's completed merge, without an agent.
+    _external_merge(ops, "20261015")
     Path(ops.env["FAKE_AGENT_USED"]).unlink()
     # Avoid filing a child in this test; adoption/requirements are #1223's job.
     state = ops.state
@@ -262,6 +286,7 @@ def test_partial_failures_preserve_last_main_and_recover(
     assert len(_reports(ops)) == 1
     assert len(ops.state["memory_prs"]) == 1
     assert _main_files(ops) == original
+    _external_merge(ops)
     complete = ops.run("report", "--if-due")
     assert complete.returncode == 0, complete.stderr
     assert "検証した観察 1" in _main_files(ops)["ci-wait.md"]
@@ -276,7 +301,7 @@ def test_pending_or_failed_memory_is_disclosed_and_main_is_used(
     assert ops.run("report").returncode == 0
     _payload(ops, 2)
     second = ops.run("report", "--now", "2026-10-15T08:00:00+09:00", FAKE_MEMORY_CI=ci)
-    assert second.returncode == (1 if ci == "FAILURE" else 0), second.stderr
+    assert second.returncode == 0, second.stderr
     assert _main_files(ops) == original
     data = _collected(ops, "2026-10-15")
     assert data["ops_memory"]["files"] == original
@@ -286,7 +311,7 @@ def test_pending_or_failed_memory_is_disclosed_and_main_is_used(
     assert _journal(ops)["records"]["20261012"]["state"] == "pending"
 
 
-def test_changed_head_between_ci_and_merge_fails_closed(memory_env: Any) -> None:
+def test_changed_head_after_handoff_fails_closed(memory_env: Any) -> None:
     ops = memory_env
     original = _main_files(ops)
     assert ops.run("report").returncode == 0
@@ -297,7 +322,7 @@ def test_changed_head_between_ci_and_merge_fails_closed(memory_env: Any) -> None
     assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
 
 
-def test_concurrent_reports_and_syncs_only_create_and_merge_once(
+def test_concurrent_reports_and_syncs_only_create_one_handoff(
     memory_env: Any,
 ) -> None:
     ops = memory_env
@@ -307,8 +332,15 @@ def test_concurrent_reports_and_syncs_only_create_and_merge_once(
         assert proc.returncode == 0, (out, err)
     assert len(_reports(ops)) == 1
     assert len(ops.state["memory_prs"]) == 1
-    assert sum(c[:2] == ["pr", "merge"] for c in ops.calls()) == 1
-    assert _journal(ops)["records"]["20261012"]["state"] == "merged"
+    assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
+    row = _journal(ops)["records"]["20261012"]
+    assert row["state"] == "pending" and row["stage"] == "review_handoff"
+    assert (
+        len(
+            [i for i in ops.state["issues"] if "ops-report-memory-task:v1" in i["body"]]
+        )
+        == 1
+    )
 
 
 def test_interrupted_save_leaves_main_valid_and_requires_explicit_dirty_repair(
@@ -429,10 +461,11 @@ def test_partial_report_completion_binds_verified_publication(
     assert complete["title"] == "運用レポート 2026-10-12"
     assert row["state"] == "pending" and row["report_url"] == partial["url"]
     assert len(ops.state["memory_prs"]) == 1
-    assert sum(c[:2] == ["issue", "create"] for c in ops.calls()) == 1
+    assert sum(c[:2] == ["issue", "create"] for c in ops.calls()) == 2
     assert sum(c[:2] == ["issue", "edit"] for c in ops.calls()) == (
         2 if interruption == "before_edit" else 1
     )
+    _external_merge(ops)
     merged = ops.run("triage")
     assert merged.returncode == 0, merged.stderr
     assert _journal(ops)["records"]["20261012"]["state"] == "merged"
@@ -806,6 +839,70 @@ def test_incomplete_scout_defers_all_memory_until_same_report_completes(
     assert len(ops.state["memory_prs"]) == 1
     assert _journal(ops)["records"]["20261012"]["state"] == "pending"
     assert _main_files(ops) == original
+    _external_merge(ops)
     merged = ops.run("report", "--if-due")
     assert merged.returncode == 0, merged.stderr
     assert _journal(ops)["records"]["20261012"]["state"] == "merged"
+
+
+@pytest.mark.parametrize("merged", [False, True])
+def test_v2_journal_reconciles_before_migrating_to_review_handoff(
+    memory_env: Any, merged: bool
+) -> None:
+    ops = memory_env
+    assert ops.run("report").returncode == 0
+    journal = _journal(ops)
+    before = journal["records"]["20261012"].copy()
+    if merged:
+        _external_merge(ops)
+    state = ops.state
+    state["issues"] = [i for i in state["issues"] if i["url"] != before["work_issue"]]
+    state["memory_prs"][0]["body"] = (
+        state["memory_prs"][0]["body"].split("\n", 1)[0] + "\n\n旧CI待ちの本文\n"
+    )
+    ops.write_state(state)
+    journal["version"] = 2
+    row = journal["records"]["20261012"]
+    for key in ("work_issue", "validation", "work_issue_create_attempted"):
+        row.pop(key)
+    row["stage"] = "ci_wait"
+    path = Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    path.write_text(json.dumps(journal))
+    response = ops.run("triage")
+    assert response.returncode == 0, response.stderr
+    after = _journal(ops)
+    row = after["records"]["20261012"]
+    assert after["version"] == 3
+    assert all(
+        row[k] == before[k]
+        for k in ("head", "base_sha", "files", "update", "publication", "pr_url")
+    )
+    assert row["stage"] == ("merged" if merged else "review_handoff")
+    assert (row["work_issue"] is None) == merged
+    assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
+    if not merged:
+        assert (
+            f"Closes #{row['work_issue'].rsplit('/', 1)[1]}"
+            in ops.state["memory_prs"][0]["body"]
+        )
+
+
+def test_work_issue_response_loss_reuses_marker_and_never_resends_unknown(
+    memory_env: Any,
+) -> None:
+    ops = memory_env
+    assert ops.run("report").returncode == 0
+    journal = _journal(ops)
+    issue = journal["records"]["20261012"]["work_issue"]
+    journal["records"]["20261012"]["work_issue"] = None
+    path = Path(ops.env["XDG_STATE_HOME"]) / "tennis-lab-agents/ops-report/memory.json"
+    path.write_text(json.dumps(journal))
+    before = sum(c[:2] == ["issue", "create"] for c in ops.calls())
+    assert ops.run("triage").returncode == 0
+    assert _journal(ops)["records"]["20261012"]["work_issue"] == issue
+    path.write_text(json.dumps(journal))
+    state = ops.state
+    state["issues"] = [i for i in state["issues"] if i["url"] != issue]
+    ops.write_state(state)
+    assert ops.run("triage").returncode == 1
+    assert sum(c[:2] == ["issue", "create"] for c in ops.calls()) == before

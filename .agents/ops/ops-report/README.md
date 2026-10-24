@@ -21,7 +21,6 @@
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
 | `opsreport/memory_pr.py` | 公開確認のjournal、専用worktreeでのcommit/PR、必須CI・パス・HEADを照合する専用マージ処理 |
-| `required_checks.txt` | 専用memory PRの自動mergeに限って必須とするCI check名 |
 | `opsreport/report.py` | issue本文（日本語）の組み立て |
 | `opsreport/triage.py` | 採用チェック・既存受領の記録、既存issue照合、採否のmemory入力 |
 | `opsreport/organization.py` / `organize_prompt.md` | 全open/closed issueとコードの固定入力、read-only整理agent、構造化計画の検証 |
@@ -509,22 +508,24 @@ agentはread-onlyのまま、`memory_update`（`summary` / `upsert` / 理由付�
 3. 公開を確認した更新だけ、元repoの `.claude/worktrees/ops-report-memory-<slot>` に、入力の `origin/main` SHAから専用branch
    `ops-report-memory/<slot>` を作ってcommitし、originへpush、main向けのメモリ専用PRを作る。メインcheckoutは編集しない。
    `null` は `unchanged` と記録する。ログの `memory_result.json` とjournalに段階・PR・エラーを残す。
-4. **次回reportまたは日次triage**で保留PRを1回確認する。CI待ちループは持たず、初回のPR作成直後にはマージしない。
-   レポートjobを長時間占有せず、既存の日次triageを利用して新しいtimerも不要にするためである。
-5. 変更commitが期待したmainを唯一の親とし、追加・削除・rename元を含む全変更が `.agents/memory/ops-report/**` に閉じること、
-   PRのbranch・base・同一repo・本文マーカー・HEADが記録と一致することを検証する。
-   mainの専用memoryが入力後に進んでいれば古い更新で上書きせず停止する。
-6. [`required_checks.txt`](required_checks.txt) の必須CIがすべて存在し成功し、他のcheckも成功、競合なしの場合だけ、
-   PRとCIを再取得してHEADを照合し `gh pr merge --merge --match-head-commit <head>`。
-   CI状態の正規化は既存の `review_policy.normalize_rollup` を使い、PRレビューgateは呼ばない。
-   通常PRのmerge gateがCIを条件にしなくても、この専用経路のCI要件は維持する。
+4. 期待したmainを唯一の親とするcommit、追加・削除・rename元を含む限定path、更新JSONから再生成した内容との一致、
+   `git diff --check` を検査し、HEADと内容digest・検証項目をjournalへ保存する。commit件名には `[skip ci]` を付ける。
+5. 安定した `ops-report-memory-task:v1` マーカーを持つ単独の `ai-proposed` 作業issueを作り、journalの `work_issue` と
+   PR本文の `Closes #N` で結ぶ。作業issueには公開元・slot・固定HEAD・限定path・検証結果・完了条件を保存する。
+   人間合意・担当予約を生成しない。既存 [dispatcherの自律判断](../dispatcher/README.md) がこの未担当のreview引渡しを扱う。
+   通常の既存PR保護のうち、対応する単独issueとopen PRのslot/HEADが一致する引渡しだけはPR存在による拒否を外す。
+   担当・assignee・保留・依存条件は維持し、意味上の着手判断と実行根拠の記録を経て親へ渡す。
+6. 親は公開内容・journal・ローカル検証を確認し、既存PRに対して `record-result`、明示の正式review、[通常gate](../review/README.md#merge-gate) を使う。
+   新しい実装workerや重複PRは不要。通常gateは専用memoryの公開元・作業issue・限定path・内容・最新HEAD・mainの元memoryを再照合する。
+   review/coverage/実行根拠/HEAD/依存/競合・保守枠の停止は通常PRと同じで、CIの有無は条件にしない。
+7. **次回reportまたは日次triage**は保留PRを1回再照合するだけで、reviewの起動もmergeも行わない。
    GitHubのmergeとorigin/mainへの取り込みを確認して初めて `merged` と記録し、cleanな専用worktreeを削除する。
+   PRの未merge close・mainの専用memoryの先行更新は `failed` とし、古い観察を再適用しない。
 
-この専用経路は人間と合意済みのメモリ限定の例外で、Codexレビューや `AGENT_AUTO_MERGE` を要件にしない。
-branchに `codex/` / `claude/` prefixやagentラベルを付けず、通常PRのレビュー対象と混ぜない。
-PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/未完了は保留、CI失敗・保存失敗・HEAD不一致・競合・PRの未merge closeは
-エラーとして非ゼロ終了し、他のレポート生成やtriageは進める。mainの観察が進んだPRと未mergeでcloseされたPRは
-`failed` として記録を残し、以後は再試行しない（次の調査から新しい更新を作る）。レポートの予定状態の成功は**完了issueの公開**を意味し、
+通常gateの作者確認は、agentラベルを捏造せず、検証済み公開journalの投稿identityを使う。
+通常の `AGENT_AUTO_MERGE` と正式review/gateの条件を受け、専用のCI待ち・直接merge経路は持たない。
+PR作成・引渡しをメモリ反映成功とみなさない。保存失敗・HEAD/内容不一致・競合等は理由を残して非ゼロ終了し、
+他のレポート生成やtriageは進める。レポートの予定状態の成功は**完了issueの公開**を意味し、
 メモリの成功はjournalの `merged` / 更新不要の `unchanged` で区別する。
 次のレポートは保留/失敗/中断を冒頭に「専用メモリ未反映」と示し、mainの最後の有効版を使う。
 
@@ -540,18 +541,22 @@ PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/�
 
 - `run.log` / `memory_result.json` / journalの `stage` と実際のissue・PR・branchを照合する。JSON破損はエラーで止まり、初期化し直さない。
   journalを手動修復する場合は先に退避する。`prepared` は準備時の公開情報と履歴が一致するときだけ再開される。
-  公開照合情報を持たない旧journal（version 1）は自動移行せず停止し、公開issueとの明示的な照合・修復を必要とする。
+  journalはversion 3。公開照合identityを持つversion 2は、元の観察・HEAD・terminal結果を保持して移行し、
+  保留PRの旧CI待ちを `handoff_pending` にする。open PRには作業issueとclosingリンクを補い、`review_handoff` として保存する。
+  先にPRの実merge/closeを照合するため、既に終わったPRへ新しい作業issueを作らない。
+  公開照合情報を持たないversion 1は自動移行せず停止し、公開issueとの明示的な照合・修復を必要とする。
 - push/PR作成/APIの一時失敗は原因を直し、`report --if-due` または `triage` を再実行する。
-  commit直後・PR作成直後の記録中断は、期待するcommit内容や既存PRを照合して再利用し、重複公開しない。
+  commit・作業issue・PR作成直後の記録中断は、内容と安定マーカーを照合して再利用し、重複公開しない。
 - 保存途中で専用worktreeがdirtyになった場合は自動resetしない。ログと差分を確認し、対象slotの専用worktreeだけを修復する。
   commit前なら入力mainのclean状態へ戻して再実行する。commit済みbranchを手動削除・付け替えしない。
-- CI失敗は原因解消・同じHEADのCI再実行後に確認する。内容修正でHEADを進めると照合は失敗する。
+- CIなしでも引渡しを進める。内容修正でHEADを進めると照合は失敗する。
   HEAD/内容不一致、mainの観察の先行更新、未merge closeは人間がPRとjournalを確認する。
   古いPRを勝手にrebase/force-pushせず、次回のmain入力から新しい観察を作る。失敗の記録を成功へ書き換えない。
 - `report` とtriageのメモリ処理は同じ `schedule.lock` で排他される。ロックファイルを消して並行実行しない。
 
 テストは `test_ops_report_memory.py`。fake gh / fake agentと実gitで、2回の引き継ぎ・採否、共有5層のハッシュ不変、
-公開/push/PR失敗・CI保留/失敗・HEAD更新・同時起動・保存中断・mainの先行更新・削除/圧縮を検証する。
+公開/push/PR失敗・CIなしの引渡し・HEAD更新・同時起動・journal移行・保存中断・mainの先行更新・削除/圧縮を検証する。
+`test_memory_gate.py` は正式reviewなし・内容不正・HEAD変更・保守枠の拒否と、通常gateの成功を検証する。
 
 ## systemd --user への導入（merge後に人間が行う）
 

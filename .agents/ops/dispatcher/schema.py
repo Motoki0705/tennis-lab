@@ -16,6 +16,7 @@ from parent.policy import (
 )
 
 from .collect import is_container, route
+from .handoffs import memory_report, memory_review_handoff
 from .records import owned_comment
 
 DISPOSITIONS = {
@@ -148,13 +149,22 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
                 facts.append(f"親 #{k} の記録に #{task} の委任予約がある。")
     for pull in snapshot["pulls"]:
         linked = sorted(set(pull["issues"]) & {int(k) for k in family})
-        if linked:
+        if linked and not memory_review_handoff(snapshot, n, pull):
             facts.append(
                 f"PR #{pull['number']} にissue {linked} のclosing指示がある。"
                 f"state={pull['state']}、merged_at={pull['merged_at']}。"
             )
     if facts:
         return {"disposition": "existing_owner", "facts": facts}
+    if memory_report(raw["body"]) is not None and not any(
+        memory_review_handoff(snapshot, n, p) for p in snapshot["pulls"]
+    ):
+        return {
+            "disposition": "information_needed",
+            "facts": [
+                f"#{n} のmemory公開処理とopen PRの引渡しが未確認。実装workerを起動しない。"
+            ],
+        }
     for dep in raw["dependencies"]:
         issue = issues[str(dep)]
         if issue["state"] != "closed" or issue["state_reason"] != "completed":

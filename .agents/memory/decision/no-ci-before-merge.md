@@ -1,14 +1,14 @@
 ---
 title: "merge前にCIを起動せず、CIをmergeの条件にしない"
 applies_to: all
-source: "#1388（2026-10-23のユーザー指示「マージについてCI gateは不要です。そもそもCIをマージ前に起動しないようにしてください。」と、今後の親作業でも既定にするという回答）、#1349 方針7・#1449"
+source: "2026-10-24の本会話（子#1496への指示）と #1349 の合意記録 https://github.com/Motoki0705/tennis-lab/issues/1349#issuecomment-6384460840"
 created: 2026-10-23
 last_verified: 2026-10-24
-evidence: "#1349 方針7のユーザー合意と #1449。.agents/ops/review/review_policy.py の evaluate_gate がCIを判定入力に含めず、merge_gate_policy.py がCIを観測値として記録することを確認する"
+evidence: "#1349 方針7・同合意記録と本会話を照合する。導入状態は親の報告、daily_ci status、実timer/runで別途確認し、合意だけを稼働証拠にしない"
 ---
 
-ユーザーは、PR作成・pushのたびにCIを走らせることも、CIの結果をmergeの条件にすることも求めていない。CIはmerge後のmainでだけ走ればよい。
+ユーザーは、push/PRや各mergeを全体CIの起点にせず、毎日06:00以上09:00未満（JST）の保守枠へ集約することに合意した。初回全体CIは毎日1回、修正merge後の新しいmain SHAへの再CIは同じ枠内で許可する。失敗日の未検証範囲を日付変更で捨てない。
 
-`.github/workflows/ci.yml` は `pull_request` と main への `push` で起動するため、子のコミット件名の末尾に `[skip ci]` を付けると、PRとbranchのpushではCIが起動しない（`pull_request_target` のlabelerは動くが、CIではない）。merge commitの件名には付かないので、merge後のmainではCIが走る。
+検証・修復中は通常mergeを止め、当該cycleに登録した修正PRだけ既存の正式review/gateで進める。全対象の回復を確認したら早期解除し、遅くとも09:00には未復旧でも通常mergeを再開する。未復旧・未検証・停止不明を成功とせず記録・報告し、次回へ持ち越す。日中のローカル検証と正式review、HEAD・差分・依存などの通常gate条件は維持する。専用memory PRも通常経路へ統合し、PR CIを待つ例外を残さない。
 
-**使い方:** 親が子へ実装を委任するときは、全コミットの件名末尾に `[skip ci]` を付けるよう指示する。検証はローカルのpytest・ruff・mypyで行い、PR本文に記録する。親単位レビューと指摘の解消を確認した後、[正規のmerge gate](../../ops/review/README.md#merge-gate) で依存順にmergeする。CIの有無・未完了・失敗では待たない。merge後のmainのCIは確認し、失敗が自分の変更によるものか、main側の既存の失敗かを切り分けて報告する。専用memory PRのCI要件は [限定経路](../../ops/ops-report/README.md#専用memoryの保存) の合意を維持する。
+**使い方:** 子の全コミット件名に `[skip ci]` を付け、pytest・ruff・mypy等のローカル検証をPRへ記録する。各merge後のCI確認を個別に要求せず、[日次cycle](../../ops/daily_ci/README.md) の対象版と証拠で確認する。本会話では、親 #1349 に全実装・検証・正式review・merge・最後のtimer導入まで明示承認された。子 #1496 は実装・検証・PRまで、実CI起動・merge・timer有効化は親が接続検証後にまとめて行う。この記録は運用開始・稼働済みを示さない。
