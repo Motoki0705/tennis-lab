@@ -190,6 +190,11 @@ resolveは同run/result・元のレビューhead・最新fixed snapshotに結び
 
 ## merge gate
 
+日次CI有効化後の06:00〜09:00 JSTは、[daily_ci](../daily_ci/README.md) のrepo共通mutexと
+cycle状態で通常mergeを止める。登録した修復PRは同じ正式条件に加え、headと
+`--daily-ci-cycle <cycle ID>`（または`DAILY_CI_CYCLE_ID`）を照合する。
+cycleを付けた遅延workerは09:00以降も拒否する。CI成功を通常mergeの条件にはしない。
+
 担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
 GitHub API・CI取得・merge通信中はregistry lockを解放し、戻ると担当親の状態変更を照合する。
 gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止めない。

@@ -1,0 +1,13 @@
+[Unit]
+Description=Enforce daily CI deadline independently of its controller
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+OnCalendar=*-*-* 09:00:00 Asia/Tokyo
+Persistent=true
+AccuracySec=1s
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

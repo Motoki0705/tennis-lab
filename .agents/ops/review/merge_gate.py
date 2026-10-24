@@ -16,6 +16,8 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
+from daily_ci import CycleAPI, CycleStore  # noqa: E402
+from daily_ci.model import instant  # noqa: E402
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
     MergeInput,
@@ -370,14 +372,30 @@ def completion(
     return ()
 
 
-def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
+def merge(
+    session: ParentSession, enabled: bool, cycle_id: str | None = None
+) -> dict[str, Any]:
+    environment_cycle = os.environ.get("DAILY_CI_CYCLE_ID")
+    if cycle_id and environment_cycle and cycle_id != environment_cycle:
+        raise ValueError("daily CI cycle argument/environment mismatch")
+    cycle_id = cycle_id or environment_cycle
+    # One mutex for every parent, including remote writes while registry is unlocked.
+    # Nonblocking acquisition never holds the shared parent registry while waiting.
+    api = CycleAPI(CycleStore(session.gh.repo))
+    with api.store.repository_lock():
+        return _merge(session, enabled, api, cycle_id)
+
+
+def _merge(
+    session: ParentSession, enabled: bool, api: CycleAPI, cycle_id: str | None
+) -> dict[str, Any]:
     session.agreed()
     runs = [
         request_manifest(row["request"], instructed=False)
         for row in session.row["reviews"]
     ]
     if not runs:
-        return _merge_request(session, enabled, None, None)
+        return _merge_request(session, enabled, None, None, api, cycle_id)
     latest = {
         pr["number"]: request["review_run_id"]
         for request in runs
@@ -391,7 +409,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
         if p["state"] == "open" and p["number"] not in latest
     }
     if unknown:
-        value = _merge_request(session, enabled, runs[-1], unknown)
+        value = _merge_request(session, enabled, runs[-1], unknown, api, cycle_id)
         results.update({entry["pr"]: entry for entry in value["results"]})
         evaluations.extend(value["evaluations"])
     for _ in range(len(runs) + 1):
@@ -405,7 +423,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
             }
             if not selected:
                 continue
-            value = _merge_request(session, enabled, request, selected)
+            value = _merge_request(session, enabled, request, selected, api, cycle_id)
             for entry in value["results"]:
                 results[entry["pr"]] = entry
                 progressed |= entry["action"] == "merged"
@@ -435,6 +453,8 @@ def _merge_request(
     enabled: bool,
     request: dict[str, Any] | None,
     selected: set[int] | None,
+    api: CycleAPI,
+    cycle_id: str | None,
 ) -> dict[str, Any]:
     results: dict[int, dict[str, Any]] = {}
     evaluations = []
@@ -472,9 +492,16 @@ def _merge_request(
                 evaluations.append(entry)
                 handled.add(n)
                 continue
+            reason = api.merge_reason(n, entry["snapshot"]["head_sha"], cycle_id)
+            if reason:
+                entry.update(
+                    decision="blocked",
+                    reasons=(*entry["reasons"], reason),
+                    action="blocked",
+                )
             results[n] = entry
             evaluations.append(entry)
-            if decisions[n].decision != GateDecision.MERGE or not enabled:
+            if entry["decision"] != GateDecision.MERGE or not enabled:
                 continue
             # Re-read all coverage, base/head/diff, CI, parent state and dependencies
             # immediately before the write. --match-head-commit closes the last race.
@@ -495,6 +522,18 @@ def _merge_request(
             if entry["decision"] != GateDecision.MERGE:
                 continue
             check_adoptions(session, fresh.details[n])
+            reason = api.merge_reason(n, current["head_sha"], cycle_id)
+            if reason:
+                entry.update(decision="blocked", reasons=(reason,))
+                continue
+            if cycle_id:
+                main_ref = object_value(
+                    session.gh.get(f"repos/{session.gh.repo}/git/ref/heads/main")
+                )
+                permit = api.permit_worker(cycle_id)
+                if object_value(main_ref["object"])["sha"] != permit["target_sha"]:
+                    entry.update(decision="blocked", reasons=("daily_ci_main_changed",))
+                    continue
             journal_path = attempt_path(session, n, current["head_sha"])
             if journal_path.exists():
                 entry.update(decision="blocked", reasons=("merge_already_attempted",))
@@ -506,8 +545,24 @@ def _merge_request(
                 "snapshot": current,
                 "status": "attempting",
             }
+            if cycle_id:
+                api.begin_merge(cycle_id, n, current["head_sha"])
             Store.write_json(journal_path, attempt)
             with session.store.unlocked_read():
+                # Recheck after durable bookkeeping and registry unlock as well.
+                if cycle_id:
+                    permit = api.permit_worker(cycle_id)
+                    timeout = min(
+                        60.0,
+                        (instant(permit["deadline_at"]) - api.clock()).total_seconds(),
+                    )
+                    if timeout <= 0:
+                        raise ValueError("daily_ci deadline reached before merge")
+                else:
+                    reason = api.merge_reason(n, current["head_sha"], None)
+                    if reason:
+                        raise ValueError(reason)
+                    timeout = 60.0
                 command = subprocess.run(
                     [
                         "gh",
@@ -522,11 +577,18 @@ def _merge_request(
                     ],
                     capture_output=True,
                     text=True,
-                    timeout=60,
+                    timeout=timeout,
                     check=False,
                 )
             attempt["exit_code"] = command.returncode
             actual = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+            if cycle_id:
+                api.finish_merge(
+                    cycle_id,
+                    n,
+                    current["head_sha"],
+                    actual.get("merge_commit_sha") if actual.get("merged_at") else None,
+                )
             errors = completion(
                 session, actual, write=actual.get("merged_at") is not None
             )
@@ -564,6 +626,7 @@ def parser() -> argparse.ArgumentParser:
     root.add_argument("--repo")
     root.add_argument("--parent", required=True)
     root.add_argument("--state-dir", type=Path, default=state_directory())
+    root.add_argument("--daily-ci-cycle")
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("merge")
     return root
@@ -580,7 +643,7 @@ def main(argv: list[str] | None = None) -> int:
             session = ParentSession(
                 gh, store, issue_number(args.parent, gh.repo), identity
             )
-            value = merge(session, enabled)
+            value = merge(session, enabled, args.daily_ci_cycle)
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return (
             0
