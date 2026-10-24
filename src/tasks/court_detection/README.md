@@ -153,7 +153,7 @@ Colab上ではevaluation/reportの出力をColab skillの`--persist`でDriveへ�
 `--config-name train_data_scaling` は合成のみ（batch 8）・ViT-B＋幅768・更新数基準の専用設定です。
 明示した `*.dataset.json` を生成器の validator で照合し、採択済みの合成画像だけをtrainにします。
 データ版・生成seed・hashをmanifestから記録し、実画像全体を動画単位で固定したval/testで評価します。
-固定分割の生成、必須設定、指定更新数のcheckpoint評価、対数軸の比較表・曲線は
+固定分割の生成、必須設定、checkpointの保持と指定更新数での評価、対数軸の比較表・曲線は
 [データ規模比較](scaling/README.md)を参照してください。
 
 ## 学習前の確認

@@ -1,0 +1,30 @@
+{
+  "disk_after_verification": {
+    "free": 42658000896,
+    "total": 253055008768,
+    "used": 210380230656
+  },
+  "download_seconds": 0,
+  "file_verification": {
+    "clips": 1537,
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "files": 2926,
+    "frames": 903807,
+    "mode": "self_contained",
+    "schema_version": 1,
+    "size_bytes": 157029428456,
+    "status": "verified",
+    "version": "ball-mix1800-720p-all-frame-train-val-v1"
+  },
+  "fresh_destination": false,
+  "mode": "verify_existing",
+  "reference_sha256": "8435adcd7a628fa66c5b29db596b6893e83cd1d5b4db9cdb2e2e94638fdf355e",
+  "sample_seconds": 18.11528575600005,
+  "sampled_windows": 18,
+  "samples_equal": true,
+  "schema_version": 1,
+  "sha256_verification_seconds": 459.4853404579999,
+  "sha256_workers": 4,
+  "status": "verified",
+  "total_seconds": 477.67541437599994
+}

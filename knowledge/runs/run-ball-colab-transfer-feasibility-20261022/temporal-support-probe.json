@@ -1,0 +1,384 @@
+{
+  "schema": "ball-temporal-support-probe.v1",
+  "date": "2026-10-22",
+  "inspected_code_commit": "3eabb5b09ff7f7dfd9eb0dfe4561d83df1622c7e",
+  "source_manifest": "outputs/ball_detection/train/i1231-hybrid-720p-e333-20261018/stage1/data_manifest.json",
+  "source_manifest_sha256": "657e50f569f2befc317b23270670862d8dc7d656ab743b353c1d53f0a213e4d6",
+  "measurement": "CPU metadata-only availability count; no model training or image decoding",
+  "method": {
+    "anchor": "Every existing 32-frame coordinate window in stage1 manifest",
+    "margin": "(frames - 32) // 2 * frame_step",
+    "acceptance": "Any recorded play interval [a,b) satisfies a <= start-margin and start+31*frame_step+margin < b",
+    "group_key": [
+      "source",
+      "group_id"
+    ]
+  },
+  "limitations": [
+    "Not a newly generated long-window manifest or final teacher eligibility check.",
+    "Does not verify annotation validity across extended context or count negative-only windows.",
+    "Counts before enforcing common membership across all compared lengths."
+  ],
+  "rows": [
+    {
+      "split": "train",
+      "frames": 32,
+      "frame_step": 1,
+      "supported_clips": 1324,
+      "supported_source_groups": 254,
+      "existing_32_windows_with_symmetric_context": 31868
+    },
+    {
+      "split": "train",
+      "frames": 32,
+      "frame_step": 2,
+      "supported_clips": 1307,
+      "supported_source_groups": 254,
+      "existing_32_windows_with_symmetric_context": 15534
+    },
+    {
+      "split": "train",
+      "frames": 32,
+      "frame_step": 4,
+      "supported_clips": 1219,
+      "supported_source_groups": 253,
+      "existing_32_windows_with_symmetric_context": 7245
+    },
+    {
+      "split": "train",
+      "frames": 64,
+      "frame_step": 1,
+      "supported_clips": 1306,
+      "supported_source_groups": 254,
+      "existing_32_windows_with_symmetric_context": 26775
+    },
+    {
+      "split": "train",
+      "frames": 64,
+      "frame_step": 2,
+      "supported_clips": 1214,
+      "supported_source_groups": 253,
+      "existing_32_windows_with_symmetric_context": 10852
+    },
+    {
+      "split": "train",
+      "frames": 64,
+      "frame_step": 4,
+      "supported_clips": 871,
+      "supported_source_groups": 227,
+      "existing_32_windows_with_symmetric_context": 3435
+    },
+    {
+      "split": "train",
+      "frames": 128,
+      "frame_step": 1,
+      "supported_clips": 1213,
+      "supported_source_groups": 253,
+      "existing_32_windows_with_symmetric_context": 20768
+    },
+    {
+      "split": "train",
+      "frames": 128,
+      "frame_step": 2,
+      "supported_clips": 861,
+      "supported_source_groups": 227,
+      "existing_32_windows_with_symmetric_context": 6177
+    },
+    {
+      "split": "train",
+      "frames": 128,
+      "frame_step": 4,
+      "supported_clips": 319,
+      "supported_source_groups": 101,
+      "existing_32_windows_with_symmetric_context": 1024
+    },
+    {
+      "split": "train",
+      "frames": 256,
+      "frame_step": 1,
+      "supported_clips": 855,
+      "supported_source_groups": 227,
+      "existing_32_windows_with_symmetric_context": 11678
+    },
+    {
+      "split": "train",
+      "frames": 256,
+      "frame_step": 2,
+      "supported_clips": 316,
+      "supported_source_groups": 101,
+      "existing_32_windows_with_symmetric_context": 1777
+    },
+    {
+      "split": "train",
+      "frames": 256,
+      "frame_step": 4,
+      "supported_clips": 0,
+      "supported_source_groups": 0,
+      "existing_32_windows_with_symmetric_context": 0
+    },
+    {
+      "split": "train",
+      "frames": 512,
+      "frame_step": 1,
+      "supported_clips": 316,
+      "supported_source_groups": 101,
+      "existing_32_windows_with_symmetric_context": 3297
+    },
+    {
+      "split": "train",
+      "frames": 512,
+      "frame_step": 2,
+      "supported_clips": 0,
+      "supported_source_groups": 0,
+      "existing_32_windows_with_symmetric_context": 0
+    },
+    {
+      "split": "train",
+      "frames": 512,
+      "frame_step": 4,
+      "supported_clips": 0,
+      "supported_source_groups": 0,
+      "existing_32_windows_with_symmetric_context": 0
+    },
+    {
+      "split": "val",
+      "frames": 32,
+      "frame_step": 1,
+      "supported_clips": 190,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 5632
+    },
+    {
+      "split": "val",
+      "frames": 32,
+      "frame_step": 2,
+      "supported_clips": 188,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2782
+    },
+    {
+      "split": "val",
+      "frames": 32,
+      "frame_step": 4,
+      "supported_clips": 183,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 1321
+    },
+    {
+      "split": "val",
+      "frames": 64,
+      "frame_step": 1,
+      "supported_clips": 188,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 4874
+    },
+    {
+      "split": "val",
+      "frames": 64,
+      "frame_step": 2,
+      "supported_clips": 183,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2073
+    },
+    {
+      "split": "val",
+      "frames": 64,
+      "frame_step": 4,
+      "supported_clips": 150,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 712
+    },
+    {
+      "split": "val",
+      "frames": 128,
+      "frame_step": 1,
+      "supported_clips": 182,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 3967
+    },
+    {
+      "split": "val",
+      "frames": 128,
+      "frame_step": 2,
+      "supported_clips": 149,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 1310
+    },
+    {
+      "split": "val",
+      "frames": 128,
+      "frame_step": 4,
+      "supported_clips": 61,
+      "supported_source_groups": 21,
+      "existing_32_windows_with_symmetric_context": 275
+    },
+    {
+      "split": "val",
+      "frames": 256,
+      "frame_step": 1,
+      "supported_clips": 148,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2485
+    },
+    {
+      "split": "val",
+      "frames": 256,
+      "frame_step": 2,
+      "supported_clips": 61,
+      "supported_source_groups": 21,
+      "existing_32_windows_with_symmetric_context": 503
+    },
+    {
+      "split": "val",
+      "frames": 256,
+      "frame_step": 4,
+      "supported_clips": 9,
+      "supported_source_groups": 1,
+      "existing_32_windows_with_symmetric_context": 35
+    },
+    {
+      "split": "val",
+      "frames": 512,
+      "frame_step": 1,
+      "supported_clips": 61,
+      "supported_source_groups": 21,
+      "existing_32_windows_with_symmetric_context": 950
+    },
+    {
+      "split": "val",
+      "frames": 512,
+      "frame_step": 2,
+      "supported_clips": 9,
+      "supported_source_groups": 1,
+      "existing_32_windows_with_symmetric_context": 60
+    },
+    {
+      "split": "val",
+      "frames": 512,
+      "frame_step": 4,
+      "supported_clips": 0,
+      "supported_source_groups": 0,
+      "existing_32_windows_with_symmetric_context": 0
+    },
+    {
+      "split": "test",
+      "frames": 32,
+      "frame_step": 1,
+      "supported_clips": 217,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 6046
+    },
+    {
+      "split": "test",
+      "frames": 32,
+      "frame_step": 2,
+      "supported_clips": 213,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2989
+    },
+    {
+      "split": "test",
+      "frames": 32,
+      "frame_step": 4,
+      "supported_clips": 208,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 1417
+    },
+    {
+      "split": "test",
+      "frames": 64,
+      "frame_step": 1,
+      "supported_clips": 213,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 5267
+    },
+    {
+      "split": "test",
+      "frames": 64,
+      "frame_step": 2,
+      "supported_clips": 208,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2235
+    },
+    {
+      "split": "test",
+      "frames": 64,
+      "frame_step": 4,
+      "supported_clips": 152,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 781
+    },
+    {
+      "split": "test",
+      "frames": 128,
+      "frame_step": 1,
+      "supported_clips": 208,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 4286
+    },
+    {
+      "split": "test",
+      "frames": 128,
+      "frame_step": 2,
+      "supported_clips": 152,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 1452
+    },
+    {
+      "split": "test",
+      "frames": 128,
+      "frame_step": 4,
+      "supported_clips": 68,
+      "supported_source_groups": 22,
+      "existing_32_windows_with_symmetric_context": 310
+    },
+    {
+      "split": "test",
+      "frames": 256,
+      "frame_step": 1,
+      "supported_clips": 152,
+      "supported_source_groups": 33,
+      "existing_32_windows_with_symmetric_context": 2777
+    },
+    {
+      "split": "test",
+      "frames": 256,
+      "frame_step": 2,
+      "supported_clips": 68,
+      "supported_source_groups": 22,
+      "existing_32_windows_with_symmetric_context": 568
+    },
+    {
+      "split": "test",
+      "frames": 256,
+      "frame_step": 4,
+      "supported_clips": 15,
+      "supported_source_groups": 1,
+      "existing_32_windows_with_symmetric_context": 89
+    },
+    {
+      "split": "test",
+      "frames": 512,
+      "frame_step": 1,
+      "supported_clips": 68,
+      "supported_source_groups": 22,
+      "existing_32_windows_with_symmetric_context": 1082
+    },
+    {
+      "split": "test",
+      "frames": 512,
+      "frame_step": 2,
+      "supported_clips": 15,
+      "supported_source_groups": 1,
+      "existing_32_windows_with_symmetric_context": 168
+    },
+    {
+      "split": "test",
+      "frames": 512,
+      "frame_step": 4,
+      "supported_clips": 0,
+      "supported_source_groups": 0,
+      "existing_32_windows_with_symmetric_context": 0
+    }
+  ]
+}

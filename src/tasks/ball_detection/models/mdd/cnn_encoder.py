@@ -4,7 +4,6 @@ from __future__ import annotations
 import torch
 from torch import Tensor, nn
 from torch.nn import functional as F
-from torch.utils.checkpoint import checkpoint
 
 from src.tasks.ball_detection.models.mdd.blocks import (
     ConvNeXtV2Residual,
@@ -12,6 +11,7 @@ from src.tasks.ball_detection.models.mdd.blocks import (
     PartialSpatialResidual,
 )
 from src.tasks.ball_detection.models.mdd.config import MDDPretrainConfig
+from src.tasks.ball_detection.models.mdd.execution import checkpoint_call
 
 
 class SpatialConv(nn.Sequential):
@@ -52,6 +52,7 @@ class DeepMDDEncoder(nn.Module):
     def __init__(self, config: MDDPretrainConfig) -> None:
         super().__init__()
         self.activation_checkpointing = config.activation_checkpointing
+        self.frame_chunk_size = config.frame_chunk_size
         widths = (*config.stem_channels, *config.mixed_channels)
         stages: list[nn.Module] = []
         previous = config.input_channels
@@ -70,14 +71,26 @@ class DeepMDDEncoder(nn.Module):
         self.feature_channels = widths[2:]
 
     def forward(self, mdd: Tensor) -> tuple[Tensor, ...]:
+        if self.frame_chunk_size is None:
+            return self._encode(mdd)
+        frames = mdd.shape[2]
+        chunks: list[tuple[Tensor, ...]] = []
+        for start in range(0, frames, self.frame_chunk_size):
+            stop = min(start + self.frame_chunk_size, frames)
+            # Two stride-one temporal kernels of size three require two real
+            # neighbours on each side. Only clip edges receive zero padding.
+            left, right = max(0, start - 2), min(frames, stop + 2)
+            levels = self._encode(mdd[:, :, left:right])
+            chunks.append(tuple(level[:, start - left:stop - left] for level in levels))
+        return tuple(torch.cat(levels, dim=1) for levels in zip(*chunks, strict=True))
+
+    def _encode(self, mdd: Tensor) -> tuple[Tensor, ...]:
         b, c, t, height, width = mdd.shape
         x = mdd.transpose(1, 2).reshape(b * t, c, height, width)
         features: list[Tensor] = []
         for i, stage in enumerate(self.stages):
-            if self.activation_checkpointing and self.training and torch.is_grad_enabled():
-                x = checkpoint(stage, x, use_reentrant=False)
-            else:
-                x = stage(x)
+            # Bound recomputed activations to one spatial stage, also inside halo chunks.
+            x = checkpoint_call(stage, x, enabled=self.activation_checkpointing and self.training)
             if i >= 4:
                 x = self.temporal[i - 4](x, b, t)
             if i >= 2:

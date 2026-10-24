@@ -1,0 +1,12 @@
+{
+  "disk_before_download": {
+    "free": 199698608128,
+    "total": 253055008768,
+    "used": 53339623424
+  },
+  "git_commit": "590d3283bfa69f1fab378bf2ad1e6d8b7f231508",
+  "observed_at": "2026-10-23T11:09:06.419858+00:00",
+  "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]",
+  "schema_version": 1,
+  "uv_lock_sha256": "1547826aaf5d2c1b8faec1b0fb7f953c36917a65dbca3d0e8ecf1d3b051352ef"
+}

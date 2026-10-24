@@ -23,6 +23,16 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
 同じホストの全worktree・Claude/Codexで共有し、state内のflockで登録・起票・更新を直列化する。
+parent CLIはGitHubの各GET・ProjectのGraphQL queryの間だけregistryロックを離し、取得後に同じロックを取り直して
+registryの保存内容全体が一致することを検査する。担当・generation・tasks・委任予約・reviewsや
+他の親の記録が変わっていれば、古い結果を使わず終了値2で停止する。同じコマンドを再実行して取得し直す。
+未保存の変更や既存の参照を保つため、取得後にregistryを読み直して上書き・部分統合はしない。
+`status`もGitHub取得中にはロックを保持せず、registryを書き換えない。
+GitHubへの書き込みとregistryの検査・予約・保存は引き続きロック内で行い、担当の衝突・二重予約を防ぐ。
+更新操作は親ごとの操作ロックをregistryロックより先に取り、同じ親への委任・上限変更などの順序を維持する。
+`status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らず、他の親とも並行して取得する。
+Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取り、同じProjectへの更新も直列化する。
+途中まで保存・公開済みの操作は取り消さない。非ゼロ終了後は既存記録を照合して不足分だけ再実行する。
 `registry.json` の外側はversion=1を維持し、`parents` のキーは `owner/repo#親番号`。
 キーの `owner/repo` は大文字小文字を区別せず、小文字に正規化する。
 既存キーも読込時に正規化し、同じ親の別名レコードが衝突した場合は、統合・上書きせず読込を拒否する。
@@ -299,6 +309,8 @@ GitHubコメントから復元する。明示的な `checking` は親全体と�
 親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
 採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。
 受領・起票・委任時は、出典がopenで完了済みの `ops-report` issueであることも検査する。
+triageの引渡し・受領・提案別合意は既存のマーカー付きイベントとして記録する。
+担当親の自由文の連絡には [note](#自由文の進捗連絡) を使い、既存合意のコメント鮮度を保つ。
 人間が独立に作ったissueには受領操作は不要で、同じregister/checking/agreeから開始する。
 
 ## 子の作成・委任・再開
@@ -322,7 +334,14 @@ open/closed全issueをページングしてキーを照合し、spec不一致・
 既存があれば再利用し、ラベル・正式なsub-issue・親一覧の不足だけを揃える。
 作成応答の喪失や関係登録・親編集の途中失敗も、**同じキーとspec**で再実行する。
 別の正式な親へ所属したissueを自動付替えしない。stateの消失だけを理由に新しいキーで作り直さない。
-レポート由来specは受領・その提案を含む要件合意・現在の採用を検証し、共通 `index_proposals` でも照合して、既存提案を別キーで二重起票しない。
+手動のレポート由来specは受領・その提案を含む要件合意・現在の採用を検証し、共通 `index_proposals` でも照合して、既存提案を別キーで二重起票しない。
+triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](../ops-report/README.md#採用提案の自動issue化) を参照する。
+その子の委任では、有効な独立の `autonomous_decision`、現在の正式親、open/完了レポートの採用・選択肢・内容digestを
+`adopted_tasks.py` で照合する。関連親の手動記入や架空のproposal_received/proposal_agreedは要求・生成しない。
+これは出典の検証経路だけを追加し、担当・generation・レビュー・merge・共有基盤承認の条件を変えない。
+開発workflowは `adopted_tasks.check_task_adoptions(gh, body)` を親と対象子の両方へ実行・merge直前に呼ぶ。
+単一anchorを持たない共通親・分割した子にもcontext出典があるため、`parse_proposal_source()` だけで省略しない。
+返却は出典の確認であり実行根拠ではない。既存のauthorizationとdispatcherの鮮度検査も必要。
 同じ提案の既存子はキー・タイトル変更・親付替え後も再利用し、現在の正式な親を返す。自動で親を戻さない。
 親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 

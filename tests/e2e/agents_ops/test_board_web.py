@@ -86,6 +86,54 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
+def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
+    world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = world
+    parents = json.loads(w.labels.registry.read_text())["parents"]
+    parents["o/r#7"] = w.labels.owner(identity="claude:stopped-owner")
+    w.labels.set_registry(parents)
+    before = w.labels.registry.read_bytes()
+    monkeypatch.setattr(
+        w.board.service.GitHub,
+        "issue",
+        lambda _github, number: {
+            "title": f"[担当{number}] タスク",
+            "labels": [{"name": "issue:parent"}],
+        },
+    )
+    synced = w.board.service.sync_parent(w.env(), "o/r", 1)
+    assert synced["additional_parents"][0]["parent"] == 7
+    with w.store.read() as connection:
+        assignment = w.board.names.for_parent(connection, "o/r", 7)
+    w.fake.fail_once_for.add(assignment.id)
+    root = w.post(to=["all"])
+    assert {row["parent"] for row in root["recipients"]} == {2, 3, 7}
+    status = w.own_state(root["id"])
+    with TestClient(web.app.create_app(w.env()), base_url="http://127.0.0.1") as client:
+        changes = client.get("/api/changes")
+        assert changes.status_code == 200
+        data = changes.json()
+        thread = client.get(f"/api/thread/{root['id']}")
+        assert thread.status_code == 200
+    roster = next(row for row in data["agents"] if row["parent"] == 7)
+    assert roster["name"] == assignment.name
+    assert roster["name_status"] == "assigned" and roster["unread_count"] == 1
+    for view in (status, data["posts"][0], thread.json()["posts"][0]):
+        failed = next(row for row in view["recipients"] if row["parent"] == 7)
+        assert failed["name"] == assignment.name
+        assert failed["delivery_state"] == failed["state"] == "delivery_failed"
+        assert failed["delivery_reason"] == "route_unavailable"
+        assert failed["delivery_message"] == "通知経路が利用できません（未送信）"
+        assert failed["retryable"] is True and failed["read_at"] is None
+    with w.store.read() as connection:
+        assert connection.execute(
+            "SELECT state, reason, retryable FROM deliveries WHERE post_id=? AND assignment_id=?",
+            (root["id"], assignment.id),
+        ).fetchone() == ("delivery_failed", "route_unavailable", 1)
+    assert w.labels.registry.read_bytes() == before
+
+
 @pytest.mark.parametrize("broadcast", [False, True])
 def test_saved_broadcast_is_returned_without_body_or_recipient_inference(
     world: World, client: TestClient, broadcast: bool
@@ -106,6 +154,35 @@ def test_saved_broadcast_is_returned_without_body_or_recipient_inference(
     thread = client.get(f"/api/thread/{reply['id']}").json()["posts"]
     assert [post["broadcast"] for post in thread] == [broadcast, False]
     assert all("mentions_all" not in post for post in posts + thread)
+
+
+def test_rename_updates_roster_but_preserves_read_only_post_snapshots(
+    world: World, client: TestClient
+) -> None:
+    w = world
+    root = w.post()
+    first = client.get("/api/changes").json()
+    rename = importlib.import_module("board.renaming").rename
+    result = rename(w.env(), parent=2)
+    before = w.message_rows()
+    changed = client.get("/api/changes", params={"cursor": first["cursor"]}).json()
+    assert changed["posts"] == []
+    recipient = next(row for row in changed["agents"] if row["parent"] == 2)
+    assert recipient["name"] == result["new_name"]
+    assert recipient["unread_count"] == 1
+    thread = client.get(f"/api/thread/{root['id']}").json()["posts"]
+    assert thread[0]["recipients"][0]["name"] == w.assignments[2].name
+    assert thread[0]["recipients"][0]["assignment_id"] == w.assignments[2].id
+    assert thread[0]["recipients"][0]["read_at"] is None
+    historical = client.get(
+        "/api/changes", params={"name": result["old_name"], "direction": "received"}
+    ).json()
+    assert [post["id"] for post in historical["posts"]] == [root["id"]]
+    current = client.get(
+        "/api/changes", params={"name": result["new_name"], "direction": "received"}
+    ).json()
+    assert current["posts"] == []
+    assert w.message_rows() == before
 
 
 def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> None:

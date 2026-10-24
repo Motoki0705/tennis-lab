@@ -1,0 +1,108 @@
+{
+  "after_stop_phase": "stopped",
+  "bootstrap_commit": "1eedc16ac23418eefd88dfb7dbfc9dfb7bae1211",
+  "created_at": "2026-10-23T17:06:38.235109+00:00",
+  "elapsed_seconds_to_stop_receipt": 5939.784074,
+  "first_vm_stopped_before_this_vm_created": true,
+  "jobs": {
+    "continuity-compare": {
+      "drive_saved_at": "2026-10-23T18:44:37.720963+00:00",
+      "finished_at": "2026-10-23T18:44:37.720980+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T18:44:11.829861+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T18:44:21.858284+00:00"
+    },
+    "distribution-download": {
+      "drive_saved_at": "2026-10-23T18:26:26.024376+00:00",
+      "finished_at": "2026-10-23T18:26:26.024393+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T17:29:41.174035+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T18:26:11.941600+00:00"
+    },
+    "inspect-environment-pin": {
+      "drive_saved_at": "2026-10-23T17:23:04.990389+00:00",
+      "finished_at": "2026-10-23T17:23:04.990405+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T17:22:48.592387+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T17:22:50.600237+00:00"
+    },
+    "locked-environment": {
+      "drive_saved_at": "2026-10-23T17:10:57.453833+00:00",
+      "finished_at": "2026-10-23T17:10:57.453849+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T17:10:04.388849+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T17:10:41.098622+00:00"
+    },
+    "pinned-environment": {
+      "drive_saved_at": "2026-10-23T17:19:15.872185+00:00",
+      "finished_at": "2026-10-23T17:19:15.872204+00:00",
+      "returncode": 1,
+      "started_at": "2026-10-23T17:19:01.733481+00:00",
+      "status": "failed",
+      "updated_at": "2026-10-23T17:19:03.741280+00:00"
+    },
+    "pinned-environment-curl": {
+      "drive_saved_at": "2026-10-23T17:26:16.277101+00:00",
+      "finished_at": "2026-10-23T17:26:16.277118+00:00",
+      "returncode": 1,
+      "started_at": "2026-10-23T17:25:58.045508+00:00",
+      "status": "failed",
+      "updated_at": "2026-10-23T17:26:00.052833+00:00"
+    },
+    "pinned-environment-isolated": {
+      "drive_saved_at": "2026-10-23T17:28:25.922371+00:00",
+      "finished_at": "2026-10-23T17:28:25.922390+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T17:27:34.828422+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T17:28:06.811940+00:00"
+    },
+    "restore-inputs": {
+      "drive_saved_at": "2026-10-23T18:32:11.540494+00:00",
+      "finished_at": "2026-10-23T18:32:11.540510+00:00",
+      "returncode": 130,
+      "started_at": null,
+      "status": "cancelled",
+      "updated_at": "2026-10-23T18:31:55.599562+00:00"
+    },
+    "restore-inputs-recovered": {
+      "drive_saved_at": "2026-10-23T18:34:58.489425+00:00",
+      "finished_at": "2026-10-23T18:34:58.489441+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T18:34:00.618843+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T18:34:42.716334+00:00"
+    },
+    "restore-run": {
+      "drive_saved_at": "2026-10-23T18:37:07.059391+00:00",
+      "finished_at": "2026-10-23T18:37:07.059408+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T18:36:09.304737+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T18:36:51.792326+00:00"
+    },
+    "resumed": {
+      "drive_saved_at": "2026-10-23T18:43:10.069302+00:00",
+      "finished_at": "2026-10-23T18:43:10.069319+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T18:38:21.513905+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T18:42:58.175854+00:00"
+    }
+  },
+  "observed_gpu": "NVIDIA L4, 23034 MiB",
+  "ready_at": "2026-10-23T17:07:26.723250+00:00",
+  "recovered_source_commit": "768322617a9e3eb6c354bca834e90820ed0b6760",
+  "schema_version": 1,
+  "scope": "Only this experiment-owned session; no operation on pre-existing unknown assignments",
+  "session": "ball-resume-proof-b-20261024",
+  "stop_cli_ok": true,
+  "stop_receipt_captured_at": "2026-10-23T18:45:38.019183+00:00",
+  "stop_status": "stopped",
+  "stop_timestamp_source": "Local stop-receipt mtime, after CLI returned",
+  "untracked_source": []
+}

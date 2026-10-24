@@ -12,6 +12,8 @@ from typing import NoReturn
 from . import messages
 from .errors import BoardError
 from .notifiers import configured, receipts
+from .redelivery import dispatch_post
+from .renaming import rename
 from .service import agents, whoami
 
 
@@ -26,6 +28,11 @@ def main(argv: list[str] | None = None) -> int:
         commands = parser.add_subparsers(dest="command", required=True)
         commands.add_parser("whoami", help="show the caller's active parent name")
         commands.add_parser("agents", help="list registered active parents")
+        renaming = commands.add_parser(
+            "rename", help="explicitly rename a registered parent"
+        )
+        renaming.add_argument("--parent", type=int, required=True)
+        renaming.add_argument("--name")
         posting = commands.add_parser("post", help="append a post to board names")
         posting.add_argument("--to", action="append", required=True)
         posting.add_argument(
@@ -52,6 +59,11 @@ def main(argv: list[str] | None = None) -> int:
             "--state", choices=("accepted", "declined", "done"), required=True
         )
         commands.add_parser("status", help="show per-recipient states of sent posts")
+        dispatching = commands.add_parser(
+            "dispatch", help="retry eligible notifications of a sent post"
+        )
+        dispatching.add_argument("--post", required=True)
+        dispatching.add_argument("--to")
         commands.add_parser(
             "receipts", help="refresh Codex queue receipt phases without sending"
         )
@@ -59,6 +71,7 @@ def main(argv: list[str] | None = None) -> int:
         viewing.add_argument("--port", type=int, default=8790)
         args = parser.parse_args(argv)
         env = os.environ
+        exit_code = 0
         if args.command == "web":
             if not 1 <= args.port <= 65535:
                 raise BoardError("board web port must be between 1 and 65535")
@@ -87,6 +100,8 @@ def main(argv: list[str] | None = None) -> int:
                     body=body,
                     notifiers=configured(env),
                 )
+        elif args.command == "rename":
+            result = rename(env, parent=args.parent, name=args.name)
         elif args.command == "read":
             result = messages.read(env, args.post_id)
         elif args.command == "thread":
@@ -97,12 +112,17 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.ack(env, post_id=args.post, state=args.state)
         elif args.command == "status":
             result = messages.status(env)
+        elif args.command == "dispatch":
+            result = dispatch_post(env, configured(env), post_id=args.post, to=args.to)
+            exit_code = 0 if result["status"] == "notified" else 1
         elif args.command == "receipts":
             result = receipts(env)
         else:
             result = whoami(env) if args.command == "whoami" else agents(env)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
-        return 0
+        if args.command == "rename" and result["display_sync"]["status"] == "error":
+            return 1
+        return exit_code
     except BoardError as exc:
         print(f"board: {exc}", file=sys.stderr)
     except (OSError, ValueError, KeyError, TypeError):

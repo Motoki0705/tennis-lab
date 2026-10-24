@@ -71,6 +71,9 @@ class RcloneArtifactStore(ArtifactStore):
         return f"{self.remote_uri}/{relative}"
 
     def _run(self, *arguments: str, timeout: int | None = None) -> None:
+        self._output(*arguments, timeout=timeout)
+
+    def _output(self, *arguments: str, timeout: int | None = None) -> str:
         command = ["rclone", "--config", str(self.config_path), *arguments]
         try:
             result = subprocess.run(
@@ -91,6 +94,7 @@ class RcloneArtifactStore(ArtifactStore):
             raise ArtifactStoreError(
                 f"rclone {arguments[0]} failed with exit code {result.returncode}: {detail}"
             )
+        return result.stdout
 
     def publish_file(self, path: Path) -> None:
         destination = self._remote_file(path)

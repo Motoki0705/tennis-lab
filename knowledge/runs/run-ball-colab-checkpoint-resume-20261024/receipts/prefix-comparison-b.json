@@ -1,0 +1,8 @@
+{
+  "byte_prefix_equal": true,
+  "original_log_sha256": "4262e9105b1bc1153a61bd526c7a03d14f8034c9cbb50ec4de404097b13a4f6d",
+  "original_updates": 5,
+  "restored_prefix_sha256": "4262e9105b1bc1153a61bd526c7a03d14f8034c9cbb50ec4de404097b13a4f6d",
+  "schema_version": 1,
+  "status": "passed"
+}

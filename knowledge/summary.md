@@ -1,7 +1,7 @@
-<!-- knowledge-review: c932961eea157fe1e0a5bfb37f79cb89f7759a30163e35f272a6911e6d4ac656 on 2026-10-24 -->
+<!-- knowledge-review: bfeb0ae713c37a2afd8e38cc6db021864338f9fe5f4dece448a0d95ca9672595 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（Court D2凍結192視点のL4比較・保存回復・停止と、本番条件の推奨を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-24（Court D2凍結192視点のL4比較・保存回復・停止と本番条件の推奨、ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -333,6 +333,66 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+2026-10-22の[Drive・Colab転送実測](nodes/ball_detection/000061-run-ball-colab-transfer-feasibility-20261022.md)では、
+直近720p snapshot（185.522 GB）の代表18 shard・1.781 GBを3組に分け、往復経路の内容照合を通過した。
+初回uploadのコピー工程は全量換算約5.8〜6.3時間、Colab取得は約39〜43分。ただし全量実測ではなく、
+path検査・hash照合・環境準備は別に必要で、小分けCLI総時間の比例見積もりはさらに長い。
+今回のL4は初期空き206.568 GBで、全量配置後の余裕と絶対path・不在原注釈の移植が課題。
+現行storeはtestを含む全shardを要求するため、train/validationだけの軽量配布には独立した版の準備が要る。
+同日の追加指示で、[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)は
+転送・環境・容量・速度・Drive保存と新VM再開を検証し、最終的にColabで本学習を完了する計画へ更新した。
+精度・モデルの優劣・deploy判断はこの転送実測で更新しない。
+同日のユーザー指定で、次実験の主軸は**時系列長 × DPT / Transformer＋DPT（hybrid）**に固定した。
+RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量の事前学習を固定し、その後に系列長を伸ばす。
+実験行列・予算・教師領域・評価・進捗の正本は同親issueへ移した。
+続く[中央targetのCPU調査](nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)では、
+元32窓の中央16枚を固定し、全splitでplay内文脈とreference/PTS境界を守るclip内文脈を比較した。
+後者の128共通集合は元32窓の位置教師の約76〜81%、256共通集合は約51〜61%を保持し、
+256では低FPS・TrackNetの減少が大きかった。これは後続runにより置き換えた不採用案の記録として保持する。
+ユーザーはclip内文脈・上限128を選び、教師は**入力Tの全フレーム**へ変更した。
+[全フレーム教師の再調査](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)では、
+128枚を置ける全適格区間を共通集合とし、旧32位置教師の約99.5%以上を保持した。
+同じ128枚を4/2/1窓へ分割すると、入力frameと教師の多重度をT間で一致させられる。
+この共通区間定義では不在専用集合案と共通不在は全重複する。不在専用集合案は採用せず、
+共通集合内の確認済み不在をkind別に別集計する。調査時の専用列挙は同一性監査の証拠としてのみ残す。
+validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
+具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
+共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
+可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000065-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
+CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
+両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
+これは低解像度の機能確認で、既存の採用判断を変えない。
+本学習用の速度・メモリ・精度の比較は未実施。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+
+2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
+合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
+既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
+Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256・18窓の意味一致・停止を確認した。
+新VMでは取得＋CLI照合が約46.6分、全件SHA-256が約7.4分で、取得後の空きは約42.7 GBだった。
+初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
+長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
+窓生成・hybrid不在教師・統計readerの原注釈pathをstore resolverへ統一した。
+移動fixtureのdataset読込と、実データの全T・train/evaluationで、共通区間・pack・owner・教師kindの一致を確認した。
+ローカルの未配置stageは元payloadを明示する読み取り専用の照合経路を使い、通常読込のshard不足は引き続き失敗する。
+PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
+精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
+
+続く[保存再開の事前検査](nodes/ball_detection/000066-run-ball-colab-persistence-preflight-20261023.md)では、
+実配布storeの原注釈がresolverで取得・hash照合できる一方、窓準備と空frame証拠の消費側が
+相対pathを直接読むためmanifest生成で停止した。先行範囲は修正せず親へ返し、Colabは割り当てていない。
+既存の配布・窓テスト44件の成功はこの接続を保証しない。次は両消費側のresolver接続と移動済みstoreの
+統合テストを揃え、その後にcheckpoint直後の保存・失敗注入・新VM再開を実証する。採用判断は維持する。
+
+2026-10-24に両消費側のresolver接続と実データの6 manifest照合が反映され、保存再開の阻害は解消した。
+[720pの保存復旧検査](nodes/ball_detection/000067-run-ball-colab-checkpoint-resume-20261024.md)を再開し、
+同期した世代保存とサイズ/hash検証・失敗伝播を確認した。最初のL4を5更新で止めて停止し、
+新L4へ固定pathで復元して12更新を完了した。対照とpack・教師・LR・元予算・optimizer step・CPU/CUDA RNGが一致し、
+全損失列は事前許容差内で、過去5行のlogもbyte一致した。最終重みのbit一致はせず、中断前から微差がある。
+既定Pythonのパッチ版の変化を検出し、builderとPythonを固定して環境を再構築した。
+Notebook接続断の未実行要求はcancel・保存確認後に同じVMで再提出し、取得データを保持した。
+両所有sessionの停止を確認した。これは4 clip・native 720p・本番幅の保存復旧診断であり、
+精度の採否や長系列の速度・VRAM・本学習予算は引き続き後続の試走で判断する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、

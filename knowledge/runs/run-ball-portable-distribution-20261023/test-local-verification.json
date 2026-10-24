@@ -1,0 +1,11 @@
+{
+  "clips": 225,
+  "distribution_sha256": "fbf6e1081c6a1de7812070a5af1fba492e8a8f88c46b1b06c5d0740aecd3e588",
+  "files": 388,
+  "frames": 159174,
+  "mode": "source_payloads",
+  "schema_version": 1,
+  "size_bytes": 28359923470,
+  "status": "verified",
+  "version": "ball-mix1800-720p-all-frame-test-v1"
+}

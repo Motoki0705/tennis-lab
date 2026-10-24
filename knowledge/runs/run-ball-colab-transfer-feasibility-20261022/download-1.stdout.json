@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "download",
+  "rclone_config": "${COLAB_RCLONE_CONFIG}",
+  "source": "gdrive:tennis_lab/staging/ball-detection-transfer-probe-20261022/sample-1",
+  "destination": "/content/tennis-lab/data/ball_detection/transfer-probe-20261022/sample-1",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}

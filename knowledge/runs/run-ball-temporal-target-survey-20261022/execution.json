@@ -1,0 +1,9 @@
+{
+  "inspected_code_commit": "191d4154f42d343d5aab43311c114f2f707602b0",
+  "elapsed_seconds": 105.8598168269964,
+  "max_rss_kib": 1084596,
+  "metadata_clips": 1800,
+  "frames": 1065949,
+  "source_files_stat_checked": 1803,
+  "note": "CPU only; no model construction, image decoding, shard hashing/copying or source writes"
+}

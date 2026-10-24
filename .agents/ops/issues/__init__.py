@@ -1,5 +1,6 @@
 """Shared issue contract for human filing, parent sessions and report triage."""
 
+from .adoption import bind_task, parse_task_metadata, render_standalone_body
 from .consistency import Issue, Problem, check_consistency, task_status
 from .format import (
     ACCEPTANCE_FIELDS,
@@ -44,6 +45,7 @@ __all__ = [
     "ProposalSource",
     "TASKS_HEADING",
     "check_consistency",
+    "bind_task",
     "child_title",
     "index_proposals",
     "parent_reference",
@@ -52,10 +54,12 @@ __all__ = [
     "parse_proposal_source",
     "parse_sections",
     "parse_title",
+    "parse_task_metadata",
     "proposal_marker",
     "render_child_body",
     "render_child_tasks",
     "render_parent_body",
+    "render_standalone_body",
     "task_status",
     "validate_acceptance",
     "validate_body",

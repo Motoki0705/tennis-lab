@@ -52,7 +52,7 @@ class AugmentationConfig:
                                          self.targeted_probability, self.max_removed_fraction)):
             raise ValueError("Augmentation probabilities must be in [0,1]")
         if not 1 <= self.occlusion_min_frames <= self.occlusion_max_frames <= 8:
-            raise ValueError("Occlusion must leave temporal context in a 32-frame clip")
+            raise ValueError("Occlusion duration must be between 1 and 8 frames")
         if not 0 < self.occlusion_min_size <= self.occlusion_max_size <= .25:
             raise ValueError("Occlusion size must be in (0,.25]")
 
@@ -94,9 +94,13 @@ class VideoAugmenter:
     def __call__(self, rgb: Tensor, batch: dict[str, Any], *, epoch: int,
                  profile: str = "train") -> tuple[Tensor, dict[str, Any], dict[str, Tensor]]:
         cfg = self.config.profile(profile)
-        b, t, _, h, w = rgb.shape
-        if t != 32 or rgb.dtype != torch.uint8 or min(h, w) < 2:
-            raise ValueError("Video augmentation expects uint8 B,32,3,H,W")
+        if rgb.ndim != 5:
+            raise ValueError("Video augmentation expects uint8 B,T,3,H,W")
+        b, t, c, h, w = rgb.shape
+        if t < 2 or c != 3 or rgb.dtype != torch.uint8 or min(h, w) < 2:
+            raise ValueError("Video augmentation expects uint8 B,T,3,H,W with T >= 2")
+        if cfg.occlusion_probability and cfg.occlusion_max_frames > t - 2:
+            raise ValueError("Occlusion must leave temporal context on both sides of the input window")
         if not cfg.camera_probability and not cfg.occlusion_probability:
             return rgb, batch, {}
         # Only small metadata/parameters are sampled on CPU; image processing stays on device.

@@ -1,0 +1,122 @@
+{
+  "session": "ball-resume-proof-b-20261024",
+  "jobs": [
+    {
+      "job": "distribution-download",
+      "expected": 0,
+      "argv": null
+    },
+    {
+      "job": "restore-inputs-recovered",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-b-20261024",
+        "--job-id",
+        "restore-inputs-recovered",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/restore-inputs-b-recovered",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "restore",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024/inputs",
+        "--generation",
+        "inputs-2b202d6f833d4b4db43e830b85053125",
+        "--manifest-sha256",
+        "efad00112e146279ed838090b53d33e379d9b711d6ed888945e20e5de7dec4e6",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/restore-inputs-b-recovered"
+      ]
+    },
+    {
+      "job": "restore-run",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-b-20261024",
+        "--job-id",
+        "restore-run",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/restore-run-b",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "restore",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--generation",
+        "stopped-00000005-82b9885cda9d4add91b7251aca7872d3",
+        "--manifest-sha256",
+        "f58a090613ed3d174e6f289551327a9b342f6edd1d1631a3db890cec906f8a7c",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/restore-run-b"
+      ]
+    },
+    {
+      "job": "resumed",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-b-20261024",
+        "--job-id",
+        "resumed",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/resumed-b",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "train",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--mode",
+        "resume",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/resumed-b"
+      ]
+    },
+    {
+      "job": "continuity-compare",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-b-20261024",
+        "--job-id",
+        "continuity-compare",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/comparison-b",
+        "--",
+        "bash",
+        "-lc",
+        "env PYTHONPATH=/content/tennis-lab .venv/bin/python knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py compare --reference /content/baseline-training-reference.json --actual outputs/ball_detection/colab_persistence/resumed-b/training.json --output outputs/ball_detection/colab_persistence/comparison-b/comparison.json && .venv/bin/python -c 'import hashlib,json\nfrom pathlib import Path\noriginal=json.loads(Path('\"'\"'/content/interrupted-training-reference.json'\"'\"').read_text())\nlog=Path('\"'\"'/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/train.jsonl'\"'\"').read_bytes()\nprefix=b'\"'\"''\"'\"'.join(log.splitlines(keepends=True)[:original['\"'\"'updates_completed'\"'\"']])\ndigest=hashlib.sha256(prefix).hexdigest()\nassert digest==original['\"'\"'train_log_sha256'\"'\"'], '\"'\"'Restored committed log prefix differs'\"'\"'\nresult=dict(schema_version=1, status='\"'\"'passed'\"'\"', original_updates=original['\"'\"'updates_completed'\"'\"'], original_log_sha256=original['\"'\"'train_log_sha256'\"'\"'], restored_prefix_sha256=digest, byte_prefix_equal=True)\nPath('\"'\"'outputs/ball_detection/colab_persistence/comparison-b/prefix-comparison.json'\"'\"').write_text(json.dumps(result,sort_keys=True,indent=2)+'\"'\"'\\n'\"'\"')\nprint(json.dumps(result))\n'"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "session": "ball-resume-proof-a-20261024",
+  "jobs": [
+    {
+      "job": "distribution-download",
+      "expected": 0,
+      "argv": null
+    },
+    {
+      "job": "prepare-inputs",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-a-20261024",
+        "--job-id",
+        "prepare-inputs",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/preparation-a",
+        "--",
+        "bash",
+        "-lc",
+        "git fetch /content/resume-source.bundle refs/heads/codex/ball-temporal-colab-persistence && git checkout --detach 768322617 && env PYTHONPATH=/content/tennis-lab .venv/bin/python knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py prepare --source-store /content/tennis-lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1 --root /content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024 --remote-root gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024/inputs --receipts outputs/ball_detection/colab_persistence/preparation-a"
+      ]
+    },
+    {
+      "job": "baseline",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-a-20261024",
+        "--job-id",
+        "baseline",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/baseline-a",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "train",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/control",
+        "--mode",
+        "baseline",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/control",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/baseline-a"
+      ]
+    },
+    {
+      "job": "interrupted",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-a-20261024",
+        "--job-id",
+        "interrupted",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/interrupted-a",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "train",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--mode",
+        "interrupted",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/interrupted-a"
+      ]
+    },
+    {
+      "job": "failure-injection",
+      "expected": 1,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-resume-proof-a-20261024",
+        "--job-id",
+        "failure-injection",
+        "--persist",
+        "outputs/ball_detection/colab_persistence/failure-injection-a",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "train",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/failure",
+        "--mode",
+        "failure",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/failure",
+        "--receipts",
+        "outputs/ball_detection/colab_persistence/failure-injection-a"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "direction": "drive_to_colab",
+  "repeat": 1,
+  "started_at": "2026-10-22T05:21:26.843169+00:00",
+  "elapsed_seconds": 33.63176522899994,
+  "bytes": 544686517,
+  "end_to_end_MB_per_second": 16.195597028321565,
+  "returncode": 0,
+  "command": [
+    "python3",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "--timeout-seconds",
+    "900",
+    "download",
+    "staging/ball-detection-transfer-probe-20261022/sample-1",
+    "data/ball_detection/transfer-probe-20261022/sample-1",
+    "--verify"
+  ],
+  "disk_usage_after": {
+    "total": 253055008768,
+    "used": 47015419904,
+    "free": 206022811648
+  },
+  "timing_includes": "path uniqueness checks, transfer, post-readback, local/remote hash verification; frozen SHA256 check below timed separately",
+  "frozen_sha256_checks": [
+    {
+      "file": "clip-00053.bin",
+      "expected_sha256": "78f61d1c1735275437a464c70e670325b3294b8f3a98e70b4a27a1e9b162765b",
+      "actual_sha256": "78f61d1c1735275437a464c70e670325b3294b8f3a98e70b4a27a1e9b162765b",
+      "expected_bytes": 13038519,
+      "actual_bytes": 13038519,
+      "match": true
+    },
+    {
+      "file": "clip-00177.bin",
+      "expected_sha256": "99e474737bfbefe343b2e1d83edeee9444e571b81a7957eb0ca492c0162a2bcd",
+      "actual_sha256": "99e474737bfbefe343b2e1d83edeee9444e571b81a7957eb0ca492c0162a2bcd",
+      "expected_bytes": 40210890,
+      "actual_bytes": 40210890,
+      "match": true
+    },
+    {
+      "file": "clip-01101.bin",
+      "expected_sha256": "22e26aa4a66558b9e4c141b401ffbf1f401acdcdc7a0a261d002f48a9fcb8c2e",
+      "actual_sha256": "22e26aa4a66558b9e4c141b401ffbf1f401acdcdc7a0a261d002f48a9fcb8c2e",
+      "expected_bytes": 57555604,
+      "actual_bytes": 57555604,
+      "match": true
+    },
+    {
+      "file": "clip-01217.bin",
+      "expected_sha256": "a9f70042c9bd576e9290a7260bfd49d087f2dfcc5a83cffee05d3e43703ba18e",
+      "actual_sha256": "a9f70042c9bd576e9290a7260bfd49d087f2dfcc5a83cffee05d3e43703ba18e",
+      "expected_bytes": 93777319,
+      "actual_bytes": 93777319,
+      "match": true
+    },
+    {
+      "file": "clip-01327.bin",
+      "expected_sha256": "592500e30436973ebb81b0ea75654d00ccf77dbd938ade1b39b45464d0fcbcd1",
+      "actual_sha256": "592500e30436973ebb81b0ea75654d00ccf77dbd938ade1b39b45464d0fcbcd1",
+      "expected_bytes": 143876798,
+      "actual_bytes": 143876798,
+      "match": true
+    },
+    {
+      "file": "clip-01537.bin",
+      "expected_sha256": "4915bc97df6b0b6df016b9ead2c526d287bd04f361cc35894f2d4f0eab77130c",
+      "actual_sha256": "4915bc97df6b0b6df016b9ead2c526d287bd04f361cc35894f2d4f0eab77130c",
+      "expected_bytes": 196227387,
+      "actual_bytes": 196227387,
+      "match": true
+    }
+  ],
+  "frozen_hash_seconds": 1.5962415909998526
+}

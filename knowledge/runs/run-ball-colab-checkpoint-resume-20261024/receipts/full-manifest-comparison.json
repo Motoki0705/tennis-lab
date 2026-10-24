@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "compared_keys": [
+    "common_intervals_sha256",
+    "target_identity_sha256",
+    "teacher_identity_sha256",
+    "scored_frame_sha256",
+    "training_packs_sha256"
+  ],
+  "full_common_frames": 793017,
+  "full_packs": 39185
+}

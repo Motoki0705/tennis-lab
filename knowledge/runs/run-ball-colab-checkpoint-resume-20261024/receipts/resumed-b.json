@@ -1,0 +1,599 @@
+{
+  "checkpoint_cuda_rng_sha256": [
+    "a0ddb2cf3d7f60483b314db71ceb9ef99f489b0049954a2357adb7ba0cad5670"
+  ],
+  "checkpoint_rng_sha256": "0766bb624ff5ea6af3ac8bc70feb310978d7793eb8e6b824e18dc393c2983dbe",
+  "code_commit": "768322617a9e3eb6c354bca834e90820ed0b6760",
+  "cuda": "13.0",
+  "cudnn": 92400,
+  "gpu": "NVIDIA L4",
+  "kernel_boot_id": "cad8e0a6-834f-4ee3-826b-a22e1b9b5d1e",
+  "latest": {
+    "checkpoint": "checkpoint-update-00000012.pt",
+    "sha256": "01c24799297031db2f1e6fb7c27005da5fec070dfa21fd05b922c53715272fde",
+    "update": 12
+  },
+  "mode": "resume",
+  "model_state_sha256": "dbc0f0bcb154c6860a130b20c875bac3d375acc813c7c6f58fc58257c4458c45",
+  "optimizer_steps": [
+    12
+  ],
+  "publications": [
+    {
+      "files": 9,
+      "generation": "initialized-00000005-e1980cea2c694d2f8efaa02f50594adf",
+      "manifest_md5": "78278b30081b354a1dba573a0368e319",
+      "manifest_sha256": "7c001f3405536f0684ef8e5f2f43eb2c0807c14ef404a773bda05d771e43c119",
+      "marker_id": "1UOXO9dqCTi9kK9jSkd4J8YQGkE_X1WBW",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 47.78867603599974,
+      "size_bytes": 174509572,
+      "stage": "initialized",
+      "status": "verified",
+      "update": 5
+    },
+    {
+      "files": 9,
+      "generation": "checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c",
+      "manifest_md5": "658083bf55e645189acbaa727aa65ee6",
+      "manifest_sha256": "ee54fb9a14c719ef7bc6efa6ac7cadf83a67e82c70ad560424961b7980ce73d2",
+      "marker_id": "1MAry9N_nRocYXYykyS90W8QUAct9qWSz",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 49.87671937699997,
+      "size_bytes": 174519012,
+      "stage": "checkpoint",
+      "status": "verified",
+      "update": 10
+    },
+    {
+      "files": 11,
+      "generation": "checkpoint-00000012-816f9215f40c4d1b9508da586bbec310",
+      "manifest_md5": "fc5703fca01c2b7183dfd3cffeaa395b",
+      "manifest_sha256": "a684fc4dc06e4022bdfd8db505bd15b6cf772574c36cb121545e259d24fa29b4",
+      "marker_id": "1oNSWxibV_MzRhuxZ8BX4aSzTTfBPAE2L",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 51.566938314000254,
+      "size_bytes": 174624030,
+      "stage": "checkpoint",
+      "status": "verified",
+      "update": 12
+    },
+    {
+      "files": 12,
+      "generation": "completed-00000012-eb2c6627e78543de92f1973bd1206e0f",
+      "manifest_md5": "4d72c1f8f92d9c5e3315725abcde8d32",
+      "manifest_sha256": "f19558761a5c6c3367e56459cf2240b8fe9ef1befc8491184e33b87a14a93894",
+      "marker_id": "1l501z4oWaeYCoD6GJB-mUJ1HWBTApq9S",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 49.6397680529999,
+      "size_bytes": 174624759,
+      "stage": "completed",
+      "status": "verified",
+      "update": 12
+    }
+  ],
+  "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]",
+  "records": [
+    {
+      "augmentation_seconds": 0.0013769440001851763,
+      "augmentation_sha256": [
+        "b108824b0fff9ac7642dfcb28b5c7c47b73d0521226ac802718f73aee2afe14b"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 128,
+      "data_wait_seconds": 0.646508754000024,
+      "frames_per_second": 14.43553976858575,
+      "gradient_norm": 5.012872695922852,
+      "input_frames": 128,
+      "learning_rate": 5e-05,
+      "loss": 0.07586044606154527,
+      "loss_sum": 9.330834865570068,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 5,
+        "observed": 90,
+        "out_of_frame": 12,
+        "reviewed_empty": 21
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:135:128"
+      ],
+      "pack_indices": [
+        7
+      ],
+      "peak_reserved_vram_bytes": 5689573376,
+      "peak_vram_bytes": 4107646976,
+      "sample_position": 1,
+      "seconds": 8.867004770999301,
+      "teachers_by_kind": {
+        "masked": 5,
+        "observed": 90,
+        "out_of_frame": 12,
+        "reviewed_empty": 21
+      },
+      "update": 1,
+      "valid_teachers": 123
+    },
+    {
+      "augmentation_seconds": 0.0004907570000796113,
+      "augmentation_sha256": [
+        "ca3c7d9aeb089851143376b23ce0cf6361f2764cc533fe35229639ddf33d64b8"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 256,
+      "data_wait_seconds": 0.04566260199953831,
+      "frames_per_second": 17.446726986168237,
+      "gradient_norm": 0.3730025887489319,
+      "input_frames": 128,
+      "learning_rate": 0.0001,
+      "loss": 0.007007365710422641,
+      "loss_sum": 0.8548986166715622,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 6,
+        "observed": 71,
+        "out_of_frame": 19,
+        "reviewed_empty": 32
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:103:128"
+      ],
+      "pack_indices": [
+        5
+      ],
+      "peak_reserved_vram_bytes": 5695864832,
+      "peak_vram_bytes": 4192808448,
+      "sample_position": 2,
+      "seconds": 7.336619647999214,
+      "teachers_by_kind": {
+        "masked": 6,
+        "observed": 71,
+        "out_of_frame": 19,
+        "reviewed_empty": 32
+      },
+      "update": 2,
+      "valid_teachers": 122
+    },
+    {
+      "augmentation_seconds": 0.0005334879997462849,
+      "augmentation_sha256": [
+        "e745616c15d1f431ef0e63345a02de3847dbc95669e06caba11057cd808427e1"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 384,
+      "data_wait_seconds": 0.033357312000589445,
+      "frames_per_second": 17.319822763651384,
+      "gradient_norm": 0.010510441847145557,
+      "input_frames": 128,
+      "learning_rate": 0.0001,
+      "loss": 0.001955639362335205,
+      "loss_sum": 0.24445492029190063,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 3,
+        "observed": 86,
+        "out_of_frame": 18,
+        "reviewed_empty": 21
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:151:128"
+      ],
+      "pack_indices": [
+        8
+      ],
+      "peak_reserved_vram_bytes": 5695864832,
+      "peak_vram_bytes": 4189955584,
+      "sample_position": 3,
+      "seconds": 7.390375856999526,
+      "teachers_by_kind": {
+        "masked": 3,
+        "observed": 86,
+        "out_of_frame": 18,
+        "reviewed_empty": 21
+      },
+      "update": 3,
+      "valid_teachers": 125
+    },
+    {
+      "augmentation_seconds": 0.000622372999714571,
+      "augmentation_sha256": [
+        "6d5f16efa09298bc6040074fa7b6d43bd9c934b91720fa01156a09e3a090a954"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 512,
+      "data_wait_seconds": 0.04067391700027656,
+      "frames_per_second": 17.353441343361013,
+      "gradient_norm": 0.007739297114312649,
+      "input_frames": 128,
+      "learning_rate": 9.728616793536588e-05,
+      "loss": 0.001171998106079494,
+      "loss_sum": 0.14415576704777777,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 5,
+        "observed": 45,
+        "out_of_frame": 14,
+        "reviewed_empty": 64
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:71:128"
+      ],
+      "pack_indices": [
+        3
+      ],
+      "peak_reserved_vram_bytes": 5695864832,
+      "peak_vram_bytes": 4191495680,
+      "sample_position": 4,
+      "seconds": 7.3760585850004645,
+      "teachers_by_kind": {
+        "masked": 5,
+        "observed": 45,
+        "out_of_frame": 14,
+        "reviewed_empty": 64
+      },
+      "update": 4,
+      "valid_teachers": 123
+    },
+    {
+      "augmentation_seconds": 0.0005664540003635921,
+      "augmentation_sha256": [
+        "e001cae3db010cadf69b9da40eeadaf38f51c8e3397ecd48a969ad160b796756"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 640,
+      "data_wait_seconds": 0.07699852899986581,
+      "frames_per_second": 17.216659929640514,
+      "gradient_norm": 0.03391801938414574,
+      "input_frames": 128,
+      "learning_rate": 8.947199994035401e-05,
+      "loss": 0.003843488627450263,
+      "loss_sum": 0.36128793098032475,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "pack_ids": [
+        "meiji/video_002/clip_011/cam0:16:128"
+      ],
+      "pack_indices": [
+        14
+      ],
+      "peak_reserved_vram_bytes": 5695864832,
+      "peak_vram_bytes": 4189955584,
+      "sample_position": 5,
+      "seconds": 7.4346592499996405,
+      "teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "update": 5,
+      "valid_teachers": 94
+    },
+    {
+      "augmentation_seconds": 0.024494399999639427,
+      "augmentation_sha256": [
+        "435518c77951f73200ae6cedda211377d9803ed63b7a6856e157a56eaf4ea20a"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 768,
+      "data_wait_seconds": 0.7209926820005421,
+      "frames_per_second": 11.980560630977447,
+      "gradient_norm": 0.023438166826963425,
+      "input_frames": 128,
+      "learning_rate": 7.75e-05,
+      "loss": 0.0027605138421058655,
+      "loss_sum": 0.3450642302632332,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 3,
+        "observed": 86,
+        "out_of_frame": 18,
+        "reviewed_empty": 21
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:151:128"
+      ],
+      "pack_indices": [
+        8
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4192504832,
+      "sample_position": 6,
+      "seconds": 10.683974142999432,
+      "teachers_by_kind": {
+        "masked": 3,
+        "observed": 86,
+        "out_of_frame": 18,
+        "reviewed_empty": 21
+      },
+      "update": 6,
+      "valid_teachers": 125
+    },
+    {
+      "augmentation_seconds": 0.0005082170000605402,
+      "augmentation_sha256": [
+        "b20ab953c3127ecce234ea7d2777fac70cef688c4eb81d75660b34ce1cf359cf"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 896,
+      "data_wait_seconds": 0.04935672600004182,
+      "frames_per_second": 17.518324290383816,
+      "gradient_norm": 0.029209524393081665,
+      "input_frames": 128,
+      "learning_rate": 6.281416799501188e-05,
+      "loss": 0.0034435939226971296,
+      "loss_sum": 0.42011845856904984,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 6,
+        "observed": 97,
+        "out_of_frame": 6,
+        "reviewed_empty": 19
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:205:128"
+      ],
+      "pack_indices": [
+        12
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4191927808,
+      "sample_position": 7,
+      "seconds": 7.306634919999851,
+      "teachers_by_kind": {
+        "masked": 6,
+        "observed": 97,
+        "out_of_frame": 6,
+        "reviewed_empty": 19
+      },
+      "update": 7,
+      "valid_teachers": 122
+    },
+    {
+      "augmentation_seconds": 0.0004753129996970529,
+      "augmentation_sha256": [
+        "5625741556e15af83239029e73633403db44a65675d1682bf9cb6d944c45d3d5"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 1024,
+      "data_wait_seconds": 0.030240566999964358,
+      "frames_per_second": 17.355707075746196,
+      "gradient_norm": 0.03988105431199074,
+      "input_frames": 128,
+      "learning_rate": 4.718583200498814e-05,
+      "loss": 0.004702902317047119,
+      "loss_sum": 0.5878627896308899,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 3,
+        "observed": 121,
+        "out_of_frame": 0,
+        "reviewed_empty": 4
+      },
+      "pack_ids": [
+        "tracknet/game7/Clip1:0:128"
+      ],
+      "pack_indices": [
+        16
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4193979904,
+      "sample_position": 8,
+      "seconds": 7.3750956640005825,
+      "teachers_by_kind": {
+        "masked": 3,
+        "observed": 121,
+        "out_of_frame": 0,
+        "reviewed_empty": 4
+      },
+      "update": 8,
+      "valid_teachers": 125
+    },
+    {
+      "augmentation_seconds": 0.0006055080002624891,
+      "augmentation_sha256": [
+        "0d97e38623af55c6842f4fd0350f67e35f418220f8902f7ec8337ccef2b0177c"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 1152,
+      "data_wait_seconds": 0.07685012000001734,
+      "frames_per_second": 17.342581554894213,
+      "gradient_norm": 0.03804498538374901,
+      "input_frames": 128,
+      "learning_rate": 3.250000000000001e-05,
+      "loss": 0.004293596411639071,
+      "loss_sum": 0.4035980626940727,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "pack_ids": [
+        "meiji/video_002/clip_011/cam0:16:128"
+      ],
+      "pack_indices": [
+        14
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4192306688,
+      "sample_position": 9,
+      "seconds": 7.380677414999809,
+      "teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "update": 9,
+      "valid_teachers": 94
+    },
+    {
+      "augmentation_seconds": 0.000552339000023494,
+      "augmentation_sha256": [
+        "d5932acb3f99de4b7147a990fff5bfbfc8bff70c5d2fbd879d5cfd6f9ade99f3"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 1280,
+      "data_wait_seconds": 0.03292919100022118,
+      "frames_per_second": 17.39460269064655,
+      "gradient_norm": 0.028819138184189796,
+      "input_frames": 128,
+      "learning_rate": 2.0528000059645997e-05,
+      "loss": 0.0033635668271829273,
+      "loss_sum": 0.4069915860891342,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 7,
+        "observed": 95,
+        "out_of_frame": 17,
+        "reviewed_empty": 9
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:183:128"
+      ],
+      "pack_indices": [
+        10
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4193859072,
+      "sample_position": 10,
+      "seconds": 7.358604405999358,
+      "teachers_by_kind": {
+        "masked": 7,
+        "observed": 95,
+        "out_of_frame": 17,
+        "reviewed_empty": 9
+      },
+      "update": 10,
+      "valid_teachers": 121
+    },
+    {
+      "augmentation_seconds": 0.0011081880002166145,
+      "augmentation_sha256": [
+        "4eaad50e36f0565eb622f8d6096ac35feb9e6819958b9e1f2f9099bea3f0b351"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 1408,
+      "data_wait_seconds": 0.0344733769998129,
+      "frames_per_second": 17.361094674962025,
+      "gradient_norm": 0.024167904630303383,
+      "input_frames": 128,
+      "learning_rate": 1.2713832064634126e-05,
+      "loss": 0.00278279860122282,
+      "loss_sum": 0.33950142934918404,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 6,
+        "observed": 86,
+        "out_of_frame": 15,
+        "reviewed_empty": 21
+      },
+      "pack_ids": [
+        "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116:119:128"
+      ],
+      "pack_indices": [
+        6
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4197379584,
+      "sample_position": 11,
+      "seconds": 7.37280697999995,
+      "teachers_by_kind": {
+        "masked": 6,
+        "observed": 86,
+        "out_of_frame": 15,
+        "reviewed_empty": 21
+      },
+      "update": 11,
+      "valid_teachers": 122
+    },
+    {
+      "augmentation_seconds": 0.0005398490002335166,
+      "augmentation_sha256": [
+        "4085f43e6b2798dd75bc9751c46d55d60fa918bca04bbf222958c4b40c598976"
+      ],
+      "child_windows": 4,
+      "cumulative_input_frames": 1536,
+      "data_wait_seconds": 0.044529886999953305,
+      "frames_per_second": 16.981937285393112,
+      "gradient_norm": 0.037366967648267746,
+      "input_frames": 128,
+      "learning_rate": 1e-05,
+      "loss": 0.004159392412514128,
+      "loss_sum": 0.3909828867763281,
+      "microbatches": 4,
+      "original_teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "pack_ids": [
+        "meiji/video_002/clip_011/cam0:16:128"
+      ],
+      "pack_indices": [
+        14
+      ],
+      "peak_reserved_vram_bytes": 5714739200,
+      "peak_vram_bytes": 4197379584,
+      "sample_position": 12,
+      "seconds": 7.537420368999847,
+      "teachers_by_kind": {
+        "masked": 34,
+        "observed": 94,
+        "out_of_frame": 0,
+        "reviewed_empty": 0
+      },
+      "update": 12,
+      "valid_teachers": 94
+    }
+  ],
+  "result": {
+    "complete": true,
+    "phase": "pretrain",
+    "sample_position": 12,
+    "schema": "ball_temporal_heatmap_run.v1",
+    "updates_completed": 12
+  },
+  "sample_position": 12,
+  "schedule": {
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "checkpoint_interval": 5,
+    "eps": 1e-08,
+    "evaluation_interval": 12,
+    "gamma": 2.0,
+    "gradient_clip": 1.0,
+    "input_frames": 128,
+    "learning_rate": 0.0001,
+    "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+    "microbatch_windows": 1,
+    "minimum_lr_ratio": 0.1,
+    "optimizer": "AdamW",
+    "schedule": "linear_warmup_cosine",
+    "seed": 42,
+    "sigma_ratio": 0.012,
+    "updates": 12,
+    "updates_completed": 12,
+    "warmup_updates": 2,
+    "weight_decay": 0.01
+  },
+  "schema_version": 1,
+  "seconds": 266.20215873399957,
+  "torch_version": "2.14.1+cu130",
+  "train_log_sha256": "d1954a1ead1cd542e9e9b6df37e4640ae06a216424185a0b3d827658d9f7904a",
+  "updates_completed": 12
+}

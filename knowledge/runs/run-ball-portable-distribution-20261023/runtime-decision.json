@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "source": "parent instruction after host reboot",
+  "runtime": "L4",
+  "cpu_requirement_waived_for_this_verification": true,
+  "skill_changes_authorized": false,
+  "training_authorized": false,
+  "required_vm_checks": [
+    "initial download, full hash/size and sample verification",
+    "re-download in a new VM with elapsed time"
+  ],
+  "stop_and_verify_each_session": true
+}

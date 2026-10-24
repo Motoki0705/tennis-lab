@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "source_commit": "37a8a59984bd48e2a9b399ccc34dd0c25e7863de",
+  "probe": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=\"$PWD\" .venv/bin/python knowledge/runs/run-ball-colab-persistence-preflight-20261023/probe_annotation_paths.py --distribution \"$DISTRIBUTION_STAGE\" --source-store \"$SOURCE_STORE\" --output tmp/colab-persistence-preflight/annotation-path-probe.json",
+    "exit_code": 2,
+    "result": "blocked; both portable annotation consumers fail with the pinned real distribution",
+    "receipt": "annotation-path-probe.json"
+  },
+  "pytest": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py tests/integration/tasks/ball_detection/test_all_frame_windows.py -n 4 -q",
+    "exit_code": 0,
+    "passed": 44,
+    "seconds": 22.88,
+    "scope": "existing separate distribution/window tests; no new-VM or persistence validation"
+  },
+  "ruff": {
+    "command": ".venv/bin/python -m ruff check knowledge/runs/run-ball-colab-persistence-preflight-20261023",
+    "exit_code": 0,
+    "result": "All checks passed"
+  },
+  "mypy": {
+    "command": ".venv/bin/python -m mypy --follow-imports=skip knowledge/runs/run-ball-colab-persistence-preflight-20261023",
+    "exit_code": 0,
+    "source_files": 1,
+    "result": "Success: no issues found"
+  },
+  "acceptance": {
+    "checkpoint_drive_verification_and_failure_injection": "not_run",
+    "new_vm_resume_update_sample_loss_comparison": "not_run",
+    "exact_git_locked_environment_reconstruction_timing": "not_run"
+  }
+}

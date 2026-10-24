@@ -1,0 +1,108 @@
+{
+  "drive": {
+    "ambiguous_paths": 0,
+    "file_count": 2926,
+    "id": "1-JFH7qD9vrlvKU7aNiOqFcQnG6IiFkiP",
+    "inventory": {
+      "archive_path": "transfer/inventory-d364d63274.json",
+      "sha256": "2aa15a97fa12eff36c27da5e1466fb6bb53b846edfbd09b86256eb6b0bd68342",
+      "size_bytes": 811391
+    },
+    "manifest": {
+      "id": "1WnXk9xixvWUIJrj_Q5gTQQqHvmS7XDqW",
+      "sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+      "size_bytes": 672909
+    },
+    "observed_at": "2026-10-23T10:54:38.100764+00:00",
+    "path": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "size_bytes": 157029428456
+  },
+  "interruption": {
+    "completed_files": [],
+    "file": "shards/clip-00772.bin",
+    "receipt": {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "20",
+        "upload",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot/shards/clip-00985.bin",
+        "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1/shards/clip-00772.bin",
+        "--verify"
+      ],
+      "elapsed_seconds": 35.19822963199999,
+      "returncode": 1,
+      "schema_version": 1,
+      "started_at": "2026-10-23T03:47:16.406230+00:00",
+      "stderr": "interrupted-upload-8a032b2c1e.stderr.log",
+      "stdout": "interrupted-upload-8a032b2c1e.stdout.json"
+    },
+    "resume_unit": "whole uncompleted file; previously verified files are retained",
+    "schema_version": 1,
+    "size_bytes": 335913953,
+    "source_hash_seconds": 492.77738950599996,
+    "status": "interrupted"
+  },
+  "local_new_small_files": {
+    "metadata_upload_stage_bytes": 257891063,
+    "preparation_bytes": 295439829,
+    "rgb_payload_copies": 0
+  },
+  "receipt_archive": {
+    "archive_md5": "5867435da50af7f7914ca940ee1d698c",
+    "archive_path": "tmp/ball-distribution-upload-receipts-20261023T105623.tar.gz",
+    "archive_sha256": "42c6f4e1f86a7a5f09018c498e4275f71790b6dfe037265181778d98d9688ffb",
+    "archive_size_bytes": 1769830,
+    "created_at": "2026-10-23T10:56:26.768411+00:00",
+    "drive_id": "14iOlUfGsvcuqwm3H5o59s9m7uipQVfzU",
+    "drive_path": "operations/drive/ball-distribution-upload-20261023/train-val/ball-distribution-upload-receipts-20261023T105623.tar.gz",
+    "excluded": [
+      "transfer/metadata-source/"
+    ],
+    "inventory_observed_at": "2026-10-23T10:58:30.179971+00:00",
+    "metadata_stage_bytes": 257891063,
+    "schema_version": 1,
+    "status": "verified",
+    "transfer_receipt_files": 4682,
+    "verified_attempt": "attempt-fe4ba0b150.json"
+  },
+  "resume": {
+    "additional_committed_payload_found_by_inventory": 1,
+    "duplicate_successful_payload_destinations": 0,
+    "failures": [],
+    "legacy_logged_payloads": 962,
+    "retained_payloads": 963,
+    "successful_payload_timing_receipts": 1536,
+    "uploaded_payloads": 574
+  },
+  "schema_version": 1,
+  "source_plan": {
+    "bootstrap_commit": "0b89c173542c90433e8f30a311c90d3b62146b50",
+    "bundle": {
+      "path": "tmp/ball-distribution-colab-source.bundle",
+      "prerequisite": "cca80ae6465e0571421de1abfae9fcd80188cde7",
+      "prerequisite_in_bootstrap": true,
+      "ref": "refs/heads/codex/ball-temporal-distribution",
+      "sha256": "74bb3d9599d8dd1914b80338ea30858eef0291375dc967a9862c77a42d64c1e2",
+      "size_bytes": 521538
+    },
+    "execution_commit": "590d3283bfa69f1fab378bf2ad1e6d8b7f231508",
+    "implementation_commit": "52f91b6ec0b5e728efe61ec085d91eeafcad87a4",
+    "schema_version": 1,
+    "status": "prepared_not_executed"
+  },
+  "status": "verified",
+  "timing": {
+    "finished_at": "2026-10-23T10:54:42.313559+00:00",
+    "first_payload_attempt_at": "2026-10-23T03:47:16.406230+00:00",
+    "manifest_upload_seconds": 33.566378405997966,
+    "metadata_upload_seconds": 901.6441501529989,
+    "resumed_attempt_seconds": 10235.314371086999,
+    "resumed_source_hash_seconds": 475.9277077229999,
+    "supervisor_monotonic_seconds": 10245.5819996,
+    "supervisor_utc_seconds": 9928.475363,
+    "timing_contract": "Individual elapsed_seconds use time.monotonic. UTC timestamps are separate audit observations; host UTC and monotonic deltas differ, and no clock-cause correction is inferred. The overall UTC span includes hashing, the deliberate interruption and model-session interruption after the first payload attempt, but excludes the first source-hash phase.",
+    "utc_seconds_first_payload_attempt_to_finished": 25645.907329
+  }
+}

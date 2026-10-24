@@ -74,7 +74,7 @@ class MDDHybridAdapter:
         heatmap, presence = output.heatmap_logits, output.presence_logits
         if (heatmap.ndim != 4 or heatmap.shape[0] < 1 or heatmap.shape[1] != self.config.frames
                 or min(heatmap.shape[-2:]) < 2 or presence.shape != heatmap.shape[:2]):
-            raise BallModelIOError("Hybrid output requires B,32,H,W heatmaps and B,32 presence")
+            raise BallModelIOError(f"Hybrid output requires B,{self.config.frames},H,W heatmaps and B,{self.config.frames} presence")
         if (heatmap.device != presence.device or not heatmap.is_floating_point() or not presence.is_floating_point()
                 or not bool(torch.isfinite(heatmap).all()) or not bool(torch.isfinite(presence).all())):
             raise BallModelIOError("Hybrid logits must be finite floating tensors on the same device")

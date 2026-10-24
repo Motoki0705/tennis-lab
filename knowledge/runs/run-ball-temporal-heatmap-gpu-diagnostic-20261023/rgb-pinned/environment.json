@@ -1,0 +1,7 @@
+{
+  "torch": "2.13.0+cu130",
+  "cuda": "13.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "free_vram_bytes": 15894315008,
+  "total_vram_bytes": 17102864384
+}

@@ -1,0 +1,24 @@
+{
+  "bytes_equal": true,
+  "publication": {
+    "files": 2,
+    "generation": "verified-selection-v1",
+    "manifest_md5": "79f37ae0e6821d28db98416ea2887c27",
+    "manifest_sha256": "2f573e042ba87e21af3bbeb151be08da05ada7f99e673f2b5fc08c03103dd948",
+    "marker_id": "17n2eIVb8G9L4ZOgtRkBBJo_P-DuZ3p0a",
+    "remote": "gdrive:tennis_lab/operations/colab/ball-resume-proof-a-20261024/storage-preflight/verified-selection-v1",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 29.843741192999005,
+    "size_bytes": 20512,
+    "status": "verified"
+  },
+  "restoration": {
+    "files": 2,
+    "generation": "verified-selection-v1",
+    "manifest_sha256": "2f573e042ba87e21af3bbeb151be08da05ada7f99e673f2b5fc08c03103dd948",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 15.936380004000966,
+    "status": "verified"
+  },
+  "schema_version": 1
+}

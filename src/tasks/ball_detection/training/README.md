@@ -5,6 +5,7 @@
 | stage | 初期化 | 実装と教師 |
 |---|---|---|
 | `convnext_heatmap` | 保存configで明示 | `convnext_heatmap/`の既存Lightning/GAN。既存heatmap契約 |
+| `temporal_heatmap` | `--architecture dpt\|hybrid --phase pretrain\|finetune` | `temporal_heatmap/`。共通128frame pack、全frame heatmap教師、更新数による等予算 |
 | `dpt_pretrain` | ランダム初期化、または同run再開 | `dpt_pretrain/`。CNN＋DPT、observed正例と確認済み不在のheatmap教師 |
 | `coordinates` | `--initialize scratch` | `coordinates/scratch.py`。pose32条件/query-only4条件、observed座標、constant LR |
 | `coordinates` | `--initialize encoder` | `coordinates/finetune.py`。完了DPTのCNN転送、query-only、拡張、freeze→joint |
@@ -17,6 +18,139 @@ encoder/full_modelのrunは`coordinates/joint.py`、座標系のepoch更新は `
 JPEG復号・GPU転送・precision/compileは `runtime/`、LRは `schedules.py`、epoch内FPS混合は `sampling.py`。
 段階別runnerが他のrunnerから共通関数をimportしない。評価は `evaluation/`、保存形式は `checkpoints/` が担当する。
 窓datasetは同じsampleに`position_valid`と`heatmap_valid`を供給し、各objectiveが使う教師を明示する。
+
+## 共通heatmap objective
+
+`training/heatmap_objective.py` の `heatmap_objective(logits, batch, sigma_ratio=.012, gamma=2.)`
+をDPTとheatmap専用hybridで共用する。既存 `dpt_pretrain.objective` は同じ関数の再exportで、
+従来DPTの教師・演算順・数値を維持する。存在head付きhybridもこのheatmap項を共用し、
+従来どおり存在BCEを別に加える。
+
+logitsはnative /4格子の `(B,T,H,W)`、batchはnormalized `uv: (B,T,2)` と
+boolean `position_valid` / `heatmap_valid: (B,T)` を持つ。
+position_validはheatmap_validの部分集合で、位置教師は有限の[0,1]座標を要求する。
+位置教師には格子対角比sigmaのGaussian、確認済み不在（heatmap_validのみtrue）には全面0を作る。
+未知・座標不明・教師領域外はdatasetがheatmap_validをfalseにし、目的関数で除外する。
+目的関数は領域・不在ラベルを推測せず、渡されたmaskだけを使う。
+空間平均のFocal BCEを求め、heatmap_validなframeだけで平均する。教師・損失はFP32。
+返り値はscalar lossと `(B,T)` のper-frame lossで、後者の集計にも必ずmaskを使う。
+全不在のbatchは有効、教師0件のbatchは拒否する。
+
+任意Tのモデルと重み専用artifactは [MDDモデル](../models/mdd/README.md#任意長のheatmap専用モデル) を参照。
+このモデルAPIは、既存3段学習のrunnerやscene既定モデルを切り替えない。
+
+## 共通packによる更新数ベースのheatmap学習
+
+`--stage temporal_heatmap`は存在headを持たないDPT/hybridの直接32frame事前学習と、
+その全重みからの独立fine-tuningを行う。実験行列・本学習の予算は呼出側で決める。
+学習・評価・比較動画のCLIは、任意入力を含む全pathに絶対pathを要求し、共通の
+`NonHydraPathBoundary`で存在・role・入力/出力方向を処理開始前に検証する。
+異なるdirectoryのmanifest・較正結果・比較runは、それぞれ明示したartifactとして読める。
+窓と採点集合は[data/windows](../data/windows/README.md#全フレーム教師の可変長窓)、
+閾値・指標の規則は[確定プロトコル](../../../../knowledge/runs/run-ball-all-frame-protocol-20261022/protocol.md)を参照。
+
+必須指定はモデル・train/evaluation manifest・段階・アーキテクチャ・seed・更新数・
+1更新の入力frame数（128の整数倍）・microbatchの窓数・LR・warmup更新数・最小LR比・
+weight decay・gradient clip・評価/保存の更新間隔・Gaussian sigma比・focal gamma・
+位置判定距離・拡張・runtime。これらの学習予算に暗黙の既定値はない。
+AdamWのbetas=(0.9,0.999)、eps=1e-8と、linear warmup後のcosine scheduleをrecipeへ保存する。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.train --stage temporal_heatmap \
+  --architecture dpt --phase pretrain \
+  --manifest /absolute/prepared/train_T32.json \
+  --evaluation-manifest /absolute/prepared/evaluation_T32.json \
+  --model-config /absolute/configs/model/mdd_dpt_heatmap.yaml --output /absolute/new-run \
+  --updates <Upre> --input-frames <128の整数倍> --microbatch-windows <窓数> \
+  --learning-rate <LR> --warmup-updates <更新数> --minimum-lr-ratio <比率> \
+  --weight-decay <値> --gradient-clip <値> --evaluation-interval <更新数> --checkpoint-interval <更新数> \
+  --seed <seed> --sigma-ratio <値> --gamma <値> --distance-px <元画像pixel> --augmentation none \
+  --device cuda --precision bf16 --jpeg-decoder nvjpeg --compile-mode off --input-verification upfront
+```
+
+hybridは`--architecture hybrid`と`mdd_heatmap_hybrid.yaml`を明示する。
+`frames`とmemory controlsを含むmodel YAMLを別ファイルで確定して渡す。
+学習は単一deviceのT=32/64/128、CPUはFP32、CUDAはBF16を受け付け、DDPを拒否する。
+native画像のresize/paddingを行わない。異なる解像度の窓は同じmicrobatchへ混ぜず、pack内でまとめる。
+
+抽出はseed・pack出現位置に結び付いた一様復元抽出で、dropout等のモデルRNGと独立する。
+prefetch済みでも未更新の出現は進めず、checkpointの位置から再抽出する。
+`--augmentation video --augmentation-config <全項目を宣言したYAML>`は128frame packを結合して
+既存VideoAugmenterを1回適用し、その後T枚へ分割する。人工遮蔽にはobservedの内部frameが必要で、
+その条件のないpackに当たれば既存augmenterが明示的に停止する。全不在packも含める設定では
+`occlusion_probability: 0`を指定する。cameraで画面外へ出たobservedはmaskとし、不在へ読み替えない。
+MDDは各子窓の変換後RGBからモデル内で再計算する。
+
+全maskの子窓もforward/backwardする。microbatchごとに有効frameの損失の**和**をbackwardし、
+更新全体の教師数で勾配を割ってからclip・optimizer更新を行う。
+最後のmicrobatchが短くてもpackのframe数は減らさない。
+`train.jsonl`は毎更新、pack ID/番号/抽出位置、入力frame数、累積frame数、子窓/蓄積回数、
+拡張前後のkind別教師数、拡張audit hash、lossと分子、LR、勾配norm、入力待ち・更新時間・速度、
+peak allocated/reserved VRAMを保存する。速度・VRAMは当該更新の範囲で、評価/保存時間を含まない。
+
+### 全重みfine-tuningと同run再開
+
+fine-tuningは新しいoutputへ`--phase finetune`、目的Tのmodel configとtrain/evaluation manifest、
+新しい予算を渡し、`--initial-artifact <pretrain/weights-update-NNNNNNNN.pt>`・
+`--initial-artifact-sha256 <SHA-256>`・`--parent-update <固定更新数>`を追加する。
+保存T=32のartifactをそのまま検証・復元し、新しいTのモデルへparameter/bufferをstrict転送する。
+optimizer/schedule/抽出位置は0から開始する。構造・snapshot・split・共通集合・decoderの変更は拒否し、
+T・frame分割・activation checkpointing以外のモデル設定を変更しない。
+
+runは`ball_temporal_heatmap_run.v1`、再開checkpointは`ball_temporal_heatmap_checkpoint.v1`。
+`run.json`へ解決済みrecipe・入力/コード/祖先の来歴、run内へ両manifestを保存する。
+`weights-update-NNNNNNNN.pt`は`mdd_heatmap_model.v1`の重み専用artifactで、更新数・段階・
+snapshot/集合/decoder/コード/recipeの来歴を`training`へ追加する。
+評価または保存の更新間隔と最終更新で重みを保持する。checkpoint選択にtestは使わない。
+
+resumeは元outputと元の全設定を維持し、`--resume <元output/checkpoint-update-NNNNNNNN.pt>`を
+指定する。初期artifact引数は渡さず、保存済み祖先を使う（祖先ファイルを開き直さない）。
+`latest.json`が指す最新checkpointとhashを要求し、T・予算・manifest・recipe・コード内容・
+Torch版の変更を拒否する。モデル・AdamW・schedule更新位置・Python/NumPy/Torch/CUDA RNG・
+pack抽出位置を復元する。manifest内のsnapshot pathを含む入力identityも同じに保つ。
+`--stop-after-update <更新数>`は元の総予算とscheduleを変えない診断停止で、途中checkpointを保存する。
+
+各checkpointは原子的に置換してから`latest.json`を公開する。コミット済みlogの長さとhashを
+checkpointへ記録し、再開時にはそのprefixを検証する。checkpoint公開前に書かれた末尾だけを
+切り戻して再実行する。停止中の更新を二重に数えず、過去checkpointからの巻戻し再開を拒否する。
+
+Python APIの`persist(output, stage)` callbackはrun初期化後、完成checkpointと`latest.json`の公開直後、
+停止/完了記録後に同期して呼ぶ。例外はそのまま学習を停止させ、次の更新へ進めない。
+保存先・世代名・receiptの管理は呼出側が担当し、汎用のサイズ/hash照合付き保存・復元には
+[`RcloneSnapshotStore`](../../../utils/artifact_store/README.md)を使える。
+callbackは学習予算・モデル・入力identityを変更せず、実験用controllerはknowledge側に置く。
+
+### 共通frame評価と比較動画
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate --mode temporal_heatmap \
+  --artifact /absolute/run/weights-update-NNNNNNNN.pt --manifest /absolute/prepared/evaluation_T64.json \
+  --split val --output /absolute/validation.json --distance-px <元画像pixel> \
+  --device cuda --precision bf16 --jpeg-decoder nvjpeg --compile-mode off --input-verification upfront
+```
+
+testは`--split test --calibration /absolute/validation.json`を指定する。
+validationの正例・確認済み不在のいずれかが0なら較正不能として停止する。
+同scoreを分割しない変化点探索とall-present/all-absentの端点modeを保存し、同じartifact・
+validation教師集合・復号条件で較正した閾値だけをtestへ適用する。
+存在判定で位置誤差の分母を減らさず、元画像pixelの平均/中央値/P95・所定距離内率、
+observed FNR、不在kind別/合算FPR、source/FPS/group/自然遮蔽/区間端距離別の支持数を出す。
+支持数0の率・位置誤差はnull。自然遮蔽はstoreのobservedフラグだけを使う。
+
+評価JSONはschema、artifact/manifest/snapshot/実採点集合のhash、較正规則と混同行列、
+runtime、主・副指標を持つ。隣接する`*.frames.jsonl`へ未知frameも含む全ownerの座標・score・
+実PTS・kind・owner offset・左右context・MDD先頭・区間端距離を保存する。
+実際のowner/教師/採点集合をmanifestと照合し、欠落・重複・非finite出力で停止する。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.visualize_temporal_heatmaps \
+  --evaluations /absolute/dpt-T32/validation.json /absolute/hybrid-T64/validation.json \
+  --clip-id <同じclip> --start <開始frame> --stop <終了frameの次> --output /absolute/comparison.mp4
+```
+
+共通集合・snapshot・復号条件の一致と予測file hashを照合し、既存のoverlay/panel/VideoWriterで
+同じ区間を横に並べる。位置は閾値で隠さずorangeで描き、validation閾値による不在判定も表示する。
+入力評価・出力動画のhashと範囲をsidecar JSONへ保存する。
 
 ## 実行例
 

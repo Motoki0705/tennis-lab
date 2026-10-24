@@ -1,0 +1,56 @@
+{
+  "models": {
+    "dpt": {
+      "updates": 30,
+      "input_frames": 3840,
+      "first_loss": 0.12680839002132416,
+      "last_loss": 0.0017326504676020704,
+      "peak_allocated_vram_bytes": 203706880,
+      "peak_reserved_vram_bytes": 245366784,
+      "median_update_seconds": 0.8170245324999996,
+      "median_frames_per_second": 156.66822390899603,
+      "sample_positions": [
+        1,
+        30
+      ],
+      "zero_teacher_child_possible": false,
+      "checkpoint_resume_at_update": 2
+    },
+    "hybrid": {
+      "updates": 30,
+      "input_frames": 3840,
+      "first_loss": 0.12171678803861141,
+      "last_loss": 0.0015286990674212575,
+      "peak_allocated_vram_bytes": 288815616,
+      "peak_reserved_vram_bytes": 329252864,
+      "median_update_seconds": 0.9422815755001466,
+      "median_frames_per_second": 135.840512546612,
+      "sample_positions": [
+        1,
+        30
+      ],
+      "zero_teacher_child_possible": false,
+      "checkpoint_resume_at_update": 2
+    }
+  },
+  "environment": {
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "free_vram_bytes": 15894315008,
+    "total_vram_bytes": 17102864384
+  },
+  "budget_logs_match": true,
+  "image_size": [
+    64,
+    64
+  ],
+  "precision": "bf16",
+  "frames": 32,
+  "decoder": "nvjpeg",
+  "frame_chunk_size": 8,
+  "activation_checkpointing": true,
+  "compile_mode": "off",
+  "data": "synthetic_JPEG_fixture; not_accuracy_evidence",
+  "output": "tmp/temporal-heatmap-gpu-rgb-pinned"
+}

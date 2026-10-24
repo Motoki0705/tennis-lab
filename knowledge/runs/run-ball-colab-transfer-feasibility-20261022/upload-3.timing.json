@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "direction": "local_to_drive",
+  "repeat": 3,
+  "started_at": "2026-10-22T05:18:34.446570+00:00",
+  "elapsed_seconds": 100.5352708370192,
+  "bytes": 650089269,
+  "end_to_end_MB_per_second": 6.466280575837703,
+  "returncode": 0,
+  "command": [
+    "${REPO_ROOT}/.venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "--rclone-config",
+    "${RCLONE_CONFIG}",
+    "--timeout-seconds",
+    "900",
+    "upload",
+    "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-3",
+    "staging/ball-detection-transfer-probe-20261022/sample-3",
+    "--verify"
+  ],
+  "destination": "staging/ball-detection-transfer-probe-20261022/sample-3",
+  "timing_includes": "path uniqueness checks, transfer, post-readback and local/remote content hash verification"
+}

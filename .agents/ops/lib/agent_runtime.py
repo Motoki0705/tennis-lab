@@ -22,6 +22,7 @@ from agent_events import (
     EvidenceError,
     codex_checkpoint,
     interrupted_codex_turn,
+    parse_cli_event,
     parse_json,
 )
 from agent_output import OutputSchema
@@ -578,7 +579,7 @@ def recover_lost_turn(result: dict[str, Any], state: dict[str, Any]) -> None:
     for line in (run_dir / "events.jsonl").read_bytes().splitlines():
         if line.strip():
             events.feed(line)
-            if parse_json(line).get("type") == "turn.started":
+            if parse_cli_event(line, agent).get("type") == "turn.started":
                 started_turns += 1
     if (
         not events.started

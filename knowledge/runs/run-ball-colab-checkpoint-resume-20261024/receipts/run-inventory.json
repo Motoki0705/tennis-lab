@@ -1,0 +1,1368 @@
+{
+  "action": "inventory",
+  "ambiguous_paths": [],
+  "entries": [
+    {
+      "hashes": {},
+      "id": "1wxI4FO2Zgnh3hdwJBVpnFNax5Zkc91V0",
+      "modified": "2026-10-23T16:52:28.684Z",
+      "path": "control",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {},
+      "id": "1GXLGBh-NGygxTkhHfqKX9ntlCwUOYaMF",
+      "modified": "2026-10-23T16:53:47.720Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "161dcb9360db6dd3e2038fb0c167c3b5"
+      },
+      "id": "1wCYOzvdrE_ZPa3lHDER3gWVb9Muzk1LM",
+      "modified": "2026-10-23T16:54:07.233Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/_SNAPSHOT.json",
+      "size_bytes": 1391,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "fa82338d24fd17355cc2e9dfa3b0c512"
+      },
+      "id": "1Gcj4SOBoONGPQT2u3WpnJcpoijDOFRRo",
+      "modified": "2026-10-23T16:53:34.141Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/checkpoint-update-00000005.pt",
+      "size_bytes": 130251747,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "112DVBsYYWyKl7FkVSzr8RR1n77ilGf2r",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "e937a042082df9144c8910d579b8a612"
+      },
+      "id": "1JvkbijSIYiS-WDfldA39yxzXlIqVSs32",
+      "modified": "2026-10-23T16:53:35.567Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/latest.json",
+      "size_bytes": 134,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1DpSwIduaxf8C9kzJ4VlNlYGWY6LI3dbt",
+      "modified": "2026-10-23T16:52:22.452Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "5564beb706b5f65d73b69ff2e7dc90ad"
+      },
+      "id": "1evYvNg5xN693gZoyaKQH73wQu8PujP-N",
+      "modified": "2026-10-23T16:53:33.383Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/train.jsonl",
+      "size_bytes": 4243,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1Zyhw-QCY_y1AuUnc0qIdouVC3Et43Gyj",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "0602406f5dfe2920b9f109764f20db59"
+      },
+      "id": "15i0ltnl_oWicrnamEJP_FiGC8WFIE7if",
+      "modified": "2026-10-23T16:53:33.387Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/training.log",
+      "size_bytes": 5133,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2bdc8a499b5df39343ea4cb465e67005"
+      },
+      "id": "1tCIEId-QFzZwKyCnYgI0D753xJ6nDt_V",
+      "modified": "2026-10-23T16:53:33.474Z",
+      "path": "control/checkpoint-00000005-cd1a77b37231495d97536ed2a541ed20/weights-update-00000005.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1Q6vJE20uhcRGFm_HH4ncfCGJVPhd0j1t",
+      "modified": "2026-10-23T16:55:06.752Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "c65e825b52a2048d15f21cb5fc723859"
+      },
+      "id": "1LIrZmdEl7xKLFRLKmsPj9z_QIGNMHZH8",
+      "modified": "2026-10-23T16:55:28.943Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/_SNAPSHOT.json",
+      "size_bytes": 1392,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c9ecb8c5284298d3bc8006472abaace"
+      },
+      "id": "120hJsylW2Be1F59-K7UQVSAUc6LskV6c",
+      "modified": "2026-10-23T16:54:53.322Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/checkpoint-update-00000010.pt",
+      "size_bytes": 130251747,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "18jQ8RzLfAmAjFHpAV9zJkimIBC3j15qX",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "90376cbc9d8af0ae422a4c40f49e740e"
+      },
+      "id": "1wCZfgrlGaAmEYioYRKwt-i7zClKBeQxv",
+      "modified": "2026-10-23T16:54:54.762Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1gl_VSinnFOn19T693WB4kSGBXDjnde0C",
+      "modified": "2026-10-23T16:52:22.452Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2782c3d1d3613ad035ed1d91dc50e774"
+      },
+      "id": "1pYrlQwpfB3R1wo1_2nDPWUBad8Hmyxvh",
+      "modified": "2026-10-23T16:54:52.566Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/train.jsonl",
+      "size_bytes": 8487,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1HPwDa_A-vj4jVh3s01EdQ7uc7vbS2VEO",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "cf3768e02ab888b1b7f101b9bbed40b3"
+      },
+      "id": "1IcGUP9LuAqIK-N9v_TXVsPdai7Ju85uf",
+      "modified": "2026-10-23T16:54:52.569Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/training.log",
+      "size_bytes": 10268,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4d3092c91dd39ce7b01aa4c9a2fb81a2"
+      },
+      "id": "1jjbhqAwM6ShIpwsze1nqAeyTlUhrVJ7i",
+      "modified": "2026-10-23T16:54:52.650Z",
+      "path": "control/checkpoint-00000010-793ec520fce440c685641ba7cb70cb0d/weights-update-00000010.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "13pWlJand8o4BAVosyPE14sRGwOKMlMKu",
+      "modified": "2026-10-23T16:56:11.907Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "1344c73c353862b311baf5ee1f503679"
+      },
+      "id": "1sE4y_zSw81Atqd969SZYBQVxlcZVhvLd",
+      "modified": "2026-10-23T16:56:36.349Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/_SNAPSHOT.json",
+      "size_bytes": 1745,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d30abc4a89e9c523820a27c374a56cc2"
+      },
+      "id": "1Fq9MoJIOoSlWptr5qy5_OR3e7IY10glO",
+      "modified": "2026-10-23T16:55:57.986Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/checkpoint-update-00000012.pt",
+      "size_bytes": 130258211,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1sq-nKSLIVFNy6B2e2X04qkUkREjSem7T",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "adb85a6073e7d1484d362e0be4082822"
+      },
+      "id": "1swZMsEdbOK5oPxcHo7d5UZri-M0bj5S8",
+      "modified": "2026-10-23T16:55:59.422Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1ZY4PoZ25i220Y1u24Ry9IDY7O353hk_U",
+      "modified": "2026-10-23T16:52:22.452Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2f12e8fd55e029ad0abce1082454356b"
+      },
+      "id": "19xZM3eJC2Hr46jSAFJhQnseGz1oav0Sm",
+      "modified": "2026-10-23T16:55:52.114Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/train.jsonl",
+      "size_bytes": 10172,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1V2pJK9OG8sPi8zCX-UDqjfXDMPrWRHtU",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "a25889682444f46279ead675d728cb39"
+      },
+      "id": "1L8JLGSKMGOya2RiE4-Er0EWBIp8cX2ml",
+      "modified": "2026-10-23T16:55:52.923Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/training.log",
+      "size_bytes": 12890,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "7ea6bc3d1258fb3ad795dd88d9e859e7"
+      },
+      "id": "1cpu1r9XKvQJJjjawE1MFZMvf0dw7onve",
+      "modified": "2026-10-23T16:55:57.773Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/validation-update-00000012.frames.jsonl",
+      "size_bytes": 83280,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "11df0fd04b53700889a71575733f6fc5"
+      },
+      "id": "1i8L6UM4SQ3Cy6K5C2LOAll_xHxAzzIwy",
+      "modified": "2026-10-23T16:55:57.774Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/validation-update-00000012.json",
+      "size_bytes": 10984,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "41e796c0326b86a39777c2393389173b"
+      },
+      "id": "1b6XpZtg7PdCQOUn-8uqj_tcqxBNY3Sty",
+      "modified": "2026-10-23T16:55:52.192Z",
+      "path": "control/checkpoint-00000012-c10848e3bcdd4fa995b3188ab86cf9b0/weights-update-00000012.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1TYV8GFUuYfIsIzhKR9oRJIZfi2xHzEDY",
+      "modified": "2026-10-23T16:56:57.441Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "901e509d22c4c9c5705443673affdc1b"
+      },
+      "id": "1UxdQQJmcBgPBHXJU3oXyyS-RBCNTQyzx",
+      "modified": "2026-10-23T16:56:44.321Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/COMPLETED.json",
+      "size_bytes": 121,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "95bd39b933766748b2435edef17e2b82"
+      },
+      "id": "1apbO_VG76yZpA6adBlMokrffqqHQOlFs",
+      "modified": "2026-10-23T16:57:16.459Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/_SNAPSHOT.json",
+      "size_bytes": 1897,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d30abc4a89e9c523820a27c374a56cc2"
+      },
+      "id": "1U9ga1Qyekm9uBHTO8G2KUeJ9N_ueElUo",
+      "modified": "2026-10-23T16:55:57.986Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/checkpoint-update-00000012.pt",
+      "size_bytes": 130258211,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1XIlnVzA2-RRqBK_aPJOOQcbgTzICw6qo",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "adb85a6073e7d1484d362e0be4082822"
+      },
+      "id": "1oy6jqMwtgMQlwqsBAX4363plptSYPsgb",
+      "modified": "2026-10-23T16:55:59.422Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1EmtyeNpGnqm6XTGSKvj_J_qbsNVfh8Xk",
+      "modified": "2026-10-23T16:52:22.452Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2f12e8fd55e029ad0abce1082454356b"
+      },
+      "id": "10xvjaY5i0b2DQMiORWoSO6w7HZlLnzBl",
+      "modified": "2026-10-23T16:55:52.114Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/train.jsonl",
+      "size_bytes": 10172,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1hP2XQbD0WTVwMHsULEkRHg_ITEOVTZ4i",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "5145c4388d09888280eddb7ac87209bc"
+      },
+      "id": "1ZbVAcVx6IPgsF5lY9c3xhPa6vRvaerzn",
+      "modified": "2026-10-23T16:56:44.318Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/training.log",
+      "size_bytes": 13497,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "7ea6bc3d1258fb3ad795dd88d9e859e7"
+      },
+      "id": "13F1Y9cLvGiYcETYMeRZ1zAkGGu8kN1KM",
+      "modified": "2026-10-23T16:55:57.773Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/validation-update-00000012.frames.jsonl",
+      "size_bytes": 83280,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "11df0fd04b53700889a71575733f6fc5"
+      },
+      "id": "1VCMfJkZqk8DnIXbLlHKCjiP3V_MhQj3i",
+      "modified": "2026-10-23T16:55:57.774Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/validation-update-00000012.json",
+      "size_bytes": 10984,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "41e796c0326b86a39777c2393389173b"
+      },
+      "id": "1aXkx0zXRhUKzxoQHM7KLS-8Dae-AJSG3",
+      "modified": "2026-10-23T16:55:52.192Z",
+      "path": "control/completed-00000012-2f70a0d48d5c4f17b21d4792cb78253f/weights-update-00000012.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1SyrocbSakU-ABV0pCQTYgHwFl2IFBRlW",
+      "modified": "2026-10-23T16:52:37.841Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "6f2351bcb0a14c68f87f5f5ba8a4f625"
+      },
+      "id": "1TJ-QETt3B1H483iI8nv7RuOOJCatbIaR",
+      "modified": "2026-10-23T16:52:45.400Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/_SNAPSHOT.json",
+      "size_bytes": 892,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1M9ReaZm28O3SWiMg-TIG5PARZHcrrLTi",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1X_NhECtkUVpTrvokc3MuYq-LkN0jZaAp",
+      "modified": "2026-10-23T16:52:22.452Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "12hO9Y-DQwIRkQhYturZ9CGvVzJGm0-NF",
+      "modified": "2026-10-23T16:52:22.456Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/train.jsonl",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1pwirbCfSb_HwOYr2mUU3yv3kGKjNKSy2",
+      "modified": "2026-10-23T16:52:22.451Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "1SaP_BDHtBssa3Uz3tpBeaY_VuSKCGnWQ",
+      "modified": "2026-10-23T16:52:22.456Z",
+      "path": "control/initialized-00000000-5eda7317760a43fc9ab252fedd9e2ea1/training.log",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1o8TniFof2BLU6661Lnq-2s4g3WbUNBZN",
+      "modified": "2026-10-23T17:02:37.686Z",
+      "path": "failure",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {},
+      "id": "1V4Ms1Q-OvGQ4DNxUjM8poNB4YUeSizZ8",
+      "modified": "2026-10-23T17:02:46.413Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "620c5ab354dee8b90138b2f7c73442a4"
+      },
+      "id": "1BZIIVGoOz-nQ5ovuk2oGUHbluxINJZPt",
+      "modified": "2026-10-23T17:02:54.673Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/_SNAPSHOT.json",
+      "size_bytes": 892,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1ra211-PcHSluYMyUhA2gR1BFh-J3mUXT",
+      "modified": "2026-10-23T17:02:33.420Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1e6zCwkZrNiPi1GnRymQwpn3s2fz5Bso5",
+      "modified": "2026-10-23T17:02:33.420Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "1ztcsLVPJotN__Ppy9LbVuohNmsACEHLW",
+      "modified": "2026-10-23T17:02:33.424Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/train.jsonl",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "174AGDD8ODKd3KesmC3Cv-fNCsmeODLrM",
+      "modified": "2026-10-23T17:02:33.420Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "1hv1Q6CL_rKjFUdlN6eDiXNdwZ96qwl1y",
+      "modified": "2026-10-23T17:02:33.424Z",
+      "path": "failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d/training.log",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1zr7sP2CCxG88E8lvSZdX5sy4amYgNer5",
+      "modified": "2026-10-23T16:58:44.212Z",
+      "path": "resumed",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {},
+      "id": "1Z1nMAZj1-iLfuog7l76fZGkTA3LysKmh",
+      "modified": "2026-10-23T17:00:03.657Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "81d76c6317fd42505fc925022367c6d5"
+      },
+      "id": "13IRUbARN3kWiXwWE_YwgX0vyjqbv-nUy",
+      "modified": "2026-10-23T17:00:24.168Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/_SNAPSHOT.json",
+      "size_bytes": 1391,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "1acc0c774602775251876083089212d7"
+      },
+      "id": "1L03UrIJI9GOisgQgy454CVtU03Wn9WIR",
+      "modified": "2026-10-23T16:59:49.539Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/checkpoint-update-00000005.pt",
+      "size_bytes": 130251747,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1x6OUFR8LWWBeFlCK2p6clkVZTlIWvWhp",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "ef737272c1afc8a5f2e83b9d087b5a5b"
+      },
+      "id": "1m5IlWZFZRvP4sauwDMJ8cCJil0pWuGDz",
+      "modified": "2026-10-23T16:59:50.963Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/latest.json",
+      "size_bytes": 134,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "15ne9ytF5T0L7lyeuKNkcWUrp5yuUm8l4",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "a8b89bf2937138cf13407e8e66d1035d"
+      },
+      "id": "1hJuKnbWCPSnTriUi7yvJlHZy1oikuXHH",
+      "modified": "2026-10-23T16:59:48.799Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/train.jsonl",
+      "size_bytes": 4246,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1sIkl5GFWUbQkpD2RXlYxe6Ej-tQGUop0",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "65f1256babf2b8660df450cd390bd8ba"
+      },
+      "id": "1er26EQZRTtvI_hRsglMWUDEwUWJFsh22",
+      "modified": "2026-10-23T16:59:48.803Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/training.log",
+      "size_bytes": 5136,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "617e99ea40d48385b65f6a75a6527f9b"
+      },
+      "id": "1uJO9Q_DjS6G8Z8Br0R94MatunHKtDe7X",
+      "modified": "2026-10-23T16:59:48.877Z",
+      "path": "resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b/weights-update-00000005.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1KZYFppEsxO_ATYD-Q3y4hLP8q9rYa6Y4",
+      "modified": "2026-10-23T18:40:22.651Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "0458fac960b58785e2dc4aa57b30cea3"
+      },
+      "id": "1SX7SyKAZm1oPZ3rPf--kSMnTlv8kBmNI",
+      "modified": "2026-10-23T17:00:33.529Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/STOPPED.json",
+      "size_bytes": 120,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "658083bf55e645189acbaa727aa65ee6"
+      },
+      "id": "1MAry9N_nRocYXYykyS90W8QUAct9qWSz",
+      "modified": "2026-10-23T18:40:38.944Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/_SNAPSHOT.json",
+      "size_bytes": 1543,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "7a634d16183c63ee2bcf0929722a1f09"
+      },
+      "id": "1LmmHxKPWn8X3zFVHYLEwWHECeehMoMZ3",
+      "modified": "2026-10-23T18:40:00.395Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/checkpoint-update-00000010.pt",
+      "size_bytes": 130251811,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1pAWw78YTR7O9aLb-ebYkxTIb2kbzYjaH",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "9f500b207b49902fce0e5422db9080a7"
+      },
+      "id": "1qvoUaOQ59SCuFoOmv1GERZITX75K031p",
+      "modified": "2026-10-23T18:40:01.831Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1GRev9E53k6GIy6MZVvslQgHL7b6MryAi",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "5b6d2af6fdc45c0237b39650171fc4d7"
+      },
+      "id": "1omMvEW2ZFxvzdg8Zwq2zSS-N_NoVmXfz",
+      "modified": "2026-10-23T18:39:59.645Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/train.jsonl",
+      "size_bytes": 8487,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1lcZHH_PAhv6XzwCDNQRYUCmnKhh-oYeP",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "bbb067bbb8b034264205fb4998346309"
+      },
+      "id": "10ks1q1LHBGeR9rrqJ6rfw8tuaC3T2Y-t",
+      "modified": "2026-10-23T18:39:59.649Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/training.log",
+      "size_bytes": 10875,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "1e21ddd276ee36cd88c8d8f3111f0f6a"
+      },
+      "id": "1No6JBZ5j9IL7QPQKcUgRErQBnmDu5vB3",
+      "modified": "2026-10-23T18:39:59.724Z",
+      "path": "resumed/checkpoint-00000010-e29a790cc9e14bb6b9945009f000614c/weights-update-00000010.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1Hd5a12kEe2BeaTMbw4918z0wqsfqtpd7",
+      "modified": "2026-10-23T18:41:35.798Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "0458fac960b58785e2dc4aa57b30cea3"
+      },
+      "id": "1aRhNAdutLFp3YL8iQ5kKDPfWXZSZEn3K",
+      "modified": "2026-10-23T17:00:33.529Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/STOPPED.json",
+      "size_bytes": 120,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "fc5703fca01c2b7183dfd3cffeaa395b"
+      },
+      "id": "1oNSWxibV_MzRhuxZ8BX4aSzTTfBPAE2L",
+      "modified": "2026-10-23T18:41:53.458Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/_SNAPSHOT.json",
+      "size_bytes": 1896,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "c8d9fbe2cf4e4f6e2bed385774283694"
+      },
+      "id": "17pYcJBqOYz4tigHqaBqiom-41TZawmJL",
+      "modified": "2026-10-23T18:41:12.510Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/checkpoint-update-00000012.pt",
+      "size_bytes": 130258275,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1dYAqn9VbT7PaO9P1ei2J95WlfLw98Ni2",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "15e2f49fce62c2a77a547d30f77c2333"
+      },
+      "id": "1jTWzfGHOMmD_Yg_GEcur21yx6GjD_lX5",
+      "modified": "2026-10-23T18:41:13.948Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1TCkZo8t66VrUA2Zbibcwf8AZx3xhSaaI",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "530fdb6bc6487ef15835d4a0180a13b7"
+      },
+      "id": "1WHbR1spKt_8Ad3tiQg3avoH11Gh2-M5m",
+      "modified": "2026-10-23T18:41:06.634Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/train.jsonl",
+      "size_bytes": 10172,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1Yv1HhtPSrW3TsZLbcvqN9dfgQ58SQm8S",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "21ab6c8daa3996e3071393bc272df28c"
+      },
+      "id": "1fwROQ8elGkLxA_jFrsTzP-d5rDIHx36J",
+      "modified": "2026-10-23T18:41:07.412Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/training.log",
+      "size_bytes": 13496,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d993bcf18ed3c95f42d0c1db5f0cefba"
+      },
+      "id": "1nvOl64J2q_kxeG9vJQdKDhpOsC_DaI4l",
+      "modified": "2026-10-23T18:41:12.291Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/validation-update-00000012.frames.jsonl",
+      "size_bytes": 83264,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2bfcb6a66e153b280cb19ea820d98d15"
+      },
+      "id": "1xCYnnaZ96O0e7Z6J-27HPbSLaloG1cUp",
+      "modified": "2026-10-23T18:41:12.292Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/validation-update-00000012.json",
+      "size_bytes": 10984,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "69858cffd51a5a5f688803bf6f4c8711"
+      },
+      "id": "1ULk8z2QIcauDK7Ey5S3-01hFbc20nD7A",
+      "modified": "2026-10-23T18:41:06.712Z",
+      "path": "resumed/checkpoint-00000012-816f9215f40c4d1b9508da586bbec310/weights-update-00000012.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1enj_NFpD_6jlnUURx96bQ5i9ejgBOl6n",
+      "modified": "2026-10-23T18:42:25.904Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "901e509d22c4c9c5705443673affdc1b"
+      },
+      "id": "12ovo4hA7dkcDrCNfFGjMMH7QaGq0E1y5",
+      "modified": "2026-10-23T18:42:05.524Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/COMPLETED.json",
+      "size_bytes": 121,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "0458fac960b58785e2dc4aa57b30cea3"
+      },
+      "id": "1gbGUKvBAbLOKvPSnxKb7ZTdYddoh7mn0",
+      "modified": "2026-10-23T17:00:33.529Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/STOPPED.json",
+      "size_bytes": 120,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4d72c1f8f92d9c5e3315725abcde8d32"
+      },
+      "id": "1l501z4oWaeYCoD6GJB-mUJ1HWBTApq9S",
+      "modified": "2026-10-23T18:42:42.948Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/_SNAPSHOT.json",
+      "size_bytes": 2048,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "c8d9fbe2cf4e4f6e2bed385774283694"
+      },
+      "id": "1oXz0Qj4k650svaPYzgSSNDaTLuoW8dny",
+      "modified": "2026-10-23T18:41:12.510Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/checkpoint-update-00000012.pt",
+      "size_bytes": 130258275,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1_f_Tgty2R6kNwdqVMrGbpBd_2UhwjHF9",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "15e2f49fce62c2a77a547d30f77c2333"
+      },
+      "id": "16-ThTKHh3rZihEo3p_apsX-J_qwKzAOs",
+      "modified": "2026-10-23T18:41:13.948Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/latest.json",
+      "size_bytes": 135,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1LFGS6KHxLSgPRf2e89D80nQ6bqpWVRgm",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "530fdb6bc6487ef15835d4a0180a13b7"
+      },
+      "id": "1i6rrJ9HlVqJaHFpAaG0mAQg_vny-DQ5u",
+      "modified": "2026-10-23T18:41:06.634Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/train.jsonl",
+      "size_bytes": 10172,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "12JM9WHqfCeTiThPqRCSHKhTc1mmyFRZs",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "063ae1fb887ca7ab81a82136625846a2"
+      },
+      "id": "1vLPghalbcdKdRGRIxNZkgnqHIWA0cLi8",
+      "modified": "2026-10-23T18:42:05.520Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/training.log",
+      "size_bytes": 14104,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d993bcf18ed3c95f42d0c1db5f0cefba"
+      },
+      "id": "1cT8vr14qI40qY_mw-L6Z-hwrGC8tS_n8",
+      "modified": "2026-10-23T18:41:12.291Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/validation-update-00000012.frames.jsonl",
+      "size_bytes": 83264,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "2bfcb6a66e153b280cb19ea820d98d15"
+      },
+      "id": "1_D0YXOZR-q3BYLzgKHH6DFUewYQOfA6B",
+      "modified": "2026-10-23T18:41:12.292Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/validation-update-00000012.json",
+      "size_bytes": 10984,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "69858cffd51a5a5f688803bf6f4c8711"
+      },
+      "id": "1RivEwns2Sii5myccObHBtXzHIvrj8ykD",
+      "modified": "2026-10-23T18:41:06.712Z",
+      "path": "resumed/completed-00000012-eb2c6627e78543de92f1973bd1206e0f/weights-update-00000012.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1hbtNhsPVNsgFp8wcRAGzoiafqiQZE-SH",
+      "modified": "2026-10-23T16:58:53.466Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "15fcabe6e0d7bc805cbac5ec75a1e006"
+      },
+      "id": "1yeUibVfKRjLASNUh987n9_QMf_k3A5dQ",
+      "modified": "2026-10-23T16:59:01.929Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/_SNAPSHOT.json",
+      "size_bytes": 892,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "16FMUDPGHJoJSWj4Ti82fnQdPTppP4reI",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1OJ0M2soZpu2NYHBOquN5ZWrks85ZK2rh",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "1Tr5q5pGq1EnJWfTD4xZj9FZwwvpsJrf9",
+      "modified": "2026-10-23T16:58:39.778Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/train.jsonl",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1XD2b4p_pf924NQfI0rCV02RZYC9TIZHz",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "id": "1GWaOkqjoiE8oH3QfsR9BRZEvPle9BAlk",
+      "modified": "2026-10-23T16:58:39.778Z",
+      "path": "resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f/training.log",
+      "size_bytes": 0,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "12cT0GVzWaErdtvnGP3jM0c1sRAsbc3LC",
+      "modified": "2026-10-23T18:38:51.207Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "0458fac960b58785e2dc4aa57b30cea3"
+      },
+      "id": "1K-DmESRA5dyC2tUBb7IvUxRlmCacPs4k",
+      "modified": "2026-10-23T17:00:33.529Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/STOPPED.json",
+      "size_bytes": 120,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "78278b30081b354a1dba573a0368e319"
+      },
+      "id": "1UOXO9dqCTi9kK9jSkd4J8YQGkE_X1WBW",
+      "modified": "2026-10-23T18:39:06.683Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/_SNAPSHOT.json",
+      "size_bytes": 1543,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "1acc0c774602775251876083089212d7"
+      },
+      "id": "1FdUgpIRw0NG5skOvXsnrv5VYB8CM5GYa",
+      "modified": "2026-10-23T16:59:49.539Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/checkpoint-update-00000005.pt",
+      "size_bytes": 130251747,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1VOLBdyddkA_9NzYw36-ygWJPDrQoS0F6",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "ef737272c1afc8a5f2e83b9d087b5a5b"
+      },
+      "id": "11hBqKI2_dspT-kO06KZjdCAs8Y2pDnMR",
+      "modified": "2026-10-23T16:59:50.963Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/latest.json",
+      "size_bytes": 134,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1rEvTcBefU5uSgQZP-3wjlVt7R0k0qJta",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "a8b89bf2937138cf13407e8e66d1035d"
+      },
+      "id": "1rftZ36rd97qDGb_rVIg__IYh2jDrjiaf",
+      "modified": "2026-10-23T18:38:31.000Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/train.jsonl",
+      "size_bytes": 4246,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1QBJ4qjmNF71nbUzB4C-zfO2f5Dw5sDH0",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4cf9628935cfcff007b861ee29c666f4"
+      },
+      "id": "1I4EzvVsJzER7bAjYc9t8k3pY__U34BUc",
+      "modified": "2026-10-23T17:00:33.526Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/training.log",
+      "size_bytes": 5741,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "617e99ea40d48385b65f6a75a6527f9b"
+      },
+      "id": "1wLE3TuR1sIOzlKEGwhe9xqvuLutk_HY4",
+      "modified": "2026-10-23T16:59:48.877Z",
+      "path": "resumed/initialized-00000005-e1980cea2c694d2f8efaa02f50594adf/weights-update-00000005.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    },
+    {
+      "hashes": {},
+      "id": "1NOa6n6ADWhVTtg6NsroF_v7Q-u1Oo9rm",
+      "modified": "2026-10-23T17:00:46.077Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3",
+      "size_bytes": -1,
+      "type": "directory"
+    },
+    {
+      "hashes": {
+        "md5": "0458fac960b58785e2dc4aa57b30cea3"
+      },
+      "id": "1asWNN6jYaQ1KJLJEQj1JVjfFT33V1n_I",
+      "modified": "2026-10-23T17:00:33.529Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/STOPPED.json",
+      "size_bytes": 120,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "fbe4d6a37451b4fe8119822ccf39e034"
+      },
+      "id": "1heTukhixs5P-CJXS-vnzlBRXt_TwNExS",
+      "modified": "2026-10-23T17:01:10.879Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/_SNAPSHOT.json",
+      "size_bytes": 1539,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "1acc0c774602775251876083089212d7"
+      },
+      "id": "1i3XM7MqWZAn60PkOtbzdylMiYBY48nHH",
+      "modified": "2026-10-23T16:59:49.539Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/checkpoint-update-00000005.pt",
+      "size_bytes": 130251747,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "id": "1ugGxZP6vHD35Fj2VKmFBu6Kk_b3ymlvG",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/evaluation_manifest.json",
+      "size_bytes": 10216,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "ef737272c1afc8a5f2e83b9d087b5a5b"
+      },
+      "id": "1YrtDaFKbdIDQ9ZVHuqAQozWG9kb7AnqP",
+      "modified": "2026-10-23T16:59:50.963Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/latest.json",
+      "size_bytes": 134,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4c67b8a6530f78e1524ca56391cf20e5"
+      },
+      "id": "1-XCRsvb4NWsPrsjHox9As5G6FtiI8GOA",
+      "modified": "2026-10-23T16:58:39.772Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/run.json",
+      "size_bytes": 23684,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "a8b89bf2937138cf13407e8e66d1035d"
+      },
+      "id": "1nBHOQDQm9Gq2uuGs6lUBpNuyHWvOxrPM",
+      "modified": "2026-10-23T16:59:48.799Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/train.jsonl",
+      "size_bytes": 4246,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "id": "1rRUeGaX_lapHdoPePxZ0FwJMJegYJKs_",
+      "modified": "2026-10-23T16:58:39.771Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/train_manifest.json",
+      "size_bytes": 8103,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "4cf9628935cfcff007b861ee29c666f4"
+      },
+      "id": "1wvXWRueFNRl3AYZzherJgWvYF2OWxjwg",
+      "modified": "2026-10-23T17:00:33.526Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/training.log",
+      "size_bytes": 5741,
+      "type": "file"
+    },
+    {
+      "hashes": {
+        "md5": "617e99ea40d48385b65f6a75a6527f9b"
+      },
+      "id": "190FLmgfyQlOD4oFLNIAMx1Q5gcEn_KlV",
+      "modified": "2026-10-23T16:59:48.877Z",
+      "path": "resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3/weights-update-00000005.pt",
+      "size_bytes": 44205581,
+      "type": "file"
+    }
+  ],
+  "observed_at": "2026-10-23T18:46:35.601533+00:00",
+  "path": "outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024",
+  "remote_root": "gdrive:tennis_lab",
+  "schema_version": 1
+}

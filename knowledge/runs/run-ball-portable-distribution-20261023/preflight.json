@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-23T00:53:24.362814+00:00",
+  "colab_doctor": {
+    "schema_version": 1,
+    "ok": true,
+    "version": "Version: 0.7.4",
+    "usage": "[colab] A new version of Colab CLI is available: 0.7.5 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\nCurrent balance: 358.73 compute units\nUsage rate: 0.00/hr\nActive assignments: 0"
+  },
+  "colab_start_gpu_choices": [
+    "L4",
+    "T4",
+    "A100",
+    "H100",
+    "G4"
+  ],
+  "cpu_runtime_supported": false,
+  "bootstrap_requires_nvidia_smi": true,
+  "evidence": {
+    "parser": ".agents/skills/tennis-colab/scripts/colab.py:382",
+    "bootstrap": ".agents/skills/tennis-colab/scripts/colab_remote.py:138"
+  },
+  "code_commit": "1e420c51bfb21a0172f029e3ebab5cdeb89ee321",
+  "drive_quota": {
+    "schema_version": 1,
+    "action": "quota",
+    "remote_root": "gdrive:tennis_lab",
+    "rclone_config": "${RCLONE_CONFIG}",
+    "observed_at": "2026-10-23T00:53:24.362814+00:00",
+    "scope": "account",
+    "bytes": {
+      "total": 5497558138880,
+      "used": 712727297825,
+      "trashed": 150427013608,
+      "other": 34799862912,
+      "free": 4750030978143
+    }
+  },
+  "external_mutations_performed": false,
+  "requested_runtime": "CPU for content verification",
+  "blocking_condition": "Current skill CLI cannot allocate a CPU runtime; L4 exception needs parent decision"
+}

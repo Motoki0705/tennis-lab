@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "method": "zlib level 1 streaming, compressed bytes counted and discarded; diagnostic only, no format or input changes",
+  "results": [
+    {
+      "file": "clip-00053.bin",
+      "source": "tracknet",
+      "original_bytes": 13038519,
+      "compressed_bytes": 12854211,
+      "seconds": 0.44880179601022974
+    },
+    {
+      "file": "clip-00177.bin",
+      "source": "meiji",
+      "original_bytes": 40210890,
+      "compressed_bytes": 40180782,
+      "seconds": 1.2106348770030309
+    },
+    {
+      "file": "clip-01101.bin",
+      "source": "chat_annotation",
+      "original_bytes": 57555604,
+      "compressed_bytes": 57255429,
+      "seconds": 1.8314361670054495
+    },
+    {
+      "file": "clip-01217.bin",
+      "source": "chat_annotation",
+      "original_bytes": 93777319,
+      "compressed_bytes": 93750603,
+      "seconds": 2.6863635379995685
+    },
+    {
+      "file": "clip-01327.bin",
+      "source": "chat_annotation",
+      "original_bytes": 143876798,
+      "compressed_bytes": 142117276,
+      "seconds": 4.5938148830027785
+    },
+    {
+      "file": "clip-01537.bin",
+      "source": "chat_annotation",
+      "original_bytes": 196227387,
+      "compressed_bytes": 196156333,
+      "seconds": 5.8549129639868625
+    }
+  ],
+  "original_bytes": 544686517,
+  "compressed_bytes": 542314634,
+  "seconds": 16.62596422500792
+}

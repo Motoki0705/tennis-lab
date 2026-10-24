@@ -1,0 +1,396 @@
+{
+  "code": {
+    "base_commit": "26ad838c397cf90520e3cfd443216ceedaac1d8d",
+    "source_files_sha256": {
+      "src/tasks/ball_detection/data/store.py": "63f273c4618068899f37b5084177bad0c0477ede37270774f20aeca5aed12ecd",
+      "src/tasks/ball_detection/data/windows/all_frame_preparation.py": "416415a9111635e0a0ad09426a8a70f54f086bdc2d52126d10669ccccf195e17",
+      "src/tasks/ball_detection/data/windows/hybrid.py": "b86933d04eb6048a241458997263634abe4d07b5124cc1f932aa2dae2d60f76e",
+      "src/tasks/ball_detection/scripts/prepare_data.py": "b406ae13d065373e6d9565c544944836c6a61425ae9f05ab7d5f34719066d9ca"
+    },
+    "source_identity_sha256": "d0a3338052fcdc7fc6c10ac78406493d54b62b0d4f71aca5a81e6ae29b537893"
+  },
+  "comparisons": {
+    "128": {
+      "evaluation": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 10100
+            },
+            "owner_identity_sha256": "e64a3466c4f6782e63f85b3c8f7ffca181ad7b9cd89220f1284c8a6dd699ab6f",
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 1961
+            },
+            "owner_identity_sha256": "c77f388bcab5791f8e16e030d7fca4a9ea770a192a40d82bf3858da1949fc979",
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      },
+      "train": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 32509
+            },
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 6676
+            },
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      }
+    },
+    "32": {
+      "evaluation": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 40867
+            },
+            "owner_identity_sha256": "c215a00430a3efd35967dae47c69301027ae8fa2f9fecce4a64c1320ece31e12",
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 7926
+            },
+            "owner_identity_sha256": "65bce0c4bc6c7b461b5b1d39fa1c7d5ada1d9f1b5f5cbb2e89eb3c5071a46d03",
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      },
+      "train": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 130036
+            },
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 26704
+            },
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      }
+    },
+    "64": {
+      "evaluation": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 20356
+            },
+            "owner_identity_sha256": "5239d9c591f0777ec3d237df0fcf2a1a2e5acade171f07a655e5d159a12272f2",
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 3947
+            },
+            "owner_identity_sha256": "93d531bbf8e99e5c372913ef6f4cf6551fd156a78afb352dea3e1eb9d8f4b359",
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      },
+      "train": {
+        "clips": 1537,
+        "common_intervals_equal": true,
+        "negative_evidence_equal": true,
+        "packs_or_owner_windows_equal": true,
+        "remapped_clip_indices": 1535,
+        "summaries": {
+          "train": {
+            "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+            "counts": {
+              "clips": 1342,
+              "frames": 664349,
+              "intervals": 1342,
+              "masked": 48811,
+              "observed": 491380,
+              "out_of_frame": 14755,
+              "packs": 32509,
+              "reviewed_empty": 109403,
+              "scored_frames": 615538,
+              "windows": 65018
+            },
+            "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+            "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+            "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+            "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+          },
+          "val": {
+            "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+            "counts": {
+              "clips": 195,
+              "frames": 128668,
+              "intervals": 195,
+              "masked": 11310,
+              "observed": 85473,
+              "out_of_frame": 2712,
+              "packs": 6676,
+              "reviewed_empty": 29173,
+              "scored_frames": 117358,
+              "windows": 13352
+            },
+            "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+            "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+            "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+            "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+          }
+        },
+        "teacher_kinds_equal": true
+      }
+    }
+  },
+  "completed_at": "2026-10-23T14:59:44.875312+00:00",
+  "dataset_fixture_verification": "test_relocated_distribution_preserves_all_frame_manifests_and_dataset",
+  "distribution": "tmp/ball-portable-distribution/train-val",
+  "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+  "distribution_version": "ball-mix1800-720p-all-frame-train-val-v1",
+  "elapsed_seconds": 1115.2070032070042,
+  "output": "tmp/ball-window-consumer-verification-20261023",
+  "payload_mode": "external_source_view",
+  "preparation_api": "prepare_all_frame_training via the public prepare_data CLI",
+  "rgb_payload_bytes_copied_or_linked": 0,
+  "schema_version": 1,
+  "source_files_stat_checked": 4726,
+  "source_snapshot": "outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+  "source_snapshot_hashes": {
+    "index.npz": "ce8a0fc608863bfbe2e16e181f3086b4f9c085093b68b92b01486863f3e9b2d9",
+    "metadata.json": "f0230a62ba77ec9afa2a77e313f0fb01d82179661364481d284e11a684150be0"
+  },
+  "source_versions_unchanged": true,
+  "stages": {
+    "distribution": {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        "-m",
+        "src.tasks.ball_detection.scripts.prepare_data",
+        "--mode",
+        "all_frames",
+        "--ball-store",
+        "<worktree>/tmp/ball-portable-distribution/train-val",
+        "--output",
+        "<worktree>/tmp/ball-window-consumer-verification-20261023/distribution",
+        "--window-lengths",
+        "32",
+        "64",
+        "128",
+        "--max-window-length",
+        "128",
+        "--pack-length",
+        "128",
+        "--pack-stride",
+        "16",
+        "--timestamp-gap-factor",
+        "2.5",
+        "--distribution-source-store",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot"
+      ],
+      "elapsed_seconds": 953.9815493450005,
+      "returncode": 0,
+      "started_at": "2026-10-23T14:44:30.605412+00:00"
+    },
+    "source": {
+      "argv": [
+        "<worktree>/.venv/bin/python",
+        "-m",
+        "src.tasks.ball_detection.scripts.prepare_data",
+        "--mode",
+        "all_frames",
+        "--ball-store",
+        "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+        "--output",
+        "<worktree>/tmp/ball-window-consumer-verification-20261023/source",
+        "--window-lengths",
+        "32",
+        "64",
+        "128",
+        "--max-window-length",
+        "128",
+        "--pack-length",
+        "128",
+        "--pack-stride",
+        "16",
+        "--timestamp-gap-factor",
+        "2.5",
+        "--rgb-manifest",
+        "<source-repo>/outputs/ball_detection/train/i1231-hybrid-720p-e333-20261018/stage1/data_manifest.json"
+      ],
+      "elapsed_seconds": 159.37889663599344,
+      "returncode": 0,
+      "started_at": "2026-10-23T14:41:58.252176+00:00"
+    }
+  },
+  "started_at": "2026-10-23T14:41:58.252125+00:00",
+  "status": "verified"
+}

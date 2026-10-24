@@ -131,8 +131,18 @@ early stopping, GAN and automatic post-fit test are rejected in this mode.
 Resume requires identical recorded data, model, loss and training/schedule settings.
 A longer schedule is a new independent run. Both intervals must divide `max_steps`, ensuring a final validation and exact
 checkpoint. `update-00000100.ckpt` means exactly 100 optimizer updates. Every
-scheduled checkpoint is retained. `best-val-*.ckpt` separately monitors
-`val/loss` and must not replace the exact-update checkpoint in the main comparison.
+scheduled `update-*.ckpt` is retained, independently of
+`training.checkpoint.save_top_k`. The separate `best-val-*.ckpt` callback monitors
+`val/loss` (minimum) and uses that retention setting: `-1` retains every validation
+checkpoint, `0` disables best-val saves, and a positive integer retains that many
+lowest-loss checkpoints. Missing values, wrong types (including booleans), and
+integers below `-1` fail configuration validation. The `train_data_scaling` preset
+explicitly sets `save_top_k: -1` to retain all checkpoints for the main experiment.
+With a publishing artifact store, finite top-k pruning also removes the evicted
+files from the published store. `training.checkpoint.enabled=false` disables only
+the shared epoch callback; the step callbacks above remain active. Their filenames,
+monitor and mode are fixed. Best-val checkpoints must not replace the exact-update
+checkpoint in the main comparison.
 
 ## Evaluate and compare
 

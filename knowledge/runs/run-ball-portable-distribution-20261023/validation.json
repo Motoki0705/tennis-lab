@@ -1,0 +1,168 @@
+{
+  "acceptance": {
+    "colab_full_hash_and_samples": "verified_in_two_distinct_vms",
+    "download_interruption_resume": "verified",
+    "drive_inventory": "verified",
+    "fresh_vm_retrieval_time": "measured",
+    "local_distribution": "verified",
+    "sessions_stopped": "both_confirmed_with_zero_active_assignments",
+    "upload_interruption_resume": "verified"
+  },
+  "actual_colab_execution": true,
+  "actual_external_transfer": true,
+  "code_commits": {
+    "additional_test": "26b61c4c03ed7a8fc7569235b77d9b576558b1db",
+    "parallel_verification_and_recovery": "52f91b6ec0b5e728efe61ec085d91eeafcad87a4",
+    "recipes": "1e420c51bfb21a0172f029e3ebab5cdeb89ee321",
+    "relative_roots_and_json_receipts": "bae5402729cbfc2c331c8dd839659bd78b183b66",
+    "store_api": "4e1a5c2fc96fddeb8ec4d7aa68f729cf8c10a631"
+  },
+  "colab_evidence": "colab-execution.json",
+  "colab_recovery_evidence": "colab-a-recovery.json",
+  "colab_status": "verified_and_stopped",
+  "counts_overlap": true,
+  "distinct_tests": 56,
+  "external_transfer_evidence": "drive-upload.json",
+  "external_transfer_status": "verified",
+  "knowledge_final_check": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref 743721e41d0e4a09125d43a00cdbf36a3c5b158d",
+    "errors": 0,
+    "returncode": 0,
+    "warnings": 218
+  },
+  "knowledge_precheck": [
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --base-ref origin/main",
+      "errors": 39,
+      "reason": "The stacked branch predates unrelated court task runs already on origin/main; no task-owned deletion was made.",
+      "returncode": 1
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --base-ref 743721e41d0e4a09125d43a00cdbf36a3c5b158d",
+      "errors": 0,
+      "reason": "Exact parent protocol commit of this stacked child branch.",
+      "returncode": 0,
+      "warnings": 218
+    }
+  ],
+  "precommit": {
+    "mypy": "passed",
+    "ruff": "passed"
+  },
+  "pytest": [
+    {
+      "command": "flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py -n 4 -q",
+      "elapsed_seconds": 33.56,
+      "passed": 35,
+      "returncode": 0
+    },
+    {
+      "command": "flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py -n 4 -q",
+      "elapsed_seconds": 11.1,
+      "passed": 22,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py -n 1 -q",
+      "elapsed_seconds": 57.92,
+      "passed": 43,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py -n 1 -q",
+      "elapsed_seconds": 7.84,
+      "passed": 3,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q",
+      "elapsed_seconds": 0.57,
+      "passed": 4,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py -n 1 -q",
+      "elapsed_seconds": 10.25,
+      "passed": 26,
+      "returncode": 0
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q",
+      "elapsed_seconds": 69.15,
+      "passed": 56,
+      "returncode": 0
+    }
+  ],
+  "repro_paths_final_check": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+    "missing": 0,
+    "repro_scripts": 402,
+    "returncode": 0,
+    "script_references": 496,
+    "unverifiable": 0
+  },
+  "review_corrections": {
+    "added_machine_home_paths": 0,
+    "annotation_resolution": "Lexical validation before joining the explicit absolute store root; no audit exceptions.",
+    "diff_base": "codex/ball-temporal-protocol",
+    "external_operations_rerun": false,
+    "knowledge_checks": [
+      {
+        "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary",
+        "errors": 0,
+        "returncode": 0,
+        "warnings": 218
+      },
+      {
+        "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref codex/ball-temporal-protocol",
+        "errors": 0,
+        "returncode": 0,
+        "warnings": 218
+      }
+    ],
+    "precommit": {
+      "command": ".venv/bin/python -m pre_commit run --files src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py",
+      "mypy": "passed",
+      "returncode": 0,
+      "ruff": "passed"
+    },
+    "previous_revision": "dd55af8db471210386cd82e1b3857bdf02470074",
+    "pytest": {
+      "command": "PYTHONDONTWRITEBYTECODE=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/utils/configuration tests/e2e/development/test_configuration_audit.py tests/unit/tasks/ball_detection/data/test_distribution.py tests/unit/tasks/ball_detection/generate_dataset/test_ball_frame_store.py tests/unit/tasks/ball_detection/data/test_store_datamodule.py tests/integration/tasks/ball_detection/test_store_pipeline.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_data.py knowledge/runs/run-ball-portable-distribution-20261023/test_colab_verify.py knowledge/runs/run-ball-portable-distribution-20261023/test_transfer_supervisor.py -n 1 -q",
+      "elapsed_seconds": 338.0,
+      "passed": 453,
+      "returncode": 0
+    },
+    "receipt_normalization": {
+      "all_other_values_unchanged": true,
+      "changed_path_fields_only": [
+        "knowledge/runs/run-ball-portable-distribution-20261023/drive-supervisor.json",
+        "knowledge/runs/run-ball-portable-distribution-20261023/drive-upload.json"
+      ],
+      "receipts_checked": 44
+    },
+    "repro_paths": {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+      "missing": 0,
+      "repro_scripts": 402,
+      "returncode": 0,
+      "script_references": 496,
+      "unverifiable": 0
+    },
+    "static_checks": {
+      "checked_source_files": 15,
+      "mypy": "passed",
+      "mypy_command": ".venv/bin/python -m mypy --follow-imports=skip src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023",
+      "ruff": "passed",
+      "ruff_command": ".venv/bin/python -m ruff check src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023"
+    }
+  },
+  "schema_version": 1,
+  "static_checks": {
+    "checked_source_files": 15,
+    "mypy": "passed",
+    "mypy_command": ".venv/bin/python -m mypy --follow-imports=skip src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023",
+    "ruff": "passed",
+    "ruff_command": ".venv/bin/python -m ruff check src/tasks/ball_detection/data/distribution src/tasks/ball_detection/data/store.py tests/unit/tasks/ball_detection/data/test_distribution.py knowledge/runs/run-ball-portable-distribution-20261023"
+  }
+}

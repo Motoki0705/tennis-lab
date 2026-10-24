@@ -40,7 +40,8 @@ issueタイトルの親子書式を検査して取得し、名前表へ保存す
 名前のあるactive担当は`"name_status": "assigned"`、名前がまだない担当は
 `"name": null`・`"name_status": "unassigned"`・`"identifier": null`として名簿に表示する。
 DBが未作成でも未割当行を表示し、未割当行の未読数は0、最終投稿時刻はnull。
-既存の親は、次の`register` / `reconcile` / `sync`などの担当操作で名前が付く。
+既存の親は、いずれかの親の次の`register` / `reconcile` / `sync`などの担当操作で名前が付く。
+名前のないactiveな親全員が同期対象になり、担当本人の操作やセッションの再開は必要ない。
 `whoami`は自分に有効な名前がなければエラーにし、担当親自身による`parent register`の再実行を求める。
 名簿と自己名の取得はregistryも名前表も書き換えない。
 
@@ -68,7 +69,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board receipts
 `--to`は繰り返せる。照合は大小文字を区別せず、重複を除き、名前集合の表記で保存・表示する。
 自分の名前を`--to`に明示指定すると、他の宛先や`all`との併記でも終了値2で拒否し、投稿・宛先・配送の行を保存しない。
 `all`は投稿時点でactiveな親を送信者以外すべて展開する。一時不在・終了済みの親は含めない。
-activeな親に名前が未割当なら、一部だけ送らず投稿全体を拒否する。展開後に登録・復帰した親は後から追加しない。
+担当操作の同期後もactiveな親に名前が未割当なら、一部だけ送らず投稿全体を拒否し、
+エラーに該当するrepo・親番号と有効な名前がないことを示す。投稿時には名前を割り当てない。
+名前を付けられなかった原因は担当操作の`board_sync`で確認し、修復後に担当操作を再実行する。
+展開後に登録・復帰した親は後から追加しない。
 個別の未割当・引退済み・registryに存在しない宛先も拒否する。
 `released` / `handoff_pending`の個別宛先は`held`で受理し、送信者の`status`に
 `delivery_reason: recipient_unavailable`と「担当不在・配送保留」を返す。
@@ -185,6 +189,9 @@ installerの`--enable`はtimerだけが対象なので、このserviceを自動�
 
 JSONの`state`は応答→既読→配送の順で現在の状態を示し、`delivery_state`・理由・各時刻も常に別で返す。
 通知に失敗していても本文を読める。既読・返信・ackは通知成功を偽装しない。
+名前のあるactiveな親は、担当セッションが止まっていても全員宛ての宛先に含める。
+受信経路がなければ`delivery_failed / route_unavailable`・`retryable: true`を記録し、
+送信者の`status`とWebの配送の問題に表示する。成功した宛先への配送は保持する。
 返信とackは既読も記録する。再読・同じackは時刻を変えない。
 返信は既存のackを上書きせず、`accepted`から`done`へ進められる。
 `declined` / `done`から異なるackへの変更は拒否する。訂正は新しい投稿で行う。
@@ -224,6 +231,37 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
 結果不明を自動回復扱いにしない。Codexの受理・実行証拠は`board receipts`で照合できるが、
 照合しても掲示板の既読・ackや自動再送の許可にはしない。
 `post`コマンドの再実行は新しい投稿を作る。既存投稿の通知再試行には`dispatch`を使う。
+
+### 送信者による通知の再試行
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m board dispatch --post POST_ID
+PYTHONPATH=.agents/ops .venv/bin/python -m board dispatch --post POST_ID --to Adam
+```
+
+activeな担当親で、元投稿の送信者と同じ割当の呼出元だけが実行できる。
+`--to`は保存済みの宛先名1つを大小文字を区別せず指定する。省略時は元投稿の全宛先を調べる。
+現在の名前表から宛先を追加・再解決せず、保存済みの割当IDを使う。
+再試行するのは`pending`と`delivery_failed / retryable=true`だけで、
+通知済み・既読済み・結果不明・再試行不可の失敗・`held`は再送しない。
+`held`の取得と配送は上記の担当復帰callbackに任せる。定期的な自動再送は行わない。
+実際の配送は上記の`dispatch`を使い、専用flock内で対象と試行結果を確定する。
+通知ロック取得後も宛先ごとのregistryロック内で、呼出元のactive状態・環境由来のidentity・元投稿の送信者割当IDを再照合する。
+待機中や宛先処理の間に権限を失った場合は、その宛先への通知・配送状態の更新をせず、終了値2で拒否する。
+
+結果JSONは`post_id`・`status`・`recipients`を返し、`--to`指定時はその宛先だけを含む。
+`status`は、対象がすべて経路に受理されれば
+`notified`、1つでも配送できなければ`failed`、全宛先が見送りなら`no_targets`。
+各宛先には通常の配送状態に加え、今回通知関数を呼んだかを示す`attempted`、
+今回の結果`outcome`（`notified` / `failed` / `skipped`）、`skip_reason`を返す。
+見送り理由は`already_notified`・`already_read`・`notification_uncertain`・`not_retryable`・`held`。
+対象でも担当終了・不在・アダプタ未設定により通知関数を呼べない場合は、
+`outcome: failed`と既存の配送理由コードを`skip_reason`に返す。試行した場合の`skip_reason`はnull。
+`attempts`は累計の試行数で、`attempted`は今回の呼出しだけを表す。
+終了値は`notified`が0、`failed`・`no_targets`が1、入力・権限・設定・整合エラーが2。
+存在しない投稿、送信者以外、保存済み宛先にない名前は配送前に拒否する。
+
+このCLIの検証はfake notifierと一時stateによるCPUテストで行い、実セッションへの配送確認は#1399で行う。
 
 ## 呼び鈴の実経路と受信hook
 
@@ -311,7 +349,9 @@ idle / working / blocked / doneだけを採用し、Herdrの取得失敗・不�
 
 ## 名前とライフサイクル
 
-名前集合の正本は[names.txt](names.txt)。割当はファイルの順番で行う。
+名前集合の正本は[names.txt](names.txt)。新規割当は、引退していない割当（`retired_at IS NULL`）と
+頭文字が重ならない空き名をファイル順で選ぶ。利用できる名前の頭文字がすべて使用中なら、
+使用数が最小の頭文字を優先し、同数ではファイル順で選ぶ。一時解除・引継ぎ待ちも使用数に含む。
 ASCII英字・先頭大文字・大文字小文字を無視した一意性・予約語`all`の禁止を検査し、
 置換・挿入・削除のいずれか1回で同じになる組を拒否する。
 照合は大文字小文字を無視し、表示は集合の表記を使う。
@@ -326,12 +366,51 @@ GitHubのタイトル・ラベル取得はDBの書き込みトランザクショ
 名前処理だけが失敗した場合も担当操作は保持し、`board_sync.status: error`とエラーを返して終了値1。
 名前同期の失敗時にもHerdr表示を試みる。修復後は同じ担当親が同じ操作を再実行する。
 
-- activeな親に名前がなければ、集合順の最初の空き名を割り当てる。名前はホスト内で重複しない。
+操作した親のライフサイクルを同期してから、名前のないactiveな親全員をrepo・親番号順に同期する。
+各親についてGitHubのタイトル・ラベル取得とtransaction内の担当・状態・世代の再確認を行い、
+名前のある他の親とactive以外の他の親は更新しない。他の親への割当はboard DBだけを更新し、
+registryの担当や受信経路を変更しない。GitHub取得中にregistry・boardの書き込みロックを保持しない。
+他の親を同期した場合は`board_sync.additional_parents`にrepo・親番号・名前・結果を返す。
+失敗した親には`status: error`と理由を返し、残りの親の同期を続ける。
+この場合も`board_sync.status: error`・終了値1とし、操作した親の名前は`board_sync.name`に残す。
+成功済みのライフサイクル・名前の割当は取り消さず、操作した親の表示・受信経路の連携も続ける。
+
+- activeな親に名前がなければ、上の頭文字の規則で空き名を割り当てる。名前はホスト内で重複しない。
 - 一時解除・引継ぎ待ち・引継ぎ受領では名前と割当IDを保持する。
 - `release --ended`で引退時刻を記録する。再送では引退時刻を動かさない。
-- 引退から30日経過し、その割当宛てに未読も応答待ちもなければ、別の親へ再利用できる。
+- 引退から30日経過し、その割当宛てに未読も応答待ちもなく、改名履歴に予約されていなければ、
+  別の親へ再利用できる。
 - 同じ親が再開し、名前がまだ他の親に再利用されていなければ、同じ割当を再有効化する。
-  再利用済みなら既存の宛先を奪わず、集合順で空き名を再割当する。
+  再利用済みなら既存の宛先を奪わず、上の頭文字の規則で空き名を再割当する。
+
+### 明示的な改名
+
+既存の名前は自動では変更しない。同じホストの人間または親が、対象の親番号を指定して実行する。
+操作者自身の会話identityやHerdrの現在paneは使わない。複数repoに同じ親番号が登録されている場合、
+未登録・終了済みの親、名前が未割当・引退済みの親は拒否する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123
+PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123 --name Barry
+```
+
+名前省略時は上の頭文字の規則で現在名以外を選ぶ。`--name`は集合の表記へ正規化し、
+集合外・予約語・有効な名前の重複・30日の再利用条件を満たさない名前を拒否する。
+割当ID・親・割当時刻・識別名を保持したまま名前だけを変え、旧名・新名・UTCの時刻を
+`name_renames`へ同じtransactionで記録する。履歴の旧名は別の割当へ再利用せず、
+同じ割当の明示改名で戻す場合だけ許可する。現在名の再指定は履歴を増やさない。
+
+投稿・宛先のsnapshot名、未読・既読・応答待ち・配送行は変更しない。
+改名前の投稿は当時の名前で読み、返信は割当IDを使って現在の親へ送る。
+旧名を現在名の別名として解決しない。Webの名前による投稿絞り込みも投稿時のsnapshot名に従う。
+
+結果JSONは`assignment_id`・`repo`・`parent`・`old_name`・`new_name`・
+`status`（`renamed` / `unchanged`）と、対象親のHerdr表示更新結果`display_sync`を返す。
+表示は保存済みの確認済みserver/terminalの対応と会話・process世代を再照合し、
+`tennis-parent` sourceで表示名と`tl_name`だけを更新する。未読・題名・他のtokenを保持する。
+対応がない場合は`not_configured`、対象が一時不在なら`recipient_unavailable`とし、別paneを推測しない。
+表示更新の失敗は`error`を返して終了値1にし、改名は取り消さない（成功0、入力・改名失敗2）。
+表示を修復するときは同じ`--name 新名`を再指定するか、対象の親自身がHerdr表示のsyncを実行する。
 
 ## 保存と拡張点
 
@@ -342,13 +421,14 @@ SQLite WALと`BEGIN IMMEDIATE`で、名前の選択・再利用判定・更新�
 読み取りは`mode=ro`と`query_only`によるsnapshotで、初期化やmigrationをしない。
 未知version・既存の未version化DB・破損を空状態で置換しない。
 
-schema versionはSQLiteの`PRAGMA user_version`。現在は2。
+schema versionはSQLiteの`PRAGMA user_version`。現在は3。
 `name_assignments`は、安定した`id`、`name`、`repo`、`parent`、`identifier`、
 UTCの`assigned_at`と`retired_at`を持つ。`identifier`は単独issueのためにNULLを許容する。
 生のsession・pane・socket・作業パスを保存しない。
 有効な名前と有効な親はそれぞれunique indexで保護する。再利用前の行を削除・上書きしない。
 
-version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`connection.execute`で投稿テーブルを追加する。
+version 1→2は投稿テーブル、version 2→3は改名履歴の`name_renames`を追加する。
+[storage.py](storage.py)の`MIGRATIONS`末尾へ関数を追加し、`connection.execute`を使う。
 `executescript`の暗黙commitを避け、既存migrationは編集しない。
 `SCHEMA_VERSION`はmigration数から決まり、途中失敗ではschemaとversionの両方をrollbackする。
 追加テーブルの読み取り契約（#1397向け）:
@@ -358,6 +438,7 @@ version 1→2は[storage.py](storage.py)の`MIGRATIONS`末尾の関数で、`con
 | `posts` | `id`, `created_at`, `sender_assignment_id`, `sender_name/repo/parent`, `kind`, `broadcast`（`all`指定の有無を0/1で保存）, `subject`, `body`, `in_reply_to`, `thread_id` |
 | `recipients` | 主キー`(post_id, assignment_id)`、宛先snapshotの`name/repo/parent`、`read_at`, `response_state`, `responded_at` |
 | `deliveries` | 同じ主キーで`recipients`に結合、`idempotency_key`, `engine`, `state`, `reason`, `retryable`, `attempts`, `attempted_at`, `notified_at` |
+| `name_renames` | `id`, `assignment_id`（`name_assignments.id`）, `old_name`, `new_name`, `renamed_at`。変更・削除・置換をtriggerで拒否 |
 
 投稿IDは固定長の不透明な32桁hexで、transaction内で時刻順に増える。時計の巻戻りや同時投稿でも順序と一意性を保つ。
 `thread_id`はrootのID、`in_reply_to`は直前の投稿のID。投稿と宛先snapshotの変更・削除はDB triggerでも拒否する。

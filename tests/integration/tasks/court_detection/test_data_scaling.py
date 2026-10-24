@@ -12,6 +12,7 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig
 from pytorch_lightning.loggers import TensorBoardLogger
+from torch.utils.data import DataLoader
 
 from src.synthetic_data_generation.dataset.court.sample_store import (
     LEGACY_SAMPLE_FILES,
@@ -40,6 +41,7 @@ from src.tasks.court_detection.training.runner import (
     CourtDetectionTrainingRunner,
     resolve_training_config,
 )
+from src.utils.artifact_store import ArtifactStore
 from src.utils.data.image_record_store import ImageRecordWriter, encode_rgb_jpeg
 from tests.integration.tasks.court_detection.test_composable_pipeline import (
     _configure_tiny_model,
@@ -117,6 +119,112 @@ def _inputs(tmp_path: Path) -> DictConfig:
     destination.parent.mkdir(parents=True)
     destination.write_text(json.dumps(registry))
     return _config(tmp_path)
+
+
+class _PublishedCheckpoints(ArtifactStore):
+    def __init__(self, local_root: Path) -> None:
+        super().__init__(local_root)
+        self.published: list[Path] = []
+        self.removed: list[Path] = []
+        self.files: dict[Path, bytes] = {}
+
+    @property
+    def enabled(self) -> bool:
+        return True
+
+    def publish_file(self, path: Path) -> None:
+        self.files[self.relative_path(path)] = path.read_bytes()
+        self.published.append(path)
+
+    def fetch_file(self, path: Path) -> None:
+        raise AssertionError(f"Unexpected checkpoint fetch: {path}")
+
+    def remove_file(self, path: Path) -> None:
+        del self.files[self.relative_path(path)]
+        self.removed.append(path)
+
+    def sync_tree(self) -> None:
+        return None
+
+
+class _ValidationLosses(pl.LightningModule):
+    def __init__(self) -> None:
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.ones(()))
+        self.validation_steps: list[int] = []
+
+    def training_step(self, batch: torch.Tensor, batch_idx: int) -> torch.Tensor:
+        return self.weight.square()
+
+    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> None:
+        # Include a worsening validation so finite top-k is checked by rank.
+        losses = (4.0, 2.0, 3.0, 1.0)
+        self.validation_steps.append(self.global_step)
+        self.log("val/loss", losses[self.global_step // 2 - 1], batch_size=1)
+
+    def configure_optimizers(self) -> torch.optim.Optimizer:
+        return torch.optim.SGD(self.parameters(), lr=0.1)
+
+
+@pytest.mark.parametrize(
+    ("save_top_k", "published_steps", "removed_steps"),
+    [
+        (-1, (2, 4, 6, 8), ()),
+        (0, (), ()),
+        (1, (2, 4, 8), (2, 4)),
+        (2, (2, 4, 6, 8), (2, 6)),
+    ],
+)
+def test_cpu_published_checkpoint_retention(
+    tmp_path: Path,
+    save_top_k: int,
+    published_steps: tuple[int, ...],
+    removed_steps: tuple[int, ...],
+) -> None:
+    torch.set_num_threads(1)
+    config = _config(tmp_path)
+    config.training.step_schedule.max_steps = 8
+    config.training.step_schedule.checkpoint_every_n_steps = 4
+    config.training.checkpoint.save_top_k = save_top_k
+    config.training.trainer.precision = "32-true"
+    config.training.trainer.enable_progress_bar = False
+    config.training.trainer.enable_model_summary = False
+    logger = TensorBoardLogger(save_dir=str(tmp_path), name="logs", version=0)
+    store = _PublishedCheckpoints(tmp_path)
+    callbacks = step_checkpoints(config, logger)
+    trainer = build_step_trainer(
+        config,
+        callbacks,
+        logger,
+        accelerator="cpu",
+        devices=1,
+        artifact_store=store,
+    )
+    module = _ValidationLosses()
+
+    trainer.fit(
+        module,
+        train_dataloaders=DataLoader(torch.zeros(3, 1), batch_size=1),
+        val_dataloaders=DataLoader(torch.zeros(1, 1), batch_size=1),
+    )
+
+    assert trainer.global_step == 8 and module.validation_steps == [2, 4, 6, 8]
+    periodic = {"update-00000004.ckpt", "update-00000008.ckpt"}
+    published = {f"best-val-{step:08d}.ckpt" for step in published_steps}
+    removed = [f"best-val-{step:08d}.ckpt" for step in removed_steps]
+    assert len(store.published) == len(periodic | published)
+    assert {path.name for path in store.published} == periodic | published
+    assert [path.name for path in store.removed] == removed
+    retained = periodic | (published - set(removed))
+    directory = Path(logger.log_dir) / "checkpoints"
+    assert {path.name for path in directory.glob("*.ckpt")} == retained
+    assert {path.name for path in store.files} == retained
+    assert all(
+        (tmp_path / path).read_bytes() == data for path, data in store.files.items()
+    )
+    if save_top_k != 0:
+        assert Path(callbacks[1].best_model_path).name == "best-val-00000008.ckpt"
+        assert callbacks[1].best_model_score == 1.0
 
 
 def test_fixed_model_and_legacy_configs_remain_separate(tmp_path: Path) -> None:
