@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-24T02:35:37.519530+00:00",
+  "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]",
+  "torch_version": "2.14.1+cu130",
+  "cuda": "13.0",
+  "cudnn": 92400,
+  "gpu_name": "NVIDIA L4",
+  "torch_gpu_total_bytes": 23659151360,
+  "nvidia_smi": "NVIDIA L4, 23034 MiB, 3 MiB, 580.82.07",
+  "disk": {
+    "total": 253055008768,
+    "used": 212373667840,
+    "free": 40664563712
+  },
+  "kernel_boot_id": "08d526da-3ff7-4858-a05f-01ce2c0c1e7c",
+  "code_commit": "b4178691cb509529bd2761dd4bd53d63de994e10"
+}

@@ -27,6 +27,8 @@ def load(name: str) -> ModuleType:
 
 guard = load('session_guard')
 pilot = load('pilot')
+summary = load('summarize')
+budget_projection = load('estimate_budget')
 
 
 def arguments(tmp_path: Path) -> argparse.Namespace:
@@ -40,6 +42,37 @@ def test_session_deadline_uses_allocation_not_job_start() -> None:
     assert guard.elapsed(created.isoformat(), now=created + timedelta(hours=3, minutes=30)) == 12600
     with pytest.raises(ValueError, match='timezone'):
         guard.elapsed('2026-10-24T00:00:00')
+
+
+def test_unmeasured_condition_never_gets_estimated_metrics() -> None:
+    row = summary.measured_row(dict(condition='hybrid-T128', status='unmeasured', reason='reserve'), None)
+    assert row['optimizer_updates'] is None
+    assert row['warm_step_mean_seconds'] is None
+    assert row['peak_allocated_bytes'] is None
+    assert row['evaluation_seconds'] is None
+
+
+def test_budget_refuses_to_fill_unmeasured_conditions(tmp_path: Path) -> None:
+    records = [dict(condition=f'{a}-T{t}', status='unmeasured', reason='resource limit') for a, t in pilot.CONDITIONS]
+    pilot.write(tmp_path / 'matrix.json', dict(conditions=records))
+    with pytest.raises(ValueError, match='all six measured'):
+        budget_projection.completed_measurements(tmp_path)
+
+
+def test_completed_claim_requires_verified_checkpoint() -> None:
+    result = dict(status='completed', completed_marker=True, latest=dict(update=10),
+                  records=[dict(update=i) for i in range(1, 11)], publications=[])
+    with pytest.raises(ValueError, match='verified checkpoint'):
+        summary.measured_row(dict(condition='dpt-T32', status='completed', seconds=10), result)
+
+
+def test_mislabeled_architecture_is_rejected() -> None:
+    result = dict(status='completed', completed_marker=True, latest=dict(update=10),
+                  records=[dict(update=i) for i in range(1, 11)], architecture='hybrid',
+                  gpu=dict(name='NVIDIA L4'),
+                  publications=[dict(stage='checkpoint', update=i, status='verified') for i in (5, 10)])
+    with pytest.raises(ValueError, match='architecture'):
+        summary.measured_row(dict(condition='dpt-T32', status='completed', seconds=10), result)
 
 
 def test_no_condition_starts_in_stop_reserve(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

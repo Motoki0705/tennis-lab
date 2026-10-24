@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "static_contract_mismatch; no GPU test evaluation attempted",
+  "scope": "Pre-existing evaluation/distribution integration; outside the pilot implementation",
+  "evidence": [
+    {
+      "path": "src/tasks/ball_detection/evaluation/temporal_heatmap_cli.py",
+      "lines": [
+        80,
+        85
+      ],
+      "observation": "CLI requires exact training snapshot, RGB clip set and all split identities, so the independently versioned test distribution is rejected"
+    },
+    {
+      "path": "src/tasks/ball_detection/evaluation/temporal_heatmap.py",
+      "lines": [
+        137,
+        147
+      ],
+      "observation": "Test calibration compares the test manifest val summary with the calibration validation summary; a test-only store has an empty val summary"
+    },
+    {
+      "path": "knowledge/runs/run-ball-portable-distribution-20261023/test-local-verification.json",
+      "observation": "Fixed test distribution is a separate version with 225 clips and 159174 native frames"
+    },
+    {
+      "path": "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/receipts/preparation-a.json",
+      "observation": "Full train/validation manifest has zero test frames; restored content identity was verified in this pilot"
+    },
+    {
+      "path": "knowledge/runs/run-ball-temporal-colab-pilot-20261024/receipts/test-asset-inspection.json",
+      "observation": "The planned test distribution path does not exist on Drive at inspection time; initial upload is not included in measured GPU timings"
+    }
+  ],
+  "impact": "Resolve explicit cross-distribution dataset lineage and validation-calibration provenance before scientific training. Same-run resume pins training source, so a later source fix can also invalidate resume.",
+  "action": "Return to parent; no guard bypass, checkpoint metadata rewrite or prior-source edit performed"
+}

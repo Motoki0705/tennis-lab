@@ -1,0 +1,151 @@
+{
+  "conditions": [
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "dpt",
+        "--frames",
+        "32",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/dpt-T32",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32"
+      ],
+      "condition": "dpt-T32",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 212.0942978059993,
+      "status": "completed"
+    },
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "hybrid",
+        "--frames",
+        "32",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/hybrid-T32",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32"
+      ],
+      "condition": "hybrid-T32",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 233.87384812100026,
+      "status": "completed"
+    },
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "dpt",
+        "--frames",
+        "64",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/dpt-T64",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64"
+      ],
+      "condition": "dpt-T64",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 215.4390282380009,
+      "status": "completed"
+    },
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "hybrid",
+        "--frames",
+        "64",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/hybrid-T64",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64"
+      ],
+      "condition": "hybrid-T64",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 218.77325235599892,
+      "status": "completed"
+    },
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "dpt",
+        "--frames",
+        "128",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/dpt-T128",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128"
+      ],
+      "condition": "dpt-T128",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 210.55914386699988,
+      "status": "completed"
+    },
+    {
+      "argv": [
+        "/content/tennis-lab/.venv/bin/python",
+        "/content/tennis-lab/knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "condition",
+        "--architecture",
+        "hybrid",
+        "--frames",
+        "128",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions/hybrid-T128",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128"
+      ],
+      "condition": "hybrid-T128",
+      "max_seconds": 1200,
+      "returncode": 0,
+      "seconds": 229.72813794100148,
+      "status": "completed"
+    }
+  ],
+  "created_at": "2026-10-24T01:02:43.047001+00:00",
+  "observed_at": "2026-10-24T02:33:51.870287+00:00",
+  "schema_version": 1
+}

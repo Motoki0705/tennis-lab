@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "action": "quota",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-24T01:02:30.923898+00:00",
+  "scope": "account",
+  "bytes": {
+    "total": 5497558138880,
+    "used": 874464092872,
+    "trashed": 150427156074,
+    "other": 34799862912,
+    "free": 4588294183096
+  }
+}

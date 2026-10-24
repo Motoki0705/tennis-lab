@@ -1,0 +1,285 @@
+{
+  "diagnostic_evaluation_counts": {
+    "128": {
+      "clips": 1,
+      "frames": 162,
+      "intervals": 1,
+      "masked": 0,
+      "observed": 33,
+      "out_of_frame": 75,
+      "packs": 4,
+      "reviewed_empty": 54,
+      "scored_frames": 162,
+      "windows": 2
+    },
+    "32": {
+      "clips": 1,
+      "frames": 162,
+      "intervals": 1,
+      "masked": 0,
+      "observed": 33,
+      "out_of_frame": 75,
+      "packs": 4,
+      "reviewed_empty": 54,
+      "scored_frames": 162,
+      "windows": 10
+    },
+    "64": {
+      "clips": 1,
+      "frames": 162,
+      "intervals": 1,
+      "masked": 0,
+      "observed": 33,
+      "out_of_frame": 75,
+      "packs": 4,
+      "reviewed_empty": 54,
+      "scored_frames": 162,
+      "windows": 5
+    }
+  },
+  "diagnostic_summaries": {
+    "test": {
+      "common_intervals_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "counts": {
+        "clips": 0,
+        "frames": 0,
+        "intervals": 0,
+        "masked": 0,
+        "observed": 0,
+        "out_of_frame": 0,
+        "packs": 0,
+        "reviewed_empty": 0,
+        "scored_frames": 0,
+        "windows": 0
+      },
+      "scored_frame_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "target_identity_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "teacher_identity_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "training_packs_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "train": {
+      "common_intervals_sha256": "1e6594012a16834a2d70b3c456f2e4794e1fdbfbd6e5f491e3a3255a94e8266f",
+      "counts": {
+        "clips": 3,
+        "frames": 589,
+        "intervals": 3,
+        "masked": 64,
+        "observed": 381,
+        "out_of_frame": 25,
+        "packs": 17,
+        "reviewed_empty": 119,
+        "scored_frames": 525,
+        "windows": 68
+      },
+      "scored_frame_sha256": "9ad681cf0379a2804e90fba7b5bcea8bf0fe665e5f211175d947c6acd26283a9",
+      "target_identity_sha256": "bf3878e04461a2ea4f57d2c0af321082b2c49093331961e132c7d6dc0c1bd3ad",
+      "teacher_identity_sha256": "e28119eb751f5b2af79808bd634b6607b4b7c6c721981f03e7c6da97921e60ab",
+      "training_packs_sha256": "fed58f2cb2b445444f4005336940ef47b5086ca034fa7ce30a3bfe2c8bda04fd"
+    },
+    "val": {
+      "common_intervals_sha256": "cf68e0d71392add602a50d9022770f18f287e80eda1c7e269c08496a6c63c5a2",
+      "counts": {
+        "clips": 1,
+        "frames": 162,
+        "intervals": 1,
+        "masked": 0,
+        "observed": 33,
+        "out_of_frame": 75,
+        "packs": 4,
+        "reviewed_empty": 54,
+        "scored_frames": 162,
+        "windows": 16
+      },
+      "scored_frame_sha256": "4a4c0fd2854d2b4e73d2dfb169532010e8611d3f8565d78fcfdb1e17c8f3ac9d",
+      "target_identity_sha256": "4a4c0fd2854d2b4e73d2dfb169532010e8611d3f8565d78fcfdb1e17c8f3ac9d",
+      "teacher_identity_sha256": "ea92892e02d6824138e3ba2811773b53d3c2209f8a7da255b5a26c193b980fec",
+      "training_packs_sha256": "d7a8e00e3708edc7c9f45860b80168a2fa099d0df89b2a6b3a998f1abb169e56"
+    }
+  },
+  "diagnostic_verification": {
+    "clips": 4,
+    "distribution_sha256": "6b12a43022cdf7077bac66338427fef01f020ab3c5f7967b86eaa0894af81979",
+    "files": 9,
+    "frames": 857,
+    "mode": "self_contained",
+    "schema_version": 1,
+    "size_bytes": 114165877,
+    "status": "verified",
+    "version": "ball-720p-resume-diagnostic-v1"
+  },
+  "disk": {
+    "free": 42342744064,
+    "total": 253055008768,
+    "used": 210695487488
+  },
+  "full_manifest_sha256": "aeb3b2fca3f4cfdb7ef7125fa6f833f7521bf0abff280c1ecd3ea18564a5bbe8",
+  "full_summaries": {
+    "test": {
+      "common_intervals_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "counts": {
+        "clips": 0,
+        "frames": 0,
+        "intervals": 0,
+        "masked": 0,
+        "observed": 0,
+        "out_of_frame": 0,
+        "packs": 0,
+        "reviewed_empty": 0,
+        "scored_frames": 0,
+        "windows": 0
+      },
+      "scored_frame_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "target_identity_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "teacher_identity_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "training_packs_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "train": {
+      "common_intervals_sha256": "28a1da858539fb7e411d96bcc605e049015402fd2e9e03ed95f9008dcde8d346",
+      "counts": {
+        "clips": 1342,
+        "frames": 664349,
+        "intervals": 1342,
+        "masked": 48811,
+        "observed": 491380,
+        "out_of_frame": 14755,
+        "packs": 32509,
+        "reviewed_empty": 109403,
+        "scored_frames": 615538,
+        "windows": 130036
+      },
+      "scored_frame_sha256": "7ef5da4742957a4179eef9538e7384968986fb2185251528af8fd48b969e60a1",
+      "target_identity_sha256": "573519b3dbee7bf44a1a6a246ac6f224084586a0d4bd3576ac042cab77dd7a73",
+      "teacher_identity_sha256": "af1991d932f6e5f58414f1e4074c20c9925ceedd8a0ac2100630f6d83480ed2c",
+      "training_packs_sha256": "989cf526ada7d7ff092897c7a4c51dbd1b502c36471920570dd005096058cdec"
+    },
+    "val": {
+      "common_intervals_sha256": "cce0c9a82be99361393d16af43f0865280f9d715c2477ebf7af6797fc1cb19ff",
+      "counts": {
+        "clips": 195,
+        "frames": 128668,
+        "intervals": 195,
+        "masked": 11310,
+        "observed": 85473,
+        "out_of_frame": 2712,
+        "packs": 6676,
+        "reviewed_empty": 29173,
+        "scored_frames": 117358,
+        "windows": 26704
+      },
+      "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+      "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+      "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec",
+      "training_packs_sha256": "1681e96b9a80bd3c3ce54eede6193f76279203889c67c5afd9e03faa46bbe3af"
+    }
+  },
+  "full_validation_workloads": {
+    "128": {
+      "input_frames": 251008,
+      "windows": 1961
+    },
+    "32": {
+      "input_frames": 253632,
+      "windows": 7926
+    },
+    "64": {
+      "input_frames": 252608,
+      "windows": 3947
+    }
+  },
+  "gpu": {
+    "name": "NVIDIA L4",
+    "total_memory_bytes": 23659151360
+  },
+  "input_publication": {
+    "files": 14,
+    "generation": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974",
+    "manifest_md5": "e7eb7fb04fc305bbe8fd7c1755c80cfa",
+    "manifest_sha256": "26df16f69ccf4c1145100dd7825c9a3377713e26c55cf78556daa0054f7b451d",
+    "marker_id": "1A9vL8MPB4G370Iz0Sjxiqv7jtoAwVbF0",
+    "remote": "gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024/inputs-ef75ebd7ade94c6c94d1d6eb0121a974",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 31.373523186000966,
+    "size_bytes": 95205,
+    "status": "verified"
+  },
+  "recipe": {
+    "augmentation": "none",
+    "checkpoint_interval": 5,
+    "code_commit": "b4178691cb509529bd2761dd4bd53d63de994e10",
+    "conditions": [
+      [
+        "dpt",
+        32
+      ],
+      [
+        "hybrid",
+        32
+      ],
+      [
+        "dpt",
+        64
+      ],
+      [
+        "hybrid",
+        64
+      ],
+      [
+        "dpt",
+        128
+      ],
+      [
+        "hybrid",
+        128
+      ]
+    ],
+    "diagnostic_input_reference": {
+      "files": 17,
+      "generation": "inputs-2b202d6f833d4b4db43e830b85053125",
+      "manifest_md5": "50fcdc414bb997a1f1c7d43db8a87573",
+      "manifest_sha256": "efad00112e146279ed838090b53d33e379d9b711d6ed888945e20e5de7dec4e6",
+      "marker_id": "1hPA91u9-CuWWH56dmr0SGHG9Lgc9RVE9",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/resume-proof-20261024/inputs/inputs-2b202d6f833d4b4db43e830b85053125",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 48.743498151000495,
+      "size_bytes": 122167234,
+      "status": "verified"
+    },
+    "evaluation_interval": 10,
+    "gamma": 2.0,
+    "gradient_clip": 1.0,
+    "input_frames": 128,
+    "learning_rate": 0.0001,
+    "max_condition_seconds": 1200,
+    "microbatch_windows": 1,
+    "minimum_lr_ratio": 0.1,
+    "native_image_size": [
+      1280,
+      720
+    ],
+    "purpose": "Performance only; diagnostic subset; no scientific pretraining or accuracy selection",
+    "schema_version": 1,
+    "seed": 42,
+    "sigma_ratio": 0.012,
+    "stop_work_seconds": 12600,
+    "updates": 10,
+    "uv_lock_sha256": "1547826aaf5d2c1b8faec1b0fb7f953c36917a65dbca3d0e8ecf1d3b051352ef",
+    "warmup_updates": 2,
+    "weight_decay": 0.01
+  },
+  "restoration": {
+    "files": 17,
+    "generation": "inputs-2b202d6f833d4b4db43e830b85053125",
+    "manifest_sha256": "efad00112e146279ed838090b53d33e379d9b711d6ed888945e20e5de7dec4e6",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 18.668622717999824,
+    "status": "verified"
+  },
+  "schema_version": 1,
+  "seconds": 54.79773126700093,
+  "source_clip_ids": [
+    "tracknet/game7/Clip1",
+    "meiji/video_002/clip_011/cam0",
+    "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000003120-000003282",
+    "chat_annotation/0-3fw4zpi64__890bd5a0ccb88403__f000002806-000003116"
+  ]
+}

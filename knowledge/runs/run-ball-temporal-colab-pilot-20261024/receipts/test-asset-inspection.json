@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "ok": false,
+  "command": "inspect",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "error": "Drive path does not exist: gdrive:tennis_lab/data/ball_detection/ball-mix1800-720p-all-frame-test-v1"
+}

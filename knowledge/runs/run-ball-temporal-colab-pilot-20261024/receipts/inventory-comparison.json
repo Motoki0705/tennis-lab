@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "status": "matched",
+  "markers": 25,
+  "checks": [
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64/initialized-00000000-b6dd224aa91f4186b17f70dff9462594",
+      "marker_id": "1OXP98tEAMIjbDjQaNTdy8bJ0H4tlV8cX",
+      "files": 4,
+      "size_bytes": 71128,
+      "marker_md5": "b0590bf5089236a6fa37ce9b00fe8880",
+      "manifest_sha256": "d42884833dbb667783c7aafb43bf6e8548803849e6041e5bd8e80d3766c0f686"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64/checkpoint-00000005-fef6e0597d594241b3627bcf52093a92",
+      "marker_id": "1v7-c-f624jQux-rbj4U3Ck5UWO46sncD",
+      "files": 7,
+      "size_bytes": 174602853,
+      "marker_md5": "950c4e2be19b28b79966c3869cecaf0f",
+      "manifest_sha256": "8df90cde9120035f4e00c8bd7d4ae9242078b8b0b61334340682f4794dd35d0f"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64/checkpoint-00000010-63cf1d6f12f645df8dcce9b5f0834ee2",
+      "marker_id": "1M4eE_OfVXMnTPPtHMm2Ceim2ZZgiBK5S",
+      "files": 9,
+      "size_bytes": 174707792,
+      "marker_md5": "9448dfebac78130b9f8d02b95f50bb2b",
+      "manifest_sha256": "1d34a3ae146a7f5f3d179f7ab8404f26a3dd0c3878137318d1850fadbdb0ebdb"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T64/completed-00000010-b6955c03d8524b21a23418735b821506",
+      "marker_id": "1rrLi7Rzzv0pi-QXfbd9eOrJ8ez_oP6AU",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "185f1f247f4c7355e56f32ad5384b1ab",
+      "manifest_sha256": "49b877a267c888dec031be1e20e6e51df4315e530202ae744a77b1a5082c325a"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128/initialized-00000000-cb10b3f935e94894a2cea437badbb987",
+      "marker_id": "1T9NI69IuaVE7Cw-q8W6vOywJroEqhsXE",
+      "files": 4,
+      "size_bytes": 70461,
+      "marker_md5": "de12a9f7dff1bbded9b3ed57d939f0ba",
+      "manifest_sha256": "cc042b3e0be35a16c5ac49ee366d8e922ba45cead156bc6082cf93ccb0fe0588"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128/checkpoint-00000005-ddcf73c0653349919502cffbf1690faf",
+      "marker_id": "1HxeogGPlsd5S7QRx_oV1_5QYkNGNv6mm",
+      "files": 7,
+      "size_bytes": 174602202,
+      "marker_md5": "9b92b92e360f727a636424e395f82ace",
+      "manifest_sha256": "45fe014a7c46433c5894821f3d9853df7a957094edef507743ab9be705574754"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128/checkpoint-00000010-270bee5c423a4b78a95b1720f25a96dd",
+      "marker_id": "1U5Wx8H105YJZ-p5w4cKVFHiYjTnVqF2C",
+      "files": 9,
+      "size_bytes": 174707152,
+      "marker_md5": "05b7aaced11ed30526cb1ac6cec62da3",
+      "manifest_sha256": "0119a82e83006c1562c84cadf2269cbe28b8bd1af0391c79e96c6ad10e10b896"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T128/completed-00000010-e4620f46f0f74287987bde349de02dd5",
+      "marker_id": "1NAntA2MBfb-n9Zkj00g0T7lmuI6gp6wQ",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "c29a756aad2ba71b71ad894265b956cc",
+      "manifest_sha256": "cb2941565aa1487d1b59f631e20b6751482e8bf48b4a271eb66b8bc93257dfb3"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128/initialized-00000000-626112871e4d430088b0f5c53ac2cf7d",
+      "marker_id": "12QtPZJ20b-fOBtTtm0T38xSWyNRdV6XQ",
+      "files": 4,
+      "size_bytes": 68065,
+      "marker_md5": "b759af966fc039d8ae4842301a0ce57c",
+      "manifest_sha256": "8336eed5eb5afe323bbadb68340114b9f495458f3499c5683e60e76d154c1a58"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128/checkpoint-00000005-2681508f13f547cd8a43ec4c759e8f9c",
+      "marker_id": "1gSUDER1e6cuNQ3Ls86Xf4GMRve5gR8L1",
+      "files": 7,
+      "size_bytes": 104449143,
+      "marker_md5": "ea03a79e35b2f6d0155178e4514d9d0b",
+      "manifest_sha256": "8b3308f3980716a4b9aee562373dd75bc3e108994314b56e9b01d682938eda7f"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128/checkpoint-00000010-812328a24994449398d1b78a1873edb4",
+      "marker_id": "1jvCkgpm3py3oy3ZE9DdcYqEasHKUI-FD",
+      "files": 9,
+      "size_bytes": 104554670,
+      "marker_md5": "c229fe6778ce9e3274e01d068b9b63db",
+      "manifest_sha256": "fdc2358735012c460c43f388ee0d02293ec4ce639bf9fde990f80dc648a3f3ab"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T128/completed-00000010-64ffcc94102547f5bade36dd8e8a06ee",
+      "marker_id": "1d5PfbA9nhZx0moS_foweMcEWhjWqAqQL",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "15cd5fabd9fffd7e012bd7372eabdcd9",
+      "manifest_sha256": "ff1963172986b0eb8790172f1c33b01cc0fbb698be37725efbefdca362ead2c5"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64/initialized-00000000-36c0e71c9f3041fc9497fe3e35954030",
+      "marker_id": "1Kn4gUH0EQNAt6W7Bzjgbqvq0FLlLpe46",
+      "files": 4,
+      "size_bytes": 68732,
+      "marker_md5": "fd06e2291f495191e90c43b6d19c2394",
+      "manifest_sha256": "c80b266b4056111e22dd9dca76f510bd90957e5c37060ff184377da1f3582d94"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64/checkpoint-00000005-0f73fe4de1904f288efbb72a30b335e7",
+      "marker_id": "1cdht0izqFCgsxmzwjDtrALF_sTcKohZ1",
+      "files": 7,
+      "size_bytes": 104449807,
+      "marker_md5": "7d754d529a31de7355a731415474886f",
+      "manifest_sha256": "7b7050d62aa51db961c135a3f9e94fa5133a0c1bb9051e5f4c90ba00df133908"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64/checkpoint-00000010-b058a4e4bcfa491996e4685dd3d0179b",
+      "marker_id": "13tGwoPbly7q2jZaGkYSETMXRZ6TTpPvs",
+      "files": 9,
+      "size_bytes": 104555088,
+      "marker_md5": "b11537d4051003b70894dd6e342a5db3",
+      "manifest_sha256": "76792a18106937b8e309bfa5a84bcc2b58a4172c2ad5d412973de1064311bdd1"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T64/completed-00000010-d3de958dbaf9458983af8df0132f02a7",
+      "marker_id": "1NTviybmo4nwo5WhXeIA9Q1NVw-Oqfgg9",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "82ea18bd9bf2a59d976b402aec63690d",
+      "manifest_sha256": "cd9171590aa0295ff2ba1d6add71677d6dbc83502b830e3083bcf446b92b21ed"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32/initialized-00000000-8b3eb1e435604ba19249abdb0ed268a8",
+      "marker_id": "1jvjLhHNUsBZ686KQzQxmBiLav_wSE3ug",
+      "files": 4,
+      "size_bytes": 42003,
+      "marker_md5": "cd66a57e90617b36f2247c129d45d087",
+      "manifest_sha256": "63d8287eb46cb275e44c4161d9b5a9e01ed8e942f36bf3fa6afc88a5a7d696d5"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32/checkpoint-00000005-bea32ded288e4a7bbea223462678191e",
+      "marker_id": "1fj-7-tlcZpfVI1uVLfmDG2nFK1jVkhdh",
+      "files": 7,
+      "size_bytes": 174503712,
+      "marker_md5": "5cff66eb37c441bd8cf49b0d955f7cba",
+      "manifest_sha256": "18a9ce99060aed55be563236d3b54ef3fadd77b8a0994c737a159dd8a870bbec"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32/checkpoint-00000010-5c7d4e8e0ab4439d8819402927b7daba",
+      "marker_id": "1s1evb1McgOua0yoqxFDsNW3IEQ2Bxhzd",
+      "files": 9,
+      "size_bytes": 174608739,
+      "marker_md5": "7dd228e7977f10410f4f51ead3271c11",
+      "manifest_sha256": "40304398f8077fbcd18f9f7bd960a88dfc0e66b8e35f167315b5609af63bb214"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/hybrid-T32/completed-00000010-3b1df59489ae48fca3048b20e4af2484",
+      "marker_id": "1FB5O14fAdwSrNj54X3c3xghz1efBwXje",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "945d3761d04f7735e2c4dad041a8dfb8",
+      "manifest_sha256": "3846e4d462a4b3f80c92801f376a653644ae8874f7d88722fd6ef1ac6a5fb380"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32/initialized-00000000-2243b7d26da9417caa755b8d3f9ce227",
+      "marker_id": "186Of8St0Mc0H93dDltkdLhwbpOgiSPFB",
+      "files": 4,
+      "size_bytes": 42000,
+      "marker_md5": "78df447124ad1ea7285f7fc542094482",
+      "manifest_sha256": "b2489491aa7b14f1a62b4fa8ad162df582110f1af8c40ca93fba469668ed67da"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32/checkpoint-00000005-5f58ecc0ce6141ee90fc0ac4c16f5683",
+      "marker_id": "15-DuEUyWvmN-mkJlZNbvW8J78Fwexs3X",
+      "files": 7,
+      "size_bytes": 104359050,
+      "marker_md5": "f50480a93b6980c0f2bdb546b61feb1e",
+      "manifest_sha256": "f3b2f3d0b4c82ca8321b7c69b9532ab57a0e59c9abfa04d07e6c87828774fcae"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32/checkpoint-00000010-f115115606c541c9959da95392021668",
+      "marker_id": "1EPxonadTidnl4t7Gce5Xc9qb646VTAdQ",
+      "files": 9,
+      "size_bytes": 104464358,
+      "marker_md5": "b1aa9ee91337c382b286145361568501",
+      "manifest_sha256": "3d7d6756f87e5934f961c111d0d3b2295eab2622b640e23f82d6bab03858774d"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024/dpt-T32/completed-00000010-298c4c6bc1034af699a50511b5e77b50",
+      "marker_id": "12qaNpECU_Jcjqby44h6Vsbh-ELN9vu42",
+      "files": 2,
+      "size_bytes": 256,
+      "marker_md5": "127f23c4dec2371f6e648f0deb858a70",
+      "manifest_sha256": "e653e829cbffaf0cd20dbd06e1526022cbebb9012f114558c3c609669632f5c3"
+    },
+    {
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024/inputs-ef75ebd7ade94c6c94d1d6eb0121a974",
+      "marker_id": "1A9vL8MPB4G370Iz0Sjxiqv7jtoAwVbF0",
+      "files": 14,
+      "size_bytes": 95205,
+      "marker_md5": "e7eb7fb04fc305bbe8fd7c1755c80cfa",
+      "manifest_sha256": "26df16f69ccf4c1145100dd7825c9a3377713e26c55cf78556daa0054f7b451d"
+    }
+  ]
+}

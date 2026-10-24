@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "upload",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "source": "<worktree>/tmp/colab-pilot/session-stop-normalized.json",
+  "destination": "gdrive:tennis_lab/operations/colab/ball-temporal-pilot-20261024/closure/stop-receipt.json",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}

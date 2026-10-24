@@ -1,0 +1,21 @@
+{
+  "action": "inventory",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-24T01:14:51.756149+00:00",
+  "schema_version": 1,
+  "path": "operations/colab/ball-temporal-pilot-20261024/source",
+  "entries": [
+    {
+      "path": "tennis-lab.bundle",
+      "id": "17JCvZ10_5wfZ2fxhkwXAcH5ic5kziUhN",
+      "type": "file",
+      "size_bytes": 9064,
+      "hashes": {
+        "md5": "e9eff9b4031e1cfd32c414be5988f3b2"
+      },
+      "modified": "2026-10-24T01:09:26.488Z"
+    }
+  ],
+  "ambiguous_paths": []
+}

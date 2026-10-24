@@ -1,0 +1,41 @@
+{
+  "argv": [
+    "/content/tennis-tools/uv-0.12.21/uv",
+    "sync",
+    "--locked",
+    "--python",
+    "3.11.16",
+    "--no-cache"
+  ],
+  "bootstrap_python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+  "code_commit": "9df3aff14a3e7b2f4b9370f7647d0cd4b6684c34",
+  "disk": {
+    "free": 199609331712,
+    "total": 253055008768,
+    "used": 53428899840
+  },
+  "environment": {
+    "independent_sha256_module": "_sha256",
+    "packages": {
+      "numpy": "2.3.5",
+      "opencv-python": "5.0.0.93",
+      "pandas": "3.0.6",
+      "pytorch-lightning": "2.6.6",
+      "torch": "2.14.1",
+      "torchvision": "0.29.1"
+    },
+    "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]"
+  },
+  "installer_seconds": 0.9944539520001854,
+  "installer_sha256": "0722d6c438395e39e1c27a86a79054d3b2820dd9399c7f8b0f6f84cd27ce36c3",
+  "installer_url": "https://astral.sh/uv/0.12.21/install.sh",
+  "kernel_boot_id": "08d526da-3ff7-4858-a05f-01ce2c0c1e7c",
+  "observed_at": "2026-10-24T01:04:59.019865+00:00",
+  "python_matches_control": true,
+  "python_request": "3.11.16",
+  "returncode": 0,
+  "schema_version": 1,
+  "sync_seconds": 40.863891503999184,
+  "total_seconds": 41.85834838000119,
+  "uv_version": "uv 0.12.21 (x86_64-unknown-linux-gnu)"
+}

@@ -1,7 +1,7 @@
-<!-- knowledge-review: dd9372e97700bb9b4835351ff42a20b217675d2dc879a0fd4b879d2c982c2e29 on 2026-10-24 -->
+<!-- knowledge-review: 26088231d7c19732a461707e28e29820ec0e846ca5bb679903afbb496bf1eb38 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-23（ボールの全フレーム学習とColab保存再開の事前検査を反映。既存のcheckpoint採用判断は維持）
+更新日: 2026-10-24（ボールの720p長系列試走・保存停止と未合意の予算案を反映。既存のcheckpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -352,6 +352,16 @@ PR前の設定監査対応と記録pathの修正を確認し、配布物・測�
 Notebook接続断の未実行要求はcancel・保存確認後に同じVMで再提出し、取得データを保持した。
 両所有sessionの停止を確認した。これは4 clip・native 720p・本番幅の保存復旧診断であり、
 精度の採否や長系列の速度・VRAM・本学習予算は引き続き後続の試走で判断する。
+
+[上限付きの長系列試走](nodes/ball_detection/000068-run-ball-temporal-colab-pilot-20261024.md)では、
+同じ診断4clip・native 720p・本番幅のDPT/hybrid × T=32/64/128すべてで10更新・評価・Drive保存が成立した。
+BF16・compile off・checkpointing・frame chunk 4・128入力frame/更新を共通にし、pack/教師/LR列の一致を確認した。
+更新2–10平均は約7.26〜8.16秒、最大peakはallocated 13.60 GB / reserved 17.00 GB。
+全量storeの取得・照合は約62分で、所有L4は約94分で停止しassignment 0を確認した。
+これは小集合の性能観測であり、全量val/test時間・cold random I/O・収束・精度差の実測ではない。
+T上限128と2つの固定予算案を提案したが、人間の合意待ちで本学習は開始していない。
+別test版を現在のsnapshot/較正guardへ接続できず、予定Drive pathも未配置という先行統合課題を親へ返した。
+次はその契約と入力配置を整え、予算・追加seedの解釈を合意する。deployの判断は維持する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、

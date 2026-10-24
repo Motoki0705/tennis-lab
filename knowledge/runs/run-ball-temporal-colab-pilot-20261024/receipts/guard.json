@@ -1,0 +1,11 @@
+{
+  "actions": [],
+  "created_at": "2026-10-24T01:02:43.047001+00:00",
+  "elapsed_seconds": 5638.283714,
+  "hard_limit_seconds": 14400,
+  "observed_at": "2026-10-24T02:36:41.330691+00:00",
+  "result": "already_stopped",
+  "schema_version": 1,
+  "session": "ball-temporal-pilot-20261024",
+  "stop_work_after_seconds": 12600
+}

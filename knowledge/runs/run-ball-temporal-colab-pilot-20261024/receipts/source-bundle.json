@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "commit": "b4178691cb509529bd2761dd4bd53d63de994e10",
+  "prerequisite": "9df3aff14a3e7b2f4b9370f7647d0cd4b6684c34",
+  "size_bytes": 9064,
+  "sha256": "b5bc0d46a441a4e87e6b2e27a7f341f0aea3cf307fc712c8d2f53ab1de50aa5d",
+  "remote": "gdrive:tennis_lab/operations/colab/ball-temporal-pilot-20261024/source/tennis-lab.bundle"
+}
