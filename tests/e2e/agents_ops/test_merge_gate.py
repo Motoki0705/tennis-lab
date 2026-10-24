@@ -147,32 +147,11 @@ def gate_env(
 def make_gate_env(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, variant: str | None = None
 ) -> GateEnv:
-    review_env = make_review_env(
-        parent_env,
-        independent=variant in {"independent", "dependency", "research_dependency"},
-        standalone=variant == "standalone",
-    )
-    p = review_env.p
-    policy = review_policy_module(monkeypatch)
-    if variant in {
-        "shared",
-        "dependency",
-        "research_dependency",
-        "stacked",
-        "non_main_default",
-    }:
+    def configure(p: ParentEnv) -> None:
         if variant == "research_dependency":
             p.child("research")
         state = p.state()
-        if variant == "shared":
-            worktree = p.repo / ".claude/worktrees/pr-0"
-            (worktree / ".agents").mkdir()
-            (worktree / ".agents/shared.txt").write_text("shared foundation\n")
-            run_git(worktree, "add", ".agents/shared.txt")
-            run_git(worktree, "commit", "-m", "shared changes")
-            state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
-        elif variant in {"dependency", "research_dependency"}:
-            # Freeze dependencies before the one actual review, like other requirements.
+        if variant in {"dependency", "research_dependency"}:
             parent_policy = importlib.import_module("parent.policy")
             dependency = 13 if variant == "research_dependency" else 11
             if variant == "research_dependency":
@@ -183,33 +162,26 @@ def make_gate_env(
         elif variant == "stacked":
             state["prs"][0]["base"]["ref"] = "codex/lower"
             run_git(p.repo, "branch", "codex/lower")
-        else:
+        elif variant == "non_main_default":
             state["default_branch"] = "trunk"
             for pr in state["prs"]:
                 pr["base"]["ref"] = "trunk"
             run_git(p.repo, "branch", "-m", "main", "trunk")
         p.save(state)
-        manifest = json.loads(
-            p.cli(
-                "review-prepare",
-                "--prs",
-                "100",
-                "101",
-                "102",
-                "--reason-file",
-                p.note("変更パス・依存関係を含む対象をレビュー前に確定し直す。"),
-            ).stdout
-        )
-        review_env.request = json.loads(
-            p.cli(
-                "review-request",
-                "--run-id",
-                manifest["review_run_id"],
-                "--instruction-file",
-                p.note("この親の3PRを1回で確認する。"),
-            ).stdout
-        )
-        review_env.request_path.write_text(json.dumps(review_env.request))
+
+    # Only scenarios that exercise interactions between PRs need three targets.
+    review_env = make_review_env(
+        parent_env,
+        independent=variant in {"independent", "dependency", "research_dependency"},
+        standalone=variant == "standalone",
+        pr_count=3
+        if variant in {"multiple", "independent", "dependency", "research_dependency"}
+        else 1,
+        shared=variant == "shared",
+        before_review=configure,
+    )
+    p = review_env.p
+    policy = review_policy_module(monkeypatch)
     state = p.state()
     for pr in state["prs"]:
         pr.update(
@@ -415,6 +387,7 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
     )  # Receive, agreement and merge never launch a review.
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
     g.edit_result(
@@ -536,36 +509,45 @@ def test_dependency_and_shared_approval_still_block_for_any_ci_state(
 
 
 @pytest.mark.parametrize(
-    "case,reason",
+    "case,reason,gate_env",
     [
-        ("no_review", "parent_review_missing_or_interrupted"),
-        ("not_received", "parent_review_not_confirmed"),
-        ("fixing", "parent_review_not_confirmed"),
-        ("interrupted", "review_not_published_or_authorized"),
-        ("outside", "pr_outside_review_targets"),
-        ("not_reviewed", "run_failed_or_incomplete"),
-        ("major", "unresolved_findings"),
-        ("blocker", "unresolved_findings"),
-        ("head", "pr_100_unverified_head"),
-        ("base", "pr_100_base_sha_changed"),
-        ("base_ref", "pr_100_base_ref_changed"),
-        ("draft", "draft"),
-        ("fork", "fork"),
-        ("closed", "pr_not_open"),
-        ("author", "author_unknown"),
-        ("conflict", "conflict"),
-        ("unknown", "mergeable_unknown"),
-        ("human", "human_judgment_pending"),
-        ("parent_human", "human_judgment_pending"),
-        ("child_human", "human_judgment_pending"),
-        ("stopped", "child_10_stopped"),
-        ("parent_missing", "parent_result_missing_or_inconsistent"),
-        ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
-        ("projection_digest", "pr_100_projection_missing_or_inconsistent"),
-        ("failed_record", "parent_result_missing_or_inconsistent"),
-        ("foreign_result", "parent_result_missing_or_inconsistent"),
-        ("quoted_result", "parent_result_missing_or_inconsistent"),
+        pytest.param(
+            case,
+            reason,
+            "multiple" if case in {"head", "base"} else None,
+            id=f"{case}-{reason}",
+        )
+        for case, reason in [
+            ("no_review", "parent_review_missing_or_interrupted"),
+            ("not_received", "parent_review_not_confirmed"),
+            ("fixing", "parent_review_not_confirmed"),
+            ("interrupted", "review_not_published_or_authorized"),
+            ("outside", "pr_outside_review_targets"),
+            ("not_reviewed", "run_failed_or_incomplete"),
+            ("major", "unresolved_findings"),
+            ("blocker", "unresolved_findings"),
+            ("head", "pr_100_unverified_head"),
+            ("base", "pr_100_base_sha_changed"),
+            ("base_ref", "pr_100_base_ref_changed"),
+            ("draft", "draft"),
+            ("fork", "fork"),
+            ("closed", "pr_not_open"),
+            ("author", "author_unknown"),
+            ("conflict", "conflict"),
+            ("unknown", "mergeable_unknown"),
+            ("human", "human_judgment_pending"),
+            ("parent_human", "human_judgment_pending"),
+            ("child_human", "human_judgment_pending"),
+            ("stopped", "child_10_stopped"),
+            ("parent_missing", "parent_result_missing_or_inconsistent"),
+            ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
+            ("projection_digest", "pr_100_projection_missing_or_inconsistent"),
+            ("failed_record", "parent_result_missing_or_inconsistent"),
+            ("foreign_result", "parent_result_missing_or_inconsistent"),
+            ("quoted_result", "parent_result_missing_or_inconsistent"),
+        ]
     ],
+    indirect=["gate_env"],
 )
 @pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
 def test_rejections_never_merge_or_launch_agent(
@@ -699,15 +681,53 @@ def test_rejections_never_merge_or_launch_agent(
 
 
 @pytest.mark.parametrize("value", ["", "true", "2", " 1"])
-def test_auto_merge_flag_rejects_invalid_values_before_io(
-    gate_env: GateEnv, value: str
+def test_auto_merge_policy_rejects_invalid_values(
+    monkeypatch: pytest.MonkeyPatch, value: str
 ) -> None:
-    g = gate_env
-    before = len(g.review.p.calls())
-    result = g.cli("merge", AGENT_AUTO_MERGE=value)
+    review_policy_module(monkeypatch)
+    policy = importlib.import_module("merge_gate_policy")
+    with pytest.raises(ValueError, match="AGENT_AUTO_MERGE must be unset, 0 or 1"):
+        policy.auto_merge(value)
+
+
+def test_auto_merge_flag_rejects_invalid_values_before_io(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    unexpected = tmp_path / "unexpected-cli.txt"
+    for name in ("git", "gh", "codex", "claude", "herdr"):
+        executable = bin_dir / name
+        executable.write_text(
+            f"#!{sys.executable}\nfrom pathlib import Path\n"
+            f"Path({str(unexpected)!r}).write_text({name!r})\nraise SystemExit(97)\n"
+        )
+        executable.chmod(0o755)
+    private_state = tmp_path / "private-state"
+    # No repository, agreement, identity or completed review is needed before I/O.
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo", "o/r", "--parent", "1", "merge"],
+        cwd=tmp_path,
+        env={
+            "PATH": str(bin_dir),
+            "PYTHONPATH": str(OPS),
+            "XDG_STATE_HOME": str(private_state),
+            "AGENT_AUTO_MERGE": "true",
+            "CUDA_VISIBLE_DEVICES": "",
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
     assert result.returncode == 2
-    assert "AGENT_AUTO_MERGE" in result.stderr
-    assert len(g.review.p.calls()) == before
+    error = json.loads(result.stderr)
+    assert error["error"] == "ValueError: AGENT_AUTO_MERGE must be unset, 0 or 1"
+    assert error["reasons"] == ["input_or_collection_error"]
+    assert error["agent_invocations"] == 0
+    assert not unexpected.exists()
+    assert not private_state.exists()
 
 
 def test_unset_auto_merge_is_dry_run_without_any_writes(gate_env: GateEnv) -> None:
@@ -888,7 +908,7 @@ def test_repository_default_branch_is_used_instead_of_main(gate_env: GateEnv) ->
         pr["mergeable"] = None
     p.save(state)
     response = g.cli("merge")
-    assert response.returncode == 1, response.stderr
+    assert response.returncode == 0, response.stderr
     assert g.results(response)[100]["action"] == "merged"
     assert [c[2] for c in g.merge_calls()] == ["100"]
     assert sum("repos/o/r" in call for call in p.calls()) >= 2
@@ -1076,6 +1096,7 @@ def test_remaining_prs_are_recollected_after_each_merge(
 
 
 @pytest.mark.parametrize("failure", ["fail", "head", "response", "close"])
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_failed_or_lost_merge_is_never_repeated(
     gate_env: GateEnv, failure: str
 ) -> None:
@@ -1126,6 +1147,37 @@ def test_shared_foundation_needs_explicit_current_parent_permission(
     gate_env: GateEnv, permission: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
+    if permission == "absent":
+        # Check the real producer's workspace against the reviewed git head/diff,
+        # before exercising the consumer's permission decisions below.
+        snapshot = g.review.request["prs"][0]
+        worktree = p.repo / ".claude/worktrees/pr-0"
+        assert snapshot["head_sha"] == run_git(worktree, "rev-parse", "HEAD")
+        assert snapshot["head_sha"] == p.state()["prs"][0]["head"]["sha"]
+        diff = subprocess.check_output(
+            [
+                "git",
+                "diff",
+                "--no-ext-diff",
+                "--no-textconv",
+                "--binary",
+                "--full-index",
+                "--no-renames",
+                "--no-color",
+                snapshot["merge_base_sha"],
+                snapshot["head_sha"],
+                "--",
+            ],
+            cwd=p.repo,
+        )
+        assert b".agents/shared.txt" in diff
+        assert hashlib.sha256(diff).hexdigest() == snapshot["diff_sha256"]
+        assert g.review.calls()[0]["diffs"]["100"] == diff.decode()
+        result = json.loads((g.review.run_dir / "result.json").read_text())
+        assert result["request"]["prs"] == g.review.request["prs"]
+        projection = g.policy.records(p.state()["comments"]["100"], "operator")[0]
+        assert projection["snapshot"] == snapshot
+        assert projection["result_sha256"] == g.policy.digest(result)
     state = p.state()
     for pr in state["prs"][1:]:
         pr["mergeable"] = None
@@ -1262,6 +1314,7 @@ def test_board_merge_notice_and_ack_cannot_enable_auto_merge(gate_env: GateEnv) 
 @pytest.mark.parametrize(
     "resolution", ["valid", "stale", "unpublished", "wrong_diff", "outside"]
 )
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_fix_push_requires_current_published_resolution_and_actual_diff(
     gate_env: GateEnv, extra_path: bool, resolution: str
 ) -> None:
@@ -1411,6 +1464,7 @@ def test_missing_parent_run_cannot_use_old_pr_approval(gate_env: GateEnv) -> Non
 
 
 @pytest.mark.parametrize("when", ["ci", "before_merge"])
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     g, p = gate_env, gate_env.review.p
     worktree = p.repo / ".claude/worktrees/pr-0"
@@ -1437,6 +1491,7 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     assert not g.merge_calls()
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_new_child_pr_invalidates_the_run_set_without_holding_by_ci(
     gate_env: GateEnv,
 ) -> None:
