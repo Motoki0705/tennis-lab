@@ -9,7 +9,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 from src.tasks.ball_detection.models.mdd.hybrid import MDDHybridOutput
-from src.tasks.ball_detection.training.dpt_pretrain.objective import heatmap_objective
+from src.tasks.ball_detection.training.heatmap_objective import heatmap_objective
 from src.tasks.ball_detection.training.hybrid.configuration import validate_loss
 
 
