@@ -90,6 +90,8 @@ def test_catalog_is_about_200_short_distinct_public_names(
         ["Álice"],
         ["Alice", "ALICE"],
         ["All"],
+        ["Human"],
+        ["HUMAN"],
         ["Ann", "Anna"],
         ["Ben", "Bob", "Jen"],
         ["Bob", "Rob"],
@@ -108,7 +110,14 @@ def test_name_resolution_rejects_reserved_outside_unassigned_and_retired(
     with store.transaction() as connection:
         assigned = board.names.ensure_name(connection, "o/r", 1, "開発", now=NOW)
         assert board.names.resolve_name(connection, assigned.name.lower()) == assigned
-        for invalid in ("all", "ALL", "NotInCatalog", board.names.load_names()[1]):
+        for invalid in (
+            "all",
+            "ALL",
+            "human",
+            "HUMAN",
+            "NotInCatalog",
+            board.names.load_names()[1],
+        ):
             with pytest.raises(board.errors.BoardError):
                 board.names.resolve_name(connection, invalid)
         board.names.retire_name(connection, "o/r", 1, now=NOW)
@@ -620,7 +629,10 @@ def test_version_three_migration_adds_reactions_without_changing_history(
     ):
         pass
     with v3_store.store.transaction() as connection:
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
         for table, rows in v3_store.rows.items():
             assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
         assert connection.execute("SELECT * FROM reactions").fetchall() == []
@@ -650,6 +662,71 @@ def test_version_three_migration_failure_rolls_back_reactions_and_version(
             == v3_store.schema
         )
         for table, rows in v3_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+
+
+@pytest.fixture
+def v4_store(board: SimpleNamespace, v3_store: SimpleNamespace) -> SimpleNamespace:
+    with sqlite3.connect(v3_store.store.path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        board.storage.MIGRATIONS[3](connection)
+        connection.execute("PRAGMA user_version=4")
+        root = v3_store.rows["posts"][0]
+        reply = list(root)
+        reply[0], reply[6], reply[10] = "1" * 32, "reply", root[0]
+        connection.execute("INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", reply)
+        connection.executemany(
+            "INSERT INTO reactions VALUES(?,?,?,?,?)",
+            [
+                (root[0], "parent", 2, "+1", board.names.timestamp(NOW)),
+                (reply[0], "human", None, "eyes", board.names.timestamp(NOW)),
+            ],
+        )
+        rows = {
+            table: connection.execute(f"SELECT * FROM {table}").fetchall()
+            for table in (*v3_store.rows, "reactions")
+        }
+        schema = connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+    return SimpleNamespace(store=v3_store.store, rows=rows, schema=schema)
+
+
+def test_version_four_migration_preserves_thread_graph_reactions_and_history(
+    board: SimpleNamespace, v4_store: SimpleNamespace
+) -> None:
+    with v4_store.store.transaction() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        for table, rows in v4_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+    with v4_store.store.read() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 2
+
+
+def test_human_migration_failure_rolls_back_the_complete_graph(
+    board: SimpleNamespace, v4_store: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    migration = board.storage.MIGRATIONS[4]
+
+    def fail_after_rebuild(connection: sqlite3.Connection) -> None:
+        migration(connection)
+        raise RuntimeError("injected human migration failure")
+
+    monkeypatch.setattr(
+        board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS[:4], fail_after_rebuild)
+    )
+    with pytest.raises(RuntimeError, match="injected"), v4_store.store.transaction():
+        pass
+    with sqlite3.connect(v4_store.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert (
+            connection.execute(
+                "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+            ).fetchall()
+            == v4_store.schema
+        )
+        for table, rows in v4_store.rows.items():
             assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
 
 

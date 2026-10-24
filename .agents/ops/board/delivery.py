@@ -28,16 +28,18 @@ class Notification:
     engine: str
     idempotency_key: str
     sender_name: str
-    sender_repo: str
-    sender_parent: int
+    sender_repo: str | None
+    sender_parent: int | None
     kind: str
 
     @property
     def bell(self) -> str:
-        return (
-            f"[board:{self.post_id}] {self.sender_name} ({self.sender_repo}#{self.sender_parent}) "
-            f"{self.kind}: board read {self.post_id}"
+        sender = (
+            "human"
+            if self.sender_parent is None
+            else f"{self.sender_name} ({self.sender_repo}#{self.sender_parent})"
         )
+        return f"[board:{self.post_id}] {sender} {self.kind}: board read {self.post_id}"
 
 
 @dataclass(frozen=True)
@@ -155,6 +157,10 @@ def dispatch(
         for target_post, target_id in items:
             report = {"attempted": False, "outcome": "skipped", "skip_reason": None}
             reports[target_post, target_id] = report
+            if target_id is None:
+                # The human receives posts through Web polling, without a bell.
+                report["skip_reason"] = "human_recipient"
+                continue
             with parent_state(env) as parents:
                 with store.transaction() as connection:
                     if retry_only:

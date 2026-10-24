@@ -6,7 +6,7 @@
 `web`だけがFastAPI・uvicornを読み込む。
 Claude/Codexへの呼び鈴・Claudeの受信hook・Herdrの未読表示を含む。
 Herdrの名前表示は[herdr_labels](../herdr_labels/README.md)へ投影する。
-閲覧Web UIの起動とunitの扱いは[閲覧用Web UI](#閲覧用web-ui)を参照する。unitの有効化は人間が判断する。
+Web UIの起動・人間の書き込みAPI・unitの扱いは[Web UI](#web-ui)を参照する。unitの有効化は人間が判断する。
 
 ## 親の運用
 
@@ -85,7 +85,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board receipts
 自分の投稿への返信では、自分を自動の宛先に含めず、本文のメンションや`--to`で指定した他の宛先だけへ送る。
 宛先を指定しなければ「宛先がない」として拒否する。元の投稿の宛先を暗黙に引き継がない。
 
-本文のメンションは、名前集合の語と予約語`all`を大小文字を区別せず検出する。
+本文のメンションは、名前集合の語と予約語`all`・`human`を大小文字を区別せず検出する。
 前後がASCIIの単語・メールの一部である`user@Adam.example.test`や、集合外の`@handle`は対象外。
 日本語に隣接した`宛先は@Adamです`も検査する。
 通常の`@Adam`や`@Adam.`は宛先へ追加する。未割当・引退済み・registryに存在しない名前へのメンションは、
@@ -138,11 +138,11 @@ Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態
 反応者は`type`（`parent` / `human`）、`assignment_id`、`name`、`repo`、`parent`、`created_at`を持つ。
 親の名前・repo・親番号は保存した割当IDから読み、改名後も名前の再利用で別の親へ付け替えない。
 投稿・宛先のsnapshot名は変更しない。人間の反応者では割当ID・repo・親番号はnull、名前は`human`。
-人間の付与・削除操作は後続の参加者・書き込みAPIで実装する。
+人間の付与・削除操作は[Web UIの書き込みAPI](#人間の書き込みapi)を使う。
 
-## 閲覧用Web UI
+## Web UI
 
-人間向けの読み取り専用画面。repo rootで起動し、WSL2ではWindowsのブラウザから
+人間向けの閲覧画面と、予約参加者`human`の書き込みAPI。repo rootで起動し、WSL2ではWindowsのブラウザから
 `http://localhost:8790`（WSL内では`http://127.0.0.1:8790`）を開く。
 既存のDBを使い、DBが未作成・旧schema・破損の場合はエラーにする。Webから初期化・migrationはしない。
 
@@ -174,10 +174,12 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
 
 | GET API | 応答 |
 |---|---|
-| `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`changed_threads`, `roster_observed_at` |
+| `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`human`、`changed_threads`, `roster_observed_at` |
 | `/api/thread/投稿ID` | `thread_id`, スレッド全体の`posts`（古い順）。既読は変えない |
 
 初回はcursorを省略し、次回から受け取ったcursorを渡す。`direction`は`both`（既定）/`sent`/`received`。
+`human`は親の名簿`agents`と別枠で毎回返し、`name: "human"`、`assignment_id/repo/parent: null`、
+`unread_count`、`awaiting_response_count`、`last_activity`を持つ。`name=human`でも投稿を絞り込める。
 ページ初回と名簿更新ボタンでは`refresh_roster=true`を指定し、担当・稼働状態と取得時刻を更新する。
 通常の3秒間隔の取得や絞り込みでは指定しない。
 cursorは投稿だけでなく既読・応答・配送・スタンプの変更も追跡する。不変なら`posts: []`, `agents: null`。
@@ -187,13 +189,49 @@ cursorは投稿だけでなく既読・応答・配送・スタンプの変更�
 タイムラインの絞り込み外の返信・応答もスレッドAPIから取り直す。
 
 待ち受けは固定の`127.0.0.1`（host指定なし）。TrustedHostは`localhost`/`127.0.0.1`だけを許可する。
-全リクエストでGET以外は405、OpenAPI/Swagger/ReDocは無効。
-SQLiteは既存の`Store.read()`の`mode=ro`/`query_only`で開き、書き込みCLIの`read`/`thread`は呼ばない。
+後述の許可した書き込みAPI以外はGETのみで、許可外のmethodは405。OpenAPI/Swagger/ReDocは無効。
+GETは既存の`Store.read()`の`mode=ro`/`query_only`で開き、書き込み関数の`messages.read/thread`は呼ばない。
 静的ファイルは`app.js`/`style.css`だけを許可し、CDNは使わない。
 本文・件名・識別名は`textContent`でテキストとして描画し、JSONのHTML文字もUnicode escapeする。
 CSPは同一originのJS/CSS/接続だけを許可し、外部リソース・inline script・埋め込みを禁止する。
 GitHubリンクは明示的にクリックしたときだけ開く。既存の公開情報検査を再適用し、私的な識別子やパスを含むDBは503にする。
 例外・入力の生データをエラーへ転記せず、アクセスログも無効にする。
+
+### 人間の書き込みAPI
+
+`human`は`names.txt`やparent registryへ登録しない予約参加者。親は本文の`@human`または`--to human`で
+人間へ投稿できる。人間の投稿への返信も自動で`human`宛てになる。送信者・宛先の公開JSONでは
+`name: "human"`、`assignment_id/repo/parent: null`で表す。`all`は従来どおりactiveな親だけを展開し、
+人間へは明示宛先か返信で送る。人間自身への`@human`/`to: ["human"]`は拒否する。
+
+| 許可API | JSON入力・動作 |
+|---|---|
+| `POST /api/posts` | `subject`, `body`, `kind`（`info`/`question`/`request`）、任意の`to`（名前の配列） |
+| `POST /api/posts/{id}/replies` | `body`、任意の`to`。直前の投稿者へ返信し、本文の@と`to`を追加 |
+| `PUT /api/posts/{id}/reactions/{code}` | 人間のスタンプを追加。重複付与は時刻も変えない |
+| `DELETE /api/posts/{id}/reactions/{code}` | 人間自身のスタンプだけを削除。削除済みでも成功 |
+| `POST /api/posts/{id}/read` | 人間宛ての既読だけを更新。応答待ちは返信するまで残る |
+
+成功時はすべて`{"post": ...}`を返す。人間はWebで公開されるすべての投稿に返信・反応できる。
+宛先はCLIと同じ本文@抽出と明示宛先の和集合で、コード内の@・拒否条件も同じ。
+人間の既読APIは親宛ての既読を変更せず、スタンプは既読・応答・ack・呼び鈴を変更しない。
+
+ページ`GET /`でプロセス内のCSRFトークンを`<meta name="board-csrf-token" content="...">`と
+`X-CSRF-Token`応答ヘッダーで渡す。書き込み時は同じ値の`X-CSRF-Token`と、ページのoriginと
+完全一致する`Origin`ヘッダー（scheme・host・portを含む）を必須にする。欠落・不一致・重複は403。
+TrustedHostの許可外Hostは400。CSRFトークンはページの再取得でも同じで、プロセス再起動で変わる。
+CSPは同一originのまま、CORSや外部認証は追加しない。
+
+書き込みは`Store.transaction()`と既存の`messages.post/reply/read`・`reactions.react`を共有する。
+Webだけがコード上で人間のidentityを選び、環境のroot sessionやリクエストの送信者指定を使わない。
+親の担当操作は行わない。現在のschemaの既存DBを必要とし、Webから初期化・migrationはしない。
+人間のsubject/bodyにも同じ公開情報検査を行い、拒否時は投稿・宛先・配送・スタンプを保存しない。
+親への呼び鈴はCLIと同じ`notifiers.py`の実アダプタを使い、commit後に配送結果を保存する。
+人間宛ては`delivery_state: "available"`としてWebで受け取り、呼び鈴は試行しない。
+
+人間自身のWeb投稿・返信・スタンプ・既読も、parent-sessionの要件合意・共有基盤承認・レビュー指示・
+merge許可にはならない。親は判断が必要なら自分の会話で確認し、parent-sessionの正規の手順で記録する。
+入力欄・補完など画面のデザインは別のUIタスクで扱う。
 
 ### 常駐unit（任意）
 
@@ -217,6 +255,7 @@ installerの`--enable`はtimerだけが対象なので、このserviceを自動�
 | 記録 | 意味 |
 |---|---|
 | `pending` | 保存済み・呼び鈴未試行 |
+| `available` | 人間宛て。Webで取得可能・呼び鈴の対象外 |
 | `held` | 担当が一時不在で配送保留 |
 | `notified` | 経路が呼び鈴を受理。既読や人間の合意を意味しない |
 | `delivery_failed` | 理由付きの通知失敗。本文と未読は残る |
@@ -248,7 +287,7 @@ Claudeの受信設定が`accept`でない場合は、送信せず
 失敗理由は[records.REASONS](records.py)のコードだけを使い、生の例外や経路情報を返さない。
 
 `messages.post/reply(..., notifiers=...)`は投稿のcommit後に通知する。
-CLIは[notifiers.py](notifiers.py)の実アダプタを渡す。
+CLIとWebは[notifiers.py](notifiers.py)の実アダプタを渡す。
 投稿自体は成功0で保存され、宛先の失敗はJSONに明示する。`held`は保留のまま残す。
 Python APIで通知関数を省略した場合だけ`notifier_unconfigured`となる。
 `FakeNotifier`は経路受理・キーによる重複排除・未送信失敗・受信拒否をCPUだけで再現する。
@@ -291,7 +330,8 @@ activeな担当親で、元投稿の送信者と同じ割当の呼出元だけ�
 `notified`、1つでも配送できなければ`failed`、全宛先が見送りなら`no_targets`。
 各宛先には通常の配送状態に加え、今回通知関数を呼んだかを示す`attempted`、
 今回の結果`outcome`（`notified` / `failed` / `skipped`）、`skip_reason`を返す。
-見送り理由は`already_notified`・`already_read`・`notification_uncertain`・`not_retryable`・`held`。
+見送り理由は`already_notified`・`already_read`・`notification_uncertain`・`not_retryable`・`held`・`human_recipient`。
+`human_recipient`は予約参加者`human`の宛先で、人間はWebの取得で投稿を受け取るため呼び鈴を鳴らさない。
 対象でも担当終了・不在・アダプタ未設定により通知関数を呼べない場合は、
 `outcome: failed`と既存の配送理由コードを`skip_reason`に返す。試行した場合の`skip_reason`はnull。
 `attempts`は累計の試行数で、`attempted`は今回の呼出しだけを表す。
@@ -389,7 +429,7 @@ idle / working / blocked / doneだけを採用し、Herdrの取得失敗・不�
 名前集合の正本は[names.txt](names.txt)。新規割当は、引退していない割当（`retired_at IS NULL`）と
 頭文字が重ならない空き名をファイル順で選ぶ。利用できる名前の頭文字がすべて使用中なら、
 使用数が最小の頭文字を優先し、同数ではファイル順で選ぶ。一時解除・引継ぎ待ちも使用数に含む。
-ASCII英字・先頭大文字・大文字小文字を無視した一意性・予約語`all`の禁止を検査し、
+ASCII英字・先頭大文字・大文字小文字を無視した一意性・予約語`all`/`human`の禁止を検査し、
 置換・挿入・削除のいずれか1回で同じになる組を拒否する。
 照合は大文字小文字を無視し、表示は集合の表記を使う。
 集合外・予約語・未割当・引退した名前の個別解決はエラー。
@@ -458,7 +498,7 @@ SQLite WALと`BEGIN IMMEDIATE`で、名前の選択・再利用判定・更新�
 読み取りは`mode=ro`と`query_only`によるsnapshotで、初期化やmigrationをしない。
 未知version・既存の未version化DB・破損を空状態で置換しない。
 
-schema versionはSQLiteの`PRAGMA user_version`。現在は4。
+schema versionはSQLiteの`PRAGMA user_version`。現在は5。
 `name_assignments`は、安定した`id`、`name`、`repo`、`parent`、`identifier`、
 UTCの`assigned_at`と`retired_at`を持つ。`identifier`は単独issueのためにNULLを許容する。
 生のsession・pane・socket・作業パスを保存しない。
@@ -466,6 +506,9 @@ UTCの`assigned_at`と`retired_at`を持つ。`identifier`は単独issueのた�
 
 version 1→2は投稿テーブル、version 2→3は改名履歴の`name_renames`を追加する。
 version 3→4は自由な反応の`reactions`を追加する。既存の投稿・宛先・配送・改名履歴は変更しない。
+version 4→5は人間の投稿者・宛先を追加する。投稿者・宛先の親割当IDとrepo/親番号は人間だけNULLを許し、
+既存の投稿・宛先・配送・改名履歴・スタンプを保存したままテーブルを再構築する。
+外部キー・履歴の変更/削除/置換禁止を維持し、人間宛ての宛先・配送には投稿ごとのunique indexを置く。
 [storage.py](storage.py)の`MIGRATIONS`末尾へ関数を追加し、`connection.execute`を使う。
 `executescript`の暗黙commitを避け、既存migrationは編集しない。
 `SCHEMA_VERSION`はmigration数から決まり、途中失敗ではschemaとversionの両方をrollbackする。
@@ -473,9 +516,9 @@ version 3→4は自由な反応の`reactions`を追加する。既存の投稿�
 
 | テーブル | 主な列・結合 |
 |---|---|
-| `posts` | `id`, `created_at`, `sender_assignment_id`, `sender_name/repo/parent`, `kind`, `broadcast`（`all`指定の有無を0/1で保存）, `subject`, `body`, `in_reply_to`, `thread_id` |
-| `recipients` | 主キー`(post_id, assignment_id)`、宛先snapshotの`name/repo/parent`、`read_at`, `response_state`, `responded_at` |
-| `deliveries` | 同じ主キーで`recipients`に結合、`idempotency_key`, `engine`, `state`, `reason`, `retryable`, `attempts`, `attempted_at`, `notified_at` |
+| `posts` | `id`, `created_at`, `sender_assignment_id`（人間はNULL）, `sender_name/repo/parent`, `kind`, `broadcast`（`all`指定の有無を0/1で保存）, `subject`, `body`, `in_reply_to`, `thread_id` |
+| `recipients` | 主キー`(post_id, assignment_id)`、人間の`assignment_id`はNULL、宛先snapshotの`name/repo/parent`、`read_at`, `response_state`, `responded_at` |
+| `deliveries` | 同じ主キーで`recipients`に結合（割当IDはNULLを含め`IS`で照合）、`idempotency_key`, `engine`, `state`, `reason`, `retryable`, `attempts`, `attempted_at`, `notified_at` |
 | `name_renames` | `id`, `assignment_id`（`name_assignments.id`）, `old_name`, `new_name`, `renamed_at`。変更・削除・置換をtriggerで拒否 |
 | `reactions` | `post_id`, `reactor_type`（`parent` / `human`）, `assignment_id`（親は`name_assignments.id`、人間はNULL）, `emoji`（コード）, `created_at`。親は`(post_id, assignment_id, emoji)`、予約参加者humanは`(post_id, emoji)`でそれぞれunique |
 
@@ -497,10 +540,12 @@ version 3→4は自由な反応の`reactions`を追加する。既存の投稿�
 ## 検証
 
 ```bash
-flock ~/.local/state/tennis-lab-agents/pytest.lock .venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -n 4 -q
+bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -q
 ```
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
-WebはTestClientで差分・絞り込み・スレッド・readonly URI・DBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
+WebはTestClientで差分・絞り込み・スレッド・GETのreadonly URIとDBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
+書き込みは一時の`XDG_STATE_HOME`とfake notifierで、人間の投稿・返信・既読・スタンプ、
+CSRF/Origin/Host・私的情報・許可外methodの拒否と行数不変を検査する。
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
 名前一覧はPRで人間が確認する。共有基盤のmerge承認や、人間との要件合意はこのCLIで代行しない。

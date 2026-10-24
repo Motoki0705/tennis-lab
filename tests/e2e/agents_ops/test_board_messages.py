@@ -23,6 +23,51 @@ from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "INSERT OR REPLACE INTO recipients SELECT * FROM recipients WHERE assignment_id IS NULL",
+        "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries WHERE assignment_id IS NULL",
+        "UPDATE recipients SET name='Human' WHERE assignment_id IS NULL",
+        "UPDATE deliveries SET state='notified', notified_at='changed' WHERE assignment_id IS NULL",
+        "UPDATE name_assignments SET name='Human' WHERE parent=1",
+        "INSERT INTO name_assignments(name,repo,parent,assigned_at) VALUES('HUMAN','o/r',99,'now')",
+    ],
+)
+def test_reserved_human_rows_preserve_identity_uniqueness_and_delivery_contract(
+    world: World, statement: str
+) -> None:
+    world.post(to=["human"])
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(statement)
+    assert world.message_rows() == before
+    with world.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM name_assignments WHERE lower(name)='human'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_human_delivery_requires_an_existing_human_recipient(world: World) -> None:
+    root = world.post()
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,NULL,'orphan-human','available')",
+            (root["id"],),
+        )
+    assert world.message_rows() == before
+
+
 @dataclass
 class World:
     board: SimpleNamespace
