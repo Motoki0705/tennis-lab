@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import json
 import os
@@ -12,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -842,6 +844,224 @@ def test_rename_requires_an_unambiguous_registered_live_name(
         assert list(connection.iterdump()) == before
     assert labels.registry.read_bytes() == registry
     assert labels.mutations() == []
+
+
+def add_unnamed_parents(p: ParentEnv) -> Path:
+    """Model registered peers whose sessions have never run board synchronization."""
+    path = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    registry = json.loads(path.read_text())
+    github = p.state()
+    for parent, status in (
+        (2, "active"),
+        (3, "active"),
+        (4, "released"),
+        (5, "handoff_pending"),
+        (6, "ended"),
+    ):
+        registry["parents"][f"o/r#{parent}"] = {
+            "session": f"claude:private-stopped-owner-{parent}",
+            "status": status,
+            "generation": 4,
+            "tasks": {},
+            "reviews": [],
+            "extension": {"preserved": True},
+        }
+        github["issues"][str(parent)] = {
+            **github["issues"]["1"],
+            "id": 10000 + parent,
+            "number": parent,
+            "title": f"[待機{parent}] 担当中のタスク",
+        }
+    # Standalone peers receive a name, with no inferred identifier.
+    github["issues"]["3"].update(title="単独のタスク", labels=[])
+    p.save(github)
+    path.write_text(json.dumps(registry))
+    return path
+
+
+@pytest.mark.parametrize(
+    "action", ["register", "reconcile", "sync", "release", "ended", "handoff", "accept"]
+)
+def test_parent_actions_name_all_unnamed_active_peers_without_changing_ownership(
+    board: SimpleNamespace, parent_env: ParentEnv, action: str
+) -> None:
+    p = parent_env
+    own = json.loads(p.cli("register").stdout)["board_sync"]
+    if action == "accept":
+        p.cli("handoff", "--note-file", p.note())
+    path = add_unnamed_parents(p)
+    peers_before = json.loads(path.read_text())["parents"]
+    github_before = p.state()
+    args = {
+        "release": ["release", "--note-file", p.note()],
+        "ended": ["release", "--ended", "--note-file", p.note()],
+        "handoff": ["handoff", "--note-file", p.note()],
+        "accept": ["handoff", "--accept", "--note-file", p.note()],
+    }.get(action, [action])
+    result = p.cli(*args)
+    data = json.loads(result.stdout)
+    assert data["parent_action_applied"] is True
+    assert data["board_sync"]["name"] == own["name"]
+    additional = data["board_sync"]["additional_parents"]
+    assert [row["parent"] for row in additional] == [2, 3]
+    assert all(row["status"] == "assigned" for row in additional)
+    with board.storage.Store(board.storage.directory(p.env)).read() as connection:
+        for parent in (2, 3):
+            assignment = board.names.for_parent(connection, "o/r", parent)
+            assert assignment is not None and assignment.retired_at is None
+            assert assignment.identifier == ("待機2" if parent == 2 else None)
+        for parent in (4, 5, 6):
+            assert board.names.for_parent(connection, "o/r", parent) is None
+    after = json.loads(path.read_text())["parents"]
+    for parent in range(2, 7):
+        assert after[f"o/r#{parent}"] == peers_before[f"o/r#{parent}"]
+        assert p.state()["issues"][str(parent)] == github_before["issues"][str(parent)]
+        assert str(parent) not in p.state()["comments"]
+    private_output_absent(result.stdout + result.stderr, p.env)
+    assert all(row["session"] not in result.stdout for row in peers_before.values())
+
+
+def test_peer_sync_fetches_metadata_without_registry_or_board_write_locks(
+    board: SimpleNamespace, parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    p.cli("register")
+    path = add_unnamed_parents(p)
+    before = path.read_bytes()
+    store = board.storage.Store(board.storage.directory(p.env))
+    fetched = []
+
+    def fetch(_github: object, number: int) -> dict[str, object]:
+        fetched.append(number)
+        with sqlite3.connect(store.path, timeout=0) as writer:
+            writer.execute("BEGIN IMMEDIATE")
+        with (path.parent / "registry.lock").open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return cast(dict[str, object], p.state()["issues"][str(number)])
+
+    monkeypatch.setattr(board.service.GitHub, "issue", fetch)
+    result = board.service.sync_parent(p.env, "o/r", 1)
+    assert result["status"] == "retained"
+    assert fetched == [1, 2, 3]
+    assert path.read_bytes() == before
+    fetched.clear()
+    board.service.sync_parent(p.env, "o/r", 1)
+    assert fetched == [1]  # Named peers need no further metadata lookup.
+
+
+@pytest.mark.parametrize("change", ["session", "status", "generation", "removed"])
+def test_peer_sync_rechecks_ownership_and_continues_after_a_changed_peer(
+    board: SimpleNamespace,
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    p = parent_env
+    p.cli("register")
+    path = add_unnamed_parents(p)
+
+    def fetch(_github: object, number: int) -> dict[str, object]:
+        if number == 2:
+            data = json.loads(path.read_text())
+            if change == "removed":
+                del data["parents"]["o/r#2"]
+            else:
+                data["parents"]["o/r#2"][change] = {
+                    "session": "claude:private-replacement-owner",
+                    "status": "ended",
+                    "generation": 5,
+                }[change]
+            path.write_text(json.dumps(data))
+        return cast(dict[str, object], p.state()["issues"][str(number)])
+
+    monkeypatch.setattr(board.service.GitHub, "issue", fetch)
+    result = board.service.sync_parent(p.env, "o/r", 1)
+    assert result["status"] == "error"
+    failed, assigned = result["additional_parents"]
+    assert failed["parent"] == 2 and failed["status"] == "error"
+    assert "assignment changed" in failed["error"]
+    assert assigned["parent"] == 3 and assigned["status"] == "assigned"
+    with board.storage.Store(board.storage.directory(p.env)).read() as connection:
+        assert board.names.for_parent(connection, "o/r", 2) is None
+        assert board.names.for_parent(connection, "o/r", 3) is not None
+    private_output_absent(json.dumps(result), p.env)
+
+
+def test_peer_lookup_failure_is_explicit_and_broadcast_remains_atomic(
+    board: SimpleNamespace, parent_env: ParentEnv
+) -> None:
+    p = parent_env
+    p.cli("register")
+    path = add_unnamed_parents(p)
+    before = path.read_bytes()
+    response = p.cli(
+        "register", ok=None, extra={"PARENT_FAIL_GET_PATH": "repos/o/r/issues/2"}
+    )
+    result = json.loads(response.stdout)
+    assert response.returncode == 1 and result["parent_action_applied"] is True
+    assert result["display_sync"]["status"] == "not_configured"
+    assert result["board_sync"]["status"] == "error"
+    failed, assigned = result["board_sync"]["additional_parents"]
+    assert failed["parent"] == 2 and failed["status"] == "error"
+    assert "GitHub title/label lookup failed" in failed["error"]
+    assert assigned["parent"] == 3 and assigned["status"] == "assigned"
+    assert run_board(p.env, "whoami").returncode == 0
+    assert path.read_bytes() == before
+    blocked = run_board(
+        p.env,
+        "post",
+        "--to",
+        "all",
+        "--kind",
+        "info",
+        "--subject",
+        "共有",
+        "--body-file",
+        p.note("全員に共有します。"),
+    )
+    assert blocked.returncode == 2 and blocked.stdout == ""
+    assert "o/r#2" in blocked.stderr and "no live board name" in blocked.stderr
+    with board.storage.Store(board.storage.directory(p.env)).read() as connection:
+        for table in ("posts", "recipients", "deliveries"):
+            assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (
+                0,
+            )
+    private_output_absent(response.stdout + response.stderr + blocked.stderr, p.env)
+    repaired = json.loads(p.cli("register").stdout)["board_sync"]
+    assert repaired["status"] == "retained"
+    assert repaired["additional_parents"][0]["parent"] == 2
+    assert repaired["additional_parents"][0]["status"] == "assigned"
+
+
+def test_concurrent_peer_sync_preserves_unique_names_and_registry(
+    board: SimpleNamespace, parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    p.cli("register")
+    path = add_unnamed_parents(p)
+    before = path.read_bytes()
+    monkeypatch.setattr(
+        board.service.GitHub,
+        "issue",
+        lambda _github, number: p.state()["issues"][str(number)],
+    )
+    peer_env = {**p.env, "CLAUDE_CODE_SESSION_ID": "private-stopped-owner-2"}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [
+            pool.submit(board.service.sync_parent, env, "o/r", parent)
+            for env, parent in ((p.env, 1), (peer_env, 2))
+        ]
+        assert all(future.result()["status"] != "error" for future in futures)
+    assert path.read_bytes() == before
+    with board.storage.Store(board.storage.directory(p.env)).read() as connection:
+        rows = connection.execute(
+            "SELECT name, parent FROM name_assignments"
+        ).fetchall()
+    assert len(rows) == len({name for name, _parent in rows}) == 3
+    assert {parent for _name, parent in rows} == {1, 2, 3}
 
 
 @pytest.mark.parametrize("title", ["人間が作成した単独タスク", "[Bug] 単独タスク"])

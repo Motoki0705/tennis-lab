@@ -456,7 +456,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
-    with pytest.raises(w.board.errors.BoardError, match="no live board name"):
+    with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}
     assert w.fake.calls == []

@@ -86,6 +86,54 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
+def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
+    world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = world
+    parents = json.loads(w.labels.registry.read_text())["parents"]
+    parents["o/r#7"] = w.labels.owner(identity="claude:stopped-owner")
+    w.labels.set_registry(parents)
+    before = w.labels.registry.read_bytes()
+    monkeypatch.setattr(
+        w.board.service.GitHub,
+        "issue",
+        lambda _github, number: {
+            "title": f"[担当{number}] タスク",
+            "labels": [{"name": "issue:parent"}],
+        },
+    )
+    synced = w.board.service.sync_parent(w.env(), "o/r", 1)
+    assert synced["additional_parents"][0]["parent"] == 7
+    with w.store.read() as connection:
+        assignment = w.board.names.for_parent(connection, "o/r", 7)
+    w.fake.fail_once_for.add(assignment.id)
+    root = w.post(to=["all"])
+    assert {row["parent"] for row in root["recipients"]} == {2, 3, 7}
+    status = w.own_state(root["id"])
+    with TestClient(web.app.create_app(w.env()), base_url="http://127.0.0.1") as client:
+        changes = client.get("/api/changes")
+        assert changes.status_code == 200
+        data = changes.json()
+        thread = client.get(f"/api/thread/{root['id']}")
+        assert thread.status_code == 200
+    roster = next(row for row in data["agents"] if row["parent"] == 7)
+    assert roster["name"] == assignment.name
+    assert roster["name_status"] == "assigned" and roster["unread_count"] == 1
+    for view in (status, data["posts"][0], thread.json()["posts"][0]):
+        failed = next(row for row in view["recipients"] if row["parent"] == 7)
+        assert failed["name"] == assignment.name
+        assert failed["delivery_state"] == failed["state"] == "delivery_failed"
+        assert failed["delivery_reason"] == "route_unavailable"
+        assert failed["delivery_message"] == "通知経路が利用できません（未送信）"
+        assert failed["retryable"] is True and failed["read_at"] is None
+    with w.store.read() as connection:
+        assert connection.execute(
+            "SELECT state, reason, retryable FROM deliveries WHERE post_id=? AND assignment_id=?",
+            (root["id"], assignment.id),
+        ).fetchone() == ("delivery_failed", "route_unavailable", 1)
+    assert w.labels.registry.read_bytes() == before
+
+
 @pytest.mark.parametrize("broadcast", [False, True])
 def test_saved_broadcast_is_returned_without_body_or_recipient_inference(
     world: World, client: TestClient, broadcast: bool

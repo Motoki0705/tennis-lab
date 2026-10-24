@@ -52,29 +52,33 @@ def _identifier(value: str, parents: Mapping[str, Any], env: Mapping[str, str]) 
     return value
 
 
-def sync_parent(
-    env: Mapping[str, str], repo: str, parent: int, *, now: datetime | None = None
+def _sync_assignment(
+    env: Mapping[str, str],
+    repo: str,
+    parent: int,
+    parents: Mapping[str, Any],
+    *,
+    now: datetime | None,
 ) -> dict[str, Any]:
-    """Run after a successful parent action and after releasing its registry lock.
-
-    Fetch GitHub metadata before taking the board write lock, then recheck the
-    owner, status and generation so a delayed callback cannot update a new owner
-    or resurrect a name after release/ended.
-    """
-    identity = session_identity(env)
     key = f"{repo.casefold()}#{parent}"
-    parents = registry(env)
-    expected = parents.get(key)
-    if expected is None or expected["session"] != identity:
-        raise BoardError("parent assignment changed before board synchronization")
+    expected = parents[key]
     identifier = None
     if expected["status"] == "active":
-        issue = GitHub(repo).issue(parent)
-        labels = {label["name"] for label in issue["labels"]}
+        try:
+            issue = GitHub(repo).issue(parent)
+            labels = {label["name"] for label in issue["labels"]}
+        except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+            raise BoardError(
+                f"parent {key}: GitHub title/label lookup failed"
+            ) from None
         if labels & {PARENT_LABEL, CHILD_LABEL}:
-            identifier = _identifier(
-                parse_title(issue["title"]).identifier or "", parents, env
-            )
+            try:
+                parsed = parse_title(issue["title"])
+            except (ValueError, KeyError, TypeError):
+                raise BoardError(
+                    f"parent {key}: invalid parent/child issue title"
+                ) from None
+            identifier = _identifier(parsed.identifier or "", parents, env)
         # Standalone issues have no own identifier, even if their arbitrary
         # title happens to look like the parent/child naming convention.
     store = Store(directory(env))
@@ -85,7 +89,9 @@ def sync_parent(
             row[field] != expected[field]
             for field in ("session", "status", "generation")
         ):
-            raise BoardError("parent assignment changed before board synchronization")
+            raise BoardError(
+                f"parent {key}: assignment changed before board synchronization"
+            )
         clock = now if now is not None else datetime.now(UTC)
         previous = for_parent(connection, repo, parent)
         assignment: Assignment | None
@@ -111,10 +117,66 @@ def sync_parent(
         return result
 
 
+def sync_parent(
+    env: Mapping[str, str], repo: str, parent: int, *, now: datetime | None = None
+) -> dict[str, Any]:
+    """Sync the caller's lifecycle and every unnamed active parent, without ownership writes.
+
+    Each assignment fetches GitHub metadata before its board write transaction
+    and rechecks owner, status and generation inside it. Peer failures are
+    explicit partial failures; they do not undo the caller's lifecycle or stop
+    synchronization of the remaining peers.
+    """
+    identity = session_identity(env)
+    key = f"{repo.casefold()}#{parent}"
+    parents = registry(env)
+    expected = parents.get(key)
+    if expected is None or expected["session"] != identity:
+        raise BoardError("parent assignment changed before board synchronization")
+    result = _sync_assignment(env, repo, parent, parents, now=now)
+    targets = []
+    # The caller's synchronization has initialized/migrated the store. Reading
+    # peers here avoids fetching metadata for parents that already have names.
+    with Store(directory(env)).read() as connection:
+        for other_key, row in sorted(parents.items()):
+            if other_key == key or row["status"] != "active":
+                continue
+            other_repo, other_parent = _reference(other_key)
+            assignment = for_parent(connection, other_repo, other_parent)
+            if assignment is None or assignment.retired_at is not None:
+                targets.append((other_repo, other_parent))
+    additional = []
+    for other_repo, other_parent in targets:
+        try:
+            additional.append(
+                _sync_assignment(env, other_repo, other_parent, parents, now=now)
+            )
+        except BoardError as exc:
+            additional.append(
+                {
+                    "status": "error",
+                    "repo": other_repo,
+                    "parent": other_parent,
+                    "error": str(exc),
+                }
+            )
+    if additional:
+        result["additional_parents"] = additional
+        if any(entry["status"] == "error" for entry in additional):
+            result.update(
+                status="error",
+                error="active parent name synchronization failed; inspect additional_parents and retry the parent action",
+            )
+    _public(result, registry(env), env)
+    return result
+
+
 def _assigned(connection: sqlite3.Connection, repo: str, parent: int) -> Assignment:
     assignment = for_parent(connection, repo, parent)
     if assignment is None or assignment.retired_at is not None:
-        raise BoardError("active parent has no live board name; retry parent register")
+        raise BoardError(
+            f"active parent {repo.casefold()}#{parent} has no live board name; retry parent register to synchronize active parents"
+        )
     canonical_name(assignment.name)
     return assignment
 
