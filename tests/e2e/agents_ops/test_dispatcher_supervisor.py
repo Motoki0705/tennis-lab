@@ -89,7 +89,9 @@ class DispatchHarness:
         )
         monkeypatch.setenv("FAKE_DISPATCH_GITHUB", str(state))
 
-    def prepare_family(self, *children: int) -> None:
+    def prepare_family(
+        self, *children: int, dependencies: dict[int, list[int]] | None = None
+    ) -> None:
         formats = importlib.import_module("issues")
         render = importlib.import_module("issues.cli").render_spec
         self.h.gh.issues = {}
@@ -97,7 +99,10 @@ class DispatchHarness:
             sections = {
                 heading: heading + "を検証する。" for heading in formats.CHILD_REQUIRED
             }
-            sections["依存関係"] = "なし。"
+            sections["依存関係"] = (
+                "\n".join(f"- #{dep}" for dep in (dependencies or {}).get(n, []))
+                or "なし。"
+            )
             sections["Acceptance checklist"] = (
                 "- [ ] 動作する\n  文脈: 起動予約。\n  下流への影響: 停止維持。\n  検証方法・証拠: fake。"
             )
@@ -138,7 +143,13 @@ class DispatchHarness:
             "labels": [{"name": x} for x in rendered["labels"]],
         }
         self.h.response(
-            decision(1), *(decision(n, "existing_parent", target=1) for n in children)
+            decision(1),
+            *(
+                decision(
+                    n, "existing_parent", target=1, deps=(dependencies or {}).get(n, [])
+                )
+                for n in children
+            ),
         )
         assert self.run()["result"] == "recorded"
 

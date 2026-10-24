@@ -403,7 +403,11 @@ class ParentSession:
     def work_items(self) -> tuple[Issue, dict[int, Issue]]:
         parent, children = self.family()
         if parent.parent is not None:
-            raise ValueError("an existing child must be managed by its formal parent")
+            if "dispatch" in self.row:
+                raise ValueError(
+                    "an existing child must be managed by its formal parent"
+                )
+            return parent, children
         return parent, children or (
             {} if PARENT_LABEL in parent.labels else {parent.number: parent}
         )

@@ -158,9 +158,16 @@ def released_reservation(row: dict[str, Any]) -> bool:
 
 class Supervisor:
     def __init__(self, gh: GitHub, store: Store, schedule: Schedule) -> None:
+        if (
+            isinstance(store, DispatchStore)
+            and store.schedule.directory != schedule.directory
+        ):
+            raise ValueError("dispatcher store and schedule differ")
         self.gh, self.store, self.schedule = (
             gh,
-            DispatchStore(store.directory, schedule),
+            store
+            if isinstance(store, DispatchStore)
+            else DispatchStore(store.directory, schedule),
             schedule,
         )
 

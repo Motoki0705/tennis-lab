@@ -65,6 +65,9 @@ def parser() -> argparse.ArgumentParser:
             project.add_argument("--event", choices=EVENTS, required=True)
             project.add_argument("--spec", required=True)
     commands.add_parser("workflow-report").add_argument("--spec", required=True)
+    cancellation = commands.add_parser("record-cancellation")
+    cancellation.add_argument("--child", type=int, required=True)
+    cancellation.add_argument("--spec", required=True)
     for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
         worker = commands.add_parser(name)
         worker.add_argument("--child", type=int, required=True)
@@ -162,7 +165,7 @@ def main(argv: list[str] | None = None) -> int:
         args.state_dir = (args.state_dir or state_directory()).resolve()
         workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
         store: Store
-        if args.command in workers | {"workflow-report"}:
+        if args.command in workers | {"workflow-report", "record-cancellation"}:
             from .development import workflow_store
 
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
@@ -253,6 +256,12 @@ def main(argv: list[str] | None = None) -> int:
                 from .development import load, report
 
                 result = report(session, load(Path(args.spec)))
+            elif command == "record-cancellation":
+                from .development import load, record_cancellation
+
+                result = record_cancellation(
+                    session, number(args.child), load(Path(args.spec))
+                )
             elif command == "agree":
                 result = session.agree(
                     read_object(args.spec), args.report, args.proposal

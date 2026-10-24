@@ -70,7 +70,9 @@ runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態�
 `stop-worker` の停止要求やPID/CLI groupの不在だけでは `cleanup_complete` を補わず、予約枠を保持する。
 
 `stop-worker --child N --spec tmp/stop.json` はparentのstopと同じ5項目specを使い、子への詳細・親進捗を記録してから、
-その子のruntimeだけへ停止要求する。親全体を止めず、依存子への保留と独立子の起動可能性を `launch_plan` で確認する。
+停止した子へruntimeの停止を要求する。親全体を止めず、依存子への保留と独立子の起動可能性を `launch_plan` で確認する。
+保留になった依存子にも、起動済みruntimeへの停止要求または未起動予約の取消を伝える。推移的な依存も対象とし、
+独立子は継続する。停止要求後もsupervisorが終了を照合するまで実行枠を保持する。
 停止要求は終了証拠ではない。supervisorの照合後、解除証拠をparentの `resume --child N --spec ...` へ記録してから
 `continue-worker` を使う。根拠の鮮度不一致は明示再判断/再合意へ戻す。
 単独issue自身の停止・再開で根拠の本文が変わった場合も、古い自律判断を流用しない。
@@ -135,6 +137,26 @@ waiting/failedは担当を保持し、子終了イベントまたは理由付き
 worker操作とworkflow-reportはdispatcherと同じregistry欠落検査を使う。
 scheduleやworker履歴が残っているのにregistryだけが欠落・空になった場合は保存・起動を止め、
 [復旧手順](../dispatcher/README.md#registry欠落からの復旧)へ戻す。空stateの作成やinitで迂回しない。
+
+取消（closed/not_planned・duplicate）の直属子は成功数へ加えない。親は元issueの取消理由・残作業の行き先と
+workerの終了を確認し、次のspecを `record-cancellation --child N --spec tmp/cancellation.json` へ渡す。
+実際の引継ぎ先issueをhandoffへ記載し、残作業がなければその理由を明示する。内容の判断は担当親が行い、
+CLIが自由文から引継ぎ先や取消の妥当性を推測しない。
+
+```json
+{"schema_version":1,"reason":"旧案を代替案へ統合した","handoff":"残作業は #125 へ引継ぎ済み","evidence":"親が元の範囲と代替案の受入条件・差分、worker終了を照合した"}
+```
+
+4キーのみ、各文章は非空。CLIは取消状態・現在の根拠・全jobの終了・open PR不在を検査してから、元issueの
+作業状況へ確認内容を追記し、その本文と取消理由をprivate registryの確認記録に結び付ける。
+完了確認でも再照合し、記録の欠落・本文/取消理由/根拠の変更・未終了worker・未解決PRは理由付きで拒否する。
+正式な親子関係と未チェックの取消行を残す。取消確認だけでは全体のcompletedを作らず、実装完了対象の実mergeと
+受入証拠も必要。最終JSONの4キーは維持し、privateなdevelopment_resultには取消を実mergeのprsと別に記録する。
+
+状態を変更するworker操作・取消確認・workflow-reportはmainと同じ親単位の操作ロックを使う。
+inspect-workerは読み取り専用。GitHub取得中はregistryロックを解放し、並行更新があれば現在の状態を取得し直すよう
+明示エラーで止める。古い予約や確認記録を保存し直さない。正式な上位親を持つ手動親の管理は従来どおり可能で、
+誤った親への自律割当の拒否とは区別する。
 
 ## Projectへの節目の反映
 

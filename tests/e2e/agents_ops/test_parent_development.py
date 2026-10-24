@@ -8,6 +8,8 @@ import os
 import shutil
 import signal
 import subprocess
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -31,11 +33,15 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
 def workflow(
-    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, *, family: bool = False
+    d: DispatchHarness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    family: bool = False,
+    dependencies: dict[int, list[int]] | None = None,
 ) -> tuple[Any, Any, dict[str, str]]:
     """Real bootstrap/claims, with an offline parent held alive for child actions."""
     if family:
-        d.prepare_family(10, 11, 12)
+        d.prepare_family(10, 11, 12, dependencies=dependencies)
     else:
         d.prepare()
     d.control.assign()
@@ -528,7 +534,7 @@ def test_workflow_cli_never_recreates_registry_with_dispatcher_history(
 ) -> None:
     _, _, env = workflow(d, monkeypatch)
     cli = importlib.import_module("parent.cli")
-    monkeypatch.setattr(cli, "GitHub", lambda repo: d.h.gh)
+    monkeypatch.setattr(cli, "GitHub", lambda repo, **kwargs: d.h.gh)
     for name in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(name, raising=False)
     for key, value in env.items():
@@ -628,7 +634,26 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     _, _, env = workflow(d, monkeypatch)
     tree = child_tree(d)
     cli = importlib.import_module("parent.cli")
-    monkeypatch.setattr(cli, "GitHub", lambda repo: d.h.gh)
+    original_get = d.h.gh.get
+    operations = []
+    operation = cli.Store.operation
+
+    @contextmanager
+    def traced_operation(store: Any, key: str) -> Iterator[None]:
+        operations.append(key)
+        with operation(store, key):
+            yield
+
+    def bound_github(repo: str, *, store: Any) -> Any:
+        def get(endpoint: str, *, missing_parent: bool = False) -> object:
+            with store.unlocked_read():
+                return original_get(endpoint, missing_parent=missing_parent)
+
+        monkeypatch.setattr(d.h.gh, "get", get)
+        return d.h.gh
+
+    monkeypatch.setattr(cli, "GitHub", bound_github)
+    monkeypatch.setattr(cli.Store, "operation", traced_operation)
     for key in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
@@ -665,7 +690,9 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     )
     result = json.loads(capsys.readouterr().out)
     assert result["result"] == "reserved"
+    assert operations == ["o/r#1"]
     assert cli.main([*common, "inspect-worker", "--child", "1"]) == 0
+    assert operations == ["o/r#1"]
     result = json.loads(capsys.readouterr().out)
     assert result["termination_confirmed"] is False and result["task_success"] is None
     spec = d.h.root / "stop.json"
@@ -684,6 +711,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
         )
     )
     assert cli.main([*common, "stop-worker", "--child", "1", "--spec", str(spec)]) == 0
+    assert operations == ["o/r#1", "o/r#1"]
     assert json.loads(capsys.readouterr().out)["result"] == "stop_requested"
     assert d.row()["tasks"]["1"]["worker_ended"]
     assert not (d.h.root / "unused-state").exists()
@@ -746,7 +774,11 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
     p.agreed()
     for key, deps in (("upstream", []), ("dependent", [10]), ("independent", [])):
         p.child(key, deps)
-    for n in (10, 12):
+    for n in (10, 11, 12):
+        if n == 11:
+            state = p.state()
+            state["prs"].append(p.pr(50, 10, branch="codex/worker-10"))
+            p.save(state)
         p.cli(
             "delegate",
             "--child",
@@ -787,7 +819,7 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
                 "runner_exit": None,
                 "resume_from": None,
             }
-            for n in (10, 12)
+            for n in (10, 11, 12)
         }
         jobs["parent"] = {
             "id": "parent",
@@ -809,7 +841,7 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
             "session": identity,
             "authorization": authorization,
             "phase": "running",
-            "child_limit": 2,
+            "child_limit": 3,
             "jobs": jobs,
             "events": [],
             "active_job": "parent",
@@ -828,9 +860,222 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
             "continue",
         ]
         assert jobs["10"]["phase"] == "ended" and jobs["12"]["phase"] == "reserved"
+        assert jobs["11"]["phase"] == "ended"
+        assert session.row["tasks"]["11"]["worker_ended"]
         assert session.row["tasks"]["10"]["worker_ended"]
         session.stop_or_resume(10, detail, True)
         assert session.launch_plan()["tasks"][0]["state"] == "continue"
+
+
+def test_stop_terminates_running_dependency_but_keeps_independent_worker(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True, dependencies={11: [10]})
+    upstream = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="先行実装。",
+        model=None,
+        branch="codex/upstream",
+        worktree=child_tree(d, "upstream"),
+    )
+    try:
+        launch(d, monkeypatch)
+        drain(d, upstream["job_id"])
+        d.h.gh.prs.append(
+            {
+                "number": 50,
+                "state": "open",
+                "body": "Closes #10",
+                "merged_at": None,
+                "head": {
+                    "ref": "codex/upstream",
+                    "sha": d.h.git("rev-parse", "HEAD"),
+                    "repo": {"full_name": "o/r"},
+                },
+            }
+        )
+        monkeypatch.setenv("FAKE_DISPATCH_HOLD", "1")
+        reservations = {
+            n: mod.start_worker(
+                session,
+                d.schedule.directory,
+                env,
+                child=n,
+                prompt="実装を継続。",
+                model=None,
+                branch=f"codex/worker-{n}",
+                worktree=child_tree(d, f"worker-{n}"),
+            )
+            for n in (11, 12)
+        }
+        launch(d, monkeypatch)
+        jobs = {
+            n: d.row()["dispatch"]["jobs"][r["job_id"]] for n, r in reservations.items()
+        }
+        paths = {
+            n: Path(j["directory"]) / "runtime/result.json" for n, j in jobs.items()
+        }
+
+        def running() -> bool:
+            return all(
+                p.exists() and json.loads(p.read_text())["runtime"]["session_id"]
+                for p in paths.values()
+            )
+
+        wait_until(running)
+        processes = {n: json.loads(p.read_text())["process"] for n, p in paths.items()}
+        with session.store.locked():
+            result = mod.stop_worker(session, 10, stop_detail())
+            states = {t["child"]: t["state"] for t in result["launch_plan"]["tasks"]}
+            assert states == {10: "stopped", 11: "held", 12: "continue"}
+            # A stop request never manufactures end evidence or frees a slot.
+            assert d.mod.children_pending(session.row) == [11, 12]
+            assert "worker_ended" not in session.row["tasks"]["11"]
+        drain(d, reservations[11]["job_id"])
+        assert not d.mod.alive(processes[11])
+        assert d.mod.alive(processes[12])
+        assert d.mod.children_pending(d.row()) == [12]
+        assert json.loads(paths[11].read_text())["cleanup_complete"]
+        assert json.loads(paths[12].read_text())["result"] == "running"
+        (Path(jobs[12]["directory"]) / "release").touch()
+        drain(d, reservations[12]["job_id"])
+        assert json.loads(paths[12].read_text())["result"] == "completed"
+    finally:
+        d.control.reconcile(stop=True)
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+@pytest.mark.parametrize(
+    "change", ["none", "missing", "body", "state_reason", "open_pr", "worker"]
+)
+def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
+    gate_env: GateEnv, change: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    p.child("old-plan")
+    state = p.state()
+    state["issues"]["13"].update(state="closed", state_reason="not_planned")
+    p.save(state)
+    p.cli("sync")
+    for n in (10, 11, 12):
+        p.cli(
+            "record-result",
+            "--child",
+            str(n),
+            "--evidence-file",
+            p.note("親が受入条件・差分・テストを確認した。"),
+        )
+    spec = {
+        "schema_version": 1,
+        "reason": "旧案を代替実装へ統合した。",
+        "handoff": "残作業は #10・#11・#12 へ引き継いだ。",
+        "evidence": "各issueの範囲・受入条件と旧案との差分を親が照合した。",
+    }
+    if change != "missing":
+        receipt = p.cli("record-cancellation", "--child", "13", "--spec", p.spec(spec))
+        assert json.loads(receipt.stdout)["state"] == "cancelled"
+    merged = g.cli("merge")
+    assert merged.returncode == 0, merged.stderr + merged.stdout
+    assert len(g.merge_calls()) == 3
+    state = p.state()
+    if change == "body":
+        state["issues"]["13"]["body"] += "\n\n引継ぎ先が変更された。\n"
+    elif change == "state_reason":
+        state["issues"]["13"]["state_reason"] = "duplicate"
+    elif change == "open_pr":
+        state["prs"].append(p.pr(200, 13))
+    p.save(state)
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    if change == "worker":
+        registry = directory / "registry.json"
+        data = json.loads(registry.read_text())
+        data["parents"]["o/r#1"]["tasks"]["13"].update(
+            delegated=True, delegation_id="unfinished-cancelled-worker"
+        )
+        registry.write_text(json.dumps(data))
+    result = p.cli(
+        "workflow-report",
+        "--spec",
+        p.spec(
+            {
+                "schema_version": 1,
+                "state": "completed",
+                "reason": "全体受入を確認した。",
+                "resume_condition": "完了。追加要件は別途判断。",
+                "evidence": "実merge/closeと取消理由・引継ぎ先を照合した。",
+            }
+        ),
+        ok=None,
+    )
+    assert result.returncode == (0 if change == "none" else 2), result.stderr
+    if change == "none":
+        report = json.loads(result.stdout)
+        assert set(report) == {"schema_version", "state", "reason", "resume_condition"}
+        assert report["state"] == "completed"
+        row = json.loads((directory / "registry.json").read_text())["parents"]["o/r#1"]
+        assert row["development_result"]["cancelled"] == [13]
+        assert row["development_result"]["prs"] == [100, 101, 102]
+        assert "- [ ] #13 old-plan（取消）" in p.state()["issues"]["1"]["body"]
+    elif change == "worker":
+        assert "termination" in result.stderr
+    else:
+        assert "cancellation" in result.stderr
+
+
+@pytest.mark.parametrize("problem", ["handoff", "worker", "open", "all_cancelled"])
+def test_cancellation_confirmation_never_hides_unresolved_work(
+    parent_env: ParentEnv, problem: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("old-plan")
+    if problem == "worker":
+        p.cli(
+            "delegate",
+            "--child",
+            "10",
+            "--agent",
+            "codex",
+            "--branch",
+            "codex/old-plan",
+            "--worktree",
+            str(p.worktree("old-plan")),
+        )
+    state = p.state()
+    if problem != "open":
+        state["issues"]["10"].update(state="closed", state_reason="duplicate")
+    p.save(state)
+    spec = {
+        "schema_version": 1,
+        "reason": "既存の実装と重複した。",
+        "handoff": "残作業なし。既存実装との差分と受入条件を確認した。",
+        "evidence": "親が本文と終了を確認した。",
+    }
+    if problem == "handoff":
+        spec["handoff"] = ""
+    result = p.cli(
+        "record-cancellation", "--child", "10", "--spec", p.spec(spec), ok=None
+    )
+    assert result.returncode == (0 if problem == "all_cancelled" else 2)
+    if problem == "all_cancelled":
+        result = p.cli(
+            "workflow-report",
+            "--spec",
+            p.spec(
+                {
+                    "schema_version": 1,
+                    "state": "completed",
+                    "reason": "取消だけ。",
+                    "resume_condition": "要件を再判断する。",
+                    "evidence": "実装完了はない。",
+                }
+            ),
+            ok=False,
+        )
+        assert "cancellation is not success" in result.stderr
 
 
 @pytest.mark.parametrize("state", ["waiting", "failed"])

@@ -13,12 +13,19 @@ from dispatcher.runtime import Runtime, alive, gate, load
 from dispatcher.schedule import Schedule
 from dispatcher.state import DispatchStore
 from dispatcher.supervisor import Supervisor, children_pending, managed, unstarted
-from issues import task_status
+from issues import Issue, task_status
 
 from .adopted_tasks import check_task_adoptions
 from .execution import authorization, require_request_authorization, task_errors
 from .github import GitHub
-from .policy import closing_issues, digest, nonempty, object_value
+from .policy import (
+    closing_issues,
+    digest,
+    nonempty,
+    object_value,
+    raw_section,
+    replace_section,
+)
 from .session import ParentSession
 from .state import Store
 
@@ -236,7 +243,11 @@ def stop_worker(
     if not dispatch:
         raise ValueError("worker stop requires a managed parent")
     session.stop_or_resume(child, detail, False)
-    for job in worker_jobs(dispatch, child):
+    plan = session.launch_plan()
+    targets = {child} | {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+    for job in dispatch["jobs"].values():
+        if job["role"] != "implementation" or job["child"] not in targets:
+            continue
         if job["phase"] == "ended":
             continue
         if job["phase"] == "reserved":
@@ -255,6 +266,98 @@ def stop_worker(
         "result": "stop_requested",
         "launch_plan": session.launch_plan(),
     }
+
+
+def cancellation_workers_ended(session: ParentSession, child: int) -> None:
+    if child in children_pending(session.row):
+        raise ValueError(f"#{child}: cancelled worker termination is still pending")
+    dispatch = managed(session.row)
+    if dispatch:
+        for job in worker_jobs(dispatch, child):
+            ended(job)
+
+
+def record_cancellation(
+    session: ParentSession, child: int, spec: dict[str, Any]
+) -> dict[str, Any]:
+    """Record the parent's explicit cancellation/handoff check, never success."""
+    session.owner()
+    auth = authorization(session)
+    _, items = session.work_items()
+    if child not in items or task_status(items[child]) != "cancelled":
+        raise ValueError("cancellation evidence requires a cancelled direct child")
+    text = cancellation_text(spec)
+    session.public(spec)
+    cancellation_workers_ended(session, child)
+    if any(
+        p["state"] == "open"
+        and child in closing_issues(p.get("body") or "", session.gh.repo)
+        for p in session.gh.pulls()
+    ):
+        raise ValueError(f"#{child}: cancelled task still has an open PR")
+    item = items[child]
+    current = raw_section(item.body, "作業状況・停止事項")
+    body = replace_section(
+        item.body,
+        "作業状況・停止事項",
+        current if current.endswith(text) else current + "\n\n" + text,
+    )
+    session.update_body(child, body, item.body)
+    session.row["tasks"].setdefault(str(child), {})["cancellation"] = {
+        "schema_version": 1,
+        "authorization": auth,
+        "state_reason": item.state_reason,
+        "body_sha256": digest(body),
+        "confirmation": dict(spec),
+    }
+    session.store.save()
+    return {"child": child, "state": "cancelled", "progress": session.sync_progress()}
+
+
+def cancellation_text(spec: dict[str, Any]) -> str:
+    if (
+        set(spec) != {"schema_version", "reason", "handoff", "evidence"}
+        or type(spec["schema_version"]) is not int
+        or spec["schema_version"] != 1
+    ):
+        raise ValueError("invalid cancellation evidence schema")
+    for key in ("reason", "handoff", "evidence"):
+        nonempty(spec[key], key)
+    return "取消の確認\n\n" + "\n\n".join(
+        f"{key}: {spec[key]}" for key in ("reason", "handoff", "evidence")
+    )
+
+
+def verify_cancellation(
+    session: ParentSession, item: Issue, auth: dict[str, Any]
+) -> None:
+    record = session.row["tasks"].get(str(item.number), {}).get("cancellation", {})
+    if (
+        record.get("schema_version") != 1
+        or record.get("authorization") != auth
+        or record.get("state_reason") != item.state_reason
+        or record.get("body_sha256") != digest(item.body)
+    ):
+        raise ValueError(
+            f"#{item.number}: cancellation reason/handoff evidence missing or stale; "
+            "inspect the issue and use record-cancellation"
+        )
+    confirmation = object_value(record.get("confirmation"))
+    if not raw_section(item.body, "作業状況・停止事項").endswith(
+        cancellation_text(confirmation)
+    ):
+        raise ValueError(
+            f"#{item.number}: cancellation confirmation differs from the issue"
+        )
+    cancellation_workers_ended(session, item.number)
+    if "needs-human" in item.labels or any(
+        p["state"] == "open"
+        and item.number in closing_issues(p.get("body") or "", session.gh.repo)
+        for p in session.gh.pulls()
+    ):
+        raise ValueError(
+            f"#{item.number}: cancellation still has unresolved work or PR"
+        )
 
 
 def verify_completion(session: ParentSession) -> list[int]:
@@ -279,6 +382,9 @@ def verify_completion(session: ParentSession) -> list[int]:
     merged: set[int] = set()
     pulls = session.gh.pulls()
     for n, item in items.items():
+        if task_status(item) == "cancelled":
+            verify_cancellation(session, item, auth)
+            continue
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
         if (
@@ -351,6 +457,10 @@ def verify_completion(session: ParentSession) -> list[int]:
                 "merged PR's parent review is missing, stale or unconfirmed"
             )
         merged.add(pr["number"])
+    if not merged:
+        raise ValueError(
+            "no completed implementation targets; cancellation is not success"
+        )
     return sorted(merged)
 
 
@@ -377,6 +487,13 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         "schema_version": 1,
         "report_sha256": digest(spec),
         "prs": prs,
+        "cancelled": sorted(
+            n
+            for n, item in session.work_items()[1].items()
+            if task_status(item) == "cancelled"
+        )
+        if spec["state"] == "completed"
+        else [],
     }
     session.store.save()
     return {
@@ -387,22 +504,22 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
-    session = ParentSession(gh, store, parent, identity)
-    if args.command in {"start-worker", "continue-worker"}:
-        return start_worker(
-            session,
-            args.dispatcher_state_dir,
-            dict(os.environ),
-            child=args.child,
-            prompt=Path(args.prompt_file).read_text(encoding="utf-8"),
-            model=args.model,
-            branch=getattr(args, "branch", None),
-            worktree=getattr(args, "worktree", None),
-            continuation=Path(args.evidence_file).read_text(encoding="utf-8")
-            if args.command == "continue-worker"
-            else None,
-        )
     with store.locked():
+        session = ParentSession(gh, store, parent, identity)
         if args.command == "inspect-worker":
             return inspect_worker(session, args.child)
-        return stop_worker(session, args.child, load(Path(args.spec)))
+        if args.command == "stop-worker":
+            return stop_worker(session, args.child, load(Path(args.spec)))
+    return start_worker(
+        session,
+        args.dispatcher_state_dir,
+        dict(os.environ),
+        child=args.child,
+        prompt=Path(args.prompt_file).read_text(encoding="utf-8"),
+        model=args.model,
+        branch=getattr(args, "branch", None),
+        worktree=getattr(args, "worktree", None),
+        continuation=Path(args.evidence_file).read_text(encoding="utf-8")
+        if args.command == "continue-worker"
+        else None,
+    )
