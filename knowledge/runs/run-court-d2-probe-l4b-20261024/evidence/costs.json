@@ -1,0 +1,2413 @@
+{
+  "schema": "court_d2_l4b_conditional_costs_v1",
+  "variants": {
+    "current": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 128,
+            "candidates": 1741.0,
+            "geometry_pass": 1621.0,
+            "caches": 128.0
+          },
+          "B01": {
+            "groups": 128,
+            "candidates": 2080.0,
+            "geometry_pass": 1957.0,
+            "caches": 128.0
+          },
+          "B02": {
+            "groups": 128,
+            "candidates": 1479.0,
+            "geometry_pass": 1353.0,
+            "caches": 128.0
+          },
+          "B03": {
+            "groups": 128,
+            "candidates": 1368.0,
+            "geometry_pass": 1235.0,
+            "caches": 128.0
+          }
+        },
+        "accepted_estimate": 6166.0,
+        "geometry_pass_estimate": 6166.0,
+        "caches_estimate": 512.0,
+        "accepted_jpeg_bytes": 335322412.55357146,
+        "legacy_non_jpeg_overhead_bytes": 103509685.7342794,
+        "input_archive_bytes": 224653260.39840892,
+        "durable_bytes_estimate": 665305817.3529264,
+        "render_qa_publish_seconds_legacy_model": 2529.04579736136,
+        "planning_seconds": 72.38420279862791,
+        "generation_with_persistence_seconds": 10006.246513284388,
+        "fetch_seconds": 3755.8246304350114
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 1741.0,
+              "geometry_pass": 1621.0,
+              "caches": 128.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 2080.0,
+              "geometry_pass": 1957.0,
+              "caches": 128.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 1479.0,
+              "geometry_pass": 1353.0,
+              "caches": 128.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 1368.0,
+              "geometry_pass": 1235.0,
+              "caches": 128.0
+            }
+          },
+          "accepted_estimate": 6166.0,
+          "geometry_pass_estimate": 6166.0,
+          "caches_estimate": 512.0,
+          "accepted_jpeg_bytes": 335322412.55357146,
+          "legacy_non_jpeg_overhead_bytes": 103509685.7342794,
+          "input_archive_bytes": 224653260.39840892,
+          "durable_bytes_estimate": 665305817.3529264,
+          "render_qa_publish_seconds_legacy_model": 2529.04579736136,
+          "planning_seconds": 72.38420279862791,
+          "generation_with_persistence_seconds": 10006.246513284388,
+          "fetch_seconds": 3755.8246304350114
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 256,
+              "candidates": 3482.0,
+              "geometry_pass": 3242.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 256,
+              "candidates": 4160.0,
+              "geometry_pass": 3914.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 256,
+              "candidates": 2958.0,
+              "geometry_pass": 2706.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 256,
+              "candidates": 2736.0,
+              "geometry_pass": 2470.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_estimate": 12332.0,
+          "geometry_pass_estimate": 12332.0,
+          "caches_estimate": 1024.0,
+          "accepted_jpeg_bytes": 670644825.1071429,
+          "legacy_non_jpeg_overhead_bytes": 207019371.4685588,
+          "input_archive_bytes": 449167178.20399547,
+          "durable_bytes_estimate": 1330472292.1130304,
+          "render_qa_publish_seconds_legacy_model": 5058.09159472272,
+          "planning_seconds": 117.43243053236571,
+          "generation_with_persistence_seconds": 19830.80566869843,
+          "fetch_seconds": 7511.634315711005
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 512,
+              "candidates": 6964.0,
+              "geometry_pass": 6484.0,
+              "caches": 512.0
+            },
+            "B01": {
+              "groups": 512,
+              "candidates": 8320.0,
+              "geometry_pass": 7828.0,
+              "caches": 512.0
+            },
+            "B02": {
+              "groups": 512,
+              "candidates": 5916.0,
+              "geometry_pass": 5412.0,
+              "caches": 512.0
+            },
+            "B03": {
+              "groups": 512,
+              "candidates": 5472.0,
+              "geometry_pass": 4940.0,
+              "caches": 512.0
+            }
+          },
+          "accepted_estimate": 24664.0,
+          "geometry_pass_estimate": 24664.0,
+          "caches_estimate": 2048.0,
+          "accepted_jpeg_bytes": 1341289650.2142859,
+          "legacy_non_jpeg_overhead_bytes": 414038742.9371176,
+          "input_archive_bytes": 898195013.8151686,
+          "durable_bytes_estimate": 2660805241.6332383,
+          "render_qa_publish_seconds_legacy_model": 10116.18318944544,
+          "planning_seconds": 207.52888599984132,
+          "generation_with_persistence_seconds": 39479.92397952652,
+          "fetch_seconds": 15023.253686262993
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 1024,
+              "candidates": 13928.0,
+              "geometry_pass": 12968.0,
+              "caches": 1024.0
+            },
+            "B01": {
+              "groups": 1024,
+              "candidates": 16640.0,
+              "geometry_pass": 15656.0,
+              "caches": 1024.0
+            },
+            "B02": {
+              "groups": 1024,
+              "candidates": 11832.0,
+              "geometry_pass": 10824.0,
+              "caches": 1024.0
+            },
+            "B03": {
+              "groups": 1024,
+              "candidates": 10944.0,
+              "geometry_pass": 9880.0,
+              "caches": 1024.0
+            }
+          },
+          "accepted_estimate": 49328.0,
+          "geometry_pass_estimate": 49328.0,
+          "caches_estimate": 4096.0,
+          "accepted_jpeg_bytes": 2682579300.4285717,
+          "legacy_non_jpeg_overhead_bytes": 828077485.8742352,
+          "input_archive_bytes": 1796250685.0375147,
+          "durable_bytes_estimate": 5321471140.673655,
+          "render_qa_publish_seconds_legacy_model": 20232.36637889088,
+          "planning_seconds": 387.72179693479256,
+          "generation_with_persistence_seconds": 78778.16060118268,
+          "fetch_seconds": 30046.49242736697
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 2048,
+              "candidates": 27856.0,
+              "geometry_pass": 25936.0,
+              "caches": 2048.0
+            },
+            "B01": {
+              "groups": 2048,
+              "candidates": 33280.0,
+              "geometry_pass": 31312.0,
+              "caches": 2048.0
+            },
+            "B02": {
+              "groups": 2048,
+              "candidates": 23664.0,
+              "geometry_pass": 21648.0,
+              "caches": 2048.0
+            },
+            "B03": {
+              "groups": 2048,
+              "candidates": 21888.0,
+              "geometry_pass": 19760.0,
+              "caches": 2048.0
+            }
+          },
+          "accepted_estimate": 98656.0,
+          "geometry_pass_estimate": 98656.0,
+          "caches_estimate": 8192.0,
+          "accepted_jpeg_bytes": 5365158600.857143,
+          "legacy_non_jpeg_overhead_bytes": 1656154971.7484703,
+          "input_archive_bytes": 3592362027.4822073,
+          "durable_bytes_estimate": 10642802938.754488,
+          "render_qa_publish_seconds_legacy_model": 40464.73275778176,
+          "planning_seconds": 748.107618804695,
+          "generation_with_persistence_seconds": 157374.63384449502,
+          "fetch_seconds": 60092.969909574924
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 3482.0,
+              "geometry_pass": 3242.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 4160.0,
+              "geometry_pass": 3914.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 2958.0,
+              "geometry_pass": 2706.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 2736.0,
+              "geometry_pass": 2470.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_estimate": 12332.0,
+          "geometry_pass_estimate": 12332.0,
+          "caches_estimate": 1024.0,
+          "accepted_jpeg_bytes": 670644825.1071429,
+          "legacy_non_jpeg_overhead_bytes": 207019371.4685588,
+          "input_archive_bytes": 299881215.48585343,
+          "durable_bytes_estimate": 1181186329.3948884,
+          "render_qa_publish_seconds_legacy_model": 5058.09159472272,
+          "planning_seconds": 103.49934740434166,
+          "generation_with_persistence_seconds": 19824.06897219292,
+          "fetch_seconds": 7495.62268275185
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 6964.0,
+              "geometry_pass": 6484.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 8320.0,
+              "geometry_pass": 7828.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 5916.0,
+              "geometry_pass": 5412.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 5472.0,
+              "geometry_pass": 4940.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_estimate": 24664.0,
+          "geometry_pass_estimate": 24664.0,
+          "caches_estimate": 1536.0,
+          "accepted_jpeg_bytes": 1341289650.2142859,
+          "legacy_non_jpeg_overhead_bytes": 414038742.9371176,
+          "input_archive_bytes": 450337125.6607424,
+          "durable_bytes_estimate": 2211126894.8121457,
+          "render_qa_publish_seconds_legacy_model": 8447.426757769586,
+          "planning_seconds": 165.72963661576918,
+          "generation_with_persistence_seconds": 30525.378333260862,
+          "fetch_seconds": 11290.556132555119
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 13928.0,
+              "geometry_pass": 12968.0,
+              "caches": 548.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 16640.0,
+              "geometry_pass": 15656.0,
+              "caches": 587.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 11832.0,
+              "geometry_pass": 10824.0,
+              "caches": 519.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 10944.0,
+              "geometry_pass": 9880.0,
+              "caches": 517.0
+            }
+          },
+          "accepted_estimate": 49328.0,
+          "geometry_pass_estimate": 49328.0,
+          "caches_estimate": 2171.0,
+          "accepted_jpeg_bytes": 2682579300.4285717,
+          "legacy_non_jpeg_overhead_bytes": 828077485.8742352,
+          "input_archive_bytes": 751248946.0105203,
+          "durable_bytes_estimate": 4269624903.729994,
+          "render_qa_publish_seconds_legacy_model": 13971.330618831438,
+          "planning_seconds": 290.1902150386242,
+          "generation_with_persistence_seconds": 45153.09332541663,
+          "fetch_seconds": 16080.94300730027
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 27856.0,
+              "geometry_pass": 25936.0,
+              "caches": 826.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 33280.0,
+              "geometry_pass": 31312.0,
+              "caches": 901.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 23664.0,
+              "geometry_pass": 21648.0,
+              "caches": 775.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 21888.0,
+              "geometry_pass": 19760.0,
+              "caches": 755.0
+            }
+          },
+          "accepted_estimate": 98656.0,
+          "geometry_pass_estimate": 98656.0,
+          "caches_estimate": 3257.0,
+          "accepted_jpeg_bytes": 5365158600.857143,
+          "legacy_non_jpeg_overhead_bytes": 1656154971.7484703,
+          "input_archive_bytes": 1353072586.710076,
+          "durable_bytes_estimate": 8385966694.232357,
+          "render_qa_publish_seconds_legacy_model": 24407.23127645703,
+          "planning_seconds": 539.1113718843343,
+          "generation_with_persistence_seconds": 71185.54874715685,
+          "fetch_seconds": 24337.541115210894
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1896.0,
+              "candidates": 25788.5625,
+              "geometry_pass": 24011.0625,
+              "caches": 1896.0
+            }
+          },
+          "accepted_estimate": 24011.0625,
+          "geometry_pass_estimate": 24011.0625,
+          "caches_estimate": 1896.0,
+          "accepted_jpeg_bytes": 1632317346.5357144,
+          "legacy_non_jpeg_overhead_bytes": 416167461.9932959,
+          "input_archive_bytes": 843804350.5799406,
+          "durable_bytes_estimate": 2899030545.1089506,
+          "render_qa_publish_seconds_legacy_model": 10580.863676411122,
+          "planning_seconds": 185.0135751373653,
+          "generation_with_persistence_seconds": 37798.41023609912,
+          "fetch_seconds": 13954.978228621032
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 948.0,
+              "candidates": 12894.28125,
+              "geometry_pass": 12005.53125,
+              "caches": 948.0
+            },
+            "B01": {
+              "groups": 785.0,
+              "candidates": 12756.25,
+              "geometry_pass": 12001.9140625,
+              "caches": 785.0
+            }
+          },
+          "accepted_estimate": 24007.4453125,
+          "geometry_pass_estimate": 24007.4453125,
+          "caches_estimate": 1733.0,
+          "accepted_jpeg_bytes": 1515193862.955357,
+          "legacy_non_jpeg_overhead_bytes": 474544651.0521984,
+          "input_archive_bytes": 794755340.5915453,
+          "durable_bytes_estimate": 2790655680.5157676,
+          "render_qa_publish_seconds_legacy_model": 9482.932863141992,
+          "planning_seconds": 184.68591646147183,
+          "generation_with_persistence_seconds": 34382.549809540316,
+          "fetch_seconds": 12770.369767166487
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 632.0,
+              "candidates": 8596.1875,
+              "geometry_pass": 8003.6875,
+              "caches": 632.0
+            },
+            "B01": {
+              "groups": 524.0,
+              "candidates": 8515.0,
+              "geometry_pass": 8011.46875,
+              "caches": 524.0
+            },
+            "B02": {
+              "groups": 757.0,
+              "candidates": 8746.8984375,
+              "geometry_pass": 8001.7265625,
+              "caches": 757.0
+            }
+          },
+          "accepted_estimate": 24016.8828125,
+          "geometry_pass_estimate": 24016.8828125,
+          "caches_estimate": 1913.0,
+          "accepted_jpeg_bytes": 1389814700.485212,
+          "legacy_non_jpeg_overhead_bytes": 414670475.4940138,
+          "input_archive_bytes": 849615141.3904871,
+          "durable_bytes_estimate": 2660902148.2863793,
+          "render_qa_publish_seconds_legacy_model": 9730.360799997565,
+          "planning_seconds": 195.3049558978994,
+          "generation_with_persistence_seconds": 37178.39875293871,
+          "fetch_seconds": 14051.77365171925
+        }
+      ],
+      "supplementary_condition": {
+        "name": "B-pair-B02-B03",
+        "per_scene": {
+          "B02": {
+            "groups": 1136.0,
+            "candidates": 13126.125,
+            "geometry_pass": 12007.875,
+            "caches": 1136.0
+          },
+          "B03": {
+            "groups": 1244.0,
+            "candidates": 13295.25,
+            "geometry_pass": 12002.65625,
+            "caches": 1244.0
+          }
+        },
+        "accepted_estimate": 24010.53125,
+        "geometry_pass_estimate": 24010.53125,
+        "caches_estimate": 2380.0,
+        "accepted_jpeg_bytes": 1026066823.9101562,
+        "legacy_non_jpeg_overhead_bytes": 296672477.91374063,
+        "input_archive_bytes": 992100423.5393199,
+        "durable_bytes_estimate": 2323302013.6965504,
+        "render_qa_publish_seconds_legacy_model": 10507.190868755139,
+        "planning_seconds": 205.88977955128016,
+        "generation_with_persistence_seconds": 44566.92214175384,
+        "fetch_seconds": 17376.2016830379
+      },
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "all_training_runs": 19,
+          "A1_max_accepted_estimate": 24664.0,
+          "A2_max_accepted_estimate": 24664.0,
+          "A1_max_caches": 2048.0,
+          "A2_max_caches": 1536.0,
+          "main_only_l4_hold_hours": [
+            118.78114167652025,
+            125.79517750580386
+          ],
+          "with_additions_l4_hold_hours": [
+            223.68678175100786,
+            240.60137072726053
+          ],
+          "generation_hours_separate_roots": 63.96037811566359,
+          "drive_dataset_bytes": 16399484949.217327,
+          "checkpoint_bytes_all_retained_legacy_allowance": 368830361200,
+          "drive_increment_bytes": 385229846149.21735,
+          "scene_supplement_l4_hold_hours": [
+            21.13516821384047,
+            22.25585578029243
+          ],
+          "scene_supplement_drive_bytes": 15495814913.69655
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "all_training_runs": 23,
+          "A1_max_accepted_estimate": 49328.0,
+          "A2_max_accepted_estimate": 49328.0,
+          "A1_max_caches": 4096.0,
+          "A2_max_caches": 2171.0,
+          "main_only_l4_hold_hours": [
+            173.9510820387995,
+            185.68355904529412
+          ],
+          "with_additions_l4_hold_hours": [
+            311.45743548857564,
+            342.6351678898235
+          ],
+          "generation_hours_separate_roots": 98.57403532082267,
+          "drive_dataset_bytes": 25990580993.620975,
+          "checkpoint_bytes_all_retained_legacy_allowance": 421520412800,
+          "drive_increment_bytes": 447510993793.621,
+          "scene_supplement_l4_hold_hours": [
+            21.135168213840473,
+            22.255855780292432
+          ],
+          "scene_supplement_drive_bytes": 15495814913.69655
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "all_training_runs": 25,
+          "A1_max_accepted_estimate": 98656.0,
+          "A2_max_accepted_estimate": 98656.0,
+          "A1_max_caches": 8192.0,
+          "A2_max_caches": 3257.0,
+          "main_only_l4_hold_hours": [
+            268.9936088549362,
+            290.270788109215
+          ],
+          "with_additions_l4_hold_hours": [
+            438.4191919631445,
+            493.6204098238961
+          ],
+          "generation_hours_separate_roots": 162.42053576036184,
+          "drive_dataset_bytes": 45019350626.60781,
+          "checkpoint_bytes_all_retained_legacy_allowance": 447865438600,
+          "drive_increment_bytes": 492884789226.6078,
+          "scene_supplement_l4_hold_hours": [
+            21.13516821384047,
+            22.255855780292432
+          ],
+          "scene_supplement_drive_bytes": 15495814913.69655
+        }
+      ]
+    },
+    "wide125": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 128,
+            "candidates": 1741.0,
+            "geometry_pass": 1672.0,
+            "caches": 128.0
+          },
+          "B01": {
+            "groups": 128,
+            "candidates": 2080.0,
+            "geometry_pass": 2016.0,
+            "caches": 128.0
+          },
+          "B02": {
+            "groups": 128,
+            "candidates": 1479.0,
+            "geometry_pass": 1439.0,
+            "caches": 128.0
+          },
+          "B03": {
+            "groups": 128,
+            "candidates": 1368.0,
+            "geometry_pass": 1317.0,
+            "caches": 128.0
+          }
+        },
+        "accepted_estimate": 6444.0,
+        "geometry_pass_estimate": 6444.0,
+        "caches_estimate": 512.0,
+        "accepted_jpeg_bytes": 353847120.0,
+        "legacy_non_jpeg_overhead_bytes": 107778930.95974922,
+        "input_archive_bytes": 224653260.39840892,
+        "durable_bytes_estimate": 688099770.0248247,
+        "render_qa_publish_seconds_legacy_model": 2567.832765194732,
+        "planning_seconds": 72.38420279862791,
+        "generation_with_persistence_seconds": 10046.062083797582,
+        "fetch_seconds": 3758.2693907944285
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 1741.0,
+              "geometry_pass": 1672.0,
+              "caches": 128.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 2080.0,
+              "geometry_pass": 2016.0,
+              "caches": 128.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 1479.0,
+              "geometry_pass": 1439.0,
+              "caches": 128.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 1368.0,
+              "geometry_pass": 1317.0,
+              "caches": 128.0
+            }
+          },
+          "accepted_estimate": 6444.0,
+          "geometry_pass_estimate": 6444.0,
+          "caches_estimate": 512.0,
+          "accepted_jpeg_bytes": 353847120.0,
+          "legacy_non_jpeg_overhead_bytes": 107778930.95974922,
+          "input_archive_bytes": 224653260.39840892,
+          "durable_bytes_estimate": 688099770.0248247,
+          "render_qa_publish_seconds_legacy_model": 2567.832765194732,
+          "planning_seconds": 72.38420279862791,
+          "generation_with_persistence_seconds": 10046.062083797582,
+          "fetch_seconds": 3758.2693907944285
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 256,
+              "candidates": 3482.0,
+              "geometry_pass": 3344.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 256,
+              "candidates": 4160.0,
+              "geometry_pass": 4032.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 256,
+              "candidates": 2958.0,
+              "geometry_pass": 2878.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 256,
+              "candidates": 2736.0,
+              "geometry_pass": 2634.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_estimate": 12888.0,
+          "geometry_pass_estimate": 12888.0,
+          "caches_estimate": 1024.0,
+          "accepted_jpeg_bytes": 707694240.0,
+          "legacy_non_jpeg_overhead_bytes": 215557861.91949844,
+          "input_archive_bytes": 449167178.20399547,
+          "durable_bytes_estimate": 1376060197.4568272,
+          "render_qa_publish_seconds_legacy_model": 5135.665530389464,
+          "planning_seconds": 117.43243053236571,
+          "generation_with_persistence_seconds": 19910.436809724815,
+          "fetch_seconds": 7516.52383642984
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 512,
+              "candidates": 6964.0,
+              "geometry_pass": 6688.0,
+              "caches": 512.0
+            },
+            "B01": {
+              "groups": 512,
+              "candidates": 8320.0,
+              "geometry_pass": 8064.0,
+              "caches": 512.0
+            },
+            "B02": {
+              "groups": 512,
+              "candidates": 5916.0,
+              "geometry_pass": 5756.0,
+              "caches": 512.0
+            },
+            "B03": {
+              "groups": 512,
+              "candidates": 5472.0,
+              "geometry_pass": 5268.0,
+              "caches": 512.0
+            }
+          },
+          "accepted_estimate": 25776.0,
+          "geometry_pass_estimate": 25776.0,
+          "caches_estimate": 2048.0,
+          "accepted_jpeg_bytes": 1415388480.0,
+          "legacy_non_jpeg_overhead_bytes": 431115723.8389969,
+          "input_archive_bytes": 898195013.8151686,
+          "durable_bytes_estimate": 2751981052.320832,
+          "render_qa_publish_seconds_legacy_model": 10271.331060778928,
+          "planning_seconds": 207.52888599984132,
+          "generation_with_persistence_seconds": 39639.186261579285,
+          "fetch_seconds": 15033.032727700664
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 1024,
+              "candidates": 13928.0,
+              "geometry_pass": 13376.0,
+              "caches": 1024.0
+            },
+            "B01": {
+              "groups": 1024,
+              "candidates": 16640.0,
+              "geometry_pass": 16128.0,
+              "caches": 1024.0
+            },
+            "B02": {
+              "groups": 1024,
+              "candidates": 11832.0,
+              "geometry_pass": 11512.0,
+              "caches": 1024.0
+            },
+            "B03": {
+              "groups": 1024,
+              "candidates": 10944.0,
+              "geometry_pass": 10536.0,
+              "caches": 1024.0
+            }
+          },
+          "accepted_estimate": 51552.0,
+          "geometry_pass_estimate": 51552.0,
+          "caches_estimate": 4096.0,
+          "accepted_jpeg_bytes": 2830776960.0,
+          "legacy_non_jpeg_overhead_bytes": 862231447.6779938,
+          "input_archive_bytes": 1796250685.0375147,
+          "durable_bytes_estimate": 5503822762.048841,
+          "render_qa_publish_seconds_legacy_model": 20542.662121557856,
+          "planning_seconds": 387.72179693479256,
+          "generation_with_persistence_seconds": 79096.68516528823,
+          "fetch_seconds": 30066.05051024231
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 2048,
+              "candidates": 27856.0,
+              "geometry_pass": 26752.0,
+              "caches": 2048.0
+            },
+            "B01": {
+              "groups": 2048,
+              "candidates": 33280.0,
+              "geometry_pass": 32256.0,
+              "caches": 2048.0
+            },
+            "B02": {
+              "groups": 2048,
+              "candidates": 23664.0,
+              "geometry_pass": 23024.0,
+              "caches": 2048.0
+            },
+            "B03": {
+              "groups": 2048,
+              "candidates": 21888.0,
+              "geometry_pass": 21072.0,
+              "caches": 2048.0
+            }
+          },
+          "accepted_estimate": 103104.0,
+          "geometry_pass_estimate": 103104.0,
+          "caches_estimate": 8192.0,
+          "accepted_jpeg_bytes": 5661553920.0,
+          "legacy_non_jpeg_overhead_bytes": 1724462895.3559875,
+          "input_archive_bytes": 3592362027.4822073,
+          "durable_bytes_estimate": 11007506181.504862,
+          "render_qa_publish_seconds_legacy_model": 41085.32424311571,
+          "planning_seconds": 748.107618804695,
+          "generation_with_persistence_seconds": 158011.6829727061,
+          "fetch_seconds": 60132.086075325606
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 3482.0,
+              "geometry_pass": 3344.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 4160.0,
+              "geometry_pass": 4032.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 2958.0,
+              "geometry_pass": 2878.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 2736.0,
+              "geometry_pass": 2634.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_estimate": 12888.0,
+          "geometry_pass_estimate": 12888.0,
+          "caches_estimate": 1024.0,
+          "accepted_jpeg_bytes": 707694240.0,
+          "legacy_non_jpeg_overhead_bytes": 215557861.91949844,
+          "input_archive_bytes": 299881215.48585343,
+          "durable_bytes_estimate": 1226774234.7386851,
+          "render_qa_publish_seconds_legacy_model": 5135.665530389464,
+          "planning_seconds": 103.49934740434166,
+          "generation_with_persistence_seconds": 19903.700113219304,
+          "fetch_seconds": 7500.512203470685
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 6964.0,
+              "geometry_pass": 6688.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 8320.0,
+              "geometry_pass": 8064.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 5916.0,
+              "geometry_pass": 5756.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 5472.0,
+              "geometry_pass": 5268.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_estimate": 25776.0,
+          "geometry_pass_estimate": 25776.0,
+          "caches_estimate": 1536.0,
+          "accepted_jpeg_bytes": 1415388480.0,
+          "legacy_non_jpeg_overhead_bytes": 431115723.8389969,
+          "input_archive_bytes": 450337125.6607424,
+          "durable_bytes_estimate": 2302302705.499739,
+          "render_qa_publish_seconds_legacy_model": 8602.574629103074,
+          "planning_seconds": 165.72963661576918,
+          "generation_with_persistence_seconds": 30684.640615313634,
+          "fetch_seconds": 11300.33517399279
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 13928.0,
+              "geometry_pass": 13376.0,
+              "caches": 548.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 16640.0,
+              "geometry_pass": 16128.0,
+              "caches": 587.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 11832.0,
+              "geometry_pass": 11512.0,
+              "caches": 519.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 10944.0,
+              "geometry_pass": 10536.0,
+              "caches": 517.0
+            }
+          },
+          "accepted_estimate": 51552.0,
+          "geometry_pass_estimate": 51552.0,
+          "caches_estimate": 2171.0,
+          "accepted_jpeg_bytes": 2830776960.0,
+          "legacy_non_jpeg_overhead_bytes": 862231447.6779938,
+          "input_archive_bytes": 751248946.0105203,
+          "durable_bytes_estimate": 4451976525.105181,
+          "render_qa_publish_seconds_legacy_model": 14281.626361498413,
+          "planning_seconds": 290.1902150386242,
+          "generation_with_persistence_seconds": 45471.617889522175,
+          "fetch_seconds": 16100.50109017561
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 27856.0,
+              "geometry_pass": 26752.0,
+              "caches": 826.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 33280.0,
+              "geometry_pass": 32256.0,
+              "caches": 901.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 23664.0,
+              "geometry_pass": 23024.0,
+              "caches": 775.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 21888.0,
+              "geometry_pass": 21072.0,
+              "caches": 755.0
+            }
+          },
+          "accepted_estimate": 103104.0,
+          "geometry_pass_estimate": 103104.0,
+          "caches_estimate": 3257.0,
+          "accepted_jpeg_bytes": 5661553920.0,
+          "legacy_non_jpeg_overhead_bytes": 1724462895.3559875,
+          "input_archive_bytes": 1353072586.710076,
+          "durable_bytes_estimate": 8750669936.982729,
+          "render_qa_publish_seconds_legacy_model": 25027.82276179098,
+          "planning_seconds": 539.1113718843343,
+          "generation_with_persistence_seconds": 71822.59787536794,
+          "fetch_seconds": 24376.65728096157
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1838.0,
+              "candidates": 24999.671875,
+              "geometry_pass": 24008.875,
+              "caches": 1838.0
+            }
+          },
+          "accepted_estimate": 24008.875,
+          "geometry_pass_estimate": 24008.875,
+          "caches_estimate": 1838.0,
+          "accepted_jpeg_bytes": 1522171190.109375,
+          "legacy_non_jpeg_overhead_bytes": 416129547.5393598,
+          "input_archive_bytes": 817992835.8826616,
+          "durable_bytes_estimate": 2762828735.698063,
+          "render_qa_publish_seconds_legacy_model": 10359.362961245433,
+          "planning_seconds": 179.7539874291508,
+          "generation_with_persistence_seconds": 36747.71868234055,
+          "fetch_seconds": 13522.988860759193
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 919.0,
+              "candidates": 12499.8359375,
+              "geometry_pass": 12004.4375,
+              "caches": 919.0
+            },
+            "B01": {
+              "groups": 762.0,
+              "candidates": 12382.5,
+              "geometry_pass": 12001.5,
+              "caches": 762.0
+            }
+          },
+          "accepted_estimate": 24005.9375,
+          "geometry_pass_estimate": 24005.9375,
+          "caches_estimate": 1681.0,
+          "accepted_jpeg_bytes": 1468421774.8359375,
+          "legacy_non_jpeg_overhead_bytes": 474516501.0019746,
+          "input_archive_bytes": 770926753.9791186,
+          "durable_bytes_estimate": 2719841965.4003644,
+          "render_qa_publish_seconds_legacy_model": 9298.34963118147,
+          "planning_seconds": 179.68617840306217,
+          "generation_with_persistence_seconds": 33456.86899275457,
+          "fetch_seconds": 12388.570937282771
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 613.0,
+              "candidates": 8337.7578125,
+              "geometry_pass": 8007.3125,
+              "caches": 613.0
+            },
+            "B01": {
+              "groups": 508.0,
+              "candidates": 8255.0,
+              "geometry_pass": 8001.0,
+              "caches": 508.0
+            },
+            "B02": {
+              "groups": 712.0,
+              "candidates": 8226.9375,
+              "geometry_pass": 8004.4375,
+              "caches": 712.0
+            }
+          },
+          "accepted_estimate": 24012.75,
+          "geometry_pass_estimate": 24012.75,
+          "caches_estimate": 1833.0,
+          "accepted_jpeg_bytes": 1384697681.7265625,
+          "legacy_non_jpeg_overhead_bytes": 414534112.1252208,
+          "input_archive_bytes": 814574152.2321656,
+          "durable_bytes_estimate": 2620323330.333949,
+          "render_qa_publish_seconds_legacy_model": 9469.96550063138,
+          "planning_seconds": 188.28242958744613,
+          "generation_with_persistence_seconds": 35780.938386581736,
+          "fetch_seconds": 13471.723348009398
+        }
+      ],
+      "supplementary_condition": {
+        "name": "B-pair-B02-B03",
+        "per_scene": {
+          "B02": {
+            "groups": 1068.0,
+            "candidates": 12340.40625,
+            "geometry_pass": 12006.65625,
+            "caches": 1068.0
+          },
+          "B03": {
+            "groups": 1167.0,
+            "candidates": 12472.3125,
+            "geometry_pass": 12007.3359375,
+            "caches": 1167.0
+          }
+        },
+        "accepted_estimate": 24013.9921875,
+        "geometry_pass_estimate": 24013.9921875,
+        "caches_estimate": 2235.0,
+        "accepted_jpeg_bytes": 1119957842.4140625,
+        "legacy_non_jpeg_overhead_bytes": 296715821.8728719,
+        "input_archive_bytes": 931673414.1116414,
+        "durable_bytes_estimate": 2356293807.148576,
+        "render_qa_publish_seconds_legacy_model": 10071.662035221387,
+        "planning_seconds": 194.4373523994875,
+        "generation_with_persistence_seconds": 42075.27065195186,
+        "fetch_seconds": 16336.287528368304
+      },
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "all_training_runs": 19,
+          "A1_max_accepted_estimate": 25776.0,
+          "A2_max_accepted_estimate": 25776.0,
+          "A1_max_caches": 2048.0,
+          "A2_max_caches": 1536.0,
+          "main_only_l4_hold_hours": [
+            117.60459479066198,
+            124.7950448971726
+          ],
+          "with_additions_l4_hold_hours": [
+            222.28857647458864,
+            239.74655994927676
+          ],
+          "generation_hours_separate_roots": 63.1621802900228,
+          "drive_dataset_bytes": 16448211991.473282,
+          "checkpoint_bytes_all_retained_legacy_allowance": 368830361200,
+          "drive_increment_bytes": 385278573191.47327,
+          "scene_supplement_l4_hold_hours": [
+            20.150996527278423,
+            21.271853403127924
+          ],
+          "scene_supplement_drive_bytes": 15528806707.148575
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "all_training_runs": 23,
+          "A1_max_accepted_estimate": 51552.0,
+          "A2_max_accepted_estimate": 51552.0,
+          "A1_max_caches": 4096.0,
+          "A2_max_caches": 2171.0,
+          "main_only_l4_hold_hours": [
+            172.9623588457084,
+            185.08884672002674
+          ],
+          "with_additions_l4_hold_hours": [
+            310.2687851081184,
+            342.6427017795918
+          ],
+          "generation_hours_separate_roots": 97.95279558635163,
+          "drive_dataset_bytes": 26404011278.627308,
+          "checkpoint_bytes_all_retained_legacy_allowance": 421520412800,
+          "drive_increment_bytes": 447924424078.6273,
+          "scene_supplement_l4_hold_hours": [
+            20.150996527278426,
+            21.27185340312793
+          ],
+          "scene_supplement_drive_bytes": 15528806707.148575
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "all_training_runs": 25,
+          "A1_max_accepted_estimate": 103104.0,
+          "A2_max_accepted_estimate": 103104.0,
+          "A1_max_caches": 8192.0,
+          "A2_max_caches": 3257.0,
+          "main_only_l4_hold_hours": [
+            268.3805330473794,
+            290.48691635067536
+          ],
+          "with_additions_l4_hold_hours": [
+            437.63878577301375,
+            495.12417085697456
+          ],
+          "generation_hours_separate_roots": 162.15321220823026,
+          "drive_dataset_bytes": 46162187397.1149,
+          "checkpoint_bytes_all_retained_legacy_allowance": 447865438600,
+          "drive_increment_bytes": 494027625997.11487,
+          "scene_supplement_l4_hold_hours": [
+            20.150996527278423,
+            21.271853403127928
+          ],
+          "scene_supplement_drive_bytes": 15528806707.148575
+        }
+      ]
+    },
+    "hull25_margin0": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 96,
+            "candidates": 1784.0,
+            "geometry_pass": 1729.0,
+            "caches": 96.0
+          },
+          "B01": {
+            "groups": 96,
+            "candidates": 2105.0,
+            "geometry_pass": 2053.0,
+            "caches": 96.0
+          },
+          "B02": {
+            "groups": 96,
+            "candidates": 1414.0,
+            "geometry_pass": 1361.0,
+            "caches": 96.0
+          },
+          "B03": {
+            "groups": 96,
+            "candidates": 1326.0,
+            "geometry_pass": 1266.0,
+            "caches": 96.0
+          }
+        },
+        "accepted_estimate": 6409.0,
+        "geometry_pass_estimate": 6409.0,
+        "caches_estimate": 384.0,
+        "accepted_jpeg_bytes": 365500353.17145985,
+        "legacy_non_jpeg_overhead_bytes": 107997070.70069152,
+        "input_archive_bytes": 186891774.1807195,
+        "durable_bytes_estimate": 661754542.0528709,
+        "render_qa_publish_seconds_legacy_model": 2145.7604059298405,
+        "planning_seconds": 68.71894481811816,
+        "generation_with_persistence_seconds": 7806.426622863345,
+        "fetch_seconds": 2834.326888702511
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 1784.0,
+              "geometry_pass": 1729.0,
+              "caches": 96.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 2105.0,
+              "geometry_pass": 2053.0,
+              "caches": 96.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 1414.0,
+              "geometry_pass": 1361.0,
+              "caches": 96.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 1326.0,
+              "geometry_pass": 1266.0,
+              "caches": 96.0
+            }
+          },
+          "accepted_estimate": 6409.0,
+          "geometry_pass_estimate": 6409.0,
+          "caches_estimate": 384.0,
+          "accepted_jpeg_bytes": 365500353.17145985,
+          "legacy_non_jpeg_overhead_bytes": 107997070.70069152,
+          "input_archive_bytes": 186891774.1807195,
+          "durable_bytes_estimate": 661754542.0528709,
+          "render_qa_publish_seconds_legacy_model": 2145.7604059298405,
+          "planning_seconds": 68.71894481811816,
+          "generation_with_persistence_seconds": 7806.426622863345,
+          "fetch_seconds": 2834.326888702511
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 192,
+              "candidates": 3568.0,
+              "geometry_pass": 3458.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 192,
+              "candidates": 4210.0,
+              "geometry_pass": 4106.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 192,
+              "candidates": 2828.0,
+              "geometry_pass": 2722.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 192,
+              "candidates": 2652.0,
+              "geometry_pass": 2532.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_estimate": 12818.0,
+          "geometry_pass_estimate": 12818.0,
+          "caches_estimate": 768.0,
+          "accepted_jpeg_bytes": 731000706.3429197,
+          "legacy_non_jpeg_overhead_bytes": 215994141.40138304,
+          "input_archive_bytes": 373644205.7686166,
+          "durable_bytes_estimate": 1323369741.5129194,
+          "render_qa_publish_seconds_legacy_model": 4291.520811859681,
+          "planning_seconds": 110.10191457134623,
+          "generation_with_persistence_seconds": 15431.165887856343,
+          "fetch_seconds": 5668.638832246005
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 384,
+              "candidates": 7136.0,
+              "geometry_pass": 6916.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 384,
+              "candidates": 8420.0,
+              "geometry_pass": 8212.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 384,
+              "candidates": 5656.0,
+              "geometry_pass": 5444.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 384,
+              "candidates": 5304.0,
+              "geometry_pass": 5064.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_estimate": 25636.0,
+          "geometry_pass_estimate": 25636.0,
+          "caches_estimate": 1536.0,
+          "accepted_jpeg_bytes": 1462001412.6858394,
+          "legacy_non_jpeg_overhead_bytes": 431988282.8027661,
+          "input_archive_bytes": 747149068.9444108,
+          "durable_bytes_estimate": 2646600140.4330163,
+          "render_qa_publish_seconds_legacy_model": 8583.041623719362,
+          "planning_seconds": 192.86785407780238,
+          "generation_with_persistence_seconds": 30680.64441784234,
+          "fetch_seconds": 11337.262719332994
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 768,
+              "candidates": 14272.0,
+              "geometry_pass": 13832.0,
+              "caches": 768.0
+            },
+            "B01": {
+              "groups": 768,
+              "candidates": 16840.0,
+              "geometry_pass": 16424.0,
+              "caches": 768.0
+            },
+            "B02": {
+              "groups": 768,
+              "candidates": 11312.0,
+              "geometry_pass": 10888.0,
+              "caches": 768.0
+            },
+            "B03": {
+              "groups": 768,
+              "candidates": 10608.0,
+              "geometry_pass": 10128.0,
+              "caches": 768.0
+            }
+          },
+          "accepted_estimate": 51272.0,
+          "geometry_pass_estimate": 51272.0,
+          "caches_estimate": 3072.0,
+          "accepted_jpeg_bytes": 2924002825.371679,
+          "legacy_non_jpeg_overhead_bytes": 863976565.6055322,
+          "input_archive_bytes": 1494158795.2959995,
+          "durable_bytes_estimate": 5293060938.273211,
+          "render_qa_publish_seconds_legacy_model": 17166.083247438724,
+          "planning_seconds": 358.3997330907147,
+          "generation_with_persistence_seconds": 61179.601477814336,
+          "fetch_seconds": 22674.51049350697
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 1536,
+              "candidates": 28544.0,
+              "geometry_pass": 27664.0,
+              "caches": 1536.0
+            },
+            "B01": {
+              "groups": 1536,
+              "candidates": 33680.0,
+              "geometry_pass": 32848.0,
+              "caches": 1536.0
+            },
+            "B02": {
+              "groups": 1536,
+              "candidates": 22624.0,
+              "geometry_pass": 21776.0,
+              "caches": 1536.0
+            },
+            "B03": {
+              "groups": 1536,
+              "candidates": 21216.0,
+              "geometry_pass": 20256.0,
+              "caches": 1536.0
+            }
+          },
+          "accepted_estimate": 102544.0,
+          "geometry_pass_estimate": 102544.0,
+          "caches_estimate": 6144.0,
+          "accepted_jpeg_bytes": 5848005650.743358,
+          "legacy_non_jpeg_overhead_bytes": 1727953131.2110643,
+          "input_archive_bytes": 2988178247.999176,
+          "durable_bytes_estimate": 10585982533.953598,
+          "render_qa_publish_seconds_legacy_model": 34332.16649487745,
+          "planning_seconds": 689.4634911165392,
+          "generation_with_persistence_seconds": 122177.51559775832,
+          "fetch_seconds": 45349.006041854926
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 3568.0,
+              "geometry_pass": 3458.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 4210.0,
+              "geometry_pass": 4106.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 2828.0,
+              "geometry_pass": 2722.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 2652.0,
+              "geometry_pass": 2532.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_estimate": 12818.0,
+          "geometry_pass_estimate": 12818.0,
+          "caches_estimate": 768.0,
+          "accepted_jpeg_bytes": 731000706.3429197,
+          "legacy_non_jpeg_overhead_bytes": 215994141.40138304,
+          "input_archive_bytes": 261679733.73001006,
+          "durable_bytes_estimate": 1211405269.4743128,
+          "render_qa_publish_seconds_legacy_model": 4291.520811859681,
+          "planning_seconds": 99.65210222532819,
+          "generation_with_persistence_seconds": 15426.11336547721,
+          "fetch_seconds": 5656.630107526638
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 7136.0,
+              "geometry_pass": 6916.0,
+              "caches": 288.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 8420.0,
+              "geometry_pass": 8212.0,
+              "caches": 288.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 5656.0,
+              "geometry_pass": 5444.0,
+              "caches": 288.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 5304.0,
+              "geometry_pass": 5064.0,
+              "caches": 288.0
+            }
+          },
+          "accepted_estimate": 25636.0,
+          "geometry_pass_estimate": 25636.0,
+          "caches_estimate": 1152.0,
+          "accepted_jpeg_bytes": 1462001412.6858394,
+          "legacy_non_jpeg_overhead_bytes": 431988282.8027661,
+          "input_archive_bytes": 411255652.8285912,
+          "durable_bytes_estimate": 2309341380.317197,
+          "render_qa_publish_seconds_legacy_model": 7331.4742999624705,
+          "planning_seconds": 161.51841703974827,
+          "generation_with_persistence_seconds": 23964.7351831431,
+          "fetch_seconds": 8537.739554052087
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 14272.0,
+              "geometry_pass": 13832.0,
+              "caches": 450.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 16840.0,
+              "geometry_pass": 16424.0,
+              "caches": 461.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 11312.0,
+              "geometry_pass": 10888.0,
+              "caches": 407.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 10608.0,
+              "geometry_pass": 10128.0,
+              "caches": 400.0
+            }
+          },
+          "accepted_estimate": 51272.0,
+          "geometry_pass_estimate": 51272.0,
+          "caches_estimate": 1718.0,
+          "accepted_jpeg_bytes": 2924002825.371679,
+          "legacy_non_jpeg_overhead_bytes": 863976565.6055322,
+          "input_archive_bytes": 710407491.0257535,
+          "durable_bytes_estimate": 4504495374.169631,
+          "render_qa_publish_seconds_legacy_model": 12775.919896251215,
+          "planning_seconds": 285.2510466685884,
+          "generation_with_persistence_seconds": 37540.019424368984,
+          "fetch_seconds": 12846.24388406442
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 28544.0,
+              "geometry_pass": 27664.0,
+              "caches": 713.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 33680.0,
+              "geometry_pass": 32848.0,
+              "caches": 764.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 22624.0,
+              "geometry_pass": 21776.0,
+              "caches": 623.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 21216.0,
+              "geometry_pass": 20256.0,
+              "caches": 608.0
+            }
+          },
+          "accepted_estimate": 102544.0,
+          "geometry_pass_estimate": 102544.0,
+          "caches_estimate": 2708.0,
+          "accepted_jpeg_bytes": 5848005650.743358,
+          "legacy_non_jpeg_overhead_bytes": 1727953131.2110643,
+          "input_archive_bytes": 1308711167.420078,
+          "durable_bytes_estimate": 8894298469.041166,
+          "render_qa_publish_seconds_legacy_model": 23179.85560095148,
+          "planning_seconds": 532.7163059262687,
+          "generation_with_persistence_seconds": 62190.56945847398,
+          "fetch_seconds": 20441.334385913473
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1333.0,
+              "candidates": 24771.583333333332,
+              "geometry_pass": 24007.885416666664,
+              "caches": 1333.0
+            }
+          },
+          "accepted_estimate": 24007.885416666664,
+          "geometry_pass_estimate": 24007.885416666664,
+          "caches_estimate": 1333.0,
+          "accepted_jpeg_bytes": 1695757529.766535,
+          "legacy_non_jpeg_overhead_bytes": 416112395.7625792,
+          "input_archive_bytes": 668174611.6568934,
+          "durable_bytes_estimate": 2784784129.769341,
+          "render_qa_publish_seconds_legacy_model": 8433.298452815528,
+          "planning_seconds": 164.94705734615317,
+          "generation_with_persistence_seconds": 27656.480927311786,
+          "fetch_seconds": 9891.24985752379
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 667.0,
+              "candidates": 12395.083333333334,
+              "geometry_pass": 12012.947916666668,
+              "caches": 667.0
+            },
+            "B01": {
+              "groups": 562.0,
+              "candidates": 12323.020833333334,
+              "geometry_pass": 12018.604166666668,
+              "caches": 562.0
+            }
+          },
+          "accepted_estimate": 24031.552083333336,
+          "geometry_pass_estimate": 24031.552083333336,
+          "caches_estimate": 1229.0,
+          "accepted_jpeg_bytes": 1529181066.4515624,
+          "legacy_non_jpeg_overhead_bytes": 475043745.044209,
+          "input_archive_bytes": 637282387.5454758,
+          "durable_bytes_estimate": 2645877010.957914,
+          "render_qa_publish_seconds_legacy_model": 7699.344411651042,
+          "planning_seconds": 166.61951743155822,
+          "generation_with_persistence_seconds": 25440.45447360072,
+          "fetch_seconds": 9127.94396415682
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 445.0,
+              "candidates": 8269.583333333334,
+              "geometry_pass": 8014.635416666667,
+              "caches": 445.0
+            },
+            "B01": {
+              "groups": 375.0,
+              "candidates": 8222.65625,
+              "geometry_pass": 8019.53125,
+              "caches": 375.0
+            },
+            "B02": {
+              "groups": 565.0,
+              "candidates": 8321.979166666668,
+              "geometry_pass": 8010.052083333334,
+              "caches": 565.0
+            }
+          },
+          "accepted_estimate": 24044.21875,
+          "geometry_pass_estimate": 24044.21875,
+          "caches_estimate": 1385.0,
+          "accepted_jpeg_bytes": 1425301469.460444,
+          "legacy_non_jpeg_overhead_bytes": 415141278.173923,
+          "input_archive_bytes": 683887148.6213703,
+          "durable_bytes_estimate": 2529254379.172404,
+          "render_qa_publish_seconds_legacy_model": 7962.654109431058,
+          "planning_seconds": 176.06542635640443,
+          "generation_with_persistence_seconds": 27912.20755383824,
+          "fetch_seconds": 10238.046791070674
+        }
+      ],
+      "supplementary_condition": {
+        "name": "B-pair-B02-B03",
+        "per_scene": {
+          "B02": {
+            "groups": 847.0,
+            "candidates": 12475.604166666666,
+            "geometry_pass": 12007.989583333332,
+            "caches": 847.0
+          },
+          "B03": {
+            "groups": 910.0,
+            "candidates": 12569.375,
+            "geometry_pass": 12000.625,
+            "caches": 910.0
+          }
+        },
+        "accepted_estimate": 24008.614583333332,
+        "geometry_pass_estimate": 24008.614583333332,
+        "caches_estimate": 1757.0,
+        "accepted_jpeg_bytes": 1159686962.5427303,
+        "legacy_non_jpeg_overhead_bytes": 296648584.3853383,
+        "input_archive_bytes": 794921319.7148178,
+        "durable_bytes_estimate": 2257504026.5595527,
+        "render_qa_publish_seconds_legacy_model": 8633.672274830327,
+        "planning_seconds": 182.51331877940748,
+        "generation_with_persistence_seconds": 33849.80032556091,
+        "fetch_seconds": 12885.896113742287
+      },
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "all_training_runs": 19,
+          "A1_max_accepted_estimate": 25636.0,
+          "A2_max_accepted_estimate": 25636.0,
+          "A1_max_caches": 1536.0,
+          "A2_max_caches": 1152.0,
+          "main_only_l4_hold_hours": [
+            97.29202614007565,
+            104.46296171421943
+          ],
+          "with_additions_l4_hold_hours": [
+            193.80645160242682,
+            211.1985942322407
+          ],
+          "generation_hours_separate_roots": 48.738533240499876,
+          "drive_dataset_bytes": 16112386593.689974,
+          "checkpoint_bytes_all_retained_legacy_allowance": 368830361200,
+          "drive_increment_bytes": 384942747793.69,
+          "scene_supplement_l4_hold_hours": [
+            16.90438936765702,
+            18.0249831705901
+          ],
+          "scene_supplement_drive_bytes": 15430016926.559553
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "all_training_runs": 23,
+          "A1_max_accepted_estimate": 51272.0,
+          "A2_max_accepted_estimate": 51272.0,
+          "A1_max_caches": 3072.0,
+          "A2_max_caches": 1718.0,
+          "main_only_l4_hold_hours": [
+            142.5029178040977,
+            154.58249589183737
+          ],
+          "with_additions_l4_hold_hours": [
+            266.0970559559462,
+            298.32294601991
+          ],
+          "generation_hours_separate_roots": 76.33944204103949,
+          "drive_dataset_bytes": 25909942906.132816,
+          "checkpoint_bytes_all_retained_legacy_allowance": 421520412800,
+          "drive_increment_bytes": 447430355706.1328,
+          "scene_supplement_l4_hold_hours": [
+            16.90438936765702,
+            18.0249831705901
+          ],
+          "scene_supplement_drive_bytes": 15430016926.559553
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "all_training_runs": 25,
+          "A1_max_accepted_estimate": 102544.0,
+          "A2_max_accepted_estimate": 102544.0,
+          "A1_max_caches": 6144.0,
+          "A2_max_caches": 2708.0,
+          "main_only_l4_hold_hours": [
+            220.07397036298903,
+            242.07865337128268
+          ],
+          "with_additions_l4_hold_hours": [
+            368.8927635566683,
+            426.0931457620604
+          ],
+          "generation_hours_separate_roots": 127.89229338917146,
+          "drive_dataset_bytes": 45390223909.12758,
+          "checkpoint_bytes_all_retained_legacy_allowance": 447865438600,
+          "drive_increment_bytes": 493255662509.12756,
+          "scene_supplement_l4_hold_hours": [
+            16.90438936765702,
+            18.0249831705901
+          ],
+          "scene_supplement_drive_bytes": 15430016926.559553
+        }
+      ]
+    },
+    "hull25_margin0_wide125": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 96,
+            "candidates": 1784.0,
+            "geometry_pass": 1750.0,
+            "caches": 96.0
+          },
+          "B01": {
+            "groups": 96,
+            "candidates": 2105.0,
+            "geometry_pass": 2070.0,
+            "caches": 96.0
+          },
+          "B02": {
+            "groups": 96,
+            "candidates": 1414.0,
+            "geometry_pass": 1391.0,
+            "caches": 96.0
+          },
+          "B03": {
+            "groups": 96,
+            "candidates": 1326.0,
+            "geometry_pass": 1294.0,
+            "caches": 96.0
+          }
+        },
+        "accepted_estimate": 6505.0,
+        "geometry_pass_estimate": 6505.0,
+        "caches_estimate": 384.0,
+        "accepted_jpeg_bytes": 366044880.7412559,
+        "legacy_non_jpeg_overhead_bytes": 109454923.89887685,
+        "input_archive_bytes": 186891774.1807195,
+        "durable_bytes_estimate": 663756922.8208523,
+        "render_qa_publish_seconds_legacy_model": 2159.154466764386,
+        "planning_seconds": 68.71894481811816,
+        "generation_with_persistence_seconds": 7819.911043375899,
+        "fetch_seconds": 2834.5416536095236
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 1784.0,
+              "geometry_pass": 1750.0,
+              "caches": 96.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 2105.0,
+              "geometry_pass": 2070.0,
+              "caches": 96.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 1414.0,
+              "geometry_pass": 1391.0,
+              "caches": 96.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 1326.0,
+              "geometry_pass": 1294.0,
+              "caches": 96.0
+            }
+          },
+          "accepted_estimate": 6505.0,
+          "geometry_pass_estimate": 6505.0,
+          "caches_estimate": 384.0,
+          "accepted_jpeg_bytes": 366044880.7412559,
+          "legacy_non_jpeg_overhead_bytes": 109454923.89887685,
+          "input_archive_bytes": 186891774.1807195,
+          "durable_bytes_estimate": 663756922.8208523,
+          "render_qa_publish_seconds_legacy_model": 2159.154466764386,
+          "planning_seconds": 68.71894481811816,
+          "generation_with_persistence_seconds": 7819.911043375899,
+          "fetch_seconds": 2834.5416536095236
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 192,
+              "candidates": 3568.0,
+              "geometry_pass": 3500.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 192,
+              "candidates": 4210.0,
+              "geometry_pass": 4140.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 192,
+              "candidates": 2828.0,
+              "geometry_pass": 2782.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 192,
+              "candidates": 2652.0,
+              "geometry_pass": 2588.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_estimate": 13010.0,
+          "geometry_pass_estimate": 13010.0,
+          "caches_estimate": 768.0,
+          "accepted_jpeg_bytes": 732089761.4825118,
+          "legacy_non_jpeg_overhead_bytes": 218909847.7977537,
+          "input_archive_bytes": 373644205.7686166,
+          "durable_bytes_estimate": 1327374503.048882,
+          "render_qa_publish_seconds_legacy_model": 4318.308933528772,
+          "planning_seconds": 110.10191457134623,
+          "generation_with_persistence_seconds": 15458.13472888145,
+          "fetch_seconds": 5669.068362060029
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 384,
+              "candidates": 7136.0,
+              "geometry_pass": 7000.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 384,
+              "candidates": 8420.0,
+              "geometry_pass": 8280.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 384,
+              "candidates": 5656.0,
+              "geometry_pass": 5564.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 384,
+              "candidates": 5304.0,
+              "geometry_pass": 5176.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_estimate": 26020.0,
+          "geometry_pass_estimate": 26020.0,
+          "caches_estimate": 1536.0,
+          "accepted_jpeg_bytes": 1464179522.9650235,
+          "legacy_non_jpeg_overhead_bytes": 437819695.5955074,
+          "input_archive_bytes": 747149068.9444108,
+          "durable_bytes_estimate": 2654609663.504942,
+          "render_qa_publish_seconds_legacy_model": 8636.617867057545,
+          "planning_seconds": 192.86785407780238,
+          "generation_with_persistence_seconds": 30734.582099892556,
+          "fetch_seconds": 11338.121778961042
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 768,
+              "candidates": 14272.0,
+              "geometry_pass": 14000.0,
+              "caches": 768.0
+            },
+            "B01": {
+              "groups": 768,
+              "candidates": 16840.0,
+              "geometry_pass": 16560.0,
+              "caches": 768.0
+            },
+            "B02": {
+              "groups": 768,
+              "candidates": 11312.0,
+              "geometry_pass": 11128.0,
+              "caches": 768.0
+            },
+            "B03": {
+              "groups": 768,
+              "candidates": 10608.0,
+              "geometry_pass": 10352.0,
+              "caches": 768.0
+            }
+          },
+          "accepted_estimate": 52040.0,
+          "geometry_pass_estimate": 52040.0,
+          "caches_estimate": 3072.0,
+          "accepted_jpeg_bytes": 2928359045.930047,
+          "legacy_non_jpeg_overhead_bytes": 875639391.1910148,
+          "input_archive_bytes": 1494158795.2959995,
+          "durable_bytes_estimate": 5309079984.417061,
+          "render_qa_publish_seconds_legacy_model": 17273.23573411509,
+          "planning_seconds": 358.3997330907147,
+          "generation_with_persistence_seconds": 61287.476841914766,
+          "fetch_seconds": 22676.22861276307
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 1536,
+              "candidates": 28544.0,
+              "geometry_pass": 28000.0,
+              "caches": 1536.0
+            },
+            "B01": {
+              "groups": 1536,
+              "candidates": 33680.0,
+              "geometry_pass": 33120.0,
+              "caches": 1536.0
+            },
+            "B02": {
+              "groups": 1536,
+              "candidates": 22624.0,
+              "geometry_pass": 22256.0,
+              "caches": 1536.0
+            },
+            "B03": {
+              "groups": 1536,
+              "candidates": 21216.0,
+              "geometry_pass": 20704.0,
+              "caches": 1536.0
+            }
+          },
+          "accepted_estimate": 104080.0,
+          "geometry_pass_estimate": 104080.0,
+          "caches_estimate": 6144.0,
+          "accepted_jpeg_bytes": 5856718091.860094,
+          "legacy_non_jpeg_overhead_bytes": 1751278782.3820295,
+          "input_archive_bytes": 2988178247.999176,
+          "durable_bytes_estimate": 10618020626.241299,
+          "render_qa_publish_seconds_legacy_model": 34546.47146823018,
+          "planning_seconds": 689.4634911165392,
+          "generation_with_persistence_seconds": 122393.26632595918,
+          "fetch_seconds": 45352.44228036712
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 3568.0,
+              "geometry_pass": 3500.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 4210.0,
+              "geometry_pass": 4140.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 2828.0,
+              "geometry_pass": 2782.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 2652.0,
+              "geometry_pass": 2588.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_estimate": 13010.0,
+          "geometry_pass_estimate": 13010.0,
+          "caches_estimate": 768.0,
+          "accepted_jpeg_bytes": 732089761.4825118,
+          "legacy_non_jpeg_overhead_bytes": 218909847.7977537,
+          "input_archive_bytes": 261679733.73001006,
+          "durable_bytes_estimate": 1215410031.0102756,
+          "render_qa_publish_seconds_legacy_model": 4318.308933528772,
+          "planning_seconds": 99.65210222532819,
+          "generation_with_persistence_seconds": 15453.082206502317,
+          "fetch_seconds": 5657.059637340663
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 7136.0,
+              "geometry_pass": 7000.0,
+              "caches": 288.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 8420.0,
+              "geometry_pass": 8280.0,
+              "caches": 288.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 5656.0,
+              "geometry_pass": 5564.0,
+              "caches": 288.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 5304.0,
+              "geometry_pass": 5176.0,
+              "caches": 288.0
+            }
+          },
+          "accepted_estimate": 26020.0,
+          "geometry_pass_estimate": 26020.0,
+          "caches_estimate": 1152.0,
+          "accepted_jpeg_bytes": 1464179522.9650235,
+          "legacy_non_jpeg_overhead_bytes": 437819695.5955074,
+          "input_archive_bytes": 411255652.8285912,
+          "durable_bytes_estimate": 2317350903.389122,
+          "render_qa_publish_seconds_legacy_model": 7385.050543300653,
+          "planning_seconds": 161.51841703974827,
+          "generation_with_persistence_seconds": 24018.672865193315,
+          "fetch_seconds": 8538.598613680137
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 14272.0,
+              "geometry_pass": 14000.0,
+              "caches": 450.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 16840.0,
+              "geometry_pass": 16560.0,
+              "caches": 461.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 11312.0,
+              "geometry_pass": 11128.0,
+              "caches": 407.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 10608.0,
+              "geometry_pass": 10352.0,
+              "caches": 400.0
+            }
+          },
+          "accepted_estimate": 52040.0,
+          "geometry_pass_estimate": 52040.0,
+          "caches_estimate": 1718.0,
+          "accepted_jpeg_bytes": 2928359045.930047,
+          "legacy_non_jpeg_overhead_bytes": 875639391.1910148,
+          "input_archive_bytes": 710407491.0257535,
+          "durable_bytes_estimate": 4520514420.313482,
+          "render_qa_publish_seconds_legacy_model": 12883.07238292758,
+          "planning_seconds": 285.2510466685884,
+          "generation_with_persistence_seconds": 37647.89478846941,
+          "fetch_seconds": 12847.96200332052
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 28544.0,
+              "geometry_pass": 28000.0,
+              "caches": 713.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 33680.0,
+              "geometry_pass": 33120.0,
+              "caches": 764.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 22624.0,
+              "geometry_pass": 22256.0,
+              "caches": 623.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 21216.0,
+              "geometry_pass": 20704.0,
+              "caches": 608.0
+            }
+          },
+          "accepted_estimate": 104080.0,
+          "geometry_pass_estimate": 104080.0,
+          "caches_estimate": 2708.0,
+          "accepted_jpeg_bytes": 5856718091.860094,
+          "legacy_non_jpeg_overhead_bytes": 1751278782.3820295,
+          "input_archive_bytes": 1308711167.420078,
+          "durable_bytes_estimate": 8926336561.328867,
+          "render_qa_publish_seconds_legacy_model": 23394.16057430421,
+          "planning_seconds": 532.7163059262687,
+          "generation_with_persistence_seconds": 62406.32018667485,
+          "fetch_seconds": 20444.770624425666
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1317.0,
+              "candidates": 24474.25,
+              "geometry_pass": 24007.8125,
+              "caches": 1317.0
+            }
+          },
+          "accepted_estimate": 24007.8125,
+          "geometry_pass_estimate": 24007.8125,
+          "caches_estimate": 1317.0,
+          "accepted_jpeg_bytes": 1652736546.8068483,
+          "legacy_non_jpeg_overhead_bytes": 416111131.947448,
+          "input_archive_bytes": 660154929.424231,
+          "durable_bytes_estimate": 2733685311.4285274,
+          "render_qa_publish_seconds_legacy_model": 8372.268827801,
+          "planning_seconds": 163.12419054057915,
+          "generation_with_persistence_seconds": 27366.098630344066,
+          "fetch_seconds": 9770.629658738066
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 659.0,
+              "candidates": 12246.416666666666,
+              "geometry_pass": 12013.020833333332,
+              "caches": 659.0
+            },
+            "B01": {
+              "groups": 557.0,
+              "candidates": 12213.385416666666,
+              "geometry_pass": 12010.3125,
+              "caches": 557.0
+            }
+          },
+          "accepted_estimate": 24023.333333333332,
+          "geometry_pass_estimate": 24023.333333333332,
+          "caches_estimate": 1216.0,
+          "accepted_jpeg_bytes": 1502549377.7298927,
+          "legacy_non_jpeg_overhead_bytes": 474860921.1282258,
+          "input_archive_bytes": 630577775.8492963,
+          "durable_bytes_estimate": 2612311664.040748,
+          "render_qa_publish_seconds_legacy_model": 7651.649927769797,
+          "planning_seconds": 165.0604228065169,
+          "generation_with_persistence_seconds": 25206.769806666587,
+          "fetch_seconds": 9030.792990159325
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 439.0,
+              "candidates": 8158.083333333334,
+              "geometry_pass": 8002.604166666667,
+              "caches": 439.0
+            },
+            "B01": {
+              "groups": 372.0,
+              "candidates": 8156.875,
+              "geometry_pass": 8021.25,
+              "caches": 372.0
+            },
+            "B02": {
+              "groups": 553.0,
+              "candidates": 8145.229166666667,
+              "geometry_pass": 8012.739583333334,
+              "caches": 553.0
+            }
+          },
+          "accepted_estimate": 24036.59375,
+          "geometry_pass_estimate": 24036.59375,
+          "caches_estimate": 1364.0,
+          "accepted_jpeg_bytes": 1404759143.2211843,
+          "legacy_non_jpeg_overhead_bytes": 415003849.5698631,
+          "input_archive_bytes": 673769933.3422191,
+          "durable_bytes_estimate": 2498382741.799933,
+          "render_qa_publish_seconds_legacy_model": 7892.808784751662,
+          "planning_seconds": 173.84192261885278,
+          "generation_with_persistence_seconds": 27542.97021253862,
+          "fetch_seconds": 10083.61492714016
+        }
+      ],
+      "supplementary_condition": {
+        "name": "B-pair-B02-B03",
+        "per_scene": {
+          "B02": {
+            "groups": 829.0,
+            "candidates": 12210.479166666666,
+            "geometry_pass": 12011.864583333332,
+            "caches": 829.0
+          },
+          "B03": {
+            "groups": 891.0,
+            "candidates": 12306.9375,
+            "geometry_pass": 12009.9375,
+            "caches": 891.0
+          }
+        },
+        "accepted_estimate": 24021.802083333332,
+        "geometry_pass_estimate": 24021.802083333332,
+        "caches_estimate": 1720.0,
+        "accepted_jpeg_bytes": 1153426834.6086702,
+        "legacy_non_jpeg_overhead_bytes": 296812063.9066591,
+        "input_archive_bytes": 778181149.4922562,
+        "durable_bytes_estimate": 2234535651.340919,
+        "render_qa_publish_seconds_legacy_model": 8524.234459329109,
+        "planning_seconds": 179.04465065460897,
+        "generation_with_persistence_seconds": 33214.28035654482,
+        "fetch_seconds": 12617.172306137954
+      },
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "all_training_runs": 19,
+          "A1_max_accepted_estimate": 26020.0,
+          "A2_max_accepted_estimate": 26020.0,
+          "A1_max_caches": 1536.0,
+          "A2_max_caches": 1152.0,
+          "main_only_l4_hold_hours": [
+            96.98840852990091,
+            104.21961773998542
+          ],
+          "with_additions_l4_hold_hours": [
+            193.43743350750708,
+            211.0166435300042
+          ],
+          "generation_hours_separate_roots": 48.537529822803634,
+          "drive_dataset_bytes": 16022881741.043282,
+          "checkpoint_bytes_all_retained_legacy_allowance": 368830361200,
+          "drive_increment_bytes": 384853242941.0433,
+          "scene_supplement_l4_hold_hours": [
+            16.652247021894457,
+            17.773485958604176
+          ],
+          "scene_supplement_drive_bytes": 15407048551.34092
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "all_training_runs": 23,
+          "A1_max_accepted_estimate": 52040.0,
+          "A2_max_accepted_estimate": 52040.0,
+          "A1_max_caches": 3072.0,
+          "A2_max_caches": 1718.0,
+          "main_only_l4_hold_hours": [
+            142.26018546245436,
+            154.47517845483003
+          ],
+          "with_additions_l4_hold_hours": [
+            265.79083215095346,
+            298.4292134136862
+          ],
+          "generation_hours_separate_roots": 76.1983693811768,
+          "drive_dataset_bytes": 25852476145.773827,
+          "checkpoint_bytes_all_retained_legacy_allowance": 421520412800,
+          "drive_increment_bytes": 447372888945.7738,
+          "scene_supplement_l4_hold_hours": [
+            16.65224702189446,
+            17.77348595860418
+          ],
+          "scene_supplement_drive_bytes": 15407048551.34092
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "all_training_runs": 25,
+          "A1_max_accepted_estimate": 104080.0,
+          "A2_max_accepted_estimate": 104080.0,
+          "A1_max_caches": 6144.0,
+          "A2_max_caches": 2708.0,
+          "main_only_l4_hold_hours": [
+            219.9530085584085,
+            242.24338900872868
+          ],
+          "with_additions_l4_hold_hours": [
+            368.71117382083196,
+            426.69975356846936
+          ],
+          "generation_hours_separate_roots": 127.87108224497594,
+          "drive_dataset_bytes": 45396833333.343994,
+          "checkpoint_bytes_all_retained_legacy_allowance": 447865438600,
+          "drive_increment_bytes": 493262271933.344,
+          "scene_supplement_l4_hold_hours": [
+            16.652247021894457,
+            17.77348595860418
+          ],
+          "scene_supplement_drive_bytes": 15407048551.34092
+        }
+      ]
+    }
+  },
+  "legacy_non_jpeg_archive_bytes_per_geometry_pass": {
+    "B00": 17332.32179930796,
+    "B01": 22201.53541076487,
+    "B02": 12257.489711934157,
+    "B03": 12454.415966386554
+  },
+  "assumptions": [
+    "QA/JPEG estimates use frozen N_h/n_h strata weights from only 12 views per scene and variant; these are sensitivity estimates, not adopted production rates.",
+    "Input archive, non-JPEG overhead, production rendering/QA/publication, cache control, transfer, training and evaluation coefficients are inherited from the previous pilot. Raw NPZ/cProfile probe time is not substituted for JPEG-only production throughput.",
+    "Non-JPEG cache overhead per geometry pass is the previous tar minus its measured JPEG shard bytes; its scaling and denser/new-prefix QA remain unverified.",
+    "10k updates, warmup500, val2k, seeds43/44, three independent40k schedules, cold setup/full fetch per training run and the prior all-checkpoint capacity allowance remain unapproved proposals. No checkpoint implementation is changed or certified.",
+    "24k/48k/96k name multiplier graphs; endpoints use measured-population extrapolations without quota refill. A1 later prefixes and A2 densities extrapolate the frozen base prefix.",
+    "Ranges compare fixed and linearly growing preflight cost, not confidence intervals or upper bounds. Large-folder control latency is not newly measured.",
+    "Scene supplement B02+B03 is separately costed; it is excluded from campaign totals. Generation-only setup and assignment/human waiting are excluded just as in the earlier model.",
+    "Only uv/NHT/adopted-asset download and validation setup is replaced by this run's measured setup. Real/backbone/split preparation remains inherited; the legacy render/Drive/training model remains separate from raw-NPZ probe throughput."
+  ],
+  "measured_generation_setup_seconds": 1052.059814956,
+  "inherited_training_input_extra_seconds": 98.21733380000023,
+  "conditional_training_setup_seconds": 1150.2771487560003,
+  "delta_setup_seconds_per_training_run": 29.113693337000313
+}

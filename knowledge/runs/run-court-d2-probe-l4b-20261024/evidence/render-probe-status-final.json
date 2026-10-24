@@ -1,0 +1,41 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "status",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--job-id",
+    "render-probe"
+  ],
+  "started_at": "2026-10-24T05:23:19.447386+00:00",
+  "wall_seconds": 0.3533271139895078,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "phase": "ready",
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "jobs": [
+      {
+        "schema_version": 1,
+        "job_id": "render-probe",
+        "status": "save_failed",
+        "updated_at": "2026-10-24T05:23:09.588806+00:00",
+        "returncode": 0,
+        "worker_pid": 11919,
+        "worker_token": "203633",
+        "launch_guarded": true,
+        "pid": 12113,
+        "process_token": "206931",
+        "started_at": "2026-10-24T05:07:34.319089+00:00",
+        "error": "rclone command could not complete: copy",
+        "failure_stage": "periodic_save",
+        "transport_alive": false
+      }
+    ],
+    "repo_root": "/content/tennis-lab"
+  },
+  "stderr": ""
+}

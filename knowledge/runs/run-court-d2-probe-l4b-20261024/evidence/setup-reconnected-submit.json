@@ -1,0 +1,41 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "exec",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--job-id",
+    "setup-reconnected",
+    "--persist",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z",
+    "--",
+    "bash",
+    "-lc",
+    "set -euo pipefail\nexport PATH=\"$(uv tool dir --bin):$PATH\"\nexport MAX_JOBS=2\nCOURT_PROBE_OUTPUT=\"$1\"\nCOURT_PROBE_TIMER=knowledge/runs/run-court-scale-pilot-l4-20261023/timed_command.py\nCOURT_PROBE_ASSETS=data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified\nmkdir -p \"$COURT_PROBE_OUTPUT/setup\" tmp\ngit rev-parse HEAD\nnvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader\npython3 \"$COURT_PROBE_TIMER\" --receipt \"$COURT_PROBE_OUTPUT/setup/uv.json\" -- uv sync --locked\npython3 \"$COURT_PROBE_TIMER\" --receipt \"$COURT_PROBE_OUTPUT/setup/nht.json\" -- .venv/bin/python -m spin setup-nht --render-only\npython3 \"$COURT_PROBE_TIMER\" --receipt \"$COURT_PROBE_OUTPUT/setup/asset-download.json\" -- .venv/bin/python .agents/skills/tennis-drive/scripts/drive.py download \"$COURT_PROBE_ASSETS\" \"$COURT_PROBE_ASSETS\" --verify\npython3 \"$COURT_PROBE_TIMER\" --receipt \"$COURT_PROBE_OUTPUT/setup/asset-verify.json\" -- .venv/bin/python -m src.synthetic_data_generation.scripts.court_scene_assets verify --root \"$COURT_PROBE_ASSETS\" --manifest-sha256 a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b\n",
+    "_",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z"
+  ],
+  "started_at": "2026-10-24T04:47:53.744495+00:00",
+  "wall_seconds": 1.8680927469977178,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "job_id": "setup-reconnected",
+    "status": "submitted",
+    "execution_backend": "notebook_kernel",
+    "remote": {
+      "ok": true,
+      "schema_version": 1,
+      "job_id": "setup-reconnected",
+      "status": "pending",
+      "updated_at": "2026-10-24T04:47:55.345313+00:00",
+      "returncode": null
+    },
+    "transport_log": "/home/kamimura/.local/state/tennis-lab/colab/court-d2-probe-l4b-20261024t044312z/jobs/setup-reconnected/transport.log"
+  },
+  "stderr": ""
+}

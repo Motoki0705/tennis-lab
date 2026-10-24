@@ -1,0 +1,40 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "exec",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--job-id",
+    "environment",
+    "--persist",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/environment",
+    "--",
+    ".venv/bin/python",
+    "-c",
+    "import importlib.metadata\nimport json\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nroot=Path(sys.argv[1])\nroot.mkdir(parents=True,exist_ok=False)\ncommands={\n    \"gpu\":[\"nvidia-smi\",\"--query-gpu=name,driver_version,memory.total\",\"--format=csv,noheader\"],\n    \"nvcc\":[\"nvcc\",\"--version\"],\n    \"gxx\":[\"g++\",\"--version\"],\n    \"nht_torch\":[\"/root/.local/share/uv/tools/nht/bin/python\",\"-c\",\"import torch; print(torch.__version__); print(torch.version.cuda)\"],\n    \"nht_commit\":[\"git\",\"-C\",\"third_party/nht\",\"rev-parse\",\"HEAD\"],\n    \"repository_commit\":[\"git\",\"rev-parse\",\"HEAD\"]}\nresult={}\nfor name,argv in commands.items():\n    command=subprocess.run(argv,check=True,capture_output=True,text=True)\n    result[name]={\"argv\":argv,\"stdout\":command.stdout,\"stderr\":command.stderr,\"returncode\":command.returncode}\nresult[\"numpy\"]=importlib.metadata.version(\"numpy\")\nresult[\"scipy\"]=importlib.metadata.version(\"scipy\")\np=root/\"environment.partial\"\np.write_text(json.dumps(result,indent=2)+\"\\n\")\np.rename(root/\"environment.json\")\n",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/environment"
+  ],
+  "started_at": "2026-10-24T05:29:40.619000+00:00",
+  "wall_seconds": 0.40006200700008776,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "job_id": "environment",
+    "status": "submitted",
+    "execution_backend": "notebook_kernel",
+    "remote": {
+      "ok": true,
+      "schema_version": 1,
+      "job_id": "environment",
+      "status": "pending",
+      "updated_at": "2026-10-24T05:29:40.611939+00:00",
+      "returncode": null
+    },
+    "transport_log": "/home/kamimura/.local/state/tennis-lab/colab/court-d2-probe-l4b-20261024t044312z/jobs/environment/transport.log"
+  },
+  "stderr": ""
+}

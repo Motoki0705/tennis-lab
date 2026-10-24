@@ -1,0 +1,19 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "doctor",
+    "--remote"
+  ],
+  "started_at": "2026-10-24T05:31:47.418064+00:00",
+  "wall_seconds": 1.462577797996346,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "version": "Version: 0.7.4",
+    "usage": "[colab] A new version of Colab CLI is available: 0.7.5 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\nCurrent balance: 336.34 compute units\nUsage rate: 0.00/hr\nActive assignments: 0"
+  },
+  "stderr": ""
+}

@@ -1,7 +1,7 @@
-<!-- knowledge-review: 863ff3867e7bbee00f64b02e319ab03505a4c3d17bcb5e5af6760f8becaada91 on 2026-10-24 -->
+<!-- knowledge-review: c932961eea157fe1e0a5bfb37f79cb89f7759a30163e35f272a6911e6d4ac656 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（CourtのD2凍結L4試行の失敗・保存・停止と、再実行前の予算判断を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-24（Court D2凍結192視点のL4比較・保存回復・停止と、本番条件の推奨を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -38,8 +38,9 @@ HTTP件数は未測定で、画像数だけでなくcache充填率を費用モ�
 CPU比較時はscript未pushのため192枚を凍結して停止した。その後の[指定版でのL4試行](nodes/synthetic_data_generation/000032-run-court-d2-probe-l4-20261024.md)は、
 共有一時rootの相対pathがNHT契約に違反して最初のsubprocess前に失敗し、完成画像・QAは0だった。
 前回は再描画せず、両jobをDrive保存してColabをstopした。親は実際にNHTへ依頼したcamera数で予算を数え、実依頼0枚の前回から凍結192枚を1回だけ再実行することを許可した。
-[新runのCPU preflight](nodes/synthetic_data_generation/000033-run-court-d2-probe-l4b-20261024.md)で、全192カメラのrequest構築・scene検証・JSON書き出しがsubprocess直前まで通った。次は新runでL4のQA・画質を確認してからD2・max/U・追加比較を判断する。
-新しいQA/JPEG費用は未測定で、費用表はsetupだけ更新した感度表に留める。best-val保持の修正は別子の担当。
+[全192カメラのCPU preflight後のL4比較](nodes/synthetic_data_generation/000033-run-court-d2-probe-l4b-20261024.md)は、NHT実依頼・完成・D5採択とも192枚、拒否0だった。
+25%拡張・margin0・HFOV92.5/110/125°を変更候補に推奨するが、hull外のぼけ/ghostとB03の暗さ、valとの全面支持差は残る。幾何fullやD5を画質の合格とは扱わない。
+raw保存の周期copy失敗を既存jobのsaveで回復し、全jobのDrive保存後にstop・割当0件を確認した。新QA/JPEGを反映した費用感度と、まず旧24k系列・10k更新/warmup500/val2k・追加比較の提案を親へ返す。最終条件は未合意で、本実験・追加学習は開始していない。
 
 ## 2026-10-22のCourt資産Colab照合
 

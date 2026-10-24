@@ -1,0 +1,14 @@
+{
+  "schema": "court_d2_recovery_receipt_v1",
+  "archive": "tmp/court-d2-probe-l4b/review-transfer/review.tar",
+  "archive_sha256": "f6595375ec1fede950735540c5d88625a21dd26e0e6873a657107c0569f8ee2d",
+  "archive_bytes": 16025600,
+  "verified_files": 411,
+  "recovered_root": "tmp/court-d2-probe-l4b/recovered",
+  "raw_arrays_copied_locally": 0,
+  "rgb_jpegs": 192,
+  "frame_records": 192,
+  "qa_reports": 16,
+  "source_commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+  "manifest_path_on_drive": "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/recovery/review-manifest.json"
+}

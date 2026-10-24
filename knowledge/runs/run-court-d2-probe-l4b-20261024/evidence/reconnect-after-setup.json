@@ -1,0 +1,35 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "reconnect",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z"
+  ],
+  "started_at": "2026-10-24T04:47:43.795568+00:00",
+  "wall_seconds": 2.666133960010484,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "jobs": [
+      {
+        "schema_version": 1,
+        "job_id": "setup",
+        "status": "cancelled",
+        "updated_at": "2026-10-24T04:46:28.910222+00:00",
+        "returncode": 130,
+        "completion_target": "cancelled",
+        "save_pid": 4395,
+        "save_token": "80382",
+        "drive_saved_at": "2026-10-24T04:46:42.439757+00:00",
+        "finished_at": "2026-10-24T04:46:42.439774+00:00"
+      }
+    ],
+    "repo_root": "/content/tennis-lab",
+    "connection": "reconnected"
+  },
+  "stderr": ""
+}

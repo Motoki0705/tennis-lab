@@ -1,0 +1,141 @@
+{
+  "schema": "court_d2_probe_timing_summary_v1",
+  "setup_seconds": {
+    "uv": 26.63447493000001,
+    "nht": 943.378663095,
+    "asset-download": 59.95022729800007,
+    "asset-verify": 22.09644963300002
+  },
+  "total_setup_seconds": 1052.059814956,
+  "probe_process": {
+    "schema": "court_pilot_command_measurement_v1",
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "cProfile",
+      "-o",
+      "tmp/court-d2-profile.rSIelD/profile.pstats",
+      "knowledge/runs/run-court-d2-probe-l4b-20261024/render_absolute.py",
+      "--selection",
+      "knowledge/runs/run-court-d2-support-cpu-20261024/render-selection.json",
+      "--asset-root",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+      "--output",
+      "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/probe"
+    ],
+    "started_at": "2026-10-24T05:07:34.440133+00:00",
+    "wall_seconds": 503.126398464,
+    "returncode": 0,
+    "sampled_gpu": true,
+    "gpu_samples": 958,
+    "gpu_peak_used_mib": 742,
+    "gpu_utilization_mean_percent": 0.5511482254697286,
+    "gpu_sampling_errors": [],
+    "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+  },
+  "nht_invocations": 16,
+  "nht_requested_cameras": 192,
+  "nht_subprocess_seconds": 75.63988309400065,
+  "scenario_render_qa_archive_seconds": 228.9688518349999,
+  "profile_stages": {
+    "load_four_scene_inputs": {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/runtime.py",
+      "line": 38,
+      "function": "load_scene_inputs",
+      "primitive_calls": 4,
+      "calls": 4,
+      "self_seconds": 0.003037769,
+      "cumulative_seconds": 24.373848918
+    },
+    "reconstruct_all_192_cameras": {
+      "file": "/content/tennis-lab/knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+      "line": 56,
+      "function": "reconstruct",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 1.542296906,
+      "cumulative_seconds": 234.63398697500003
+    },
+    "nht_public_client_including_subprocess_and_file_validation": {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/rendering/nht/client.py",
+      "line": 71,
+      "function": "render",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 0.001532467,
+      "cumulative_seconds": 78.795209243
+    },
+    "qa": {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/quality.py",
+      "line": 64,
+      "function": "evaluate_render",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.19514914600000002,
+      "cumulative_seconds": 2.0314137700000003
+    },
+    "jpeg_encoding": {
+      "file": "/content/tennis-lab/src/utils/data/image_record_store.py",
+      "line": 63,
+      "function": "encode_rgb_jpeg",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.0035702430000000003,
+      "cumulative_seconds": 0.24692740300000002
+    },
+    "raw_npz_archive": {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py",
+      "line": 694,
+      "function": "savez_compressed",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.002109339,
+      "cumulative_seconds": 122.915390262
+    }
+  },
+  "worker_final_save_seconds": {
+    "render": 124.688998,
+    "collect": 20.49667
+  },
+  "post_process_to_render_job_finished_seconds": 620.036069,
+  "post_process_before_finalizing_seconds": 495.347071,
+  "drive_inspect": {
+    "schema_version": 1,
+    "path": "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z",
+    "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+    "type": "directory",
+    "size_bytes": 505220402,
+    "modified": "2026-10-24T04:49:36.668Z",
+    "id": "1NflafsgBm4fmnElwicxkAeLTkSamXfVA",
+    "mime_type": null,
+    "file_count": 605
+  },
+  "probe_storage": {
+    "raw_npz_bytes": 470585260,
+    "jpeg_bytes": 10483336,
+    "sparse_record_bytes": 4243492
+  },
+  "renderer_release": {
+    "schema": "court_scale_renderer_release_v1",
+    "before": {
+      "uuid": "GPU-e86eb94e-5d2e-db9f-386c-8da5c0a88c3d",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "after": {
+      "uuid": "GPU-e86eb94e-5d2e-db9f-386c-8da5c0a88c3d",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "compute_processes_after": [],
+    "renderer_context_released": true
+  },
+  "notes": [
+    "The NHT subprocess interval includes its own scene/checkpoint initialization, rendering and public-file writes; it is not pure rasterizer time.",
+    "The public-client profile contains that subprocess interval. Do not add those two nested measurements.",
+    "QA, JPEG encoding and NPZ compression are separate profile entrances; unlisted JSON/filesystem/telemetry overhead remains in scenario wall time.",
+    "Periodic worker saving overlaps the process and is not isolated. Final-save seconds run from finalizing updated_at to finished_at, including final status writes.",
+    "Post-process time includes shell profile summarization, draining an in-progress periodic save and, after a save failure, inspection and explicit recovery latency before finalizing. It is not pure transfer time; process end is derived from its UTC start plus monotonic elapsed measurement.",
+    "Raw NPZ and diagnostic JPEGs include QA rejects. This is not JPEG-only accepted production publication throughput or capacity."
+  ]
+}

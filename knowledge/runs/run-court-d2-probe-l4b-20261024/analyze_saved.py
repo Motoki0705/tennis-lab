@@ -41,6 +41,12 @@ def verify_bundle(root: Path, source_commit: str) -> dict[str, Any]:
     selection = analysis.read(root / "probe/selection.json")
     assert isinstance(selection, dict)
     assert selection == analysis.read(analysis.FROZEN / "render-selection.json")
+    for invocation, scenario in zip(
+        ledger["invocations"], selection["scenarios"], strict=True
+    ):
+        assert invocation["camera_ids"] == [
+            sample["sample_id"] for sample in scenario["samples"]
+        ]
     assert (
         analysis.digest({k: v for k, v in selection.items() if k != "selection_sha256"})
         == selection["selection_sha256"]

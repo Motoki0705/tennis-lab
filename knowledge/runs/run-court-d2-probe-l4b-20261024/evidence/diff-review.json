@@ -1,0 +1,13 @@
+{
+  "schema": "court_d2_diff_review_v1",
+  "commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+  "patch_bytes": 0,
+  "untracked": [],
+  "source_changes": [],
+  "excluded_inputs": [
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+  ]
+}

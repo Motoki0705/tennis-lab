@@ -40,6 +40,83 @@
       "command": "PYTHONPATH=\"$PWD\" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python knowledge/runs/run-court-d2-probe-l4-20261024/verify_costs.py --scratch tmp/court-d2-probe-l4b/legacy-cost-fixture",
       "returncode": 0,
       "result": "300 old-input scalar identities across four variants"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 bash knowledge/runs/run-court-d2-probe-l4b-20261024/repro.sh tmp/court-d2-probe-l4b/recovered",
+      "returncode": 0,
+      "result": "QA/weighted analysis, all cost estimates, timing and 3 path-contract cases byte-identical; scratch tmp/court-d2-l4b-repro.ViFLWG"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python knowledge/runs/run-court-d2-probe-l4b-20261024/extract_review.py --archive tmp/court-d2-probe-l4b/review-transfer/review.tar --output tmp/court-d2-probe-l4b/recovered",
+      "returncode": 0,
+      "result": "411 exact inventory files; every SHA-256/size verified; tar hash matches collector stdout and verified Drive download"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 PYTHONPATH=\"$PWD\" .venv/bin/python knowledge/runs/run-court-d2-probe-l4-20261024/make_examples.py --analysis knowledge/runs/run-court-d2-probe-l4b-20261024/evidence/analysis.json --review tmp/court-d2-probe-l4b/review --figures knowledge/runs/run-court-d2-probe-l4b-20261024/figures",
+      "returncode": 0,
+      "result": "30 diagnostic cases, four 48-frame CPU slideshows; all video frames decoded, 1280x400, 2fps"
+    },
+    {
+      "command": "reprice_costs.py with old-input fixture and copied prior setup receipts; compare to prior evidence/setup-only-costs.json",
+      "returncode": 0,
+      "result": "60 prior-table scalar identities across four variants; fixture tmp/court-d2-probe-l4b/setup-cost-fixture"
+    },
+    {
+      "command": ".venv/bin/ruff check knowledge/runs/run-court-d2-probe-l4b-20261024",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".venv/bin/ruff format --check knowledge/runs/run-court-d2-probe-l4b-20261024",
+      "returncode": 0,
+      "result": "8 files formatted"
+    },
+    {
+      "command": "MYPYPATH=knowledge/runs/run-court-d2-support-cpu-20261024:knowledge/runs/run-court-d2-probe-l4-20261024 .venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-d2-probe-l4b-20261024/*.py",
+      "returncode": 0,
+      "result": "6 source files, no issues"
+    },
+    {
+      "command": "bash -n knowledge/runs/run-court-d2-probe-l4b-20261024/colab_render.sh knowledge/runs/run-court-d2-probe-l4b-20261024/repro.sh",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref f6f9818e7294db0400d416a1f5ba25f9b2c0a6aa",
+      "returncode": 0,
+      "result": "600 nodes, 0 errors, 218 existing missing-issue warnings"
+    },
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+      "returncode": 0,
+      "result": "410 repro.sh / 517 references, 0 missing, 0 unverifiable"
+    },
+    {
+      "command": "git diff --check",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": "SHA-256 comparison against scripts-and-inputs.json and analysis-sources.json",
+      "returncode": 0,
+      "result": "Pushed rendering/preflight adapter and frozen inputs unchanged; final postprocessing files match recorded hashes"
     }
-  ]
+  ],
+  "gpu_outcome": {
+    "render_process_returncode": 0,
+    "completed_frames": 192,
+    "nht_requested_cameras": 192,
+    "nht_calls": 16,
+    "qa_accepted": 192,
+    "qa_rejected": 0,
+    "render_executions": 1,
+    "render_retry": false,
+    "worker_initial_status": "save_failed",
+    "save_recovery": "evidence/render-save.json",
+    "final_status": "completed",
+    "drive_saved": true,
+    "colab_stopped": true,
+    "post_stop_active_assignments": 0,
+    "source_commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f"
+  }
 }

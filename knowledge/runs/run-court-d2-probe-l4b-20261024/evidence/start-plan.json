@@ -1,0 +1,30 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "start",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--ref",
+    "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+    "--gpu",
+    "L4",
+    "--dry-run"
+  ],
+  "started_at": "2026-10-24T04:43:17.694949+00:00",
+  "wall_seconds": 0.06158414100355003,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "status": "planned",
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "gpu": "L4",
+    "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+    "commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+    "drive": "gdrive:tennis_lab",
+    "repo_root": "/content/tennis-lab"
+  },
+  "stderr": ""
+}

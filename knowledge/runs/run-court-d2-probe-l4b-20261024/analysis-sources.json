@@ -1,0 +1,36 @@
+{
+  "schema": "court_d2_postprocessing_source_pins_v1",
+  "render_commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+  "render_source_pins": "scripts-and-inputs.json",
+  "scope": "Rendering used the pushed adapter unchanged. Postprocessing adds strict ledger/selection matching and save-recovery timing; these files are carried in this evidence bundle.",
+  "files": [
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/analyze_saved.py",
+      "sha256": "96158084fb9ede8313ecb7f50b5213190514589357f6ebf29a09e715acb72ae1"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/extract_review.py",
+      "sha256": "290790be1e42daa437208c84d8f49fd41b937e40069752e33747d51887b1863c"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/preflight.py",
+      "sha256": "ad8b428d8060cc3e3331b67019b2c79b46cd490129a1ee3edc9401bff0c4475b"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/render_absolute.py",
+      "sha256": "32ccd10c4f862fa83bc5177f3cfa08eadcb78d83117a2706d42b3b15d34b055e"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/reprice_costs.py",
+      "sha256": "3f274a57295ccef86e5eb4cd5b2fc29021ec52d18adcdbd7e34460334e945df7"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/repro.sh",
+      "sha256": "636aef1a90fafeda646674f984453b28a9d4a363da3a5b2558fbb57d3dfad13c"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/summarize_timing.py",
+      "sha256": "d356cafc3bfd8f13a9094127b5baee836384d4af1391d22d112965c7826e149a"
+    }
+  ]
+}

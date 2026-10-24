@@ -1,0 +1,41 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "exec",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--job-id",
+    "collect-review",
+    "--persist",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/recovery",
+    "--",
+    "bash",
+    "-lc",
+    "set -euo pipefail\nexport PYTHONPATH=\"$PWD\"\nexport PYTHONDONTWRITEBYTECODE=1\n.venv/bin/python knowledge/runs/run-court-d2-probe-l4-20261024/collect_probe.py --root \"$1\"\nmkdir \"$1/recovery\"\nmv \"$1/review.tar\" \"$1/recovery/review.tar\"\nmv \"$1/review-manifest.json\" \"$1/recovery/review-manifest.json\"\n",
+    "_",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z"
+  ],
+  "started_at": "2026-10-24T05:27:09.057188+00:00",
+  "wall_seconds": 0.8062937520007836,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4b-20261024t044312z",
+    "job_id": "collect-review",
+    "status": "submitted",
+    "execution_backend": "notebook_kernel",
+    "remote": {
+      "ok": true,
+      "schema_version": 1,
+      "job_id": "collect-review",
+      "status": "pending",
+      "updated_at": "2026-10-24T05:27:09.401257+00:00",
+      "returncode": null
+    },
+    "transport_log": "/home/kamimura/.local/state/tennis-lab/colab/court-d2-probe-l4b-20261024t044312z/jobs/collect-review/transport.log"
+  },
+  "stderr": ""
+}

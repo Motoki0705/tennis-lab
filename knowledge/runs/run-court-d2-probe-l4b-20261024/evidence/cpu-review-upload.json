@@ -1,0 +1,25 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "upload",
+    "tmp/court-d2-probe-l4b/cpu-review.tar",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/review-cpu.tar",
+    "--verify"
+  ],
+  "started_at": "2026-10-24T05:39:46.739077+00:00",
+  "wall_seconds": 66.47428894300538,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "action": "upload",
+    "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+    "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-pilot/tmp/court-d2-probe-l4b/cpu-review.tar",
+    "destination": "gdrive:tennis_lab/outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/review-cpu.tar",
+    "status": "completed",
+    "dry_run": false,
+    "verified": true
+  },
+  "stderr": ""
+}

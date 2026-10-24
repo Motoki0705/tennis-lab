@@ -28,5 +28,65 @@ PYTHONPATH="$PWD" .venv/bin/python \
 
 再検査時はscratchとoutputに新規pathを渡す。CPU検査は描画・画質の成功を示さない。
 L4のsetup・停止は [前回のresume手順](../run-court-d2-support-cpu-20261024/resume.md)に従い、
-renderだけをこのrunのadapterへ置き換える。実際のsession・push済みcommit・argv・
-回収先とreceiptは実行後のrun metadataに記録する。
+renderだけをこのrunのadapterへ置き換えた。実際のsession・push済みcommit・argvは
+[run.json](run.json) / [job-requests.json](job-requests.json) に記録する。
+adapterのcommitを許可されたbranchへpushした後、その正確な版をColabで使用した。
+レンダリング用adapterは実行後に変更していない。
+
+## 実行と保存の確認
+
+全192枚の描画processは正常終了した。workerは周期保存に失敗したため、
+失敗statusを保存した後、既存render-probe jobへ `colab.py save` を1回実行した。
+これは保存の回復で、描画commandの再提出やNHTの再実行ではない。
+保存後statusのcompleted・returncode0・drive_saved_atを確認してから回収jobへ進んだ。
+初回失敗statusと保存後statusは別ファイルのまま残している。
+
+collectorは既存JPEG・JSONだけをtarへまとめた。raw NPZ192件は元のDriveへ保持し、
+ローカルへ全量回収していない。CUDA・compiler・NHT/Torch版の読み取りjobも保存後、
+全jobのterminal/Drive保存とdiffを確認してstopした。停止後のdoctorは割当0件。
+通信断で未開始のsetup 1件のcancel/saveと、同じVMへの再接続も記録に残す。
+
+## Drive回収とCPU再集計
+
+実際の回収先は `tmp/court-d2-probe-l4b/review-transfer/` と
+`tmp/court-d2-probe-l4b/recovered/`。再取得する場合は、既存先を上書きせず新しいpathを指定する。
+Drive接続はskillで選んだ設定を使用し、設定内容を表示しない。
+
+```bash
+export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.conf"
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py download \
+  outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/recovery \
+  tmp/court-d2-probe-l4b/review-transfer-new --verify
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  knowledge/runs/run-court-d2-probe-l4b-20261024/extract_review.py \
+  --archive tmp/court-d2-probe-l4b/review-transfer-new/review.tar \
+  --output tmp/court-d2-probe-l4b/recovered-new
+bash knowledge/runs/run-court-d2-probe-l4b-20261024/repro.sh \
+  tmp/court-d2-probe-l4b/recovered-new
+```
+
+実回収ではcollector stdoutのtar digest/サイズとDriveから取得したbytesも照合した。
+extract_review.pyは全411ファイルの厳密inventory・hash・サイズを検査する。
+analyze_saved.pyは凍結selection・実行commit・NHT依頼192cameraの順序・QA bindingと理由を検査する。
+repro.shはGPUを無効にし、QA集計・費用・時間JSONを再計算して保存済み結果とbyte照合する。
+Colab開始・描画・学習を行わない。
+
+CPU集計scriptはrun bundle内の版を使う。描画時の初期source pinは
+[scripts-and-inputs.json](scripts-and-inputs.json)、保存回復の時間と台帳照合を含む
+最終postprocessing sourceは [analysis-sources.json](analysis-sources.json) に分けた。
+旧runのscriptはそのまま再利用し、旧analyzerのcommit固定部分だけを新adapterで明示的に照合し直す。
+
+## 閲覧成果物
+
+全192 JPEGとoverlay、16contact sheet、8原寸例、各scene48視点/2fpsのスライドショー4本を
+CPUで用意した。動画は独立視点のスライドショーで、連続軌道の滑らかさは測らない。
+各動画の全48frameをdecodeし、サイズとfpsを確認した。
+
+ローカル入口は `tmp/court-d2-probe-l4b/review/index.html`。
+Driveの `review-cpu.tar` は `review/index.html` と `native/` を含む。
+正確なDrive path・digest・容量は [cpu-review-archive.json](evidence/cpu-review-archive.json)、
+検証付きuploadは [cpu-review-upload.json](evidence/cpu-review-upload.json) を参照する。
+raw配列・モデル・正式dataset_versionはこの閲覧archiveに含めない。
+
+生成・学習の次の起動はこの再現手順に含まない。
+条件と画質の受入判断は [comparison.md](comparison.md) の推奨を親が検討してから固定する。

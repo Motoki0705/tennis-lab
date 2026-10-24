@@ -1,0 +1,13 @@
+{
+  "schema": "court_d2_cpu_review_archive_v1",
+  "local_path": "tmp/court-d2-probe-l4b/cpu-review.tar",
+  "sha256": "2ca7a005aff3517bef0aaa2accf76473609db5a722c790c137824f4ba8a32385",
+  "bytes": 94167040,
+  "files": 430,
+  "drive_path": "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/review-cpu.tar",
+  "render_calls": 0,
+  "raw_arrays_included": false,
+  "raw_overlay_pairs": 192,
+  "native_cases": 8,
+  "slideshows": 4
+}
