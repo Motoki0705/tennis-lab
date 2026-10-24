@@ -12,6 +12,7 @@ from typing import NoReturn
 from . import messages
 from .errors import BoardError
 from .notifiers import configured, receipts
+from .renaming import rename
 from .service import agents, whoami
 
 
@@ -26,6 +27,11 @@ def main(argv: list[str] | None = None) -> int:
         commands = parser.add_subparsers(dest="command", required=True)
         commands.add_parser("whoami", help="show the caller's active parent name")
         commands.add_parser("agents", help="list registered active parents")
+        renaming = commands.add_parser(
+            "rename", help="explicitly rename a registered parent"
+        )
+        renaming.add_argument("--parent", type=int, required=True)
+        renaming.add_argument("--name")
         posting = commands.add_parser("post", help="append a post to board names")
         posting.add_argument("--to", action="append", required=True)
         posting.add_argument(
@@ -87,6 +93,8 @@ def main(argv: list[str] | None = None) -> int:
                     body=body,
                     notifiers=configured(env),
                 )
+        elif args.command == "rename":
+            result = rename(env, parent=args.parent, name=args.name)
         elif args.command == "read":
             result = messages.read(env, args.post_id)
         elif args.command == "thread":
@@ -102,6 +110,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             result = whoami(env) if args.command == "whoami" else agents(env)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+        if args.command == "rename" and result["display_sync"]["status"] == "error":
+            return 1
         return 0
     except BoardError as exc:
         print(f"board: {exc}", file=sys.stderr)

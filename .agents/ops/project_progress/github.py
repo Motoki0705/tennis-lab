@@ -5,9 +5,12 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from parent.policy import nonempty, number, object_value
+
+if TYPE_CHECKING:
+    from parent.state import Store
 
 PAGE = "pageInfo { hasNextPage endCursor } totalCount"
 NESTED_PAGE = "pageInfo { hasNextPage endCursor }"
@@ -45,7 +48,16 @@ def complete(connection: Any) -> list[dict[str, Any]]:
 
 
 class Projects:
+    def __init__(self, *, store: Store | None = None) -> None:
+        self._store = store
+
     def api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        if self._store is not None and query.lstrip().startswith("query "):
+            with self._store.unlocked_read():
+                return self._api(query, variables)
+        return self._api(query, variables)
+
+    def _api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         result = subprocess.run(
             ["gh", "api", "graphql", "--input", "-"],
             input=json.dumps(

@@ -25,6 +25,16 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
 同じホストの全worktree・Claude/Codexで共有し、state内のflockで登録・起票・更新を直列化する。
+parent CLIはGitHubの各GET・ProjectのGraphQL queryの間だけregistryロックを離し、取得後に同じロックを取り直して
+registryの保存内容全体が一致することを検査する。担当・generation・tasks・委任予約・reviewsや
+他の親の記録が変わっていれば、古い結果を使わず終了値2で停止する。同じコマンドを再実行して取得し直す。
+未保存の変更や既存の参照を保つため、取得後にregistryを読み直して上書き・部分統合はしない。
+`status`もGitHub取得中にはロックを保持せず、registryを書き換えない。
+GitHubへの書き込みとregistryの検査・予約・保存は引き続きロック内で行い、担当の衝突・二重予約を防ぐ。
+更新操作は親ごとの操作ロックをregistryロックより先に取り、同じ親への委任・上限変更などの順序を維持する。
+`status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らず、他の親とも並行して取得する。
+Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取り、同じProjectへの更新も直列化する。
+途中まで保存・公開済みの操作は取り消さない。非ゼロ終了後は既存記録を照合して不足分だけ再実行する。
 `registry.json` の外側はversion=1を維持し、`parents` のキーは `owner/repo#親番号`。
 キーの `owner/repo` は大文字小文字を区別せず、小文字に正規化する。
 既存キーも読込時に正規化し、同じ親の別名レコードが衝突した場合は、統合・上書きせず読込を拒否する。

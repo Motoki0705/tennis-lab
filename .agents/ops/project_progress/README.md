@@ -141,7 +141,8 @@ Project更新・担当予約・agent起動・レビュー・merge・timerの変�
 権限不足を失敗にする。項目不足を既存Statusで補わない。cross-repositoryの子は明示調査を求める。
 archived itemは勝手に再追加せず、UIで明示的にunarchiveしてから再実行する。
 
-親registryの既存lockで同一ホストの書込みを直列化する。syncは最初の書込み直前にissue/PR/Projectを再取得し、
+同一ホストの書込みを直列化する。取得中のregistryロック解放・再検査と操作ロックの順序は
+[parent registry](../parent/README.md#責務と状態の正本)を参照する。syncは最初の書込み直前にissue/PR/Projectを再取得し、
 変化していたら拒否する。GitHub全体をatomicには更新できないため、途中失敗・応答喪失後は同じspec/eventで再実行する。
 フィールド・ビュー名とcontent IDを照合して不足分だけを更新し、最終再取得で収束を確認する。
 既存同名項目の型・選択肢が違う場合は上書きせず止め、UIで内容を照合する。

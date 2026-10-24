@@ -20,6 +20,7 @@ from .execution import authorization, require_request_authorization, task_errors
 from .github import GitHub
 from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
+from .state import Store
 
 OPS = Path(__file__).resolve().parents[1]
 
@@ -383,8 +384,9 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def worker_command(args: Any, gh: GitHub, parent: int, identity: str) -> dict[str, Any]:
-    store = workflow_store(args.state_dir, args.dispatcher_state_dir)
+def worker_command(
+    args: Any, gh: GitHub, parent: int, identity: str, store: Store
+) -> dict[str, Any]:
     session = ParentSession(gh, store, parent, identity)
     if args.command in {"start-worker", "continue-worker"}:
         return start_worker(

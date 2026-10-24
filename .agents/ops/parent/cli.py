@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
@@ -159,32 +159,42 @@ def main(argv: list[str] | None = None) -> int:
             if args.command in {"status", "basis-input", "basis-record", "basis-check"}
             else session_identity(dict(os.environ))
         )
-        gh = GitHub(args.repo)
-        parent = issue_number(args.parent, gh.repo)
         args.state_dir = (args.state_dir or state_directory()).resolve()
-        if args.command in {
-            "start-worker",
-            "continue-worker",
-            "inspect-worker",
-            "stop-worker",
-        }:
-            from .development import worker_command
-
-            worker_result = worker_command(
-                args, gh, parent, nonempty(identity, "parent identity")
-            )
-            print(
-                json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
-            )
-            return 0
-        parent_store: Store
-        if args.command == "workflow-report":
+        workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
+        store: Store
+        if args.command in workers | {"workflow-report"}:
             from .development import workflow_store
 
-            parent_store = workflow_store(args.state_dir, args.dispatcher_state_dir)
+            store = workflow_store(args.state_dir, args.dispatcher_state_dir)
         else:
-            parent_store = Store(args.state_dir)
-        with parent_store.locked() as store:
+            store = Store(args.state_dir)
+        gh = GitHub(args.repo, store=store)
+        parent = issue_number(args.parent, gh.repo)
+        operation = (
+            nullcontext()
+            if args.command
+            in {"status", "reconcile", "basis-input", "basis-check", "inspect-worker"}
+            else store.operation(f"{gh.repo.casefold()}#{parent}")
+        )
+        project_operation = (
+            store.operation(f"project:{args.owner.casefold()}#{args.project}")
+            if args.command in {"project-setup", "project-sync"}
+            else nullcontext()
+        )
+        transaction = nullcontext() if args.command in workers else store.locked()
+        with operation, project_operation, transaction:
+            if args.command in workers:
+                from .development import worker_command
+
+                worker_result = worker_command(
+                    args, gh, parent, nonempty(identity, "parent identity"), store
+                )
+                print(
+                    json.dumps(
+                        worker_result, ensure_ascii=False, indent=2, sort_keys=True
+                    )
+                )
+                return 0
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any

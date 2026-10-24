@@ -8,12 +8,12 @@ import os
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 from lib.identity import session_identity as session_identity
 
 from .execution import validate_authorization
-from .policy import object_value
+from .policy import digest, object_value
 
 
 def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -34,6 +34,18 @@ class Store:
         self.directory = directory
         self.path = directory / "registry.json"
         self.data: dict[str, Any] = {}
+        self._lock: TextIO | None = None
+
+    @contextmanager
+    def operation(self, key: str) -> Iterator[None]:
+        """Serialize a parent's mutations while its registry lock is released."""
+        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with (self.directory / f"operation-{digest(key)}.lock").open(
+            "a", encoding="utf-8"
+        ) as lock:
+            os.chmod(lock.name, 0o600)
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            yield
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
@@ -106,7 +118,42 @@ class Store:
             self.data["parents"] = parents
             # Keep the envelope readable by active older CLIs. Versioned evidence
             # is additive inside tasks/reviews; never rewrite legacy evidence.
-            yield self
+            self._lock = lock
+            try:
+                yield self
+            finally:
+                self._lock = None
+
+    @contextmanager
+    def unlocked_read(self) -> Iterator[None]:
+        """Fetch remotely without blocking peers, then reject a changed registry.
+
+        Compare the durable bytes, not self.data: callers may have unsaved
+        changes or hold references into it. Never reload over those references
+        or merge stale reservations after another process has saved.
+        """
+        lock = self._lock
+        if lock is None:
+            raise ValueError("GitHub read requires an active registry transaction")
+        before = (
+            self.path.read_bytes()
+            if self.path.exists() or self.path.is_symlink()
+            else None
+        )
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            after = (
+                self.path.read_bytes()
+                if self.path.exists() or self.path.is_symlink()
+                else None
+            )
+            if after != before:
+                raise ValueError(
+                    "parent registry changed during GitHub retrieval; retry the command to fetch current state"
+                )
 
     @property
     def parents(self) -> dict[str, Any]:
