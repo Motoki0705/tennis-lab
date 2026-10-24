@@ -383,11 +383,8 @@ def merge(
     if cycle_id and environment_cycle and cycle_id != environment_cycle:
         raise ValueError("daily CI cycle argument/environment mismatch")
     cycle_id = cycle_id or environment_cycle
-    # One mutex for every parent, including remote writes while registry is unlocked.
-    # Nonblocking acquisition never holds the shared parent registry while waiting.
     api = CycleAPI(CycleStore(session.gh.repo))
-    with api.store.repository_lock():
-        return _merge(session, enabled, api, cycle_id)
+    return _merge(session, enabled, api, cycle_id)
 
 
 def _merge(
@@ -507,135 +504,153 @@ def _merge_request(
             evaluations.append(entry)
             if entry["decision"] != GateDecision.MERGE or not enabled:
                 continue
-            # Re-read all coverage, base/head/diff, CI, parent state and dependencies
-            # immediately before the write. --match-head-commit closes the last race.
-            session.agreed()
-            fresh = collect(session, request)
-            decision = evaluate(session, request, fresh)[n]
-            current = next(s for s in fresh.snapshots if s["number"] == n)
-            entry = {
-                "pr": n,
-                **asdict(decision),
-                "snapshot": current,
-                "action": "blocked",
-            }
-            if current["head_sha"] != pr["head"]["sha"]:
-                entry.update(decision="blocked", reasons=("head_changed_before_merge",))
-            results[n] = entry
-            evaluations.append(entry)
-            if entry["decision"] != GateDecision.MERGE:
-                continue
-            check_adoptions(session, fresh.details[n])
-            reason = api.merge_reason(n, current["head_sha"], cycle_id)
-            if reason:
-                entry.update(decision="blocked", reasons=(reason,))
-                continue
-            if cycle_id:
-                main_ref = object_value(
-                    session.gh.get(f"repos/{session.gh.repo}/git/ref/heads/main")
-                )
-                permit = api.permit_worker(cycle_id)
-                if object_value(main_ref["object"])["sha"] != permit["target_sha"]:
-                    entry.update(decision="blocked", reasons=("daily_ci_main_changed",))
-                    continue
-            journal_path = attempt_path(session, n, current["head_sha"])
-            if merge_was_attempted(journal_path):
-                entry.update(decision="blocked", reasons=("merge_already_attempted",))
-                continue
-            attempt = {
-                "pr": n,
-                "head_sha": current["head_sha"],
-                "review_run_id": request["review_run_id"] if request else None,
-                "snapshot": current,
-                "status": "attempting",
-            }
-            if cycle_id:
-                api.begin_merge(cycle_id, n, current["head_sha"])
-            Store.write_json(journal_path, attempt)
-            with session.store.unlocked_read():
-                # Recheck after durable bookkeeping and registry unlock as well.
-                if cycle_id:
-                    try:
-                        permit = api.permit_worker(cycle_id)
-                    except ValueError:
-                        attempt["status"] = "not_sent_window_closed"
-                        Store.write_json(journal_path, attempt)
-                        api.abort_merge_before_send(cycle_id, n, current["head_sha"])
-                        entry.update(
-                            decision="blocked",
-                            reasons=("daily_ci_cycle_expired_or_inactive",),
-                        )
-                        continue
-                    timeout = min(
-                        60.0,
-                        (instant(permit["deadline_at"]) - api.clock()).total_seconds(),
+            # Initial collection/dry-run never holds the repo mutex. Serialize only
+            # a candidate's fresh verification, remote write and durable outcome so
+            # other parents' read-only evaluations cannot delay the daily controller.
+            with api.store.repository_lock():
+                # Re-read all coverage, base/head/diff, CI, parent state and dependencies
+                # immediately before the write. --match-head-commit closes the last race.
+                session.agreed()
+                fresh = collect(session, request)
+                decision = evaluate(session, request, fresh)[n]
+                current = next(s for s in fresh.snapshots if s["number"] == n)
+                entry = {
+                    "pr": n,
+                    **asdict(decision),
+                    "snapshot": current,
+                    "action": "blocked",
+                }
+                if current["head_sha"] != pr["head"]["sha"]:
+                    entry.update(
+                        decision="blocked", reasons=("head_changed_before_merge",)
                     )
-                    if timeout <= 0:
-                        attempt["status"] = "not_sent_window_closed"
-                        Store.write_json(journal_path, attempt)
-                        api.abort_merge_before_send(cycle_id, n, current["head_sha"])
+                results[n] = entry
+                evaluations.append(entry)
+                if entry["decision"] != GateDecision.MERGE:
+                    continue
+                check_adoptions(session, fresh.details[n])
+                reason = api.merge_reason(n, current["head_sha"], cycle_id)
+                if reason:
+                    entry.update(decision="blocked", reasons=(reason,))
+                    continue
+                if cycle_id:
+                    main_ref = object_value(
+                        session.gh.get(f"repos/{session.gh.repo}/git/ref/heads/main")
+                    )
+                    permit = api.permit_worker(cycle_id)
+                    if object_value(main_ref["object"])["sha"] != permit["target_sha"]:
                         entry.update(
-                            decision="blocked",
-                            reasons=("daily_ci_cycle_expired_or_inactive",),
+                            decision="blocked", reasons=("daily_ci_main_changed",)
                         )
                         continue
-                else:
-                    reason = api.merge_reason(n, current["head_sha"], None)
-                    if reason:
-                        attempt["status"] = "not_sent_window_closed"
-                        Store.write_json(journal_path, attempt)
-                        entry.update(decision="blocked", reasons=(reason,))
-                        continue
-                    timeout = 60.0
-                command = subprocess.run(
-                    [
-                        "gh",
-                        "pr",
-                        "merge",
-                        str(n),
-                        "--repo",
-                        session.gh.repo,
-                        "--merge",
-                        "--match-head-commit",
+                journal_path = attempt_path(session, n, current["head_sha"])
+                if merge_was_attempted(journal_path):
+                    entry.update(
+                        decision="blocked", reasons=("merge_already_attempted",)
+                    )
+                    continue
+                attempt = {
+                    "pr": n,
+                    "head_sha": current["head_sha"],
+                    "review_run_id": request["review_run_id"] if request else None,
+                    "snapshot": current,
+                    "status": "attempting",
+                }
+                if cycle_id:
+                    api.begin_merge(cycle_id, n, current["head_sha"])
+                Store.write_json(journal_path, attempt)
+                with session.store.unlocked_read():
+                    # Recheck after durable bookkeeping and registry unlock as well.
+                    if cycle_id:
+                        try:
+                            permit = api.permit_worker(cycle_id)
+                        except ValueError:
+                            attempt["status"] = "not_sent_window_closed"
+                            Store.write_json(journal_path, attempt)
+                            api.abort_merge_before_send(
+                                cycle_id, n, current["head_sha"]
+                            )
+                            entry.update(
+                                decision="blocked",
+                                reasons=("daily_ci_cycle_expired_or_inactive",),
+                            )
+                            continue
+                        timeout = min(
+                            60.0,
+                            (
+                                instant(permit["deadline_at"]) - api.clock()
+                            ).total_seconds(),
+                        )
+                        if timeout <= 0:
+                            attempt["status"] = "not_sent_window_closed"
+                            Store.write_json(journal_path, attempt)
+                            api.abort_merge_before_send(
+                                cycle_id, n, current["head_sha"]
+                            )
+                            entry.update(
+                                decision="blocked",
+                                reasons=("daily_ci_cycle_expired_or_inactive",),
+                            )
+                            continue
+                    else:
+                        reason = api.merge_reason(n, current["head_sha"], None)
+                        if reason:
+                            attempt["status"] = "not_sent_window_closed"
+                            Store.write_json(journal_path, attempt)
+                            entry.update(decision="blocked", reasons=(reason,))
+                            continue
+                        timeout = 60.0
+                    command = subprocess.run(
+                        [
+                            "gh",
+                            "pr",
+                            "merge",
+                            str(n),
+                            "--repo",
+                            session.gh.repo,
+                            "--merge",
+                            "--match-head-commit",
+                            current["head_sha"],
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=timeout,
+                        check=False,
+                    )
+                attempt["exit_code"] = command.returncode
+                actual = object_value(
+                    session.gh.get(f"repos/{session.gh.repo}/pulls/{n}")
+                )
+                if cycle_id:
+                    api.finish_merge(
+                        cycle_id,
+                        n,
                         current["head_sha"],
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout,
-                    check=False,
+                        actual.get("merge_commit_sha")
+                        if actual.get("merged_at")
+                        and actual["head"]["sha"] == current["head_sha"]
+                        and actual["base"]["ref"] == "main"
+                        else None,
+                    )
+                errors = completion(
+                    session, actual, write=actual.get("merged_at") is not None
                 )
-            attempt["exit_code"] = command.returncode
-            actual = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
-            if cycle_id:
-                api.finish_merge(
-                    cycle_id,
-                    n,
-                    current["head_sha"],
-                    actual.get("merge_commit_sha")
-                    if actual.get("merged_at")
-                    and actual["head"]["sha"] == current["head_sha"]
-                    and actual["base"]["ref"] == "main"
-                    else None,
+                if actual["head"]["sha"] != current["head_sha"]:
+                    errors = (*errors, "merge_head_mismatch")
+                if command.returncode and not actual.get("merged_at"):
+                    errors = (*errors, "merge_command_failed")
+                attempt["status"] = "unconfirmed" if errors else "merged"
+                Store.write_json(journal_path, attempt)
+                entry.update(
+                    action="merge_unconfirmed" if errors else "merged",
+                    decision="blocked" if errors else "merge",
+                    reasons=errors,
                 )
-            errors = completion(
-                session, actual, write=actual.get("merged_at") is not None
-            )
-            if actual["head"]["sha"] != current["head_sha"]:
-                errors = (*errors, "merge_head_mismatch")
-            if command.returncode and not actual.get("merged_at"):
-                errors = (*errors, "merge_command_failed")
-            attempt["status"] = "unconfirmed" if errors else "merged"
-            Store.write_json(journal_path, attempt)
-            entry.update(
-                action="merge_unconfirmed" if errors else "merged",
-                decision="blocked" if errors else "merge",
-                reasons=errors,
-            )
-            handled.add(n)
-            made_progress = actual.get("merged_at") is not None
-            # No reuse of the pre-merge collection for any remaining PR.
-            if made_progress:
-                break
+                handled.add(n)
+                made_progress = actual.get("merged_at") is not None
+                # No reuse of the pre-merge collection for any remaining PR.
+                if made_progress:
+                    break
         if not made_progress or not view.children:
             break
     return {

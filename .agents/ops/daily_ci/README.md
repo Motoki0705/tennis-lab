@@ -86,7 +86,8 @@ workerへ`DAILY_CI_CYCLE_ID`を渡し、正式gateも同じ値か`--daily-ci-cyc
 
 ## Merge・期限・再起動
 
-通常gateは同repoの共通mutexを取得し、既存review/coverage/HEAD/依存/競合を維持した上で実merge直前に
+通常gateの初期読取・dry-runはrepoのmutexを保持しない。候補PRごとの最新再検証から実merge・結果保存までだけ
+同repoの共通mutexを取得し、既存review/coverage/HEAD/依存/競合を維持した上で実merge直前に
 `merge_reason`を検査する。active枠では登録済み修復PRの一致headと明示cycleだけを通す。
 controller未起動でもenabledの06:00〜09:00は通常mergeを止め、09:00以降は固定期限から再開する。
 09:00前に送ったmergeの応答が期限後に返れば記録し、再CIや成功にしない。通信中のremote処理を

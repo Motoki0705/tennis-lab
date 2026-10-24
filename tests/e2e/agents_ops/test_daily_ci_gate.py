@@ -269,3 +269,49 @@ def test_repair_gate_detects_external_main_update(
         "daily_ci_main_changed"
         in next(r for r in value["results"] if r["pr"] == 100)["reasons"]
     )
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_dry_run_does_not_hold_or_require_controller_repository_lock(
+    gate_env: GateEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module, api, clock = connect_gate(gate_env, monkeypatch)
+    monkeypatch.setenv("AGENT_AUTO_MERGE", "0")
+    clock.set("2026-10-25T09:00:00+09:00")
+    with api.store.repository_lock():
+        code, value, error = call_gate(module, capsys)
+    assert code == 0, error
+    assert all(row["action"] == "dry_run" for row in value["results"])
+    assert not gate_env.merge_calls()
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_initial_collection_allows_controller_before_serialized_repair_merge(
+    gate_env: GateEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module, api, _ = connect_gate(gate_env, monkeypatch)
+    cycle_id = api.snapshot()["current_cycle_id"]
+    head = gate_env.review.p.state()["prs"][0]["head"]["sha"]
+    api.register_repair(cycle_id, 100, head, ["failing-test"])
+    collect = module.collect
+    calls = 0
+
+    def observe(*args: Any, **kwargs: Any) -> Any:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            with api.store.repository_lock():
+                assert api.permit_worker(cycle_id)["target_sha"]
+        return collect(*args, **kwargs)
+
+    monkeypatch.setattr(module, "collect", observe)
+    code, value, error = call_gate(module, capsys, cycle_id)
+    assert code == 1, error
+    assert (
+        next(row for row in value["results"] if row["pr"] == 100)["action"] == "merged"
+    )
+    assert len(gate_env.merge_calls()) == 1
