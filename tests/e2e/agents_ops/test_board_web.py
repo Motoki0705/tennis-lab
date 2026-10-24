@@ -457,7 +457,9 @@ def test_human_posts_render_in_timeline_and_thread(
         [
             "node",
             str(Path(__file__).with_name("board_rendering.cjs")),
-            str(Path(__file__).resolve().parents[3] / ".agents/ops/board/static/app.js"),
+            str(
+                Path(__file__).resolve().parents[3] / ".agents/ops/board/static/app.js"
+            ),
         ],
         input=json.dumps(posts[0]),
         env=world.env(),
@@ -1133,3 +1135,76 @@ def test_web_writes_do_not_initialize_or_migrate_a_database(
     world.store.path.unlink()
     assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
     assert not world.store.path.exists() and world.fake.calls == []
+
+
+def test_browser_human_conversation_workflow(
+    world: World, web: SimpleNamespace, tmp_path: Path
+) -> None:
+    """Optional real Chromium check; enable with Playwright on NODE_PATH."""
+    import os
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    available = subprocess.run(
+        ["node", "-e", "require.resolve('playwright')"],
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    if available.returncode:
+        pytest.skip("Install the optional Playwright package and set NODE_PATH")
+    root = world.post(
+        to=["human", world.assignments[2].name],
+        body='@human <img src=x onerror="alert(1)"> を文字として表示',
+    )
+    world.board.messages.reply(
+        world.env(2),
+        post_id=root["id"],
+        body="元の質問を確認しました。",
+        notifiers=world.routes,
+    )
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(
+        uvicorn.Config(
+            web.app.create_app(world.env(), notification_routes=world.routes),
+            log_level="error",
+            access_log=False,
+        )
+    )
+    worker = threading.Thread(
+        target=server.run, kwargs={"sockets": [sock]}, daemon=True
+    )
+    worker.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started and worker.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.started
+        result = subprocess.run(
+            ["node", str(Path(__file__).with_name("board_browser.cjs"))],
+            input=json.dumps(
+                {
+                    "url": f"http://127.0.0.1:{port}",
+                    "rootId": root["id"],
+                    "body": root["body"],
+                    "sender": world.assignments[1].name,
+                    "recipient": world.assignments[2].name,
+                }
+            ),
+            env={**os.environ, "XDG_STATE_HOME": str(tmp_path / "browser-state")},
+            text=True,
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    finally:
+        server.should_exit = True
+        worker.join(timeout=10)
+        sock.close()
+        assert not worker.is_alive()
