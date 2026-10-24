@@ -253,10 +253,10 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 これらの品質と実GitHub/systemdの挙動をfake試験の合格から推定しない。
 
 ```bash
-# ホストのHerdr pane環境を試験へ持ち込まない（bash）。PYTEST_LOCKは担当親の共有値を使う
+# ホストのHerdr pane環境を試験へ持ち込まない（bash）。共有lockは不要（親・子間の並列実行を許可）
 for name in ${!HERDR_@}; do unset "$name"; done
-flock "$PYTEST_LOCK" .venv/bin/python -m pytest tests/e2e/agents_ops/test_autonomous_development_loop.py -n 4 -q
-flock "$PYTEST_LOCK" .venv/bin/python -m pytest tests/e2e/agents_ops -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_autonomous_development_loop.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops -n 4 -q
 ```
 
 実行記録には検証対象commit、コマンド、除去した環境変数の名前、件数、失敗の分類を残す。
