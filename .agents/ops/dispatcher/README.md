@@ -243,7 +243,69 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 担当/委任予約の変更でも、影響のない判断・候補を保持し、previewにも同じ延期の内訳を返すことを確認する。
 巨大な本文/コメント・100件超のPRでは、原文の完全な復元・関連PR限定・省略の明示・digest維持を検証する。
 本物のagent/GitHub書込/担当予約/systemdはこの試験で起動しない。
-実agentによる代表例の意味的評価、実issueへの保留コメント、予定回・予約・起動を含む通し検証は実機検証担当へ引き継ぐ。
+実agentによる代表例の意味的評価、実issueへの保留コメント、ホストの予定回は下記の実機検証で確認する。
+
+部品をまたぐ通し試験は `tests/e2e/agents_ops/test_autonomous_development_loop.py`。
+同じfake GitHub・一時registry・使い捨てgitのまま、予定slot→共通ランナーの判定→予約→親のaccept→
+開発workflowの実装子→終了・親の結果確認→明示レビュー・指摘修正→gateのdry-run/merge・close→担当終了を照合する。
+判定・親・子は本番の共通ランナーにfake CLIを渡す。レビューは既存のfake reviewerを使い、
+自然言語による判断・実装・修正・テスト証拠の作成はfixtureが親子の操作として与える。
+これらの品質と実GitHub/systemdの挙動をfake試験の合格から推定しない。
+
+```bash
+# ホストのHerdr pane環境を試験へ持ち込まない（bash）。共有lockは不要（親・子間の並列実行を許可）
+for name in ${!HERDR_@}; do unset "$name"; done
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_autonomous_development_loop.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops -n 4 -q
+```
+
+実行記録には検証対象commit、コマンド、除去した環境変数の名前、件数、失敗の分類を残す。
+`jsonschema` が無い環境は依存を用意してから実行し、schema検証をskipしない。
+`test_board_doorbell.py::test_headless_root_hook_uses_native_ancestor_and_rejects_unowned_process` と
+`test_herdr_labels.py::test_lifecycle_hook_cannot_claim_an_unrelated_agent_process` は、
+実行元がagentであるホストで既知の環境依存がある。該当時も失敗として個別記録し、他の失敗と分ける。
+終了コードだけで受入を判断せず、収集件数・skip・失敗一覧と照合する。
+
+### 実機パイロットと証拠の記録
+
+導入・有効化は[下記手順](#systemdへの導入有効化停止)を担当親・人間が実施する。
+検証対象のcommitと実CLIのversion、設定snapshot、導入したunitの参照先をprivateな記録へ固定する。
+検証途中にmain・設定・unitを更新した場合は、その前後を別の検証として記録する。
+実装完了時点の未担当issueから目的・範囲・完了条件が明確な小さい作業を選び、
+正式親子・依存・assignee・registry・既存PR・人間の停止指示を照合する。
+共有基盤の許可など残る条件も記録し、パイロットのために免除しない。
+通常の予定回を観察する。`run --explicit` の結果は明示実行として区別し、予定回の証拠にしない。
+
+| 確認点 | 結び付ける証拠 |
+|---|---|
+| 入力と判断 | 入力issue/コメント・正式関係・依存、予定slot、判定のinput/result、理由コメント、自律根拠と出典 |
+| 担当とモデル | registryのgeneration・予約・accept・jobの対応、親Opusと子Sol/maxまたは明示Astra/max、設定の既定値・選択値・観測実効値 |
+| 実装と親の確認 | 子のbranch/HEAD・差分・実行したテストと結果、終了/回収・worker_ended、親のrecord-result |
+| レビューとmerge | 対象全PR・review-request/result・指摘と修正HEAD・resolve・coverage、gate結果と試行履歴、実PRのmerge・issueのclose理由 |
+| 全体の受入 | workflow-report、最終イベント、担当ended、全体の受入条件ごとの確認と残課題 |
+
+モデルの観測値が取得できない場合はunavailableの理由を残し、選択値で埋めない。
+同じsessionへの親・子の継続、Sol/maxとAstra/maxの両選択をruntimeと設定snapshotで照合する。
+開発パイロットに一方しか必要なければ、もう一方は別の安全な確認か未検証として記録する。
+採用提案を入口に使える場合は[ops-reportの実機E2E](../ops-report/README.md#改善ループ全体の実機e2e親が実施)の
+採用チェック→triage→生成/再利用issue・正式関係→予定回の証拠を同じパイロットへ結び付ける。
+同じ提案を再実行したときの重複起票なしと、triage時の開発親起動なしも確認する。
+
+予定回は08:00/20:00の両方、無変更回でも判定1回、頻繁な更新・子終了・supervisor再起動では追加判定なし、
+親1/子2の実稼働上限、複数slotを逃した復帰時の1回集約を、実行数とslotで照合する。
+割当不可の代表例は理由・根拠・再開条件がコメントへ残ることを確認する。
+起動失敗・途中停止・依存子停止/独立子継続・応答喪失・controller/supervisor再起動は、
+fake障害注入の結果と実機で安全に実施した確認を分け、[中断復旧](#担当実行枠中断復旧)へ対応付ける。
+単独issueのmerge/close後の親中断は[終了照合への復帰](../parent/development_workflow.md#待機完了担当終了)を使う。
+取消を含む親ではrecord-cancellation・引継ぎ先を照合し、取消を成功数へ加えない。
+
+公開するrun要約は、日時/JST slot、検証対象commit、入口issueとPR/レビュー/CIへのリンク、
+モデルの既定・選択・観測結果、試験件数、gate/merge/close・担当終了の結果をまとめる。
+privateな保存物をそのまま添付せず、ローカル絶対パス・生session ID・token等の秘密情報を除去する。
+継続の照合には公開用の別名（例: 親A・子A）を用い、別名と実identityの対応はprivateに保管する。
+未実施・未検証の項目は「項目 / fake・実機のどちらか / 確認済みの証拠 / 未実施理由 /
+残る確認・再開条件 / 担当」を残す。ホスト未有効化・予定回未観察・実merge未実施を完了と書かない。
+結果は検証issueへ置き、親issueには証拠へのリンクと全体受入・残課題を集約する。
 
 ## 半日周期とsupervisor
 
@@ -431,6 +493,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init --repo Motoki0705/ten
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher enable
 systemctl --user enable --now tennis-lab-dispatch-supervisor.service tennis-lab-dispatch-judgement.timer
 systemctl --user cat tennis-lab-dispatch-judgement.timer tennis-lab-dispatch-supervisor.service
+systemctl --user show tennis-lab-dispatch-judgement.timer -p ActiveState -p NextElapseUSecRealtime -p LastTriggerUSec
+systemctl --user show tennis-lab-dispatch-supervisor.service -p ActiveState -p SubState -p WorkingDirectory -p ExecStart
 systemctl --user list-timers --all 'tennis-lab-dispatch-*'
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher status
 journalctl --user -u tennis-lab-dispatch-judgement.service -u tennis-lab-dispatch-supervisor.service
@@ -443,9 +507,18 @@ systemctl --user disable --now tennis-lab-dispatch-supervisor.service
 ```
 
 再開時はinitを繰り返さず、status/実プロセスを照合してenableし、同じ2unitを有効化する。
+再開後も上のcat/show/list-timers/statusで次回08:00/20:00 JST・実効unitと実行枠を確認する。
+`disable` は新規の自動要求だけを止め、既存runtimeは継続する。全停止は上のshutdown手順を使い、
+終了・回収をstatusとprivateなruntime記録で確認する。再開は同じ担当/sessionへ戻し、registryを作り直さない。
+unit導入と有効化、次回予定の表示と予定回の実行はそれぞれ別に記録する。
+
+systemd serviceは対話shellの `~/.bashrc` を読まず、そこでexportした `AGENT_AUTO_MERGE` も引き継がない。
+実mergeの可否は[merge gate](../review/README.md#merge-gate)を呼ぶ親プロセスの環境で決まる。
+人間・担当親がホスト側のservice環境を決め、稼働中プロセスへ反映されたかとgateのdry-run/実merge結果を確認する。
+対話shellの値だけで有効化済みと扱わず、repoのunit・設定へ有効値を書き込まない。
 timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
 supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
 systemdのKillMode=control-groupは停止時の離脱子孫も対象にする。複数ホストの排他は行わない。
 
-検証は `test_dispatcher_supervisor.py`。fake GitHub/時計/CLI、一時registry、使い捨てgitとfake systemctlで行う。
-実エージェント・GitHub書込・ホストunit導入は実機検証へ引き継ぐ。
+schedule・予約・unitの個別検証は `test_dispatcher_supervisor.py`。
+通し試験と実機で残す証拠は[検証と未検証範囲](#検証と未検証範囲)を参照する。

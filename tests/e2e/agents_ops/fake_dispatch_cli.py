@@ -34,6 +34,9 @@ def main() -> None:
             json.dumps({"args": args, "agent": agent, "directory": str(directory)})
             + "\n"
         )
+    if (directory.parent / "cli-failure").exists():
+        print("injected startup failure", file=sys.stderr)
+        raise SystemExit(3)
     if agent == "claude":
         emit(
             {"type": "system", "subtype": "init", "session_id": session, "model": model}
@@ -82,6 +85,9 @@ def main() -> None:
                 "resume_condition": "CI完了通知",
             }
         )
+        final_path = directory.parent / "final.json"
+        if final_path.exists():
+            final = final_path.read_text()
         emit(
             {
                 "type": "assistant",
