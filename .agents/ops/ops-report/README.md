@@ -155,7 +155,7 @@ probeは本番と同じscope・namespace・chrootで、ホストの一時localho
 
 無効な `cpu_tests` の直接呼出しも結果と「要再現」を記録する。独立cloneは基準SHAに固定し、
 元repoへworktreeを登録せず、objectsもhardlink・alternatesを共有しない。基準版と配備版のwrapperが違えば停止する。
-共有 `pytest_locked.sh` はsandboxの**外**で実行する。一時的な `.venv/bin/python` launcherで共有lock取得後に
+共有 `pytest_locked.sh` はsandboxの**外**で実行する。一時的な `.venv/bin/python` launcherで
 scopeを作り、sandbox内の実Pythonへpytest引数を渡す。worker数はwrapperの固定値を使い、launcherは終了後に照合・除去する。
 隔離CPUテストの同時1件制限は専用の `isolated-cpu-tests.lock` で守る。通常のpytestはこの制限を受けない。実行全体は15分・4GiB・swapなしの一時user scopeで制限し、
 終了時にはそのscopeだけを停止して空であることを確認する。永続systemd設定やtimerは変更しない。
@@ -319,7 +319,7 @@ filesystemパス・prompt本文を記号に置換したもの。`/root/...` はf
   **選択肢を1つだけ**チェックする。2つ以上、または見出しだけのチェックはエラーとしてtriageが非ゼロ終了する（他の提案は処理する）。
 - 提案には目的・根拠・変更範囲・期待効果・受入条件・関連親issue・関連既存issueを描画する。
   agent出力の必須フィールドと型は `prompt.md` と検証器が定義する。関連親issueは指定できるが、
-  親未指定・親セッション未登録でもIssue化する。**チェックは方向性の採用であり、要件合意・共有基盤承認ではない。**
+  親未指定・親セッション未登録でもIssue化する。**チェックは方向性の採用であり、要件合意ではない。**
 - 日次triageはopenの完了レポートだけを対象にする。既存の提案メタデータを全open/closed issueから
   `index_proposals` で照合し、対応済みの提案はタイトル改名・close・正式親変更後も再利用する。
   新たな整理対象がない回は整理agentを起動しない。
@@ -611,7 +611,7 @@ unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` �
 2. 親未指定でtriageを実行し、採用提案だけが作業issueへ生成・再利用されること、出典digestとレポートリンクを確認する。
    同じtriageを再実行し、重複起票・予定外の割当判定agent/開発親起動が0回であることを記録する。
 3. 次の08:00・20:00 JST予定回で作業issueが収集され、独立した自律着手根拠と担当が記録されることを確認する。
-   人間合意・共有基盤承認が生成されないこと、取消・重要情報不足・既存担当では理由付きで停止することを確認する。
+   人間合意が生成されないこと、取消・重要情報不足・既存担当では理由付きで停止することを確認する。
    既存の手動親への受領・人間合意経路も、独立した作業を止めず継続できることを確認する。
 4. 親が対象PR群を確定して明示指示し、統合Codexレビューが1回だけ実行される証拠を保存する。
    未指示時は0回、指摘を担当へ戻して修正・CI/差分確認した後の自動再レビューも0回とする。

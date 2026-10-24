@@ -143,7 +143,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agreement-ignore
 `[{"id":123,"sha256":"parent.execution.comment_snapshotのcanonical JSON digest","reason":"要件と無関係な理由"}]`。
 未分類変更をすべて含め、現存する本文・login・IDのdigestを指定する。重複・古いdigest・欠落は拒否する。
 `event=agreement_comments` に元の合意digest/revision・分類連番・現在のsnapshot・分類理由を記録し、
-実行根拠・要件・担当generation・既存レビュー・共有基盤許可は変更しない。再送は冪等。
+実行根拠・要件・担当generation・既存レビューは変更しない。再送は冪等。
 分類済みコメントも編集・削除を再検査する。人間の指示を無関係として除外してはならない。
 要件変更・停止指示・削除への対応は `checking` → 実際の認識合わせ → `agree` で再合意する。
 同じ `agree` の再送だけでは鮮度不一致を解除せず、再合意後も旧レビューを流用しない。
@@ -172,7 +172,7 @@ activeな担当セッション本人だけが実行でき、要件確認中で�
 出力は `{parent, body_sha256}`。同じ担当generation・本文の再送は再投稿しない。
 
 noteは合意後コメント検査、自律根拠の指示コメント射影、review/mergeの要件digestから除外され、
-根拠・要件・既存レビュー・共有基盤許可を変更しない。noteに要件を書いても要件変更の合意にはならない。
+根拠・要件・既存レビューを変更しない。noteに要件を書いても要件変更の合意にはならない。
 要件変更は従来どおり `checking` → 人間との認識合わせ → `agree` で扱う。
 note後の通常コメントも毎回検査し、同じ本文でもマーカーのないコメントは自動除外しない。
 
@@ -261,7 +261,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 }
 ```
 
-文章とsourcesは非空。`human_confirmation` や共有基盤の許可を入れた自律根拠は拒否する。
+文章とsourcesは非空。`human_confirmation` を入れた自律根拠は拒否する。
 `basis_sha256` はbasis全体のcanonical JSON digest。人間合意は既存のagreedイベントを
 `kind=human_agreement, policy_version=human-agreement/v1` の同形式（実際のhuman_confirmation付き）へ
 読み替える。合意原文・agreement digest・公開マーカーは保持し、自律判断からagreedを作らない。
@@ -301,7 +301,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 有効な根拠の変更は旧reviewを失効させる。新しい根拠の記録だけで旧runを再承認できず、新しい理由とrunが必要。
 `basis-revoke --reason-file tmp/reason.md` と既存の `checking` は明示的な取消/保留として扱い、
 自律根拠の再登録では解除できない。人間との実際の再合意を既存agree経路で記録する。
-子の停止もbasis-recordでは解除しない。共有基盤の許可はreview側の別コマンドだけが扱う。
+子の停止もbasis-recordでは解除しない。
 ops-report報告容器への根拠登録を拒否し、提案由来の子には従来の採用/受領/別途合意の検証を維持する。
 採用済み提案の新たなIssue化経路はtriage側の後続実装が接続する。
 
@@ -360,7 +360,7 @@ open/closed全issueをページングしてキーを照合し、spec不一致・
 triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](../ops-report/README.md#採用提案の自動issue化) を参照する。
 その子の委任では、有効な独立の `autonomous_decision`、現在の正式親、open/完了レポートの採用・選択肢・内容digestを
 `adopted_tasks.py` で照合する。関連親の手動記入や架空のproposal_received/proposal_agreedは要求・生成しない。
-これは出典の検証経路だけを追加し、担当・generation・レビュー・merge・共有基盤承認の条件を変えない。
+これは出典の検証経路だけを追加し、担当・generation・レビュー・mergeの条件を変えない。
 開発workflowは `adopted_tasks.check_task_adoptions(gh, body)` を親と対象子の両方へ実行・merge直前に呼ぶ。
 単一anchorを持たない共通親・分割した子にもcontext出典があるため、`parse_proposal_source()` だけで省略しない。
 返却は出典の確認であり実行根拠ではない。既存のauthorizationとdispatcherの鮮度検査も必要。
@@ -543,13 +543,21 @@ recoverも既存の委任予約を保持し、照合結果から自動再起動�
 ## レビュー要求契約（schema version 2、version 1読取互換）
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-prepare --prs 1250 1251 1252 > tmp/targets.json
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request --run-id parent-1216-UUID --instruction-file tmp/instruction.md > tmp/review-request.json
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --prs 1250 1251 --instruction-file tmp/instruction.md \
+  --evidence-file tmp/result.md --worker-runs tmp/worker-runs.json > tmp/review-request.json
 ```
 
-`review-prepare` は全直属子にclosing指示がある全open PRを対象集合と照合する。
-PR未取得・欠落・重複・closed・draft・fork・親と無関係をエラーにし、部分的な要求を公開しない。
-未実装の子にPRがまだ無いことは許容する。段階ごとに、その時点の全open子PRを束ねる。
+`review-request --prs` は成果の登録・対象固定・明示指示を1コマンドで行う。
+子の終了は共通ランナーの記録から検査する。自律workerはdispatcherの現在のjob、
+手動workerは `--worker-runs` の `{子番号: 共通runnerのlog-dir}` を参照する。
+手動workerのtask IDは現在のdelegation IDを使う。未委任ならworker-runsは省略できる。
+終了・cleanup・worktree・branch・task IDの一致なしに予約を解放しない。
+従来の分離操作 `record-result` → `review-prepare` → `review-request --run-id` も使える。
+
+対象は直属子にclosing指示があるopen PRの任意の部分集合。
+PR未取得・重複・closed・draft・fork・親と無関係をエラーにする。
+他のopen PRの追加・更新・closeは選択した対象のcoverageを失効させない。
 分割していない単独issueではそのissueを閉じるPRを同じ方法で扱う。
 GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
 不足オブジェクトだけ `origin` からSHAをfetchする。

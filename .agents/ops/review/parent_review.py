@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import json
 import math
@@ -11,6 +12,7 @@ import os
 import re
 import subprocess
 import sys
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -54,7 +56,6 @@ from review_workspace import (  # noqa: E402
     build_prompt,
     changed_paths,
     full_diff,
-    verify_base_advances,
     workspace,
 )
 
@@ -77,7 +78,7 @@ def authorized(
     required_issues: set[int] | None = None,
 ) -> dict[str, Any]:
     row = session.agreed()
-    if not row["reviews"] or row["reviews"][-1]["request"] != request:
+    if not any(run["request"] == request for run in row["reviews"]):
         raise ValueError("review request is unknown, changed or superseded")
     history = session.history()
     state = review_state(history, request)
@@ -338,6 +339,18 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
 
 def run_review(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
+    directory = args.state_dir / "reviews" / request["review_run_id"]
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with (directory / "run.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("this review run is already active") from exc
+        return _run_review(args)
+
+
+def _run_review(args: argparse.Namespace) -> dict[str, Any]:
+    request = request_manifest(read_json(args.request))
     gh = GitHub(request["repo"])
     identity = session_identity(dict(os.environ))
     store = Store(args.state_dir)
@@ -352,16 +365,29 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
             execution = read_json(execution_file)
             if execution["request_sha256"] != digest(request):
                 raise ValueError("run ID was already used with a different snapshot")
-            if execution["status"] == "running":
-                raise ValueError(
-                    "run is running/interrupted (未完了); never retried automatically; issue a new explicit run ID with reason"
-                )
-            collect(session, request)
-            return {
-                "reused": True,
-                "result": validate_result(read_json(run_dir / "result.json")),
-                "publication": execution["status"],
-            }
+            if execution.get("agent_invocations") == 0:
+                # No reviewer was launched. Preserve the failed preparation and
+                # accept the parent's explicit resubmission of this same run.
+                attempt = run_dir / "preparation-attempts" / uuid.uuid4().hex
+                attempt.mkdir(parents=True, mode=0o700)
+                runtime = run_dir / "agent-runtime"
+                if runtime.exists():
+                    runtime.rename(attempt / "agent-runtime")
+                for name in ("execution.json", "result.json", "context.json"):
+                    source = run_dir / name
+                    if source.exists():
+                        (attempt / name).write_bytes(source.read_bytes())
+            else:
+                if execution["status"] == "running":
+                    raise ValueError(
+                        "run is running/interrupted after agent launch; never execute it twice"
+                    )
+                collect(session, request)
+                return {
+                    "reused": True,
+                    "result": validate_result(read_json(run_dir / "result.json")),
+                    "publication": execution["status"],
+                }
         authorized(session, request, launching=True)
         for pr in request["prs"]:
             if (
@@ -392,12 +418,54 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
     result = result_record(request, execution["started_at"], previous)
     try:
         context, diffs = collect(session, request)
+        context["instruction"] = next(
+            run.get("evidence", "")
+            for run in session.row["reviews"]
+            if run["request"] == request
+        )
         Store.write_json(run_dir / "context.json", context)
         root = Path(git("rev-parse", "--show-toplevel").decode().strip())
         template = (HERE / "prompt_template.md").read_text(encoding="utf-8")
         prompt = build_prompt(request, context, diffs, template)
         prompt_file, output_file = run_dir / "prompt.md", run_dir / "agent_output.md"
         prompt_file.write_text(prompt, encoding="utf-8")
+        cpu_tests = read_json(args.cpu_tests_file) if args.cpu_tests_file else {}
+        retrieval_config = {
+            "repo": str(root),
+            "repository": request["repo"],
+            "run_id": request["review_run_id"],
+            "commits": sorted(
+                {
+                    pr[key]
+                    for pr in request["prs"]
+                    for key in ("head_sha", "base_sha", "merge_base_sha")
+                }
+            ),
+            "journal_dir": str(run_dir / "retrieval"),
+            "cpu_tests": cpu_tests,
+            "isolation_proof": str(args.isolation_proof)
+            if args.isolation_proof
+            else None,
+        }
+        Store.write_json(run_dir / "retrieval-config.json", retrieval_config)
+        mcp_config = run_dir / "mcp-config.json"
+        Store.write_json(
+            mcp_config,
+            {
+                "review": {
+                    "command": sys.executable,
+                    "args": [
+                        "-m",
+                        "lib.review_tools.review_server",
+                        "--config",
+                        str(run_dir / "retrieval-config.json"),
+                    ],
+                    "env": {"PYTHONPATH": str(HERE.parent)},
+                    "tool_timeout_sec": 960,
+                }
+            },
+        )
+
         # Every accepted run reaches this call at most once. No per-PR agent loop.
         with workspace(root, request, context, diffs) as cwd:
             with store.locked():
@@ -418,6 +486,10 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
                     str(prompt_file),
                     "--out",
                     str(output_file),
+                    "--mcp-config",
+                    str(mcp_config),
+                    "--json-schema",
+                    str(HERE / "result_schema.json"),
                     "--mode",
                     "read-only",
                     "--log-dir",
@@ -451,8 +523,21 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
         (run_dir / "error.log").write_text(str(exc), encoding="utf-8")
         result = result_record(request, execution["started_at"], previous)
         result["error"] = public_error(session, exc)
+    runtime_result = run_dir / "agent-runtime" / "result.json"
+    if runtime_result.exists():
+        runtime_record = read_json(runtime_result)
+        if (
+            runtime_record.get("result") == "failed"
+            and runtime_record.get("agent_spawned") is False
+            and runtime_record.get("cleanup_complete") is True
+        ):
+            execution["agent_invocations"] = 0
     result["finished_at"] = now()
     Store.write_json(run_dir / "result.json", result)
+    if execution["agent_invocations"] == 0:
+        execution.update(status="preparation_failed", finished_at=now())
+        Store.write_json(execution_file, execution)
+        return {"reused": False, "result": result, "publication": "preparation_failed"}
     try:
         url = publish(session, run_dir, result)
         execution.update(status="published", parent_run_url=url)
@@ -516,7 +601,10 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
         originals = {p["number"]: p for p in request["prs"]}
         if args.pr not in originals:
             raise ValueError("PR is outside the reviewed set")
-        if args.finding not in {f["id"] for f in pr_findings(result, args.pr)}:
+        if args.finding not in {
+            "changes",
+            *(f["id"] for f in pr_findings(result, args.pr)),
+        }:
             raise ValueError("unknown finding for this PR")
         fixed = hex_value(args.fixed_head, 40)
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{args.pr}"))
@@ -531,22 +619,9 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
         if current["head_sha"] != fixed:
             raise ValueError("fixed-head is not the current PR head")
         original = originals[args.pr]
-        if any(
-            original[key] != current[key]
-            for key in ("base_ref", "merge_base_sha", "branch")
-        ):
-            raise ValueError(
-                "base ref/merge-base/branch changed; a new explicit review is required"
-            )
+        if original["branch"] != current["branch"]:
+            raise ValueError("PR branch identity changed")
         advances: tuple[BaseAdvance, ...] = ()
-        if original["base_sha"] != current["base_sha"]:
-            peers = [
-                object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
-                for n in originals
-                if n != args.pr
-            ]
-            advances = verify_base_advances(result, [current], peers)
-        git("merge-base", "--is-ancestor", original["head_sha"], fixed)
         diff = full_diff(original["head_sha"], fixed)
         paths = changed_paths(original["head_sha"], fixed)
         proof = evidence(read_json(args.evidence))
@@ -625,6 +700,12 @@ def parser() -> argparse.ArgumentParser:
     )
     commands = root.add_subparsers(dest="command", required=True)
     run = commands.add_parser("run")
+    run.add_argument(
+        "--cpu-tests-file",
+        type=Path,
+        help="parent-approved mapping of pinned SHA to existing CPU test nodeids",
+    )
+    run.add_argument("--isolation-proof", type=Path)
     run.add_argument("--request", required=True, type=Path)
     run.add_argument(
         "--agent-exec", type=Path, default=HERE.parent / "lib/agent_exec.sh"

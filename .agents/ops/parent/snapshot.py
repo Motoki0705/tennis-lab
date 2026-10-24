@@ -235,9 +235,12 @@ def transition(
     nonempty(evidence, "review instruction/evidence")
     if target not in REVIEW_STATES:
         raise ValueError("unknown review state")
-    if not row["reviews"] or row["reviews"][-1]["request"]["review_run_id"] != run_id:
-        raise ValueError("unknown or superseded review run")
-    run = row["reviews"][-1]
+    run = next(
+        (item for item in row["reviews"] if item["request"]["review_run_id"] == run_id),
+        None,
+    )
+    if run is None:
+        raise ValueError("unknown review run")
     # A run's progress does not grant coverage to a changed child. Gate checks
     # each PR separately so a stopped child does not stop independent work.
     auth = require_run_authorization(

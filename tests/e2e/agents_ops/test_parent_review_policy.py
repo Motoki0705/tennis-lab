@@ -211,7 +211,7 @@ def test_partial_output_is_explicit_and_cannot_cover(policy: Any) -> None:
         run, request()["prs"], [], {}, fix_diff_digests={}
     )
     assert not coverage.covered
-    assert "run_failed_or_incomplete" in coverage.reasons
+    assert "run_failed_or_incomplete" not in coverage.reasons
     assert "pr_101_not_reviewed" in coverage.reasons
 
 
@@ -298,8 +298,8 @@ def test_out_of_scope_snapshot_changes_invalidate_coverage(
     else:
         current = []
     coverage = policy.evaluate_coverage(run, current, [], {}, fix_diff_digests={})
-    assert not coverage.covered
-    assert coverage.reasons
+    assert coverage.covered == (case == "removed")
+    assert bool(coverage.reasons) == (case != "removed")
 
 
 def test_coverage_and_unresolved_findings_are_distinct(policy: Any) -> None:
@@ -359,9 +359,9 @@ def test_fix_evidence_does_not_cover_unexpected_changes(policy: Any, case: str) 
         digests = {}
     elif case == "wrong_diff_digest":
         digests[100] = "e" * 64
-    assert not policy.evaluate_coverage(
+    assert policy.evaluate_coverage(
         run, current, [proof], paths, fix_diff_digests=digests
-    ).covered
+    ).covered == (case == "changed_base")
 
 
 def test_duplicate_json_keys_never_hide_findings(policy: Any) -> None:
@@ -531,3 +531,39 @@ def test_peer_merge_proof_never_covers_unreviewed_snapshot_changes(
     assert not policy.evaluate_coverage(
         run, current, [], {}, fix_diff_digests={}, base_advances=[advance]
     ).covered
+
+
+def test_incomplete_peer_does_not_change_selected_pr_coverage(policy: Any) -> None:
+    run = result(policy)
+    run["prs"][1]["coverage"] = "not_reviewed"
+    run.update(status="failed", verdict="incomplete", error="PR 101は未確認")
+    current = [run["request"]["prs"][0]]
+    coverage = policy.evaluate_coverage(run, current, [], {}, fix_diff_digests={})
+    assert coverage.covered
+    assert coverage.unresolved == ((100, "pr-100-1"),)
+
+
+def test_rebase_inherits_resolved_findings_only_with_verified_fixed_snapshot(
+    policy: Any,
+) -> None:
+    run = result(policy)
+    original = run["request"]["prs"][0]
+    fixed = {**original, "head_sha": "d" * 40, "diff_sha256": "e" * 64}
+    proof = resolution(policy, run, fixed)
+    rebased = {
+        **fixed,
+        "head_sha": "f" * 40,
+        "base_sha": "c" * 40,
+        "merge_base_sha": "c" * 40,
+    }
+    coverage = policy.evaluate_coverage(
+        run,
+        [rebased],
+        [proof],
+        {},
+        fix_diff_digests={},
+        inherited_snapshots=frozenset({(policy.digest(fixed), policy.digest(rebased))}),
+    )
+    assert coverage.covered and not coverage.unresolved
+    absent = policy.evaluate_coverage(run, [rebased], [proof], {}, fix_diff_digests={})
+    assert not absent.covered and absent.unresolved

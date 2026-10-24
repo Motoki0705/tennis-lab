@@ -147,7 +147,7 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 形式の破損や通常の指示・明示分類した通常コメントの編集/削除は引き続き拒否する。
 
 startableは `execution_input()` の固定値と最新値を照合し、version付きbasisを生成して `record_autonomous()` に渡す。
-人間のconfirmationや共有基盤許可のキーは生成しない。既存の明示取消・checkingを自律判断で解除しない。
+人間のconfirmationのキーは生成しない。既存の明示取消・checkingを自律判断で解除しない。
 
 ## 割当側への候補契約
 
@@ -199,7 +199,7 @@ preview/deferred/failedから予約しない。recordedに延期が混在して�
 
 routeはstandaloneまたはparent。parentは正式な最上位親（単独なら自身）で、子を新しい親として返さない。
 basis_sha256/generationはmodelの自己申告ではなく `record_autonomous()` の戻り値。
-人間合意や共有基盤許可はこの候補に含まれない。
+人間合意はこの候補に含まれない。
 
 割当側は保存した `input.json` / `result.json` を読み、**既存Store.locked()の同じ区間内で**順に実行する:
 
@@ -226,7 +226,7 @@ triageは生成・再利用した**通常の作業issueをGitHubへ反映する�
 複数提案の対応・採用取消・復旧とparentの提案受領/合意の旧契約との接続はIssue化側の責務。
 不正・未知versionのtaskメタデータは収集エラーにし、空の出典や旧経路へ置き換えない。
 本入口から整理agent・割当判定agent・開発親を追加起動する通知経路は作らない。
-採用を人間合意や共有基盤許可に読み替えない。
+採用を人間合意に読み替えない。
 
 ## 検証と未検証範囲
 

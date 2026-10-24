@@ -585,7 +585,11 @@ def test_evidence_and_observation_use_the_same_timestamp(
             "2026-10-24T00:59:00+00:00",
         ]
     )
-    monkeypatch.setattr(repro, "now", lambda: next(times))
+    monkeypatch.setattr(
+        importlib.import_module("lib.review_tools.reproduction"),
+        "now",
+        lambda: next(times),
+    )
     result = request(scenario.client)
     evidence = scenario.book_now().snapshot["evidence"][result.data["evidence_id"]]
     assert evidence["acquired_at"] == result.data["finished_at"]

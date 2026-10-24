@@ -15,6 +15,8 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
+固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
+
 ## Codex queueの共通部品
 
 `codex_queue.py`は、呼出元が固定したthread/cwd/rollout/実行環境を使う。
@@ -92,6 +94,11 @@ Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数で
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
 
 ### JSON Schemaによる構造化出力
+
+`--mcp-config FILE` はread-onlyのCodex review/ops_reportだけで使うホスト提供MCP接続。
+JSONはserver名をキーにcommand/args/env/tool_timeout_sec/startup_timeout_secを指定する。
+原文をrun dirへ保存し、SHA-256をcontractへ固定する。resume時の変更は拒否する。
+この指定でsandboxや追加agentの設定を変更しない。
 
 `--json-schema FILE` を指定すると、そのUTF-8 JSON Schemaを起動前に検査し、原文をrun dirの
 `output-schema.json`へ固定する。検証にはproject依存の`jsonschema`を使う（導入時は`uv sync --locked`）。

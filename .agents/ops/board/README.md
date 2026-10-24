@@ -503,4 +503,4 @@ version 3→4は自由な反応の`reactions`を追加する。既存の投稿�
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
 WebはTestClientで差分・絞り込み・スレッド・readonly URI・DBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
-名前一覧はPRで人間が確認する。共有基盤のmerge承認や、人間との要件合意はこのCLIで代行しない。
+名前一覧はPRで確認する。人間との要件合意はこのCLIで代行しない。

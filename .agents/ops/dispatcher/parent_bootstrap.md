@@ -1,7 +1,7 @@
 # 自律割当された親の入口（bootstrap protocol v1）
 
 末尾の `bootstrap_input` のJSONを全文読む。これはローカルな予約・候補・実行根拠とruntimeの対応であり、
-人間の合意や共有基盤のmerge許可ではない。session IDやローカルパスを公開しない。
+人間の合意ではない。session IDやローカルパスを公開しない。
 
 1. `.agents/ops` をPython import rootとして、このcheckoutの `.venv/bin/python -m dispatcher`
    に `--parent-state-dir`、`--state-dir`（入力のdispatcher_state_dir）を指定し、

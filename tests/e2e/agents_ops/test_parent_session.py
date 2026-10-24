@@ -1224,7 +1224,9 @@ def test_invalid_review_set_has_no_public_request(
     else:
         state["prs"][0]["head"]["repo"]["full_name"] = "other/r"
     p.save(state)
-    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    p.cli("review-prepare", "--prs", *map(str, selected), ok=case == "missing")
+    if case == "missing":
+        return
     assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
 
 
@@ -1777,7 +1779,9 @@ def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
         '"event": "agreed"' in c["body"] for c in call["context"]["parent_comments"]
     )
     assert len(call["context"]["children"]) == 3
-    assert "インターフェース" in call["prompt"]
+    assert "--json-schema" in args and "--mcp-config" in args
+    assert "全体の完了条件" not in call["prompt"]
+    assert len(call["prompt"]) < 6000
     policy = review_policy_module(monkeypatch)
     parent_results = [
         x for x in policy.records(r.comments(1), "operator") if x["kind"] == "result"
@@ -1910,7 +1914,10 @@ def test_changed_or_incomplete_review_targets_fail_closed(
     else:
         (r.run_dir / "pr-100.diff").write_bytes(b"changed bytes")
     r.p.save(state)
-    value = r.run(ok=False, extra=extra)
+    value = r.run(ok=case == "added", extra=extra)
+    if case == "added":
+        assert len(r.calls()) == 1
+        return
     assert r.calls() == []
     if case != "diff":
         result = json.loads(value.stdout)["result"]
@@ -1996,7 +2003,7 @@ def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
     assert result["exception"]["previous_runs"] == [r.request["review_run_id"]]
     assert "追加レビュー" in result["exception"]["reason"]
     r.request_path.write_text(json.dumps(r.request))
-    r.run(ok=False)
+    assert json.loads(r.run().stdout)["reused"]
     assert len(r.calls()) == 2
 
 
@@ -2318,7 +2325,7 @@ def test_resolve_after_peer_merge_keeps_explicit_fix_coverage(
     assert len(r.calls()) == 1
 
 
-def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
+def test_merging_main_into_a_reviewed_pr_accepts_parent_resolution(
     parent_env: ParentEnv,
 ) -> None:
     r = make_review_env(parent_env, independent=True)
@@ -2335,7 +2342,7 @@ def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
     peer["head"]["sha"] = head
     peer["base"]["sha"] = tip
     r.p.save(state)
-    failure = r.cli(
+    r.cli(
         "resolve",
         "--run",
         r.request["review_run_id"],
@@ -2354,10 +2361,8 @@ def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
                 "reviewed_paths": ["change-1.txt"],
             }
         ),
-        ok=False,
     )
-    assert "a new explicit review is required" in failure.stderr
-    assert not list(r.run_dir.glob("resolution-*.json"))
+    assert list(r.run_dir.glob("resolution-*.json"))
     assert len(r.calls()) == 1
 
 
@@ -2420,7 +2425,8 @@ def test_large_diff_is_available_in_full_without_extra_review(
     call = r.calls()[0]
     assert call["diffs"]["100"].count("full-diff-content") == 15_000
     assert call["prompt"].count("full-diff-content") < 15_000
-    assert "一部のみ。全文ファイルを必ず読む" in call["prompt"]
+    assert "full-diff-content" not in call["prompt"]
+    assert len(call["prompt"]) < 6000
 
 
 def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> None:
@@ -2454,7 +2460,9 @@ def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> 
     assert any(p.returncode == 0 for p in completed), [p.stderr for p in completed]
     for proc in completed:
         if proc.returncode:
-            assert "running/interrupted" in proc.stderr
+            assert (
+                "already active" in proc.stderr or "running/interrupted" in proc.stderr
+            )
     assert len(r.calls()) == 1
     assert (
         json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 1
@@ -2470,3 +2478,80 @@ def test_parent_stopping_during_review_invalidates_the_result(
     assert all(p["coverage"] == "not_reviewed" for p in value["result"]["prs"])
     r.run(ok=False)
     assert len(r.calls()) == 1
+
+
+def test_preparation_failure_can_retry_same_run_without_public_failure(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    state = r.p.state()
+    original = state["prs"][0].get("statusCheckRollup", [])
+    state["prs"][0]["statusCheckRollup"] = None
+    r.p.save(state)
+    r.run(ok=False)
+    execution = json.loads((r.run_dir / "execution.json").read_text())
+    assert execution["agent_invocations"] == 0
+    assert execution["status"] == "preparation_failed"
+    assert r.calls() == []
+    assert not any("parent-review:v1" in c["body"] for c in r.comments(1))
+    state = r.p.state()
+    state["prs"][0]["statusCheckRollup"] = original
+    r.p.save(state)
+    completed = json.loads(r.run().stdout)
+    assert completed["result"]["status"] == "succeeded"
+    assert len(r.calls()) == 1
+    assert len(list((r.run_dir / "preparation-attempts").glob("*/execution.json"))) == 1
+    r.run()
+    assert len(r.calls()) == 1
+
+
+def test_combined_handoff_registers_results_and_instructs_subset(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    review_setup(p, independent=True)
+    requested = json.loads(
+        p.cli(
+            "review-request",
+            "--prs",
+            "100",
+            "--instruction-file",
+            p.note("PR 100の受入条件を確認する。"),
+            "--evidence-file",
+            p.note("実装と回帰テストを確認済み。"),
+        ).stdout
+    )
+    assert [pr["number"] for pr in requested["prs"]] == [100]
+    assert requested["review_state"] == "instructed"
+    state = json.loads(p.cli("status").stdout)
+    assert state["review"][-1]["state"] == "instructed"
+
+
+def test_common_runner_prelaunch_failure_does_not_consume_review(
+    review_env: ReviewEnv,
+) -> None:
+    r = review_env
+    original = r.fake.read_text()
+    injected = """
+if os.environ.get("REVIEW_WRAPPER_PRELAUNCH_FAIL"):
+    runtime = pathlib.Path(opt("--run-dir"))
+    runtime.mkdir()
+    (runtime / "result.json").write_text(json.dumps({"result":"failed", "agent_spawned":False, "cleanup_complete":True}))
+    sys.exit(1)
+"""
+    r.fake.write_text(
+        original.replace(
+            'cwd = pathlib.Path(opt("--cwd"))',
+            injected + '\ncwd = pathlib.Path(opt("--cwd"))',
+        )
+    )
+    r.run(ok=False, extra={"REVIEW_WRAPPER_PRELAUNCH_FAIL": "1"})
+    assert (
+        json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 0
+    )
+    assert r.calls() == []
+    r.run()
+    assert len(r.calls()) == 1
+    assert list(
+        (r.run_dir / "preparation-attempts").glob("*/agent-runtime/result.json")
+    )
