@@ -1,4 +1,5 @@
 import json
+import shutil
 import time
 from pathlib import Path
 
@@ -7,6 +8,8 @@ import pytest
 from fastapi.testclient import TestClient
 from numpy.typing import NDArray
 
+from src.tasks.ball_detection.data.distribution import prepare_distribution
+from src.tasks.ball_detection.data.distribution.manifest import distribution_files
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.dataset_statistics import (
     StatisticsConfig,
@@ -82,13 +85,31 @@ def test_raw_text_and_interpolation_support_require_matching_snapshot(tmp_path):
     record.update(annotation_path=str(original), annotation_sha256=dual_sha256(original), provenance={'annotation_issues': ['イベント位置が未確定']})
     (root / 'metadata.json').write_text(json.dumps(metadata))
     store = BallFrameStore(root)
-    details = annotation_details(record, store.clips[0], tmp_path)
+    details = annotation_details(store, record, store.clips[0], tmp_path)
     assert details.notes == {10: '背景との重なり'} and details.endpoints == {10: (9, 11)}
     assert details.issues == ('イベント位置が未確定',)
+    stage = tmp_path / 'distribution-stage'
+    prepare_distribution(root, stage, version='statistics-v1', clip_ids=[store.clips[0].clip_id], inputs={})
+    for name, source in distribution_files(stage, source_directory=root).items():
+        destination = stage / name
+        if destination != source:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+    moved = tmp_path / 'relocated'
+    stage.rename(moved)
+    relocated = BallFrameStore(moved)
+    relative_meta = json.loads((moved / 'metadata.json').read_text())['clips'][0]
+    relocated_details = annotation_details(relocated, relative_meta, relocated.clips[0], tmp_path)
+    assert relocated_details.availability == details.availability == 'available'
+    assert relocated_details.notes == details.notes
+    assert relocated_details.endpoints == details.endpoints
+    assert relocated_details.sha256 == details.sha256
+    assert relocated_details.notes_supported == details.notes_supported
+    assert relocated_details.source_notes == details.source_notes
     original.write_text('{}')
-    assert annotation_details(record, store.clips[0], tmp_path).availability == 'hash_mismatch'
+    assert annotation_details(store, record, store.clips[0], tmp_path).availability == 'hash_mismatch'
     original.unlink()
-    assert annotation_details(record, store.clips[0], tmp_path).availability == 'missing_file'
+    assert annotation_details(store, record, store.clips[0], tmp_path).availability == 'missing_file'
 
 
 def test_pose_integrity_and_frame_alignment(dataset):

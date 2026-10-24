@@ -3,6 +3,8 @@
 学習・評価・レビューの現行入力は、`data/ball_detection/<version>` の統一ball frame storeです。
 増分公開されたversionではcomponentを分け、`data/ball_detection/<version>/frames/`を開きます。
 snapshotの公開・導入・復旧は[増分公開API](../generate_dataset/frame_store/publishing/README.md)を参照してください。
+既存snapshotから別versionの可搬subsetを作る場合は[配布store API](distribution/README.md)を使います。
+RGB shardを複製・hardlinkせずに配布ファイルと全量の内容manifestを準備できます。
 現物のversion・件数・source/split内訳はレビューUIの「体系・内訳を見る」で確認します。
 その画面は検証済みindexから集計するため、READMEへ件数を重複管理しません。
 

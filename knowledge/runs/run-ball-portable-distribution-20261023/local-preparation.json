@@ -1,0 +1,54 @@
+{
+  "completed_at": "2026-10-23T01:19:10.556160+00:00",
+  "disk_after": {
+    "free": 87685488640,
+    "total": 1081101176832,
+    "used": 938423332864
+  },
+  "disk_before": {
+    "free": 88518365184,
+    "total": 1081101176832,
+    "used": 937590456320
+  },
+  "elapsed_seconds": 2104.21826832401,
+  "schema_version": 1,
+  "source_files_stat_checked": 3336,
+  "source_snapshot": "outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+  "source_versions_unchanged": true,
+  "started_at": "2026-10-23T00:44:57.567792+00:00",
+  "units": {
+    "test": {
+      "common_frames": 143074,
+      "distribution_sha256": "fbf6e1081c6a1de7812070a5af1fba492e8a8f88c46b1b06c5d0740aecd3e588",
+      "files": 388,
+      "local_generated_bytes": 36875857,
+      "local_samples_equal": true,
+      "payload_files": 225,
+      "prepare_seconds": 152.10018119702,
+      "sample_seconds": 8.424932802998228,
+      "sampled_windows": 9,
+      "size_bytes": 28359923470,
+      "split_clips": {
+        "test": 225
+      },
+      "verification_seconds": 155.93865001000813
+    },
+    "train-val": {
+      "common_frames": 793017,
+      "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+      "files": 2926,
+      "local_generated_bytes": 258563972,
+      "local_samples_equal": true,
+      "payload_files": 1537,
+      "prepare_seconds": 926.3419982580235,
+      "sample_seconds": 17.786625320994062,
+      "sampled_windows": 18,
+      "size_bytes": 157029428456,
+      "split_clips": {
+        "train": 1342,
+        "val": 195
+      },
+      "verification_seconds": 842.32251553901
+    }
+  }
+}

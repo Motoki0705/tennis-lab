@@ -1,0 +1,13 @@
+{
+  "archive_path": "tmp/colab-b-verification-receipts-20261023T133025.tar.gz",
+  "drive_directory": "operations/colab/ball-distribution-check-b-20261023/closure",
+  "drive_id": "1JStkw3h3YAAdSbbqfWx47QBRs9mg44iU",
+  "drive_path": "operations/colab/ball-distribution-check-b-20261023/closure/colab-b-verification-receipts-20261023T133025.tar.gz",
+  "inventory_observed_at": "2026-10-23T13:32:41.347263+00:00",
+  "md5": "08678cbb954118fbe32a67cd17320b47",
+  "receipt_files": 62,
+  "schema_version": 1,
+  "sha256": "4c27c5d2a97b8389d15676111d77a177c45fcb2e67a1bd2836778b112d1d9b6d",
+  "size_bytes": 28859,
+  "status": "verified"
+}

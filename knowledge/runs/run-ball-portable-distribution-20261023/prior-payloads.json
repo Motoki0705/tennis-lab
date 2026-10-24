@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "source_manifest_sha256": "657e50f569f2befc317b23270670862d8dc7d656ab743b353c1d53f0a213e4d6",
+  "units": {
+    "test": {
+      "all_available_prior_rgb_hashes_match": true,
+      "newly_hashed_clips_without_prior_play_window": 13,
+      "prior_manifest_rgb_matches": 212
+    },
+    "train-val": {
+      "all_available_prior_rgb_hashes_match": true,
+      "newly_hashed_clips_without_prior_play_window": 54,
+      "prior_manifest_rgb_matches": 1483
+    }
+  }
+}

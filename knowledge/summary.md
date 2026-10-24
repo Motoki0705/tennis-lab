@@ -1,4 +1,4 @@
-<!-- knowledge-review: def9caf68144e0c9c554e23704afab7cf65922df505fd8f78eed13bcb8d51545 on 2026-10-24 -->
+<!-- knowledge-review: bb602c6f7456e3bc0512fd06a62125e51a92e382cec27ceaa5b00eab63ff493c on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（ボールの全フレーム学習経路の診断と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
@@ -343,6 +343,19 @@ CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・�
 両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
 これは低解像度の機能確認で、既存の採用判断を変えない。
 実データ720p・長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+
+2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
+合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
+既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
+Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256・18窓の意味一致・停止を確認した。
+新VMでは取得＋CLI照合が約46.6分、全件SHA-256が約7.4分で、取得後の空きは約42.7 GBだった。
+初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
+長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
+窓生成・hybrid不在教師・統計readerの原注釈pathをstore resolverへ統一した。
+移動fixtureのdataset読込と、実データの全T・train/evaluationで、共通区間・pack・owner・教師kindの一致を確認した。
+ローカルの未配置stageは元payloadを明示する読み取り専用の照合経路を使い、通常読込のshard不足は引き続き失敗する。
+PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
+精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "units": {
+    "train-val": {
+      "version": "ball-mix1800-720p-all-frame-train-val-v1",
+      "absolute_metadata_paths": 0,
+      "local_payload_files": 0,
+      "annotation_path_base": "store"
+    },
+    "test": {
+      "version": "ball-mix1800-720p-all-frame-test-v1",
+      "absolute_metadata_paths": 0,
+      "local_payload_files": 0,
+      "annotation_path_base": "store"
+    }
+  }
+}
