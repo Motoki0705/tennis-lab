@@ -8,7 +8,7 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
@@ -141,9 +141,20 @@ def main(argv: list[str] | None = None) -> int:
             if args.command in {"status", "basis-input", "basis-record", "basis-check"}
             else session_identity(dict(os.environ))
         )
-        gh = GitHub(args.repo)
+        store = Store(state_directory())
+        gh = GitHub(args.repo, store=store)
         parent = issue_number(args.parent, gh.repo)
-        with Store(state_directory()).locked() as store:
+        operation = (
+            nullcontext()
+            if args.command in {"status", "reconcile", "basis-input", "basis-check"}
+            else store.operation(f"{gh.repo.casefold()}#{parent}")
+        )
+        project_operation = (
+            store.operation(f"project:{args.owner.casefold()}#{args.project}")
+            if args.command in {"project-setup", "project-sync"}
+            else nullcontext()
+        )
+        with operation, project_operation, store.locked():
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any

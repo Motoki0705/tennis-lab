@@ -4,14 +4,27 @@ from __future__ import annotations
 
 import json
 import subprocess
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
 
 from .policy import object_value
 
+if TYPE_CHECKING:
+    from .state import Store
+
 
 class GitHub(IssueGitHub):
+    def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
+        super().__init__(repo)
+        self._store = store
+
+    def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
+        if self._store is None:
+            return super().get(endpoint, missing_parent=missing_parent)
+        with self._store.unlocked_read():
+            return super().get(endpoint, missing_parent=missing_parent)
+
     def rows(self, endpoint: str) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         page = 1
