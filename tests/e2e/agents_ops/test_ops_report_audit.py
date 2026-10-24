@@ -1,8 +1,7 @@
-"""Parallel audit provenance, fail-closed integration, partial publication and retry."""
+"""Discovery-driven rounds, native evidence, partial publication and same-issue resume."""
 
 from __future__ import annotations
 
-import copy
 import importlib
 import json
 import signal
@@ -17,55 +16,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/ops-report"))
 audit: Any = importlib.import_module("opsreport.audit")
 agent: Any = importlib.import_module("opsreport.agent")
-BASE = "a" * 40
-
-
-@pytest.fixture
-def scenario(agent_output: dict[str, Any]) -> dict[str, Any]:
-    data = agent_output
-    data["assignments"] = [
-        {
-            "id": key,
-            "agent_id": f"native-{key}",
-            "agent_type": "scout",
-            "base_sha": BASE,
-            "started_at": f"2026-10-18T00:00:0{i}+00:00",
-            "finished_at": f"2026-10-18T01:00:0{i}+00:00",
-            "status": "completed",
-            "conclusion": f"{key}の調査結果",
-            "evidence": ["src/model.py:12 / #50"],
-            "counterevidence": [],
-            "unconfirmed": [],
-            "findings": [],
-        }
-        for i, key in enumerate(audit.AREAS)
-    ]
-    data["decisions"] = []
-    for i, prop in enumerate(data["proposals"]):
-        key = "code" if i == 0 else "governance"
-        topic = f"problem-{i}"
-        prop["sources"] = [f"{key}:{topic}"]
-        next(r for r in data["assignments"] if r["id"] == key)["findings"].append(
-            {
-                "topic": topic,
-                "position": "support",
-                "conclusion": prop["title"],
-                "evidence": prop["evidence"],
-            }
-        )
-        data["decisions"].append(
-            {
-                "sources": prop["sources"],
-                "outcome": "propose",
-                "reason": "根拠を確認した",
-                "evidence": prop["evidence"],
-            }
-        )
-    return data
-
-
-def _integrate(data: dict[str, Any], **kwargs: Any) -> Any:
-    return audit.integrate(json.dumps(data), {"base_sha": BASE}, {7}, **kwargs)
+native: Any = importlib.import_module("opsreport.native")
 
 
 def _reports(ops: Any) -> list[dict[str, Any]]:
@@ -85,183 +36,130 @@ def _latest(ops: Any) -> Path:
     return max(paths, key=lambda p: p.stat().st_mtime_ns)
 
 
-def test_complete_result_links_every_proposal_to_scout_and_base(
-    scenario: dict[str, Any],
-) -> None:
-    result = _integrate(scenario)
-    assert result.complete and result.errors == []
-    assert set(result.results) == set(audit.AREAS)
-    assert "code:problem-0" in result.analysis.proposals[0].evidence
-    assert BASE in result.analysis.proposals[0].evidence
-    assert len(result.decisions) == 2
+def _tasks(run: Path) -> dict[str, Any]:
+    tasks: dict[str, Any] = _json(run / "audit.json")["ledger"]["tasks"]
+    return tasks
 
 
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda d: d["assignments"].pop(0),
-        lambda d: d["assignments"].append(copy.deepcopy(d["assignments"][0])),
-        lambda d: d["assignments"][0].update(base_sha="b" * 40),
-        lambda d: d["assignments"][0].update(agent_type="default"),
-        lambda d: d["assignments"][0].update(started_at="2027-01-01T00:00:00+00:00"),
-        lambda d: d["assignments"][0].update(started_at="2026-10-18T00:00:00"),
-        lambda d: d["assignments"][0].update(unconfirmed=["未調査"]),
-        lambda d: d["assignments"][0].pop("counterevidence"),
-        lambda d: d["assignments"][0]["findings"].append(
-            copy.deepcopy(d["assignments"][0]["findings"][0])
-        ),
-        lambda d: d["assignments"].append({"id": []}),
-        lambda d: d["assignments"].append(123),
-        lambda d: d["assignments"][0].update(status=[]),
-        lambda d: d["assignments"][1].update(agent_id="native-code"),
-        lambda d: d["decisions"].pop(0),
-        lambda d: d["decisions"].append(copy.deepcopy(d["decisions"][0])),
-        lambda d: d["proposals"][0].update(sources=["unknown:problem"]),
-        lambda d: d["proposals"][1].update(title=d["proposals"][0]["title"]),
-    ],
-)
-def test_invalid_return_never_becomes_complete(
-    scenario: dict[str, Any], mutate: Any
-) -> None:
-    mutate(scenario)
-    result = _integrate(scenario)
-    assert not result.complete and result.errors
-    assert result.analysis.memory_update is None
-    assert "governance" in result.results  # valid independent conclusions survive
-
-
-def test_duplicate_and_conflicting_findings_are_integrated_explicitly(
-    scenario: dict[str, Any],
-) -> None:
-    copied = copy.deepcopy(scenario["assignments"][0]["findings"][0])
-    scenario["assignments"][1]["findings"] = [copied]
-    scenario["decisions"][0]["sources"].append("platform:problem-0")
-    scenario["decisions"][0]["outcome"] = "duplicate"
-    result = _integrate(scenario)
-    assert result.complete
-    assert len(result.analysis.proposals) == 2
-    assert "platform:problem-0" in result.analysis.proposals[0].evidence
-
-    copied["position"] = "oppose"
-    result = _integrate(scenario)
-    assert not result.complete and "contradictory" in " ".join(result.errors)
-    assert result.analysis.proposals == []
-
-    scenario["decisions"][0]["outcome"] = "conflict"
-    scenario["proposals"].pop(0)
-    result = _integrate(scenario)
-    assert not result.complete and "未解決の矛盾" in " ".join(result.errors)
-    assert len(result.analysis.proposals) == 1  # independent confirmed proposal
-
-    scenario["decisions"][0]["outcome"] = "resolved"
-    # Resolve by the parent's evidence, then create exactly one proposal.
-    prop = {
-        **scenario["proposals"][0],
-        "title": "矛盾を確認して統合",
-        "sources": scenario["decisions"][0]["sources"],
-    }
-    scenario["proposals"].append(prop)
-    assert _integrate(scenario).complete
-
-
-def test_serial_results_are_incomplete_and_retry_requests_two_scouts(
-    scenario: dict[str, Any],
-) -> None:
-    for i, row in enumerate(scenario["assignments"]):
-        row.update(
-            started_at=f"2026-10-18T0{i}:00:00+00:00",
-            finished_at=f"2026-10-18T0{i}:30:00+00:00",
-        )
-    result = _integrate(scenario)
-    assert not result.complete
-    assert audit.requested(result.results) == ["code", "platform"]
-    retry = copy.deepcopy(scenario)
-    retry["assignments"] = retry["assignments"][:2]
-    for row in retry["assignments"]:
-        row.update(
-            started_at="2026-10-19T00:00:00+00:00",
-            finished_at="2026-10-19T01:00:00+00:00",
-        )
-    assert _integrate(retry, previous=result.results).complete
-
-
-def test_no_whole_audit_elapsed_time_ceiling(
-    scenario: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    for row in scenario["assignments"]:
-        row["finished_at"] = "2027-01-01T00:00:00+00:00"
-    assert _integrate(scenario).complete
-    calls = []
-    out = tmp_path / "out"
-    out.write_text("result")
-    monkeypatch.setattr(
-        agent.shell, "run_process_group", lambda cmd, **kw: calls.append((cmd, kw))
-    )
-    agent.execute(
-        agent.AgentRun(
-            "codex", tmp_path / "exec", tmp_path, tmp_path / "prompt", out, tmp_path
-        )
-    )
-    assert calls[0][1]["timeout"] is None
-    assert calls[0][0][calls[0][0].index("--profile") + 1] == "ops_report"
-    unit = (
-        Path(__file__).resolve().parents[3]
-        / ".agents/ops/ops-report/systemd/tennis-lab-ops-report.service"
-    )
-    assert "TimeoutStartSec=infinity" in unit.read_text()
-
-
-def test_duplicate_json_keys_are_not_silently_accepted(
-    scenario: dict[str, Any],
-) -> None:
-    text = json.dumps(scenario).replace(
-        '"agent_type": "scout"', '"agent_type": "scout", "agent_type": "default"', 1
-    )
-    result = audit.integrate(text, {"base_sha": BASE}, {7})
-    assert not result.complete and result.results == {}
-    assert "duplicate JSON key" in " ".join(result.errors)
-
-
-def test_fake_parallel_run_records_overlap_and_full_inventory(ops_env: Any) -> None:
-    result = ops_env.run("report", "--dry-run")
-    assert result.returncode == 0, result.stderr
-    run = _latest(ops_env)
-    events = [
-        json.loads(line)
-        for line in (run / "fake_scout_events.jsonl").read_text().splitlines()
-    ]
-    first_end = next(i for i, event in enumerate(events) if event["event"] == "finish")
-    assert sum(event["event"] == "start" for event in events[:first_end]) >= 2
-    record = _json(run / "audit.json")
-    assert record["complete"] and len(record["results"]) == 4
-    plan = _json(run / "audit_plan.json")
-    paths = [p for a in plan["assignments"] for p in a["targets"]]
-    tracked = subprocess.check_output(
-        ["git", "ls-tree", "-r", "--name-only", "main"], cwd=ops_env.repo, text=True
-    ).splitlines()
-    assert sorted(paths) == sorted(tracked) and len(paths) == len(set(paths))
-    collected = _json(run / "collected.json")
-    assert not Path(collected["audit_runtime"]["checkout"]).exists()
-    assert "status=complete" in result.stdout
-
-
-def test_partial_publication_resumes_same_issue_with_missing_scout_only(
+def test_large_unrequested_lists_and_logs_never_enter_launch_input(
     ops_env: Any,
 ) -> None:
-    failed = ops_env.run("report", FAKE_AUDIT_FAIL="platform")
+    first = ops_env.run("report", "--dry-run")
+    assert first.returncode == 0, first.stderr
+    small_prompt = (_latest(ops_env) / "prompt.md").read_text()
+    state = ops_env.state
+    state["prs"] *= 5000
+    state["runs"] = [{"log": "PRIVATE_UNREQUESTED_LOG" * 100000}] * 100
+    state["merged_prs"] *= 5000
+    ops_env.write_state(state)
+    second = ops_env.run("report", "--dry-run")
+    assert second.returncode == 0, second.stderr
+    run = _latest(ops_env)
+    large_prompt = (run / "prompt.md").read_text()
+    assert large_prompt == small_prompt
+    assert all(
+        key not in large_prompt
+        for key in (
+            "COLLECTED_JSON",
+            '"audit_plan"',
+            "PRIVATE_UNREQUESTED_LOG",
+            "big.py",
+            "largest_code_files",
+        )
+    )
+    pinned = _json(run / "collected.json")
+    assert set(pinned) == {
+        "meta",
+        "ops_memory",
+        "previous_reports",
+        "audit_input_sha256",
+    }
+    config = _json(run / "mcp.json")["args"]
+    journal = Path(config[config.index("--journal-dir") + 1]) / "retrieval.jsonl"
+    calls = [
+        _json_row
+        for _json_row in map(json.loads, journal.read_text().splitlines())
+        if _json_row["event"] == "requested"
+    ]
+    ranges = [r["arguments"] for r in calls if r["tool"] == "code_file"]
+    assert ranges and all(r["start_line"] == 2 and r["line_count"] == 3 for r in ranges)
+    assert not any(c[:2] in (["pr", "list"], ["run", "list"]) for c in ops_env.calls())
+
+
+def test_first_result_changes_followups_and_continues_before_independent_finishes(
+    ops_env: Any,
+) -> None:
+    first = ops_env.run("report", "--dry-run", FAKE_AUDIT_DISCOVERY="dynamic")
+    assert first.returncode == 0, first.stderr
+    run = _latest(ops_env)
+    tasks = _tasks(run)
+    assert len(tasks) > 4
+    assert "refs_dynamic" in tasks
+    assert tasks["refs_dynamic"]["origin"] == {
+        "kind": "finding",
+        "id": "initial_finding",
+    }
+    evidence = native.inspect_run(run / "agent-runtime")
+    names = {a.task_name: a for a in evidence.agents}
+    assert (
+        names["/root/initial"].completed_at
+        < names["/root/refs_dynamic"].started_at
+        < names["/root/independent"].completed_at
+    )
+    assert len(
+        native.reconcile(
+            run / "agent-runtime", {k: t["agent_id"] for k, t in tasks.items()}
+        )
+    ) == len(tasks)
+    second = ops_env.run("report", "--dry-run", FAKE_AUDIT_DISCOVERY="dependency")
+    assert second.returncode == 0, second.stderr
+    changed = _tasks(_latest(ops_env))
+    assert "refs_dependency" in changed and "refs_dynamic" not in changed
+    assert tasks["initial"]["conclusion"] != changed["initial"]["conclusion"]
+
+
+def test_thread_limit_rejection_is_recorded_then_retried_after_completion(
+    ops_env: Any,
+) -> None:
+    result = ops_env.run("report", FAKE_AUDIT_REJECT_ONCE="1")
+    assert result.returncode == 0, result.stderr
+    run = _latest(ops_env)
+    observed = native.inspect_run(run / "agent-runtime")
+    assert len(observed.rejections) == 1
+    assert observed.rejections[0].task_name == "capacity"
+    capacity = _tasks(run)["capacity"]
+    assert capacity["status"] == "completed"
+    assert sum(a.task_name == "/root/capacity" for a in observed.agents) == 1
+    checkpoint = _json(_state_path(ops_env, "audit/20261012.json"))
+    events = _json(Path(checkpoint["ledger"]))["events"]
+    assert any(
+        e["kind"] == "task.recorded"
+        and e["data"]["id"] == "capacity"
+        and e["data"]["status"] == "failed"
+        and e["data"]["agent_id"] is None
+        for e in events
+    )
+
+
+def test_unavailable_spawn_is_incomplete_and_never_uses_independent_cli(
+    ops_env: Any,
+) -> None:
+    result = ops_env.run("report", FAKE_AUDIT_SPAWN_UNAVAILABLE="1")
+    assert result.returncode == 1, result.stderr
+    assert "status=incomplete" in _reports(ops_env)[0]["body"]
+    assert "native起動0件" in _reports(ops_env)[0]["body"]
+    assert not native.inspect_run(_latest(ops_env) / "agent-runtime").agents
+    assert not _state_path(ops_env, "memory.json").exists()
+
+
+def test_partial_resumes_same_issue_and_reuses_completed_tasks(ops_env: Any) -> None:
+    failed = ops_env.run("report", FAKE_AUDIT_FAIL="independent")
     assert failed.returncode == 1, failed.stderr
     partial = _reports(ops_env)[0]
-    assert partial["body"].splitlines()[1].startswith("**未完了**")
-    assert "status=incomplete" in partial["body"].splitlines()[0]
-    status = _json(_state_path(ops_env, "schedule.json"))
-    assert (
-        status["last_success"] is None and status["last_attempt"]["status"] == "failed"
-    )
-    assert not _state_path(ops_env, "memory.json").exists()
-    initial = _json(_latest(ops_env) / "collected.json")
-    assert "platform" in partial["body"] and "再開" in partial["body"]
-
-    # The report remains pinned even when the source branch and time advance.
+    assert "status=incomplete" in partial["body"]
+    first_run = _latest(ops_env)
+    first_tasks = _tasks(first_run)
+    pinned = _json(first_run / "collected.json")
     (ops_env.repo / "big.py").write_text("new main content\n")
     subprocess.run(["git", "add", "big.py"], cwd=ops_env.repo, check=True)
     subprocess.run(
@@ -278,132 +176,181 @@ def test_partial_publication_resumes_same_issue_with_missing_scout_only(
         cwd=ops_env.repo,
         check=True,
     )
-    resumed = ops_env.run("report", "--if-due", "--now", "2026-10-16T09:00:00+09:00")
-    assert resumed.returncode == 0, resumed.stderr
+    recovered = ops_env.run("report", "--if-due", "--now", "2026-10-21T08:00:00+09:00")
+    assert recovered.returncode == 0, recovered.stderr
     assert (
         len(_reports(ops_env)) == 1
         and _reports(ops_env)[0]["number"] == partial["number"]
     )
-    assert "status=complete" in _reports(ops_env)[0]["body"].splitlines()[0]
-    current = _json(_latest(ops_env) / "collected.json")
-    assert current["audit_runtime"]["requested"] == ["platform"]
-    assert current["meta"]["base_sha"] == initial["meta"]["base_sha"]
-    assert current["audit_input_sha256"] == initial["audit_input_sha256"]
-    assert current["meta"]["period_end"] == initial["meta"]["period_end"]
+    assert "status=complete" in _reports(ops_env)[0]["body"]
+    run = _latest(ops_env)
+    assert _json(run / "collected.json") == pinned
+    assert [a.task_name for a in native.inspect_run(run / "agent-runtime").agents] == [
+        "/root/independent"
+    ]
+    assert _tasks(run)["initial"] == first_tasks["initial"]
+    checkpoint = _json(_state_path(ops_env, "audit/20261012.json"))
+    assert checkpoint["version"] == 2 and len(checkpoint["attempts"]) == 2
     assert (
-        _json(_state_path(ops_env, "schedule.json"))["last_success"]["slot"]
-        == "2026-10-12T08:00:00+09:00"
+        _json(Path(checkpoint["ledger"]))["events"][-1]["data"]["status"] == "completed"
     )
-    assert sum(c[:2] == ["issue", "create"] for c in ops_env.calls()) == 1
-    assert sum(c[:2] == ["issue", "edit"] for c in ops_env.calls()) == 1
-    following = ops_env.run("report", "--if-due", "--now", "2026-10-16T09:00:00+09:00")
-    assert following.returncode == 0, following.stderr
-    assert len(_reports(ops_env)) == 2
-    next_input = _json(_latest(ops_env) / "collected.json")
-    assert next_input["meta"]["period_start"] == initial["meta"]["period_end"]
-    assert next_input["meta"]["base_sha"] != initial["meta"]["base_sha"]
 
 
 @pytest.mark.parametrize(
-    "problem", ["missing", "corrupt", "input", "base", "selected", "closed"]
+    "problem",
+    ["checkpoint", "ledger", "hash", "closed", "selection", "base", "version1"],
 )
-def test_resume_inconsistency_fails_closed(ops_env: Any, problem: str) -> None:
-    assert ops_env.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
-    checkpoint = _state_path(ops_env, "audit/20261012.json")
-    if problem == "missing":
-        checkpoint.unlink()
-    elif problem == "corrupt":
-        checkpoint.write_text("{")
-    elif problem == "input":
-        data = _json(checkpoint)
-        data["collected"]["meta"]["base_sha"] = "f" * 40
-        checkpoint.write_text(json.dumps(data))
+def test_resume_inconsistency_stops_before_agent_or_publication(
+    ops_env: Any, problem: str
+) -> None:
+    assert ops_env.run("report", FAKE_AUDIT_FAIL="independent").returncode == 1
+    path = _state_path(ops_env, "audit/20261012.json")
+    checkpoint = _json(path)
+    state = ops_env.state
+    if problem == "checkpoint":
+        path.unlink()
+    elif problem == "ledger":
+        Path(checkpoint["ledger"]).unlink()
+    elif problem == "hash":
+        checkpoint["collected"]["meta"]["period_start"] = "2020-01-01T00:00:00+00:00"
+        path.write_text(json.dumps(checkpoint))
+    elif problem == "version1":
+        path.write_text(json.dumps({"version": 1, "collected": {}, "results": {}}))
+    elif problem == "closed":
+        next(r for r in state["issues"] if "ops-report" in r["labels"])["state"] = (
+            "CLOSED"
+        )
+    elif problem == "selection":
+        row = next(r for r in state["issues"] if "ops-report" in r["labels"])
+        row["body"] = row["body"].replace(
+            "- [ ] **R-20261012-01**", "- [x] **R-20261012-01**"
+        )
     elif problem == "base":
-        state = ops_env.state
-        _reports_from_state = next(
-            r for r in state["issues"] if "ops-report" in r["labels"]
+        row = next(r for r in state["issues"] if "ops-report" in r["labels"])
+        row["body"] = row["body"].replace(
+            f"base={checkpoint['collected']['meta']['base_sha']}", "base=" + "b" * 40
         )
-        _reports_from_state["body"] = _reports_from_state["body"].replace(
-            "base=", "base=f"
-        )
-        ops_env.write_state(state)
-    else:
-        state = ops_env.state
-        issue = next(r for r in state["issues"] if "ops-report" in r["labels"])
-        if problem == "closed":
-            issue["state"] = "CLOSED"
-        else:
-            issue["body"] = issue["body"].replace("- [ ] **", "- [x] **", 1)
-        ops_env.write_state(state)
-    before = len(ops_env.calls())
+    ops_env.write_state(state)
+    before = ops_env.state
+    Path(ops_env.env["FAKE_AGENT_USED"]).unlink()
     result = ops_env.run("report", "--if-due")
-    assert result.returncode == 1
-    assert not any(
-        c[:2] in (["issue", "create"], ["issue", "edit"], ["pr", "create"])
-        for c in ops_env.calls()[before:]
+    assert result.returncode == 1, result.stderr
+    assert not Path(ops_env.env["FAKE_AGENT_USED"]).exists()
+    assert ops_env.state == before
+    if problem == "version1":
+        assert "#1458" in result.stderr and "version 1" in result.stderr
+
+
+def test_missing_receipt_is_not_publishable_and_can_be_restored_in_same_round(
+    ops_env: Any,
+) -> None:
+    assert ops_env.run("report", FAKE_AUDIT_FAIL="independent").returncode == 1
+    checkpoint = _json(_state_path(ops_env, "audit/20261012.json"))
+    ledger = _json(Path(checkpoint["ledger"]))
+    evidence = next(
+        e["data"]
+        for e in reversed(ledger["events"])
+        if e["kind"] == "evidence.recorded"
     )
+    receipt = evidence["reference"].rsplit(" / receipt=", 1)[1]
+    journal = _state_path(ops_env, "audit/20261012/sources/retrieval.jsonl")
+    rows = [json.loads(r) for r in journal.read_text().splitlines()]
+    missing = next(
+        r for r in rows if r["event"] == "received" and r["receipt"] == receipt
+    )
+    journal.write_text(
+        "".join(
+            json.dumps(r, separators=(",", ":"), ensure_ascii=False) + "\n"
+            for r in rows
+            if r is not missing
+        )
+    )
+    bad = ops_env.run("report", "--if-due")
+    assert bad.returncode == 1, bad.stderr
+    assert "根拠の取得記録が欠落" in _reports(ops_env)[0]["body"]
+    assert "status=incomplete" in _reports(ops_env)[0]["body"]
+    with journal.open("a") as out:
+        out.write(json.dumps(missing, separators=(",", ":"), ensure_ascii=False) + "\n")
+    recovered = ops_env.run("report", "--if-due")
+    assert recovered.returncode == 0, recovered.stderr
     assert len(_reports(ops_env)) == 1
+    assert "status=complete" in _reports(ops_env)[0]["body"]
 
 
 def test_incomplete_report_is_not_triaged(ops_env: Any) -> None:
-    assert ops_env.run("report", FAKE_AUDIT_FAIL="platform").returncode == 1
-    state = ops_env.state
-    issue = next(r for r in state["issues"] if "ops-report" in r["labels"])
-    issue["body"] = issue["body"].replace("- [ ] **", "- [x] **", 1)
-    ops_env.write_state(state)
-    before = len(ops_env.calls())
+    assert ops_env.run("report", FAKE_AUDIT_FAIL="independent").returncode == 1
+    before = ops_env.state
     result = ops_env.run("triage")
     assert result.returncode == 0, result.stderr
-    assert not any(c[:2] == ["issue", "create"] for c in ops_env.calls()[before:])
+    assert ops_env.state == before
 
 
-def test_pinned_checkout_and_external_gitlink_scope(ops_env: Any) -> None:
-    repo = ops_env.repo
-    base = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-    ).strip()
-    subprocess.run(
-        [
-            "git",
-            "update-index",
-            "--add",
-            "--cacheinfo",
-            f"160000,{base},third_party/external",
-        ],
-        cwd=repo,
-        check=True,
-    )
-    subprocess.run(
-        [
-            "git",
-            "-c",
-            "user.name=t",
-            "-c",
-            "user.email=t@example.com",
-            "commit",
-            "-qm",
-            "pin external dependency",
-        ],
-        cwd=repo,
-        check=True,
-    )
-    base = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=repo, text=True
-    ).strip()
-    (repo / "big.py").write_text("dirty caller\n")
-    inventory = audit.plan(repo, base)
-    assert inventory["gitlinks"][0]["path"] == "third_party/external"
-    path = audit.worktree_path(repo, "test-pinned")
-    with audit.checkout(repo, base, path) as snapshot:
-        assert (snapshot / "big.py").read_text().startswith("x = 1")
-        assert not (snapshot / "third_party/external/big.py").exists()
-    assert not path.exists()
-    assert (repo / "big.py").read_text() == "dirty caller\n"
-
-
-def test_faulty_runner_dirty_checkout_is_preserved_for_explicit_repair(
-    ops_env: Any,
+def test_no_whole_audit_timeout_and_mcp_is_explicit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    out = tmp_path / "out"
+    out.write_text("result")
+    calls = []
+    monkeypatch.setattr(
+        agent.shell, "run_process_group", lambda cmd, **kw: calls.append((cmd, kw))
+    )
+    agent.execute(
+        agent.AgentRun(
+            "codex",
+            tmp_path / "exec",
+            tmp_path,
+            tmp_path / "prompt",
+            out,
+            tmp_path,
+            tmp_path / "mcp.json",
+        )
+    )
+    assert calls[0][1]["timeout"] is None
+    assert calls[0][1]["env"]["OPS_REPORT_MCP_CONFIG"] == str(tmp_path / "mcp.json")
+
+
+@pytest.mark.parametrize("stop_signal", [signal.SIGINT, signal.SIGTERM])
+def test_parent_interrupt_reaps_processes_and_resumes_same_issue(
+    ops_env: Any, stop_signal: int
+) -> None:
+    pid_file = ops_env.tmp / "child.pid"
+    proc = ops_env.start("report", FAKE_AGENT_HANG="1", FAKE_AGENT_SPAWN=str(pid_file))
+    path = _state_path(ops_env, "audit/20261012.ledger.json")
+    try:
+        deadline = time.monotonic() + 20
+        while time.monotonic() < deadline:
+            if path.exists():
+                events = _json(path)["events"]
+                if (
+                    sum(
+                        e["kind"] == "task.recorded"
+                        and e["data"]["status"] == "running"
+                        for e in events
+                    )
+                    >= 2
+                ):
+                    break
+            assert proc.poll() is None, proc.communicate()
+            time.sleep(0.05)
+        else:
+            raise AssertionError("fake children did not start")
+        proc.send_signal(stop_signal)
+        _, err = proc.communicate(timeout=20)
+        assert proc.returncode == 1, err
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.communicate()
+    child = Path(f"/proc/{int(pid_file.read_text())}/stat")
+    assert not child.exists() or child.read_text().split(") ", 1)[1][0] == "Z"
+    assert "status=incomplete" in _reports(ops_env)[0]["body"]
+    recovered = ops_env.run("report", "--if-due")
+    assert recovered.returncode == 0, recovered.stderr
+    assert len(_reports(ops_env)) == 1
+    assert "status=complete" in _reports(ops_env)[0]["body"]
+
+
+def test_dirty_audit_checkout_is_preserved_for_explicit_repair(ops_env: Any) -> None:
     base = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=ops_env.repo, text=True
     ).strip()
@@ -417,36 +364,47 @@ def test_faulty_runner_dirty_checkout_is_preserved_for_explicit_repair(
     assert (ops_env.repo / "big.py").read_text().startswith("x = 1")
 
 
-@pytest.mark.parametrize("stop_signal", [signal.SIGINT, signal.SIGTERM])
-def test_explicit_interrupt_kills_descendants_and_publishes_incomplete(
-    ops_env: Any,
-    stop_signal: int,
+@pytest.mark.parametrize(
+    "text",
+    [
+        "{}",
+        '{"memory_update":null,"proposals":[]}',
+        '{"memory_update":null,"memory_update":null}',
+        "[]",
+        "結果だけ",
+        '{"memory_update":{"summary":"missing fields"}}',
+    ],
+)
+def test_parent_final_reply_has_only_one_valid_memory_patch(text: str) -> None:
+    with pytest.raises(agent.AgentOutputError):
+        agent.parse_completion(text)
+    assert agent.parse_completion('{"memory_update":null}') is None
+
+
+@pytest.mark.parametrize(
+    "setting", ["OPS_REPORT_CLEANUP_CMD", "OPS_REPORT_STALE_PR_DAYS"]
+)
+def test_removed_bulk_collection_settings_are_explicit_errors(
+    ops_env: Any, setting: str
 ) -> None:
-    pid_file = ops_env.tmp / "child.pid"
-    proc = ops_env.start("report", FAKE_AGENT_HANG="1", FAKE_AGENT_SPAWN=str(pid_file))
-    try:
-        deadline = time.monotonic() + 15
-        while (
-            not pid_file.exists()
-            and proc.poll() is None
-            and time.monotonic() < deadline
-        ):
-            time.sleep(0.05)
-        assert pid_file.exists(), proc.communicate(timeout=5)
-        time.sleep(1.1)
-        assert proc.poll() is None
-        proc.send_signal(stop_signal)
-        _, err = proc.communicate(timeout=20)
-        assert proc.returncode == 1, err
-    finally:
-        if proc.poll() is None:
-            proc.kill()
-            proc.communicate()
-    child = int(pid_file.read_text())
-    stat = Path(f"/proc/{child}/stat")
-    assert not stat.exists() or stat.read_text().split(") ", 1)[1][0] == "Z"
-    assert "KeyboardInterrupt" in _reports(ops_env)[0]["body"]
-    assert _json(_state_path(ops_env, "schedule.json"))["last_success"] is None
-    assert "ops-report-audit-" not in subprocess.check_output(
-        ["git", "worktree", "list"], cwd=ops_env.repo, text=True
-    )
+    result = ops_env.run("report", **{setting: "old setting"})
+    assert result.returncode == 1 and f"{setting} was removed" in result.stderr
+    assert not Path(ops_env.env["FAKE_AGENT_USED"]).exists()
+
+
+def test_publication_before_local_binding_recovers_without_rerunning_agent(
+    ops_env: Any,
+) -> None:
+    assert ops_env.run("report").returncode == 0
+    checkpoint = _json(_state_path(ops_env, "audit/20261012.json"))
+    path = Path(checkpoint["ledger"])
+    document = _json(path)
+    assert document["events"][-1]["kind"] == "run.report"
+    document["events"].pop()  # crash after GitHub publication, before local bind
+    path.write_text(json.dumps(document))
+    Path(ops_env.env["FAKE_AGENT_USED"]).unlink()
+    result = ops_env.run("report", "--if-due")
+    assert result.returncode == 0, result.stderr
+    assert not Path(ops_env.env["FAKE_AGENT_USED"]).exists()
+    assert len(_reports(ops_env)) == 1
+    assert _json(path)["events"][-1]["data"]["report_issue"] == 100

@@ -6,7 +6,7 @@ import argparse
 import json
 import logging
 import os
-import shlex
+import shutil
 import signal
 import sys
 from contextlib import AbstractContextManager
@@ -27,6 +27,8 @@ from . import (
     shell,
     triage,
 )
+from .ledger import Ledger
+from .retrieval import strict_json
 from .shell import CommandError
 
 JST = schedule.JST
@@ -231,6 +233,28 @@ def _run_report(args: argparse.Namespace, run_dir: Path) -> int:
             tag = proposals.slot_tag(slot.date())
             published = next((r for r in history["reports"] if r["slot"] == tag), None)
             if published and published["status"] == "complete":
+                checkpoint = schedule.state_dir() / "audit" / f"{tag}.json"
+                if not args.dry_run and checkpoint.with_suffix(".ledger.json").exists():
+                    saved = audit.load_checkpoint(checkpoint, args.repo_root.resolve())
+                    if (
+                        saved["collected"]["audit_input_sha256"] != published["audit"]
+                        or saved["collected"]["meta"]["base_sha"]
+                        != published["base_sha"]
+                    ):
+                        raise ConfigError(
+                            "published report and saved ledger input disagree"
+                        )
+                    book = Ledger.load(
+                        Path(saved["ledger"]), slot=tag, base_sha=published["base_sha"]
+                    )
+                    bound = book.snapshot["run"]["report_issue"]
+                    if bound is None:
+                        # Recover publication followed by a crash before local binding.
+                        book.bind_report(published["number"], at=audit.timestamp())
+                    elif bound != published["number"]:
+                        raise ConfigError(
+                            "published report and ledger report issue disagree"
+                        )
                 msg = f"report for {tag} already exists as #{published['number']}"
                 if attempted:
                     # Recover a crash after gh create but before local commit.
@@ -298,12 +322,16 @@ def _generate_report(
 ) -> tuple[str | None, list[str], bool]:
     setting = args.agent or os.environ.get("OPS_REPORT_AGENT") or "codex"
     agent_name = agent.resolve_agent(setting)
-    cleanup_env = os.environ.get("OPS_REPORT_CLEANUP_CMD")
     repo_root = args.repo_root.resolve()
     if "OPS_REPORT_AGENT_TIMEOUT" in os.environ:
         raise ConfigError(
             "OPS_REPORT_AGENT_TIMEOUT was removed; whole-audit elapsed-time limits are not supported"
         )
+    for removed in ("OPS_REPORT_CLEANUP_CMD", "OPS_REPORT_STALE_PR_DAYS"):
+        if removed in os.environ:
+            raise ConfigError(
+                f"{removed} was removed with bulk collection; use the bounded retrieval tools"
+            )
     tag = proposals.slot_tag(slot.date())
     checkpoint = schedule.state_dir() / "audit" / f"{tag}.json"
     published = next(
@@ -314,10 +342,11 @@ def _generate_report(
         ),
         None,
     )
-    previous: dict[str, Any] = {}
+    state: dict[str, Any] | None = None
     collected: dict[str, Any] | None = None
     if checkpoint.exists():
-        collected, previous = audit.load_checkpoint(checkpoint, repo_root)
+        state = audit.load_checkpoint(checkpoint, repo_root)
+        collected = state["collected"]
         meta = collected["meta"]
         base = collect.BaseRef(
             meta["base_ref"], meta["base_sha"], meta["base_fetched_from"]
@@ -327,7 +356,7 @@ def _generate_report(
             raise ConfigError("cannot change the base ref of a resumable audit")
     elif published:
         raise ConfigError(
-            f"incomplete report #{published['number']} has no audit checkpoint {checkpoint}; restore it from collected.json/audit.json logs explicitly"
+            f"incomplete report #{published['number']} has no audit checkpoint {checkpoint}; restore its version 2 ledger and acquisition records explicitly (version 1 migration: #1458)"
         )
     else:
         base = collect.pin_base(
@@ -353,23 +382,14 @@ def _generate_report(
             raise ConfigError(
                 "incomplete report has selections/children; resolve them explicitly before replacing proposals"
             )
-    cfg = collect.CollectConfig(
-        repo_root=repo_root,
-        now=now,
-        base=base,
-        stale_pr_days=_env_int("OPS_REPORT_STALE_PR_DAYS", 7),
-        cleanup_cmd=tuple(shlex.split(cleanup_env)) if cleanup_env else None,
-    )
-    LOG.info(
-        "report: agent=%s (setting=%s) base=%s@%s (fetched: %s) dry_run=%s",
-        agent_name,
-        setting,
-        base.name,
-        base.sha,
-        base.fetched_from or "no, local ref",
-        args.dry_run,
-    )
+    cfg = collect.CollectConfig(repo_root=repo_root, now=now, base=base)
+    from agent_settings import read_pins
 
+    pins = read_pins(OPS_DIR / "lib" / "agents.conf")
+    raw_threads = pins["OPS_REPORT_MAX_THREADS"]
+    if not raw_threads.isdecimal() or int(raw_threads) < 2:
+        raise ConfigError("OPS_REPORT_MAX_THREADS must be >= 2")
+    max_threads = int(raw_threads)
     if collected is None:
         collected = collect.collect_all(
             cfg, history=history, initial_since=initial_since
@@ -380,99 +400,204 @@ def _generate_report(
             if decision not in decisions:
                 raise ConfigError("memory decisions snapshot no longer matches GitHub")
         collected["ops_memory"]["decisions"] = decisions
-        collected["audit_plan"] = audit.plan(repo_root, base.sha)
+        collected["previous_reports"] = [
+            {k: r[k] for k in ("slot", "number", "base_sha", "status", "url")}
+            for r in history["reports"]
+            if r["slot"] != tag
+        ]
         collected["audit_input_sha256"] = audit.input_digest(collected)
     elif args.memory_decisions:
         raise ConfigError(
             "cannot replace decisions in a pinned audit; resume with the original inputs"
         )
-    snapshot_path = audit.worktree_path(repo_root, run_dir.name)
-    with audit.checkout(repo_root, base.sha, snapshot_path) as snapshot:
-        if not args.dry_run:
-            memory_pr._atomic_json(
-                checkpoint, {"version": 1, "collected": collected, "results": previous}
-            )
-        collected["audit_runtime"] = {
-            "checkout": str(snapshot),
-            "requested": audit.requested(previous),
-            "previous_results": previous,
+    # A preview writes only its own ledger copy, including when resuming a real round.
+    source_checkpoint = checkpoint
+    if args.dry_run:
+        checkpoint = run_dir / "preview" / f"{tag}.json"
+    round_dir = checkpoint.parent / tag
+    round_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    ledger_path = checkpoint.with_suffix(".ledger.json").absolute()
+    if state is None:
+        book = Ledger.create(
+            ledger_path,
+            slot=tag,
+            base_sha=base.sha,
+            goal=audit.GOAL,
+            at=audit.timestamp(),
+        )
+        state = {
+            "version": audit.VERSION,
+            "collected": collected,
+            "ledger": str(ledger_path),
+            "attempts": [],
         }
-        stale = report.stale_prs(collected)
-        prompt = agent.build_prompt(
-            PROMPT_FILE.read_text(encoding="utf-8"),
-            slot=slot.date().isoformat(),
-            stale_prs=stale,
-            collected=collected,
-        )
-        prompt_file = run_dir / "prompt.md"
-        prompt_file.write_text(prompt, encoding="utf-8")
-        exec_path = Path(
-            os.environ.get("OPS_REPORT_AGENT_EXEC") or OPS_DIR / "lib" / "agent_exec.sh"
-        ).resolve()
-        failure = None
-        output = ""
-        try:
-            output = agent.execute(
-                agent.AgentRun(
-                    agent=agent_name,
-                    agent_exec=exec_path,
-                    repo_root=snapshot,
-                    prompt_file=prompt_file,
-                    out_file=run_dir / "agent_output.md",
-                    log_dir=run_dir,
-                )
+    else:
+        if args.dry_run:
+            shutil.copyfile(state["ledger"], ledger_path)
+            shutil.copytree(
+                source_checkpoint.parent / tag, round_dir, dirs_exist_ok=True
             )
-        except (CommandError, KeyboardInterrupt) as exc:
-            failure = f"{type(exc).__name__}: {exc}"
-            LOG.error("audit interrupted/failed: %s", failure)
-        result = audit.integrate(
-            output,
-            collected["audit_plan"],
-            {int(pr["number"]) for pr in stale},
-            previous=previous,
-            failure=failure,
+            state = {**state, "ledger": str(ledger_path)}
+        book = Ledger.load(ledger_path, slot=tag, base_sha=base.sha)
+    if published:
+        bound = book.snapshot["run"]["report_issue"]
+        if bound is None:
+            book.bind_report(published["number"], at=audit.timestamp())
+        elif bound != published["number"]:
+            raise ConfigError("published report and ledger report issue disagree")
+    memory_pr._atomic_json(checkpoint, state)
+    input_path = round_dir / "input.json"
+    memory_pr._atomic_json(input_path, collected)
+    memory_pr._atomic_json(run_dir / "collected.json", collected)
+    completion_path = round_dir / "completion.json"
+    errors: list[str] = []
+    if book.snapshot["run"]["status"] == "completed":
+        # Publication may have failed after the ledger was completed. Reuse the
+        # exact validated result, rather than starting a new audit or issue.
+        update = memory.parse_update(
+            strict_json(completion_path.read_bytes())["memory_update"]
         )
-        for error in result.errors:
+        errors, _ = audit.verify(
+            book,
+            state["attempts"],
+            round_dir / "sources" / "retrieval.jsonl",
+            max_threads,
+        )
+        if errors:
+            raise ConfigError(
+                "completed audit evidence changed; restore explicitly: "
+                + "; ".join(errors)
+            )
+        complete = True
+    else:
+        if state["attempts"]:
+            audit.ensure_quiescent(state["attempts"])
+        if book.snapshot["run"]["status"] == "incomplete":
+            book.resume(
+                "同じ予定回・基準版・issueで不足の調査を再開", at=audit.timestamp()
+            )
+        if state["attempts"]:
+            for directory in state["attempts"]:
+                audit.capture_unreceived(book, Path(directory))
+            audit.interrupt_tasks(book, "前の親runが終了したため未受領タスクを再開する")
+        # Persist the attempt before launching, so even a killed parent has a
+        # recovery reference. The runner remains read-only and owns its cleanup.
+        runtime_dir = run_dir / "agent-runtime"
+        state["attempts"].append(str(runtime_dir))
+        memory_pr._atomic_json(checkpoint, state)
+        ending_path = run_dir / "ending.json"
+        snapshot_path = audit.worktree_path(repo_root, run_dir.name)
+        with audit.checkout(repo_root, base.sha, snapshot_path) as snapshot:
+            connection = {
+                "command": sys.executable,
+                "args": [
+                    "-B",
+                    "-m",
+                    "opsreport.mcp_server",
+                    "--repo",
+                    str(snapshot),
+                    "--base-sha",
+                    base.sha,
+                    "--repository",
+                    collected["meta"]["repository"],
+                    "--round-id",
+                    tag,
+                    "--journal-dir",
+                    str(round_dir / "sources"),
+                    "--ops-memory-sha",
+                    collected["ops_memory"].get("base_sha", base.sha),
+                    "--ledger-path",
+                    str(ledger_path),
+                    "--runtime-dir",
+                    str(runtime_dir),
+                    "--input-path",
+                    str(input_path),
+                    "--ending-path",
+                    str(ending_path),
+                    "--max-threads",
+                    str(max_threads),
+                ],
+                "env": {"PYTHONPATH": str(PROMPT_FILE.parent)},
+            }
+            mcp_config = run_dir / "mcp.json"
+            memory_pr._atomic_json(mcp_config, {"ops_report": connection})
+            prompt = agent.build_prompt(
+                PROMPT_FILE.read_text(encoding="utf-8"),
+                metadata={
+                    "slot": tag,
+                    "base_sha": base.sha,
+                    "repository": collected["meta"]["repository"],
+                    "period_start": collected["meta"]["period_start"],
+                    "period_end": collected["meta"]["period_end"],
+                    "report_issue": book.snapshot["run"]["report_issue"],
+                    "input_sha256": collected["audit_input_sha256"],
+                    "output": "MCPの台帳へ記録。レポート描画・公開はホストが行う。",
+                    "max_threads": max_threads,
+                },
+            )
+            prompt_file = run_dir / "prompt.md"
+            prompt_file.write_text(prompt, encoding="utf-8")
+            output = ""
+            try:
+                output = agent.execute(
+                    agent.AgentRun(
+                        agent=agent_name,
+                        agent_exec=Path(
+                            os.environ.get("OPS_REPORT_AGENT_EXEC")
+                            or OPS_DIR / "lib" / "agent_exec.sh"
+                        ).resolve(),
+                        repo_root=snapshot,
+                        prompt_file=prompt_file,
+                        out_file=run_dir / "agent_output.md",
+                        log_dir=run_dir,
+                        mcp_config=mcp_config,
+                    )
+                )
+            except (CommandError, KeyboardInterrupt) as exc:
+                errors.append(f"親の実行・中断: {type(exc).__name__}: {exc}")
+                LOG.error("audit interrupted/failed: %s", errors[-1])
+            # Read-only agents persist through MCP, even when the final reply is lost.
+            book = Ledger.load(ledger_path, slot=tag, base_sha=base.sha)
+            audit.capture_unreceived(book, runtime_dir)
+            update = None
+            try:
+                update = agent.parse_completion(output)
+                memory.apply_update(
+                    collected["ops_memory"]["files"],
+                    update,
+                    source=f"ops-report:{tag}",
+                    today=now.date(),
+                )
+            except ValueError as exc:
+                errors.append(f"専用memoryの統合: {exc}")
+                update = None
+            verified_errors, invalid_findings = audit.verify(
+                book,
+                state["attempts"],
+                round_dir / "sources" / "retrieval.jsonl",
+                max_threads,
+            )
+            errors.extend(verified_errors)
+            ending = (
+                strict_json(ending_path.read_bytes()) if ending_path.exists() else None
+            )
+            memory_pr._atomic_json(completion_path, {"memory_update": update})
+            complete = audit.finish(book, ending, errors, invalid_findings)
+        for error in errors:
             LOG.error("audit incomplete: %s", error)
-    (run_dir / "audit.json").write_text(
-        json.dumps(result.record(), ensure_ascii=False, indent=2), encoding="utf-8"
+    memory_pr._atomic_json(
+        run_dir / "audit.json",
+        {"complete": complete, "errors": errors, "ledger": book.snapshot},
     )
-    (run_dir / "audit_plan.json").write_text(
-        json.dumps(collected["audit_plan"], ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-    (run_dir / "collected.json").write_text(
-        json.dumps(collected, ensure_ascii=False, indent=1), encoding="utf-8"
-    )
-    title = report.report_title(slot.date())
-    tag = proposals.slot_tag(slot.date())
-
-    analysis = result.analysis
-    try:
-        memory.apply_update(
-            collected["ops_memory"]["files"],
-            analysis.memory_update,
-            source=f"ops-report:{tag}",
-            today=now.date(),
-        )
-    except ValueError as exc:
-        result.errors.append(f"専用memoryの統合: {exc}")
-        result.complete = False
-        analysis = agent.AgentReport(
-            analysis.summary, analysis.proposals, analysis.stale_pr_notes, None
-        )
-        result.analysis = analysis
-        LOG.error("audit incomplete: %s", result.errors[-1])
-        (run_dir / "audit.json").write_text(
-            json.dumps(result.record(), ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-    title, body, ids = report.render_report(
-        slot=slot.date(),
+    title, body, ids = report.render_ledger_report(
+        ledger=book,
         agent_name=agent_name,
-        collected=collected,
-        analysis=analysis,
-        audit=result,
+        since=datetime.fromisoformat(collected["meta"]["period_start"]),
+        until=datetime.fromisoformat(collected["meta"]["period_end"]),
+        input_sha256=collected["audit_input_sha256"],
+        ledger_reference=f"予定回 {tag} の保存台帳（発見・タスクIDで照合。公開レポートの管理者が原本を保管）",
     )
+    body = report.with_memory_status(body, collected["ops_memory"])
     (run_dir / "report.md").write_text(body, encoding="utf-8")
     LOG.info(
         "rendered %s with %d proposals (%s)", title, len(ids), run_dir / "report.md"
@@ -481,11 +606,7 @@ def _generate_report(
         args.output.write_text(body, encoding="utf-8")
     if args.dry_run:
         sys.stdout.write(f"# title: {title}\n\n{body}")
-        return None, [], result.complete
-    collected.pop("audit_runtime")
-    memory_pr._atomic_json(
-        checkpoint, {"version": 1, "collected": collected, "results": result.results}
-    )
+        return None, [], complete
     with _issue_lock():
         fresh = collect.collect_report_history(cfg.repo_root)
         duplicate = next((r for r in fresh["reports"] if r["slot"] == tag), None)
@@ -506,11 +627,11 @@ def _generate_report(
         triage.ensure_labels(
             [collect.REPORT_LABEL], repo_root=cfg.repo_root, dry_run=False
         )
-        if result.complete:
+        if complete:
             store.prepare(
                 tag,
                 collected["ops_memory"],
-                analysis.memory_update,
+                update,
                 title=title,
                 body=body,
             )
@@ -536,8 +657,11 @@ def _generate_report(
                 ["issue", "create", "--title", title, "--body-file", str(run_dir / "report.md"),
                  "--label", collect.REPORT_LABEL], cwd=cfg.repo_root,
             ).strip()  # fmt: skip
-            if result.complete:
+            if complete:
                 store.record_publication(tag, url)
+    issue_number = int(url.rstrip("/").rsplit("/", 1)[-1])
+    if book.snapshot["run"]["report_issue"] is None:
+        book.bind_report(issue_number, at=audit.timestamp())
     LOG.info("created report issue %s", url)
     (run_dir / "result.json").write_text(
         json.dumps(
@@ -545,7 +669,7 @@ def _generate_report(
                 "title": title,
                 "url": url,
                 "ids": ids,
-                "status": "complete" if result.complete else "incomplete",
+                "status": "complete" if complete else "incomplete",
             },
             ensure_ascii=False,
         ),
@@ -555,7 +679,7 @@ def _generate_report(
     # The schedule records publication success even if memory persistence fails.
     # A retry recovers via history, without republishing or rerunning the agent.
     save_errors = store.sync(collect.collect_report_history(cfg.repo_root), run_dir)
-    return url, save_errors, result.complete
+    return url, save_errors, complete
 
 
 def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:

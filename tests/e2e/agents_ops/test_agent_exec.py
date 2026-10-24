@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import os
 import stat
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -488,3 +490,86 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
         tmp_path, "--mode", "write", "--profile", "review", "--mcp-config", str(config)
     )
     assert rejected.returncode == 2
+
+
+@pytest.mark.parametrize(
+    "profile,model,effort",
+    [(None, "gpt-6.1-sol", "max"), ("review", "gpt-6-astra", "xhigh")],
+)
+def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    profile: str | None,
+    model: str,
+    effort: str,
+) -> None:
+    # Even an unusable audit connection is ignored by the other contracts.
+    monkeypatch.setenv("OPS_REPORT_MCP_CONFIG", str(tmp_path / "missing.json"))
+    result = _codex_args(tmp_path, *(["--profile", profile] if profile else []))
+    assert result.returncode == 0, result.stderr
+    args = (tmp_path / "args.txt").read_text().splitlines()
+    assert args == [
+        "--disable",
+        "daemon_auto_start",
+        "exec",
+        "--cd",
+        str(tmp_path / "work"),
+        "--sandbox",
+        "read-only",
+        "--json",
+        "--output-last-message",
+        args[args.index("--output-last-message") + 1],
+        "--model",
+        model,
+        "-c",
+        f'model_reasoning_effort="{effort}"',
+        "-c",
+        'service_tier="default"',
+    ] + (["--disable", "multi_agent"] if profile == "review" else []) + ["-"]
+
+
+def test_audit_mcp_arguments_are_after_exec_and_only_on_audit_profile(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "audit-mcp.json"
+    config.write_text(
+        json.dumps(
+            {
+                "ops_report": {
+                    "command": sys.executable,
+                    "args": ["-B", "-m", "opsreport.mcp_server"],
+                    "env": {"PYTHONPATH": str(ROOT / ".agents/ops/ops-report")},
+                }
+            }
+        )
+    )
+    result = _codex_args(
+        tmp_path, "--profile", "ops_report", "--mcp-config", str(config)
+    )
+    assert result.returncode == 0, result.stderr
+    args = (tmp_path / "args.txt").read_text().splitlines()
+    overrides = [a for a in args if a.startswith("mcp_servers.")]
+    assert len(overrides) == 3
+    assert all(args.index(a) > args.index("exec") for a in overrides)
+    assert any(a.startswith("mcp_servers.ops_report.command=") for a in overrides)
+    assert any(
+        a.startswith("mcp_servers.ops_report.env.PYTHONPATH=") for a in overrides
+    )
+    assert "agents.max_threads=3" in args and "agents.max_depth=1" in args
+    assert (
+        "--sandbox" in args and "--dangerously-bypass-approvals-and-sandbox" not in args
+    )
+    saved = list((tmp_path / "logs").rglob("mcp-config.json"))
+    assert len(saved) == 1 and saved[0].read_bytes() == config.read_bytes()
+
+
+@pytest.mark.parametrize("connection", [None, "{}", "{invalid"])
+def test_audit_explicit_connection_missing_or_malformed_never_falls_back(
+    tmp_path: Path, connection: str | None
+) -> None:
+    path = tmp_path / "connection.json"
+    if connection is not None:
+        path.write_text(connection)
+    result = _codex_args(tmp_path, "--profile", "ops_report", "--mcp-config", str(path))
+    assert result.returncode == 2, result.stderr
+    assert not (tmp_path / "args.txt").exists()
