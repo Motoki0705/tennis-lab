@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "base_commit": "4d7eb88da",
+  "pytest": {
+    "argv": [
+      "flock",
+      "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/unit/synthetic_data_generation/dataset/court/test_asset_equivalence.py",
+      "tests/e2e/development/test_spin.py",
+      "tests/integration/synthetic_data_generation/test_court_dataset.py",
+      "tests/unit/synthetic_data_generation/reconstruction/test_scene_export.py",
+      "tests/unit/synthetic_data_generation/rendering/nht/test_client.py",
+      "tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py",
+      "-n",
+      "4",
+      "-q"
+    ],
+    "env": {
+      "OMP_NUM_THREADS": "2",
+      "OPENBLAS_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2"
+    },
+    "passed": 73,
+    "failed": 0,
+    "seconds": 319.31,
+    "log": "adoption-validation.log"
+  },
+  "nht_pytest": {
+    "argv": [
+      "flock",
+      "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "third_party/nht/tests/test_export.py",
+      "-n",
+      "4",
+      "-q"
+    ],
+    "env": {
+      "PYTHONPATH": "$PWD/third_party/nht:$NHT_TEST_SITE",
+      "NHT_TEST_SITE": "/home/kamimura/.local/share/uv/tools/nht/lib/python3.11/site-packages"
+    },
+    "passed": 46,
+    "failed": 0,
+    "seconds": 1.18,
+    "log": "adoption-nht-validation.log",
+    "initial_collection_failure": {
+      "exit_code": 1,
+      "reason": "Main tennis-lab environment does not include NHT-owned jsonschema dependency. Reused existing isolated NHT dependencies, without installation.",
+      "log": "adoption-nht-collection-error.log"
+    }
+  },
+  "lint": {
+    "ruff": "passed",
+    "mypy": "passed",
+    "files": [
+      "knowledge/runs/run-court-assets-colab-l4-20261022/court_assets_acceptance.py",
+      "tests/unit/synthetic_data_generation/dataset/court/test_asset_equivalence.py"
+    ]
+  },
+  "acceptance_script_sha256": "2f4cfb2467aa36ccf4687fa50103eb6dade3cc84e1edea7d42f545f5a8a49c14",
+  "new_colab_or_gpu_execution": false,
+  "validator_attempts": 0,
+  "knowledge": {
+    "review_marker_updated": true,
+    "branch_base": "7e307f0499be3a2511afaba51966ae3362ec81b1",
+    "errors": 0,
+    "warnings": 218,
+    "log": "adoption-knowledge-validation.log",
+    "origin_main_check": {
+      "commit": "cca80ae6465e0571421de1abfae9fcd80188cde7",
+      "errors": 21,
+      "warnings": 218,
+      "log": "adoption-knowledge-origin-main.log",
+      "reason": "This branch has not incorporated newer origin/main Court knowledge artifacts or its court_detection sequence=47. The three-dot PR diff deletes none of those files. The parent must repeat the target-base check after integration."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-22T13:17:09.799133+00:00",
+  "repository": "https://github.com/Motoki0705/neural-harmonic-textures",
+  "main_commit": "9f35cf66e5ff8e6df2b02d68faad667c1eca0ba6",
+  "change_branch": "codex/render-without-source-images",
+  "change_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+  "main_contains_change": false,
+  "pull_request_required": true,
+  "open_pull_request_found": false
+}

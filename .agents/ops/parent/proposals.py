@@ -185,6 +185,11 @@ def require_receipt(session: ParentSession, source: ProposalSource) -> dict[str,
 
 
 def require_source(session: ParentSession, source: ProposalSource) -> ParsedProposal:
+    from .adopted_tasks import require_task_source
+
+    automatic = require_task_source(session, source)
+    if automatic is not None:
+        return automatic
     prop = read_proposal(session.gh, source, session.parent)
     value = record(source, prop)
     history = session.history()

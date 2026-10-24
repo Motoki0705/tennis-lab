@@ -1,0 +1,473 @@
+{
+  "action": "inventory",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-22T13:13:28.685688+00:00",
+  "schema_version": 1,
+  "path": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9",
+  "entries": [
+    {
+      "path": "assets.json",
+      "id": "1ReV-J5TOdIx8tCvI6smdD6uXCvYHug8W",
+      "type": "file",
+      "size_bytes": 9464,
+      "hashes": {
+        "md5": "5792527790632c2c37867611bbaf2af6"
+      },
+      "modified": "2026-10-22T05:51:35.814Z"
+    },
+    {
+      "path": "scenes",
+      "id": "1d5JFIYpxV2N8y5RXI1ws4U8GUn1CCuEp",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:08:51.352Z"
+    },
+    {
+      "path": "scenes/B00",
+      "id": "1z7DmYbIRCv8KCIl2nxqEX_b4PKI0U2hg",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:37.030Z"
+    },
+    {
+      "path": "scenes/B00/alignment",
+      "id": "1PfhxzD-5ShN4V7uftuB6YlfNMw3bMOLt",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:38.369Z"
+    },
+    {
+      "path": "scenes/B00/alignment/alignment.json",
+      "id": "1F3GhHFoiQb1KvDFLaogulzqVmaNyKMCg",
+      "type": "file",
+      "size_bytes": 15237,
+      "hashes": {
+        "md5": "513dad0a0e460ffa134e182eb70b6f59"
+      },
+      "modified": "2026-10-22T05:51:34.001Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction",
+      "id": "1escSBhHvsAQpPl6PKl82T0lh7uFlCnGY",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:43.330Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export",
+      "id": "14nkePbOcjFFvlgbbZOoYsSQyslx3N5pD",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:44.642Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/cameras.json",
+      "id": "1ZA4x18wkgbH5Wn7n-3lQbhwKzeXiHFt0",
+      "type": "file",
+      "size_bytes": 1112403,
+      "hashes": {
+        "md5": "08c6f4f1f1373ee4f85e2945ad6d10b8"
+      },
+      "modified": "2026-10-22T05:51:33.474Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model",
+      "id": "1Rd8gMFm-wQpVbW21FyNoLI1G_4jGkaGI",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:49.205Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model/ckpts",
+      "id": "16-7fLY3p5IBxcohQ1DDa0UOdsYstxnNC",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:51.133Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "id": "1i7iYO9YhTgVTEzwKzKV3QSV0VBajWOpY",
+      "type": "file",
+      "size_bytes": 236331206,
+      "hashes": {
+        "md5": "507230822957fa169d0ba837540dc22d"
+      },
+      "modified": "2026-10-22T05:51:33.886Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/model/runtime-config.json",
+      "id": "1PI-TIQEWeuCyx8-l0dzOHK13wpg3wDDI",
+      "type": "file",
+      "size_bytes": 679,
+      "hashes": {
+        "md5": "58bc2db52f48f848b61ef037926e87a8"
+      },
+      "modified": "2026-10-22T05:51:33.997Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/points_scene.npy",
+      "id": "1ticBtefpk_oqocyziNm1QkEVGi1vk9aT",
+      "type": "file",
+      "size_bytes": 5217896,
+      "hashes": {
+        "md5": "eac361ac649c9a58358b1a17f11debc9"
+      },
+      "modified": "2026-10-22T05:51:33.483Z"
+    },
+    {
+      "path": "scenes/B00/reconstruction/export/scene.json",
+      "id": "1Gjq9XU_RK-zh5FwnWcv3JPmRlocM7Msw",
+      "type": "file",
+      "size_bytes": 14033,
+      "hashes": {
+        "md5": "ab007a695680eb0964454092b64051d6"
+      },
+      "modified": "2026-10-22T05:51:33.474Z"
+    },
+    {
+      "path": "scenes/B01",
+      "id": "1SkBs-pjn9TOxv0ihXsTzJ6VieK6P9zk0",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:05.023Z"
+    },
+    {
+      "path": "scenes/B01/alignment",
+      "id": "1cDwEAuTCff9VOtt2NqYH-Zff0kTKZruq",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:19.480Z"
+    },
+    {
+      "path": "scenes/B01/alignment/alignment.json",
+      "id": "1LjmJJI25Xwsyludxq7dfsWNKcdZaLW_C",
+      "type": "file",
+      "size_bytes": 29161,
+      "hashes": {
+        "md5": "660dcbf46ecb64e7f1cb5d5c243358ab"
+      },
+      "modified": "2026-10-22T05:51:34.600Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction",
+      "id": "1Zj73Q516VtNE9xGEib1cDDCdeVVCsp_j",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:24.238Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export",
+      "id": "1lbTX5xoiGSubPGEX9yrTiCRM2gvvhuGg",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:25.621Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/cameras.json",
+      "id": "1N36IQxB0Itx3vAOl5ib3iVT0eEh9ndYa",
+      "type": "file",
+      "size_bytes": 602402,
+      "hashes": {
+        "md5": "9903f62509d1aa7161aaf43bcc2c7fa2"
+      },
+      "modified": "2026-10-22T05:51:34.077Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model",
+      "id": "1Gc7DJfEAoR4xEINvS5roGUv-CBLlx1__",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:33.338Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model/ckpts",
+      "id": "1na0NZvOcmZxPnzRQTGG2-NVKJEaNV-t1",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:40.414Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "id": "1byAPs1IygAtW90l0EUTQsLZ5LYj4wY3d",
+      "type": "file",
+      "size_bytes": 236331206,
+      "hashes": {
+        "md5": "825e51c6e91f2616499d6cc5e90969f6"
+      },
+      "modified": "2026-10-22T05:51:34.481Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/model/runtime-config.json",
+      "id": "1_7fypakkVsR-oOXmx4pRpjnIPZik354S",
+      "type": "file",
+      "size_bytes": 679,
+      "hashes": {
+        "md5": "58bc2db52f48f848b61ef037926e87a8"
+      },
+      "modified": "2026-10-22T05:51:34.600Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/points_scene.npy",
+      "id": "1MwO67l4O6qEymcnzyqC8_V39UmqnBRs2",
+      "type": "file",
+      "size_bytes": 2633336,
+      "hashes": {
+        "md5": "df43bc16a5ecec738b64e8f987ba9c73"
+      },
+      "modified": "2026-10-22T05:51:34.081Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/scene.json",
+      "id": "1QaxLZFlrQrQoaGEWCfZcvc33mzH7kAys",
+      "type": "file",
+      "size_bytes": 14042,
+      "hashes": {
+        "md5": "238599ea78c5d19c856a4253fd5fef22"
+      },
+      "modified": "2026-10-22T05:51:34.077Z"
+    },
+    {
+      "path": "scenes/B01/reconstruction/export/scene.json",
+      "id": "1lo4AhHYASTkYNFxiESYezLHB0-Rj95_e",
+      "type": "file",
+      "size_bytes": 14042,
+      "hashes": {
+        "md5": "238599ea78c5d19c856a4253fd5fef22"
+      },
+      "modified": "2026-10-22T05:51:34.077Z"
+    },
+    {
+      "path": "scenes/B02",
+      "id": "1uXDmPu0uOpRqqbxyE7YUpCKKVaz2rktA",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:08:52.763Z"
+    },
+    {
+      "path": "scenes/B02/alignment",
+      "id": "1m4F0lqeuLRDksgnDXCffozo1GXdRm-V0",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:08:54.167Z"
+    },
+    {
+      "path": "scenes/B02/alignment/alignment.json",
+      "id": "1UVb6XcmyCNJmt2VjyH89Of-JkuhDr9ul",
+      "type": "file",
+      "size_bytes": 10045,
+      "hashes": {
+        "md5": "d8a1563f2cf6bcdf9be588a672e0a92c"
+      },
+      "modified": "2026-10-22T05:51:35.152Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction",
+      "id": "15PH3Vjq9jj0Pl0_lCttVUDgsKgE7uBQ8",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:20.956Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export",
+      "id": "1lz_9e2jS2ixCWxMq7qOette_-7FUcHQ6",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:22.410Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/cameras.json",
+      "id": "1rnFZ6MUJMya3SDT6bGhTCKxSx_vDvcHq",
+      "type": "file",
+      "size_bytes": 354881,
+      "hashes": {
+        "md5": "7f5f7bedc1a471b7cdc62ca2b269c8ce"
+      },
+      "modified": "2026-10-22T05:51:34.646Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model",
+      "id": "1Wtfv0Lkj4XF2zo7NNBMd8IlDTkjb01i7",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:28.694Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model/ckpts",
+      "id": "1Qx-1eacyx_rQWQH2lHhDvg8_iYWkAXnJ",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:41.726Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "id": "1rjx7_7XzeQ0HE-184cX3xQLcX1Qi2Mpo",
+      "type": "file",
+      "size_bytes": 236331206,
+      "hashes": {
+        "md5": "b279545c8b4bb53ad377987470e5fabd"
+      },
+      "modified": "2026-10-22T05:51:35.037Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/model/runtime-config.json",
+      "id": "1CxJW_EIrWaYqkY9oAaE-kAAmUouxPEBd",
+      "type": "file",
+      "size_bytes": 679,
+      "hashes": {
+        "md5": "58bc2db52f48f848b61ef037926e87a8"
+      },
+      "modified": "2026-10-22T05:51:35.152Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/points_scene.npy",
+      "id": "1RUjY44JkTURzzl5gbnvJVu02w712bXEM",
+      "type": "file",
+      "size_bytes": 1359008,
+      "hashes": {
+        "md5": "a72b17e8d78930bc4bde0625ef6d7ab0"
+      },
+      "modified": "2026-10-22T05:51:34.650Z"
+    },
+    {
+      "path": "scenes/B02/reconstruction/export/scene.json",
+      "id": "1IK789ZdCJliBxR10KTrNQUKWQ3BDmre6",
+      "type": "file",
+      "size_bytes": 14207,
+      "hashes": {
+        "md5": "7ac0eb6a9c1b5652cd994e2d60a87423"
+      },
+      "modified": "2026-10-22T05:51:34.646Z"
+    },
+    {
+      "path": "scenes/B03",
+      "id": "187jhrR9PdMuyN9KVWvTvluHgRIiRaahg",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:00.364Z"
+    },
+    {
+      "path": "scenes/B03/alignment",
+      "id": "144G9xrXnpUSf39oHCaY0C2k-eQ5Ow8Uu",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:03.696Z"
+    },
+    {
+      "path": "scenes/B03/alignment/alignment.json",
+      "id": "1ZBabYwwi5C78J9EYUOeQXkalTs1lCcJ4",
+      "type": "file",
+      "size_bytes": 9963,
+      "hashes": {
+        "md5": "4322fb22607cd94413386d9eae9a73b5"
+      },
+      "modified": "2026-10-22T05:51:35.814Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction",
+      "id": "1W17--F-l0hANeHqznGSo2v6uiffhyfhx",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:30.643Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export",
+      "id": "1mZZvikFE1HD6RScqgIf7nYMbnGy4WN9V",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:32.006Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/cameras.json",
+      "id": "1PV-4q0p7Ic-OOq6YM3qog0mjsDevAbkE",
+      "type": "file",
+      "size_bytes": 345902,
+      "hashes": {
+        "md5": "d69aaba9ad07842fc6897450389f9268"
+      },
+      "modified": "2026-10-22T05:51:35.198Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model",
+      "id": "1TqYcwMi_YUiSa_ZgOh-9dXB0MH8q2Y_7",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:47.577Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model/ckpts",
+      "id": "1oBxMiJj67yzrcG2m5aMEhAsefWXpEDft",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T13:09:52.605Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "id": "1-Cy73B-IIt_YlXHgyp4uV3FnitP5pSA0",
+      "type": "file",
+      "size_bytes": 236331206,
+      "hashes": {
+        "md5": "807919e98e066631f180b7a3f9cc33b2"
+      },
+      "modified": "2026-10-22T05:51:35.704Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/model/runtime-config.json",
+      "id": "181_rtfUHOpqzlKLl2pby9LtUekpaYrsf",
+      "type": "file",
+      "size_bytes": 679,
+      "hashes": {
+        "md5": "58bc2db52f48f848b61ef037926e87a8"
+      },
+      "modified": "2026-10-22T05:51:35.814Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/points_scene.npy",
+      "id": "1pao7zIbIr4jiHmJ-X0YnlW0Dtto41If5",
+      "type": "file",
+      "size_bytes": 1068632,
+      "hashes": {
+        "md5": "cd23d980c3136bb87a05b6cefc398c8e"
+      },
+      "modified": "2026-10-22T05:51:35.203Z"
+    },
+    {
+      "path": "scenes/B03/reconstruction/export/scene.json",
+      "id": "1asiXKnMWcO4Hafh9dGwsrdaZr-4YpscY",
+      "type": "file",
+      "size_bytes": 14047,
+      "hashes": {
+        "md5": "c628618aa9bb90a2d1785c6c89a4ae0c"
+      },
+      "modified": "2026-10-22T05:51:35.198Z"
+    }
+  ],
+  "ambiguous_paths": [
+    "scenes/B01/reconstruction/export/scene.json"
+  ]
+}

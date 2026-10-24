@@ -4,11 +4,14 @@ from typing import Self, cast
 
 import torch
 from torch import Tensor, nn
-from torch.nn import functional as F
 
 from src.tasks.ball_detection.models.mdd.attention import FusionBlock, QueryFusionBlock
 from src.tasks.ball_detection.models.mdd.cnn_encoder import DeepMDDEncoder
 from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig, MDDPretrainConfig
+from src.tasks.ball_detection.models.mdd.execution import (
+    checkpoint_call,
+    decode_frame_heatmaps,
+)
 from src.tasks.ball_detection.models.mdd.pose import PoseTokenizer
 from src.tasks.ball_detection.models.mdd.token_encoder import MDDTokenEncoder
 from src.tasks.ball_detection.preprocessing import RGBToMDD
@@ -79,7 +82,7 @@ class MDDDPTDetector(nn.Module):
     def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
         self.config = config
-        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b)
+        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
         self.encoder = DeepMDDEncoder(config)
         self.decoder = DPTDecoder(encoder_channels=self.encoder.feature_channels,
                                   decoder_channels=config.decoder_channels, reassemble_factors=(1., 1., 1., 1.),
@@ -89,24 +92,22 @@ class MDDDPTDetector(nn.Module):
 
     def forward(self, rgb: Tensor) -> Tensor:
         features = self.encoder(self.mdd(rgb))
-        b, t = rgb.shape[:2]
-        fused = self.decoder([f.flatten(0, 1) for f in features])
         # Produce logits on the declared /4 target grid; do not upscale the target to RGB size.
-        logits = self.head(F.interpolate(fused, size=((rgb.shape[-2] + 3) // 4, (rgb.shape[-1] + 3) // 4),
-                                         mode="bilinear", align_corners=False))
-        return cast(Tensor, logits.reshape(b, t, *logits.shape[-2:]))
+        return decode_frame_heatmaps(self.decoder, self.head, features,
+            output_size=((rgb.shape[-2] + 3) // 4, (rgb.shape[-1] + 3) // 4),
+            frame_chunk_size=self.config.frame_chunk_size, activation_checkpointing=self.config.activation_checkpointing)
 
 class DeepMDDQueryTrunk(nn.Module):
     """Shared query path; registration names and operation order match stage two."""
     def __init__(self, config: MDDPretrainConfig, *, mdd_a: float = .2, mdd_b: float = .15) -> None:
         super().__init__()
         self.config = config
-        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b)
+        self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
         self.encoder = DeepMDDEncoder(config)
         self.projection = nn.Linear(config.mixed_channels[-1], config.dim)
         self.spatial_position = nn.Linear(2, config.dim)
         self.ball_query = nn.Parameter(torch.randn(config.dim) * .02)
-        query_config = MDDPoseConfig("conv2d", None, "query_only", 32, config.stem_channels,
+        query_config = MDDPoseConfig("conv2d", None, "query_only", config.frames, config.stem_channels,
                                     config.mixed_channels, config.dim, config.heads, config.layers,
                                     config.dropout, config.rope_base)
         self.blocks = nn.ModuleList(QueryFusionBlock(query_config, ffn=nn.Sequential(
@@ -137,7 +138,9 @@ class DeepMDDQueryTrunk(nn.Module):
         patches = patches + self.spatial_position(torch.stack((x, y), -1).reshape(h * w, 2))[None, None]
         query = self.ball_query.expand(b, t, -1)
         for block in self.blocks:
-            query = block(query, patches, timestamps - timestamps[:, :1])
+            # Retain block inputs and shared patches; recompute attention/FFN per block.
+            query = checkpoint_call(block, query, patches, timestamps - timestamps[:, :1],
+                                    enabled=self.config.activation_checkpointing and self.training)
         return features, query
 
 

@@ -1,0 +1,121 @@
+{
+  "schema": "court_scale_local_validation_record_v1",
+  "implementation_commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "checks": [
+    {
+      "provenance": "previous handoff, reviewed by parent before pushing 6ed3f29e848e71217d083f50ef0f050ecacb0981",
+      "argv": [
+        "flock",
+        "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/unit/synthetic_data_generation/dataset/court",
+        "tests/unit/synthetic_data_generation/scripts/test_generate_court_scale.py",
+        "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
+        "tests/unit/utils/configuration/test_contracts.py",
+        "tests/unit/utils/configuration/test_inventory.py",
+        "tests/unit/utils/configuration/test_discovery.py",
+        "-n",
+        "4",
+        "-q"
+      ],
+      "passed": 370,
+      "warnings": 4,
+      "rerun_in_colab_verification_stage": false
+    },
+    {
+      "provenance": "previous handoff, reviewed by parent before pushing 6ed3f29e848e71217d083f50ef0f050ecacb0981",
+      "argv": [
+        "flock",
+        "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-k",
+        "scale_production or frozen_portable or image_free_bundle or local_replay or production_plan",
+        "-n",
+        "4",
+        "-q"
+      ],
+      "passed": 15,
+      "rerun_in_colab_verification_stage": false
+    },
+    {
+      "provenance": "rerun locally during the Colab verification stage",
+      "argv": [
+        "flock",
+        "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "tests/unit/synthetic_data_generation/dataset/court/test_scale_durability.py",
+        "-n",
+        "4",
+        "-q"
+      ],
+      "passed": 18,
+      "elapsed_seconds": 35.68,
+      "log": "durability-tests.log",
+      "rerun_in_colab_verification_stage": true
+    }
+  ],
+  "additional_checks": [
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/collect_evidence.py",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/verify_renderer_log.py",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/verify_run.py"
+      ],
+      "result": "passed"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "mypy",
+        "--follow-imports=skip",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/collect_evidence.py",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/verify_renderer_log.py",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/verify_run.py"
+      ],
+      "result": "passed"
+    },
+    {
+      "argv": [
+        "bash",
+        "-n",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/colab_setup.sh",
+        "knowledge/runs/run-court-scale-colab-resume-l4-20261023/colab_generate.sh"
+      ],
+      "result": "passed"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_validate.py",
+        "--check-summary",
+        "--base-ref",
+        "0f6035f8ad8295ee8bd37a10a1c194809e0cdd65"
+      ],
+      "errors": 0,
+      "warnings": 218,
+      "log": "knowledge-validation.log"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_repro_paths.py"
+      ],
+      "missing": 0,
+      "unverifiable": 0,
+      "log": "repro-paths-validation.log"
+    }
+  ],
+  "renderer_log_command_note": "Run verify_renderer_log.py with PYTHONPATH set to the active checkout root; the successful result is renderer-log-verification.json."
+}

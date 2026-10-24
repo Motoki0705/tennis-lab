@@ -1,0 +1,70 @@
+{
+  "review_finding": "cross-1",
+  "generator_merged_head": "9a1400b795c62b44e34fc6263c5749a194f1be23",
+  "merge_commit": "61c948c5338f18d620528f1ca6515cdbf9d69d63",
+  "implementation_commit": "75c99cedd",
+  "source_changes_after_gpu_smoke": [],
+  "tests": [
+    {
+      "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/integration/tasks/court_detection/test_scale_dataset_version.py tests/integration/tasks/court_detection/test_data_scaling.py -n 4 -q",
+      "passed": 27,
+      "exit_code": 0
+    },
+    {
+      "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/tasks/court_detection/data/inputs/test_synthetic_court.py tests/unit/tasks/court_detection/data/test_mixed.py tests/unit/tasks/court_detection/test_configuration.py tests/unit/tasks/court_detection/scaling tests/integration/tasks/court_detection/test_composable_pipeline.py tests/unit/synthetic_data_generation/dataset/court/test_scale_publication.py tests/unit/synthetic_data_generation/dataset/court/test_scale_production.py -n 4 -q",
+      "passed": 176,
+      "exit_code": 0
+    }
+  ],
+  "tests_sha256": {
+    "tests/integration/tasks/court_detection/test_scale_dataset_version.py": "2bf1cbd2978a62347a414267bc7e2901ad7bcb3545559039c662f77143de0709",
+    "tests/integration/tasks/court_detection/test_data_scaling.py": "124ed28fe1b4364ceaed9ba92c58a537a1e77f861c0a8a8f9aa3f8d9210a366f"
+  },
+  "pre_commit": {
+    "command": "git diff --name-only -z 61c948c53 -- src tests | xargs -0 .venv/bin/pre-commit run --files",
+    "ruff": "passed",
+    "mypy": "passed",
+    "exit_code": 0
+  },
+  "gpu": {
+    "queue_job": "0-8207316784400436991_2026-10-22T15-33-35-599563008Z_1964939_court-scale-manifest-training-smoke.job",
+    "registration": "TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue bash .agents/skills/training-queue/scripts/training_queue.sh add \"$(cat tmp/court-scale-manifest-smoke/run_smoke.sh)\" --name court-scale-manifest-training-smoke --provider codex --session \"$CODEX_SESSION_ID\" --issue 1354 --resource all --idempotency-key court-scale/manifest-training-smoke/attempt-2",
+    "command_file": "repro.sh",
+    "resource": "all",
+    "exit_code": 0,
+    "accepted_images": 298,
+    "optimizer_updates": 3,
+    "batch_size": 1,
+    "real_val_images": 2,
+    "verification_command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=\"$PWD\" .venv/bin/python tmp/court-scale-manifest-smoke/verify_smoke.py"
+  },
+  "knowledge": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref \"$(git merge-base origin/main HEAD)\"",
+    "errors": 0,
+    "base_ref": "9c2dc29366e0ce70892ecd072822d57af1cdc0f9",
+    "direct_origin_main_check": "20 missing-deletion-record errors concern files added on main after the fork; all 20 paths are absent at both the merge base and starting HEAD. This repair removes none of them."
+  },
+  "initial_fixture_failures": [
+    "Hydra struct rejected injected unknown keys before the typed-config assertion; use open_dict for intentional invalid input.",
+    "Original fixture had no geometry rejections; explicit 80x16 / six-trajectory fixture has one geometry-rejected candidate.",
+    "Create the CPU runner's output directory, as the production runner does.",
+    "KP targets are a mapping of heatmap/points/visibility/physical IDs, and shared preprocessing clips supervision to output pixel-centre bounds. Raw source labels must match the store exactly; processed labels follow the existing normalized coordinate contract."
+  ],
+  "changed_training_paths": [
+    "src/tasks/court_detection/README.md",
+    "src/tasks/court_detection/ablation/evaluation.py",
+    "src/tasks/court_detection/configs/data/source/synthetic_court_dataset_version.yaml",
+    "src/tasks/court_detection/configs/train_data_scaling.yaml",
+    "src/tasks/court_detection/configuration.py",
+    "src/tasks/court_detection/data/inputs/factory.py",
+    "src/tasks/court_detection/data/inputs/synthetic_court.py",
+    "src/tasks/court_detection/data/inputs/synthetic_court_dataset_version.py",
+    "src/tasks/court_detection/data/mixed.py",
+    "src/tasks/court_detection/scaling/README.md",
+    "src/tasks/court_detection/scaling/provenance.py",
+    "src/tasks/court_detection/training/runner.py",
+    "tests/integration/tasks/court_detection/test_data_scaling.py",
+    "tests/integration/tasks/court_detection/test_scale_dataset_version.py"
+  ],
+  "scope": "No generation implementation edits after the requested merge; no push or GitHub writes; no Colab/main experiment or full-real-evaluation claims."
+}

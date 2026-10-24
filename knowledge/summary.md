@@ -1,7 +1,7 @@
-<!-- knowledge-review: b6a478f150cad2fc38c1890fdc82d8c39181c9515dfa62fdf1d01e8b09682077 on 2026-10-24 -->
+<!-- knowledge-review: bb602c6f7456e3bc0512fd06a62125e51a92e382cec27ceaa5b00eab63ff493c on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court発表素材の採用を反映。既存のcheckpoint採用判断は維持）
+更新日: 2026-10-23（ボールの全フレーム学習経路の診断と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,26 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-23のCourt分割生成・Drive復旧検証
+
+[固定production recipeの4シーンL4生成](nodes/synthetic_data_generation/000027-run-court-scale-colab-resume-l4-20261023.md)で、
+seed42・各6軌道・密度0の303候補から282枚をtrainへ採択し、Drive版として再取得・厳格再読込できた。
+1 cache保存後に中断し、元の出力pathを使わず空のrootへ復旧して、完了cacheを再描画せず未完了23 cacheだけを生成した。
+取得後の24 store・282画像と184ファイルの内容一致、GPU解放、全jobのDrive保存、Colab停止を確認した。
+生成本体137秒に対し、durable commandやfetchのwall timeが大きく、本番規模の見積りでは永続化・確認の費用を含める。
+Drive操作をまとめる効率化は未profileの改善候補で、品質・hash・保存完了の境界を維持して調べる。
+実画像への汎化・精度スケーリング・規模上限は未評価。次は#1356で写り方別評価と生成・学習費用を確認し、既存モデルの採用判断は維持する。
+
+## 2026-10-22のCourt資産Colab照合
+
+[B00〜B03の可搬資産とL4描画](nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md)は、
+資産のbyte照合と固定runtimeでの32枚の描画・Drive保存を確認した。各GPU内の2回の描画と
+投影・可視KPは一致し、ユーザーの2026-10-22の判断により教師の完全一致とRGBのPSNR下限を
+受入基準にした。2回とも基準を通り、入力資産をDriveの採用位置へcopyし、再取得後の内容と幾何も照合した。
+GPU間のalpha/depth外れ値とコート領域の差、staging資産は保持し、全raster一致は主張しない。
+本番生成をL4へ統一した。後続の分割生成・採択率・Drive復旧の確認は上記のrunへ記録した。
+既存モデルの採用判断、3DGSの品質、合成画像数による精度改善の判断は更新していない。
 
 ## 2026-10-21の公開3カメラサンプル
 
@@ -318,8 +338,11 @@ RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量
 validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
 具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
 共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
-可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
-長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000065-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
+CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
+両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
+これは低解像度の機能確認で、既存の採用判断を変えない。
+実データ720p・長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
 2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
 合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
@@ -509,6 +532,26 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
+
+2026-10-22の[合成専用・固定20更新のGPU起動確認](nodes/court_detection/000048-run-court-data-scaling-smoke-s42.md)で、ViT-B＋幅768・長辺512、B00の8枚・batch 1・compile無効から指定更新数checkpointの実画像val/test別評価と集計まで通した。実画像全体の固定一覧は498動画を249動画ずつへ分け、退化注釈除外後val 4,468枚・test 4,372枚、動画重複0を記録した。全体testは未評価で、起動確認の少数fixtureから精度や本番batch 8の容量は判断しない。既存の採用判断は維持し、次は#1356のColab試走で本番更新数・評価間隔と容量を固定する。
+
+[B00〜B03のCPU軌道計画診断](nodes/synthetic_data_generation/000024-run-court-nested-plan-cpu-20261022.md)では、
+固定弧長表の2倍細分と点IDによって共通視点を保てたが、軌道長・棄却により単純な軌道prefixだけでは等枚数にならず、
+評価軌道近傍の保守的な除外で形状・中心の分布も大きく偏った。
+当時の採択後選択・評価guardは旧案の観測として保持し、新しい生成仕様には用いない。
+[4sceneの新規視点描画診断](nodes/synthetic_data_generation/000025-run-court-novel-view-quality-20261022.md)では、
+推奨と拡張5%・狭角・jitter0の計2080視点、QAと比較/連続動画16本を作成した。
+狭角で対象KP支持が減り、ROI穴0でもぼけ・線の不一致を通した。対象4KP以上で対象外の支持を除いても、
+B02/B03はほぼpartialのままで、強いalpha条件も分布を偏らせた。
+0mは動画の視線の振れを減らすが、複数courtのtarget切替とぼけは残る。
+2026-10-22のユーザー判断で、合成は全てtrain、実画像は動画単位val/testの評価専用、
+poseは学習するが主評価外、枚数は全採択候補の実測値とした。枚数揃えのquota/補充と合成評価guardは不要。
+[設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
+#1352のUI比較後は#1343の合意による層別counterのproduction recipeを固定した。
+その条件でのL4分割生成・Drive復旧を上記runで検証したが、コート全体が写る視点が少ない制約の実画像への影響は未評価。
+既存モデルの採用判断は維持し、今回の小規模採択率を本番全分布へ流用せず、#1356の試走を規模比較に先行させる。
 
 2026-10-21の[発表素材用の再探索](nodes/court_detection/000045-run-court-hybrid-fit-search-20261021.md)では、
 PROSACの向き修正を含む版と固定b863 checkpointを使い、以前と同じval先頭300件・入力hash・

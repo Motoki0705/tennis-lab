@@ -1,0 +1,23 @@
+{
+  "schema": "court_scale_renderer_log_verification_v1",
+  "log_sha256": "51a8c0d595aeb649f5aed9284a2a9098a2cb589b53029266215ca3903ed1178c",
+  "dataset_version_sha256": "b790b1b0c252526062ef0fb24c7d71311ee449079452be9034523ddb9179c625",
+  "initial_completion_sha256": "69e4f4a653d0c1f2d361247f0d18e145157bde80dbf2b17af1fb6b64d97de083",
+  "initial_cache_member_count": 11,
+  "initial_ids_redrawn": 0,
+  "unique_new_rendered_ids": 276,
+  "public_renderer_calls_by_scene": {
+    "B00": 5,
+    "B01": 6,
+    "B02": 6,
+    "B03": 6
+  },
+  "new_rendered_frames_by_scene": {
+    "B00": 57,
+    "B01": 100,
+    "B02": 59,
+    "B03": 60
+  },
+  "matches_dataset_rendered_unique": true,
+  "duplicate_new_rendered_ids": 0
+}

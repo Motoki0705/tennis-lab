@@ -28,6 +28,11 @@ from merge_gate_policy import (  # noqa: E402
     publication_errors,
     shared_permission,
 )
+from parent.execution import (  # noqa: E402
+    authorization,
+    require_run_authorization,
+    requirement_body,
+)
 from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
     closing_issues,
@@ -37,7 +42,7 @@ from parent.policy import (  # noqa: E402
     object_value,
 )
 from parent.session import ParentSession  # noqa: E402
-from parent.snapshot import authorization, git, snapshot  # noqa: E402
+from parent.snapshot import git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
@@ -72,6 +77,7 @@ def attempt_path(session: ParentSession, n: int, head: str) -> Path:
 class Collection:
     parent: Issue
     children: dict[int, Issue]
+    default_branch: str
     pulls: list[dict[str, Any]]
     candidates: list[int]
     details: dict[int, dict[str, Any]]
@@ -82,8 +88,14 @@ class Collection:
     errors: dict[int, list[str]]
 
 
+def repository_default_branch(session: ParentSession) -> str:
+    repo = object_value(session.gh.get(f"repos/{session.gh.repo}"))
+    return nonempty(repo.get("default_branch"), "repository default_branch")
+
+
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
     parent, children = session.family()
+    default_branch = repository_default_branch(session)
     pulls = session.gh.pulls()
     if len({p["number"] for p in pulls}) != len(pulls):
         raise ValueError("duplicate PR records from GitHub")
@@ -145,6 +157,7 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
                 full_diff(before, current["head_sha"])
             ).hexdigest()
         raw["statusCheckRollup"] = []
+        raw["ci_head_sha"] = None
         if raw["state"] == "open":
             ci = subprocess.run(
                 [
@@ -170,12 +183,14 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
             if data["headRefOid"] != current["head_sha"]:
                 errors[n].append("head_changed_during_ci")
             raw["statusCheckRollup"] = data["statusCheckRollup"]
+            raw["ci_head_sha"] = data["headRefOid"]
         details[n] = raw
     # Use the fresh individual PRs for dependency/duplicate checks, too.
     pulls = [details.get(p["number"], p) for p in pulls]
     return Collection(
         parent,
         children,
+        default_branch,
         pulls,
         candidates,
         details,
@@ -208,7 +223,7 @@ def load_evidence(
     execution = read_json(run_dir / "execution.json")
     if result["request"] != request or read_json(run_dir / "request.json") != request:
         raise ValueError("local review result/request mismatch")
-    auth = authorization(session)
+    auth = authorization(session, request)
     parent_comments = session.gh.comments(session.parent)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
@@ -216,6 +231,21 @@ def load_evidence(
             result, execution, parent_comments, pr_comments, session.login, auth
         )
     )
+    if request.get("authorization", auth) != auth:
+        errors.append("review_execution_basis_changed")
+    if request["schema_version"] == 2:
+        for n, expected in request["requirements"].items():
+            raw = session.gh.issue(int(n))
+            if digest(requirement_body(raw.get("body") or "")) != expected:
+                reason = f"issue_{n}_reviewed_requirements_changed"
+                affected = [
+                    p["number"] for p in result["prs"] if int(n) in p["child_issues"]
+                ]
+                if int(n) == session.parent or not affected:
+                    errors.append(reason)
+                else:
+                    for pr in affected:
+                        view.errors.setdefault(pr, []).append(reason)
     if execution.get("session") != session.session:
         errors.append("review_owner_changed")
     state = confirmed_state(session.history(), request, auth)
@@ -290,7 +320,6 @@ def evaluate(
                 # Keep this PR's failure explicit without blocking an unrelated
                 # eligible PR. Coverage also reports the changed snapshot fields.
                 view.errors[n].append("base_advance_unverified")
-    required = load_list_file(HERE / "required_checks.txt")
     patterns = load_list_file(HERE / "shared_paths.txt")
     for n in view.candidates:
         pr = view.details[n]
@@ -303,6 +332,7 @@ def evaluate(
         n: evaluate_parent_gate(
             MergeInput(
                 repo=session.gh.repo,
+                default_branch=view.default_branch,
                 parent_issue=session.parent,
                 pr=view.details[n],
                 children=view.children,
@@ -316,7 +346,6 @@ def evaluate(
                 changed_paths=view.paths[n],
                 review_state=state,
                 evidence_errors=(*errors, *view.errors[n]),
-                required_checks=required,
                 shared_patterns=patterns,
                 base_advances=tuple(advances),
                 permission=permission,
@@ -332,6 +361,8 @@ def completion(
 ) -> tuple[str, ...]:
     if not pr.get("merged_at"):
         return ("merge_not_confirmed",)
+    if pr["base"]["ref"] != repository_default_branch(session):
+        return ("base_not_default_branch",)
     parent, children = session.family()
     issue_targets = set(children) or {parent.number}
     linked = closing_issues(pr.get("body") or "", session.gh.repo) & issue_targets
@@ -489,7 +520,7 @@ def record_permission(
     history = session.history()
     prior = [e for e in history if e["event"] == "merge_permission"]
     recent: list[dict[str, Any]] = []
-    auth = authorization(session)
+    auth = require_run_authorization(session, request, required_issues=set())
     for event in history:
         if authorization_revoked(event, auth):
             recent = []

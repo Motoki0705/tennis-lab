@@ -40,6 +40,12 @@ EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
     "src.tennis_scene.visualization.blender.shots.validate_reveal": (
         "Blender bundled Python; validates a saved scene without repo imports."
     ),
+    "src.tennis_scene.visualization.blender.shots.player_placement": (
+        "Blender bundled Python; builds the placement shot from a plain-file bundle."
+    ),
+    "src.tennis_scene.visualization.blender.shots.validate_placement": (
+        "Blender bundled Python; validates a saved placement scene without repo imports."
+    ),
 }
 
 
@@ -213,6 +219,7 @@ _BOUNDARY_VALIDATOR_KEYS: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "tennis_scene.clip_studio",
     "src.tennis_scene.scripts.export_blender": "tennis_scene.blender_export",
     "src.tennis_scene.scripts.export_blender_diffusion": "tennis_scene.export_blender_diffusion",
+    "src.tennis_scene.scripts.export_blender_placement": "tennis_scene.blender_placement",
     "src.tennis_scene.scripts.export_blender_rays": "tennis_scene.export_blender_rays",
     "src.tennis_scene.scripts.generate_dataset": "tennis_scene.generate_dataset",
     "src.tennis_scene.scripts.run_pipeline": "tennis_scene.pipeline",
@@ -274,6 +281,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.clip_studio": "src.tennis_scene.configuration.validate_clip_studio_boundary",
     "src.tennis_scene.scripts.export_blender": "src.tennis_scene.configuration.validate_blender_export_boundary",
     "src.tennis_scene.scripts.export_blender_diffusion": "src.tennis_scene.visualization.blender.export.diffusion_configuration.validate_diffusion_boundary",
+    "src.tennis_scene.scripts.export_blender_placement": "src.tennis_scene.configuration.validate_blender_placement_boundary",
     "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
@@ -355,6 +363,9 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     "src.tasks.ball_detection.visualization.inference.cli": ("ball_detection.inference_ui", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.dpt_pretrain.runner": ("ball_detection.pretrain_mdd_dpt", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.evaluation.hybrid_cli": ("ball_detection.evaluate_hybrid", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.training.temporal_heatmap.cli": ("ball_detection.train_temporal_heatmap", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.evaluation.temporal_heatmap_cli": ("ball_detection.evaluate_temporal_heatmap", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
+    "src.tasks.ball_detection.scripts.visualize_temporal_heatmaps": ("ball_detection.visualize_temporal_heatmaps", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.coordinates.finetune": ("ball_detection.posttrain_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.coordinates.full_model": ("ball_detection.full_model_mdd_query", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
     "src.tasks.ball_detection.training.annotation.__main__": ("ball_detection.annotation_learning", "src.utils.configuration.paths.NonHydraPathBoundary.validate"),
@@ -417,6 +428,14 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "court_detection.ablation_comparison",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.court_detection.scripts.compare_data_scaling": (
+        "court_detection.scaling_comparison",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.court_detection.scripts.freeze_real_evaluation": (
+        "court_detection.freeze_real_evaluation",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.court_detection.scripts.profile_ablation": (
         "court_detection.ablation_profile",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -439,6 +458,14 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
     ),
     "src.synthetic_data_generation.scripts.compact_court_storage": (
         "synthetic.court_storage_compaction",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.synthetic_data_generation.scripts.court_scene_assets": (
+        "synthetic.court_scene_assets",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.synthetic_data_generation.scripts.generate_court_scale": (
+        "synthetic.court_scale_generation",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.synthetic_data_generation.scripts.review_court_dataset": (
@@ -588,6 +615,14 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         domain="court_detection", executable_module=True,
     ),
     _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.compare_data_scaling", "main",
+        domain="court_detection", executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tasks.court_detection.scripts.freeze_real_evaluation", "main",
+        domain="court_detection", executable_module=True,
+    ),
+    _non_hydra_boundary(
         "src.tasks.court_detection.scripts.profile_ablation", "main",
         domain="court_detection", executable_module=True,
     ),
@@ -604,6 +639,18 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.synthetic_data_generation.scripts.compact_court_storage",
+        "main",
+        domain="synthetic_data_generation",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.court_scene_assets",
+        "main",
+        domain="synthetic_data_generation",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.synthetic_data_generation.scripts.generate_court_scale",
         "main",
         domain="synthetic_data_generation",
         executable_module=True,
@@ -795,6 +842,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.clip_studio"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_diffusion"),
+    _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_placement"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.export_blender_rays"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.generate_dataset"),
     _runtime_boundary("tennis_scene", "src.tennis_scene.scripts.run_pipeline"),
@@ -839,6 +887,9 @@ _RUNTIME_BOUNDARIES += (_non_hydra_boundary("src.tasks.ball_detection.scripts.pr
 _RUNTIME_BOUNDARIES += (
     _non_hydra_boundary("src.tasks.ball_detection.training.dpt_pretrain.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.evaluation.hybrid_cli", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.training.temporal_heatmap.cli", "main", domain="ball_detection", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.evaluation.temporal_heatmap_cli", "main", domain="ball_detection", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.scripts.visualize_temporal_heatmaps", "main", domain="ball_detection", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.finetune", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.full_model", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.annotation.__main__", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=True),
@@ -868,6 +919,7 @@ _RUNTIME_BOUNDARIES += (
         "dpt_pretrain": "src.tasks.ball_detection.training.dpt_pretrain.runner",
         "coordinates": "src.tasks.ball_detection.training.coordinates",
         "hybrid": "src.tasks.ball_detection.training.hybrid.runner",
+        "temporal_heatmap": "src.tasks.ball_detection.training.temporal_heatmap.cli",
     }, executable=True),
     _cli_dispatch("src.tasks.ball_detection.training.coordinates.__init__", "initialize", {
         "scratch": "src.tasks.ball_detection.training.coordinates.scratch",
@@ -879,6 +931,7 @@ _RUNTIME_BOUNDARIES += (
         "manifest": "src.tasks.ball_detection.evaluation.manifest_cli",
         "coordinates": "src.tasks.ball_detection.evaluation.coordinate_cli",
         "hybrid": "src.tasks.ball_detection.evaluation.hybrid_cli",
+        "temporal_heatmap": "src.tasks.ball_detection.evaluation.temporal_heatmap_cli",
     }, executable=True),
     _cli_dispatch("src.tasks.ball_detection.scripts.review", "mode", {
         "dataset": "src.tasks.ball_detection.visualization.review.cli",

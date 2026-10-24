@@ -1,6 +1,6 @@
 # Ball Detection
 
-RGB＋MDDから2Dボール位置を推定する。32フレーム・5chの新規CNN構成と旧2ch構成の
+RGB＋MDDから2Dボール位置を推定する。任意長T・5chのheatmap構成と既存32フレーム構成の
 入力仕様は [models/mdd](models/mdd/README.md) を参照。
 既存ConvNeXtのnative heatmap契約と、MDDの座標回帰契約を明示的に分ける。
 
@@ -35,7 +35,7 @@ SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../..
 | `preprocessing/mdd.py` | モデルが使う固定FP32 MDDの唯一の実装 |
 | `model_io/` | 入出力の検証、モデル生成、座標/heatmapの別々の契約 |
 | `checkpoints/` | schema別の保存・読込・encoder転送・再現性の照合 |
-| [training/](training/README.md) | 5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
+| [training/](training/README.md) | 等予算の可変長heatmap、5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
 | `inference/` | scene向け公開predictorとtrajectory gate |
 | [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
@@ -52,10 +52,11 @@ SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../..
 |---|---|
 | `generate_dataset` | 設定からframe storeを生成 |
 | `prepare_data` | 凍結したプレイ窓・pose/MDD-onlyのmanifestと比較設定を準備 |
-| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid`。座標系は`--initialize scratch\|encoder`も明示 |
-| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid`。保存されたcheckpoint契約で採点 |
+| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid\|temporal_heatmap`。新heatmapはarchitectureとphaseも明示 |
+| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid\|temporal_heatmap`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画（overlayはMP4も出力） |
+| `visualize_temporal_heatmaps` | 同じclip区間のowner予測を複数のT/アーキテクチャで横に並べてMP4へ出力 |
 | `visualize_annotation_correction` | 既存のモデル候補とCodex確定注釈をrank／左右比較。手順は[可視化ガイド](visualization/README.md#モデル候補とcodex確定注釈の発表用比較) |
 | `preview` | `--kind spatial\|heatmaps\|video`で教師・画像変換を確認 |
 

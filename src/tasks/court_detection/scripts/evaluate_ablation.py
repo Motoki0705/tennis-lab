@@ -41,6 +41,15 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             required=False,
         ),
         BoundaryPathField(
+            "artifact_root",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
             "checkpoint_root",
             PathRole.CHECKPOINT,
             PathDirection.INPUT,
@@ -67,18 +76,32 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--device", choices=("cuda", "cpu"), default="cuda")
-    for name in ("data-root", "checkpoint-root", "external-asset-root"):
+    parser.add_argument("--expected-step", type=int)
+    parser.add_argument("--split", choices=("val", "test"))
+    parser.add_argument("--series")
+    for name in (
+        "data-root",
+        "checkpoint-root",
+        "external-asset-root",
+        "artifact-root",
+    ):
         parser.add_argument(f"--{name}", type=Path)
     args = parser.parse_args()
     overrides = {
         name: getattr(args, name).expanduser().resolve()
-        for name in ("data_root", "checkpoint_root", "external_asset_root")
+        for name in (
+            "data_root",
+            "checkpoint_root",
+            "external_asset_root",
+            "artifact_root",
+        )
         if getattr(args, name) is not None
     }
     output = args.output.expanduser().resolve()
     checkpoint = args.checkpoint.expanduser().resolve()
     binding_roots = {
         "data_root": PROJECT_ROOT,
+        "artifact_root": PROJECT_ROOT,
         "checkpoint_root": PROJECT_ROOT,
         "external_asset_root": PROJECT_ROOT,
         **overrides,
@@ -88,7 +111,7 @@ def main() -> None:
         data_root=binding_roots["data_root"],
         checkpoint_root=binding_roots["checkpoint_root"],
         external_asset_root=binding_roots["external_asset_root"],
-        artifact_root=PROJECT_ROOT,
+        artifact_root=binding_roots["artifact_root"],
         output_root=output.parent,
         cache_root=PROJECT_ROOT,
     )
@@ -102,6 +125,9 @@ def main() -> None:
         paths.declared("checkpoint").path,
         output,
         device=args.device,
+        expected_step=args.expected_step,
+        real_split=args.split,
+        series=args.series,
         path_overrides={name: str(paths.declared(name).path) for name in overrides},
     )
     print(output / "evaluation.json")

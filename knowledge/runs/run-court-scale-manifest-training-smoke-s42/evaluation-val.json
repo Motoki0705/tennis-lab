@@ -1,0 +1,632 @@
+{
+  "schema": "court_data_scaling_evaluation_v1",
+  "checkpoint_sha256": "dbae8c0672cadf276cd4b1574c0afc63a2f496bd76f0e8963a929793516f4765",
+  "checkpoint": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-training-eval/tmp/court-scale-manifest-smoke/outputs/court_detection/train/dataset-version-smoke/s42/logs/version_0/checkpoints/update-00000003.ckpt",
+  "epoch": 0,
+  "global_step": 3,
+  "config": {
+    "paths": {
+      "project_root": ".",
+      "data_root": "/home/kamimura/projects/tennis-lab",
+      "checkpoint_root": "/home/kamimura/projects/tennis-lab/ckpt",
+      "artifact_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-training-eval/tmp/court-scale-manifest-smoke/outputs",
+      "output_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-training-eval/tmp/court-scale-manifest-smoke/outputs",
+      "cache_root": ".cache",
+      "external_asset_root": "/home/kamimura/projects/tennis-lab/third_party"
+    },
+    "data": {
+      "source": {
+        "kind": "synthetic_court_dataset_version",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": ".claude/worktrees/court-scale-trajectory-strategies/tmp/court-scale-review/run-04/1bef5ceda3d453b269cbb99e6b0d422e1e8466ad4e89d527cfa12b67d361dcda.dataset.json"
+      },
+      "processing": {
+        "targets": [
+          {
+            "kind": "kp",
+            "sigma_ratio": 0.01
+          },
+          {
+            "kind": "seg",
+            "target_schema": "court_cell_segmentation_coverage8_single_court_v3"
+          },
+          {
+            "kind": "line",
+            "target_schema": "court_line_coverage8_75mm_150mm_single_court_v4"
+          },
+          {
+            "kind": "semantic_line",
+            "target_schema": "court_line_semantic_camera_view_75mm_150mm_coverage8_single_court_v2"
+          }
+        ]
+      },
+      "augmentation": {
+        "train_scales": [
+          512
+        ],
+        "val_short_side": 512,
+        "crop_scale": [
+          1.0,
+          1.0
+        ],
+        "crop_ratio": [
+          1.0,
+          1.0
+        ],
+        "hflip_prob": 0.0,
+        "affine_degrees": 0.0,
+        "affine_translate": [
+          0.0,
+          0.0
+        ],
+        "affine_scale": [
+          1.0,
+          1.0
+        ],
+        "affine_shear": 0.0,
+        "perspective_distortion": 0.0,
+        "perspective_prob": 0.0,
+        "color_jitter": [
+          0.2,
+          0.2,
+          0.2,
+          0.05
+        ],
+        "gaussian_blur_kernel": [
+          3,
+          5
+        ],
+        "gaussian_blur_sigma": [
+          0.1,
+          1.5
+        ],
+        "gaussian_blur_prob": 0.2,
+        "min_visible_kp": 0,
+        "visibility_max_retries": 1,
+        "preserve_fx_fy": true,
+        "canvas_size": null,
+        "patch_size": 16
+      },
+      "batch_size": 1,
+      "num_workers": 0,
+      "pin_memory": true
+    },
+    "model": {
+      "name": "court_hierarchical",
+      "in_channels": 3,
+      "encoder": {
+        "name": "dinov3",
+        "backbone_name": "dinov3_vitb16",
+        "repository_path": "dinov3",
+        "checkpoint_path": "dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+        "strict": true,
+        "train_mode": "frozen",
+        "last_n_blocks": 0,
+        "out_indices": [
+          2,
+          5,
+          8,
+          11
+        ],
+        "layer_mode": "uniform",
+        "lora": {
+          "enabled": false,
+          "rank": 8,
+          "alpha": 16.0,
+          "dropout": 0.0,
+          "target_modules": [
+            "qkv",
+            "proj",
+            "fc1",
+            "fc2"
+          ]
+        }
+      },
+      "transformer_encoder": {
+        "name": "transformer",
+        "enabled": true,
+        "dim": 768,
+        "depth": 8,
+        "num_heads": 12,
+        "head_dim": 64,
+        "ffn_dim": 2048,
+        "rope_dim": 64,
+        "rope_theta": 10000.0,
+        "dropout": 0.0,
+        "attention_type": "mha",
+        "n_kv_heads": null,
+        "ffn_type": "swiglu"
+      },
+      "decoder": {
+        "name": "dpt",
+        "size": "large",
+        "channels": 512,
+        "reassemble_factors": [
+          4.0,
+          2.0,
+          1.0,
+          0.5
+        ]
+      },
+      "dense_head": {
+        "name": "residual",
+        "normalization_groups": 32,
+        "kp": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "seg": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "line": {
+          "hidden_channels": 256,
+          "depth": 2
+        },
+        "semantic_line": {
+          "hidden_channels": 256,
+          "depth": 2
+        }
+      }
+    },
+    "loss": {
+      "seg": {
+        "ce_weight": 1.0,
+        "dice_weight": 1.0,
+        "weight": 1.0
+      },
+      "kp": {
+        "focal_gamma": 2.0,
+        "weight": 1.0
+      },
+      "line": {
+        "bce_weight": 1.0,
+        "dice_weight": 1.0,
+        "pos_weight": 8.0,
+        "weight": 1.0
+      },
+      "semantic_line": {
+        "ce_weight": 1.0,
+        "dice_weight": 1.0,
+        "weight": 1.0
+      },
+      "pose": {
+        "enabled": true,
+        "translation_weight": 1.0,
+        "rotation_weight": 1.0,
+        "focal_weight": 1.0
+      },
+      "consistency": {
+        "enabled": false,
+        "weight": 0.0,
+        "temperature": 1.0,
+        "huber_delta": 0.01,
+        "min_depth_m": 0.1,
+        "depth_scale_m": 1.0,
+        "cheirality_weight": 0.0,
+        "warmup_fraction": 0.0,
+        "gradient_flow": "both"
+      }
+    },
+    "training": {
+      "trainer": {
+        "max_epochs": 1,
+        "gradient_clip_val": 1.0,
+        "deterministic": "warn",
+        "precision": "bf16-mixed",
+        "log_every_n_steps": 1,
+        "check_val_every_n_epoch": 1,
+        "accumulate_grad_batches": 1,
+        "reload_dataloaders_every_n_epochs": 0,
+        "enable_progress_bar": false,
+        "enable_model_summary": false,
+        "benchmark": false
+      },
+      "learning_rate": 0.0001,
+      "weight_decay": 1.0,
+      "warmup_epochs": null,
+      "warmup_steps": 1,
+      "min_lr": 1e-06,
+      "steps_per_epoch": null,
+      "optimizer": {
+        "name": "adamw",
+        "betas": [
+          0.9,
+          0.999
+        ]
+      },
+      "compile": {
+        "enabled": false,
+        "backend": "inductor",
+        "mode": "default",
+        "fullgraph": false,
+        "dynamic": false
+      },
+      "matmul_precision": "high",
+      "allow_tf32": true,
+      "checkpoint": {
+        "enabled": false,
+        "filename": "court-detection-{epoch:02d}",
+        "monitor": "val/loss",
+        "mode": "min",
+        "save_top_k": 2,
+        "save_last": true
+      },
+      "early_stopping": {
+        "enabled": false,
+        "monitor": "val/loss",
+        "mode": "min",
+        "patience": 10,
+        "min_delta": 1e-05,
+        "check_on_train_epoch_end": false
+      },
+      "lr_monitor": {
+        "enabled": true,
+        "interval": "step"
+      },
+      "qualitative_logging": {
+        "enabled": false,
+        "every_n_epochs": 5,
+        "num_samples": 4,
+        "selection_mode": "random",
+        "selected_indices": null,
+        "fps": 6
+      },
+      "gan": {
+        "enabled": false,
+        "target_weight": 0.0,
+        "warmup_epochs": 1,
+        "generator_gradient_clip_val": null,
+        "discriminator_gradient_clip_val": null,
+        "transition": {
+          "start_epoch": 0
+        }
+      },
+      "step_schedule": {
+        "max_steps": 3,
+        "validation_every_n_steps": 3,
+        "checkpoint_every_n_steps": 3
+      }
+    },
+    "run": {
+      "seed": 42,
+      "gpus": 1,
+      "resume": null,
+      "init_weights": null,
+      "fast_dev_run": false,
+      "dry_run": false,
+      "test_after_fit": false,
+      "artifact_store": {
+        "mode": "local",
+        "remote": null,
+        "remote_root": null,
+        "sync_interval_seconds": null
+      },
+      "output_dir": "court_detection/train/dataset-version-smoke/s42"
+    },
+    "render_style": {
+      "draw": {
+        "kp_radius": 4,
+        "kp_color_rgb": [
+          96,
+          255,
+          128
+        ],
+        "kp_thickness": -1,
+        "line_threshold": 0.5
+      },
+      "layout": {
+        "header_height": 36,
+        "display_width": 640,
+        "tile_gap": 12,
+        "text_scale": 0.52,
+        "text_thickness": 1,
+        "background_rgb": [
+          18,
+          18,
+          18
+        ],
+        "text_color_rgb": [
+          245,
+          245,
+          245
+        ],
+        "panel_label_height": 24
+      }
+    },
+    "mixed": {
+      "sources": {
+        "tennis_court_detector": {
+          "kind": "tennis_court_evaluation",
+          "root": ".claude/worktrees/court-scale-training-eval/tmp/court-scale/smoke-data/real",
+          "registry": "court_detection/evaluate/smoke-real-video-v1/s42/registry.json"
+        },
+        "synthetic_court": {
+          "kind": "synthetic_court_dataset_version",
+          "schema": "v3",
+          "court_scope": "target_court",
+          "manifest": ".claude/worktrees/court-scale-trajectory-strategies/tmp/court-scale-review/run-04/1bef5ceda3d453b269cbb99e6b0d422e1e8466ad4e89d527cfa12b67d361dcda.dataset.json"
+        }
+      },
+      "train_batch_counts": {
+        "synthetic_court": 1,
+        "tennis_court_detector": 0
+      }
+    }
+  },
+  "target_bundle": {
+    "schema": "court_target_bundle_v1",
+    "targets": [
+      {
+        "kind": "kp",
+        "schema": "synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
+        "output_channels": 14,
+        "channel_names": [
+          "far_doubles_left",
+          "far_doubles_right",
+          "near_doubles_left",
+          "near_doubles_right",
+          "far_singles_left",
+          "near_singles_left",
+          "far_singles_right",
+          "near_singles_right",
+          "far_service_left",
+          "far_service_right",
+          "near_service_left",
+          "near_service_right",
+          "far_service_t",
+          "near_service_t"
+        ],
+        "target_dtype": "float32",
+        "precomputed": false
+      },
+      {
+        "kind": "seg",
+        "schema": "court_cell_segmentation_coverage8_single_court_v3",
+        "output_channels": 7,
+        "channel_names": [
+          "background",
+          "service_left",
+          "service_right",
+          "back_left",
+          "back_right",
+          "doubles_left",
+          "doubles_right"
+        ],
+        "target_dtype": "float32",
+        "precomputed": false
+      },
+      {
+        "kind": "line",
+        "schema": "court_line_coverage8_75mm_150mm_single_court_v4",
+        "output_channels": 1,
+        "channel_names": [
+          "court_line"
+        ],
+        "target_dtype": "float32",
+        "precomputed": false
+      },
+      {
+        "kind": "semantic_line",
+        "schema": "court_line_semantic_camera_view_75mm_150mm_coverage8_single_court_v2",
+        "output_channels": 12,
+        "channel_names": [
+          "background",
+          "far_baseline",
+          "near_baseline",
+          "left_doubles_sideline",
+          "right_doubles_sideline",
+          "left_singles_sideline",
+          "right_singles_sideline",
+          "far_service_line",
+          "near_service_line",
+          "center_service_line",
+          "far_center_mark",
+          "near_center_mark"
+        ],
+        "target_dtype": "float32",
+        "precomputed": false
+      }
+    ]
+  },
+  "parameters": {
+    "backbone": {
+      "total": 85669632,
+      "trainable": 0
+    },
+    "projection": {
+      "total": 0,
+      "trainable": 0
+    },
+    "transformer": {
+      "total": 56636160,
+      "trainable": 56636160
+    },
+    "dpt": {
+      "total": 24760320,
+      "trainable": 24760320
+    },
+    "pose_head": {
+      "total": 598282,
+      "trainable": 598282
+    },
+    "dense_heads": {
+      "total": 1085986,
+      "trainable": 1085986
+    }
+  },
+  "precision": "bf16-mixed",
+  "qualitative_batch_size": 1,
+  "evaluation_compile": false,
+  "splits": {
+    "tennis_court_detector-val": {
+      "count": 2,
+      "sample_ids": [
+        "EF-hx40Q4Mg_700",
+        "PuXlxKdUIes_2450"
+      ],
+      "ordered_sample_ids_sha256": "66cb3ce4809d1d1f9019cd33ad1b18eaea424de667c9768da78eb984dedc3cda",
+      "source": "tennis_court_detector",
+      "split": "val",
+      "batch_size": 1,
+      "pose_supervised": false,
+      "metrics": {
+        "kp_mean_distance_px": 268.14422607421875,
+        "kp_median_distance_px": 243.35043334960938,
+        "seg_miou": 0.0089644156396389,
+        "line_dice": 0.0002392851747572422,
+        "semantic_line_miou": 4.027363320346922e-05
+      },
+      "qualitative": [
+        {
+          "sample_id": "EF-hx40Q4Mg_700",
+          "dataset_index": 0,
+          "files": {
+            "kp": "00-kp.png",
+            "seg": "00-seg.png",
+            "line": "00-line.png",
+            "semantic_line": "00-semantic_line.png"
+          }
+        },
+        {
+          "sample_id": "PuXlxKdUIes_2450",
+          "dataset_index": 1,
+          "files": {
+            "kp": "01-kp.png",
+            "seg": "01-seg.png",
+            "line": "01-line.png",
+            "semantic_line": "01-semantic_line.png"
+          }
+        }
+      ]
+    }
+  },
+  "data_condition": {
+    "data_version": "1bef5ceda3d453b269cbb99e6b0d422e1e8466ad4e89d527cfa12b67d361dcda",
+    "generation_seed": 42,
+    "dataset_version_manifest": {
+      "sha256": "bc2b9542efcf61c47b017ed168e2023df9776981cddffa8de3c916c3756a8359",
+      "schema": "court_scale_dataset_version_v2",
+      "request_sha256": "b25213f32fa15c14790af49a6fc47d1dd1a97c7657f364511b29e9ea6c192675",
+      "plan_sha256": "c18ee58ff33d2f74116c8d6e339dd2587c4e3f47210b853cc12271643722543e",
+      "method": "stratified_counter",
+      "recipe_sha256": "32f600f1040b5e6fa4940e917d8cf98a7dd2beb744f44e687dd2caccf034ba2f"
+    },
+    "training_seed": 42,
+    "accepted_images": 298,
+    "scene_images": {
+      "B00": 71,
+      "B01": 80,
+      "B02": 71,
+      "B03": 76
+    },
+    "ordered_training_ids_sha256": "50ac1ed52fc83772c2c774f7e6e29320061744503eb4328a54f35fdaac19b1f5",
+    "stores": [
+      {
+        "descriptor_sha256": "b936f9408c526fce80568f11ee0b0cb762c7c1de57901d747a8f21933090429a",
+        "index_sha256": "ecb12ed85874c6b1a26808b59433fac2289dc2dd484b38817bee680452b37d59"
+      },
+      {
+        "descriptor_sha256": "f6b7ebf61ed7251379b57b89ff6a81e8c730e652ce6bd73576ae81365c97442c",
+        "index_sha256": "5e2c6bfdd28d72ec4066ebb0fc0e61aa9e08fec2560a54c6f7c0fe1ef66b7c58"
+      },
+      {
+        "descriptor_sha256": "0e94db4949709cd513c430354da6c4ab0adb0dcc3df1e258245dfd7c80bbe88a",
+        "index_sha256": "3d2359500bc56c3e6ed8554b9b20c84be3eb13a56c352fcb79c32e249c4f7866"
+      },
+      {
+        "descriptor_sha256": "244ed321c83af13aa143e19c3afe75ca6e01fd7d3778171516e1b42bb3d62563",
+        "index_sha256": "44610ec3841b2236d2f7598c3b20845a84cb711e565f0445f07dc3be8839d51e"
+      },
+      {
+        "descriptor_sha256": "29cac2f32c180f882099e347a2c65f6160c804aaf220ea092241347edc58f9a1",
+        "index_sha256": "b88af6a9766b438e95c128ff3a487f4a4601dcd3aac68e73e4f282572e77a9b1"
+      },
+      {
+        "descriptor_sha256": "2b755ba17b3f47f571d3cb4659b3bbf8d7fbebf9bc3eb226e860133e092bc48e",
+        "index_sha256": "0f079b119ba7b71502ee4513a96b234ccdecf22862ffabeda23aeec8284ea984"
+      },
+      {
+        "descriptor_sha256": "76b4ceaa6fffa85006c5caf70a7ec5b4a8481dbf35912bec46a640fa5ebdaeb9",
+        "index_sha256": "26bb55fed0dcbd27596c0c8b858401166f75dbe1f09c0d8ebab9463bd16deb18"
+      },
+      {
+        "descriptor_sha256": "6d40a0987b42befde775673c2dd0fcb19fd220c05004376729141ab6bb755202",
+        "index_sha256": "20f9bdd0181e42e125592dd8f7012d51f08b251647528fed802167646f6083a7"
+      },
+      {
+        "descriptor_sha256": "dffb06bec551638aaa415f6709f3fa48be2cf4e70dc7e4687b8f9d98fa97a47e",
+        "index_sha256": "fa31aa36acecae9b914490c4fb76d6b71dbedd30564fedf45def94b4c9332025"
+      },
+      {
+        "descriptor_sha256": "c6c1b35d4a55b83bd1699e47b85d2688014a416e6794c68a4dcf5b0c649f509c",
+        "index_sha256": "3c6650b1051c117037c43da42f312d410f26b94c33ec7e699dc7da1a034b5e4b"
+      },
+      {
+        "descriptor_sha256": "2d186d9b2abb7478000504c717b6aee349ee175419a6356a7983734d5594389c",
+        "index_sha256": "6a9b6d2bdc97057c1de73fa4af7cd30e477bf6a39bf7e757ade98c71bbd3e3bc"
+      },
+      {
+        "descriptor_sha256": "ee5457efc6cfb2bb55e8bc36047f25d28ac696723a29994cfbe26953168744f5",
+        "index_sha256": "ba4901ed5528be45c2e56e595ec50473925d4767d85ed72ac60f1490e33fb680"
+      },
+      {
+        "descriptor_sha256": "c3cb59e2fe1178f4c81c1bee446fd46e29ce0a6c6e24155ec77deb9566930f4d",
+        "index_sha256": "73acbf0988ac0037e709e981aed5f8876d80a13fe0882a49a0a61faa466c9210"
+      },
+      {
+        "descriptor_sha256": "dcab24cf4c3a916bda628b59666d24404acdd37d395081f3bea9c2e821849553",
+        "index_sha256": "a7207069639244aed3458c619b0bc90bbf98bdadcd7e201b6f04434def13ddb1"
+      },
+      {
+        "descriptor_sha256": "7b39c855a790dd2263551bb02d5d60fadc4f70f85c978e6d02f24c9ee9a7816c",
+        "index_sha256": "c7b13dcd508a0b41942b026748ae83a8857e6a16d5171c306345515d62019811"
+      },
+      {
+        "descriptor_sha256": "7a6c43956c786e5cf53e880cae0dff7f9633a08b3fc0ba1bcab21fbeb23c48f7",
+        "index_sha256": "f5b8e3452bc8d81209f8cc32ed7fe8b8ea07ba2f84b76466ae48467d3b6be00e"
+      },
+      {
+        "descriptor_sha256": "c3b1a12959aecd7bf148f8488ae516400cf96bd34ef6a5831e1c871d2f3bd002",
+        "index_sha256": "3f03834965557496f41a470ee0337ea8ac32079c483f6ff5ff07c1dd17102455"
+      },
+      {
+        "descriptor_sha256": "37543604081a627786517e735fbc2fb501e7171ad7eab98b085e797d3d83ad6c",
+        "index_sha256": "fa517facb6e2120f1b36b5deffd2e50cd332af704f858848eab919e50c2d6e9e"
+      },
+      {
+        "descriptor_sha256": "991ce60bcda7194a124cc975034f0ed0c8143118b1887fe2c9ae06ba1b427586",
+        "index_sha256": "478e34789e34cea9e8b1b35a5cb5434d5e7015f9cdeeeb66d567cf70e78ee65f"
+      },
+      {
+        "descriptor_sha256": "d182cb776dd874af33361b31ca76f7918016740788620ba1c0667fe71790a284",
+        "index_sha256": "b39b3175523e84ae1ae5ac1515f8b7bf3cc6c70742de7af518ae5133f2b56c27"
+      },
+      {
+        "descriptor_sha256": "4deb37fa4a92b6ce0bd5f467ee1b9ac5d9f7bd44d87005648aff422a5954e510",
+        "index_sha256": "cb37c8a966a7132cdb6f53e1cf8bd1fb4e0d14681d5853dbdecb01af49ae0104"
+      },
+      {
+        "descriptor_sha256": "684072d19e97b6a6574d708f8fba4185b70dd382337fe24eb9656ae8fc540b72",
+        "index_sha256": "6f959ab84c7f95996aa5738e0cb4684fb6c95a9bf0ed9d33228c5198e2750ef3"
+      },
+      {
+        "descriptor_sha256": "f959a150a9e39f1c046d982e6c3aca2e06c08d240542b4f86a87c52498099e15",
+        "index_sha256": "eadc740e294b56e145f5ebeba4ba80b8ee5cbded6cac4cf3bed4c32e62161fd7"
+      },
+      {
+        "descriptor_sha256": "566f9f5b7c5770791307448f62239464a9f01fa54971a46aca1472cee1ae82fd",
+        "index_sha256": "a47d7b2d6a20fba7066e0ed64cac26ca2b025ea765fe14a11e4a91e247e435f2"
+      }
+    ],
+    "evaluation_registry_sha256": "cf176890aa87d38580d7bbef13ded4b1f085d80ea195344a89aaf2225e1f68c3",
+    "evaluation_registry_version": "smoke-real-v1"
+  },
+  "series": "smoke",
+  "data_manifest_sha256": {
+    "synthetic_court/dataset_version": "bc2b9542efcf61c47b017ed168e2023df9776981cddffa8de3c916c3756a8359",
+    "evaluation_registry": "32c2aae52c2680a337eeec7e1c5a52ff5c09e6ba2ec59b4f4b56141f0e7c4f25",
+    "tennis_court_detector": "4571a5537bff2db89d3cd5a87796d5b23d8a5011c8d08b25ff1f6a4263217f71"
+  }
+}

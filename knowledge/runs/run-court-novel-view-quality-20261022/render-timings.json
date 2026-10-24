@@ -1,0 +1,322 @@
+[
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/recommended/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/recommended/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 31.534532908000983,
+    "gpu_used_peak_mib": 3688,
+    "gpu_used_initial_mib": 1399,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/hull5/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/hull5/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 31.857451154995942,
+    "gpu_used_peak_mib": 3698,
+    "gpu_used_initial_mib": 1399,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/hfov45_90/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/hfov45_90/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 30.746089886990376,
+    "gpu_used_peak_mib": 3664,
+    "gpu_used_initial_mib": 1399,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B00/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/jitter0/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B00/jitter0/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 31.739989099995,
+    "gpu_used_peak_mib": 3698,
+    "gpu_used_initial_mib": 1399,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/recommended/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/recommended/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 32.55942203197628,
+    "gpu_used_peak_mib": 3787,
+    "gpu_used_initial_mib": 1399,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/hull5/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/hull5/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 34.47533276400645,
+    "gpu_used_peak_mib": 3861,
+    "gpu_used_initial_mib": 1515,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/hfov45_90/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/hfov45_90/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 30.913865596987307,
+    "gpu_used_peak_mib": 3643,
+    "gpu_used_initial_mib": 1430,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B01/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/jitter0/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B01/jitter0/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 30.86928035900928,
+    "gpu_used_peak_mib": 3696,
+    "gpu_used_initial_mib": 1419,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/recommended/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/recommended/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 27.634404145006556,
+    "gpu_used_peak_mib": 3779,
+    "gpu_used_initial_mib": 1454,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/hull5/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/hull5/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 27.194044835981913,
+    "gpu_used_peak_mib": 3869,
+    "gpu_used_initial_mib": 1400,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/hfov45_90/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/hfov45_90/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 24.937685645010788,
+    "gpu_used_peak_mib": 3769,
+    "gpu_used_initial_mib": 1613,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B02/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/jitter0/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B02/jitter0/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 29.638625208986923,
+    "gpu_used_peak_mib": 3694,
+    "gpu_used_initial_mib": 1398,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/recommended/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/recommended/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 28.599320264998823,
+    "gpu_used_peak_mib": 3644,
+    "gpu_used_initial_mib": 1375,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/hull5/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/hull5/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 32.70851069199853,
+    "gpu_used_peak_mib": 3650,
+    "gpu_used_initial_mib": 1374,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/hfov45_90/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/hfov45_90/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 31.254245579999406,
+    "gpu_used_peak_mib": 3626,
+    "gpu_used_initial_mib": 1370,
+    "cameras": 130,
+    "batch_size": 4
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "command": [
+      "nht-render",
+      "--scene",
+      "/home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes/B03/reconstruction/export/scene.json",
+      "--cameras",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/jitter0/request.json",
+      "--output",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-trajectory-design/tmp/court-render-quality/run-01/B03/jitter0/renders",
+      "--batch-size",
+      "4"
+    ],
+    "wall_seconds": 28.743976172991097,
+    "gpu_used_peak_mib": 3640,
+    "gpu_used_initial_mib": 1371,
+    "cameras": 130,
+    "batch_size": 4
+  }
+]

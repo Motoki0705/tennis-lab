@@ -1,0 +1,440 @@
+6ed3f29e848e71217d083f50ef0f050ecacb0981
+NVIDIA L4, 580.82.07, 23034 MiB
+Downloading cpython-3.11.16-linux-x86_64-gnu (download) (29.4MiB)
+ Downloaded cpython-3.11.16-linux-x86_64-gnu (download)
+Using CPython 3.11.16
+Creating virtual environment at: .venv
+Resolved 179 packages in 7ms
+   Building tennis-lab @ file:///content/tennis-lab
+Downloading ruff (9.9MiB)
+Downloading scipy (33.7MiB)
+Downloading fonttools (4.8MiB)
+Downloading nvidia-cuda-runtime (2.1MiB)
+Downloading networkx (2.0MiB)
+Downloading jedi (1.5MiB)
+Downloading kiwisolver (1.4MiB)
+Downloading pygments (1.2MiB)
+Downloading nvidia-cufile (1.2MiB)
+Downloading tokenizers (3.2MiB)
+Downloading timm (2.5MiB)
+Downloading pydantic-core (2.0MiB)
+Downloading torch (528.9MiB)
+Downloading deep-sort-realtime (8.0MiB)
+Downloading nvidia-cuda-cupti (10.2MiB)
+Downloading matplotlib (9.4MiB)
+Downloading bitsandbytes (41.1MiB)
+Downloading nvidia-nccl-cu13 (206.0MiB)
+Downloading triton (236.5MiB)
+Downloading numpy (16.1MiB)
+Downloading virtualenv (5.6MiB)
+Downloading cuda-bindings (6.0MiB)
+Downloading grpcio (6.5MiB)
+Downloading mypy (14.7MiB)
+Downloading widgetsnbextension (2.1MiB)
+Downloading nvidia-cudnn-cu13 (527.5MiB)
+Downloading nvidia-nvjitlink (38.8MiB)
+Downloading torchvision (7.1MiB)
+Downloading av (34.1MiB)
+Downloading hf-xet (4.0MiB)
+Downloading nvidia-curand (56.8MiB)
+Downloading transformers (11.7MiB)
+Downloading yt-dlp (3.0MiB)
+Downloading ast-serialize (1.3MiB)
+Downloading nvidia-cuda-nvrtc (86.0MiB)
+Downloading nvidia-cusolver (191.6MiB)
+Downloading nvidia-cusparse (139.2MiB)
+Downloading aiohttp (1.7MiB)
+Downloading nvidia-cublas (403.5MiB)
+Downloading nvidia-cufft (204.2MiB)
+Downloading lap (1.6MiB)
+Downloading nvidia-nvshmem-cu13 (57.6MiB)
+Downloading ezc3d (1.2MiB)
+Downloading pandas (10.6MiB)
+Downloading pillow (6.6MiB)
+Downloading tensorboard-data-server (6.3MiB)
+Downloading opencv-python (70.4MiB)
+Downloading nvidia-cusparselt-cu13 (162.3MiB)
+Downloading sympy (6.0MiB)
+Downloading tensorboard (5.3MiB)
+ Downloaded nvidia-cufile
+ Downloaded pygments
+ Downloaded ezc3d
+ Downloaded kiwisolver
+ Downloaded ast-serialize
+Downloading setuptools (1.0MiB)
+ Downloaded jedi
+ Downloaded lap
+ Downloaded aiohttp
+ Downloaded networkx
+ Downloaded widgetsnbextension
+ Downloaded pydantic-core
+ Downloaded nvidia-cuda-runtime
+ Downloaded setuptools
+ Downloaded timm
+ Downloaded yt-dlp
+ Downloaded tokenizers
+ Downloaded hf-xet
+ Downloaded fonttools
+ Downloaded tensorboard
+ Downloaded virtualenv
+ Downloaded cuda-bindings
+ Downloaded sympy
+ Downloaded grpcio
+ Downloaded tensorboard-data-server
+ Downloaded pillow
+ Downloaded torchvision
+ Downloaded deep-sort-realtime
+ Downloaded matplotlib
+ Downloaded ruff
+ Downloaded nvidia-cuda-cupti
+   Building antlr4-python3-runtime==4.9.3
+ Downloaded pandas
+ Downloaded transformers
+   Building torchreid==0.2.5
+ Downloaded mypy
+      Built antlr4-python3-runtime==4.9.3
+ Downloaded numpy
+      Built torchreid==0.2.5
+      Built tennis-lab @ file:///content/tennis-lab
+ Downloaded scipy
+ Downloaded av
+ Downloaded nvidia-nvjitlink
+ Downloaded bitsandbytes
+ Downloaded nvidia-curand
+ Downloaded nvidia-nvshmem-cu13
+ Downloaded opencv-python
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded nvidia-cusparse
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded nvidia-cusolver
+ Downloaded nvidia-cufft
+ Downloaded nvidia-nccl-cu13
+ Downloaded triton
+ Downloaded nvidia-cublas
+ Downloaded nvidia-cudnn-cu13
+ Downloaded torch
+Prepared 170 packages in 23.10s
+Installed 170 packages in 258ms
+ + absl-py==2.4.0
+ + accelerate==1.15.0
+ + aiohappyeyeballs==2.6.1
+ + aiohttp==3.13.5
+ + aiosignal==1.4.0
+ + annotated-doc==0.0.4
+ + annotated-types==0.7.0
+ + antlr4-python3-runtime==4.9.3
+ + anyio==4.13.0
+ + ast-serialize==0.12.1
+ + asttokens==3.0.1
+ + attrs==26.1.0
+ + av==18.1.0
+ + beautifulsoup4==4.14.3
+ + bitsandbytes==0.50.2
+ + certifi==2026.2.25
+ + cfgv==3.5.0
+ + charset-normalizer==3.4.7
+ + click==8.3.2
+ + comm==0.2.3
+ + contourpy==1.3.3
+ + coverage==7.16.2
+ + cuda-bindings==13.2.0
+ + cuda-pathfinder==1.6.0
+ + cuda-toolkit==13.0.3.0
+ + cycler==0.12.1
+ + decorator==5.2.1
+ + deep-sort-realtime==1.3.2
+ + deprecation==2.1.0
+ + distlib==0.4.0
+ + einops==0.8.2
+ + execnet==2.1.2
+ + executing==2.2.1
+ + ezc3d==1.7.2
+ + fastapi==0.143.0
+ + filelock==3.25.2
+ + fonttools==4.62.1
+ + frozenlist==1.8.0
+ + fsspec==2026.3.0
+ + gdown==6.4.2
+ + grpcio==1.80.0
+ + h11==0.16.0
+ + hf-xet==1.4.3
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + huggingface-hub==1.10.1
+ + hydra-core==1.3.7
+ + identify==2.6.18
+ + idna==3.18
+ + imageio==2.38.1
+ + iminuit==2.32.0
+ + importlib-metadata==9.0.0
+ + iniconfig==2.3.0
+ + ipython==9.10.1
+ + ipython-pygments-lexers==1.1.1
+ + ipywidgets==8.1.8
+ + jedi==0.19.2
+ + jinja2==3.1.6
+ + jupyterlab-widgets==3.0.16
+ + kiwisolver==1.5.0
+ + lap==0.5.13
+ + librt==0.16.0
+ + lightning-utilities==0.15.3
+ + markdown==3.10.2
+ + markdown-it-py==4.0.0
+ + markupsafe==3.0.3
+ + matplotlib==3.11.2
+ + matplotlib-inline==0.2.1
+ + mdurl==0.1.2
+ + mpmath==1.3.0
+ + multidict==6.7.1
+ + mypy==2.4.0
+ + mypy-extensions==1.1.0
+ + networkx==3.6.1
+ + nodeenv==1.10.0
+ + numpy==2.3.5
+ + nvidia-cublas==13.1.1.3
+ + nvidia-cuda-cupti==13.0.85
+ + nvidia-cuda-nvrtc==13.0.88
+ + nvidia-cuda-runtime==13.0.96
+ + nvidia-cudnn-cu13==9.24.0.43
+ + nvidia-cufft==12.0.0.61
+ + nvidia-cufile==1.15.1.6
+ + nvidia-curand==10.4.0.35
+ + nvidia-cusolver==12.0.4.66
+ + nvidia-cusparse==12.6.3.3
+ + nvidia-cusparselt-cu13==0.8.1
+ + nvidia-nccl-cu13==2.30.7
+ + nvidia-nvjitlink==13.0.88
+ + nvidia-nvshmem-cu13==3.4.5
+ + nvidia-nvtx==13.0.85
+ + omegaconf==2.3.1
+ + opencv-python==5.0.0.93
+ + opentelemetry-api==1.45.0
+ + packaging==26.0
+ + pandas==3.0.6
+ + parso==0.8.6
+ + pathspec==1.0.4
+ + pexpect==4.9.0
+ + pillow==12.3.0
+ + platformdirs==4.9.6
+ + pluggy==1.6.0
+ + pre-commit==4.6.2
+ + prompt-toolkit==3.0.52
+ + propcache==0.4.1
+ + protobuf==6.33.6
+ + psutil==7.2.2
+ + ptyprocess==0.7.0
+ + pure-eval==0.2.3
+ + pycocotools==2.0.11
+ + pydantic==2.13.5
+ + pydantic-core==2.46.5
+ + pydeps==3.0.9
+ + pygments==2.20.0
+ + pyparsing==3.3.2
+ + pysocks==1.7.1
+ + pytest==9.1.1
+ + pytest-cov==7.1.0
+ + pytest-xdist==3.8.0
+ + python-dateutil==2.9.0.post0
+ + python-discovery==1.2.2
+ + pytorch-lightning==2.6.6
+ + pyyaml==6.0.3
+ + regex==2026.4.4
+ + requests==2.34.2
+ + rich==14.3.4
+ + ruff==0.16.10
+ + safetensors==0.8.0
+ + scipy==1.17.1
+ + setuptools==81.0.0
+ + shellingham==1.5.4
+ + six==1.17.0
+ + smpl==1.5.7
+ + smplr==0.0.2
+ + smplx==0.1.28
+ + soupsieve==2.8.3
+ + spin==0.18
+ + stack-data==0.6.3
+ + starlette==1.3.1
+ + stdlib-list==0.12.0
+ + sympy==1.14.0
+ + tennis-lab==0.1.0 (from file:///content/tennis-lab)
+ + tensorboard==2.21.0
+ + tensorboard-data-server==0.7.2
+ + termcolor==3.3.0
+ + timm==1.0.30
+ + tokenizers==0.23.1
+ + torch==2.14.1
+ + torchmetrics==1.9.0
+ + torchreid==0.2.5
+ + torchvision==0.29.1
+ + tqdm==4.67.3
+ + traitlets==5.14.3
+ + transformers==5.17.0
+ + triton==3.8.0
+ + typer==0.24.1
+ + types-pyyaml==6.0.12.20260906
+ + types-requests==2.33.0.20261006
+ + typing-extensions==4.15.0
+ + typing-inspection==0.4.2
+ + uncertainties==3.2.3
+ + urllib3==2.6.3
+ + uvicorn==0.54.0
+ + virtualenv==21.2.1
+ + wcwidth==0.6.0
+ + werkzeug==3.1.8
+ + widgetsnbextension==4.0.15
+ + yarl==1.23.0
+ + yt-dlp==2026.8.19
+ + zipp==4.1.0
+elapsed_seconds=24.798
+$ git submodule update --init --recursive --checkout third_party/nht
+Submodule 'third_party/nht' (https://github.com/Motoki0705/neural-harmonic-textures.git) registered for path 'third_party/nht'
+Cloning into '/content/tennis-lab/third_party/nht'...
+Submodule path 'third_party/nht': checked out 'd4962c503f76d27fef27ac3f458edddc0a7d35c2'
+Submodule 'gsplat' (https://github.com/Motoki0705/gsplat.git) registered for path 'third_party/nht/gsplat'
+Cloning into '/content/tennis-lab/third_party/nht/gsplat'...
+Submodule path 'third_party/nht/gsplat': checked out 'c8d5acd22314c1c1144a30e635e08d9c738a8b39'
+Submodule 'gsplat/cuda/csrc/third_party/glm' (https://github.com/g-truc/glm.git) registered for path 'third_party/nht/gsplat/gsplat/cuda/csrc/third_party/glm'
+Cloning into '/content/tennis-lab/third_party/nht/gsplat/gsplat/cuda/csrc/third_party/glm'...
+Submodule path 'third_party/nht/gsplat/gsplat/cuda/csrc/third_party/glm': checked out 'e7970a8b26732f1b0df9690f7180546f8c30e48e'
+$ uv tool install --force --python 3.11 --editable --with torch==2.9.1 --with torchvision==0.24.1 --torch-backend cu130 'third_party/nht[aov]'
+warning: The `--torch-backend` option is experimental and may change without warning.
+Resolved 36 packages in 694ms
+   Building nht @ file:///content/tennis-lab/third_party/nht
+Downloading nvidia-cufile (1.2MiB)
+Downloading pillow (6.8MiB)
+Downloading numpy (16.1MiB)
+Downloading nvidia-cusolver (184.5MiB)
+Downloading nvidia-cuda-nvrtc (86.0MiB)
+Downloading nvidia-cudnn-cu13 (332.4MiB)
+Downloading nvidia-cusparse (133.8MiB)
+Downloading nvidia-nvshmem-cu13 (57.6MiB)
+Downloading nvidia-cufft (204.2MiB)
+Downloading nvidia-nccl-cu13 (184.9MiB)
+Downloading nvidia-cuda-cupti (10.2MiB)
+Downloading nvidia-cuda-runtime (2.1MiB)
+Downloading nvidia-nvjitlink (38.8MiB)
+Downloading pycolmap (36.4MiB)
+Downloading nvidia-cublas (400.0MiB)
+Downloading nvidia-cusparselt-cu13 (162.0MiB)
+Downloading triton (162.5MiB)
+Downloading torch (584.3MiB)
+Downloading torchvision (7.2MiB)
+ Downloaded nvidia-cufile
+ Downloaded torchvision
+ Downloaded nvidia-cuda-runtime
+      Built nht @ file:///content/tennis-lab/third_party/nht
+ Downloaded pillow
+ Downloaded nvidia-cuda-cupti
+ Downloaded numpy
+ Downloaded triton
+ Downloaded pycolmap
+ Downloaded nvidia-nvjitlink
+ Downloaded nvidia-nvshmem-cu13
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded nvidia-cusparse
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded nvidia-nccl-cu13
+ Downloaded nvidia-cusolver
+ Downloaded nvidia-cufft
+ Downloaded torch
+ Downloaded nvidia-cudnn-cu13
+ Downloaded nvidia-cublas
+Prepared 29 packages in 19.80s
+Installed 36 packages in 193ms
+ + attrs==26.1.0
+ + filelock==4.2.4
+ + fsspec==2026.9.0
+ + jinja2==3.1.6
+ + jsonschema==4.26.0
+ + jsonschema-specifications==2025.9.1
+ + markupsafe==3.0.4
+ + mpmath==1.3.0
+ + networkx==3.6.1
+ + nht==0.0.0 (from file:///content/tennis-lab/third_party/nht)
+ + numpy==2.4.6
+ + nvidia-cublas==13.0.0.19
+ + nvidia-cuda-cupti==13.0.48
+ + nvidia-cuda-nvrtc==13.0.48
+ + nvidia-cuda-runtime==13.0.48
+ + nvidia-cudnn-cu13==9.13.0.50
+ + nvidia-cufft==12.0.0.15
+ + nvidia-cufile==1.15.0.42
+ + nvidia-curand==10.4.0.35
+ + nvidia-cusolver==12.0.3.29
+ + nvidia-cusparse==12.6.2.49
+ + nvidia-cusparselt-cu13==0.8.0
+ + nvidia-nccl-cu13==2.27.7
+ + nvidia-nvjitlink==13.0.39
+ + nvidia-nvshmem-cu13==3.3.24
+ + nvidia-nvtx==13.0.39
+ + pillow==13.0.0
+ + pycolmap==4.2.1
+ + pyyaml==6.0.3
+ + referencing==0.37.0
+ + rpds-py==2026.9.1
+ + sympy==1.14.0
+ + torch==2.9.1+cu130
+ + torchvision==0.24.1+cu130
+ + triton==3.5.1
+ + typing-extensions==4.16.0
+Installed 2 executables: nht-reconstruct, nht-render
+$ uv pip install --python /root/.local/share/uv/tools/nht/bin/python 'setuptools<81' wheel ninja rich
+Resolved 8 packages in 106ms
+Downloading pygments (1.2MiB)
+Downloading setuptools (1.0MiB)
+ Downloaded pygments
+ Downloaded setuptools
+Prepared 5 packages in 48ms
+Installed 8 packages in 11ms
+ + markdown-it-py==4.2.0
+ + mdurl==0.1.2
+ + ninja==1.13.2
+ + packaging==26.3
+ + pygments==2.21.0
+ + rich==15.0.0
+ + setuptools==80.10.2
+ + wheel==0.48.0
+$ uv pip install --python /root/.local/share/uv/tools/nht/bin/python --no-build-isolation --no-cache --reinstall-package gsplat --torch-backend cu130 torch==2.9.1 --editable third_party/nht/gsplat
+Resolved 34 packages in 4.63s
+   Building gsplat @ file:///content/tennis-lab/third_party/nht/gsplat
+      Built gsplat @ file:///content/tennis-lab/third_party/nht/gsplat
+Prepared 3 packages in 10m 22s
+Installed 3 packages in 1ms
+ + gsplat==1.5.3 (from file:///content/tennis-lab/third_party/nht/gsplat)
+ + jaxtyping==0.3.11
+ + wadler-lindig==0.1.7
+$ uv pip install --python /root/.local/share/uv/tools/nht/bin/python --no-build-isolation --no-cache 'tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch'
+   Updating https://github.com/NVlabs/tiny-cuda-nn/ (749dd70c5afc5a9dadb85e5652ed65d55e0ba187)
+    Updated https://github.com/NVlabs/tiny-cuda-nn/ (749dd70c5afc5a9dadb85e5652ed65d55e0ba187)
+Resolved 1 package in 16.30s
+   Building tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch
+      Built tinycudann @ git+https://github.com/NVlabs/tiny-cuda-nn/@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch
+Prepared 1 package in 3m 30s
+Installed 1 package in 1ms
+ + tinycudann==2.0 (from git+https://github.com/NVlabs/tiny-cuda-nn/@749dd70c5afc5a9dadb85e5652ed65d55e0ba187#subdirectory=bindings/torch)
+$ uv run --python /root/.local/share/uv/tools/nht/bin/python --no-project -- python -c 'from gsplat import csrc; from gsplat.nht.deferred_shader import DeferredShaderModule'
+NHT public CLI is ready:
+  nht-reconstruct: /root/.local/bin/nht-reconstruct
+  nht-render: /root/.local/bin/nht-render
+NHT rendering runtime is ready; trainer setup was not requested.
+elapsed_seconds=899.545
+usage: nht-render [-h] --scene SCENE [--camera-id CAMERA_IDS]
+                  [--cameras CAMERAS] --output OUTPUT
+                  [--without-source-images] [--batch-size BATCH_SIZE]
+
+Render RGB, alpha, and depth using only a standard exported scene.
+
+options:
+  -h, --help            show this help message and exit
+  --scene SCENE
+  --camera-id CAMERA_IDS
+  --cameras CAMERAS     nht_render_request_v1 JSON
+  --output OUTPUT
+  --without-source-images
+                        Render a transferred export without captured images;
+                        validate geometry and model only
+  --batch-size BATCH_SIZE
+                        Cameras per GPU batch (1..32)
+ d4962c503f76d27fef27ac3f458edddc0a7d35c2 third_party/nht (remotes/origin/claude/render-appearance-controls-2-gd4962c5)
+c8d5acd22314c1c1144a30e635e08d9c738a8b39
+Python 3.11.16

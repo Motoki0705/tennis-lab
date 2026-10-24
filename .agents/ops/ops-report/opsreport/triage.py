@@ -1,4 +1,4 @@
-"""Deliver adopted directions to an explicitly assigned parent, never create tasks."""
+"""Record adoption receipts and materialize unowned, adopted proposals as tasks."""
 
 from __future__ import annotations
 
@@ -7,13 +7,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from issues import ProposalSource, index_proposals, parse_proposal_source
+from issues import (
+    ProposalSource,
+    index_proposals,
+    parse_proposal_source,
+    parse_task_metadata,
+)
 from parent.github import GitHub
 from parent.proposals import deliver, matching, record
 from parent.session import ParentSession
 from parent.state import Store, state_directory
 
-from . import shell
+from . import organization_apply, shell
 from .collect import AI_PROPOSED_LABEL, REPORT_LABEL
 from .proposals import (
     ParsedProposal,
@@ -77,19 +82,22 @@ def memory_decisions(
             if selected and reason:
                 raise ValueError(f"{prop.pid}: both adopted and deferred")
             child = children.get((int(report["number"]), prop.pid))
+            automatic = (
+                child is not None and parse_task_metadata(bodies[child]) is not None
+            )
             if prop.child is not None and prop.child != child:
                 raise ValueError(
                     f"{prop.pid}: child annotation does not match proposal metadata"
                 )
-            if child is not None and not selected:
+            if child is not None and not selected and not automatic:
                 raise ValueError(f"{prop.pid}: existing child but adoption revoked")
             if not selected and not reason:
                 continue
             refs = f"{report['url']} / {prop.pid}"
             if child is not None:
-                if parse_proposal_source(bodies[child]) != ProposalSource(
-                    prop.pid, int(report["number"]), option
-                ):
+                if (selected or not automatic) and parse_proposal_source(
+                    bodies[child]
+                ) != ProposalSource(prop.pid, int(report["number"]), option):
                     raise ValueError(f"{prop.pid}: existing child option mismatch")
                 refs += f" / 子issue #{child}"
             parent = prop.parent()
@@ -170,9 +178,29 @@ def triage(*, repo_root: Path, work_dir: Path, dry_run: bool) -> TriageResult:
             for key in store.parents
             if key.rsplit("#", 1)[0] == repo.casefold()
         }
+        automatic: list[tuple[int, ParsedProposal]] = []
         for report, parsed in parsed_reports:
             _triage_report(
-                report, parsed, children, result, gh, store, sessions, work_dir, dry_run
+                report,
+                parsed,
+                children,
+                result,
+                gh,
+                store,
+                sessions,
+                work_dir,
+                dry_run,
+                automatic,
+            )
+        if automatic:
+            organization_apply.run(
+                gh=gh,
+                store=store,
+                root=repo_root,
+                work_dir=work_dir,
+                candidates=automatic,
+                dry_run=dry_run,
+                result=result,
             )
     return result
 
@@ -187,6 +215,7 @@ def _triage_report(
     sessions: dict[int, ParentSession],
     work_dir: Path,
     dry_run: bool,
+    automatic: list[tuple[int, ParsedProposal]],
 ) -> None:
     number = int(report["number"])
     statuses: dict[str, str] = {}
@@ -210,6 +239,30 @@ def _triage_report(
                 raise ValueError(
                     f"{prop.pid}: forged or mismatched child annotation #{prop.child}"
                 )
+            managed = (
+                child is not None
+                and parse_task_metadata(gh.issue(child)["body"]) is not None
+            )
+            # An explicit existing owner keeps the established receipt workflow.
+            # Unowned directions need no manual parent or fabricated human consent.
+            if managed or (
+                child is None
+                and not previous
+                and (parent is None or not sessions[parent].row)
+            ):
+                if selected:
+                    try:
+                        prop.requirements()
+                    except ValueError as exc:
+                        result.errors.append(f"#{number} {exc}")
+                        expectations[prop.pid] = expected
+                        statuses[prop.pid] = (
+                            f"保留: {exc}。根拠: レポート #{number} の必須項目。再開条件: 目的・範囲・受入条件など不足項目を追記する。次の対応: 提案を具体化してtriageを再実行。"
+                        )
+                        continue
+                if selected or managed:
+                    automatic.append((number, prop))
+                continue
             if not selected:
                 if child or previous:
                     raise ValueError(
@@ -239,6 +292,9 @@ def _triage_report(
                 status = deliver(sessions[parent], source, prop)
                 statuses[prop.pid] = f"親 #{parent}: {status}"
                 if status.startswith("未割当"):
+                    statuses[prop.pid] += (
+                        "。根拠: 既存parent registryと親issueの状態。再開条件: 担当親の明示再開・引継ぎを確認。次の対応: 既存担当が採用提案を照合する。"
+                    )
                     result.unassigned.append(prop.pid)
                 elif status.startswith("受領済み"):
                     result.received.append((prop.pid, parent))

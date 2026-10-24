@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "status": "planned",
+  "session": "court-scale-generation-l4-20261023-6ed3f29e8",
+  "gpu": "L4",
+  "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+  "commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "drive": "gdrive:tennis_lab",
+  "repo_root": "/content/tennis-lab"
+}
