@@ -282,6 +282,65 @@ def test_open_thread_changes_are_reported_outside_the_name_filter(
     assert thread["posts"][-1]["sender"]["parent"] == 3
 
 
+def test_cursor_tracks_reaction_adds_removals_and_duplicate_noops(
+    world: World, client: TestClient
+) -> None:
+    root = world.post()
+    world.post(kind="info")  # A reaction to an older post must still be returned.
+    first = client.get("/api/changes").json()
+    assert all(post["reactions"] == [] for post in first["posts"])
+    before = world.message_rows()
+    previous = first
+    for parent, remove, actor_count, mutated in (
+        (2, False, 1, True),
+        (2, False, 1, False),
+        (1, False, 2, True),
+        (2, True, 1, True),
+        (2, True, 1, False),
+        (1, True, 0, True),
+    ):
+        world.board.reactions.react(
+            world.env(parent), post_id=root["id"], emoji="+1", remove=remove
+        )
+        response = client.get("/api/changes", params={"cursor": previous["cursor"]})
+        assert response.status_code == 200
+        changed = response.json()
+        assert changed["reset"] is False and changed["agents"] is None
+        thread = client.get(f"/api/thread/{root['id']}").json()["posts"][0]
+        if actor_count:
+            assert len(thread["reactions"][0]["reactors"]) == actor_count
+        else:
+            assert thread["reactions"] == []
+        if not mutated:
+            assert changed["posts"] == [] and changed["cursor"] == previous["cursor"]
+            assert changed["changed_threads"] == []
+        else:
+            assert changed["cursor"] != previous["cursor"]
+            assert [post["id"] for post in changed["posts"]] == [root["id"]]
+            assert changed["posts"][0]["reactions"] == thread["reactions"]
+            assert changed["changed_threads"] == [root["id"]]
+        previous = changed
+    assert world.message_rows() == before
+
+
+def test_reaction_changes_refresh_threads_outside_the_name_filter(
+    world: World, client: TestClient
+) -> None:
+    root = world.post()
+    query = {"name": world.assignments[3].name, "direction": "sent"}
+    initial = client.get("/api/changes", params=query).json()
+    assert initial["posts"] == []
+    world.board.reactions.react(world.env(2), post_id=root["id"], emoji="eyes")
+    changed = client.get(
+        "/api/changes", params={**query, "cursor": initial["cursor"]}
+    ).json()
+    assert changed["posts"] == []
+    assert changed["changed_threads"] == [root["id"]]
+    assert changed["cursor"] != initial["cursor"]
+    thread = client.get(f"/api/thread/{root['id']}").json()
+    assert thread["posts"][0]["reactions"][0]["reactors"][0]["parent"] == 2
+
+
 def test_db_read_mode_and_all_gets_leave_bytes_and_unread_unchanged(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:

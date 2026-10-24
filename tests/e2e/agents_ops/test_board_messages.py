@@ -108,7 +108,7 @@ class World:
 
 @pytest.fixture
 def world(board: SimpleNamespace, labels: Labels) -> World:
-    for name in ("messages", "delivery", "records", "redelivery"):
+    for name in ("messages", "delivery", "records", "reactions", "redelivery"):
         setattr(board, name, importlib.import_module("board." + name))
     statuses = ("active", "active", "active", "released", "handoff_pending", "ended")
     labels.set_registry(
@@ -1540,6 +1540,8 @@ def test_cli_identity_rejects_every_message_mutation(
         ["reply", "--post", root["id"], "--body-file", str(body_file)],
         ["read", root["id"]],
         ["ack", "--post", root["id"], "--state", "done"],
+        ["react", "--post", root["id"], "--emoji", "+1"],
+        ["react", "--post", root["id"], "--emoji", "+1", "--remove"],
     ]:
         result = run_board(env, *args, *extra)
         assert (
@@ -1550,6 +1552,7 @@ def test_cli_identity_rejects_every_message_mutation(
         private_output_absent(result.stderr, env)
     assert len(w.board.messages.status(w.env())["posts"]) == 1
     assert w.own_state(root["id"])["recipients"][0]["state"] == "notified"
+    assert w.own_state(root["id"])["reactions"] == []
 
 
 def test_unrelated_parent_cannot_read_reply_ack_or_access_thread(world: World) -> None:
@@ -1869,3 +1872,257 @@ def test_history_cannot_be_edited_deleted_or_retargeted(
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
         connection.execute(statement)
     assert w.board.messages.read(w.env(), root["id"])["post"]["body"] == root["body"]
+
+
+def test_reactions_are_idempotent_and_each_participant_removes_only_their_own(
+    world: World,
+) -> None:
+    w = world
+    post = w.post()
+    react = w.board.reactions.react
+    first = react(w.env(2), post_id=post["id"], emoji="+1", now=NOW)["post"]
+    again = react(
+        w.env(2), post_id=post["id"], emoji="+1", now=NOW + timedelta(days=1)
+    )["post"]
+    assert first == again  # Duplicate adds retain the original timestamp.
+    assert first["reactions"] == [
+        {
+            "code": "+1",
+            "emoji": "👍",
+            "reactors": [
+                {
+                    "type": "parent",
+                    "assignment_id": w.assignments[2].id,
+                    "name": w.assignments[2].name,
+                    "repo": "o/r",
+                    "parent": 2,
+                    "created_at": w.board.names.timestamp(NOW),
+                }
+            ],
+        }
+    ]
+    # The sender is a participant too; the same stamp now has two actors.
+    both = react(w.env(), post_id=post["id"], emoji="+1")["post"]
+    assert [row["parent"] for row in both["reactions"][0]["reactors"]] == [1, 2]
+    react(w.env(2), post_id=post["id"], emoji="eyes")
+    remaining = react(w.env(2), post_id=post["id"], emoji="+1", remove=True)["post"]
+    assert [row["code"] for row in remaining["reactions"]] == ["+1", "eyes"]
+    assert [row["parent"] for row in remaining["reactions"][0]["reactors"]] == [1]
+    assert (
+        react(w.env(2), post_id=post["id"], emoji="+1", remove=True)["post"]
+        == remaining
+    )
+    react(w.env(), post_id=post["id"], emoji="+1", remove=True)
+    assert (
+        react(w.env(2), post_id=post["id"], emoji="eyes", remove=True)["post"][
+            "reactions"
+        ]
+        == []
+    )
+    with w.store.read() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM reactions").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize(
+    ("code", "glyph"),
+    [
+        ("+1", "👍"),
+        ("eyes", "👀"),
+        ("white_check_mark", "✅"),
+        ("tada", "🎉"),
+        ("pray", "🙏"),
+        ("question", "❓"),
+        ("warning", "⚠️"),
+    ],
+)
+def test_fixed_reaction_codes(world: World, code: str, glyph: str) -> None:
+    root = world.post()
+    result = world.board.reactions.react(world.env(2), post_id=root["id"], emoji=code)
+    assert result["post"]["reactions"][0]["emoji"] == glyph
+
+
+@pytest.mark.parametrize("remove", [False, True])
+@pytest.mark.parametrize("invalid", ["outsider", "emoji", "missing", "invalid-id"])
+def test_cli_reaction_rejections_leave_all_rows_unchanged(
+    world: World, remove: bool, invalid: str
+) -> None:
+    w = world
+    root = w.post()
+    w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")
+    before = w.message_rows()
+    with w.store.read() as connection:
+        reactions = connection.execute("SELECT * FROM reactions").fetchall()
+    args = [
+        "react",
+        "--post",
+        "f" * 32
+        if invalid == "missing"
+        else "/private/post"
+        if invalid == "invalid-id"
+        else root["id"],
+        "--emoji",
+        "/private/emoji" if invalid == "emoji" else "+1",
+    ]
+    if remove:
+        args.append("--remove")
+    env = w.env(3 if invalid == "outsider" else 2)
+    result = run_board(env, *args)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "/private/" not in result.stderr
+    private_output_absent(result.stderr, env)
+    assert w.message_rows() == before
+    with w.store.read() as connection:
+        assert connection.execute("SELECT * FROM reactions").fetchall() == reactions
+
+
+def test_reactions_allow_later_thread_participants_without_marking_posts_read(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    reply = w.board.messages.reply(
+        w.env(2),
+        post_id=root["id"],
+        to=[w.assignments[3].name],
+        body="Adding another participant.",
+        notifiers=w.routes,
+    )["post"]
+    before = w.message_rows()
+    result = w.board.reactions.react(w.env(3), post_id=root["id"], emoji="eyes")
+    assert result["post"]["reactions"][0]["reactors"][0]["parent"] == 3
+    # A participant of the root may react to a later reply, too.
+    w.board.reactions.react(w.env(), post_id=reply["id"], emoji="+1")
+    assert w.message_rows() == before
+
+
+@pytest.mark.parametrize("acknowledgement", [None, "accepted", "declined", "done"])
+def test_reactions_do_not_change_reads_responses_deliveries_or_bells(
+    world: World, acknowledgement: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = world
+    root = w.post()
+    if acknowledgement:
+        w.board.messages.ack(w.env(2), post_id=root["id"], state=acknowledgement)
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    with w.store.read() as connection:
+        activity = w.board.activity.summary(connection, w.assignments[2].id)
+
+    def no_dispatch(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("A reaction attempted notification dispatch")
+
+    monkeypatch.setattr(w.board.delivery, "dispatch", no_dispatch)
+    for emoji in ("+1", "white_check_mark", "question"):
+        w.board.reactions.react(w.env(2), post_id=root["id"], emoji=emoji)
+        w.board.reactions.react(w.env(2), post_id=root["id"], emoji=emoji, remove=True)
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+    with w.store.read() as connection:
+        assert w.board.activity.summary(connection, w.assignments[2].id) == activity
+
+
+def test_cli_reactions_appear_in_every_post_projection(world: World) -> None:
+    w = world
+    root = w.post()
+    added = run_board(w.env(2), "react", "--post", root["id"], "--emoji", "tada")
+    assert added.returncode == 0, added.stderr
+    expected = json.loads(added.stdout)["post"]["reactions"]
+    assert expected[0]["code"] == "tada"
+    for env, args in (
+        (w.env(2), ["inbox", "--unread"]),
+        (w.env(2), ["read", root["id"]]),
+        (w.env(), ["thread", root["id"]]),
+        (w.env(), ["status"]),
+    ):
+        result = run_board(env, *args)
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        post = data["post"] if "post" in data else data["posts"][0]
+        assert post["reactions"] == expected
+    for _ in range(2):
+        removed = run_board(
+            w.env(2), "react", "--post", root["id"], "--emoji", "tada", "--remove"
+        )
+        assert removed.returncode == 0, removed.stderr
+        assert json.loads(removed.stdout)["post"]["reactions"] == []
+
+
+def test_reactors_keep_assignment_identity_across_rename_and_name_reuse(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    first = w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")["post"]
+    renamed = importlib.import_module("board.renaming").rename(w.env(), parent=2)
+    after = w.own_state(root["id"])
+    actor = after["reactions"][0]["reactors"][0]
+    assert actor["assignment_id"] == w.assignments[2].id
+    assert actor["name"] == renamed["new_name"]
+    assert after["recipients"] == first["recipients"]
+    # Retire an unrenamed reactor and reuse their name with a different ID.
+    w.board.reactions.react(w.env(), post_id=root["id"], emoji="eyes")
+    with w.store.transaction() as connection:
+        w.board.names.retire_name(connection, "o/r", 1, now=NOW)
+        reused = w.board.names.ensure_name(
+            connection,
+            "o/r",
+            7,
+            None,
+            now=NOW + timedelta(days=31),
+            catalog=[w.assignments[1].name],
+        )
+    assert reused.id != w.assignments[1].id
+    after = w.board.messages.inbox(w.env(2))["posts"][0]
+    actor = next(row for row in after["reactions"] if row["code"] == "eyes")[
+        "reactors"
+    ][0]
+    assert actor["assignment_id"] == w.assignments[1].id and actor["parent"] == 1
+
+
+def test_reaction_schema_can_represent_the_reserved_human_without_a_parent(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    with w.store.transaction() as connection:
+        connection.execute(
+            "INSERT INTO reactions VALUES(?,'human',NULL,'+1',?)",
+            (root["id"], w.board.names.timestamp(NOW)),
+        )
+    with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
+        connection.execute("INSERT INTO reactions SELECT * FROM reactions")
+    human = w.own_state(root["id"])["reactions"][0]["reactors"][0]
+    assert human == {
+        "type": "human",
+        "assignment_id": None,
+        "name": "human",
+        "repo": None,
+        "parent": None,
+        "created_at": w.board.names.timestamp(NOW),
+    }
+    parent = w.board.reactions.react(w.env(), post_id=root["id"], emoji="+1")["post"]
+    assert len(parent["reactions"][0]["reactors"]) == 2
+
+
+@pytest.mark.parametrize(
+    "reactor_type,assignment_id",
+    [("parent", None), ("human", 1), ("other", None), ("parent", 9999)],
+)
+def test_reaction_schema_rejects_invalid_reactor_identity(
+    world: World, reactor_type: str, assignment_id: int | None
+) -> None:
+    root = world.post()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO reactions VALUES(?,?,?,?,?)",
+            (
+                root["id"],
+                reactor_type,
+                assignment_id,
+                "+1",
+                world.board.names.timestamp(NOW),
+            ),
+        )

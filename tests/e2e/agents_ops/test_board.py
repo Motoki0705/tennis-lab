@@ -595,6 +595,64 @@ def test_version_two_migration_failure_rolls_back_schema_version_and_rows(
             assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
 
 
+@pytest.fixture
+def v3_store(board: SimpleNamespace, v2_store: SimpleNamespace) -> SimpleNamespace:
+    with sqlite3.connect(v2_store.store.path) as connection:
+        board.storage.MIGRATIONS[2](connection)
+        connection.execute("PRAGMA user_version=3")
+        board.names.rename_name(connection, "o/r", 2, now=NOW)
+        rows = {
+            table: connection.execute(f"SELECT * FROM {table}").fetchall()
+            for table in (*v2_store.rows, "name_renames")
+        }
+        schema = connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+    return SimpleNamespace(store=v2_store.store, rows=rows, schema=schema)
+
+
+def test_version_three_migration_adds_reactions_without_changing_history(
+    board: SimpleNamespace, v3_store: SimpleNamespace
+) -> None:
+    with (
+        pytest.raises(board.errors.BoardError, match="migration"),
+        v3_store.store.read(),
+    ):
+        pass
+    with v3_store.store.transaction() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        for table, rows in v3_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+        assert connection.execute("SELECT * FROM reactions").fetchall() == []
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_version_three_migration_failure_rolls_back_reactions_and_version(
+    board: SimpleNamespace, v3_store: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    migration = board.storage.MIGRATIONS[3]
+
+    def fail_after_schema(connection: sqlite3.Connection) -> None:
+        migration(connection)
+        raise RuntimeError("injected reactions migration failure")
+
+    monkeypatch.setattr(
+        board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS[:3], fail_after_schema)
+    )
+    with pytest.raises(RuntimeError, match="injected"), v3_store.store.transaction():
+        pass
+    with sqlite3.connect(v3_store.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert (
+            connection.execute(
+                "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+            ).fetchall()
+            == v3_store.schema
+        )
+        for table, rows in v3_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+
+
 def test_private_permissions_wal_and_rollback(
     board: SimpleNamespace, tmp_path: Path
 ) -> None:

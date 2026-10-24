@@ -7,6 +7,7 @@ import sqlite3
 from typing import Any
 
 from .errors import BoardError
+from .reactions import views as reaction_views
 
 REASONS = {
     "recipient_unavailable": "担当不在・配送保留",
@@ -75,6 +76,7 @@ def post_view(
         "in_reply_to": row["in_reply_to"],
         "thread_id": row["thread_id"],
         "recipients": recipient_views(connection, post_id),
+        "reactions": reaction_views(connection, post_id),
     }
     if body:
         result["body"] = row["body"]
@@ -93,3 +95,18 @@ def require_participant(
         is None
     ):
         raise BoardError("only a post sender or recipient may access this post")
+
+
+def require_thread_participant(
+    connection: sqlite3.Connection, thread_id: str, assignment_id: int
+) -> None:
+    if (
+        connection.execute(
+            """SELECT 1 FROM posts p WHERE p.thread_id=? AND
+           (p.sender_assignment_id=? OR EXISTS
+            (SELECT 1 FROM recipients r WHERE r.post_id=p.id AND r.assignment_id=?))""",
+            (thread_id, assignment_id, assignment_id),
+        ).fetchone()
+        is None
+    ):
+        raise BoardError("only a thread participant may access this thread")
