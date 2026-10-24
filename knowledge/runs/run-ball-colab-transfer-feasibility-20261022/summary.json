@@ -1,0 +1,449 @@
+{
+  "schema_version": 1,
+  "bytes": {
+    "full_snapshot": 185522383458,
+    "train_val_payload_hypothetical": 157149621566,
+    "chat_original_annotations_upper_bound": 230502990
+  },
+  "upload_repeats": [
+    {
+      "schema_version": 1,
+      "direction": "local_to_drive",
+      "repeat": 1,
+      "started_at": "2026-10-22T05:15:38.739732+00:00",
+      "elapsed_seconds": 90.29725847998634,
+      "bytes": 544686517,
+      "end_to_end_MB_per_second": 6.032148995096295,
+      "returncode": 0,
+      "command": [
+        "${REPO_ROOT}/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--rclone-config",
+        "${RCLONE_CONFIG}",
+        "--timeout-seconds",
+        "900",
+        "upload",
+        "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-1",
+        "staging/ball-detection-transfer-probe-20261022/sample-1",
+        "--verify"
+      ],
+      "destination": "staging/ball-detection-transfer-probe-20261022/sample-1",
+      "timing_includes": "path uniqueness checks, transfer, post-readback and local/remote content hash verification",
+      "copy_seconds": 65.9,
+      "copy_MB_per_second": 8.265349271623672,
+      "overhead_seconds": 24.397258479986334
+    },
+    {
+      "schema_version": 1,
+      "direction": "local_to_drive",
+      "repeat": 2,
+      "started_at": "2026-10-22T05:17:05.458269+00:00",
+      "elapsed_seconds": 94.34251905698329,
+      "bytes": 586327937,
+      "end_to_end_MB_per_second": 6.214885322765819,
+      "returncode": 0,
+      "command": [
+        "${REPO_ROOT}/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--rclone-config",
+        "${RCLONE_CONFIG}",
+        "--timeout-seconds",
+        "900",
+        "upload",
+        "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-2",
+        "staging/ball-detection-transfer-probe-20261022/sample-2",
+        "--verify"
+      ],
+      "destination": "staging/ball-detection-transfer-probe-20261022/sample-2",
+      "timing_includes": "path uniqueness checks, transfer, post-readback and local/remote content hash verification",
+      "copy_seconds": 68.4,
+      "copy_MB_per_second": 8.572045862573098,
+      "overhead_seconds": 25.942519056983286
+    },
+    {
+      "schema_version": 1,
+      "direction": "local_to_drive",
+      "repeat": 3,
+      "started_at": "2026-10-22T05:18:34.446570+00:00",
+      "elapsed_seconds": 100.5352708370192,
+      "bytes": 650089269,
+      "end_to_end_MB_per_second": 6.466280575837703,
+      "returncode": 0,
+      "command": [
+        "${REPO_ROOT}/.venv/bin/python",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--rclone-config",
+        "${RCLONE_CONFIG}",
+        "--timeout-seconds",
+        "900",
+        "upload",
+        "${REPO_ROOT}/outputs/ball_detection/transfer_probe/20261022/verified-payload-3",
+        "staging/ball-detection-transfer-probe-20261022/sample-3",
+        "--verify"
+      ],
+      "destination": "staging/ball-detection-transfer-probe-20261022/sample-3",
+      "timing_includes": "path uniqueness checks, transfer, post-readback and local/remote content hash verification",
+      "copy_seconds": 73.1,
+      "copy_MB_per_second": 8.893150054719564,
+      "overhead_seconds": 27.435270837019203
+    }
+  ],
+  "upload_hours_estimates": {
+    "full_copy_min": 5.794796566785814,
+    "full_copy_max": 6.2349446722021575,
+    "full_e2e_min": 7.96965037328647,
+    "full_e2e_max": 8.543223227226889,
+    "train_val_e2e_min": 6.750816353428499,
+    "train_val_e2e_max": 7.23667016393473
+  },
+  "estimate_caveats": [
+    "extrapolation from three same-session samples, not measured full transfer",
+    "end-to-end includes per-command path checks and hash readback; scaling those fixed costs per byte is conservative, not calibrated",
+    "copy interval includes rclone per-file overhead; concurrency default four",
+    "current store requires every declared shard; train/val-only needs an explicit independent subset version",
+    "Colab training and library installation not benchmarked"
+  ],
+  "download_repeats": [
+    {
+      "schema_version": 1,
+      "direction": "drive_to_colab",
+      "repeat": 1,
+      "started_at": "2026-10-22T05:21:26.843169+00:00",
+      "elapsed_seconds": 33.63176522899994,
+      "bytes": 544686517,
+      "end_to_end_MB_per_second": 16.195597028321565,
+      "returncode": 0,
+      "command": [
+        "python3",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "900",
+        "download",
+        "staging/ball-detection-transfer-probe-20261022/sample-1",
+        "data/ball_detection/transfer-probe-20261022/sample-1",
+        "--verify"
+      ],
+      "disk_usage_after": {
+        "total": 253055008768,
+        "used": 47015419904,
+        "free": 206022811648
+      },
+      "timing_includes": "path uniqueness checks, transfer, post-readback, local/remote hash verification; frozen SHA256 check below timed separately",
+      "frozen_sha256_checks": [
+        {
+          "file": "clip-00053.bin",
+          "expected_sha256": "78f61d1c1735275437a464c70e670325b3294b8f3a98e70b4a27a1e9b162765b",
+          "actual_sha256": "78f61d1c1735275437a464c70e670325b3294b8f3a98e70b4a27a1e9b162765b",
+          "expected_bytes": 13038519,
+          "actual_bytes": 13038519,
+          "match": true
+        },
+        {
+          "file": "clip-00177.bin",
+          "expected_sha256": "99e474737bfbefe343b2e1d83edeee9444e571b81a7957eb0ca492c0162a2bcd",
+          "actual_sha256": "99e474737bfbefe343b2e1d83edeee9444e571b81a7957eb0ca492c0162a2bcd",
+          "expected_bytes": 40210890,
+          "actual_bytes": 40210890,
+          "match": true
+        },
+        {
+          "file": "clip-01101.bin",
+          "expected_sha256": "22e26aa4a66558b9e4c141b401ffbf1f401acdcdc7a0a261d002f48a9fcb8c2e",
+          "actual_sha256": "22e26aa4a66558b9e4c141b401ffbf1f401acdcdc7a0a261d002f48a9fcb8c2e",
+          "expected_bytes": 57555604,
+          "actual_bytes": 57555604,
+          "match": true
+        },
+        {
+          "file": "clip-01217.bin",
+          "expected_sha256": "a9f70042c9bd576e9290a7260bfd49d087f2dfcc5a83cffee05d3e43703ba18e",
+          "actual_sha256": "a9f70042c9bd576e9290a7260bfd49d087f2dfcc5a83cffee05d3e43703ba18e",
+          "expected_bytes": 93777319,
+          "actual_bytes": 93777319,
+          "match": true
+        },
+        {
+          "file": "clip-01327.bin",
+          "expected_sha256": "592500e30436973ebb81b0ea75654d00ccf77dbd938ade1b39b45464d0fcbcd1",
+          "actual_sha256": "592500e30436973ebb81b0ea75654d00ccf77dbd938ade1b39b45464d0fcbcd1",
+          "expected_bytes": 143876798,
+          "actual_bytes": 143876798,
+          "match": true
+        },
+        {
+          "file": "clip-01537.bin",
+          "expected_sha256": "4915bc97df6b0b6df016b9ead2c526d287bd04f361cc35894f2d4f0eab77130c",
+          "actual_sha256": "4915bc97df6b0b6df016b9ead2c526d287bd04f361cc35894f2d4f0eab77130c",
+          "expected_bytes": 196227387,
+          "actual_bytes": 196227387,
+          "match": true
+        }
+      ],
+      "frozen_hash_seconds": 1.5962415909998526,
+      "copy_seconds": 7.1,
+      "copy_MB_per_second": 76.71641084507043,
+      "overhead_seconds": 26.531765228999937
+    },
+    {
+      "schema_version": 1,
+      "direction": "drive_to_colab",
+      "repeat": 2,
+      "started_at": "2026-10-22T05:22:02.071780+00:00",
+      "elapsed_seconds": 34.39461604400003,
+      "bytes": 586327937,
+      "end_to_end_MB_per_second": 17.04708481844739,
+      "returncode": 0,
+      "command": [
+        "python3",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "900",
+        "download",
+        "staging/ball-detection-transfer-probe-20261022/sample-2",
+        "data/ball_detection/transfer-probe-20261022/sample-2",
+        "--verify"
+      ],
+      "disk_usage_after": {
+        "total": 253055008768,
+        "used": 47601778688,
+        "free": 205436452864
+      },
+      "timing_includes": "path uniqueness checks, transfer, post-readback, local/remote hash verification; frozen SHA256 check below timed separately",
+      "frozen_sha256_checks": [
+        {
+          "file": "clip-00069.bin",
+          "expected_sha256": "ffe9d31d61d0fe2fffe8bfb4428ff11fdfd34dbbadfe159984221e18db2ac9b5",
+          "actual_sha256": "ffe9d31d61d0fe2fffe8bfb4428ff11fdfd34dbbadfe159984221e18db2ac9b5",
+          "expected_bytes": 20409027,
+          "actual_bytes": 20409027,
+          "match": true
+        },
+        {
+          "file": "clip-00176.bin",
+          "expected_sha256": "ca793993d1277a4ed38818bd1beced96efefabedd72f5f8f0bf1cb00f26a1ca8",
+          "actual_sha256": "ca793993d1277a4ed38818bd1beced96efefabedd72f5f8f0bf1cb00f26a1ca8",
+          "expected_bytes": 57982790,
+          "actual_bytes": 57982790,
+          "match": true
+        },
+        {
+          "file": "clip-01419.bin",
+          "expected_sha256": "28ca66064efa525b644ebb120c660dffedd64a7f22eec4e6f71fb2e1afa19454",
+          "actual_sha256": "28ca66064efa525b644ebb120c660dffedd64a7f22eec4e6f71fb2e1afa19454",
+          "expected_bytes": 59009601,
+          "actual_bytes": 59009601,
+          "match": true
+        },
+        {
+          "file": "clip-00277.bin",
+          "expected_sha256": "7bef445b53638f09c62a4f535c388f3517399875f68ac676d53ba0ef6291f901",
+          "actual_sha256": "7bef445b53638f09c62a4f535c388f3517399875f68ac676d53ba0ef6291f901",
+          "expected_bytes": 99839991,
+          "actual_bytes": 99839991,
+          "match": true
+        },
+        {
+          "file": "clip-01179.bin",
+          "expected_sha256": "a3762ec8213edd46b82a5a7ffc9f325f09a59b59a0535e4d7a1ad270a67a4f67",
+          "actual_sha256": "a3762ec8213edd46b82a5a7ffc9f325f09a59b59a0535e4d7a1ad270a67a4f67",
+          "expected_bytes": 147250362,
+          "actual_bytes": 147250362,
+          "match": true
+        },
+        {
+          "file": "clip-00999.bin",
+          "expected_sha256": "d0b9e6b5f5980dfa8678da4af7f8352cb0791c01fe9a5ea4ef3dea8487a20bcc",
+          "actual_sha256": "d0b9e6b5f5980dfa8678da4af7f8352cb0791c01fe9a5ea4ef3dea8487a20bcc",
+          "expected_bytes": 201836166,
+          "actual_bytes": 201836166,
+          "match": true
+        }
+      ],
+      "frozen_hash_seconds": 1.7199366429999827,
+      "copy_seconds": 8.2,
+      "copy_MB_per_second": 71.50340695121952,
+      "overhead_seconds": 26.194616044000032
+    },
+    {
+      "schema_version": 1,
+      "direction": "drive_to_colab",
+      "repeat": 3,
+      "started_at": "2026-10-22T05:22:38.186851+00:00",
+      "elapsed_seconds": 35.281828399000005,
+      "bytes": 650089269,
+      "end_to_end_MB_per_second": 18.425611667518496,
+      "returncode": 0,
+      "command": [
+        "python3",
+        ".agents/skills/tennis-drive/scripts/drive.py",
+        "--timeout-seconds",
+        "900",
+        "download",
+        "staging/ball-detection-transfer-probe-20261022/sample-3",
+        "data/ball_detection/transfer-probe-20261022/sample-3",
+        "--verify"
+      ],
+      "disk_usage_after": {
+        "total": 253055008768,
+        "used": 48251895808,
+        "free": 204786335744
+      },
+      "timing_includes": "path uniqueness checks, transfer, post-readback, local/remote hash verification; frozen SHA256 check below timed separately",
+      "frozen_sha256_checks": [
+        {
+          "file": "clip-00047.bin",
+          "expected_sha256": "c71893c8e0084c1a75c34b29a48eb8f6dd78d9bd97663fde2bc5e9c919774899",
+          "actual_sha256": "c71893c8e0084c1a75c34b29a48eb8f6dd78d9bd97663fde2bc5e9c919774899",
+          "expected_bytes": 29965467,
+          "actual_bytes": 29965467,
+          "match": true
+        },
+        {
+          "file": "clip-00223.bin",
+          "expected_sha256": "282817b6b49f4b56e54d380c14a4fb373c93cf6c336693dd4f8020e5c5844571",
+          "actual_sha256": "282817b6b49f4b56e54d380c14a4fb373c93cf6c336693dd4f8020e5c5844571",
+          "expected_bytes": 95484618,
+          "actual_bytes": 95484618,
+          "match": true
+        },
+        {
+          "file": "clip-01346.bin",
+          "expected_sha256": "fd41df01f2233fa54eb012de20f29bde286ad814d655d312661362cafb94b854",
+          "actual_sha256": "fd41df01f2233fa54eb012de20f29bde286ad814d655d312661362cafb94b854",
+          "expected_bytes": 59748971,
+          "actual_bytes": 59748971,
+          "match": true
+        },
+        {
+          "file": "clip-01776.bin",
+          "expected_sha256": "eb5757344c7ef7e8274659baa70f4210b60dc5ae33a5405ae843b658c6c8c114",
+          "actual_sha256": "eb5757344c7ef7e8274659baa70f4210b60dc5ae33a5405ae843b658c6c8c114",
+          "expected_bytes": 103561783,
+          "actual_bytes": 103561783,
+          "match": true
+        },
+        {
+          "file": "clip-00519.bin",
+          "expected_sha256": "518ef51a7d753e1dd4235d129ec900ab4003f1035900870602e4a8a019622ce6",
+          "actual_sha256": "518ef51a7d753e1dd4235d129ec900ab4003f1035900870602e4a8a019622ce6",
+          "expected_bytes": 152076164,
+          "actual_bytes": 152076164,
+          "match": true
+        },
+        {
+          "file": "clip-00667.bin",
+          "expected_sha256": "3426f8d82269e7781a6e5620623208fd37901de9bd16c3732f9ff1b56f581903",
+          "actual_sha256": "3426f8d82269e7781a6e5620623208fd37901de9bd16c3732f9ff1b56f581903",
+          "expected_bytes": 209252266,
+          "actual_bytes": 209252266,
+          "match": true
+        }
+      ],
+      "frozen_hash_seconds": 1.910130800999923,
+      "copy_seconds": 8.2,
+      "copy_MB_per_second": 79.27917914634148,
+      "overhead_seconds": 27.081828399000006
+    }
+  ],
+  "download_hours_estimates": {
+    "full_copy_min": 0.6500318994205702,
+    "full_copy_max": 0.7207208383812691,
+    "full_e2e_min": 2.7968675523454376,
+    "full_e2e_max": 3.18197565146141,
+    "full_sha256_additional_min": 0.15102394542264075,
+    "full_sha256_additional_max": 0.1514202381360628
+  },
+  "environment": {
+    "schema_version": 1,
+    "observed_at": "2026-10-22T05:16:39.109571+00:00",
+    "disk_usage": {
+      "total": 253055008768,
+      "used": 46470590464,
+      "free": 206567641088
+    },
+    "memory": "MemTotal:       55530600 kB\nMemFree:        48290824 kB\nMemAvailable:   53887156 kB\nBuffers:          181764 kB\nCached:          5845060 kB\nSwapCached:            0 kB\nActive:           630356 kB\nInactive:        5956716 kB\nActive(anon):       1496 kB\nInactive(anon):   561484 kB\nActive(file):     628860 kB\nInactive(file):  5395232 kB\nUnevictable:           8 kB\nMlocked:               8 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nDirty:               328 kB\nWriteback:             0 kB\nAnonPages:        560280 kB\nMapped:           443740 kB\nShmem:              2724 kB\nKReclaimable:     196724 kB\nSlab:             270520 kB\nSReclaimable:     196724 kB\nSUnreclaim:        73796 kB\nKernelStack:        8768 kB\nPageTables:         8012 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    27765300 kB\nCommitted_AS:    4192036 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       60432 kB\nVmallocChunk:          0 kB\nPercpu:             8768 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      162608 kB\nDirectMap2M:    14514176 kB\nDirectMap1G:    44040192 kB\n",
+    "gpu": "NVIDIA L4, 23034 MiB",
+    "python": "Python 3.13.15",
+    "rclone_version": "rclone v1.60.1-DEV"
+  },
+  "local_environment": {
+    "python": "3.11.15",
+    "rclone": "v1.60.1-DEV",
+    "os": "Ubuntu 24.04 / WSL2",
+    "gpu": "NVIDIA GeForce RTX 5060 Ti 16311 MiB",
+    "current_venv_bytes": 6138625182
+  },
+  "colab_stop": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "<redacted>",
+    "status": "stopped",
+    "recovered_diff": {
+      "commit": "a6812b3a88333c578d7fc0b03017d9b14caf406d",
+      "excluded": [
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00053.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00177.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01101.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01217.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01327.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01537.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00069.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00176.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00277.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00999.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01179.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01419.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00047.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00223.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00519.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00667.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01346.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01776.bin"
+      ],
+      "storage_excluded": [
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00053.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00177.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01101.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01217.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01327.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01537.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00069.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00176.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00277.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00999.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01179.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01419.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00047.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00223.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00519.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00667.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01346.bin",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01776.bin"
+      ],
+      "exclusion_reasons": {
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00053.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-00177.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01101.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01217.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01327.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-1/clip-01537.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00069.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00176.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00277.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-00999.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01179.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-2/clip-01419.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00047.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00223.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00519.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-00667.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01346.bin": "project storage; managed through Drive",
+        "data/ball_detection/transfer-probe-20261022/sample-3/clip-01776.bin": "project storage; managed through Drive"
+      },
+      "untracked": [],
+      "output": "${COLAB_STATE}/recovered/${RECOVERY_ID}"
+    }
+  },
+  "verified_sample_bytes": 1781103723,
+  "verified_sample_files": 18
+}

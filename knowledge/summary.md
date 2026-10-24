@@ -1,4 +1,4 @@
-<!-- knowledge-review: 537463de8deaa5fd30e52008060a77c50cf4de8c60c4fb779fb5afdb30254e1b on 2026-10-23 -->
+<!-- knowledge-review: f0e014c35516ac31e7bf037f0c1ac62dcd71186bd65c3996746f4dbacf10db1e on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-23（CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
@@ -312,6 +312,34 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 ## タスク別の主要な知見と判断保留事項
 
 ### Ball Detection
+
+2026-10-22の[Drive・Colab転送実測](nodes/ball_detection/000061-run-ball-colab-transfer-feasibility-20261022.md)では、
+直近720p snapshot（185.522 GB）の代表18 shard・1.781 GBを3組に分け、往復経路の内容照合を通過した。
+初回uploadのコピー工程は全量換算約5.8〜6.3時間、Colab取得は約39〜43分。ただし全量実測ではなく、
+path検査・hash照合・環境準備は別に必要で、小分けCLI総時間の比例見積もりはさらに長い。
+今回のL4は初期空き206.568 GBで、全量配置後の余裕と絶対path・不在原注釈の移植が課題。
+現行storeはtestを含む全shardを要求するため、train/validationだけの軽量配布には独立した版の準備が要る。
+同日の追加指示で、[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)は
+転送・環境・容量・速度・Drive保存と新VM再開を検証し、最終的にColabで本学習を完了する計画へ更新した。
+精度・モデルの優劣・deploy判断はこの転送実測で更新しない。
+同日のユーザー指定で、次実験の主軸は**時系列長 × DPT / Transformer＋DPT（hybrid）**に固定した。
+RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量の事前学習を固定し、その後に系列長を伸ばす。
+実験行列・予算・教師領域・評価・進捗の正本は同親issueへ移した。
+続く[中央targetのCPU調査](nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)では、
+元32窓の中央16枚を固定し、全splitでplay内文脈とreference/PTS境界を守るclip内文脈を比較した。
+後者の128共通集合は元32窓の位置教師の約76〜81%、256共通集合は約51〜61%を保持し、
+256では低FPS・TrackNetの減少が大きかった。これは後続runにより置き換えた不採用案の記録として保持する。
+ユーザーはclip内文脈・上限128を選び、教師は**入力Tの全フレーム**へ変更した。
+[全フレーム教師の再調査](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)では、
+128枚を置ける全適格区間を共通集合とし、旧32位置教師の約99.5%以上を保持した。
+同じ128枚を4/2/1窓へ分割すると、入力frameと教師の多重度をT間で一致させられる。
+この共通区間定義では不在専用集合案と共通不在は全重複する。不在専用集合案は採用せず、
+共通集合内の確認済み不在をkind別に別集計する。調査時の専用列挙は同一性監査の証拠としてのみ残す。
+validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
+具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
+共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
+可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
+長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
