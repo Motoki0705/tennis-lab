@@ -15,6 +15,7 @@ from parent.github import GitHub
 from parent.policy import closing_issues, digest, events, nonempty, number, object_value
 from parent.state import Store
 
+from .handoffs import memory_report
 from .records import owned_comment
 
 
@@ -191,6 +192,9 @@ def collect(
                     binding["source"]["report_number"]
                     for binding in metadata["bindings"]
                 )
+        memory_source = memory_report(raw.get("body") or "")
+        if memory_source is not None:
+            source_reports.add(memory_source)
         issues[str(n)] = {
             "number": n,
             "title": nonempty(raw.get("title"), "issue title"),
@@ -230,10 +234,10 @@ def collect(
         route(issues, int(issue_key))  # Detect cycles before the agent runs.
     owners = {}
     for key, row in store.parents.items():
-        repo, _, n = key.rpartition("#")
+        repo, _, owner_number = key.rpartition("#")
         if repo == gh.repo.casefold():
-            number(int(n))
-            owners[n] = {
+            number(int(owner_number))
+            owners[owner_number] = {
                 "status": row["status"],
                 "generation": row["generation"],
                 "record_sha256": digest(row),

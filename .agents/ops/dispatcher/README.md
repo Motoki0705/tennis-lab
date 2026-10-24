@@ -63,6 +63,11 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 無関係なPR・code tree・controller内部の`execution_inputs`は渡さず、索引の`omissions`に種類・理由（PRは件数も）を明記する。
 コードは固定commitのcwdを直接読む。agent向けの分割・絞り込みは`material()`やdigestを変更しない。
 
+専用memoryの `ops-report-memory-task:v1` 作業issueは公開元レポートも閉包へ含める。
+未担当の単独issueと一意なopen PRのslot/HEADが一致する場合、PR存在だけを理由にexisting_ownerとはしない。
+これは正式reviewへの自律着手を判断できる入口であり、着手・合意・review・mergeを許可する記録ではない。
+担当・assignee・保留・依存の拒否条件は維持する。契約は [memoryの保存](../ops-report/README.md#専用memoryの保存)。
+
 `input.json` schema_version=1:
 
 - `repo`（casefoldしたowner/repo）、`publisher`（現在のgh login）、`subjects`（全open issue番号の昇順配列）。

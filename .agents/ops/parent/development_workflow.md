@@ -44,6 +44,11 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 
 ## 結果確認・修正・部分停止
 
+`ops-report-memory-task:v1` の単独issueは、公開処理から既存PRの正式reviewを引き受ける作業である。
+自律着手の根拠を受理後、[memoryの保存契約](../ops-report/README.md#専用memoryの保存)のjournal、公開元、
+固定HEAD・限定path・ローカル検証を照合し、通常の `record-result --child <自身のissue番号>` と以下の明示review/gateへ進む。
+新しい実装workerや重複PRを起動しない。gateは同じjournalを再検査し、専用memoryも通常の保守枠制御を受ける。
+
 同じparent共通引数で `inspect-worker --child N` を呼び、最新job・終了理由・設定・最終文のprivateな参照先を読む。
 runnerのexit 0も `result=completed` もCLIターンの終了であり、常に `task_success=null`。
 dispatcherが終了・回収・worker lifetime lockを照合して現在のdelegationへ `worker_ended` を記録するまで枠を保持する。

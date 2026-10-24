@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "repository": "o/r",
+    "workflow": "ci.yml",
+    "job": "lint-and-test",
+    "shard": "all",
+    "cycle_id": "daily-ci-2026-10-25",
+    "generation": 1,
+    "request_id": "b64f2aec4e6419626d5e7fa6d9b2d55a",
+    "target_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "checkout_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "baseline_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "deadline_at": "2026-10-25T09:00:00+09:00",
+    "run_id": 123,
+    "attempt": 1
+  },
+  "started_at": "2026-10-25T06:00:00+09:00",
+  "finished_at": "2026-10-25T06:03:00+09:00",
+  "validation_error": null,
+  "checks": {
+    "environment": {
+      "outcome": "passed",
+      "started_at": "2026-10-25T06:01:00+09:00",
+      "finished_at": "2026-10-25T06:02:00+09:00",
+      "exit_code": 0,
+      "argv": [
+        "fixture",
+        "environment"
+      ]
+    },
+    "cpu-backend": {
+      "outcome": "passed",
+      "started_at": "2026-10-25T06:01:00+09:00",
+      "finished_at": "2026-10-25T06:02:00+09:00",
+      "exit_code": 0,
+      "argv": [
+        "fixture",
+        "cpu-backend"
+      ]
+    },
+    "system-dependencies": {
+      "outcome": "passed",
+      "started_at": "2026-10-25T06:01:00+09:00",
+      "finished_at": "2026-10-25T06:02:00+09:00",
+      "exit_code": 0,
+      "argv": [
+        "fixture",
+        "system-dependencies"
+      ]
+    },
+    "lint": {
+      "outcome": "passed",
+      "started_at": "2026-10-25T06:01:00+09:00",
+      "finished_at": "2026-10-25T06:02:00+09:00",
+      "exit_code": 0,
+      "argv": [
+        "fixture",
+        "lint"
+      ]
+    },
+    "test": {
+      "outcome": "passed",
+      "started_at": "2026-10-25T06:01:00+09:00",
+      "finished_at": "2026-10-25T06:02:00+09:00",
+      "exit_code": 0,
+      "argv": [
+        "fixture",
+        "test"
+      ]
+    }
+  },
+  "files": {
+    "pytest.junit.xml": "aecb5603c84b492e7f697bf634912929261b4de488feec1a556512abb31215cb",
+    "pytest.events.jsonl": "b825f1fd5f75bac0473075079250c9add0a478d8610b5822076accdcfad9030d",
+    "checks.junit.xml": "76b58a34f34929ead539e7e79ec40beadd5cb6f6b4d6510dd0de1cffadf4c48a",
+    "pytest.json": "20a4044992707a87651b9e4aa37035dc64d1133d4a552ad32fa1c725cb79ddc0"
+  }
+}

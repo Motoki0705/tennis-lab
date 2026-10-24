@@ -237,6 +237,11 @@ elif head == ["pr", "create"]:
     })
     save()
     print(url)
+elif head == ["pr", "edit"]:
+    pr = next(r for r in state["memory_prs"] if r["url"] == args[2])
+    with open(opt("--body-file"), encoding="utf-8") as fh:
+        pr["body"] = fh.read()
+    save()
 elif head == ["pr", "merge"]:
     pr = next(r for r in state["memory_prs"] if r["url"] == args[2])
     assert opt("--match-head-commit") == pr["headRefOid"]

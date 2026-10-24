@@ -1,4 +1,0 @@
-# 専用memory PRの自動mergeが存在・成功を必須とするcheck名（CI workflowのjob名）。
-# CI の起動前に他の check（labeler 等）だけが成功して merge される競合を防ぐ。
-# 意味はREADME.mdの「専用memoryの保存」を参照。通常PRのmerge gateには使わない。
-Python

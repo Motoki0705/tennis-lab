@@ -22,6 +22,13 @@ def _ci_job() -> dict[str, Any]:
     return cast(dict[str, Any], workflow["jobs"]["lint-and-test"])
 
 
+def _command(step: dict[str, Any]) -> list[str]:
+    command = shlex.split(step.get("run", ""))
+    if command[:4] == ["python3", "-m", "daily_ci.workflow", "run"]:
+        return command[command.index("--") + 1 :]
+    return command
+
+
 def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
     job = _ci_job()
     assert "strategy" not in job
@@ -31,15 +38,15 @@ def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
         assert job["env"][variable] == "1"
 
     commands = [
-        shlex.split(step["run"])
+        _command(step)
         for step in job["steps"]
-        if step.get("run", "").startswith(".venv/bin/python -m spin ")
+        if _command(step)[:3] == [".venv/bin/python", "-m", "spin"]
     ]
     assert len(commands) == 2
     assert commands[0] == [".venv/bin/python", "-m", "spin", "lint"]
     assert commands[1][:4] == [".venv/bin/python", "-m", "spin", "test"]
-    assert "uv sync --locked --no-group gpu --group cpu" in [
-        step.get("run") for step in job["steps"]
+    assert ["uv", "sync", "--locked", "--no-group", "gpu", "--group", "cpu"] in [
+        _command(step) for step in job["steps"]
     ]
 
 
@@ -48,9 +55,12 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     tmp_path: Path, failing_test: bool
 ) -> None:
     job = _ci_job()
-    command = shlex.split(
-        next(step["run"] for step in job["steps"] if step["name"] == "Test")
-    )
+    command = _command(next(step for step in job["steps"] if step["name"] == "Test"))
+    # Artifact instrumentation is exercised with real xdist in test_daily_ci_evidence.
+    plugin = command.index("-p")
+    assert command[plugin + 1] == "daily_ci.pytest_evidence"
+    del command[plugin : plugin + 2]
+    command = [arg for arg in command if not arg.startswith("--junitxml=")]
     # Use the repository CLI and pytest settings with a small independent suite.
     (tmp_path / ".spin").mkdir()
     shutil.copy2(REPO_ROOT / ".spin/cmds.py", tmp_path / ".spin/cmds.py")
@@ -61,9 +71,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/integration/synthetic_data_generation/test_court_dataset.py",
     }
     assert {
-        arg.removeprefix("--ignore=")
-        for arg in command
-        if arg.startswith("--ignore=")
+        arg.removeprefix("--ignore=") for arg in command if arg.startswith("--ignore=")
     } == excluded_files
     assert all((REPO_ROOT / path).is_file() for path in excluded_files)
     samples = {

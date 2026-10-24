@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="daily-ci-checks" tests="5"><testcase name="environment" classname="lint-and-test" /><testcase name="cpu-backend" classname="lint-and-test" /><testcase name="system-dependencies" classname="lint-and-test" /><testcase name="lint" classname="lint-and-test" /><testcase name="test" classname="lint-and-test" /></testsuite>

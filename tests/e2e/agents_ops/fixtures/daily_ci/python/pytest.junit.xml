@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="1" tests="2" time="0.499" timestamp="2026-10-25T06:01:00+09:00" hostname="fixture-runner"><testcase classname="test_cases" name="test_skipped" time="0.000"><skipped type="pytest.skip" message="fixture">test_cases.py:4: fixture</skipped></testcase><testcase classname="test_cases" name="test_value[a b :: [c]]" time="0.001" /></testsuite></testsuites>

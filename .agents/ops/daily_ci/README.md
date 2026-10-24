@@ -44,6 +44,7 @@ dispatchのrefは`main`。workflowは`target_sha`をcheckoutし、その実SHA�
 GitHub run ID/attempt/workflow/job/shard、必須検査の実行と結果をmanifest/artifactへ残す。
 run.head_shaも対象SHAと一致させる。時刻と期限を実時計で検査し、遅延実行を成功にしない。
 CIのjob構成・性能・検査集合は#1390の契約を維持する。
+artifact schema・読取/検証API・nodeid回復証拠の正本は [実行証拠契約](evidence.md)。
 
 dispatch前に`dispatch_unknown`をfsyncする。POSTは各requestで**一度だけ**。
 `return_run_details=true`の応答を利用するが、応答喪失・controller死後はworkflowのrun一覧を

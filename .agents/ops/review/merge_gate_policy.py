@@ -223,6 +223,7 @@ class MergeInput:
     base_advances: Sequence[BaseAdvance] = ()
     inherited_snapshots: frozenset[tuple[str, str]] = frozenset()
     parent_needs_human: bool = False
+    publication_verified: bool = False
 
 
 @dataclass(frozen=True)
@@ -246,7 +247,10 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
     if type(pr.get("draft")) is not bool:
         reasons.append("draft_unknown")
     try:
-        if detect_author_agent(pr["head"]["ref"], labels) is None:
+        if (
+            detect_author_agent(pr["head"]["ref"], labels) is None
+            and not gate.publication_verified
+        ):
             reasons.append("author_unknown")
     except AuthorConflictError:
         reasons.append("author_conflict")

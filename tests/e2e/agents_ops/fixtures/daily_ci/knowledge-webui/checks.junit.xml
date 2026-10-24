@@ -1,0 +1,2 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="daily-ci-checks" tests="6"><testcase name="environment" classname="knowledge-webui" /><testcase name="lint" classname="knowledge-webui" /><testcase name="test" classname="knowledge-webui" /><testcase name="build" classname="knowledge-webui" /><testcase name="browser-install" classname="knowledge-webui" /><testcase name="test-e2e" classname="knowledge-webui" /></testsuite>

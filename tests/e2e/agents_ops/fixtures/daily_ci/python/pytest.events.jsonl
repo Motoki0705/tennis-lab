@@ -1,0 +1,10 @@
+{"kind": "identity", "value": {"repository": "o/r", "workflow": "ci.yml", "job": "lint-and-test", "shard": "all", "cycle_id": "daily-ci-2026-10-25", "generation": 1, "request_id": "b64f2aec4e6419626d5e7fa6d9b2d55a", "target_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "checkout_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "baseline_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "deadline_at": "2026-10-25T09:00:00+09:00", "run_id": 123, "attempt": 1}}
+{"kind": "collected", "value": ["test_cases.py::test_value[a b :: [c]]", "test_cases.py::test_skipped"]}
+{"kind": "collected", "value": ["test_cases.py::test_value[a b :: [c]]", "test_cases.py::test_skipped"]}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_skipped", "when": "setup", "outcome": "passed", "wasxfail": false}}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_value[a b :: [c]]", "when": "setup", "outcome": "passed", "wasxfail": false}}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_skipped", "when": "call", "outcome": "skipped", "wasxfail": false}}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_skipped", "when": "teardown", "outcome": "passed", "wasxfail": false}}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_value[a b :: [c]]", "when": "call", "outcome": "passed", "wasxfail": false}}
+{"kind": "report", "value": {"nodeid": "test_cases.py::test_value[a b :: [c]]", "when": "teardown", "outcome": "passed", "wasxfail": false}}
+{"kind": "finish", "value": {"exit_code": 0}}
