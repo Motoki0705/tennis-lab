@@ -29,6 +29,26 @@ from tests.e2e.agents_ops.test_parent_session import (
 SCRIPT = OPS / "review/merge_gate.py"
 
 
+def ci_rollup(state: str) -> list[dict[str, str]]:
+    if state == "absent":
+        return []
+    name, status, conclusion = {
+        "pending": ("Python", "QUEUED", ""),
+        "failure": ("Python", "COMPLETED", "FAILURE"),
+        "success": ("Python", "COMPLETED", "SUCCESS"),
+        "unrelated": ("Labeler", "COMPLETED", "SUCCESS"),
+    }[state]
+    return [
+        {
+            "__typename": "CheckRun",
+            "name": name,
+            "workflowName": "CI",
+            "status": status,
+            "conclusion": conclusion,
+        }
+    ]
+
+
 def assert_unclassified_agreement_comment(
     response: subprocess.CompletedProcess[str], comment_id: int
 ) -> None:
@@ -349,7 +369,7 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
         + "\n",
     }
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     p.cli("receive-proposal", "--report", "90", "--proposal", "R-20261012-01")
     status = json.loads(p.cli("status").stdout)
@@ -421,9 +441,93 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert rows[100]["decision"] == "merge"
     assert "unresolved_findings" in rows[101]["reasons"]
-    assert "ci_pending" in rows[102]["reasons"]
+    assert rows[102]["decision"] == "merge"
+    assert rows[102]["ci_checks"] == [{"name": "Python", "state": "pending"}]
     assert len(g.review.calls()) == 1
     assert g.merge_calls() == []
+
+
+@pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
+@pytest.mark.parametrize(
+    "ci_state,checks",
+    [
+        ("absent", []),
+        ("pending", [{"name": "Python", "state": "pending"}]),
+        ("failure", [{"name": "Python", "state": "failure"}]),
+        ("unrelated", [{"name": "Labeler", "state": "success"}]),
+    ],
+)
+def test_ci_observations_do_not_block_dependency_ordered_merges(
+    gate_env: GateEnv, ci_state: str, checks: list[dict[str, str]]
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    for pr in state["prs"]:
+        pr["statusCheckRollup"] = ci_rollup(ci_state)
+    p.save(state)
+    response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
+    assert response.returncode == 0, response.stderr
+    assert [c[2] for c in g.merge_calls()] == ["101", "100", "102"]
+    rows = g.results(response)
+    assert all(
+        row["action"] == "merged" and not row["reasons"] for row in rows.values()
+    )
+    assert all(row["ci_checks"] == checks for row in rows.values())
+    assert all(
+        row["ci_head_sha"] == row["snapshot"]["head_sha"] for row in rows.values()
+    )
+    assert len({row["snapshot"]["base_sha"] for row in rows.values()}) == 3
+    for call in g.merge_calls():
+        assert call[-2:] == [
+            "--match-head-commit",
+            rows[int(call[2])]["snapshot"]["head_sha"],
+        ]
+    assert len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("rollup", [None, {}, [{"__typename": "Mystery"}]])
+def test_invalid_ci_observation_is_an_explicit_collection_error(
+    gate_env: GateEnv, rollup: Any
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    state["prs"][0]["statusCheckRollup"] = rollup
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+def test_ci_read_failure_is_an_explicit_collection_error(gate_env: GateEnv) -> None:
+    g = gate_env
+    response = g.cli("merge", PARENT_FAIL_CI_VIEW="1")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize("gate_env", ["dependency", "shared"], indirect=True)
+@pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
+def test_dependency_and_shared_approval_still_block_for_any_ci_state(
+    gate_env: GateEnv, ci_state: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    for pr in state["prs"]:
+        pr["statusCheckRollup"] = ci_rollup(ci_state)
+        if pr["number"] != 100:
+            pr["mergeable"] = None
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 1, response.stderr
+    row = g.results(response)[100]
+    if row["shared_hits"]:
+        assert row["decision"] == "needs_human"
+        assert row["reasons"] == ["touches_shared"]
+    else:
+        assert "dependency_11_not_completed" in row["reasons"]
+    assert not g.merge_calls()
 
 
 @pytest.mark.parametrize(
@@ -446,12 +550,9 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
         ("author", "author_unknown"),
         ("conflict", "conflict"),
         ("unknown", "mergeable_unknown"),
-        ("ci_before", "ci_missing_required"),
-        ("ci_failed", "ci_failed"),
-        ("ci_pending", "ci_pending"),
-        ("ci_missing", "ci_missing_required"),
         ("human", "human_judgment_pending"),
         ("parent_human", "human_judgment_pending"),
+        ("child_human", "human_judgment_pending"),
         ("stopped", "child_10_stopped"),
         ("parent_missing", "parent_result_missing_or_inconsistent"),
         ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
@@ -461,8 +562,9 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
         ("quoted_result", "parent_result_missing_or_inconsistent"),
     ],
 )
+@pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
 def test_rejections_never_merge_or_launch_agent(
-    gate_env: GateEnv, case: str, reason: str
+    gate_env: GateEnv, case: str, reason: str, ci_state: str
 ) -> None:
     g, r, p = gate_env, gate_env.review, gate_env.review.p
     state = p.state()
@@ -531,18 +633,12 @@ def test_rejections_never_merge_or_launch_agent(
         first["head"]["ref"] = "unknown/source"
     elif case in {"conflict", "unknown"}:
         first["mergeable"] = False if case == "conflict" else None
-    elif case == "ci_before":
-        first["statusCheckRollup"] = []
-    elif case == "ci_missing":
-        first["statusCheckRollup"][0]["name"] = "Labeler"
-    elif case == "ci_failed":
-        first["statusCheckRollup"][0]["conclusion"] = "FAILURE"
-    elif case == "ci_pending":
-        first["statusCheckRollup"][0]["status"] = "QUEUED"
     elif case in {"human", "parent_human"}:
         (first if case == "human" else state["issues"]["1"])["labels"] = [
             {"name": "needs-human"}
         ] + (state["issues"]["1"]["labels"] if case == "parent_human" else [])
+    elif case == "child_human":
+        state["issues"]["10"]["labels"].append({"name": "needs-human"})
     elif case == "stopped":
         p.cli("stop", "--child", "10", "--spec", p.detail())
         state = p.state()
@@ -580,8 +676,9 @@ def test_rejections_never_merge_or_launch_agent(
     # Isolate the rejection: prevent the other independent PRs from merging.
     state = p.state()
     for pr in state["prs"]:
+        pr["statusCheckRollup"] = ci_rollup(ci_state)
         if pr["number"] not in {100, 103}:
-            pr["statusCheckRollup"] = []
+            pr["mergeable"] = None
     p.save(state)
     result = g.cli("merge")
     if case in {"parent_missing", "foreign_result", "quoted_result"}:
@@ -648,7 +745,7 @@ def test_completed_dependency_requires_no_pr_or_default_branch_merge(
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     if case == "not_completed":
         state["issues"]["13"].update(state="open", state_reason=None)
     elif case in {"not_planned", "duplicate"}:
@@ -694,7 +791,9 @@ def test_completed_dependency_requires_no_pr_or_default_branch_merge(
             )
     p.save(state)
     response = g.cli("merge")
-    assert response.returncode == 1, response.stderr  # The independent PRs wait for CI.
+    assert response.returncode == 1, (
+        response.stderr
+    )  # Other PRs have unknown mergeability.
     row = g.results(response)[100]
     assert row["dependency_statuses"] == {"13": status}
     if satisfied:
@@ -762,7 +861,7 @@ def test_reviewed_pr_with_nondefault_base_is_blocked(
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     if merged:
         state["prs"][0].update(state="closed", merged_at="2026-10-18T03:00:00Z")
         state["issues"]["10"].update(state="closed", state_reason="completed")
@@ -781,7 +880,7 @@ def test_repository_default_branch_is_used_instead_of_main(gate_env: GateEnv) ->
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     response = g.cli("merge")
     assert response.returncode == 1, response.stderr
@@ -811,7 +910,7 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
     g, p = gate_env, gate_env.review.p
     state = p.state()
     # A has the larger PR number: numeric sorting alone would merge B first.
-    state["prs"][2]["statusCheckRollup"] = []
+    state["prs"][2]["mergeable"] = None
     p.save(state)
     rows = g.results(g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1"))
     assert [c[2] for c in g.merge_calls()] == ["101", "100"]
@@ -828,7 +927,7 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
             rows[n]["snapshot"][key] == original[key]
             for key in ("head_sha", "merge_base_sha", "diff_sha256")
         )
-    assert "ci_missing_required" in rows[102]["reasons"]
+    assert "mergeable_unknown" in rows[102]["reasons"]
     assert not any("base" in reason for reason in rows[102]["reasons"])
     assert p.state()["issues"]["1"]["state"] == "open"
     assert "#10: 完了" in p.state()["issues"]["1"]["body"]
@@ -917,7 +1016,7 @@ def test_merged_target_head_mismatch_blocks_remaining_prs(gate_env: GateEnv) -> 
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     assert (
         g.results(g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1"))[100]["action"]
@@ -925,7 +1024,7 @@ def test_merged_target_head_mismatch_blocks_remaining_prs(gate_env: GateEnv) -> 
     )
     state = p.state()
     state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
-    state["prs"][1]["statusCheckRollup"] = state["prs"][0]["statusCheckRollup"]
+    state["prs"][1]["mergeable"] = True
     p.save(state)
     result = g.cli("merge")
     assert result.returncode == 1, result.stderr
@@ -942,7 +1041,7 @@ def test_remaining_prs_are_recollected_after_each_merge(
 ) -> None:
     g, p = gate_env, gate_env.review.p
     state = p.state()
-    state["prs"][2]["statusCheckRollup"] = []
+    state["prs"][2]["mergeable"] = None
     p.save(state)
     env = {
         "base": {"PARENT_MERGE_UNEXPLAINED_COMMIT": "1"},
@@ -954,10 +1053,16 @@ def test_remaining_prs_are_recollected_after_each_merge(
     }[change]
     env["PARENT_MERGE_ADVANCE_BASE"] = "1"
     rows = g.results(g.cli("merge", **env))
-    assert [c[2] for c in g.merge_calls()] == ["100"]
+    assert [c[2] for c in g.merge_calls()] == (
+        ["100", "101"] if change == "ci" else ["100"]
+    )
+    if change == "ci":
+        assert rows[101]["action"] == "merged"
+        assert rows[101]["ci_checks"] == [{"name": "Python", "state": "pending"}]
+        assert not rows[101]["reasons"]
+        return
     expected = {
         "base": "pr_101_base_sha_changed",
-        "ci": "ci_missing_required",
         "main_follow": "pr_101_merge_base_sha_changed",
     }[change]
     assert expected in rows[101]["reasons"]
@@ -972,7 +1077,7 @@ def test_failed_or_lost_merge_is_never_repeated(
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     env = {
         "fail": {"PARENT_MERGE_FAIL": "1"},
@@ -1018,7 +1123,7 @@ def test_shared_foundation_needs_explicit_current_parent_permission(
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     if permission != "absent":
         # Human consent already exists: migrate it to the machine-readable marker.
@@ -1189,7 +1294,7 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
     fixed = run_git(worktree, "rev-parse", "HEAD")
     state["prs"][0]["head"]["sha"] = fixed
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     evidence = p.spec(
         {
@@ -1309,7 +1414,7 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     new_head = run_git(worktree, "rev-parse", "HEAD")
     state = p.state()
     for pr in state["prs"][1:]:
-        pr["statusCheckRollup"] = []
+        pr["mergeable"] = None
     p.save(state)
     result = g.cli(
         "merge",
@@ -1323,6 +1428,7 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     assert (
         "head_changed_during_ci" if when == "ci" else "head_changed_before_merge"
     ) in rows[100]["reasons"]
+    assert rows[100]["ci_head_sha"] == new_head
     assert not g.merge_calls()
 
 

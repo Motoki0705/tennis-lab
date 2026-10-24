@@ -282,9 +282,53 @@ def test_claude_connection_failure_is_known_unsent_and_can_retry(bells: Bells) -
         assert post["recipients"][0]["delivery_reason"] == "route_unavailable"
         assert post["recipients"][0]["retryable"]
         hidden.rename(path)
-        assert b.dispatch(post)[0]["delivery_state"] == "notified"
+        result = run_board(
+            b.w.env(),
+            "dispatch",
+            "--post",
+            post["id"],
+            "--to",
+            b.w.assignments[3].name.lower(),
+        )
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        assert data["status"] == "notified"
+        assert (
+            data["recipients"][0]["attempted"]
+            and data["recipients"][0]["attempts"] == 2
+        )
+        wait_received(received, condition)
+        again = run_board(b.w.env(), "dispatch", "--post", post["id"])
+        assert again.returncode == 1, again.stderr
+        data = json.loads(again.stdout)
+        assert data["status"] == "no_targets"
+        assert data["recipients"][0]["skip_reason"] == "already_notified"
+        assert len(received) == 1
+        private_output_absent(
+            result.stdout + result.stderr + again.stdout + again.stderr, b.w.env()
+        )
+
+
+def test_cli_dispatch_reports_partial_failure(bells: Bells) -> None:
+    b = bells
+    with inbox_socket() as (path, received, condition):
+        b.claude(3, path)
+        post = b.w.post(
+            to=[b.w.assignments[2].name, b.w.assignments[3].name], notifiers={}
+        )
+        result = run_board(b.w.env(), "dispatch", "--post", post["id"])
+        assert result.returncode == 1, result.stderr
+        data = json.loads(result.stdout)
+        assert data["status"] == "failed"
+        failed, notified = data["recipients"]
+        assert (
+            failed["outcome"] == "failed"
+            and failed["delivery_reason"] == "route_unavailable"
+        )
+        assert notified["outcome"] == "notified" and notified["attempted"]
         wait_received(received, condition)
         assert len(received) == 1
+        private_output_absent(result.stdout + result.stderr, b.w.env())
 
 
 def test_claude_refused_connection_does_not_call_codex(
@@ -351,7 +395,12 @@ def test_claude_timeouts_do_not_resend_ambiguous_writes(
                 state["delivery_reason"] == "notification_uncertain"
                 and not state["retryable"]
             )
-            b.dispatch(post)
+            result = run_board(b.w.env(), "dispatch", "--post", post["id"])
+            assert result.returncode == 1, result.stderr
+            assert (
+                json.loads(result.stdout)["recipients"][0]["skip_reason"]
+                == "notification_uncertain"
+            )
             assert len(received) == 1
         else:
             assert (

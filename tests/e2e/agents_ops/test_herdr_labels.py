@@ -261,6 +261,120 @@ def test_named_sync_preserves_unread_and_does_not_write_board_or_registry(
     assert labels.registry.read_bytes() == registry
 
 
+@pytest.mark.parametrize("operator", ["human", "peer", "self"])
+def test_board_rename_refreshes_only_the_confirmed_parent_display(
+    named_labels: Labels, operator: str
+) -> None:
+    from tests.e2e.agents_ops.test_board import private_output_absent, run_board
+
+    labels = named_labels
+    assert labels.run("sync").returncode == 0
+    state = labels.read()
+    state["panes"]["w1:p1"]["tokens"].update(tl_inbox="3", tl_inbox_label="未読:3")
+    labels.write(state)
+    registry = labels.registry.read_bytes()
+    env = (
+        dict(labels.env)
+        if operator == "self"
+        else {
+            key: value
+            for key, value in labels.env.items()
+            if not key.startswith(("HERDR_", "CLAUDE_", "CODEX_"))
+        }
+    )
+    if operator == "peer":
+        env.update(
+            CODEX_SESSION_ID="peer-parent",
+            CODEX_THREAD_ID="peer-parent",
+            HERDR_ENV="1",
+            HERDR_PANE_ID="w1:p2",
+        )
+    result = run_board(env, "rename", "--parent", "42", "--name", "bARRY")
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert (data["old_name"], data["new_name"]) == ("Alice", "Barry")
+    assert data["display_sync"]["status"] == "updated"
+    after = labels.read()["panes"]["w1:p1"]
+    assert after["display_agent"] == "Barry · #42 · 親"
+    assert after["tokens"] == {**state["panes"]["w1:p1"]["tokens"], "tl_name": "Barry"}
+    assert labels.read()["panes"]["w1:p2"] == state["panes"]["w1:p2"]
+    assert labels.registry.read_bytes() == registry
+    private_output_absent(result.stdout + result.stderr, labels.env)
+    mutations = len(labels.mutations())
+    repeated = run_board(env, "rename", "--parent", "42", "--name", "Barry")
+    assert repeated.returncode == 0, repeated.stderr
+    assert json.loads(repeated.stdout)["status"] == "unchanged"
+    assert json.loads(repeated.stdout)["display_sync"]["status"] == "unchanged"
+    assert len(labels.mutations()) == mutations
+
+
+@pytest.mark.parametrize(
+    "condition",
+    ["reject", "drop_write", "owner_changed", "native_changed", "missing_owner"],
+)
+def test_board_rename_reports_projection_failure_without_undoing_the_rename(
+    named_labels: Labels, condition: str
+) -> None:
+    from tests.e2e.agents_ops.test_board import private_output_absent, run_board
+
+    labels = named_labels
+    assert labels.run("sync").returncode == 0
+    state = labels.read()
+    if condition in {"reject", "drop_write"}:
+        state[condition] = True
+    elif condition == "owner_changed":
+        state["panes"]["w1:p1"]["tokens"]["tl_owner"] = "different-owner"
+    elif condition == "native_changed":
+        state["panes"]["w1:p1"]["agent_session"] = {
+            "kind": "id",
+            "agent": "claude",
+            "value": "different-conversation",
+        }
+    else:
+        for path in (labels.registry.parent.parent / "herdr-labels/owners").glob(
+            "*.json"
+        ):
+            path.unlink()
+    labels.write(state)
+    env = {
+        key: value
+        for key, value in labels.env.items()
+        if not key.startswith(("HERDR_", "CLAUDE_", "CODEX_"))
+    }
+    result = run_board(env, "rename", "--parent", "42")
+    assert result.returncode == (0 if condition == "missing_owner" else 1), (
+        result.stderr
+    )
+    data = json.loads(result.stdout)
+    assert (data["old_name"], data["new_name"]) == ("Alice", "Barry")
+    assert data["display_sync"]["status"] == (
+        "not_configured" if condition == "missing_owner" else "error"
+    )
+    storage = importlib.import_module("board.storage")
+    with storage.Store(storage.directory(labels.env)).read() as connection:
+        assert (
+            connection.execute("SELECT name FROM name_assignments").fetchone()[0]
+            == "Barry"
+        )
+        assert connection.execute(
+            "SELECT old_name,new_name FROM name_renames"
+        ).fetchall() == [("Alice", "Barry")]
+    assert labels.read()["panes"] == state["panes"]
+    private_output_absent(result.stdout + result.stderr, labels.env)
+    if condition in {"reject", "drop_write"}:
+        repaired = labels.read()
+        repaired.pop(condition)
+        labels.write(repaired)
+        retry = run_board(env, "rename", "--parent", "42", "--name", data["new_name"])
+        assert retry.returncode == 0, retry.stderr
+        assert json.loads(retry.stdout)["display_sync"]["status"] == "updated"
+        with storage.Store(storage.directory(labels.env)).read() as connection:
+            assert (
+                connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0]
+                == 1
+            )
+
+
 @pytest.mark.parametrize("condition", ["missing", "other_parent", "retired"])
 def test_unassigned_names_keep_number_display_without_guessing(
     named_labels: Labels,

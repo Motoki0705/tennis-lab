@@ -13,9 +13,9 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
 | `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge、共有基盤免除の記録 |
-| `review_policy.py` | blocker/major解析、無害化、CI正規化、required checks・共有パス・競合等のgate判定部品 |
+| `review_policy.py` | blocker/major解析、無害化、CI正規化、共有パス・競合等のgate判定部品 |
 | `prompt_template.md` | 親の受入条件・個別diff・依存/インターフェースを1実行で確認する指示 |
-| `shared_paths.txt` / `required_checks.txt` | 共有基盤パス / 必須CI check名 |
+| `shared_paths.txt` | 共有基盤パス |
 
 ## 実行
 
@@ -239,8 +239,9 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   snapshotはレビュー時、gateによるmerge試行済みならその直前の確認時の値を据え置く。
   resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
   現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
-- `required_checks.txt` の全必須checkが存在し、rollup全件に失敗・未完了がないこと。
-  CI取得時のheadも一致させる。競合・mergeable不明は停止する。
+- 競合・mergeable不明は停止する。CI取得時のheadも最新snapshotと一致させる。
+  CIの有無・未完了・失敗は合否に使わず、CIが途中で始まっても完了を待たない。
+  CI取得失敗・不正な応答・不明なCI結論は `input_or_collection_error` とし、未実行に読み替えない。
 - `shared_paths.txt` の一致は既定で `needs_human`。下記の明示合意だけで免除できる。
 - 子本文の最新依存欄を使い、依存先子がclosed・`state_reason=completed`（`task_status=completed`）であり、
   その子を閉じるPRが既定branchへmerge済みであることを求める。PR一覧は全状態・全ページを取得する。
@@ -253,7 +254,7 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   `input_or_collection_error`（終了コード2）で停止する。
   循環・親の外への依存も拒否する。状態の正本と停止/再開は [parent](../parent/README.md)。
 
-依存順で判定し、他の独立PRのCI待ちで合格済みPRを止めない。
+依存順で判定し、CI待ちをmergeの停止条件にしない。
 実merge直前に全対象のhead/base/merge-base/diff・CI・競合・coverage・親状態を再取得し、
 `gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
 各merge後も残りを再取得する。[先行mergeによるbase前進](#同じrunの先行mergeによるbase先端の前進)を実gitで検証し、
@@ -273,6 +274,10 @@ merge直後もremoteのmergeと対象issueのclosed/completedを確認する。�
 旧試行記録を削除しての自動再試行はしない。
 
 JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録、`snapshot` が確認したhead/base/diff。
+各判定の `ci_checks` はCI観測値（check名と `success` / `pending` / `failure`）、`ci_head_sha` は取得応答のhead。
+`snapshot.head_sha` との不一致は `head_changed_during_ci` で停止する。
+CIが無い場合は空配列、closed/merge済みPRの再確認でCIを取得しない場合は `null`。
+CI状態による理由コードは付けず、merge直前や先行merge後の再取得でも完了待ち・再試行をしない。
 共有基盤の一致は `shared_hits`、免除時は `shared_exemption` に人間合意の根拠とコメントURLを表示する。
 `auto_merge` は実効フラグ、`agent_invocations` は常に0。
 終了コードは0=全件merge可/merge確認（dry-runを含む）、1=停止/未完了あり、2=入力・取得・整合エラー。
@@ -299,7 +304,7 @@ requestと同じauthorizationの3キー。旧requestでは従来のgeneration/ag
 revisionは正整数の連番。同じ最新許可の再送は再投稿せず、取消後の再許可は新しいrevisionで記録する。
 現在のgh loginによる、同じ親/run/対象digest/担当generation/実行根拠digestの最新記録だけを使う。
 再合意・引継ぎ・新runで失効し、`false` の最新記録も免除しない。
-この操作は共有基盤条件だけの免除であり、CI・レビュー・coverage・依存・人間判断待ちは免除しない。
+この操作は共有基盤条件だけの免除であり、レビュー・coverage・依存・人間判断待ちは免除しない。
 `autonomous_decision` のrationale/sourcesや提案の採用チェックは、人間による共有基盤の許可ではない。
 自律根拠しかない共有基盤PRはneeds_humanとなり、人間の実際の明示許可をこの別操作で記録した場合だけ免除する。
 
@@ -313,9 +318,11 @@ revisionは正整数の連番。同じ最新許可の再送は再投稿せず、
 `normalize_rollup` / `CheckState` は全体調査も再利用する。
 workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最も悲観的な状態を採用する。
 成功扱いはSUCCESS/NEUTRAL/SKIPPEDのみ。不明値はエラー。
-`evaluate_gate(GateInput)` はCI全件・required checks・draft/fork・競合・共有パスを判定する部品で、
+`evaluate_gate(GateInput)` はdraft/fork・競合・共有パスを判定する部品で、CIは判定入力に含めない。
 `review` 引数には呼出側が親run/coverage/解消証拠から確認した `ReviewOutcome` を渡す。
 共有基盤に触れる場合は従来どおり人間判断が必要（明示的なキャンペーンの合意があれば親が扱う）。
+専用memory PRの必須CI一覧は [ops-report/required_checks.txt](../ops-report/required_checks.txt) で管理し、
+その限定経路のCI要件は維持する。通常PRのmerge gateはこの一覧を読まない。
 
 作成agentのbranch prefixは `claude/` / `codex/`、補助labelは `agent:claude` / `agent:codex`。
 `detect_author_agent` は矛盾をエラーにするが、親の明示対象を作成agentで自動選別しない。

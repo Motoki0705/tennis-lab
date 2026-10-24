@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Link the repo's systemd --user units (.agents/ops/*/systemd/*.{service,timer}) into
-# ~/.config/systemd/user and reload. Timers are only enabled with --enable.
+# ~/.config/systemd/user and reload. Timers and the dispatcher supervisor are
+# only enabled with --enable.
 #
 # Usage: install_units.sh [--enable] [--dry-run]
 #
@@ -78,7 +79,7 @@ main() {
   systemctl --user daemon-reload
   if ((enable)); then
     for f in "${units[@]}"; do
-      if [[ "$f" == *.timer ]]; then
+      if [[ "$f" == *.timer || "$(basename "$f")" == tennis-lab-dispatch-supervisor.service ]]; then
         systemctl --user enable --now "$(basename "$f")"
       fi
     done
