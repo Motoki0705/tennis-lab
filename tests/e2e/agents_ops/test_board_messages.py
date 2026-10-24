@@ -23,6 +23,51 @@ from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "INSERT OR REPLACE INTO recipients SELECT * FROM recipients WHERE assignment_id IS NULL",
+        "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries WHERE assignment_id IS NULL",
+        "UPDATE recipients SET name='Human' WHERE assignment_id IS NULL",
+        "UPDATE deliveries SET state='notified', notified_at='changed' WHERE assignment_id IS NULL",
+        "UPDATE name_assignments SET name='Human' WHERE parent=1",
+        "INSERT INTO name_assignments(name,repo,parent,assigned_at) VALUES('HUMAN','o/r',99,'now')",
+    ],
+)
+def test_reserved_human_rows_preserve_identity_uniqueness_and_delivery_contract(
+    world: World, statement: str
+) -> None:
+    world.post(to=["human"])
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(statement)
+    assert world.message_rows() == before
+    with world.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM name_assignments WHERE lower(name)='human'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_human_delivery_requires_an_existing_human_recipient(world: World) -> None:
+    root = world.post()
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,NULL,'orphan-human','available')",
+            (root["id"],),
+        )
+    assert world.message_rows() == before
+
+
 @dataclass
 class World:
     board: SimpleNamespace
@@ -58,6 +103,35 @@ class World:
         data = json.loads(self.labels.registry.read_text())
         data["parents"][f"o/r#{parent}"].update(values)
         self.labels.set_registry(data["parents"])
+
+    def live_parent(self, parent: int, *, status: str = "idle") -> str:
+        """A confirmed parent in the fake Herdr, independent of registry status."""
+        owner = json.loads(self.labels.registry.read_text())["parents"][f"o/r#{parent}"]
+        identity = owner["session"]
+        token = self.board.service.owner_token(identity)
+        terminal = f"board-terminal-{parent}"
+        owners = self.labels.registry.parent.parent / "herdr-labels/owners"
+        owners.mkdir(parents=True, exist_ok=True)
+        (owners / f"{token}.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "scope": self.board.service.owner_token("/fake/herdr.sock"),
+                    "terminal_id": terminal,
+                }
+            )
+        )
+        pane = f"w1:board-{parent}"
+        runtime = self.labels.read()
+        runtime["panes"][pane] = {
+            "pane_id": pane,
+            "terminal_id": terminal,
+            "agent": identity.partition(":")[0],
+            "agent_status": status,
+            "tokens": {"tl_owner": token},
+        }
+        self.labels.write(runtime)
+        return pane
 
     def post(self, **values: Any) -> dict[str, Any]:
         return cast(
@@ -135,7 +209,10 @@ def world(board: SimpleNamespace, labels: Labels) -> World:
                 connection, "o/r", parent, None, now=NOW
             )
         board.names.retire_name(connection, "o/r", 6, now=NOW)
-    return World(board, labels, assignments, board.delivery.FakeNotifier())
+    world = World(board, labels, assignments, board.delivery.FakeNotifier())
+    for parent in (1, 2, 3):
+        world.live_parent(parent)
+    return world
 
 
 def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
@@ -543,6 +620,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
+    w.live_parent(7)
     with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}
@@ -659,6 +737,63 @@ def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
     again = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
     assert again["status"] == "no_targets" and len(w.fake.calls) == 3
     private_output_absent(json.dumps(result), w.env())
+
+
+def test_sender_dispatch_never_rings_the_human_recipient(world: World) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    calls = len(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    assert [call.parent for call in w.fake.calls[calls:]] == [3]
+    by_parent = {r["parent"]: r for r in result["recipients"]}
+    assert by_parent[3]["outcome"] == "notified" and by_parent[3]["attempted"]
+    human = by_parent.get(None)
+    if human is not None:
+        assert human["outcome"] == "skipped" and not human["attempted"]
+        assert human["skip_reason"] == "human_recipient"
+    states = {
+        r["name"]: r["delivery_state"] for r in w.own_state(root["id"])["recipients"]
+    }
+    assert states["human"] == "available"
+
+
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+def test_dispatch_to_human_leaves_retryable_parent_deliveries_unchanged(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    parent = next(row for row in root["recipients"] if row["parent"] == 3)
+    assert parent["delivery_state"] == "delivery_failed" and parent["retryable"]
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    if entrypoint == "cli":
+        cli = importlib.import_module("board.__main__")
+        monkeypatch.setattr(cli, "os", SimpleNamespace(environ=w.env()))
+        monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+        assert cli.main(["dispatch", "--post", root["id"], "--to", "HuMaN"]) == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        result = json.loads(captured.out)
+    else:
+        result = w.board.redelivery.dispatch_post(
+            w.env(), w.routes, post_id=root["id"], to="human"
+        )
+    assert result["status"] == "no_targets"
+    assert len(result["recipients"]) == 1
+    human = result["recipients"][0]
+    assert human["name"] == "human" and human["assignment_id"] is None
+    assert human["post_id"] == root["id"]
+    assert human["outcome"] == "skipped" and not human["attempted"]
+    assert human["skip_reason"] == "human_recipient"
+    assert w.fake.calls == calls
+    assert w.message_rows() == before
 
 
 def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(

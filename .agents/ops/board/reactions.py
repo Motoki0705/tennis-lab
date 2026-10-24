@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
-from .access import as_parent
+from .access import as_participant
 from .errors import BoardError
 from .names import timestamp
 from .safety import public
@@ -72,6 +72,7 @@ def react(
     emoji: str,
     remove: bool = False,
     now: datetime | None = None,
+    human: bool = False,
 ) -> dict[str, Any]:
     # Post projections include reactions; import them only when mutating to
     # keep the shared read projection independent of this operation.
@@ -79,22 +80,29 @@ def react(
 
     if emoji not in EMOJIS:
         raise BoardError("unknown board reaction emoji")
-    with as_parent(env, write=True) as (connection, caller, parents):
+    with as_participant(env, human=human, write=True) as (connection, caller, parents):
         row = post_row(connection, post_id)
         require_thread_participant(connection, row["thread_id"], caller.id)
+        reactor_type = "human" if human else "parent"
         if remove:
             connection.execute(
-                "DELETE FROM reactions WHERE post_id=? AND reactor_type='parent' "
-                "AND assignment_id=? AND emoji=?",
-                (post_id, caller.id, emoji),
+                "DELETE FROM reactions WHERE post_id=? AND reactor_type=? "
+                "AND assignment_id IS ? AND emoji=?",
+                (post_id, reactor_type, caller.id, emoji),
             )
         else:
             connection.execute(
                 "INSERT INTO reactions(post_id,reactor_type,assignment_id,emoji,created_at) "
-                "VALUES(?,'parent',?,?,?) "
-                "ON CONFLICT(post_id,assignment_id,emoji) WHERE reactor_type='parent' DO NOTHING",
+                "VALUES(?,?,?,?,?) ON CONFLICT "
+                + (
+                    "(post_id,emoji) WHERE reactor_type='human' "
+                    if human
+                    else "(post_id,assignment_id,emoji) WHERE reactor_type='parent' "
+                )
+                + "DO NOTHING",
                 (
                     post_id,
+                    reactor_type,
                     caller.id,
                     emoji,
                     timestamp(now if now is not None else datetime.now(UTC)),
