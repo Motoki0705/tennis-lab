@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "job_id": "setup",
+  "argv": [
+    "bash",
+    "-lc",
+    "set -euo pipefail\nexport PATH=\"$(uv tool dir --bin):$PATH\"\nmkdir -p outputs/synthetic_data_generation/profile/court-assets-verify/setup\nTIMEFORMAT=\"elapsed_seconds=%R\"\ntime uv sync --locked\ntime MAX_JOBS=2 .venv/bin/python -m spin setup-nht --render-only\nnht-render --help\nnvidia-smi > outputs/synthetic_data_generation/profile/court-assets-verify/setup/gpu.txt\nnvcc --version > outputs/synthetic_data_generation/profile/court-assets-verify/setup/cuda.txt\nuv tool list > outputs/synthetic_data_generation/profile/court-assets-verify/setup/tools.txt\ngit rev-parse HEAD\ngit -C third_party/nht rev-parse HEAD"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/synthetic_data_generation/profile/court-assets-verify/setup"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-10-22T06:38:18.510751+00:00",
+  "source_commit": "5d2ffbb692e68e0c0093e1358ba7fa6f7ab19f7d",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/court-assets-verify-20261022-02/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/court-assets-verify-20261022-02/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

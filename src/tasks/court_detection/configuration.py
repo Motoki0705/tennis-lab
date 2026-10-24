@@ -599,8 +599,161 @@ class SyntheticCourtSourceConfig:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class SyntheticCourtStoresSourceConfig:
+    """Explicit packed V3 publications; every accepted sample is training data."""
+
+    kind: Literal["synthetic_court_stores"]
+    schema: Literal["v3"]
+    court_scope: Literal["target_court"]
+    store_roots: tuple[Path, ...]
+    data_version: str
+    generation_seed: int
+
+    def __post_init__(self) -> None:
+        if (self.kind, self.schema, self.court_scope) != (
+            "synthetic_court_stores",
+            "v3",
+            "target_court",
+        ):
+            raise SemanticConfigurationError(
+                "Explicit Court stores require V3 target_court."
+            )
+        if not self.store_roots or len(set(self.store_roots)) != len(self.store_roots):
+            raise SemanticConfigurationError("store_roots must be nonempty and unique.")
+        if not self.data_version or self.data_version != self.data_version.strip():
+            raise SemanticConfigurationError(
+                "data_version must be nonempty and trimmed."
+            )
+        if type(self.generation_seed) is not int or self.generation_seed < 0:
+            raise SemanticConfigurationError(
+                "generation_seed must be a nonnegative integer."
+            )
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> SyntheticCourtStoresSourceConfig:
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(
+            mapping,
+            {
+                "kind",
+                "schema",
+                "court_scope",
+                "store_roots",
+                "data_version",
+                "generation_seed",
+            },
+            path="data.source",
+        )
+        if (mapping["kind"], mapping["schema"], mapping["court_scope"]) != (
+            "synthetic_court_stores",
+            "v3",
+            "target_court",
+        ):
+            raise SemanticConfigurationError(
+                "Explicit Court stores require V3 target_court."
+            )
+        roots = _sequence(mapping, "store_roots", path="data.source")
+        if not roots or any(not isinstance(root, str) or not root for root in roots):
+            raise SemanticConfigurationError(
+                "store_roots requires explicit non-empty paths."
+            )
+        resolved = tuple(
+            resolver.resolve(PathRole.DATA, cast(str, root)) for root in roots
+        )
+        if len(set(resolved)) != len(resolved):
+            raise SemanticConfigurationError("store_roots must not contain duplicates.")
+        seed = _integer(mapping, "generation_seed", path="data.source")
+        if seed < 0:
+            raise SemanticConfigurationError("generation_seed must be nonnegative.")
+        return cls(
+            "synthetic_court_stores",
+            "v3",
+            "target_court",
+            resolved,
+            _string(mapping, "data_version", path="data.source"),
+            seed,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SyntheticCourtDatasetVersionSourceConfig:
+    """An explicit scale publication; identity and seed come from its manifest."""
+
+    kind: Literal["synthetic_court_dataset_version"]
+    schema: Literal["v3"]
+    court_scope: Literal["target_court"]
+    manifest: Path
+
+    def __post_init__(self) -> None:
+        if (self.kind, self.schema, self.court_scope) != (
+            "synthetic_court_dataset_version",
+            "v3",
+            "target_court",
+        ):
+            raise SemanticConfigurationError(
+                "Court dataset versions require V3 target_court."
+            )
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> SyntheticCourtDatasetVersionSourceConfig:
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(
+            mapping, {"kind", "schema", "court_scope", "manifest"}, path="data.source"
+        )
+        return cls(
+            cast(
+                Literal["synthetic_court_dataset_version"],
+                _string(mapping, "kind", path="data.source"),
+            ),
+            cast(Literal["v3"], _string(mapping, "schema", path="data.source")),
+            cast(
+                Literal["target_court"],
+                _string(mapping, "court_scope", path="data.source"),
+            ),
+            resolver.resolve(
+                PathRole.DATA, _string(mapping, "manifest", path="data.source")
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TennisCourtEvaluationSourceConfig:
+    """Read the original store through an immutable, video-disjoint registry."""
+
+    kind: Literal["tennis_court_evaluation"]
+    root: Path
+    registry: Path
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> TennisCourtEvaluationSourceConfig:
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(mapping, {"kind", "root", "registry"}, path="data.source")
+        if mapping["kind"] != "tennis_court_evaluation":
+            raise SemanticConfigurationError("Expected tennis_court_evaluation source.")
+        return cls(
+            "tennis_court_evaluation",
+            resolver.resolve(
+                PathRole.DATA, _string(mapping, "root", path="data.source")
+            ),
+            resolver.resolve(
+                PathRole.ARTIFACT, _string(mapping, "registry", path="data.source")
+            ),
+        )
+
+
 CourtSourceConfig: TypeAlias = (
-    TennisCourtDetectorSourceConfig | SyntheticCourtSourceConfig
+    TennisCourtDetectorSourceConfig
+    | SyntheticCourtSourceConfig
+    | SyntheticCourtStoresSourceConfig
+    | SyntheticCourtDatasetVersionSourceConfig
+    | TennisCourtEvaluationSourceConfig
 )
 
 
@@ -611,9 +764,17 @@ def _source_config(value: object, *, resolver: PathResolver) -> CourtSourceConfi
         return TennisCourtDetectorSourceConfig.from_mapping(mapping, resolver=resolver)
     if kind == "synthetic_court":
         return SyntheticCourtSourceConfig.from_mapping(mapping, resolver=resolver)
-    raise SemanticConfigurationError(
-        "data.source.kind must be tennis_court_detector or synthetic_court."
-    )
+    if kind == "synthetic_court_stores":
+        return SyntheticCourtStoresSourceConfig.from_mapping(mapping, resolver=resolver)
+    if kind == "synthetic_court_dataset_version":
+        return SyntheticCourtDatasetVersionSourceConfig.from_mapping(
+            mapping, resolver=resolver
+        )
+    if kind == "tennis_court_evaluation":
+        return TennisCourtEvaluationSourceConfig.from_mapping(
+            mapping, resolver=resolver
+        )
+    raise SemanticConfigurationError("Unsupported data.source.kind.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -1470,9 +1631,7 @@ class CourtInferenceConfig:
         patch_size = _integer(augmentation, "patch_size", path="data.augmentation")
         if patch_size <= 0:
             raise SemanticConfigurationError("Validation patch size must be positive")
-        preserve_fx_fy = _bool(
-            augmentation, "preserve_fx_fy", path="data.augmentation"
-        )
+        preserve_fx_fy = _bool(augmentation, "preserve_fx_fy", path="data.augmentation")
         if loss.pose.enabled and not preserve_fx_fy:
             raise SemanticConfigurationError(
                 "Pose inference requires preserve_fx_fy=true"
@@ -1545,7 +1704,8 @@ class CourtTrainingConfig:
                 "lr_monitor",
                 "qualitative_logging",
                 "gan",
-            },
+            }
+            | ({"step_schedule"} if "step_schedule" in training_mapping else set()),
             path="training",
         )
         nested_keys = {
@@ -1652,6 +1812,11 @@ class CourtTrainingConfig:
                 "fixed_indices selection requires non-empty selected_indices."
             )
         shared_training = dict(training_mapping)
+        if "step_schedule" in shared_training:
+            from src.tasks.court_detection.scaling.schedule import StepSchedule
+
+            StepSchedule.from_config(config)
+            del shared_training["step_schedule"]
         shared_training["qualitative_logging"] = {
             key: item for key, item in qualitative.items() if key != "fps"
         }
@@ -1828,6 +1993,9 @@ __all__ = [
     "LINE_TARGET_SCHEMA",
     "SEGMENTATION_TARGET_SCHEMA",
     "SyntheticCourtSourceConfig",
+    "SyntheticCourtStoresSourceConfig",
+    "SyntheticCourtDatasetVersionSourceConfig",
+    "TennisCourtEvaluationSourceConfig",
     "SyntheticCourtSchemaVersion",
     "TennisCourtDetectorSourceConfig",
     "validate_paths_boundary",

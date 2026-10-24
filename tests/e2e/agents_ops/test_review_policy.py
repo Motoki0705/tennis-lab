@@ -344,8 +344,6 @@ def _gate(**overrides: Any) -> Any:
         "is_draft": False,
         "is_cross_repository": False,
         "mergeable": "MERGEABLE",
-        "checks": (P.Check("Python", P.CheckState.SUCCESS),),
-        "required_checks": ("Python",),
         "review": P.ReviewOutcome("approve", 0),
         "changed_paths": ("src/tasks/blcs/models/model.py",),
         "shared_patterns": ("src/utils", "AGENTS.md"),
@@ -354,7 +352,7 @@ def _gate(**overrides: Any) -> Any:
     return P.evaluate_gate(P.GateInput(**base))
 
 
-def test_gate_merge_when_everything_is_green() -> None:
+def test_gate_merge_when_review_and_merge_conditions_pass() -> None:
     result = _gate()
     assert result.decision is P.GateDecision.MERGE
     assert result.reasons == ()
@@ -375,14 +373,6 @@ def test_gate_needs_human_for_shared_paths() -> None:
         ({"is_cross_repository": True}, "fork", False),
         ({"mergeable": "CONFLICTING"}, "conflict", True),
         ({"mergeable": "UNKNOWN"}, "mergeable_unknown", False),
-        ({"checks": (P.Check("Python", P.CheckState.FAILURE),)}, "ci_failed", True),
-        ({"checks": (P.Check("Python", P.CheckState.PENDING),)}, "ci_pending", False),
-        (
-            {"checks": (P.Check("label", P.CheckState.SUCCESS),)},
-            "ci_missing_required",
-            False,
-        ),
-        ({"checks": ()}, "ci_missing_required", False),
         ({"review": None}, "review_missing", False),
         (
             {"review": P.ReviewOutcome("request_changes", 1)},

@@ -7,11 +7,17 @@ from typing import cast
 
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
     TennisCourtDetectorSourceConfig,
+    TennisCourtEvaluationSourceConfig,
 )
 from src.tasks.court_detection.data.inputs.contract import CourtInput
 from src.tasks.court_detection.data.inputs.synthetic_court import SyntheticCourtInput
+from src.tasks.court_detection.data.inputs.synthetic_court_dataset_version import (
+    SyntheticCourtDatasetVersionInput,
+)
 from src.tasks.court_detection.data.inputs.tennis_court_detector import (
     TennisCourtDetectorInput,
 )
@@ -29,7 +35,19 @@ def _build_synthetic(
     config: CourtSourceConfig,
 ) -> CourtInput:
     return SyntheticCourtInput(
-        cast(SyntheticCourtSourceConfig, config),
+        cast(SyntheticCourtSourceConfig | SyntheticCourtStoresSourceConfig, config),
+    )
+
+
+def _build_evaluation(config: CourtSourceConfig) -> CourtInput:
+    from src.tasks.court_detection.scaling.real_split import TennisCourtEvaluationInput
+
+    return TennisCourtEvaluationInput(cast(TennisCourtEvaluationSourceConfig, config))
+
+
+def _build_dataset_version(config: CourtSourceConfig) -> CourtInput:
+    return SyntheticCourtDatasetVersionInput(
+        cast(SyntheticCourtDatasetVersionSourceConfig, config)
     )
 
 
@@ -39,6 +57,9 @@ _BUILDERS: dict[
 ] = {
     "tennis_court_detector": _build_tennis,
     "synthetic_court": _build_synthetic,
+    "synthetic_court_stores": _build_synthetic,
+    "synthetic_court_dataset_version": _build_dataset_version,
+    "tennis_court_evaluation": _build_evaluation,
 }
 
 

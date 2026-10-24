@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "assets",
+  "status": "completed",
+  "updated_at": "2026-10-22T07:01:12.453322+00:00",
+  "returncode": 0,
+  "worker_pid": 9827,
+  "worker_token": "160876",
+  "launch_guarded": true,
+  "pid": 10024,
+  "process_token": "164511",
+  "started_at": "2026-10-22T06:59:36.116662+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-22T07:01:25.150948+00:00",
+  "finished_at": "2026-10-22T07:01:25.150963+00:00"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "inputs",
+  "status": "completed",
+  "updated_at": "2026-10-23T06:04:19.577878+00:00",
+  "returncode": 0,
+  "worker_pid": 10736,
+  "worker_token": "183386",
+  "launch_guarded": true,
+  "pid": 10911,
+  "process_token": "186395",
+  "started_at": "2026-10-23T06:02:42.137972+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T06:04:31.654753+00:00",
+  "finished_at": "2026-10-23T06:04:31.654768+00:00"
+}

@@ -40,6 +40,8 @@ def fail():
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["pr", "view"]:
+    if os.environ.get("PARENT_FAIL_CI_VIEW"):
+        fail()
     pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
     values = {"statusCheckRollup": pr.get("statusCheckRollup", []),
               "headRefOid": pr["head"]["sha"]}
@@ -77,7 +79,10 @@ if args[:2] == ["pr", "merge"]:
                 other["head"]["sha"] = subprocess.check_output(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "rev-parse", "HEAD"], text=True).strip()
     if os.environ.get("PARENT_MERGE_CI_PENDING"):
         target = int(os.environ["PARENT_MERGE_CI_PENDING"])
-        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []
+        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = [
+            {"__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+             "status": "QUEUED", "conclusion": ""}
+        ]
     save()
     if os.environ.get("PARENT_MERGE_RESPONSE_LOST"):
         fail()
@@ -87,6 +92,8 @@ method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
 if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET":
     fail()
+if os.environ.get("PARENT_FAIL_GET_PATH") == endpoint and method == "GET":
+    fail()
 payload = json.load(sys.stdin) if method != "GET" else None
 path, _, query = endpoint.partition("?")
 path = path.casefold()
@@ -95,6 +102,8 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+if path == "repos/o/r":
+    response({"default_branch": state["default_branch"]})
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
     if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
@@ -111,6 +120,11 @@ if comment_edit:
     save()
     response(comment)
 if path == "repos/o/r/pulls":
+    if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
+        state["closing_reads"] = state.get("closing_reads", 0) + 1
+        if state["closing_reads"] == 2:
+            state["prs"][0]["body"] = os.environ["PARENT_CHANGE_CLOSING_ON_READ"]
+        save()
     if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
         state["pull_reads"] = state.get("pull_reads", 0) + 1
         if state["pull_reads"] == 2:
@@ -414,7 +428,14 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     state_path = tmp_path / "github.json"
     state_path.write_text(
         json.dumps(
-            {"issues": issues, "parents": {}, "comments": {}, "prs": [], "next": 10}
+            {
+                "issues": issues,
+                "parents": {},
+                "comments": {},
+                "prs": [],
+                "next": 10,
+                "default_branch": "main",
+            }
         )
     )
     calls_path = tmp_path / "calls.jsonl"
@@ -422,7 +443,14 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     env = {
         k: v
         for k, v in os.environ.items()
-        if k not in {"CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID"}
+        if k
+        not in {
+            "CODEX_THREAD_ID",
+            "CODEX_SESSION_ID",
+            "CLAUDE_CODE_SESSION_ID",
+            "CLAUDE_CODE_PARENT_SESSION_ID",
+            "CLAUDE_CODE_AGENT_ID",
+        }
         and not k.startswith("HERDR_")
     }
     env.update(
@@ -442,6 +470,91 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     )
     herdr.chmod(0o755)
     return ParentEnv(tmp_path, repo, env, state_path, calls_path, formats)
+
+
+def peer_board_request(p: ParentEnv, body: str) -> dict[str, Any]:
+    """A peer posts and the recipient reads/acks, with no GitHub or parent write."""
+    peer = {**p.env, "CLAUDE_CODE_SESSION_ID": "board-peer"}
+    p.cli("register", parent="2", extra={"CLAUDE_CODE_SESSION_ID": "board-peer"})
+    service = importlib.import_module("board.service")
+    messages = importlib.import_module("board.messages")
+    delivery = importlib.import_module("board.delivery")
+    target = service.whoami(p.env)["name"]
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    github_before, registry_before, calls_before = (
+        p.state(),
+        registry.read_bytes(),
+        p.calls(),
+    )
+    fake = delivery.FakeNotifier()
+    created = messages.post(
+        peer,
+        to=[target],
+        kind="request",
+        subject="親への連絡",
+        body=body,
+        notifiers={"claude": fake, "codex": fake},
+    )["post"]
+    assert created["recipients"][0]["delivery_state"] == "notified"
+    assert messages.read(p.env, created["id"])["post"]["body"] == body
+    acknowledged = messages.ack(p.env, post_id=created["id"], state="done")["post"]
+    assert acknowledged["recipients"][0]["response_state"] == "done"
+    # No parent-session/parent-review marker can have been published anywhere.
+    assert p.state() == github_before
+    assert p.calls() == calls_before
+    assert registry.read_bytes() == registry_before
+    return cast(dict[str, Any], acknowledged)
+
+
+@pytest.mark.parametrize("wrapper", ["exact", "quoted", "fenced"])
+def test_board_marker_and_ack_cannot_supply_human_agreement(
+    parent_env: ParentEnv,
+    wrapper: str,
+) -> None:
+    p = parent_env
+    p.agreed()
+    state = p.state()
+    # Move a genuine, otherwise valid agreement from fake GitHub to the board.
+    # Keep the checking event so no other agreement can authorize the task.
+    agreement = state["comments"]["1"].pop()["body"]
+    p.save(state)
+    body = {
+        "exact": agreement,
+        "quoted": "引用\n" + agreement,
+        "fenced": "```text\n" + agreement + "\n```",
+    }[wrapper]
+    peer_board_request(p, body)
+    before = p.state()
+    status = json.loads(p.cli("status").stdout)
+    assert status["phase"] == "要件確認中"
+    assert status["execution_basis"] is None
+    assert status["review"] == "未指示"
+    rejected = p.child("board-is-not-consent", ok=False)
+    assert "要件合意記録または有効な実行根拠がありません" in rejected.stderr
+    assert p.state() == before
+
+
+def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    selected = review_setup(p, standalone=True)
+    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    policy = importlib.import_module("parent.policy")
+    fixed = next(
+        event
+        for event in reversed(policy.events(p.state()["comments"]["1"], "operator", 1))
+        if event["event"] == "review"
+    )
+    fixed.pop("body")
+    peer_board_request(p, policy.marker({**fixed, "state": "instructed"}))
+    state = json.loads(p.cli("status").stdout)
+    assert state["review"][0]["state"] == "targets_fixed"
+    assert state["review"][0]["request"] == request
+    assert not (p.root / "review-calls.jsonl").exists()
 
 
 def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> None:
@@ -1327,6 +1440,9 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
     p.agreed()
     p.child("a")
     p.child("b")
+    state = p.state()
+    state["prs"] = [p.pr(100, 10)]
+    p.save(state)
     worktree = p.worktree("b")
     p.cli(
         "delegate",

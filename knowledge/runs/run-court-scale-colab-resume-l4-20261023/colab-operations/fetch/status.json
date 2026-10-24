@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "fetch",
+  "status": "completed",
+  "updated_at": "2026-10-23T09:52:49.621777+00:00",
+  "returncode": 0,
+  "worker_pid": 106636,
+  "worker_token": "1197470",
+  "launch_guarded": true,
+  "pid": 106833,
+  "process_token": "1200765",
+  "started_at": "2026-10-23T08:51:45.840289+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T09:52:59.189364+00:00",
+  "finished_at": "2026-10-23T09:52:59.189378+00:00"
+}

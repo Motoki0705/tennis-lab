@@ -1,0 +1,6 @@
+kind: synthetic_court_stores
+schema: v3
+court_scope: target_court
+store_roots: ???
+data_version: ???
+generation_seed: ???

@@ -1,0 +1,25 @@
+{
+  "schema": "court_data_scaling_validation_v1",
+  "code_commit": "16162608ccd11e9ebfd8a5e0a4e0eee75bb86d49",
+  "checks": [
+    {
+      "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/tasks/court_detection/scaling tests/integration/tasks/court_detection/test_data_scaling.py tests/unit/tasks/court_detection/test_configuration.py tests/unit/tasks/court_detection/data tests/unit/tasks/court_detection/training tests/integration/tasks/court_detection/test_ablation_evaluation.py tests/integration/tasks/court_detection/test_composable_pipeline.py tests/integration/tasks/court_detection/test_production_training.py -n 4 -q",
+      "result": "300 passed, 1 skipped, 13 warnings in 19.55s",
+      "scope": "pre-commit regression before the final source/refinement changes; optional published-input test skipped because TENNIS_COURT_TEST_ROOT was unset"
+    },
+    {
+      "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/tasks/court_detection/scaling tests/integration/tasks/court_detection/test_data_scaling.py tests/unit/tasks/court_detection/data/inputs/test_synthetic_court.py tests/unit/tasks/court_detection/data/test_mixed.py tests/unit/utils/test_output_layout.py -n 4 -q",
+      "result": "189 passed, 9 warnings in 20.95s",
+      "scope": "final code, including the new comparison, source, resume and output-boundary behavior"
+    },
+    {
+      "command": "git commit -m \"Support synthetic data conditions and fixed-step Court evaluation\"",
+      "result": "ruff (fix) Passed; mypy Passed; commit 16162608c"
+    },
+    {
+      "command": "training_queue.sh add <exact command in run.json> --name court-data-scaling-final-smoke --provider codex --session 01a1628d-0e82-7393-8a00-582e63df0fb0 --issue 1354 --resource all",
+      "result": "done, exit 0; training 20 optimizer updates; explicit val/test evaluation and comparison artifacts written",
+      "scope": "frozen source commit; batch 1, long side 512, compile disabled; 8 synthetic images and 4 real fixture videos"
+    }
+  ]
+}

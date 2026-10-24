@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "ok": false,
+  "command": "copy",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "error": "rclone copy gdrive:tennis_lab/staging/court-scene-assets-a9281d9a41e39fc9 failed: exit code 1; see stderr logs"
+}

@@ -2,7 +2,7 @@
 
 親が確定・指示したPR群を、Codexの実行1回で統合レビューする。
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
-入力の正本は [parentのreview-request契約](../parent/README.md#1218へのレビュー要求契約schema-version-1)。
+入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-2version-1読取互換)。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
@@ -13,9 +13,9 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
 | `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge、共有基盤免除の記録 |
-| `review_policy.py` | blocker/major解析、無害化、CI正規化、required checks・共有パス・競合等のgate判定部品 |
+| `review_policy.py` | blocker/major解析、無害化、CI正規化、共有パス・競合等のgate判定部品 |
 | `prompt_template.md` | 親の受入条件・個別diff・依存/インターフェースを1実行で確認する指示 |
-| `shared_paths.txt` / `required_checks.txt` | 共有基盤パス / 必須CI check名 |
+| `shared_paths.txt` | 共有基盤パス |
 
 ## 実行
 
@@ -49,10 +49,12 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
 
 ## 受理・実行・再送
 
-1. version=1の要求を厳密に検査する。prepareだけのJSONは拒否する。
-   ローカルregistryのactive担当、環境由来ID、openな親、最新の要件合意、最新run、
+1. version=2（旧version=1も読取可）の要求を厳密に検査する。prepareだけのJSONは拒否する。
+   ローカルregistryのactive担当、環境由来ID、openな親、有効な実行根拠、最新run、
    同じrun ID/request digestの公開指示を照合する。
-   公開指示の担当generation・agreement digestも一致させ、引継ぎ前の指示を流用しない。
+   公開指示の担当generation・根拠の種別/digestも一致させ、引継ぎ前の指示を流用しない。
+   自律根拠の入力が変われば起動・結果の受理・修正確認・mergeを停止する。
+   旧version=1はgeneration/agreement digestで人間合意と照合し、新たな自律根拠へ読み替えない。
 2. 実行前に `execution.json` をflock下で保存する。同run IDの再送は既存結果を返し、
    Codexは再実行しない。異なるスナップショット・古い指示・変更後の対象に再送した場合はエラー。
    他のセッションへの自動振替も行わない。
@@ -116,6 +118,16 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 findingはidに加えて `{severity,path,line,rule,detail}`。pathはrepo相対POSIXパスまたはnull、lineは正整数またはnull。
 PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各担当へ振り分ける。
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
+外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
+新requestのversion=2に含むauthorizationもrequest/result digestへ入り、coverage・修正確認を同じ根拠と担当世代へ結び付ける。
+requirementsに固定した親・対象子の要件本文digestも起動・状態遷移・修正確認・mergeで再照合する。
+指示・収集時のclosing対象は固定した要件集合と一致させ、収集中の対象変更も拒否する。
+結果の全 `child_issues` に対応する要件digestがなければ、結果受理・修正確認・gateでも拒否する。
+進捗更新は除外し、要件変更は親による結果の採用だけでは旧reviewへ取り込めない。
+親の要件変更は全件、子の要件変更はその子を含むPRのcoverageを止める。runの進捗記録は子のcoverageを承認しない。
+修正確認は当該PRの子を照合し、別の子の停止/変更を独立PRの確認へ持ち込まない。
+旧公開記録は書き換えず、保存済みrequest/result/executionと元のdigestで照合する。
+未知のrequest/basis/policy versionや破損は拒否し、未レビューの空記録へ移行しない。
 
 各PRの `kind=pr` は `{schema_version,kind,review_run_id,parent_issue,pr,request_sha256,
 result_sha256,snapshot,coverage,findings,parent_run_url}`。
@@ -209,27 +221,40 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 
 - 最新の正式な直属子とPRのclosing指示、review対象集合・子の割当、既知の作成agent、
   open・draft/fork・担当branchの整合。同じ子のopen PRが複数あれば停止する。
+- repository情報から取得した既定branchとREST PRの `base.ref` が一致すること。
+  不一致は `base_not_default_branch` で停止し、baseは自動で付け替えない。既存のmerge済み対象も確認する。
 - 最新の親runのローカルresult/request/executionと、同じgh loginによる親result・全対象PRの
-  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/合意との一致が必須。
+  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/実行根拠との一致が必須。
   pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
 - 親の公開review状態が `fixes_verified` または `complete`。結果受領だけ・修正中・中断・
   `needs-human` label（親/子/PR）・子の停止/依存保留ではmergeしない。
-  runの合意digest・担当generationを照合し、無関係な後続の提案合意や同じ合意内容の再記録では
+  runの実行根拠digest・担当generationを照合し、無関係な後続の提案合意や同じ根拠の再記録では
   既存の確認と共有基盤の許可を失効させない。親全体の明示的な `checking`、合意内容の変更、
   引継ぎ後は古い確認を流用しない。親issue全体の完了は要求しない。
+  新しい委任/結果のauthorizationと子要件digestも照合する。根拠変更後の既存成果は親がrecord-resultで
+  現在の要件へ明示的に結び付けるまで使わず、旧レビュー自体は新しい理由/runで取り直す。
 - #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
   他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
   merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
   snapshotはレビュー時、gateによるmerge試行済みならその直前の確認時の値を据え置く。
   resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
   現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
-- `required_checks.txt` の全必須checkが存在し、rollup全件に失敗・未完了がないこと。
-  CI取得時のheadも一致させる。競合・mergeable不明は停止する。
+- 競合・mergeable不明は停止する。CI取得時のheadも最新snapshotと一致させる。
+  CIの有無・未完了・失敗は合否に使わず、CIが途中で始まっても完了を待たない。
+  CI取得失敗・不正な応答・不明なCI結論は `input_or_collection_error` とし、未実行に読み替えない。
 - `shared_paths.txt` の一致は既定で `needs_human`。下記の明示合意だけで免除できる。
-- 子本文の最新依存欄を使い、依存先子のPRが実mergeされ、その子がclosed/completedになるまで保留する。
+- 子本文の最新依存欄を使い、依存先子がclosed・`state_reason=completed`（`task_status=completed`）であり、
+  その子を閉じるPRが既定branchへmerge済みであることを求める。PR一覧は全状態・全ページを取得する。
+  closing PRがopen・merged・closed未mergeのいずれにも存在しない完了子は、調査だけの成果として依存を満たす。
+  判定根拠はJSONの `dependency_statuses` に子番号ごとに記録し、充足は `completed_without_pr` または
+  `merged_into_default_branch`。停止理由は `dependency_<N>_not_completed`、`dependency_<N>_open_pr`、
+  `dependency_<N>_unmerged`、`dependency_<N>_base_not_default_branch` で区別する。既定branchへのmerge済みPRが
+  あってもopen PRが残れば停止する。PRの状態・merge先が不明なら `dependency_<N>_pr_state_unknown` /
+  `dependency_<N>_pr_base_unknown`、issueの完了理由が不明・取得失敗・既定branchが不明なら
+  `input_or_collection_error`（終了コード2）で停止する。
   循環・親の外への依存も拒否する。状態の正本と停止/再開は [parent](../parent/README.md)。
 
-依存順で判定し、他の独立PRのCI待ちで合格済みPRを止めない。
+依存順で判定し、CI待ちをmergeの停止条件にしない。
 実merge直前に全対象のhead/base/merge-base/diff・CI・競合・coverage・親状態を再取得し、
 `gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
 各merge後も残りを再取得する。[先行mergeによるbase前進](#同じrunの先行mergeによるbase先端の前進)を実gitで検証し、
@@ -249,6 +274,10 @@ merge直後もremoteのmergeと対象issueのclosed/completedを確認する。�
 旧試行記録を削除しての自動再試行はしない。
 
 JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録、`snapshot` が確認したhead/base/diff。
+各判定の `ci_checks` はCI観測値（check名と `success` / `pending` / `failure`）、`ci_head_sha` は取得応答のhead。
+`snapshot.head_sha` との不一致は `head_changed_during_ci` で停止する。
+CIが無い場合は空配列、closed/merge済みPRの再確認でCIを取得しない場合は `null`。
+CI状態による理由コードは付けず、merge直前や先行merge後の再取得でも完了待ち・再試行をしない。
 共有基盤の一致は `shared_hits`、免除時は `shared_exemption` に人間合意の根拠とコメントURLを表示する。
 `auto_merge` は実効フラグ、`agent_invocations` は常に0。
 終了コードは0=全件merge可/merge確認（dry-runを含む）、1=停止/未完了あり、2=入力・取得・整合エラー。
@@ -269,12 +298,15 @@ JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録�
 ```
 
 親issueにparentと同じ先頭行 `parent-session:v1` マーカーで `event=merge_permission` を記録する。
-キーは `parent,event,review_run_id,request_sha256,generation,agreement_sha256,
-allow_shared_foundation,evidence,revision`。許可フラグは真偽値、証拠は非空文章。
+キーは `parent,event,review_run_id,request_sha256,allow_shared_foundation,evidence,revision` と
+requestと同じauthorizationの3キー。旧requestでは従来のgeneration/agreement_sha256を使う。
+許可フラグは真偽値、証拠は非空文章。
 revisionは正整数の連番。同じ最新許可の再送は再投稿せず、取消後の再許可は新しいrevisionで記録する。
-現在のgh loginによる、同じ親/run/対象digest/担当generation/合意digestの最新記録だけを使う。
+現在のgh loginによる、同じ親/run/対象digest/担当generation/実行根拠digestの最新記録だけを使う。
 再合意・引継ぎ・新runで失効し、`false` の最新記録も免除しない。
-この操作は共有基盤条件だけの免除であり、CI・レビュー・coverage・依存・人間判断待ちは免除しない。
+この操作は共有基盤条件だけの免除であり、レビュー・coverage・依存・人間判断待ちは免除しない。
+`autonomous_decision` のrationale/sourcesや提案の採用チェックは、人間による共有基盤の許可ではない。
+自律根拠しかない共有基盤PRはneeds_humanとなり、人間の実際の明示許可をこの別操作で記録した場合だけ免除する。
 
 ## 共有基盤パスとCI部品
 
@@ -286,9 +318,11 @@ revisionは正整数の連番。同じ最新許可の再送は再投稿せず、
 `normalize_rollup` / `CheckState` は全体調査も再利用する。
 workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最も悲観的な状態を採用する。
 成功扱いはSUCCESS/NEUTRAL/SKIPPEDのみ。不明値はエラー。
-`evaluate_gate(GateInput)` はCI全件・required checks・draft/fork・競合・共有パスを判定する部品で、
+`evaluate_gate(GateInput)` はdraft/fork・競合・共有パスを判定する部品で、CIは判定入力に含めない。
 `review` 引数には呼出側が親run/coverage/解消証拠から確認した `ReviewOutcome` を渡す。
 共有基盤に触れる場合は従来どおり人間判断が必要（明示的なキャンペーンの合意があれば親が扱う）。
+専用memory PRの必須CI一覧は [ops-report/required_checks.txt](../ops-report/required_checks.txt) で管理し、
+その限定経路のCI要件は維持する。通常PRのmerge gateはこの一覧を読まない。
 
 作成agentのbranch prefixは `claude/` / `codex/`、補助labelは `agent:claude` / `agent:codex`。
 `detect_author_agent` は矛盾をエラーにするが、親の明示対象を作成agentで自動選別しない。
