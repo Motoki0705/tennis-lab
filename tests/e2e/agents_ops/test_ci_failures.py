@@ -352,8 +352,10 @@ def test_recovery_requires_merge_success_and_exact_test_and_can_regress(
     assert repair.show(signature)["recovery"]["sha"] == observer.sha(5)
 
 
+@pytest.mark.parametrize("status", ["fetch_error", "pending"])
 def test_interrupted_collection_fetch_error_cannot_restore_old_recovery(
     repair: RepairEnv,
+    status: str,
 ) -> None:
     signature = repair.regression()
     assert repair.sync().returncode == 0
@@ -372,11 +374,13 @@ def test_interrupted_collection_fetch_error_cannot_restore_old_recovery(
     old = source.records(0, 1000, observer.sha(4))["records"][-1]
     failed = {
         **old["observation"],
-        "status": "fetch_error",
+        "status": status,
         "result": None,
         "failures": [],
         "workflows": [],
-        "errors": [{"endpoint": "runs", "reason": "temporary outage"}],
+        "errors": [{"endpoint": "runs", "reason": "temporary outage"}]
+        if status == "fetch_error"
+        else [],
     }
     with source.db:
         source.append(
@@ -384,12 +388,14 @@ def test_interrupted_collection_fetch_error_cannot_restore_old_recovery(
         )
     source.close()
     result = repair.sync()
-    assert result.returncode == 1, result.stderr
+    assert result.returncode == (1 if status == "fetch_error" else 0), result.stderr
     row = repair.show(signature)
-    assert row["status"] == "observation_incomplete"
+    assert row["status"] == (
+        "observation_incomplete" if status == "fetch_error" else "regressed"
+    )
     assert row["recovery"] is None
     assert any(o["failure"]["sha"] == observer.sha(4) for o in row["occurrences"])
-    assert not json.loads(result.stdout)["processed"]
+    assert json.loads(result.stdout)["processed"] == (status != "fetch_error")
 
 
 def test_successful_retry_updates_recovery_evidence_idempotently(

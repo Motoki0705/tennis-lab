@@ -64,7 +64,7 @@ def read_observations(
                 # A failed fetch is not evidence that an earlier failure went
                 # away. Retain the original records, including their provenance,
                 # until a complete observation can replace them.
-                if record["observation"]["status"] == "fetch_error":
+                if record["observation"]["status"] != "complete":
                     failure_versions.setdefault(record["sha"], []).append(record)
                 else:
                     failure_versions[record["sha"]] = [record]
