@@ -1,0 +1,6584 @@
+{
+  "schema": "court_d2_cpu_comparison_v1",
+  "asset_verification": {
+    "manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b",
+    "verified_files": [
+      "scenes/B00/alignment/alignment.json",
+      "scenes/B00/reconstruction/export/cameras.json",
+      "scenes/B00/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "scenes/B00/reconstruction/export/model/runtime-config.json",
+      "scenes/B00/reconstruction/export/points_scene.npy",
+      "scenes/B00/reconstruction/export/scene.json",
+      "scenes/B01/alignment/alignment.json",
+      "scenes/B01/reconstruction/export/cameras.json",
+      "scenes/B01/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "scenes/B01/reconstruction/export/model/runtime-config.json",
+      "scenes/B01/reconstruction/export/points_scene.npy",
+      "scenes/B01/reconstruction/export/scene.json",
+      "scenes/B02/alignment/alignment.json",
+      "scenes/B02/reconstruction/export/cameras.json",
+      "scenes/B02/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "scenes/B02/reconstruction/export/model/runtime-config.json",
+      "scenes/B02/reconstruction/export/points_scene.npy",
+      "scenes/B02/reconstruction/export/scene.json",
+      "scenes/B03/alignment/alignment.json",
+      "scenes/B03/reconstruction/export/cameras.json",
+      "scenes/B03/reconstruction/export/model/ckpts/ckpt_29999_rank0.pt",
+      "scenes/B03/reconstruction/export/model/runtime-config.json",
+      "scenes/B03/reconstruction/export/points_scene.npy",
+      "scenes/B03/reconstruction/export/scene.json"
+    ]
+  },
+  "variants": {
+    "current": {
+      "schema": "court_d2_cpu_variant_v1",
+      "variant": "current",
+      "recipe": {
+        "arc_intervals": 8192,
+        "arc_tolerance_m": 0.01,
+        "base_step_m": 4.0,
+        "count_multiple": 1,
+        "height": 360,
+        "hfov_degrees": [
+          75.0,
+          92.5,
+          110.0
+        ],
+        "hull_expansion_percent": 0.0,
+        "hull_margin_m": 0.5,
+        "jitter_radius_m": 1.0,
+        "look_at_heights_m": [
+          0.0,
+          1.5
+        ],
+        "minimum_points": 8,
+        "near_plane_m": 0.01,
+        "schema": "court_scale_geometry_recipe_v1",
+        "width": 640
+      },
+      "generation_seed": 42,
+      "trajectory_count_per_scene": 128,
+      "density_level": 0,
+      "all_candidates": {
+        "n": 6668,
+        "framing": {
+          "full": 29,
+          "near_full": 73,
+          "partial": 6566
+        },
+        "in_frame_kp": {
+          "0": 86,
+          "1": 123,
+          "2": 207,
+          "3": 117,
+          "4": 921,
+          "5": 491,
+          "6": 373,
+          "7": 2165,
+          "8": 525,
+          "9": 491,
+          "10": 1032,
+          "11": 35,
+          "12": 55,
+          "13": 18,
+          "14": 29
+        },
+        "miss_pattern": {
+          "horizontal+vertical": 776,
+          "behind+horizontal+vertical": 4813,
+          "behind": 369,
+          "behind+horizontal": 512,
+          "vertical": 3,
+          "behind+vertical": 26,
+          "horizontal": 140,
+          "none": 29
+        },
+        "outside_captured_hull": 0,
+        "height_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            1.012701411854933,
+            1.6151839834624226,
+            2.260133565742029,
+            2.8564553253810683,
+            3.4552764562847558
+          ]
+        },
+        "distance_xy_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            0.07519450621811548,
+            3.9380648808433083,
+            6.812803185098877,
+            12.09932651580919,
+            20.957247176847847
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            0.879520680497393,
+            2.6997726882746638,
+            6.42802967678136,
+            11.368363635624702,
+            17.83398660784875
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 948,
+          "min_p10_median_p90_max": [
+            68.11316447150739,
+            107.95439677104379,
+            157.61491095514867,
+            176.33523803776316,
+            179.99082193411908
+          ]
+        }
+      },
+      "geometry_pass": {
+        "n": 6166,
+        "framing": {
+          "full": 29,
+          "near_full": 72,
+          "partial": 6065
+        },
+        "in_frame_kp": {
+          "0": 2,
+          "1": 28,
+          "2": 37,
+          "3": 30,
+          "4": 914,
+          "5": 477,
+          "6": 368,
+          "7": 2154,
+          "8": 506,
+          "9": 490,
+          "10": 1024,
+          "11": 35,
+          "12": 54,
+          "13": 18,
+          "14": 29
+        },
+        "miss_pattern": {
+          "behind+horizontal+vertical": 4466,
+          "behind": 369,
+          "horizontal+vertical": 648,
+          "behind+horizontal": 506,
+          "vertical": 3,
+          "behind+vertical": 17,
+          "horizontal": 128,
+          "none": 29
+        },
+        "outside_captured_hull": 0,
+        "height_m": {
+          "n": 6166,
+          "min_p10_median_p90_max": [
+            1.012701411854933,
+            1.61572504503851,
+            2.2534863603015243,
+            2.8533851498933123,
+            3.4552764562847558
+          ]
+        },
+        "distance_xy_m": {
+          "n": 6166,
+          "min_p10_median_p90_max": [
+            0.07519450621811548,
+            4.212068953805997,
+            7.010431104273776,
+            12.387198185671933,
+            20.957247176847847
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 6166,
+          "min_p10_median_p90_max": [
+            0.8956495317088793,
+            2.7317716079475383,
+            6.429236952417555,
+            11.24084106680082,
+            17.83398660784875
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 808,
+          "min_p10_median_p90_max": [
+            68.11316447150739,
+            106.79934974946214,
+            150.9285807866875,
+            175.56932471729243,
+            179.99082193411908
+          ]
+        }
+      },
+      "per_scene": {
+        "B00": {
+          "groups": 128,
+          "candidates": 1741,
+          "geometry_pass": 1621,
+          "caches": 128
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2080,
+          "geometry_pass": 1957,
+          "caches": 128
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1479,
+          "geometry_pass": 1353,
+          "caches": 128
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1368,
+          "geometry_pass": 1235,
+          "caches": 128
+        }
+      },
+      "geometry_pass_by_scene": {
+        "B00": {
+          "n": 1621,
+          "framing": {
+            "full": 3,
+            "near_full": 2,
+            "partial": 1616
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 21,
+            "2": 20,
+            "3": 17,
+            "4": 246,
+            "5": 108,
+            "6": 65,
+            "7": 639,
+            "8": 105,
+            "9": 107,
+            "10": 281,
+            "11": 5,
+            "12": 2,
+            "14": 3
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1193,
+            "behind": 132,
+            "horizontal+vertical": 139,
+            "behind+horizontal": 146,
+            "vertical": 1,
+            "behind+vertical": 6,
+            "horizontal": 1,
+            "none": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1621,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.599784755354705,
+              2.2625846350137255,
+              2.874934690686272,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1621,
+            "min_p10_median_p90_max": [
+              0.07519450621811548,
+              3.851665158891933,
+              6.5903798351535015,
+              11.91694492090826,
+              16.545708937849266
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1621,
+            "min_p10_median_p90_max": [
+              1.0997310346309774,
+              2.941072016386393,
+              6.68687672964899,
+              11.36687234562896,
+              14.411190663633157
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 144,
+            "min_p10_median_p90_max": [
+              98.79127197647452,
+              114.0680983060966,
+              157.08626433637525,
+              175.62224925250337,
+              179.7762595031126
+            ]
+          }
+        },
+        "B01": {
+          "n": 1957,
+          "framing": {
+            "full": 24,
+            "near_full": 68,
+            "partial": 1865
+          },
+          "in_frame_kp": {
+            "1": 7,
+            "2": 17,
+            "3": 13,
+            "4": 202,
+            "5": 107,
+            "6": 100,
+            "7": 507,
+            "8": 149,
+            "9": 197,
+            "10": 536,
+            "11": 30,
+            "12": 51,
+            "13": 17,
+            "14": 24
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1209,
+            "behind": 95,
+            "behind+vertical": 6,
+            "behind+horizontal": 182,
+            "horizontal+vertical": 318,
+            "horizontal": 122,
+            "none": 24,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1957,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6115568913284721,
+              2.1138897940358943,
+              2.7308574453407664,
+              3.272362406159022
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1957,
+            "min_p10_median_p90_max": [
+              0.49549844276624944,
+              4.42182785004828,
+              8.660818398554854,
+              14.449865275449199,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1957,
+            "min_p10_median_p90_max": [
+              1.109182812813053,
+              3.989971623558353,
+              8.671484281220078,
+              12.88003671945518,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 465,
+            "min_p10_median_p90_max": [
+              68.11316447150739,
+              100.25182568322984,
+              129.9811866750554,
+              171.20929274983098,
+              179.9192378964114
+            ]
+          }
+        },
+        "B02": {
+          "n": 1353,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 1353
+          },
+          "in_frame_kp": {
+            "4": 241,
+            "5": 140,
+            "6": 101,
+            "7": 503,
+            "8": 138,
+            "9": 104,
+            "10": 126
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1083,
+            "behind+horizontal": 105,
+            "horizontal+vertical": 98,
+            "behind": 60,
+            "behind+vertical": 4,
+            "horizontal": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1353,
+            "min_p10_median_p90_max": [
+              1.2180494537880528,
+              1.6592389606161146,
+              2.283576064629477,
+              2.8995659177644875,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1353,
+            "min_p10_median_p90_max": [
+              1.7602268581457146,
+              4.498299260165269,
+              6.8483378830111565,
+              9.818531322055794,
+              14.903710647403173
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1353,
+            "min_p10_median_p90_max": [
+              0.9706235977459325,
+              2.281050494813506,
+              4.922533813369579,
+              8.251012465459784,
+              9.371574955440163
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 101,
+            "min_p10_median_p90_max": [
+              123.8716372062394,
+              154.03301284893814,
+              169.88183452499158,
+              178.07905027386622,
+              179.99082193411908
+            ]
+          }
+        },
+        "B03": {
+          "n": 1235,
+          "framing": {
+            "full": 2,
+            "near_full": 2,
+            "partial": 1231
+          },
+          "in_frame_kp": {
+            "4": 225,
+            "5": 122,
+            "6": 102,
+            "7": 505,
+            "8": 114,
+            "9": 82,
+            "10": 81,
+            "12": 1,
+            "13": 1,
+            "14": 2
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 981,
+            "horizontal+vertical": 93,
+            "behind+horizontal": 73,
+            "behind": 82,
+            "none": 2,
+            "vertical": 1,
+            "horizontal": 2,
+            "behind+vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1235,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.6202022981426818,
+              2.3896078595690353,
+              2.8603848970640793,
+              3.2064367183648628
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1235,
+            "min_p10_median_p90_max": [
+              0.7982713461794445,
+              4.0855338450918195,
+              6.7071957379472105,
+              9.490123510525361,
+              16.14724978268771
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1235,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.293156913921803,
+              5.498537307773554,
+              8.525369460580123,
+              9.398916221640548
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 98,
+            "min_p10_median_p90_max": [
+              99.13679345394848,
+              154.78930399530583,
+              168.45870058727348,
+              178.15409315330598,
+              179.6332924825592
+            ]
+          }
+        }
+      },
+      "all_candidates_by_scene": {
+        "B00": {
+          "n": 1741,
+          "framing": {
+            "full": 3,
+            "near_full": 2,
+            "partial": 1736
+          },
+          "in_frame_kp": {
+            "0": 35,
+            "1": 47,
+            "2": 53,
+            "3": 29,
+            "4": 249,
+            "5": 114,
+            "6": 66,
+            "7": 640,
+            "8": 110,
+            "9": 107,
+            "10": 281,
+            "11": 5,
+            "12": 2,
+            "14": 3
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 161,
+            "behind+horizontal+vertical": 1288,
+            "behind": 132,
+            "behind+horizontal": 147,
+            "vertical": 1,
+            "behind+vertical": 7,
+            "horizontal": 2,
+            "none": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.599784755354705,
+              2.276372985266395,
+              2.8986559465362887,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              0.07519450621811548,
+              3.4718491176242123,
+              6.4023303646039444,
+              11.784178761313422,
+              16.545708937849266
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              0.89654758969934,
+              2.926807621779588,
+              6.8250713971286245,
+              11.521395356284511,
+              14.977024862896538
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 167,
+            "min_p10_median_p90_max": [
+              98.79127197647452,
+              117.95481021022718,
+              163.10476941695845,
+              176.15525586373255,
+              179.7762595031126
+            ]
+          }
+        },
+        "B01": {
+          "n": 2080,
+          "framing": {
+            "full": 24,
+            "near_full": 69,
+            "partial": 1987
+          },
+          "in_frame_kp": {
+            "0": 25,
+            "1": 35,
+            "2": 47,
+            "3": 34,
+            "4": 203,
+            "5": 111,
+            "6": 102,
+            "7": 507,
+            "8": 152,
+            "9": 197,
+            "10": 544,
+            "11": 30,
+            "12": 52,
+            "13": 17,
+            "14": 24
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1304,
+            "behind": 95,
+            "behind+vertical": 9,
+            "behind+horizontal": 184,
+            "horizontal+vertical": 332,
+            "horizontal": 131,
+            "none": 24,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6115568913284721,
+              2.1147445616928087,
+              2.7524764594043094,
+              3.272362406159022
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              0.49549844276624944,
+              4.156195299688264,
+              8.344271016925854,
+              14.350936850765894,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              0.879520680497393,
+              3.9945095135593305,
+              8.777904669431864,
+              12.940614007071964,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 488,
+            "min_p10_median_p90_max": [
+              68.11316447150739,
+              100.71772434168524,
+              130.78142594359502,
+              172.55981316227314,
+              179.9192378964114
+            ]
+          }
+        },
+        "B02": {
+          "n": 1479,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 1479
+          },
+          "in_frame_kp": {
+            "0": 5,
+            "1": 20,
+            "2": 66,
+            "3": 19,
+            "4": 242,
+            "5": 143,
+            "6": 102,
+            "7": 507,
+            "8": 145,
+            "9": 104,
+            "10": 126
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1150,
+            "behind+horizontal": 106,
+            "horizontal+vertical": 153,
+            "behind": 60,
+            "behind+vertical": 6,
+            "horizontal": 4
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              1.1714095549617822,
+              1.6336671677031829,
+              2.283576064629477,
+              2.882183090707416,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              1.7602268581457146,
+              4.366979143199835,
+              6.675230274828716,
+              9.717480281862986,
+              14.903710647403173
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              0.9706235977459325,
+              2.2910060067340523,
+              4.786074597817836,
+              8.209270548035859,
+              9.371574955440163
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 157,
+            "min_p10_median_p90_max": [
+              123.8716372062394,
+              156.30905051542703,
+              170.58345806370698,
+              178.38166167023903,
+              179.99082193411908
+            ]
+          }
+        },
+        "B03": {
+          "n": 1368,
+          "framing": {
+            "full": 2,
+            "near_full": 2,
+            "partial": 1364
+          },
+          "in_frame_kp": {
+            "0": 21,
+            "1": 21,
+            "2": 41,
+            "3": 35,
+            "4": 227,
+            "5": 123,
+            "6": 103,
+            "7": 511,
+            "8": 118,
+            "9": 83,
+            "10": 81,
+            "12": 1,
+            "13": 1,
+            "14": 2
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1071,
+            "horizontal+vertical": 130,
+            "behind+horizontal": 75,
+            "behind": 82,
+            "none": 2,
+            "vertical": 1,
+            "behind+vertical": 4,
+            "horizontal": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.6200162363657034,
+              2.3656548805475426,
+              2.8611192057851262,
+              3.231380615352813
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              0.49473570755375346,
+              3.8353674058310046,
+              6.546351242814496,
+              9.275816820629847,
+              16.14724978268771
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.2752785987734767,
+              5.457979524919774,
+              8.553827192171209,
+              9.398916221640548
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 136,
+            "min_p10_median_p90_max": [
+              99.13679345394848,
+              154.3950060972742,
+              168.44872033677075,
+              178.02817817173525,
+              179.6332924825592
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_hfov": {
+        "110.0": {
+          "n": 2168,
+          "framing": {
+            "full": 25,
+            "near_full": 39,
+            "partial": 2104
+          },
+          "in_frame_kp": {
+            "2": 1,
+            "3": 4,
+            "4": 65,
+            "5": 142,
+            "6": 100,
+            "7": 812,
+            "8": 263,
+            "9": 269,
+            "10": 434,
+            "11": 14,
+            "12": 30,
+            "13": 9,
+            "14": 25
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1457,
+            "behind": 168,
+            "horizontal+vertical": 200,
+            "behind+horizontal": 259,
+            "vertical": 3,
+            "behind+vertical": 14,
+            "none": 25,
+            "horizontal": 42
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2168,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.6630756413973447,
+              2.280502458902065,
+              2.84944550694808,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2168,
+            "min_p10_median_p90_max": [
+              0.49549844276624944,
+              4.208559591159075,
+              6.84960070836328,
+              11.934327484858064,
+              17.793255844625232
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2168,
+            "min_p10_median_p90_max": [
+              0.9736601955240971,
+              2.7488897646239785,
+              6.453794406627117,
+              11.414122759590896,
+              17.61238256463742
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 270,
+            "min_p10_median_p90_max": [
+              94.57409399324342,
+              110.3568757393224,
+              158.51646343664007,
+              175.8681232951725,
+              179.84917577708
+            ]
+          }
+        },
+        "75.0": {
+          "n": 1851,
+          "framing": {
+            "full": 2,
+            "near_full": 15,
+            "partial": 1834
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 23,
+            "2": 25,
+            "3": 17,
+            "4": 579,
+            "5": 80,
+            "6": 102,
+            "7": 569,
+            "8": 121,
+            "9": 92,
+            "10": 216,
+            "11": 8,
+            "12": 12,
+            "13": 3,
+            "14": 2
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1409,
+            "behind": 81,
+            "horizontal+vertical": 219,
+            "behind+horizontal": 82,
+            "horizontal": 57,
+            "behind+vertical": 1,
+            "none": 2
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1851,
+            "min_p10_median_p90_max": [
+              1.2256221782660837,
+              1.6160452341426954,
+              2.133907173978935,
+              2.8346110055104115,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1851,
+            "min_p10_median_p90_max": [
+              0.07519450621811548,
+              4.297049030171443,
+              7.120259149535085,
+              13.425806630394543,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1851,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.8116918016987773,
+              6.5015329657212995,
+              11.058784582057731,
+              17.441260657516477
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 278,
+            "min_p10_median_p90_max": [
+              68.11316447150739,
+              97.5524283334339,
+              130.78142594359502,
+              173.5944227223116,
+              179.9192378964114
+            ]
+          }
+        },
+        "92.5": {
+          "n": 2147,
+          "framing": {
+            "full": 2,
+            "near_full": 18,
+            "partial": 2127
+          },
+          "in_frame_kp": {
+            "1": 5,
+            "2": 11,
+            "3": 9,
+            "4": 270,
+            "5": 255,
+            "6": 166,
+            "7": 773,
+            "8": 122,
+            "9": 129,
+            "10": 374,
+            "11": 13,
+            "12": 12,
+            "13": 6,
+            "14": 2
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1600,
+            "behind": 120,
+            "behind+horizontal": 165,
+            "horizontal+vertical": 229,
+            "behind+vertical": 2,
+            "horizontal": 29,
+            "none": 2
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2147,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.5997847553547044,
+              2.283576064629477,
+              2.8650137575787844,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2147,
+            "min_p10_median_p90_max": [
+              0.6355762031431172,
+              4.183230189008926,
+              7.068012161623123,
+              11.937283417930107,
+              17.90685560433662
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2147,
+            "min_p10_median_p90_max": [
+              1.0727414565606406,
+              2.61636438749791,
+              6.360769040345387,
+              11.132286615017684,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 260,
+            "min_p10_median_p90_max": [
+              90.95196720810189,
+              110.50236411341092,
+              158.74922823423157,
+              176.28415338873472,
+              179.99082193411908
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_region": {
+        "baseline_exterior": {
+          "n": 317,
+          "framing": {
+            "full": 7,
+            "near_full": 15,
+            "partial": 295
+          },
+          "in_frame_kp": {
+            "9": 9,
+            "10": 274,
+            "11": 12,
+            "12": 6,
+            "13": 9,
+            "14": 7
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 264,
+            "behind+horizontal+vertical": 23,
+            "horizontal": 21,
+            "none": 7,
+            "behind+horizontal": 1,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6181833223875313,
+              2.2196220982570476,
+              2.774440728952536,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              11.912738418548525,
+              12.390102704474117,
+              13.481497240205071,
+              15.645656591745889,
+              17.541046688698135
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              1.322178321009515,
+              2.5891257460704042,
+              4.225472557137364,
+              6.011811456258326,
+              7.235278643193894
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 293,
+            "min_p10_median_p90_max": [
+              91.414695343993,
+              110.87249839699878,
+              148.24416519619322,
+              172.34570750299358,
+              179.9192378964114
+            ]
+          }
+        },
+        "corner_exterior": {
+          "n": 125,
+          "framing": {
+            "full": 11,
+            "near_full": 15,
+            "partial": 99
+          },
+          "in_frame_kp": {
+            "10": 88,
+            "11": 11,
+            "12": 13,
+            "13": 2,
+            "14": 11
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 101,
+            "vertical": 2,
+            "horizontal": 11,
+            "none": 11
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              1.2670583674882168,
+              1.6130077281820523,
+              2.2196220982570467,
+              2.7868758794226447,
+              3.2884925254257875
+            ]
+          },
+          "distance_xy_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              13.227262692704162,
+              13.67089597276311,
+              14.837361401632089,
+              16.32417848280448,
+              18.063085462001197
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              1.3780621788821943,
+              1.9888807072308616,
+              4.211897408441693,
+              5.972508866408433,
+              6.505030099763092
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              89.07623334446895,
+              99.58674057151752,
+              122.32104793569368,
+              155.51474490853192,
+              166.48964116711178
+            ]
+          }
+        },
+        "inside_court": {
+          "n": 4117,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 4117
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 25,
+            "2": 27,
+            "3": 26,
+            "4": 691,
+            "5": 258,
+            "6": 201,
+            "7": 1980,
+            "8": 293,
+            "9": 256,
+            "10": 358
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 3385,
+            "behind": 369,
+            "behind+horizontal": 331,
+            "behind+vertical": 17,
+            "horizontal+vertical": 15
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 4117,
+            "min_p10_median_p90_max": [
+              1.0139485180787975,
+              1.6121604813282515,
+              2.2686233870508064,
+              2.86278844928954,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 4117,
+            "min_p10_median_p90_max": [
+              0.07519450621811548,
+              3.8449809412345095,
+              6.270181974515113,
+              10.081104129233328,
+              12.811345978390637
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 4117,
+            "min_p10_median_p90_max": [
+              1.9003083914880659,
+              4.259052622813789,
+              7.096860714336287,
+              10.988880753520904,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 15,
+            "min_p10_median_p90_max": [
+              166.9139366325236,
+              169.62532926016482,
+              178.04372429031204,
+              179.61246172976553,
+              179.7762595031126
+            ]
+          }
+        },
+        "sideline_exterior": {
+          "n": 1607,
+          "framing": {
+            "full": 11,
+            "near_full": 42,
+            "partial": 1554
+          },
+          "in_frame_kp": {
+            "1": 3,
+            "2": 10,
+            "3": 4,
+            "4": 223,
+            "5": 219,
+            "6": 167,
+            "7": 174,
+            "8": 213,
+            "9": 225,
+            "10": 304,
+            "11": 12,
+            "12": 35,
+            "13": 7,
+            "14": 11
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1058,
+            "behind+horizontal": 174,
+            "horizontal+vertical": 268,
+            "horizontal": 96,
+            "none": 11
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1607,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.62891439928566,
+              2.2089405013080934,
+              2.8491531756293744,
+              3.442655897963675
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1607,
+            "min_p10_median_p90_max": [
+              5.57766402678795,
+              6.318015160404405,
+              8.028126229596813,
+              12.853956175642141,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1607,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              1.8045057909518918,
+              3.484076525140784,
+              12.766241047374214,
+              16.768582675139
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 375,
+            "min_p10_median_p90_max": [
+              68.11316447150739,
+              107.07920770054643,
+              162.6630573636356,
+              177.17498664754572,
+              179.99082193411908
+            ]
+          }
+        }
+      },
+      "trajectory_rejection_reasons": {},
+      "cost_estimate_using_previous_model": {
+        "accepted_if_old_scene_qa_rates": 6048.731770195163,
+        "render_qa_publish_seconds": 2529.04579736136,
+        "generation_with_persistence_seconds": 10005.246989217763,
+        "fetch_seconds": 3753.4489834876445,
+        "planning_seconds": 72.3842027986279,
+        "durable_bytes_if_old_jpeg_sizes": 643156250.0651462,
+        "render_seconds_per_geometry_pass": 0.41015987631549794,
+        "generation_seconds_per_accepted_if_old_qa": 1.654106574624145
+      },
+      "wall_seconds_cpu": 24.451926584006287,
+      "rendered": false,
+      "qa_acceptance_measured": false
+    },
+    "wide125": {
+      "schema": "court_d2_cpu_variant_v1",
+      "variant": "wide125",
+      "recipe": {
+        "arc_intervals": 8192,
+        "arc_tolerance_m": 0.01,
+        "base_step_m": 4.0,
+        "count_multiple": 1,
+        "height": 360,
+        "hfov_degrees": [
+          92.5,
+          110.0,
+          125.0
+        ],
+        "hull_expansion_percent": 0.0,
+        "hull_margin_m": 0.5,
+        "jitter_radius_m": 1.0,
+        "look_at_heights_m": [
+          0.0,
+          1.5
+        ],
+        "minimum_points": 8,
+        "near_plane_m": 0.01,
+        "schema": "court_scale_geometry_recipe_v1",
+        "width": 640
+      },
+      "generation_seed": 42,
+      "trajectory_count_per_scene": 128,
+      "density_level": 0,
+      "all_candidates": {
+        "n": 6668,
+        "framing": {
+          "full": 98,
+          "near_full": 192,
+          "partial": 6378
+        },
+        "in_frame_kp": {
+          "0": 30,
+          "1": 26,
+          "2": 51,
+          "3": 46,
+          "4": 365,
+          "5": 472,
+          "6": 306,
+          "7": 2183,
+          "8": 689,
+          "9": 825,
+          "10": 1299,
+          "11": 86,
+          "12": 141,
+          "13": 51,
+          "14": 98
+        },
+        "miss_pattern": {
+          "horizontal+vertical": 664,
+          "behind+horizontal+vertical": 4353,
+          "behind+horizontal": 807,
+          "behind": 507,
+          "vertical": 34,
+          "behind+vertical": 60,
+          "horizontal": 145,
+          "none": 98
+        },
+        "outside_captured_hull": 0,
+        "height_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            1.012701411854933,
+            1.6151839834624226,
+            2.260133565742029,
+            2.8564553253810683,
+            3.4552764562847558
+          ]
+        },
+        "distance_xy_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            0.07519450621811548,
+            3.9380648808433083,
+            6.812803185098877,
+            12.09932651580919,
+            20.957247176847847
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 6668,
+          "min_p10_median_p90_max": [
+            0.879520680497393,
+            2.6997726882746638,
+            6.42802967678136,
+            11.368363635624702,
+            17.83398660784875
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 941,
+          "min_p10_median_p90_max": [
+            67.40296039847284,
+            107.19739178039562,
+            157.76518600036835,
+            176.8860656629869,
+            179.98336437923504
+          ]
+        }
+      },
+      "geometry_pass": {
+        "n": 6444,
+        "framing": {
+          "full": 97,
+          "near_full": 190,
+          "partial": 6157
+        },
+        "in_frame_kp": {
+          "1": 2,
+          "2": 8,
+          "3": 12,
+          "4": 362,
+          "5": 455,
+          "6": 302,
+          "7": 2174,
+          "8": 648,
+          "9": 817,
+          "10": 1293,
+          "11": 84,
+          "12": 139,
+          "13": 51,
+          "14": 97
+        },
+        "miss_pattern": {
+          "behind+horizontal+vertical": 4210,
+          "behind+horizontal": 803,
+          "behind": 507,
+          "vertical": 34,
+          "horizontal+vertical": 604,
+          "behind+vertical": 56,
+          "horizontal": 133,
+          "none": 97
+        },
+        "outside_captured_hull": 0,
+        "height_m": {
+          "n": 6444,
+          "min_p10_median_p90_max": [
+            1.012701411854933,
+            1.61572504503851,
+            2.2587605316332677,
+            2.8564553253810683,
+            3.4552764562847558
+          ]
+        },
+        "distance_xy_m": {
+          "n": 6444,
+          "min_p10_median_p90_max": [
+            0.5948371565345731,
+            4.084648520354203,
+            6.901875108775621,
+            12.147896919792945,
+            20.957247176847847
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 6444,
+          "min_p10_median_p90_max": [
+            0.8956495317088793,
+            2.7384972104756584,
+            6.410892681417492,
+            11.329821612822354,
+            17.83398660784875
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 868,
+          "min_p10_median_p90_max": [
+            67.40296039847284,
+            106.55361899044276,
+            155.06467890318194,
+            176.5287716620388,
+            179.98336437923504
+          ]
+        }
+      },
+      "per_scene": {
+        "B00": {
+          "groups": 128,
+          "candidates": 1741,
+          "geometry_pass": 1672,
+          "caches": 128
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2080,
+          "geometry_pass": 2016,
+          "caches": 128
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1479,
+          "geometry_pass": 1439,
+          "caches": 128
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1368,
+          "geometry_pass": 1317,
+          "caches": 128
+        }
+      },
+      "geometry_pass_by_scene": {
+        "B00": {
+          "n": 1672,
+          "framing": {
+            "full": 7,
+            "near_full": 24,
+            "partial": 1641
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 7,
+            "3": 7,
+            "4": 108,
+            "5": 118,
+            "6": 73,
+            "7": 651,
+            "8": 145,
+            "9": 164,
+            "10": 359,
+            "11": 7,
+            "12": 12,
+            "13": 12,
+            "14": 7
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1133,
+            "behind+horizontal": 217,
+            "behind": 162,
+            "vertical": 13,
+            "horizontal+vertical": 124,
+            "behind+vertical": 10,
+            "horizontal": 6,
+            "none": 7
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1672,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.6005446700894221,
+              2.276372985266391,
+              2.8928558008647007,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1672,
+            "min_p10_median_p90_max": [
+              0.5948371565345731,
+              3.6870700623586536,
+              6.4952725628933985,
+              11.886650554834336,
+              16.545708937849266
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1672,
+            "min_p10_median_p90_max": [
+              1.0997310346309774,
+              2.96475990467446,
+              6.770404545777187,
+              11.422181388252492,
+              14.411190663633157
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 150,
+            "min_p10_median_p90_max": [
+              98.45915411933728,
+              113.22489196053553,
+              159.42733777555225,
+              176.56812493039246,
+              179.423069715252
+            ]
+          }
+        },
+        "B01": {
+          "n": 2016,
+          "framing": {
+            "full": 86,
+            "near_full": 136,
+            "partial": 1794
+          },
+          "in_frame_kp": {
+            "2": 1,
+            "3": 5,
+            "4": 93,
+            "5": 111,
+            "6": 62,
+            "7": 514,
+            "8": 157,
+            "9": 220,
+            "10": 587,
+            "11": 44,
+            "12": 97,
+            "13": 39,
+            "14": 86
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1089,
+            "behind": 149,
+            "behind+horizontal": 295,
+            "horizontal+vertical": 256,
+            "none": 86,
+            "vertical": 19,
+            "horizontal": 107,
+            "behind+vertical": 15
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2016,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6115568913284721,
+              2.116504895269597,
+              2.74302310484075,
+              3.272362406159022
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2016,
+            "min_p10_median_p90_max": [
+              0.6444286461854728,
+              4.227055318059714,
+              8.46523348167506,
+              14.35832244864255,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2016,
+            "min_p10_median_p90_max": [
+              1.109182812813053,
+              4.013743706250444,
+              8.76567619832299,
+              13.012082398883074,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 468,
+            "min_p10_median_p90_max": [
+              67.40296039847284,
+              100.06269225873578,
+              130.92816724041379,
+              171.18919021297478,
+              179.81630988081952
+            ]
+          }
+        },
+        "B02": {
+          "n": 1439,
+          "framing": {
+            "full": 0,
+            "near_full": 13,
+            "partial": 1426
+          },
+          "in_frame_kp": {
+            "4": 87,
+            "5": 117,
+            "6": 83,
+            "7": 495,
+            "8": 185,
+            "9": 237,
+            "10": 205,
+            "11": 17,
+            "12": 13
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1033,
+            "behind+horizontal": 159,
+            "horizontal+vertical": 119,
+            "behind": 100,
+            "behind+vertical": 18,
+            "horizontal": 9,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1439,
+            "min_p10_median_p90_max": [
+              1.2180494537880528,
+              1.6336671677031829,
+              2.283576064629477,
+              2.8819137072665613,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1439,
+            "min_p10_median_p90_max": [
+              1.7602268581457146,
+              4.469774005616339,
+              6.712703760379943,
+              9.72659673971064,
+              14.903710647403173
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1439,
+            "min_p10_median_p90_max": [
+              0.9706235977459325,
+              2.3112768193694473,
+              4.816607031477012,
+              8.225135668455097,
+              9.371574955440163
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 129,
+            "min_p10_median_p90_max": [
+              118.23867328305944,
+              153.67228994680272,
+              168.8633225698068,
+              177.35182074476842,
+              179.65164084539666
+            ]
+          }
+        },
+        "B03": {
+          "n": 1317,
+          "framing": {
+            "full": 4,
+            "near_full": 17,
+            "partial": 1296
+          },
+          "in_frame_kp": {
+            "4": 74,
+            "5": 109,
+            "6": 84,
+            "7": 514,
+            "8": 161,
+            "9": 196,
+            "10": 142,
+            "11": 16,
+            "12": 17,
+            "14": 4
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 955,
+            "horizontal+vertical": 105,
+            "behind+horizontal": 132,
+            "behind": 96,
+            "vertical": 1,
+            "horizontal": 11,
+            "none": 4,
+            "behind+vertical": 13
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1317,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.620202298142682,
+              2.389388359460085,
+              2.8611222809492185,
+              3.231380615352813
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1317,
+            "min_p10_median_p90_max": [
+              0.7982713461794445,
+              3.984133641227163,
+              6.57639922204321,
+              9.353187600626557,
+              16.14724978268771
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1317,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.291296253166387,
+              5.453110559755619,
+              8.536975277723137,
+              9.398916221640548
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 121,
+            "min_p10_median_p90_max": [
+              99.39161088809773,
+              153.03835360785197,
+              170.06105664600236,
+              178.98268751727278,
+              179.98336437923504
+            ]
+          }
+        }
+      },
+      "all_candidates_by_scene": {
+        "B00": {
+          "n": 1741,
+          "framing": {
+            "full": 7,
+            "near_full": 24,
+            "partial": 1710
+          },
+          "in_frame_kp": {
+            "0": 13,
+            "1": 12,
+            "2": 21,
+            "3": 14,
+            "4": 109,
+            "5": 124,
+            "6": 74,
+            "7": 654,
+            "8": 157,
+            "9": 166,
+            "10": 359,
+            "11": 7,
+            "12": 12,
+            "13": 12,
+            "14": 7
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 142,
+            "behind+horizontal+vertical": 1180,
+            "behind+horizontal": 218,
+            "behind": 162,
+            "vertical": 13,
+            "behind+vertical": 13,
+            "horizontal": 6,
+            "none": 7
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.599784755354705,
+              2.276372985266395,
+              2.8986559465362887,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              0.07519450621811548,
+              3.4718491176242123,
+              6.4023303646039444,
+              11.784178761313422,
+              16.545708937849266
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1741,
+            "min_p10_median_p90_max": [
+              0.89654758969934,
+              2.926807621779588,
+              6.8250713971286245,
+              11.521395356284511,
+              14.977024862896538
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 168,
+            "min_p10_median_p90_max": [
+              98.45915411933728,
+              118.0724681386895,
+              163.3864069532246,
+              176.8428208221707,
+              179.423069715252
+            ]
+          }
+        },
+        "B01": {
+          "n": 2080,
+          "framing": {
+            "full": 87,
+            "near_full": 138,
+            "partial": 1855
+          },
+          "in_frame_kp": {
+            "0": 9,
+            "1": 7,
+            "2": 13,
+            "3": 15,
+            "4": 95,
+            "5": 116,
+            "6": 63,
+            "7": 515,
+            "8": 165,
+            "9": 220,
+            "10": 591,
+            "11": 46,
+            "12": 99,
+            "13": 39,
+            "14": 87
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1137,
+            "behind": 149,
+            "behind+horizontal": 296,
+            "horizontal+vertical": 261,
+            "none": 87,
+            "vertical": 19,
+            "horizontal": 115,
+            "behind+vertical": 16
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6115568913284721,
+              2.1147445616928087,
+              2.7524764594043094,
+              3.272362406159022
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              0.49549844276624944,
+              4.156195299688264,
+              8.344271016925854,
+              14.350936850765894,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2080,
+            "min_p10_median_p90_max": [
+              0.879520680497393,
+              3.9945095135593305,
+              8.777904669431864,
+              12.940614007071964,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 482,
+            "min_p10_median_p90_max": [
+              67.40296039847284,
+              100.47176630613215,
+              130.49054934196784,
+              171.45173207388441,
+              179.81630988081952
+            ]
+          }
+        },
+        "B02": {
+          "n": 1479,
+          "framing": {
+            "full": 0,
+            "near_full": 13,
+            "partial": 1466
+          },
+          "in_frame_kp": {
+            "1": 1,
+            "2": 6,
+            "3": 10,
+            "4": 87,
+            "5": 122,
+            "6": 84,
+            "7": 498,
+            "8": 194,
+            "9": 241,
+            "10": 206,
+            "11": 17,
+            "12": 13
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1050,
+            "behind+horizontal": 159,
+            "horizontal+vertical": 139,
+            "behind": 100,
+            "behind+vertical": 18,
+            "horizontal": 12,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              1.1714095549617822,
+              1.6336671677031829,
+              2.283576064629477,
+              2.882183090707416,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              1.7602268581457146,
+              4.366979143199835,
+              6.675230274828716,
+              9.717480281862986,
+              14.903710647403173
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              0.9706235977459325,
+              2.2910060067340523,
+              4.786074597817836,
+              8.209270548035859,
+              9.371574955440163
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 152,
+            "min_p10_median_p90_max": [
+              118.23867328305944,
+              155.2052541871005,
+              169.74531143429064,
+              177.63612922308033,
+              179.7783249260297
+            ]
+          }
+        },
+        "B03": {
+          "n": 1368,
+          "framing": {
+            "full": 4,
+            "near_full": 17,
+            "partial": 1347
+          },
+          "in_frame_kp": {
+            "0": 8,
+            "1": 6,
+            "2": 11,
+            "3": 7,
+            "4": 74,
+            "5": 110,
+            "6": 85,
+            "7": 516,
+            "8": 173,
+            "9": 198,
+            "10": 143,
+            "11": 16,
+            "12": 17,
+            "14": 4
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 986,
+            "horizontal+vertical": 122,
+            "behind+horizontal": 134,
+            "behind": 96,
+            "vertical": 1,
+            "horizontal": 12,
+            "none": 4,
+            "behind+vertical": 13
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.6200162363657034,
+              2.3656548805475426,
+              2.8611192057851262,
+              3.231380615352813
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              0.49473570755375346,
+              3.8353674058310046,
+              6.546351242814496,
+              9.275816820629847,
+              16.14724978268771
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1368,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.2752785987734767,
+              5.457979524919774,
+              8.553827192171209,
+              9.398916221640548
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 139,
+            "min_p10_median_p90_max": [
+              99.39161088809773,
+              153.42496196339133,
+              170.18428470353032,
+              178.98934844013746,
+              179.98336437923504
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_hfov": {
+        "110.0": {
+          "n": 2218,
+          "framing": {
+            "full": 25,
+            "near_full": 36,
+            "partial": 2157
+          },
+          "in_frame_kp": {
+            "2": 1,
+            "3": 4,
+            "4": 75,
+            "5": 141,
+            "6": 112,
+            "7": 832,
+            "8": 254,
+            "9": 257,
+            "10": 462,
+            "11": 19,
+            "12": 23,
+            "13": 13,
+            "14": 25
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1486,
+            "behind+horizontal": 284,
+            "behind": 175,
+            "horizontal": 33,
+            "horizontal+vertical": 201,
+            "behind+vertical": 7,
+            "vertical": 7,
+            "none": 25
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2218,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.599784755354705,
+              2.28360788790266,
+              2.8705225644506083,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2218,
+            "min_p10_median_p90_max": [
+              0.6182532699655802,
+              3.9499264297534795,
+              6.958507750242115,
+              11.855200322955358,
+              17.90685560433662
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2218,
+            "min_p10_median_p90_max": [
+              1.0727414565606406,
+              2.6523371525655306,
+              6.39189313087317,
+              11.24966824924864,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 266,
+            "min_p10_median_p90_max": [
+              90.72512148884293,
+              111.26376320480408,
+              159.46110019576946,
+              177.10458788568326,
+              179.91599602765436
+            ]
+          }
+        },
+        "125.0": {
+          "n": 2179,
+          "framing": {
+            "full": 53,
+            "near_full": 114,
+            "partial": 2012
+          },
+          "in_frame_kp": {
+            "4": 11,
+            "5": 61,
+            "6": 28,
+            "7": 607,
+            "8": 287,
+            "9": 463,
+            "10": 517,
+            "11": 38,
+            "12": 84,
+            "13": 30,
+            "14": 53
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1309,
+            "behind": 220,
+            "vertical": 27,
+            "horizontal+vertical": 153,
+            "behind+horizontal": 337,
+            "behind+vertical": 44,
+            "horizontal": 36,
+            "none": 53
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2179,
+            "min_p10_median_p90_max": [
+              1.1244701294930204,
+              1.6630756413973447,
+              2.280518724301312,
+              2.84944550694808,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2179,
+            "min_p10_median_p90_max": [
+              0.7128258109261132,
+              4.154507744812219,
+              6.823687871048019,
+              11.91655685291524,
+              17.793255844625232
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2179,
+            "min_p10_median_p90_max": [
+              0.9736601955240971,
+              2.756579928168155,
+              6.46660050225838,
+              11.399869528573289,
+              17.61238256463742
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 269,
+            "min_p10_median_p90_max": [
+              90.92154210254533,
+              111.43173545318437,
+              158.45431016843807,
+              175.68133053905402,
+              179.64794248306654
+            ]
+          }
+        },
+        "92.5": {
+          "n": 2047,
+          "framing": {
+            "full": 19,
+            "near_full": 40,
+            "partial": 1988
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 7,
+            "3": 8,
+            "4": 276,
+            "5": 253,
+            "6": 162,
+            "7": 735,
+            "8": 107,
+            "9": 97,
+            "10": 314,
+            "11": 27,
+            "12": 32,
+            "13": 8,
+            "14": 19
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1415,
+            "behind": 112,
+            "behind+horizontal": 182,
+            "horizontal+vertical": 250,
+            "behind+vertical": 5,
+            "horizontal": 64,
+            "none": 19
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2047,
+            "min_p10_median_p90_max": [
+              1.2256221782660837,
+              1.6098314789966925,
+              2.140669563197611,
+              2.844194614782976,
+              3.357731559290496
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2047,
+            "min_p10_median_p90_max": [
+              0.5948371565345731,
+              4.177637436526239,
+              6.883070750122207,
+              13.210978729761178,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2047,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              2.780044068200856,
+              6.386215836129974,
+              11.235976046158047,
+              17.441260657516477
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 333,
+            "min_p10_median_p90_max": [
+              67.40296039847284,
+              100.9684494897262,
+              145.16530581370122,
+              176.35840906945955,
+              179.98336437923504
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_region": {
+        "baseline_exterior": {
+          "n": 317,
+          "framing": {
+            "full": 25,
+            "near_full": 32,
+            "partial": 260
+          },
+          "in_frame_kp": {
+            "10": 240,
+            "11": 20,
+            "12": 11,
+            "13": 21,
+            "14": 25
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 229,
+            "behind+horizontal+vertical": 26,
+            "vertical": 12,
+            "horizontal": 24,
+            "none": 25,
+            "behind+horizontal": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              1.1390521326288199,
+              1.6181833223875313,
+              2.2196220982570476,
+              2.774440728952536,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              11.912738418548525,
+              12.390102704474117,
+              13.481497240205071,
+              15.645656591745889,
+              17.541046688698135
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 317,
+            "min_p10_median_p90_max": [
+              1.322178321009515,
+              2.5891257460704042,
+              4.225472557137364,
+              6.011811456258326,
+              7.235278643193894
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 290,
+            "min_p10_median_p90_max": [
+              96.25161869079878,
+              111.77199393465537,
+              146.6486628898432,
+              172.60165996848548,
+              179.77351610086225
+            ]
+          }
+        },
+        "corner_exterior": {
+          "n": 125,
+          "framing": {
+            "full": 31,
+            "near_full": 32,
+            "partial": 62
+          },
+          "in_frame_kp": {
+            "10": 51,
+            "11": 11,
+            "12": 13,
+            "13": 19,
+            "14": 31
+          },
+          "miss_pattern": {
+            "vertical": 19,
+            "horizontal+vertical": 63,
+            "horizontal": 12,
+            "none": 31
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              1.2670583674882168,
+              1.6130077281820523,
+              2.2196220982570467,
+              2.7868758794226447,
+              3.2884925254257875
+            ]
+          },
+          "distance_xy_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              13.227262692704162,
+              13.67089597276311,
+              14.837361401632089,
+              16.32417848280448,
+              18.063085462001197
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              1.3780621788821943,
+              1.9888807072308616,
+              4.211897408441693,
+              5.972508866408433,
+              6.505030099763092
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 125,
+            "min_p10_median_p90_max": [
+              89.65410211377915,
+              99.90288136745237,
+              121.88501055634273,
+              155.14419340873923,
+              166.42204082937604
+            ]
+          }
+        },
+        "inside_court": {
+          "n": 4296,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 4296
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 8,
+            "3": 12,
+            "4": 338,
+            "5": 288,
+            "6": 159,
+            "7": 2027,
+            "8": 437,
+            "9": 455,
+            "10": 570
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 3207,
+            "behind+horizontal": 523,
+            "behind": 491,
+            "behind+vertical": 53,
+            "horizontal+vertical": 22
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 4296,
+            "min_p10_median_p90_max": [
+              1.0139485180787975,
+              1.6151839834624215,
+              2.273492557566523,
+              2.865013757578785,
+              3.4552764562847558
+            ]
+          },
+          "distance_xy_m": {
+            "n": 4296,
+            "min_p10_median_p90_max": [
+              0.5948371565345731,
+              3.693107613125389,
+              6.136077128152875,
+              10.003830432044088,
+              12.811345978390637
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 4296,
+            "min_p10_median_p90_max": [
+              1.9003083914880659,
+              4.258979483846787,
+              7.110824954685589,
+              11.055045362713905,
+              17.83398660784875
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 22,
+            "min_p10_median_p90_max": [
+              168.0377757424186,
+              170.9767512961468,
+              176.35565822704748,
+              179.34130595008003,
+              179.81630988081952
+            ]
+          }
+        },
+        "sideline_exterior": {
+          "n": 1706,
+          "framing": {
+            "full": 41,
+            "near_full": 126,
+            "partial": 1539
+          },
+          "in_frame_kp": {
+            "4": 24,
+            "5": 167,
+            "6": 143,
+            "7": 147,
+            "8": 211,
+            "9": 362,
+            "10": 432,
+            "11": 53,
+            "12": 115,
+            "13": 11,
+            "14": 41
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 977,
+            "behind+horizontal": 279,
+            "horizontal+vertical": 290,
+            "vertical": 3,
+            "behind": 16,
+            "horizontal": 97,
+            "none": 41,
+            "behind+vertical": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1706,
+            "min_p10_median_p90_max": [
+              1.012701411854933,
+              1.6204709221741123,
+              2.2076528262644146,
+              2.8487707216249083,
+              3.442655897963675
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1706,
+            "min_p10_median_p90_max": [
+              5.566732623978542,
+              6.193579110232157,
+              7.924021760878074,
+              12.633662980069007,
+              20.957247176847847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1706,
+            "min_p10_median_p90_max": [
+              0.8956495317088793,
+              1.807996624168212,
+              3.466130147145958,
+              12.937342509085216,
+              16.768582675139
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 431,
+            "min_p10_median_p90_max": [
+              67.40296039847284,
+              107.28571363035951,
+              164.2175017906588,
+              177.53838008908394,
+              179.98336437923504
+            ]
+          }
+        }
+      },
+      "trajectory_rejection_reasons": {},
+      "cost_estimate_using_previous_model": {
+        "accepted_if_old_scene_qa_rates": 6323.100542066519,
+        "render_qa_publish_seconds": 2567.832765194732,
+        "generation_with_persistence_seconds": 10044.834177311039,
+        "fetch_seconds": 3755.350929504891,
+        "planning_seconds": 72.3842027986279,
+        "durable_bytes_if_old_jpeg_sizes": 660889222.2702216,
+        "render_seconds_per_geometry_pass": 0.39848429006746305,
+        "generation_seconds_per_accepted_if_old_qa": 1.5885931451642206
+      },
+      "wall_seconds_cpu": 24.19569709499774,
+      "rendered": false,
+      "qa_acceptance_measured": false
+    },
+    "hull5": {
+      "schema": "court_d2_cpu_variant_v1",
+      "variant": "hull5",
+      "recipe": {
+        "arc_intervals": 8192,
+        "arc_tolerance_m": 0.01,
+        "base_step_m": 4.0,
+        "count_multiple": 1,
+        "height": 360,
+        "hfov_degrees": [
+          75.0,
+          92.5,
+          110.0
+        ],
+        "hull_expansion_percent": 5.0,
+        "hull_margin_m": 0.5,
+        "jitter_radius_m": 1.0,
+        "look_at_heights_m": [
+          0.0,
+          1.5
+        ],
+        "minimum_points": 8,
+        "near_plane_m": 0.01,
+        "schema": "court_scale_geometry_recipe_v1",
+        "width": 640
+      },
+      "generation_seed": 42,
+      "trajectory_count_per_scene": 128,
+      "density_level": 0,
+      "all_candidates": {
+        "n": 7055,
+        "framing": {
+          "full": 53,
+          "near_full": 101,
+          "partial": 6901
+        },
+        "in_frame_kp": {
+          "0": 83,
+          "1": 99,
+          "2": 173,
+          "3": 125,
+          "4": 873,
+          "5": 520,
+          "6": 461,
+          "7": 2150,
+          "8": 581,
+          "9": 591,
+          "10": 1182,
+          "11": 63,
+          "12": 75,
+          "13": 26,
+          "14": 53
+        },
+        "miss_pattern": {
+          "horizontal+vertical": 959,
+          "behind+horizontal+vertical": 4978,
+          "behind": 319,
+          "behind+horizontal": 525,
+          "horizontal": 191,
+          "vertical": 4,
+          "behind+vertical": 26,
+          "none": 53
+        },
+        "outside_captured_hull": 3,
+        "height_m": {
+          "n": 7055,
+          "min_p10_median_p90_max": [
+            1.008419365101828,
+            1.6151839834624226,
+            2.258486047646604,
+            2.8564553253810683,
+            3.4552763229571237
+          ]
+        },
+        "distance_xy_m": {
+          "n": 7055,
+          "min_p10_median_p90_max": [
+            0.10083186253485922,
+            4.21908372563802,
+            7.2738742700637244,
+            12.721108379484296,
+            22.05579762105253
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 7055,
+          "min_p10_median_p90_max": [
+            -0.3084445549448631,
+            2.2010894910372736,
+            6.109489830298521,
+            11.148454122575624,
+            17.868114945107713
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 1207,
+          "min_p10_median_p90_max": [
+            68.80515043364414,
+            102.9365896998422,
+            155.00936668104345,
+            175.67927330377663,
+            179.97935170976257
+          ]
+        }
+      },
+      "geometry_pass": {
+        "n": 6584,
+        "framing": {
+          "full": 53,
+          "near_full": 99,
+          "partial": 6432
+        },
+        "in_frame_kp": {
+          "0": 3,
+          "1": 22,
+          "2": 32,
+          "3": 21,
+          "4": 867,
+          "5": 512,
+          "6": 451,
+          "7": 2136,
+          "8": 563,
+          "9": 587,
+          "10": 1176,
+          "11": 62,
+          "12": 75,
+          "13": 24,
+          "14": 53
+        },
+        "miss_pattern": {
+          "behind+horizontal+vertical": 4688,
+          "behind": 319,
+          "horizontal+vertical": 819,
+          "behind+horizontal": 509,
+          "horizontal": 176,
+          "vertical": 4,
+          "behind+vertical": 16,
+          "none": 53
+        },
+        "outside_captured_hull": 1,
+        "height_m": {
+          "n": 6584,
+          "min_p10_median_p90_max": [
+            1.008419365101828,
+            1.615183983462423,
+            2.256438106806559,
+            2.854923492258513,
+            3.4552763229571237
+          ]
+        },
+        "distance_xy_m": {
+          "n": 6584,
+          "min_p10_median_p90_max": [
+            0.7053910875214907,
+            4.450573951504846,
+            7.433723628090537,
+            12.937398484302191,
+            22.05579762105253
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 6584,
+          "min_p10_median_p90_max": [
+            -0.2729588540051502,
+            2.2246442069810706,
+            6.104522297527133,
+            11.037411702483066,
+            17.868114945107713
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 1052,
+          "min_p10_median_p90_max": [
+            68.80515043364414,
+            102.2980640098795,
+            148.20341930309152,
+            174.96412012364934,
+            179.97935170976257
+          ]
+        }
+      },
+      "per_scene": {
+        "B00": {
+          "groups": 128,
+          "candidates": 1849,
+          "geometry_pass": 1739,
+          "caches": 128
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2232,
+          "geometry_pass": 2119,
+          "caches": 128
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1549,
+          "geometry_pass": 1432,
+          "caches": 128
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1425,
+          "geometry_pass": 1294,
+          "caches": 128
+        }
+      },
+      "geometry_pass_by_scene": {
+        "B00": {
+          "n": 1739,
+          "framing": {
+            "full": 3,
+            "near_full": 8,
+            "partial": 1728
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 13,
+            "2": 21,
+            "3": 16,
+            "4": 242,
+            "5": 132,
+            "6": 90,
+            "7": 606,
+            "8": 142,
+            "9": 133,
+            "10": 320,
+            "11": 11,
+            "12": 5,
+            "13": 3,
+            "14": 3
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1292,
+            "behind": 102,
+            "horizontal+vertical": 184,
+            "behind+horizontal": 147,
+            "horizontal": 7,
+            "vertical": 1,
+            "behind+vertical": 3,
+            "none": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1739,
+            "min_p10_median_p90_max": [
+              1.008419365101828,
+              1.5997847553547053,
+              2.2686233870508064,
+              2.8836562339377245,
+              3.4552763229571237
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1739,
+            "min_p10_median_p90_max": [
+              0.7053910875214907,
+              4.212200686094117,
+              7.140362424280996,
+              12.339745035922935,
+              17.15620859333624
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1739,
+            "min_p10_median_p90_max": [
+              0.17906610123289823,
+              2.369454540764106,
+              6.239984789275777,
+              11.27370350332825,
+              15.010030642973527
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 195,
+            "min_p10_median_p90_max": [
+              93.03927667201482,
+              109.66665404418843,
+              148.58031753906604,
+              175.63350580002526,
+              179.83008258866275
+            ]
+          }
+        },
+        "B01": {
+          "n": 2119,
+          "framing": {
+            "full": 47,
+            "near_full": 90,
+            "partial": 1982
+          },
+          "in_frame_kp": {
+            "0": 1,
+            "1": 9,
+            "2": 11,
+            "3": 5,
+            "4": 202,
+            "5": 127,
+            "6": 91,
+            "7": 538,
+            "8": 164,
+            "9": 200,
+            "10": 591,
+            "11": 43,
+            "12": 69,
+            "13": 21,
+            "14": 47
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1276,
+            "horizontal+vertical": 361,
+            "behind": 87,
+            "behind+vertical": 6,
+            "none": 47,
+            "behind+horizontal": 184,
+            "horizontal": 155,
+            "vertical": 3
+          },
+          "outside_captured_hull": 1,
+          "height_m": {
+            "n": 2119,
+            "min_p10_median_p90_max": [
+              1.1423404059414093,
+              1.6115568913284721,
+              2.1169198250460775,
+              2.74187557974544,
+              3.2668990549656076
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2119,
+            "min_p10_median_p90_max": [
+              1.1639036459414156,
+              4.867827359993542,
+              8.985521517955029,
+              15.050994971153933,
+              22.05579762105253
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2119,
+            "min_p10_median_p90_max": [
+              -0.2729588540051502,
+              3.2400235931586665,
+              8.09327537459982,
+              12.851281407916453,
+              17.868114945107713
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 566,
+            "min_p10_median_p90_max": [
+              68.80515043364414,
+              96.09883914019831,
+              128.2317903387144,
+              170.32435556893608,
+              179.66985083100386
+            ]
+          }
+        },
+        "B02": {
+          "n": 1432,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 1432
+          },
+          "in_frame_kp": {
+            "4": 222,
+            "5": 131,
+            "6": 133,
+            "7": 488,
+            "8": 147,
+            "9": 146,
+            "10": 160,
+            "11": 5
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1109,
+            "horizontal+vertical": 148,
+            "behind": 62,
+            "behind+horizontal": 101,
+            "behind+vertical": 5,
+            "horizontal": 7
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1432,
+            "min_p10_median_p90_max": [
+              1.209875487272725,
+              1.63864584135293,
+              2.283576064629477,
+              2.8935024666916775,
+              3.3577291331829557
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1432,
+            "min_p10_median_p90_max": [
+              2.002780220915682,
+              4.76521758098986,
+              7.161089052486963,
+              10.3865500720618,
+              15.980801416929703
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1432,
+            "min_p10_median_p90_max": [
+              0.5839255940819363,
+              1.9196293905150617,
+              4.574522817933156,
+              8.209720120315968,
+              9.371445786690018
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 155,
+            "min_p10_median_p90_max": [
+              112.240125310258,
+              135.62499614242822,
+              165.66665012127524,
+              177.09953443661036,
+              179.88027806991536
+            ]
+          }
+        },
+        "B03": {
+          "n": 1294,
+          "framing": {
+            "full": 3,
+            "near_full": 1,
+            "partial": 1290
+          },
+          "in_frame_kp": {
+            "4": 201,
+            "5": 122,
+            "6": 137,
+            "7": 504,
+            "8": 110,
+            "9": 108,
+            "10": 105,
+            "11": 3,
+            "12": 1,
+            "14": 3
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1011,
+            "horizontal+vertical": 126,
+            "behind+horizontal": 77,
+            "behind": 68,
+            "none": 3,
+            "horizontal": 7,
+            "behind+vertical": 2
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1294,
+            "min_p10_median_p90_max": [
+              1.1244697611281302,
+              1.6197640376073217,
+              2.3928024614575194,
+              2.8578411769608936,
+              3.2174673676234504
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1294,
+            "min_p10_median_p90_max": [
+              0.8934586712198752,
+              4.339618662905185,
+              6.990281380339201,
+              9.891496800044472,
+              17.163038805319864
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1294,
+            "min_p10_median_p90_max": [
+              0.5907385401395597,
+              1.8798733026952845,
+              5.200962858015781,
+              8.464058382950352,
+              9.384416594004797
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 136,
+            "min_p10_median_p90_max": [
+              92.78748075474778,
+              148.16943715534524,
+              168.31116878394525,
+              177.16740637490855,
+              179.97935170976257
+            ]
+          }
+        }
+      },
+      "all_candidates_by_scene": {
+        "B00": {
+          "n": 1849,
+          "framing": {
+            "full": 3,
+            "near_full": 8,
+            "partial": 1838
+          },
+          "in_frame_kp": {
+            "0": 36,
+            "1": 29,
+            "2": 43,
+            "3": 36,
+            "4": 244,
+            "5": 134,
+            "6": 96,
+            "7": 609,
+            "8": 147,
+            "9": 133,
+            "10": 320,
+            "11": 11,
+            "12": 5,
+            "13": 3,
+            "14": 3
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 212,
+            "behind+horizontal+vertical": 1365,
+            "behind": 102,
+            "behind+horizontal": 151,
+            "horizontal": 9,
+            "vertical": 1,
+            "behind+vertical": 6,
+            "none": 3
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1849,
+            "min_p10_median_p90_max": [
+              1.008419365101828,
+              1.599784755354705,
+              2.276372985266395,
+              2.8963944248734435,
+              3.4552763229571237
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1849,
+            "min_p10_median_p90_max": [
+              0.10083186253485922,
+              3.7026646153255953,
+              7.008015884264341,
+              12.21563477107757,
+              17.15620859333624
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1849,
+            "min_p10_median_p90_max": [
+              0.1608726971358454,
+              2.366682121454219,
+              6.469771641930604,
+              11.53683283150598,
+              15.098146558666423
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 225,
+            "min_p10_median_p90_max": [
+              93.03927667201482,
+              113.7125138254187,
+              158.07970562579905,
+              176.10387696796363,
+              179.83008258866275
+            ]
+          }
+        },
+        "B01": {
+          "n": 2232,
+          "framing": {
+            "full": 47,
+            "near_full": 92,
+            "partial": 2093
+          },
+          "in_frame_kp": {
+            "0": 28,
+            "1": 29,
+            "2": 36,
+            "3": 28,
+            "4": 203,
+            "5": 128,
+            "6": 91,
+            "7": 543,
+            "8": 166,
+            "9": 200,
+            "10": 597,
+            "11": 44,
+            "12": 69,
+            "13": 23,
+            "14": 47
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1351,
+            "horizontal+vertical": 382,
+            "behind": 87,
+            "behind+horizontal": 188,
+            "behind+vertical": 10,
+            "none": 47,
+            "horizontal": 164,
+            "vertical": 3
+          },
+          "outside_captured_hull": 3,
+          "height_m": {
+            "n": 2232,
+            "min_p10_median_p90_max": [
+              1.1423404059414093,
+              1.6115568913284721,
+              2.1165496228981455,
+              2.753857453026258,
+              3.2668990549656076
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2232,
+            "min_p10_median_p90_max": [
+              0.2560968631776034,
+              4.2751501164681365,
+              8.784248329846456,
+              14.99000626883075,
+              22.05579762105253
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2232,
+            "min_p10_median_p90_max": [
+              -0.3084445549448631,
+              3.2313961106933524,
+              8.200238334103537,
+              12.96692759510345,
+              17.868114945107713
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 596,
+            "min_p10_median_p90_max": [
+              68.80515043364414,
+              96.5164988249417,
+              129.1685028307829,
+              171.18469597047687,
+              179.8925678146358
+            ]
+          }
+        },
+        "B02": {
+          "n": 1549,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 1549
+          },
+          "in_frame_kp": {
+            "0": 3,
+            "1": 22,
+            "2": 47,
+            "3": 28,
+            "4": 223,
+            "5": 135,
+            "6": 135,
+            "7": 492,
+            "8": 151,
+            "9": 148,
+            "10": 160,
+            "11": 5
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1172,
+            "horizontal+vertical": 198,
+            "behind": 62,
+            "behind+horizontal": 102,
+            "behind+vertical": 6,
+            "horizontal": 9
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1549,
+            "min_p10_median_p90_max": [
+              1.1714095684478876,
+              1.6336671677031829,
+              2.283576064629477,
+              2.882183090707416,
+              3.3577291331829557
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1549,
+            "min_p10_median_p90_max": [
+              2.002780220915682,
+              4.588262194093619,
+              7.014666476400498,
+              10.289112404020468,
+              15.980801416929703
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1549,
+            "min_p10_median_p90_max": [
+              0.5839255940819363,
+              1.9200758518205625,
+              4.444405544649608,
+              8.182627929324106,
+              9.371445786690018
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 207,
+            "min_p10_median_p90_max": [
+              112.240125310258,
+              143.06179668441084,
+              167.26779992249885,
+              177.77349217715488,
+              179.88027806991536
+            ]
+          }
+        },
+        "B03": {
+          "n": 1425,
+          "framing": {
+            "full": 3,
+            "near_full": 1,
+            "partial": 1421
+          },
+          "in_frame_kp": {
+            "0": 16,
+            "1": 19,
+            "2": 47,
+            "3": 33,
+            "4": 203,
+            "5": 123,
+            "6": 139,
+            "7": 506,
+            "8": 117,
+            "9": 110,
+            "10": 105,
+            "11": 3,
+            "12": 1,
+            "14": 3
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1090,
+            "horizontal+vertical": 167,
+            "behind+horizontal": 84,
+            "behind": 68,
+            "behind+vertical": 4,
+            "none": 3,
+            "horizontal": 9
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1425,
+            "min_p10_median_p90_max": [
+              1.1244697611281302,
+              1.620202298142682,
+              2.357002917560897,
+              2.860387136814733,
+              3.2174673676234504
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1425,
+            "min_p10_median_p90_max": [
+              0.6613082663285105,
+              4.096233182426441,
+              6.853964432771362,
+              9.606266845612524,
+              17.163038805319864
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1425,
+            "min_p10_median_p90_max": [
+              0.5907385401395597,
+              1.9343400512688422,
+              5.183257364114299,
+              8.445607386676675,
+              9.401687051127855
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 179,
+            "min_p10_median_p90_max": [
+              92.78748075474778,
+              148.87860756827843,
+              167.8727896739592,
+              177.66616118310327,
+              179.97935170976257
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_hfov": {
+        "110.0": {
+          "n": 2300,
+          "framing": {
+            "full": 41,
+            "near_full": 49,
+            "partial": 2210
+          },
+          "in_frame_kp": {
+            "3": 1,
+            "4": 50,
+            "5": 140,
+            "6": 108,
+            "7": 785,
+            "8": 267,
+            "9": 347,
+            "10": 486,
+            "11": 26,
+            "12": 37,
+            "13": 12,
+            "14": 41
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1530,
+            "behind": 140,
+            "horizontal+vertical": 258,
+            "behind+horizontal": 261,
+            "vertical": 4,
+            "behind+vertical": 14,
+            "horizontal": 52,
+            "none": 41
+          },
+          "outside_captured_hull": 1,
+          "height_m": {
+            "n": 2300,
+            "min_p10_median_p90_max": [
+              1.1244697611281302,
+              1.650816917295372,
+              2.2793389417900216,
+              2.8501024012755183,
+              3.4552763229571237
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2300,
+            "min_p10_median_p90_max": [
+              0.8934586712198752,
+              4.387870124412511,
+              7.313251944202497,
+              12.379837695300454,
+              18.368993715069944
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2300,
+            "min_p10_median_p90_max": [
+              -0.2729588540051502,
+              2.2648594084880713,
+              6.092312343748677,
+              11.270252560756676,
+              17.66868067782601
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 355,
+            "min_p10_median_p90_max": [
+              87.04443297529484,
+              107.30336704988106,
+              155.1919976315721,
+              175.10884319332575,
+              179.97935170976257
+            ]
+          }
+        },
+        "75.0": {
+          "n": 1997,
+          "framing": {
+            "full": 5,
+            "near_full": 20,
+            "partial": 1972
+          },
+          "in_frame_kp": {
+            "0": 3,
+            "1": 20,
+            "2": 25,
+            "3": 12,
+            "4": 585,
+            "5": 102,
+            "6": 126,
+            "7": 584,
+            "8": 135,
+            "9": 102,
+            "10": 263,
+            "11": 15,
+            "12": 13,
+            "13": 7,
+            "14": 5
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1506,
+            "behind": 72,
+            "horizontal+vertical": 258,
+            "behind+horizontal": 75,
+            "behind+vertical": 1,
+            "horizontal": 80,
+            "none": 5
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 1997,
+            "min_p10_median_p90_max": [
+              1.2309975948299425,
+              1.6098314789966923,
+              2.1341487922667772,
+              2.8441946147829755,
+              3.3577291331829557
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1997,
+            "min_p10_median_p90_max": [
+              0.7053910875214907,
+              4.5899921914999116,
+              7.573325136201506,
+              14.134694242286841,
+              22.05579762105253
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1997,
+            "min_p10_median_p90_max": [
+              0.03307091723065625,
+              2.279019688414429,
+              6.213851045777121,
+              10.851953882025002,
+              17.868114945107713
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 343,
+            "min_p10_median_p90_max": [
+              68.80515043364414,
+              92.27469612862168,
+              130.0391878678761,
+              173.0829975934103,
+              179.46770550465556
+            ]
+          }
+        },
+        "92.5": {
+          "n": 2287,
+          "framing": {
+            "full": 7,
+            "near_full": 30,
+            "partial": 2250
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 7,
+            "3": 8,
+            "4": 232,
+            "5": 270,
+            "6": 217,
+            "7": 767,
+            "8": 161,
+            "9": 138,
+            "10": 427,
+            "11": 21,
+            "12": 25,
+            "13": 5,
+            "14": 7
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1652,
+            "behind": 107,
+            "behind+horizontal": 173,
+            "horizontal+vertical": 303,
+            "horizontal": 44,
+            "none": 7,
+            "behind+vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 2287,
+            "min_p10_median_p90_max": [
+              1.008419365101828,
+              1.599784755354705,
+              2.2836078879026593,
+              2.8705225644506083,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2287,
+            "min_p10_median_p90_max": [
+              1.3796543021341643,
+              4.444384982243086,
+              7.459801321968554,
+              12.554543515956787,
+              18.824137878901215
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2287,
+            "min_p10_median_p90_max": [
+              0.4635301098589153,
+              2.175271627139134,
+              6.0375724375749105,
+              10.891831205817372,
+              17.650639223519526
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 354,
+            "min_p10_median_p90_max": [
+              84.02735356830588,
+              108.15920087157505,
+              156.68875760075468,
+              175.99695687400683,
+              179.83008258866275
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_region": {
+        "baseline_exterior": {
+          "n": 421,
+          "framing": {
+            "full": 15,
+            "near_full": 24,
+            "partial": 382
+          },
+          "in_frame_kp": {
+            "9": 11,
+            "10": 351,
+            "11": 20,
+            "12": 18,
+            "13": 6,
+            "14": 15
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 335,
+            "behind+horizontal+vertical": 34,
+            "horizontal": 37,
+            "none": 15
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 421,
+            "min_p10_median_p90_max": [
+              1.1423404059414093,
+              1.618444715258026,
+              2.219622098257048,
+              2.787647385893357,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 421,
+            "min_p10_median_p90_max": [
+              11.944751388711165,
+              12.361311986058228,
+              13.815158782716603,
+              15.877684528873948,
+              17.9954274970155
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 421,
+            "min_p10_median_p90_max": [
+              0.5927112002157919,
+              2.1573234816633207,
+              3.9950716484037834,
+              6.033861647413925,
+              7.463406258029542
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 387,
+            "min_p10_median_p90_max": [
+              88.34721181974149,
+              106.69090524669454,
+              140.30585064162247,
+              172.7584868941984,
+              179.83008258866275
+            ]
+          }
+        },
+        "corner_exterior": {
+          "n": 163,
+          "framing": {
+            "full": 21,
+            "near_full": 26,
+            "partial": 116
+          },
+          "in_frame_kp": {
+            "10": 92,
+            "11": 24,
+            "12": 19,
+            "13": 7,
+            "14": 21
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 115,
+            "horizontal": 23,
+            "vertical": 4,
+            "none": 21
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 163,
+            "min_p10_median_p90_max": [
+              1.1706478692337292,
+              1.616241371204761,
+              2.191024198288127,
+              2.777317139450174,
+              3.292772793772036
+            ]
+          },
+          "distance_xy_m": {
+            "n": 163,
+            "min_p10_median_p90_max": [
+              13.506674660071994,
+              13.958551991070083,
+              15.18926123242954,
+              17.23236435094051,
+              20.303588801070063
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 163,
+            "min_p10_median_p90_max": [
+              0.8124788424141158,
+              1.5188553243612197,
+              3.993790059728285,
+              5.853001940841614,
+              6.479738780188038
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 163,
+            "min_p10_median_p90_max": [
+              74.04866257337758,
+              92.38160675496809,
+              111.37608493148515,
+              148.56139513008415,
+              163.05590130270647
+            ]
+          }
+        },
+        "inside_court": {
+          "n": 4065,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 4065
+          },
+          "in_frame_kp": {
+            "0": 3,
+            "1": 21,
+            "2": 16,
+            "3": 17,
+            "4": 586,
+            "5": 243,
+            "6": 234,
+            "7": 1944,
+            "8": 313,
+            "9": 319,
+            "10": 369
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 3386,
+            "behind": 319,
+            "behind+horizontal": 331,
+            "horizontal+vertical": 13,
+            "behind+vertical": 16
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 4065,
+            "min_p10_median_p90_max": [
+              1.008419365101828,
+              1.6125750214403354,
+              2.2734925575665224,
+              2.865013757578785,
+              3.4552763229571237
+            ]
+          },
+          "distance_xy_m": {
+            "n": 4065,
+            "min_p10_median_p90_max": [
+              0.7053910875214907,
+              4.021728721591016,
+              6.548849336880524,
+              10.351320925603408,
+              13.071842948137288
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 4065,
+            "min_p10_median_p90_max": [
+              1.9537111710398118,
+              4.164647604671342,
+              6.939356307099578,
+              10.714583763700663,
+              17.868114945107713
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 13,
+            "min_p10_median_p90_max": [
+              171.83282248717978,
+              174.84195581776868,
+              179.09661964932812,
+              179.66925273555935,
+              179.69036712338828
+            ]
+          }
+        },
+        "sideline_exterior": {
+          "n": 1935,
+          "framing": {
+            "full": 17,
+            "near_full": 49,
+            "partial": 1869
+          },
+          "in_frame_kp": {
+            "1": 1,
+            "2": 16,
+            "3": 4,
+            "4": 281,
+            "5": 269,
+            "6": 217,
+            "7": 192,
+            "8": 250,
+            "9": 257,
+            "10": 364,
+            "11": 18,
+            "12": 38,
+            "13": 11,
+            "14": 17
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1268,
+            "behind+horizontal": 178,
+            "horizontal+vertical": 356,
+            "horizontal": 116,
+            "none": 17
+          },
+          "outside_captured_hull": 1,
+          "height_m": {
+            "n": 1935,
+            "min_p10_median_p90_max": [
+              1.0148563941110942,
+              1.6198266462552302,
+              2.2116665309549144,
+              2.847906734486164,
+              3.4426606384019967
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1935,
+            "min_p10_median_p90_max": [
+              5.546717508405561,
+              6.377831291869734,
+              8.0440179108989,
+              12.741292650296707,
+              22.05579762105253
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1935,
+            "min_p10_median_p90_max": [
+              -0.2729588540051502,
+              1.322754047532484,
+              3.2643372277940728,
+              12.805801474405312,
+              16.874334234731894
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 489,
+            "min_p10_median_p90_max": [
+              68.80515043364414,
+              104.37379160629033,
+              163.38966086675046,
+              176.02249990098753,
+              179.97935170976257
+            ]
+          }
+        }
+      },
+      "trajectory_rejection_reasons": {},
+      "cost_estimate_using_previous_model": {
+        "accepted_if_old_scene_qa_rates": 6457.752423615671,
+        "render_qa_publish_seconds": 2587.3657705784444,
+        "generation_with_persistence_seconds": 10065.070801280439,
+        "fetch_seconds": 3757.023274775016,
+        "planning_seconds": 74.19007576839563,
+        "durable_bytes_if_old_jpeg_sizes": 676481490.3595914,
+        "render_seconds_per_geometry_pass": 0.3929777901850614,
+        "generation_seconds_per_accepted_if_old_qa": 1.5586027678102041
+      },
+      "wall_seconds_cpu": 26.548661463006283,
+      "rendered": false,
+      "qa_acceptance_measured": false
+    },
+    "hull25_margin0": {
+      "schema": "court_d2_cpu_variant_v1",
+      "variant": "hull25_margin0",
+      "recipe": {
+        "arc_intervals": 8192,
+        "arc_tolerance_m": 0.01,
+        "base_step_m": 4.0,
+        "count_multiple": 1,
+        "height": 360,
+        "hfov_degrees": [
+          75.0,
+          92.5,
+          110.0
+        ],
+        "hull_expansion_percent": 25.0,
+        "hull_margin_m": 0.0,
+        "jitter_radius_m": 1.0,
+        "look_at_heights_m": [
+          0.0,
+          1.5
+        ],
+        "minimum_points": 8,
+        "near_plane_m": 0.01,
+        "schema": "court_scale_geometry_recipe_v1",
+        "width": 640
+      },
+      "generation_seed": 42,
+      "trajectory_count_per_scene": 128,
+      "density_level": 0,
+      "all_candidates": {
+        "n": 9007,
+        "framing": {
+          "full": 420,
+          "near_full": 493,
+          "partial": 8094
+        },
+        "in_frame_kp": {
+          "0": 49,
+          "1": 55,
+          "2": 91,
+          "3": 75,
+          "4": 602,
+          "5": 505,
+          "6": 510,
+          "7": 1907,
+          "8": 795,
+          "9": 963,
+          "10": 2285,
+          "11": 257,
+          "12": 375,
+          "13": 118,
+          "14": 420
+        },
+        "miss_pattern": {
+          "horizontal": 782,
+          "horizontal+vertical": 2123,
+          "behind+horizontal+vertical": 4803,
+          "behind+vertical": 46,
+          "behind+horizontal": 554,
+          "none": 420,
+          "behind": 264,
+          "vertical": 15
+        },
+        "outside_captured_hull": 961,
+        "height_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            1.0068311843786395,
+            1.6151839834624218,
+            2.255467320885238,
+            2.8564553253810683,
+            3.4584777639803503
+          ]
+        },
+        "distance_xy_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            0.09172948074671275,
+            5.536186052302828,
+            9.45385936084372,
+            15.604170942483938,
+            27.946279090776727
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            -5.57157925898472,
+            -0.11286240480765099,
+            4.311688269048746,
+            9.588101505327316,
+            17.767819800629432
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 3340,
+          "min_p10_median_p90_max": [
+            51.410139447608145,
+            89.3540095211993,
+            144.31441122403137,
+            173.48969258400268,
+            179.9993640980069
+          ]
+        }
+      },
+      "geometry_pass": {
+        "n": 8712,
+        "framing": {
+          "full": 417,
+          "near_full": 493,
+          "partial": 7802
+        },
+        "in_frame_kp": {
+          "0": 2,
+          "1": 17,
+          "2": 25,
+          "3": 16,
+          "4": 596,
+          "5": 498,
+          "6": 501,
+          "7": 1903,
+          "8": 781,
+          "9": 948,
+          "10": 2263,
+          "11": 252,
+          "12": 375,
+          "13": 118,
+          "14": 417
+        },
+        "miss_pattern": {
+          "horizontal+vertical": 2028,
+          "behind+horizontal+vertical": 4676,
+          "behind+vertical": 31,
+          "behind+horizontal": 552,
+          "horizontal": 729,
+          "none": 417,
+          "behind": 264,
+          "vertical": 15
+        },
+        "outside_captured_hull": 925,
+        "height_m": {
+          "n": 8712,
+          "min_p10_median_p90_max": [
+            1.0068311843786395,
+            1.6151839834624222,
+            2.250585098646397,
+            2.8533851498933123,
+            3.4584777639803503
+          ]
+        },
+        "distance_xy_m": {
+          "n": 8712,
+          "min_p10_median_p90_max": [
+            0.9534621914442432,
+            5.766479592544005,
+            9.552257376991136,
+            15.65110664941005,
+            27.946279090776727
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 8712,
+          "min_p10_median_p90_max": [
+            -5.57157925898472,
+            -0.10200664842110141,
+            4.300306752649419,
+            9.514657981010293,
+            17.767819800629432
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 3189,
+          "min_p10_median_p90_max": [
+            51.410139447608145,
+            89.0117482633691,
+            143.06991440548765,
+            173.41408622104368,
+            179.9993640980069
+          ]
+        }
+      },
+      "per_scene": {
+        "B00": {
+          "groups": 128,
+          "candidates": 2394,
+          "geometry_pass": 2326,
+          "caches": 128
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2936,
+          "geometry_pass": 2863,
+          "caches": 128
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1922,
+          "geometry_pass": 1847,
+          "caches": 128
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1755,
+          "geometry_pass": 1676,
+          "caches": 128
+        }
+      },
+      "geometry_pass_by_scene": {
+        "B00": {
+          "n": 2326,
+          "framing": {
+            "full": 82,
+            "near_full": 83,
+            "partial": 2161
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 9,
+            "2": 15,
+            "3": 9,
+            "4": 138,
+            "5": 131,
+            "6": 122,
+            "7": 526,
+            "8": 235,
+            "9": 262,
+            "10": 655,
+            "11": 57,
+            "12": 56,
+            "13": 27,
+            "14": 82
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 525,
+            "behind+horizontal+vertical": 1332,
+            "behind+vertical": 12,
+            "behind+horizontal": 173,
+            "horizontal": 120,
+            "none": 82,
+            "behind": 78,
+            "vertical": 4
+          },
+          "outside_captured_hull": 274,
+          "height_m": {
+            "n": 2326,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5955866961858982,
+              2.262584635013726,
+              2.881595523670932,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2326,
+            "min_p10_median_p90_max": [
+              1.1848387227327744,
+              5.621810061211169,
+              9.622087037444793,
+              14.924941350209807,
+              20.03180469766036
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2326,
+            "min_p10_median_p90_max": [
+              -3.3079883039912144,
+              -0.2804930982120579,
+              4.346103365222613,
+              10.631605808087015,
+              15.211883160716166
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 731,
+            "min_p10_median_p90_max": [
+              77.70468661867278,
+              96.94564130125391,
+              149.07906799581053,
+              174.91755567708742,
+              179.99404387856146
+            ]
+          }
+        },
+        "B01": {
+          "n": 2863,
+          "framing": {
+            "full": 291,
+            "near_full": 301,
+            "partial": 2271
+          },
+          "in_frame_kp": {
+            "1": 8,
+            "2": 10,
+            "3": 7,
+            "4": 137,
+            "5": 90,
+            "6": 97,
+            "7": 447,
+            "8": 174,
+            "9": 235,
+            "10": 934,
+            "11": 132,
+            "12": 230,
+            "13": 71,
+            "14": 291
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1151,
+            "horizontal": 431,
+            "behind+horizontal": 172,
+            "horizontal+vertical": 719,
+            "none": 291,
+            "behind": 83,
+            "behind+vertical": 7,
+            "vertical": 9
+          },
+          "outside_captured_hull": 329,
+          "height_m": {
+            "n": 2863,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.6115568913284721,
+              2.1138897940358947,
+              2.7384810539882563,
+              3.2887029608018494
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2863,
+            "min_p10_median_p90_max": [
+              0.9534621914442432,
+              6.011623948659185,
+              11.69157404702459,
+              18.025270503424448,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2863,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.33653767591986256,
+              5.568848562220548,
+              11.9704766704881,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1450,
+            "min_p10_median_p90_max": [
+              51.410139447608145,
+              80.29824109496819,
+              116.51444453639856,
+              167.3838755194004,
+              179.9993640980069
+            ]
+          }
+        },
+        "B02": {
+          "n": 1847,
+          "framing": {
+            "full": 27,
+            "near_full": 75,
+            "partial": 1745
+          },
+          "in_frame_kp": {
+            "4": 160,
+            "5": 133,
+            "6": 144,
+            "7": 440,
+            "8": 185,
+            "9": 248,
+            "10": 394,
+            "11": 41,
+            "12": 60,
+            "13": 15,
+            "14": 27
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1111,
+            "behind+vertical": 8,
+            "behind+horizontal": 93,
+            "horizontal+vertical": 443,
+            "behind": 50,
+            "horizontal": 115,
+            "none": 27
+          },
+          "outside_captured_hull": 192,
+          "height_m": {
+            "n": 1847,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.6371809149003214,
+              2.283576064629477,
+              2.893497149877548,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1847,
+            "min_p10_median_p90_max": [
+              2.992196837719916,
+              6.0014132437399,
+              8.917886585765487,
+              12.924942969136964,
+              19.75165351829406
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1847,
+            "min_p10_median_p90_max": [
+              -2.6680385288849564,
+              -0.07770643286136945,
+              3.1663064912433674,
+              7.409835102803237,
+              9.33680356763687
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 585,
+            "min_p10_median_p90_max": [
+              77.38490013225021,
+              109.14848350069865,
+              158.2469222216542,
+              175.8098940567668,
+              179.9515490523053
+            ]
+          }
+        },
+        "B03": {
+          "n": 1676,
+          "framing": {
+            "full": 17,
+            "near_full": 34,
+            "partial": 1625
+          },
+          "in_frame_kp": {
+            "4": 161,
+            "5": 144,
+            "6": 138,
+            "7": 490,
+            "8": 187,
+            "9": 203,
+            "10": 280,
+            "11": 22,
+            "12": 29,
+            "13": 5,
+            "14": 17
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1082,
+            "horizontal+vertical": 341,
+            "behind+vertical": 4,
+            "behind+horizontal": 114,
+            "horizontal": 63,
+            "behind": 53,
+            "none": 17,
+            "vertical": 2
+          },
+          "outside_captured_hull": 130,
+          "height_m": {
+            "n": 1676,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.6187279057385513,
+              2.3628415427191882,
+              2.8597642502206293,
+              3.21041214797985
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1676,
+            "min_p10_median_p90_max": [
+              1.3667748425886332,
+              5.385287978709819,
+              8.37974893017392,
+              11.941663170075369,
+              20.66052289880553
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1676,
+            "min_p10_median_p90_max": [
+              -1.9744458478067273,
+              0.2934730027551624,
+              3.9232452971158325,
+              7.787152691005658,
+              9.404601831707957
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 423,
+            "min_p10_median_p90_max": [
+              64.98016048755774,
+              117.61039676925569,
+              158.8135289844536,
+              175.13540271316097,
+              179.90431073946866
+            ]
+          }
+        }
+      },
+      "all_candidates_by_scene": {
+        "B00": {
+          "n": 2394,
+          "framing": {
+            "full": 82,
+            "near_full": 83,
+            "partial": 2229
+          },
+          "in_frame_kp": {
+            "0": 18,
+            "1": 17,
+            "2": 29,
+            "3": 17,
+            "4": 138,
+            "5": 133,
+            "6": 128,
+            "7": 527,
+            "8": 236,
+            "9": 266,
+            "10": 663,
+            "11": 57,
+            "12": 56,
+            "13": 27,
+            "14": 82
+          },
+          "miss_pattern": {
+            "horizontal": 138,
+            "horizontal+vertical": 538,
+            "behind+horizontal+vertical": 1364,
+            "behind+vertical": 17,
+            "behind+horizontal": 173,
+            "none": 82,
+            "behind": 78,
+            "vertical": 4
+          },
+          "outside_captured_hull": 288,
+          "height_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5955866961858982,
+              2.276372985266388,
+              2.888364171584694,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              0.5065588806763663,
+              5.2604779485691155,
+              9.569347758389767,
+              14.82965450785135,
+              20.03180469766036
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              -3.3079883039912144,
+              -0.331253039061453,
+              4.441898938374789,
+              10.757681416059869,
+              15.211883160716166
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 762,
+            "min_p10_median_p90_max": [
+              77.70468661867278,
+              97.22824287391349,
+              148.76491693851818,
+              174.91256783663943,
+              179.99404387856146
+            ]
+          }
+        },
+        "B01": {
+          "n": 2936,
+          "framing": {
+            "full": 294,
+            "near_full": 301,
+            "partial": 2341
+          },
+          "in_frame_kp": {
+            "0": 24,
+            "1": 18,
+            "2": 17,
+            "3": 15,
+            "4": 138,
+            "5": 91,
+            "6": 97,
+            "7": 447,
+            "8": 175,
+            "9": 237,
+            "10": 945,
+            "11": 137,
+            "12": 230,
+            "13": 71,
+            "14": 294
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1189,
+            "horizontal": 450,
+            "behind+horizontal": 172,
+            "horizontal+vertical": 726,
+            "none": 294,
+            "behind": 83,
+            "behind+vertical": 13,
+            "vertical": 9
+          },
+          "outside_captured_hull": 341,
+          "height_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.6115568913284721,
+              2.1138897940358947,
+              2.7504643522741707,
+              3.2887029608018494
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              0.09172948074671275,
+              5.726314406807186,
+              11.597246480231679,
+              17.98592807353415,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.3763243892994588,
+              5.6310178124029475,
+              12.012027171709832,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1479,
+            "min_p10_median_p90_max": [
+              51.410139447608145,
+              80.33041847620767,
+              116.85557255051478,
+              167.38469012078906,
+              179.9993640980069
+            ]
+          }
+        },
+        "B02": {
+          "n": 1922,
+          "framing": {
+            "full": 27,
+            "near_full": 75,
+            "partial": 1820
+          },
+          "in_frame_kp": {
+            "1": 7,
+            "2": 23,
+            "3": 28,
+            "4": 161,
+            "5": 135,
+            "6": 147,
+            "7": 441,
+            "8": 188,
+            "9": 254,
+            "10": 395,
+            "11": 41,
+            "12": 60,
+            "13": 15,
+            "14": 27
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1131,
+            "behind+vertical": 10,
+            "behind+horizontal": 94,
+            "horizontal+vertical": 488,
+            "behind": 50,
+            "horizontal": 122,
+            "none": 27
+          },
+          "outside_captured_hull": 198,
+          "height_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.6336671677031829,
+              2.283576064629477,
+              2.8869469726014434,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              2.642594808201943,
+              5.848661939012688,
+              8.82951667430444,
+              12.813135693831455,
+              19.75165351829406
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              -2.6680385288849564,
+              -0.05854453144037037,
+              3.1036694318361326,
+              7.380840478830663,
+              9.33680356763687
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 637,
+            "min_p10_median_p90_max": [
+              77.38490013225021,
+              111.01461117081466,
+              158.2469222216542,
+              175.85345642935678,
+              179.9515490523053
+            ]
+          }
+        },
+        "B03": {
+          "n": 1755,
+          "framing": {
+            "full": 17,
+            "near_full": 34,
+            "partial": 1704
+          },
+          "in_frame_kp": {
+            "0": 7,
+            "1": 13,
+            "2": 22,
+            "3": 15,
+            "4": 165,
+            "5": 146,
+            "6": 138,
+            "7": 492,
+            "8": 196,
+            "9": 206,
+            "10": 282,
+            "11": 22,
+            "12": 29,
+            "13": 5,
+            "14": 17
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1119,
+            "horizontal+vertical": 371,
+            "behind+vertical": 6,
+            "behind+horizontal": 115,
+            "horizontal": 72,
+            "behind": 53,
+            "none": 17,
+            "vertical": 2
+          },
+          "outside_captured_hull": 134,
+          "height_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.620202298142682,
+              2.3637436154618805,
+              2.8616594910724444,
+              3.229329915850692
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              0.8503881861538931,
+              5.184353177922897,
+              8.331868557873547,
+              11.764926269914696,
+              20.66052289880553
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              -1.9744458478067273,
+              0.3168910335379239,
+              3.9103753213809456,
+              7.800269605716492,
+              9.404601831707957
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 462,
+            "min_p10_median_p90_max": [
+              64.98016048755774,
+              118.86963879368308,
+              158.86391712483226,
+              174.9831717367167,
+              179.90431073946866
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_hfov": {
+        "110.0": {
+          "n": 2967,
+          "framing": {
+            "full": 260,
+            "near_full": 204,
+            "partial": 2503
+          },
+          "in_frame_kp": {
+            "2": 1,
+            "3": 2,
+            "4": 28,
+            "5": 55,
+            "6": 58,
+            "7": 533,
+            "8": 253,
+            "9": 482,
+            "10": 963,
+            "11": 128,
+            "12": 157,
+            "13": 47,
+            "14": 260
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1479,
+            "horizontal+vertical": 564,
+            "horizontal": 203,
+            "none": 260,
+            "behind+horizontal": 282,
+            "behind": 138,
+            "behind+vertical": 26,
+            "vertical": 15
+          },
+          "outside_captured_hull": 286,
+          "height_m": {
+            "n": 2967,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.6623538689305175,
+              2.276372985266395,
+              2.84944550694808,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2967,
+            "min_p10_median_p90_max": [
+              1.2670470853547828,
+              5.85252425074849,
+              9.453182565857382,
+              15.212958296543265,
+              22.744391708072552
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2967,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              0.043028550328930895,
+              4.426409637118539,
+              9.645210494970648,
+              17.694925171751372
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1042,
+            "min_p10_median_p90_max": [
+              64.56905643496852,
+              92.46757034705251,
+              146.0701798000182,
+              173.63990031917675,
+              179.9993640980069
+            ]
+          }
+        },
+        "75.0": {
+          "n": 2771,
+          "framing": {
+            "full": 55,
+            "near_full": 172,
+            "partial": 2544
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 14,
+            "2": 17,
+            "3": 11,
+            "4": 434,
+            "5": 283,
+            "6": 247,
+            "7": 626,
+            "8": 234,
+            "9": 176,
+            "10": 443,
+            "11": 57,
+            "12": 143,
+            "13": 29,
+            "14": 55
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1603,
+            "behind+horizontal": 86,
+            "horizontal+vertical": 686,
+            "horizontal": 288,
+            "behind": 53,
+            "none": 55
+          },
+          "outside_captured_hull": 337,
+          "height_m": {
+            "n": 2771,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.609831478996692,
+              2.1343356601649495,
+              2.844194614782976,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2771,
+            "min_p10_median_p90_max": [
+              1.1848387227327744,
+              5.93295610957864,
+              9.577778624752717,
+              16.84141902374113,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2771,
+            "min_p10_median_p90_max": [
+              -5.120460240539568,
+              -0.35002739450991527,
+              4.231387823908009,
+              9.54540572730669,
+              17.313309010717255
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1029,
+            "min_p10_median_p90_max": [
+              51.410139447608145,
+              81.2789977431154,
+              134.40611363488856,
+              172.78126692399033,
+              179.93934752123042
+            ]
+          }
+        },
+        "92.5": {
+          "n": 2974,
+          "framing": {
+            "full": 102,
+            "near_full": 117,
+            "partial": 2755
+          },
+          "in_frame_kp": {
+            "1": 3,
+            "2": 7,
+            "3": 3,
+            "4": 134,
+            "5": 160,
+            "6": 196,
+            "7": 744,
+            "8": 294,
+            "9": 290,
+            "10": 857,
+            "11": 67,
+            "12": 75,
+            "13": 42,
+            "14": 102
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 778,
+            "behind+horizontal+vertical": 1594,
+            "behind+vertical": 5,
+            "behind+horizontal": 184,
+            "behind": 73,
+            "horizontal": 238,
+            "none": 102
+          },
+          "outside_captured_hull": 302,
+          "height_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5997847553547047,
+              2.283576064629477,
+              2.865013757578785,
+              3.338110727580181
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              0.9534621914442432,
+              5.57189503596246,
+              9.633844203856196,
+              15.410399620137214,
+              22.044958320902225
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              -4.736643391145627,
+              -0.03467152899771119,
+              4.242899567483698,
+              9.418232597418209,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1118,
+            "min_p10_median_p90_max": [
+              61.326681329441506,
+              94.31948443547236,
+              147.2702254274821,
+              173.6388999046276,
+              179.99404387856146
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_region": {
+        "baseline_exterior": {
+          "n": 1122,
+          "framing": {
+            "full": 178,
+            "near_full": 162,
+            "partial": 782
+          },
+          "in_frame_kp": {
+            "9": 13,
+            "10": 672,
+            "11": 97,
+            "12": 97,
+            "13": 65,
+            "14": 178
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 666,
+            "horizontal": 217,
+            "none": 178,
+            "behind+horizontal+vertical": 60,
+            "behind+horizontal": 1
+          },
+          "outside_captured_hull": 142,
+          "height_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.616213604513447,
+              2.185009184350569,
+              2.817151886357243,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              11.924226525622748,
+              12.654646619442259,
+              14.785617186972246,
+              17.9386184606429,
+              21.77172861553847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              -2.968039144400212,
+              -0.2999878255926504,
+              2.8217911970763607,
+              5.086144290042727,
+              7.373913645943881
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1061,
+            "min_p10_median_p90_max": [
+              61.326681329441506,
+              89.25310261407036,
+              120.54811419347642,
+              167.83910356480186,
+              179.9993640980069
+            ]
+          }
+        },
+        "corner_exterior": {
+          "n": 509,
+          "framing": {
+            "full": 159,
+            "near_full": 149,
+            "partial": 201
+          },
+          "in_frame_kp": {
+            "10": 161,
+            "11": 40,
+            "12": 107,
+            "13": 42,
+            "14": 159
+          },
+          "miss_pattern": {
+            "none": 159,
+            "horizontal+vertical": 199,
+            "horizontal": 136,
+            "vertical": 15
+          },
+          "outside_captured_hull": 116,
+          "height_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              1.1981162703627763,
+              1.6116444349907932,
+              2.0638944417333476,
+              2.7349798988849883,
+              3.2386201149819143
+            ]
+          },
+          "distance_xy_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              13.340495454577095,
+              14.250504516907535,
+              16.687775125703155,
+              19.82921213547252,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              -4.830646154400156,
+              -1.107563849295599,
+              2.0208672950028,
+              4.864384187429244,
+              6.496393346852821
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              51.410139447608145,
+              80.51428697609472,
+              98.58371335505059,
+              138.39409631674778,
+              162.49563587512196
+            ]
+          }
+        },
+        "inside_court": {
+          "n": 3629,
+          "framing": {
+            "full": 0,
+            "near_full": 0,
+            "partial": 3629
+          },
+          "in_frame_kp": {
+            "0": 2,
+            "1": 16,
+            "2": 16,
+            "3": 13,
+            "4": 345,
+            "5": 138,
+            "6": 152,
+            "7": 1560,
+            "8": 391,
+            "9": 410,
+            "10": 586
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 3030,
+            "behind+vertical": 31,
+            "behind+horizontal": 280,
+            "behind": 264,
+            "horizontal+vertical": 24
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 3629,
+            "min_p10_median_p90_max": [
+              1.0600673438566373,
+              1.6115568913284717,
+              2.28360788790266,
+              2.8703024359129334,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 3629,
+            "min_p10_median_p90_max": [
+              0.9534621914442432,
+              4.52712835565007,
+              7.788746474258445,
+              11.033056601949488,
+              12.988339957880134
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 3629,
+            "min_p10_median_p90_max": [
+              1.8679559944977768,
+              4.035649254280745,
+              6.467421146732883,
+              9.42450818952826,
+              17.694925171751372
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 24,
+            "min_p10_median_p90_max": [
+              171.64939911418682,
+              172.32675967297624,
+              177.05076643009372,
+              179.8481176507302,
+              179.99404387856146
+            ]
+          }
+        },
+        "sideline_exterior": {
+          "n": 3452,
+          "framing": {
+            "full": 80,
+            "near_full": 182,
+            "partial": 3190
+          },
+          "in_frame_kp": {
+            "1": 1,
+            "2": 9,
+            "3": 3,
+            "4": 251,
+            "5": 360,
+            "6": 349,
+            "7": 343,
+            "8": 390,
+            "9": 525,
+            "10": 844,
+            "11": 115,
+            "12": 171,
+            "13": 11,
+            "14": 80
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 1139,
+            "behind+horizontal+vertical": 1586,
+            "behind+horizontal": 271,
+            "horizontal": 376,
+            "none": 80
+          },
+          "outside_captured_hull": 667,
+          "height_m": {
+            "n": 3452,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.6162136045134465,
+              2.2313490062885157,
+              2.8533851498933123,
+              3.4398796731303163
+            ]
+          },
+          "distance_xy_m": {
+            "n": 3452,
+            "min_p10_median_p90_max": [
+              5.507138496944605,
+              7.35998854478068,
+              9.58627840605326,
+              13.028327970414525,
+              27.946279090776613
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 3452,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.7951108952281591,
+              1.9324664599843095,
+              11.989681679717524,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1595,
+            "min_p10_median_p90_max": [
+              52.847758573611785,
+              112.48923653165747,
+              158.82418641374755,
+              175.67006144542663,
+              179.9515490523053
+            ]
+          }
+        }
+      },
+      "trajectory_rejection_reasons": {},
+      "cost_estimate_using_previous_model": {
+        "accepted_if_old_scene_qa_rates": 8542.486389523314,
+        "render_qa_publish_seconds": 2884.2674524108734,
+        "generation_with_persistence_seconds": 10369.537239976014,
+        "fetch_seconds": 3775.003023487,
+        "planning_seconds": 83.29876837042822,
+        "durable_bytes_if_old_jpeg_sizes": 844117365.0230845,
+        "render_seconds_per_geometry_pass": 0.3310683485320103,
+        "generation_seconds_per_accepted_if_old_qa": 1.2138781107914243
+      },
+      "wall_seconds_cpu": 33.52890143600234,
+      "rendered": false,
+      "qa_acceptance_measured": false
+    },
+    "hull25_margin0_wide125": {
+      "schema": "court_d2_cpu_variant_v1",
+      "variant": "hull25_margin0_wide125",
+      "recipe": {
+        "arc_intervals": 8192,
+        "arc_tolerance_m": 0.01,
+        "base_step_m": 4.0,
+        "count_multiple": 1,
+        "height": 360,
+        "hfov_degrees": [
+          92.5,
+          110.0,
+          125.0
+        ],
+        "hull_expansion_percent": 25.0,
+        "hull_margin_m": 0.0,
+        "jitter_radius_m": 1.0,
+        "look_at_heights_m": [
+          0.0,
+          1.5
+        ],
+        "minimum_points": 8,
+        "near_plane_m": 0.01,
+        "schema": "court_scale_geometry_recipe_v1",
+        "width": 640
+      },
+      "generation_seed": 42,
+      "trajectory_count_per_scene": 128,
+      "density_level": 0,
+      "all_candidates": {
+        "n": 9007,
+        "framing": {
+          "full": 839,
+          "near_full": 862,
+          "partial": 7306
+        },
+        "in_frame_kp": {
+          "0": 20,
+          "1": 15,
+          "2": 29,
+          "3": 23,
+          "4": 167,
+          "5": 252,
+          "6": 264,
+          "7": 1583,
+          "8": 737,
+          "9": 1195,
+          "10": 2657,
+          "11": 364,
+          "12": 683,
+          "13": 179,
+          "14": 839
+        },
+        "miss_pattern": {
+          "horizontal": 744,
+          "horizontal+vertical": 1682,
+          "behind+horizontal": 905,
+          "behind+horizontal+vertical": 4189,
+          "behind": 465,
+          "none": 839,
+          "behind+vertical": 107,
+          "vertical": 76
+        },
+        "outside_captured_hull": 961,
+        "height_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            1.0068311843786395,
+            1.6151839834624218,
+            2.255467320885238,
+            2.8564553253810683,
+            3.4584777639803503
+          ]
+        },
+        "distance_xy_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            0.09172948074671275,
+            5.536186052302828,
+            9.45385936084372,
+            15.604170942483938,
+            27.946279090776727
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 9007,
+          "min_p10_median_p90_max": [
+            -5.57157925898472,
+            -0.11286240480765099,
+            4.311688269048746,
+            9.588101505327316,
+            17.767819800629432
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 3341,
+          "min_p10_median_p90_max": [
+            50.45099936545632,
+            89.56276988742853,
+            144.6688048162118,
+            173.25240471374696,
+            179.96695542621057
+          ]
+        }
+      },
+      "geometry_pass": {
+        "n": 8848,
+        "framing": {
+          "full": 830,
+          "near_full": 855,
+          "partial": 7163
+        },
+        "in_frame_kp": {
+          "1": 3,
+          "2": 8,
+          "3": 5,
+          "4": 167,
+          "5": 252,
+          "6": 264,
+          "7": 1579,
+          "8": 726,
+          "9": 1178,
+          "10": 2623,
+          "11": 358,
+          "12": 678,
+          "13": 177,
+          "14": 830
+        },
+        "miss_pattern": {
+          "horizontal+vertical": 1662,
+          "behind+horizontal": 903,
+          "behind+horizontal+vertical": 4130,
+          "behind": 465,
+          "horizontal": 683,
+          "none": 830,
+          "behind+vertical": 99,
+          "vertical": 76
+        },
+        "outside_captured_hull": 925,
+        "height_m": {
+          "n": 8848,
+          "min_p10_median_p90_max": [
+            1.0068311843786395,
+            1.6151839834624222,
+            2.2545856108777587,
+            2.855137551090996,
+            3.4584777639803503
+          ]
+        },
+        "distance_xy_m": {
+          "n": 8848,
+          "min_p10_median_p90_max": [
+            0.5065588806763663,
+            5.61797391710322,
+            9.480133767805555,
+            15.623352994592075,
+            27.946279090776727
+          ]
+        },
+        "hull_clearance_m": {
+          "n": 8848,
+          "min_p10_median_p90_max": [
+            -5.57157925898472,
+            -0.08268706047524134,
+            4.30800203452201,
+            9.572802969013994,
+            17.767819800629432
+          ]
+        },
+        "required_hfov_deg": {
+          "n": 3251,
+          "min_p10_median_p90_max": [
+            50.45099936545632,
+            89.3608999426997,
+            144.56982483243783,
+            173.38506300022357,
+            179.96695542621057
+          ]
+        }
+      },
+      "per_scene": {
+        "B00": {
+          "groups": 128,
+          "candidates": 2394,
+          "geometry_pass": 2350,
+          "caches": 128
+        },
+        "B01": {
+          "groups": 128,
+          "candidates": 2936,
+          "geometry_pass": 2886,
+          "caches": 128
+        },
+        "B02": {
+          "groups": 128,
+          "candidates": 1922,
+          "geometry_pass": 1894,
+          "caches": 128
+        },
+        "B03": {
+          "groups": 128,
+          "candidates": 1755,
+          "geometry_pass": 1718,
+          "caches": 128
+        }
+      },
+      "geometry_pass_by_scene": {
+        "B00": {
+          "n": 2350,
+          "framing": {
+            "full": 158,
+            "near_full": 184,
+            "partial": 2008
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 5,
+            "3": 2,
+            "4": 48,
+            "5": 67,
+            "6": 61,
+            "7": 430,
+            "8": 172,
+            "9": 343,
+            "10": 808,
+            "11": 70,
+            "12": 146,
+            "13": 38,
+            "14": 158
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 427,
+            "behind+horizontal": 270,
+            "behind+horizontal+vertical": 1180,
+            "behind": 136,
+            "horizontal": 132,
+            "none": 158,
+            "behind+vertical": 27,
+            "vertical": 20
+          },
+          "outside_captured_hull": 274,
+          "height_m": {
+            "n": 2350,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5955866961858982,
+              2.264776175537503,
+              2.884609704662387,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2350,
+            "min_p10_median_p90_max": [
+              0.5065588806763663,
+              5.461921068261223,
+              9.58489805859888,
+              14.904807674093552,
+              20.03180469766036
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2350,
+            "min_p10_median_p90_max": [
+              -3.3079883039912144,
+              -0.25799702213525405,
+              4.411973372138652,
+              10.707766033730412,
+              15.211883160716166
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 737,
+            "min_p10_median_p90_max": [
+              79.50554519738537,
+              97.14175565752768,
+              148.55619355010148,
+              175.12681815478174,
+              179.9187456726035
+            ]
+          }
+        },
+        "B01": {
+          "n": 2886,
+          "framing": {
+            "full": 586,
+            "near_full": 350,
+            "partial": 1950
+          },
+          "in_frame_kp": {
+            "1": 1,
+            "2": 3,
+            "3": 3,
+            "4": 52,
+            "5": 54,
+            "6": 49,
+            "7": 361,
+            "8": 157,
+            "9": 238,
+            "10": 925,
+            "11": 107,
+            "12": 242,
+            "13": 108,
+            "14": 586
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 996,
+            "horizontal": 307,
+            "horizontal+vertical": 538,
+            "behind+vertical": 20,
+            "behind+horizontal": 265,
+            "none": 586,
+            "vertical": 35,
+            "behind": 139
+          },
+          "outside_captured_hull": 329,
+          "height_m": {
+            "n": 2886,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.6115568913284721,
+              2.113966203282878,
+              2.7504643522741707,
+              3.2887029608018494
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2886,
+            "min_p10_median_p90_max": [
+              0.9534621914442432,
+              5.940924208268372,
+              11.622210194337999,
+              17.990417237262243,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2886,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.33243126560771863,
+              5.618333697636805,
+              12.029233868708799,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1466,
+            "min_p10_median_p90_max": [
+              50.45099936545632,
+              80.85107189692809,
+              117.8695552617992,
+              167.9766392746253,
+              179.96695542621057
+            ]
+          }
+        },
+        "B02": {
+          "n": 1894,
+          "framing": {
+            "full": 58,
+            "near_full": 195,
+            "partial": 1641
+          },
+          "in_frame_kp": {
+            "4": 37,
+            "5": 57,
+            "6": 76,
+            "7": 374,
+            "8": 204,
+            "9": 291,
+            "10": 494,
+            "11": 108,
+            "12": 176,
+            "13": 19,
+            "14": 58
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 983,
+            "behind": 96,
+            "behind+horizontal": 183,
+            "horizontal": 146,
+            "horizontal+vertical": 392,
+            "behind+vertical": 27,
+            "vertical": 9,
+            "none": 58
+          },
+          "outside_captured_hull": 192,
+          "height_m": {
+            "n": 1894,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.6336671677031829,
+              2.283576064629477,
+              2.886127784127975,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1894,
+            "min_p10_median_p90_max": [
+              2.642594808201943,
+              5.869540181519952,
+              8.847857021536703,
+              12.87528331615632,
+              19.75165351829406
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1894,
+            "min_p10_median_p90_max": [
+              -2.6680385288849564,
+              -0.015280411982874808,
+              3.1372471231173673,
+              7.404702700077789,
+              9.33680356763687
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 605,
+            "min_p10_median_p90_max": [
+              74.01375149689112,
+              110.53035672463328,
+              157.82335807022474,
+              174.94658007304963,
+              179.8098288685304
+            ]
+          }
+        },
+        "B03": {
+          "n": 1718,
+          "framing": {
+            "full": 28,
+            "near_full": 126,
+            "partial": 1564
+          },
+          "in_frame_kp": {
+            "4": 30,
+            "5": 74,
+            "6": 78,
+            "7": 414,
+            "8": 193,
+            "9": 306,
+            "10": 396,
+            "11": 73,
+            "12": 114,
+            "13": 12,
+            "14": 28
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 971,
+            "horizontal+vertical": 305,
+            "behind": 94,
+            "behind+horizontal": 185,
+            "horizontal": 98,
+            "none": 28,
+            "vertical": 12,
+            "behind+vertical": 25
+          },
+          "outside_captured_hull": 130,
+          "height_m": {
+            "n": 1718,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.620202298142682,
+              2.3701761319746613,
+              2.861418697939119,
+              3.229329915850692
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1718,
+            "min_p10_median_p90_max": [
+              1.3667748425886332,
+              5.2464677195935545,
+              8.334640544377162,
+              11.790926038128156,
+              20.66052289880553
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1718,
+            "min_p10_median_p90_max": [
+              -1.9744458478067273,
+              0.31980769186464597,
+              3.9232452971158325,
+              7.837528734984851,
+              9.404601831707957
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 443,
+            "min_p10_median_p90_max": [
+              66.2562789640357,
+              117.65521780300081,
+              158.8793350707618,
+              175.292573788236,
+              179.95160709800754
+            ]
+          }
+        }
+      },
+      "all_candidates_by_scene": {
+        "B00": {
+          "n": 2394,
+          "framing": {
+            "full": 158,
+            "near_full": 186,
+            "partial": 2050
+          },
+          "in_frame_kp": {
+            "0": 7,
+            "1": 7,
+            "2": 11,
+            "3": 6,
+            "4": 48,
+            "5": 67,
+            "6": 61,
+            "7": 430,
+            "8": 173,
+            "9": 349,
+            "10": 820,
+            "11": 71,
+            "12": 147,
+            "13": 39,
+            "14": 158
+          },
+          "miss_pattern": {
+            "horizontal": 152,
+            "horizontal+vertical": 431,
+            "behind+horizontal": 271,
+            "behind+horizontal+vertical": 1198,
+            "behind": 136,
+            "none": 158,
+            "behind+vertical": 28,
+            "vertical": 20
+          },
+          "outside_captured_hull": 288,
+          "height_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5955866961858982,
+              2.276372985266388,
+              2.888364171584694,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              0.5065588806763663,
+              5.2604779485691155,
+              9.569347758389767,
+              14.82965450785135,
+              20.03180469766036
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2394,
+            "min_p10_median_p90_max": [
+              -3.3079883039912144,
+              -0.331253039061453,
+              4.441898938374789,
+              10.757681416059869,
+              15.211883160716166
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 761,
+            "min_p10_median_p90_max": [
+              79.50554519738537,
+              97.42116782921777,
+              148.10106118937978,
+              175.05429814473572,
+              179.9187456726035
+            ]
+          }
+        },
+        "B01": {
+          "n": 2936,
+          "framing": {
+            "full": 595,
+            "near_full": 355,
+            "partial": 1986
+          },
+          "in_frame_kp": {
+            "0": 12,
+            "1": 4,
+            "2": 8,
+            "3": 9,
+            "4": 52,
+            "5": 54,
+            "6": 49,
+            "7": 362,
+            "8": 157,
+            "9": 239,
+            "10": 930,
+            "11": 110,
+            "12": 246,
+            "13": 109,
+            "14": 595
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1015,
+            "horizontal": 321,
+            "horizontal+vertical": 539,
+            "behind+vertical": 26,
+            "behind+horizontal": 266,
+            "none": 595,
+            "vertical": 35,
+            "behind": 139
+          },
+          "outside_captured_hull": 341,
+          "height_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.6115568913284721,
+              2.1138897940358947,
+              2.7504643522741707,
+              3.2887029608018494
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              0.09172948074671275,
+              5.726314406807186,
+              11.597246480231679,
+              17.98592807353415,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2936,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.3763243892994588,
+              5.6310178124029475,
+              12.012027171709832,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1490,
+            "min_p10_median_p90_max": [
+              50.45099936545632,
+              80.95754040008696,
+              117.9341364005357,
+              167.77093139670325,
+              179.96695542621057
+            ]
+          }
+        },
+        "B02": {
+          "n": 1922,
+          "framing": {
+            "full": 58,
+            "near_full": 195,
+            "partial": 1669
+          },
+          "in_frame_kp": {
+            "2": 3,
+            "3": 5,
+            "4": 37,
+            "5": 57,
+            "6": 76,
+            "7": 377,
+            "8": 209,
+            "9": 294,
+            "10": 502,
+            "11": 109,
+            "12": 176,
+            "13": 19,
+            "14": 58
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 990,
+            "behind": 96,
+            "behind+horizontal": 183,
+            "horizontal": 158,
+            "horizontal+vertical": 400,
+            "behind+vertical": 28,
+            "vertical": 9,
+            "none": 58
+          },
+          "outside_captured_hull": 198,
+          "height_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.6336671677031829,
+              2.283576064629477,
+              2.8869469726014434,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              2.642594808201943,
+              5.848661939012688,
+              8.82951667430444,
+              12.813135693831455,
+              19.75165351829406
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1922,
+            "min_p10_median_p90_max": [
+              -2.6680385288849564,
+              -0.05854453144037037,
+              3.1036694318361326,
+              7.380840478830663,
+              9.33680356763687
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 625,
+            "min_p10_median_p90_max": [
+              74.01375149689112,
+              111.317290098508,
+              157.25357604752148,
+              174.77452831702925,
+              179.8098288685304
+            ]
+          }
+        },
+        "B03": {
+          "n": 1755,
+          "framing": {
+            "full": 28,
+            "near_full": 126,
+            "partial": 1601
+          },
+          "in_frame_kp": {
+            "0": 1,
+            "1": 4,
+            "2": 7,
+            "3": 3,
+            "4": 30,
+            "5": 74,
+            "6": 78,
+            "7": 414,
+            "8": 198,
+            "9": 313,
+            "10": 405,
+            "11": 74,
+            "12": 114,
+            "13": 12,
+            "14": 28
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 986,
+            "horizontal+vertical": 312,
+            "behind": 94,
+            "behind+horizontal": 185,
+            "horizontal": 113,
+            "none": 28,
+            "vertical": 12,
+            "behind+vertical": 25
+          },
+          "outside_captured_hull": 134,
+          "height_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.620202298142682,
+              2.3637436154618805,
+              2.8616594910724444,
+              3.229329915850692
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              0.8503881861538931,
+              5.184353177922897,
+              8.331868557873547,
+              11.764926269914696,
+              20.66052289880553
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1755,
+            "min_p10_median_p90_max": [
+              -1.9744458478067273,
+              0.3168910335379239,
+              3.9103753213809456,
+              7.800269605716492,
+              9.404601831707957
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 465,
+            "min_p10_median_p90_max": [
+              66.2562789640357,
+              120.52628229235347,
+              158.43451013160055,
+              175.17514987290483,
+              179.95160709800754
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_hfov": {
+        "110.0": {
+          "n": 3000,
+          "framing": {
+            "full": 249,
+            "near_full": 230,
+            "partial": 2521
+          },
+          "in_frame_kp": {
+            "1": 1,
+            "2": 1,
+            "3": 1,
+            "4": 30,
+            "5": 72,
+            "6": 53,
+            "7": 520,
+            "8": 268,
+            "9": 417,
+            "10": 1021,
+            "11": 137,
+            "12": 166,
+            "13": 64,
+            "14": 249
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 626,
+            "behind+horizontal": 317,
+            "behind+horizontal+vertical": 1376,
+            "behind": 155,
+            "horizontal": 229,
+            "none": 249,
+            "behind+vertical": 28,
+            "vertical": 20
+          },
+          "outside_captured_hull": 302,
+          "height_m": {
+            "n": 3000,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.5997847553547047,
+              2.28360788790266,
+              2.865162144098664,
+              3.338110727580181
+            ]
+          },
+          "distance_xy_m": {
+            "n": 3000,
+            "min_p10_median_p90_max": [
+              0.8455189928685759,
+              5.445561245170986,
+              9.596147066097132,
+              15.410399620137213,
+              22.044958320902225
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 3000,
+            "min_p10_median_p90_max": [
+              -4.736643391145627,
+              -0.015284366611923039,
+              4.277101638593748,
+              9.435498180634662,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1124,
+            "min_p10_median_p90_max": [
+              63.62385610567798,
+              94.38991924646344,
+              147.1542103596766,
+              173.95578986070615,
+              179.95160709800754
+            ]
+          }
+        },
+        "125.0": {
+          "n": 2974,
+          "framing": {
+            "full": 362,
+            "near_full": 496,
+            "partial": 2116
+          },
+          "in_frame_kp": {
+            "4": 8,
+            "5": 29,
+            "6": 16,
+            "7": 331,
+            "8": 166,
+            "9": 492,
+            "10": 911,
+            "11": 163,
+            "12": 439,
+            "13": 57,
+            "14": 362
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1225,
+            "horizontal+vertical": 411,
+            "none": 362,
+            "behind+horizontal": 413,
+            "horizontal": 208,
+            "behind": 231,
+            "behind+vertical": 68,
+            "vertical": 56
+          },
+          "outside_captured_hull": 286,
+          "height_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              1.1237794304511048,
+              1.6625705252662049,
+              2.276372985266395,
+              2.84944550694808,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              0.5065588806763663,
+              5.821467597766985,
+              9.447420402406568,
+              15.206040805098722,
+              22.744391708072552
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2974,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              0.0450594410582474,
+              4.442777194074242,
+              9.652779226645691,
+              17.694925171751372
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1037,
+            "min_p10_median_p90_max": [
+              63.81165190278919,
+              93.97963519974563,
+              145.24464591221403,
+              172.67547645151546,
+              179.9097810530248
+            ]
+          }
+        },
+        "92.5": {
+          "n": 2874,
+          "framing": {
+            "full": 219,
+            "near_full": 129,
+            "partial": 2526
+          },
+          "in_frame_kp": {
+            "1": 2,
+            "2": 7,
+            "3": 4,
+            "4": 129,
+            "5": 151,
+            "6": 195,
+            "7": 728,
+            "8": 292,
+            "9": 269,
+            "10": 691,
+            "11": 58,
+            "12": 73,
+            "13": 56,
+            "14": 219
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 1529,
+            "horizontal+vertical": 625,
+            "behind+horizontal": 173,
+            "horizontal": 246,
+            "none": 219,
+            "behind": 79,
+            "behind+vertical": 3
+          },
+          "outside_captured_hull": 337,
+          "height_m": {
+            "n": 2874,
+            "min_p10_median_p90_max": [
+              1.1743260129276332,
+              1.6081177871529522,
+              2.1390857029907093,
+              2.844194614782976,
+              3.372840647448649
+            ]
+          },
+          "distance_xy_m": {
+            "n": 2874,
+            "min_p10_median_p90_max": [
+              1.1848387227327744,
+              5.660433150409776,
+              9.456581076578866,
+              16.712799869115116,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 2874,
+            "min_p10_median_p90_max": [
+              -5.120460240539568,
+              -0.3047695677176844,
+              4.1979678760518535,
+              9.642801057612255,
+              17.313309010717255
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1090,
+            "min_p10_median_p90_max": [
+              50.45099936545632,
+              82.57624051450448,
+              139.97443760821602,
+              173.47033110949386,
+              179.96695542621057
+            ]
+          }
+        }
+      },
+      "geometry_pass_by_region": {
+        "baseline_exterior": {
+          "n": 1122,
+          "framing": {
+            "full": 364,
+            "near_full": 173,
+            "partial": 585
+          },
+          "in_frame_kp": {
+            "10": 524,
+            "11": 61,
+            "12": 85,
+            "13": 88,
+            "14": 364
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 506,
+            "none": 364,
+            "behind+horizontal+vertical": 54,
+            "horizontal": 167,
+            "vertical": 28,
+            "behind+horizontal": 3
+          },
+          "outside_captured_hull": 142,
+          "height_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              1.1412965612065107,
+              1.616213604513447,
+              2.185009184350569,
+              2.817151886357243,
+              3.3352600148156983
+            ]
+          },
+          "distance_xy_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              11.924226525622748,
+              12.654646619442259,
+              14.785617186972246,
+              17.9386184606429,
+              21.77172861553847
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 1122,
+            "min_p10_median_p90_max": [
+              -2.968039144400212,
+              -0.2999878255926504,
+              2.8217911970763607,
+              5.086144290042727,
+              7.373913645943881
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1065,
+            "min_p10_median_p90_max": [
+              62.03410568363579,
+              88.77601442550963,
+              121.1308266805019,
+              167.60221828756823,
+              179.9187456726035
+            ]
+          }
+        },
+        "corner_exterior": {
+          "n": 509,
+          "framing": {
+            "full": 306,
+            "near_full": 106,
+            "partial": 97
+          },
+          "in_frame_kp": {
+            "10": 66,
+            "11": 31,
+            "12": 51,
+            "13": 55,
+            "14": 306
+          },
+          "miss_pattern": {
+            "none": 306,
+            "horizontal+vertical": 100,
+            "vertical": 41,
+            "horizontal": 62
+          },
+          "outside_captured_hull": 116,
+          "height_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              1.1981162703627763,
+              1.6116444349907932,
+              2.0638944417333476,
+              2.7349798988849883,
+              3.2386201149819143
+            ]
+          },
+          "distance_xy_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              13.340495454577095,
+              14.250504516907535,
+              16.687775125703155,
+              19.82921213547252,
+              27.946279090776727
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              -4.830646154400156,
+              -1.107563849295599,
+              2.0208672950028,
+              4.864384187429244,
+              6.496393346852821
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 509,
+            "min_p10_median_p90_max": [
+              50.45099936545632,
+              81.26294713415413,
+              98.65583432425731,
+              138.2245442727108,
+              161.49756611292668
+            ]
+          }
+        },
+        "inside_court": {
+          "n": 3698,
+          "framing": {
+            "full": 0,
+            "near_full": 1,
+            "partial": 3697
+          },
+          "in_frame_kp": {
+            "1": 3,
+            "2": 8,
+            "3": 4,
+            "4": 157,
+            "5": 148,
+            "6": 83,
+            "7": 1324,
+            "8": 410,
+            "9": 581,
+            "10": 978,
+            "11": 1,
+            "12": 1
+          },
+          "miss_pattern": {
+            "behind+horizontal+vertical": 2684,
+            "behind": 430,
+            "behind+horizontal": 461,
+            "horizontal+vertical": 29,
+            "behind+vertical": 93,
+            "vertical": 1
+          },
+          "outside_captured_hull": 0,
+          "height_m": {
+            "n": 3698,
+            "min_p10_median_p90_max": [
+              1.0600673438566373,
+              1.6115568913284721,
+              2.2865555476776125,
+              2.8705225644506083,
+              3.4584777639803503
+            ]
+          },
+          "distance_xy_m": {
+            "n": 3698,
+            "min_p10_median_p90_max": [
+              0.5065588806763663,
+              4.325294992632766,
+              7.7173561587541135,
+              11.004855558898175,
+              12.988339957880134
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 3698,
+            "min_p10_median_p90_max": [
+              1.8679559944977768,
+              4.040341410858849,
+              6.4821316109894696,
+              9.459977903859889,
+              17.694925171751372
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 30,
+            "min_p10_median_p90_max": [
+              170.06957314762494,
+              173.54597845491497,
+              176.01380795070259,
+              179.33777323564266,
+              179.95160709800754
+            ]
+          }
+        },
+        "sideline_exterior": {
+          "n": 3519,
+          "framing": {
+            "full": 160,
+            "near_full": 575,
+            "partial": 2784
+          },
+          "in_frame_kp": {
+            "3": 1,
+            "4": 10,
+            "5": 104,
+            "6": 181,
+            "7": 255,
+            "8": 316,
+            "9": 597,
+            "10": 1055,
+            "11": 265,
+            "12": 541,
+            "13": 34,
+            "14": 160
+          },
+          "miss_pattern": {
+            "horizontal+vertical": 1027,
+            "behind+horizontal": 439,
+            "behind+horizontal+vertical": 1392,
+            "horizontal": 454,
+            "vertical": 6,
+            "behind": 35,
+            "none": 160,
+            "behind+vertical": 6
+          },
+          "outside_captured_hull": 667,
+          "height_m": {
+            "n": 3519,
+            "min_p10_median_p90_max": [
+              1.0068311843786395,
+              1.6157250450385103,
+              2.234047197289256,
+              2.8533851498933123,
+              3.4398796731303163
+            ]
+          },
+          "distance_xy_m": {
+            "n": 3519,
+            "min_p10_median_p90_max": [
+              5.507138496944566,
+              7.275649464812047,
+              9.5372167217165,
+              13.004304690975534,
+              27.946279090776613
+            ]
+          },
+          "hull_clearance_m": {
+            "n": 3519,
+            "min_p10_median_p90_max": [
+              -5.57157925898472,
+              -0.7760095978070974,
+              1.9550761224654387,
+              12.032919880522428,
+              17.767819800629432
+            ]
+          },
+          "required_hfov_deg": {
+            "n": 1647,
+            "min_p10_median_p90_max": [
+              52.871197989999466,
+              114.95271934884903,
+              158.42224141393083,
+              175.57613489304183,
+              179.96695542621057
+            ]
+          }
+        }
+      },
+      "trajectory_rejection_reasons": {},
+      "cost_estimate_using_previous_model": {
+        "accepted_if_old_scene_qa_rates": 8676.885558289305,
+        "render_qa_publish_seconds": 2903.24237192648,
+        "generation_with_persistence_seconds": 10388.898575945272,
+        "fetch_seconds": 3775.9214496651966,
+        "planning_seconds": 83.29876837042822,
+        "durable_bytes_if_old_jpeg_sizes": 852680397.6973499,
+        "render_seconds_per_geometry_pass": 0.3281241378759584,
+        "generation_seconds_per_accepted_if_old_qa": 1.1973073179489415
+      },
+      "wall_seconds_cpu": 33.56019745100639,
+      "rendered": false,
+      "qa_acceptance_measured": false
+    }
+  },
+  "production_recipe_changed": false,
+  "candidate_rationale": {
+    "wide125": "Fixed-pose probes show modest optical gains; replace three layers, retaining the fixed three-layer contract.",
+    "hull5": "Previously discussed small expansion: compare its limited displacement against the current near-court positions.",
+    "hull25_margin0": "Widen the position support after 854/1209 current candidates lie inside the court; 25% is an exploratory distance scale, not a certified safe 3DGS boundary.",
+    "hull25_margin0_wide125": "Combine exterior-position and optical changes after measuring each direction; retain the same camera-height distribution and D5/D6.",
+    "not_varied": "Look-height-only probes leave full count unchanged; camera heights are hard-coded strategy parameters and are outside this source-preserving comparison."
+  }
+}

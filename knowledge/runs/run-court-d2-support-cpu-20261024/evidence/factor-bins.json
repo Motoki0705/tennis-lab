@@ -1,0 +1,110 @@
+{
+  "scope": "all 1209 original candidates; marginal associations, not isolated causal effects",
+  "factors": {
+    "height_m": {
+      "[0,2)": {
+        "n": 403,
+        "framing": {
+          "full": 3,
+          "near_full": 2,
+          "partial": 398
+        },
+        "with_kp_behind_camera": 366
+      },
+      "[2,2.5)": {
+        "n": 471,
+        "framing": {
+          "full": 1,
+          "near_full": 5,
+          "partial": 465
+        },
+        "with_kp_behind_camera": 420
+      },
+      "[2.5,4)": {
+        "n": 335,
+        "framing": {
+          "full": 4,
+          "near_full": 3,
+          "partial": 328
+        },
+        "with_kp_behind_camera": 293
+      }
+    },
+    "distance_xy_m": {
+      "[0,5)": {
+        "n": 296,
+        "framing": {
+          "full": 0,
+          "near_full": 0,
+          "partial": 296
+        },
+        "with_kp_behind_camera": 296
+      },
+      "[5,10)": {
+        "n": 723,
+        "framing": {
+          "full": 0,
+          "near_full": 0,
+          "partial": 723
+        },
+        "with_kp_behind_camera": 670
+      },
+      "[10,15)": {
+        "n": 163,
+        "framing": {
+          "full": 0,
+          "near_full": 1,
+          "partial": 162
+        },
+        "with_kp_behind_camera": 113
+      },
+      "[15,25)": {
+        "n": 27,
+        "framing": {
+          "full": 8,
+          "near_full": 9,
+          "partial": 10
+        },
+        "with_kp_behind_camera": 0
+      }
+    },
+    "hull_clearance_m": {
+      "[0,2)": {
+        "n": 59,
+        "framing": {
+          "full": 2,
+          "near_full": 3,
+          "partial": 54
+        },
+        "with_kp_behind_camera": 28
+      },
+      "[2,5)": {
+        "n": 350,
+        "framing": {
+          "full": 6,
+          "near_full": 6,
+          "partial": 338
+        },
+        "with_kp_behind_camera": 280
+      },
+      "[5,10)": {
+        "n": 610,
+        "framing": {
+          "full": 0,
+          "near_full": 1,
+          "partial": 609
+        },
+        "with_kp_behind_camera": 584
+      },
+      "[10,25)": {
+        "n": 190,
+        "framing": {
+          "full": 0,
+          "near_full": 0,
+          "partial": 190
+        },
+        "with_kp_behind_camera": 187
+      }
+    }
+  }
+}

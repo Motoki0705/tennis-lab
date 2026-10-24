@@ -1,0 +1,2548 @@
+{
+  "schema": "court_d2_conditional_cost_comparison_v1",
+  "variants": {
+    "current": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "minimum_integer_G_for_6000_from_128_mean_if_old_qa": 127,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 128,
+            "candidates": 1741.0,
+            "geometry_pass": 1621.0,
+            "caches": 128.0
+          },
+          "B01": {
+            "groups": 128,
+            "candidates": 2080.0,
+            "geometry_pass": 1957.0,
+            "caches": 128.0
+          },
+          "B02": {
+            "groups": 128,
+            "candidates": 1479.0,
+            "geometry_pass": 1353.0,
+            "caches": 128.0
+          },
+          "B03": {
+            "groups": 128,
+            "candidates": 1368.0,
+            "geometry_pass": 1235.0,
+            "caches": 128.0
+          }
+        },
+        "accepted_if_old_scene_qa_rates": 6048.731770195163,
+        "render_qa_publish_seconds": 2529.04579736136,
+        "generation_with_persistence_seconds": 10005.246989217763,
+        "fetch_seconds": 3753.4489834876445,
+        "planning_seconds": 72.3842027986279,
+        "durable_bytes_if_old_jpeg_sizes": 643156250.0651462,
+        "render_seconds_per_geometry_pass": 0.41015987631549794,
+        "generation_seconds_per_accepted_if_old_qa": 1.654106574624145
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 1741.0,
+              "geometry_pass": 1621.0,
+              "caches": 128.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 2080.0,
+              "geometry_pass": 1957.0,
+              "caches": 128.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 1479.0,
+              "geometry_pass": 1353.0,
+              "caches": 128.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 1368.0,
+              "geometry_pass": 1235.0,
+              "caches": 128.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 6048.731770195163,
+          "render_qa_publish_seconds": 2529.04579736136,
+          "generation_with_persistence_seconds": 10005.246989217763,
+          "fetch_seconds": 3753.4489834876445,
+          "planning_seconds": 72.3842027986279,
+          "durable_bytes_if_old_jpeg_sizes": 643156250.0651462,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.654106574624145
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 256,
+              "candidates": 3482.0,
+              "geometry_pass": 3242.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 256,
+              "candidates": 4160.0,
+              "geometry_pass": 3914.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 256,
+              "candidates": 2958.0,
+              "geometry_pass": 2706.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 256,
+              "candidates": 2736.0,
+              "geometry_pass": 2470.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12097.463540390327,
+          "render_qa_publish_seconds": 5058.09159472272,
+          "generation_with_persistence_seconds": 19828.806620565178,
+          "fetch_seconds": 7506.883021816272,
+          "planning_seconds": 117.43243053236571,
+          "durable_bytes_if_old_jpeg_sizes": 1286173157.53747,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.6390879422253997
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 512,
+              "candidates": 6964.0,
+              "geometry_pass": 6484.0,
+              "caches": 512.0
+            },
+            "B01": {
+              "groups": 512,
+              "candidates": 8320.0,
+              "geometry_pass": 7828.0,
+              "caches": 512.0
+            },
+            "B02": {
+              "groups": 512,
+              "candidates": 5916.0,
+              "geometry_pass": 5412.0,
+              "caches": 512.0
+            },
+            "B03": {
+              "groups": 512,
+              "candidates": 5472.0,
+              "geometry_pass": 4940.0,
+              "caches": 512.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24194.927080780653,
+          "render_qa_publish_seconds": 10116.18318944544,
+          "generation_with_persistence_seconds": 39475.92588326001,
+          "fetch_seconds": 15013.751098473527,
+          "planning_seconds": 207.52888599984132,
+          "durable_bytes_if_old_jpeg_sizes": 2572206972.482118,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.631578626026027
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 1024,
+              "candidates": 13928.0,
+              "geometry_pass": 12968.0,
+              "caches": 1024.0
+            },
+            "B01": {
+              "groups": 1024,
+              "candidates": 16640.0,
+              "geometry_pass": 15656.0,
+              "caches": 1024.0
+            },
+            "B02": {
+              "groups": 1024,
+              "candidates": 11832.0,
+              "geometry_pass": 10824.0,
+              "caches": 1024.0
+            },
+            "B03": {
+              "groups": 1024,
+              "candidates": 10944.0,
+              "geometry_pass": 9880.0,
+              "caches": 1024.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 48389.85416156131,
+          "render_qa_publish_seconds": 20232.36637889088,
+          "generation_with_persistence_seconds": 78770.16440864968,
+          "fetch_seconds": 30027.487251788036,
+          "planning_seconds": 387.72179693479256,
+          "durable_bytes_if_old_jpeg_sizes": 5144274602.371413,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.6278239679263409
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 2048,
+              "candidates": 27856.0,
+              "geometry_pass": 25936.0,
+              "caches": 2048.0
+            },
+            "B01": {
+              "groups": 2048,
+              "candidates": 33280.0,
+              "geometry_pass": 31312.0,
+              "caches": 2048.0
+            },
+            "B02": {
+              "groups": 2048,
+              "candidates": 23664.0,
+              "geometry_pass": 21648.0,
+              "caches": 2048.0
+            },
+            "B03": {
+              "groups": 2048,
+              "candidates": 21888.0,
+              "geometry_pass": 19760.0,
+              "caches": 2048.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 96779.70832312261,
+          "render_qa_publish_seconds": 40464.73275778176,
+          "generation_with_persistence_seconds": 157358.641459429,
+          "fetch_seconds": 60054.95955841705,
+          "planning_seconds": 748.107618804695,
+          "durable_bytes_if_old_jpeg_sizes": 10288409862.150003,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.6259466388764974
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 3482.0,
+              "geometry_pass": 3242.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 4160.0,
+              "geometry_pass": 3914.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 2958.0,
+              "geometry_pass": 2706.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 2736.0,
+              "geometry_pass": 2470.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12097.463540390327,
+          "render_qa_publish_seconds": 5058.09159472272,
+          "generation_with_persistence_seconds": 19822.069924059666,
+          "fetch_seconds": 7490.8713888571165,
+          "planning_seconds": 103.49934740434166,
+          "durable_bytes_if_old_jpeg_sizes": 1136887194.819328,
+          "render_seconds_per_geometry_pass": 0.41015987631549794,
+          "generation_seconds_per_accepted_if_old_qa": 1.6385310737146561
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 6964.0,
+              "geometry_pass": 6484.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 8320.0,
+              "geometry_pass": 7828.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 5916.0,
+              "geometry_pass": 5412.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 5472.0,
+              "geometry_pass": 4940.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24194.927080780653,
+          "render_qa_publish_seconds": 8447.426757769586,
+          "generation_with_persistence_seconds": 30521.38023699436,
+          "fetch_seconds": 11281.053544765651,
+          "planning_seconds": 165.72963661576918,
+          "durable_bytes_if_old_jpeg_sizes": 2122528625.661025,
+          "render_seconds_per_geometry_pass": 0.3425002739932528,
+          "generation_seconds_per_accepted_if_old_qa": 1.2614784965084334
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 13928.0,
+              "geometry_pass": 12968.0,
+              "caches": 548.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 16640.0,
+              "geometry_pass": 15656.0,
+              "caches": 587.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 11832.0,
+              "geometry_pass": 10824.0,
+              "caches": 519.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 10944.0,
+              "geometry_pass": 9880.0,
+              "caches": 517.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 48389.85416156131,
+          "render_qa_publish_seconds": 13971.330618831438,
+          "generation_with_persistence_seconds": 45145.097132883624,
+          "fetch_seconds": 16061.937831721336,
+          "planning_seconds": 290.1902150386242,
+          "durable_bytes_if_old_jpeg_sizes": 4092428365.4277525,
+          "render_seconds_per_geometry_pass": 0.28323326749171746,
+          "generation_seconds_per_accepted_if_old_qa": 0.9329455092415805
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 27856.0,
+              "geometry_pass": 25936.0,
+              "caches": 826.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 33280.0,
+              "geometry_pass": 31312.0,
+              "caches": 901.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 23664.0,
+              "geometry_pass": 21648.0,
+              "caches": 775.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 21888.0,
+              "geometry_pass": 19760.0,
+              "caches": 755.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 96779.70832312261,
+          "render_qa_publish_seconds": 24407.23127645703,
+          "generation_with_persistence_seconds": 71169.55636209084,
+          "fetch_seconds": 24299.530764053026,
+          "planning_seconds": 539.1113718843343,
+          "durable_bytes_if_old_jpeg_sizes": 8031573617.627874,
+          "render_seconds_per_geometry_pass": 0.24739733291900168,
+          "generation_seconds_per_accepted_if_old_qa": 0.7353768428860515
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1985,
+              "candidates": 26999.1015625,
+              "geometry_pass": 25138.1640625,
+              "caches": 1985.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24007.38159602076,
+          "render_qa_publish_seconds": 11077.53923928063,
+          "generation_with_persistence_seconds": 39560.24360976274,
+          "fetch_seconds": 14600.695192926414,
+          "planning_seconds": 193.08432179307374,
+          "durable_bytes_if_old_jpeg_sizes": 2948006490.472428,
+          "render_seconds_per_geometry_pass": 0.4406662002737747,
+          "generation_seconds_per_accepted_if_old_qa": 1.6478366643832527
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 993,
+              "candidates": 13506.3515625,
+              "geometry_pass": 12575.4140625,
+              "caches": 993.0
+            },
+            "B01": {
+              "groups": 804,
+              "candidates": 13065.0,
+              "geometry_pass": 12292.40625,
+              "caches": 804.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24023.56280264564,
+          "render_qa_publish_seconds": 9835.53550382807,
+          "generation_with_persistence_seconds": 35641.01641304805,
+          "fetch_seconds": 13225.40655881498,
+          "planning_seconds": 190.72441105753123,
+          "durable_bytes_if_old_jpeg_sizes": 2739174211.453429,
+          "render_seconds_per_geometry_pass": 0.39551256926543593,
+          "generation_seconds_per_accepted_if_old_qa": 1.4835857905773666
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 662,
+              "candidates": 9004.234375,
+              "geometry_pass": 8383.609375,
+              "caches": 662.0
+            },
+            "B01": {
+              "groups": 536,
+              "candidates": 8710.0,
+              "geometry_pass": 8194.9375,
+              "caches": 536.0
+            },
+            "B02": {
+              "groups": 757,
+              "candidates": 8746.8984375,
+              "geometry_pass": 8001.7265625,
+              "caches": 757.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24017.435097597092,
+          "render_qa_publish_seconds": 9961.868716697041,
+          "generation_with_persistence_seconds": 38003.647926387166,
+          "fetch_seconds": 14348.651818673605,
+          "planning_seconds": 199.26192492703169,
+          "durable_bytes_if_old_jpeg_sizes": 2610896920.9744725,
+          "render_seconds_per_geometry_pass": 0.4052790031822461,
+          "generation_seconds_per_accepted_if_old_qa": 1.582335822786896
+        }
+      ],
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 24194.927080780653,
+          "A1_max_cache_estimate": 2048.0,
+          "A2_max_cache_exact_for_base_curves": 1536.0,
+          "main_only_l4_hold_hours": [
+            120.16571404150112,
+            127.10580723661694
+          ],
+          "with_additions_l4_hold_hours": [
+            225.3233099033012,
+            242.00870322985884
+          ],
+          "generation_hours_separate_roots": 65.02999521233987,
+          "drive_dataset_bytes": 16059029823.465416,
+          "drive_increment_bytes": 384889391023.4654
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 48389.85416156131,
+          "A1_max_cache_estimate": 4096.0,
+          "A2_max_cache_exact_for_base_curves": 2171.0,
+          "main_only_l4_hold_hours": [
+            175.30447936964208,
+            186.8712253714982
+          ],
+          "with_additions_l4_hold_hours": [
+            313.0254974709002,
+            343.698669111041
+          ],
+          "generation_hours_separate_roots": 99.63921008831396,
+          "drive_dataset_bytes": 25295732791.264584,
+          "drive_increment_bytes": 446816145591.2646
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 96779.70832312261,
+          "A1_max_cache_estimate": 8192.0,
+          "A2_max_cache_exact_for_base_curves": 3257.0,
+          "main_only_l4_hold_hours": [
+            270.30083039157824,
+            291.22870190027726
+          ],
+          "with_additions_l4_hold_hours": [
+            439.909402858637,
+            494.1471181059283
+          ],
+          "generation_hours_separate_roots": 163.4768258694831,
+          "drive_dataset_bytes": 43615716271.04246,
+          "drive_increment_bytes": 491481154871.0425
+        }
+      ]
+    },
+    "wide125": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "minimum_integer_G_for_6000_from_128_mean_if_old_qa": 122,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 128,
+            "candidates": 1741.0,
+            "geometry_pass": 1672.0,
+            "caches": 128.0
+          },
+          "B01": {
+            "groups": 128,
+            "candidates": 2080.0,
+            "geometry_pass": 2016.0,
+            "caches": 128.0
+          },
+          "B02": {
+            "groups": 128,
+            "candidates": 1479.0,
+            "geometry_pass": 1439.0,
+            "caches": 128.0
+          },
+          "B03": {
+            "groups": 128,
+            "candidates": 1368.0,
+            "geometry_pass": 1317.0,
+            "caches": 128.0
+          }
+        },
+        "accepted_if_old_scene_qa_rates": 6323.100542066519,
+        "render_qa_publish_seconds": 2567.832765194732,
+        "generation_with_persistence_seconds": 10044.834177311039,
+        "fetch_seconds": 3755.350929504891,
+        "planning_seconds": 72.3842027986279,
+        "durable_bytes_if_old_jpeg_sizes": 660889222.2702216,
+        "render_seconds_per_geometry_pass": 0.39848429006746305,
+        "generation_seconds_per_accepted_if_old_qa": 1.5885931451642206
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 1741.0,
+              "geometry_pass": 1672.0,
+              "caches": 128.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 2080.0,
+              "geometry_pass": 2016.0,
+              "caches": 128.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 1479.0,
+              "geometry_pass": 1439.0,
+              "caches": 128.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 1368.0,
+              "geometry_pass": 1317.0,
+              "caches": 128.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 6323.100542066519,
+          "render_qa_publish_seconds": 2567.832765194732,
+          "generation_with_persistence_seconds": 10044.834177311039,
+          "fetch_seconds": 3755.350929504891,
+          "planning_seconds": 72.3842027986279,
+          "durable_bytes_if_old_jpeg_sizes": 660889222.2702216,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5885931451642206
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 256,
+              "candidates": 3482.0,
+              "geometry_pass": 3344.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 256,
+              "candidates": 4160.0,
+              "geometry_pass": 4032.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 256,
+              "candidates": 2958.0,
+              "geometry_pass": 2878.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 256,
+              "candidates": 2736.0,
+              "geometry_pass": 2634.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12646.201084133038,
+          "render_qa_publish_seconds": 5135.665530389464,
+          "generation_with_persistence_seconds": 19907.98099675173,
+          "fetch_seconds": 7510.6869138507645,
+          "planning_seconds": 117.43243053236571,
+          "durable_bytes_if_old_jpeg_sizes": 1321639101.9476209,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5742261936456092
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 512,
+              "candidates": 6964.0,
+              "geometry_pass": 6688.0,
+              "caches": 512.0
+            },
+            "B01": {
+              "groups": 512,
+              "candidates": 8320.0,
+              "geometry_pass": 8064.0,
+              "caches": 512.0
+            },
+            "B02": {
+              "groups": 512,
+              "candidates": 5916.0,
+              "geometry_pass": 5756.0,
+              "caches": 512.0
+            },
+            "B03": {
+              "groups": 512,
+              "candidates": 5472.0,
+              "geometry_pass": 5268.0,
+              "caches": 512.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25292.402168266075,
+          "render_qa_publish_seconds": 10271.331060778928,
+          "generation_with_persistence_seconds": 39634.27463563311,
+          "fetch_seconds": 15021.358882542512,
+          "planning_seconds": 207.52888599984132,
+          "durable_bytes_if_old_jpeg_sizes": 2643138861.302419,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5670427178863038
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 1024,
+              "candidates": 13928.0,
+              "geometry_pass": 13376.0,
+              "caches": 1024.0
+            },
+            "B01": {
+              "groups": 1024,
+              "candidates": 16640.0,
+              "geometry_pass": 16128.0,
+              "caches": 1024.0
+            },
+            "B02": {
+              "groups": 1024,
+              "candidates": 11832.0,
+              "geometry_pass": 11512.0,
+              "caches": 1024.0
+            },
+            "B03": {
+              "groups": 1024,
+              "candidates": 10944.0,
+              "geometry_pass": 10536.0,
+              "caches": 1024.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 50584.80433653215,
+          "render_qa_publish_seconds": 20542.662121557856,
+          "generation_with_persistence_seconds": 79086.86191339589,
+          "fetch_seconds": 30042.70281992601,
+          "planning_seconds": 387.72179693479256,
+          "durable_bytes_if_old_jpeg_sizes": 5286138380.012016,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5634509800066512
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 2048,
+              "candidates": 27856.0,
+              "geometry_pass": 26752.0,
+              "caches": 2048.0
+            },
+            "B01": {
+              "groups": 2048,
+              "candidates": 33280.0,
+              "geometry_pass": 32256.0,
+              "caches": 2048.0
+            },
+            "B02": {
+              "groups": 2048,
+              "candidates": 23664.0,
+              "geometry_pass": 23024.0,
+              "caches": 2048.0
+            },
+            "B03": {
+              "groups": 2048,
+              "candidates": 21888.0,
+              "geometry_pass": 21072.0,
+              "caches": 2048.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 101169.6086730643,
+          "render_qa_publish_seconds": 41085.32424311571,
+          "generation_with_persistence_seconds": 157992.0364689214,
+          "fetch_seconds": 60085.390694693,
+          "planning_seconds": 748.107618804695,
+          "durable_bytes_if_old_jpeg_sizes": 10572137417.431211,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5616551110668244
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 3482.0,
+              "geometry_pass": 3344.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 4160.0,
+              "geometry_pass": 4032.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 2958.0,
+              "geometry_pass": 2878.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 2736.0,
+              "geometry_pass": 2634.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12646.201084133038,
+          "render_qa_publish_seconds": 5135.665530389464,
+          "generation_with_persistence_seconds": 19901.244300246217,
+          "fetch_seconds": 7494.67528089161,
+          "planning_seconds": 103.49934740434166,
+          "durable_bytes_if_old_jpeg_sizes": 1172353139.2294788,
+          "render_seconds_per_geometry_pass": 0.39848429006746305,
+          "generation_seconds_per_accepted_if_old_qa": 1.5736934884908602
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 6964.0,
+              "geometry_pass": 6688.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 8320.0,
+              "geometry_pass": 8064.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 5916.0,
+              "geometry_pass": 5756.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 5472.0,
+              "geometry_pass": 5268.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25292.402168266075,
+          "render_qa_publish_seconds": 8602.574629103074,
+          "generation_with_persistence_seconds": 30679.72898936746,
+          "fetch_seconds": 11288.661328834638,
+          "planning_seconds": 165.72963661576918,
+          "durable_bytes_if_old_jpeg_sizes": 2193460514.4813266,
+          "render_seconds_per_geometry_pass": 0.3337435843072266,
+          "generation_seconds_per_accepted_if_old_qa": 1.213001785487215
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 13928.0,
+              "geometry_pass": 13376.0,
+              "caches": 548.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 16640.0,
+              "geometry_pass": 16128.0,
+              "caches": 587.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 11832.0,
+              "geometry_pass": 11512.0,
+              "caches": 519.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 10944.0,
+              "geometry_pass": 10536.0,
+              "caches": 517.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 50584.80433653215,
+          "render_qa_publish_seconds": 14281.626361498413,
+          "generation_with_persistence_seconds": 45461.79463762983,
+          "fetch_seconds": 16077.153399859308,
+          "planning_seconds": 290.1902150386242,
+          "durable_bytes_if_old_jpeg_sizes": 4234292143.0683556,
+          "render_seconds_per_geometry_pass": 0.27703341017804184,
+          "generation_seconds_per_accepted_if_old_qa": 0.8987243349836879
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 27856.0,
+              "geometry_pass": 26752.0,
+              "caches": 826.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 33280.0,
+              "geometry_pass": 32256.0,
+              "caches": 901.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 23664.0,
+              "geometry_pass": 23024.0,
+              "caches": 775.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 21888.0,
+              "geometry_pass": 21072.0,
+              "caches": 755.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 101169.6086730643,
+          "render_qa_publish_seconds": 25027.82276179098,
+          "generation_with_persistence_seconds": 71802.95137158324,
+          "fetch_seconds": 24329.96190032897,
+          "planning_seconds": 539.1113718843343,
+          "durable_bytes_if_old_jpeg_sizes": 8315301172.9090805,
+          "render_seconds_per_geometry_pass": 0.2427434702998039,
+          "generation_seconds_per_accepted_if_old_qa": 0.7097284679989108
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1924,
+              "candidates": 26169.40625,
+              "geometry_pass": 25132.25,
+              "caches": 1924.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24001.73356401384,
+          "render_qa_publish_seconds": 10844.07744147781,
+          "generation_with_persistence_seconds": 38459.90930976224,
+          "fetch_seconds": 14158.738661629737,
+          "planning_seconds": 187.55268644477917,
+          "durable_bytes_if_old_jpeg_sizes": 2920158945.945751,
+          "render_seconds_per_geometry_pass": 0.4314805654677878,
+          "generation_seconds_per_accepted_if_old_qa": 1.6023804783595197
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 962,
+              "candidates": 13084.703125,
+              "geometry_pass": 12566.125,
+              "caches": 962.0
+            },
+            "B01": {
+              "groups": 780,
+              "candidates": 12675.0,
+              "geometry_pass": 12285.0,
+              "caches": 780.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24007.45318427321,
+          "render_qa_publish_seconds": 9637.998244932905,
+          "generation_with_persistence_seconds": 34661.80190738246,
+          "fetch_seconds": 12826.75266640456,
+          "planning_seconds": 185.4402668533739,
+          "durable_bytes_if_old_jpeg_sizes": 2712494787.553231,
+          "render_seconds_per_geometry_pass": 0.3878294541970597,
+          "generation_seconds_per_accepted_if_old_qa": 1.443793377053785
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 642,
+              "candidates": 8732.203125,
+              "geometry_pass": 8386.125,
+              "caches": 642.0
+            },
+            "B01": {
+              "groups": 520,
+              "candidates": 8450.0,
+              "geometry_pass": 8190.0,
+              "caches": 520.0
+            },
+            "B02": {
+              "groups": 712,
+              "candidates": 8226.9375,
+              "geometry_pass": 8004.4375,
+              "caches": 712.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24017.722898512013,
+          "render_qa_publish_seconds": 9698.276648094477,
+          "generation_with_persistence_seconds": 36589.017608250346,
+          "fetch_seconds": 13761.921623787995,
+          "planning_seconds": 192.14871606988504,
+          "durable_bytes_if_old_jpeg_sizes": 2575132193.5718827,
+          "render_seconds_per_geometry_pass": 0.39455063927420203,
+          "generation_seconds_per_accepted_if_old_qa": 1.52341742649205
+        }
+      ],
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25292.402168266075,
+          "A1_max_cache_estimate": 2048.0,
+          "A2_max_cache_exact_for_base_curves": 1536.0,
+          "main_only_l4_hold_hours": [
+            118.94346682278766,
+            126.05699762023853
+          ],
+          "with_additions_l4_hold_hours": [
+            223.86979587344115,
+            241.09047216356802
+          ],
+          "generation_hours_separate_roots": 64.19736336039544,
+          "drive_dataset_bytes": 16199266766.301931,
+          "drive_increment_bytes": 385029627966.30194
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 50584.80433653215,
+          "A1_max_cache_estimate": 4096.0,
+          "A2_max_cache_exact_for_base_curves": 2171.0,
+          "main_only_l4_hold_hours": [
+            174.26662830253093,
+            186.22156625681356
+          ],
+          "with_additions_l4_hold_hours": [
+            311.77328577946247,
+            343.6260034334468
+          ],
+          "generation_hours_separate_roots": 98.98252129456186,
+          "drive_dataset_bytes": 25719697289.382305,
+          "drive_increment_bytes": 447240110089.3823
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 101169.6086730643,
+          "A1_max_cache_estimate": 8192.0,
+          "A2_max_cache_exact_for_base_curves": 3257.0,
+          "main_only_l4_hold_hours": [
+            269.63177162767175,
+            291.37734378898006
+          ],
+          "with_additions_l4_hold_hours": [
+            439.0513427506338,
+            495.54237576222573
+          ],
+          "generation_hours_separate_roots": 163.17202319211566,
+          "drive_dataset_bytes": 44607135879.7226,
+          "drive_increment_bytes": 492472574479.7226
+        }
+      ]
+    },
+    "hull5": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "minimum_integer_G_for_6000_from_128_mean_if_old_qa": 119,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 128,
+            "candidates": 1849.0,
+            "geometry_pass": 1739.0,
+            "caches": 128.0
+          },
+          "B01": {
+            "groups": 128,
+            "candidates": 2232.0,
+            "geometry_pass": 2119.0,
+            "caches": 128.0
+          },
+          "B02": {
+            "groups": 128,
+            "candidates": 1549.0,
+            "geometry_pass": 1432.0,
+            "caches": 128.0
+          },
+          "B03": {
+            "groups": 128,
+            "candidates": 1425.0,
+            "geometry_pass": 1294.0,
+            "caches": 128.0
+          }
+        },
+        "accepted_if_old_scene_qa_rates": 6457.752423615671,
+        "render_qa_publish_seconds": 2587.3657705784444,
+        "generation_with_persistence_seconds": 10065.070801280439,
+        "fetch_seconds": 3757.023274775016,
+        "planning_seconds": 74.19007576839563,
+        "durable_bytes_if_old_jpeg_sizes": 676481490.3595914,
+        "render_seconds_per_geometry_pass": 0.3929777901850614,
+        "generation_seconds_per_accepted_if_old_qa": 1.5586027678102041
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 1849.0,
+              "geometry_pass": 1739.0,
+              "caches": 128.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 2232.0,
+              "geometry_pass": 2119.0,
+              "caches": 128.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 1549.0,
+              "geometry_pass": 1432.0,
+              "caches": 128.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 1425.0,
+              "geometry_pass": 1294.0,
+              "caches": 128.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 6457.752423615671,
+          "render_qa_publish_seconds": 2587.3657705784444,
+          "generation_with_persistence_seconds": 10065.070801280439,
+          "fetch_seconds": 3757.023274775016,
+          "planning_seconds": 74.19007576839563,
+          "durable_bytes_if_old_jpeg_sizes": 676481490.3595914,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5586027678102041
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 256,
+              "candidates": 3698.0,
+              "geometry_pass": 3478.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 256,
+              "candidates": 4464.0,
+              "geometry_pass": 4238.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 256,
+              "candidates": 3098.0,
+              "geometry_pass": 2864.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 256,
+              "candidates": 2850.0,
+              "geometry_pass": 2588.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12915.504847231343,
+          "render_qa_publish_seconds": 5174.731541156889,
+          "generation_with_persistence_seconds": 19948.45424469053,
+          "fetch_seconds": 7514.031604391015,
+          "planning_seconds": 121.04417647190117,
+          "durable_bytes_if_old_jpeg_sizes": 1352823638.1263604,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5445353844582248
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 512,
+              "candidates": 7396.0,
+              "geometry_pass": 6956.0,
+              "caches": 512.0
+            },
+            "B01": {
+              "groups": 512,
+              "candidates": 8928.0,
+              "geometry_pass": 8476.0,
+              "caches": 512.0
+            },
+            "B02": {
+              "groups": 512,
+              "candidates": 6196.0,
+              "geometry_pass": 5728.0,
+              "caches": 512.0
+            },
+            "B03": {
+              "groups": 512,
+              "candidates": 5700.0,
+              "geometry_pass": 5176.0,
+              "caches": 512.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25831.009694462686,
+          "render_qa_publish_seconds": 10349.463082313778,
+          "generation_with_persistence_seconds": 39715.22113151071,
+          "fetch_seconds": 15028.048263623012,
+          "planning_seconds": 214.75237787891223,
+          "durable_bytes_if_old_jpeg_sizes": 2705507933.6598988,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5375016927822354
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 1024,
+              "candidates": 14792.0,
+              "geometry_pass": 13912.0,
+              "caches": 1024.0
+            },
+            "B01": {
+              "groups": 1024,
+              "candidates": 17856.0,
+              "geometry_pass": 16952.0,
+              "caches": 1024.0
+            },
+            "B02": {
+              "groups": 1024,
+              "candidates": 12392.0,
+              "geometry_pass": 11456.0,
+              "caches": 1024.0
+            },
+            "B03": {
+              "groups": 1024,
+              "candidates": 11400.0,
+              "geometry_pass": 10352.0,
+              "caches": 1024.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 51662.01938892537,
+          "render_qa_publish_seconds": 20698.926164627555,
+          "generation_with_persistence_seconds": 79248.75490515109,
+          "fetch_seconds": 30056.08158208701,
+          "planning_seconds": 402.1687806929344,
+          "durable_bytes_if_old_jpeg_sizes": 5410876524.7269745,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5339848469442408
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 2048,
+              "candidates": 29584.0,
+              "geometry_pass": 27824.0,
+              "caches": 2048.0
+            },
+            "B01": {
+              "groups": 2048,
+              "candidates": 35712.0,
+              "geometry_pass": 33904.0,
+              "caches": 2048.0
+            },
+            "B02": {
+              "groups": 2048,
+              "candidates": 24784.0,
+              "geometry_pass": 22912.0,
+              "caches": 2048.0
+            },
+            "B03": {
+              "groups": 2048,
+              "candidates": 22800.0,
+              "geometry_pass": 20704.0,
+              "caches": 2048.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 103324.03877785074,
+          "render_qa_publish_seconds": 41397.85232925511,
+          "generation_with_persistence_seconds": 158315.8224524318,
+          "fetch_seconds": 60112.148219015,
+          "planning_seconds": 777.0015863209787,
+          "durable_bytes_if_old_jpeg_sizes": 10821613706.861128,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5322264240252432
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 3698.0,
+              "geometry_pass": 3478.0,
+              "caches": 256.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 4464.0,
+              "geometry_pass": 4238.0,
+              "caches": 256.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 3098.0,
+              "geometry_pass": 2864.0,
+              "caches": 256.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 2850.0,
+              "geometry_pass": 2588.0,
+              "caches": 256.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12915.504847231343,
+          "render_qa_publish_seconds": 5174.731541156889,
+          "generation_with_persistence_seconds": 19941.717548185017,
+          "fetch_seconds": 7498.01997143186,
+          "planning_seconds": 107.11109334387712,
+          "durable_bytes_if_old_jpeg_sizes": 1203537675.4082184,
+          "render_seconds_per_geometry_pass": 0.3929777901850614,
+          "generation_seconds_per_accepted_if_old_qa": 1.5440137868447212
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 7396.0,
+              "geometry_pass": 6956.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 8928.0,
+              "geometry_pass": 8476.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 6196.0,
+              "geometry_pass": 5728.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 5700.0,
+              "geometry_pass": 5176.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25831.009694462686,
+          "render_qa_publish_seconds": 8680.706650637923,
+          "generation_with_persistence_seconds": 30760.675485245058,
+          "fetch_seconds": 11295.350709915137,
+          "planning_seconds": 172.9531284948401,
+          "durable_bytes_if_old_jpeg_sizes": 2255829586.838806,
+          "render_seconds_per_geometry_pass": 0.3296137093954254,
+          "generation_seconds_per_accepted_if_old_qa": 1.190842938355566
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 14792.0,
+              "geometry_pass": 13912.0,
+              "caches": 558.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 17856.0,
+              "geometry_pass": 16952.0,
+              "caches": 590.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 12392.0,
+              "geometry_pass": 11456.0,
+              "caches": 521.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 11400.0,
+              "geometry_pass": 10352.0,
+              "caches": 519.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 51662.01938892537,
+          "render_qa_publish_seconds": 14497.682062807562,
+          "generation_with_persistence_seconds": 45924.719219511666,
+          "fetch_seconds": 16212.874476731473,
+          "planning_seconds": 304.63719879676603,
+          "durable_bytes_if_old_jpeg_sizes": 4359090732.699981,
+          "render_seconds_per_geometry_pass": 0.27524457136253727,
+          "generation_seconds_per_accepted_if_old_qa": 0.8889454915375686
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 128,
+              "candidates": 29584.0,
+              "geometry_pass": 27824.0,
+              "caches": 855.0
+            },
+            "B01": {
+              "groups": 128,
+              "candidates": 35712.0,
+              "geometry_pass": 33904.0,
+              "caches": 929.0
+            },
+            "B02": {
+              "groups": 128,
+              "candidates": 24784.0,
+              "geometry_pass": 22912.0,
+              "caches": 783.0
+            },
+            "B03": {
+              "groups": 128,
+              "candidates": 22800.0,
+              "geometry_pass": 20704.0,
+              "caches": 764.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 103324.03877785074,
+          "render_qa_publish_seconds": 25591.881221646767,
+          "generation_with_persistence_seconds": 73428.37096173076,
+          "fetch_seconds": 24889.268323981927,
+          "planning_seconds": 568.0053394006179,
+          "durable_bytes_if_old_jpeg_sizes": 8565040575.505663,
+          "render_seconds_per_geometry_pass": 0.2429362965299093,
+          "generation_seconds_per_accepted_if_old_qa": 0.7106610603908311
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1850,
+              "candidates": 26723.828125,
+              "geometry_pass": 25133.984375,
+              "caches": 1850.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24003.38992214533,
+          "render_qa_publish_seconds": 10562.10446049139,
+          "generation_with_persistence_seconds": 37127.14810041273,
+          "fetch_seconds": 13624.56168010856,
+          "planning_seconds": 188.12604062189175,
+          "durable_bytes_if_old_jpeg_sizes": 2904716255.6696835,
+          "render_seconds_per_geometry_pass": 0.42023199755774454,
+          "generation_seconds_per_accepted_if_old_qa": 1.5467460313244976
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 925,
+              "candidates": 13361.9140625,
+              "geometry_pass": 12566.9921875,
+              "caches": 925.0
+            },
+            "B01": {
+              "groups": 742,
+              "candidates": 12938.625,
+              "geometry_pass": 12283.578125,
+              "caches": 742.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24006.891712134988,
+          "render_qa_publish_seconds": 9374.924070472507,
+          "generation_with_persistence_seconds": 33333.7210511869,
+          "fetch_seconds": 12285.312839364926,
+          "planning_seconds": 185.92301139533097,
+          "durable_bytes_if_old_jpeg_sizes": 2696430958.297746,
+          "render_seconds_per_geometry_pass": 0.3772518679684731,
+          "generation_seconds_per_accepted_if_old_qa": 1.3885063277199434
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 617,
+              "candidates": 8912.7578125,
+              "geometry_pass": 8382.5234375,
+              "caches": 617.0
+            },
+            "B01": {
+              "groups": 495,
+              "candidates": 8631.5625,
+              "geometry_pass": 8194.5703125,
+              "caches": 495.0
+            },
+            "B02": {
+              "groups": 716,
+              "candidates": 8664.71875,
+              "geometry_pass": 8010.25,
+              "caches": 716.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24024.56258002649,
+          "render_qa_publish_seconds": 9535.781667949912,
+          "generation_with_persistence_seconds": 35773.574361614155,
+          "fetch_seconds": 13430.446584916948,
+          "planning_seconds": 194.62951244614348,
+          "durable_bytes_if_old_jpeg_sizes": 2570948969.9264116,
+          "render_seconds_per_geometry_pass": 0.3878329340862578,
+          "generation_seconds_per_accepted_if_old_qa": 1.4890416523693772
+        }
+      ],
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25831.009694462686,
+          "A1_max_cache_estimate": 2048.0,
+          "A2_max_cache_exact_for_base_curves": 1536.0,
+          "main_only_l4_hold_hours": [
+            117.6735925683996,
+            124.87314490570893
+          ],
+          "with_additions_l4_hold_hours": [
+            222.31569921884505,
+            239.80041305040697
+          ],
+          "generation_hours_separate_roots": 63.31230892792967,
+          "drive_dataset_bytes": 16366276508.286716,
+          "drive_increment_bytes": 385196637708.28674
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 51662.01938892537,
+          "A1_max_cache_estimate": 4096.0,
+          "A2_max_cache_exact_for_base_curves": 2188.0,
+          "main_only_l4_hold_hours": [
+            173.21975720930584,
+            185.3661116327366
+          ],
+          "with_additions_l4_hold_hours": [
+            310.5590095062452,
+            342.99194948953357
+          ],
+          "generation_hours_separate_roots": 98.27905340130536,
+          "drive_dataset_bytes": 26136243765.713673,
+          "drive_increment_bytes": 447656656565.7137
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 103324.03877785074,
+          "A1_max_cache_estimate": 8192.0,
+          "A2_max_cache_exact_for_base_curves": 3331.0,
+          "main_only_l4_hold_hours": [
+            269.30519427240927,
+            291.45297276144504
+          ],
+          "with_additions_l4_hold_hours": [
+            438.9214969728307,
+            496.51972696017503
+          ],
+          "generation_hours_separate_roots": 163.02605349571763,
+          "drive_dataset_bytes": 45522898048.08047,
+          "drive_increment_bytes": 493388336648.08044
+        }
+      ]
+    },
+    "hull25_margin0": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "minimum_integer_G_for_6000_from_128_mean_if_old_qa": 90,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 96,
+            "candidates": 1784.0,
+            "geometry_pass": 1729.0,
+            "caches": 96.0
+          },
+          "B01": {
+            "groups": 96,
+            "candidates": 2105.0,
+            "geometry_pass": 2053.0,
+            "caches": 96.0
+          },
+          "B02": {
+            "groups": 96,
+            "candidates": 1414.0,
+            "geometry_pass": 1361.0,
+            "caches": 96.0
+          },
+          "B03": {
+            "groups": 96,
+            "candidates": 1326.0,
+            "geometry_pass": 1266.0,
+            "caches": 96.0
+          }
+        },
+        "accepted_if_old_scene_qa_rates": 6284.698001313507,
+        "render_qa_publish_seconds": 2145.7604059298405,
+        "generation_with_persistence_seconds": 7804.667036696579,
+        "fetch_seconds": 2830.1447427739836,
+        "planning_seconds": 68.71894481811816,
+        "durable_bytes_if_old_jpeg_sizes": 622761911.9594465,
+        "render_seconds_per_geometry_pass": 0.33480424495706673,
+        "generation_seconds_per_accepted_if_old_qa": 1.2418523587076733
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 1784.0,
+              "geometry_pass": 1729.0,
+              "caches": 96.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 2105.0,
+              "geometry_pass": 2053.0,
+              "caches": 96.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 1414.0,
+              "geometry_pass": 1361.0,
+              "caches": 96.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 1326.0,
+              "geometry_pass": 1266.0,
+              "caches": 96.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 6284.698001313507,
+          "render_qa_publish_seconds": 2145.7604059298405,
+          "generation_with_persistence_seconds": 7804.667036696579,
+          "fetch_seconds": 2830.1447427739836,
+          "planning_seconds": 68.71894481811816,
+          "durable_bytes_if_old_jpeg_sizes": 622761911.9594465,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.2418523587076733
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 192,
+              "candidates": 3568.0,
+              "geometry_pass": 3458.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 192,
+              "candidates": 4210.0,
+              "geometry_pass": 4106.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 192,
+              "candidates": 2828.0,
+              "geometry_pass": 2722.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 192,
+              "candidates": 2652.0,
+              "geometry_pass": 2532.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12569.396002627014,
+          "render_qa_publish_seconds": 4291.520811859681,
+          "generation_with_persistence_seconds": 15427.646715522813,
+          "fetch_seconds": 5660.274540388949,
+          "planning_seconds": 110.10191457134624,
+          "durable_bytes_if_old_jpeg_sizes": 1245384481.3260708,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.227397618175004
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 384,
+              "candidates": 7136.0,
+              "geometry_pass": 6916.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 384,
+              "candidates": 8420.0,
+              "geometry_pass": 8212.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 384,
+              "candidates": 5656.0,
+              "geometry_pass": 5444.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 384,
+              "candidates": 5304.0,
+              "geometry_pass": 5064.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25138.79200525403,
+          "render_qa_publish_seconds": 8583.041623719362,
+          "generation_with_persistence_seconds": 30673.60607317528,
+          "fetch_seconds": 11320.534135618882,
+          "planning_seconds": 192.86785407780238,
+          "durable_bytes_if_old_jpeg_sizes": 2490629620.059319,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.2201702479086693
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 768,
+              "candidates": 14272.0,
+              "geometry_pass": 13832.0,
+              "caches": 768.0
+            },
+            "B01": {
+              "groups": 768,
+              "candidates": 16840.0,
+              "geometry_pass": 16424.0,
+              "caches": 768.0
+            },
+            "B02": {
+              "groups": 768,
+              "candidates": 11312.0,
+              "geometry_pass": 10888.0,
+              "caches": 768.0
+            },
+            "B03": {
+              "groups": 768,
+              "candidates": 10608.0,
+              "geometry_pass": 10128.0,
+              "caches": 768.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 50277.58401050806,
+          "render_qa_publish_seconds": 17166.083247438724,
+          "generation_with_persistence_seconds": 61165.52478848021,
+          "fetch_seconds": 22641.05332607875,
+          "planning_seconds": 358.3997330907147,
+          "durable_bytes_if_old_jpeg_sizes": 4981119897.525816,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.2165565627755017
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 1536,
+              "candidates": 28544.0,
+              "geometry_pass": 27664.0,
+              "caches": 1536.0
+            },
+            "B01": {
+              "groups": 1536,
+              "candidates": 33680.0,
+              "geometry_pass": 32848.0,
+              "caches": 1536.0
+            },
+            "B02": {
+              "groups": 1536,
+              "candidates": 22624.0,
+              "geometry_pass": 21776.0,
+              "caches": 1536.0
+            },
+            "B03": {
+              "groups": 1536,
+              "candidates": 21216.0,
+              "geometry_pass": 20256.0,
+              "caches": 1536.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 100555.16802101611,
+          "render_qa_publish_seconds": 34332.16649487745,
+          "generation_with_persistence_seconds": 122149.36221909008,
+          "fetch_seconds": 45282.09170699848,
+          "planning_seconds": 689.4634911165392,
+          "durable_bytes_if_old_jpeg_sizes": 9962100452.458809,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.2147497202089181
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 3568.0,
+              "geometry_pass": 3458.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 4210.0,
+              "geometry_pass": 4106.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 2828.0,
+              "geometry_pass": 2722.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 2652.0,
+              "geometry_pass": 2532.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12569.396002627014,
+          "render_qa_publish_seconds": 4291.520811859681,
+          "generation_with_persistence_seconds": 15422.59419314368,
+          "fetch_seconds": 5648.265815669583,
+          "planning_seconds": 99.65210222532819,
+          "durable_bytes_if_old_jpeg_sizes": 1133420009.2874641,
+          "render_seconds_per_geometry_pass": 0.33480424495706673,
+          "generation_seconds_per_accepted_if_old_qa": 1.226995647994569
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 7136.0,
+              "geometry_pass": 6916.0,
+              "caches": 288.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 8420.0,
+              "geometry_pass": 8212.0,
+              "caches": 288.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 5656.0,
+              "geometry_pass": 5444.0,
+              "caches": 288.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 5304.0,
+              "geometry_pass": 5064.0,
+              "caches": 288.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25138.79200525403,
+          "render_qa_publish_seconds": 7331.4742999624705,
+          "generation_with_persistence_seconds": 23957.69683847604,
+          "fetch_seconds": 8521.010970337977,
+          "planning_seconds": 161.51841703974827,
+          "durable_bytes_if_old_jpeg_sizes": 2153370859.9434996,
+          "render_seconds_per_geometry_pass": 0.28598355047442936,
+          "generation_seconds_per_accepted_if_old_qa": 0.9530170277660462
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 14272.0,
+              "geometry_pass": 13832.0,
+              "caches": 450.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 16840.0,
+              "geometry_pass": 16424.0,
+              "caches": 461.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 11312.0,
+              "geometry_pass": 10888.0,
+              "caches": 407.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 10608.0,
+              "geometry_pass": 10128.0,
+              "caches": 400.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 50277.58401050806,
+          "render_qa_publish_seconds": 12775.919896251215,
+          "generation_with_persistence_seconds": 37525.942735034856,
+          "fetch_seconds": 12812.7867166362,
+          "planning_seconds": 285.2510466685884,
+          "durable_bytes_if_old_jpeg_sizes": 4192554333.4222364,
+          "render_seconds_per_geometry_pass": 0.24917927711521326,
+          "generation_seconds_per_accepted_if_old_qa": 0.7463752181726135
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 28544.0,
+              "geometry_pass": 27664.0,
+              "caches": 713.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 33680.0,
+              "geometry_pass": 32848.0,
+              "caches": 764.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 22624.0,
+              "geometry_pass": 21776.0,
+              "caches": 623.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 21216.0,
+              "geometry_pass": 20256.0,
+              "caches": 608.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 100555.16802101611,
+          "render_qa_publish_seconds": 23179.85560095148,
+          "generation_with_persistence_seconds": 62162.41607980574,
+          "fetch_seconds": 20374.420051057026,
+          "planning_seconds": 532.7163059262687,
+          "durable_bytes_if_old_jpeg_sizes": 8270416387.546378,
+          "render_seconds_per_geometry_pass": 0.22604789749718637,
+          "generation_seconds_per_accepted_if_old_qa": 0.6181921556415056
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1396,
+              "candidates": 25942.333333333332,
+              "geometry_pass": 25142.541666666664,
+              "caches": 1396.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24011.56228373702,
+          "render_qa_publish_seconds": 8831.871447959848,
+          "generation_with_persistence_seconds": 28948.05003275693,
+          "fetch_seconds": 10342.233882226745,
+          "planning_seconds": 172.1245953931009,
+          "durable_bytes_if_old_jpeg_sizes": 2762610990.594484,
+          "render_seconds_per_geometry_pass": 0.3512720219399662,
+          "generation_seconds_per_accepted_if_old_qa": 1.205587945119397
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 698,
+              "candidates": 12971.166666666666,
+              "geometry_pass": 12571.270833333332,
+              "caches": 698.0
+            },
+            "B01": {
+              "groups": 575,
+              "candidates": 12608.072916666666,
+              "geometry_pass": 12296.614583333332,
+              "caches": 575.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24023.71890744925,
+          "render_qa_publish_seconds": 7975.955024362168,
+          "generation_with_persistence_seconds": 26338.16840300221,
+          "fetch_seconds": 9436.793149768342,
+          "planning_seconds": 171.83524104521905,
+          "durable_bytes_if_old_jpeg_sizes": 2573295333.8952127,
+          "render_seconds_per_geometry_pass": 0.32073314199110053,
+          "generation_seconds_per_accepted_if_old_qa": 1.0963401838187217
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 466,
+              "candidates": 8659.833333333334,
+              "geometry_pass": 8392.854166666668,
+              "caches": 466.0
+            },
+            "B01": {
+              "groups": 383,
+              "candidates": 8398.072916666668,
+              "geometry_pass": 8190.614583333334,
+              "caches": 383.0
+            },
+            "B02": {
+              "groups": 565,
+              "candidates": 8321.979166666668,
+              "geometry_pass": 8010.052083333334,
+              "caches": 565.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24030.364607532734,
+          "render_qa_publish_seconds": 8145.042477788829,
+          "generation_with_persistence_seconds": 28502.08878552437,
+          "fetch_seconds": 10437.16027527117,
+          "planning_seconds": 179.4941969943272,
+          "durable_bytes_if_old_jpeg_sizes": 2439961833.7517858,
+          "render_seconds_per_geometry_pass": 0.3311865158708499,
+          "generation_seconds_per_accepted_if_old_qa": 1.186086405721447
+        }
+      ],
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25138.79200525403,
+          "A1_max_cache_estimate": 1536.0,
+          "A2_max_cache_exact_for_base_curves": 1152.0,
+          "main_only_l4_hold_hours": [
+            98.24863195380105,
+            105.33963519940733
+          ],
+          "with_additions_l4_hold_hours": [
+            194.89327949466022,
+            212.041666164479
+          ],
+          "generation_hours_separate_roots": 49.50856426235081,
+          "drive_dataset_bytes": 15421435040.817282,
+          "drive_increment_bytes": 384251796240.81726
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 50277.58401050806,
+          "A1_max_cache_estimate": 3072.0,
+          "A2_max_cache_exact_for_base_curves": 1718.0,
+          "main_only_l4_hold_hours": [
+            143.4169416455457,
+            155.3192935518035
+          ],
+          "with_additions_l4_hold_hours": [
+            267.0879529713502,
+            298.77820551648574
+          ],
+          "generation_hours_separate_roots": 77.10165267992701,
+          "drive_dataset_bytes": 24595109271.765335,
+          "drive_increment_bytes": 446115522071.7653
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 100555.16802101611,
+          "A1_max_cache_estimate": 6144.0,
+          "A2_max_cache_exact_for_base_curves": 2708.0,
+          "main_only_l4_hold_hours": [
+            220.9190045339583,
+            242.5518736548813
+          ],
+          "with_additions_l4_hold_hours": [
+            369.7589089558799,
+            425.9371843777218
+          ],
+          "generation_hours_separate_roots": 128.63886326213216,
+          "drive_dataset_bytes": 42827626111.770515,
+          "drive_increment_bytes": 490693064711.7705
+        }
+      ]
+    },
+    "hull25_margin0_wide125": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "minimum_integer_G_for_6000_from_128_mean_if_old_qa": 89,
+      "baseline_estimate": {
+        "name": "A1-0",
+        "per_scene": {
+          "B00": {
+            "groups": 96,
+            "candidates": 1784.0,
+            "geometry_pass": 1750.0,
+            "caches": 96.0
+          },
+          "B01": {
+            "groups": 96,
+            "candidates": 2105.0,
+            "geometry_pass": 2070.0,
+            "caches": 96.0
+          },
+          "B02": {
+            "groups": 96,
+            "candidates": 1414.0,
+            "geometry_pass": 1391.0,
+            "caches": 96.0
+          },
+          "B03": {
+            "groups": 96,
+            "candidates": 1326.0,
+            "geometry_pass": 1294.0,
+            "caches": 96.0
+          }
+        },
+        "accepted_if_old_scene_qa_rates": 6379.368095513493,
+        "render_qa_publish_seconds": 2159.154466764386,
+        "generation_with_persistence_seconds": 7818.33907983021,
+        "fetch_seconds": 2830.8054450244776,
+        "planning_seconds": 68.71894481811816,
+        "durable_bytes_if_old_jpeg_sizes": 628922031.4042692,
+        "render_seconds_per_geometry_pass": 0.3319222854364929,
+        "generation_seconds_per_accepted_if_old_qa": 1.2255663825589123
+      },
+      "conditions": [
+        {
+          "name": "A1-0",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 1784.0,
+              "geometry_pass": 1750.0,
+              "caches": 96.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 2105.0,
+              "geometry_pass": 2070.0,
+              "caches": 96.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 1414.0,
+              "geometry_pass": 1391.0,
+              "caches": 96.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 1326.0,
+              "geometry_pass": 1294.0,
+              "caches": 96.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 6379.368095513493,
+          "render_qa_publish_seconds": 2159.154466764386,
+          "generation_with_persistence_seconds": 7818.33907983021,
+          "fetch_seconds": 2830.8054450244776,
+          "planning_seconds": 68.71894481811816,
+          "durable_bytes_if_old_jpeg_sizes": 628922031.4042692,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.2255663825589123
+        },
+        {
+          "name": "A1-1",
+          "per_scene": {
+            "B00": {
+              "groups": 192,
+              "candidates": 3568.0,
+              "geometry_pass": 3500.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 192,
+              "candidates": 4210.0,
+              "geometry_pass": 4140.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 192,
+              "candidates": 2828.0,
+              "geometry_pass": 2782.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 192,
+              "candidates": 2652.0,
+              "geometry_pass": 2588.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12758.736191026986,
+          "render_qa_publish_seconds": 4318.308933528772,
+          "generation_with_persistence_seconds": 15454.990801790074,
+          "fetch_seconds": 5661.5959448899375,
+          "planning_seconds": 110.10191457134624,
+          "durable_bytes_if_old_jpeg_sizes": 1257704720.215716,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.2113261509912965
+        },
+        {
+          "name": "A1-2",
+          "per_scene": {
+            "B00": {
+              "groups": 384,
+              "candidates": 7136.0,
+              "geometry_pass": 7000.0,
+              "caches": 384.0
+            },
+            "B01": {
+              "groups": 384,
+              "candidates": 8420.0,
+              "geometry_pass": 8280.0,
+              "caches": 384.0
+            },
+            "B02": {
+              "groups": 384,
+              "candidates": 5656.0,
+              "geometry_pass": 5564.0,
+              "caches": 384.0
+            },
+            "B03": {
+              "groups": 384,
+              "candidates": 5304.0,
+              "geometry_pass": 5176.0,
+              "caches": 384.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25517.472382053973,
+          "render_qa_publish_seconds": 8636.617867057545,
+          "generation_with_persistence_seconds": 30728.2942457098,
+          "fetch_seconds": 11323.176944620858,
+          "planning_seconds": 192.86785407780238,
+          "durable_bytes_if_old_jpeg_sizes": 2515270097.8386097,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.2042060352074884
+        },
+        {
+          "name": "A1-3",
+          "per_scene": {
+            "B00": {
+              "groups": 768,
+              "candidates": 14272.0,
+              "geometry_pass": 14000.0,
+              "caches": 768.0
+            },
+            "B01": {
+              "groups": 768,
+              "candidates": 16840.0,
+              "geometry_pass": 16560.0,
+              "caches": 768.0
+            },
+            "B02": {
+              "groups": 768,
+              "candidates": 11312.0,
+              "geometry_pass": 11128.0,
+              "caches": 768.0
+            },
+            "B03": {
+              "groups": 768,
+              "candidates": 10608.0,
+              "geometry_pass": 10352.0,
+              "caches": 768.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 51034.944764107946,
+          "render_qa_publish_seconds": 17273.23573411509,
+          "generation_with_persistence_seconds": 61274.901133549254,
+          "fetch_seconds": 22646.3389440827,
+          "planning_seconds": 358.3997330907147,
+          "durable_bytes_if_old_jpeg_sizes": 5030400853.084396,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.2006459773155844
+        },
+        {
+          "name": "A1-4",
+          "per_scene": {
+            "B00": {
+              "groups": 1536,
+              "candidates": 28544.0,
+              "geometry_pass": 28000.0,
+              "caches": 1536.0
+            },
+            "B01": {
+              "groups": 1536,
+              "candidates": 33680.0,
+              "geometry_pass": 33120.0,
+              "caches": 1536.0
+            },
+            "B02": {
+              "groups": 1536,
+              "candidates": 22624.0,
+              "geometry_pass": 22256.0,
+              "caches": 1536.0
+            },
+            "B03": {
+              "groups": 1536,
+              "candidates": 21216.0,
+              "geometry_pass": 20704.0,
+              "caches": 1536.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 102069.88952821589,
+          "render_qa_publish_seconds": 34546.47146823018,
+          "generation_with_persistence_seconds": 122368.11490922816,
+          "fetch_seconds": 45292.662943006384,
+          "planning_seconds": 689.4634911165392,
+          "durable_bytes_if_old_jpeg_sizes": 10060662363.575972,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.1988659483696325
+        },
+        {
+          "name": "A2-1",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 3568.0,
+              "geometry_pass": 3500.0,
+              "caches": 192.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 4210.0,
+              "geometry_pass": 4140.0,
+              "caches": 192.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 2828.0,
+              "geometry_pass": 2782.0,
+              "caches": 192.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 2652.0,
+              "geometry_pass": 2588.0,
+              "caches": 192.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 12758.736191026986,
+          "render_qa_publish_seconds": 4318.308933528772,
+          "generation_with_persistence_seconds": 15449.93827941094,
+          "fetch_seconds": 5649.5872201705715,
+          "planning_seconds": 99.65210222532819,
+          "durable_bytes_if_old_jpeg_sizes": 1145740248.1771095,
+          "render_seconds_per_geometry_pass": 0.3319222854364929,
+          "generation_seconds_per_accepted_if_old_qa": 1.210930146065457
+        },
+        {
+          "name": "A2-2",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 7136.0,
+              "geometry_pass": 7000.0,
+              "caches": 288.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 8420.0,
+              "geometry_pass": 8280.0,
+              "caches": 288.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 5656.0,
+              "geometry_pass": 5564.0,
+              "caches": 288.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 5304.0,
+              "geometry_pass": 5176.0,
+              "caches": 288.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 25517.472382053973,
+          "render_qa_publish_seconds": 7385.050543300653,
+          "generation_with_persistence_seconds": 24012.38501101056,
+          "fetch_seconds": 8523.653779339953,
+          "planning_seconds": 161.51841703974827,
+          "durable_bytes_if_old_jpeg_sizes": 2178011337.72279,
+          "render_seconds_per_geometry_pass": 0.28382208083399896,
+          "generation_seconds_per_accepted_if_old_qa": 0.9410173802283835
+        },
+        {
+          "name": "A2-3",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 14272.0,
+              "geometry_pass": 14000.0,
+              "caches": 450.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 16840.0,
+              "geometry_pass": 16560.0,
+              "caches": 461.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 11312.0,
+              "geometry_pass": 11128.0,
+              "caches": 407.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 10608.0,
+              "geometry_pass": 10352.0,
+              "caches": 400.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 51034.944764107946,
+          "render_qa_publish_seconds": 12883.07238292758,
+          "generation_with_persistence_seconds": 37635.3190801039,
+          "fetch_seconds": 12818.072334640152,
+          "planning_seconds": 285.2510466685884,
+          "durable_bytes_if_old_jpeg_sizes": 4241835288.9808173,
+          "render_seconds_per_geometry_pass": 0.24756096047132167,
+          "generation_seconds_per_accepted_if_old_qa": 0.7374421438890675
+        },
+        {
+          "name": "A2-4",
+          "per_scene": {
+            "B00": {
+              "groups": 96,
+              "candidates": 28544.0,
+              "geometry_pass": 28000.0,
+              "caches": 713.0
+            },
+            "B01": {
+              "groups": 96,
+              "candidates": 33680.0,
+              "geometry_pass": 33120.0,
+              "caches": 764.0
+            },
+            "B02": {
+              "groups": 96,
+              "candidates": 22624.0,
+              "geometry_pass": 22256.0,
+              "caches": 623.0
+            },
+            "B03": {
+              "groups": 96,
+              "candidates": 21216.0,
+              "geometry_pass": 20704.0,
+              "caches": 608.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 102069.88952821589,
+          "render_qa_publish_seconds": 23394.16057430421,
+          "generation_with_persistence_seconds": 62381.168769943826,
+          "fetch_seconds": 20384.991287064935,
+          "planning_seconds": 532.7163059262687,
+          "durable_bytes_if_old_jpeg_sizes": 8368978298.66354,
+          "render_seconds_per_geometry_pass": 0.22477095094450625,
+          "generation_seconds_per_accepted_if_old_qa": 0.6111613234645401
+        },
+        {
+          "name": "B-1",
+          "per_scene": {
+            "B00": {
+              "groups": 1379,
+              "candidates": 25626.416666666668,
+              "geometry_pass": 25138.020833333336,
+              "caches": 1379.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24007.244809688582,
+          "render_qa_publish_seconds": 8766.407527363384,
+          "generation_with_persistence_seconds": 28640.94496669379,
+          "fetch_seconds": 10218.937971852258,
+          "planning_seconds": 170.1877994121785,
+          "durable_bytes_if_old_jpeg_sizes": 2753659607.0080357,
+          "render_seconds_per_geometry_pass": 0.3487310152810048,
+          "generation_seconds_per_accepted_if_old_qa": 1.1930125757344379
+        },
+        {
+          "name": "B-2",
+          "per_scene": {
+            "B00": {
+              "groups": 690,
+              "candidates": 12822.5,
+              "geometry_pass": 12578.125,
+              "caches": 690.0
+            },
+            "B01": {
+              "groups": 570,
+              "candidates": 12498.4375,
+              "geometry_pass": 12290.625,
+              "caches": 570.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24024.410913132124,
+          "render_qa_publish_seconds": 7929.527860473081,
+          "generation_with_persistence_seconds": 26106.967064329907,
+          "fetch_seconds": 9342.532357638675,
+          "planning_seconds": 170.27614642017775,
+          "durable_bytes_if_old_jpeg_sizes": 2566676868.8901014,
+          "render_seconds_per_geometry_pass": 0.3188551037134187,
+          "generation_seconds_per_accepted_if_old_qa": 1.0866850037958444
+        },
+        {
+          "name": "B-3",
+          "per_scene": {
+            "B00": {
+              "groups": 460,
+              "candidates": 8548.333333333334,
+              "geometry_pass": 8385.416666666668,
+              "caches": 460.0
+            },
+            "B01": {
+              "groups": 380,
+              "candidates": 8332.291666666668,
+              "geometry_pass": 8193.75,
+              "caches": 380.0
+            },
+            "B02": {
+              "groups": 553,
+              "candidates": 8145.229166666667,
+              "geometry_pass": 8012.739583333334,
+              "caches": 553.0
+            }
+          },
+          "accepted_if_old_scene_qa_rates": 24029.01352542142,
+          "render_qa_publish_seconds": 8076.035735260209,
+          "generation_with_persistence_seconds": 28134.61289009101,
+          "fetch_seconds": 10284.921853641596,
+          "planning_seconds": 177.2706932567756,
+          "durable_bytes_if_old_jpeg_sizes": 2429540961.544728,
+          "render_seconds_per_geometry_pass": 0.3284021845707959,
+          "generation_seconds_per_accepted_if_old_qa": 1.170860087965163
+        }
+      ],
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25517.472382053973,
+          "A1_max_cache_estimate": 1536.0,
+          "A2_max_cache_exact_for_base_curves": 1152.0,
+          "main_only_l4_hold_hours": [
+            97.94447330695314,
+            105.09543961147699
+          ],
+          "with_additions_l4_hold_hours": [
+            194.52557838670515,
+            211.858549987615
+          ],
+          "generation_hours_separate_roots": 49.304740614079925,
+          "drive_dataset_bytes": 15475525872.801361,
+          "drive_increment_bytes": 384305887072.8014
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 51034.944764107946,
+          "A1_max_cache_estimate": 3072.0,
+          "A2_max_cache_exact_for_base_curves": 1718.0,
+          "main_only_l4_hold_hours": [
+            143.17648408929392,
+            155.21289937723685
+          ],
+          "with_additions_l4_hold_hours": [
+            266.7898258628846,
+            298.8869643074139
+          ],
+          "generation_hours_separate_roots": 76.95859366780562,
+          "drive_dataset_bytes": 24747762014.866573,
+          "drive_increment_bytes": 446268174814.8666
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 102069.88952821589,
+          "A1_max_cache_estimate": 6144.0,
+          "A2_max_cache_exact_for_base_curves": 2708.0,
+          "main_only_l4_hold_hours": [
+            220.80594915889873,
+            242.72108230704202
+          ],
+          "with_additions_l4_hold_hours": [
+            369.59699339194646,
+            426.55265632702003
+          ],
+          "generation_hours_separate_roots": 128.61733352230974,
+          "drive_dataset_bytes": 43177402677.10609,
+          "drive_increment_bytes": 491042841277.1061
+        }
+      ]
+    }
+  },
+  "assumptions": [
+    "No new rendered acceptance/JPEG bytes measured. Apply old per-scene QA rates and archive sizes as sensitivity assumptions only.",
+    "Reuse previous render/cache/Drive control coefficients, compile costs, 10k common updates, seeds 43/44 and three independent 40k runs; none are newly adopted.",
+    "Current/wide125/hull5 use G128; 25% hull variants propose G96 to complete one stratum cycle. Base-prefix C/R/N0 are exact CPU plans; later A1 prefixes and denser geometric rates are extrapolations.",
+    "The row labels 24k/48k/96k retain the previous multiplier/condition graph. Actual expected endpoints are shown separately; no exact-size quota or refill.",
+    "Ranges are fixed versus linear preflight scenarios, not confidence limits. Larger-hull QA and high-K Drive costs can change these estimates.",
+    "No test accuracy/framing is used. The previous total evaluation-runtime allowance is held fixed for cost accounting only."
+  ]
+}

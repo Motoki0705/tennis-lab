@@ -1,0 +1,14 @@
+{
+  "schema": "court_d2_cpu_verification_v1",
+  "framing_boundaries": "passed",
+  "known_camera_fixture": "passed",
+  "stratified_weighting": "passed",
+  "budget_201_rejected": true,
+  "selection_order_invariance": "passed",
+  "reconstructed_scenarios": 16,
+  "reconstructed_frames": 192,
+  "all_selected_camera_record_hashes_match": true,
+  "original_bundle_file_checks": 24,
+  "gpu_used": false,
+  "test_geometry_processed": false
+}

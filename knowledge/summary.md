@@ -1,7 +1,7 @@
-<!-- knowledge-review: 58b167aab0fc50b8a7f2cfb21e5e2a8660cde72dd8ce9be67abf9e2ac8c4057c on 2026-10-24 -->
+<!-- knowledge-review: 9743c3c2239201975738e623da24f3542be29ed9469b04df3587ef128f09f93a on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（Courtの4シーンL4試走・batch8容量・写り方と費用診断を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-24（CourtのD2支持範囲のCPU比較と、L4追加比較の停止点を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -32,7 +32,10 @@ HTTP件数は未測定で、画像数だけでなくcache充填率を費用モ�
 採択内の穴率0は鮮明さを保証せず、低視点のぼけ・B03の暗さが残る。
 合成の全面8/1,102に対し実画像valは4,400/4,468で、全面支持範囲の差から本番前のD2再検討を提案する。
 32更新の分類別評価は参考値に留め、D2の因果効果・実画像精度スケーリングや規模上限は未確定。
-全成果をDrive保存して担当Colabを停止した。次は人間が予算とD2・max/U・追加比較を選び、best-valの保持設定不具合を修正して本実験へ進む。
+全成果をDrive保存して担当Colabを停止した。
+[D2のCPU再比較](nodes/synthetic_data_generation/000031-run-court-d2-support-cpu-20261024.md)で前回の分布を再現し、低く近いcamera配置が全面不足の主因と確認した。
+25% hull拡張・margin0・HFOV92.5/110/125°は全4sceneで全面を持つが、幾何通過の全面率9.38%とvalの98.48%との差、hull外描画の品質不確実性が残る。
+比較scriptが未pushのためL4は開始せず、192枚の比較を凍結した。次は親のpush後にQA・画質を確認し、D2と予算・max/U・追加比較を人間が決める。best-val保持の修正は別子の担当。
 
 ## 2026-10-22のCourt資産Colab照合
 

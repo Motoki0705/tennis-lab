@@ -1,0 +1,71 @@
+{
+  "schema": "court_d2_support_validation_v1",
+  "application_commit": "d0330d0683b2f69d34407ec303c5c79dda13ddaa",
+  "commands": [
+    {
+      "command": "RCLONE_CONFIG=<explicit config path> .venv/bin/python -m src.synthetic_data_generation.scripts.generate_court_scale fetch --output-root tmp/court-d2-support-local/pilot-fetched --request-sha256 0e4a507a63382d2df1ab40e1294d943317665f219d2e631b32a8888ab2ea0350 --drive-path data/synthetic_data_generation/court-scale/pilot-l4-20261023-dc5c253",
+      "exit_code": 0,
+      "result": "strict fetch verified original dataset; saved file hash unchanged"
+    },
+    {
+      "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/synthetic_data_generation/dataset/court/test_scale_planning.py tests/unit/synthetic_data_generation/dataset/court/test_scale_production.py tests/unit/tasks/court_detection/scaling/test_real_split.py -n 4 -q",
+      "exit_code": 0,
+      "result": "40 passed in 33.48s"
+    },
+    {
+      "command": "bash knowledge/runs/run-court-d2-support-cpu-20261024/repro.sh /home/kamimura/projects/tennis-lab/data/synthetic_data_generation/scenes /home/kamimura/projects/tennis-lab/data/court_detection/tennis_court_detector-v1 tmp/court-d2-support-local/pilot-fetched/81a43b5070bf293b2d196677bf17555ec4d61ec2e9f7de6cd4be22b5b27c6671.dataset.json",
+      "exit_code": 0,
+      "result": "All diagnostic invariants passed; selection and conditional costs match committed evidence byte for byte; 192 reconstructed camera records match; output tmp/court-d2-repro.l5Oil4"
+    },
+    {
+      "command": ".venv/bin/ruff check knowledge/runs/run-court-d2-support-cpu-20261024",
+      "exit_code": 0,
+      "result": "All checks passed"
+    },
+    {
+      "command": ".venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-d2-support-cpu-20261024/*.py",
+      "exit_code": 0,
+      "result": "Success: no issues found in 9 source files"
+    },
+    {
+      "command": "bash -n knowledge/runs/run-court-d2-support-cpu-20261024/repro.sh",
+      "exit_code": 0,
+      "result": "passed; script exports no-bytecode mode for future reproductions"
+    },
+    {
+      "command": "git diff --exit-code HEAD -- src tests .agents",
+      "exit_code": 0,
+      "result": "No application, QA, test, shared-agent code changes"
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed",
+      "exit_code": 0,
+      "result": "Summary narrative reviewed and marker updated"
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main",
+      "exit_code": 0,
+      "result": "598 nodes, 0 errors, 218 advisory warnings; none for this new node"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "passed"
+    }
+  ],
+  "historical_stage2_validation": "../run-court-scale-pilot-l4-20261023/validation.json",
+  "visual_review": [
+    "evidence/support.png",
+    "evidence/val-examples.png",
+    "../run-court-scale-pilot-l4-20261023/review/B01-cases.png",
+    "../run-court-scale-pilot-l4-20261023/review/B03-cases.png"
+  ],
+  "visual_findings": "Baseline/estimated-val position support and scene imbalance visible; original B01 blur and B03 darkness remain. No newly rendered images reviewed.",
+  "gpu_validation": "not executed; new code unpushed, explicit user stop condition",
+  "failed_development_attempts": [
+    "Incorrect registry filename, then wrong prior-report count field; corrected before successful diagnostic run.",
+    "Semantic projection-null candidates required a separate physical-KP framing diagnostic; rejection status retained.",
+    "NumPy scalar JSON encoding and fresh output directory errors corrected; preserved logs under tmp/court-d2-support-local."
+  ],
+  "model_and_recipe_changes": false
+}
