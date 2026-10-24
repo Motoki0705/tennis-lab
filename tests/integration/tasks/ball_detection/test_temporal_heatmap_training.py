@@ -14,6 +14,7 @@ from src.tasks.ball_detection.checkpoints.temporal_heatmap import initialize_fin
 from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.evaluation.temporal_heatmap import (
+    LEGACY_EVALUATION_SCHEMA,
     evaluate_temporal_heatmap,
 )
 from src.tasks.ball_detection.model_io.mdd_heatmap import restore_heatmap_model
@@ -122,6 +123,12 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
         split="test", runtime=CoordinateRuntime(cpu_threads=1), device=torch.device("cpu"),
         artifact_sha256=dual_sha256(artifact), distance_px=20., calibration_report=val, output=post / "test.json")
     assert report["calibration"] == val["calibration"]
+    legacy = {k: v for k, v in val.items() if k not in {"provenance", "evaluation_code"}}
+    legacy["schema"] = LEGACY_EVALUATION_SCHEMA
+    legacy_result = evaluate_temporal_heatmap(restore_heatmap_model(saved["model_artifact"]), prepared / "evaluation_T64.json",
+        split="test", runtime=CoordinateRuntime(cpu_threads=1), device=torch.device("cpu"),
+        artifact_sha256=dual_sha256(artifact), distance_px=20., calibration_report=legacy)
+    assert legacy_result["calibration"] == val["calibration"]
     expected = json.loads((prepared / "evaluation_T32.json").read_text())["summaries"]["test"]
     assert all(expected[key] == value for key, value in report["identities"].items())
     metrics = report["metrics"]
@@ -135,7 +142,8 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
     video = tmp_path / "comparison.mp4"
     rendered = render_temporal_heatmap_comparison(
         [pre / "validation-update-00000003.json", post / "validation-update-00000003.json"],
-        clip_id="tracknet/val/dense", start=0, stop=8, output=video, panel_width=160)
+        clip_id="tracknet/val/dense", start=0, stop=8, output=video, panel_width=160,
+        snapshot_root=Path(val["snapshot"]["directory"]))
     assert rendered["frames"] == 8 and rendered["identities"] == val["identities"]
     capture = cv2.VideoCapture(str(video))
     assert capture.isOpened() and int(capture.get(cv2.CAP_PROP_FRAME_COUNT)) == 8
@@ -158,7 +166,8 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
     with pytest.raises(ValueError, match="RGB shard changed"):
         render_temporal_heatmap_comparison(
             [pre / "validation-update-00000003.json", post / "validation-update-00000003.json"],
-            clip_id="tracknet/val/dense", start=0, stop=8, output=tmp_path / "changed-rgb.mp4")
+            clip_id="tracknet/val/dense", start=0, stop=8, output=tmp_path / "changed-rgb.mp4",
+            snapshot_root=Path(val["snapshot"]["directory"]))
 
 
 def test_both_architectures_share_pack_draws_augmentation_and_input_budget(prepared: Path, tmp_path: Path) -> None:
@@ -175,10 +184,10 @@ def test_both_architectures_share_pack_draws_augmentation_and_input_budget(prepa
         assert first["valid_teachers"] == sum(first["teachers_by_kind"][k] for k in ("observed", "reviewed_empty", "out_of_frame"))
 
 
-@pytest.mark.parametrize("architecture", ["dpt", "hybrid"])
-def test_resume_matches_uninterrupted_weights_optimizer_schedule_rng_and_pack_position(prepared: Path, tmp_path: Path, architecture: str) -> None:
+def assert_resume_roundtrip(
+    prepared: Path, tmp_path: Path, architecture: str, runtime: CoordinateRuntime,
+) -> None:
     uninterrupted, interrupted = tmp_path / "continuous", tmp_path / "resumed"
-    runtime = CoordinateRuntime(cpu_threads=1, num_workers=int(architecture == "hybrid"), prefetch_factor=2)
     train(prepared, uninterrupted, architecture, runtime=runtime)
     stopped = train(prepared, interrupted, architecture, runtime=runtime, stop_after_update=1)
     assert stopped["updates_completed"] == 1 and not stopped["complete"]
@@ -201,6 +210,18 @@ def test_resume_matches_uninterrupted_weights_optimizer_schedule_rng_and_pack_po
         train(prepared, interrupted, architecture, runtime=runtime, resume=interrupted / "checkpoint-update-00000003.pt")
 
 
+@pytest.mark.parametrize("architecture", ["dpt", "hybrid"])
+def test_resume_matches_uninterrupted_weights_optimizer_schedule_rng_and_pack_position(
+    prepared: Path, tmp_path: Path, architecture: str,
+) -> None:
+    assert_resume_roundtrip(prepared, tmp_path, architecture,
+        CoordinateRuntime(cpu_threads=1, num_workers=int(architecture == "hybrid"), prefetch_factor=2))
+
+
+def test_hybrid_resume_with_inline_loading_matches_continuous_training(prepared: Path, tmp_path: Path) -> None:
+    assert_resume_roundtrip(prepared, tmp_path, "hybrid", CoordinateRuntime(cpu_threads=1, num_workers=0, prefetch_factor=2))
+
+
 def test_pretraining_cannot_change_t_and_finetuning_needs_explicit_parent(prepared: Path, tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="T=32"):
         train(prepared, tmp_path / "bad", "dpt", frames=64, phase="pretrain")
@@ -217,3 +238,18 @@ def test_train_and_validation_must_pin_the_same_rgb_contents(prepared: Path, tmp
     with pytest.raises(ValueError, match="RGB shard identities differ"):
         train(prepared, tmp_path / "bad-rgb", "dpt", evaluation_manifest=changed)
     assert not (tmp_path / "bad-rgb").exists()
+
+
+def test_resume_rejects_a_changed_source_identity(
+    prepared: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tasks.ball_detection.training.temporal_heatmap import runner
+
+    output = tmp_path / "source-change"
+    train(prepared, output, "dpt", stop_after_update=1)
+    identity = runner.source_identity()
+    identity["source_sha256"] = {**identity["source_sha256"], "changed.py": "0" * 64}
+    monkeypatch.setattr(runner, "source_identity", lambda: identity)
+    with pytest.raises(ValueError, match="Resume code or torch version changed"):
+        train(prepared, output, "dpt", resume=output / "checkpoint-update-00000001.pt")
+    assert checkpoint(output)["updates_completed"] == 1

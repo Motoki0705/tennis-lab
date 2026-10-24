@@ -11,7 +11,10 @@ import cv2
 
 from src.tasks.ball_detection.checkpoints.temporal_heatmap import save_json
 from src.tasks.ball_detection.data.store import BallFrameStore
-from src.tasks.ball_detection.evaluation.temporal_heatmap import EVALUATION_SCHEMA
+from src.tasks.ball_detection.evaluation.temporal_heatmap import (
+    EVALUATION_SCHEMA,
+    LEGACY_EVALUATION_SCHEMA,
+)
 from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import present
 from src.tasks.ball_detection.visualization.rendering.clip_renderer import (
     DrawStyle,
@@ -23,7 +26,8 @@ from src.utils.video.writer import VideoWriter
 
 
 def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str, start: int, stop: int,
-                                       output: Path, panel_width: int = 480) -> dict[str, Any]:
+                                       output: Path, panel_width: int = 480,
+                                       snapshot_root: Path | None = None) -> dict[str, Any]:
     if len(evaluations) < 2 or not 0 <= start < stop or panel_width < 2 or panel_width % 2:
         raise ValueError("Specify at least two evaluations, a nonempty clip range and an even panel width")
     if output.suffix != ".mp4" or output.exists() or output.with_suffix(".json").exists():
@@ -31,12 +35,16 @@ def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str,
     reports = [json.loads(path.read_text()) for path in evaluations]
     first = reports[0]
     for report in reports:
-        if (report["schema"] != EVALUATION_SCHEMA or report["split"] != first["split"]
-                or report["identities"] != first["identities"] or report["snapshot"] != first["snapshot"]
+        if (report["schema"] not in {EVALUATION_SCHEMA, LEGACY_EVALUATION_SCHEMA} or report["split"] != first["split"]
+                or report["identities"] != first["identities"] or report["snapshot"]["hashes"] != first["snapshot"]["hashes"]
                 or report["rgb_shards_sha256"] != first["rgb_shards_sha256"]
                 or report["image_decode"] != first["image_decode"] or report["runtime"]["precision"] != first["runtime"]["precision"]):
             raise ValueError("Compare evaluations on identical frames, teachers, snapshot, decoder and precision")
-    store_root = Path(first["snapshot"]["directory"])
+    if any(r["schema"] == EVALUATION_SCHEMA for r in reports) and snapshot_root is None:
+        raise ValueError("Evaluation v2 comparison requires an explicit snapshot root")
+    if snapshot_root is not None and not snapshot_root.is_absolute():
+        raise ValueError("Comparison snapshot root must be absolute")
+    store_root = snapshot_root if snapshot_root is not None else Path(first["snapshot"]["directory"])
     if any(dual_sha256(store_root / name) != digest for name, digest in first["snapshot"]["hashes"].items()):
         raise ValueError("Comparison snapshot identity changed")
     store = BallFrameStore(store_root)
@@ -83,6 +91,7 @@ def render_temporal_heatmap_comparison(evaluations: list[Path], *, clip_id: str,
     result = dict(schema="ball_temporal_heatmap_comparison.v1", clip_id=clip_id, start=start, stop=stop,
                   frames=stop - start, fps=clip.fps, evaluations=[dict(file=str(path), sha256=dual_sha256(path)) for path in evaluations],
                   identities=first["identities"], output_sha256=dual_sha256(output),
+                  snapshot=dict(directory=str(store_root), hashes=first["snapshot"]["hashes"]),
                   decoding="raw_heatmap_coordinates_orange; presence_from_saved_validation_threshold")
     save_json(output.with_suffix(".json"), result)
     return result

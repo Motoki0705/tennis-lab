@@ -1,0 +1,481 @@
+--- a/src/tasks/ball_detection/evaluation/temporal_heatmap.py
++++ b/src/tasks/ball_detection/evaluation/temporal_heatmap.py
+@@ -12,9 +12,15 @@
+ 
+ import torch
+ 
++from src.tasks.ball_detection.checkpoints.provenance import source_identity
+ from src.tasks.ball_detection.checkpoints.temporal_heatmap import json_bytes, save_json
+ from src.tasks.ball_detection.data.windows.all_frames import LABEL_KINDS
+ from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
++from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import (
++    SeparateTestInputs,
++    digest,
++    validate_separate_test,
++)
+ from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import (
+     CALIBRATION_METHOD,
+     calibrate,
+@@ -39,7 +45,46 @@
+ from src.utils.checksum import dual_sha256
+ from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
+ 
+-EVALUATION_SCHEMA = "ball_temporal_heatmap_evaluation.v1"
++LEGACY_EVALUATION_SCHEMA = "ball_temporal_heatmap_evaluation.v1"
++EVALUATION_SCHEMA = "ball_temporal_heatmap_evaluation.v2"
++DECODING = "global_argmax_log_parabolic_subpixel; max_native_sigmoid_score"
++
++
++def validate_calibration(
++    report: dict[str, Any], validation: dict[str, Any], *, manifest_sha256: str,
++    model: HeatmapModel, artifact_sha256: str, runtime: CoordinateRuntime,
++) -> dict[str, Any]:
++    summary = validation["summaries"]["val"]
++    counts = summary["counts"]
++    negatives = counts["reviewed_empty"] + counts["out_of_frame"]
++    if not counts["observed"] or not negatives:
++        raise ValueError("Validation needs both observed and confirmed-negative frames for calibration")
++    calibration: dict[str, Any] = report["calibration"]
++    identities = {k: summary[k] for k in ("target_identity_sha256", "teacher_identity_sha256", "scored_frame_sha256")}
++    if (report.get("schema") not in {EVALUATION_SCHEMA, LEGACY_EVALUATION_SCHEMA} or report.get("split") != "val"
++            or report["artifact_sha256"] != artifact_sha256 or report["manifest_sha256"] != manifest_sha256
++            or report["snapshot"] != validation["ball_store"] or report["identities"] != identities
++            or report["rgb_shards_sha256"] != {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in validation["clips"]}
++            or digest(report["model_config"]) != digest(asdict(model.config)) or report["model_kind"] != heatmap_model_kind(model.config)
++            or report["decoding"] != DECODING or report["image_decode"] != jpeg_decoder_contract(runtime.jpeg_decoder)
++            or report["runtime"]["precision"] != runtime.precision
++            or calibration["split"] != "val" or calibration["method"] != CALIBRATION_METHOD
++            or calibration["artifact_sha256"] != artifact_sha256 or calibration["manifest_sha256"] != manifest_sha256
++            or calibration["scored_frame_sha256"] != summary["scored_frame_sha256"]
++            or calibration["teacher_identity_sha256"] != summary["teacher_identity_sha256"]
++            or calibration["observed"] != counts["observed"] or calibration["negatives"] != negatives):
++        raise ValueError("Validation calibration does not match this artifact, manifest, T, target set or decoding runtime")
++    for total, a, b in ((counts["observed"], "true_positive", "false_negative"),
++                        (negatives, "true_negative", "false_positive")):
++        if (any(type(calibration[k]) is not int or calibration[k] < 0 for k in (a, b))
++                or calibration[a] + calibration[b] != total):
++            raise ValueError("Invalid validation calibration confusion counts")
++    mode, threshold = calibration["mode"], calibration["threshold"]
++    if (mode not in {"threshold", "all_present", "all_absent"}
++            or mode == "threshold" and (not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 <= threshold <= 1)
++            or mode != "threshold" and threshold is not None):
++        raise ValueError("Invalid saved validation threshold/mode")
++    return calibration
+ 
+ 
+ def collect_predictions(model: HeatmapModel, dataset: FrozenBallWindowDataset, *, runtime: CoordinateRuntime,
+@@ -115,42 +160,51 @@
+ def evaluate_temporal_heatmap(
+     model: HeatmapModel, manifest: Path, *, split: str, runtime: CoordinateRuntime, device: torch.device,
+     artifact_sha256: str, distance_px: float, calibration_report: dict[str, Any] | None = None,
+-    output: Path | None = None,
++    output: Path | None = None, separate_test_inputs: SeparateTestInputs | None = None,
+ ) -> dict[str, Any]:
+     if not math.isfinite(distance_px) or distance_px <= 0:
+         raise ValueError("Distance threshold must be positive source pixels")
+-    if split not in {"val", "test"} or split == "test" and calibration_report is None:
++    if split not in {"val", "test"} or split == "test" and calibration_report is None and separate_test_inputs is None:
+         raise ValueError("Use validation for calibration; test requires its saved validation report")
++    if separate_test_inputs is not None and (split != "test" or calibration_report is not None):
++        raise ValueError("Separate-test inputs require test and their single explicit calibration file")
++    if output is not None and output.exists() and json.loads(output.read_text()).get("schema") != EVALUATION_SCHEMA:
++        raise ValueError("Never overwrite or reinterpret a legacy evaluation report")
+     started = time.perf_counter()
++    raw = json.loads(manifest.read_text())
++    provenance: dict[str, Any] = dict(mode="same_snapshot")
++    validation = raw
++    validation_hash = dual_sha256(manifest)
++    if separate_test_inputs is not None:
++        if output is not None and (output.exists() or output.with_suffix(".frames.jsonl").exists()):
++            raise ValueError("Separate-test evaluation requires new output files")
++        validation, calibration_report, provenance = validate_separate_test(
++            separate_test_inputs, model=model, artifact_sha256=artifact_sha256, test_manifest=raw)
++        validation_hash = dual_sha256(separate_test_inputs.validation_manifest)
++    calibration = None
++    if calibration_report is not None:
++        calibration = validate_calibration(calibration_report, validation, manifest_sha256=validation_hash,
++                                          model=model, artifact_sha256=artifact_sha256, runtime=runtime)
++        provenance["calibration_source"] = dict(manifest_sha256=validation_hash, split="val",
++                                                report_identity_sha256=digest(calibration_report))
+     dataset = FrozenBallWindowDataset(manifest, split=split, requires_pose=False, jpeg_decoder=runtime.jpeg_decoder)
+     records = collect_predictions(model, dataset, runtime=runtime, device=device)
+     identities = prediction_identities(records)
+     expected = dataset.manifest["summaries"][split]
+     if any(expected[key] != value for key, value in identities.items()) or len(records) != expected["counts"]["frames"]:
+         raise ValueError("Actual scored/owner/teacher frame set differs from the frozen manifest")
+-    if calibration_report is None:
++    if calibration is None:
+         calibration = calibrate(records, split=split)
+         calibration.update(artifact_sha256=artifact_sha256, manifest_sha256=dual_sha256(manifest),
+                            scored_frame_sha256=identities["scored_frame_sha256"],
+                            teacher_identity_sha256=identities["teacher_identity_sha256"])
+-    else:
+-        calibration = calibration_report["calibration"]
+-        validation_summary = dataset.manifest["summaries"]["val"]
+-        if (calibration_report.get("schema") != EVALUATION_SCHEMA or calibration_report.get("split") != "val"
+-                or calibration["split"] != "val" or calibration["method"] != CALIBRATION_METHOD
+-                or calibration["artifact_sha256"] != artifact_sha256
+-                or calibration["scored_frame_sha256"] != validation_summary["scored_frame_sha256"]
+-                or calibration["teacher_identity_sha256"] != validation_summary["teacher_identity_sha256"]
+-                or calibration_report["image_decode"] != jpeg_decoder_contract(runtime.jpeg_decoder)
+-                or calibration_report["runtime"]["precision"] != runtime.precision):
+-            raise ValueError("Validation calibration does not match this artifact, target set or decoding runtime")
+     report = dict(schema=EVALUATION_SCHEMA, split=split, artifact_sha256=artifact_sha256,
+                   manifest_sha256=dual_sha256(manifest), snapshot=dataset.manifest["ball_store"],
+                   rgb_shards_sha256={r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in dataset.manifest["clips"]},
+                   model_config=asdict(model.config), model_kind=heatmap_model_kind(model.config),
+                   runtime=asdict(runtime), image_decode=jpeg_decoder_contract(runtime.jpeg_decoder),
+                   calibration=calibration, identities=identities,
+-                  decoding="global_argmax_log_parabolic_subpixel; max_native_sigmoid_score",
++                  decoding=DECODING, provenance=provenance, evaluation_code=source_identity(),
+                   metrics=metrics_report(records, calibration, distance_px=distance_px), seconds=time.perf_counter() - started)
+     if output is not None:
+         output.parent.mkdir(parents=True, exist_ok=True)
+--- a/src/tasks/ball_detection/evaluation/temporal_heatmap_cli.py
++++ b/src/tasks/ball_detection/evaluation/temporal_heatmap_cli.py
+@@ -10,6 +10,9 @@
+ 
+ from src.tasks.ball_detection.evaluation.temporal_heatmap import (
+     evaluate_temporal_heatmap,
++)
++from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import (
++    SeparateTestInputs,
+ )
+ from src.tasks.ball_detection.model_io.mdd_heatmap import restore_heatmap_model
+ from src.tasks.ball_detection.training.runtime.arguments import (
+@@ -39,6 +42,16 @@
+                           must_exist=True, allow_role_root=True),
+         BoundaryPathField("calibration", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+                           must_exist=True, allow_role_root=True, required=False),
++        BoundaryPathField("training_run_record", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, allow_role_root=True, required=False),
++        BoundaryPathField("validation_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, allow_role_root=True, required=False),
++        BoundaryPathField("training_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, allow_role_root=True, required=False),
++        BoundaryPathField("test_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, allow_role_root=True, required=False),
++        BoundaryPathField("evaluation_contract", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
++                          must_exist=True, allow_role_root=True, required=False),
+         BoundaryPathField("output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE),
+     ),
+ )
+@@ -50,11 +63,20 @@
+         parser.add_argument(f"--{name}", type=Path, required=True)
+     parser.add_argument("--split", choices=("val", "test"), required=True)
+     parser.add_argument("--calibration", type=Path, help="Validation report for this exact artifact; required for test")
++    separate_paths = ("training_run_record", "validation_manifest", "training_distribution", "test_distribution", "evaluation_contract")
++    for name in separate_paths:
++        parser.add_argument("--" + name.replace("_", "-"), type=Path)
++    parser.add_argument("--evaluation-contract-sha256")
++    parser.add_argument("--calibration-sha256")
+     parser.add_argument("--distance-px", type=float, required=True)
+     add_runtime_arguments(parser)
+     args = parser.parse_args()
+     if args.split == "test" and args.calibration is None:
+         parser.error("Test requires --calibration from validation; never calibrate on test")
++    separate_names = (*separate_paths, "evaluation_contract_sha256", "calibration_sha256")
++    separate = any(getattr(args, name) is not None for name in separate_names)
++    if separate and (args.split != "test" or any(getattr(args, name) is None for name in separate_names)):
++        parser.error("Separate test requires every contract/run/validation/distribution input and both expected hashes")
+     declared = {field.name: getattr(args, field.name) for field in PATH_BOUNDARY.fields
+                 if getattr(args, field.name) is not None}
+     if not all(path.is_absolute() for path in declared.values()):
+@@ -78,16 +100,21 @@
+             or training["runtime"]["precision"] != runtime.precision):
+         raise ValueError("Evaluation must use the training artifact's saved JPEG decoder/version and precision")
+     manifest = json.loads(args.manifest.read_text())
+-    if (manifest["ball_store"] != training["data"]["snapshot"]
++    if not separate and (manifest["ball_store"] != training["data"]["snapshot"]
+             or {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in manifest["clips"]} != training["data"]["rgb_shards_sha256"]
+             or any(manifest["summaries"][split][key] != digest
+                    for split, identities in training["data"]["summaries"].items() for key, digest in identities.items())):
+         raise ValueError("Evaluation snapshot/common sets differ from the training artifact")
+     compile_coordinate_model(model, mode=runtime.compile_mode, recompile_limit=runtime.compile_recompile_limit)
+-    calibration = json.loads(args.calibration.read_text()) if args.calibration else None
++    calibration = json.loads(args.calibration.read_text()) if args.calibration and not separate else None
++    separate_inputs = SeparateTestInputs(
++        artifact=args.artifact, calibration=args.calibration,
++        evaluation_contract_sha256=args.evaluation_contract_sha256, calibration_sha256=args.calibration_sha256,
++        **{name: getattr(args, name) for name in separate_paths},
++    ) if separate else None
+     evaluate_temporal_heatmap(model, args.manifest, split=args.split, runtime=runtime, device=device,
+         artifact_sha256=dual_sha256(args.artifact), distance_px=args.distance_px,
+-        calibration_report=calibration, output=args.output)
++        calibration_report=calibration, output=args.output, separate_test_inputs=separate_inputs)
+ 
+ 
+ if __name__ == "__main__":
+--- /dev/null
++++ b/src/tasks/ball_detection/evaluation/temporal_heatmap_contract.py
+@@ -0,0 +1,270 @@
++"""Pin source-to-distribution correspondence before separate-store test evaluation."""
++
++from __future__ import annotations
++
++import hashlib
++import json
++from collections.abc import Sequence
++from dataclasses import asdict, dataclass
++from pathlib import Path
++from typing import Any
++
++import torch
++
++from src.tasks.ball_detection.checkpoints.temporal_heatmap import RUN_SCHEMA, json_bytes
++from src.tasks.ball_detection.data.distribution.manifest import (
++    DISTRIBUTION_FILE,
++    distribution_files,
++    load_distribution,
++    source_payloads,
++    verify_distribution,
++)
++from src.tasks.ball_detection.data.store import BallFrameStore
++from src.tasks.ball_detection.data.windows.all_frame_manifest import (
++    build_all_frame_manifests,
++    validate_all_frame_manifest,
++)
++from src.tasks.ball_detection.data.windows.all_frames import AllFrameWindowConfig
++from src.tasks.ball_detection.data.windows.manifest import clip_semantic_digest
++from src.tasks.ball_detection.model_io.mdd_heatmap import (
++    HeatmapModel,
++    heatmap_model_kind,
++)
++from src.utils.checksum import dual_sha256
++from src.utils.data.verification import SharedFileVerification, file_version
++
++CONTRACT_SCHEMA = "ball_temporal_heatmap_evaluation_contract.v1"
++IDENTITY_KEYS = ("common_intervals_sha256", "target_identity_sha256", "teacher_identity_sha256",
++                 "scored_frame_sha256", "training_packs_sha256")
++
++
++def digest(value: Any) -> str:
++    return hashlib.sha256(json_bytes(value)).hexdigest()
++
++
++def _read(path: Path) -> dict[str, Any]:
++    if not path.is_absolute() or not path.is_file():
++        raise ValueError("Evaluation contract inputs must be explicit absolute files")
++    result: dict[str, Any] = json.loads(path.read_text())
++    return result
++
++
++def _pinned(path: Path, expected: str) -> dict[str, Any]:
++    value = _read(path)
++    if (len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected)
++            or dual_sha256(path) != expected):
++        raise ValueError("Evaluation contract/calibration SHA-256 mismatch")
++    return value
++
++
++def manifest_identity(manifest: dict[str, Any]) -> str:
++    """Relocation changes locations only; every selection and content field stays pinned."""
++    portable = json.loads(json.dumps(manifest))
++    portable["ball_store"].pop("directory")
++    for record in portable["clips"]:
++        record["negative_evidence"].pop("annotation_path", None)
++    return digest(portable)
++
++
++def _distribution(path: Path) -> dict[str, Any]:
++    _read(path)
++    if path.name != DISTRIBUTION_FILE:
++        raise ValueError("Explicit distribution inputs must name distribution.json")
++    result: dict[str, Any] = load_distribution(path.parent)
++    return result
++
++
++def _snapshot(distribution: dict[str, Any]) -> dict[str, str]:
++    return {e["path"]: e["sha256"] for e in distribution["files"] if e["path"] in {"metadata.json", "index.npz"}}
++
++
++def _clip_identity(store: BallFrameStore, distribution: dict[str, Any]) -> str:
++    mappings = {c["clip_id"]: c for c in distribution["clips"]}
++    if [(c.index, c.clip_id) for c in store.clips] != [(c["index"], c["clip_id"]) for c in distribution["clips"]]:
++        raise ValueError("Distribution clip correspondence differs from its store")
++    files = {e["path"]: e for e in distribution["files"]}
++    return digest([
++        dict(mapping=mappings[c.clip_id], semantic_sha256=clip_semantic_digest(store, c),
++             rgb_sha256=files[mappings[c.clip_id]["payload"]]["sha256"])
++        for c in store.clips
++    ])
++
++
++def _compare_source(reference: dict[str, Any], actual: dict[str, Any], splits: set[str]) -> None:
++    if any(reference[k] != actual[k] for k in ("schema", "mode", "config", "semantics", "label_kinds")):
++        raise ValueError("Source and distribution evaluation configurations differ")
++    expected = {r["clip"]["clip_id"]: r for r in reference["clips"] if r["clip"]["split"] in splits}
++    if set(expected) != {r["clip"]["clip_id"] for r in actual["clips"]}:
++        raise ValueError("Distribution omits/adds a common source clip or crosses splits")
++    for record in actual["clips"]:
++        before = json.loads(json.dumps(expected[record["clip"]["clip_id"]]))
++        after = json.loads(json.dumps(record))
++        for value in (before, after):
++            value["clip"].pop("index")
++            value["negative_evidence"].pop("annotation_path", None)
++        if before != after:
++            raise ValueError("Distribution changed source GT/PTS/RGB/teachers/intervals/owners")
++    if any(reference["summaries"][s] != actual["summaries"][s] for s in splits):
++        raise ValueError("Distribution common frame/teacher/pack/owner identities differ")
++
++
++def build_evaluation_contract(
++    *, source_store: Path, training_distribution: Path, test_distribution: Path,
++    validation_manifests: Sequence[Path], test_manifests: Sequence[Path],
++) -> dict[str, Any]:
++    """Verify original bytes and all T, then return a location-independent fixed contract.
++
++    Distribution roots may be metadata-only stages: payloads are hashed at the
++    explicitly supplied source, without copies or links. Runtime evaluation needs
++    only the small training artifacts and a fully materialized test distribution.
++    """
++    if not source_store.is_absolute():
++        raise ValueError("Contract generation requires an explicit absolute source snapshot")
++    source = BallFrameStore(source_store)
++    paths = (training_distribution, test_distribution)
++    distributions = [_distribution(p) for p in paths]
++    source_hashes = {name: dual_sha256(source_store / name) for name in ("index.npz", "metadata.json")}
++    if any(d["source"]["hashes"] != source_hashes for d in distributions):
++        raise ValueError("Distributions must derive from the same pinned source snapshot")
++    selected: dict[str, Any] = {}
++    stores = []
++    tracked = {source_store / name for name in source_hashes}
++    rgb = {}
++    for path, distribution, splits in zip(paths, distributions, ({"train", "val"}, {"test"}), strict=True):
++        payloads = source_payloads(path.parent, source_store)
++        files = distribution_files(path.parent, source_directory=source_store)
++        expected = {e["path"]: e for e in distribution["files"]}
++        if any(files[name].stat().st_size != entry["size_bytes"] for name, entry in expected.items()):
++            raise ValueError("Distribution file size differs from its content manifest")
++        tracked.update(files.values())
++        tracked.add(path)
++        store = BallFrameStore(path.parent, external_payloads=payloads)
++        stores.append(store)
++        for clip in store.clips:
++            original = source.clip_by_id(clip.clip_id)
++            if (clip.split not in splits or clip.clip_id in selected
++                    or clip_semantic_digest(store, clip) != clip_semantic_digest(source, original)):
++                raise ValueError("Distribution clip mapping/split/source semantics differ")
++            selected[clip.clip_id] = clip
++        for entry in distribution["clips"]:
++            rgb[entry["clip_id"]] = expected[entry["payload"]]["sha256"]
++    versions = {p: file_version(p) for p in tracked}
++    # Verify all metadata, original annotation copies and source RGB, including
++    # clips without common intervals. Train/val payloads are not needed at test time.
++    for path, distribution in zip(paths, distributions, strict=True):
++        files = distribution_files(path.parent, source_directory=source_store)
++        SharedFileVerification({files[e["path"]]: e["sha256"] for e in distribution["files"]}).verify_all(1)
++    groups: dict[tuple[str, str], str] = {}
++    for clip in selected.values():
++        group = clip.source, clip.group_id
++        if groups.setdefault(group, clip.split) != clip.split:
++            raise ValueError("Source group crosses distribution split boundaries")
++    manifests = [[_read(p) for p in values] for values in (validation_manifests, test_manifests)]
++    by_t = [{m["config"]["window_length"]: m for m in values} for values in manifests]
++    if (not by_t[0] or set(by_t[0]) != set(by_t[1])
++            or any(len(values) != len(mapping) for values, mapping in zip(manifests, by_t, strict=True))):
++        raise ValueError("Contract requires matching unique validation/test T manifests")
++    configs = [AllFrameWindowConfig(**m["config"]) for m in by_t[0].values()]
++    try:
++        references = build_all_frame_manifests(source, configs, shard_hashes=rgb)
++    except KeyError as error:
++        raise ValueError("Distributions omit an eligible source clip") from error
++    contracts: list[dict[str, Any]] = []
++    for store, distribution, mapping, splits in zip(stores, distributions, by_t, ({"train", "val"}, {"test"}), strict=True):
++        evaluations = {}
++        for length, manifest in mapping.items():
++            if manifest["mode"] != "evaluation" or manifest["ball_store"]["hashes"] != _snapshot(distribution):
++                raise ValueError("Contract requires evaluation manifests of the declared distributions")
++            validate_all_frame_manifest(manifest, store)
++            _compare_source(references[length]["evaluation"], manifest, splits)
++            evaluations[str(length)] = dict(identity_sha256=manifest_identity(manifest), summaries=manifest["summaries"])
++        contracts.append(dict(distribution_sha256=dual_sha256(paths[len(contracts)]), snapshot_hashes=_snapshot(distribution),
++                              clips_sha256=_clip_identity(store, distribution), clips=len(store.clips), evaluations=evaluations))
++    if any(file_version(p) != version for p, version in versions.items()):
++        raise ValueError("Contract source changed during verification")
++    return dict(schema=CONTRACT_SCHEMA, source_snapshot_hashes=source_hashes,
++                training=contracts[0], test=contracts[1])
++
++
++@dataclass(frozen=True)
++class SeparateTestInputs:
++    artifact: Path
++    training_run_record: Path
++    validation_manifest: Path
++    training_distribution: Path
++    test_distribution: Path
++    evaluation_contract: Path
++    evaluation_contract_sha256: str
++    calibration: Path
++    calibration_sha256: str
++
++
++def validate_separate_test(
++    inputs: SeparateTestInputs, *, model: HeatmapModel, artifact_sha256: str,
++    test_manifest: dict[str, Any],
++) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
++    """No training payload reads, auto-discovery, missing-val rescue or test calibration."""
++    contract = _pinned(inputs.evaluation_contract, inputs.evaluation_contract_sha256)
++    calibration = _pinned(inputs.calibration, inputs.calibration_sha256)
++    if contract.get("schema") != CONTRACT_SCHEMA:
++        raise ValueError("Unknown separate-test evaluation contract schema")
++    run = _read(inputs.training_run_record)
++    validation = _read(inputs.validation_manifest)
++    if not inputs.artifact.is_absolute() or dual_sha256(inputs.artifact) != artifact_sha256:
++        raise ValueError("Separate-test artifact SHA-256 mismatch")
++    saved = torch.load(inputs.artifact, map_location="cpu", weights_only=True)
++    training = saved.get("training", {})
++    recipe = run["recipe"]
++    if (run.get("schema") != RUN_SCHEMA or training.get("schema") != RUN_SCHEMA
++            or training.get("recipe_sha256") != digest(recipe) or training["data"] != recipe["data"]
++            or training["seed"] != recipe["budget"]["seed"] or training["phase"] != recipe["phase"]
++            or training["code"] != run["code"] or training["image_decode"] != recipe["image_decode"]
++            or training["runtime"] != recipe["runtime"] or digest(asdict(model.config)) != digest(recipe["model"])
++            or digest(saved["model_config"]) != digest(recipe["model"])
++            or saved["model_kind"] != heatmap_model_kind(model.config)):
++        raise ValueError("Training run record/recipe differs from the saved artifact")
++    actual_state = model.state_dict()
++    if (actual_state.keys() != saved["state_dict"].keys()
++            or any(v.dtype != actual_state[k].dtype or not torch.equal(v, actual_state[k].detach().cpu())
++                   for k, v in saved["state_dict"].items())):
++        raise ValueError("Evaluation model weights differ from the explicit training artifact")
++    if dual_sha256(inputs.validation_manifest) != recipe["evaluation_manifest_sha256"]:
++        raise ValueError("Validation manifest differs from the training run record")
++    distributions = [_distribution(p) for p in (inputs.training_distribution, inputs.test_distribution)]
++    length = str(model.config.frames)
++    for name, path, distribution, manifest in zip(
++        ("training", "test"), (inputs.training_distribution, inputs.test_distribution),
++        distributions, (validation, test_manifest), strict=True,
++    ):
++        pinned = contract[name]
++        if (dual_sha256(path) != pinned["distribution_sha256"]
++                or distribution["source"]["hashes"] != contract["source_snapshot_hashes"]
++                or _snapshot(distribution) != pinned["snapshot_hashes"]
++                or manifest["ball_store"]["hashes"] != pinned["snapshot_hashes"]
++                or length not in pinned["evaluations"]
++                or manifest_identity(manifest) != pinned["evaluations"][length]["identity_sha256"]):
++            raise ValueError("Fixed evaluation contract distribution/manifest identity mismatch")
++    data = recipe["data"]
++    rgb = {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in validation["clips"]}
++    if (validation["ball_store"] != data["snapshot"] or rgb != data["rgb_shards_sha256"]
++            or any(validation["summaries"][s][k] != value for s, identities in data["summaries"].items()
++                   for k, value in identities.items())
++            or set(data["splits"]) != {c["clip_id"] for c in distributions[0]["clips"]}
++            or digest(data["splits"]) != data["split_sha256"]):
++        raise ValueError("Training snapshot/common sets differ from the validation manifest")
++    root = Path(test_manifest["ball_store"]["directory"])
++    if not root.is_absolute() or inputs.test_distribution.resolve() != (root / DISTRIBUTION_FILE).resolve():
++        raise ValueError("Test distribution must be the explicitly manifested test snapshot")
++    verify_distribution(root)
++    store = BallFrameStore(root)
++    if _clip_identity(store, distributions[1]) != contract["test"]["clips_sha256"]:
++        raise ValueError("Test clip source/semantic correspondence differs from the fixed contract")
++    provenance = dict(mode="separate_distributions", evaluation_contract_sha256=inputs.evaluation_contract_sha256,
++                      training_run_record_sha256=dual_sha256(inputs.training_run_record),
++                      training_recipe_sha256=training["recipe_sha256"], training_code=training["code"],
++                      training_snapshot=data["snapshot"], source_snapshot_hashes=contract["source_snapshot_hashes"],
++                      training_distribution_sha256=contract["training"]["distribution_sha256"],
++                      test_distribution_sha256=contract["test"]["distribution_sha256"],
++                      validation_manifest_sha256=dual_sha256(inputs.validation_manifest),
++                      calibration_report_sha256=inputs.calibration_sha256)
++    return validation, calibration, provenance

@@ -205,3 +205,58 @@ def test_comparison_cli_accepts_independent_reports_and_rejects_duplicate_inputs
     with pytest.raises(PathContractError, match="duplicate paths"):
         cli.main()
     assert not called and not output.parent.exists()
+
+
+@pytest.mark.parametrize("field", ["training_run_record", "validation_manifest", "training_distribution", "test_distribution", "evaluation_contract"])
+@pytest.mark.parametrize("invalid", ["relative", "missing", "directory"])
+def test_separate_test_cli_checks_every_explicit_path_before_loading(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str, invalid: str,
+) -> None:
+    from src.tasks.ball_detection.evaluation import temporal_heatmap_cli as cli
+    from src.utils.configuration import PathContractError
+
+    names = ("artifact", "manifest", "calibration", "training_run_record", "validation_manifest",
+             "training_distribution", "test_distribution", "evaluation_contract")
+    paths = {name: tmp_path / name / "input.json" for name in names}
+    for path in paths.values():
+        path.parent.mkdir()
+        path.touch()
+    if invalid == "relative":
+        paths[field] = Path("relative.json")
+    elif invalid == "missing":
+        paths[field] = tmp_path / "missing.json"
+    else:
+        paths[field] = tmp_path
+    output = tmp_path / "new-output" / "report.json"
+    argv = ["evaluate", *(item for name, path in paths.items() for item in ("--" + name.replace("_", "-"), str(path))),
+            "--split", "test", "--output", str(output), "--evaluation-contract-sha256", "0" * 64,
+            "--calibration-sha256", "0" * 64, "--distance-px", "20", "--device", "cpu", "--precision", "fp32",
+            "--jpeg-decoder", "opencv", "--compile-mode", "off", "--input-verification", "lazy"]
+    monkeypatch.setattr(sys, "argv", argv)
+
+    def unexpected_runtime(_: Any) -> None:
+        pytest.fail("Optional contract paths must be checked before runtime/model loading")
+
+    monkeypatch.setattr(cli, "runtime_from_arguments", unexpected_runtime)
+    with pytest.raises((SystemExit, PathContractError)):
+        cli.main()
+    assert not output.parent.exists()
+
+
+@pytest.mark.parametrize("value", ["relative", "missing", "file"])
+def test_comparison_cli_checks_the_explicit_snapshot_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: str,
+) -> None:
+    from src.tasks.ball_detection.scripts import visualize_temporal_heatmaps as cli
+    from src.utils.configuration import PathContractError
+
+    reports = [tmp_path / "first.json", tmp_path / "second.json"]
+    for path in reports:
+        path.touch()
+    root = Path("relative") if value == "relative" else tmp_path / "missing" if value == "missing" else reports[0]
+    output = tmp_path / "new-output" / "comparison.mp4"
+    monkeypatch.setattr(sys, "argv", ["visualize", "--evaluations", *(str(p) for p in reports), "--snapshot-root", str(root),
+        "--clip-id", "clip", "--start", "0", "--stop", "8", "--output", str(output)])
+    with pytest.raises((SystemExit, PathContractError)):
+        cli.main()
+    assert not output.parent.exists()

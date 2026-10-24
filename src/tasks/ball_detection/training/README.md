@@ -129,7 +129,7 @@ callbackは学習予算・モデル・入力identityを変更せず、実験用c
   --device cuda --precision bf16 --jpeg-decoder nvjpeg --compile-mode off --input-verification upfront
 ```
 
-testは`--split test --calibration /absolute/validation.json`を指定する。
+同一snapshotのtestは`--split test --calibration /absolute/validation.json`を指定する。
 validationの正例・確認済み不在のいずれかが0なら較正不能として停止する。
 同scoreを分割しない変化点探索とall-present/all-absentの端点modeを保存し、同じartifact・
 validation教師集合・復号条件で較正した閾値だけをtestへ適用する。
@@ -137,20 +137,84 @@ validation教師集合・復号条件で較正した閾値だけをtestへ適用
 observed FNR、不在kind別/合算FPR、source/FPS/group/自然遮蔽/区間端距離別の支持数を出す。
 支持数0の率・位置誤差はnull。自然遮蔽はstoreのobservedフラグだけを使う。
 
-評価JSONはschema、artifact/manifest/snapshot/実採点集合のhash、較正规則と混同行列、
-runtime、主・副指標を持つ。隣接する`*.frames.jsonl`へ未知frameも含む全ownerの座標・score・
+新規評価JSONは`ball_temporal_heatmap_evaluation.v2`で、artifact/manifest/snapshot/実採点集合のhash、
+較正规則と混同行列、runtime、評価実装のsource identity、主・副指標を持つ。
+`provenance`が同一snapshot／別配布版の経路と較正元を記録する。旧v1は別schemaとして読めるが、
+上書き・v2への付替えはしない。隣接する`*.frames.jsonl`へ未知frameも含む全ownerの座標・score・
 実PTS・kind・owner offset・左右context・MDD先頭・区間端距離を保存する。
 実際のowner/教師/採点集合をmanifestと照合し、欠落・重複・非finite出力で停止する。
+
+#### train/validationとは別配布版のtest
+
+別版を受け入れる経路は、固定した`ball_temporal_heatmap_evaluation_contract.v1`を使う。
+生成APIは`evaluation.temporal_heatmap_contract.build_evaluation_contract`。
+元snapshot・両`distribution.json`・各Tのvalidation/test評価manifestを明示する。
+元snapshotのindex/metadata、clip IDとsource/new indexの対応、全clipのGT/PTS/FPS/geometry・
+split/source/group・教師と原注釈・RGB bytesを検証する。共通frame/teacher/pack集合とT固有のownerも
+元snapshotから再生成して照合し、配布版・意味的identity・各Tのmanifestをcontractに固定する。
+生成時はmetadata-only配布stageを利用でき、RGBを元snapshotでhash検証する。copy/hardlinkは作らない。
+
+```python
+from pathlib import Path
+from src.tasks.ball_detection.checkpoints.temporal_heatmap import save_json
+from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import build_evaluation_contract
+
+contract = build_evaluation_contract(
+    source_store=Path("/absolute/pinned-source-snapshot"),
+    training_distribution=Path("/absolute/train-val/distribution.json"),
+    test_distribution=Path("/absolute/test/distribution.json"),
+    validation_manifests=[Path(f"/absolute/train-val-manifests/evaluation_T{t}.json") for t in (32, 64, 128)],
+    test_manifests=[Path(f"/absolute/test-manifests/evaluation_T{t}.json") for t in (32, 64, 128)],
+)
+save_json(Path("/absolute/new-evaluation-contract.json"), contract)
+```
+
+contractの期待SHA-256を実行計画へ保存する。評価時は、重みとその学習`run.json`、学習時の
+validation manifest（保存bytesのまま）、当該重み・T・seedのval較正reportとその期待SHA-256、
+両配布版の`distribution.json`、実test manifestを渡す。各入力は別directoryに置ける。
+
+```bash
+.venv/bin/python -m src.tasks.ball_detection.scripts.evaluate --mode temporal_heatmap \
+  --artifact /absolute/run/weights-update-NNNNNNNN.pt \
+  --manifest /absolute/test-manifests/evaluation_T64.json --split test --output /absolute/new-test.json \
+  --training-run-record /absolute/training-artifacts/run.json \
+  --validation-manifest /absolute/training-artifacts/evaluation_manifest.json \
+  --training-distribution /absolute/training-artifacts/distribution.json \
+  --test-distribution /absolute/test-store/distribution.json \
+  --evaluation-contract /absolute/evaluation-contract.json --evaluation-contract-sha256 <固定したSHA-256> \
+  --calibration /absolute/validation.json --calibration-sha256 <保存したval-reportのSHA-256> \
+  --distance-px <元画像pixel> --device cuda --precision bf16 --jpeg-decoder nvjpeg \
+  --compile-mode off --input-verification upfront
+```
+
+test VMにはtrain/validation payloadと元snapshotは不要。run recipeのcanonical hashを重みと照合し、
+recipeが固定したvalidation manifestの実bytesと、contract内の学習側identityを検査する。
+重みの学習来歴とrun recordの間でsource hashとTorch版を照合し、checkout directoryとbase commitは来歴として保持する。
+testの`distribution.json`は実test snapshot直下に置き、全配布fileのsize/hash・clipの意味・
+manifestの共通集合とownerを検査する。testを別rootへ取得した場合は、そのrootから同じ窓設定で
+評価manifestを再生成する。contractは保存場所を除いたidentityを比較する。
+validation manifest内の元pathを書き換える必要はなく、test側の空val summaryは較正に使わない。
+val reportのartifact・manifest・T/model・教師/採点集合・decoder/version・precision・座標復号規則を
+明示したvalidationと照合する。正例/負例0、欠落した入力、変更された対応・内容は停止する。
+較正値・mode・混同行列を保存valからそのまま使い、test再較正や代替入力の探索はしない。
+Python APIは`evaluate_temporal_heatmap(..., separate_test_inputs=SeparateTestInputs(...))`で同じ検証を行う。
+この引数と既存の`calibration_report`辞書を同時には渡せない。
+
+学習のrun/checkpoint/model形式とrecipeは変わらない。評価sourceの変更も同runのresume検査に含まれる。
+旧sourceで開始したrunは元のsource・環境・入力pathで再開し、別checkoutの新版で新しい評価結果を作る。
 
 ```bash
 .venv/bin/python -m src.tasks.ball_detection.scripts.visualize_temporal_heatmaps \
   --evaluations /absolute/dpt-T32/validation.json /absolute/hybrid-T64/validation.json \
+  --snapshot-root /absolute/evaluated-snapshot \
   --clip-id <同じclip> --start <開始frame> --stop <終了frameの次> --output /absolute/comparison.mp4
 ```
 
 共通集合・snapshot・復号条件の一致と予測file hashを照合し、既存のoverlay/panel/VideoWriterで
 同じ区間を横に並べる。位置は閾値で隠さずorangeで描き、validation閾値による不在判定も表示する。
-入力評価・出力動画のhashと範囲をsidecar JSONへ保存する。
+v2の描画には`--snapshot-root`が必須で、保存されたindex/metadataとRGB hashを照合する。
+v1も明示的に読め、未知schemaは拒否する。モデル/T/seedごとの較正値・学習来歴は比較の等値条件にしない。
+入力評価・描画snapshot・出力動画のhashと範囲をsidecar JSONへ保存する。
 
 ## 実行例
 
