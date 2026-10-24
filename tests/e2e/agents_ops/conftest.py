@@ -97,7 +97,7 @@ elif args[0] == "api" and "--method" in args:
         api_emit(page([{**r, "state": r.get("state", "open").lower(), "merged_at": r.get("mergedAt"),
                         "body": state.get("pr_details", {}).get(str(r["number"]), {}).get("body", ""),
                         "head": {"ref": r["headRefName"], "sha": "a" * 40}} for r in state["prs"]]))
-    m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", api_path)
+    m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|timeline|dependencies/blocked_by))?", api_path)
     assert m, args
     n, tail = m.groups()
     if n is None:
@@ -118,6 +118,8 @@ elif args[0] == "api" and "--method" in args:
         api_emit(api_issue(next(i for i in state["issues"] if i["number"] == parent)) if parent else {"message": "No parent issue found"}, 200 if parent else 404)
     if tail == "dependencies/blocked_by":
         api_emit(page([api_issue(i) for i in state["issues"] if i["number"] in state.get("dependencies", {}).get(n, [])]))
+    if tail == "timeline":
+        api_emit(page(state.get("timeline", {}).get(n, [])))
     if tail == "sub_issues":
         if method == "GET":
             api_emit(page([api_issue(i) for i in state["issues"] if state.get("parents", {}).get(str(i["number"])) == int(n)]))

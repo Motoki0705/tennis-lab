@@ -612,6 +612,7 @@ def test_ledger_report_uses_existing_triage_owner_receipt_without_agent_start(
         k: v
         for k, v in ops.env.items()
         if k not in {"CODEX_THREAD_ID", "CODEX_SESSION_ID", "CLAUDE_CODE_SESSION_ID"}
+        and not k.startswith("HERDR_")
     }
     registered = subprocess.run(
         [sys.executable, "-m", "parent", "--repo", "o/r", "--parent", "1", "register"],
