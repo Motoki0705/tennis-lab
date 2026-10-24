@@ -1,7 +1,7 @@
-<!-- knowledge-review: f0e014c35516ac31e7bf037f0c1ac62dcd71186bd65c3996746f4dbacf10db1e on 2026-10-24 -->
+<!-- knowledge-review: def9caf68144e0c9c554e23704afab7cf65922df505fd8f78eed13bcb8d51545 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-23（CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-23（ボールの全フレーム学習経路の診断と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -338,8 +338,11 @@ RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量
 validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
 具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
 共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
-可変T契約、hybridの等予算初期学習と共通heatmap objectiveも必要。
-長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000065-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
+CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
+両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
+これは低解像度の機能確認で、既存の採用判断を変えない。
+実データ720p・長系列のVRAM・学習速度と精度は未測定。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
 
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
