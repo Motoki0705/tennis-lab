@@ -887,8 +887,8 @@ _RUNTIME_BOUNDARIES += (_non_hydra_boundary("src.tasks.ball_detection.scripts.pr
 _RUNTIME_BOUNDARIES += (
     _non_hydra_boundary("src.tasks.ball_detection.training.dpt_pretrain.runner", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.evaluation.hybrid_cli", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
-    _non_hydra_boundary("src.tasks.ball_detection.training.temporal_heatmap.cli", "main", domain="ball_detection", executable_module=True),
-    _non_hydra_boundary("src.tasks.ball_detection.evaluation.temporal_heatmap_cli", "main", domain="ball_detection", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_detection.training.temporal_heatmap.cli", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
+    _non_hydra_boundary("src.tasks.ball_detection.evaluation.temporal_heatmap_cli", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.scripts.visualize_temporal_heatmaps", "main", domain="ball_detection", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.finetune", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
     _non_hydra_boundary("src.tasks.ball_detection.training.coordinates.full_model", "main", domain="ball_detection", kind=BoundaryKind.ARGPARSE, executable_module=False),
