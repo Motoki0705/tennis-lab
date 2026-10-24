@@ -94,6 +94,16 @@ def main() -> None:
                 if scenario == "corrupt_transcript":
                     stream.write('{"type":"turn_context"}\n')
         emit({"type": "turn.started"})
+        if scenario == "web_search":
+            for kind in ("item.started", "item.completed"):
+                # Codex 0.163.0 flattens WebSearchItem.id into ThreadItem.id.
+                print(
+                    '{"type":' + json.dumps(kind) + ',"item":'
+                    '{"id":"item_1","type":"web_search","id":"exec-search",'
+                    '"query":"test query","action":{"type":"search",'
+                    '"queries":["test query"]}}}',
+                    flush=True,
+                )
     else:
         emit(
             {
