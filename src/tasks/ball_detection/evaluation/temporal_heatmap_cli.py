@@ -115,7 +115,3 @@ def main() -> None:
     evaluate_temporal_heatmap(model, args.manifest, split=args.split, runtime=runtime, device=device,
         artifact_sha256=dual_sha256(args.artifact), distance_px=args.distance_px,
         calibration_report=calibration, output=args.output, separate_test_inputs=separate_inputs)
-
-
-if __name__ == "__main__":
-    main()

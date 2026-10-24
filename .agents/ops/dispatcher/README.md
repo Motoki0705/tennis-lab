@@ -327,6 +327,7 @@ dispatcherは起動選択を再実装せず、既存の委任予約を受け取�
 子終了イベントまたは明示resumeは既存親を再開待ちにし、枠とauthorizationを再確認して、最新runから同じsessionをresumeする。
 CI/人間判断待ちの解除はworkflow側の明示通知を使う。時間経過から解除しない。
 completedは子の終了確認後にだけ担当endedへ移す。GitHubのmerge/closeと受入条件の検証は親workflowの責務。
+単独issueのmerge/close後に中断した親の復帰条件は [開発workflowの終了照合](../parent/development_workflow.md#待機完了担当終了) に従う。
 
 ```bash
 # 自動の新規判定・割当・起動を無効化（既存runtimeは継続）
@@ -373,8 +374,8 @@ runner喪失時は、先に [共通ランナーの子孫回収確認](../lib/REA
 
 ## 親workflowへのbootstrap契約
 
-`parent_bootstrap.md` は担当受理・既存状態確認・構造化waitingまで実行する最小の入口。
-開発workflow担当が手順3を実装・検証・レビュー・mergeへ差し替える。接続前の待機を開発成功と扱わない。
+`parent_bootstrap.md` は担当受理・既存状態照合から [親の開発workflow](../parent/development_workflow.md) へ接続する。
+実装・検証・親による明示レビュー・mergeと実closeを照合し、成功・待機・失敗を最終イベントに分ける。
 各jobのprivateな `input.json` は追加キーなしのschema_version=1で、以下を渡す。
 
 - repo、parent、assignment_id、job_id、候補JSON、authorization。
@@ -382,8 +383,8 @@ runner喪失時は、先に [共通ランナーの子孫回収確認](../lib/REA
 
 親は `accept --input <path>` を自身のCLI環境から呼ぶ。引数でsession IDを渡さない。
 `AGENT_RUNTIME_RUN_DIR/TASK_ID`、観測session、実行契約、候補/予約/generation/根拠が一致する場合だけ受理する。
-同じsessionのresumeでも同じ入口を使う。parent CLIは既定のXDG_STATE_HOMEのregistryを読むため、
-試験で任意のparent_state_dirを使う場合は同じStoreを渡したPython APIで親workflowを接続する。
+同じsessionのresumeでも同じ入口を使う。parent CLIには `--state-dir` で入力と同じregistryを指定し、
+review/mergeも同じstateを使う。worker操作のPython APIでは同じregistryを指す `DispatchStore` を渡す。
 親workflowは外部依存・採用状態・正式関係を再取得し、委任・レビュー・merge前も根拠を再照合する。
 
 子の本文・worktree・モデル選定やdelegateはworkflowが行う。
@@ -398,7 +399,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
 
 モデル/effortの既定は共通ランナーを使う。既存子は終了照合後の証拠付き再delegateで新しいIDを得てからstart-childする。
 このとき以前の子の最新runから同じsessionをresumeする。モデル・worktree・branch・設定の不一致は共通ランナーが拒否する。
-子runtime記録がなく同じsessionへ戻せない場合も、別sessionへ振り替えない。
+起動前取消の修正予約は、保存した再開元runへ戻す。一度も起動していない取消予約は、
+全jobの起動証拠がなく既存PRもない場合だけ、同じ担当で明示的に再予約する。
+実行済みrunのsession欠落や取消記録の曖昧さを、別sessionへの振替で回避しない。
 pytestは [既存の共有lock wrapper](../parent/README.md#pytest共有lock) を使う。
 キャンペーンから `PYTEST_LOCK` が指定された場合は親・子で同じ値を継承し、別のlockを作らない。
 GPU・Blenderの資源調停はtraining queueの既存枠を使う。

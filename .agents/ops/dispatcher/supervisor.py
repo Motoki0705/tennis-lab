@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
     authorization,
     requirement_body,
@@ -16,7 +17,7 @@ from parent.execution import (
     validate_candidate,
 )
 from parent.github import GitHub
-from parent.policy import digest, nonempty, number
+from parent.policy import closing_issues, digest, nonempty, number
 from parent.session import ParentSession
 from parent.state import Store, session_identity
 
@@ -157,9 +158,16 @@ def released_reservation(row: dict[str, Any]) -> bool:
 
 class Supervisor:
     def __init__(self, gh: GitHub, store: Store, schedule: Schedule) -> None:
+        if (
+            isinstance(store, DispatchStore)
+            and store.schedule.directory != schedule.directory
+        ):
+            raise ValueError("dispatcher store and schedule differ")
         self.gh, self.store, self.schedule = (
             gh,
-            DispatchStore(store.directory, schedule),
+            store
+            if isinstance(store, DispatchStore)
+            else DispatchStore(store.directory, schedule),
             schedule,
         )
 
@@ -177,6 +185,68 @@ class Supervisor:
             or authorization(self._session(key, row)) != dispatch["authorization"]
         ):
             raise ValueError("managed execution basis changed")
+
+    def _validate_completion_resume(
+        self,
+        session: ParentSession,
+        row: dict[str, Any],
+        job: dict[str, Any],
+        issue: dict[str, Any],
+    ) -> None:
+        """Resume an accepted standalone parent only to verify its merged work."""
+        if issue.get("state_reason") != "completed" or job["resume_from"] is None:
+            raise ValueError(
+                "closed parent requires completed merge evidence and an accepted resume source"
+            )
+        _, items = session.work_items()
+        if set(items) != {session.parent}:
+            raise ValueError(
+                "closed parent recovery requires the standalone implementation target"
+            )
+        parents = [
+            previous
+            for previous in row["dispatch"]["jobs"].values()
+            if previous["role"] == "parent" and previous["sequence"] < job["sequence"]
+        ]
+        if not parents:
+            raise ValueError("closed parent has no accepted parent runtime")
+        previous_parent = max(parents, key=lambda j: j["sequence"])
+        if (
+            previous_parent["authorization"] != job["authorization"]
+            or previous_parent["assignment_id"] != job["assignment_id"]
+            or self.resume_source(row, previous_parent) != job["resume_from"]
+        ):
+            raise ValueError(
+                "closed parent resume source differs from the accepted session"
+            )
+        implementations = [
+            previous
+            for previous in row["dispatch"]["jobs"].values()
+            if previous["role"] == "implementation"
+            and previous["child"] == session.parent
+        ]
+        task = row["tasks"].get(str(session.parent), {})
+        if not implementations:
+            raise ValueError(
+                "closed parent has no implementation delegation to reconcile"
+            )
+        previous = max(implementations, key=lambda j: j["sequence"])
+        if (
+            not task.get("delegated")
+            or not task.get("delegation_id")
+            or task["delegation_id"] != previous["delegation_id"]
+            or task.get("authorization") != job["authorization"]
+            or previous["authorization"] != job["authorization"]
+            or previous["assignment_id"] != job["assignment_id"]
+            or task.get("worktree") != previous["cwd"]
+            or task.get("branch") != previous["branch"]
+        ):
+            raise ValueError(
+                "closed parent implementation delegation/generation changed"
+            )
+        from parent.development import verify_completion
+
+        verify_completion(session)
 
     def _validate_start(
         self, key: str, row: dict[str, Any], job: dict[str, Any]
@@ -196,7 +266,12 @@ class Supervisor:
             )
         self._authorized(key, row)
         session = self._session(key, row)
-        session.agreed()
+        issue = self.gh.issue(session.parent)
+        if job["role"] == "parent" and issue["state"] == "closed":
+            self._validate_completion_resume(session, row, job, issue)
+        else:
+            session.agreed()
+        check_task_adoptions(self.gh, self.gh.issue(session.parent)["body"])
         if job["role"] == "parent":
             if dispatch["active_job"] != job["id"]:
                 raise ValueError("parent reservation was superseded")
@@ -213,7 +288,7 @@ class Supervisor:
                 or task.get("branch") != job["branch"]
             ):
                 raise ValueError("current child delegation changed or stopped")
-            _, children = session.family()
+            _, children = session.work_items()
             child = children.get(job["child"])
             if child is None or task.get("requirements_sha256") != digest(
                 requirement_body(child.body)
@@ -221,15 +296,34 @@ class Supervisor:
                 raise ValueError(
                     "delegated child requirements or formal parent changed"
                 )
+            check_task_adoptions(self.gh, child.body)
             planned = next(
                 t
                 for t in session.launch_plan(restart_child=job["child"])["tasks"]
                 if t["child"] == job["child"]
             )
-            if planned["action"] != "ready":
+            reasons = planned["reasons"]
+            if job["resume_from"] is not None and task.get("restart_evidence"):
+                related = [
+                    p
+                    for p in self.gh.pulls()
+                    if job["child"] in closing_issues(p.get("body") or "", self.gh.repo)
+                ]
+                if related and (
+                    len(related) != 1
+                    or related[0]["state"] != "open"
+                    or related[0]["head"]["ref"] != job["branch"]
+                    or related[0]["head"]["repo"]["full_name"].casefold()
+                    != self.gh.repo.casefold()
+                ):
+                    raise ValueError(
+                        "continuation requires the same open implementation PR"
+                    )
+                reasons = [r for r in reasons if r["code"] != "existing_pr"]
+            if reasons:
                 raise ValueError(
                     "child launch is blocked: "
-                    + "; ".join(r["message"] for r in planned["reasons"])
+                    + "; ".join(r["message"] for r in reasons)
                 )
         snapshot = load(Path(job["directory"]) / "start-input.json")
         sources = dispatch["candidate"]["sources"]
@@ -267,7 +361,7 @@ class Supervisor:
                 self._validate_start(key, row, job)
             except (ValueError, OSError, KeyError, TypeError) as exc:
                 reason = f"{exc}; 次の予定回または明示実行で再判断する"
-                self._cancel(row, job, reason)
+                self.cancel_reservation(row, job, reason)
                 if (
                     job["role"] == "parent"
                     and job["phase"] == "ended"
@@ -287,7 +381,9 @@ class Supervisor:
             self.store.save()
             return job
 
-    def _resume_from(self, row: dict[str, Any], previous: dict[str, Any]) -> str | None:
+    def resume_source(
+        self, row: dict[str, Any], previous: dict[str, Any]
+    ) -> str | None:
         jobs = row["dispatch"]["jobs"]
         while True:
             if previous["phase"] != "ended":
@@ -326,7 +422,9 @@ class Supervisor:
             previous = matches[0]
 
     @staticmethod
-    def _cancel(row: dict[str, Any], job: dict[str, Any], reason: str) -> None:
+    def cancel_reservation(
+        row: dict[str, Any], job: dict[str, Any], reason: str
+    ) -> None:
         dispatch = row["dispatch"]
         if not unstarted(job):
             job.update(
@@ -718,7 +816,7 @@ class Supervisor:
             resume_from = None
             if related:
                 previous = max(related, key=lambda j: j["sequence"])
-                resume_from = self._resume_from(row, previous)
+                resume_from = self.resume_source(row, previous)
             job = self._job(
                 key,
                 row,
@@ -744,7 +842,7 @@ class Supervisor:
                 raise ValueError("resume requires an idle managed parent")
             self._authorized(key, row)
             previous = dispatch["jobs"][dispatch["active_job"]]
-            if self._resume_from(row, previous) is None or row["session"].startswith(
+            if self.resume_source(row, previous) is None or row["session"].startswith(
                 "dispatcher-reservation:"
             ):
                 raise ValueError(
@@ -851,7 +949,9 @@ class Supervisor:
                     directory = Path(job["directory"])
                     if job["phase"] == "reserved":
                         if stop:
-                            self._cancel(row, job, "cancelled before runtime launch")
+                            self.cancel_reservation(
+                                row, job, "cancelled before runtime launch"
+                            )
                         continue
                     # A live worker (or inherited launcher FD) may still be in
                     # Popen/save. Absence of a runtime file is never end evidence.
@@ -892,7 +992,7 @@ class Supervisor:
                         try:
                             self._authorized(key, row)
                             previous = dispatch["jobs"][dispatch["active_job"]]
-                            resume_from = self._resume_from(row, previous)
+                            resume_from = self.resume_source(row, previous)
                             if resume_from is None:
                                 raise ValueError(
                                     "previous runtime has no resumable session"

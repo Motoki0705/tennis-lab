@@ -1,0 +1,558 @@
+{
+  "result": {
+    "schema_version": 1,
+    "result": "completed",
+    "turn_end_reason": "completed",
+    "contract": {
+      "settings": {
+        "agent": "codex",
+        "selected": {
+          "effort": "max",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        }
+      },
+      "mode": "read-only",
+      "runtime_home": "CODEX_HOME",
+      "cwd": "WORKTREE"
+    },
+    "runtime": {
+      "session_id": "parent-session",
+      "turn_id": "parent-turn"
+    }
+  },
+  "parent": [
+    {
+      "timestamp": "2026-10-23T16:31:17.232Z",
+      "type": "session_meta",
+      "payload": {
+        "id": "parent-session",
+        "session_id": "parent-session",
+        "cwd": "WORKTREE",
+        "cli_version": "0.163.0",
+        "source": "exec"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:17.233Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "task_started",
+        "turn_attribution": {
+          "turn_id": "parent-turn",
+          "turn_trigger": "exec",
+          "parent_turn_id": null,
+          "initiating_agent_path": null,
+          "root_turn_id": "parent-turn"
+        },
+        "turn_id": "parent-turn",
+        "root_turn_id": "parent-turn",
+        "started_at": 1792773077
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:18.598Z",
+      "type": "turn_context",
+      "payload": {
+        "turn_id": "parent-turn",
+        "cwd": "WORKTREE",
+        "model": "gpt-6-astra",
+        "effort": "max",
+        "sandbox_policy": {
+          "type": "read-only"
+        },
+        "approval_policy": "never"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:29.221Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call",
+        "namespace": "collaboration",
+        "name": "spawn_agent",
+        "call_id": "spawn-a",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773085.154474
+        },
+        "arguments": "{\"task_name\": \"a\", \"fork_turns\": \"none\", \"message\": \"Anonymized probe task\"}"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:29.342Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call_output",
+        "call_id": "spawn-a",
+        "output": "{\"task_name\":\"/root/a\"}",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773089.3419714
+        }
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:33.030Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call",
+        "namespace": "collaboration",
+        "name": "spawn_agent",
+        "call_id": "spawn-b",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773089.648493
+        },
+        "arguments": "{\"task_name\": \"b\", \"fork_turns\": \"none\", \"message\": \"Anonymized probe task\"}"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:33.115Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call_output",
+        "call_id": "spawn-b",
+        "output": "{\"task_name\":\"/root/b\"}",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773093.1152246
+        }
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:38.578Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call",
+        "namespace": "collaboration",
+        "name": "spawn_agent",
+        "call_id": "spawn-c",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773094.6942234
+        },
+        "arguments": "{\"task_name\": \"c\", \"fork_turns\": \"none\", \"message\": \"Anonymized probe task\"}"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:38.694Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call_output",
+        "call_id": "spawn-c",
+        "output": "{\"task_name\":\"/root/c\"}",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773098.6940193
+        }
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:41.444Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call",
+        "namespace": "collaboration",
+        "name": "spawn_agent",
+        "call_id": "spawn-d",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773099.802089
+        },
+        "arguments": "{\"task_name\": \"d\", \"fork_turns\": \"none\", \"message\": \"Anonymized probe task\"}"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:41.566Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call_output",
+        "call_id": "spawn-d",
+        "output": "collab spawn failed: agent thread limit reached",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773101.5666394
+        }
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:59.802Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call",
+        "namespace": "collaboration",
+        "name": "spawn_agent",
+        "call_id": "spawn-after_completion",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773117.47455
+        },
+        "arguments": "{\"task_name\": \"after_completion\", \"fork_turns\": \"none\", \"message\": \"Anonymized probe task\"}"
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:31:59.898Z",
+      "type": "response_item",
+      "payload": {
+        "type": "function_call_output",
+        "call_id": "spawn-after_completion",
+        "output": "{\"task_name\":\"/root/after_completion\"}",
+        "internal_chat_message_metadata_passthrough": {
+          "turn_id": "parent-turn",
+          "create_time": 1792773119.898672
+        }
+      }
+    },
+    {
+      "timestamp": "2026-10-23T16:33:43.342Z",
+      "type": "event_msg",
+      "payload": {
+        "type": "task_complete",
+        "turn_id": "parent-turn",
+        "root_turn_id": "parent-turn",
+        "started_at": 1792773077,
+        "completed_at": 1792773223,
+        "last_agent_message": "PROBE_COMPLETED"
+      }
+    }
+  ],
+  "children": {
+    "a": [
+      {
+        "timestamp": "2026-10-23T16:31:29.343Z",
+        "type": "session_meta",
+        "payload": {
+          "id": "native-a",
+          "session_id": "parent-session",
+          "cwd": "WORKTREE",
+          "cli_version": "0.163.0",
+          "source": {
+            "subagent": {
+              "thread_spawn": {
+                "parent_thread_id": "parent-session",
+                "depth": 1,
+                "agent_path": "/root/a",
+                "agent_role": null
+              }
+            }
+          },
+          "parent_thread_id": "parent-session",
+          "agent_path": "/root/a",
+          "multi_agent_version": "v2"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:29.343Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_started",
+          "turn_attribution": {
+            "turn_id": "turn-a",
+            "turn_trigger": "exec",
+            "parent_turn_id": "parent-turn",
+            "initiating_agent_path": "/root",
+            "root_turn_id": "parent-turn"
+          },
+          "turn_id": "turn-a",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773089
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:30.776Z",
+        "type": "turn_context",
+        "payload": {
+          "turn_id": "turn-a",
+          "cwd": "WORKTREE",
+          "model": "gpt-6-astra",
+          "effort": "max",
+          "sandbox_policy": {
+            "type": "read-only"
+          },
+          "approval_policy": "never"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:54.774Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "PROBE_A_DONE",
+              "annotations": [],
+              "logprobs": []
+            }
+          ]
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:54.818Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-a",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773089,
+          "completed_at": 1792773114,
+          "last_agent_message": "PROBE_A_DONE"
+        }
+      }
+    ],
+    "after_completion": [
+      {
+        "timestamp": "2026-10-23T16:31:59.899Z",
+        "type": "session_meta",
+        "payload": {
+          "id": "native-after_completion",
+          "session_id": "parent-session",
+          "cwd": "WORKTREE",
+          "cli_version": "0.163.0",
+          "source": {
+            "subagent": {
+              "thread_spawn": {
+                "parent_thread_id": "parent-session",
+                "depth": 1,
+                "agent_path": "/root/after_completion",
+                "agent_role": null
+              }
+            }
+          },
+          "parent_thread_id": "parent-session",
+          "agent_path": "/root/after_completion",
+          "multi_agent_version": "v2"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:59.899Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_started",
+          "turn_attribution": {
+            "turn_id": "turn-after_completion",
+            "turn_trigger": "exec",
+            "parent_turn_id": "parent-turn",
+            "initiating_agent_path": "/root",
+            "root_turn_id": "parent-turn"
+          },
+          "turn_id": "turn-after_completion",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773119
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:01.003Z",
+        "type": "turn_context",
+        "payload": {
+          "turn_id": "turn-after_completion",
+          "cwd": "WORKTREE",
+          "model": "gpt-6-astra",
+          "effort": "max",
+          "sandbox_policy": {
+            "type": "read-only"
+          },
+          "approval_policy": "never"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:16.230Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "PROBE_FOLLOWUP_DONE",
+              "annotations": [],
+              "logprobs": []
+            }
+          ]
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:16.274Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-after_completion",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773119,
+          "completed_at": 1792773136,
+          "last_agent_message": "PROBE_FOLLOWUP_DONE"
+        }
+      }
+    ],
+    "b": [
+      {
+        "timestamp": "2026-10-23T16:31:33.116Z",
+        "type": "session_meta",
+        "payload": {
+          "id": "native-b",
+          "session_id": "parent-session",
+          "cwd": "WORKTREE",
+          "cli_version": "0.163.0",
+          "source": {
+            "subagent": {
+              "thread_spawn": {
+                "parent_thread_id": "parent-session",
+                "depth": 1,
+                "agent_path": "/root/b",
+                "agent_role": null
+              }
+            }
+          },
+          "parent_thread_id": "parent-session",
+          "agent_path": "/root/b",
+          "multi_agent_version": "v2"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:33.116Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_started",
+          "turn_attribution": {
+            "turn_id": "turn-b",
+            "turn_trigger": "exec",
+            "parent_turn_id": "parent-turn",
+            "initiating_agent_path": "/root",
+            "root_turn_id": "parent-turn"
+          },
+          "turn_id": "turn-b",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773093
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:34.226Z",
+        "type": "turn_context",
+        "payload": {
+          "turn_id": "turn-b",
+          "cwd": "WORKTREE",
+          "model": "gpt-6-astra",
+          "effort": "max",
+          "sandbox_policy": {
+            "type": "read-only"
+          },
+          "approval_policy": "never"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:05.792Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "PROBE_B_DONE",
+              "annotations": [],
+              "logprobs": []
+            }
+          ]
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:05.808Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-b",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773093,
+          "completed_at": 1792773125,
+          "last_agent_message": "PROBE_B_DONE"
+        }
+      }
+    ],
+    "c": [
+      {
+        "timestamp": "2026-10-23T16:31:38.670Z",
+        "type": "session_meta",
+        "payload": {
+          "id": "native-c",
+          "session_id": "parent-session",
+          "cwd": "WORKTREE",
+          "cli_version": "0.163.0",
+          "source": {
+            "subagent": {
+              "thread_spawn": {
+                "parent_thread_id": "parent-session",
+                "depth": 1,
+                "agent_path": "/root/c",
+                "agent_role": null
+              }
+            }
+          },
+          "parent_thread_id": "parent-session",
+          "agent_path": "/root/c",
+          "multi_agent_version": "v2"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:38.671Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_started",
+          "turn_attribution": {
+            "turn_id": "turn-c",
+            "turn_trigger": "exec",
+            "parent_turn_id": "parent-turn",
+            "initiating_agent_path": "/root",
+            "root_turn_id": "parent-turn"
+          },
+          "turn_id": "turn-c",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773098
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:31:37.777Z",
+        "type": "turn_context",
+        "payload": {
+          "turn_id": "turn-c",
+          "cwd": "WORKTREE",
+          "model": "gpt-6-astra",
+          "effort": "max",
+          "sandbox_policy": {
+            "type": "read-only"
+          },
+          "approval_policy": "never"
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:13.381Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "role": "assistant",
+          "content": [
+            {
+              "type": "output_text",
+              "text": "PROBE_C_DONE",
+              "annotations": [],
+              "logprobs": []
+            }
+          ]
+        }
+      },
+      {
+        "timestamp": "2026-10-23T16:32:13.421Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "task_complete",
+          "turn_id": "turn-c",
+          "root_turn_id": "parent-turn",
+          "started_at": 1792773098,
+          "completed_at": 1792773133,
+          "last_agent_message": "PROBE_C_DONE"
+        }
+      }
+    ]
+  }
+}

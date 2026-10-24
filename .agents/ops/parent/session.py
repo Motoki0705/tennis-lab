@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -399,6 +400,18 @@ class ParentSession:
         parent = family[self.parent]
         return parent, {n: family[n] for n in parent.children}
 
+    def work_items(self) -> tuple[Issue, dict[int, Issue]]:
+        parent, children = self.family()
+        if parent.parent is not None:
+            if "dispatch" in self.row:
+                raise ValueError(
+                    "an existing child must be managed by its formal parent"
+                )
+            return parent, children
+        return parent, children or (
+            {} if PARENT_LABEL in parent.labels else {parent.number: parent}
+        )
+
     def update_body(self, n: int, body: str, expected_body: str | None = None) -> None:
         self.public(body)
         raw = self.gh.issue(n)
@@ -616,8 +629,42 @@ class ParentSession:
         overrides: dict[int, list[int]] | None = None,
         restart_child: int | None = None,
     ) -> dict[str, Any]:
-        parent, children = self.family()
+        parent, children = self.work_items()
+        standalone_deps: list[int] | None = None
         blockers = []
+        if self.parent in children:
+            standalone_deps = (
+                dependencies(parent.body)
+                if "依存関係" in parse_sections(parent.body)
+                else []
+            )
+            if self.parent in standalone_deps:
+                raise ValueError("standalone issue depends on itself")
+            if (
+                overrides
+                and list(overrides.get(self.parent, standalone_deps)) != standalone_deps
+            ):
+                raise ValueError(
+                    "revise standalone dependencies and its execution basis before delegating"
+                )
+            for dep in standalone_deps:
+                raw = self.gh.issue(dep)
+                if raw["state"] != "closed" or raw.get("state_reason") != "completed":
+                    blockers.append(
+                        reason(
+                            "dependency_not_completed",
+                            f"先行依存 #{dep} のclosed/completedを確認する。",
+                        )
+                    )
+            # Legacy standalone issues have no required child-format headings.
+            # External dependencies are checked above, outside the child DAG.
+            # Requirements and the published dependency list stay verbatim.
+            children = {
+                self.parent: replace(
+                    parent, body=replace_section(parent.body, "依存関係", "なし。")
+                )
+            }
+            overrides = None
         if self.row.get("status") != "active":
             blockers.append(reason("parent_assignment", "親の担当がactiveでない。"))
         if parent.state != "open":
@@ -626,16 +673,19 @@ class ParentSession:
             blockers.append(
                 reason("execution_basis_required", "親の有効な実行根拠を記録する。")
             )
-        return plan_launches(
+        plan = plan_launches(
             children,
             self.row.get("tasks", {}),
-            self.gh.pulls() if children else [],
+            self.gh.pulls(),
             self.gh.repo,
             launch_policy(self.row.get("launch_policy", DEFAULT_LAUNCH_POLICY)),
             blockers,
             overrides,
             restart_child,
         )
+        if standalone_deps is not None:
+            plan["tasks"][0]["dependencies"] = standalone_deps
+        return plan
 
     def configure_delegation(self, limit: int | None, evidence: str) -> dict[str, Any]:
         row = self.owner()
@@ -672,8 +722,9 @@ class ParentSession:
 
     def reconcile(self) -> dict[str, Any]:
         self.owner()
-        _, children = self.family()
-        states = progress(children, self.row["tasks"])
+        _, children = self.work_items()
+        initial_plan = self.launch_plan()
+        states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
         prs = self.gh.pulls()
         from .policy import closing_issues
 
@@ -681,7 +732,9 @@ class ParentSession:
         for n, child in sorted(children.items()):
             task = {
                 **self.row["tasks"].get(str(n), {}),
-                "dependencies": dependencies(child.body),
+                "dependencies": next(
+                    t["dependencies"] for t in initial_plan["tasks"] if t["child"] == n
+                ),
             }
             matching = [
                 p for p in prs if n in closing_issues(p.get("body") or "", self.gh.repo)
@@ -734,12 +787,18 @@ class ParentSession:
         worktree: Path,
         deps: list[int] | None,
         restart: str | None,
+        *,
+        continue_existing: bool = False,
     ) -> dict[str, Any]:
         self.agreed()
         auth = execution.authorization(self)
-        parent, children = self.family()
+        parent, children = self.work_items()
         if child not in children:
-            raise ValueError("delegate requires a direct child of this parent")
+            raise ValueError("delegate requires a direct child or the standalone issue")
+        from .adopted_tasks import check_task_adoptions
+
+        check_task_adoptions(self.gh, parent.body)
+        check_task_adoptions(self.gh, children[child].body)
         source = parse_proposal_source(children[child].body)
         if source is not None:
             proposals.require_source(self, source)
@@ -749,14 +808,29 @@ class ParentSession:
             for dep in deps:
                 number(dep)
         override = {child: deps} if deps is not None else None
-        states = progress(children, self.row["tasks"], override)
+        initial_plan = self.launch_plan(override)
+        states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
         if states[child] != "continue":
             raise ValueError(f"#{child} cannot be delegated: {states[child]}")
         reconciled = next(t for t in self.reconcile()["tasks"] if t["child"] == child)
         previous = self.row["tasks"].get(str(child), {})
-        if reconciled["prs"]:
+        if reconciled["prs"] and not continue_existing:
             raise ValueError(
                 "existing PR: reconcile instead of starting another worker"
+            )
+        if continue_existing and (
+            not restart
+            or not previous.get("delegated")
+            or previous.get("worker_ended", {}).get("delegation_id")
+            != previous.get("delegation_id")
+            or previous.get("branch") != branch
+            or previous.get("worktree") != str(worktree.resolve())
+            or previous.get("agent") != agent
+            or len(reconciled["prs"]) > 1
+            or any(p["state"] != "open" for p in reconciled["prs"])
+        ):
+            raise ValueError(
+                "continuation requires the ended worker, same worktree and restart evidence"
             )
         if previous.get("delegated") and not restart:
             raise ValueError(
@@ -769,10 +843,20 @@ class ParentSession:
             for t in self.launch_plan(override, child if restart else None)["tasks"]
             if t["child"] == child
         )
-        if planned["action"] != "ready":
+        if continue_existing:
+            plan = self.launch_plan(override, child)
+            limit = plan["policy"]["max_parallel_children"]
+            if limit is not None and len(plan["active_reservations"]) >= limit:
+                raise ValueError("implementation reservation limit reached")
+        reasons = [
+            r
+            for r in planned["reasons"]
+            if not (continue_existing and r["code"] == "existing_pr")
+        ]
+        if reasons:
             raise ValueError(
                 f"#{child} cannot be delegated: "
-                + "; ".join(r["message"] for r in planned["reasons"])
+                + "; ".join(r["message"] for r in reasons)
             )
         if agent not in {"claude", "codex"} or not branch.startswith(agent + "/"):
             raise ValueError("agent/branch prefix mismatch")
@@ -795,9 +879,7 @@ class ParentSession:
             "delegated": True,
             "delegation_id": uuid.uuid4().hex,
             "stacked_on": planned["stacked_on"],
-            "dependencies": deps
-            if deps is not None
-            else dependencies(children[child].body),
+            "dependencies": deps if deps is not None else planned["dependencies"],
             "stopped": False,
             "authorization": auth,
             "requirements_sha256": digest(
@@ -817,6 +899,8 @@ class ParentSession:
         task.pop("worker_ended", None)
         if source is not None:
             proposals.require_source(self, source)
+        check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
+        check_task_adoptions(self.gh, self.gh.issue(child)["body"])
         if execution.authorization(self) != auth:
             raise ValueError("execution basis changed before delegation")
         fresh = next(
@@ -857,7 +941,7 @@ class ParentSession:
         self, child: int, detail: dict[str, Any], resume: bool
     ) -> dict[str, Any]:
         self.owner()
-        _, children = self.family()
+        _, children = self.work_items()
         if child not in children or task_status(children[child]) != "open":
             raise ValueError("stop/resume requires an open direct child")
         required = {"reason", "facts", "impact", "resume_condition", "next_action"}
@@ -948,9 +1032,9 @@ class ParentSession:
             if phase(self.history()) in {"agreed", "autonomous"}
             else None
         )
-        _, children = self.family()
+        _, children = self.work_items()
         if child not in children:
-            raise ValueError("result requires a direct child")
+            raise ValueError("result requires a direct child or the standalone issue")
         from .policy import closing_issues
 
         prs = [

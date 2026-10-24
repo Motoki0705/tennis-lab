@@ -19,7 +19,7 @@ def emit(value: dict[str, Any]) -> None:
 
 def main() -> None:
     args = sys.argv[1:]
-    sys.stdin.read()
+    prompt = sys.stdin.read()
     agent = Path(sys.argv[0]).name
     directory = Path(os.environ["AGENT_RUNTIME_RUN_DIR"])
     session = (
@@ -56,6 +56,15 @@ def main() -> None:
                             "model": model,
                             "effort": "max",
                         },
+                    }
+                )
+                + "\n"
+            )
+            stream.write(
+                json.dumps(
+                    {
+                        "type": "event_msg",
+                        "payload": {"type": "user_message", "message": prompt},
                     }
                 )
                 + "\n"
