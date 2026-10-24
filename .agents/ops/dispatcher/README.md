@@ -231,7 +231,7 @@ triageは生成・再利用した**通常の作業issueをGitHubへ反映する�
 ## 検証と未検証範囲
 
 ```bash
-flock "$PYTEST_LOCK" .venv/bin/python -m pytest tests/e2e/agents_ops/test_dispatcher_judgement.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_dispatcher_judgement.py -n 4 -q
 ```
 
 fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既存の統合試験は本番と同じ共通ランナーを通す。
@@ -464,8 +464,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
 起動前取消の修正予約は、保存した再開元runへ戻す。一度も起動していない取消予約は、
 全jobの起動証拠がなく既存PRもない場合だけ、同じ担当で明示的に再予約する。
 実行済みrunのsession欠落や取消記録の曖昧さを、別sessionへの振替で回避しない。
-pytestは [既存の共有lock wrapper](../parent/README.md#pytest共有lock) を使う。
-キャンペーンから `PYTEST_LOCK` が指定された場合は親・子で同じ値を継承し、別のlockを作らない。
+pytestは [並列実行の手順](../parent/README.md#pytestの並列実行) に従い、共有lockなしで親・子間の並列実行を許可する。
 GPU・Blenderの資源調停はtraining queueの既存枠を使う。
 
 親の最終文は追加キーなしのJSON:

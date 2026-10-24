@@ -11,9 +11,11 @@
 |---|---|
 | `ops_report.py` | CLI入口（`report` / `triage` / `schedule init` / `schedule status`） |
 | `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有5層memory、`knowledge/`、AI制御ファイル |
+| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 固定版・GitHubの範囲取得、取得記録の追記、GET専用stdio MCP。profileへの接続は統合側が行う |
 | `opsreport/agent.py` | プロンプト組み立て、`../lib/agent_exec.sh` による親Codexのread-only実行、集約JSONの検証 |
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
+| `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -71,6 +73,59 @@ checkpointを失ったら `collected.json` のaudit_runtimeを除いた入力と
 serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。個別ツール・fetch・掃除・ロック待ちの
 制限は別で、失敗を全体調査の成功へ読み替えない。agent失敗やSIGINT/SIGTERMはプロセスグループを回収して未完了公開する。
 強制終了・停電等で公開できない中断はrunning/failed状態とcheckpointから再開する。
+
+## オンデマンドの読み取り経路
+
+`opsreport.mcp_server` はagentのsandbox外で起動するstdio MCP。調査親とnative子のsandboxはread-onlyのままにする。
+起動時にホスト側でrepo・調査回・完全な基準commit SHA・GitHubの `owner/name`・外部のprivateな記録先を固定する。
+`--ops-memory-sha` は専用memoryの別の固定版を指定する入口で、省略時は基準SHAを使う。
+
+```bash
+PYTHONPATH=.agents/ops/ops-report .venv/bin/python -B -m opsreport.mcp_server \
+  --repo "$PWD" --base-sha "$base_sha" --repository "$repository" \
+  --round-id "$round_id" --journal-dir "$journal_dir"
+```
+
+MCPのcommandにはこのcheckoutのPython、argsには `-B -m opsreport.mcp_server` と上記引数、
+envの `PYTHONPATH` にはこのcheckoutの `.agents/ops/ops-report` の絶対パスを渡す。
+Codex CLI 0.163.0の `-c mcp_servers.*` は **`exec` の後**に置く。
+`exec` より前では登録が見えてもサーバーが起動されなかった。共通ランナー・profileへの恒久接続は統合側で行う。
+Codexの `tools/list` は標準の `_meta` を伴うため受理する。cursorは省略または `null` のみ受理し、
+空文字を含むcursor値と未知の引数は拒否する。tool一覧は1回で全件返すため、cursorを黙って無視しない。
+
+| tool | 取得する範囲 |
+|---|---|
+| `code_paths` / `code_search` / `code_file` | 基準commitのパス、リテラル検索、UTF-8ファイルの行・文字範囲。symlinkを辿らず、gitlinkは境界として列挙する |
+| `git_history` / `commit_diff` | 基準commitから辿れる履歴とcommit差分。shallow履歴、基準版の後のcommit、外部diff/textconvは許可しない |
+| `record_paths` / `record_file` | `knowledge` / 共有 `memory` / 専用 `ops_memory`。ファイルのpathはscopeからの相対指定 |
+| `github_items` / `github_item` | issue/PRの検索・一覧と本文。リテラル句、state・label・author・更新日で絞る |
+| `github_comments` / `github_comment` | discussion・review comment・reviewの一覧と選択した本文。一覧には本文を入れない |
+| `pr_diff` | 期待する完全なhead SHAを必須にして差分を範囲取得。取得前後のhead/base・変更量と本文のhunk範囲を検証し、ファイル数・追加/削除行数をPRメタデータと照合する |
+| `ci_runs` / `ci_jobs` / `ci_log` | run一覧、取得時に固定したattemptのjob一覧、jobログの範囲。run/job IDとコードのhead SHAを保持する |
+
+`page` / `per_page` で一覧を、`start_line` / `line_count` と `offset` / `max_chars` で本文を選ぶ。
+文字offsetは選択した行範囲内のUnicode文字位置。`pagination.next` は元の絞り込みを含む次回のargumentsで、
+同じtoolへそのまま渡す。本文の続きには `expected_sha256` が付き、取得途中の本文更新は `SOURCE_CHANGED` にする。
+GitHub一覧は取得時点ごとに変化するため、複数ページを単一時点のsnapshotとみなさない。
+
+全取得応答に出典、取得時刻、基準SHA、該当するPR/CIのhead、ページ/省略情報、実行権限を変更しない調査資料である旨を付ける。
+1応答64 KiB・1回のbackend取得64 MiB・個別コマンド45秒を上限とし、到達時は構造化エラーを返す。
+GitHub検索の1000件上限・run一覧の安全上限・incomplete応答、403/5xx、欠落ログ、PR更新、部分差分も成功に変換しない。
+PR差分はhunk境界で切れた場合も独立した追加/削除行数で検出する。hunkを持たない変更は、binary marker、
+完全一致rename/copy、mode変更、空ファイルの作成/削除を区別し、本文の完全性を照合できなければ `INCOMPLETE_DIFF` にする。
+応答上限には小さいページ/範囲で対応し、backend上限やGitHub上限で取得できない範囲は未確認として残す。
+任意のコマンド・HTTP endpoint・書込みmethodはtool引数に存在せず、GitHubには `gh api --method GET` だけを使う。
+
+外部記録先は0700のディレクトリとし、`retrieval.jsonl` は0600・flock・追記・fsyncで親子のサーバー間で共有する。
+要求と応答をreceiptで結び、応答全文と内容のSHA-256を保存する。記録失敗時は取得前に止めるか、未記録の本文を返さずエラーにする。
+別の調査回/基準版の混在、途中で切れた末尾、記録の消失も停止対象。調査台帳への書込みtoolは提供しない。
+
+自動検証は `test_ops_report_retrieval.py`（fake gh・使い捨てGit repo・実stdioプロセス。実agent/GitHub書込みなし）。
+2026-10-24の接続probeでは、既存 `agent_exec.sh --agent codex --profile ops_report --mode read-only` と一時PATH shimを使い、
+親と `spawn_agent(task_name=..., fork_turns="none", message=...)` のnative子が同じ追加MCPを呼び、両者のreceiptをサーバー側記録と照合した。
+完成版では親が固定版の `AGENTS.md`、子がGitHubの #1447 本文を範囲取得した。両者の実記録でread-only / approval never / Astra / maxを確認した。
+role選択引数・model/effortの上書き・設定ファイルの変更は行っていない。実効service tierは記録がなく未確認。
+privateな実行記録と `evidence-summary.json` は指定campaignのprobe領域に保存する。
 
 ## 調査台帳ライブラリ
 
@@ -148,6 +203,62 @@ IDは種類ごとに一意とし、更新時は同じIDで新しい記録を追�
 別writerの更新後は `LedgerConflictError` とし、再読込と判断のやり直しを要求する。
 途中切れ・重複JSONキー・未知version・不正な参照や遷移は `LedgerCorruptError` で停止する。
 元ファイルを保存し、検証済みbackupと原本記録を照合して明示復旧する。空状態への置換や末尾イベントの自動切捨ては行わない。
+
+## native起動の実行証拠
+
+2026-10-24、Codex CLI **0.163.0**（`multi_agent` stable）を既存の
+`agent_exec.sh --agent codex --profile ops_report --mode read-only` で実行した。
+設定の変更・子の定義追加は行わず、profileの `agents.max_threads=3`、`agents.max_depth=1` を使った。
+この確認は以下の実行環境の契約であり、上の固定scout経路を切り替える実装は後続の統合で行う。
+
+- 実際に使えた起動引数は `spawn_agent(task_name=..., message=..., fork_turns="none")`。
+  `agent_type` や固定役割名は指定しない。戻り値の `task_name` は `/root/<名前>` というnativeの名前空間で、
+  子session IDそのものではない。`model` / `reasoning_effort` を省略した子4件すべての `turn_context` で、
+  親と同じ `gpt-6-astra` / `max`、read-only sandbox、`approval_policy=never`、作業ディレクトリを確認した。
+  子のmetadataのdepthは1。実効service tierは記録にないため未確認。
+- 親のほかに子3件を重ねて起動でき、4件目は `collab spawn failed: agent thread limit reached` で拒否された。
+  `wait_agent(timeout_ms=...)` の後、1件の完了を受領すると、残る子の完了前に後続を起動できた（成功総数4）。
+  同時枠は完了で解放され、総生成数の上限ではない。`list_agents()` で完了状態も確認した。
+  この環境に `close_agent` はなく、明示closeによる回収は未検証。完了した子を閉じる操作は後続起動に不要だった。
+
+再確認は短いprobe用promptを用意し、既存runnerだけを使う。promptでは子2〜3件に短いsleepと定型文の返却を依頼し、
+枠不足を1回確認後、完了受領と後続起動を行う。probeのためにprofileやCODEX_HOME設定を変更しない。
+run dirは新規のものを指定する（#1448の確認は以下の `initial/` に保存した）。
+
+```bash
+probe_root="${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/campaign-1349/probe-1448"
+bash .agents/ops/lib/agent_exec.sh --agent codex --profile ops_report --mode read-only \
+  --task-id probe-1448 --cwd "$PWD" --branch codex/audit-native-evidence \
+  --prompt-file "$probe_root/prompt.md" --run-dir "$probe_root/<新しいrun名>"
+```
+
+`native.inspect_run(Path(".../agent-runtime"))` はrunnerの `result.json` にある
+`contract.runtime_home`・`runtime.session_id`・`runtime.turn_id` を起点とする。現在の環境変数や最新turnへ切り替えず、
+`sessions/` と `archived_sessions/` の実transcriptを読む。親の `response_item` 内の
+`function_call`（namespace `collaboration`、name `spawn_agent`）と `function_call_output` を `call_id` で対応させる。
+子の `session_meta.source.subagent.thread_spawn` と `parent_thread_id`、`agent_path`、
+`task_started.turn_attribution.parent_turn_id` から親runとの対応を確定し、`session_meta.id` をnative IDとして返す。
+子の `session_meta.session_id` は親のIDであり、子threadのIDとは区別する。
+`task_complete` と最後のassistant本文を照合した結果、開始・完了時刻、実効設定、transcriptのパス・内容hashも返す。
+親の最終JSONは実行証拠として読まない。起動拒否は `rejections` に分け、起動成功へ読み替えない。
+
+`native.reconcile(run_dir, {"台帳タスクID": "native ID", ...})` は、そのrunで実際に起動した子と
+台帳の対応が一対一で全件完了している場合だけ、タスクIDをキーに実行証拠を返す。
+統合側は `inspect_run` の `NativeAgent.task_name` でspawn戻り値を照合して `agent_id` を取得・保存する。
+nativeの名前空間をsession IDの代わりに渡さない。複数runの台帳はrunごとに分けて照合する。
+このAPIは1タスクにつき新規spawnを扱う。同じ親turnでの `followup_task` は、最初の完了の流用を防ぐため明示エラーにする。
+タスクの問いと子の調査内容の意味的な一致は、このAPIでは証明しない。
+
+未完了・中断した子は `inspect_run` の `status=incomplete|aborted` として明示し、`reconcile` は拒否する。
+記録欠落、不正/重複JSON、spawn応答の欠落、親子/turn/ID/実効設定の不一致、重複transcript、
+対応しない子は `NativeEvidenceError`。未確認のfork形式や起動エラーの形式も推測で補わない。
+CODEX_HOME内のmetadata headerも厳格にparseし、破損があれば停止する。
+既存の `agent.py` / `audit.py` への接続は後続の統合が行う。
+
+自動テストは `tests/e2e/agents_ops/test_ops_report_native.py`。
+fixtureの `fixtures/native_transcripts.json` は上記実行の必要なrecordを抽出し、実session ID・tool call ID・
+filesystemパス・prompt本文を記号に置換したもの。`/root/...` はfilesystemパスではなくnativeの名前空間である。
+実agentやGitHub書き込みは起動しない。
 
 ## 提案ID・チェック・triage
 

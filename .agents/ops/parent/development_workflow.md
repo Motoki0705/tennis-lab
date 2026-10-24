@@ -30,7 +30,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 ```
 
 出力は `child/delegation_id/job_id/result=reserved`。起動の成功や成果物の合格ではない。
-担当issueの原文・親の具体指示・共有pytest lockと [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
+担当issueの原文・親の具体指示と [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
 モデル選択の理由もissueへの `note` に残す。GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 

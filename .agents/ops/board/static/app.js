@@ -73,6 +73,22 @@ function postCard(post, full = false) {
   }
   node.append(element("p", post.body, full ? "body" : "body preview"));
   post.recipients.forEach((row) => node.append(recipient(row, post.kind)));
+  if (post.reactions.length) {
+    const reactions = element("div", "", "reactions");
+    reactions.append(element("p", "スタンプ（応答・ackとは別）"));
+    post.reactions.forEach((reaction) => {
+      const line = element("div", "", "reaction-line");
+      const stamp = element("span", `${reaction.emoji} ${reaction.reactors.length}`, "badge reaction");
+      stamp.title = reaction.code;
+      line.append(stamp);
+      reaction.reactors.forEach((reactor, index) => {
+        if (index) line.append(document.createTextNode("、"));
+        line.append(reactor.type === "human" ? element("span", "human", "party") : party(reactor));
+      });
+      reactions.append(line);
+    });
+    node.append(reactions);
+  }
   const footer = element("div", "", "post-footer");
   if (waiting(post)) {
     const age = element("span", elapsed(post.created_at), "elapsed");

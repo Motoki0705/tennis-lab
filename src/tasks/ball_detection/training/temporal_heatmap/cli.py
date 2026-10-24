@@ -87,7 +87,3 @@ def main() -> None:
         augmentation=AugmentationConfig.load(args.augmentation_config) if args.augmentation_config else None,
         distance_px=args.distance_px, initial_artifact=args.initial_artifact, initial_artifact_sha256=args.initial_artifact_sha256,
         parent_update=args.parent_update, resume=args.resume, stop_after_update=args.stop_after_update)
-
-
-if __name__ == "__main__":
-    main()
