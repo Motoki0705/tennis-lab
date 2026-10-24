@@ -1,0 +1,90 @@
+{
+  "conditions": [
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "56b6a21c96500820be1d91595ae2853f16c8af0711ecf354fb85bccae34c5fc0",
+      "evaluation_contract_sha256": "a27fe063607360fcbd0343296bb70604668c812df06ebb1814f9fce0c190eab1",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 32,
+      "model_kind": "mdd_dpt_heatmap",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "00667fe74a40e4cad9dbe572a0df80eae96cb25e3db72c4eec672f4ba7261777",
+      "validation_payloads_absent": true
+    },
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "c887a123b0686235aa1055c64f3a4e4b68ec129041db3ff2c81e38a5f5782772",
+      "evaluation_contract_sha256": "234fa3b396939e3da7c4eaf1ddf3f7d450b3c0b2274fba71b82cdbc950cefb0f",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 64,
+      "model_kind": "mdd_dpt_heatmap",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "67b68f95ba7e315948d0fe3f51e196be767bc6c0701e26eddfafff1dd3de6f9d",
+      "validation_payloads_absent": true
+    },
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "865d77955dfa38c57c5f7e75f9fab3e49331042d491009bbc5bc6a6b1997a738",
+      "evaluation_contract_sha256": "0d2c49f4b588b22f83f3d2aab0fd629b704f095b6ae74ac758c70c532db4edf5",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 128,
+      "model_kind": "mdd_dpt_heatmap",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "ad2eb0874e81801e3e07439e8c900749bd1fa69e043fe571acef93ce6a87f902",
+      "validation_payloads_absent": true
+    },
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "5823a0780b3c512988e61c315627354fe4ee9fce9c0bf020631eb8450be7217b",
+      "evaluation_contract_sha256": "5db39662bace688cb17e3461b0ceb0d08ede7ee9c3778e615f562c66bf2cc98d",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 32,
+      "model_kind": "mdd_heatmap_hybrid",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "07ac4c09e4298abcf97c4fe67b31364f16e4b70da7d3dbff09faae627a1f666b",
+      "validation_payloads_absent": true
+    },
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "60c547ccda1c8cdef23570dabd8fd75d566ecb09919067e865926c91f79e4625",
+      "evaluation_contract_sha256": "a89483a626399dd8dcbf7271f3bacff67ac69b34261644f8b99e4fcd9f2c7402",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 64,
+      "model_kind": "mdd_heatmap_hybrid",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "f9611575be9cb402e7f3970e30918630bbbb323af7d6144d4151169f851a11a6",
+      "validation_payloads_absent": true
+    },
+    {
+      "calibration_equal": true,
+      "calibration_report_sha256": "d6bc10e7d7c5ba457c179997d785859fbcc5d53d5e7d4c3a6258541abba4db6d",
+      "evaluation_contract_sha256": "0b7a7accb3d63f8bc77a15e47a8738ad656988fd050cea9ef02d60a5860378a5",
+      "evaluation_schema": "ball_temporal_heatmap_evaluation.v2",
+      "explicit_validation_identity_matches": true,
+      "frames": 128,
+      "model_kind": "mdd_heatmap_hybrid",
+      "test_manifest_val_frames": 0,
+      "test_owner_frames": 288,
+      "test_report_sha256": "eaa8b37e1cef04b821e7b3d1652d8fb7e0fad8d76da73719d960350353f32f4a",
+      "validation_payloads_absent": true
+    }
+  ],
+  "device": "cpu",
+  "real_data": false,
+  "rgb_size": [
+    24,
+    24
+  ],
+  "schema_version": 1,
+  "status": "verified_synthetic_cli_matrix"
+}
