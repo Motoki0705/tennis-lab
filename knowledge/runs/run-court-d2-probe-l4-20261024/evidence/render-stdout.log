@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/cProfile.py", line 191, in <module>
+    main()
+  File "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/cProfile.py", line 180, in main
+    runctx(code, globs, None, options.outfile, options.sort)
+  File "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/cProfile.py", line 20, in runctx
+    return _pyprofile._Utils(Profile).runctx(statement, globals, locals,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/profile.py", line 63, in runctx
+    prof.runctx(statement, globals, locals)
+  File "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/cProfile.py", line 101, in runctx
+    exec(cmd, globals, locals)
+  File "knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py", line 293, in <module>
+    main()
+  File "knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py", line 275, in main
+    run(selection, inputs, frozen, Path(temporary), args.output)
+  File "knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py", line 172, in run
+    for sample_id, arrays in backend(scene, records):
+  File "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/runtime.py", line 275, in __call__
+    request = NHTRenderCommandRequest(
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 11, in __init__
+  File "/content/tennis-lab/src/synthetic_data_generation/rendering/nht/contracts.py", line 277, in __post_init__
+    raise ValueError(f"{name} must be an absolute pathlib.Path.")
+ValueError: output_directory must be an absolute pathlib.Path.

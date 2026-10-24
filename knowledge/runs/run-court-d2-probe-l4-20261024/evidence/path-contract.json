@@ -1,0 +1,21 @@
+{
+  "schema": "court_d2_probe_path_verification_v1",
+  "checks": [
+    {
+      "case": "original_relative_temporary_root",
+      "error": "output_directory must be an absolute pathlib.Path."
+    },
+    {
+      "case": "resolving_only_output_is_insufficient",
+      "error": "arbitrary_request_path must be an absolute pathlib.Path."
+    },
+    {
+      "case": "resolve_the_shared_temporary_root",
+      "error": null
+    }
+  ],
+  "constructed_only_no_renderer_instantiated": true,
+  "nht_subprocess_calls": 0,
+  "gpu_calls": 0,
+  "scope": "Path contract only; no assertion about successful GPU rendering or image quality."
+}

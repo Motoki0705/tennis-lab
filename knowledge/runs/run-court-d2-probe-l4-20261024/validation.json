@@ -1,0 +1,86 @@
+{
+  "schema": "court_d2_l4_validation_v1",
+  "completed": [
+    {
+      "command": "PYTHONPATH=\"$PWD\" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python knowledge/runs/run-court-d2-probe-l4-20261024/verify_costs.py --scratch tmp/court-d2-probe-l4/cost-fixture",
+      "returncode": 0,
+      "result": "300 scalar identities against previous costs across four variants"
+    },
+    {
+      "command": ".venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-d2-probe-l4-20261024/*.py",
+      "returncode": 0,
+      "result": "5 files, no issues"
+    },
+    {
+      "command": ".venv/bin/ruff check knowledge/runs/run-court-d2-probe-l4-20261024",
+      "returncode": 0,
+      "result": "passed after binding loop values explicitly"
+    },
+    {
+      "command": "bash -n knowledge/runs/run-court-d2-probe-l4-20261024/colab_setup.sh knowledge/runs/run-court-d2-probe-l4-20261024/colab_render.sh knowledge/runs/run-court-d2-probe-l4-20261024/repro.sh",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": "flock /home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock .venv/bin/python -m pytest tests/unit/synthetic_data_generation/dataset/court/test_scale_planning.py tests/unit/synthetic_data_generation/dataset/court/test_scale_production.py tests/unit/tasks/court_detection/scaling/test_real_split.py -n 4 -q",
+      "returncode": 0,
+      "result": "40 passed in 29.30s; waited for the shared lock"
+    },
+    {
+      "command": "bash knowledge/runs/run-court-d2-probe-l4-20261024/repro.sh tmp/court-d2-probe-l4/failure-recovered tmp/court-d2-probe-l4/render-operation",
+      "returncode": 0,
+      "result": "Failure summary and setup-only costs byte-identical; 3 CPU path cases identical; 300 legacy-cost scalar identities; tmp/court-d2-l4-repro.fcDkds"
+    },
+    {
+      "command": "PYTHONPATH=\"$PWD\" .venv/bin/python knowledge/runs/run-court-d2-probe-l4-20261024/verify_probe_paths.py --scratch tmp/court-d2-probe-l4/path-contract --output knowledge/runs/run-court-d2-probe-l4-20261024/evidence/path-contract.json",
+      "returncode": 0,
+      "result": "3 cases passed; renderer not instantiated; GPU calls 0"
+    },
+    {
+      "command": ".venv/bin/mypy --follow-imports=skip knowledge/runs/run-court-d2-probe-l4-20261024/*.py",
+      "returncode": 0,
+      "result": "Final 8 scripts: no issues"
+    },
+    {
+      "command": ".venv/bin/ruff check knowledge/runs/run-court-d2-probe-l4-20261024",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".venv/bin/ruff format --check knowledge/runs/run-court-d2-probe-l4-20261024",
+      "returncode": 0,
+      "result": "passed"
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main",
+      "returncode": 0,
+      "result": "599 nodes; 0 errors; 218 pre-existing missing-issue warnings"
+    },
+    {
+      "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+      "returncode": 0,
+      "result": "409 repro.sh, 516 references, 0 missing, 0 unverifiable; saved-bundle SCRIPT_DIR references"
+    },
+    {
+      "command": "bash knowledge/runs/run-court-d2-probe-l4-20261024/repro.sh tmp/court-d2-probe-l4/failure-recovered tmp/court-d2-probe-l4/render-operation",
+      "returncode": 0,
+      "result": "Final saved-bundle version passed; all byte comparisons, 3 path cases and 300 cost identities; tmp/court-d2-l4-repro.beQX4n"
+    },
+    {
+      "command": "git diff --check",
+      "returncode": 0,
+      "result": "passed"
+    }
+  ],
+  "gpu_outcome": {
+    "status": "failed_before_first_nht_call",
+    "returncode": 1,
+    "rendered_frames": 0,
+    "charged_prepared_frames": 12,
+    "remaining_budget": 188,
+    "retry": false,
+    "drive_saved": true,
+    "colab_stopped": true,
+    "quality_comparison": "not_measured"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "start",
+    "--session",
+    "court-d2-probe-l4-20261024t032852z",
+    "--ref",
+    "4916def72d0b46728572006d7fbb19076460ec02"
+  ],
+  "started_at": "2026-10-24T03:29:49.778793+00:00",
+  "wall_seconds": 72.60635611601174,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4-20261024t032852z",
+    "phase": "ready",
+    "created_at": "2026-10-24T03:29:53.397863+00:00",
+    "jobs": {},
+    "colab_bin": "/home/kamimura/.local/share/tennis-lab/colab-tools/google-colab-cli/bin/colab",
+    "gpu": "L4",
+    "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+    "commit": "4916def72d0b46728572006d7fbb19076460ec02",
+    "drive": "gdrive:tennis_lab",
+    "repo_root": "/content/tennis-lab",
+    "drive_remote": "gdrive",
+    "drive_root": "tennis_lab",
+    "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_",
+    "updated_at": "2026-10-24T03:30:58.882433+00:00",
+    "observed": {
+      "ok": true,
+      "gpu": "NVIDIA L4, 23034 MiB",
+      "commit": "4916def72d0b46728572006d7fbb19076460ec02",
+      "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+      "quota": {
+        "total": 5497558138880,
+        "used": 876142180968,
+        "trashed": 150427190275,
+        "other": 34799862912,
+        "free": 4586616095000
+      }
+    },
+    "helpers": {
+      "core": {
+        "path": "/content/.tennis-colab/court-d2-probe-l4-20261024t032852z/colab_core.py",
+        "bytes": 11490,
+        "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+      },
+      "worker": {
+        "path": "/content/.tennis-colab/court-d2-probe-l4-20261024t032852z/remote.py",
+        "bytes": 28570,
+        "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+      }
+    }
+  },
+  "stderr": ""
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "court_d2_probe_execution_v1",
+  "selection_sha256": "1684f5f916730c25f24014e91bf2a62c368abf09ee8efbc22ad6283ae014b66c",
+  "source_commit": "4916def72d0b46728572006d7fbb19076460ec02",
+  "draw_attempts": 12,
+  "completed_frames": 0,
+  "scenarios": [],
+  "outcome": "failed",
+  "error": "ValueError: output_directory must be an absolute pathlib.Path.",
+  "renderer_release": {
+    "schema": "court_scale_renderer_release_v1",
+    "before": {
+      "uuid": "GPU-6826fc6a-aab9-9a03-5b40-4067fdabba24",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "after": {
+      "uuid": "GPU-6826fc6a-aab9-9a03-5b40-4067fdabba24",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "compute_processes_after": [],
+    "renderer_context_released": true
+  },
+  "bytes_before_final_state": 80883
+}

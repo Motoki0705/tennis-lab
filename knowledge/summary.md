@@ -1,7 +1,7 @@
-<!-- knowledge-review: 9743c3c2239201975738e623da24f3542be29ed9469b04df3587ef128f09f93a on 2026-10-24 -->
+<!-- knowledge-review: fd965424ebd558ae75cb778920fd0d1c63b624204a56f8fe3c7e72b8e1fdc5a4 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（CourtのD2支持範囲のCPU比較と、L4追加比較の停止点を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-24（CourtのD2凍結L4試行の失敗・保存・停止と、再実行前の予算判断を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -35,7 +35,11 @@ HTTP件数は未測定で、画像数だけでなくcache充填率を費用モ�
 全成果をDrive保存して担当Colabを停止した。
 [D2のCPU再比較](nodes/synthetic_data_generation/000031-run-court-d2-support-cpu-20261024.md)で前回の分布を再現し、低く近いcamera配置が全面不足の主因と確認した。
 25% hull拡張・margin0・HFOV92.5/110/125°は全4sceneで全面を持つが、幾何通過の全面率9.38%とvalの98.48%との差、hull外描画の品質不確実性が残る。
-比較scriptが未pushのためL4は開始せず、192枚の比較を凍結した。次は親のpush後にQA・画質を確認し、D2と予算・max/U・追加比較を人間が決める。best-val保持の修正は別子の担当。
+CPU比較時はscript未pushのため192枚を凍結して停止した。その後の[指定版でのL4試行](nodes/synthetic_data_generation/000032-run-court-d2-probe-l4-20261024.md)は、
+共有一時rootの相対pathがNHT契約に違反して最初のsubprocess前に失敗し、完成画像・QAは0だった。
+台帳の12枚を保守計上すると残り188枚で、192枚の全再実行には予算扱いの判断が必要。再描画せず、両jobをDrive保存してColabをstopした。
+次は親がpath修正と再実行予算を決め、同じ凍結候補のQA・画質を確認してからD2・max/U・追加比較を判断する。
+新しいQA/JPEG費用は未測定で、費用表はsetupだけ更新した感度表に留める。best-val保持の修正は別子の担当。
 
 ## 2026-10-22のCourt資産Colab照合
 

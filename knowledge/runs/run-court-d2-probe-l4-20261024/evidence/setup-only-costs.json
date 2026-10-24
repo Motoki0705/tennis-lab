@@ -1,0 +1,265 @@
+{
+  "schema": "court_d2_setup_only_cost_sensitivity_v1",
+  "legacy_training_setup_seconds": 1121.163455419,
+  "new_generation_setup_measured_seconds": 1053.8339026910005,
+  "legacy_training_input_extra_seconds": 98.21733380000023,
+  "conditional_training_setup_seconds": 1152.0512364910007,
+  "delta_setup_seconds_per_training_run": 30.887781072000735,
+  "variants": {
+    "current": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 24194.927080780653,
+          "A1_max_cache_estimate": 2048.0,
+          "A2_max_cache_exact_for_base_curves": 1536.0,
+          "main_only_l4_hold_hours": [
+            120.23435355499446,
+            127.17444675011028
+          ],
+          "with_additions_l4_hold_hours": [
+            225.4863287478479,
+            242.17172207440552
+          ],
+          "generation_hours_separate_roots": 65.02999521233987,
+          "drive_dataset_bytes": 16059029823.465416,
+          "drive_increment_bytes": 384889391023.4654,
+          "all_training_runs": 19
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 48389.85416156131,
+          "A1_max_cache_estimate": 4096.0,
+          "A2_max_cache_exact_for_base_curves": 2171.0,
+          "main_only_l4_hold_hours": [
+            175.39027876150874,
+            186.95702476336487
+          ],
+          "with_additions_l4_hold_hours": [
+            313.2228360721935,
+            343.8960077123343
+          ],
+          "generation_hours_separate_roots": 99.63921008831396,
+          "drive_dataset_bytes": 25295732791.264584,
+          "drive_increment_bytes": 446816145591.2646,
+          "all_training_runs": 23
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 96779.70832312261,
+          "A1_max_cache_estimate": 8192.0,
+          "A2_max_cache_exact_for_base_curves": 3257.0,
+          "main_only_l4_hold_hours": [
+            270.4037896618182,
+            291.33166117051724
+          ],
+          "with_additions_l4_hold_hours": [
+            440.12390133830365,
+            494.36161658559496
+          ],
+          "generation_hours_separate_roots": 163.4768258694831,
+          "drive_dataset_bytes": 43615716271.04246,
+          "drive_increment_bytes": 491481154871.0425,
+          "all_training_runs": 25
+        }
+      ]
+    },
+    "wide125": {
+      "baseline_trajectories_per_scene_proposal": 128,
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25292.402168266075,
+          "A1_max_cache_estimate": 2048.0,
+          "A2_max_cache_exact_for_base_curves": 1536.0,
+          "main_only_l4_hold_hours": [
+            119.012106336281,
+            126.12563713373187
+          ],
+          "with_additions_l4_hold_hours": [
+            224.03281471798783,
+            241.2534910081147
+          ],
+          "generation_hours_separate_roots": 64.19736336039544,
+          "drive_dataset_bytes": 16199266766.301931,
+          "drive_increment_bytes": 385029627966.30194,
+          "all_training_runs": 19
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 50584.80433653215,
+          "A1_max_cache_estimate": 4096.0,
+          "A2_max_cache_exact_for_base_curves": 2171.0,
+          "main_only_l4_hold_hours": [
+            174.3524276943976,
+            186.30736564868022
+          ],
+          "with_additions_l4_hold_hours": [
+            311.9706243807558,
+            343.8233420347401
+          ],
+          "generation_hours_separate_roots": 98.98252129456186,
+          "drive_dataset_bytes": 25719697289.382305,
+          "drive_increment_bytes": 447240110089.3823,
+          "all_training_runs": 23
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 101169.6086730643,
+          "A1_max_cache_estimate": 8192.0,
+          "A2_max_cache_exact_for_base_curves": 3257.0,
+          "main_only_l4_hold_hours": [
+            269.73473089791173,
+            291.48030305922003
+          ],
+          "with_additions_l4_hold_hours": [
+            439.26584123030045,
+            495.7568742418924
+          ],
+          "generation_hours_separate_roots": 163.17202319211566,
+          "drive_dataset_bytes": 44607135879.7226,
+          "drive_increment_bytes": 492472574479.7226,
+          "all_training_runs": 25
+        }
+      ]
+    },
+    "hull25_margin0": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25138.79200525403,
+          "A1_max_cache_estimate": 1536.0,
+          "A2_max_cache_exact_for_base_curves": 1152.0,
+          "main_only_l4_hold_hours": [
+            98.31727146729439,
+            105.40827471290066
+          ],
+          "with_additions_l4_hold_hours": [
+            195.0562983392069,
+            212.2046850090257
+          ],
+          "generation_hours_separate_roots": 49.50856426235081,
+          "drive_dataset_bytes": 15421435040.817282,
+          "drive_increment_bytes": 384251796240.81726,
+          "all_training_runs": 19
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 50277.58401050806,
+          "A1_max_cache_estimate": 3072.0,
+          "A2_max_cache_exact_for_base_curves": 1718.0,
+          "main_only_l4_hold_hours": [
+            143.50274103741236,
+            155.40509294367016
+          ],
+          "with_additions_l4_hold_hours": [
+            267.28529157264353,
+            298.97554411777907
+          ],
+          "generation_hours_separate_roots": 77.10165267992701,
+          "drive_dataset_bytes": 24595109271.765335,
+          "drive_increment_bytes": 446115522071.7653,
+          "all_training_runs": 23
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 100555.16802101611,
+          "A1_max_cache_estimate": 6144.0,
+          "A2_max_cache_exact_for_base_curves": 2708.0,
+          "main_only_l4_hold_hours": [
+            221.0219638041983,
+            242.6548329251213
+          ],
+          "with_additions_l4_hold_hours": [
+            369.97340743554656,
+            426.15168285738844
+          ],
+          "generation_hours_separate_roots": 128.63886326213216,
+          "drive_dataset_bytes": 42827626111.770515,
+          "drive_increment_bytes": 490693064711.7705,
+          "all_training_runs": 25
+        }
+      ]
+    },
+    "hull25_margin0_wide125": {
+      "baseline_trajectories_per_scene_proposal": 96,
+      "budgets": [
+        {
+          "previous_nominal_max_images": 24000,
+          "main_conditions": 8,
+          "A1_max_accepted_if_old_qa": 25517.472382053973,
+          "A1_max_cache_estimate": 1536.0,
+          "A2_max_cache_exact_for_base_curves": 1152.0,
+          "main_only_l4_hold_hours": [
+            98.01311282044648,
+            105.16407912497033
+          ],
+          "with_additions_l4_hold_hours": [
+            194.68859723125183,
+            212.02156883216168
+          ],
+          "generation_hours_separate_roots": 49.304740614079925,
+          "drive_dataset_bytes": 15475525872.801361,
+          "drive_increment_bytes": 384305887072.8014,
+          "all_training_runs": 19
+        },
+        {
+          "previous_nominal_max_images": 48000,
+          "main_conditions": 10,
+          "A1_max_accepted_if_old_qa": 51034.944764107946,
+          "A1_max_cache_estimate": 3072.0,
+          "A2_max_cache_exact_for_base_curves": 1718.0,
+          "main_only_l4_hold_hours": [
+            143.26228348116058,
+            155.2986987691035
+          ],
+          "with_additions_l4_hold_hours": [
+            266.9871644641779,
+            299.08430290870723
+          ],
+          "generation_hours_separate_roots": 76.95859366780562,
+          "drive_dataset_bytes": 24747762014.866573,
+          "drive_increment_bytes": 446268174814.8666,
+          "all_training_runs": 23
+        },
+        {
+          "previous_nominal_max_images": 96000,
+          "main_conditions": 12,
+          "A1_max_accepted_if_old_qa": 102069.88952821589,
+          "A1_max_cache_estimate": 6144.0,
+          "A2_max_cache_exact_for_base_curves": 2708.0,
+          "main_only_l4_hold_hours": [
+            220.90890842913873,
+            242.82404157728203
+          ],
+          "with_additions_l4_hold_hours": [
+            369.8114918716131,
+            426.7671548066867
+          ],
+          "generation_hours_separate_roots": 128.61733352230974,
+          "drive_dataset_bytes": 43177402677.10609,
+          "drive_increment_bytes": 491042841277.1061,
+          "all_training_runs": 25
+        }
+      ]
+    }
+  },
+  "assumptions": [
+    "Only uv/NHT/asset acquisition and verification are replaced by this run's measurements. Real/backbone/split preparation is inherited from the old pilot.",
+    "Every QA acceptance rate, JPEG size, render/QA/publication and Drive-control coefficient remains the previous conditional assumption. New D2 quality/QA was not measured.",
+    "Old G, 10k/warmup500/val2k, seeds43/44, three independent40k runs, run counts and checkpoint-byte allowance are not newly approved. The scene supplement remains outside totals.",
+    "Intervals are old fixed/linear preflight sensitivity cases, not bounds. Actual image endpoints are inherited estimates. This is not the requested QA-updated campaign budget.",
+    "The failed probe's one-time VM usage and assignment/human waiting are outside these future campaign totals."
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "start",
+    "--session",
+    "court-d2-probe-l4-20261024T032852Z",
+    "--ref",
+    "4916def72d0b46728572006d7fbb19076460ec02",
+    "--dry-run"
+  ],
+  "started_at": "2026-10-24T03:29:29.290845+00:00",
+  "wall_seconds": 0.06560388499929104,
+  "returncode": 1,
+  "response": {
+    "schema_version": 1,
+    "ok": false,
+    "error": "Use a 1\u201348 character lower-case session/job name: letters, digits, _ or -"
+  },
+  "stderr": ""
+}

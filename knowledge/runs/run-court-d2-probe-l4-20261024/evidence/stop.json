@@ -1,0 +1,45 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "stop",
+    "--session",
+    "court-d2-probe-l4-20261024t032852z"
+  ],
+  "started_at": "2026-10-24T03:58:16.354757+00:00",
+  "wall_seconds": 4.7288115410046885,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "session": "court-d2-probe-l4-20261024t032852z",
+    "status": "stopped",
+    "recovered_diff": {
+      "commit": "4916def72d0b46728572006d7fbb19076460ec02",
+      "excluded": [
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+      ],
+      "storage_excluded": [
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+      ],
+      "exclusion_reasons": {
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+        "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy": "project storage; managed through Drive"
+      },
+      "untracked": [
+        "knowledge/runs/run-court-d2-probe-l4-20261024/collect_probe.py"
+      ],
+      "output": "/home/kamimura/.local/state/tennis-lab/colab/court-d2-probe-l4-20261024t032852z/recovered/523b16d726d4"
+    }
+  },
+  "stderr": ""
+}
