@@ -75,7 +75,9 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
    agentは専用プロセスグループで起動し、timeout/異常終了時は子孫も停止する。
    プロンプトは親の目的・親番号・run ID・固定値・資料とツールの入口だけを含む。
    context・全文diff・schemaは埋め込まない。確認不能ならincompleteとし、追加agentへ分割しない。
-6. 出力スキーマは `--json-schema result_schema.json` で固定する。全PRの `reviewed/not_reviewed` を必須とし、
+6. 出力スキーマは `--json-schema result_schema.json` で固定する。
+   [APIの対応範囲](https://developers.openai.com/api/docs/guides/structured-outputs#supported-schemas) に合わせ、
+   重複対象の検査は出力後のparserで行う。全PRの `reviewed/not_reviewed` を必須とし、
    severityはblocker/majorのみ。総合判定は全件reviewedかつ指摘なしでapprove、
    指摘ありでrequest_changes、一部未確認でincomplete。不明値・キー過不足・対象違い・
    判定矛盾・パース失敗は失敗。部分収集・途中更新も成功扱いにしない。
@@ -189,6 +191,8 @@ resolveは同run/result・元のレビューhead・最新fixed snapshotに結び
 ## merge gate
 
 担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
+GitHub API・CI取得・merge通信中はregistry lockを解放し、戻ると担当親の状態変更を照合する。
+gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止めない。
 timer・poll・hook・agent呼出はない。判定は `merge_gate_policy.evaluate_parent_gate(MergeInput)`、
 I/Oは `merge_gate.py` に分離する。共通引数はサブコマンドより前に置く。
 

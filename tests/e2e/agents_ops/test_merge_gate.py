@@ -1359,3 +1359,25 @@ def test_later_partial_run_preserves_other_prs_and_merges_each_once(
     assert all(row["action"] == "merged" for row in g.results(response).values())
     assert len(g.merge_calls()) == 3 and len(r.calls()) == 2
     assert r.request["review_run_id"] != old_id
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_gate_releases_registry_during_every_remote_command(gate_env: GateEnv) -> None:
+    g, p = gate_env, gate_env.review.p
+    fake = p.root / "bin/gh"
+    shebang, body = fake.read_text().split("\n", 1)
+    guard = """
+import fcntl, os
+from pathlib import Path
+lock_path = Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions/registry.lock"
+with lock_path.open("a") as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise RuntimeError("remote command holds the shared registry lock")
+"""
+    fake.write_text(shebang + "\n" + guard + body)
+    response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
+    assert response.returncode == 0, response.stderr
+    assert len(g.merge_calls()) == 3
+    assert all(row["action"] == "merged" for row in g.results(response).values())

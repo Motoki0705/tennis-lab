@@ -173,22 +173,23 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         raw["statusCheckRollup"] = []
         raw["ci_head_sha"] = None
         if raw["state"] == "open":
-            ci = subprocess.run(
-                [
-                    "gh",
-                    "pr",
-                    "view",
-                    str(n),
-                    "--repo",
-                    session.gh.repo,
-                    "--json",
-                    "headRefOid,statusCheckRollup",
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=60,
-            )
+            with session.store.unlocked_read():
+                ci = subprocess.run(
+                    [
+                        "gh",
+                        "pr",
+                        "view",
+                        str(n),
+                        "--repo",
+                        session.gh.repo,
+                        "--json",
+                        "headRefOid,statusCheckRollup",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    timeout=60,
+                )
             data = object_value(load_json(ci.stdout))
             if set(data) != {"headRefOid", "statusCheckRollup"} or not isinstance(
                 data["statusCheckRollup"], list
@@ -506,23 +507,24 @@ def _merge_request(
                 "status": "attempting",
             }
             Store.write_json(journal_path, attempt)
-            command = subprocess.run(
-                [
-                    "gh",
-                    "pr",
-                    "merge",
-                    str(n),
-                    "--repo",
-                    session.gh.repo,
-                    "--merge",
-                    "--match-head-commit",
-                    current["head_sha"],
-                ],
-                capture_output=True,
-                text=True,
-                timeout=60,
-                check=False,
-            )
+            with session.store.unlocked_read():
+                command = subprocess.run(
+                    [
+                        "gh",
+                        "pr",
+                        "merge",
+                        str(n),
+                        "--repo",
+                        session.gh.repo,
+                        "--merge",
+                        "--match-head-commit",
+                        current["head_sha"],
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=60,
+                    check=False,
+                )
             attempt["exit_code"] = command.returncode
             actual = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
             errors = completion(
@@ -572,8 +574,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         enabled = auto_merge(os.environ.get("AGENT_AUTO_MERGE"))
         identity = session_identity(dict(os.environ))
-        gh = GitHub(args.repo)
-        with Store(args.state_dir).locked() as store:
+        store = Store(args.state_dir)
+        gh = GitHub(args.repo, store=store)
+        with store.locked(), gh.fresh_reads():
             session = ParentSession(
                 gh, store, issue_number(args.parent, gh.repo), identity
             )

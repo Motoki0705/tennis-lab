@@ -171,11 +171,20 @@ PAGE = {
     "per_page": {"type": "integer", "minimum": 1, "maximum": 100},
 }
 TEXT = {
-    "expected_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "expected_sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+        "description": "Only the content_sha256 returned by a previous page of this tool. Omit on the first request; do not use a git diff or review-request digest.",
+    },
     "start_line": {"type": "integer", "minimum": 1},
     "line_count": {"type": "integer", "minimum": 1, "maximum": 1000},
     "offset": {"type": "integer", "minimum": 0},
-    "max_chars": {"type": "integer", "minimum": 1, "maximum": 12000},
+    "max_chars": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12000,
+        "description": "At most 12000 characters per response. Follow pagination.next for the remainder.",
+    },
 }
 STRING = {"type": "string", "maxLength": 1024}
 NUMBER = {"type": "integer", "minimum": 1}
