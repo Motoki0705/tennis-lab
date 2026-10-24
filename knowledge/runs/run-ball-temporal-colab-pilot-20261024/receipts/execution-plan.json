@@ -1,0 +1,62 @@
+{
+  "session": "ball-temporal-pilot-20261024",
+  "jobs": [
+    {
+      "job": "distribution-download",
+      "expected": 0,
+      "argv": null
+    },
+    {
+      "job": "prepare-inputs",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-temporal-pilot-20261024",
+        "--job-id",
+        "prepare-inputs",
+        "--persist",
+        "outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/preparation",
+        "--",
+        "timeout",
+        "600",
+        "bash",
+        "-lc",
+        "git fetch /content/temporal-pilot-source.bundle refs/heads/codex/ball-temporal-colab-pilot && git checkout --detach b4178691cb509529bd2761dd4bd53d63de994e10 && env PYTHONPATH=/content/tennis-lab .venv/bin/python knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py prepare --inputs /content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024 --receipts /content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/preparation --remote-root gdrive:tennis_lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024"
+      ]
+    },
+    {
+      "job": "six-conditions",
+      "expected": 0,
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/tennis-colab/scripts/colab.py",
+        "exec",
+        "--session",
+        "ball-temporal-pilot-20261024",
+        "--job-id",
+        "six-conditions",
+        "--persist",
+        "outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions",
+        "--",
+        "env",
+        "PYTHONPATH=/content/tennis-lab",
+        ".venv/bin/python",
+        "knowledge/runs/run-ball-temporal-colab-pilot-20261024/pilot.py",
+        "matrix",
+        "--created-at",
+        "2026-10-24T01:02:43.047001+00:00",
+        "--inputs",
+        "/content/tennis-lab/outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+        "--root",
+        "/content/tennis-lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024",
+        "--receipts",
+        "/content/tennis-lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/conditions",
+        "--remote-root",
+        "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/length-pilot-20261024"
+      ]
+    }
+  ]
+}

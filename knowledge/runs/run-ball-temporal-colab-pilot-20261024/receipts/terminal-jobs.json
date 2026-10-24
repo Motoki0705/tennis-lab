@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "session": "ball-temporal-pilot-20261024",
+  "jobs": {
+    "pinned-environment": {
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-10-24T01:04:16.964171+00:00",
+      "finished_at": "2026-10-24T01:05:15.372295+00:00",
+      "drive_saved_at": "2026-10-24T01:05:15.372277+00:00"
+    },
+    "distribution-download": {
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-10-24T01:06:16.674611+00:00",
+      "finished_at": "2026-10-24T02:08:46.369331+00:00",
+      "drive_saved_at": "2026-10-24T02:08:46.369310+00:00"
+    },
+    "prepare-inputs": {
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-10-24T02:09:28.403030+00:00",
+      "finished_at": "2026-10-24T02:11:00.386915+00:00",
+      "drive_saved_at": "2026-10-24T02:11:00.386899+00:00"
+    },
+    "six-conditions": {
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-10-24T02:11:51.272540+00:00",
+      "finished_at": "2026-10-24T02:34:00.374167+00:00",
+      "drive_saved_at": "2026-10-24T02:34:00.374149+00:00"
+    },
+    "final-environment": {
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-10-24T02:35:35.842900+00:00",
+      "finished_at": "2026-10-24T02:35:51.262186+00:00",
+      "drive_saved_at": "2026-10-24T02:35:51.262167+00:00"
+    }
+  }
+}

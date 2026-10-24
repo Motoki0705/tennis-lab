@@ -1,0 +1,417 @@
+{
+  "assumptions": {
+    "all_sessions_sequential": true,
+    "extra_dispatch_allowance_seconds_per_vm": 60,
+    "first_full_manifest_preparation_allowance_hours": 1.5,
+    "full_input_verification_hours_per_run_or_extra_vm": 0.16666666666666666,
+    "no_guaranteed_vm_lifetime": true,
+    "overall_time_allowance_ratio": 0.25,
+    "planned_session_hours": 8,
+    "publication_time_multiplier": 2,
+    "test_only_vm_setup_hours": 0.35
+  },
+  "kind": "unapproved_cost_projection",
+  "limitations": [
+    "Validation/test timings are linear input-frame projections from 162 unique diagnostic frames, not full-data measurements.",
+    "Large prediction writing, full-data calibration, cold random I/O and runtime interruptions can exceed these allowances.",
+    "Test-only dataset lineage and calibration integration must be fixed before scientific training; current CLI rejects that path.",
+    "The inspected test-distribution Drive path was absent. Initial test upload and integration work are unmeasured calendar-time additions outside these GPU projections.",
+    "Shared extra seeds assess fine-tuning variation only; ten pilot updates do not establish convergence or an optimal LR.",
+    "The proposed ceilings stop work; they do not authorize purchases, budget extensions or changing fixed scientific updates.",
+    "Convergence-extension experiments are not included in these scenarios and require a separate fixed budget."
+  ],
+  "observed_rate_cu_per_hour": 1.54,
+  "scenarios": [
+    {
+      "Upost": 1536,
+      "Upre": 6144,
+      "additional_seed_lengths": [
+        32,
+        128
+      ],
+      "additional_seed_pretraining": "reuse_seed42_parent",
+      "additional_seeds": [
+        43,
+        44
+      ],
+      "augmentation": "none",
+      "checkpoint_interval": 256,
+      "effective_windows": {
+        "T128": 1,
+        "T32": 4,
+        "T64": 2
+      },
+      "gradient_clip": 1.0,
+      "input_frames_per_update": 128,
+      "learning_rate": 0.0001,
+      "minimum_lr_ratio": 0.1,
+      "name": "A_longer_parent_shared_extra_seeds",
+      "planned_test_sessions": 3,
+      "planned_trainval_sessions": 15,
+      "planning_allocation_hours_with_25_percent_allowance": 172.91226289736298,
+      "planning_compute_units_with_allowance": 266.284884861939,
+      "posttrain_evaluation_interval": 1536,
+      "posttrain_warmup_updates": 64,
+      "pretrain_evaluation_interval": 2048,
+      "pretrain_warmup_updates": 256,
+      "projected_compute_units": 213.0279078895512,
+      "projected_save_hours": 3.053063219120263,
+      "projected_test_hours": 17.682373689965083,
+      "projected_total_allocation_hours": 138.32981031789038,
+      "projected_training_hours": 71.3841883464606,
+      "projected_validation_hours": 22.647499544231906,
+      "proposed_compute_unit_ceiling": 310,
+      "proposed_gpu_hours_ceiling": 200,
+      "run_count": 16,
+      "runs": [
+        {
+          "architecture": "dpt",
+          "evaluations": 3,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 42,
+          "updates": 6144
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 3,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 42,
+          "updates": 6144
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 64,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 64,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1536
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1536
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1536
+        }
+      ],
+      "schedule": "linear_warmup_cosine",
+      "status": "proposal_not_approved",
+      "weight_decay": 0.01
+    },
+    {
+      "Upost": 1024,
+      "Upre": 3072,
+      "additional_seed_lengths": [
+        32,
+        128
+      ],
+      "additional_seed_pretraining": "repeat",
+      "additional_seeds": [
+        43,
+        44
+      ],
+      "augmentation": "none",
+      "checkpoint_interval": 256,
+      "effective_windows": {
+        "T128": 1,
+        "T32": 4,
+        "T64": 2
+      },
+      "gradient_clip": 1.0,
+      "input_frames_per_update": 128,
+      "learning_rate": 0.0001,
+      "minimum_lr_ratio": 0.1,
+      "name": "B_shorter_budget_fresh_extra_parents",
+      "planned_test_sessions": 3,
+      "planned_trainval_sessions": 16,
+      "planning_allocation_hours_with_25_percent_allowance": 180.07932225210257,
+      "planning_compute_units_with_allowance": 277.32215626823796,
+      "posttrain_evaluation_interval": 1024,
+      "posttrain_warmup_updates": 64,
+      "pretrain_evaluation_interval": 1536,
+      "pretrain_warmup_updates": 128,
+      "projected_compute_units": 221.8577250145904,
+      "projected_save_hours": 3.0570779946108178,
+      "projected_test_hours": 17.682373689965083,
+      "projected_total_allocation_hours": 144.06345780168206,
+      "projected_training_hours": 68.51260021431678,
+      "projected_validation_hours": 29.347874683469396,
+      "proposed_compute_unit_ceiling": 310,
+      "proposed_gpu_hours_ceiling": 200,
+      "run_count": 20,
+      "runs": [
+        {
+          "architecture": "dpt",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 42,
+          "updates": 3072
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 42,
+          "updates": 3072
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 64,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 64,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 42,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 43,
+          "updates": 3072
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 43,
+          "updates": 3072
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 43,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 44,
+          "updates": 3072
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 2,
+          "frames": 32,
+          "phase": "pretrain",
+          "seed": 44,
+          "updates": 3072
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 32,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1024
+        },
+        {
+          "architecture": "dpt",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1024
+        },
+        {
+          "architecture": "hybrid",
+          "evaluations": 1,
+          "frames": 128,
+          "phase": "finetune",
+          "seed": 44,
+          "updates": 1024
+        }
+      ],
+      "schedule": "linear_warmup_cosine",
+      "status": "proposal_not_approved",
+      "weight_decay": 0.01
+    }
+  ],
+  "schema_version": 1,
+  "test_workload_source": "knowledge/runs/run-ball-all-frame-protocol-20261022/common-intervals-test.jsonl",
+  "test_workload_source_sha256": "fb627edcc3f93151f548cfd2c8823b9f59898523d5f3a6ff86339f98b2e69bc5",
+  "test_workloads_input_frames": {
+    "128": 277376,
+    "32": 282016,
+    "64": 280704
+  },
+  "trainval_vm_setup_hours_with_dispatch_allowance": 1.0675123678741667
+}

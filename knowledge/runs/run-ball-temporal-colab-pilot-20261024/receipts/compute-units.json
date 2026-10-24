@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "balance_before": 340.54,
+  "balance_after": 338.14,
+  "observed_account_balance_decrease": 2.400000000000034,
+  "observed_assigned_rate_cu_per_hour": 1.54,
+  "owned_allocation_seconds": 5620.32397,
+  "owned_allocation_hours": 1.561201102777778,
+  "constant_observed_rate_estimate_cu": 2.404249698277778,
+  "active_assignments_before": 0,
+  "active_assignments_after": 0,
+  "after_rate_cu_per_hour": 0,
+  "assumption": "The rate-time estimate assumes the observed 1.54 CU/h held throughout. Account balance change is an observation, not an itemized owned-session bill."
+}

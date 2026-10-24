@@ -1,0 +1,177 @@
+{
+  "action": "inventory",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-24T02:38:46.672364+00:00",
+  "schema_version": 1,
+  "path": "outputs/ball_detection/precompute/temporal_heatmap/length-pilot-20261024",
+  "entries": [
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974",
+      "id": "1xWsTuLUNWrWL1EPZfDq-yXle5PMBJIQR",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-24T02:10:11.731Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/_SNAPSHOT.json",
+      "id": "1A9vL8MPB4G370Iz0Sjxiqv7jtoAwVbF0",
+      "type": "file",
+      "size_bytes": 2330,
+      "hashes": {
+        "md5": "e7eb7fb04fc305bbe8fd7c1755c80cfa"
+      },
+      "modified": "2026-10-24T02:10:24.067Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/dpt-T128.yaml",
+      "id": "11fBRExAQl4GQartb6ODXMPTg_bxFPRvw",
+      "type": "file",
+      "size_bytes": 360,
+      "hashes": {
+        "md5": "966c44d61a32dfbf4b7002bc2b1ae231"
+      },
+      "modified": "2026-10-24T02:10:00.088Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/dpt-T32.yaml",
+      "id": "1rU2De-Q0S7ZfH-u_29xtamBUD0hlMhXd",
+      "type": "file",
+      "size_bytes": 359,
+      "hashes": {
+        "md5": "55cee1feeef057543d86f055cb07b028"
+      },
+      "modified": "2026-10-24T02:10:00.077Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/dpt-T64.yaml",
+      "id": "1FH190vkjDWuZI8o4iLWQt_jKU0XGCE0E",
+      "type": "file",
+      "size_bytes": 359,
+      "hashes": {
+        "md5": "bf82c4c1f47095beb9852f1d5c18b1db"
+      },
+      "modified": "2026-10-24T02:10:00.083Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/hybrid-T128.yaml",
+      "id": "1u7ATqV_LNC44aW41pvzaMcqahkCVO1cX",
+      "type": "file",
+      "size_bytes": 363,
+      "hashes": {
+        "md5": "3b02d77785e4f3e320d29984d8ceea67"
+      },
+      "modified": "2026-10-24T02:10:00.090Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/hybrid-T32.yaml",
+      "id": "1Tn0jD4Fowd_HnQ8XUMg_Jv_wO1DY_w6n",
+      "type": "file",
+      "size_bytes": 362,
+      "hashes": {
+        "md5": "7c10f8f3095b314f014071fafc47db4a"
+      },
+      "modified": "2026-10-24T02:10:00.080Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/hybrid-T64.yaml",
+      "id": "1n_3kEBVlYjmZLHERHEZU7oCAHnMmjSRd",
+      "type": "file",
+      "size_bytes": 362,
+      "hashes": {
+        "md5": "12641498c2d2d6be91713839f6aadb04"
+      },
+      "modified": "2026-10-24T02:10:00.085Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/pilot.json",
+      "id": "1euUry8Qa_FfhIcLjZjAeEEMGK04ydpu3",
+      "type": "file",
+      "size_bytes": 1568,
+      "hashes": {
+        "md5": "6676dd7d1a755b1b02835c9b93848477"
+      },
+      "modified": "2026-10-24T02:10:00.115Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows",
+      "id": "1iTe6EoQAQ82sqyYcu__5SCbKueHfGH8P",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-24T02:10:15.469Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/evaluation_T128.json",
+      "id": "1wBXI_RNxTQgVK6rPvK-7g-q3WF-Oshlp",
+      "type": "file",
+      "size_bytes": 8206,
+      "hashes": {
+        "md5": "4ab1a5fb3843f0da7046ec6547c73949"
+      },
+      "modified": "2026-10-24T02:10:00.063Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/evaluation_T32.json",
+      "id": "1qupyIF-N6KNDKGNw06m_Rh35maAj6wHr",
+      "type": "file",
+      "size_bytes": 10216,
+      "hashes": {
+        "md5": "6f0a1051eb86d2e1d872ae077634431b"
+      },
+      "modified": "2026-10-24T02:10:00.005Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/evaluation_T64.json",
+      "id": "1TTHi7-_4D6bYLbiS3tiKWLjSzXW8OfMw",
+      "type": "file",
+      "size_bytes": 8877,
+      "hashes": {
+        "md5": "2ad1e21cc6abf94aacecc46766d23e8d"
+      },
+      "modified": "2026-10-24T02:10:00.034Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/experiments.json",
+      "id": "1uSISy3c2BPndEiNbWsa-44LHvsTym7rO",
+      "type": "file",
+      "size_bytes": 39865,
+      "hashes": {
+        "md5": "4a794f35e8d3410b026f82a78c781c47"
+      },
+      "modified": "2026-10-24T02:10:00.074Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/train_T128.json",
+      "id": "10ctdX2hl-lB9xoA-8sQuYjUPX1nGo-sK",
+      "type": "file",
+      "size_bytes": 8103,
+      "hashes": {
+        "md5": "e5f7fa0a446346a09c9ac9af623210f8"
+      },
+      "modified": "2026-10-24T02:10:00.048Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/train_T32.json",
+      "id": "1EwlYYHmSFplsd5_ip3645ibD376JB0Ln",
+      "type": "file",
+      "size_bytes": 8103,
+      "hashes": {
+        "md5": "6e664b155621b6dd231a27fbef85ed62"
+      },
+      "modified": "2026-10-24T02:09:59.990Z"
+    },
+    {
+      "path": "inputs-ef75ebd7ade94c6c94d1d6eb0121a974/windows/train_T64.json",
+      "id": "1HGgCjWguKgGeFyTt-0w-rkhVuN_fqsvE",
+      "type": "file",
+      "size_bytes": 8102,
+      "hashes": {
+        "md5": "30da2adfd0ea64b14f362776e6a07a0f"
+      },
+      "modified": "2026-10-24T02:10:00.019Z"
+    }
+  ],
+  "ambiguous_paths": []
+}

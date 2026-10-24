@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-24T02:00:11+00:00",
+  "phase": "Drive CLI post-download local inventory",
+  "process": "rclone lsjson --recursive --hash",
+  "hash_types": [
+    "sha256",
+    "sha1",
+    "md5"
+  ],
+  "observed_cpu_percent": 110,
+  "process_elapsed_seconds": 1090,
+  "interpretation": "CPU-active content hashing; not evidence of a hung transfer; cost is included in download-and-CLI-verification wall time"
+}

@@ -1,0 +1,147 @@
+{
+  "fairness": {
+    "compared": [
+      {
+        "condition": "hybrid-T32",
+        "updates": 10
+      },
+      {
+        "condition": "dpt-T64",
+        "updates": 10
+      },
+      {
+        "condition": "hybrid-T64",
+        "updates": 10
+      },
+      {
+        "condition": "dpt-T128",
+        "updates": 10
+      },
+      {
+        "condition": "hybrid-T128",
+        "updates": 10
+      }
+    ],
+    "fields": [
+      "update",
+      "pack_ids",
+      "pack_indices",
+      "input_frames",
+      "cumulative_input_frames",
+      "valid_teachers",
+      "teachers_by_kind",
+      "original_teachers_by_kind",
+      "learning_rate"
+    ],
+    "reference": "dpt-T32",
+    "status": "matched_measured_prefixes"
+  },
+  "rows": [
+    {
+      "checkpoint_publication_mean_seconds": 34.18196602399894,
+      "condition": "dpt-T32",
+      "condition_wall_seconds": 212.0942978059993,
+      "data_wait_mean_seconds": 0.1131620963997193,
+      "evaluation_seconds": 5.048231382001177,
+      "first_step_seconds": 10.47799012699943,
+      "local_hash_seconds": 1.7147856739993586,
+      "local_serialization_seconds": 0.837624974999926,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 4123436032,
+      "peak_reserved_bytes": 5618270208,
+      "status": "completed",
+      "step_mean_seconds": 7.579149903799953,
+      "warm_step_mean_seconds": 7.257056545666678,
+      "warm_step_median_seconds": 7.256163415999254
+    },
+    {
+      "checkpoint_publication_mean_seconds": 44.52516212249975,
+      "condition": "hybrid-T32",
+      "condition_wall_seconds": 233.87384812100026,
+      "data_wait_mean_seconds": 0.10200345469984314,
+      "evaluation_seconds": 5.096167011999569,
+      "first_step_seconds": 8.916726491999725,
+      "local_hash_seconds": 2.8280446980043052,
+      "local_serialization_seconds": 1.4497325499996805,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 4192808448,
+      "peak_reserved_bytes": 5695864832,
+      "status": "completed",
+      "step_mean_seconds": 7.597350093599744,
+      "warm_step_mean_seconds": 7.450752715999745,
+      "warm_step_median_seconds": 7.451593512998443
+    },
+    {
+      "checkpoint_publication_mean_seconds": 35.15756267300003,
+      "condition": "dpt-T64",
+      "condition_wall_seconds": 215.4390282380009,
+      "data_wait_mean_seconds": 0.09994043729984696,
+      "evaluation_seconds": 5.173607407999953,
+      "first_step_seconds": 9.141603849000603,
+      "local_hash_seconds": 1.688944031999199,
+      "local_serialization_seconds": 0.8663984430004348,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 7209661440,
+      "peak_reserved_bytes": 9309257728,
+      "status": "completed",
+      "step_mean_seconds": 7.90847208230025,
+      "warm_step_mean_seconds": 7.771457441555766,
+      "warm_step_median_seconds": 7.7710730230010086
+    },
+    {
+      "checkpoint_publication_mean_seconds": 34.580291096999645,
+      "condition": "hybrid-T64",
+      "condition_wall_seconds": 218.77325235599892,
+      "data_wait_mean_seconds": 0.10008202659992094,
+      "evaluation_seconds": 5.204169806000209,
+      "first_step_seconds": 9.278626870998778,
+      "local_hash_seconds": 2.831321834002665,
+      "local_serialization_seconds": 1.400721733996761,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 7330699776,
+      "peak_reserved_bytes": 9435086848,
+      "status": "completed",
+      "step_mean_seconds": 7.971822674699615,
+      "warm_step_mean_seconds": 7.826622208444153,
+      "warm_step_median_seconds": 7.830306212999858
+    },
+    {
+      "checkpoint_publication_mean_seconds": 30.88280812799985,
+      "condition": "dpt-T128",
+      "condition_wall_seconds": 210.55914386699988,
+      "data_wait_mean_seconds": 0.09871987629994691,
+      "evaluation_seconds": 4.262687095999354,
+      "first_step_seconds": 9.44882967599915,
+      "local_hash_seconds": 1.696262701998421,
+      "local_serialization_seconds": 0.8410493760020472,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 13456701952,
+      "peak_reserved_bytes": 16773021696,
+      "status": "completed",
+      "step_mean_seconds": 8.222460404799858,
+      "warm_step_mean_seconds": 8.086197152444381,
+      "warm_step_median_seconds": 8.072275262000403
+    },
+    {
+      "checkpoint_publication_mean_seconds": 39.408993345000454,
+      "condition": "hybrid-T128",
+      "condition_wall_seconds": 229.72813794100148,
+      "data_wait_mean_seconds": 0.09867977429967141,
+      "evaluation_seconds": 4.2690416219993494,
+      "first_step_seconds": 9.557585885999288,
+      "local_hash_seconds": 2.8335979980001866,
+      "local_serialization_seconds": 1.4188479759977781,
+      "optimizer_updates": 10,
+      "peak_allocated_bytes": 13604039680,
+      "peak_reserved_bytes": 16995319808,
+      "status": "completed",
+      "step_mean_seconds": 8.298534277700128,
+      "warm_step_mean_seconds": 8.158639654555778,
+      "warm_step_median_seconds": 8.145230534000802
+    }
+  ],
+  "schema_version": 1,
+  "scope": "Four fixed native-720p clips; performance, not accuracy",
+  "training_time_scope": "decode, MDD, forward/backward, optimizer; excludes evaluation and save",
+  "warm_step_scope": "updates 2 through 10 when measured"
+}

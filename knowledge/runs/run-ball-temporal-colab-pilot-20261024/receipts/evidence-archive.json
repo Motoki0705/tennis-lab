@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "measured_code_commit": "b4178691cb509529bd2761dd4bd53d63de994e10",
+  "file_count": 49,
+  "size_bytes": 69306,
+  "sha256": "a03e5c364eb73871a0bf556b6fc043da891892526191ea21ca3cfeca624e668c",
+  "remote": "gdrive:tennis_lab/outputs/ball_detection/colab_pilot/temporal_heatmap/length-pilot-20261024/evidence/normalized-evidence-v1.tar.gz",
+  "excludes": "receipts/evidence-archive.json (self-reference)",
+  "host_prefixes_normalized": true,
+  "verified": true,
+  "drive_id": "1TxqO0HipCJusrCFYsb0n7hy7CSKfkuz-",
+  "md5": "a64fd58a195149d656e1c0bd053637ef",
+  "inventory_observed_at": "2026-10-24T02:54:19.618533+00:00",
+  "transfer_status": "completed"
+}

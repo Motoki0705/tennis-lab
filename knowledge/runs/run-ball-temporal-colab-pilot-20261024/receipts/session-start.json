@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "session": "ball-temporal-pilot-20261024",
+  "phase": "ready",
+  "gpu": "L4",
+  "commit": "9df3aff14a3e7b2f4b9370f7647d0cd4b6684c34",
+  "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+  "repo_root": "/content/tennis-lab",
+  "created_at": "2026-10-24T01:02:43.047001+00:00",
+  "updated_at": "2026-10-24T01:03:22.305645+00:00",
+  "observed": {
+    "ok": true,
+    "gpu": "NVIDIA L4, 23034 MiB",
+    "commit": "9df3aff14a3e7b2f4b9370f7647d0cd4b6684c34",
+    "python": "3.13.16 (main, Oct  1 2026, 15:40:24) [GCC 13.3.0]",
+    "quota": {
+      "total": 5497558138880,
+      "used": 874464092872,
+      "trashed": 150427156074,
+      "other": 34799862912,
+      "free": 4588294183096
+    }
+  },
+  "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_"
+}

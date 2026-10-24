@@ -1,0 +1,21 @@
+{
+  "action": "inventory",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "<user-home>/.config/tennis-lab/rclone-drive.conf",
+  "observed_at": "2026-10-24T02:40:52.680389+00:00",
+  "schema_version": 1,
+  "path": "operations/colab/ball-temporal-pilot-20261024/closure",
+  "entries": [
+    {
+      "path": "stop-receipt.json",
+      "id": "1N3yjoSJn6d9ffMGfaqY_7FnYycZokNeS",
+      "type": "file",
+      "size_bytes": 490859,
+      "hashes": {
+        "md5": "5ce099b612efba8190b2bb61ba90a0de"
+      },
+      "modified": "2026-10-24T02:38:01.806Z"
+    }
+  ],
+  "ambiguous_paths": []
+}

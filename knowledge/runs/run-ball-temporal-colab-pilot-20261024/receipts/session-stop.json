@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "session": "ball-temporal-pilot-20261024",
+  "stop_cli_ok": true,
+  "status": "stopped",
+  "local_phase": "stopped",
+  "created_at": "2026-10-24T01:02:43.047001+00:00",
+  "stop_receipt_captured_at": "2026-10-24T02:36:23.370971+00:00",
+  "elapsed_seconds": 5620.32397,
+  "limit_seconds": 14400,
+  "cutoff_seconds": 12600,
+  "tracked_source_commit": "b4178691cb509529bd2761dd4bd53d63de994e10",
+  "untracked_source": [],
+  "excluded_storage_files": 1542,
+  "exclusion_reasons": {
+    "project storage; managed through Drive": 1542
+  },
+  "raw_receipt_bytes": 490862,
+  "raw_receipt_sha256": "344025f793a87a7055763df3cc3732391f0d0af41f1d6a940d22a9f24060ec4b",
+  "normalized_receipt_bytes": 490859,
+  "normalized_receipt_sha256": "a3a5a24af746b2bef4069473a41a860a9a785dd51c116e6672c5f363c19da659",
+  "normalized_receipt_remote": "gdrive:tennis_lab/operations/colab/ball-temporal-pilot-20261024/closure/stop-receipt.json",
+  "timestamp_source": "local receipt mtime after successful stop CLI return",
+  "scope": "Owned L4 session only; no other assignment was touched",
+  "storage_excluded_files": 1542,
+  "recovered_patch_bytes": 0,
+  "recovered_patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "assignment_zero_receipt_captured_at": "2026-10-24T02:37:02.321363+00:00",
+  "elapsed_to_assignment_zero_confirmation_seconds": 5659.274362,
+  "normalized_receipt_drive_id": "1N3yjoSJn6d9ffMGfaqY_7FnYycZokNeS",
+  "normalized_receipt_md5": "5ce099b612efba8190b2bb61ba90a0de"
+}
