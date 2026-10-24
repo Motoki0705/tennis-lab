@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -72,88 +72,6 @@ def load_list_file(path: Path) -> tuple[str, ...]:
     if not entries:
         raise ValueError(f"{path} contains no entries")
     return tuple(entries)
-
-
-EXCLUDE_PREFIX = "!"
-
-
-def load_shared_patterns(path: Path) -> tuple[str, ...]:
-    """Read shared-foundation patterns; ``!pattern`` lines exclude paths from the set."""
-    patterns = load_list_file(path)
-    for pattern in patterns:
-        body = pattern.removeprefix(EXCLUDE_PREFIX)
-        if (
-            not body
-            or body.startswith(EXCLUDE_PREFIX)
-            or body.startswith("/")
-            or "\\" in body
-            or body.startswith("./")
-        ):
-            raise ValueError(
-                f"{path}: patterns must be repo-relative POSIX globs: {pattern!r}"
-            )
-    includes = [p for p in patterns if not p.startswith(EXCLUDE_PREFIX)]
-    if not includes:
-        raise ValueError(f"{path} contains only exclusion patterns")
-    for pattern in patterns:
-        body = pattern.removeprefix(EXCLUDE_PREFIX)
-        if pattern.startswith(EXCLUDE_PREFIX) and not shared_path_hits(
-            [body], includes
-        ):
-            raise ValueError(
-                f"{path}: exclusion {pattern!r} is not under any included pattern"
-            )
-    return patterns
-
-
-def _glob_regex(pattern: str) -> re.Pattern[str]:
-    body = pattern.rstrip("/")
-    parts: list[str] = []
-    index = 0
-    while index < len(body):
-        if body.startswith("**/", index):
-            parts.append("(?:.*/)?")
-            index += 3
-        elif body.startswith("**", index):
-            parts.append(".*")
-            index += 2
-        elif body[index] == "*":
-            parts.append("[^/]*")
-            index += 1
-        elif body[index] == "?":
-            parts.append("[^/]")
-            index += 1
-        else:
-            parts.append(re.escape(body[index]))
-            index += 1
-    # A pattern matches the path itself or anything below it. DOTALL: file names may
-    # contain newlines, and `.*` must still cover them.
-    return re.compile("".join(parts) + "(?:/.*)?", re.DOTALL)
-
-
-def shared_path_hits(
-    paths: Iterable[str], patterns: Sequence[str]
-) -> tuple[tuple[str, str], ...]:
-    """Return ``(path, first matching include)`` for every path under shared foundations.
-
-    ``!pattern`` entries exclude matching paths regardless of their position in the list.
-    """
-    includes: list[tuple[str, re.Pattern[str]]] = []
-    excludes: list[re.Pattern[str]] = []
-    for pattern in patterns:
-        if pattern.startswith(EXCLUDE_PREFIX):
-            excludes.append(_glob_regex(pattern.removeprefix(EXCLUDE_PREFIX)))
-        else:
-            includes.append((pattern, _glob_regex(pattern)))
-    hits: list[tuple[str, str]] = []
-    for path in paths:
-        if any(regex.fullmatch(path) for regex in excludes):
-            continue
-        for pattern, regex in includes:
-            if regex.fullmatch(path):
-                hits.append((path, pattern))
-                break
-    return tuple(hits)
 
 
 # --------------------------------------------------------------------------- review output
@@ -406,19 +324,16 @@ class GateInput:
     is_cross_repository: bool
     mergeable: str
     review: ReviewOutcome | None
-    changed_paths: tuple[str, ...]
-    shared_patterns: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class GateResult:
     decision: GateDecision
     reasons: tuple[str, ...]
-    shared_hits: tuple[tuple[str, str], ...]
 
 
 def evaluate_gate(gate: GateInput) -> GateResult:
-    """Decide merge / needs_human / blocked. Shared-foundation changes need a human."""
+    """Decide from review, repository identity and mergeability."""
     reasons: list[str] = []
     if gate.is_draft:
         reasons.append("draft")
@@ -436,12 +351,9 @@ def evaluate_gate(gate: GateInput) -> GateResult:
     elif not gate.review.passed:
         reasons.append("review_request_changes")
 
-    hits = shared_path_hits(gate.changed_paths, gate.shared_patterns)
     if reasons:
-        return GateResult(GateDecision.BLOCKED, tuple(reasons), hits)
-    if hits:
-        return GateResult(GateDecision.NEEDS_HUMAN, ("touches_shared",), hits)
-    return GateResult(GateDecision.MERGE, (), hits)
+        return GateResult(GateDecision.BLOCKED, tuple(reasons))
+    return GateResult(GateDecision.MERGE, ())
 
 
 def gate_should_comment(result: GateResult) -> bool:

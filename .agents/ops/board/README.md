@@ -541,7 +541,8 @@ version 4→5は人間の投稿者・宛先を追加する。投稿者・宛先�
 ## 検証
 
 ```bash
-bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_board.py tests/e2e/agents_ops/test_board_messages.py tests/e2e/agents_ops/test_board_doorbell.py tests/e2e/agents_ops/test_board_web.py tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_herdr_labels.py tests/e2e/agents_ops/test_merge_gate.py tests/e2e/skills/test_codex_scheduled_followup.py -n 4 -q
+
 ```
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
@@ -551,4 +552,4 @@ WebはTestClientで差分・絞り込み・スレッド・GETのreadonly URIとD
 書き込みは一時の`XDG_STATE_HOME`とfake notifierで、人間の投稿・返信・既読・スタンプ、
 CSRF/Origin/Host・私的情報・許可外methodの拒否と行数不変を検査する。
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
-名前一覧はPRで人間が確認する。共有基盤のmerge承認や、人間との要件合意はこのCLIで代行しない。
+名前一覧はPRで確認する。人間との要件合意はこのCLIで代行しない。

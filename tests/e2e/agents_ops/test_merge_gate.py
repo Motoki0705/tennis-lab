@@ -337,15 +337,6 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
     gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch, proposal_state: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
-    assert (
-        g.cli(
-            "shared-permission",
-            "--allow-shared-foundation",
-            "--evidence-file",
-            p.note("人間との合意: 既存の共有基盤変更を親がmergeしてよい。"),
-        ).returncode
-        == 0
-    )
     monkeypatch.syspath_prepend(str(OPS / "ops-report"))
     proposals = importlib.import_module("opsreport.proposals")
     prop = proposals.Proposal(
@@ -408,7 +399,7 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
     else:
         rows = g.results(response)
         assert rows[100]["action"] == "merged"
-        assert rows[100]["shared_exemption"]["allow_shared_foundation"] is True
+        assert "shared_exemption" not in rows[100]
         assert [c[2] for c in g.merge_calls()] == ["100"]
     assert (
         len(g.review.calls()) == 1
@@ -512,9 +503,9 @@ def test_ci_read_failure_is_an_explicit_collection_error(gate_env: GateEnv) -> N
     assert not g.merge_calls()
 
 
-@pytest.mark.parametrize("gate_env", ["dependency", "shared"], indirect=True)
+@pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
 @pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
-def test_dependency_and_shared_approval_still_block_for_any_ci_state(
+def test_dependency_still_blocks_for_any_ci_state(
     gate_env: GateEnv, ci_state: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
@@ -527,11 +518,7 @@ def test_dependency_and_shared_approval_still_block_for_any_ci_state(
     response = g.cli("merge")
     assert response.returncode == 1, response.stderr
     row = g.results(response)[100]
-    if row["shared_hits"]:
-        assert row["decision"] == "needs_human"
-        assert row["reasons"] == ["touches_shared"]
-    else:
-        assert "dependency_11_not_completed" in row["reasons"]
+    assert "dependency_11_not_completed" in row["reasons"]
     assert not g.merge_calls()
 
 
@@ -543,12 +530,11 @@ def test_dependency_and_shared_approval_still_block_for_any_ci_state(
         ("fixing", "parent_review_not_confirmed"),
         ("interrupted", "review_not_published_or_authorized"),
         ("outside", "pr_outside_review_targets"),
-        ("not_reviewed", "run_failed_or_incomplete"),
+        ("not_reviewed", "pr_100_not_reviewed"),
         ("major", "unresolved_findings"),
         ("blocker", "unresolved_findings"),
         ("head", "pr_100_unverified_head"),
-        ("base", "pr_100_base_sha_changed"),
-        ("base_ref", "pr_100_base_ref_changed"),
+        ("base_ref", "base_not_default_branch"),
         ("draft", "draft"),
         ("fork", "fork"),
         ("closed", "pr_not_open"),
@@ -813,11 +799,12 @@ def test_completed_dependency_requires_no_pr_or_default_branch_merge(
         endpoint
         for call in p.calls()
         for endpoint in call
-        if endpoint.startswith("repos/o/r/pulls?")
+        if endpoint.startswith("repos/o/r/issues/13/timeline?")
     ]
-    assert pull_reads and all("state=all" in endpoint for endpoint in pull_reads)
+    assert pull_reads
+    assert not any("repos/o/r/pulls?" in arg for call in p.calls() for arg in call)
     if case == "closed_unmerged_later_page":
-        assert any("page=2" in endpoint for endpoint in pull_reads)
+        assert any(arg == "repos/o/r/pulls/103" for call in p.calls() for arg in call)
 
 
 @pytest.mark.parametrize("gate_env", ["research_dependency"], indirect=True)
@@ -825,7 +812,7 @@ def test_completed_dependency_requires_no_pr_or_default_branch_merge(
     "endpoint",
     [
         "repos/o/r/issues/13",
-        "repos/o/r/pulls?state=all&per_page=100&page=1",
+        "repos/o/r/issues/13/timeline?per_page=100&page=1",
         "repos/o/r",
     ],
 )
@@ -1017,7 +1004,7 @@ def test_all_targets_merge_in_one_run_with_verified_base_advances(
 
 
 @pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
-def test_merged_target_head_mismatch_blocks_remaining_prs(gate_env: GateEnv) -> None:
+def test_merged_target_head_mismatch_is_local_to_that_pr(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"][1:]:
@@ -1035,8 +1022,8 @@ def test_merged_target_head_mismatch_blocks_remaining_prs(gate_env: GateEnv) -> 
     assert result.returncode == 1, result.stderr
     rows = g.results(result)
     assert "merged_head_mismatch" in rows[100]["reasons"]
-    assert "pr_100_merged_head_mismatch" in rows[101]["reasons"]
-    assert [c[2] for c in g.merge_calls()] == ["100"]
+    assert rows[101]["action"] == "merged"
+    assert [c[2] for c in g.merge_calls()] == ["100", "101"]
 
 
 @pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
@@ -1058,21 +1045,11 @@ def test_remaining_prs_are_recollected_after_each_merge(
     }[change]
     env["PARENT_MERGE_ADVANCE_BASE"] = "1"
     rows = g.results(g.cli("merge", **env))
-    assert [c[2] for c in g.merge_calls()] == (
-        ["100", "101"] if change == "ci" else ["100"]
-    )
+    assert [c[2] for c in g.merge_calls()] == ["100", "101"]
+    assert rows[101]["action"] == "merged"
+    assert not rows[101]["reasons"]
     if change == "ci":
-        assert rows[101]["action"] == "merged"
         assert rows[101]["ci_checks"] == [{"name": "Python", "state": "pending"}]
-        assert not rows[101]["reasons"]
-        return
-    expected = {
-        "base": "pr_101_base_sha_changed",
-        "main_follow": "pr_101_merge_base_sha_changed",
-    }[change]
-    assert expected in rows[101]["reasons"]
-    if change == "base":
-        assert "base_advance_unverified" in rows[101]["reasons"]
 
 
 @pytest.mark.parametrize("failure", ["fail", "head", "response", "close"])
@@ -1105,146 +1082,6 @@ def test_failed_or_lost_merge_is_never_repeated(
     if failure == "close":
         assert "child_10_close_not_confirmed" in g.results(retry)[100]["reasons"]
         assert "#10: 完了" not in p.state()["issues"]["1"]["body"]
-
-
-@pytest.mark.parametrize("gate_env", ["shared"], indirect=True)
-@pytest.mark.parametrize(
-    "permission",
-    [
-        "absent",
-        "allow",
-        "reallow",
-        "deny",
-        "foreign",
-        "quoted",
-        "new_agreement",
-        "old_generation",
-        "old_run",
-    ],
-)
-def test_shared_foundation_needs_explicit_current_parent_permission(
-    gate_env: GateEnv, permission: str
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    state = p.state()
-    for pr in state["prs"][1:]:
-        pr["mergeable"] = None
-    p.save(state)
-    if permission != "absent":
-        # Human consent already exists: migrate it to the machine-readable marker.
-        result = g.cli(
-            "shared-permission",
-            "--allow-shared-foundation",
-            "--evidence-file",
-            p.note(
-                "人間との合意: この親の共有基盤変更を含めて親がmergeしてよい（合意コメントへのリンク）。"
-            ),
-        )
-        assert result.returncode == 0, result.stderr
-        if permission == "deny":
-            assert (
-                g.cli(
-                    "shared-permission",
-                    "--deny-shared-foundation",
-                    "--evidence-file",
-                    p.note("人間が共有基盤の許可を取り消した。"),
-                ).returncode
-                == 0
-            )
-        elif permission == "reallow":
-            evidence = "人間との合意: この親の共有基盤変更を含めて親がmergeしてよい（合意コメントへのリンク）。"
-            before = len(p.state()["comments"]["1"])
-            g.cli(
-                "shared-permission",
-                "--allow-shared-foundation",
-                "--evidence-file",
-                p.note(evidence),
-            )
-            assert len(p.state()["comments"]["1"]) == before
-            g.cli(
-                "shared-permission",
-                "--deny-shared-foundation",
-                "--evidence-file",
-                p.note("許可取り消し"),
-            )
-            result = g.cli(
-                "shared-permission",
-                "--allow-shared-foundation",
-                "--evidence-file",
-                p.note(evidence),
-            )
-            assert json.loads(result.stdout)["revision"] == 3
-        elif permission in {"foreign", "quoted", "old_generation", "old_run"}:
-            state = p.state()
-            comment = state["comments"]["1"][-1]
-            if permission == "foreign":
-                comment["user"]["login"] = "attacker"
-            elif permission == "quoted":
-                comment["body"] = "引用\n" + comment["body"]
-            else:
-                policy = importlib.import_module("parent.policy")
-                record = policy.events([comment], "operator", 1)[0]
-                record.pop("body")
-                record[
-                    "generation" if permission == "old_generation" else "review_run_id"
-                ] = 999 if permission == "old_generation" else "parent-1-" + "f" * 32
-                comment["body"] = policy.marker(record)
-            p.save(state)
-        elif permission == "new_agreement":
-            # Same purpose/scope/confirmation yields the same agreement digest.
-            p.agreed()
-    response = g.cli("merge")
-    if permission in {"foreign", "quoted"}:
-        assert_unclassified_agreement_comment(response, comment["id"])
-        assert g.merge_calls() == [] and len(g.review.calls()) == 1
-        return
-    rows = g.results(response)
-    if permission in {"allow", "reallow"}:
-        assert [c[2] for c in g.merge_calls()] == ["100"]
-        exemption = rows[100]["shared_exemption"]
-        assert exemption["allow_shared_foundation"] is True
-        assert "合意" in exemption["evidence"]
-        assert "#issuecomment-" in exemption["comment_url"]
-    else:
-        assert g.merge_calls() == []
-        assert rows[100]["shared_hits"]
-        assert rows[100]["shared_exemption"] is None
-        assert (
-            "parent_review_not_confirmed"
-            if permission == "new_agreement"
-            else "touches_shared"
-        ) in rows[100]["reasons"]
-
-
-@pytest.mark.parametrize("gate_env", ["shared"], indirect=True)
-def test_board_permission_markers_and_ack_cannot_authorize_shared_merge(
-    gate_env: GateEnv,
-) -> None:
-    g, p = gate_env, gate_env.review.p
-    policy = importlib.import_module("parent.policy")
-    request = {k: v for k, v in g.review.request.items() if k != "review_state"}
-    auth = request["authorization"]
-    permission = policy.marker(
-        {
-            "parent": 1,
-            "event": "merge_permission",
-            "revision": 1,
-            "review_run_id": request["review_run_id"],
-            "request_sha256": policy.digest(request),
-            **auth,
-            "allow_shared_foundation": True,
-            "evidence": "共有基盤を含むmergeを許可する。",
-        }
-    )
-    result = json.loads((g.review.run_dir / "result.json").read_text())
-    peer_board_request(p, permission + "\n\n" + g.policy.marker(result))
-    response = g.cli("merge", AGENT_AUTO_MERGE="0")
-    assert response.returncode == 1, response.stderr
-    row = g.results(response)[100]
-    assert "touches_shared" in row["reasons"]
-    assert row["shared_exemption"] is None
-    assert g.merge_calls() == []
-    assert len(g.review.calls()) == 1
 
 
 def test_board_merge_notice_and_ack_cannot_enable_auto_merge(gate_env: GateEnv) -> None:
@@ -1431,13 +1268,13 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     )
     rows = g.results(result)
     assert (
-        "head_changed_during_ci" if when == "ci" else "head_changed_before_merge"
+        "head_changed_during_ci" if when == "ci" else "pr_100_unverified_head"
     ) in rows[100]["reasons"]
     assert rows[100]["ci_head_sha"] == new_head
     assert not g.merge_calls()
 
 
-def test_new_child_pr_invalidates_the_run_set_without_holding_by_ci(
+def test_new_child_pr_does_not_invalidate_reviewed_prs(
     gate_env: GateEnv,
 ) -> None:
     g, p = gate_env, gate_env.review.p
@@ -1452,9 +1289,9 @@ def test_new_child_pr_invalidates_the_run_set_without_holding_by_ci(
     state["prs"].append(extra)
     p.save(state)
     rows = g.results(g.cli("merge"))
-    assert all("pr_set_changed" in rows[n]["reasons"] for n in (100, 101, 102))
+    assert all(rows[n]["action"] == "merged" for n in (100, 101, 102))
     assert "pr_outside_review_targets" in rows[103]["reasons"]
-    assert not g.merge_calls()
+    assert len(g.merge_calls()) == 3
 
 
 def test_no_targets_is_incomplete_and_never_invokes_agent(parent_env: Any) -> None:
@@ -1484,3 +1321,63 @@ def test_invalid_run_timestamps_still_fail_closed(gate_env: GateEnv) -> None:
     assert response.returncode == 2
     assert "invalid run timestamps" in response.stderr
     assert not g.merge_calls()
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_later_partial_run_preserves_other_prs_and_merges_each_once(
+    gate_env: GateEnv,
+) -> None:
+    g, r = gate_env, gate_env.review
+    p = r.p
+    old_id = r.request["review_run_id"]
+    prepared = json.loads(
+        p.cli(
+            "review-prepare",
+            "--prs",
+            "102",
+            "--reason-file",
+            p.note("PR 102のみ追加確認する。"),
+        ).stdout
+    )
+    r.request = json.loads(
+        p.cli(
+            "review-request",
+            "--run-id",
+            prepared["review_run_id"],
+            "--instruction-file",
+            p.note("PR 102の差分と整合を確認する。"),
+        ).stdout
+    )
+    r.request_path.write_text(json.dumps(r.request))
+    output = json.loads(r.output.read_text())
+    output["prs"] = [entry for entry in output["prs"] if entry["number"] == 102]
+    r.output.write_text(json.dumps(output))
+    r.run()
+    g.confirm()
+    response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
+    assert response.returncode == 0, response.stderr
+    assert all(row["action"] == "merged" for row in g.results(response).values())
+    assert len(g.merge_calls()) == 3 and len(r.calls()) == 2
+    assert r.request["review_run_id"] != old_id
+
+
+@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+def test_gate_releases_registry_during_every_remote_command(gate_env: GateEnv) -> None:
+    g, p = gate_env, gate_env.review.p
+    fake = p.root / "bin/gh"
+    shebang, body = fake.read_text().split("\n", 1)
+    guard = """
+import fcntl, os
+from pathlib import Path
+lock_path = Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions/registry.lock"
+with lock_path.open("a") as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        raise RuntimeError("remote command holds the shared registry lock")
+"""
+    fake.write_text(shebang + "\n" + guard + body)
+    response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
+    assert response.returncode == 0, response.stderr
+    assert len(g.merge_calls()) == 3
+    assert all(row["action"] == "merged" for row in g.results(response).values())

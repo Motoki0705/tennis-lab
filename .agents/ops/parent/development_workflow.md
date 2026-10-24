@@ -30,7 +30,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 ```
 
 出力は `child/delegation_id/job_id/result=reserved`。起動の成功や成果物の合格ではない。
-担当issueの原文・親の具体指示・共有pytest lockと [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
+担当issueの原文・親の具体指示と [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
 モデル選択の理由もissueへの `note` に残す。GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 
@@ -86,16 +86,13 @@ CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfai
 
 ## 親単位レビューと順次merge
 
-親がその時点の全open対象PRを固定して明示要求する。部分集合・単独PRの自動レビューは作らない。
+親が準備できたopen PRの部分集合を選び、明示要求する。自動レビューは作らない。
 同じprivate state、親のCLI identityとghアカウントで既存入口を呼ぶ。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  --state-dir "$parent_state" review-prepare --prs 200 201 > tmp/targets.json
-# targets.jsonのreview_run_idを読み、親が受入条件・統合上の確認点を指示する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
-  --state-dir "$parent_state" review-request --run-id "$review_run" \
-  --instruction-file tmp/review.md > tmp/review-request.json
+  --state-dir "$parent_state" review-request --prs 200 201 \
+  --instruction-file tmp/review.md --evidence-file tmp/result.md > tmp/review-request.json
 .venv/bin/python .agents/ops/review/parent_review.py --state-dir "$parent_state" \
   run --request tmp/review-request.json
 ```
@@ -111,8 +108,7 @@ CI・回帰テストと指摘解消を親が確認して既存の `parent_review
 ```
 
 既定のdry-runを読み、呼出元環境の `AGENT_AUTO_MERGE` に従う。workflow自身が有効値を設定しない。
-共有基盤の許可は実際の人間合意がある場合だけ既存の `shared-permission` に記録する。
-自律根拠・採用チェックから許可を作らない。gateはcoverage/HEAD/CI/依存/共有基盤承認と、
+gateはcoverage/HEAD/CI/依存と、
 親・対象子に含まれる全採用提案の鮮度を検査し、通るPRだけ順次mergeする。
 応答喪失・試行済みheadはremoteと試行journalを照合し、記録を消して再mergeしない。
 

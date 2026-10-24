@@ -458,3 +458,33 @@ def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
     assert "ops-report.env" in service
     assert "OnCalendar=*-*-* 08:00:00 Asia/Tokyo" in timer
     assert "Persistent=true" in timer
+
+
+def test_review_mcp_is_read_only_and_records_frozen_configuration(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "mcp.json"
+    config.write_text(
+        '{"review":{"command":"python","args":["-m","review_server"],"env":{"PYTHONPATH":"/fixed/ops"},"tool_timeout_sec":960}}'
+    )
+    result = _codex_args(
+        tmp_path,
+        "--mode",
+        "read-only",
+        "--profile",
+        "review",
+        "--mcp-config",
+        str(config),
+    )
+    assert result.returncode == 0, result.stderr
+    args = (tmp_path / "args.txt").read_text().splitlines()
+    assert 'mcp_servers.review.command="python"' in args
+    assert 'mcp_servers.review.env.PYTHONPATH="/fixed/ops"' in args
+    assert "--dangerously-bypass-approvals-and-sandbox" not in args
+    assert args[args.index("multi_agent") - 1] == "--disable"
+    saved = list((tmp_path / "logs").rglob("mcp-config.json"))
+    assert len(saved) == 1 and saved[0].read_bytes() == config.read_bytes()
+    rejected = _codex_args(
+        tmp_path, "--mode", "write", "--profile", "review", "--mcp-config", str(config)
+    )
+    assert rejected.returncode == 2
