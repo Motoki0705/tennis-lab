@@ -1,0 +1,117 @@
+# CPU CI 测量
+
+[English](README.md) · [日本語](README.ja.md)
+
+这些工具观测现有 CPU 测试集，不删除测试、不增加 marker、不修改 fixture，也不按改动
+路径省略测试或拆分 shard。CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
+集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
+2 个 worker、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
+
+## 执行与中断恢复
+
+在待测 checkout 中安装锁定环境后运行：
+
+```bash
+.venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
+```
+
+输出目录必须为空。本地运行取得与 `.agents/ops/pytest_locked.sh` 相同的主机锁：
+`${PYTEST_LOCK}`，或 `${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock`。
+`--lock /absolute/path` 可明确覆盖。实际性能测量应使用共享默认锁；只有嵌套回归测试使用
+临时绝对路径锁。GitHub-hosted runner 无需本地主机锁。普通回归 wrapper 仍固定使用 4 个
+worker，本工具不改变它。
+
+部分测试可放在 `--` 后，例如 `-- tests/unit/utils/geometry/test_angles.py`。任何额外参数都会使
+`full_cpu_target` 为 false，部分执行不能建立完整 CPU baseline。不要覆盖 worker、marker、
+JUnit、输出目录或 plugin 参数。
+
+runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层 pytest 的 worker 标识和
+选项，不修改调用者环境。setup 失败或 skip 时没有 call report 属于正常情况，仍分别记录
+失败或 skip，与 phase 缺失区分。信号会转发到整个 pytest 进程组并记录为 cancelled。
+强制 kill 或 runner 丢失可能没有结束记录；可从已有证据重新汇总，而不重跑测试：
+
+```bash
+.venv/bin/python -m scripts.ci_metrics report --output /absolute/partial/output
+```
+
+`run` 保留 pytest 的非零退出值；pytest 成功但测量不完整时返回 2。`report` 无法确认成功
+观测时也返回 2，不用另一次执行填补缺失证据。
+
+## 产物与时间定义
+
+| 文件 | 内容 |
+|---|---|
+| `environment.json` | revision、本地改动、命令、依赖版本、OS/image、CPU/affinity、RAM、worker/thread、run/attempt、cache、起始主机负载 |
+| `run.json` | 请求/开始/结束时间、独立锁等待、退出值/信号、执行期间源码一致性 |
+| `events-*.jsonl` | 每进程及时 flush 的收集/排除 nodeid、收集失败/skip、worker 收集、fixture setup、测试 phase、结束记录 |
+| `inventory.json` | 被选中的 nodeid，逐 worker 检查顺序与内容一致 |
+| `results.json` | 每个 node 的 passed/skipped/failed/xfail/xpass/incomplete 及 phase 时间 |
+| `junit.xml`, `pytest.log` | 独立核对的 JUnit 数量、标识与时间，以及标准 durations 输出 |
+| `summary.json`, `summary.md` | 完整性检查、进程启动/收集、file/fixture 时间贡献、结果数量 |
+
+`full_cpu_baseline` 同时要求默认完整 CPU 集合及成功观测。runner/session/JUnit 缺失、worker
+收集不一致、phase 缺失/重复、JUnit 数量/标识/时间不一致或运行中源码变化，都会使其无效。
+失败和取消不会变成成功。收集时的 module skip/error 可能没有对应的选中 nodeid，因此另存
+事件。
+
+phase 时间是**各 worker 的经过时间之和**，不是 CPU 时间或 job 墙钟时间。启动区间为
+Python/spin/pytest 到 plugin import；worker 收集为 session 开始到收集结束，同时保留原始
+时间戳及 controller 接收最后一个 worker 清单的时刻。后处理为最后一个 phase 到命令退出。
+fixture 统计依赖解析后实际执行的 setup 次数、时间和错误；finalizer 仍在测试 teardown 中。
+fixture setup 包含在测试 setup 内，不可相加。共享 fixture 归属其 scope node，不重复分摊
+给每个 consumer。
+
+RSS 为 pytest controller/worker 中**单进程的最大 high-water RSS**，单位 Linux KiB；不含
+测试子进程，也不是进程树的同时峰值或总内存需求。记录事件序列化/flush 和报告生成时间，
+其中写入时间仅是观测开销的下限。整体开销应以相同锁和环境交替运行小测试集的开/关观测
+版本，保存全部命令、样本及失败。不要从启动主导的小样本推断全套测试的开销。
+
+## Actions attempt
+
+CI 在依赖准备前记录 runner。summary、REST snapshot 和 artifact 步骤使用 `always()`，在
+准备或测试失败后仍尝试保存。强制取消或 runner 丢失可能阻止上传；REST 侧仍记录取消或
+不完整的 attempt。artifact 名称包含 run 和 attempt。cache hit 来自 `setup-uv` 输出；
+无法获得时明确标记 unknown，不假定 warm cache。
+
+job 内 REST snapshot 是暂定值，其自身 job、上传和 post-cache 尚未结束。**job 完成后**
+重新获取，才能确定所有 runner 和后处理时间：
+
+```bash
+.venv/bin/python -m scripts.ci_metrics fetch-actions --repo Motoki0705/tennis-lab \
+  --run-id 39767861734 --output /absolute/new/actions
+.venv/bin/python -m scripts.ci_metrics actions --input /absolute/new/actions/actions-raw.json \
+  --output /absolute/new/actions
+```
+
+`fetch-actions` 使用只读 `gh api` 获取所有 attempt 及各自 job 的所有分页；`--attempt`
+指定一次暂定 snapshot。获取成功不代表测量完整，须检查 `complete_measurement` 和
+`successful_observed_checks`。`actions` 遇到缺失/不完整数据返回 2。输入是含 attempt
+原始 REST 字段的 `{run, jobs}` 数组，可附带 `requested_at`、`cache_condition` 和来源。
+重复 attempt 被拒绝；缺少较早 attempt 时列出缺项，并将累计 runner 时间设为未知。
+
+queue 分别记录 attempt 起点到首个 job，以及每个 job 创建到启动。attempt 1 起点为
+`created_at`；重试通常无法取得请求时刻，因此 `run_started_at` **明确标为代理值**。
+仅在独立观测到真实请求时刻时提供 `requested_at`。check 完成时间是起点到所有指定
+check 完成（默认 `--check Python`，可重复）；它与包含失败/取消 attempt 及其他并行 job
+的**所有 job runner 时间之和**分开。`Python` 只是观测 check 名称，不恢复已废止的 CI
+merge 条件。
+
+step 分类区分 checkout、uv/cache/install、apt、lint、pytest、post 和其他工作，保留原始
+时间戳及结论。时间缺失产生带原因的未知总量，不会作为零耗时成功；skip 保持为 skip。
+
+中位数及 p95 只使用成功且测量完整的 attempt，同时记录 n 和 nearest-rank 公式
+`sorted[ceil(0.95*n)-1]`；n<20 的 p95 仅供参考。结果数量及 runner 累计仍包含失败/取消。
+不同 revision、runner、cache 或 inventory 的观测只能描述现状，不能证明前后改善；后续
+成功不会悄悄取代先前失败。
+
+## 比较条件
+
+比较 job 构成时固定源码、inventory、runner image/CPU/RAM、依赖、worker/thread、cache
+和竞争负载。合并测试会改变 inventory，须保留删除 case 到保留的缺陷/边界契约的对应，
+以及初始化、fixture/CLI 次数与 setup/call/teardown 时间。时间贡献可能重叠，不能直接当成
+job 墙钟缩短量。保留上述完整 CPU 执行入口。候选决策和 baseline 证据见
+[baseline.zh-CN.md](baseline.zh-CN.md)。
+
+API 依据：[pytest hooks](https://docs.pytest.org/en/stable/reference/reference.html#hooks)、
+[Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
+[`setup-uv` outputs](https://github.com/astral-sh/setup-uv#outputs)。

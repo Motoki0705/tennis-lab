@@ -1,0 +1,354 @@
+"""Validate inventory/report completeness before calling an observation a baseline."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import time
+import xml.etree.ElementTree as ET
+from collections import Counter, defaultdict
+from pathlib import Path
+from typing import Any
+
+from .runner import write_json
+
+
+def _json(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text()) if path.exists() else {}
+
+
+def summarize(root: Path) -> dict[str, Any]:
+    report_started = time.perf_counter()
+    issues: list[str] = []
+    processes = []
+    controller: list[dict[str, Any]] = []
+    inventories: list[list[str]] = []
+    fixtures: dict[str, dict[str, Any]] = {}
+    for path in sorted(root.glob("events-*.jsonl")):
+        events = []
+        for number, line in enumerate(path.read_text().splitlines(), 1):
+            try:
+                events.append(json.loads(line))
+            except json.JSONDecodeError:
+                issues.append(f"invalid event JSON: {path.name}:{number}")
+        configured = [e for e in events if e.get("event") == "configured"]
+        if len(configured) != 1:
+            issues.append(f"missing/duplicate process configuration: {path.name}")
+            continue
+        role = configured[0]["role"]
+        finished = [e for e in events if e["event"] == "session_finish"]
+        if len(finished) != 1:
+            issues.append(f"missing/duplicate session finish: {path.name}")
+        collections = [e for e in events if e["event"] == "collection"]
+        # The xdist controller has no items; inventories arrive from each worker.
+        if role != "controller":
+            if len(collections) != 1:
+                issues.append(f"missing/duplicate worker collection: {path.name}")
+            inventories.extend(e["nodeids"] for e in collections)
+        if role == "controller":
+            if controller:
+                issues.append("multiple pytest controllers")
+            controller = events
+        first_phase = next((e["start"] for e in events if e["event"] == "phase"), None)
+        processes.append(
+            {
+                "role": role,
+                "pid": configured[0]["pid"],
+                "plugin_import_at": configured[0]["imported_at"],
+                "configured_at": configured[0]["at"],
+                "session_start_at": next(
+                    (e["at"] for e in events if e["event"] == "session_start"), None
+                ),
+                "collection_finished_at": collections[0]["at"] if collections else None,
+                "first_phase_at": first_phase,
+                "finish": finished[0] if len(finished) == 1 else None,
+                "deselected_count": sum(
+                    len(e["nodeids"]) for e in events if e["event"] == "deselected"
+                ),
+            }
+        )
+        for event in events:
+            if event["event"] != "fixture":
+                continue
+            key = f"{event['source']} [{event['scope']}]"
+            item = fixtures.setdefault(
+                key, {"fixture": key, "count": 0, "setup_s": 0.0, "errors": 0}
+            )
+            item["count"] += 1
+            item["setup_s"] += event["setup_s"]
+            item["errors"] += event["outcome"] != "passed"
+    metadata = _json(root / "environment.json")
+    run = _json(root / "run.json")
+    if not metadata:
+        issues.append("missing environment metadata")
+    if not run or run.get("finished_at") is None:
+        issues.append("missing runner completion")
+    if run.get("source_unchanged") is False:
+        issues.append("source changed during test execution")
+    workers = metadata.get("workers")
+    worker_collections = [e for e in controller if e["event"] == "worker_collection"]
+    if workers is not None and workers > 0:
+        if (
+            len(worker_collections) != workers
+            or len({e["worker"] for e in worker_collections}) != workers
+        ):
+            issues.append("missing/duplicate controller worker inventory")
+        if len(inventories) != workers:
+            issues.append("missing/duplicate worker process inventory")
+        inventories.extend(e["nodeids"] for e in worker_collections)
+    else:
+        inventories.extend(
+            e["nodeids"] for e in controller if e["event"] == "collection"
+        )
+    nodeids = inventories[0] if inventories else []
+    if not inventories or not nodeids:
+        issues.append("empty/missing selected inventory")
+    if any(ids != nodeids for ids in inventories):
+        issues.append("worker collection mismatch")
+    if len(set(nodeids)) != len(nodeids):
+        issues.append("duplicate selected nodeids")
+    phases: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for event in controller:
+        if event["event"] == "phase":
+            phases[event["nodeid"]].append(event)
+    if set(phases) - set(nodeids):
+        issues.append("reports outside selected inventory")
+    results = []
+    for nodeid in nodeids:
+        reports = phases.get(nodeid, [])
+        names = Counter(e["phase"] for e in reports)
+        setup = next((e for e in reports if e["phase"] == "setup"), None)
+        complete = names["setup"] == names["teardown"] == 1 and all(
+            n == 1 for n in names.values()
+        )
+        if setup is None or (setup["outcome"] == "passed" and names["call"] != 1):
+            complete = False
+        outcomes = {e["outcome"] for e in reports}
+        if not complete:
+            status = "incomplete"
+        elif "failed" in outcomes:
+            status = "failed"
+        elif any(e.get("wasxfail") for e in reports):
+            status = "xfailed" if "skipped" in outcomes else "xpassed"
+        elif "skipped" in outcomes:
+            status = "skipped"
+        else:
+            status = "passed"
+        results.append(
+            {
+                "nodeid": nodeid,
+                "status": status,
+                "phase_s": {e["phase"]: e["duration_s"] for e in reports},
+                "worker": reports[0]["worker"] if reports else None,
+                "torch_threads": [e.get("torch_threads") for e in reports],
+            }
+        )
+    counts = dict(Counter(item["status"] for item in results))
+    if counts.get("incomplete"):
+        issues.append("selected tests have missing/duplicate phases")
+    collection_results = [e for e in controller if e["event"] == "collection_result"]
+    junit: dict[str, Any] = {}
+    try:
+        cases = list(ET.parse(root / "junit.xml").iter("testcase"))
+        junit = {
+            "testcases": len(cases),
+            "time_s": sum(float(case.get("time", "0")) for case in cases),
+            "failed": sum(
+                case.find("failure") is not None or case.find("error") is not None
+                for case in cases
+            ),
+            "skipped": sum(case.find("skipped") is not None for case in cases),
+        }
+        if len(cases) != len(phases) + len(collection_results):
+            issues.append(
+                "JUnit testcase count differs from execution/collection reports"
+            )
+        if not collection_results and junit["failed"] != counts.get("failed", 0):
+            issues.append("JUnit failure count differs from phase reports")
+        if not collection_results and junit["skipped"] != counts.get(
+            "skipped", 0
+        ) + counts.get("xfailed", 0):
+            issues.append("JUnit skip count differs from phase reports")
+        if not collection_results:
+            addresses = []
+            for nodeid in phases:
+                address, bracket, parameters = nodeid.partition("[")
+                address_parts = address.split("::")
+                address_parts[0] = (
+                    address_parts[0].replace("/", ".").removesuffix(".py")
+                )
+                address_parts[-1] += bracket + parameters
+                addresses.append((".".join(address_parts[:-1]), address_parts[-1]))
+            if Counter(addresses) != Counter(
+                (case.get("classname"), case.get("name")) for case in cases
+            ):
+                issues.append("JUnit test identities differ from phase reports")
+            phase_total = sum(
+                e["duration_s"] for events in phases.values() for e in events
+            )
+            if abs(junit["time_s"] - phase_total) > 0.001 * len(cases) + 0.01:
+                issues.append(
+                    "JUnit total time differs from phase reports (beyond XML rounding)"
+                )
+    except (FileNotFoundError, ET.ParseError, ValueError) as error:
+        issues.append(f"missing/invalid JUnit: {type(error).__name__}")
+    phase_s = {
+        phase: sum(
+            e["duration_s"]
+            for events in phases.values()
+            for e in events
+            if e["phase"] == phase
+        )
+        for phase in ("setup", "call", "teardown")
+    }
+    for process_row in processes:
+        process_row["first_phase_at"] = min(
+            (
+                e["start"]
+                for events in phases.values()
+                for e in events
+                if e["worker"] == process_row["role"]
+            ),
+            default=None,
+        )
+    finish_codes = [p["finish"]["exitstatus"] for p in processes if p["finish"]]
+    successful = (
+        not issues
+        and run.get("status") == "completed"
+        and run.get("exitcode") == 0
+        and bool(finish_codes)
+        and all(code == 0 for code in finish_codes)
+        and not counts.get("failed")
+        and not any(
+            e["event"] == "collection_result" and e["outcome"] == "failed"
+            for e in controller
+        )
+    )
+    files: dict[str, dict[str, Any]] = {}
+    for item in results:
+        filename = item["nodeid"].split("::", 1)[0]
+        row = files.setdefault(
+            filename,
+            {"file": filename, "count": 0, "phase_s": dict.fromkeys(phase_s, 0.0)},
+        )
+        row["count"] += 1
+        for phase, seconds in item["phase_s"].items():
+            row["phase_s"][phase] += seconds
+    started = run.get("started_at")
+    finished_at = run.get("command_finished_at", run.get("finished_at"))
+    controller_process = next((p for p in processes if p["role"] == "controller"), None)
+    last_phase_at = max(
+        (e["stop"] for events in phases.values() for e in events), default=None
+    )
+    timing = {
+        "command_to_plugin_import_s": controller_process["plugin_import_at"] - started
+        if controller_process and started
+        else None,
+        "plugin_import_to_configure_s": controller_process["configured_at"]
+        - controller_process["plugin_import_at"]
+        if controller_process
+        else None,
+        "worker_session_to_collection_s": {
+            p["role"]: p["collection_finished_at"] - p["session_start_at"]
+            for p in processes
+            if p["session_start_at"] and p["collection_finished_at"]
+        },
+        "command_to_all_workers_collected_s": max(e["at"] for e in worker_collections)
+        - started
+        if worker_collections and started
+        else None,
+        "last_phase_to_command_exit_s": finished_at - last_phase_at
+        if finished_at and last_phase_at
+        else None,
+    }
+    summary = {
+        "schema_version": 1,
+        "successful_test_baseline": successful,
+        "full_cpu_baseline": (
+            successful
+            and metadata.get("full_cpu_target") is True
+            and bool(metadata.get("source", {}).get("commit"))
+            and run.get("source_unchanged") is True
+        ),
+        "issues": issues,
+        "selected_count": len(nodeids),
+        "counts": counts,
+        "collection_results": collection_results,
+        "inventory_sha256": hashlib.sha256(
+            "\n".join(sorted(nodeids)).encode()
+        ).hexdigest(),
+        "phase_elapsed_s": phase_s,
+        "torch_intraop_threads_observed": sorted(
+            {
+                e["torch_threads"]["intraop"]
+                for events in phases.values()
+                for e in events
+                if e.get("torch_threads")
+            }
+        ),
+        "junit": junit,
+        "run": run,
+        "processes": processes,
+        "timing_breakdown": timing,
+        "report_generation_s": time.perf_counter() - report_started,
+        "test_command_wall_s": finished_at - started
+        if started and finished_at
+        else None,
+        "event_write_s": sum(
+            p["finish"]["event_write_s"] for p in processes if p["finish"]
+        ),
+        "largest_process_max_rss_kib": max(
+            (p["finish"]["max_rss_kib"] for p in processes if p["finish"]), default=None
+        ),
+        "fixtures": sorted(
+            fixtures.values(), key=lambda item: item["setup_s"], reverse=True
+        ),
+        "files": sorted(
+            files.values(), key=lambda item: sum(item["phase_s"].values()), reverse=True
+        ),
+    }
+    write_json(root / "inventory.json", nodeids)
+    write_json(root / "results.json", results)
+    lines = [
+        "# CPU test measurements",
+        "",
+        f"Successful test baseline: **{successful}**; full CPU target: **{summary['full_cpu_baseline']}**.",
+        f"Selected: {len(nodeids)}; outcomes: `{json.dumps(counts, sort_keys=True)}`.",
+        f"Command wall seconds: {summary['test_command_wall_s']}; lock wait seconds: {run.get('lock_wait_s')}.",
+        f"Summed worker phase seconds: `{json.dumps(phase_s, sort_keys=True)}`.",
+        f"Largest individual pytest process RSS (KiB, not tree peak): {summary['largest_process_max_rss_kib']}.",
+        f"Measured event serialization/write seconds (lower bound on overhead): {summary['event_write_s']:.4f}.",
+        "",
+        "## Completeness issues",
+        "",
+        *(f"- {issue}" for issue in issues),
+    ]
+    if not issues:
+        lines.append("None.")
+    lines += [
+        "",
+        "## Largest test files",
+        "",
+        "| File | Cases | Setup s | Call s | Teardown s |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for item in summary["files"][:20]:
+        times = item["phase_s"]
+        lines.append(
+            f"| {item['file']} | {item['count']} | {times['setup']:.3f} | {times['call']:.3f} | {times['teardown']:.3f} |"
+        )
+    lines += [
+        "",
+        "## Largest fixture setups",
+        "",
+        "| Fixture | Executions | Setup s | Errors |",
+        "|---|---:|---:|---:|",
+    ]
+    for fixture in summary["fixtures"][:20]:
+        lines.append(
+            f"| {fixture['fixture']} | {fixture['count']} | {fixture['setup_s']:.3f} | {fixture['errors']} |"
+        )
+    (root / "summary.md").write_text("\n".join(lines) + "\n")
+    summary["report_generation_s"] = time.perf_counter() - report_started
+    write_json(root / "summary.json", summary)
+    return summary
