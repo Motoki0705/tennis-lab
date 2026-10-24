@@ -25,6 +25,7 @@ sys.path.insert(0, str(REVIEW_DIR))
 from review_policy import CheckState, normalize_rollup  # noqa: E402
 
 LOG = logging.getLogger("ops_report.memory")
+REQUIRED_CHECKS_FILE = Path(__file__).resolve().parents[1] / "required_checks.txt"
 PR_FIELDS = (
     "number,url,state,body,headRefName,headRefOid,baseRefName,baseRefOid,"
     "isDraft,isCrossRepository,mergeable,statusCheckRollup"
@@ -413,7 +414,7 @@ class Store:
             raise ValueError(f"unknown memory PR mergeable state: {pr['mergeable']!r}")
         required = [
             line.split("#", 1)[0].strip()
-            for line in (REVIEW_DIR / "required_checks.txt").read_text().splitlines()
+            for line in REQUIRED_CHECKS_FILE.read_text().splitlines()
         ]
         required = [name for name in required if name]
         if not required:

@@ -149,6 +149,34 @@ def test_validates_complete_standard_export(tmp_path: Path) -> None:
     ).resolve()
 
 
+def test_image_free_validation_is_explicit_and_preserves_geometry(tmp_path: Path) -> None:
+    _write_valid_export(tmp_path)
+    full = validate_standard_scene_export(tmp_path / "scene.json")
+    (tmp_path / "images/frame_000000.jpg").unlink()
+    (tmp_path / "images").rmdir()
+    with pytest.raises(FileNotFoundError):
+        validate_standard_scene_export(tmp_path / "scene.json")
+    portable = validate_standard_scene_export(
+        tmp_path / "scene.json", without_source_images=True
+    )
+    assert portable.cameras == full.cameras
+    assert portable.scene_from_sfm == full.scene_from_sfm
+    assert portable.checkpoint_path == full.checkpoint_path
+    (tmp_path / "model/ckpts/model.pt").unlink()
+    with pytest.raises(FileNotFoundError):
+        validate_standard_scene_export(tmp_path / "scene.json", without_source_images=True)
+
+
+def test_image_free_validation_rejects_escaped_image_reference(tmp_path: Path) -> None:
+    _, cameras = _write_valid_export(tmp_path)
+    records = _list(cameras["cameras"], name="cameras")
+    record = _mapping(records[0], name="camera")
+    record["image"] = "../escape.jpg"
+    _write_payload(tmp_path / "cameras.json", cameras)
+    with pytest.raises(ValueError):
+        validate_standard_scene_export(tmp_path / "scene.json", without_source_images=True)
+
+
 @pytest.mark.parametrize(
     "mutation,match",
     [

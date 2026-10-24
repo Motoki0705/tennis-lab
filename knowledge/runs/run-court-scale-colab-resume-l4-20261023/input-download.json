@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "download",
+  "rclone_config": "/content/.tennis-colab/court-scale-generation-l4-20261023-6ed3f29e8/secrets/rclone.conf",
+  "source": "gdrive:tennis_lab/data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+  "destination": "/content/tennis-lab/data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}

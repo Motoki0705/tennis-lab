@@ -72,7 +72,8 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(0 if code < 300 else 1)
     def api_issue(row):
         return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
-                "state_reason": row.get("state_reason"), "repository_url": "https://api.github.com/repos/o/r"}
+                "state_reason": row.get("state_reason"), "assignees": row.get("assignees", []),
+                "repository_url": "https://api.github.com/repos/o/r"}
     def page(rows):
         p = int(re.search(r"(?:^|&)page=(\d+)", query)[1]) if "page=" in query else 1
         return rows[(p-1)*100:p*100]
@@ -93,8 +94,10 @@ elif args[0] == "api" and "--method" in args:
     if api_path == "user":
         api_emit({"login": "bot"})
     if api_path == "repos/o/r/pulls":
-        api_emit(page(state["prs"]))
-    m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", api_path)
+        api_emit(page([{**r, "state": r.get("state", "open").lower(), "merged_at": r.get("mergedAt"),
+                        "body": state.get("pr_details", {}).get(str(r["number"]), {}).get("body", ""),
+                        "head": {"ref": r["headRefName"], "sha": "a" * 40}} for r in state["prs"]]))
+    m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", api_path)
     assert m, args
     n, tail = m.groups()
     if n is None:
@@ -113,6 +116,8 @@ elif args[0] == "api" and "--method" in args:
     if tail == "parent":
         parent = state.get("parents", {}).get(n)
         api_emit(api_issue(next(i for i in state["issues"] if i["number"] == parent)) if parent else {"message": "No parent issue found"}, 200 if parent else 404)
+    if tail == "dependencies/blocked_by":
+        api_emit(page([api_issue(i) for i in state["issues"] if i["number"] in state.get("dependencies", {}).get(n, [])]))
     if tail == "sub_issues":
         if method == "GET":
             api_emit(page([api_issue(i) for i in state["issues"] if state.get("parents", {}).get(str(i["number"])) == int(n)]))
@@ -124,7 +129,11 @@ elif args[0] == "api" and "--method" in args:
         if method == "GET":
             api_emit(page(state.get("comments", {}).get(n, [])))
         time.sleep(float(os.environ.get("FAKE_GH_CREATE_DELAY", "0")))
-        comment = {"user": {"login": "bot"}, "body": payload["body"]}
+        comment_id = state["next_comment_id"]
+        state["next_comment_id"] += 1
+        comment = {"id": comment_id, "user": {"login": "bot"}, "body": payload["body"],
+                   "created_at": "2026-10-12T00:00:00Z", "updated_at": "2026-10-12T00:00:00Z",
+                   "html_url": f"https://github.com/o/r/issues/{n}#issuecomment-{comment_id}"}
         state.setdefault("comments", {}).setdefault(n, []).append(comment)
         api_saved(comment)
     if method == "PATCH":
@@ -317,6 +326,7 @@ AGENT_OUTPUT: dict[str, Any] = {
 def base_state() -> dict[str, Any]:
     return {
         "next_number": 100,
+        "next_comment_id": 1,
         "labels": ["ai-proposed"],
         "issues": [
             {
@@ -520,6 +530,11 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     _install(bin_dir / "gh", f"#!{sys.executable}\n{FAKE_GH}")
+    _install(
+        bin_dir / "codex",
+        f"#!{sys.executable}\n"
+        + Path(__file__).with_name("fake_organization_cli.py").read_text(),
+    )
     fake_exec = tmp_path / "fake_agent_exec.sh"
     _install(fake_exec, FAKE_AGENT_EXEC)
     env = {
@@ -539,6 +554,10 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
             "FAKE_AUDIT_PYTHON": sys.executable,
             "XDG_STATE_HOME": str(tmp_path / "state"),
             "OPS_REPORT_AGENT_EXEC": str(fake_exec),
+            "OPS_REPORT_ORGANIZER_EXEC": str(ROOT / ".agents/ops/lib/agent_exec.sh"),
+            "CODEX_HOME": str(tmp_path / "codex-home"),
+            "FAKE_ORGANIZATION_PLAN": str(tmp_path / "organization_plan.json"),
+            "FAKE_ORGANIZATION_CALLS": str(tmp_path / "organization_calls.jsonl"),
             "OPS_REPORT_LOCK_FILE": str(tmp_path / "state" / "ops-report.lock"),
         }
     )

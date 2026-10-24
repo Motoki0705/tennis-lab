@@ -29,8 +29,8 @@ function applySplit() {
   view.setScene({ ...data, groups: filteredGroups() });
   renderList();
   const selected =
-    filteredGroups().find((g) => g.id === group?.id) || filteredGroups()[0];
-  if (selected) selectGroup(selected.id);
+    filteredGroups().find((g) => g.id === group?.id) || filteredGroups().find((g) => g.samples.length) || filteredGroups()[0];
+  if (selected) selectGroup(selected.id, true);
   else {
     group = null;
     gallery.replaceChildren();
@@ -45,9 +45,11 @@ function inspectSample(sample) {
     `frame ${sample.frame} · ${sample.view}`,
     `target ${sample.target_court ?? "未記録"} · ${sample.target_coverage ?? "未記録"}`,
     `${sample.resolution.join("×")} · 採用 / ${group.split}`,
+    ...(group.diagnostics?.view ? [`HFOV ${group.diagnostics.view.hfov_degrees}° · 注視高 ${group.diagnostics.view.look_at_height_m}m · jitter ${group.diagnostics.view.look_at_jitter_radius_m}m`] : []),
     $("label-scope").value === "target"
       ? "描画: target限定 · 学習consumerのKP14"
       : "描画: 全court参考 · target可視数とは集計範囲が異なります",
+    ...(sample.qa ? [`ROI穴率 ${sample.qa.roi_hole_fraction === null ? "ROIなし" : (sample.qa.roi_hole_fraction*100).toFixed(2)+"%"} · 対象renderer KP ${sample.qa.target_visible_kp}`] : []),
     c
       ? `target可視 ${c.visible}/${c.total} · 画面内不可視 ${c.in_frame_hidden} · 画面外 ${c.out_of_frame}`
       : "target投影：未記録",
@@ -94,7 +96,7 @@ async function loadScene() {
     return;
   }
   status(`${scene.id} を読み込んでいます…`);
-  $("scene-title").textContent = scene.id;
+  $("scene-title").textContent = scene.scene_id ?? scene.id;
   try {
     const response = await fetch(
       `/api/scenes/${encodeURIComponent(scene.id)}?revision=${scene.revision}`,
@@ -126,7 +128,7 @@ function renderList() {
     const name = document.createElement("span");
     name.className = "name";
     const label = document.createElement("span");
-    label.textContent = g.trajectory.trajectory_id;
+    label.textContent = g.label ?? g.trajectory.trajectory_id;
     const dot = document.createElement("span");
     dot.className = "dot";
     dot.textContent = "●";
@@ -134,7 +136,7 @@ function renderList() {
     name.append(label, dot);
     const description = document.createElement("span");
     description.className = "description";
-    description.textContent = `${g.trajectory.shape} · ${g.samples.length} views`;
+    description.textContent = `${g.trajectory.shape} · ${g.samples.length}採択${g.candidate_count === undefined ? "" : " / "+g.candidate_count+"候補"}`;
     button.append(name, description);
     button.onclick = () => selectGroup(g.id);
     $("trajectories").append(button);
@@ -150,9 +152,16 @@ function selectGroup(id, scroll = false) {
     if (scroll && button.dataset.group === id)
       button.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
-  $("selected-title").textContent = group.trajectory.trajectory_id;
+  $("selected-title").textContent = group.label ?? group.trajectory.trajectory_id;
   $("image-count").textContent =
     `${group.samples.length} images · ${group.split}`;
+  if (!group.samples.length) {
+    observer?.disconnect();
+    gallery.replaceChildren();
+    $("sample-info").textContent = "採択0件 · 画像なし。計画曲線と採否診断を確認してください。";
+    if (group.diagnostics) $("sample-info").textContent += "\n" + JSON.stringify(group.diagnostics);
+    return;
+  }
   inspectSample(group.samples[0]);
   observer?.disconnect();
   gallery.replaceChildren();
@@ -206,7 +215,7 @@ function selectGroup(id, scroll = false) {
   resizeTiles();
 }
 function openImage(index) {
-  if (!group) return;
+  if (!group || !group.samples[index]) return;
   selectedImage = index;
   $("large-image").removeAttribute("src");
   $("image-error").hidden = true;
@@ -464,10 +473,13 @@ function bars(id, values, colors = {}) {
 function renderStats() {
   const m = data.metrics;
   const p = data.publication;
+  $("scale-diagnostics").hidden = !data.scale;
+  $("scale-details").textContent = data.scale ? JSON.stringify(data.scale, null, 2) : "";
   $("publication-badge").textContent =
     `${data.schema.replace("canonical_court_dataset_", "").toUpperCase()} · ${p.storage_format} · ${p.status}`;
-  $("scene-source").textContent =
-    `source: ${p.source_video?.split("/").pop() ?? "未記録"} → NHT 3DGS / ${data.courts.length}コート`;
+  $("scene-source").textContent = data.scale
+    ? `${p.method} · n=${p.group_count} k=${data.scale.density_level} · jitter=${data.scale.recipe.jitter_radius_m}m · seed=${data.scale.seed} · 版${p.dataset_version.slice(0, 10)} · 全てtrain。点線=計画曲線 / 点=採択 / 赤×=棄却。既存格子のviewは保存設定を再現。`
+    : `source: ${p.source_video?.split("/").pop() ?? "未記録"} → NHT 3DGS / ${data.courts.length}コート`;
   $("schema").textContent = data.schema;
   const cards = [
     [m.accepted_frame_count.toLocaleString(), "採用画像"],
@@ -566,8 +578,12 @@ async function renderCatalog() {
     rejected += p.rejected_count;
     const sceneCell = row.insertCell(),
       button = document.createElement("button");
-    button.textContent = `${p.id} / ${p.schema.replace("canonical_court_dataset_", "").toUpperCase()}`;
+    button.textContent = `${p.scene_id ?? p.id}${p.method ? " / "+p.method+" / "+p.dataset_version.slice(0,10) : ""} / ${p.schema.replace("canonical_court_dataset_", "").toUpperCase()}`;
     button.onclick = () => {
+      if (p.dataset_version && $("method-filter").value !== p.dataset_version) {
+        $("method-filter").value = p.dataset_version;
+        $("method-filter").onchange();
+      }
       $("scene").value = p.id;
       loadScene();
       scrollTo({ top: 0, behavior: "smooth" });
@@ -609,12 +625,30 @@ try {
   const response = await fetch("/api/scenes", { cache: "no-store" });
   if (!response.ok) throw Error("シーン一覧の読み込みに失敗しました");
   scenes = await response.json();
-  for (const scene of scenes) {
-    const option = document.createElement("option");
-    option.value = scene.id;
-    option.textContent = scene.id;
-    $("scene").append(option);
+  const methods = new Map(scenes.filter(s => s.dataset_version).map(s => [s.dataset_version, s.method_label]));
+  function populateScenes(preferredScene) {
+    const selectedVersion = $("method-filter").value;
+    $("scene").replaceChildren();
+    for (const scene of scenes.filter(s => !methods.size || s.dataset_version === selectedVersion)) {
+      const option = document.createElement("option");
+      option.value = scene.id;
+      option.textContent = scene.label ?? scene.id;
+      option.selected = scene.scene_id === preferredScene;
+      $("scene").append(option);
+    }
   }
+  for (const [value, label] of methods) {
+    const option = document.createElement("option");
+    option.value = value; option.textContent = label; option.title = label;
+    $("method-filter").append(option);
+  }
+  $("method-filter").hidden = $("method-filter-label").hidden = !methods.size;
+  $("method-filter").onchange = () => {
+    const realScene = scenes.find(s => s.id === $("scene").value)?.scene_id;
+    populateScenes(realScene);
+    loadScene();
+  };
+  populateScenes();
   if (scenes.length) await loadScene();
   else status("公開済みのCourtデータセットがありません。");
   await renderCatalog();

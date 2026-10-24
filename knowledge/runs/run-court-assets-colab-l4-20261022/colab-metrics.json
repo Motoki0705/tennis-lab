@@ -1,0 +1,246 @@
+{
+  "schema": "court_render_probe_v1",
+  "batch_size": 1,
+  "without_source_images": true,
+  "camera_ids": {
+    "B00": [
+      "frame_000000",
+      "frame_000163",
+      "frame_000326",
+      "frame_000490"
+    ],
+    "B01": [
+      "frame_000000",
+      "frame_000088",
+      "frame_000176",
+      "frame_000266"
+    ],
+    "B02": [
+      "frame_000000",
+      "frame_000052",
+      "frame_000104",
+      "frame_000156"
+    ],
+    "B03": [
+      "frame_000000",
+      "frame_000050",
+      "frame_000101",
+      "frame_000161"
+    ]
+  },
+  "context_init_seconds": 0.22842173600020033,
+  "environment": {
+    "python": "3.11.16",
+    "gpu": "NVIDIA L4",
+    "cuda": "13.0",
+    "packages": {
+      "torch": "2.9.1+cu130",
+      "gsplat": "1.5.3",
+      "numpy": "2.4.6",
+      "tinycudann": "2.0"
+    },
+    "nvidia_smi": "NVIDIA L4, 580.82.07, 23034 MiB"
+  },
+  "renders": [
+    {
+      "scene_id": "B00",
+      "repeat": 0,
+      "load_seconds": [
+        0.31851168100001814
+      ],
+      "checkpoint_load_seconds": [
+        0.2013273850002406
+      ],
+      "batch_seconds": [
+        3.052984273999755,
+        0.021501852000255894,
+        0.01633234899964009,
+        0.01650086800009376
+      ],
+      "public_seconds": 4.895231582999713,
+      "sampled_device_peak_used_bytes": 943718400.0,
+      "device_memory_samples": 49,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 491267072,
+      "cuda_peak_reserved_bytes": 658505728,
+      "frame_count": 4,
+      "steady_frames_per_second": 55.21296016023401,
+      "output_bytes": 43408965
+    },
+    {
+      "scene_id": "B01",
+      "repeat": 0,
+      "load_seconds": [
+        0.19009439599994948
+      ],
+      "checkpoint_load_seconds": [
+        0.1883199369999602
+      ],
+      "batch_seconds": [
+        0.024717461000363983,
+        0.02272148299971377,
+        0.024275597999803722,
+        0.020012819999919884
+      ],
+      "public_seconds": 1.354124732999935,
+      "sampled_device_peak_used_bytes": 935329792.0,
+      "device_memory_samples": 14,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 485004800,
+      "cuda_peak_reserved_bytes": 650117120,
+      "frame_count": 4,
+      "steady_frames_per_second": 44.7695035398603,
+      "output_bytes": 43172247
+    },
+    {
+      "scene_id": "B02",
+      "repeat": 0,
+      "load_seconds": [
+        0.18825836399992113
+      ],
+      "checkpoint_load_seconds": [
+        0.18656244899966623
+      ],
+      "batch_seconds": [
+        0.024462729999868316,
+        0.02259144399977231,
+        0.02355679299989788,
+        0.02125535100003617
+      ],
+      "public_seconds": 1.2184872399998312,
+      "sampled_device_peak_used_bytes": 943718400.0,
+      "device_memory_samples": 13,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 488425472,
+      "cuda_peak_reserved_bytes": 658505728,
+      "frame_count": 4,
+      "steady_frames_per_second": 44.508016398371396,
+      "output_bytes": 43061793
+    },
+    {
+      "scene_id": "B03",
+      "repeat": 0,
+      "load_seconds": [
+        0.1883531330004189
+      ],
+      "checkpoint_load_seconds": [
+        0.1866538770000261
+      ],
+      "batch_seconds": [
+        0.02298353100013628,
+        0.02269292500022857,
+        0.02105250300019179,
+        0.020242782999957853
+      ],
+      "public_seconds": 1.2211396309999145,
+      "sampled_device_peak_used_bytes": 935329792.0,
+      "device_memory_samples": 13,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 481904128,
+      "cuda_peak_reserved_bytes": 650117120,
+      "frame_count": 4,
+      "steady_frames_per_second": 46.88363611200613,
+      "output_bytes": 42985410
+    },
+    {
+      "scene_id": "B00",
+      "repeat": 1,
+      "load_seconds": [
+        0.17952924599967446
+      ],
+      "checkpoint_load_seconds": [
+        0.17782184199995754
+      ],
+      "batch_seconds": [
+        0.025830758000211063,
+        0.02131270800009588,
+        0.016120737999699486,
+        0.01628177999964464
+      ],
+      "public_seconds": 1.6096806840000681,
+      "sampled_device_peak_used_bytes": 943718400.0,
+      "device_memory_samples": 16,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 491267072,
+      "cuda_peak_reserved_bytes": 658505728,
+      "frame_count": 4,
+      "steady_frames_per_second": 55.85008615678682,
+      "output_bytes": 43408965
+    },
+    {
+      "scene_id": "B01",
+      "repeat": 1,
+      "load_seconds": [
+        0.17992431800030317
+      ],
+      "checkpoint_load_seconds": [
+        0.1782460849999552
+      ],
+      "batch_seconds": [
+        0.024773172000095656,
+        0.023112212999876647,
+        0.024307317999955558,
+        0.020087044999854697
+      ],
+      "public_seconds": 1.344430569999986,
+      "sampled_device_peak_used_bytes": 935329792.0,
+      "device_memory_samples": 14,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 485004800,
+      "cuda_peak_reserved_bytes": 650117120,
+      "frame_count": 4,
+      "steady_frames_per_second": 44.44011498989245,
+      "output_bytes": 43172247
+    },
+    {
+      "scene_id": "B02",
+      "repeat": 1,
+      "load_seconds": [
+        0.18024051300017163
+      ],
+      "checkpoint_load_seconds": [
+        0.1785106510001242
+      ],
+      "batch_seconds": [
+        0.024634908999814797,
+        0.022679067999888503,
+        0.023726617000193073,
+        0.02107095000019399
+      ],
+      "public_seconds": 1.2060503779998726,
+      "sampled_device_peak_used_bytes": 943718400.0,
+      "device_memory_samples": 12,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 488425472,
+      "cuda_peak_reserved_bytes": 658505728,
+      "frame_count": 4,
+      "steady_frames_per_second": 44.45983413351523,
+      "output_bytes": 43061793
+    },
+    {
+      "scene_id": "B03",
+      "repeat": 1,
+      "load_seconds": [
+        0.18208713400008492
+      ],
+      "checkpoint_load_seconds": [
+        0.1803435570000147
+      ],
+      "batch_seconds": [
+        0.023470979000194347,
+        0.022896211999977822,
+        0.021237000999917655,
+        0.020244384000307036
+      ],
+      "public_seconds": 1.2169165659997816,
+      "sampled_device_peak_used_bytes": 935329792.0,
+      "device_memory_samples": 12,
+      "device_memory_sample_interval_ms": 100,
+      "cuda_peak_allocated_bytes": 481904128,
+      "cuda_peak_reserved_bytes": 650117120,
+      "frame_count": 4,
+      "steady_frames_per_second": 46.60006181949542,
+      "output_bytes": 42985410
+    }
+  ]
+}

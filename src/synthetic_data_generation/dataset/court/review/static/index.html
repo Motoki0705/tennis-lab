@@ -22,6 +22,8 @@
           </nav>
         </header>
         <aside class="sidebar">
+          <label id="method-filter-label" for="method-filter" hidden>方式・データ版</label>
+          <select id="method-filter" aria-label="方式・データ版を選択" hidden></select>
           <label for="scene">シーン</label
           ><select id="scene" aria-label="シーンを選択"></select>
           <p id="scene-source" class="source-note"></p>
@@ -97,6 +99,7 @@
         <div id="status" role="status" hidden></div>
       </section>
       <section id="catalog" aria-label="現在の公開データ体系">
+        <details id="scale-diagnostics" hidden><summary>比較設定・採否診断</summary><pre id="scale-details"></pre></details>
         <div class="stats-heading">
           <div>
             <span class="eyebrow">PUBLISHED DATASETS</span>

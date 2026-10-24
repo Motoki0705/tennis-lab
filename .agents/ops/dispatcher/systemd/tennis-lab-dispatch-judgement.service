@@ -1,0 +1,13 @@
+[Unit]
+Description=Judge tennis-lab issue assignments once per scheduled slot
+Documentation=file://%h/projects/tennis-lab/.agents/ops/dispatcher/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/dispatcher/dispatch.py run
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillMode=control-group

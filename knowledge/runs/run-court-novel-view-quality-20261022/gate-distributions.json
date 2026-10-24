@@ -1,0 +1,3881 @@
+[
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31,
+      "sparse": 6,
+      "none": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 9,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 96,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 66
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 104,
+    "rejected": 26,
+    "coverage": {
+      "partial": 73,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 58
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 75,
+      "near_full": 31
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 46,
+      "court-001": 60
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 116,
+    "rejected": 14,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "sparse": 7,
+      "none": 1,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 9,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 99,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 49,
+      "court-001": 67
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 105,
+    "rejected": 25,
+    "coverage": {
+      "partial": 70,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 92,
+      "75.0": 6,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 92,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 58
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 73,
+      "near_full": 34,
+      "full": 1
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 61
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5,
+      "sparse": 2,
+      "none": 2
+    },
+    "hfov": {
+      "67.5": 83,
+      "45.0": 8,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 83,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 59
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 92,
+    "rejected": 38,
+    "coverage": {
+      "partial": 87,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 78,
+      "45.0": 6,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 51
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 91,
+      "near_full": 5
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 6,
+      "90.0": 9
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 41,
+      "court-001": 55
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 118,
+    "rejected": 12,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32,
+      "sparse": 8
+    },
+    "hfov": {
+      "92.5": 99,
+      "75.0": 8,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 5,
+      "superellipse": 11
+    },
+    "target": {
+      "court-000": 50,
+      "court-001": 68
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 109,
+    "rejected": 21,
+    "coverage": {
+      "partial": 77,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 8
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 62
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 78,
+      "near_full": 32
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 47,
+      "court-001": 63
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2,
+      "sparse": 2
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 7,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 11
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 84,
+    "rejected": 46,
+    "coverage": {
+      "partial": 31,
+      "near_full": 51,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 74,
+      "75.0": 5,
+      "110.0": 5
+    },
+    "shape": {
+      "circle": 72,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 6
+    },
+    "target": {
+      "court-000": 15,
+      "court-001": 36,
+      "court-002": 33
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 103,
+    "rejected": 27,
+    "coverage": {
+      "partial": 47,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 92,
+      "75.0": 5,
+      "110.0": 6
+    },
+    "shape": {
+      "circle": 89,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 24,
+      "court-001": 42,
+      "court-002": 37
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 105,
+    "rejected": 25,
+    "coverage": {
+      "partial": 49,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 93,
+      "75.0": 5,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 91,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 25,
+      "court-001": 43,
+      "court-002": 37
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 55,
+      "near_full": 54,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3,
+      "sparse": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 7,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 11
+    },
+    "target": {
+      "court-000": 31,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 96,
+    "rejected": 34,
+    "coverage": {
+      "partial": 35,
+      "near_full": 58,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 85,
+      "75.0": 5,
+      "110.0": 6
+    },
+    "shape": {
+      "circle": 82,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 22,
+      "court-001": 37,
+      "court-002": 37
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 107,
+    "rejected": 23,
+    "coverage": {
+      "partial": 42,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 5,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 92,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 28,
+      "court-001": 40,
+      "court-002": 39
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 43,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 5,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 29,
+      "court-001": 40,
+      "court-002": 39
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 47,
+      "near_full": 62,
+      "full": 3
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 94,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 10
+    },
+    "target": {
+      "court-000": 30,
+      "court-001": 40,
+      "court-002": 42
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 102,
+    "rejected": 28,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24,
+      "none": 1,
+      "sparse": 1
+    },
+    "hfov": {
+      "67.5": 88,
+      "45.0": 6,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 11
+    },
+    "target": {
+      "court-000": 23,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 90,
+    "rejected": 40,
+    "coverage": {
+      "partial": 66,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 81,
+      "45.0": 4,
+      "90.0": 5
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 18,
+      "court-001": 42,
+      "court-002": 30
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 98,
+    "rejected": 32,
+    "coverage": {
+      "partial": 74,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 86,
+      "45.0": 5,
+      "90.0": 7
+    },
+    "shape": {
+      "circle": 83,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 20,
+      "court-001": 43,
+      "court-002": 35
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 100,
+    "rejected": 30,
+    "coverage": {
+      "partial": 76,
+      "near_full": 24
+    },
+    "hfov": {
+      "67.5": 87,
+      "45.0": 5,
+      "90.0": 8
+    },
+    "shape": {
+      "circle": 84,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 21,
+      "court-001": 43,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 112,
+    "rejected": 18,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2,
+      "sparse": 2
+    },
+    "hfov": {
+      "92.5": 96,
+      "75.0": 7,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 11
+    },
+    "target": {
+      "court-000": 29,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 83,
+    "rejected": 47,
+    "coverage": {
+      "partial": 30,
+      "near_full": 51,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 73,
+      "75.0": 5,
+      "110.0": 5
+    },
+    "shape": {
+      "circle": 71,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 6
+    },
+    "target": {
+      "court-000": 13,
+      "court-001": 37,
+      "court-002": 33
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 101,
+    "rejected": 29,
+    "coverage": {
+      "partial": 46,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 90,
+      "75.0": 5,
+      "110.0": 6
+    },
+    "shape": {
+      "circle": 88,
+      "ellipse": 3,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 24,
+      "court-001": 41,
+      "court-002": 36
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 108,
+    "rejected": 22,
+    "coverage": {
+      "partial": 53,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 38
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 55,
+      "near_full": 53,
+      "full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 93,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 27,
+      "court-001": 43,
+      "court-002": 40
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 101,
+    "rejected": 29,
+    "coverage": {
+      "partial": 99,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 88,
+      "110.0": 8,
+      "75.0": 5
+    },
+    "shape": {
+      "circle": 86,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 101
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 119,
+    "rejected": 11,
+    "coverage": {
+      "partial": 117,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 102,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 101,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 119
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 107,
+    "rejected": 23,
+    "coverage": {
+      "partial": 105,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 95,
+      "110.0": 8,
+      "75.0": 4
+    },
+    "shape": {
+      "circle": 92,
+      "ellipse": 5,
+      "rectangle": 3,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 107
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 119,
+    "rejected": 11,
+    "coverage": {
+      "partial": 117,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 102,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 101,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 119
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 120,
+    "rejected": 10,
+    "coverage": {
+      "partial": 118,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 6,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 5,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 120
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 90,
+    "rejected": 40,
+    "coverage": {
+      "partial": 90
+    },
+    "hfov": {
+      "67.5": 77,
+      "90.0": 9,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 75,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 90
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 93
+    },
+    "hfov": {
+      "67.5": 79,
+      "90.0": 10,
+      "45.0": 4
+    },
+    "shape": {
+      "circle": 78,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 107,
+    "rejected": 23,
+    "coverage": {
+      "partial": 105,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 91,
+      "75.0": 7,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 90,
+      "ellipse": 6,
+      "rectangle": 4,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 107
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 121,
+    "rejected": 9,
+    "coverage": {
+      "partial": 119,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 103,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 4,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 121
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 122,
+    "rejected": 8,
+    "coverage": {
+      "partial": 120,
+      "near_full": 2
+    },
+    "hfov": {
+      "92.5": 104,
+      "75.0": 7,
+      "110.0": 11
+    },
+    "shape": {
+      "circle": 102,
+      "ellipse": 6,
+      "rectangle": 5,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 122
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 112,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 97,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 113
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 112,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 97,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 113
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 112,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 97,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 113
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 112,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 97,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 113
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 113,
+    "rejected": 17,
+    "coverage": {
+      "partial": 112,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 97,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 97,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 113
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 62,
+    "rejected": 68,
+    "coverage": {
+      "partial": 62
+    },
+    "hfov": {
+      "92.5": 53,
+      "110.0": 6,
+      "75.0": 3
+    },
+    "shape": {
+      "circle": 53,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 62
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 85,
+    "rejected": 45,
+    "coverage": {
+      "partial": 84,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 72,
+      "75.0": 4,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 74,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 85
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 89,
+    "rejected": 41,
+    "coverage": {
+      "partial": 88,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 75,
+      "75.0": 4,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 77,
+      "ellipse": 2,
+      "rectangle": 1,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 89
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 107,
+    "rejected": 23,
+    "coverage": {
+      "partial": 106,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 92,
+      "75.0": 5,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 92,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 107
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 114,
+    "rejected": 16,
+    "coverage": {
+      "partial": 113,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 98,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 114
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 114,
+    "rejected": 16,
+    "coverage": {
+      "partial": 113,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 98,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 114
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 114,
+    "rejected": 16,
+    "coverage": {
+      "partial": 113,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 98,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 114
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 114,
+    "rejected": 16,
+    "coverage": {
+      "partial": 113,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 98,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 114
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 114,
+    "rejected": 16,
+    "coverage": {
+      "partial": 113,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 98,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 98,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 114
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 67,
+    "rejected": 63,
+    "coverage": {
+      "partial": 67
+    },
+    "hfov": {
+      "92.5": 58,
+      "75.0": 3,
+      "110.0": 6
+    },
+    "shape": {
+      "circle": 59,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 6
+    },
+    "target": {
+      "court-000": 67
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 87,
+    "rejected": 43,
+    "coverage": {
+      "partial": 86,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 74,
+      "75.0": 4,
+      "110.0": 9
+    },
+    "shape": {
+      "circle": 76,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 87
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 93,
+    "rejected": 37,
+    "coverage": {
+      "partial": 92,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 79,
+      "75.0": 4,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 81,
+      "ellipse": 2,
+      "rectangle": 1,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 93
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 110,
+    "rejected": 20,
+    "coverage": {
+      "partial": 109,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 5,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 2,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 110
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 78,
+    "rejected": 52,
+    "coverage": {
+      "partial": 78
+    },
+    "hfov": {
+      "67.5": 67,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 65,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 78
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 78,
+    "rejected": 52,
+    "coverage": {
+      "partial": 78
+    },
+    "hfov": {
+      "67.5": 67,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 65,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 78
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 78,
+    "rejected": 52,
+    "coverage": {
+      "partial": 78
+    },
+    "hfov": {
+      "67.5": 67,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 65,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 78
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 78,
+    "rejected": 52,
+    "coverage": {
+      "partial": 78
+    },
+    "hfov": {
+      "67.5": 67,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 65,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 78
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 78,
+    "rejected": 52,
+    "coverage": {
+      "partial": 78
+    },
+    "hfov": {
+      "67.5": 67,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 65,
+      "ellipse": 3,
+      "rectangle": 2,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 78
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 35,
+    "rejected": 95,
+    "coverage": {
+      "partial": 35
+    },
+    "hfov": {
+      "67.5": 27,
+      "90.0": 7,
+      "45.0": 1
+    },
+    "shape": {
+      "circle": 27,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 6
+    },
+    "target": {
+      "court-000": 35
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 53,
+    "rejected": 77,
+    "coverage": {
+      "partial": 53
+    },
+    "hfov": {
+      "67.5": 43,
+      "90.0": 7,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 42,
+      "ellipse": 2,
+      "rectangle": 1,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 53
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 54,
+    "rejected": 76,
+    "coverage": {
+      "partial": 54
+    },
+    "hfov": {
+      "67.5": 44,
+      "90.0": 7,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 43,
+      "ellipse": 2,
+      "rectangle": 1,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 54
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 61,
+    "rejected": 69,
+    "coverage": {
+      "partial": 61
+    },
+    "hfov": {
+      "67.5": 50,
+      "90.0": 8,
+      "45.0": 3
+    },
+    "shape": {
+      "circle": 49,
+      "ellipse": 3,
+      "rectangle": 1,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 61
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "existing_gate",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 110,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 111
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_target4",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 110,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 111
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_roi01",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 110,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 111
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_roi05",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 110,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 111
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_roi10",
+    "candidates": 130,
+    "kept": 111,
+    "rejected": 19,
+    "coverage": {
+      "partial": 110,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 95,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 95,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 111
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole01",
+    "candidates": 130,
+    "kept": 65,
+    "rejected": 65,
+    "coverage": {
+      "partial": 65
+    },
+    "hfov": {
+      "92.5": 54,
+      "75.0": 4,
+      "110.0": 7
+    },
+    "shape": {
+      "circle": 56,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 7
+    },
+    "target": {
+      "court-000": 65
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole05",
+    "candidates": 130,
+    "kept": 80,
+    "rejected": 50,
+    "coverage": {
+      "partial": 79,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 68,
+      "75.0": 4,
+      "110.0": 8
+    },
+    "shape": {
+      "circle": 70,
+      "ellipse": 1,
+      "rectangle": 1,
+      "superellipse": 8
+    },
+    "target": {
+      "court-000": 80
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole10",
+    "candidates": 130,
+    "kept": 87,
+    "rejected": 43,
+    "coverage": {
+      "partial": 86,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 73,
+      "75.0": 4,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 75,
+      "ellipse": 2,
+      "rectangle": 1,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 87
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "gate": "candidate_alpha90_hole25",
+    "candidates": 130,
+    "kept": 106,
+    "rejected": 24,
+    "coverage": {
+      "partial": 105,
+      "near_full": 1
+    },
+    "hfov": {
+      "92.5": 90,
+      "75.0": 6,
+      "110.0": 10
+    },
+    "shape": {
+      "circle": 90,
+      "ellipse": 4,
+      "rectangle": 3,
+      "superellipse": 9
+    },
+    "target": {
+      "court-000": 106
+    }
+  }
+]

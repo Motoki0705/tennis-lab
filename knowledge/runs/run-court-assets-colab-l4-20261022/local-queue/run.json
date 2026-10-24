@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207348556832534680_2026-10-22T06-44-03-167465319Z_2484940_court-assets-memory-comparison",
+  "name": "court-assets-memory-comparison",
+  "command": "PYTHONPATH=\"$PWD/third_party/nht\" OMP_NUM_THREADS=2 /home/kamimura/.local/share/uv/tools/nht/bin/python tmp/court_assets_probe.py --scenes tmp/court-scene-assets-drive-roundtrip/scenes --output tmp/court-assets-local-memory-probe --working tmp/court-assets-local-memory-working --repeats 2",
+  "provider": "codex",
+  "session": "01a16252-1bf7-79a3-bf16-c2256f96a386",
+  "issue": "1351",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "5d2ffbb692e68e0c0093e1358ba7fa6f7ab19f7d",
+  "branch": "codex/court-scale-3dgs-colab-assets",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets",
+  "captured_at": "2026-10-22T15:44:03+09:00"
+}

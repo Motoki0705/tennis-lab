@@ -1,0 +1,31 @@
+{
+  "schema": "court_scale_smoke_environment_v1",
+  "source_commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "tracked_diff_empty": true,
+  "nht_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+  "gsplat_commit": "c8d5acd22314c1c1144a30e635e08d9c738a8b39",
+  "project_runtime": {
+    "python": "3.11.16",
+    "packages": {
+      "numpy": "2.3.5",
+      "scipy": "1.17.1"
+    }
+  },
+  "renderer_runtime": {
+    "python": "3.11.16",
+    "packages": {
+      "torch": "2.9.1+cu130",
+      "gsplat": "1.5.3",
+      "tinycudann": "2.0",
+      "numpy": "2.4.6"
+    }
+  },
+  "gpu": {
+    "uuid": "GPU-7433d74d-e64d-b6d3-1b86-d066b9952029",
+    "name": "NVIDIA L4",
+    "driver_version": "580.82.07",
+    "memory_total_bytes": 24152899584,
+    "memory_used_after_verification_bytes": 0
+  },
+  "compute_processes_after_verification": []
+}

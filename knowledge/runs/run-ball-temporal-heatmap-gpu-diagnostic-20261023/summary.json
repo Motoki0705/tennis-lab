@@ -52,5 +52,5 @@
   "activation_checkpointing": true,
   "compile_mode": "off",
   "data": "synthetic_JPEG_fixture; not_accuracy_evidence",
-  "output": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-temporal-training-path/tmp/temporal-heatmap-gpu-diagnostic"
+  "output": "tmp/temporal-heatmap-gpu-diagnostic"
 }

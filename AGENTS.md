@@ -14,17 +14,26 @@
 
 ## プロジェクト概要
 
-テニスシーンの3次元再構成をAIで解く。入力はマルチカメラの動画である。各カメラでのボール位置・プレーヤーposeの2次元検出から始め、2D → 3Dの再構築モデルで3D空間へ写像する。
+テニス動画から、コート座標系でプレーヤーの3D動作とボール軌道を再構成する研究プロジェクト。同期済みの複数固定カメラ動画を使うシーン再構成と、検出・追跡・3D推定モデルの開発、学習データの生成・注釈・評価を行う。
+
+標準のシーン再構成では、各カメラのコート・人物・pose・ボールの2D観測から、カメラ校正とカメラ間の人物対応を求め、人物の関節とボールを三角測量する。GVHMRで復元した身体を3D関節に合わせて配置し、プレーヤーとボールを共通のコート座標系へ統合する。出力には欠測・有効性maskと品質診断を保持する。
 
 | モジュール | 役割 |
 |---|---|
-| `src/tasks/ball_detection` | 2Dボール検出 |
-| `src/tasks/court_detection` | 2Dコート検出 |
-| `src/submodules` | 2Dプレーヤーpose検出、3Dプレーヤーpose推定（GVHMR 移植版。重み・body model は `ckpt/`） |
-| `src/tasks/blcs` | 2D ball + 2D court から3Dボール軌道を推論 |
-| `src/tasks/plcs` | 2D pose + 2D court から3Dプレーヤーの位置・回転を推論 |
+| `src/tennis_scene` | シーン再構成pipeline、実動画からの学習データ生成、結果の可視化 |
+| `src/tasks/court_detection` | コートkeypoint・ラインの2D検出 |
+| `src/tasks/ball_detection` | ボールの2D検出 |
+| `src/tasks/player_detection` | テニス選手検出器の学習・推論 |
+| `src/tasks/person_tracking` | カメラ内の人物追跡・選手候補の選別 |
+| `src/tasks/court_side` / `player_association` | カメラ間のコート向きの解決・同一人物の対応付け |
+| `src/submodules` | 人物検出・2D pose・画像特徴・GVHMRの推論モデル |
+| `src/tasks/blcs` / `plcs` | 複数カメラの2D観測とコートkeypointから、ボール軌道／プレーヤー位置・向きなどを推定する学習モデル |
+| `src/tasks/slcs` | 単眼の2D観測と画像特徴から、プレーヤーとボールの3D時系列を同時推定する学習モデル |
+| `src/tasks/ball_refiner_3d` | 三角測量したボール軌道の補正・欠損補完とイベント推定 |
+| `src/synthetic_data_generation` | 実映像のシーン復元・描画を利用した合成学習データ生成 |
+| `src/tasks/base` / `src/utils` | 学習・注釈・可視化の共通基盤、幾何・物理・モデルなどの共通部品 |
 
-最終的に、GVHMRの3D poseとplcsの3D位置・回転を統合し、コート座標系でプレーヤーの軌跡を3D上に再構築する。
+標準pipelineの構成・入出力は [tennis_scene README](src/tennis_scene/README.md)、各モデルの仕様と実行方法は各モジュールのREADMEを参照する。
 
 ## 開発環境
 
@@ -36,12 +45,12 @@
 
 - **worktreeで作業する**: コードを変更するタスクは、メインworktree配下の `.claude/worktrees/<task-name>` に専用のgit worktreeを作り、その中で行う。メインworktreeのファイルは変更しない。他の場所にworktreeを作らない。
 - **PR本文は日本語で書く。**
-- **dshへの実装委譲**: Codex / Claude Codeの親は [deepseek-harness skill](.agents/skills/deepseek-harness/SKILL.md) に従う（dshの中からは使わない）。
 - **意味のあるテストを書く**: モジュールを実装・改善したら、テストを作成・改善する。`src/utils` や `src/tasks/base` など、下流への影響が大きいモジュールでは必須。
 - **静かなフォールバックを禁止する**: 実験的な試みが多いrepoなので、意図しない動作がまかり通る状況を作らない。データの流れとモデルアーキテクチャには特に注意し、必要なら実データで十分に検証する。コードの挙動（分岐・データの流れ）が一意に定まるようにする。これはモデル出力の決定性を求める規則ではない（拡散モデルなど確率的な出力はよい）。
 - **不明点は積極的に質問する**: 方針を人間に明確にしてもらう必要があれば質問する。あいまいなまま動くだけのコードは技術負債になる。時間をかけて品質を追求する。
 - **モジュラーに作る**: 再利用が見込めるものは `src/utils` へ切り出す。タスクドメインに閉じたモジュールは、該当タスクのディレクトリ配下に新しいフォルダを作って置いてよい。
 - **ドキュメントを二重管理しない**: 同じ事柄を2か所に書かない。置き場所は [.agents/README.md](.agents/README.md#ファイル地図情報の住み分け) で決める。
+- **親同士の連絡**: 名前での連絡と受信への応答は [parent-board skill](.agents/skills/parent-board/SKILL.md) に従う。
 - **READMEから探索する**: 大きなディレクトリには実装を簡潔にまとめたREADMEがある。まずそれを読む。
 - **リファクタリングを優先する**: 単純な追加を続けるとコードが肥大化する。有効なリファクタリング案があれば、機能実装より先に自律的に行ってよい。
 

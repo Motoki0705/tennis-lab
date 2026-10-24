@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-training-eval/tmp/court-scale-manifest-smoke/outputs/court_detection/train/dataset-version-smoke/s42/logs/version_0/checkpoints

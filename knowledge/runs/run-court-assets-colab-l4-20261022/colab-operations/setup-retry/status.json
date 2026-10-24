@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "setup-retry",
+  "status": "completed",
+  "updated_at": "2026-10-22T06:57:43.941516+00:00",
+  "returncode": 0,
+  "worker_pid": 3311,
+  "worker_token": "51617",
+  "launch_guarded": true,
+  "pid": 3504,
+  "process_token": "55228",
+  "started_at": "2026-10-22T06:41:23.283679+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-22T06:58:03.034616+00:00",
+  "finished_at": "2026-10-22T06:58:03.034630+00:00"
+}

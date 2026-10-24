@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "state": "adopted_read_only_input",
+  "verified_at": "2026-10-22T13:27:51.801592+00:00",
+  "equivalence_accepted": true,
+  "promoted": true,
+  "decision": {
+    "authority": "user",
+    "date": "2026-10-22",
+    "source": "https://github.com/Motoki0705/tennis-lab/issues/1351#issuecomment-6341401581",
+    "instruction": "GPU間のalpha/depthの差は教師一致を基準に受け入れる。KP投影・renderer可視判定の完全一致＋RGBのPSNR下限を基準とし、本番生成はColab L4へ統一する。",
+    "threshold_basis": "Whole-dB floors below observed minima: pooled scene 57.985743 dB and individual view 55.858970 dB. Compare with measured JPEG quality-95 roundtrip error in the node. Numerical floors implement the user-selected criterion; they were not separately supplied by the user.",
+    "contract": "src/synthetic_data_generation/dataset/court/README.md#rendering-equivalence-contract"
+  },
+  "input": {
+    "remote_root": "gdrive:tennis_lab",
+    "path": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+    "drive_id": "1ce2GM7XmHH1m85j9Zw4mpUW74UIaZEfT",
+    "manifest": "assets.json",
+    "manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b"
+  },
+  "staging": {
+    "path": "staging/court-scene-assets-a9281d9a41e39fc9",
+    "drive_id": "1TRAOGHD6PVyoY0Vfq56gLIyKGMzWC2S-",
+    "retained": true,
+    "receipt": "receipts/drive-staging-retained.json"
+  },
+  "acceptance": {
+    "record": "acceptance.json",
+    "sha256": "c18af324bd2d64f809a6def91436636a353ec32add167431c828f762c81eb70a",
+    "script": "court_assets_acceptance.py",
+    "script_sha256": "2f4cfb2467aa36ccf4687fa50103eb6dade3cc84e1edea7d42f545f5a8a49c14"
+  },
+  "acceptance_command": [
+    ".venv/bin/python",
+    "knowledge/runs/run-court-assets-colab-l4-20261022/court_assets_acceptance.py",
+    "--comparisons",
+    "knowledge/runs/run-court-assets-colab-l4-20261022/cross-gpu-comparison.json",
+    "knowledge/runs/run-court-assets-colab-l4-20261022/cross-gpu-repeat-comparison.json",
+    "--reference-visibility",
+    "knowledge/runs/run-court-assets-colab-l4-20261022/local-visibility.json",
+    "--candidate-visibility",
+    "knowledge/runs/run-court-assets-colab-l4-20261022/colab-visibility.json",
+    "--output",
+    "tmp/court-assets-acceptance-recheck.json"
+  ],
+  "transfer": {
+    "before_inventory": "receipts/drive-promotion-before.json",
+    "copy_attempts": [
+      "receipts/drive-promotion-copy.json",
+      "receipts/drive-promotion-copy-verified.json"
+    ],
+    "recovery_inventory": "receipts/drive-promotion-recovery-inventory.json",
+    "repair_copy": "receipts/drive-promotion-repair.json",
+    "final_inventory": "receipts/drive-adopted-inventory.json",
+    "final_metadata": "receipts/drive-adopted-metadata.json",
+    "source_destination_inventory_and_hashes_equal": true,
+    "ambiguous_paths": [],
+    "download_and_content_verification": "receipts/drive-adopted-download.json",
+    "downloaded_manifest_and_geometry_verification": "receipts/adopted-manifest-verification.json",
+    "recovery_copy_environment": {
+      "RCLONE_TRANSFERS": "1",
+      "RCLONE_RETRIES": "1",
+      "RCLONE_LOW_LEVEL_RETRIES": "1"
+    },
+    "recovery_note": "The first copy produced duplicate B01 scene.json entries and was rejected. A new destination with single-transfer/no-automatic-retry settings had one missing B03 points_scene.npy after a Drive 500 error. Inventory confirmed all other contents matched, and only the missing file was copied. The completed tree was inventoried, downloaded with verification, and checked against the original SHA-256 manifest."
+  },
+  "rejected_copy": {
+    "path": "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9",
+    "drive_id": "1k_dVANDdeRR3D0xURy4BYUBEaAqSMhL4",
+    "state": "not_adopted_ambiguous_file",
+    "inventory": "receipts/drive-promotion-failed-inventory.json",
+    "retained": true,
+    "deletion_performed": false
+  },
+  "checks": "adoption-checks.json",
+  "nht_upstream": "nht-upstream.json",
+  "historical_run_metadata_unchanged": true,
+  "alpha_depth_evidence_unchanged": true,
+  "production_gpu": "NVIDIA L4",
+  "new_colab_or_gpu_execution": false
+}

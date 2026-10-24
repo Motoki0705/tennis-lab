@@ -672,7 +672,7 @@ def test_path_scope_checks_deleted_and_renamed_sources(memory_env: Any) -> None:
     _git(ops.repo, "commit", "-qm", "unexpected rename")
     head = _git(ops.repo, "rev-parse", "HEAD")
     with pytest.raises(ValueError, match="confined"):
-        memory_pr.Store(ops.repo)._verify_commit(
+        memory_pr.Store(ops.repo, ops.tmp / "path-scope-memory.json")._verify_commit(
             {"head": head, "base_sha": original}, {}
         )
 

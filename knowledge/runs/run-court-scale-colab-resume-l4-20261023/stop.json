@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "session": "court-scale-generation-l4-20261023-6ed3f29e8",
+  "status": "stopped",
+  "recovered_diff": {
+    "commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+    "excluded": [
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+    ],
+    "storage_excluded": [
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+    ],
+    "exclusion_reasons": {
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+      "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy": "project storage; managed through Drive"
+    },
+    "untracked": [],
+    "output": "/home/kamimura/.local/state/tennis-lab/colab/court-scale-generation-l4-20261023-6ed3f29e8/recovered/9e5967eae26b"
+  }
+}

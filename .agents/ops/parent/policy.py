@@ -13,10 +13,12 @@ from issues import Issue, parse_sections, task_status
 from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
+MAX_NOTE_CHARS = 60_000
 PHASES = {
     "assigned": "担当指定のみ",
     "checking": "要件確認中",
     "agreed": "要件合意済み",
+    "autonomous": "自律着手根拠あり",
 }
 REVIEW_STATES = (
     "targets_fixed",
@@ -84,6 +86,17 @@ def marker(event: Mapping[str, Any]) -> str:
     return PREFIX + data.replace("<", r"\u003c").replace(">", r"\u003e") + " -->"
 
 
+def note_body(value: Any) -> str:
+    text = nonempty(value, "note body")
+    if len(text) > MAX_NOTE_CHARS:
+        raise ValueError(f"note body exceeds {MAX_NOTE_CHARS} characters")
+    if re.search(r"<!--|-->|parent-(?:session|review):", text, re.IGNORECASE):
+        raise ValueError(
+            "note body contains a reserved marker or HTML comment delimiter"
+        )
+    return text
+
+
 def events(
     comments: Sequence[Mapping[str, Any]], login: str, parent: int
 ) -> list[dict[str, Any]]:
@@ -95,6 +108,8 @@ def events(
         if not isinstance(body, str) or not body:
             continue
         first = body.splitlines()[0]
+        if first.startswith("<!-- parent-session:v") and not first.startswith(PREFIX):
+            raise ValueError("unknown parent-session marker version")
         if not first.startswith(PREFIX):
             continue
         if not first.endswith(" -->"):
@@ -102,6 +117,14 @@ def events(
         event = object_value(json.loads(first[len(PREFIX) : -4]))
         if event.get("parent") != parent:
             raise ValueError("parent-session marker refers to a different parent")
+        if event.get("event") == "note":
+            if set(event) != {"parent", "event", "generation", "body_sha256"}:
+                raise ValueError("malformed note marker")
+            number(event.get("generation"))
+            if not body.startswith(first + "\n\n") or event["body_sha256"] != digest(
+                note_body(body[len(first) + 2 :])
+            ):
+                raise ValueError("note marker body digest mismatch")
         if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {
@@ -118,6 +141,41 @@ def events(
                 nonempty(value, key)
             if event.get("agreement_sha256") != digest(agreement):
                 raise ValueError("agreement marker digest mismatch")
+            if "requirements_sha256" in event:
+                from .execution import sha256
+
+                sha256(event["requirements_sha256"])
+        if "comment_inputs" in event or event.get("event") == "agreement_comments":
+            from .agreement_comments import validate_inputs
+
+            validate_inputs(event.get("comment_inputs"))
+        if event.get("event") == "agreement_comments":
+            from .execution import ignored_comment_map, sha256
+
+            if set(event) != {
+                "parent",
+                "event",
+                "agreement_sha256",
+                "revision",
+                "classification_revision",
+                "comment_inputs",
+                "ignored_comments",
+            }:
+                raise ValueError("malformed agreement comment classification")
+            sha256(event.get("agreement_sha256"))
+            number(event.get("revision"))
+            number(event.get("classification_revision"))
+            if not isinstance(event.get("ignored_comments"), list):
+                raise ValueError("ignored comments must be a list")
+            ignored_comment_map(event["ignored_comments"])
+        if event.get("event") == "execution_basis":
+            from .execution import validate_event
+
+            validate_event(event)
+        if event.get("event") == "basis_revoked":
+            number(event.get("generation"))
+            number(event.get("revision"))
+            nonempty(event.get("reason"), "revocation reason")
         result.append({**event, "body": body})
     return result
 
@@ -128,7 +186,25 @@ def phase(history: Sequence[Mapping[str, Any]]) -> str:
         kind = event.get("event")
         if kind in {"checking", "agreed"}:
             current = str(kind)
+        elif kind == "execution_basis":
+            current = "autonomous"
+        elif kind == "basis_revoked":
+            current = "checking"
     return current
+
+
+def next_agreement_revision(history: Sequence[Mapping[str, Any]]) -> int:
+    return (
+        max(
+            (
+                number(e.get("revision"))
+                for e in history
+                if e.get("event") in {"checking", "agreed"}
+            ),
+            default=0,
+        )
+        + 1
+    )
 
 
 def require_agreement(history: Sequence[Mapping[str, Any]]) -> None:

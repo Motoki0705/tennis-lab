@@ -1,0 +1,12 @@
+{
+  "schema": "court_scale_smoke_isolation_v1",
+  "original_root": "tmp/court-scale-production-smoke",
+  "preserved_root": "tmp/court-scale-interrupted-preserved",
+  "original_root_absent": true,
+  "resume_root_absent_before": true,
+  "fetch_root_absent_before": true,
+  "completed_drive_receipt_absent": true,
+  "acknowledged_cache_keys": [
+    "dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f"
+  ]
+}
