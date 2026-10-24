@@ -1,0 +1,38 @@
+{
+  "checks": [
+    {
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_summary.py",
+        "--mark-reviewed"
+      ],
+      "returncode": 0
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_validate.py",
+        "--check-summary",
+        "--base-ref",
+        "d31ef36d7"
+      ],
+      "errors": 0,
+      "returncode": 0,
+      "warnings": 218
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+        "--strict"
+      ],
+      "missing": 0,
+      "repro_scripts": 403,
+      "returncode": 0,
+      "script_references": 497,
+      "unverifiable": 0
+    }
+  ],
+  "schema_version": 1,
+  "summary_reviewed": true
+}

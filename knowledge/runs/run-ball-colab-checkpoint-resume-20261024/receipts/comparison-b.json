@@ -1,0 +1,39 @@
+{
+  "compared_at": "2026-10-23T18:44:19.304173+00:00",
+  "loss_atol": 1e-06,
+  "loss_rtol": 0.0001,
+  "max_absolute_loss_difference": 8.972599468332933e-07,
+  "model_state_equal": false,
+  "optimizer_steps": [
+    12
+  ],
+  "original_budget": {
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "checkpoint_interval": 5,
+    "eps": 1e-08,
+    "evaluation_interval": 12,
+    "gamma": 2.0,
+    "gradient_clip": 1.0,
+    "input_frames": 128,
+    "learning_rate": 0.0001,
+    "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+    "microbatch_windows": 1,
+    "minimum_lr_ratio": 0.1,
+    "optimizer": "AdamW",
+    "schedule": "linear_warmup_cosine",
+    "seed": 42,
+    "sigma_ratio": 0.012,
+    "updates": 12,
+    "updates_completed": 12,
+    "warmup_updates": 2,
+    "weight_decay": 0.01
+  },
+  "rng_equal": true,
+  "sample_teacher_lr_sequence_equal": true,
+  "schema_version": 1,
+  "status": "passed",
+  "updates": 12
+}

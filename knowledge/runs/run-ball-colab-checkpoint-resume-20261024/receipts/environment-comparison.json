@@ -1,0 +1,27 @@
+{
+  "a_boot_id": "572714a7-8d25-43f0-b818-64a3200dabfb",
+  "b_boot_id": "cad8e0a6-834f-4ee3-826b-a22e1b9b5d1e",
+  "checked_lock_revisions": [
+    "e2026a19a",
+    "768322617",
+    "1176954e5"
+  ],
+  "fresh_vm": true,
+  "lockfile_equal_at_environment_and_training_commits": true,
+  "packages": {
+    "numpy": "2.3.5",
+    "opencv-python": "5.0.0.93",
+    "pandas": "3.0.6",
+    "pytorch-lightning": "2.6.6",
+    "torch": "2.14.1",
+    "torchvision": "0.29.1"
+  },
+  "packages_equal": true,
+  "pinned_setup_seconds": 28.940033822000032,
+  "python": "3.11.16 (main, Sep 29 2026, 14:59:26) [Clang 22.1.3 ]",
+  "python_equal": true,
+  "schema_version": 1,
+  "status": "passed",
+  "uv_lock_sha256": "1547826aaf5d2c1b8faec1b0fb7f953c36917a65dbca3d0e8ecf1d3b051352ef",
+  "uv_version_equal": true
+}

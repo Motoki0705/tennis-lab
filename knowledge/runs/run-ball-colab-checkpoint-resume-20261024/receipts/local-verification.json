@@ -1,0 +1,73 @@
+{
+  "pytest": {
+    "command": "PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 flock \"$PYTEST_LOCK\" .venv/bin/python -m pytest tests/unit/utils/artifact_store tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py -n 4 -q",
+    "local_root_normalized_in_log": true,
+    "lock": "shared campaign PYTEST_LOCK from task assignment",
+    "passed": 41,
+    "returncode": 0,
+    "seconds": 15.22
+  },
+  "schema_version": 1,
+  "source_commit": "8074b46fd163a6dd01a86b59efa999bef177d065",
+  "source_tree_equal_to_training_commit": true,
+  "static_checks": [
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "src/utils/artifact_store/__init__.py",
+        "src/utils/artifact_store/rclone.py",
+        "src/utils/artifact_store/snapshots.py",
+        "src/tasks/ball_detection/training/temporal_heatmap/runner.py",
+        "tests/unit/utils/artifact_store/test_snapshots.py",
+        "tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/setup_pinned_environment.py"
+      ],
+      "name": "ruff",
+      "returncode": 0
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "mypy",
+        "--follow-imports=skip",
+        "src/utils/artifact_store/__init__.py",
+        "src/utils/artifact_store/rclone.py",
+        "src/utils/artifact_store/snapshots.py",
+        "src/tasks/ball_detection/training/temporal_heatmap/runner.py",
+        "tests/unit/utils/artifact_store/test_snapshots.py",
+        "tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/resume_probe.py",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/setup_pinned_environment.py"
+      ],
+      "name": "mypy",
+      "returncode": 0
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/advance_saved_jobs.py"
+      ],
+      "name": "ruff",
+      "returncode": 0
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "-m",
+        "mypy",
+        "--follow-imports=skip",
+        "knowledge/runs/run-ball-colab-checkpoint-resume-20261024/advance_saved_jobs.py"
+      ],
+      "name": "mypy",
+      "returncode": 0
+    }
+  ]
+}

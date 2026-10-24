@@ -1,0 +1,15 @@
+{
+  "archive_files": 42,
+  "drive_id": "1oxf5CnHVg5xEF-ASOK518ShFZQ42a2Cn",
+  "exclusions": "The archive was created before this pointer receipt and final knowledge-review records; no checkpoint bytes or credentials are included",
+  "md5": "cc7dbebce5ac818fc6e72fa092ece705",
+  "observed_at": "2026-10-23T18:54:25.745245+00:00",
+  "purpose": "Verified immutable backup of normalized receipts, exact experiment drivers and local orchestration source; checkpoints and Git bundles are retained separately",
+  "remote": "gdrive:tennis_lab/operations/colab/ball-resume-proof-b-20261024/closure/operation-evidence.tar",
+  "role": "operations",
+  "schema_version": 1,
+  "sha256": "f368a17542a8f819a0d813666bf68a6ed24ed5cc4ba923ad3e992c5f6ebe2a2f",
+  "size_bytes": 276480,
+  "training_source_commit": "768322617a9e3eb6c354bca834e90820ed0b6760",
+  "verified": true
+}

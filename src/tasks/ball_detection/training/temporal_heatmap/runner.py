@@ -8,6 +8,7 @@ import os
 import random
 import shutil
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, cast
@@ -106,6 +107,7 @@ def train_temporal_heatmap(
     augmentation: AugmentationConfig | None, distance_px: float,
     initial_artifact: Path | None = None, initial_artifact_sha256: str | None = None,
     parent_update: int | None = None, resume: Path | None = None, stop_after_update: int | None = None,
+    persist: Callable[[Path, str], None] | None = None,
 ) -> dict[str, Any]:
     expected_type = dict(dpt=MDDHeatmapConfig, hybrid=MDDHeatmapHybridConfig).get(architecture)
     if type(model_config) is not expected_type or phase not in {"pretrain", "finetune"}:
@@ -193,6 +195,8 @@ def train_temporal_heatmap(
         shutil.copyfile(evaluation_manifest, output / "evaluation_manifest.json")
         save_json(output / "run.json", dict(schema=RUN_SCHEMA, recipe=recipe, code=code))
         log.touch(exist_ok=False)
+    if persist is not None:
+        persist(output, "initialized")
     if runtime.input_verification == "upfront":
         dataset.verify_image_files(runtime.num_workers)
     target = stop_after_update if stop_after_update is not None else budget.updates
@@ -302,8 +306,12 @@ def train_temporal_heatmap(
                 optimizer=optimizer.state_dict(), schedule=dict(updates_completed=update, **budget.payload()),
                 rng=rng_state(device), validation=report, train_log=log_identity(log)))
             save_json(output / "latest.json", dict(checkpoint=checkpoint_path.name, sha256=dual_sha256(checkpoint_path), update=update))
+            if persist is not None:
+                persist(output, "checkpoint")
         completed = update
     result = dict(schema=RUN_SCHEMA, phase=phase, updates_completed=completed, sample_position=position,
                   complete=completed == budget.updates)
     save_json(output / ("COMPLETED.json" if result["complete"] else "STOPPED.json"), result)
+    if persist is not None:
+        persist(output, "completed" if result["complete"] else "stopped")
     return result

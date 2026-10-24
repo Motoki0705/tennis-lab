@@ -1,0 +1,40 @@
+{
+  "cancelled": {
+    "drive_saved_at": "2026-10-23T18:32:11.540494+00:00",
+    "finished_at": "2026-10-23T18:32:11.540510+00:00",
+    "job_id": "restore-inputs",
+    "returncode": 130,
+    "status": "cancelled",
+    "updated_at": "2026-10-23T18:31:55.599562+00:00"
+  },
+  "commands": [
+    [
+      ".venv/bin/python",
+      ".agents/skills/tennis-colab/scripts/colab.py",
+      "cancel",
+      "--session",
+      "ball-resume-proof-b-20261024",
+      "--job-id",
+      "restore-inputs"
+    ],
+    [
+      ".venv/bin/python",
+      ".agents/skills/tennis-colab/scripts/colab.py",
+      "reconnect",
+      "--session",
+      "ball-resume-proof-b-20261024"
+    ]
+  ],
+  "data_download_repeated": false,
+  "error": "RuntimeError: Connection was lost.",
+  "kernel_boot_id": "cad8e0a6-834f-4ee3-826b-a22e1b9b5d1e",
+  "log_normalization": "Agent-home prefixes replaced; URLs and credential-like values redacted",
+  "original_job": "restore-inputs",
+  "original_user_command_started": false,
+  "reconnected_same_vm": true,
+  "recovery_job": "restore-inputs-recovered",
+  "restore_target_absent_before_retry": true,
+  "schema_version": 1,
+  "session": "ball-resume-proof-b-20261024",
+  "source_log_sha256": "774ece8adc86fb38dd2e0759d490ef69aec909d320fd91d17600e7319d7b4fec"
+}
