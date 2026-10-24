@@ -131,7 +131,7 @@ if path == "repos/o/r/pulls":
             state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
         save()
     response(paged(state["prs"]))
-match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", path)
+match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", path)
 assert match, endpoint
 n, tail = match.groups()
 if n is None:
@@ -154,6 +154,8 @@ row = state["issues"].get(n)
 if tail == "parent":
     parent = state["parents"].get(n)
     response(state["issues"][str(parent)] if parent else {"message": "No parent issue found"}, 200 if parent else 404)
+if tail == "dependencies/blocked_by":
+    response(paged([state["issues"][str(d)] for d in state.get("dependencies", {}).get(n, [])]))
 if tail == "sub_issues":
     if method == "GET":
         response(paged([i for key, i in state["issues"].items() if state["parents"].get(key) == int(n)]))
@@ -1339,6 +1341,87 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
     )
     status = json.loads(p.cli("status").stdout)
     assert status["review"][0]["state"] == "instructed"
+
+
+def test_nested_manual_parent_keeps_status_reconcile_and_result_commands(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("nested")
+    state = p.state()
+    render = importlib.import_module("issues.cli").render_spec
+    sections = p.formats.parse_sections(state["issues"]["10"]["body"])
+    sections.update(
+        {
+            heading: "内側の親として管理する。"
+            for heading in p.formats.PARENT_REQUIRED
+            if heading != p.formats.TASKS_HEADING
+        }
+    )
+    child_sections = {
+        heading: "具体的に実装する。" for heading in p.formats.CHILD_REQUIRED
+    }
+    child_sections["依存関係"] = "なし。"
+    child_sections["Acceptance checklist"] = (
+        "- [ ] 動作する\n  文脈: 入れ子。\n  下流への影響: 管理の継続。\n  検証方法・証拠: fake。"
+    )
+    leaf = render(
+        {
+            "role": "child",
+            "summary": "leaf",
+            "sections": child_sections,
+            "parent": {"number": 10, "identifier": "内側"},
+        }
+    )
+    nested = render(
+        {
+            "role": "parent",
+            "identifier": "内側",
+            "summary": "nested",
+            "parent": {"number": 1, "identifier": "開発"},
+            "sections": sections,
+            "children": [{"number": 20, "title": leaf["title"]}],
+        }
+    )
+    state["issues"]["10"].update({k: nested[k] for k in ("title", "body")})
+    state["issues"]["10"]["labels"] = [{"name": n} for n in nested["labels"]]
+    state["issues"]["20"] = {
+        **state["issues"]["10"],
+        "number": 20,
+        "id": 10020,
+        **{k: leaf[k] for k in ("title", "body")},
+        "labels": [{"name": n} for n in leaf["labels"]],
+    }
+    state["parents"]["20"] = 10
+    state["prs"].append(p.pr(50, 20))
+    p.save(state)
+    identity = {"CLAUDE_CODE_SESSION_ID": "private-nested-parent"}
+    p.cli("register", parent="10", extra=identity)
+    status = json.loads(p.cli("status", parent="10", extra=identity).stdout)
+    assert status["parent"] == 10 and status["assignment"] == "active"
+    assert status["launch_plan"]["tasks"][0]["child"] == 20
+    tasks = json.loads(p.cli("reconcile", parent="10", extra=identity).stdout)["tasks"]
+    assert len(tasks) == 1 and tasks[0]["child"] == 20
+    result = p.cli(
+        "record-result",
+        "--child",
+        "20",
+        "--evidence-file",
+        p.note("内側の親が差分とテストを確認した。"),
+        parent="10",
+        extra=identity,
+    )
+    assert json.loads(result.stdout)["prs"] == [50]
+    assert "検証結果:" in p.state()["issues"]["20"]["body"]
+    assert json.loads(p.cli("status", parent="20").stdout)["launch_plan"]["tasks"] == []
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    registry = directory / "registry.json"
+    data = json.loads(registry.read_text())
+    data["parents"]["o/r#10"]["dispatch"] = {}
+    registry.write_text(json.dumps(data))
+    refused = p.cli("status", parent="10", extra=identity, ok=False)
+    assert "formal parent" in refused.stderr
 
 
 def test_cancelled_is_not_success_and_missing_pr_verification_is_rejected(

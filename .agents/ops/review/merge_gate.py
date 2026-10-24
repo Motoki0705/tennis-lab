@@ -28,6 +28,7 @@ from merge_gate_policy import (  # noqa: E402
     publication_errors,
     shared_permission,
 )
+from parent.adopted_tasks import check_task_adoptions  # noqa: E402
 from parent.execution import (  # noqa: E402
     authorization,
     require_run_authorization,
@@ -93,6 +94,17 @@ def repository_default_branch(session: ParentSession) -> str:
     return nonempty(repo.get("default_branch"), "repository default_branch")
 
 
+def check_adoptions(
+    session: ParentSession,
+    pr: dict[str, Any],
+    family: tuple[Issue, dict[int, Issue]] | None = None,
+) -> None:
+    parent, children = family if family is not None else session.family()
+    check_task_adoptions(session.gh, parent.body)
+    for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
+        check_task_adoptions(session.gh, children[n].body)
+
+
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
     parent, children = session.family()
     default_branch = repository_default_branch(session)
@@ -117,6 +129,10 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
         if raw.get("number") != n:
             raise ValueError("GitHub PR identity mismatch")
         errors[n] = []
+        try:
+            check_adoptions(session, raw, (parent, children))
+        except ValueError:
+            errors[n].append("task_adoption_changed")
         if request is not None and n in targets and raw.get("merged_at"):
             # Recomputing after merge would change merge-base/diff. Preserve the
             # reviewed snapshot, or the one checked immediately before our merge.
@@ -444,6 +460,7 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
             evaluations.append(entry)
             if entry["decision"] != GateDecision.MERGE:
                 continue
+            check_adoptions(session, fresh.details[n])
             journal_path = attempt_path(session, n, current["head_sha"])
             if journal_path.exists():
                 entry.update(decision="blocked", reasons=("merge_already_attempted",))

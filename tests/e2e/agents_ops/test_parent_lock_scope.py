@@ -368,3 +368,37 @@ def test_project_query_lock_boundary_and_stale_write_rejection(
             for call in p.calls()
             if call["args"][:2] == ["api", "graphql"]
         )
+
+
+@pytest.mark.parametrize("command", ["workflow-report", "record-cancellation"])
+def test_workflow_mutations_release_registry_during_github_reads(
+    parent_env: ParentEnv, command: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    if command == "record-cancellation":
+        p.child("old-plan")
+        state = p.state()
+        state["issues"]["10"].update(state="closed", state_reason="not_planned")
+        p.save(state)
+        spec = {
+            "schema_version": 1,
+            "reason": "対象外へ整理した。",
+            "handoff": "残作業は既存issueへ移した。",
+            "evidence": "親が範囲と残作業を確認した。",
+        }
+        args = ["record-cancellation", "--child", "10", "--spec", p.spec(spec)]
+    else:
+        spec = {
+            "schema_version": 1,
+            "state": "waiting",
+            "reason": "情報待ち。",
+            "resume_condition": "情報の到着後に明示再開。",
+            "evidence": "不足を確認した。",
+        }
+        args = ["workflow-report", "--spec", p.spec(spec)]
+    instrument(p)
+    result, _ = traced_cli(p, *args)
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert rows(p.env["PARENT_GET_TRACE"])
+    assert not any(get["held"] for get in rows(p.env["PARENT_GET_TRACE"]))
