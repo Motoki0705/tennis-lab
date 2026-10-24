@@ -1,4 +1,4 @@
-<!-- knowledge-review: fd965424ebd558ae75cb778920fd0d1c63b624204a56f8fe3c7e72b8e1fdc5a4 on 2026-10-24 -->
+<!-- knowledge-review: 863ff3867e7bbee00f64b02e319ab03505a4c3d17bcb5e5af6760f8becaada91 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-24（CourtのD2凍結L4試行の失敗・保存・停止と、再実行前の予算判断を反映。既存のモデル・checkpoint採用判断は維持）
@@ -37,8 +37,8 @@ HTTP件数は未測定で、画像数だけでなくcache充填率を費用モ�
 25% hull拡張・margin0・HFOV92.5/110/125°は全4sceneで全面を持つが、幾何通過の全面率9.38%とvalの98.48%との差、hull外描画の品質不確実性が残る。
 CPU比較時はscript未pushのため192枚を凍結して停止した。その後の[指定版でのL4試行](nodes/synthetic_data_generation/000032-run-court-d2-probe-l4-20261024.md)は、
 共有一時rootの相対pathがNHT契約に違反して最初のsubprocess前に失敗し、完成画像・QAは0だった。
-台帳の12枚を保守計上すると残り188枚で、192枚の全再実行には予算扱いの判断が必要。再描画せず、両jobをDrive保存してColabをstopした。
-次は親がpath修正と再実行予算を決め、同じ凍結候補のQA・画質を確認してからD2・max/U・追加比較を判断する。
+前回は再描画せず、両jobをDrive保存してColabをstopした。親は実際にNHTへ依頼したcamera数で予算を数え、実依頼0枚の前回から凍結192枚を1回だけ再実行することを許可した。
+[新runのCPU preflight](nodes/synthetic_data_generation/000033-run-court-d2-probe-l4b-20261024.md)で、全192カメラのrequest構築・scene検証・JSON書き出しがsubprocess直前まで通った。次は新runでL4のQA・画質を確認してからD2・max/U・追加比較を判断する。
 新しいQA/JPEG費用は未測定で、費用表はsetupだけ更新した感度表に留める。best-val保持の修正は別子の担当。
 
 ## 2026-10-22のCourt資産Colab照合
