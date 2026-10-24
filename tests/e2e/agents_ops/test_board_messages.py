@@ -706,6 +706,26 @@ def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
     private_output_absent(json.dumps(result), w.env())
 
 
+def test_sender_dispatch_never_rings_the_human_recipient(world: World) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    calls = len(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    assert [call.parent for call in w.fake.calls[calls:]] == [3]
+    by_parent = {r["parent"]: r for r in result["recipients"]}
+    assert by_parent[3]["outcome"] == "notified" and by_parent[3]["attempted"]
+    human = by_parent.get(None)
+    if human is not None:
+        assert human["outcome"] == "skipped" and not human["attempted"]
+        assert human["skip_reason"] == "human_recipient"
+    states = {
+        r["name"]: r["delivery_state"] for r in w.own_state(root["id"])["recipients"]
+    }
+    assert states["human"] == "available"
+
+
 def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
     world: World,
     monkeypatch: pytest.MonkeyPatch,
