@@ -13,7 +13,7 @@
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
 - 公開向けの文書は英語版を既定にし、日本語版を `.ja.md`、簡体字中国語版を `.zh-CN.md` に分け、3言語を維持する。文書にハッシュ値を書かない。
-- merge前にCIを起動しない（子のコミット件名に `[skip ci]`）。CIをmergeの条件にせず、レビュー後に正規のmerge gateを使い、merge後のmainのCIを確認する。
+- merge前にCIを起動しない（子の件名に `[skip ci]`）。毎日06〜09JSTに初回全体CIを1回、修正後の新main SHAで再CIする合意。枠中は通常merge停止、09時には未復旧でも解除・報告する。ローカル検証・正式review/gateは維持。#1349の実装・merge・timer導入まで承認済みだが、稼働確認は別。
 
 ## [environment](environment/index.md) — 環境の癖
 
