@@ -1,0 +1,1822 @@
+{
+  "schema": "court_d2_render_probe_selection_v1",
+  "generation_seed": 42,
+  "trajectory_count_per_scene": 128,
+  "density_level": 0,
+  "rule": "in_frame_kp14_v1",
+  "per_scene_per_variant": 12,
+  "maximum_total_render_attempts": 200,
+  "planned_render_frames": 192,
+  "sampling": "four per geometric full/near_full/partial stratum; shortages reassigned to partial then full then near_full; SHA256 order over seed42 namespace, scene and comparison_pair_id",
+  "analysis": "Report raw n/acceptance/reasons by stratum; use N_h/n_h for population-weighted descriptive rates. The raw balanced sample is not a population acceptance rate. No QA-based refill or extra rendering.",
+  "retry": "No automatic retry or fresh-root restart. Failed/unknown renderer calls consume their submitted camera count; preserve the attempted-frame ledger and consult the remaining stage budget before any continuation.",
+  "recipes": {
+    "current": {
+      "arc_intervals": 8192,
+      "arc_tolerance_m": 0.01,
+      "base_step_m": 4.0,
+      "count_multiple": 1,
+      "height": 360,
+      "hfov_degrees": [
+        75.0,
+        92.5,
+        110.0
+      ],
+      "hull_expansion_percent": 0.0,
+      "hull_margin_m": 0.5,
+      "jitter_radius_m": 1.0,
+      "look_at_heights_m": [
+        0.0,
+        1.5
+      ],
+      "minimum_points": 8,
+      "near_plane_m": 0.01,
+      "schema": "court_scale_geometry_recipe_v1",
+      "width": 640
+    },
+    "wide125": {
+      "arc_intervals": 8192,
+      "arc_tolerance_m": 0.01,
+      "base_step_m": 4.0,
+      "count_multiple": 1,
+      "height": 360,
+      "hfov_degrees": [
+        92.5,
+        110.0,
+        125.0
+      ],
+      "hull_expansion_percent": 0.0,
+      "hull_margin_m": 0.5,
+      "jitter_radius_m": 1.0,
+      "look_at_heights_m": [
+        0.0,
+        1.5
+      ],
+      "minimum_points": 8,
+      "near_plane_m": 0.01,
+      "schema": "court_scale_geometry_recipe_v1",
+      "width": 640
+    },
+    "hull25_margin0": {
+      "arc_intervals": 8192,
+      "arc_tolerance_m": 0.01,
+      "base_step_m": 4.0,
+      "count_multiple": 1,
+      "height": 360,
+      "hfov_degrees": [
+        75.0,
+        92.5,
+        110.0
+      ],
+      "hull_expansion_percent": 25.0,
+      "hull_margin_m": 0.0,
+      "jitter_radius_m": 1.0,
+      "look_at_heights_m": [
+        0.0,
+        1.5
+      ],
+      "minimum_points": 8,
+      "near_plane_m": 0.01,
+      "schema": "court_scale_geometry_recipe_v1",
+      "width": 640
+    },
+    "hull25_margin0_wide125": {
+      "arc_intervals": 8192,
+      "arc_tolerance_m": 0.01,
+      "base_step_m": 4.0,
+      "count_multiple": 1,
+      "height": 360,
+      "hfov_degrees": [
+        92.5,
+        110.0,
+        125.0
+      ],
+      "hull_expansion_percent": 25.0,
+      "hull_margin_m": 0.0,
+      "jitter_radius_m": 1.0,
+      "look_at_heights_m": [
+        0.0,
+        1.5
+      ],
+      "minimum_points": 8,
+      "near_plane_m": 0.01,
+      "schema": "court_scale_geometry_recipe_v1",
+      "width": 640
+    }
+  },
+  "scenarios": [
+    {
+      "variant": "current",
+      "scene": "B00",
+      "strata": {
+        "full": {
+          "geometry_population": 3,
+          "sampled": 3,
+          "population_per_sample": 1.0
+        },
+        "near_full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0
+        },
+        "partial": {
+          "geometry_population": 1616,
+          "sampled": 7,
+          "population_per_sample": 230.85714285714286
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "73cc8239b925a1dfc7b9f5e973e7db98f0fdc14c1440723859a101e9d92a5b57",
+          "pair_id": "542c057ebb82fd1e6a5412763a328e5343ca474de2629957b11759e714bb1d15",
+          "ordinal": 124,
+          "framing": "full",
+          "planned_record_sha256": "a51c2b75383c13843f489a1b34d872d0aad68d53000c7f32721bb9b0500d046b"
+        },
+        {
+          "sample_id": "efd5c93d2ba21292cc87f3693a5b7196453d0045bb5d06d4e437128857576c84",
+          "pair_id": "a54a51824e49733debf50216ddb54adcb2db39a2aa8413d56d92004d4f706590",
+          "ordinal": 97,
+          "framing": "full",
+          "planned_record_sha256": "656f206076c052e8c617b0941c6c121352a9cd464aec1df244761df9b806a6ad"
+        },
+        {
+          "sample_id": "65d126f1947e803741899b6a65063cc7305d94911fe54f36d8a772fdd4eced32",
+          "pair_id": "af17f48b839ee05e0d5086cb8329406b7e64406ea920fd1ad761fa967b4b466d",
+          "ordinal": 104,
+          "framing": "full",
+          "planned_record_sha256": "ab33f158da7acde6c6bbb004dce5a31e03f8302501368315cae39b3e0fd74905"
+        },
+        {
+          "sample_id": "6987a7980a2fab4d3997f856957655a3e5ac36a4cacff670df97bc25cf18e40e",
+          "pair_id": "54493e973dbc05219f5cf4156d0a652349713eaa3f49ac6b8140c01e73536e32",
+          "ordinal": 63,
+          "framing": "near_full",
+          "planned_record_sha256": "2a9348ae221e19728758a6ee52391431f9b3b39f21c7853df7a2c059f7fdae6d"
+        },
+        {
+          "sample_id": "4152caea30e74c6263f3901f0acae2693d7dbb4519a382976dda2d4af17f6c50",
+          "pair_id": "080d63d480be4652b9314df806490cbda4be1e150f747adf2558a9a026461f44",
+          "ordinal": 12,
+          "framing": "near_full",
+          "planned_record_sha256": "abf75743f3fdd89af5930724b0f8790c6d370a53e4ef889ecc75c3fa7fe574f3"
+        },
+        {
+          "sample_id": "d4d552e7b36418d55da7b8ec6932c6853ebed795ac162e40a0db57821a5f85ca",
+          "pair_id": "8a5702e2ed9f000a8028c20661a032513ee1c36d955bc10f338c16149caeabe6",
+          "ordinal": 92,
+          "framing": "partial",
+          "planned_record_sha256": "78fc829ccd3d9075e8fcdadc478222626c495ec3af169435c368f5ccb1b59660"
+        },
+        {
+          "sample_id": "94c4ed9e4cea5f274c77807aefdcd0f9e935177aeeecf5153717b9b0fd3913d6",
+          "pair_id": "64f724bed0b7ca2346b3dbe05430f7a401a04bc7ea842d157c684f7d68567a7c",
+          "ordinal": 22,
+          "framing": "partial",
+          "planned_record_sha256": "cf46bf89ba5dd760a344371f73eaff1de450bd255353f12936786d392e524c1e"
+        },
+        {
+          "sample_id": "0838673f3802c5aa26fc7c3d53343d317de648b2ccfbde47ac8b74337f96f48a",
+          "pair_id": "a418ead6d092e38125bed0183fad72894a0a7f25f3b80a4de3e6b7443d6e6488",
+          "ordinal": 69,
+          "framing": "partial",
+          "planned_record_sha256": "02a4d2de72e71a8921c7f4cc5f05bb25823b3e0d17b00db9d7e9d60bf207223f"
+        },
+        {
+          "sample_id": "ad0d73e480cd18e2dd9f2bd55ab1a1ab45d66ce9ff32ca5de66ff131fae4349f",
+          "pair_id": "fa7a5c75c73b0d69fd84a6f94dff7dc093ef85202669eb872426301a196ed070",
+          "ordinal": 56,
+          "framing": "partial",
+          "planned_record_sha256": "76e252608da6549c875aa772998b73ec7f3701eff7ca16e5d18cbfeda544a868"
+        },
+        {
+          "sample_id": "7f17e70633d5ae38f57536b3f3e9aaf2c66ed00e5e75c2812fd16fa7a41e79ed",
+          "pair_id": "81a0bfaf8f41e541dd91f362ae7036e4f549be4cdfe9fbee62201dad7a7cf71c",
+          "ordinal": 36,
+          "framing": "partial",
+          "planned_record_sha256": "95865ae6fcc5ef4db19fd31caf7c434077d8a5a6d896792545c0099ca56af926"
+        },
+        {
+          "sample_id": "75a6410bc8ddf0f97bc797782077e566799eb2a1970dc3550e4b9e53bbe53b38",
+          "pair_id": "e659f070459dbb584102c13fbbb5acb130e6282a9d9c49b205fedf326e11451b",
+          "ordinal": 51,
+          "framing": "partial",
+          "planned_record_sha256": "00e959cfb5a6d4691d5395b1cb7006b48a8622c0001c285312e68b5d2a53f97d"
+        },
+        {
+          "sample_id": "bcb9b810713bc92b54d3a3d6d09346ee4ae4aa2b785fff5e6b62a1bd23d9f6d6",
+          "pair_id": "27881b09a40c5dda2cb6d6b52f7285b3549a1341a30ae03a6ff28f699823bf1e",
+          "ordinal": 123,
+          "framing": "partial",
+          "planned_record_sha256": "8ce7dbf1d68847304686f7e5f0ef24b950e4c50a5dc53efff5812c54a423d96c"
+        }
+      ]
+    },
+    {
+      "variant": "current",
+      "scene": "B01",
+      "strata": {
+        "full": {
+          "geometry_population": 24,
+          "sampled": 4,
+          "population_per_sample": 6.0
+        },
+        "near_full": {
+          "geometry_population": 68,
+          "sampled": 4,
+          "population_per_sample": 17.0
+        },
+        "partial": {
+          "geometry_population": 1865,
+          "sampled": 4,
+          "population_per_sample": 466.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "1f499ef926a0384f7367fa563224128c136fc834f1956395ce539ce11af66e47",
+          "pair_id": "55baff21678f940b9b3dc8c691104e9b70cfe465ba4610036794a1b252069de6",
+          "ordinal": 119,
+          "framing": "full",
+          "planned_record_sha256": "06329646212223a7996ed62c202c37de59389961d24b36ccbed6bb5d59ad2f53"
+        },
+        {
+          "sample_id": "5a491842c147fea8cb852d8be4a342b8acf6643346c77559fda341dc24cce4ef",
+          "pair_id": "1f8352a4aaf8fe45830639325e1fc3b733081ad65492b83f279be9bccf08a1f8",
+          "ordinal": 57,
+          "framing": "full",
+          "planned_record_sha256": "9f462afe199e78c5f578476baabe0388c79b0ff37cafb221a445d7a46177a7ff"
+        },
+        {
+          "sample_id": "674fe881fe6428a16a0a3a915c0bae65d55cf60bf785fcd6722319167bc6a7e7",
+          "pair_id": "8d697b54023d593c877c7b46b03198f86156d9415cf2740eaa9844d8ab7e52ac",
+          "ordinal": 125,
+          "framing": "full",
+          "planned_record_sha256": "11c06e207d39f3838628de75c1bbe47bf7055dd397a11ca0926132bb2fadb497"
+        },
+        {
+          "sample_id": "d8c1c6e75c1dcfe2244537db649d928ccafa47def0b42cb7c48b7646b5a6188f",
+          "pair_id": "86000d27c573d83ecfd3123c8d7b0aeb97bf41002983292aeaf5189c41189264",
+          "ordinal": 14,
+          "framing": "full",
+          "planned_record_sha256": "e78edf122f79729c9228a37e72603eeb4b7fc9b6a681c132286a32d5b06b8661"
+        },
+        {
+          "sample_id": "8b4cc73dd4a389376e7c944ad6e9142a3768327f650e9a0d6215dfc2867a4fc2",
+          "pair_id": "d35225ceea1b364096d119e754c1a2b02c48ddddfde7d861d52cdb5235eff91f",
+          "ordinal": 14,
+          "framing": "near_full",
+          "planned_record_sha256": "6e00fd8d51d6a120d46caf868297b3b084dee730c89b0fa710487d6406238e26"
+        },
+        {
+          "sample_id": "b456f39d425a2f74eb4709e3637bf51bb40c5ea30a9c015dbbcb923a66c37265",
+          "pair_id": "10b93e2d2489075fc21ef74a09bd620644c4d5310fea4db4dffe7dfbd183300b",
+          "ordinal": 122,
+          "framing": "near_full",
+          "planned_record_sha256": "bf92d3f238be22a778ad415b77be2dc1342cf333ebcb8daa92db732377527384"
+        },
+        {
+          "sample_id": "0682b1387576eeddf18b913c753f2828ee82bf2a3098c5a5cf249dcb3461ca3f",
+          "pair_id": "1fa9a20d05ec03e88383e22b79b19d10baf621162b404b28b8a92e3d1b688ff8",
+          "ordinal": 125,
+          "framing": "near_full",
+          "planned_record_sha256": "998445571f07e287779fa293c510e900e8f59f9b4c614aa24e27d205834bfd96"
+        },
+        {
+          "sample_id": "00f25e2db75bb3f84817c82737b7e7f752d445b358f16831601109e8d4f1ebe0",
+          "pair_id": "7a2f4dafe8964968d55dff43c0cde902b0e0bf083c9d35968d15368b12d59dc3",
+          "ordinal": 125,
+          "framing": "near_full",
+          "planned_record_sha256": "f4afa4c734fe175e0a054b9a4ea971f9bee200c0d6b4d0808c0016432f9ded67"
+        },
+        {
+          "sample_id": "d6ba20e329ea0431a77ea4667c52683fe0babd75f5d498c5ef42716e58bd2a72",
+          "pair_id": "45778dd4b374dc23d1247de05c5398755c15732edadc848d49d3dd3db56856cc",
+          "ordinal": 76,
+          "framing": "partial",
+          "planned_record_sha256": "fb5cd5cc0309b9a23f8bcdea8b771fb89bf89ab75a1a66eb0724d3ed4890501c"
+        },
+        {
+          "sample_id": "586d4c5e04b1d333a2998c294b51f139259ec23e9843cd3197d6b75c9b7a0b56",
+          "pair_id": "9836e9393c00cc4a19f4f5acc1224332d366b8c987b71b5c4d9d54457e651a0a",
+          "ordinal": 113,
+          "framing": "partial",
+          "planned_record_sha256": "efce408414274d476e34274989dbf173d10a9b5a888fc3145080cf47971b3f5e"
+        },
+        {
+          "sample_id": "cd777a3049db9bb5bf90b284bf79b06ee3cd0b881b72405609cd0cbef6f307a4",
+          "pair_id": "cfd0f7920e861fcefb495b89ef9a4664a78371766e33e26cea134535614e23aa",
+          "ordinal": 3,
+          "framing": "partial",
+          "planned_record_sha256": "f70816557858555c567ee011d5e650dcdfbb0db910b6dcc11995bdc5a1c200e2"
+        },
+        {
+          "sample_id": "6767488d5a2cae1707b9740ed0cf15148ce94263987e3611f5a6ddd012988c3a",
+          "pair_id": "d220688d5f05d86a7a73d1a1f5b4e5d6a867879391b49439219a7def101a41c5",
+          "ordinal": 94,
+          "framing": "partial",
+          "planned_record_sha256": "358e138f38c087323950bfd69ea70c0916cfae1e53a138deea4392972a456a72"
+        }
+      ]
+    },
+    {
+      "variant": "current",
+      "scene": "B02",
+      "strata": {
+        "full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null
+        },
+        "near_full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null
+        },
+        "partial": {
+          "geometry_population": 1353,
+          "sampled": 12,
+          "population_per_sample": 112.75
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "3f4bcb97356402d83c672f5f8bf70653222474f8a37e10b979ed8f9731122f96",
+          "pair_id": "899753193b38b46b5d237f7aec69d69cfcb190d02cd964cb2dc756764061f0a6",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "494fb850765b94295a28bc1c8a34182dffad9a6b0a9fd9d1a8fe6dde90e604d9"
+        },
+        {
+          "sample_id": "8d9ddd59b1f043aca6e60ea7439da121a2ba13f103518ce29d7b24c0d15038dd",
+          "pair_id": "b090b1629e5fe79d1de502051732f11bb548fa5b1b1788c2e24e31af947ff72c",
+          "ordinal": 52,
+          "framing": "partial",
+          "planned_record_sha256": "0ff4d2938f6980ce45da888215a037b01e1b4ed529c8ff97298978386efcf8e3"
+        },
+        {
+          "sample_id": "594d9cc3d1fb6e00057d3661db8360f123ae5f88bdccb0da86da003e2a090d5e",
+          "pair_id": "0dc14e8c3a0d899cf2cebb426674464fa9422a0b508d20555d611422f767168c",
+          "ordinal": 57,
+          "framing": "partial",
+          "planned_record_sha256": "e56215188b0abb4e8712c6e71db03ce2c1a0f0cbb163f81122fc898f391d0d55"
+        },
+        {
+          "sample_id": "8ed26a6883614f1e884e7689b0011e61cf40a4cb711fb7c6b7a49e06da44ecca",
+          "pair_id": "97abeea6c28aceb856552f3bef5625843389cf421de62ea44d9be83c66198954",
+          "ordinal": 85,
+          "framing": "partial",
+          "planned_record_sha256": "d1cf195b691dbbb4a541790fe3c1fe84bbfb60293c4bec4090e16ba6e1df9390"
+        },
+        {
+          "sample_id": "c08409bc12d2ce6cad3447495f30d443245eb69efee2704c29b40df13c1b37e1",
+          "pair_id": "cf16bb9a5ad88eba3a2d82c680acf9a6294ed1595614343a729a819d45847a5b",
+          "ordinal": 39,
+          "framing": "partial",
+          "planned_record_sha256": "2feb9e6be77de66cb4d73ef4a29bf2ab81a4c55dd0ed5bcaf499fc6636070532"
+        },
+        {
+          "sample_id": "c0e88fd9a515e0d2d6a5ed7e76a83d243db1f89fd45bc539494e10c0bc38d007",
+          "pair_id": "47b43fe05fee2bef43296020d6adf2cf4b441954a11e6b2fac76e9ff131d0c8e",
+          "ordinal": 86,
+          "framing": "partial",
+          "planned_record_sha256": "f072ece3fa140c16070468ccf27c8f1b4e89ab077dcfba3b8dc0b24b334f1178"
+        },
+        {
+          "sample_id": "286ba73fbc89af2db1e89b2418ad9752b25b292a6f4a87d3988c3418f1ffdab7",
+          "pair_id": "311d7b9413c865abb6d6e601f03d50ab573cf69670b111c767bfc2c71afa03d5",
+          "ordinal": 118,
+          "framing": "partial",
+          "planned_record_sha256": "de52edac22ca1b5f0b84985409c46e8c103bf302aed27ba17386ab9818fb7ce7"
+        },
+        {
+          "sample_id": "25bb92f1876833590461fc28951f9c769c15608008b086d488594e6cf6f29408",
+          "pair_id": "fb2a5ea18cd72fb24607af95eb86e02bcf2c2c184cdbcbffdade2267d19a8c7a",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "ec596a2e2163ca813a430cc30c6ef9dbeb2b4fffcece589e90209b6a3ebbe095"
+        },
+        {
+          "sample_id": "ccb261238db555a96d5f56f5ecba1708ca7d822fdcb4e9d074ae760b5f8a28e8",
+          "pair_id": "132e1d48e5c182cdd68912f6379271ce2f8fc8599706abda1ebe3a3f8e7167d7",
+          "ordinal": 60,
+          "framing": "partial",
+          "planned_record_sha256": "5a236e2fbda631d1fe592278670935dfb18122d211d0471ff1848778440c2dd4"
+        },
+        {
+          "sample_id": "d83e06eba615abf926a2fce20114e3fd10f6a1d0bc07766625db558295ab8254",
+          "pair_id": "0dc2508a959b61c26a385cfb7b12a078cdb8c9a4f895e76c60c041522648187e",
+          "ordinal": 117,
+          "framing": "partial",
+          "planned_record_sha256": "b0ba2a0fc694e4e537fff282fdb4380f6d14ce134bb8b879ce46f3ebb092c11b"
+        },
+        {
+          "sample_id": "2810686b2ef6d150d9af7abd2b9f51d972874e48dc77df99d296ffaf4990e47d",
+          "pair_id": "26a4375d6bbd590722e4b4598eda54355319ddf36eda98081a3e995967307193",
+          "ordinal": 88,
+          "framing": "partial",
+          "planned_record_sha256": "b3d5ccc198301e258f2712e6ba893f906d58415e6def64731f659830fd3c4f67"
+        },
+        {
+          "sample_id": "47eea469821adc93096afe279d0443a2233d2f524173dea2f646e6481d24d8c1",
+          "pair_id": "089aad2a304698c1a288ae83fd4f4b870ec26ee775bb154fa226780018f8a81b",
+          "ordinal": 33,
+          "framing": "partial",
+          "planned_record_sha256": "33a095a633272d019240eb28f81be779882907704a6b483ee8a8446e1ddd6073"
+        }
+      ]
+    },
+    {
+      "variant": "current",
+      "scene": "B03",
+      "strata": {
+        "full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0
+        },
+        "near_full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0
+        },
+        "partial": {
+          "geometry_population": 1231,
+          "sampled": 8,
+          "population_per_sample": 153.875
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "a0f97cdb489db315571688d4bbeb84c935c16bf06ad88446f75511edc67ec98a",
+          "pair_id": "c0e3f619dd220850ad0e3617ac7376f56e8c938ac1fa8f9596a64cec5d1d4b3c",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "1e3834f56f4cf353ea5fe9fc5999a930895f38dad75cd463acbfca06e5bd9af0"
+        },
+        {
+          "sample_id": "8e38b9bc526d0d3ca85c2529f479de4f2fc4d68c46d28e78bbb3b44bed0d6da9",
+          "pair_id": "606cad6cda6c6ca8d109898807dca5336cef98c10a6ad2882a6f8d7c33ef1357",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "5973e9911fcb8de513011034599431a86dfe9d3429109cda9d83c5ed21503f7c"
+        },
+        {
+          "sample_id": "7867f85d66db61f65ffb3d49de7cb79297fc9eae75ad59c533a4902aec711933",
+          "pair_id": "4cbbed881c29d3abf12bd5bf6dad4db80ec610980c6c043fc235ec874515de25",
+          "ordinal": 101,
+          "framing": "near_full",
+          "planned_record_sha256": "21d52f517cc8fc6aff9b6b9a962dbd7c662612cb5f7a640611d2d2698c37c569"
+        },
+        {
+          "sample_id": "d719392ad0d9bfd61ee0d52248b7456b5c76bc47eccc6d1cf3de47e29889442f",
+          "pair_id": "e66ee612501255d197beb40b8906f44fe0f248744d423584cd4a981dd05db7d6",
+          "ordinal": 6,
+          "framing": "near_full",
+          "planned_record_sha256": "b3e78661caee21d3622a24baeefb199190dc4537210bd7de44c59439f6dee15f"
+        },
+        {
+          "sample_id": "b0cd321dc44f800b2806d8cd3171ae580cc5177a7bad42cbe704b87e23e9b016",
+          "pair_id": "fcf952916cab4cac5cc4d423bd87d4d4b78ee296c0b4a53923312526ff1d9b3a",
+          "ordinal": 46,
+          "framing": "partial",
+          "planned_record_sha256": "3b252df1d2772857e3870696193689acc4240909818a5e8a4084bda9627cb772"
+        },
+        {
+          "sample_id": "2a56c382b7945334223938fd06ada51a04948a2b20a4aaa00e790b0f99ca5746",
+          "pair_id": "e55aef4609784d13cb19a1c1c97d5de23a248ca0e562d17d7f3ff3d1d4bbeb81",
+          "ordinal": 29,
+          "framing": "partial",
+          "planned_record_sha256": "3581c3b7c1a0677cf1f0beb122ec746dbe99bf3c8cb2d4c9fe17775d49adcc73"
+        },
+        {
+          "sample_id": "de0dff71a8ea57ff3a3f9b3114cfa20ce02b683521e969bf2b9997714b3f689b",
+          "pair_id": "7dbe9f443900fdee37bea6e9e1b024c0205dc97b01926784c123048151c86a85",
+          "ordinal": 46,
+          "framing": "partial",
+          "planned_record_sha256": "d49e057ce7de8df2b1f46fc6e46d0079bd4f2eff25f7a1f178c5ea47986f04aa"
+        },
+        {
+          "sample_id": "43e3009e0ed32e30a117991acdf2c32dca1b22d1707e0bdf7ba7aa63ece36a4c",
+          "pair_id": "7ebf0d44ffd98a3a36c45a4e168eba77e809dbcf45caa3d9fe6231ee07f6d381",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "f17091f9e634f2c7510b841f2fef9614ccb765dc73a51cc348ff97e6721d50be"
+        },
+        {
+          "sample_id": "da4a7b2f21ee4e71d70fa3d12cbe2afa19bf0a1d39cec2a71a4386fccee899a3",
+          "pair_id": "0a46789b414eea50f4dd50d7cf40e32542cbea421c02c855e4a9febb9cfbdff9",
+          "ordinal": 49,
+          "framing": "partial",
+          "planned_record_sha256": "ccc665217f5920ee74fe8ffc1090d2de05d6382c48e003206689d4a789e7de2e"
+        },
+        {
+          "sample_id": "4f9ca9e2e71568b77c14a7f2c43c2b2858d25f36650707253691989da72684b7",
+          "pair_id": "dfa38ddee9e411b812e81685651b74129ca0866711b56b5327fee8beae469012",
+          "ordinal": 56,
+          "framing": "partial",
+          "planned_record_sha256": "6ece35d28fc5be8287b33d4663aa5f7d5017289b969a538f60e96f9f3e7e0c56"
+        },
+        {
+          "sample_id": "d8dff796c1fed041542069b02ed0f572664772e6a6113cc39e452750bc7703ca",
+          "pair_id": "05a2d20c2a03c712459156437cf51ff9631d943ad91682b2b38430e87bb024e4",
+          "ordinal": 71,
+          "framing": "partial",
+          "planned_record_sha256": "581bb1643457860a3170bdf4e419b657b4bc1e98ee294dac2e4f5dfd86756c6c"
+        },
+        {
+          "sample_id": "66b859f9c551ce8ba6af65870dae7b67a52069dcda64843d36fd7850abcd3a0b",
+          "pair_id": "82a565f74573b6baf79441a2d46375033341ff6b5cfb93d8ac7e901f5461dd4e",
+          "ordinal": 53,
+          "framing": "partial",
+          "planned_record_sha256": "bc15bf695e8665cd5f250d507fd107d3d7aeff05ee36a9341caa851950c99b08"
+        }
+      ]
+    },
+    {
+      "variant": "wide125",
+      "scene": "B00",
+      "strata": {
+        "full": {
+          "geometry_population": 7,
+          "sampled": 4,
+          "population_per_sample": 1.75
+        },
+        "near_full": {
+          "geometry_population": 24,
+          "sampled": 4,
+          "population_per_sample": 6.0
+        },
+        "partial": {
+          "geometry_population": 1641,
+          "sampled": 4,
+          "population_per_sample": 410.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "8ef16e16cc20570b9e26817d2d71ff5f5ec852b712464330566475454b64f0a1",
+          "pair_id": "a8902df3bdbbde6dc2be6d50be5381f8a5b3053b9a86429bb8ec9bfc523d6cdb",
+          "ordinal": 67,
+          "framing": "full",
+          "planned_record_sha256": "86e7e73d6b509d0506b4e5657f9fd9d11bd9b495bfbbea5dfc2590240c330275"
+        },
+        {
+          "sample_id": "a84b5e186038cde68cb8d54b3a64ef2aa18bf3d621b3f95dc05451c9d3d5bd1f",
+          "pair_id": "542c057ebb82fd1e6a5412763a328e5343ca474de2629957b11759e714bb1d15",
+          "ordinal": 124,
+          "framing": "full",
+          "planned_record_sha256": "64151ba7259fd33b6816fae44a0d4e5c603422a9b4cc307165f32054008e58ad"
+        },
+        {
+          "sample_id": "178aeb2e73211b75808aa50d2eaf753da841def0ffad8f26c0ff4e68406a19b2",
+          "pair_id": "be26dc44a4673336e718e7873bd80b19352863aa8f811d3df3982c9116592bf7",
+          "ordinal": 107,
+          "framing": "full",
+          "planned_record_sha256": "02fb551079be8d5751d30611f6157cfdb9e4eab2145a24d86c17810a6bbfde6e"
+        },
+        {
+          "sample_id": "53c079630a6f2e75cfa88ac1051ed1005883719f02a765cfc958878469650a2e",
+          "pair_id": "54493e973dbc05219f5cf4156d0a652349713eaa3f49ac6b8140c01e73536e32",
+          "ordinal": 63,
+          "framing": "full",
+          "planned_record_sha256": "1a0439f03a5506e3c6dfc3050eaf8a2d566424b9649d035bc615cdec754c040f"
+        },
+        {
+          "sample_id": "d6daa3db7f48506c512d0cbdfdf2986ada929f43b19721d134df41c870e21244",
+          "pair_id": "4ad5cd78bb0791ae4ca9ef3cc1e484cf92badc9e3bbcd4f35b70876c186cdfcc",
+          "ordinal": 115,
+          "framing": "near_full",
+          "planned_record_sha256": "27ce8eb2829261851bbc902c1c85d696bdb4b734ae395990fa28f708aa67f52d"
+        },
+        {
+          "sample_id": "94cc485566d2f4b405002065bcea624f65aa1708a5c363b67d354387ee4c86db",
+          "pair_id": "52a96841b3e2439723f2c59528e438159ea71e535e15b623d2b183522fbfacbd",
+          "ordinal": 38,
+          "framing": "near_full",
+          "planned_record_sha256": "23ee5474dd01b615bce984f3b4199c11749b63cb0b273af527de23493b276f87"
+        },
+        {
+          "sample_id": "ff9bbd5c48b481ccdfd75ef1cb83e74f02489f8a5e5ab69a438a13c4dffea984",
+          "pair_id": "8a7706e6d70b719d8c4db0aa71e2448e423774750e510073362a21de80dc11aa",
+          "ordinal": 70,
+          "framing": "near_full",
+          "planned_record_sha256": "762222f12de0e01f8b59d5a876fbb3829e54bef846b0292c69f060d161e4c882"
+        },
+        {
+          "sample_id": "7571892ae7f0e6530cf66a29ade702535ac0f4b94c1f851e50b3b088f708d642",
+          "pair_id": "72c22c36f3ae2d47c76dba8746a059d0926cb7e1045efcc8e0c92030a1f59523",
+          "ordinal": 69,
+          "framing": "near_full",
+          "planned_record_sha256": "9e8902575d146c16f069fac0069210ea62a4763f7d3d0a502715ddb515905b31"
+        },
+        {
+          "sample_id": "16b5fe138108914c83c84a931b5c8ec10e5d4b8c9d117c40fbdf918c837cbe1e",
+          "pair_id": "8a5702e2ed9f000a8028c20661a032513ee1c36d955bc10f338c16149caeabe6",
+          "ordinal": 92,
+          "framing": "partial",
+          "planned_record_sha256": "7dccbe0843e8449f2abb49a524b81d94f87d6a632d95103fdc59666eb6650fa6"
+        },
+        {
+          "sample_id": "f63dd41404bf8157c49cfe9c5535fe1f000d705e753953f4de901dd8fd5f01d5",
+          "pair_id": "64f724bed0b7ca2346b3dbe05430f7a401a04bc7ea842d157c684f7d68567a7c",
+          "ordinal": 22,
+          "framing": "partial",
+          "planned_record_sha256": "adf6f0cf0307cab2b5bf10851c441a1272d13a52930e1555eac6553dd2fbc09d"
+        },
+        {
+          "sample_id": "e32cea325b024a99c29534d2f97627d1e831d0615a6c0225b0919134bec829a4",
+          "pair_id": "5fbdb48d237af0b4bf632dfa7a5424dea528a2e26931e92fa1e99a474a1a957e",
+          "ordinal": 46,
+          "framing": "partial",
+          "planned_record_sha256": "75ffca99d6ec3663bea01ffb7d5dd4158cdc13ab36a19b0d2a0fea987f69ee17"
+        },
+        {
+          "sample_id": "183e26d0323fe93b01e449c92c1f677b145cabf9a4064639c1aa9b7048dc6faa",
+          "pair_id": "b83cec6a9955798798bef8be4248ef68e387f20be604ec9a8c748984505b04d3",
+          "ordinal": 85,
+          "framing": "partial",
+          "planned_record_sha256": "5265abf5dcd6242a3989889672472d4ca1271612f6a6ca0e9417369135f2cb08"
+        }
+      ]
+    },
+    {
+      "variant": "wide125",
+      "scene": "B01",
+      "strata": {
+        "full": {
+          "geometry_population": 86,
+          "sampled": 4,
+          "population_per_sample": 21.5
+        },
+        "near_full": {
+          "geometry_population": 136,
+          "sampled": 4,
+          "population_per_sample": 34.0
+        },
+        "partial": {
+          "geometry_population": 1794,
+          "sampled": 4,
+          "population_per_sample": 448.5
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "28d15b3c84bf1c6081e56cff4e32e3567c69b21dda981e6d88c36c3df68eb975",
+          "pair_id": "55baff21678f940b9b3dc8c691104e9b70cfe465ba4610036794a1b252069de6",
+          "ordinal": 119,
+          "framing": "full",
+          "planned_record_sha256": "695d2821d8e68b7ec5ffe8a67431f0599b7873ab00f95caad5e623880e78897e"
+        },
+        {
+          "sample_id": "3c6015e95c3e2006228bebe58acebb85b92c9c95c52ec6ea6a7251741dad86bd",
+          "pair_id": "d35225ceea1b364096d119e754c1a2b02c48ddddfde7d861d52cdb5235eff91f",
+          "ordinal": 14,
+          "framing": "full",
+          "planned_record_sha256": "43d8eea165748f1921fc51b1da27ee6f8f3c3d154c5a3b579333b2acbb6a8db7"
+        },
+        {
+          "sample_id": "c05d76472ffe1dbdff3e82c476c8158f030747bdb1468e700451709f54dd5669",
+          "pair_id": "24a8bacd0ba610aacd1adf8a069812cb4526e0a731b9d46ef6ce6d8574544508",
+          "ordinal": 123,
+          "framing": "full",
+          "planned_record_sha256": "9c62be3313c65913e1768563ee9d746550ed915836f0d8c4f10c7cf2ef6ed9a6"
+        },
+        {
+          "sample_id": "e68e2a36d08aa4ed54e9dd2eded8097afcf3227745e89d5968137bf48baced24",
+          "pair_id": "7a2f4dafe8964968d55dff43c0cde902b0e0bf083c9d35968d15368b12d59dc3",
+          "ordinal": 125,
+          "framing": "full",
+          "planned_record_sha256": "5f816abe38db506504a1c9aa0e3fcf1014181226680c1271341371c210ada56f"
+        },
+        {
+          "sample_id": "f4a1019edf14aae83a5d4cee1d42a59979c1e359bdd38028213e21f0490473cb",
+          "pair_id": "249de47b250d53258a43004deb333da3d293d2d6a8b17df873b9f4bf09d3763f",
+          "ordinal": 122,
+          "framing": "near_full",
+          "planned_record_sha256": "cd0ae49b2200c43663bc486dffc104055cfd522cf38f1b6d188512019bfe4c93"
+        },
+        {
+          "sample_id": "6c0fbd081c53989b61861e723163de853525fd66478271058ac8da53a8fb1896",
+          "pair_id": "295792a7ee8abb9d126fc52969694a94e005a3c5940833a3d76c63a9ee59f5de",
+          "ordinal": 36,
+          "framing": "near_full",
+          "planned_record_sha256": "4342b6719a400c8b968fdbcc368717f3d5ad070e7751f35e0c7c2ed0a674fed6"
+        },
+        {
+          "sample_id": "e0dc402b6635efa89274f8207d5e7c5813f15c56dab68a103702238d0ca00cde",
+          "pair_id": "ef72027b5de39f541191997a2643c1a17bbbf7f5c95133b47a6931bb8ebac403",
+          "ordinal": 28,
+          "framing": "near_full",
+          "planned_record_sha256": "9107543286e2d5cc757554182d71a69aea9705e24899aed99d0449f3a2e5b254"
+        },
+        {
+          "sample_id": "aad45dfef109058f7d10fb75eae35bce50b21bf2b28ab08d448694ff51bedf77",
+          "pair_id": "b58bfcd4caca6e87de2f027a8a2121e12e34031f1aaf0caebbac7b84b93b9ab9",
+          "ordinal": 121,
+          "framing": "near_full",
+          "planned_record_sha256": "adf40432bcb0fbab032f9eda3706f59b1e28611b30566b2e9c4ea8134f87e14f"
+        },
+        {
+          "sample_id": "c6986ed37ac99911c2e53325a41c40717cfb5c71bcf712580f538fa4830b611e",
+          "pair_id": "45778dd4b374dc23d1247de05c5398755c15732edadc848d49d3dd3db56856cc",
+          "ordinal": 76,
+          "framing": "partial",
+          "planned_record_sha256": "5aadb8c8dd24d08934e4e4da4e91fdd0c957be8bdaecbebd38004a420f971d6e"
+        },
+        {
+          "sample_id": "15b842348408137cdb6bc1e26f63492f2155765fb8e6f8b13a967fa96a8e51b8",
+          "pair_id": "9836e9393c00cc4a19f4f5acc1224332d366b8c987b71b5c4d9d54457e651a0a",
+          "ordinal": 113,
+          "framing": "partial",
+          "planned_record_sha256": "71d78e51e4442a62621c93e31db6758eee71cf79d207495608fa43dc5a209a33"
+        },
+        {
+          "sample_id": "c29330d9d155463968e9ccf7fd9f6ae6e93f1c56d5b24657e9dc9f139940b668",
+          "pair_id": "cfd0f7920e861fcefb495b89ef9a4664a78371766e33e26cea134535614e23aa",
+          "ordinal": 3,
+          "framing": "partial",
+          "planned_record_sha256": "1d34b7c68e7e776fff5d40c3edc4f011bfb55e49670e03d2d5cafc4fd9b3e809"
+        },
+        {
+          "sample_id": "4fbc983bf46d9eff64556414644211378b8c006902f4bdedf8111ddb45fdd456",
+          "pair_id": "d220688d5f05d86a7a73d1a1f5b4e5d6a867879391b49439219a7def101a41c5",
+          "ordinal": 94,
+          "framing": "partial",
+          "planned_record_sha256": "c939a46ec9bdb3fe1e1bcd8d9042a504012271dd002e8ee51df57b6e5a42ea06"
+        }
+      ]
+    },
+    {
+      "variant": "wide125",
+      "scene": "B02",
+      "strata": {
+        "full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null
+        },
+        "near_full": {
+          "geometry_population": 13,
+          "sampled": 4,
+          "population_per_sample": 3.25
+        },
+        "partial": {
+          "geometry_population": 1426,
+          "sampled": 8,
+          "population_per_sample": 178.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "f46348a797a396e8d88e93fbd8299080802ee9c020d1e299f831e31d686d340c",
+          "pair_id": "6b878f40aeaecfada837455dc2beaffb15fed407ce4b57df4816ec646995dbdc",
+          "ordinal": 49,
+          "framing": "near_full",
+          "planned_record_sha256": "21b5af9fa452b024f4890d588e29eb9f035a949419346ef260cab33d356b5a28"
+        },
+        {
+          "sample_id": "13308dd64fdee62df6a2085d404f1ede0c387bfa43eee1f89d6b5db5fd136fa4",
+          "pair_id": "5b122b330946b8ee9c9578ef467ce9ac775e01e0be39ca1e83ba1852eff59fb3",
+          "ordinal": 96,
+          "framing": "near_full",
+          "planned_record_sha256": "1e919b5c015f20ac0e73606e82502bf8c235f17aead5bc25791c92b776e9aeb5"
+        },
+        {
+          "sample_id": "93fc6f8ac4079e40f29dae971f834dd718a0bcf7bdad89283e64284a42a328f2",
+          "pair_id": "a3aeec6107dde160d61364f906feffd7b81fa0a72b175127e08b3108abc00484",
+          "ordinal": 87,
+          "framing": "near_full",
+          "planned_record_sha256": "58dc700c1c3734640770a44ed30568de1c28249248f823f39d5153370b009dd3"
+        },
+        {
+          "sample_id": "1654c598d16e092706db77badaa786fd19a8285eb059c1787c986beaa9dbd2ac",
+          "pair_id": "8946709f1a3fedebfdaa2de8ffcc368000d445fc0dd04dea818ad3ead298b3f9",
+          "ordinal": 116,
+          "framing": "near_full",
+          "planned_record_sha256": "253f6de0cf236019de51ac92cf43e30de8757d071ec044356205cde30d69c0fd"
+        },
+        {
+          "sample_id": "6b293c9630426f16a993b7756f5c703c0acd16ccf6ea0aebbbdd3af3c287e8ac",
+          "pair_id": "899753193b38b46b5d237f7aec69d69cfcb190d02cd964cb2dc756764061f0a6",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "b9e2ed9cab21d68fb317b745d7a4d3d908d6462e29a35979f990ac06fb365bb7"
+        },
+        {
+          "sample_id": "19d59829867bbc84a00fbdebdd91b139204d88207d4e631e42317832ca213dd2",
+          "pair_id": "b090b1629e5fe79d1de502051732f11bb548fa5b1b1788c2e24e31af947ff72c",
+          "ordinal": 52,
+          "framing": "partial",
+          "planned_record_sha256": "98a4cd19be932eafa665411b080daf6a34acea9f46a35687c7f3b2bfd1fa2843"
+        },
+        {
+          "sample_id": "37ab72c5d2eddcfed6c45e342d360e07dc24e958fe27d59c0a98ae48a0e2b4ec",
+          "pair_id": "0dc14e8c3a0d899cf2cebb426674464fa9422a0b508d20555d611422f767168c",
+          "ordinal": 57,
+          "framing": "partial",
+          "planned_record_sha256": "8e5b6f08ff4db9e86d5ab4d5a3f66a3139bc21931db47dbc3f7f76e57ba08598"
+        },
+        {
+          "sample_id": "2ec5d9bcc1c14a3154aee114c6a9062ee77acc534235d347f7c659b8fa56d47d",
+          "pair_id": "97abeea6c28aceb856552f3bef5625843389cf421de62ea44d9be83c66198954",
+          "ordinal": 85,
+          "framing": "partial",
+          "planned_record_sha256": "3fa4f4eedbd04421f1bc80b870627cc4f526d9b0dde54551fd80f82cf190375a"
+        },
+        {
+          "sample_id": "82e11c651721cdc3810ea3c40490a1998df626793888dcb83093fd1224d6c217",
+          "pair_id": "cf16bb9a5ad88eba3a2d82c680acf9a6294ed1595614343a729a819d45847a5b",
+          "ordinal": 39,
+          "framing": "partial",
+          "planned_record_sha256": "f75577278a79e8784a5ffb24fd1cad1f09368a8cb66359465072f950c341258b"
+        },
+        {
+          "sample_id": "3084af17ff20a7ad45e277204874cda68142a232b7a36e6e3793364dca949118",
+          "pair_id": "47b43fe05fee2bef43296020d6adf2cf4b441954a11e6b2fac76e9ff131d0c8e",
+          "ordinal": 86,
+          "framing": "partial",
+          "planned_record_sha256": "c565d660c72dc2878aff8f154cc92f15b2ea5ca5e5b8964f59e0f732c6e664b3"
+        },
+        {
+          "sample_id": "bbc525889ce1af28130271ffd65470a3a5f744ef8e70c55bda7ef8629e6b6a9a",
+          "pair_id": "311d7b9413c865abb6d6e601f03d50ab573cf69670b111c767bfc2c71afa03d5",
+          "ordinal": 118,
+          "framing": "partial",
+          "planned_record_sha256": "d17543ff06f17d65dc6c8ff208880b7f4a3ea3168eece0024d900e946b735ad8"
+        },
+        {
+          "sample_id": "4d16b7e6b797ea95e2940aad058989b4e577ab6bac18766ea287fa6ffecb159c",
+          "pair_id": "fb2a5ea18cd72fb24607af95eb86e02bcf2c2c184cdbcbffdade2267d19a8c7a",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "6f6f2123413f6b40e9e7bdb2b762de031578aad09e75c0bab5dde816c6ccc13b"
+        }
+      ]
+    },
+    {
+      "variant": "wide125",
+      "scene": "B03",
+      "strata": {
+        "full": {
+          "geometry_population": 4,
+          "sampled": 4,
+          "population_per_sample": 1.0
+        },
+        "near_full": {
+          "geometry_population": 17,
+          "sampled": 4,
+          "population_per_sample": 4.25
+        },
+        "partial": {
+          "geometry_population": 1296,
+          "sampled": 4,
+          "population_per_sample": 324.0
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "b01a1e160c4e52e94dd77220c56180fa3c61baeb9f7d59179b956e604ccfd1d1",
+          "pair_id": "4cbbed881c29d3abf12bd5bf6dad4db80ec610980c6c043fc235ec874515de25",
+          "ordinal": 101,
+          "framing": "full",
+          "planned_record_sha256": "aac950dcab36b974dc2e0af8a2682bcdb9e892b7b547dbc8f73fd61ea419fa30"
+        },
+        {
+          "sample_id": "8b06cb805547ba6af0b4b107669f4fa1544b0e1ceffb82d2e1d7b1f360f51e5d",
+          "pair_id": "e66ee612501255d197beb40b8906f44fe0f248744d423584cd4a981dd05db7d6",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "83c9e50d9cdcd217de844ed3f281a76b95558b298ea5de42ac5b2d06d0f32fa6"
+        },
+        {
+          "sample_id": "aba7e7317020dafe0f25d2e92e7ff9921a6940b01c2ab352b902937e61168c9f",
+          "pair_id": "c0e3f619dd220850ad0e3617ac7376f56e8c938ac1fa8f9596a64cec5d1d4b3c",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "f1c1c0adb6b21639604c25dc0c0b8060b66d8461ea1c449095946bec8feb80b1"
+        },
+        {
+          "sample_id": "4b00d2c8b71d27d3e0088c6f9d5c6178610764eb1456593fcd7220165ab7c34e",
+          "pair_id": "606cad6cda6c6ca8d109898807dca5336cef98c10a6ad2882a6f8d7c33ef1357",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "e61d6e39f0555127f33455d6b81f7b25b7ffa720546cefd1827cdbaa45200b8b"
+        },
+        {
+          "sample_id": "a9e3c169925420c6b5845e00a54b6242740728789ebf2e93379c14782ef6d5bb",
+          "pair_id": "3be3b3fc28e012de22b361643371a1df973f976fb85a35bc1e364839387ccf36",
+          "ordinal": 70,
+          "framing": "near_full",
+          "planned_record_sha256": "11b22e4a7a30579b2ac623b90f71861d571f5f2c9e9e2396d25d1259dec5e3e1"
+        },
+        {
+          "sample_id": "e2136524a65cbbb0d7e48320568c9fee8ff0ced23b2df4ddaf901d13a39cacf5",
+          "pair_id": "23ead0e2b449919a6c01c1b7f469541bdf66d3bd4a2bdfa36b66117d8c24ee92",
+          "ordinal": 125,
+          "framing": "near_full",
+          "planned_record_sha256": "76620057c4e417b1d99f28f2ca26ecdffec4ebb389abf66c9fc508bafcb22732"
+        },
+        {
+          "sample_id": "056836d05109671d23ad1870a653b32fdcc992f7bb9dddd9719b5b4bd7449aa4",
+          "pair_id": "e1e9a3325b44a29694d94b356e0166e4bd990bfe2091958b29fa93ab085facf1",
+          "ordinal": 6,
+          "framing": "near_full",
+          "planned_record_sha256": "6fbe7e0427380f0571664f7dbde1b852d685187244e51d594bc098c99c1db703"
+        },
+        {
+          "sample_id": "2a39e1df2172c9f800626c0803a1584f5b66baf6df44018e982d80d1ff2baa3f",
+          "pair_id": "3380a6457d72170151c91869da00bae84b19ebb922c68f1269b5f516d4d14372",
+          "ordinal": 95,
+          "framing": "near_full",
+          "planned_record_sha256": "8286e3de1c943f545ad45bd984b46bee6bf02a2a7db721576259506f07456e71"
+        },
+        {
+          "sample_id": "05077d33650a6996b0ac60c90a49d65e731db987909dfc017a87b8a516bc8eb4",
+          "pair_id": "fcf952916cab4cac5cc4d423bd87d4d4b78ee296c0b4a53923312526ff1d9b3a",
+          "ordinal": 46,
+          "framing": "partial",
+          "planned_record_sha256": "e0a3d061bdeb2c692ee3c45c9b3afc9aa11150bb9a8ca8e49356fdf2aa325375"
+        },
+        {
+          "sample_id": "8672958446dbde1d95441521870907b6211fc53151d866974af36dc8df0b693e",
+          "pair_id": "e55aef4609784d13cb19a1c1c97d5de23a248ca0e562d17d7f3ff3d1d4bbeb81",
+          "ordinal": 29,
+          "framing": "partial",
+          "planned_record_sha256": "43202ed77d37b4cf269c5c4566d875d0e2dfcd12b662b05fd9c0f2eaf97864fb"
+        },
+        {
+          "sample_id": "d8e290490781f5e0cd067aad6fc00c0e50225b23b32adde30b547b68f1b64d72",
+          "pair_id": "7dbe9f443900fdee37bea6e9e1b024c0205dc97b01926784c123048151c86a85",
+          "ordinal": 46,
+          "framing": "partial",
+          "planned_record_sha256": "4ff5a827a8d921fe374b753dcfb973340fb62b73b63c78fa85d7a6274c12e223"
+        },
+        {
+          "sample_id": "f0ad4efa8e1295772075e997d0419bf5d3636db979acaf60824fc664f49f65fc",
+          "pair_id": "7ebf0d44ffd98a3a36c45a4e168eba77e809dbcf45caa3d9fe6231ee07f6d381",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "c18c320aea9b6133a40049f56b8839d033296cd42bd1644bde4d3d6f8744b33e"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B00",
+      "strata": {
+        "full": {
+          "geometry_population": 82,
+          "sampled": 4,
+          "population_per_sample": 20.5
+        },
+        "near_full": {
+          "geometry_population": 83,
+          "sampled": 4,
+          "population_per_sample": 20.75
+        },
+        "partial": {
+          "geometry_population": 2161,
+          "sampled": 4,
+          "population_per_sample": 540.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "e8f3bc634675641516dd92e13e7cf08cfd446cc3fd1597e64ea64f5e201635d7",
+          "pair_id": "a8902df3bdbbde6dc2be6d50be5381f8a5b3053b9a86429bb8ec9bfc523d6cdb",
+          "ordinal": 67,
+          "framing": "full",
+          "planned_record_sha256": "40239ac80621cb090504f2de87a6cab41529a292e79e28ed3e7b77f6187cea34"
+        },
+        {
+          "sample_id": "6822da467733b9bd392566937718ab31062d6a1b2b7e815083e330c4ad4ac740",
+          "pair_id": "3d7bf31d58754a3c017f2565f74368296430f894b3303bcb65a305d7861f20ff",
+          "ordinal": 55,
+          "framing": "full",
+          "planned_record_sha256": "8873778cd2c89bbe6161bce2ebc400a20e62cd6cd86d1d1ee10d90a7aa00ab88"
+        },
+        {
+          "sample_id": "d61a191e1e756fc332023f04406793381cd1bf2e031b8ae634bf67e9f978a8a6",
+          "pair_id": "f261410f61b40ea2b2a69123af97124901c895b8e09f349b4141634b0fbe08da",
+          "ordinal": 55,
+          "framing": "full",
+          "planned_record_sha256": "f4812824db02adbd58fbe0c419c06b882a752959e69a458b150c1f5a9d46f71a"
+        },
+        {
+          "sample_id": "d7ca698710613992a065dc1bf65ebbccafd88862117d623b146969fa8c814b70",
+          "pair_id": "d48d3466a967251400654920559d7eccd11e48e2f14f91d63ed91c1995ce4c6b",
+          "ordinal": 77,
+          "framing": "full",
+          "planned_record_sha256": "ea477f8dee4055600b055e7314d90a35cef5517b7abd8f1f502a7cfcf761e8c5"
+        },
+        {
+          "sample_id": "322deb3dd06e1bab37181b8fb03172e952c99ee263919a0212bcebadf700d968",
+          "pair_id": "27881b09a40c5dda2cb6d6b52f7285b3549a1341a30ae03a6ff28f699823bf1e",
+          "ordinal": 123,
+          "framing": "near_full",
+          "planned_record_sha256": "a0d3c105c3e13a522b7002c86448ed87ccd38040471e7d9dfbe8978da6030162"
+        },
+        {
+          "sample_id": "679bf13b8d2a99877a6b5c8481fa452188a708690a061f1b4e78b29cb50a23ca",
+          "pair_id": "6f724dae626acbcef961b32653e64e563bd7d6ce182ecfaab66545289cd60c5c",
+          "ordinal": 48,
+          "framing": "near_full",
+          "planned_record_sha256": "7786e88a6044cb8c4a14183054a630bc9057f040fd454f46d00242210d9009e0"
+        },
+        {
+          "sample_id": "6857a5f83f5a5d6a0c0ded2dc8a32afbf655da085fadeb8ba904e4e4ef7a5173",
+          "pair_id": "0dec892eb5cb5052dc19ed7b002680423a5b8a6fe9949b7e528259468f94d4bc",
+          "ordinal": 95,
+          "framing": "near_full",
+          "planned_record_sha256": "5d3073b9afa4f4505aebd0e943471c3af7f522151a5b51a0aef1bcce3f90fe98"
+        },
+        {
+          "sample_id": "2916fd165ccd21f075dc128ecd4dc9c98305fff5172a304b569a84f411ee576d",
+          "pair_id": "3025911b072d4e45399c0bc5be85dd7fbcd83a6e62139c873c8fa02cde57514a",
+          "ordinal": 5,
+          "framing": "near_full",
+          "planned_record_sha256": "0a2fe67aad5295f0b699837cacf17782cdfc370b73e31e22d3b92039b7d052a7"
+        },
+        {
+          "sample_id": "9795d1bb2cf55831b1fb3321831debb1dc196b4f6ecc00b8d4d9fac073b78778",
+          "pair_id": "844a3ba11f6d41c262f5d99edd8b2035fd94a92699b0bfa4d46cdf23393de3f5",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "918b0a15f584d9945e70b9a9166e095d4d5d0f0e909d22726f81aeadc764c2e4"
+        },
+        {
+          "sample_id": "b2c5fc27ef6e298252cc018c11e36be44c6a3fb0acade2c588abb77b1e2c38e2",
+          "pair_id": "8a5702e2ed9f000a8028c20661a032513ee1c36d955bc10f338c16149caeabe6",
+          "ordinal": 92,
+          "framing": "partial",
+          "planned_record_sha256": "65eeeb18ea95e5a2891de0c84d453b437db01a5df4279ae937524eceee901760"
+        },
+        {
+          "sample_id": "51f5f84a7e27b0c611ce6d7531be3b88542b9304a1bf7cbc725b3e14776ad379",
+          "pair_id": "c8177ac40f4b31d6a294d8366fd95ff31372b51fb1bba56ed2adcff428b929b1",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "f9e503681bd2c8c3641fd105964b0b2ff4621558bc7a64b7a7d5f153d72c6f2c"
+        },
+        {
+          "sample_id": "5987d368be9581562d1bcbf34f9e8f266577a343928d7bcd2fb9ba861d730010",
+          "pair_id": "b7da05c618d673a4cb926bb533f5ef2403b258173c33968b83dcc9b558f5826e",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "836cc50d8d8b1fbef0a22c881174f68e45b04a4f6da1cab336183d4cd5eae0c4"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B01",
+      "strata": {
+        "full": {
+          "geometry_population": 291,
+          "sampled": 4,
+          "population_per_sample": 72.75
+        },
+        "near_full": {
+          "geometry_population": 301,
+          "sampled": 4,
+          "population_per_sample": 75.25
+        },
+        "partial": {
+          "geometry_population": 2271,
+          "sampled": 4,
+          "population_per_sample": 567.75
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "89e6d2dfa301b947918f96c6342c4f2a72cae151e935d6a40b46381c4099a004",
+          "pair_id": "f3913f52273c7dadc759a9a49f7ab10ad6bd04e6f14e70cf8b84b495ca7a0050",
+          "ordinal": 63,
+          "framing": "full",
+          "planned_record_sha256": "b2e48148a54c64006322bc93a289154b24ac74189f7e38628d0df590b22fe238"
+        },
+        {
+          "sample_id": "c668dccffa5043bb071cd1cf5ea2b2eb6f15a2c300bc391a64c88b922e5d46e6",
+          "pair_id": "468e3dea0d2413fed8bd7741627698ab3fe68b6ae6af54e5b9066bb0a8da03b8",
+          "ordinal": 123,
+          "framing": "full",
+          "planned_record_sha256": "d4c4d0ad4b16994a7c24e34f1d9801b4f0402d26afd8bf3f88ae90104049355c"
+        },
+        {
+          "sample_id": "444f379f125782e9c45d2aef5f3092881ca2593240c9c4540b18d541e605e877",
+          "pair_id": "fc729b8536c8a698afa459d58dd72680cfca5a278b4967ff239eeb7c29df3d9b",
+          "ordinal": 117,
+          "framing": "full",
+          "planned_record_sha256": "d14886de6dd55bae3cdb3adf2a9a6ad40a40afebf67aa4feeedd86e7d43d0a49"
+        },
+        {
+          "sample_id": "96cbe5b8bb8b8f823276805bbeac8772170a9b9a176cec0fb3b6a5d1ee920b52",
+          "pair_id": "b346d4bc04e10db7673542b4d16ad526b264319193385a3c13ac74973ce09ad2",
+          "ordinal": 13,
+          "framing": "full",
+          "planned_record_sha256": "7f22d4ae9767e5c2db65297e668d5a15e6e9d1599e4d6ad74321ec3588ceb492"
+        },
+        {
+          "sample_id": "607e971b225c772c55b87618bd8ccaf78f5758159a465e9db7d0187e2e7f2ad4",
+          "pair_id": "ab819df1c18763c280c846546eb569c286ecbb885943cf8a15c099e8e0485aad",
+          "ordinal": 125,
+          "framing": "near_full",
+          "planned_record_sha256": "e37f9170eed03400af0499694b29174792229a746925c930509983f5575f32de"
+        },
+        {
+          "sample_id": "f62c7e1a87cb267c8e6f22d804d01e5227f6a09afa46db403863eeb23248d31a",
+          "pair_id": "656843d785aeae00c0bb9732127b93e5680794a0e92cc80a48c493c06c4a5e89",
+          "ordinal": 105,
+          "framing": "near_full",
+          "planned_record_sha256": "e641d26808e714396ca49f76c475c0daec33d285f8600151fe587c2dac19c127"
+        },
+        {
+          "sample_id": "9db4f032d09bba4ceb135a29eab265df074b33b7ec5930eb24ce4655bfefee87",
+          "pair_id": "c2bb5790419b7f8ffe3182dc0a58360d96a90c1b6a50b544c3a130529d0895cd",
+          "ordinal": 49,
+          "framing": "near_full",
+          "planned_record_sha256": "513acbe8cb17be66e5d812a29b328d9ccc5abc384e64f7aa4d1db95e47e7f77b"
+        },
+        {
+          "sample_id": "757764e87a9f577016da0fb082def45ec6066205c45b2b9485b43cf6bcc1851b",
+          "pair_id": "a2e76fd1018b1b4d244171c1be9248d45bb66e153e812812b525cd85f6535ab6",
+          "ordinal": 122,
+          "framing": "near_full",
+          "planned_record_sha256": "e13deeef8a446da8eeb81d7026b96a73aba88967f004dcb6291eb3aa3b661fd5"
+        },
+        {
+          "sample_id": "59a5d12c58184ac7bf921714b133e1eb6893dbed5aed469c806463d8b5b13f08",
+          "pair_id": "65c83edd5e960d41ea43243341b40565d7b88da59e82c8cf6b87d0f98e969454",
+          "ordinal": 15,
+          "framing": "partial",
+          "planned_record_sha256": "f113a72ea08e39cfa14fe63f0a0e99cbac9146d0bf2fc88d3500d879389bba2d"
+        },
+        {
+          "sample_id": "643defc912d1947b9054e48afd87efedbb4626c33ec3016ae89fd99be9463ce4",
+          "pair_id": "d798c45c334d7aec5a462d287fd6fbbd0ceb597364501559a402c47cc3d40223",
+          "ordinal": 32,
+          "framing": "partial",
+          "planned_record_sha256": "02e51fda30c45e060aceb0098c38ae14a4f28a7190325257e068fa80bfa67e8d"
+        },
+        {
+          "sample_id": "cdb56a55260389aabf8815cc31530edb8f964d9b6bcbbcc0b4b6021a45f0b91a",
+          "pair_id": "65dc0b5abcbf3600c27afe6466ab73572ca3f390a6980a76942c953b0528999e",
+          "ordinal": 30,
+          "framing": "partial",
+          "planned_record_sha256": "cfcefab96da04963e76ac29571b555d6f4f2b4d6492fb243fc3f25fd6d8a1c4a"
+        },
+        {
+          "sample_id": "2e8871f6a55e953fd308abf961b111819a4edc4ffe5ee55e30e4ce2c6533dd0b",
+          "pair_id": "65dfe734da1bbacbb79939979735eda98650f9f7ee8fdc91526f7ffc7312dc09",
+          "ordinal": 55,
+          "framing": "partial",
+          "planned_record_sha256": "6712255148b151f478a6952719e016a2c956777da3e37bb9ab44b21f0f424433"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B02",
+      "strata": {
+        "full": {
+          "geometry_population": 27,
+          "sampled": 4,
+          "population_per_sample": 6.75
+        },
+        "near_full": {
+          "geometry_population": 75,
+          "sampled": 4,
+          "population_per_sample": 18.75
+        },
+        "partial": {
+          "geometry_population": 1745,
+          "sampled": 4,
+          "population_per_sample": 436.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "ae9db0069d540d3c28a0f1b1f1741af333a926cf5d9431e760f7f760b26bad17",
+          "pair_id": "0407c6b8abe2d007c11269072440ff960c2d170dde2ccd7cca06cb67e89d42ff",
+          "ordinal": 98,
+          "framing": "full",
+          "planned_record_sha256": "972d7f76608cefb266e60cca855c6ffa50508f8412833b3d5c157e8f06dd1087"
+        },
+        {
+          "sample_id": "62c01fde689da7110411156c33721e1c20fe99b0827e423f29bb3dacba7f89cf",
+          "pair_id": "d2e844e93d3451ad890501de36cc8319bf4aa57cecf64b58a6cb05b505856161",
+          "ordinal": 96,
+          "framing": "full",
+          "planned_record_sha256": "f2c738acf040365599af86edac9a2c2127d963fdf1a15cb4e49bb1e72f92136f"
+        },
+        {
+          "sample_id": "091aa4ed444a77d36eec3515c53c06fca657371f6a617f83611866ee4701ce10",
+          "pair_id": "6ab0005d294d3bac714c07c8b8d47c38552316bd625b15d40e022877ef81c5cc",
+          "ordinal": 57,
+          "framing": "full",
+          "planned_record_sha256": "e4595291cd5a0a29a323b8eacd69940fb61a7f1fc6859a32d87acfdec533b326"
+        },
+        {
+          "sample_id": "be21787075c8ee3084c3b19be36331e6d281b95231f1664d01cf9972c1bbaa6c",
+          "pair_id": "4c9a65cec916e5a447b912911c0b1fc8add75f0129a52ed372414a862e89fb30",
+          "ordinal": 117,
+          "framing": "full",
+          "planned_record_sha256": "25134c882fb334ce011083cfe4b24a344be8e400f42d08767f0828ae5c61dc68"
+        },
+        {
+          "sample_id": "733f3a72cd762e614e44bd5362b50a9eca32a0958952475bcd4ad7c30edf6a04",
+          "pair_id": "7fba5e4ac4bbfad204cd1f66c7721298632e34dc3cd87ac8bad4913f4b4ead80",
+          "ordinal": 87,
+          "framing": "near_full",
+          "planned_record_sha256": "d78ae7841a9fb0f63f62e0661daa1eda6de5ba4ab2dc2d84ddce82b5ca7ced16"
+        },
+        {
+          "sample_id": "72d448fd8965d671a7d471e152f799d0130aea13421cd6c106e01f848ec28111",
+          "pair_id": "cf7f40c0a896aaeaa22a83ec73c26cea6c8c1a5477063e4ec8628473a18e6aed",
+          "ordinal": 98,
+          "framing": "near_full",
+          "planned_record_sha256": "93bc1bd8708cddf2526d25623e5d2ec9e641fb423844b1cc8eb891382ac344ab"
+        },
+        {
+          "sample_id": "f9062e09b8b33b20b7356125d906827ca16c32d589a3d3db36ab5007f6ca0ca5",
+          "pair_id": "5f2ea84da304dc029dd92c57ae6fab7187f9c434db188b6a204b3deac29b3785",
+          "ordinal": 105,
+          "framing": "near_full",
+          "planned_record_sha256": "3d540c0f74921258b629b56fa4ae8a474324f3fce4dc5d0a0da2fd8eacfa7393"
+        },
+        {
+          "sample_id": "686de2cac078a200623fc34d1432f61d8a18430feec360337bdd12c70a3696f3",
+          "pair_id": "0436b5be06b57c2d2146e612d86c76f3a1518b9ebae7ef9c735f726b6fde66bd",
+          "ordinal": 98,
+          "framing": "near_full",
+          "planned_record_sha256": "30cb92a43aeb82e77546aa4786726bc3fb8441e79cfac060382dca554d88852a"
+        },
+        {
+          "sample_id": "4b501c49e78c0db8a01d856c8a7efdfb9aadc86019fec532025af4b0bebcadd9",
+          "pair_id": "5c5711425f3f831bbde3c961f4ca11b84de46694aa9d42886508d84f74f9724b",
+          "ordinal": 124,
+          "framing": "partial",
+          "planned_record_sha256": "bfb3637c61dc415e2e41d4c124a32231dfae9141e4211458955192d5ee5b7ef1"
+        },
+        {
+          "sample_id": "17a9806495b6ac448756949d5528746b839a04bc82391f1ff7077e074e96f95c",
+          "pair_id": "167046a92a2e42f3533ca90f8a2cc66dde9b0dc6c34195ab94810f8a1c952dbe",
+          "ordinal": 20,
+          "framing": "partial",
+          "planned_record_sha256": "22bdb9299a561114fbf7537c11140d4f4a7904f32ce903a4b334ca7c01a5bc49"
+        },
+        {
+          "sample_id": "eb18590c4d38dc79b3340e8c0f19f51f37897cc602415807cbcbb504afc2a049",
+          "pair_id": "3eeb56abd2316f149ae6881b371195e6ac1816ce52bcd98f7c5fcea1c43a80ae",
+          "ordinal": 77,
+          "framing": "partial",
+          "planned_record_sha256": "4bd8ad3b9d4256a274c4a56f3444023ab23cfb77091f00fcb5a1ec1c633fca43"
+        },
+        {
+          "sample_id": "646be577e444f25a55c3fb62bca706a80dc30d3643deb53e3807788196538d95",
+          "pair_id": "5e99f4679f325521220a1dc41026169f279c9c118732128d79f0cc11c7589b13",
+          "ordinal": 28,
+          "framing": "partial",
+          "planned_record_sha256": "cbe0edb4365ceaaf46e88090738cea030e49c8c2b266e0c9ef169371373a0b48"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B03",
+      "strata": {
+        "full": {
+          "geometry_population": 17,
+          "sampled": 4,
+          "population_per_sample": 4.25
+        },
+        "near_full": {
+          "geometry_population": 34,
+          "sampled": 4,
+          "population_per_sample": 8.5
+        },
+        "partial": {
+          "geometry_population": 1625,
+          "sampled": 4,
+          "population_per_sample": 406.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "14a157d78220f374635b3491e1fb6dcd8ea4ba6774b6d677629626236c56bbf1",
+          "pair_id": "a0552be9c074ae05651eb845efb67cf17e46afe09ad8a2126606d70f4cc8fa35",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "fc8372f111914029bd2e776e562de35bbc70435d0f67f7a9e88096ba9d1d3e91"
+        },
+        {
+          "sample_id": "a780fff2e9d7acd162474bbda5604c3d851ed164def2806db4d1b01ad98076ab",
+          "pair_id": "dc7fb9a32a7436ded1adf3315714767cdcc53263e30117d20006a8432a573b68",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "fbebda5763e443ec54c08e38d7132a732d8b5a8d706ca24cc4f2e673e3832121"
+        },
+        {
+          "sample_id": "ea3d120337a4c246e3c69fae59dc7415b35595abb3ce814c640f531f6c446d97",
+          "pair_id": "e6c2ec97d60234cb4cf0e7364ca2fbf87f82e0e8176b99fdaf601acc8b1513b3",
+          "ordinal": 101,
+          "framing": "full",
+          "planned_record_sha256": "bb98d3db3bf34b98ea906e8d9d5aeb630b70fb27b2ee39f4e3dc7447a1859bab"
+        },
+        {
+          "sample_id": "17dbd48a37fac6cabb476542a78411131b52def888db1d2e6b92eb39d5091ebc",
+          "pair_id": "c019f2b86670a850a37907b69322dfbca4dbb7c76203d32d8c606b9f287d692a",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "f57aa3a29914a92c876b32d9a8dbbb668eed4089c468412a5bfa98abed7d24d5"
+        },
+        {
+          "sample_id": "116fb8644b0ba26723c4b6e18339ae4df3b90b931fde35f7df1e4694cb226bee",
+          "pair_id": "7f6c18cff15dfee7086232587290148a0f879cf51b95afc9b9af8aaf2ae82d60",
+          "ordinal": 51,
+          "framing": "near_full",
+          "planned_record_sha256": "1b1d3a6f2f981e0c56fa6e4deca8cd4e256e4f5d58603d774c5d50b1de147c57"
+        },
+        {
+          "sample_id": "4f9486ed12af60fad2868a53b5f04da4e655e7c1537a40aeddbf12a0fc6e8228",
+          "pair_id": "901d778802d9e8b086e479477bfc3e3b9c9499ccbb3bc4664c400d515dfe46da",
+          "ordinal": 51,
+          "framing": "near_full",
+          "planned_record_sha256": "8fc511654cd0335ae281ee9af74e9ed062ce8e2843605bab4c716a94ad0897c3"
+        },
+        {
+          "sample_id": "5b4e4811d99a5b07b5e8272120a09be4c448bc350d37d579b55eba84381761e5",
+          "pair_id": "91e9fea1fa0f330e805f510186ab7f3f547330ffb6565bb9edd69454e6f17ea8",
+          "ordinal": 51,
+          "framing": "near_full",
+          "planned_record_sha256": "1fc307ccd4b27a1ced06d53a6a01b84e1f1192cee8bcd089e578b502209bf598"
+        },
+        {
+          "sample_id": "27303f4159957dae0c4d51bf1eecccbe174313804c3b449c8f4e48662cadea7c",
+          "pair_id": "e53dd0912709f5d89b53910576054c3c6f8b185e4d4297e96f434a68e644b7d4",
+          "ordinal": 51,
+          "framing": "near_full",
+          "planned_record_sha256": "23e9e9cf63362c1d32a1fb06050ba4c90184f51c824d998ae093ad153c22e80a"
+        },
+        {
+          "sample_id": "f0a648c337c62960ddd72312a90da661f9f16b8d8a77a6c1ed4acb62672cf916",
+          "pair_id": "e155b6969e3816e551912453a4b2674ba102e0c77155f6ed50271b6e0f6e72f1",
+          "ordinal": 45,
+          "framing": "partial",
+          "planned_record_sha256": "92d51acac4b2abca37957673188b027408d32e33c9391d3c28dc0d052e3b572d"
+        },
+        {
+          "sample_id": "a349631dee6055b664fcb5f3d97a433e705dafd7bf0318d2cf2e2e3863066800",
+          "pair_id": "9c7feab44777b235490bf60687558bf88761bb29bde437e9701a913ad74ef1ee",
+          "ordinal": 93,
+          "framing": "partial",
+          "planned_record_sha256": "85ec6896b981270107bdf4c3ed46323d9efa677fc9eebe14369bfc42c349712a"
+        },
+        {
+          "sample_id": "fdd3e246256bffb81ec604dd123e09dced5d43a6e9bf9a43d9066306e897fb04",
+          "pair_id": "0351eaeeff18ca97bc2f6c41737832b156e44820c14d5b08055699874cf31c2e",
+          "ordinal": 28,
+          "framing": "partial",
+          "planned_record_sha256": "e2696f1e18d997032ce2baafe3064e415b92f9e56091958e1347c1400c2a302b"
+        },
+        {
+          "sample_id": "6890ff7cba97457fee9bbda5e7f2bcb91c7a8483986448b736e597b8c15ded1c",
+          "pair_id": "ccf7c1d77eb7e975192f1ffc60c5174180149b41e77c88a157aa3d8ec8f0ddef",
+          "ordinal": 21,
+          "framing": "partial",
+          "planned_record_sha256": "4256767cb52298cb9a4860a5c99b3ec05891e71a25934406e1ccfb3c51cddfad"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B00",
+      "strata": {
+        "full": {
+          "geometry_population": 158,
+          "sampled": 4,
+          "population_per_sample": 39.5
+        },
+        "near_full": {
+          "geometry_population": 184,
+          "sampled": 4,
+          "population_per_sample": 46.0
+        },
+        "partial": {
+          "geometry_population": 2008,
+          "sampled": 4,
+          "population_per_sample": 502.0
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "b2b36713284d47888027d8681f08a350fea080ce02cfed6efb3517e3ba621be8",
+          "pair_id": "6f724dae626acbcef961b32653e64e563bd7d6ce182ecfaab66545289cd60c5c",
+          "ordinal": 48,
+          "framing": "full",
+          "planned_record_sha256": "c255c40aa3d9dfadc3094f7df2e96d15b583374dc7e51304e1f96d0a33fd1787"
+        },
+        {
+          "sample_id": "60b6032f28ad57ce31edd01f4723636fee183041c4fdecc240ab35f4de1a4b21",
+          "pair_id": "a8902df3bdbbde6dc2be6d50be5381f8a5b3053b9a86429bb8ec9bfc523d6cdb",
+          "ordinal": 67,
+          "framing": "full",
+          "planned_record_sha256": "0b28c6d0d1d9efc552dc1785e312f9a862bc09187349c40b9cf4425434aad455"
+        },
+        {
+          "sample_id": "70bea546859723f93424a6141e4fa6fae0d4890432bd130b5bfab2b32d5c748b",
+          "pair_id": "30f1a4166e781e03efc7a9454f0d0a9860766dd2d2be756370d87a85c899348b",
+          "ordinal": 48,
+          "framing": "full",
+          "planned_record_sha256": "aaecedded7942be01d09833c26e1db6071b0c610c9825e05a82f4aeeda13e7a5"
+        },
+        {
+          "sample_id": "7bac14c13577982096e41b69e9dc0abd1cc093fb12a4956242699e0b770b6e56",
+          "pair_id": "3d7bf31d58754a3c017f2565f74368296430f894b3303bcb65a305d7861f20ff",
+          "ordinal": 55,
+          "framing": "full",
+          "planned_record_sha256": "e901d00600e3cf8ce5ee98021e9d07b94a341f15b29973f4b8d3aabca84a7710"
+        },
+        {
+          "sample_id": "076d4eda91475f050c0d4919d20ddd0b7f7fbc67e4f6ecdb593c35b2c9d21f75",
+          "pair_id": "27881b09a40c5dda2cb6d6b52f7285b3549a1341a30ae03a6ff28f699823bf1e",
+          "ordinal": 123,
+          "framing": "near_full",
+          "planned_record_sha256": "a41a74e98f9278bae8a6ccbc72ea2c4991ae3df7dbd898293baaa014559ed861"
+        },
+        {
+          "sample_id": "0c0da35489f8bcf3ed7cf3d9c0964c039f3034681b009c6beb84c8e56f654ace",
+          "pair_id": "d907e1671a422a7844377354543e056dc2ee2afe87debe2c638d91cd38d16afa",
+          "ordinal": 76,
+          "framing": "near_full",
+          "planned_record_sha256": "84946c43d5ca548f0e803875abe16d9a8e5b7f55a25ceeed132bb730e055b068"
+        },
+        {
+          "sample_id": "eb729eb5eed31f451825f4e91985766c16bf0dc248e002a56a2ecdbd27053edc",
+          "pair_id": "3425e6247d154f544774bba1995cc6c0798f54b2145bc65404dab9330a278757",
+          "ordinal": 43,
+          "framing": "near_full",
+          "planned_record_sha256": "0b3b409d666fb1a4492fbeb8e4b7f5bb854b0ce2626ab206d06b51c89aaeeb6b"
+        },
+        {
+          "sample_id": "21384d827d1293ba411f5a8b0aab49ba5f294bcb91b866f4eeecfe359a46b5e5",
+          "pair_id": "4d30da1e5b81423dbf5a7af18963f3db5221fc16be6d8842c05b7194317941ba",
+          "ordinal": 77,
+          "framing": "near_full",
+          "planned_record_sha256": "3aa4d1da095a3c998c169a0964156198c5b39d95bd28333ef9f13c3a030b0ef8"
+        },
+        {
+          "sample_id": "ae30187ecd365500e54141ac624f1917ab984d2b721bfc818ff454c05e7c8688",
+          "pair_id": "844a3ba11f6d41c262f5d99edd8b2035fd94a92699b0bfa4d46cdf23393de3f5",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "6a79c549ae3eaa2f5fc3addc6a9c24fa13d4a83cdfec2560f0befaa4b96b12a0"
+        },
+        {
+          "sample_id": "ad4ad25e3398b9446172353e41639c03ef448505b3bd467da8430792bffc28e9",
+          "pair_id": "8a5702e2ed9f000a8028c20661a032513ee1c36d955bc10f338c16149caeabe6",
+          "ordinal": 92,
+          "framing": "partial",
+          "planned_record_sha256": "dd287399f71781d6f24af78eb23fdb998d44a2cde39b91dbb3f8deb047350ac6"
+        },
+        {
+          "sample_id": "0a3ac5a9c010930e35ee47c15c68f7c46cbb8c04a8080e705efef38b2a72a298",
+          "pair_id": "c8177ac40f4b31d6a294d8366fd95ff31372b51fb1bba56ed2adcff428b929b1",
+          "ordinal": 120,
+          "framing": "partial",
+          "planned_record_sha256": "87a875165004fb01f118a8bade80deff3abd15958d571cdc591ad25567b36e16"
+        },
+        {
+          "sample_id": "5d3ae815c020facb36188638ad5c7e0e134cc37303260469357e6987593ea71e",
+          "pair_id": "b7da05c618d673a4cb926bb533f5ef2403b258173c33968b83dcc9b558f5826e",
+          "ordinal": 99,
+          "framing": "partial",
+          "planned_record_sha256": "37e874e1258cbb42129c9ee56e9823e3e0537968b2086bacdc73c13462fe22b1"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B01",
+      "strata": {
+        "full": {
+          "geometry_population": 586,
+          "sampled": 4,
+          "population_per_sample": 146.5
+        },
+        "near_full": {
+          "geometry_population": 350,
+          "sampled": 4,
+          "population_per_sample": 87.5
+        },
+        "partial": {
+          "geometry_population": 1950,
+          "sampled": 4,
+          "population_per_sample": 487.5
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "78f65f69671716bc1b9df31e3d302b67b7e77650dfec95d28838ce75f1b277ff",
+          "pair_id": "ab819df1c18763c280c846546eb569c286ecbb885943cf8a15c099e8e0485aad",
+          "ordinal": 125,
+          "framing": "full",
+          "planned_record_sha256": "f46a2098da28a2e5b737a70f3c93371216e65de2adf7442b113d7d08fa432e83"
+        },
+        {
+          "sample_id": "f5713d4222552e2158f9fe7a7b1092cd618130a3ede0698f2e05df149f5d38ae",
+          "pair_id": "656843d785aeae00c0bb9732127b93e5680794a0e92cc80a48c493c06c4a5e89",
+          "ordinal": 105,
+          "framing": "full",
+          "planned_record_sha256": "d93d3c069e729ef4105bc22ca284289aca492bff13212087f98406bb33a24931"
+        },
+        {
+          "sample_id": "33bdd6ecb7203aee7c3677d33f1a922250c7000999447b5d2932dd14f55cb03b",
+          "pair_id": "f3913f52273c7dadc759a9a49f7ab10ad6bd04e6f14e70cf8b84b495ca7a0050",
+          "ordinal": 63,
+          "framing": "full",
+          "planned_record_sha256": "a4079f8e93b4a30f52bccc5d58b71aea10296118971522835755d8c702fc760e"
+        },
+        {
+          "sample_id": "73f50a2e8b6daead874ce1a3068f4bb770d91cbcb1b4c908018683b7beb8dee0",
+          "pair_id": "468e3dea0d2413fed8bd7741627698ab3fe68b6ae6af54e5b9066bb0a8da03b8",
+          "ordinal": 123,
+          "framing": "full",
+          "planned_record_sha256": "b9defc1a6bf0f56a6fae1dbda948b66cd8a85ec642592629b360cd9ee7544b72"
+        },
+        {
+          "sample_id": "40226a8364f04be431b1ecddfc6159433852362e6369f8c5e5430cbcbbdc6f58",
+          "pair_id": "19ff9d0e027c2405a6640d501052edbee679a16cb57d6687202f5eb1b1aff884",
+          "ordinal": 74,
+          "framing": "near_full",
+          "planned_record_sha256": "052176d93e4ea36c93c931fba416796eafe0f6517e2addec95a4ba1d9259703e"
+        },
+        {
+          "sample_id": "46152cd3e0fe95e2e504cf8448ec96dfa5f718817018ca8006e6e23ccdbff4b8",
+          "pair_id": "a817167b41082c1110a1933c0da7d6e9694559996b5736cb25c57923371b05c9",
+          "ordinal": 97,
+          "framing": "near_full",
+          "planned_record_sha256": "5a8f1d3926bcbafaf1e35acac0b980777f8e9e16ba8374a51a6045ea434f5f78"
+        },
+        {
+          "sample_id": "3bf7c79304f83535e497ddcbc5025f92c7b59ca55ad5f91fdb8bbf659b730ab8",
+          "pair_id": "48c32d61b551495376410798d0655693d2e4368d396f4ce2f68b2bccb3574c2e",
+          "ordinal": 122,
+          "framing": "near_full",
+          "planned_record_sha256": "9d5382d4ef9240ed78d1ef0d9bda4724a8c74b97c985065660a769f78657e50a"
+        },
+        {
+          "sample_id": "8a47f4bf785ecad4fad77431eb7aa912a260209ac51ea529949417ffe49b0f78",
+          "pair_id": "4398d54dbd547bef44eaa72f2cc071478f3fda7af9629f4b88480267f672d34a",
+          "ordinal": 13,
+          "framing": "near_full",
+          "planned_record_sha256": "ede8d725fbd1f16f8cec0629bce9886d6d5f3cb9f7884b837967cbf32e2103ea"
+        },
+        {
+          "sample_id": "092b89ff928cbfddd9af9b192a0661b7ead0683e3d6ef920c14aadde1a0c70a9",
+          "pair_id": "65c83edd5e960d41ea43243341b40565d7b88da59e82c8cf6b87d0f98e969454",
+          "ordinal": 15,
+          "framing": "partial",
+          "planned_record_sha256": "5e36c88f2b3e3c462d407158d6f4893670024447a2e8bdb086f3832f2526a9dd"
+        },
+        {
+          "sample_id": "a9e0bf082b619d8654d03356edda83f8eb44918c1ef80da6f476d61e0e155ef5",
+          "pair_id": "d798c45c334d7aec5a462d287fd6fbbd0ceb597364501559a402c47cc3d40223",
+          "ordinal": 32,
+          "framing": "partial",
+          "planned_record_sha256": "7caa2ded2445891f28a4c731a4b561c4aadc6ae13c52964007e4a445c9a5ada6"
+        },
+        {
+          "sample_id": "a79be0ce9566684622553eb039ae8beef4de14f4568c073f1a00c090e7512e4f",
+          "pair_id": "65dc0b5abcbf3600c27afe6466ab73572ca3f390a6980a76942c953b0528999e",
+          "ordinal": 30,
+          "framing": "partial",
+          "planned_record_sha256": "04b99a9e4358960a8444087ea3b26d3074e39c28175dff122cd91f4f2f1062f8"
+        },
+        {
+          "sample_id": "52819952bd74a2d116047f54a22ace7b2394026848181996f4fad1526a97451c",
+          "pair_id": "65dfe734da1bbacbb79939979735eda98650f9f7ee8fdc91526f7ffc7312dc09",
+          "ordinal": 55,
+          "framing": "partial",
+          "planned_record_sha256": "747fd5c34cead8fcd515bf4ed0abe2dad3fc9ea702f078684b526bf0f56efd09"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B02",
+      "strata": {
+        "full": {
+          "geometry_population": 58,
+          "sampled": 4,
+          "population_per_sample": 14.5
+        },
+        "near_full": {
+          "geometry_population": 195,
+          "sampled": 4,
+          "population_per_sample": 48.75
+        },
+        "partial": {
+          "geometry_population": 1641,
+          "sampled": 4,
+          "population_per_sample": 410.25
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "6b8be412ea1faddd0a39e579d2ac99c6f4a4319920f1932cb9408fb33059290c",
+          "pair_id": "0407c6b8abe2d007c11269072440ff960c2d170dde2ccd7cca06cb67e89d42ff",
+          "ordinal": 98,
+          "framing": "full",
+          "planned_record_sha256": "c8e52377b96ff706c5c9b17d94284a81cd5c8ecf37bf2cff2cc93e7c7b2810f3"
+        },
+        {
+          "sample_id": "0c3f80e29e5c8877f8c6d6ced1fbe847e68eedfc94aea1d629e3d7586ac9c9d6",
+          "pair_id": "7fba5e4ac4bbfad204cd1f66c7721298632e34dc3cd87ac8bad4913f4b4ead80",
+          "ordinal": 87,
+          "framing": "full",
+          "planned_record_sha256": "3a209f7fc84e5a586c988bfcb5a3e47d2da66b2bea5c9cee1a6bd47afbb51462"
+        },
+        {
+          "sample_id": "3275b1ab63e0b236d04fbd8c90b70a95118381ff396514f249a3d3bb9aba69ec",
+          "pair_id": "cf7f40c0a896aaeaa22a83ec73c26cea6c8c1a5477063e4ec8628473a18e6aed",
+          "ordinal": 98,
+          "framing": "full",
+          "planned_record_sha256": "d31dc9225709ea00efb123ad599406f1095ceffa9626ebc6a08e4d411a6d56c5"
+        },
+        {
+          "sample_id": "3c05e9dfa96b1cea52241f70adced403eea4d5a569ddb3b781c8290bc5ab8a85",
+          "pair_id": "0436b5be06b57c2d2146e612d86c76f3a1518b9ebae7ef9c735f726b6fde66bd",
+          "ordinal": 98,
+          "framing": "full",
+          "planned_record_sha256": "c8d00c26113c21a1e1fa21e74af96acc238af5d54d7d81262034e0d0b74b4d1e"
+        },
+        {
+          "sample_id": "f558193ffe06719c3aec1e1a68bbd1ca529e65513f9f4a18e5a96d54cef126d7",
+          "pair_id": "844acc07fa44823d7aa28eb8b818caee04ec31183fe872f2f18950b0a51232ba",
+          "ordinal": 102,
+          "framing": "near_full",
+          "planned_record_sha256": "f153278de19382e1efba8a0abc19201de933393999b9e3b13aff8e4f5fba5ed1"
+        },
+        {
+          "sample_id": "220dc19540d66845b3b9c6359c70f9474299d5c962252240770a349a0a54d759",
+          "pair_id": "3db8aba05839d250f6effbc6a4b0971a6a38feff7f4a3148ffe04610731dad3a",
+          "ordinal": 48,
+          "framing": "near_full",
+          "planned_record_sha256": "7c204371841209ce85edd1a4b86b5fc410318bfe1000164b441799825a5e7b3b"
+        },
+        {
+          "sample_id": "824c04a18311877ca743f078aed2ec39d2907b1c3d6ecb3f60a4b5184e7d6311",
+          "pair_id": "aab9e232971d04ff53782dd9e5ad5d9d6340b624deb121176cf868797ed95553",
+          "ordinal": 103,
+          "framing": "near_full",
+          "planned_record_sha256": "5e4479a818412cb31724a44af46122925ea1a1be111be9090634fcddf5ddb930"
+        },
+        {
+          "sample_id": "7f5776e11d9eb9dfe49a76348eae42703f6d51418971ca8e604c845f40cb37bb",
+          "pair_id": "ca4fa762c13ebe4108210e540cb6c79bb55db8e4fcd5454445bcd7ed2f72475a",
+          "ordinal": 108,
+          "framing": "near_full",
+          "planned_record_sha256": "76c5bed9713c4107b050e94ed80461d5da457d4bc43665fcbb2a378a1bf80084"
+        },
+        {
+          "sample_id": "dce36c3ac1f78ff72961438536f494339ec6632d72200869685ed2612c565986",
+          "pair_id": "5c5711425f3f831bbde3c961f4ca11b84de46694aa9d42886508d84f74f9724b",
+          "ordinal": 124,
+          "framing": "partial",
+          "planned_record_sha256": "eb065895bb4c7912ce4622bc7a92fc80fcdfd35941430a5b498ca0f511525e88"
+        },
+        {
+          "sample_id": "7024966a78f4201d5cb39a99dcc0bc49fafb2410a1a360eaefb3f8e63e813318",
+          "pair_id": "167046a92a2e42f3533ca90f8a2cc66dde9b0dc6c34195ab94810f8a1c952dbe",
+          "ordinal": 20,
+          "framing": "partial",
+          "planned_record_sha256": "f9aff5e1d9c7a3c2c7060866fe68d79cc30aa985de757d0ca07a31b9126cd960"
+        },
+        {
+          "sample_id": "5c09480598c6d32a3dceb9f0ea1c05b323564737cd24d1d147796057f8a37a5b",
+          "pair_id": "3eeb56abd2316f149ae6881b371195e6ac1816ce52bcd98f7c5fcea1c43a80ae",
+          "ordinal": 77,
+          "framing": "partial",
+          "planned_record_sha256": "a1db2f1b0adcd6390b4d5f369cd0ae65eafe05ac1c8957b51ea2f69466cdd03b"
+        },
+        {
+          "sample_id": "38fa67656f01c6db9b43b9f684ee322c0d11289a847d1399bd358a1ca21fa5ca",
+          "pair_id": "5e99f4679f325521220a1dc41026169f279c9c118732128d79f0cc11c7589b13",
+          "ordinal": 28,
+          "framing": "partial",
+          "planned_record_sha256": "f9c6ddc2785dce7635408594389e986a62478f6cc05e73d9b4548e5f52e85ca3"
+        }
+      ]
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B03",
+      "strata": {
+        "full": {
+          "geometry_population": 28,
+          "sampled": 4,
+          "population_per_sample": 7.0
+        },
+        "near_full": {
+          "geometry_population": 126,
+          "sampled": 4,
+          "population_per_sample": 31.5
+        },
+        "partial": {
+          "geometry_population": 1564,
+          "sampled": 4,
+          "population_per_sample": 391.0
+        }
+      },
+      "samples": [
+        {
+          "sample_id": "e985262085fcca10c4247affea034e931221b6db8c836af851749e1a7f9edabb",
+          "pair_id": "a0552be9c074ae05651eb845efb67cf17e46afe09ad8a2126606d70f4cc8fa35",
+          "ordinal": 6,
+          "framing": "full",
+          "planned_record_sha256": "ee16988ee9851348adbfc2868fa932abc357f753761d0c47ce1d4842f16d799e"
+        },
+        {
+          "sample_id": "dc9093e1406217f0715b7e9ba77926fe012ee62071e6a23fa4f6b3d47c55679d",
+          "pair_id": "f6cf40651e9767d138de7851ed8c8ae1ee0f843351feaa71709cba60c472fc8c",
+          "ordinal": 25,
+          "framing": "full",
+          "planned_record_sha256": "00f7055e3c72f3900d810eed6196717fd5066a0180ea00a8f5d0c34685526a61"
+        },
+        {
+          "sample_id": "9b3e9a356be92c52b886abef29fa65775e2562f819c6497b7fbf64bf2896c55b",
+          "pair_id": "17fb8b21171ef5e52f9ae28db6e3ec91e5ae34f9e144f30861110bf1272e8e06",
+          "ordinal": 51,
+          "framing": "full",
+          "planned_record_sha256": "5e6ebd4efd75b45a48ce0918bf0209ba27e7c6ab4a90d2e65d2b5e089e48646b"
+        },
+        {
+          "sample_id": "0f958fea61cdbbc067eb41075118209a136288cdc1ace2cbd0ec16f17b7b4b6c",
+          "pair_id": "22b10ce5397cbd0ee5202f82a5d75895b43fec9bd724ebf629e3ac704e5c17aa",
+          "ordinal": 101,
+          "framing": "full",
+          "planned_record_sha256": "2d7f0d963fb2c7e7bad4feaae990bb4e1ecc130752f73c4c24fcdf2dc4de4561"
+        },
+        {
+          "sample_id": "d03a12ed02995fc9ee2e4f2b0d0f875bc4cd0f31ee8430c2b9b82f7eaebce856",
+          "pair_id": "5e4fdf1fab60f5a7bb8da2a316a5054f324ccd5db72d81b3565bf8a0724b3f6b",
+          "ordinal": 82,
+          "framing": "near_full",
+          "planned_record_sha256": "de4ed4dc62904327888f9d73d4677e8484f9dd07c45b86c94f1f55e726fbb746"
+        },
+        {
+          "sample_id": "aa0f5aabce44fd43913bd43510c1218c7867c1a962d99c244a636d7a3ef0cd2b",
+          "pair_id": "aeb7c7563578a99c369b419bf05bc86e15f63a70e2bcbd1e77e37061874acc1e",
+          "ordinal": 14,
+          "framing": "near_full",
+          "planned_record_sha256": "c5594448b6fc72b456d375e6a18899bb0cd086c970577cf3934d273d549ddc76"
+        },
+        {
+          "sample_id": "28b243bc4b9f76e6f81d84fab84bd989c0fa2796ff77a77edb81bcdc109bd106",
+          "pair_id": "229528407fb589c8f174b95a78d009335f2b5976466c0d2a83dd1901bcb10856",
+          "ordinal": 67,
+          "framing": "near_full",
+          "planned_record_sha256": "613b56c4975e064b71e777dfe27dd416c23ff053230e4cb7dcae1a7b24676335"
+        },
+        {
+          "sample_id": "3308671ba5506aefc7b61f9e56e5ab8b5c46fa6748431faabda4d4eeb3a630f9",
+          "pair_id": "a4fad7223ef2e414440d2eece158a657b4c0871ce6b189cc66e6027fd6784eab",
+          "ordinal": 25,
+          "framing": "near_full",
+          "planned_record_sha256": "ecf4bf6aadfcd20030cd017c99df589f7a41eba26afbcbcde1bd1aebef5e6330"
+        },
+        {
+          "sample_id": "b3af733bd75ac6a00c3a5087cea076502d1b745ebfd9d6c53043094180cd50be",
+          "pair_id": "e155b6969e3816e551912453a4b2674ba102e0c77155f6ed50271b6e0f6e72f1",
+          "ordinal": 45,
+          "framing": "partial",
+          "planned_record_sha256": "70ed182547a6554e3f9b084e1109229017e1d4ba41a4ce08866d432bf476c75f"
+        },
+        {
+          "sample_id": "7fa7a5aafdf93b58176a1580b94319b8c00eb0abb7618a6c3efc19e53a9adceb",
+          "pair_id": "9c7feab44777b235490bf60687558bf88761bb29bde437e9701a913ad74ef1ee",
+          "ordinal": 93,
+          "framing": "partial",
+          "planned_record_sha256": "0e6bd69733dd680c34c15fc4e8fe4de272cdc54e06823274c2c2dccf70f9720d"
+        },
+        {
+          "sample_id": "f279357f192feeecb4608bf6294b3915ac1560162ab800addd9363e244b70656",
+          "pair_id": "0351eaeeff18ca97bc2f6c41737832b156e44820c14d5b08055699874cf31c2e",
+          "ordinal": 28,
+          "framing": "partial",
+          "planned_record_sha256": "c353882734c75dd94f09e0b5e52096bf608f57a7fe3d44fdd4f26951b56b7184"
+        },
+        {
+          "sample_id": "f590bd3e9abe6a68b4c59e9e03210c3722a4cb56906da00d0b56a6676ea2b10d",
+          "pair_id": "ccf7c1d77eb7e975192f1ffc60c5174180149b41e77c88a157aa3d8ec8f0ddef",
+          "ordinal": 21,
+          "framing": "partial",
+          "planned_record_sha256": "c51a67ea350ef450ac8384d390ff55c1e1cf9e6c41ea1562115f9fe3613d8b08"
+        }
+      ]
+    }
+  ],
+  "selection_sha256": "1684f5f916730c25f24014e91bf2a62c368abf09ee8efbc22ad6283ae014b66c"
+}

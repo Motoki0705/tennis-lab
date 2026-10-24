@@ -1,0 +1,102 @@
+{
+  "setup-retry": {
+    "argv": [
+      "bash",
+      "-lc",
+      {
+        "body_file": "colab_setup.sh"
+      }
+    ],
+    "cwd": null,
+    "persist": [
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/setup"
+    ],
+    "runner_outputs": [],
+    "job_id": "setup-retry",
+    "execution_backend": "notebook_kernel",
+    "kernel_timeout_seconds": 86400
+  },
+  "generation": {
+    "argv": [
+      "bash",
+      "-lc",
+      {
+        "body_file": "colab_generation_job.sh"
+      }
+    ],
+    "cwd": null,
+    "persist": [
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/evidence",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/scripts",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/framing",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/review",
+      "outputs/court_detection/evaluate/real-video-split-v1/s42"
+    ],
+    "runner_outputs": [],
+    "job_id": "generation",
+    "execution_backend": "notebook_kernel",
+    "kernel_timeout_seconds": 86400
+  },
+  "training-evaluation": {
+    "argv": [
+      "bash",
+      "-lc",
+      {
+        "body_file": "colab_training_job.sh"
+      }
+    ],
+    "cwd": null,
+    "persist": [
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/evidence",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/scripts",
+      "outputs/court_detection/evaluate/court-scale-pilot-val/s42",
+      "outputs/court_detection/evaluate/court-scale-pilot-test/s42"
+    ],
+    "runner_outputs": [
+      "outputs/court_detection/train/court-scale-pilot-l4/s42"
+    ],
+    "job_id": "training-evaluation",
+    "execution_backend": "notebook_kernel",
+    "kernel_timeout_seconds": 86400
+  },
+  "training-evaluation-resumed": {
+    "argv": [
+      "bash",
+      "-lc",
+      {
+        "body_file": "colab_training_resumed.sh"
+      }
+    ],
+    "cwd": null,
+    "persist": [
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/evidence",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/scripts",
+      "outputs/court_detection/evaluate/court-scale-pilot-val/s42",
+      "outputs/court_detection/evaluate/court-scale-pilot-test/s42"
+    ],
+    "runner_outputs": [
+      "outputs/court_detection/train/court-scale-pilot-l4/s42"
+    ],
+    "job_id": "training-evaluation-resumed",
+    "execution_backend": "notebook_kernel",
+    "kernel_timeout_seconds": 86400
+  },
+  "final-evidence": {
+    "argv": [
+      "bash",
+      "-lc",
+      {
+        "body_file": "colab_final.sh"
+      }
+    ],
+    "cwd": null,
+    "persist": [
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/evidence",
+      "outputs/synthetic_data_generation/profile/court-scale-pilot/scripts"
+    ],
+    "runner_outputs": [],
+    "job_id": "final-evidence",
+    "execution_backend": "notebook_kernel",
+    "kernel_timeout_seconds": 86400
+  }
+}

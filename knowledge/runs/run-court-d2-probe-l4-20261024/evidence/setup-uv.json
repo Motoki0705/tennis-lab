@@ -1,0 +1,17 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    "uv",
+    "sync",
+    "--locked"
+  ],
+  "started_at": "2026-10-24T03:32:06.593614+00:00",
+  "wall_seconds": 27.390150722000044,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

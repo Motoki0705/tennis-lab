@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
 import tempfile
 import threading
+import time
+import urllib.error
+import urllib.request
 from collections.abc import Iterable, Sequence
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
@@ -239,6 +245,105 @@ class RcloneBackend:
         if not isinstance(value, dict):
             raise DriveToolError("rclone returned an unexpected stat response.")
         return value
+
+
+class RcloneSession:
+    """One authenticated, loopback-only rcd process for a bounded operation.
+
+    This is only a transport: callers still own path/identity/content checks.
+    It neither reads credentials nor invokes core/command (which starts another
+    rclone process). Close the session on success and on every failure path.
+    """
+
+    def __init__(self, backend: RcloneBackend) -> None:
+        self.backend = backend
+        self.process: subprocess.Popen[bytes] | None = None
+        self.resources = ExitStack()
+        self.errors = self.resources.enter_context(tempfile.TemporaryFile())  # noqa: SIM115
+        user, password = secrets.token_hex(16), secrets.token_hex(32)
+        self.authorization = (
+            "Basic " + base64.b64encode(f"{user}:{password}".encode()).decode()
+        )
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        try:
+            self.process = subprocess.Popen(
+                backend.command(
+                    [
+                        "rcd",
+                        "--rc-addr",
+                        "127.0.0.1:0",
+                        "--rc-no-auth=false",
+                        "--rc-web-gui=false",
+                        "--log-level",
+                        "NOTICE",
+                    ]
+                ),
+                env={**os.environ, "RCLONE_RC_USER": user, "RCLONE_RC_PASS": password},
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=self.errors,
+            )
+            deadline = time.monotonic() + min(backend.timeout, 15)
+            while time.monotonic() < deadline:
+                match = re.search(
+                    rb"Serving remote control on (http://127\.0\.0\.1:[0-9]+/)",
+                    os.pread(self.errors.fileno(), 65536, 0),
+                )
+                if match:
+                    self.url = match[1].decode()
+                    self.call("rc/noop")
+                    return
+                if self.process.poll() is not None:
+                    break
+                time.sleep(0.02)
+            raise DriveToolError(
+                "rclone session did not become ready; diagnostics withheld"
+            )
+        except BaseException:
+            self.close()
+            raise
+
+    def call(self, endpoint: str, **parameters: Any) -> dict[str, Any]:
+        if self.process is None or self.process.poll() is not None:
+            raise DriveToolError("rclone session is closed or exited")
+        request = urllib.request.Request(
+            self.url + endpoint,
+            data=json.dumps(parameters).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": self.authorization,
+            },
+            method="POST",
+        )
+        try:
+            with self.opener.open(request, timeout=self.backend.timeout) as response:
+                value = json.load(response)
+        except (OSError, urllib.error.URLError, ValueError):
+            # RC responses can include backend configuration; never relay them.
+            raise DriveToolError(
+                f"rclone session {endpoint} failed; diagnostics withheld"
+            ) from None
+        if not isinstance(value, dict):
+            raise DriveToolError("rclone session returned an unexpected response")
+        return value
+
+    def close(self) -> None:
+        if self.process is not None:
+            if self.process.poll() is None:
+                self.process.terminate()
+                try:
+                    self.process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait()
+            self.process = None
+        self.resources.close()
+
+    def __enter__(self) -> RcloneSession:
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
 
 
 def _relative_output_path(start_path: str, item_path: str) -> str:

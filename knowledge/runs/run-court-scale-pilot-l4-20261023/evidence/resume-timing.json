@@ -1,0 +1,24 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.synthetic_data_generation.scripts.generate_court_scale",
+    "render-colab",
+    "--output-root",
+    "tmp/court-scale-pilot-resumed",
+    "--request-sha256",
+    "0e4a507a63382d2df1ab40e1294d943317665f219d2e631b32a8888ab2ea0350",
+    "--drive-path",
+    "data/synthetic_data_generation/court-scale/pilot-l4-20261023-dc5c253"
+  ],
+  "started_at": "2026-10-23T14:40:04.211922+00:00",
+  "wall_seconds": 1942.9309661260004,
+  "returncode": 0,
+  "sampled_gpu": true,
+  "gpu_samples": 3698,
+  "gpu_peak_used_mib": 742,
+  "gpu_utilization_mean_percent": 0.8434288804759329,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

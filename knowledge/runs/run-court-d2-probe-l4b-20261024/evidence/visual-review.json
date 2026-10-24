@@ -1,0 +1,88 @@
+{
+  "schema": "court_d2_visual_review_v1",
+  "contact_sheets_reviewed": 16,
+  "raw_overlay_pairs_reviewed": 192,
+  "native_cases_reviewed": 8,
+  "native_cases": "native-cases.json",
+  "videos": [
+    {
+      "file": "B00-all-raw-overlay.mp4",
+      "frames": 48,
+      "fps": 2,
+      "codec": "h264",
+      "width": 1280,
+      "height": 400,
+      "sha256": "5a7a7a94b22b83d1b1500bccedb6fca7aa581a86e2cfd3d4932bc6692a693311",
+      "temporal_trajectory": false
+    },
+    {
+      "file": "B01-all-raw-overlay.mp4",
+      "frames": 48,
+      "fps": 2,
+      "codec": "h264",
+      "width": 1280,
+      "height": 400,
+      "sha256": "164ce6010480f5548342b7440d434b9b7311e3ec1f59e4d71276e4dfab5eae64",
+      "temporal_trajectory": false
+    },
+    {
+      "file": "B02-all-raw-overlay.mp4",
+      "frames": 48,
+      "fps": 2,
+      "codec": "h264",
+      "width": 1280,
+      "height": 400,
+      "sha256": "73d07d50f8e7080af8a3f84fcd9214937e788ca639cb83220c18574a25c421c4",
+      "temporal_trajectory": false
+    },
+    {
+      "file": "B03-all-raw-overlay.mp4",
+      "frames": 48,
+      "fps": 2,
+      "codec": "h264",
+      "width": 1280,
+      "height": 400,
+      "sha256": "b133eff344fbe0249982ba31c4d052dfb0cd9b848598bd99480e0f6fec5e8f6c",
+      "temporal_trajectory": false
+    }
+  ],
+  "observations": [
+    {
+      "scene": "B00",
+      "observation": "現条件の近接・低視点にも地面と白線のぼけがある。hull外の全面例では前景・側方フェンスが大きく伸び、alpha<0.9=0でも不鮮明な例が残る。",
+      "native_cases": [
+        1,
+        2
+      ]
+    },
+    {
+      "scene": "B01",
+      "observation": "4候補ともコートの輪郭と白線を追える全面例がある。一方、地面やネット・木のぼけは残り、D2変更による画質改善とは断定しない。",
+      "native_cases": [
+        3
+      ]
+    },
+    {
+      "scene": "B02",
+      "observation": "current/wide125の幾何母集団にはfullが無い。hull25系はfullを得るが、hull外例に建物・フェンスの大きなghost/伸びがある。組合せ候補にも画面上部・周縁のぼけが残る。",
+      "native_cases": [
+        4,
+        5
+      ]
+    },
+    {
+      "scene": "B03",
+      "observation": "全候補に暗いコートと薄い線・地面のぼけが残る。currentのalpha診断最悪例と組合せ候補のfull/partialを原寸で確認し、QA PASSを画質合格とは扱わない。",
+      "native_cases": [
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "interpretation": [
+    "幾何full、D5採択、視覚的な画質は別の観測。手動の再採択・除外・補充や新しいQA閾値は導入しない。",
+    "候補間は同じcameraの対応比較ではなく、固定prefixと写り方層から選んだ別の視点集合。ぼけや明るさの差をD2単独の因果効果とは呼ばない。",
+    "画像の明るさ補正や鮮鋭化をせずに確認した。4本の動画は独立視点のスライドショーで、連続軌道の滑らかさは測っていない。"
+  ]
+}

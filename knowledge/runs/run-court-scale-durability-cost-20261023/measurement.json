@@ -1,0 +1,46 @@
+{
+  "schema": "court_scale_drive_read_cost_v1",
+  "started_at": "2026-10-23T12:46:01.120221+00:00",
+  "finished_at": "2026-10-23T12:48:22.648446+00:00",
+  "checkout_commit": "1eedc16ac23418eefd88dfb7dbfc9dfb7bae1211",
+  "probe_host": "local CPU; not Colab",
+  "drive_path": "data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8",
+  "cache_key": "dd7b0571cf27bb778f6e08a4dfe03165a8d3ac9cde1e0641d673139dc4fbfd1f",
+  "archive_bytes": 890880,
+  "receipt_seconds": 88.18260232399916,
+  "archive_restore_seconds": 59.39676435900037,
+  "receipt_equals_recorded": true,
+  "restored_file_count": 6,
+  "rclone_processes": 44,
+  "categories": {
+    "copyto": {
+      "count": 2,
+      "seconds": 18.020376066997414,
+      "median_seconds": 9.010188033498707
+    },
+    "lsjson": {
+      "count": 4,
+      "seconds": 17.162544204002188,
+      "median_seconds": 4.167988763001631
+    },
+    "resolve_listing": {
+      "count": 38,
+      "seconds": 110.77178000998538,
+      "median_seconds": 2.7580818615024327
+    }
+  },
+  "listed_parent_counts": {
+    "gdrive:": 5,
+    "gdrive:tennis_lab": 5,
+    "gdrive:tennis_lab/data": 5,
+    "gdrive:tennis_lab/data/synthetic_data_generation": 5,
+    "gdrive:tennis_lab/data/synthetic_data_generation/court-scale": 5,
+    "gdrive:tennis_lab/data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8": 5,
+    "gdrive:tennis_lab/data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8/receipts": 3,
+    "gdrive:tennis_lab/data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8/receipts/caches": 3,
+    "gdrive:tennis_lab/data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8/objects": 2
+  },
+  "tracer_sha256": "13e918167a0bcc0551f99163d7b8221fd6b573187b56aa1df6cf265bf2014a14",
+  "http_request_count": null,
+  "http_request_count_reason": "No credential/header logging; rclone can perform multiple HTTP calls per process."
+}

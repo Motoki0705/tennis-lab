@@ -1,0 +1,27 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "quota"
+  ],
+  "started_at": "2026-10-24T04:40:51.108965+00:00",
+  "wall_seconds": 1.6959113660122966,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "action": "quota",
+    "remote_root": "gdrive:tennis_lab",
+    "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+    "observed_at": "2026-10-24T04:40:52.788250+00:00",
+    "scope": "account",
+    "bytes": {
+      "total": 5497558138880,
+      "used": 876145583904,
+      "trashed": 150427195176,
+      "other": 34799862912,
+      "free": 4586612692064
+    }
+  },
+  "stderr": ""
+}

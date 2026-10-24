@@ -1,0 +1,21 @@
+{
+  "schema": "court_d2_probe_persistence_recovery_v1",
+  "render_executions": 1,
+  "nht_requested_cameras": 192,
+  "render_process_returncode": 0,
+  "initial_job_status": "save_failed",
+  "initial_failure_stage": "periodic_save",
+  "initial_error": "rclone command could not complete: copy",
+  "configured_rclone_timeout_seconds": 600,
+  "cause_interpretation": "600秒制限によるcopy timeoutが有力。ArtifactStoreはOSError/TimeoutExpiredを同文にまとめるため元例外の区別は保存されていない。",
+  "partial_inspections": [
+    "drive-output-live-inspect.json",
+    "drive-output-later-inspect.json"
+  ],
+  "save_command_receipt": "render-save.json",
+  "final_status": "completed",
+  "drive_saved_at": "2026-10-24T05:26:17.602583+00:00",
+  "render_retry_performed": false,
+  "raw_arrays_retained_on_drive": 192,
+  "stopped": true
+}

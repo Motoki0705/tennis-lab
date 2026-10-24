@@ -1,0 +1,39 @@
+{
+  "schema": "court_d2_l4_run_v1",
+  "session": "court-d2-probe-l4-20261024t032852z",
+  "pushed_commit": "4916def72d0b46728572006d7fbb19076460ec02",
+  "output_root": "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4-20261024t032852z",
+  "selection_path": "knowledge/runs/run-court-d2-support-cpu-20261024/render-selection.json",
+  "planned_render_frames": 192,
+  "maximum_total_render_attempts": 200,
+  "automatic_render_retry": false,
+  "training_runs": 0,
+  "submitted_render_budget": 192,
+  "uncertain_attempt_policy": "If VM or outcome is lost, charge all 192; never auto retry.",
+  "outcome": "failed_before_first_nht_call",
+  "issue": 1356,
+  "parent_issue": 1343,
+  "completed_frames": 0,
+  "nht_render_calls": 0,
+  "qa_evaluate_calls": 0,
+  "budget_charged_frames": 12,
+  "remaining_stage_budget": 188,
+  "automatic_retry_performed": false,
+  "production_recipe_changed": false,
+  "source_changes": [],
+  "colab_stop_receipt": "evidence/stop.json",
+  "post_stop_doctor": "evidence/doctor-after-stop.json",
+  "failure_summary": "evidence/failure-summary.json",
+  "conditional_costs": "evidence/setup-only-costs.json",
+  "pending": [
+    "Parent decides how to account for 12 charged prepared frames versus zero NHT calls before authorizing any repeat of the same 192 frozen views.",
+    "Use an absolute shared temporary root in a new run adapter, preserving the previous run. No src change is needed for this diagnosed contract failure.",
+    "L4 QA, appearance, acceptance and JPEG-size comparison; then D2/max/U/seed/scene supplement decisions remain outstanding."
+  ],
+  "prepared_but_not_executed": [
+    "collect_probe.py (uploaded only)",
+    "analyze_probe.py",
+    "update_costs.py (old-input CPU fixture only)",
+    "make_examples.py"
+  ]
+}

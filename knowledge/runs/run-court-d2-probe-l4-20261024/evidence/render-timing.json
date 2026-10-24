@@ -1,0 +1,26 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "cProfile",
+    "-o",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4-20261024t032852z/profile.pstats",
+    "knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+    "--selection",
+    "knowledge/runs/run-court-d2-support-cpu-20261024/render-selection.json",
+    "--asset-root",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+    "--output",
+    "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4-20261024t032852z/probe"
+  ],
+  "started_at": "2026-10-24T03:51:19.560030+00:00",
+  "wall_seconds": 284.178855959,
+  "returncode": 1,
+  "sampled_gpu": true,
+  "gpu_samples": 541,
+  "gpu_peak_used_mib": 0,
+  "gpu_utilization_mean_percent": 0.0,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

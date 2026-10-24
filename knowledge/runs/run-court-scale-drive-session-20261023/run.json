@@ -1,0 +1,31 @@
+{
+  "schema": "court_scale_drive_session_run_v1",
+  "scope": "local CPU storage replay only; no new generation, training, evaluation, GPU or Colab session",
+  "code_commit": "74900149c6d963e32ca85ddea4c77e80743c624f",
+  "baseline_commit": "174ebef9cbf2876f602408f8de77964f45aba098",
+  "command": "bash knowledge/runs/run-court-scale-drive-session-20261023/repro.sh tmp/court-drive-session-benchmark data/synthetic_data_generation/court-scale/transport-session-20261023-74900149c data/synthetic_data_generation/court-scale/transport-baseline-20261023-74900149c",
+  "source_sha256": {
+    ".agents/skills/tennis-drive/scripts/drive_core.py": "5f9e56d1ecddda117ffa5008da807bdb7ddf780b1be21af5582ec486cdb8df31",
+    "src/synthetic_data_generation/dataset/court/scale/drive_folders.py": "fb58a411e689a2df1d13073844c75e4d1f4500d6c55d139faf3f8cd1f6a6fd26",
+    "src/synthetic_data_generation/dataset/court/scale/durable_storage.py": "f0986308b24dd5274c92bc685beb5ee99a596390e2bd00f3d2c7efeb3d754830",
+    "src/synthetic_data_generation/dataset/court/scale/durability.py": "875388275b150177b35f8f32d4f3077fe2e985e3232fbfbdd3d93af594cea461",
+    "src/synthetic_data_generation/scripts/generate_court_scale.py": "1f8be71bb5119e2305258e651636f57b8b34bfcf0c3ca659c188acae3011c33d"
+  },
+  "probe_source_sha256": {
+    "trace_process.py": "f2f95540614f15cea9c0226a2349717408633ac1f85de8c9bc23583098601ca0",
+    "analyze_measurement.py": "acdc4700ecec36320a8678dfe706356669e113d74c7cebb1391445fdd9ad4048",
+    "measure_transport.py": "dd93fe13527115716f308346ae84540bc891ff7565e648202a9292a1893b969e"
+  },
+  "existing_drive_assets": "read only",
+  "new_drive_outputs_retained": true,
+  "completed_recovery_fix": {
+    "commit": "1af7f201c483f551684329f896913b22d5d1f327",
+    "description": "Publication recovery after verified inputs avoids a second input restore on completed-condition resume.",
+    "timing_scope": "Not exercised by the transport replay; covered by CPU recovery regression.",
+    "durability_source_sha256": "f8591fe7005be303d6f47ea9a9d6bd73796d51dd0ef1f74e2e0041eb4d523e6d"
+  },
+  "analysis_command": ".venv/bin/python knowledge/runs/run-court-scale-drive-session-20261023/analyze_measurement.py --measurement knowledge/runs/run-court-scale-drive-session-20261023/measurement.json --output knowledge/runs/run-court-scale-drive-session-20261023/analysis.json",
+  "benchmark_returncode": 0,
+  "colab_started": false,
+  "gpu_execution": false
+}

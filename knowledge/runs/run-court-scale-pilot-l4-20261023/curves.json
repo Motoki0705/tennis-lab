@@ -1,0 +1,14 @@
+{
+  "event_path": "tmp/court-scale-pilot-local/tensorboard/events.out.tfevents.1792770262.813f7eb9cf2d.44745.0",
+  "event_sha256": "d37c71992eedc20d86e9da7f7361c84f3ea61d3e29c322734771ff27a64540af",
+  "tags": [
+    "train/loss",
+    "train/loss_kp",
+    "train/loss_seg",
+    "train/loss_line",
+    "train/loss_semantic_line",
+    "train/loss_direct_pose",
+    "lr-AdamW"
+  ],
+  "scope": "Per-update training losses and LR only. Real validation loss has a different supervision scope and is not plotted as a matching training objective."
+}

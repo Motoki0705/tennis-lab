@@ -1,0 +1,38 @@
+{
+  "collect_final.py": {
+    "executed_sha256": "b708a9967503b5f47026f1e1fd819a7508cccd63750e0b447efe9d1504149599",
+    "bundle_sha256": "622553df4ee2360483bf88f996b26ce307f39e345051c8f76819116cf46f41bf",
+    "equal": false,
+    "difference": "Only the local versions variable type annotation was added after execution to satisfy mypy; executable calls and values are unchanged."
+  },
+  "evaluate_framing.py": {
+    "executed_sha256": "216d040abe2e1973865ac4b39467b7c7ebf2b892c82bd86e93e31d2963e94098",
+    "bundle_sha256": "216d040abe2e1973865ac4b39467b7c7ebf2b892c82bd86e93e31d2963e94098",
+    "equal": true
+  },
+  "framing.py": {
+    "executed_sha256": "389610fd1e67ab6015485b102afb21fff0b4cb231d1d3c297cca0ee16764a1a8",
+    "bundle_sha256": "389610fd1e67ab6015485b102afb21fff0b4cb231d1d3c297cca0ee16764a1a8",
+    "equal": true
+  },
+  "profile_training.py": {
+    "executed_sha256": "991820278df702da13c442103000ac52598c76212f4fa64c5ddfdc4831e85246",
+    "bundle_sha256": "991820278df702da13c442103000ac52598c76212f4fa64c5ddfdc4831e85246",
+    "equal": true
+  },
+  "review_generation.py": {
+    "executed_sha256": "88a4225c126ae6e004827ff75c4e2e13915c68276b9214c33fd3cfdecd593d5e",
+    "bundle_sha256": "88a4225c126ae6e004827ff75c4e2e13915c68276b9214c33fd3cfdecd593d5e",
+    "equal": true
+  },
+  "summarize_training.py": {
+    "executed_sha256": "54305f66b3bd1c38b6998fbae8ae6b23074db996b500eb2d8d7d27243cbbbbf2",
+    "bundle_sha256": "54305f66b3bd1c38b6998fbae8ae6b23074db996b500eb2d8d7d27243cbbbbf2",
+    "equal": true
+  },
+  "timed_command.py": {
+    "executed_sha256": "6400e68b28ae7dfccdcd917dac4d242663c469041e3989a1857256ad6a55eb65",
+    "bundle_sha256": "6400e68b28ae7dfccdcd917dac4d242663c469041e3989a1857256ad6a55eb65",
+    "equal": true
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "court_step_checkpoint_retention_inspection_v1",
+  "requested_save_top_k": -1,
+  "callbacks": [
+    {
+      "filename": "update-{step:08d}",
+      "monitor": null,
+      "save_top_k": -1
+    },
+    {
+      "filename": "best-val-{step:08d}",
+      "monitor": "val/loss",
+      "save_top_k": 1
+    }
+  ],
+  "inspection_only_no_training": true,
+  "pilot_validation_events": 1,
+  "existing_drive_assets_modified": false,
+  "source_refs": [
+    "src/tasks/court_detection/scaling/training.py:39",
+    "src/tasks/base/training/artifact_store/checkpoint_io.py:49",
+    "src/utils/artifact_store/rclone.py:118"
+  ]
+}

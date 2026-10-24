@@ -1,0 +1,18 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "inspect",
+    "data/synthetic_data_generation/court-scale/pilot-l4-20261023-dc5c253"
+  ],
+  "started_at": "2026-10-23T15:26:55.244025+00:00",
+  "wall_seconds": 16.160733206999794,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

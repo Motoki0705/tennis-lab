@@ -1,0 +1,33 @@
+{
+  "schema": "court_d2_l4b_source_pins_v1",
+  "files": [
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/analyze_saved.py",
+      "sha256": "abaa7f2ea432516fadaf5b3c4e02711a4d9f3394fd65bec3d6d64d4caf69fc56"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/colab_render.sh",
+      "sha256": "7b8b00b39277a761809681b4add61e5bfecf59ee1a745c113956b0a80d975271"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/preflight.py",
+      "sha256": "ad8b428d8060cc3e3331b67019b2c79b46cd490129a1ee3edc9401bff0c4475b"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/render_absolute.py",
+      "sha256": "32ccd10c4f862fa83bc5177f3cfa08eadcb78d83117a2706d42b3b15d34b055e"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-probe-l4b-20261024/reprice_costs.py",
+      "sha256": "3f274a57295ccef86e5eb4cd5b2fc29021ec52d18adcdbd7e34460334e945df7"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-support-cpu-20261024/render-selection.json",
+      "sha256": "936e49d7c33ae763ff66f6fa07098303dc5e684f9aa6e658432e9af3876cc0a0"
+    },
+    {
+      "path": "knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+      "sha256": "0a56c997cd0c85c8fcecc1bf7da983faeeb6b927390e52f260458c1ccf542272"
+    }
+  ]
+}

@@ -1,0 +1,327 @@
+{
+  "schema": "court_d2_nht_submissions_v1",
+  "submitted_cameras": 192,
+  "invocations": [
+    {
+      "camera_ids": [
+        "73cc8239b925a1dfc7b9f5e973e7db98f0fdc14c1440723859a101e9d92a5b57",
+        "efd5c93d2ba21292cc87f3693a5b7196453d0045bb5d06d4e437128857576c84",
+        "65d126f1947e803741899b6a65063cc7305d94911fe54f36d8a772fdd4eced32",
+        "6987a7980a2fab4d3997f856957655a3e5ac36a4cacff670df97bc25cf18e40e",
+        "4152caea30e74c6263f3901f0acae2693d7dbb4519a382976dda2d4af17f6c50",
+        "d4d552e7b36418d55da7b8ec6932c6853ebed795ac162e40a0db57821a5f85ca",
+        "94c4ed9e4cea5f274c77807aefdcd0f9e935177aeeecf5153717b9b0fd3913d6",
+        "0838673f3802c5aa26fc7c3d53343d317de648b2ccfbde47ac8b74337f96f48a",
+        "ad0d73e480cd18e2dd9f2bd55ab1a1ab45d66ce9ff32ca5de66ff131fae4349f",
+        "7f17e70633d5ae38f57536b3f3e9aaf2c66ed00e5e75c2812fd16fa7a41e79ed",
+        "75a6410bc8ddf0f97bc797782077e566799eb2a1970dc3550e4b9e53bbe53b38",
+        "bcb9b810713bc92b54d3a3d6d09346ee4ae4aa2b785fff5e6b62a1bd23d9f6d6"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 7.735494160000144
+    },
+    {
+      "camera_ids": [
+        "1f499ef926a0384f7367fa563224128c136fc834f1956395ce539ce11af66e47",
+        "5a491842c147fea8cb852d8be4a342b8acf6643346c77559fda341dc24cce4ef",
+        "674fe881fe6428a16a0a3a915c0bae65d55cf60bf785fcd6722319167bc6a7e7",
+        "d8c1c6e75c1dcfe2244537db649d928ccafa47def0b42cb7c48b7646b5a6188f",
+        "8b4cc73dd4a389376e7c944ad6e9142a3768327f650e9a0d6215dfc2867a4fc2",
+        "b456f39d425a2f74eb4709e3637bf51bb40c5ea30a9c015dbbcb923a66c37265",
+        "0682b1387576eeddf18b913c753f2828ee82bf2a3098c5a5cf249dcb3461ca3f",
+        "00f25e2db75bb3f84817c82737b7e7f752d445b358f16831601109e8d4f1ebe0",
+        "d6ba20e329ea0431a77ea4667c52683fe0babd75f5d498c5ef42716e58bd2a72",
+        "586d4c5e04b1d333a2998c294b51f139259ec23e9843cd3197d6b75c9b7a0b56",
+        "cd777a3049db9bb5bf90b284bf79b06ee3cd0b881b72405609cd0cbef6f307a4",
+        "6767488d5a2cae1707b9740ed0cf15148ce94263987e3611f5a6ddd012988c3a"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.527566677999857
+    },
+    {
+      "camera_ids": [
+        "3f4bcb97356402d83c672f5f8bf70653222474f8a37e10b979ed8f9731122f96",
+        "8d9ddd59b1f043aca6e60ea7439da121a2ba13f103518ce29d7b24c0d15038dd",
+        "594d9cc3d1fb6e00057d3661db8360f123ae5f88bdccb0da86da003e2a090d5e",
+        "8ed26a6883614f1e884e7689b0011e61cf40a4cb711fb7c6b7a49e06da44ecca",
+        "c08409bc12d2ce6cad3447495f30d443245eb69efee2704c29b40df13c1b37e1",
+        "c0e88fd9a515e0d2d6a5ed7e76a83d243db1f89fd45bc539494e10c0bc38d007",
+        "286ba73fbc89af2db1e89b2418ad9752b25b292a6f4a87d3988c3418f1ffdab7",
+        "25bb92f1876833590461fc28951f9c769c15608008b086d488594e6cf6f29408",
+        "ccb261238db555a96d5f56f5ecba1708ca7d822fdcb4e9d074ae760b5f8a28e8",
+        "d83e06eba615abf926a2fce20114e3fd10f6a1d0bc07766625db558295ab8254",
+        "2810686b2ef6d150d9af7abd2b9f51d972874e48dc77df99d296ffaf4990e47d",
+        "47eea469821adc93096afe279d0443a2233d2f524173dea2f646e6481d24d8c1"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.326201522000247
+    },
+    {
+      "camera_ids": [
+        "a0f97cdb489db315571688d4bbeb84c935c16bf06ad88446f75511edc67ec98a",
+        "8e38b9bc526d0d3ca85c2529f479de4f2fc4d68c46d28e78bbb3b44bed0d6da9",
+        "7867f85d66db61f65ffb3d49de7cb79297fc9eae75ad59c533a4902aec711933",
+        "d719392ad0d9bfd61ee0d52248b7456b5c76bc47eccc6d1cf3de47e29889442f",
+        "b0cd321dc44f800b2806d8cd3171ae580cc5177a7bad42cbe704b87e23e9b016",
+        "2a56c382b7945334223938fd06ada51a04948a2b20a4aaa00e790b0f99ca5746",
+        "de0dff71a8ea57ff3a3f9b3114cfa20ce02b683521e969bf2b9997714b3f689b",
+        "43e3009e0ed32e30a117991acdf2c32dca1b22d1707e0bdf7ba7aa63ece36a4c",
+        "da4a7b2f21ee4e71d70fa3d12cbe2afa19bf0a1d39cec2a71a4386fccee899a3",
+        "4f9ca9e2e71568b77c14a7f2c43c2b2858d25f36650707253691989da72684b7",
+        "d8dff796c1fed041542069b02ed0f572664772e6a6113cc39e452750bc7703ca",
+        "66b859f9c551ce8ba6af65870dae7b67a52069dcda64843d36fd7850abcd3a0b"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.427364958999988
+    },
+    {
+      "camera_ids": [
+        "8ef16e16cc20570b9e26817d2d71ff5f5ec852b712464330566475454b64f0a1",
+        "a84b5e186038cde68cb8d54b3a64ef2aa18bf3d621b3f95dc05451c9d3d5bd1f",
+        "178aeb2e73211b75808aa50d2eaf753da841def0ffad8f26c0ff4e68406a19b2",
+        "53c079630a6f2e75cfa88ac1051ed1005883719f02a765cfc958878469650a2e",
+        "d6daa3db7f48506c512d0cbdfdf2986ada929f43b19721d134df41c870e21244",
+        "94cc485566d2f4b405002065bcea624f65aa1708a5c363b67d354387ee4c86db",
+        "ff9bbd5c48b481ccdfd75ef1cb83e74f02489f8a5e5ab69a438a13c4dffea984",
+        "7571892ae7f0e6530cf66a29ade702535ac0f4b94c1f851e50b3b088f708d642",
+        "16b5fe138108914c83c84a931b5c8ec10e5d4b8c9d117c40fbdf918c837cbe1e",
+        "f63dd41404bf8157c49cfe9c5535fe1f000d705e753953f4de901dd8fd5f01d5",
+        "e32cea325b024a99c29534d2f97627d1e831d0615a6c0225b0919134bec829a4",
+        "183e26d0323fe93b01e449c92c1f677b145cabf9a4064639c1aa9b7048dc6faa"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.779923760000202
+    },
+    {
+      "camera_ids": [
+        "28d15b3c84bf1c6081e56cff4e32e3567c69b21dda981e6d88c36c3df68eb975",
+        "3c6015e95c3e2006228bebe58acebb85b92c9c95c52ec6ea6a7251741dad86bd",
+        "c05d76472ffe1dbdff3e82c476c8158f030747bdb1468e700451709f54dd5669",
+        "e68e2a36d08aa4ed54e9dd2eded8097afcf3227745e89d5968137bf48baced24",
+        "f4a1019edf14aae83a5d4cee1d42a59979c1e359bdd38028213e21f0490473cb",
+        "6c0fbd081c53989b61861e723163de853525fd66478271058ac8da53a8fb1896",
+        "e0dc402b6635efa89274f8207d5e7c5813f15c56dab68a103702238d0ca00cde",
+        "aad45dfef109058f7d10fb75eae35bce50b21bf2b28ab08d448694ff51bedf77",
+        "c6986ed37ac99911c2e53325a41c40717cfb5c71bcf712580f538fa4830b611e",
+        "15b842348408137cdb6bc1e26f63492f2155765fb8e6f8b13a967fa96a8e51b8",
+        "c29330d9d155463968e9ccf7fd9f6ae6e93f1c56d5b24657e9dc9f139940b668",
+        "4fbc983bf46d9eff64556414644211378b8c006902f4bdedf8111ddb45fdd456"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.627914863000115
+    },
+    {
+      "camera_ids": [
+        "f46348a797a396e8d88e93fbd8299080802ee9c020d1e299f831e31d686d340c",
+        "13308dd64fdee62df6a2085d404f1ede0c387bfa43eee1f89d6b5db5fd136fa4",
+        "93fc6f8ac4079e40f29dae971f834dd718a0bcf7bdad89283e64284a42a328f2",
+        "1654c598d16e092706db77badaa786fd19a8285eb059c1787c986beaa9dbd2ac",
+        "6b293c9630426f16a993b7756f5c703c0acd16ccf6ea0aebbbdd3af3c287e8ac",
+        "19d59829867bbc84a00fbdebdd91b139204d88207d4e631e42317832ca213dd2",
+        "37ab72c5d2eddcfed6c45e342d360e07dc24e958fe27d59c0a98ae48a0e2b4ec",
+        "2ec5d9bcc1c14a3154aee114c6a9062ee77acc534235d347f7c659b8fa56d47d",
+        "82e11c651721cdc3810ea3c40490a1998df626793888dcb83093fd1224d6c217",
+        "3084af17ff20a7ad45e277204874cda68142a232b7a36e6e3793364dca949118",
+        "bbc525889ce1af28130271ffd65470a3a5f744ef8e70c55bda7ef8629e6b6a9a",
+        "4d16b7e6b797ea95e2940aad058989b4e577ab6bac18766ea287fa6ffecb159c"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.426853998999832
+    },
+    {
+      "camera_ids": [
+        "b01a1e160c4e52e94dd77220c56180fa3c61baeb9f7d59179b956e604ccfd1d1",
+        "8b06cb805547ba6af0b4b107669f4fa1544b0e1ceffb82d2e1d7b1f360f51e5d",
+        "aba7e7317020dafe0f25d2e92e7ff9921a6940b01c2ab352b902937e61168c9f",
+        "4b00d2c8b71d27d3e0088c6f9d5c6178610764eb1456593fcd7220165ab7c34e",
+        "a9e3c169925420c6b5845e00a54b6242740728789ebf2e93379c14782ef6d5bb",
+        "e2136524a65cbbb0d7e48320568c9fee8ff0ced23b2df4ddaf901d13a39cacf5",
+        "056836d05109671d23ad1870a653b32fdcc992f7bb9dddd9719b5b4bd7449aa4",
+        "2a39e1df2172c9f800626c0803a1584f5b66baf6df44018e982d80d1ff2baa3f",
+        "05077d33650a6996b0ac60c90a49d65e731db987909dfc017a87b8a516bc8eb4",
+        "8672958446dbde1d95441521870907b6211fc53151d866974af36dc8df0b693e",
+        "d8e290490781f5e0cd067aad6fc00c0e50225b23b32adde30b547b68f1b64d72",
+        "f0ad4efa8e1295772075e997d0419bf5d3636db979acaf60824fc664f49f65fc"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.426291421999849
+    },
+    {
+      "camera_ids": [
+        "e8f3bc634675641516dd92e13e7cf08cfd446cc3fd1597e64ea64f5e201635d7",
+        "6822da467733b9bd392566937718ab31062d6a1b2b7e815083e330c4ad4ac740",
+        "d61a191e1e756fc332023f04406793381cd1bf2e031b8ae634bf67e9f978a8a6",
+        "d7ca698710613992a065dc1bf65ebbccafd88862117d623b146969fa8c814b70",
+        "322deb3dd06e1bab37181b8fb03172e952c99ee263919a0212bcebadf700d968",
+        "679bf13b8d2a99877a6b5c8481fa452188a708690a061f1b4e78b29cb50a23ca",
+        "6857a5f83f5a5d6a0c0ded2dc8a32afbf655da085fadeb8ba904e4e4ef7a5173",
+        "2916fd165ccd21f075dc128ecd4dc9c98305fff5172a304b569a84f411ee576d",
+        "9795d1bb2cf55831b1fb3321831debb1dc196b4f6ecc00b8d4d9fac073b78778",
+        "b2c5fc27ef6e298252cc018c11e36be44c6a3fb0acade2c588abb77b1e2c38e2",
+        "51f5f84a7e27b0c611ce6d7531be3b88542b9304a1bf7cbc725b3e14776ad379",
+        "5987d368be9581562d1bcbf34f9e8f266577a343928d7bcd2fb9ba861d730010"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.77686420200007
+    },
+    {
+      "camera_ids": [
+        "89e6d2dfa301b947918f96c6342c4f2a72cae151e935d6a40b46381c4099a004",
+        "c668dccffa5043bb071cd1cf5ea2b2eb6f15a2c300bc391a64c88b922e5d46e6",
+        "444f379f125782e9c45d2aef5f3092881ca2593240c9c4540b18d541e605e877",
+        "96cbe5b8bb8b8f823276805bbeac8772170a9b9a176cec0fb3b6a5d1ee920b52",
+        "607e971b225c772c55b87618bd8ccaf78f5758159a465e9db7d0187e2e7f2ad4",
+        "f62c7e1a87cb267c8e6f22d804d01e5227f6a09afa46db403863eeb23248d31a",
+        "9db4f032d09bba4ceb135a29eab265df074b33b7ec5930eb24ce4655bfefee87",
+        "757764e87a9f577016da0fb082def45ec6066205c45b2b9485b43cf6bcc1851b",
+        "59a5d12c58184ac7bf921714b133e1eb6893dbed5aed469c806463d8b5b13f08",
+        "643defc912d1947b9054e48afd87efedbb4626c33ec3016ae89fd99be9463ce4",
+        "cdb56a55260389aabf8815cc31530edb8f964d9b6bcbbcc0b4b6021a45f0b91a",
+        "2e8871f6a55e953fd308abf961b111819a4edc4ffe5ee55e30e4ce2c6533dd0b"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.526911334000033
+    },
+    {
+      "camera_ids": [
+        "ae9db0069d540d3c28a0f1b1f1741af333a926cf5d9431e760f7f760b26bad17",
+        "62c01fde689da7110411156c33721e1c20fe99b0827e423f29bb3dacba7f89cf",
+        "091aa4ed444a77d36eec3515c53c06fca657371f6a617f83611866ee4701ce10",
+        "be21787075c8ee3084c3b19be36331e6d281b95231f1664d01cf9972c1bbaa6c",
+        "733f3a72cd762e614e44bd5362b50a9eca32a0958952475bcd4ad7c30edf6a04",
+        "72d448fd8965d671a7d471e152f799d0130aea13421cd6c106e01f848ec28111",
+        "f9062e09b8b33b20b7356125d906827ca16c32d589a3d3db36ab5007f6ca0ca5",
+        "686de2cac078a200623fc34d1432f61d8a18430feec360337bdd12c70a3696f3",
+        "4b501c49e78c0db8a01d856c8a7efdfb9aadc86019fec532025af4b0bebcadd9",
+        "17a9806495b6ac448756949d5528746b839a04bc82391f1ff7077e074e96f95c",
+        "eb18590c4d38dc79b3340e8c0f19f51f37897cc602415807cbcbb504afc2a049",
+        "646be577e444f25a55c3fb62bca706a80dc30d3643deb53e3807788196538d95"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.475483137000083
+    },
+    {
+      "camera_ids": [
+        "14a157d78220f374635b3491e1fb6dcd8ea4ba6774b6d677629626236c56bbf1",
+        "a780fff2e9d7acd162474bbda5604c3d851ed164def2806db4d1b01ad98076ab",
+        "ea3d120337a4c246e3c69fae59dc7415b35595abb3ce814c640f531f6c446d97",
+        "17dbd48a37fac6cabb476542a78411131b52def888db1d2e6b92eb39d5091ebc",
+        "116fb8644b0ba26723c4b6e18339ae4df3b90b931fde35f7df1e4694cb226bee",
+        "4f9486ed12af60fad2868a53b5f04da4e655e7c1537a40aeddbf12a0fc6e8228",
+        "5b4e4811d99a5b07b5e8272120a09be4c448bc350d37d579b55eba84381761e5",
+        "27303f4159957dae0c4d51bf1eecccbe174313804c3b449c8f4e48662cadea7c",
+        "f0a648c337c62960ddd72312a90da661f9f16b8d8a77a6c1ed4acb62672cf916",
+        "a349631dee6055b664fcb5f3d97a433e705dafd7bf0318d2cf2e2e3863066800",
+        "fdd3e246256bffb81ec604dd123e09dced5d43a6e9bf9a43d9066306e897fb04",
+        "6890ff7cba97457fee9bbda5e7f2bcb91c7a8483986448b736e597b8c15ded1c"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.375679002000197
+    },
+    {
+      "camera_ids": [
+        "b2b36713284d47888027d8681f08a350fea080ce02cfed6efb3517e3ba621be8",
+        "60b6032f28ad57ce31edd01f4723636fee183041c4fdecc240ab35f4de1a4b21",
+        "70bea546859723f93424a6141e4fa6fae0d4890432bd130b5bfab2b32d5c748b",
+        "7bac14c13577982096e41b69e9dc0abd1cc093fb12a4956242699e0b770b6e56",
+        "076d4eda91475f050c0d4919d20ddd0b7f7fbc67e4f6ecdb593c35b2c9d21f75",
+        "0c0da35489f8bcf3ed7cf3d9c0964c039f3034681b009c6beb84c8e56f654ace",
+        "eb729eb5eed31f451825f4e91985766c16bf0dc248e002a56a2ecdbd27053edc",
+        "21384d827d1293ba411f5a8b0aab49ba5f294bcb91b866f4eeecfe359a46b5e5",
+        "ae30187ecd365500e54141ac624f1917ab984d2b721bfc818ff454c05e7c8688",
+        "ad4ad25e3398b9446172353e41639c03ef448505b3bd467da8430792bffc28e9",
+        "0a3ac5a9c010930e35ee47c15c68f7c46cbb8c04a8080e705efef38b2a72a298",
+        "5d3ae815c020facb36188638ad5c7e0e134cc37303260469357e6987593ea71e"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.777458391999971
+    },
+    {
+      "camera_ids": [
+        "78f65f69671716bc1b9df31e3d302b67b7e77650dfec95d28838ce75f1b277ff",
+        "f5713d4222552e2158f9fe7a7b1092cd618130a3ede0698f2e05df149f5d38ae",
+        "33bdd6ecb7203aee7c3677d33f1a922250c7000999447b5d2932dd14f55cb03b",
+        "73f50a2e8b6daead874ce1a3068f4bb770d91cbcb1b4c908018683b7beb8dee0",
+        "40226a8364f04be431b1ecddfc6159433852362e6369f8c5e5430cbcbbdc6f58",
+        "46152cd3e0fe95e2e504cf8448ec96dfa5f718817018ca8006e6e23ccdbff4b8",
+        "3bf7c79304f83535e497ddcbc5025f92c7b59ca55ad5f91fdb8bbf659b730ab8",
+        "8a47f4bf785ecad4fad77431eb7aa912a260209ac51ea529949417ffe49b0f78",
+        "092b89ff928cbfddd9af9b192a0661b7ead0683e3d6ef920c14aadde1a0c70a9",
+        "a9e0bf082b619d8654d03356edda83f8eb44918c1ef80da6f476d61e0e155ef5",
+        "a79be0ce9566684622553eb039ae8beef4de14f4568c073f1a00c090e7512e4f",
+        "52819952bd74a2d116047f54a22ace7b2394026848181996f4fad1526a97451c"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.577085211999929
+    },
+    {
+      "camera_ids": [
+        "6b8be412ea1faddd0a39e579d2ac99c6f4a4319920f1932cb9408fb33059290c",
+        "0c3f80e29e5c8877f8c6d6ced1fbe847e68eedfc94aea1d629e3d7586ac9c9d6",
+        "3275b1ab63e0b236d04fbd8c90b70a95118381ff396514f249a3d3bb9aba69ec",
+        "3c05e9dfa96b1cea52241f70adced403eea4d5a569ddb3b781c8290bc5ab8a85",
+        "f558193ffe06719c3aec1e1a68bbd1ca529e65513f9f4a18e5a96d54cef126d7",
+        "220dc19540d66845b3b9c6359c70f9474299d5c962252240770a349a0a54d759",
+        "824c04a18311877ca743f078aed2ec39d2907b1c3d6ecb3f60a4b5184e7d6311",
+        "7f5776e11d9eb9dfe49a76348eae42703f6d51418971ca8e604c845f40cb37bb",
+        "dce36c3ac1f78ff72961438536f494339ec6632d72200869685ed2612c565986",
+        "7024966a78f4201d5cb39a99dcc0bc49fafb2410a1a360eaefb3f8e63e813318",
+        "5c09480598c6d32a3dceb9f0ea1c05b323564737cd24d1d147796057f8a37a5b",
+        "38fa67656f01c6db9b43b9f684ee322c0d11289a847d1399bd358a1ca21fa5ca"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.425920954000048
+    },
+    {
+      "camera_ids": [
+        "e985262085fcca10c4247affea034e931221b6db8c836af851749e1a7f9edabb",
+        "dc9093e1406217f0715b7e9ba77926fe012ee62071e6a23fa4f6b3d47c55679d",
+        "9b3e9a356be92c52b886abef29fa65775e2562f819c6497b7fbf64bf2896c55b",
+        "0f958fea61cdbbc067eb41075118209a136288cdc1ace2cbd0ec16f17b7b4b6c",
+        "d03a12ed02995fc9ee2e4f2b0d0f875bc4cd0f31ee8430c2b9b82f7eaebce856",
+        "aa0f5aabce44fd43913bd43510c1218c7867c1a962d99c244a636d7a3ef0cd2b",
+        "28b243bc4b9f76e6f81d84fab84bd989c0fa2796ff77a77edb81bcdc109bd106",
+        "3308671ba5506aefc7b61f9e56e5ab8b5c46fa6748431faabda4d4eeb3a630f9",
+        "b3af733bd75ac6a00c3a5087cea076502d1b745ebfd9d6c53043094180cd50be",
+        "7fa7a5aafdf93b58176a1580b94319b8c00eb0abb7618a6c3efc19e53a9adceb",
+        "f279357f192feeecb4608bf6294b3915ac1560162ab800addd9363e244b70656",
+        "f590bd3e9abe6a68b4c59e9e03210c3722a4cb56906da00d0b56a6676ea2b10d"
+      ],
+      "camera_count": 12,
+      "outcome": "completed",
+      "returncode": 0,
+      "subprocess_seconds": 4.426869498000087
+    }
+  ],
+  "accounting": "Cameras passed to the actual nht-render subprocess; no automatic retry."
+}

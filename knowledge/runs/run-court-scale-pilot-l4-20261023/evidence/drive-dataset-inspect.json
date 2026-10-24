@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "path": "data/synthetic_data_generation/court-scale/pilot-l4-20261023-dc5c253",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "type": "directory",
+  "size_bytes": 117691736,
+  "modified": "2026-10-23T14:39:00.942Z",
+  "id": "1SrkIQ8NSbfQnj1qv2ipP6Do2cxzJrBzl",
+  "mime_type": null,
+  "file_count": 198
+}

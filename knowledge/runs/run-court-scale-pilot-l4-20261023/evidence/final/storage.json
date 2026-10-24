@@ -1,0 +1,34 @@
+{
+  "outputs/court_detection/train/court-scale-pilot-l4/s42": {
+    "schema_version": 1,
+    "path": "outputs/court_detection/train/court-scale-pilot-l4/s42",
+    "rclone_config": "/content/.tennis-colab/court-scale-pilot-l4-20261023-dc5c253/secrets/rclone.conf",
+    "type": "directory",
+    "size_bytes": 2634689738,
+    "modified": "2026-10-23T15:42:55.694Z",
+    "id": "1VsvLwmqid22z8Dog4e0aNOGEpkSiSafM",
+    "mime_type": null,
+    "file_count": 8
+  },
+  "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth": {
+    "schema_version": 1,
+    "path": "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+    "rclone_config": "/content/.tennis-colab/court-scale-pilot-l4-20261023-dc5c253/secrets/rclone.conf",
+    "type": "file",
+    "size_bytes": 342860279,
+    "modified": "2026-06-06T03:49:11.284Z",
+    "id": "13QhCXoNr_vW-2BOUvykf5qyH1FLXH0t9",
+    "mime_type": null
+  },
+  "data/court_detection/tennis_court_detector-v1": {
+    "schema_version": 1,
+    "path": "data/court_detection/tennis_court_detector-v1",
+    "rclone_config": "/content/.tennis-colab/court-scale-pilot-l4-20261023-dc5c253/secrets/rclone.conf",
+    "type": "directory",
+    "size_bytes": 1959500719,
+    "modified": "2026-10-10T13:47:30.861Z",
+    "id": "1cK8d-L7JTR6vQ5po_cLzTwYchCV3btD9",
+    "mime_type": null,
+    "file_count": 10
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "court_d2_probe_budget_authorization_v1",
+  "issue": 1356,
+  "parent_issue": 1343,
+  "source": "Parent instructions for stage 3c, 2026-10-24",
+  "maximum_stage_rendered_cameras": 200,
+  "accounting": "Actual cameras requested from the NHT render subprocess",
+  "previous_run": "run-court-d2-probe-l4-20261024",
+  "previous_ledger_draw_attempts": 12,
+  "previous_actual_nht_requested_cameras": 0,
+  "previous_completed_frames": 0,
+  "evidence": [
+    "../run-court-d2-probe-l4-20261024/evidence/probe-state.json",
+    "../run-court-d2-probe-l4-20261024/evidence/failure-summary.json"
+  ],
+  "authorized_frozen_reexecution_cameras": 192,
+  "maximum_executions": 1,
+  "retry_after_any_nht_submission": false,
+  "frozen_selection": "../run-court-d2-support-cpu-20261024/render-selection.json"
+}

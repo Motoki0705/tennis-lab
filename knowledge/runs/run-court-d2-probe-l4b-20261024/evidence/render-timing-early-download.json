@@ -1,0 +1,23 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "download",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "/content/tennis-lab/outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4b-20261024t044312z/render-timing.json",
+    "tmp/court-d2-probe-l4b/render-timing-early.json"
+  ],
+  "started_at": "2026-10-24T05:20:33.439940+00:00",
+  "wall_seconds": 0.3697780830116244,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "path": "tmp/court-d2-probe-l4b/render-timing-early.json",
+    "bytes": 930,
+    "sha256": "2728d5324e711eab144f68edbd89f6c0f8618ee794128945ad858baf724e0154"
+  },
+  "stderr": ""
+}

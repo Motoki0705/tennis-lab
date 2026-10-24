@@ -1,0 +1,122 @@
+{
+  "schema": "court_pilot_training_io_profile_v1",
+  "wall_seconds": 792.0852366980007,
+  "rclone_calls": [
+    {
+      "operation": "copyto",
+      "started_unix": 1792770167.5520747,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/config.yaml",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/config.yaml.uploading-306c66fdce664decba089ab49cc7b255"
+      ],
+      "success": true,
+      "wall_seconds": 11.79037995500039
+    },
+    {
+      "operation": "moveto",
+      "started_unix": 1792770179.3424587,
+      "arguments": [
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/config.yaml.uploading-306c66fdce664decba089ab49cc7b255",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/config.yaml"
+      ],
+      "success": true,
+      "wall_seconds": 13.194208237000566
+    },
+    {
+      "operation": "copy",
+      "started_unix": 1792770393.1179607,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42"
+      ],
+      "success": true,
+      "wall_seconds": 14.368353339999885
+    },
+    {
+      "operation": "copyto",
+      "started_unix": 1792770435.3677614,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt.uploading-accda437754b43fb872e25e108ea57d4"
+      ],
+      "success": true,
+      "wall_seconds": 61.99831458199969
+    },
+    {
+      "operation": "moveto",
+      "started_unix": 1792770497.3660803,
+      "arguments": [
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt.uploading-accda437754b43fb872e25e108ea57d4",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt"
+      ],
+      "success": true,
+      "wall_seconds": 18.544852188999357
+    },
+    {
+      "operation": "copy",
+      "started_unix": 1792770864.020444,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42"
+      ],
+      "success": true,
+      "wall_seconds": 7.832468829999925
+    },
+    {
+      "operation": "copyto",
+      "started_unix": 1792770874.567252,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/best-val-00000032.ckpt",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/best-val-00000032.ckpt.uploading-a90ce30a85c24b9296d20d16fecd9b38"
+      ],
+      "success": true,
+      "wall_seconds": 56.886569176000194
+    },
+    {
+      "operation": "moveto",
+      "started_unix": 1792770931.4538336,
+      "arguments": [
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/best-val-00000032.ckpt.uploading-a90ce30a85c24b9296d20d16fecd9b38",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/best-val-00000032.ckpt"
+      ],
+      "success": true,
+      "wall_seconds": 18.620025672999873
+    },
+    {
+      "operation": "copy",
+      "started_unix": 1792770951.1102664,
+      "arguments": [
+        "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42",
+        "gdrive:tennis_lab/outputs/court_detection/train/court-scale-pilot-l4/s42"
+      ],
+      "success": true,
+      "wall_seconds": 7.944103050000194
+    }
+  ],
+  "checkpoint_saves": [
+    {
+      "path": "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/update-00000032.ckpt",
+      "global_step": 32,
+      "started_unix": 1792770432.6929753,
+      "success": true,
+      "wall_seconds": 83.21796874000029,
+      "bytes": 1317251194
+    },
+    {
+      "path": "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints/best-val-00000032.ckpt",
+      "global_step": 32,
+      "started_unix": 1792770871.8983188,
+      "success": true,
+      "wall_seconds": 78.17555181900025,
+      "bytes": 1317251386
+    }
+  ],
+  "data_preflight": [
+    {
+      "wall_seconds": 64.39399538699945,
+      "training_images": 1102
+    }
+  ],
+  "model_training_entrypoint": "src.tasks.court_detection.scripts.train",
+  "instrumentation": "Timers only; original methods receive identical arguments. No model, data, RNG or schedule changes."
+}

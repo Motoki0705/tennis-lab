@@ -1,0 +1,157 @@
+{
+  "schema": "court_d2_nht_preflight_v1",
+  "selection_sha256": "1684f5f916730c25f24014e91bf2a62c368abf09ee8efbc22ad6283ae014b66c",
+  "asset_manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b",
+  "copied_verified_input_files": 24,
+  "checked_scenarios": [
+    {
+      "variant": "current",
+      "scene": "B00",
+      "camera_count": 12,
+      "request_sha256": "b0e2932d1bfe38a23edfe5bf90e52c0f51f5e4fd7488ce52790a62441aaf1e6e",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "current",
+      "scene": "B01",
+      "camera_count": 12,
+      "request_sha256": "1309b588fb6c161a74d0977a26fd9277ca8d9bf3985798163cddbbf6a85d668b",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "current",
+      "scene": "B02",
+      "camera_count": 12,
+      "request_sha256": "7d576ae2df98f81005e2877fc9476c5532cf0bc85ff6a059bd643254435fb76f",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "current",
+      "scene": "B03",
+      "camera_count": 12,
+      "request_sha256": "35cea566c88109f9508083cb1c4cdc2d9172b72360c9145467864408ac779ef1",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "wide125",
+      "scene": "B00",
+      "camera_count": 12,
+      "request_sha256": "5d5781b7d562c5dad478c71ec6f707a5283d56e370be8616f677987a3eefdf22",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "wide125",
+      "scene": "B01",
+      "camera_count": 12,
+      "request_sha256": "d39aa4a9685fd6604cbffb1a587eb3772106969343e28394de4cfe5b219de09a",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "wide125",
+      "scene": "B02",
+      "camera_count": 12,
+      "request_sha256": "d9001c5acf7bd653c66c2fdb943822487921760417507ec85b69f3423a39bd6f",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "wide125",
+      "scene": "B03",
+      "camera_count": 12,
+      "request_sha256": "f4eeba23327a90bd82ef8f421102572d45328a7ca8e1b7ae7e6fb082a481e8a1",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B00",
+      "camera_count": 12,
+      "request_sha256": "9d0504e2e3cb7ff5b40b65f72d44d1fe1455c689b7b900e46ef1cf135b39d450",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B01",
+      "camera_count": 12,
+      "request_sha256": "a4d5e33f330e6a951b9803f45790126c265ec165ab3bfb6674163c31e3dc6179",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B02",
+      "camera_count": 12,
+      "request_sha256": "e9cdafc1bbb6d2152932f6e19637072753116ba19de9509728716d68a1c6803b",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B03",
+      "camera_count": 12,
+      "request_sha256": "6a362f392e4c00bf909e92c3cba10bd0a4eb0875a6ac5063ee403b7b311fe04d",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B00",
+      "camera_count": 12,
+      "request_sha256": "20004f58b0dc34e1547bbb6f8f4172b23add42ebfd2b257b8584b6d736294dbf",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B01",
+      "camera_count": 12,
+      "request_sha256": "6e9923793ada878ceedeb7997d0fffc704603f3b1605ef43f110bf40d4f011ea",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B02",
+      "camera_count": 12,
+      "request_sha256": "9d6173a7a4919f3f76388d28f6a155cfb134087f543fbc928957078befef097e",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B03",
+      "camera_count": 12,
+      "request_sha256": "49c452de1f9e69a4c96145e9c335a339f3941168988e9fd624910ea6c3aeaf92",
+      "absolute_paths": true,
+      "scene_validated": true,
+      "request_json_written": true
+    }
+  ],
+  "checked_cameras": 192,
+  "nht_subprocesses_started": 0,
+  "gpu_calls": 0,
+  "outcome": "passed",
+  "boundary": "Existing _NHTRenderer and NHTRenderClient through request construction, scene validation and JSON write; subprocess.run intercepted before execution."
+}

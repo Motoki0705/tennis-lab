@@ -1,0 +1,473 @@
+{
+  "total_seconds": 497.7317437599983,
+  "rows": [
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/threading.py",
+      "line": 295,
+      "function": "wait",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 0.000117898,
+      "cumulative_seconds": 0.0018427060000000002
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/subprocess.py",
+      "line": 506,
+      "function": "run",
+      "primitive_calls": 59,
+      "calls": 59,
+      "self_seconds": 0.001140858,
+      "cumulative_seconds": 76.41310419
+    },
+    {
+      "file": "knowledge/runs/run-court-d2-probe-l4b-20261024/render_absolute.py",
+      "line": 68,
+      "function": "record_submission",
+      "primitive_calls": 59,
+      "calls": 59,
+      "self_seconds": 0.0014440030000000001,
+      "cumulative_seconds": 76.453840615
+    },
+    {
+      "file": "/content/tennis-lab/knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+      "line": 56,
+      "function": "reconstruct",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 1.542296906,
+      "cumulative_seconds": 234.63398697500003
+    },
+    {
+      "file": "/content/tennis-lab/knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+      "line": 124,
+      "function": "run",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 0.105006234,
+      "cumulative_seconds": 229.252218174
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/_core/arrayprint.py",
+      "line": 1092,
+      "function": "__call__",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 4.5449000000000005e-05,
+      "cumulative_seconds": 6.6326e-05
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py",
+      "line": 769,
+      "function": "_savez",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.014833133,
+      "cumulative_seconds": 122.912991687
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/zipfile.py",
+      "line": 1205,
+      "function": "write",
+      "primitive_calls": 1152,
+      "calls": 1152,
+      "self_seconds": 0.019180819,
+      "cumulative_seconds": 122.49819174000001
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/rendering/nht/client.py",
+      "line": 71,
+      "function": "render",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 0.001532467,
+      "cumulative_seconds": 78.795209243
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/rendering/nht/client.py",
+      "line": 249,
+      "function": "_load_render_result",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 0.01186093,
+      "cumulative_seconds": 1.1026378780000001
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/rendering/nht/contracts.py",
+      "line": 219,
+      "function": "write",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 0.00095673,
+      "cumulative_seconds": 0.1151085
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/typing_extensions.py",
+      "line": 2942,
+      "function": "__call__",
+      "primitive_calls": 99,
+      "calls": 99,
+      "self_seconds": 0.0009741550000000001,
+      "cumulative_seconds": 0.002647163
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/utils/data/datapipes/_decorator.py",
+      "line": 28,
+      "function": "__call__",
+      "primitive_calls": 28,
+      "calls": 28,
+      "self_seconds": 7.4578e-05,
+      "cumulative_seconds": 0.000982554
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/scipy/stats/_distribution_infrastructure.py",
+      "line": 733,
+      "function": "validate",
+      "primitive_calls": 12,
+      "calls": 12,
+      "self_seconds": 3.8408e-05,
+      "cumulative_seconds": 0.000551505
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/matplotlib/rcsetup.py",
+      "line": 57,
+      "function": "__call__",
+      "primitive_calls": 100,
+      "calls": 100,
+      "self_seconds": 9.548300000000001e-05,
+      "cumulative_seconds": 0.00010323600000000001
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py",
+      "line": 1490,
+      "function": "__call__",
+      "primitive_calls": 4,
+      "calls": 4,
+      "self_seconds": 2.6997000000000003e-05,
+      "cumulative_seconds": 8.8393e-05
+    },
+    {
+      "file": "/content/tennis-lab/src/utils/data/image_record_store.py",
+      "line": 63,
+      "function": "encode_rgb_jpeg",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.0035702430000000003,
+      "cumulative_seconds": 0.24692740300000002
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/quality.py",
+      "line": 64,
+      "function": "evaluate_render",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.19514914600000002,
+      "cumulative_seconds": 2.0314137700000003
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/runtime.py",
+      "line": 38,
+      "function": "load_scene_inputs",
+      "primitive_calls": 4,
+      "calls": 4,
+      "self_seconds": 0.003037769,
+      "cumulative_seconds": 24.373848918
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/scale/runtime.py",
+      "line": 236,
+      "function": "__call__",
+      "primitive_calls": 208,
+      "calls": 208,
+      "self_seconds": 0.0039192920000000004,
+      "cumulative_seconds": 101.236907568
+    },
+    {
+      "file": "/content/tennis-lab/src/synthetic_data_generation/dataset/court/assets.py",
+      "line": 27,
+      "function": "file_sha256",
+      "primitive_calls": 208,
+      "calls": 208,
+      "self_seconds": 0.0018993660000000002,
+      "cumulative_seconds": 21.628999681
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/hydra/core/singleton.py",
+      "line": 11,
+      "function": "__call__",
+      "primitive_calls": 2,
+      "calls": 2,
+      "self_seconds": 5.313000000000001e-06,
+      "cumulative_seconds": 6.1400000000000005e-06
+    },
+    {
+      "file": "/content/tennis-lab/src/utils/data/image_record_store.py",
+      "line": 55,
+      "function": "file_sha256",
+      "primitive_calls": 789,
+      "calls": 789,
+      "self_seconds": 0.008909022,
+      "cumulative_seconds": 6.877713084000001
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_dynamo/trace_rules.py",
+      "line": 3188,
+      "function": "__call__",
+      "primitive_calls": 189,
+      "calls": 189,
+      "self_seconds": 9.0896e-05,
+      "cumulative_seconds": 0.000401827
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/sympy/polys/domains/domain.py",
+      "line": 379,
+      "function": "__call__",
+      "primitive_calls": 21,
+      "calls": 21,
+      "self_seconds": 1.8557000000000002e-05,
+      "cumulative_seconds": 0.00011772400000000001
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/sympy/core/multidimensional.py",
+      "line": 93,
+      "function": "__call__",
+      "primitive_calls": 2,
+      "calls": 2,
+      "self_seconds": 5.898e-06,
+      "cumulative_seconds": 1.9668000000000002e-05
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/dateutil/tz/_factories.py",
+      "line": 13,
+      "function": "__call__",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 2.0000000000000003e-06,
+      "cumulative_seconds": 2.0000000000000003e-06
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/pyparsing/core.py",
+      "line": 1911,
+      "function": "__call__",
+      "primitive_calls": 11,
+      "calls": 11,
+      "self_seconds": 1.5013000000000002e-05,
+      "cumulative_seconds": 0.00030689700000000004
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/matplotlib/_docstring.py",
+      "line": 122,
+      "function": "__call__",
+      "primitive_calls": 117,
+      "calls": 128,
+      "self_seconds": 0.0008763130000000001,
+      "cumulative_seconds": 0.049619596
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/pyparsing/util.py",
+      "line": 217,
+      "function": "__call__",
+      "primitive_calls": 2686,
+      "calls": 2686,
+      "self_seconds": 0.001042816,
+      "cumulative_seconds": 0.001262387
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/matplotlib/_docstring.py",
+      "line": 66,
+      "function": "__call__",
+      "primitive_calls": 9,
+      "calls": 9,
+      "self_seconds": 6.719400000000001e-05,
+      "cumulative_seconds": 0.000874224
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/attr/validators.py",
+      "line": 204,
+      "function": "__call__",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 9.04e-07,
+      "cumulative_seconds": 1.374e-06
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/attr/validators.py",
+      "line": 296,
+      "function": "__call__",
+      "primitive_calls": 2,
+      "calls": 2,
+      "self_seconds": 9.62e-07,
+      "cumulative_seconds": 1.274e-06
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_prims_common/wrappers.py",
+      "line": 123,
+      "function": "__call__",
+      "primitive_calls": 146,
+      "calls": 146,
+      "self_seconds": 0.0005850390000000001,
+      "cumulative_seconds": 0.010802745
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/distributions/constraints.py",
+      "line": 219,
+      "function": "__call__",
+      "primitive_calls": 15,
+      "calls": 15,
+      "self_seconds": 1.9997000000000002e-05,
+      "cumulative_seconds": 3.6691000000000005e-05
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/_ops.py",
+      "line": 1338,
+      "function": "__call__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_seconds": 1.0678e-05,
+      "cumulative_seconds": 0.00010259100000000001
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/torch/utils/_contextlib.py",
+      "line": 132,
+      "function": "__call__",
+      "primitive_calls": 57,
+      "calls": 57,
+      "self_seconds": 0.00026173200000000003,
+      "cumulative_seconds": 0.0015161360000000002
+    },
+    {
+      "file": "/content/tennis-lab/knowledge/runs/run-court-d2-support-cpu-20261024/support.py",
+      "line": 37,
+      "function": "write",
+      "primitive_calls": 469,
+      "calls": 469,
+      "self_seconds": 0.006702530000000001,
+      "cumulative_seconds": 1.576535358
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/lib/_npyio_impl.py",
+      "line": 694,
+      "function": "savez_compressed",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.002109339,
+      "cumulative_seconds": 122.915390262
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/lib/_function_base_impl.py",
+      "line": 2539,
+      "function": "__call__",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 4.0760000000000004e-06,
+      "cumulative_seconds": 5.3110000000000005e-06
+    },
+    {
+      "file": "/content/tennis-lab/.venv/lib/python3.11/site-packages/numpy/_core/_ufunc_config.py",
+      "line": 467,
+      "function": "__call__",
+      "primitive_calls": 2,
+      "calls": 2,
+      "self_seconds": 8.593e-06,
+      "cumulative_seconds": 3.2317e-05
+    },
+    {
+      "file": "/content/tennis-lab/knowledge/runs/run-court-d2-support-cpu-20261024/render_probe.py",
+      "line": 87,
+      "function": "atomic_json",
+      "primitive_calls": 276,
+      "calls": 276,
+      "self_seconds": 0.002678672,
+      "cumulative_seconds": 0.652933463
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/unittest/mock.py",
+      "line": 1330,
+      "function": "__call__",
+      "primitive_calls": 1,
+      "calls": 1,
+      "self_seconds": 5.3790000000000005e-06,
+      "cumulative_seconds": 2.4287000000000003e-05
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/unittest/mock.py",
+      "line": 1119,
+      "function": "__call__",
+      "primitive_calls": 59,
+      "calls": 59,
+      "self_seconds": 0.0006474030000000001,
+      "cumulative_seconds": 76.458642571
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/logging/__init__.py",
+      "line": 435,
+      "function": "validate",
+      "primitive_calls": 11,
+      "calls": 11,
+      "self_seconds": 3.0217000000000002e-05,
+      "cumulative_seconds": 7.8701e-05
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/subprocess.py",
+      "line": 1259,
+      "function": "wait",
+      "primitive_calls": 171,
+      "calls": 171,
+      "self_seconds": 0.000338495,
+      "cumulative_seconds": 75.634132093
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/argparse.py",
+      "line": 958,
+      "function": "__call__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_seconds": 1.987e-06,
+      "cumulative_seconds": 3.1500000000000003e-06
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/contextlib.py",
+      "line": 77,
+      "function": "__call__",
+      "primitive_calls": 3,
+      "calls": 3,
+      "self_seconds": 8.756e-06,
+      "cumulative_seconds": 3.5066e-05
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/pathlib.py",
+      "line": 1165,
+      "function": "rename",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.000729861,
+      "cumulative_seconds": 0.011408871000000001
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/pathlib.py",
+      "line": 1061,
+      "function": "write_bytes",
+      "primitive_calls": 192,
+      "calls": 192,
+      "self_seconds": 0.0017567610000000001,
+      "cumulative_seconds": 0.027528736
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/threading.py",
+      "line": 611,
+      "function": "wait",
+      "primitive_calls": 16,
+      "calls": 16,
+      "self_seconds": 8.2112e-05,
+      "cumulative_seconds": 0.001964043
+    },
+    {
+      "file": "/root/.local/share/uv/python/cpython-3.11.17-linux-x86_64-gnu/lib/python3.11/enum.py",
+      "line": 688,
+      "function": "__call__",
+      "primitive_calls": 65614,
+      "calls": 65614,
+      "self_seconds": 0.111334634,
+      "cumulative_seconds": 0.18332177300000002
+    }
+  ]
+}

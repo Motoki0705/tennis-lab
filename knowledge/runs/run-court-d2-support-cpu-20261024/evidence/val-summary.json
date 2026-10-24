@@ -1,0 +1,112 @@
+{
+  "schema": "court_d2_val_support_v1",
+  "split": "val",
+  "rule": "in_frame_kp14_v1",
+  "registry_sha256": "d943d569c87e0974590eeaf01cdc1b526da4f6eeb0ca65bbd54c05a12c32d60a",
+  "images": 4468,
+  "videos": 249,
+  "framing": {
+    "full": 4400,
+    "near_full": 55,
+    "partial": 13
+  },
+  "in_frame_kp": {
+    "8": 1,
+    "9": 1,
+    "10": 7,
+    "11": 4,
+    "12": 17,
+    "13": 38,
+    "14": 4400
+  },
+  "videos_per_group": {
+    "full": 248,
+    "near_full": 27,
+    "partial": 11
+  },
+  "rows_sha256": "bccf610548bb46efc3db8d8e66fb012104ee59052c601bc97c7fdb5f59397adb",
+  "camera_estimation": {
+    "rule": "lexicographically first val frame per video; existing fit_planar_camera, fx=fy, centred principal point, zero distortion; positive-confidence in-image KP only",
+    "attempts": 249,
+    "successes": 248,
+    "failure_reasons": {
+      "invalid_focal_length": 1
+    },
+    "all_successful": {
+      "height_m": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          3.7474032671168693,
+          7.73426342991547,
+          9.444010240134524,
+          12.402521222559614,
+          25.741849474216934
+        ]
+      },
+      "distance_xy_m": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          23.103520787537107,
+          29.8374578978644,
+          36.965567317902526,
+          50.63045878013229,
+          60.68637681267639
+        ]
+      },
+      "hfov_deg": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          19.919478665411464,
+          22.733978641194284,
+          32.69330809881043,
+          44.05477650185607,
+          60.876716755337945
+        ]
+      },
+      "rmse_over_diagonal": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          0.00011301360142223415,
+          0.00018084082543727909,
+          0.00023899806442642256,
+          0.0004368503883112258,
+          0.0014541903446062278
+        ]
+      }
+    },
+    "rmse_ratio_le_0_005": {
+      "height_m": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          3.7474032671168693,
+          7.73426342991547,
+          9.444010240134524,
+          12.402521222559614,
+          25.741849474216934
+        ]
+      },
+      "distance_xy_m": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          23.103520787537107,
+          29.8374578978644,
+          36.965567317902526,
+          50.63045878013229,
+          60.68637681267639
+        ]
+      },
+      "hfov_deg": {
+        "n": 248,
+        "min_p10_median_p90_max": [
+          19.919478665411464,
+          22.733978641194284,
+          32.69330809881043,
+          44.05477650185607,
+          60.876716755337945
+        ]
+      }
+    },
+    "limitations": "Assumption-dependent diagnostics, not camera ground truth or a new data-selection gate. Video-balanced subset, not a 4468-camera distribution."
+  },
+  "test_geometry_processed": false
+}

@@ -1,0 +1,31 @@
+{
+  "attempt_id": "b3178cbffc7e4109870042b434d59cbd",
+  "caches": [
+    {
+      "cache_key": "d14047b923a231344771437a4d1e80c895d0f6c6687d08468e328342440f0575",
+      "drive_acknowledged": true,
+      "restored_from_drive": false,
+      "reused": false
+    }
+  ],
+  "error": "Requested interruption after a verified Drive cache acknowledgement.",
+  "outcome": "interrupted",
+  "renderer_release": {
+    "after": {
+      "device_used_bytes": 0,
+      "name": "NVIDIA L4",
+      "uuid": "GPU-16c17b33-121f-1f25-82ab-bd8f5ccd61c4"
+    },
+    "before": {
+      "device_used_bytes": 0,
+      "name": "NVIDIA L4",
+      "uuid": "GPU-16c17b33-121f-1f25-82ab-bd8f5ccd61c4"
+    },
+    "compute_processes_after": [],
+    "renderer_context_released": true,
+    "schema": "court_scale_renderer_release_v1"
+  },
+  "request_sha256": "0e4a507a63382d2df1ab40e1294d943317665f219d2e631b32a8888ab2ea0350",
+  "retry_staging": false,
+  "schema": "court_scale_generation_attempt_v1"
+}

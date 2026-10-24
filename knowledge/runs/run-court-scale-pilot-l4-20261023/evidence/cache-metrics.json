@@ -1,0 +1,2498 @@
+[
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "01e23c4aa3c8b7433f31f29590ae59692d0d802f6536efe7454987592b97f971",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "379ecd5e04fc7ead711616db00484b33c068f38b399fd210b7b1853d10efbd18"
+    },
+    "completion_sha256": "c98ee83fcc86c662904a4c81a0c61b206f9f56eaa4cec587d71d3b12939e0f4a",
+    "generation_seconds": 5.997825333000037,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 13,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 54295,
+      "jpeg_shard_bytes": 1155336
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "03e9d6925d4cc68681dca9ea304e5476df6f53f23e427d64fde76a85db35e124",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "6b59645a83c0988881c6b5fb1876372edef396f12810fe8cd708dbd8d79bdbc4"
+    },
+    "completion_sha256": "b29d9c52fe2878ebb7b45a076d0f5d0e2c66dbadf3d9f0e653028395c09edd20",
+    "generation_seconds": 6.579032667999854,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 14,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 58561,
+      "jpeg_shard_bytes": 1377799
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "04c81d3959f7c58905828ea927b24f48dfeaf0502714a56b9417dd352e84cee1",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "60f04ef429eb0c191e99ce893d8ea273e89faea7dc51e8aff2d4262c392b9c63"
+    },
+    "completion_sha256": "c0926c57d4869bfcc6dfd57ba59d2ba81407b7650a17cf3944c72ad12651d96a",
+    "generation_seconds": 6.362958538999919,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 14,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 55851,
+      "jpeg_shard_bytes": 1253727
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "0857a120de9982a52344037334cd53872306ef1800f1e5fa86806b7d94d31092",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "a1046a2290c19b5284e20d3b3e6712978e4562149cd9d3b887d2cbc579b69010"
+    },
+    "completion_sha256": "1d894b7fd68ebed8a99a2af8b37f89f068835ae8abc7e2161d722718bc91a8c3",
+    "generation_seconds": 3.9912979129999258,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 19459,
+      "jpeg_shard_bytes": 206057
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "1076ec2d64dde1d97a5abf4ffd934ba54dfeb3c1f3edc1e2241d1b496cce9095",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "ea01b15f604b9c9154e3d382a375e714b5364f74974c30c8e9ec0975d3c7c5f3"
+    },
+    "completion_sha256": "fffb50137176a762d0672639444f6837ae4275c89f2cd7f5ba479ab634ada5c8",
+    "generation_seconds": 5.1376143630000115,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 47405,
+      "jpeg_shard_bytes": 712267
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "18a1dfbf22a4dea5f3fbdf753cf4121f09202c01b9430b1b1627bb458ec80708",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "a22ffb17188bb0470827304d9ca2b2cd7b2f6f06972b0d79713ab2af0d18188e"
+    },
+    "completion_sha256": "6584ec3f34932d50357c8e570ba9e67dd46b433ff08c6c1f7d7fa21c7f0b08d8",
+    "generation_seconds": 4.649730890000228,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 20771,
+      "jpeg_shard_bytes": 668541
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "1afe8fadb1a8d63448b9c795eb4bdd86971684f94caf4632e0fa4015ef910d33",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "98a6947e76b11a0c13ab04882210f07e73168d301705425539a693e29a8cb1bd"
+    },
+    "completion_sha256": "9185f2de623a66ae770b7c84d958fdbd5b2f2f5203e45f8cd161d08ee34e22f0",
+    "generation_seconds": 4.401252789999944,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 778043392,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18554,
+      "jpeg_shard_bytes": 598960
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "1b4010768dd8a53ce805820a672bd6adb14864dbb2873d3c7393f1901f65a71b",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "4cd9220810f0a6cc88ac2ce417bc2e75da5e7ed08ee93736a1e1db20b23a88ce"
+    },
+    "completion_sha256": "ead1d084eb609ac84b9b39bd65f6551c0df7ff13830e8bb1606e1493c4e30966",
+    "generation_seconds": 3.8592234479997387,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13438,
+      "jpeg_shard_bytes": 290471
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "1d98ef6c6fc1f046e609cf5fdaa883783d5d4f98d26a7edaae88695d953f1b8e",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "4fe908b588cd33a3e38a905be601c55bddce0df8caddd6ef3b97f671ae36dbf2"
+    },
+    "completion_sha256": "5394ef2f88293558c19bc213de7f4a27f029fa072cc9a324cd621909c55aae05",
+    "generation_seconds": 5.108253594999951,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 30482,
+      "jpeg_shard_bytes": 912176
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "2589b42c0d48acf101c311217ef1b7d800329ec8628f57ed826617d449134f5a",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "83d851d8746f365ead2185eb11b1bac920eb0ada0bb4de8749cdd9756989fb72"
+    },
+    "completion_sha256": "025653fd818b0d2dde2d822583ef259b3468dfa9a6ed02bd8fd7d854b9d6f76e",
+    "generation_seconds": 5.687262123999972,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 47850,
+      "jpeg_shard_bytes": 898226
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "2673f75b4558f928930c21f172cb8bf3ebfbf1d5d5eb9a4c6ae5ebc93909733b",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "f7137aa90f264afe9114316dd3cf899f76c20c2dfb292a66aab732b4647489ab"
+    },
+    "completion_sha256": "8d0ca07a3550173400618bbe9f2a7b82d1e875b829b15afc0458f5d64a446479",
+    "generation_seconds": 4.664545910000015,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 17345,
+      "jpeg_shard_bytes": 651838
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "2765b2a3f1ada27718732b277baa5f2bf1935fa0184f81b79fa52ad73486667a",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "0fdebd585620b152efbd96362298eccf61a7b078153258527f40a8e367eda8c4"
+    },
+    "completion_sha256": "06071890963a321770c637903eb02586064070770144065ba624ccbdebb9c0e6",
+    "generation_seconds": 4.1102724880001915,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 23211,
+      "jpeg_shard_bytes": 430995
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "2d2e3b9484120c8a0c104de5235ee8e24896177fbf30a55ae1ac39a5e7c36abf",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "8910dba6ce43c040aed142e9d660f275542f2fce4f9624a9ecbe83d001f895a1"
+    },
+    "completion_sha256": "c920834ee0508a1aeab3802dca2aac8a1551e2d591409efc99917f4212bbad7e",
+    "generation_seconds": 3.979049224999926,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 14415,
+      "jpeg_shard_bytes": 365814
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "2d3b647f1f2ea27be53df76ed5c44cadb5995a692f2a0c7f7db416f5410443c2",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "a01a6afda03fe13b8ccfbf9dd2753627c504ddbb5322db1ee5c41632e2efc643"
+    },
+    "completion_sha256": "9362b3ba10b58bbec122836bd49132428f4ee1da5a0213655ce31a9017fd6b42",
+    "generation_seconds": 4.782089315999656,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18269,
+      "jpeg_shard_bytes": 636995
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "30a40a0c99c1ef67684651b4dabb08a1e42f770afb59edc989efc71c209d8087",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "71c3a4e2da8dae71cd8acd2a400d323860a957559abe91f8ac6490bbf08ea7b0"
+    },
+    "completion_sha256": "95fc5ea879d8bd73fcddc4005161c166e54b078db5fbd221933d351efffd7723",
+    "generation_seconds": 4.110995328000172,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 736100352,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 27433,
+      "jpeg_shard_bytes": 233442
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3220e7a6abd29e9ed42e304ccab2b9f01057fbbbbe8e467193d1e92a26a36901",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "f21055acf5180b16ee11479eccc3e29df568968ff4339340966188ac8e3a02b7"
+    },
+    "completion_sha256": "0984438c6cabaa134cf6c3d628d375cf9991dfc25376bf86dd53c791c85a20fb",
+    "generation_seconds": 3.879189590000351,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 14394,
+      "jpeg_shard_bytes": 273481
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "32547097d34fcb062e42220aedda43ca7836587d553cb113e691457bcf167a5f",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "2a18a09a1f9601494c944b1c162871b5fa7873e38044c6b3358465628b6b669f"
+    },
+    "completion_sha256": "ae42158b74ff1f5cfcf846b179c99696f514413fdaad2d289c36e337cc0d3126",
+    "generation_seconds": 3.997963871000138,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16126,
+      "jpeg_shard_bytes": 338159
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "345c3ac6e539b6596a984e9d30f59e75ea8c467ac53ace5d85a247fd0e6d4472",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "e136fa5d22152d407cf880eabe3923c491928659f78548751eb162ee3aa5b874"
+    },
+    "completion_sha256": "299e0d5a632d1ec9ac5acd49ec3e5e90a4699b0b84ee4fea1e996c1d1025addf",
+    "generation_seconds": 3.9148651659997995,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 19034,
+      "jpeg_shard_bytes": 335042
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "39fe331f986249b08f0a65f228120563c9540196a556c626d5819ce615f979b7",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "9f75767ea4bddf6da41ae2105b475ca48444d8630ee1c7d9f5a8c4f3582c96d3"
+    },
+    "completion_sha256": "369864f127c3ddead4d2f7021288a8abc68a1f85e5b07b9af210cdd0f0de1270",
+    "generation_seconds": 4.212869875999786,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16290,
+      "jpeg_shard_bytes": 481669
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3c017481218d4d4e3af2eb78532a53a675c9d7715655a573fdde9b007e764f0c",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "aace67ebe7d6e566b225deb2b6b8b4a80dda6e5616205009a51d34eea3982542"
+    },
+    "completion_sha256": "dfd4111ceb6541181968a5537ce4d4184795d725b543443611925b6399dfdc1a",
+    "generation_seconds": 4.2191448099997615,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13350,
+      "jpeg_shard_bytes": 350538
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3c65f9121fad3a292050205f4acd99f4cd674bbb539178f8a0e09f8ccd8ab631",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "ed6d166522a003c8ac0e9054c4aee60383259cff70e873790747c4109219e785"
+    },
+    "completion_sha256": "500b2f43069e34072aa38836dea1506a5c3d4bb6d46975afac026330f212578d",
+    "generation_seconds": 4.471506307000254,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 24137,
+      "jpeg_shard_bytes": 456284
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3ce83f0e7fb09081ea83fb810faa4440881dad631744ec2f42543413a2902e67",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "d6b7267ff1e6cfa5d19f9c37a083f412205a9e31073680918abdd661f35f234b"
+    },
+    "completion_sha256": "ba6bfa2912e0fb9acfccb4694939622fd233652f1a572e0f21f72a27c03b83f7",
+    "generation_seconds": 4.064291192999917,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 24745,
+      "jpeg_shard_bytes": 284726
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3dffdc095e0fc59da9d28e4343675d04e13e5c0be2431faf10963d103557039c",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "c1ffcbc2a4e79cf5cf9a00cc7416f62b8aeef39c0c5f2e3af1da71b5139f95d5"
+    },
+    "completion_sha256": "05a46cec3ae5de29fafe8926352a74baa1de69b59ac2b5e2964867e586909112",
+    "generation_seconds": 5.689280668000265,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 778043392,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 33650,
+      "jpeg_shard_bytes": 1140676
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "3e4e44dd61d7c43dba1ad95d61abb56301a0d7245a404ea06c16457e79891bf3",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "bccf47a59e72884f1fee8cb5b1fb606713fbeb808374fdacf09d6e746ca52f11"
+    },
+    "completion_sha256": "557a3a449b5222e63e2823d0b35ac1912b5c7a2b3dc8b64dd2623774e10c0035",
+    "generation_seconds": 5.176978085999963,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 31517,
+      "jpeg_shard_bytes": 817002
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "46facf23150994266692e64cbc84805fa5778b91a6e99bf0c4ce21268820be45",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "bea737177294738377cb706fe31dc1c19569a9db3640eda39953d8266a8f6bcb"
+    },
+    "completion_sha256": "26a8211ac7fdd821b865b2b89684d624adf721099cefdf6ae8bbdbf1f51bc62d",
+    "generation_seconds": 4.240493995999714,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 28660,
+      "jpeg_shard_bytes": 355183
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "481fcbd3a0184c73f770995454dd87b894164ed3e0b175e8fa5633c222779207",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "9785929885b6140bd7fcde7a9d3f953f243af96460e8cc0eee07a7aefbdb533e"
+    },
+    "completion_sha256": "4181deb54f26d2f0cbe6bb69c4314b35be1b74f2d8d6ba923e538fe35885cabb",
+    "generation_seconds": 4.415242785999908,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 27054,
+      "jpeg_shard_bytes": 539983
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "4e13f9848cc9cc2ee3101c299072531a08acdb17404cc576366fec5b764aef37",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "d383d98b276328cfdf9b315cfed3ee12fef7cc62a8833804615e197b017197b6"
+    },
+    "completion_sha256": "eb527a706cbe202e1ac35a25ccf84dfad81c2a1a485b890ecf1b08aacd1af9e5",
+    "generation_seconds": 4.095981592000044,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13357,
+      "jpeg_shard_bytes": 351067
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "54c5ed97a7dbf81bda9cadf4ea4b9524391535827fb24a3371a1da69d35164a2",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "1d924fc766d9ecb6e41de89de8b132a75f993675784a9d7ac17254f15c760fe9"
+    },
+    "completion_sha256": "169e59107ef4ddafdd28abbeb46f2506aec518368d84bd1c9983d40a6094611e",
+    "generation_seconds": 4.668599686000107,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 17032,
+      "jpeg_shard_bytes": 649049
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "598ebfffb864d055f4207f9b88aee7f436add363034bd8422226496533c49312",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "157e510089a9c8e5c1c6a9f3ca4b6edcdbe619bb4e48dfe9d0cfbb9fba34c74f"
+    },
+    "completion_sha256": "2f115c680c4bb39d568ecc595b63911d1af5758e580a85783ee3709a1a00e5f9",
+    "generation_seconds": 4.443222257000343,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18282,
+      "jpeg_shard_bytes": 506402
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "5c31dd65ecc9750ad90db16ce5f5be64aa0df4e823aa8c00e6e0ab2072cde992",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "b63df514fce77e7e60338e0c2791f6094ea47c1102ac067900af694a4db75b10"
+    },
+    "completion_sha256": "9deea5b3d0c1259d67b01a4cc7de27145ac1408be4a87efd5926eaee02315d1e",
+    "generation_seconds": 5.289334474999578,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 43475,
+      "jpeg_shard_bytes": 868151
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "5e434f2056046fbf94d7ffec2c5a8d15f7c2abaa3db9cf8745207cc6eda6942a",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "c48995118b777be948786cf8acf6276f4c10832578ab324b34299efc8f7075ae"
+    },
+    "completion_sha256": "b2b43f9a09444b471c235df9cc0f3d1b28d340de5199449e0e6c7125e89a993e",
+    "generation_seconds": 4.669706285999837,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 17151,
+      "jpeg_shard_bytes": 655864
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "5ec07ab219e49e589a434b12d19ff4fe12d11559c5536507790a9db10e05f5cc",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "f33cf05d0e29f117ab79a9e4d3b604bc1bd155968afec2175dacd5aa97d9aefb"
+    },
+    "completion_sha256": "ca4f7d337b1ceacd2e3c044984d77902b37162b610e06fb83b81341717a7d0d5",
+    "generation_seconds": 5.803059197000039,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 13,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 35233,
+      "jpeg_shard_bytes": 1165583
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "6505d2cc2fce8ebb004b529f92cc14c6160e7dc3d559cd97aa754a0ae9a6772d",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "bb45de8d562c2b102680430084e7450b23022e979f5a86c82337b9649f337c32"
+    },
+    "completion_sha256": "d1aaa4044d429c67bf3362eec359c4d89987bb41da8c7febbd4c8b120d2d8085",
+    "generation_seconds": 3.8802248619995225,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15331,
+      "jpeg_shard_bytes": 253504
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "65e36b9f4d4983beb80cd10d5fc06ae2c0f59bec7e6f2fd6fc124d3e87728e9e",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "9d9e4a6b585fad0316696bbd9c2862778910db946c91a410450811044bf6bf3b"
+    },
+    "completion_sha256": "09b30cd4ac5c2cf120cc92ea8d8f01c4b02568677b774204964f570ea90b826c",
+    "generation_seconds": 4.409433033999903,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 27025,
+      "jpeg_shard_bytes": 512804
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "66196df6ba6ef2a51f21f4a67fefa7563afc2de2473a6eeb51b235cbd4281597",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "0db5f5541dad65e41241fe03feff0a9d4139b7b61466704c810669887708728c"
+    },
+    "completion_sha256": "4872d2cd52cb3bbad76139d514ce60431dc5cbb1089af24c98065427cc3159aa",
+    "generation_seconds": 4.228987468000014,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16519,
+      "jpeg_shard_bytes": 435717
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "676fecf43819d014041bf2170dff84fb1bfc35d7970a693d417c4825e70cefcc",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "045157ac7e5fa95ca96e40907f15d9b05d467fa981e54fb4b3a65b30782f35ec"
+    },
+    "completion_sha256": "f92fedd9cc526050f068d17d5935089a5410b94b062b3cb67ddd0abf923c5fa6",
+    "generation_seconds": 4.4023382079999465,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18410,
+      "jpeg_shard_bytes": 496226
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "6a28c7d9e3dac9783a660cc4294664d81045304ac21cb92449204c3f3d089a60",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "cdd3bfe58d16c6de3788e8b6e4f71b6b715cfd8312888bd0221eb21d4e4dd83f"
+    },
+    "completion_sha256": "072a3974771d53605f262abc9cc1c9484c0fe0229ee0deb9929240b713317ec1",
+    "generation_seconds": 4.44795358600004,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18413,
+      "jpeg_shard_bytes": 575722
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "6bb77428bfd3f6e84341f1b1ebc72df6387501f49f71cf479a83099745c90cd6",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "911b6ff4624ba5fbdcf5cf0d65d8c9272be7e1e7f58ec1cc911ed21eae5a969f"
+    },
+    "completion_sha256": "71001c346ed2749a58d0bd1e9b35c3e123b1b2d4ef6128c3c3132a671b4d7c63",
+    "generation_seconds": 4.379380863000279,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15372,
+      "jpeg_shard_bytes": 543935
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "6d5bb77cc8b63fe1819eebc7fcc4038a98c15f2c5612216676a5444027a40cc2",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "2f99533270cc5a173ea6f62535d9b112115b7850b662088015a572d27be8c226"
+    },
+    "completion_sha256": "1e595f3aa233b33d9df4161a00a6526b34c2440c7538df9e0f6f12b28ca0ee46",
+    "generation_seconds": 3.9785745949998272,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15189,
+      "jpeg_shard_bytes": 386634
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "7084ff8bf9dde766ecc72dfe45a6e0bb47e4f554cb909d0968cf94e436a0e45d",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "3b7ef12340e77f266aaa6ca2caf7001b6990c0f09ec66148c9609da3f0cd14a2"
+    },
+    "completion_sha256": "56ab86cbd3298c0220a6f5b5d97e160120b0d378d220d2c899359b0bd6c3e746",
+    "generation_seconds": 3.9769695929999216,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15351,
+      "jpeg_shard_bytes": 388284
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "755a34978d63afa13ce321d82e548af66ad797241ca4bc6cf3cc2782e701d226",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "4c29a3b7cdbb0907ffc7d8ef2cf56786f98ce84a0c327ec8a8f6c8865bfb8486"
+    },
+    "completion_sha256": "f7ee8e755f4030e903251105a3edb76769d19d008e10b5fa167f4ade8b6143d7",
+    "generation_seconds": 4.096249143000023,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13441,
+      "jpeg_shard_bytes": 417442
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "75c4fd318fec5dda7d809de6dbd8617694771b067ae8e569c478d41aaf00850e",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "13f0803ea6d9b5fdd3688c458c34dccd3661b1eb5d5ffbadc4bcd93a6fdf3387"
+    },
+    "completion_sha256": "4ea78cb5c466dde2407cd52de2e89c24eb5fb1053ff0aefaf321f785024fe7ee",
+    "generation_seconds": 5.3371690580002,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 30729,
+      "jpeg_shard_bytes": 881680
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "77b88b9c442d88b17092ce640eda18fb22fb5bb61121216b3256b1c832042b44",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "9e9d6b33076a53e1d27c3c905d17f7f6f62543819c5524c3cb7dce3a60c3195a"
+    },
+    "completion_sha256": "b49e93a5a3271cb047c5752eaa1f9ed3560833719899781937fc94bbead4829e",
+    "generation_seconds": 4.780322984999657,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 18137,
+      "jpeg_shard_bytes": 692834
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "7822488f7c82f6b88a767eda7821b824f689c3f61eb6669519814f45397ddc5a",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "c498d8149018ca76b12d3b6e538ac14d4c81bba25deffad789e28b41b004053e"
+    },
+    "completion_sha256": "4e53a992338a66b7da280a2f1593cd0a9b193ca7723b772f78bb98b3823d38ac",
+    "generation_seconds": 4.516354510000383,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 20320,
+      "jpeg_shard_bytes": 434051
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "783e86fcd1048ac8c17ceda80d6ed1a8fc48ce19199b204497b68540d78ed7de",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "d2e315832d5a3abbd87800e247cac773ac0fbbe2268714258dd1188430221520"
+    },
+    "completion_sha256": "aec000c7cda936d052b08bafcc5b92c94a0bf1adb94152d8c4f5ea48d360c9a9",
+    "generation_seconds": 4.637415532999967,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 24229,
+      "jpeg_shard_bytes": 605094
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "786a332b767d971830cd6361700dd7f1c26912c296259b2cf9617d53a9d30292",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "7487d4a34c18766e9bb1f7a0f31cd56bda28c253948b7efbad510021ceffd423"
+    },
+    "completion_sha256": "c24c0a5d2a0784e58ebf8c5790f4e736cd764f5bfbccd98b04041176f786abaa",
+    "generation_seconds": 3.641383936999773,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 8,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13416,
+      "jpeg_shard_bytes": 218699
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "78b5d7198497715ea3e5ab8a2521ef30cf106216fdda82192d80fe118e863c6c",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "c6c87d445e81c4de58bcfb780853699e0575a33b34e9f7ab69bfe0c1bde2dc11"
+    },
+    "completion_sha256": "a3b68a03dfc05a80e0855197794055030483ac51f3e250070677986f65ae8e1f",
+    "generation_seconds": 4.164278302999719,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 22693,
+      "jpeg_shard_bytes": 431456
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "7ae8e52d97b2f8744ae7d22b49431056d4816c7096aeab0f8e8a86edc2fe1dc3",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "6dc42a83ae42084889ca9383d24d10a3f4368c7fcd609d156224557af81c90f4"
+    },
+    "completion_sha256": "8af63462f6b535963adc9df56b3e46681c68fdd7901b108acf67c7640681ba7f",
+    "generation_seconds": 4.643804574000114,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 20584,
+      "jpeg_shard_bytes": 726955
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "7bb856f55d8da75fb898181b8b02553182b905038abc0f4c5961b7b9e59ef16a",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "9f3dfdfd8d8049d29ad37fdf393f3011d2f45cf7a92173f12c854ebf7f452f8e"
+    },
+    "completion_sha256": "d0e7ee846bd3a8e8d227a7194e7e3518a3e1c93216a75d6df1401754c3bf3148",
+    "generation_seconds": 5.540020771999934,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 47414,
+      "jpeg_shard_bytes": 910192
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "80a53cb209b955b3bec2e1371dbca5561defb5ccaf978d453acde995218c3ab3",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "fd95ec208d8adaebc37f224883160c84d122158967f8c4a6bac8c086e370ebf4"
+    },
+    "completion_sha256": "452149868f2f6b712f2efb423c841f995a8150443903a2980ed249b6afeac640",
+    "generation_seconds": 4.531340344,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 35352,
+      "jpeg_shard_bytes": 554607
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "831fb6074fee4542641f7ba787742689007b1b7da63309b5b69f313f6d759722",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "ef37fe8f156fc389ad2bdd9e204f466e961b348c09a75f929b1d98ac670473bf"
+    },
+    "completion_sha256": "d3522eed87d7c0d3890d81a010cdece60a19716e520bbdb9888941c628f49574",
+    "generation_seconds": 4.115805035000449,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16394,
+      "jpeg_shard_bytes": 330938
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "85cf95887db446db6b45febfa531be37fe484ed99cd31594abe020acd89e66df",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "6de9b75314383fb78d958d158535e28c1e4bba383b394ca723301352a308cf9c"
+    },
+    "completion_sha256": "32eef0f1b631e1b28b4930b4702402e497f5d6d24d13609050db6cd97ae1dcbf",
+    "generation_seconds": 4.825969013999838,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 25192,
+      "jpeg_shard_bytes": 704687
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "86021a6f81e464562208ca09e465814bb14a2fa83339206edb87f9c86d76b5cb",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "7d252acffe7e39ec3baa833acd87057a475b942b547be60952fe0aca3b8d1146"
+    },
+    "completion_sha256": "b62abd7a00199eb29c6946e21dd6b4de87cea70aa4fcfb618f44460b41250f3c",
+    "generation_seconds": 4.552624776000357,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 19098,
+      "jpeg_shard_bytes": 601365
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "8780a8b82b588d95d0a3bca1dcc2f0bf7d5e71e4e1dace1654bfa8ad7ac47ca2",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "c437f777999c66003244ff34a4c83babec18a2c0c4b0df2654c436b4128523aa"
+    },
+    "completion_sha256": "94f6cbb701564b978aac50fcd3f8f7773f93f2666b7b082477e3d84cfa4f3c16",
+    "generation_seconds": 4.1197337620001235,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16350,
+      "jpeg_shard_bytes": 347067
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "8d0e91d8374592d88862ca8d55bd43f762166c65088e317123a1f06c1fed90c7",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "a7d049ff65203f8cce5ea92b69d58fe157b9c074a874c6518827e6a1363033b9"
+    },
+    "completion_sha256": "52f9f7d80c28ba2d056d8a4ae2bd23bdd243fbdf6038a4b36bce01b167f160ae",
+    "generation_seconds": 10.71398906200011,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 22,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 32775,
+      "jpeg_shard_bytes": 1228849
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "8fc8b51b969176bd3a730043efd85e0a53f7e949887bf51da0e46ef45464ef4d",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "1dd6873b090f62d4b5f096ad1ef9542f8fb9755bdd91ac4aa30b230ab474bfd6"
+    },
+    "completion_sha256": "f90003a1de80c7090e363dcebe231eed309cc86218bf22dc65c5ca566a388dfd",
+    "generation_seconds": 4.986750006999955,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 27255,
+      "jpeg_shard_bytes": 864957
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "935ef56dfec8591b0c681bc45c88a8599713e837ba0f210b462f805c337d3b84",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "e1835a2c16e2481caabd138bee96c812fe68352a918e00dce617bf884d140ada"
+    },
+    "completion_sha256": "62dd035000b5eba9fdec9e2dcb54f45a5f6fb2f41ccab250acef1cccb0eec0df",
+    "generation_seconds": 3.981373115000224,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 16136,
+      "jpeg_shard_bytes": 389677
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "951419e6127b7b410acfe94a3026068adad0869a94b2b4b6ae835663f2396dec",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "d5185078a2fee6c2a76dfdcf4d989a702e84a7bdbf1a29bb1b60dd1b749549f4"
+    },
+    "completion_sha256": "aa0866d227393a35a6ffcf0e9806ab2979db4310836b3cb4222419f1850285d5",
+    "generation_seconds": 4.096247220999885,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13384,
+      "jpeg_shard_bytes": 385650
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "955313efa55827b5a21601640b83e63ac7186ad336b59de3cb3996355f380f2a",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "bc539a05e3991e028423d198b1a8c5f663f932b45e2074fc1d0a758c7410c638"
+    },
+    "completion_sha256": "f628aee57ec0f9218342ad10f63c2adb304ed04b8d8e473a30b332ad12299d18",
+    "generation_seconds": 3.9949851880001006,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13341,
+      "jpeg_shard_bytes": 332419
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "96a2f3b513623ef5e82f0a8626303da7e3cedebcaac4af79aab0e644d8983f82",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "33f561dc7c1b6c25df661974a3b3fce87d3bb6c1c7638f8a4d59f0078e1d5305"
+    },
+    "completion_sha256": "7a5a1b94e1a5889b3ccfc5e5d1f694e09999857acee2729f0a765180e993b499",
+    "generation_seconds": 5.253902857999947,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 46183,
+      "jpeg_shard_bytes": 672837
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "97e1e535b781af493df66b9ba45fa2172880f3ca3b8288be6969dc55a0f909a4",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "fac8e4e58a2b5e87f85a0885c06880504d9ca2c661c91f74e67cb529e4e453b9"
+    },
+    "completion_sha256": "5fc26cf775598bd1cf7af275990f703f8ff113de19ae66e64568b775c869f45b",
+    "generation_seconds": 4.026243160999911,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15265,
+      "jpeg_shard_bytes": 366589
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "9e6e5633d9d6988a941287db7a8542ad09a4f5ec39e60de8698bf9b051b3336b",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "d0b06d11a0bc087160e33a1276ea885056b05f4db786eaa2d3cfad11bc1d9214"
+    },
+    "completion_sha256": "c827ec6e04d39c44d4180d479e7ea5064e7ddc42c51b444b9fe5136b8eb7bc09",
+    "generation_seconds": 4.27708790700035,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15342,
+      "jpeg_shard_bytes": 436870
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "9ff63e855f0d62f5f067a7486f77dbe415a1644998cf10bc952f6bd838787656",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "daafbca7e27409aef34f0a938c1ddb8f3d9dbf4ce7a243c943794bab6395c62e"
+    },
+    "completion_sha256": "884c07730a4852fae3ea1a7f8a3c5df23ad8f76cb2192795565a26d2a772ccea",
+    "generation_seconds": 4.097987498000293,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13280,
+      "jpeg_shard_bytes": 414604
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "a50255942009846eac4d90534c61d137a8ce0d2819fffe41d4e33b57e78ccda5",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "9447c8ba981c01969661417ade435352f6f07cec0524e077eb6370ecfc1d3b17"
+    },
+    "completion_sha256": "013657c7cec1ff3bd16c066fb62704a6e4f0e0edd5c8c8b717bbcbc878339bbe",
+    "generation_seconds": 4.1950170470004196,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13338,
+      "jpeg_shard_bytes": 438148
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "a6615ff5eba1ffb8ec6c2cef295c24e36fea833cd48318a49f83fd7064d9582f",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "0e1137c974280b53d3f744ff7356e59c01a67296910012952bf89d2889cf981d"
+    },
+    "completion_sha256": "9ff37dda865cfa429e20ef38ae625752f981e86d355d13e837d39a1b407390b1",
+    "generation_seconds": 4.048417854000036,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13344,
+      "jpeg_shard_bytes": 346223
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "a71072d4b7a82497190690e401708fd07c81efb1a079575abbb803367ad25736",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "8ba8bc0f9274e0daac3d9d2a730900ce631f8362696c3d14a35fc3b956ca0c14"
+    },
+    "completion_sha256": "e1698bb943aaacf24e5a99da0de24e485f052cf7d3d1016bbb85df4f1f07e510",
+    "generation_seconds": 3.408989308999935,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 8,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 13234,
+      "jpeg_shard_bytes": 104324
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "adac0d5f5932b20bb3474926c4f7e52fe84254b5d7618310ab262a1f1c96b20e",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "4c9df20db8cbe09d6cd04c0290adbc3ae2e05723957a369bf6c10edbb386885e"
+    },
+    "completion_sha256": "9401e5d656832a3741e5bdad40ec314c6363537cae591bfbe72a3c038a845ade",
+    "generation_seconds": 3.650071166000089,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15213,
+      "jpeg_shard_bytes": 153629
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "af9c1b13ea2539fb6a1af583cd43bc149a7b881f1a1468fd98eb62b55383e30b",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "efea92606c66a28a6f9850ec41a0b0597619f79f7721d3dc27f46531a99abeff"
+    },
+    "completion_sha256": "148de4c1c30b92082c6c4677a2d74a6bfcd541e93b92eb77beb50fa5b9907eb4",
+    "generation_seconds": 4.31882808499995,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 14355,
+      "jpeg_shard_bytes": 490428
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "afe447aef59cbea5b2ee34758e7cbd0b382114e6ecb3db4c98a05d00f7281d09",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "33cd750e55b96dbf203a4ec515e40110ed7b86503398654915e788dfdaf5d8fa"
+    },
+    "completion_sha256": "c87d2c404d2b55de85907708649009fb64810953df7047e3309242f37062716b",
+    "generation_seconds": 5.190114785999867,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 47955,
+      "jpeg_shard_bytes": 557847
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "b3a82ec770e87de42af06c30221b14e88d91e7fa1c3a29ed2926dca91ed47f03",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "6a4f556c546bfcb671e88d0447366d296856c01b6c01d696cafcb24989912037"
+    },
+    "completion_sha256": "a840dcaff18930c2b6549335e7831c4ed0bd36276a7f060324113e0ee000a761",
+    "generation_seconds": 4.214917113999945,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 14330,
+      "jpeg_shard_bytes": 445822
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "b9166f8bfb3ba988f3c1fdca4a1eed3eaf70620e2b5971884a1cfeb387da3926",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "c9dfd9530d9cbd9a04e3edeb94ecbb78595f702df2176e69cc62c1f2042e1864"
+    },
+    "completion_sha256": "93ecd57e0021b285f5097462b03f9f676ae3115c0579e66042a028cddb8da3f9",
+    "generation_seconds": 6.410458085999835,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 14,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 55922,
+      "jpeg_shard_bytes": 1329639
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "bb606570f9420c3724c0d63232ffc461ba374a2e200bbe14594275d21cc2dc3e",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "65fc2022f44a31f3d472f7fb3526d6d7c32d46310971285c216c2d4d0133b0e4"
+    },
+    "completion_sha256": "cadd1efa10a8ce7bd3177d39f0d74c84652364fc184abb1527964505ae69e72d",
+    "generation_seconds": 4.93582982099997,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 11,
+      "sampled_peak_bytes": 778043392,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 23760,
+      "jpeg_shard_bytes": 852021
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "be10414cfd84ea60bcd6fc4fc7b1b407b69e793ac99c9d6f3c21fcb1621b2924",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "022669ca0281cc35de5fcea2e86eb91f93ee69573263f9d9726c44ce1c579936"
+    },
+    "completion_sha256": "0a378cba8b4887b39ba930b7402160282710caf1c82541b921da1b66f73ff1e3",
+    "generation_seconds": 4.50340259099994,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 19374,
+      "jpeg_shard_bytes": 612755
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "c23b360a43a7b1173e60e55ac287d8cc56add238934aa42accfd920f8c74c860",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "3b8f73607ece6932b7a7a88ef01ab0df6c037154495658af7af0b857e0296907"
+    },
+    "completion_sha256": "bf3e12c37a76ffd921bf5fecd98b1b7cd79c2b15d26de1850bf03aa26134ce0b",
+    "generation_seconds": 4.2286600649999855,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 19613,
+      "jpeg_shard_bytes": 424872
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "c2560d4248f913f6754c949b192895c4031c6af8e4dcc84b9ec1d434ee5bed93",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "770fade1672e2b06b617a7d5f5957a7770fa6b692e797c1d3d307be0db7d47c9"
+    },
+    "completion_sha256": "7413f205cbf185f68264590f4ec44aa522980306ce7497ef20421fac36e7fb03",
+    "generation_seconds": 4.061367127000267,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15354,
+      "jpeg_shard_bytes": 347240
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "c3d4e501d28370c5b9e120cc7c139819a3f715c5d8e45a64c4596006a1f6ee88",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "8cce2ca39ee4c15800b2cf86c33f4316471a0231a925090b5404be83e868f44f"
+    },
+    "completion_sha256": "2ce42458602a13576caa81d99e6295ce1feaf0d8ca2df05e29965e2d3ab61d09",
+    "generation_seconds": 6.307287944000109,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 14,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 38121,
+      "jpeg_shard_bytes": 1280728
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "c498eb0be62e3e8469de4fde73653f41198f0bb5f2ba0608f9d0d510ca3f4cc8",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "fa80b2147086191e8f40bc4367d8851696fefcfbc4cdea54314c2f1e28c76c67"
+    },
+    "completion_sha256": "1f227972a3b4fbc6835d3bb88e6661f24fc19f394a028c89260fe431a1401a84",
+    "generation_seconds": 3.951240073000008,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15326,
+      "jpeg_shard_bytes": 267674
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "ca58c8c9aec48731a57e5f76cfec64d50a37b9faad4673ebd307075096088583",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "44deecaa794a4eed7f8710e2e74abe126ab15fe1288387c2a50cf0838b25814f"
+    },
+    "completion_sha256": "b023b754a6224c4da3c82470e16727186ab8c3266c4d6e8c7660757e1422414d",
+    "generation_seconds": 4.4716563990000395,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 22649,
+      "jpeg_shard_bytes": 439598
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "cd7c18f5d4965170a9286970dac400cf5ade820938d27d1f2c892587739c317a",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "79e8411f62be2cee3f02e566ced09c96063320797df183c7e9fa2db20bd3be0f"
+    },
+    "completion_sha256": "62451e35fc2735bd3771842379fac1420b4606925f9c2f4f51ac96bd59cc0b7c",
+    "generation_seconds": 5.687119125000208,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 778043392,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 31545,
+      "jpeg_shard_bytes": 1144447
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d14047b923a231344771437a4d1e80c895d0f6c6687d08468e328342440f0575",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "6a1bf384c6ef90496aaf3e1ecde88caa2727cce50cab302dcdeda28d84e042de"
+    },
+    "completion_sha256": "7fabaf5d279af3c11c2d66920baa850916215ecc60437822b3bfebec4f77cee8",
+    "generation_seconds": 12.575300209000034,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 26,
+      "sampled_peak_bytes": 778043392,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 21032,
+      "jpeg_shard_bytes": 724128
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d1c83d87a81b122401194fe93937a8fc02077efc039c9379399b11f08493c569",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "2d6aa7b95ab974e16dbbdf179aabd40478041f99f095d6f945a9fe8e66e8614d"
+    },
+    "completion_sha256": "6815767781b87a63672285be454548e9f81723b452b7c68c68e1a21ac014797c",
+    "generation_seconds": 4.3279858740002055,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15500,
+      "jpeg_shard_bytes": 441070
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d38525cd1adb7edc9d2704c47bf7742860bb1bb45f595254577302c390890786",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "dac223d04f5a52c17e1e7f8873472afe9465363ba5459c444a8cf3693159caee"
+    },
+    "completion_sha256": "9a7e1423a5270ef9ebbaa759d27d231a89d0bc362ea7e3621189453350bc757d",
+    "generation_seconds": 4.519371351000245,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 22682,
+      "jpeg_shard_bytes": 551426
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d3f17686a25dfba083a06783c0f1535c218605ec0cd8b718d0f261f2bac6c5df",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "d139f08a20c68ee335eebb4acd2b930ca714f295e9a906041e73ed23022d9b88"
+    },
+    "completion_sha256": "319bbbc21cbc7ebf57c68c0f15d1a27cfcbe9a7a06fbf62cb2715bc243f227ff",
+    "generation_seconds": 5.578875092000089,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 43687,
+      "jpeg_shard_bytes": 975984
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d483035568344052f9c24c3c8b941575050cb4c52ec491fe953766527280e139",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "b3ccf7787170a41238d5845bab222c8b97afc245fd92de530c1837cb34290b8a"
+    },
+    "completion_sha256": "7346162f4043defe0ee02a851de5011b51394d4fca754306247c1bf26335b509",
+    "generation_seconds": 4.333375893999801,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15263,
+      "jpeg_shard_bytes": 497835
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d600fd29b207165ed2b3187a01fa44387dacfb53068712860fb79eca2e55965b",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "a638d1f86aea87029f5c8308960cdf4cd4461d55d69e35d01debb1881a0a0a36"
+    },
+    "completion_sha256": "73a9c14af7c63010472e3e822a34a5196514777afba222f08b319fe46f619688",
+    "generation_seconds": 6.117092141999819,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 13,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 51727,
+      "jpeg_shard_bytes": 1200849
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "d821b702190090b2eee1eba8e99870a6349e507977e6b6fc8c07724598bf3d1b",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "1aecb515f5f57b57e49aea8a150a447a0de39427bda35b95a4dfbb2bfe9176bc"
+    },
+    "completion_sha256": "9386caa6d45a7820978bd6d541e7cf32cb796bdd11586d0d639af3cc3a2321e2",
+    "generation_seconds": 5.227641834000224,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 30512,
+      "jpeg_shard_bytes": 890730
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "dcd75214917672ebe43ce378759485bff0d2dc5fc51d7b3f26a6545ba9ac0a35",
+      "offset": 0,
+      "scene_id": "B00",
+      "trajectory_id": "4b739ec24f9e99e475d421b40a2a9e034d0d952c4a397e86c119b6c3bbf0db5a"
+    },
+    "completion_sha256": "f9debec936f3f2bbead3a791090f5e734354dda737a552bfed2dfc1c1cde7e28",
+    "generation_seconds": 5.400190762999955,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 32353,
+      "jpeg_shard_bytes": 1012668
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "df75d3c1958f5e144282d6b6b443ae6d42099bc0cc249d82aeac759a6599a96d",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "deb87fd2c716f0de7cf31472f6066997f456410247e078d1715c32605419ce39"
+    },
+    "completion_sha256": "d1262a02316d817381c963fe59a45d5944a577b3feb222fad2e172350dec7682",
+    "generation_seconds": 8.958603242999743,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 19,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15382,
+      "jpeg_shard_bytes": 476109
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "df77e80fddf0a5ed3154f127640a3f4a11e28299913d24a022685046dbea35c7",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "e687b92d6a8bfe2c05c9c26dc628d254916211830ffba3f716d8eb7bd9d62bfb"
+    },
+    "completion_sha256": "109e3ade414749b1f2516ada1695ec658af4ca1848e3667636a92bbd204fb3fd",
+    "generation_seconds": 4.284410960000059,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 10,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15254,
+      "jpeg_shard_bytes": 452133
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "e308e7af0a70c8c0be5373af981fc3356620f3b2997215cde1fc674d0a757cd0",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "19947e253f4cb6121d4bcc4f583d4582dc179aa80ed43e954fa18810a9582840"
+    },
+    "completion_sha256": "944d468973f07609896822a01e9a619ca6098eb8b91a45b82be88b5f04c19054",
+    "generation_seconds": 6.205166149999968,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 13,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 58195,
+      "jpeg_shard_bytes": 1113588
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "e6952fdacd6f9908046d87d8c1c209047c5dd4bf8f7935b21f8b504c0a1ccf6e",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "9f37fbe4ff46a9dc06072a668c427d50892d1dd8a10be29fcbdc96bfe21d61c1"
+    },
+    "completion_sha256": "54a1f0c73087a74e41f4cc3291e57520fcbfb76c5b4fa86c7cfe98c9706d72cc",
+    "generation_seconds": 5.299572118000015,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 12,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 22130,
+      "jpeg_shard_bytes": 799726
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "ec11b131bdde9fb458073eebd85211a66177ae783a8ca1ba407d04edcf33bdb1",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "633a23e9072f35a48d719809ec2f0f7a377071ff40572d4f8a0320c4315fd165"
+    },
+    "completion_sha256": "732a1709e1675a86c7714059cb51665d13abbddd529338150c310e2222bb7de2",
+    "generation_seconds": 3.975482605000252,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 12421,
+      "jpeg_shard_bytes": 374528
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "f08ab4b37623f092a55600a1c4cdc3d0856799605aa7b698cb4771e0517b8fef",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "83e647620017b1749698f1a32f6379711b5a8d3b816f8bce2f47aba579736adf"
+    },
+    "completion_sha256": "b196b529fa3225cf19024b6ee5b4dd449c5698a9fb7d8f9441ef5d6c5b1c56ea",
+    "generation_seconds": 4.01210486500031,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 23364,
+      "jpeg_shard_bytes": 295764
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "f3e7e7c0ddaa3e583423f39eb0af438612838cece1f168f1bd5240454be7c397",
+      "offset": 0,
+      "scene_id": "B03",
+      "trajectory_id": "dbc0b8f330bfad5862ef669df508f68023d0c0ccb8fbc21fccb7aafc9208aa4b"
+    },
+    "completion_sha256": "53c4ad8254356255fc68257dbb4fdd04a6ce3e3e1c090941a0d0997b72fc820f",
+    "generation_seconds": 4.046468719000131,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 9,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15479,
+      "jpeg_shard_bytes": 323787
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "f460f5f43ce4736fd1f779eef9b0e1eb0fff73c881365e74ae954b2c9a479ffd",
+      "offset": 0,
+      "scene_id": "B02",
+      "trajectory_id": "8a151ba0d623665af3ee4e39e8e425ac5757ed68af9254504abfe490ce5062f5"
+    },
+    "completion_sha256": "5ae387726bde72cb036988937cdf7d016dccd574bbcacc4a1744011e95d41b4c",
+    "generation_seconds": 8.910566307999943,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 19,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 15308,
+      "jpeg_shard_bytes": 549674
+    }
+  },
+  {
+    "cache": {
+      "birth_level": 0,
+      "cache_key": "f777be77f4af44d65860e961ae88bfcb8aca44b97e9883c984cdbc8ea773aa5e",
+      "offset": 0,
+      "scene_id": "B01",
+      "trajectory_id": "3c42b2900d01d2938b0b35460a88429ca035e9d7f255779d1e87b1ea300f9657"
+    },
+    "completion_sha256": "4fc355ef0557cfa6df12935bab79673511ccbe2d1e8908f0933fea1303814316",
+    "generation_seconds": 8.910819947000164,
+    "gpu_memory": {
+      "allocator_measurement": "not_available_across_public_renderer_subprocess",
+      "peak_is_lower_bound": true,
+      "sample_count": 19,
+      "sampled_peak_bytes": 757071872,
+      "sampling_interval_seconds": 0.5,
+      "source": "nvidia-smi_device_memory_used",
+      "torch_peak_allocated_bytes": null,
+      "torch_peak_reserved_bytes": null
+    },
+    "schema": "court_scale_cache_metrics_v1",
+    "storage": {
+      "index_bytes": 27029,
+      "jpeg_shard_bytes": 424494
+    }
+  }
+]

@@ -1,0 +1,136 @@
+{
+  "schema": "court_pilot_cpu_plan_cost_v1",
+  "probes": [
+    {
+      "probe": "small",
+      "wall_seconds": 29.29250070800026,
+      "request_sha256": "91f0dbc0a063ab67afbd884ae7d50ad548b230b8fc5b02f4a39666045a90bad8",
+      "scene_count": 4,
+      "density_level": 0,
+      "scenes": [
+        {
+          "scene_id": "B00",
+          "groups": 6,
+          "candidates": 71,
+          "geometry_pass": 67,
+          "caches": 6
+        },
+        {
+          "scene_id": "B01",
+          "groups": 6,
+          "candidates": 102,
+          "geometry_pass": 100,
+          "caches": 6
+        },
+        {
+          "scene_id": "B02",
+          "groups": 6,
+          "candidates": 63,
+          "geometry_pass": 59,
+          "caches": 6
+        },
+        {
+          "scene_id": "B03",
+          "groups": 6,
+          "candidates": 67,
+          "geometry_pass": 60,
+          "caches": 6
+        }
+      ],
+      "rendered": false
+    },
+    {
+      "probe": "dense",
+      "wall_seconds": 41.23518277600033,
+      "request_sha256": "a203e288178bdc6e201b5c6bf4ce04d3ada16794a6dd7b205cc47909facecb92",
+      "scene_count": 4,
+      "density_level": 1,
+      "scenes": [
+        {
+          "scene_id": "B00",
+          "groups": 24,
+          "candidates": 622,
+          "geometry_pass": 581,
+          "caches": 48
+        },
+        {
+          "scene_id": "B01",
+          "groups": 24,
+          "candidates": 752,
+          "geometry_pass": 710,
+          "caches": 48
+        },
+        {
+          "scene_id": "B02",
+          "groups": 24,
+          "candidates": 526,
+          "geometry_pass": 484,
+          "caches": 48
+        },
+        {
+          "scene_id": "B03",
+          "groups": 24,
+          "candidates": 518,
+          "geometry_pass": 469,
+          "caches": 48
+        }
+      ],
+      "rendered": false
+    },
+    {
+      "probe": "single",
+      "wall_seconds": 15.183811128000343,
+      "request_sha256": "6f413e9f304611bb4cf81526c094cd0b1a2f7b2fd953a75a3701c167ba9b39fa",
+      "scene_count": 1,
+      "density_level": 0,
+      "scenes": [
+        {
+          "scene_id": "B00",
+          "groups": 24,
+          "candidates": 311,
+          "geometry_pass": 289,
+          "caches": 24
+        }
+      ],
+      "rendered": false
+    },
+    {
+      "probe": "base",
+      "wall_seconds": 72.3650798460003,
+      "request_sha256": "5eb07786b1d5a864fa72e1b73c6104cde2bbdd22d8358c23e0f463cb925c4869",
+      "scene_count": 4,
+      "density_level": 0,
+      "scenes": [
+        {
+          "scene_id": "B00",
+          "groups": 128,
+          "candidates": 1741,
+          "geometry_pass": 1621,
+          "caches": 128
+        },
+        {
+          "scene_id": "B01",
+          "groups": 128,
+          "candidates": 2080,
+          "geometry_pass": 1957,
+          "caches": 128
+        },
+        {
+          "scene_id": "B02",
+          "groups": 128,
+          "candidates": 1479,
+          "geometry_pass": 1353,
+          "caches": 128
+        },
+        {
+          "scene_id": "B03",
+          "groups": 128,
+          "candidates": 1368,
+          "geometry_pass": 1235,
+          "caches": 128
+        }
+      ],
+      "rendered": false
+    }
+  ]
+}

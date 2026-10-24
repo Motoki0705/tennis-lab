@@ -1,0 +1,55 @@
+{
+  "schema": "court_d2_failure_recovery_v1",
+  "files": [
+    {
+      "path": "probe/selection.json",
+      "bytes": 80593,
+      "sha256": "936e49d7c33ae763ff66f6fa07098303dc5e684f9aa6e658432e9af3876cc0a0",
+      "retained_in_git": false
+    },
+    {
+      "path": "probe/state.json",
+      "bytes": 827,
+      "sha256": "73ffb2f526c97984cd7ee7cd21f9357d3e037a86af37112e09cf26b518edb609",
+      "retained_in_git": true
+    },
+    {
+      "path": "profile.pstats",
+      "bytes": 3289665,
+      "sha256": "ead926be31cec51584aa014654baa11139848680cdf5bd65c2b642136da2d77e",
+      "retained_in_git": false
+    },
+    {
+      "path": "render-timing.json",
+      "bytes": 980,
+      "sha256": "6854f5b4529b24216062be6793d8debd05a4a9b0e1ddd261c2b5191618fd515d",
+      "retained_in_git": true
+    },
+    {
+      "path": "setup/asset-download.json",
+      "bytes": 687,
+      "sha256": "11b31e4cbbf8deb82e0422dce3ad5a45ddf729ecb61f08e1d5b1a8073a40d641",
+      "retained_in_git": true
+    },
+    {
+      "path": "setup/asset-verify.json",
+      "bytes": 717,
+      "sha256": "8e47513685b1c3bdfbe90867f7bc1c4faa1ff1349b8d1399874ae85566578015",
+      "retained_in_git": true
+    },
+    {
+      "path": "setup/nht.json",
+      "bytes": 491,
+      "sha256": "f3c6af3087a1414319e200477af51011425c8033d6b9942bbf1835933b66b3e3",
+      "retained_in_git": true
+    },
+    {
+      "path": "setup/uv.json",
+      "bytes": 446,
+      "sha256": "22970628384f1e07bfc9ad387dfb055aa98a13917d186df6d7a906034316d385",
+      "retained_in_git": true
+    }
+  ],
+  "selection_matches_frozen": true,
+  "raw_profile_location": "outputs/synthetic_data_generation/profile/court-d2-support-l4/court-d2-probe-l4-20261024t032852z/profile.pstats"
+}

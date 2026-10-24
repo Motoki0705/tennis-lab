@@ -1,0 +1,22 @@
+{
+  "schema": "court_d2_cli_receipt_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-colab/scripts/colab.py",
+    "cancel",
+    "--session",
+    "court-d2-probe-l4b-20261024t044312z",
+    "--job-id",
+    "setup"
+  ],
+  "started_at": "2026-10-24T04:46:29.178441+00:00",
+  "wall_seconds": 35.98683879399323,
+  "returncode": 0,
+  "response": {
+    "schema_version": 1,
+    "ok": true,
+    "job_id": "setup",
+    "requested": true
+  },
+  "stderr": ""
+}

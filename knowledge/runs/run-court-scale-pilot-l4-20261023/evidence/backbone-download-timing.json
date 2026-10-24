@@ -1,0 +1,20 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "download",
+    "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+    "ckpt/dinov3/dinov3_vitb16_pretrain_lvd1689m-73cec8be.pth",
+    "--verify"
+  ],
+  "started_at": "2026-10-23T14:37:17.157157+00:00",
+  "wall_seconds": 36.77340349799988,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

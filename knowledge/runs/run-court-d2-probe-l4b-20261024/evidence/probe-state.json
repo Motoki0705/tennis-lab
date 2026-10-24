@@ -1,0 +1,714 @@
+{
+  "schema": "court_d2_probe_execution_v1",
+  "selection_sha256": "1684f5f916730c25f24014e91bf2a62c368abf09ee8efbc22ad6283ae014b66c",
+  "source_commit": "5d2700b3274e5e3068fc652b870eb5edf441be1f",
+  "draw_attempts": 192,
+  "completed_frames": 192,
+  "scenarios": [
+    {
+      "variant": "current",
+      "scene": "B00",
+      "render_qa_archive_seconds": 22.647205114999906,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 45,
+        "sampled_peak_bytes": 778043392,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 3,
+          "sampled": 3,
+          "population_per_sample": 1.0,
+          "accepted": 3,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0,
+          "accepted": 2,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1616,
+          "sampled": 7,
+          "population_per_sample": 230.85714285714286,
+          "accepted": 7,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1621.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "current",
+      "scene": "B01",
+      "render_qa_archive_seconds": 18.201407961000314,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 36,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 24,
+          "sampled": 4,
+          "population_per_sample": 6.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 68,
+          "sampled": 4,
+          "population_per_sample": 17.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1865,
+          "sampled": 4,
+          "population_per_sample": 466.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1957.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "current",
+      "scene": "B02",
+      "render_qa_archive_seconds": 17.944627493000098,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 36,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null,
+          "accepted": 0,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null,
+          "accepted": 0,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1353,
+          "sampled": 12,
+          "population_per_sample": 112.75,
+          "accepted": 12,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1353.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "current",
+      "scene": "B03",
+      "render_qa_archive_seconds": 18.12106150999989,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 36,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0,
+          "accepted": 2,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 2,
+          "sampled": 2,
+          "population_per_sample": 1.0,
+          "accepted": 2,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1231,
+          "sampled": 8,
+          "population_per_sample": 153.875,
+          "accepted": 8,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1235.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "wide125",
+      "scene": "B00",
+      "render_qa_archive_seconds": 13.408108428000105,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 27,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 7,
+          "sampled": 4,
+          "population_per_sample": 1.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 24,
+          "sampled": 4,
+          "population_per_sample": 6.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1641,
+          "sampled": 4,
+          "population_per_sample": 410.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1672.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "wide125",
+      "scene": "B01",
+      "render_qa_archive_seconds": 12.526047019999623,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 86,
+          "sampled": 4,
+          "population_per_sample": 21.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 136,
+          "sampled": 4,
+          "population_per_sample": 34.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1794,
+          "sampled": 4,
+          "population_per_sample": 448.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 2016.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "wide125",
+      "scene": "B02",
+      "render_qa_archive_seconds": 12.320424748999812,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 0,
+          "sampled": 0,
+          "population_per_sample": null,
+          "accepted": 0,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 13,
+          "sampled": 4,
+          "population_per_sample": 3.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1426,
+          "sampled": 8,
+          "population_per_sample": 178.25,
+          "accepted": 8,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1439.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "wide125",
+      "scene": "B03",
+      "render_qa_archive_seconds": 12.576041985999836,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 26,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 4,
+          "sampled": 4,
+          "population_per_sample": 1.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 17,
+          "sampled": 4,
+          "population_per_sample": 4.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1296,
+          "sampled": 4,
+          "population_per_sample": 324.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1317.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B00",
+      "render_qa_archive_seconds": 13.361274062999655,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 27,
+        "sampled_peak_bytes": 778043392,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 82,
+          "sampled": 4,
+          "population_per_sample": 20.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 83,
+          "sampled": 4,
+          "population_per_sample": 20.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 2161,
+          "sampled": 4,
+          "population_per_sample": 540.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 2326.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B01",
+      "render_qa_archive_seconds": 12.498219789000359,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 291,
+          "sampled": 4,
+          "population_per_sample": 72.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 301,
+          "sampled": 4,
+          "population_per_sample": 75.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 2271,
+          "sampled": 4,
+          "population_per_sample": 567.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 2863.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B02",
+      "render_qa_archive_seconds": 12.526906134,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 27,
+          "sampled": 4,
+          "population_per_sample": 6.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 75,
+          "sampled": 4,
+          "population_per_sample": 18.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1745,
+          "sampled": 4,
+          "population_per_sample": 436.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1847.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0",
+      "scene": "B03",
+      "render_qa_archive_seconds": 12.511306831000184,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 17,
+          "sampled": 4,
+          "population_per_sample": 4.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 34,
+          "sampled": 4,
+          "population_per_sample": 8.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1625,
+          "sampled": 4,
+          "population_per_sample": 406.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1676.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B00",
+      "render_qa_archive_seconds": 13.144225861999985,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 27,
+        "sampled_peak_bytes": 778043392,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 158,
+          "sampled": 4,
+          "population_per_sample": 39.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 184,
+          "sampled": 4,
+          "population_per_sample": 46.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 2008,
+          "sampled": 4,
+          "population_per_sample": 502.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 2350.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B01",
+      "render_qa_archive_seconds": 12.494348621999961,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 586,
+          "sampled": 4,
+          "population_per_sample": 146.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 350,
+          "sampled": 4,
+          "population_per_sample": 87.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1950,
+          "sampled": 4,
+          "population_per_sample": 487.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 2886.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B02",
+      "render_qa_archive_seconds": 12.112744167000074,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 25,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 58,
+          "sampled": 4,
+          "population_per_sample": 14.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 195,
+          "sampled": 4,
+          "population_per_sample": 48.75,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1641,
+          "sampled": 4,
+          "population_per_sample": 410.25,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1894.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    },
+    {
+      "variant": "hull25_margin0_wide125",
+      "scene": "B03",
+      "render_qa_archive_seconds": 12.574902105000092,
+      "memory": {
+        "source": "nvidia-smi_device_memory_used",
+        "sampling_interval_seconds": 0.5,
+        "sample_count": 26,
+        "sampled_peak_bytes": 757071872,
+        "peak_is_lower_bound": true,
+        "torch_peak_allocated_bytes": null,
+        "torch_peak_reserved_bytes": null,
+        "allocator_measurement": "not_available_across_public_renderer_subprocess"
+      },
+      "strata": {
+        "full": {
+          "geometry_population": 28,
+          "sampled": 4,
+          "population_per_sample": 7.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "near_full": {
+          "geometry_population": 126,
+          "sampled": 4,
+          "population_per_sample": 31.5,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        },
+        "partial": {
+          "geometry_population": 1564,
+          "sampled": 4,
+          "population_per_sample": 391.0,
+          "accepted": 4,
+          "qa_rejection_reasons": {}
+        }
+      },
+      "raw_sample_accepted": 12,
+      "raw_sample_size": 12,
+      "weighted_acceptance_given_geometry": 1.0,
+      "weighted_accepted_geometry_population": 1718.0,
+      "uncertainty": "Four or fewer probes in many strata; descriptive estimate only, not a certified production rate."
+    }
+  ],
+  "outcome": "completed",
+  "renderer_release": {
+    "schema": "court_scale_renderer_release_v1",
+    "before": {
+      "uuid": "GPU-e86eb94e-5d2e-db9f-386c-8da5c0a88c3d",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "after": {
+      "uuid": "GPU-e86eb94e-5d2e-db9f-386c-8da5c0a88c3d",
+      "name": "NVIDIA L4",
+      "device_used_bytes": 0
+    },
+    "compute_processes_after": [],
+    "renderer_context_released": true
+  },
+  "bytes_before_final_state": 485616355
+}

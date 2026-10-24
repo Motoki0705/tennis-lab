@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "path": "tmp/court-d2-support-local/analysis/baseline-geometry-rows.json",
+      "bytes": 1002279,
+      "sha256": "5d4285ec85df7523e453d5580819824b8bb47f5882f409cd0fd412d373c2c762"
+    },
+    {
+      "path": "tmp/court-d2-support-local/analysis/val-camera-rows.json",
+      "bytes": 82348,
+      "sha256": "d0c42f9e1b2d63fca1fd2af77c9608c68118db4f8e350a9f46f123fe4ed44b3e"
+    },
+    {
+      "path": "tmp/court-d2-support-local/analysis/capture-rows.json",
+      "bytes": 111083,
+      "sha256": "c9f11ab3db636defa50b26177c422e7297a76f99f46d88af1b81c06b4dc01e67"
+    },
+    {
+      "path": "tmp/court-d2-support-local/plans/current/rows.json",
+      "bytes": 6183140,
+      "sha256": "a58c2ab9dd001dd52dc47cba1e0326e6a28e8ace60961364abc04a493bafeb4f"
+    },
+    {
+      "path": "tmp/court-d2-support-local/plans/wide125/rows.json",
+      "bytes": 6165027,
+      "sha256": "55f098330bc8b3d663301ecf1ab796abbce142bd3321d4684ce26209aecb59c8"
+    },
+    {
+      "path": "tmp/court-d2-support-local/plans/hull5/rows.json",
+      "bytes": 6542868,
+      "sha256": "4be09c81fa99b977171d0ec1bee06dabe71d4e38addaf48827786fc78ea049bb"
+    },
+    {
+      "path": "tmp/court-d2-support-local/plans/hull25_margin0/rows.json",
+      "bytes": 8355440,
+      "sha256": "000ded00e75ced2bcb74470774cb0bb6c23d2ef705dc3ec8ff0b263d720423d2"
+    },
+    {
+      "path": "tmp/court-d2-support-local/plans/hull25_margin0_wide125/rows.json",
+      "bytes": 8339466,
+      "sha256": "7653ad0bd879b1da3243c1c5d4ca2153bd9eb1664264d304094ec8b529bc4fb3"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "schema": "court_d2_repro_bundle_inventory_v1",
+  "application_commit": "d0330d0683b2f69d34407ec303c5c79dda13ddaa",
+  "files": [
+    {
+      "path": "audit_saved.py",
+      "bytes": 6713,
+      "sha256": "1623057892228bc28e178eb3b02299decca68a1e0b25fa44f41d1803357ad523"
+    },
+    {
+      "path": "cost-scenarios.json",
+      "bytes": 88706,
+      "sha256": "37b9caae8e2fc4cac4c6238e87016b3954d203955ff50a06532dc368f6fd2d98"
+    },
+    {
+      "path": "costs.py",
+      "bytes": 10313,
+      "sha256": "4d3a79a1e5af0ac81107978b52f7bcd50cd938b336c3d873535c88bc41f2fac2"
+    },
+    {
+      "path": "diagnose.py",
+      "bytes": 10689,
+      "sha256": "022764286b08b80b2bb71fb638d8afae197b28014cb50a2adcd1c29f5db62351"
+    },
+    {
+      "path": "evidence/baseline-geometry.json",
+      "bytes": 31710,
+      "sha256": "59965919a7424909df2323b5b074c2a3e1a9b05b92153c12e4a4480d5ce5d0c2"
+    },
+    {
+      "path": "evidence/captured-camera-summary.json",
+      "bytes": 1834,
+      "sha256": "2fd4b4d986098be711d103d1faa76c3932984862e6591bd774e29cb6933fa513"
+    },
+    {
+      "path": "evidence/comparison.json",
+      "bytes": 176760,
+      "sha256": "34e6b35ba97074c19eaf93295a8308315806bbe54659b1811dfeb7071c7495ee"
+    },
+    {
+      "path": "evidence/comparison.md",
+      "bytes": 10191,
+      "sha256": "0151ff100235189e1be0fc04b1f872f73d60c2ecc298f6936d39b3b314ea2de0"
+    },
+    {
+      "path": "evidence/cpu-reproduction.json",
+      "bytes": 435,
+      "sha256": "86756ce6a284ac237bd1c79982a05f59391ecf90e7e8e39c651475962b8e5d69"
+    },
+    {
+      "path": "evidence/cpu-verification.json",
+      "bytes": 435,
+      "sha256": "86756ce6a284ac237bd1c79982a05f59391ecf90e7e8e39c651475962b8e5d69"
+    },
+    {
+      "path": "evidence/factor-bins.json",
+      "bytes": 2242,
+      "sha256": "8019accacf7732d51f1c9316504bd7095520a6b8f2f3bc6bb39a08d86d84bb1c"
+    },
+    {
+      "path": "evidence/saved-pilot.json",
+      "bytes": 27092,
+      "sha256": "171a2661b55f67df03f8fb922c4edc29657c5ffcee6a1765d1c7a046583f0faf"
+    },
+    {
+      "path": "evidence/source-files.json",
+      "bytes": 1563,
+      "sha256": "c9d2f441516cdf8d51d7c984dff9ab07e4151588b79f65a68debc58691848a6b"
+    },
+    {
+      "path": "evidence/support.png",
+      "bytes": 87204,
+      "sha256": "7e9b53ec598c3d12acc9c4825557ffc706a730709291cf298d781bdf3e578451"
+    },
+    {
+      "path": "evidence/val-examples.png",
+      "bytes": 269181,
+      "sha256": "a887e3e0db7892731439406838b10bd85a54bacba0645f4e2f949c5657c5112d"
+    },
+    {
+      "path": "evidence/val-summary.json",
+      "bytes": 2868,
+      "sha256": "0b85e16b82d31a2e05f793c94ec74b7f07c71196cd575f3a70420c50e6054887"
+    },
+    {
+      "path": "plan_variants.py",
+      "bytes": 9684,
+      "sha256": "6e0b03e212715bbb5372da6e123ecd03dc3708631389b5dc0e9595d834d67557"
+    },
+    {
+      "path": "render-selection.json",
+      "bytes": 80593,
+      "sha256": "936e49d7c33ae763ff66f6fa07098303dc5e684f9aa6e658432e9af3876cc0a0"
+    },
+    {
+      "path": "render_probe.py",
+      "bytes": 11404,
+      "sha256": "0a56c997cd0c85c8fcecc1bf7da983faeeb6b927390e52f260458c1ccf542272"
+    },
+    {
+      "path": "report.py",
+      "bytes": 18880,
+      "sha256": "014df89ab6fe7512816269ebc745cf329f69c2edce949381538ffa91c61f0f89"
+    },
+    {
+      "path": "repro.sh",
+      "bytes": 1791,
+      "sha256": "4c2d419dc0b5ff32ce95f9cbe062eb1165a5b8fbc5bd27640f6f5cdd3cba1be8"
+    },
+    {
+      "path": "resume.md",
+      "bytes": 5981,
+      "sha256": "426b32e7c68ac5445f82d01f1460acdeab1fa78c4a20995b72ceff0f5a8fc0e9"
+    },
+    {
+      "path": "run.json",
+      "bytes": 2206,
+      "sha256": "9a2af2b8c88af0c1050b76fd60f525c503a8bff60b4880e8f504ba43de1081da"
+    },
+    {
+      "path": "select_probe.py",
+      "bytes": 3953,
+      "sha256": "d04750ff39921c201b60c1c3e6a5374feb9d330393ef7e91de2ceddbcc80d4f9"
+    },
+    {
+      "path": "support.py",
+      "bytes": 11239,
+      "sha256": "9206a0c74b6d316efcbd3e2ff01079a226e31682b3c5e458409ea6de227b47fa"
+    },
+    {
+      "path": "validation.json",
+      "bytes": 3926,
+      "sha256": "3288d6ae0983e8f6794a516b017de2bb311f61534967d9143ce621eed31e2825"
+    },
+    {
+      "path": "verify_cpu.py",
+      "bytes": 5196,
+      "sha256": "648326337f67897c2635bf79371275f5c47d943e1d277160f76be224ca906623"
+    }
+  ]
+}

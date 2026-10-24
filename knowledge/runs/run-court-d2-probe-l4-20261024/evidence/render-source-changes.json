@@ -1,0 +1,23 @@
+{
+  "commit": "4916def72d0b46728572006d7fbb19076460ec02",
+  "patch": "",
+  "untracked": {},
+  "excluded": [
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+  ],
+  "storage_excluded": [
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy"
+  ],
+  "exclusion_reasons": {
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B00/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B01/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B02/reconstruction/export/points_scene.npy": "project storage; managed through Drive",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified/scenes/B03/reconstruction/export/points_scene.npy": "project storage; managed through Drive"
+  }
+}

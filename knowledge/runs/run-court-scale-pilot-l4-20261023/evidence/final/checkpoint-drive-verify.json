@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "local_path": "/content/tennis-lab/outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints",
+  "rclone_config": "/content/.tennis-colab/court-scale-pilot-l4-20261023-dc5c253/secrets/rclone.conf",
+  "drive_path": "outputs/court_detection/train/court-scale-pilot-l4/s42/logs/version_0/checkpoints",
+  "matches": true,
+  "local_type": "directory",
+  "drive_type": "directory",
+  "changed": [],
+  "missing_on_drive": [],
+  "extra_on_drive": [],
+  "unverifiable": []
+}

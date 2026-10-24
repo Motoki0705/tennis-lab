@@ -1,0 +1,22 @@
+{
+  "schema": "court_pilot_command_measurement_v1",
+  "argv": [
+    ".venv/bin/python",
+    "-m",
+    "src.synthetic_data_generation.scripts.court_scene_assets",
+    "verify",
+    "--root",
+    "data/synthetic_data_generation/court-scene-assets-v1-a9281d9a41e39fc9-verified",
+    "--manifest-sha256",
+    "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b"
+  ],
+  "started_at": "2026-10-23T14:36:02.840791+00:00",
+  "wall_seconds": 21.728467419000026,
+  "returncode": 0,
+  "sampled_gpu": false,
+  "gpu_samples": 0,
+  "gpu_peak_used_mib": null,
+  "gpu_utilization_mean_percent": null,
+  "gpu_sampling_errors": [],
+  "gpu_memory_method": "device-wide nvidia-smi every 0.5 seconds; sampled lower bound"
+}

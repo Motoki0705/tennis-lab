@@ -1,0 +1,64 @@
+{
+  "gpu": {
+    "argv": [
+      "nvidia-smi",
+      "--query-gpu=name,driver_version,memory.total",
+      "--format=csv,noheader"
+    ],
+    "stdout": "NVIDIA L4, 580.82.07, 23034 MiB\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "nvcc": {
+    "argv": [
+      "nvcc",
+      "--version"
+    ],
+    "stdout": "nvcc: NVIDIA (R) Cuda compiler driver\nCopyright (c) 2005-2025 NVIDIA Corporation\nBuilt on Wed_Aug_20_01:58:59_PM_PDT_2025\nCuda compilation tools, release 13.0, V13.0.88\nBuild cuda_13.0.r13.0/compiler.36424714_0\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "gxx": {
+    "argv": [
+      "g++",
+      "--version"
+    ],
+    "stdout": "g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0\nCopyright (C) 2023 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "nht_torch": {
+    "argv": [
+      "/root/.local/share/uv/tools/nht/bin/python",
+      "-c",
+      "import torch; print(torch.__version__); print(torch.version.cuda)"
+    ],
+    "stdout": "2.9.1+cu130\n13.0\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "nht_commit": {
+    "argv": [
+      "git",
+      "-C",
+      "third_party/nht",
+      "rev-parse",
+      "HEAD"
+    ],
+    "stdout": "d4962c503f76d27fef27ac3f458edddc0a7d35c2\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "repository_commit": {
+    "argv": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "stdout": "5d2700b3274e5e3068fc652b870eb5edf441be1f\n",
+    "stderr": "",
+    "returncode": 0
+  },
+  "numpy": "2.3.5",
+  "scipy": "1.17.1"
+}

@@ -1286,7 +1286,23 @@ Quality/cost reports and transfer receipts accompany that input version. Command
 stdout and worker status belong to `operations/colab/<session>/<job-id>` as owned
 by the Colab skill. The accepted scene-asset bundle is read only.
 
-Drive transfers use the tennis-drive CLI and its duplicate-aware lookup library.
+Drive transfers use the tennis-drive library's attempt-scoped authenticated
+loopback session (see its [connection API](../../../../.agents/skills/tennis-drive/references/commands.md#接続設定)).
+One rclone process reuses connections for the command and is stopped on success
+or failure. Positive parent-folder IDs are retained only within that session;
+file results and missing-path decisions are never cached. Each file operation
+obtains new listings of every ancestor and the target, including the project
+root. Known IDs allow independent ancestor listings to run concurrently, without
+repeated path discovery. Duplicate names, disappeared/replaced ancestors and
+changed file identity stop execution. Preflight and readback are observations,
+not an atomic lock against another Drive client; use one writer per run root.
+Transfers skip any destination that appeared after preflight and acknowledge
+only a fresh, unique file whose size and MD5 match the local bytes. Rclone's
+automatic post-copy mismatch cleanup is disabled; the adapter performs those
+checks and preserves failed objects without acknowledging them. Bundle
+SHA-256 and exact-inventory checks remain unchanged. Receipt lookup includes its
+optional download, and an existing publication verifies its reconstructed
+archive against Drive instead of downloading the same frozen inputs again.
 The durable tree contains immutable `objects/<archive digest>.tar` files and:
 
 | Receipt | Meaning |

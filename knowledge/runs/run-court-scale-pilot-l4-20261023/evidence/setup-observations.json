@@ -1,0 +1,19 @@
+{
+  "drive_path": "operations/colab/court-scale-pilot-l4-20261023-dc5c253/setup-retry/stdout.log",
+  "full_log_sha256": "086da93bbbd8758354d54f0e201880702a968cc818a46df44db6cb40ecb1f48d",
+  "excerpt": [
+    "dc5c253ee4d502e7d78e904c49dbd3f2dd9e7833",
+    " + torch==2.14.1",
+    "elapsed_seconds=26.475",
+    " + nht==0.0.0 (from file:///content/tennis-lab/third_party/nht)",
+    " + torch==2.9.1+cu130",
+    " + gsplat==1.5.3 (from file:///content/tennis-lab/third_party/nht/gsplat)",
+    "elapsed_seconds=910.564",
+    " 4add255125e6cbf446c6a43c5f3028aa41b63648 third_party/dinov3 (heads/main)",
+    " d4962c503f76d27fef27ac3f458edddc0a7d35c2 third_party/nht (remotes/origin/claude/render-appearance-controls-2-gd4962c5)",
+    "c8d5acd22314c1c1144a30e635e08d9c738a8b39",
+    "Python 3.11.16"
+  ],
+  "command_start_to_finalizing_seconds": 941.406676,
+  "scope": "Includes uv sync, NHT render-only build, submodule initialization and commands; excludes transport submission and final worker saving."
+}

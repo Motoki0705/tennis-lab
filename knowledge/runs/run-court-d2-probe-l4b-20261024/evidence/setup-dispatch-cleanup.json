@@ -1,0 +1,9 @@
+{
+  "schema": "court_d2_cancelled_dispatch_cleanup_v1",
+  "job_id": "setup",
+  "remote_status": "cancelled",
+  "remote_drive_saved_at": "2026-10-24T04:46:42.439757+00:00",
+  "local_dispatch_pid": 3147649,
+  "local_start_token_matched": true,
+  "reason": "Connection was lost; remote pending setup was cancelled and saved before stopping this local errored CLI client. No Notebook process was started."
+}

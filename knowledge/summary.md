@@ -1,7 +1,7 @@
-<!-- knowledge-review: d23f5913c8cf0fd3e26f24cdf119e96c31bee47b0ee821fe1b5a5a3b1da987a0 on 2026-10-24 -->
+<!-- knowledge-review: bfeb0ae713c37a2afd8e38cc6db021864338f9fe5f4dece448a0d95ca9672595 on 2026-10-24 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-24（Court D2凍結192視点のL4比較・保存回復・停止と本番条件の推奨、ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -18,8 +18,29 @@ seed42・各6軌道・密度0の303候補から282枚をtrainへ採択し、Driv
 1 cache保存後に中断し、元の出力pathを使わず空のrootへ復旧して、完了cacheを再描画せず未完了23 cacheだけを生成した。
 取得後の24 store・282画像と184ファイルの内容一致、GPU解放、全jobのDrive保存、Colab停止を確認した。
 生成本体137秒に対し、durable commandやfetchのwall timeが大きく、本番規模の見積りでは永続化・確認の費用を含める。
-Drive操作をまとめる効率化は未profileの改善候補で、品質・hash・保存完了の境界を維持して調べる。
-実画像への汎化・精度スケーリング・規模上限は未評価。次は#1356で写り方別評価と生成・学習費用を確認し、既存モデルの採用判断は維持する。
+[後続の費用内訳調査](nodes/synthetic_data_generation/000028-run-court-scale-durability-cost-20261023.md)では、
+既存cache 1件の読み取り147.6秒のうち、path解決の一覧38回が110.8秒を占めた。
+verified put/get内の重複処理をまとめる修正案を示し、#1356の指示に従って生成・学習前に停止した。
+[接続・親folder再利用の実装と24 cache再演](nodes/synthetic_data_generation/000029-run-court-scale-drive-session-20261023.md)では、
+保存完了・QA・hashの境界を維持し、同じローカルhostで新規cache保存を329.0秒から定常中央値13.52秒へ短縮した。
+新しいDrive pathで中断後の接続切替・復元・残り23 cache保存と、別rootへの全量fetch179.4秒を検証し、
+24 store・282画像の内容一致を確認した。これは既存L4生成物の保存replayで、Colabでの新規生成throughputではない。
+HTTP件数は未測定で、画像数だけでなくcache充填率を費用モデルに残す。
+[push後の4シーンL4試走](nodes/synthetic_data_generation/000030-run-court-scale-pilot-l4-20261023.md)では、
+各24軌道・密度0の1,209候補から1,102枚を採択し、96cacheの保存・空root復旧・strict fetchと全教師の往復投影を確認した。
+描画/QA/local公開469.6秒に対し、durable command計2,018.8秒、fetch703.5秒で、改善後もcache数の費用が大きい。
+採択内の穴率0は鮮明さを保証せず、低視点のぼけ・B03の暗さが残る。
+合成の全面8/1,102に対し実画像valは4,400/4,468で、全面支持範囲の差から本番前のD2再検討を提案する。
+32更新の分類別評価は参考値に留め、D2の因果効果・実画像精度スケーリングや規模上限は未確定。
+全成果をDrive保存して担当Colabを停止した。
+[D2のCPU再比較](nodes/synthetic_data_generation/000031-run-court-d2-support-cpu-20261024.md)で前回の分布を再現し、低く近いcamera配置が全面不足の主因と確認した。
+25% hull拡張・margin0・HFOV92.5/110/125°は全4sceneで全面を持つが、幾何通過の全面率9.38%とvalの98.48%との差、hull外描画の品質不確実性が残る。
+CPU比較時はscript未pushのため192枚を凍結して停止した。その後の[指定版でのL4試行](nodes/synthetic_data_generation/000032-run-court-d2-probe-l4-20261024.md)は、
+共有一時rootの相対pathがNHT契約に違反して最初のsubprocess前に失敗し、完成画像・QAは0だった。
+前回は再描画せず、両jobをDrive保存してColabをstopした。親は実際にNHTへ依頼したcamera数で予算を数え、実依頼0枚の前回から凍結192枚を1回だけ再実行することを許可した。
+[全192カメラのCPU preflight後のL4比較](nodes/synthetic_data_generation/000033-run-court-d2-probe-l4b-20261024.md)は、NHT実依頼・完成・D5採択とも192枚、拒否0だった。
+25%拡張・margin0・HFOV92.5/110/125°を変更候補に推奨するが、hull外のぼけ/ghostとB03の暗さ、valとの全面支持差は残る。幾何fullやD5を画質の合格とは扱わない。
+raw保存の周期copy失敗を既存jobのsaveで回復し、全jobのDrive保存後にstop・割当0件を確認した。新QA/JPEGを反映した費用感度と、まず旧24k系列・10k更新/warmup500/val2k・追加比較の提案を親へ返す。最終条件は未合意で、本実験・追加学習は開始していない。
 
 ## 2026-10-22のCourt資産Colab照合
 
@@ -548,6 +569,13 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-24の[4シーンL4試走](nodes/synthetic_data_generation/000030-run-court-scale-pilot-l4-20261023.md)で、
+合成専用ViT-B＋幅768・長辺512・batch8・compile有効の32更新が完了し、定常中央値0.814秒/更新、観測peak10,002MiBだった。
+同じstep32をreal-video-v1の全val4,468/test4,372画像へ適用し、動画重複0・pose主評価外・写り方集計と通常指標の一致を確認した。
+未収束の時間計測用モデルなので精度・収束の結論やcheckpoint採用は更新しない。
+preflightのN/K依存と大規模Drive一覧費は未同定で、24k/48k/96kの予算表を人間判断へ返した。
+複数valではbest-valが設定-1を無視して古いcheckpointを消す経路があるため、本実験前に修正が必要。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 

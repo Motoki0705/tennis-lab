@@ -1,0 +1,66 @@
+{
+  "schema": "court_pilot_framing_evaluation_v1",
+  "rule": {
+    "version": "in_frame_kp14_v1",
+    "full": "14 KP in frame",
+    "near_full": "12 or 13 KP in frame",
+    "partial": "0 through 11 KP in frame",
+    "in_frame": "0 <= u < width and 0 <= v < height; positive camera depth for synthetic",
+    "scope": "original-image target-court geometry; renderer occlusion is not framing"
+  },
+  "split": "test",
+  "expected_step": 32,
+  "checkpoint_sha256": "d0081fca5023858aad70de5a87362cb1f4d89ce101899dc646e2dca8a82643a7",
+  "batch_size": 8,
+  "ordered_sample_ids_sha256": "15d8f6ff833253577b2e9f98432c80bac79fa7282d4afd04c2b35f7ec775c775",
+  "groups": {
+    "full": {
+      "images": 4210,
+      "metrics": {
+        "kp_mean_distance_px": 250.67323999084329,
+        "kp_median_distance_px": 235.86954498291016,
+        "seg_miou": 0.07205178570980673,
+        "line_dice": 0.00043530615176470497,
+        "semantic_line_miou": 0.08200695210966363
+      }
+    },
+    "near_full": {
+      "images": 142,
+      "metrics": {
+        "kp_mean_distance_px": 241.09375131603855,
+        "kp_median_distance_px": 227.55078125,
+        "seg_miou": 0.08370972189756136,
+        "line_dice": 0.0003370498145776458,
+        "semantic_line_miou": 0.08160796175415959
+      }
+    },
+    "partial": {
+      "images": 20,
+      "metrics": {
+        "kp_mean_distance_px": 235.80889802003026,
+        "kp_median_distance_px": 223.25851440429688,
+        "seg_miou": 0.10755688823180802,
+        "line_dice": 0.00028670939975688526,
+        "semantic_line_miou": 0.08131304140444127
+      }
+    },
+    "all": {
+      "images": 4372,
+      "metrics": {
+        "kp_mean_distance_px": 250.34367319098007,
+        "kp_median_distance_px": 235.70913696289062,
+        "seg_miou": 0.07256757236484628,
+        "line_dice": 0.0004314350779036073,
+        "semantic_line_miou": 0.08199081879662933
+      }
+    }
+  },
+  "standard_metrics_agree": true,
+  "wall_seconds": 355.49352685899976,
+  "timings": {
+    "data_preflight_seconds": 64.82812537100017,
+    "full_validation_seconds": 277.1111231019995
+  },
+  "additional_group_accumulation_seconds": 36.34620587600239,
+  "interpretation": "Short training is a timing probe. Framing trends are descriptive, not a scaling result."
+}

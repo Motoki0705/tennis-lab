@@ -1,0 +1,35 @@
+{
+  "schema": "court_scale_durability_cost_run_v1",
+  "scope": "stage 1 investigation only; no implementation, generation, training or Colab session",
+  "checkout_commit": "1eedc16ac23418eefd88dfb7dbfc9dfb7bae1211",
+  "branch": "codex/court-scale-pilot",
+  "python": "3.11.15",
+  "rclone_version": [
+    "rclone v1.60.1-DEV",
+    "- os/version: ubuntu 24.04 (64 bit)",
+    "- os/kernel: 6.6.87.2-microsoft-standard-WSL2 (x86_64)",
+    "- os/type: linux",
+    "- os/arch: amd64",
+    "- go/version: go1.22.2",
+    "- go/linking: dynamic",
+    "- go/tags: none"
+  ],
+  "analysis_command": ".venv/bin/python knowledge/runs/run-court-scale-durability-cost-20261023/analyze_records.py --output tmp/court-drive-cost-analysis-final.json",
+  "measurement_command": "export RCLONE_CONFIG=\"$HOME/.config/tennis-lab/rclone-drive.conf\"\n.venv/bin/python knowledge/runs/run-court-scale-durability-cost-20261023/measure_drive_reads.py --output tmp/court-drive-cost-probe",
+  "production_sources_unchanged_since_smoke": true,
+  "production_source_sha256": {
+    "src/synthetic_data_generation/dataset/court/scale/durability.py": "3365208d93cfb71462594494fbd03a4546a32a1b3002a838b7b5d78d72ca7a90",
+    "src/synthetic_data_generation/dataset/court/scale/durable_storage.py": "586f09456dd37963de45b24756e9657d7f7869078a0db9ea9ed228153ef15ca7",
+    "src/synthetic_data_generation/scripts/generate_court_scale.py": "4212d9f8b6547cbd44196cdd706c28e010ef98560214af37edf635296bb1f704",
+    ".agents/skills/tennis-drive/scripts/drive.py": "785e8913f32b98de0e3bc27c3b27161939b02f1bdf7f8a44a6fcd56413cc2254",
+    ".agents/skills/tennis-drive/scripts/drive_core.py": "d87b8407717335beb8d12f60142450e36ba7df749e4d2d3936447ad4ede9daa0"
+  },
+  "probe_source_sha256": {
+    "analyze_records.py": "5bdd5439ce50ca2b97d169d1682cc0c263ce7e6409e6a2f89837f662e54013cd",
+    "trace_rclone.py": "13e918167a0bcc0551f99163d7b8221fd6b573187b56aa1df6cf265bf2014a14",
+    "measure_drive_reads.py": "eeb5ed4d2932134e723ac7b85717158c567d7fed6b3838fd56b74ae1a806a9d3"
+  },
+  "remote_mutations": [],
+  "gpu_execution": false,
+  "stop_reason": "Repeated path resolution found; parent must decide optimization scope before stage 2."
+}
