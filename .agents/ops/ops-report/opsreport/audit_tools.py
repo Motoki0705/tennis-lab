@@ -19,6 +19,7 @@ from .retrieval import (
     Retrieved,
     Tool,
     encode,
+    list_page,
     strict_json,
     text_page,
 )
@@ -50,6 +51,7 @@ class AuditTool(Tool):
         result["annotations"]["readOnlyHint"] = self.name in {
             "audit_status",
             "audit_original",
+            "audit_records",
             "audit_context",
             "audit_previous_handoffs",
         }
@@ -91,8 +93,19 @@ class AuditTools:
                 {**PAGE},
             ),
             AuditTool(
+                "audit_records",
+                "Page versioned refs for all tasks/findings/evidence/handoffs, including completed/confirmed/refuted records. Optional slot is restricted to pinned completed previous_reports.",
+                self.records,
+                {
+                    "entity": {"enum": ["task", "finding", "evidence", "handoff"]},
+                    "slot": STRING,
+                    **PAGE,
+                },
+                ("entity",),
+            ),
+            AuditTool(
                 "audit_original",
-                "Read a versioned ledger ref from audit_status. Large originals require smaller character ranges.",
+                "Read a versioned ref from audit_status/audit_records/audit_previous_handoffs. Only the current or pinned completed prior ledger is allowed; use character ranges for large records.",
                 self.original,
                 {"ref": OBJECT, **TEXT},
                 ("ref",),
@@ -214,11 +227,17 @@ class AuditTools:
     def call(self, name: str, arguments: Any) -> dict[str, Any]:
         return cast(dict[str, Any], self.retrieval.call(name, arguments))
 
-    def response(self, data: Any) -> Retrieved:
+    def response(self, data: Any, *, book: Ledger | None = None) -> Retrieved:
         if len(encode(data)) > MAX_RESPONSE_BYTES - 2000:
             raise RetrievalError("RESPONSE_LIMIT", "request a smaller ledger range")
         return Retrieved(
-            data, [{"kind": "audit-ledger", "slot": self.retrieval.round_id}]
+            data,
+            [
+                {
+                    "kind": "audit-ledger",
+                    "slot": book.snapshot["slot"] if book else self.retrieval.round_id,
+                }
+            ],
         )
 
     def status(self, page: int = 1, per_page: int = 20) -> Retrieved:
@@ -226,11 +245,54 @@ class AuditTools:
             self.book().summary(limit=per_page, offset=(page - 1) * per_page)
         )
 
-    def original(self, ref: dict[str, Any], **ranges: Any) -> Retrieved:
-        data, pagination = text_page(
-            json.dumps(self.book().original(ref), ensure_ascii=False), **ranges
+    def records(
+        self, entity: str, slot: str | None = None, page: int = 1, per_page: int = 20
+    ) -> Retrieved:
+        book = (
+            self.book()
+            if slot in {None, self.retrieval.round_id}
+            else self.previous_book(slot)
         )
-        result = self.response(data)
+        table = {
+            "task": "tasks",
+            "finding": "findings",
+            "evidence": "evidence",
+            "handoff": "handoffs",
+        }[entity]
+        rows = [
+            {"id": key, "ref": book.reference(entity, key)}
+            for key in sorted(book.snapshot[table])
+        ]
+        data, pagination = list_page(rows, page, per_page)
+        if pagination["next"] is not None:
+            pagination["next"].update(entity=entity)
+            if slot is not None:
+                pagination["next"]["slot"] = slot
+        result = self.response(data, book=book)
+        result.pagination = pagination
+        return result
+
+    def original(self, ref: dict[str, Any], **ranges: Any) -> Retrieved:
+        if ref.get("path") == str(self.ledger_path):
+            book = self.book()
+        else:
+            pinned = strict_json(self.input_path.read_bytes())
+            matches = [
+                r["slot"]
+                for r in pinned["previous_reports"]
+                if re.fullmatch(r"[0-9]{8}", r["slot"])
+                and ref.get("path")
+                == str(self.ledger_path.with_name(f"{r['slot']}.ledger.json"))
+            ]
+            if len(matches) != 1:
+                raise LedgerError(
+                    "reference is outside the fixed current/previous ledgers"
+                )
+            book = self.previous_book(matches[0])
+        data, pagination = text_page(
+            json.dumps(book.original(ref), ensure_ascii=False), **ranges
+        )
+        result = self.response(data, book=book)
         result.pagination = pagination
         return result
 
@@ -244,34 +306,41 @@ class AuditTools:
         result.pagination = pagination
         return result
 
+    def previous_book(self, slot: str) -> Ledger:
+        if not re.fullmatch(r"[0-9]{8}", slot) or slot == self.retrieval.round_id:
+            raise LedgerError("not a prior completed round")
+        pinned = strict_json(self.input_path.read_bytes())
+        matches = [r for r in pinned["previous_reports"] if r["slot"] == slot]
+        if len(matches) != 1 or matches[0]["status"] != "complete":
+            raise LedgerError("not a prior completed round")
+        prior = matches[0]
+        path = self.ledger_path.with_name(f"{slot}.ledger.json")
+        old = Ledger.load(path, slot=slot, base_sha=prior["base_sha"])
+        if (
+            old.snapshot["run"]["status"] != "completed"
+            or old.snapshot["run"]["report_issue"] != prior["number"]
+        ):
+            raise LedgerError("pinned previous report and ledger status/issue disagree")
+        return old
+
     def previous_handoffs(
         self, slot: str, page: int = 1, per_page: int = 20
     ) -> Retrieved:
-        pinned = strict_json(self.input_path.read_bytes())
-        prior = next(
-            (
-                r
-                for r in pinned["previous_reports"]
-                if r["slot"] == slot and r["status"] == "complete"
-            ),
-            None,
-        )
-        if prior is None:
-            raise LedgerError("not a prior completed round")
-        path = self.ledger_path.with_name(f"{slot}.ledger.json")
-        old = Ledger.load(path, slot=slot, base_sha=prior["base_sha"])
+        old = self.previous_book(slot)
+        number = old.snapshot["run"]["report_issue"]
         body = shell.gh_json(
-            ["issue", "view", str(prior["number"]), "--json", "body"],
+            ["issue", "view", str(number), "--json", "body"],
             cwd=self.retrieval.repo,
         )["body"]
         return self.response(
             handoff.reobservation_input(
                 old,
-                report_issue=prior["number"],
+                report_issue=number,
                 report_body=body,
                 limit=per_page,
                 offset=(page - 1) * per_page,
-            )
+            ),
+            book=old,
         )
 
     def writable(self) -> Ledger:

@@ -50,7 +50,7 @@ native起動の確認済み引数・証拠の扱いは「native起動の実行�
 
 | tool | 記録・取得するもの |
 |---|---|
-| `audit_status` / `audit_original` | ページ単位の要約・後続候補と、参照時点の原本の文字範囲 |
+| `audit_status` / `audit_records` / `audit_original` | 要約・後続候補、完了済みを含む全記録のversioned ref一覧、参照時点の原本の文字範囲 |
 | `audit_context` / `audit_previous_handoffs` | 固定した専用memoryの保存状態・採否・過去レポート参照、前回の引渡先と現在の採否 |
 | `audit_plan_task` / `audit_start_task` / `audit_finish_task` | 問いと起点、native metadataから解決した実session ID、子の結論・根拠・次の問い・不足範囲。重複・枠超過はエラー |
 | `audit_evidence` | 取得成功receiptから出典・時刻・範囲・版・PR headを固定。欠落receiptや取得失敗は根拠にできない |
@@ -58,6 +58,11 @@ native起動の確認済み引数・証拠の扱いは「native起動の実行�
 | `audit_end` | 確認/除外範囲・重要な未検証リスク・終了理由の要求。ホストの実行証拠照合後に終了を確定する |
 
 発見・根拠のレコード構造は下記「調査台帳ライブラリ」が正本。
+`audit_records(entity, page, per_page)` はtask / finding / evidence / handoffの参照を列挙し、
+`pagination.next` で次ページへ進む。完了タスク・確定/反証済みの発見も再読できる。
+`slot` を指定する場合は固定入力の `previous_reports` にある完了回だけを許可する。
+`audit_previous_handoffs` と `audit_records` の過去回参照は `audit_original` で同じ原本へ戻れる。
+台帳の回・基準版・レポートissue・完了状態を照合し、一覧外のpath・symlink・破損を拒否する。
 タスクIDはnativeの `task_name` に使える小文字英字・数字・underscoreとし、問い・範囲の重複を禁止する。
 起動後に `audit_start_task` を呼び、native IDがまだ取得できないときは同じ照会を再試行する。
 未取得を成功へ読み替えず、別の子を重複起動しない。同時枠は子の完了受領で解放され、明示closeは不要。
@@ -69,12 +74,18 @@ checkpointはstate dirの `audit/<slot>.json`（version 2）で、固定入力�
 
 ホストは各native runの実起動・完了・実効設定と、台帳のtask/session対応、取得receiptの内容を照合する。
 実行や根拠が照合できない発見は未検証に戻し、確定問題として提案しない。確認済みの独立結果は部分公開できる。
+発見直下の根拠・反証と `details.usage_paths[].evidence` を同じ一覧に集約して照合する。
+利用経路だけが参照する根拠でも、欠落やCPUの `needs-reproduction` は確定/反証済みの判定を失効させる。
 親の最終返却は `memory_update` だけで、全タスクや提案の集約JSONを再返却しない。
 
 失敗・中断・重要な未検証事項のある回は、本文に「未完了」、metadataに `status=incomplete` を付けて部分公開する。
 終了コードは1、予定状態はfailed、専用memory更新は全件保留、triageは処理しない。
 次回または `report --if-due` は公開済み未完了回を優先し、同じ基準版・集計境界・issueで不足分を再開する。
 完了タスクは再利用する。終了前に中断されたrunningタスクはinterruptedを記録して同じIDで再開する。
+spawn応答の記録前に中断した過去attemptは、runnerのstopped・終了コード・CLI終了・cleanupと実プロセスの終了を
+照合できた場合だけ、応答未受領の起動を失敗履歴として扱う。元のresult/transcriptと終了理由を保存し、
+応答が無い子を完了根拠にはしない。同じattemptの照合済みの別の子は再利用できる。
+現在attempt、completedの申告、設定不一致・破損・終了/cleanup未確認はこの扱いで除外しない。
 公開だけが失敗した完了台帳は再調査せず、保存済みの返却と根拠を再照合して同じ公開を再試行する。
 issueのclose・採用チェック・子リンク・実行中の本文変更は公開前に停止する。
 `--dry-run` は独立した台帳コピーで実行し、本番の再開状態を書き換えない。

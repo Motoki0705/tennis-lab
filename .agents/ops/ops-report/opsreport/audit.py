@@ -192,6 +192,38 @@ def _failed_before_session(path: Path) -> bool:
     )
 
 
+def _interrupted_attempt(path: Path) -> bool:
+    """Only a terminal, reaped runner can supply incomplete historical spawns."""
+    try:
+        value = strict_json((path / "result.json").read_bytes())
+        eligible = (
+            type(value.get("schema_version")) is int
+            and value["schema_version"] == 1
+            and value.get("result") == "failed"
+            and value.get("turn_end_reason") == "stopped"
+            and type(value.get("exit_code")) is int
+            and value.get("exit_code") in {130, 143}
+            and type(value.get("cli_exit_code")) is int
+            and value.get("cleanup_complete") is True
+            and {"runner", "process"} <= value.keys()
+        )
+        if eligible:
+            ensure_quiescent([str(path)])
+        return bool(eligible)
+    except (OSError, ValueError, TypeError, AttributeError, KeyError) as exc:
+        raise native.NativeEvidenceError(
+            f"interrupted attempt is not reconciled: {exc}"
+        ) from exc
+
+
+def finding_evidence_refs(finding: dict[str, Any]) -> set[str]:
+    """Every evidence reference allowed by the ledger's finding schema."""
+    return set(finding["evidence"]).union(
+        finding["counterevidence"],
+        *(path["evidence"] for path in finding["details"].get("usage_paths", [])),
+    )
+
+
 def receipts(path: Path, *, slot: str, base_sha: str) -> dict[str, dict[str, Any]]:
     """Recheck stored content hashes; never replace missing receipts with live data."""
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
@@ -256,7 +288,11 @@ def verify(
             owners[key] = row["id"]
     for path in attempts:
         try:
-            run = native.inspect_run(Path(path))
+            run = native.inspect_run(
+                Path(path),
+                allow_interrupted_spawn=path != attempts[-1]
+                and _interrupted_attempt(Path(path)),
+            )
             run_agents = {}
             for child in run.agents:
                 if child.agent_id in observed or owners.get(
@@ -299,6 +335,10 @@ def verify(
     if not observed:
         errors.append("native起動0件: 実行証拠を確認できない")
     invalid_evidence = set()
+    finding_refs = {
+        key: finding_evidence_refs(finding)
+        for key, finding in book.snapshot["findings"].items()
+    }
     try:
         acquired = receipts(
             journal, slot=book.snapshot["slot"], base_sha=book.snapshot["base_sha"]
@@ -311,7 +351,7 @@ def verify(
                         f["id"]
                         for f in book.snapshot["findings"].values()
                         if f["status"] in {"confirmed", "refuted"}
-                        and key in [*f["evidence"], *f["counterevidence"]]
+                        and key in finding_refs[f["id"]]
                     }
                     if not usable and affected:
                         raise ValueError("CPU test remains needs-reproduction")
@@ -343,7 +383,7 @@ def verify(
         key
         for key, f in book.snapshot["findings"].items()
         if f["task_id"] in invalid_tasks
-        or invalid_evidence.intersection([*f["evidence"], *f["counterevidence"]])
+        or invalid_evidence.intersection(finding_refs[key])
     }
     return errors, invalid_findings
 
