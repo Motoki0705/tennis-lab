@@ -75,8 +75,10 @@ def sync(
                 "source_config": config,
             }
         )
-        records, collection, checkpoint = read_observations(source, state)
-        groups = group_failures(records, source)
+        records, failure_records, collection, checkpoint = read_observations(
+            source, state
+        )
+        groups = group_failures(failure_records, source)
         chain_order(records)
         source.db.rollback()  # Release the source snapshot before any remote I/O.
     if collection is None:
@@ -92,7 +94,15 @@ def sync(
     ):
         raise ValueError("GitHub publisher identity missing")
     publisher = user["login"]
-    errors = collection["observation"]["errors"]
+    errors = list(collection["observation"]["errors"])
+    for record in records:
+        observation = record["observation"]
+        errors.extend(observation["errors"])
+        if observation["status"] == "fetch_error" and not observation["errors"]:
+            errors.append(
+                {"endpoint": record["sha"], "reason": "SHA observation fetch_error"}
+            )
+    errors = list({digest(error): error for error in errors}.values())
     for signature, occurrences in sorted(groups.items()):
         n = index.get(signature)
         related = gh.related(pulls, signature, n)
@@ -167,11 +177,23 @@ def sync(
                 )
         if row["recovery"] is not None:
             result = row["recovery"]
-            marker = f"<!-- ci-failure-recovery:v1 signature={signature} sha={result['sha']} -->"
+            jobs = sorted(
+                result["jobs"],
+                key=lambda job: (job["run_id"], job["attempt"], job["job_id"]),
+            )
+            proof = digest(
+                {
+                    "sha": result["sha"],
+                    "pr": result["pr"],
+                    "merge_sha": result["merge_sha"],
+                    "jobs": jobs,
+                }
+            )
+            marker = f"<!-- ci-failure-recovery:v1 signature={signature} sha={result['sha']} evidence={proof} -->"
             body = (
                 marker
                 + f"\n回復確認: SHA {result['sha']} / 修正PR #{result['pr']}\n"
-                + "\n".join(j["job_url"] for j in result["jobs"])
+                + "\n".join(j["job_url"] for j in jobs)
             )
             for target in sorted(
                 {*([n] if n else []), *(p["number"] for p in related)}

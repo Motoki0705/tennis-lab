@@ -38,8 +38,11 @@ def evidence(reference: dict[str, Any], at: str, sha: str, kind: str) -> dict[st
 
 def read_observations(
     source: ObservationStore, state: Store
-) -> tuple[list[dict[str, Any]], dict[str, Any] | None, tuple[int, str]]:
+) -> tuple[
+    list[dict[str, Any]], list[dict[str, Any]], dict[str, Any] | None, tuple[int, str]
+]:
     latest: dict[str, dict[str, Any]] = {}
+    failure_versions: dict[str, list[dict[str, Any]]] = {}
     collection = None
     after, last = 0, ""
     checkpoint = state.checkpoint()
@@ -58,6 +61,13 @@ def read_observations(
                 verified = True
             if record["kind"] == "observation":
                 latest[record["sha"]] = record
+                # A failed fetch is not evidence that an earlier failure went
+                # away. Retain the original records, including their provenance,
+                # until a complete observation can replace them.
+                if record["observation"]["status"] == "fetch_error":
+                    failure_versions.setdefault(record["sha"], []).append(record)
+                else:
+                    failure_versions[record["sha"]] = [record]
             elif record["kind"] == "collection":
                 collection = record
             else:
@@ -66,13 +76,18 @@ def read_observations(
             break
     if not verified or not latest:
         raise ValueError("CI observation history missing; preserve and reconcile state")
-    return list(latest.values()), collection, (after, last)
+    return (
+        list(latest.values()),
+        [r for versions in failure_versions.values() for r in versions],
+        collection,
+        (after, last),
+    )
 
 
 def group_failures(
     records: list[dict[str, Any]], source: ObservationStore
 ) -> dict[str, list[dict[str, Any]]]:
-    groups: dict[str, list[dict[str, Any]]] = {}
+    groups: dict[str, dict[str, dict[str, Any]]] = {}
     checked: set[str] = set()
 
     def check_objects(value: Any) -> None:
@@ -94,6 +109,7 @@ def group_failures(
         ref = source_reference(source.directory, record)
         if datetime.fromisoformat(record["observed_at"]).tzinfo is None:
             raise ValueError("CI observation timestamp needs timezone")
+        seen: set[str] = set()
         for failure in observation["failures"]:
             signature = failure["signature"]
             ci_failure_marker(signature)
@@ -110,18 +126,19 @@ def group_failures(
             identity = [
                 failure[k] for k in ("sha", "run_id", "attempt", "job_id", "signature")
             ]
-            groups.setdefault(signature, []).append(
-                {
-                    "id": digest(identity),
-                    "failure": failure,
-                    "source": ref,
-                    "evidence": evidence(
-                        ref, record["observed_at"], record["sha"], "main-ci-failure"
-                    ),
-                }
-            )
-    for items in groups.values():
-        items.sort(key=lambda x: x["id"])
-        if len({x["id"] for x in items}) != len(items):
-            raise ValueError("duplicate CI failure occurrence")
-    return groups
+            occurrence_id = digest(identity)
+            if occurrence_id in seen:
+                raise ValueError("duplicate CI failure occurrence")
+            seen.add(occurrence_id)
+            groups.setdefault(signature, {})[occurrence_id] = {
+                "id": occurrence_id,
+                "failure": failure,
+                "source": ref,
+                "evidence": evidence(
+                    ref, record["observed_at"], record["sha"], "main-ci-failure"
+                ),
+            }
+    return {
+        signature: sorted(items.values(), key=lambda item: item["id"])
+        for signature, items in groups.items()
+    }

@@ -352,6 +352,69 @@ def test_recovery_requires_merge_success_and_exact_test_and_can_regress(
     assert repair.show(signature)["recovery"]["sha"] == observer.sha(5)
 
 
+def test_interrupted_collection_fetch_error_cannot_restore_old_recovery(
+    repair: RepairEnv,
+) -> None:
+    signature = repair.regression()
+    assert repair.sync().returncode == 0
+    repair.pr(merged=True)
+    repair.success(3)
+    assert repair.sync().returncode == 0
+    repair.ci.commit(4, 3)
+    repair.ci.run_fixture(4, "failure")
+    repair.collect()
+    assert repair.sync().returncode == 0
+    assert repair.show(signature)["status"] == "regressed"
+
+    # The collector can die after publishing a SHA but before its collection
+    # summary. Keep the old error-free summary and append the new failed read.
+    source = importlib.import_module("ci_watch.store").Store(repair.ci.local)
+    old = source.records(0, 1000, observer.sha(4))["records"][-1]
+    failed = {
+        **old["observation"],
+        "status": "fetch_error",
+        "result": None,
+        "failures": [],
+        "workflows": [],
+        "errors": [{"endpoint": "runs", "reason": "temporary outage"}],
+    }
+    with source.db:
+        source.append(
+            "observation", observer.sha(4), failed, datetime.now(UTC).isoformat()
+        )
+    source.close()
+    result = repair.sync()
+    assert result.returncode == 1, result.stderr
+    row = repair.show(signature)
+    assert row["status"] == "observation_incomplete"
+    assert row["recovery"] is None
+    assert any(o["failure"]["sha"] == observer.sha(4) for o in row["occurrences"])
+    assert not json.loads(result.stdout)["processed"]
+
+
+def test_successful_retry_updates_recovery_evidence_idempotently(
+    repair: RepairEnv,
+) -> None:
+    signature = repair.regression()
+    assert repair.sync().returncode == 0
+    repair.pr(merged=True)
+    repair.success(3)
+    assert repair.sync().returncode == 0
+    repair.ci.run_fixture(3, attempt=2, log=PASSED)
+    repair.collect()
+    result = repair.sync()
+    assert result.returncode == 0, result.stderr
+    row = repair.show(signature)
+    assert row["status"] == "recovered"
+    assert row["recovery"]["jobs"][0]["attempt"] == 2
+    comments = repair.load()["comments"]["1"]
+    recovered = [c for c in comments if "ci-failure-recovery:" in c["body"]]
+    assert len(recovered) == 2
+    assert recovered[0]["body"].splitlines()[0] != recovered[1]["body"].splitlines()[0]
+    assert repair.sync().returncode == 0
+    assert repair.load()["comments"]["1"] == comments
+
+
 @pytest.mark.parametrize(
     "kind",
     [
