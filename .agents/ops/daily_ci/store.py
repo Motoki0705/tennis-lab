@@ -9,11 +9,11 @@ import os
 import re
 import tempfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import Any
 
-from .model import LIVE, instant, sha
+from .model import LIVE, instant, request_id, sha, window
 
 
 def state_directory() -> Path:
@@ -62,7 +62,9 @@ class CycleStore:
             finally:
                 fcntl.flock(handle, fcntl.LOCK_UN)
 
-    def repository_lock(self, *, blocking: bool = False) -> Any:
+    def repository_lock(
+        self, *, blocking: bool = False
+    ) -> AbstractContextManager[None]:
         return self.lock("repository-merge", blocking=blocking)
 
     def read(self, *, required: bool = True) -> dict[str, Any] | None:
@@ -85,17 +87,27 @@ class CycleStore:
             or type(data.get("enabled")) is not bool
             or not isinstance(data.get("cycles"), dict)
             or not isinstance(data.get("integrations"), dict)
-            or not data.get("workflows")
+            or not isinstance(data.get("workflows"), list)
+            or not data["workflows"]
+            or any(
+                not isinstance(w, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+\.ya?ml", w)
+                for w in data["workflows"]
+            )
+            or len(set(data["workflows"])) != len(data["workflows"])
         ):
             raise ValueError("unknown or malformed daily_ci state")
         sha(data["baseline_sha"])
         for key, cycle in data["cycles"].items():
+            expected_id, opens, deadline = window(instant(cycle["opens_at"]))
             if (
                 key != cycle["cycle_id"]
+                or key != expected_id
                 or cycle["status"]
                 not in LIVE | {"success", "expired", "missed", "disabled"}
-                or instant(cycle["opens_at"]) >= instant(cycle["deadline_at"])
+                or instant(cycle["opens_at"]) != opens
+                or instant(cycle["deadline_at"]) != deadline
                 or not isinstance(cycle["generations"], list)
+                or cycle["workflows"] != data["workflows"]
             ):
                 raise ValueError("invalid daily_ci cycle")
             for number, revision in enumerate(cycle["generations"], 1):
@@ -104,6 +116,11 @@ class CycleStore:
                 sha(revision["target_sha"])
                 if set(revision["requests"]) != set(cycle["workflows"]):
                     raise ValueError("daily_ci workflow set changed")
+                for workflow, request in revision["requests"].items():
+                    if request["request_id"] != request_id(
+                        self.repository, key, number, workflow
+                    ):
+                        raise ValueError("daily_ci request identity changed")
 
     def save(self, data: dict[str, Any]) -> None:
         self.validate(data)

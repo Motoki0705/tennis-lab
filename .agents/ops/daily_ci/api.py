@@ -213,6 +213,15 @@ class CycleAPI:
             elif merged_sha is None:
                 cycle["errors"].append("repair_merge_outcome_unknown")
 
+    def abort_merge_before_send(self, cycle_id: str, pr: int, head_sha: str) -> None:
+        """Gate-only: the remote command was never invoked, so this is not uncertainty."""
+        with self.store.transaction() as data:
+            cycle = data["cycles"][cycle_id]
+            repair = cycle["repair_prs"][str(pr)]
+            if repair["head_sha"] != head_sha or repair["merge_state"] != "attempting":
+                raise ValueError("unsent repair merge identity mismatch")
+            repair["merge_state"] = "registered"
+
     def record_result(self, result: dict[str, Any]) -> None:
         required = {
             "cycle_id",

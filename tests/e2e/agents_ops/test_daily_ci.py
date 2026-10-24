@@ -564,3 +564,65 @@ def test_cli_initializes_disabled_with_explicit_baseline(tmp_path: Path) -> None
         state = json.loads(process.stdout)
         assert state["enabled"] is False and state["baseline_sha"] == "a" * 40
     assert not list(tmp_path.rglob("hook-*"))
+
+
+def test_production_rest_and_adapter_commands_use_shared_contract(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = Path(__file__).with_name("fake_daily_ci.py")
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    gh = binary / "gh"
+    gh.write_text(f"#!{sys.executable}\n" + fake.read_text())
+    gh.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binary) + os.pathsep + os.environ["PATH"])
+    monkeypatch.setenv("DAILY_CI_FAKE_ROOT", str(tmp_path))
+    monkeypatch.setenv("PYTHONPATH", str(OPS))
+    (tmp_path / "remote.json").write_text(json.dumps({"main": "a" * 40, "runs": []}))
+    clock = Clock()
+    api = CycleAPI(CycleStore("o/r", tmp_path / "state"), clock=clock)
+    api.initialize(
+        "a" * 40,
+        integrations={
+            role: [sys.executable, str(fake), "adapter", role]
+            for role in ("observer", "workers")
+        },
+    )
+    controller = Controller(api, GitHub("o/r"))
+    controller.enable()
+    for _ in range(2):
+        assert not controller.tick()["errors"]
+    clock.set("2026-10-25T09:00:00+09:00")
+    assert not controller.watchdog()
+    calls = [
+        json.loads(line) for line in (tmp_path / "calls.jsonl").read_text().splitlines()
+    ]
+    posts = [c for c in calls if c["method"] == "POST"]
+    assert len([c for c in posts if c["endpoint"].endswith("/dispatches")]) == 2
+    assert len([c for c in posts if c["endpoint"].endswith("/cancel")]) == 2
+    assert api.snapshot()["cycles"][window(clock())[0]]["stop_complete"] is True
+    assert not list(api.store.directory.glob("hook-*"))
+
+
+def test_failed_days_keep_baseline_until_verified_repair(h: Harness) -> None:
+    baseline = h.actions.main_sha()
+    h.tick()
+    h.api.register_repair(h.cycle_id, 10, "a" * 40, ["failed-test"])
+    with h.api.store.repository_lock():
+        h.api.begin_merge(h.cycle_id, 10, "a" * 40)
+        repaired = h.actions.commit("fixed main")
+        h.api.finish_merge(h.cycle_id, 10, "a" * 40, repaired)
+    h.tick()
+    assert h.cycle()["baseline_sha"] == baseline
+    h.clock.set("2026-10-26T06:00:00+09:00")
+    h.tick()
+    assert h.cycle()["baseline_sha"] == baseline
+    assert "10" in h.cycle()["carryover"]["repair_prs"]
+    assert h.cycle()["repair_prs"] == {}
+    h.actions.complete()
+    h.hooks.results = True
+    h.tick()
+    assert h.cycle()["status"] == "success"
+    h.clock.set("2026-10-27T06:00:00+09:00")
+    h.tick()
+    assert h.cycle()["baseline_sha"] == repaired

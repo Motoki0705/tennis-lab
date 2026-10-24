@@ -35,6 +35,7 @@ class CommandHooks:
         ) as name:
             path = Path(name) / "input.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
+            path.chmod(0o600)
             response = run_process_group(
                 [*command, "--input", str(path)],
                 cwd=Path.cwd(),

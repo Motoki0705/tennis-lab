@@ -73,6 +73,11 @@ def attempt_path(session: ParentSession, n: int, head: str) -> Path:
     )
 
 
+def merge_was_attempted(path: Path) -> bool:
+    """Only a recorded pre-send deadline rejection permits the same head again."""
+    return path.exists() and read_json(path).get("status") != "not_sent_window_closed"
+
+
 @dataclass
 class Collection:
     parent: Issue
@@ -317,9 +322,8 @@ def evaluate(
                     inherited.add((digest(original), digest(current)))
     for n in view.candidates:
         pr = view.details[n]
-        if (
-            pr["state"] == "open"
-            and attempt_path(session, n, pr["head"]["sha"]).exists()
+        if pr["state"] == "open" and merge_was_attempted(
+            attempt_path(session, n, pr["head"]["sha"])
         ):
             view.errors[n].append("merge_already_attempted")
     return {
@@ -535,7 +539,7 @@ def _merge_request(
                     entry.update(decision="blocked", reasons=("daily_ci_main_changed",))
                     continue
             journal_path = attempt_path(session, n, current["head_sha"])
-            if journal_path.exists():
+            if merge_was_attempted(journal_path):
                 entry.update(decision="blocked", reasons=("merge_already_attempted",))
                 continue
             attempt = {
@@ -551,17 +555,37 @@ def _merge_request(
             with session.store.unlocked_read():
                 # Recheck after durable bookkeeping and registry unlock as well.
                 if cycle_id:
-                    permit = api.permit_worker(cycle_id)
+                    try:
+                        permit = api.permit_worker(cycle_id)
+                    except ValueError:
+                        attempt["status"] = "not_sent_window_closed"
+                        Store.write_json(journal_path, attempt)
+                        api.abort_merge_before_send(cycle_id, n, current["head_sha"])
+                        entry.update(
+                            decision="blocked",
+                            reasons=("daily_ci_cycle_expired_or_inactive",),
+                        )
+                        continue
                     timeout = min(
                         60.0,
                         (instant(permit["deadline_at"]) - api.clock()).total_seconds(),
                     )
                     if timeout <= 0:
-                        raise ValueError("daily_ci deadline reached before merge")
+                        attempt["status"] = "not_sent_window_closed"
+                        Store.write_json(journal_path, attempt)
+                        api.abort_merge_before_send(cycle_id, n, current["head_sha"])
+                        entry.update(
+                            decision="blocked",
+                            reasons=("daily_ci_cycle_expired_or_inactive",),
+                        )
+                        continue
                 else:
                     reason = api.merge_reason(n, current["head_sha"], None)
                     if reason:
-                        raise ValueError(reason)
+                        attempt["status"] = "not_sent_window_closed"
+                        Store.write_json(journal_path, attempt)
+                        entry.update(decision="blocked", reasons=(reason,))
+                        continue
                     timeout = 60.0
                 command = subprocess.run(
                     [
@@ -587,7 +611,11 @@ def _merge_request(
                     cycle_id,
                     n,
                     current["head_sha"],
-                    actual.get("merge_commit_sha") if actual.get("merged_at") else None,
+                    actual.get("merge_commit_sha")
+                    if actual.get("merged_at")
+                    and actual["head"]["sha"] == current["head_sha"]
+                    and actual["base"]["ref"] == "main"
+                    else None,
                 )
             errors = completion(
                 session, actual, write=actual.get("merged_at") is not None
