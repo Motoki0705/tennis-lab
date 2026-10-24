@@ -23,6 +23,7 @@
 | `opsreport/memory_pr.py` | 公開確認のjournal、専用worktreeでのcommit/PR、必須CI・パス・HEADを照合する専用マージ処理 |
 | `required_checks.txt` | 専用memory PRの自動mergeに限って必須とするCI check名 |
 | `opsreport/report.py` | issue本文（日本語）の組み立て |
+| `opsreport/handoff.py` | 台帳の確定問題から既存契約の提案への変換、発見と提案IDの記録、次回の再観察入力 |
 | `opsreport/triage.py` | 採用チェック・既存受領の記録、既存issue照合、採否のmemory入力 |
 | `opsreport/organization.py` / `organize_prompt.md` | 全open/closed issueとコードの固定入力、read-only整理agent、構造化計画の検証 |
 | `opsreport/organization_apply.py` | 計画journal、作業issue生成・再利用、正式親子・親一覧・出典リンクの復旧 |
@@ -301,6 +302,57 @@ CODEX_HOME内のmetadata headerも厳格にparseし、破損があれば停止�
 fixtureの `fixtures/native_transcripts.json` は上記実行の必要なrecordを抽出し、実session ID・tool call ID・
 filesystemパス・prompt本文を記号に置換したもの。`/root/...` はfilesystemパスではなくnativeの名前空間である。
 実agentやGitHub書き込みは起動しない。
+
+## 台帳からの描画と再観察（統合用API）
+
+`report.render_ledger_report` は終了済みの `Ledger` だけを入力とし、
+`(title, body, proposal_ids)` を返す。固定4担当のJSONや収集済み全データは使わない。
+この入口のCLIへの接続と旧生成経路の撤去は統合の子 #1457 が担う。
+現行CLIを自動的に新旧へ振り分けるfallbackは設けない。
+
+```python
+from opsreport.handoff import record_proposal_handoffs, reobservation_input
+from opsreport.report import render_ledger_report
+
+# 調査中に既存issue/PR・関連親・理由をbook.record_handoffで記録しておく。
+# 未記録の確定問題は新規・未合意・担当親未割当として扱う。
+record_proposal_handoffs(book, at=now)
+book.end(ending, at=now)
+title, body, ids = render_ledger_report(
+    ledger=book, agent_name="codex", since=period_start, until=period_end,
+    input_sha256=input_digest, ledger_reference=archived_ledger_reference,
+)
+# 公開後にbook.bind_report(issue_number, at=now)。公開・採用・triageは既存の経路。
+# 次回は、close済みも含め結び付けたレポートの最新本文を取得して照合する。
+page = reobservation_input(
+    book, report_issue=issue_number, report_body=fetched_body, limit=20, offset=0,
+)
+```
+
+- 提案になるのは `confirmed` の問題だけ。`unused-code` の `keep` は維持の観察として掲載し、
+  削除提案にしない。`suspected` / `unverified` / `refuted` は状態と根拠・反証を本文に残す。
+  脆弱性の確定・不要コードの削除判定は台帳の検証契約を使う。
+- `issue` / `pr` の引渡しがあれば既存への参照とし、新規提案を作らない。
+  `reference` は `#123`、`123`、GitHubの `/issues/123` または `/pull/123` の完全URL。
+  形式不明の参照は番号を推測せずエラーにする。
+- 既存修正先のない問題は通常の提案へ変換する。`related_parents` の親が1つなら関連親付きで
+  既存triageの受領経路へ渡す。親がなければ本文に未割当を明記する。
+  複数の関連親、同じ発見の複数の提案先は単一親の提案契約に適合しないため、呼出元が明示整理する。
+  親との対応を記録する `proposal` の `reference` は準備中の説明でもよく、
+  `record_proposal_handoffs` が同じレコードを最終提案IDへ更新する。
+- `record_proposal_handoffs` は `end` 前に呼び、発見IDと描画順の提案IDを台帳に残す。
+  自動レコードのIDは `report-proposal/<finding-id>`。再呼出しで内容が同じなら追記しない。
+  未完了回を明示再開して発見や経路を変えたら再準備する。未記録・不一致のまま描画しない。
+- 本文は終了理由・確認/除外範囲・重要な未検証リスク・タスク数と起点の連鎖・状態別の発見・
+  不要コードの削除候補/維持/未確認と利用経路を要約する。各一覧は既定5件、残数は明示し、
+  原本参照へつなぐ（`limit` は1〜20）。提案は省略せず、本文上限超過はエラーにする。
+  `ledger_reference` は呼出元が用意する公開用の原本参照で、ローカルの台帳参照を掲載しない。
+- `reobservation_input` は完了回と結び付けたレポートを照合し、既存issue/PRと、triageが
+  提案へ追記した子issueを発見ID・元の基準SHA・原本参照と共に返す。未採用・見送り・引渡先未確定の
+  提案も状態付きで残す。`items`, `total`, `remaining`, `offset` を使ってページングする。
+  採否・関連親・triageの注記以外の提案本文が台帳と違えば停止する。
+  呼出元はこの入力を次回の調査資料として保存し、新しい基準版で修正差分・検証結果を取得し直す。
+  未完了回は次回入力へ進めず同じ回を再開する。このAPIはセッション起動や正式レビューを行わない。
 
 ## 提案ID・チェック・triage
 
