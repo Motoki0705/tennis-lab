@@ -1,0 +1,13 @@
+[Unit]
+Description=Independently expire daily CI and confirm CI/repair worker termination
+Documentation=file://%h/projects/tennis-lab/.agents/ops/daily_ci/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/daily_ci/daily.py --repo Motoki0705/tennis-lab watchdog
+KillMode=control-group
+TimeoutStartSec=180
+TimeoutStopSec=30

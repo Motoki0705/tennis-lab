@@ -1,0 +1,14 @@
+[Unit]
+Description=Daily tennis-lab CI and repair window controller (06:00-09:00 JST)
+Documentation=file://%h/projects/tennis-lab/.agents/ops/daily_ci/README.md
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/daily_ci/daily.py --repo Motoki0705/tennis-lab run
+KillMode=control-group
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=10

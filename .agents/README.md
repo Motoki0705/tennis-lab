@@ -54,6 +54,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
 | [ops/ops-report/](ops/ops-report/README.md) | 親とnative scoutの並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
 | [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
+| [ops/daily_ci/](ops/daily_ci/README.md) | JST 06:00〜09:00の日次CI controller、共有cycle API、repo単位merge排他、独立期限watchdogと修復worker停止契約 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |

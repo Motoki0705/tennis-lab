@@ -190,6 +190,11 @@ resolveは同run/result・元のレビューhead・最新fixed snapshotに結び
 
 ## merge gate
 
+日次CI有効化後の06:00〜09:00 JSTは、[daily_ci](../daily_ci/README.md) のrepo共通mutexと
+cycle状態で通常mergeを止める。登録した修復PRは同じ正式条件に加え、headと
+`--daily-ci-cycle <cycle ID>`（または`DAILY_CI_CYCLE_ID`）を照合する。
+cycleを付けた遅延workerは09:00以降も拒否する。CI成功を通常mergeの条件にはしない。
+
 担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
 GitHub API・CI取得・merge通信中はregistry lockを解放し、戻ると担当親の状態変更を照合する。
 gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止めない。
@@ -259,6 +264,8 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate stateへ保存する。
 この試行記録の `snapshot` に確認済みhead/base/merge-base/diff/ref/branchを保存し、次回の明示実行でも保持する。
 同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
+時刻境界の最終検査でremoteコマンドを未送信と確認した場合だけ、`not_sent_window_closed`を記録し、
+次の明示gateで正式条件を再照合できる。送信済み・応答不明の試行にはこの例外を使わない。
 remoteがmerge済みなら二重mergeせず、対象issueのclosing完了を確認する。
 収集・割当照合・完了確認の対象はreview-prepare/collectと同じで、直属子があれば子、
 子のない単独issueではそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
