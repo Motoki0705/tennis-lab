@@ -16,6 +16,10 @@ class EvidenceError(ValueError):
     """Runtime configuration evidence is missing or disagrees with the selection."""
 
 
+def _invalid_constant(value: str) -> Any:
+    raise ValueError("non-finite value in runtime JSON")
+
+
 def parse_json(text: str | bytes) -> Any:
     def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
         value: dict[str, Any] = {}
@@ -25,10 +29,56 @@ def parse_json(text: str | bytes) -> Any:
             value[key] = item
         return value
 
-    def invalid_constant(value: str) -> Any:
-        raise ValueError("non-finite value in runtime JSON")
+    return json.loads(text, object_pairs_hook=pairs, parse_constant=_invalid_constant)
 
-    return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid_constant)
+
+class _JsonPairs(list[tuple[str, Any]]):
+    """Keep JSON objects distinct from arrays until duplicate keys are checked."""
+
+
+def parse_cli_event(text: str | bytes, agent: str) -> Any:
+    """Disambiguate Codex's flattened web-search IDs at the CLI boundary only."""
+    if agent != "codex":
+        return parse_json(text)
+    raw = json.loads(
+        text, object_pairs_hook=_JsonPairs, parse_constant=_invalid_constant
+    )
+    kinds = [v for k, v in raw if k == "type"] if isinstance(raw, _JsonPairs) else []
+    item_event = len(kinds) == 1 and kinds[0] in (
+        "item.started",
+        "item.updated",
+        "item.completed",
+    )
+
+    def restore(value: Any, path: tuple[str, ...]) -> Any:
+        if isinstance(value, _JsonPairs):
+            ids = [v for k, v in value if k == "id"]
+            types = [v for k, v in value if k == "type"]
+            web_search_ids = (
+                item_event
+                and path == ("item",)
+                and types == ["web_search"]
+                and len(ids) == 2
+                and isinstance(ids[0], str)
+                and re.fullmatch(r"item_[0-9]+", ids[0]) is not None
+                and isinstance(ids[1], str)
+                and bool(ids[1])
+                and not any(k == "web_search_id" for k, _ in value)
+            )
+            result: dict[str, Any] = {}
+            for key, item in value:
+                if key in result:
+                    if web_search_ids and key == "id":
+                        key = "web_search_id"
+                    else:
+                        raise ValueError("duplicate key in runtime JSON")
+                result[key] = restore(item, (*path, key))
+            return result
+        if isinstance(value, list):
+            return [restore(item, (*path, str(i))) for i, item in enumerate(value)]
+        return value
+
+    return restore(raw, ())
 
 
 def unavailable(reason: str) -> dict[str, Any]:
@@ -218,7 +268,7 @@ class Events:
         self.usage = {"value": value, "status": "observed", "source": source}
 
     def feed(self, line: bytes) -> None:
-        event = parse_json(line)
+        event = parse_cli_event(line, self.agent)
         if not isinstance(event, dict) or not isinstance(event.get("type"), str):
             raise ValueError("CLI output is not a structured event")
         kind = event["type"]

@@ -171,6 +171,14 @@ cwd/branch等と同様に契約不一致として終了値2で拒否する。rea
 run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renameで保存する。
 既存runを上書きせず、不正JSON・重複key・未知versionを空状態へ置換しない。
 
+Codex CLI 0.163.0 の `web_search` は、`ThreadItem.id` と flatten された
+`WebSearchItem.id` を同じitem objectへ出力する。CLIイベントの
+`item.started` / `item.updated` / `item.completed` に限り、先頭の `item_数字` を
+`id`、2つ目の非空文字列を内部の `web_search_id` として区別する。
+この例外はitem直下のidがちょうど2件の場合だけで、他の重複キー・不正型は拒否する。
+`events.jsonl` は正規化せず受信した原文を保持し、中断後の復旧も同じ境界処理を使う。
+Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重複キー検査は緩めない。
+
 | 保存先 | 内容 |
 |---|---|
 | `prompt.md` | そのターンの入力原文。`prompt_sha256` と対応 |
