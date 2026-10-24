@@ -16,6 +16,7 @@
 | `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
 | `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
+| `opsreport/reproduction.py` / `repro_isolation.py` / `reproduction_server.py` | CPUテスト要求の制限、使い捨てclone・台帳根拠・ログ、隔離の事前検査。OS隔離未検証のため実行toolは無効 |
 | `opsreport/proposals.py` | 提案のID付与・描画・本文からのチェック状態の解析・子issue番号の追記 |
 | `opsreport/schedule.py` | 初回基準・3日周期の予定計算と、成功/失敗・スキップのマシンローカル状態 |
 | `opsreport/memory.py` | main版の専用memory入力、構造化更新の検証、エントリ/要約/索引の生成、採否の入力 |
@@ -259,6 +260,39 @@ CODEX_HOME内のmetadata headerも厳格にparseし、破損があれば停止�
 fixtureの `fixtures/native_transcripts.json` は上記実行の必要なrecordを抽出し、実session ID・tool call ID・
 filesystemパス・prompt本文を記号に置換したもの。`/root/...` はfilesystemパスではなくnativeの名前空間である。
 実agentやGitHub書き込みは起動しない。
+
+## 隔離されたCPUテスト要求
+
+`opsreport.reproduction_server serve` は上の取得サーバーに `cpu_test_status` と `cpu_test_log` を追加する別入口。
+同じ `--repo` / `--base-sha` / `--repository` / `--round-id` / `--journal-dir` / `--ops-memory-sha` に加え、
+既存台帳の `--ledger` と、ホスト側でCPU用と確認したJSONの `--cpu-tests-file` を指定する。
+調査回は台帳と同じ `YYYYMMDD`。JSONは `{"base_sha":"完全な基準SHA","nodeids":["tests/test_example.py::test_example"]}`。
+allowlistの変更権限はagentに渡さない。agentから受けるのは既存の `finding_id` と、このリストに一致する `nodeids` だけ。
+任意コード、shell、pytestオプション、ネットワーク・環境変数・版・上限の指定、パス脱出、symlinkは拒否する。
+
+**現在は本番のCPU実行backendが未検証で、`cpu_tests` を公開・実行しない。** 有効化flagや環境変数はない。
+15分のprocess group回収と環境変数allowlistは部品として実装したが、離脱した子孫の封じ込め、
+資格情報ファイル・GPUデバイスへのアクセス禁止、テスト用network namespace、実行全体の4GiB上限は未完了。
+`prlimit` / `RLIMIT_AS` はprocessごとの上限であり、pytest worker全体の4GiB制限にはならない。
+systemd・cgroup・ホスト設定をこの入口から変更しない。次の固定probeもCPUテストの実行許可にはしない。
+
+```bash
+PYTHONPATH=.agents/ops/ops-report .venv/bin/python -B -m opsreport.reproduction_server \
+  probe --directory tmp/reproduction-probe
+```
+
+probeは資格情報を除去した環境でuser/network/mount/PID namespaceと小さなprocess別メモリ制限を確認し、
+ログと `probe.json` を保存する。未検証の隔離があるため終了値は1。namespace不可等の失敗も記録する。
+
+無効な `cpu_tests` の直接呼出しも結果と「要再現」を記録する。将来の検証済みbackend用のライブラリは、
+元repoへworktreeを登録しない独立cloneを固定SHAへcheckoutし、基準版の共有 `pytest_locked.sh` を使うargvを生成する。
+clone内のwrapperが配備版と違えば受付を止める。同時1件のlockはホストのpytest lockに隣接させ、
+worker数はwrapperに任せる。実行後はHEAD不変かつignoredを含めcleanなcloneだけを削除し、dirtyなら保持してエラーにする。
+要求・結果・ログはprivateな記録先へ保存し、内容の検査値付き参照を台帳の不変根拠と既存発見へ追加する。
+拒否・失敗で発見を確定へ進めない。台帳の競合・書込失敗、根拠やログの欠落・改変は明示エラー。
+
+`test_ops_report_reproduction.py` はfake runnerと実gitで管理経路を検証する。fakeの成功は本番隔離の証明ではない。
+profile・現行report CLIへの接続と、検証済みOS backendの導入は未完了として統合担当へ引き継ぐ。
 
 ## 提案ID・チェック・triage
 
