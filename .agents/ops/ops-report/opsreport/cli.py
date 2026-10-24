@@ -311,6 +311,33 @@ def _run_schedule(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cpu_arguments(run_dir: Path, base_sha: str) -> list[str]:
+    arguments: list[str] = []
+    cpu_tests = os.environ.get("OPS_REPORT_CPU_TESTS_FILE")
+    proof = os.environ.get("OPS_REPORT_ISOLATION_PROOF")
+    if proof and not cpu_tests:
+        raise ConfigError(
+            "OPS_REPORT_ISOLATION_PROOF requires OPS_REPORT_CPU_TESTS_FILE"
+        )
+    if cpu_tests:
+        raw = Path(cpu_tests).read_bytes()
+        if len(raw) > 64 * 1024:
+            raise ConfigError("CPU allowlist exceeds byte limit")
+        allowlist = strict_json(raw)
+        if (
+            not isinstance(allowlist, dict)
+            or set(allowlist) != {"base_sha", "nodeids"}
+            or allowlist["base_sha"] != base_sha
+        ):
+            raise ConfigError("host CPU-test allowlist must match the fixed base SHA")
+        pinned_tests = run_dir / "cpu-tests.json"
+        memory_pr._atomic_json(pinned_tests, allowlist)
+        arguments += ["--cpu-tests-file", str(pinned_tests)]
+        if proof:
+            arguments += ["--isolation-proof", str(Path(proof).absolute())]
+    return arguments
+
+
 def _generate_report(
     args: argparse.Namespace,
     run_dir: Path,
@@ -383,13 +410,11 @@ def _generate_report(
                 "incomplete report has selections/children; resolve them explicitly before replacing proposals"
             )
     cfg = collect.CollectConfig(repo_root=repo_root, now=now, base=base)
-    from agent_settings import read_pins
+    from agent_settings import resolve
 
-    pins = read_pins(OPS_DIR / "lib" / "agents.conf")
-    raw_threads = pins["OPS_REPORT_MAX_THREADS"]
-    if not raw_threads.isdecimal() or int(raw_threads) < 2:
-        raise ConfigError("OPS_REPORT_MAX_THREADS must be >= 2")
-    max_threads = int(raw_threads)
+    max_threads = resolve(
+        OPS_DIR / "lib" / "agents.conf", "codex", "ops_report", None, None, "read-only"
+    )["max_threads"]
     if collected is None:
         collected = collect.collect_all(
             cfg, history=history, initial_since=initial_since
@@ -470,6 +495,7 @@ def _generate_report(
             )
         complete = True
     else:
+        cpu_arguments = _cpu_arguments(run_dir, base.sha)
         if state["attempts"]:
             audit.ensure_quiescent(state["attempts"])
         if book.snapshot["run"]["status"] == "incomplete":
@@ -488,7 +514,7 @@ def _generate_report(
         ending_path = run_dir / "ending.json"
         snapshot_path = audit.worktree_path(repo_root, run_dir.name)
         with audit.checkout(repo_root, base.sha, snapshot_path) as snapshot:
-            connection = {
+            connection: dict[str, Any] = {
                 "command": sys.executable,
                 "args": [
                     "-B",
@@ -520,6 +546,7 @@ def _generate_report(
                 "env": {"PYTHONPATH": str(PROMPT_FILE.parent)},
             }
             mcp_config = run_dir / "mcp.json"
+            connection["args"] += cpu_arguments
             memory_pr._atomic_json(mcp_config, {"ops_report": connection})
             prompt = agent.build_prompt(
                 PROMPT_FILE.read_text(encoding="utf-8"),

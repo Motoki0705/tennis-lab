@@ -46,7 +46,7 @@ ENDING = {
 
 class AuditTool(Tool):
     def public(self) -> dict[str, Any]:
-        result = super().public()
+        result = cast(dict[str, Any], super().public())
         result["annotations"]["readOnlyHint"] = self.name in {
             "audit_status",
             "audit_original",
@@ -177,6 +177,29 @@ class AuditTools:
                 tuple(ENDING),
             ),
         ]
+        if "cpu_test_status" not in retrieval.tools:
+            retrieval.tools["cpu_test_status"] = Tool(
+                "cpu_test_status",
+                "Inspect whether the host supplied an approved CPU-test allowlist and isolation proof.",
+                lambda: self.response(
+                    {
+                        "enabled": False,
+                        "unverified": {
+                            "cpu_allowlist": "No host-approved CPU-test allowlist was supplied"
+                        },
+                    }
+                ),
+                {},
+            )
+        if "cpu_tests" in retrieval.tools:
+            tool = retrieval.tools["cpu_tests"]
+            retrieval.tools[tool.name] = AuditTool(
+                tool.name,
+                tool.description,
+                tool.handler,
+                tool.properties,
+                tool.required,
+            )
         self.tools = {**retrieval.tools, **{t.name: t for t in definitions}}
         for tool in definitions:
             retrieval.tools[tool.name] = tool
@@ -374,8 +397,11 @@ class AuditTools:
             found is None
             or not found["response"]["ok"]
             or found["request"]["tool"].startswith("audit_")
+            or found["request"]["tool"].startswith("cpu_")
         ):
-            raise LedgerError("evidence requires a successful source retrieval receipt")
+            raise LedgerError(
+                "evidence requires a successful source retrieval receipt; CPU-test evidence is recorded automatically"
+            )
         row = audit.evidence_record(id, found)
         book = self.writable()
         book.record_evidence(row, at=audit.timestamp())

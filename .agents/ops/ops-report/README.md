@@ -11,7 +11,7 @@
 |---|---|
 | `ops_report.py` | CLI入口（`report` / `triage` / `schedule init` / `schedule status`） |
 | `opsreport/collect.py` | 公開履歴・集計境界・基準版・専用memoryの固定。調査資料は一括収集しない |
-| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 固定版・GitHubの範囲取得、取得記録の追記、GET専用の取得toolとstdio MCP |
+| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 共通 `lib/review_tools` の固定版・GitHub取得とMCP通信を使う入口、調査の台帳adapter |
 | `opsreport/agent.py` | 目的と最小メタデータのプロンプト、共通ランナーによるread-only親の起動、専用memory更新の最終返却 |
 | `opsreport/audit.py` / `audit_tools.py` | 調査checkout、version 2 checkpoint、MCPからのタスク・発見・根拠・終了要求、nativeと取得receiptの照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
@@ -176,7 +176,18 @@ capabilityを全て除去してno-new-privilegesを設定し、実行前にも�
 拒否・失敗で発見を確定へ進めない。台帳の競合・書込失敗、根拠やログの欠落・改変は明示エラー。
 
 `test_ops_report_reproduction.py` はfake runnerと実gitで管理経路・proof拒否・scope条件を検証する。
-fakeの成功はOS隔離の証明ではない。profile・現行report CLIへの接続と、CPU allowlist・proofの配布は統合担当の責務。
+fakeの成功はOS隔離の証明ではない。
+
+全体調査CLIではホスト側の `OPS_REPORT_CPU_TESTS_FILE` に上記の許可リスト、
+`OPS_REPORT_ISOLATION_PROOF` に実機proofのファイルを指定する。許可リストはrunごとにprivateな
+`cpu-tests.json`へ固定し、プロンプトには添付しない。基準SHA不一致、proofだけの指定は明示エラー。
+同じMCPで `ReproductionServer` と台帳toolを組み合わせ、取得・隔離実行の実装は共通libを使う。
+許可リスト未指定時は `cpu_test_status` が不足理由を返し、`cpu_tests` は公開しない。
+有効なproofがない場合も実行toolは無効のまま。必要な再現ができない回は未完了にする。
+CPU根拠は自動記録されるため `audit_evidence` へ再登録しない。ホストはmanifest・ログのhash、
+取得receipt・基準版・終了状態・cleanupを照合する。欠落/改変は未完了にし、
+`needs-reproduction` の結果を参照する発見を確定/反証済みにはしない。
+再開時は同じ台帳・原本を再利用し、失敗の後に再検証できた場合は新しい結果との関係を発見へ明記する。
 
 ## 調査台帳ライブラリ
 
@@ -522,7 +533,7 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/ops-report
 
 - 共有memoryは固定base、専用memoryはorigin/mainの最後の有効版を範囲取得する。収集済み全件をプロンプトへ添付しない。
 - `--repo-root` は基準版・GitHubの解決元。調査担当は固定baseの専用checkoutを読む。
-- 旧 `OPS_REPORT_CLEANUP_CMD` / `OPS_REPORT_STALE_PR_DAYS` は明示エラー。旧一括掃除の任意コマンド起動は廃止した。必要なコード・記録は範囲取得し、隔離検証の接続は #1455 の統合後に別途扱う。
+- 旧 `OPS_REPORT_CLEANUP_CMD` / `OPS_REPORT_STALE_PR_DAYS` は明示エラー。旧一括掃除の任意コマンド起動は廃止した。必要なコード・記録は範囲取得し、再現は上記「隔離されたCPUテスト要求」の接続を使う。
 
 ## 専用memoryの保存
 

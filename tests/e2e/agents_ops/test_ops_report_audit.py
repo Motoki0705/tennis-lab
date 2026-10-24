@@ -74,7 +74,7 @@ def test_large_unrequested_lists_and_logs_never_enter_launch_input(
         "previous_reports",
         "audit_input_sha256",
     }
-    config = _json(run / "mcp.json")["args"]
+    config = _json(run / "mcp.json")["ops_report"]["args"]
     journal = Path(config[config.index("--journal-dir") + 1]) / "retrieval.jsonl"
     calls = [
         _json_row
@@ -306,7 +306,8 @@ def test_no_whole_audit_timeout_and_mcp_is_explicit(
         )
     )
     assert calls[0][1]["timeout"] is None
-    assert calls[0][1]["env"]["OPS_REPORT_MCP_CONFIG"] == str(tmp_path / "mcp.json")
+    cmd = calls[0][0]
+    assert cmd[cmd.index("--mcp-config") + 1] == str(tmp_path / "mcp.json")
 
 
 @pytest.mark.parametrize("stop_signal", [signal.SIGINT, signal.SIGTERM])

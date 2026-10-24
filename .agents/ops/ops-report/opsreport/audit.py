@@ -14,7 +14,7 @@ from typing import Any
 
 from . import handoff, native, shell
 from .ledger import Ledger
-from .retrieval import strict_json
+from .retrieval import RetrievalError, strict_json
 
 VERSION = 2
 GOAL = (
@@ -304,6 +304,27 @@ def verify(
             journal, slot=book.snapshot["slot"], base_sha=book.snapshot["base_sha"]
         )
         for key, row in book.snapshot["evidence"].items():
+            if row["source_kind"] == "isolated-cpu-test":
+                try:
+                    usable = verify_cpu_evidence(row, journal, acquired)
+                    affected = {
+                        f["id"]
+                        for f in book.snapshot["findings"].values()
+                        if f["status"] in {"confirmed", "refuted"}
+                        and key in [*f["evidence"], *f["counterevidence"]]
+                    }
+                    if not usable and affected:
+                        raise ValueError("CPU test remains needs-reproduction")
+                except (
+                    OSError,
+                    ValueError,
+                    KeyError,
+                    TypeError,
+                    RetrievalError,
+                ) as exc:
+                    invalid_evidence.add(key)
+                    errors.append(f"{key}: 隔離テストの根拠が未確認/不一致: {exc}")
+                continue
             receipt = row["reference"].rsplit(" / receipt=", 1)[-1]
             found = acquired.get(receipt)
             if (
@@ -325,6 +346,65 @@ def verify(
         or invalid_evidence.intersection([*f["evidence"], *f["counterevidence"]])
     }
     return errors, invalid_findings
+
+
+def verify_cpu_evidence(
+    row: dict[str, Any], journal: Path, acquired: dict[str, dict[str, Any]]
+) -> bool:
+    """Verify the shared executor's manifest/log without running a test again."""
+    from lib.review_tools.reproduction import RUN_ID, digest, recorded_bytes
+
+    run_id = row["id"].removeprefix("cpu-test-")
+    if not row["id"].startswith("cpu-test-") or not RUN_ID.fullmatch(run_id):
+        raise ValueError("invalid CPU evidence ID")
+    directory = journal.parent / "reproduction" / run_id
+    manifest = directory / "result.json"
+    if directory.is_symlink() or manifest.is_symlink():
+        raise ValueError("CPU record must not be a symlink")
+    raw = recorded_bytes(manifest)
+    result = strict_json(raw)
+    reference = manifest.as_uri() + "#sha256=" + digest(raw)
+    expected = {
+        "id": "cpu-test-" + run_id,
+        "source_kind": "isolated-cpu-test",
+        "reference": reference,
+        "acquired_at": result["finished_at"],
+        "target_version": result["base_sha"],
+        "pr_head": None,
+    }
+    linked = [
+        acquisition
+        for acquisition in acquired.values()
+        if acquisition["request"]["tool"] == "cpu_tests"
+        and any(
+            s.get("reference") == reference for s in acquisition["response"]["sources"]
+        )
+    ]
+    if (
+        row != expected
+        or len(linked) != 1
+        or result["run_id"] != run_id
+        or result["slot"] != linked[0]["response"]["round_id"]
+        or result["base_sha"] != linked[0]["response"]["base_sha"]
+    ):
+        raise ValueError("CPU manifest/ledger/receipt identity mismatch")
+    if (
+        result["log_sha256"] is not None
+        and digest(recorded_bytes(directory / "pytest.log")) != result["log_sha256"]
+    ):
+        raise ValueError("CPU test log content changed")
+    usable = bool(result["disposition"] == "test-result")
+    if usable and (
+        not linked[0]["response"]["ok"]
+        or result["status"] != "passed"
+        or result["cleanup"] != "removed-clean"
+        or result["source_before"] != result["source_after"]
+        or result["process"]["reason"] != "exited"
+        or result["process"]["exit_code"] != 0
+        or result["log_sha256"] is None
+    ):
+        raise ValueError("CPU test completion/cleanup is unverified")
+    return usable
 
 
 def evidence_record(key: str, acquisition: dict[str, Any]) -> dict[str, Any]:

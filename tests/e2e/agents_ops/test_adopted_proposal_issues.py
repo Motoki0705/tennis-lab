@@ -56,8 +56,11 @@ class FakeGitHub:
     pulls = github.GitHub.pulls
     identity = github.GitHub.identity
     family = github.GitHub.family
+    fresh_reads = github.GitHub.fresh_reads
 
     def __init__(self) -> None:
+        self.parent: int | None = None
+        self._fresh = False
         self.issues: dict[int, dict[str, Any]] = {}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -93,11 +96,34 @@ class FakeGitHub:
             )
         if path == "repos/o/r/pulls":
             return paged(self.prs)
+        if path.startswith("repos/o/r/pulls/"):
+            return copy.deepcopy(
+                next(p for p in self.prs if p["number"] == int(path.split("/")[-1]))
+            )
         parts = path.removeprefix("repos/o/r/issues/").split("/")
         n = int(parts[0])
         if len(parts) == 1:
             return copy.deepcopy(self.issues[n])
         tail = "/".join(parts[1:])
+        if tail == "timeline":
+            return paged(
+                [
+                    {
+                        "id": p["number"] + 10000,
+                        "event": "cross-referenced",
+                        "source": {
+                            "issue": {
+                                "id": p["number"] + 10000,
+                                "number": p["number"],
+                                "body": p.get("body", ""),
+                                "repository_url": "https://api.github.com/repos/o/r",
+                                "pull_request": {"url": "pr"},
+                            }
+                        },
+                    }
+                    for p in self.prs
+                ]
+            )
         if tail == "parent":
             assert missing_parent
             return (

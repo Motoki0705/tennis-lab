@@ -8,10 +8,55 @@ import sys
 from pathlib import Path
 from typing import cast
 
-from lib.review_tools.mcp_server import dispatch, serve  # noqa: F401
+from lib.review_tools.mcp_server import (  # noqa: F401
+    MAX_REQUEST_BYTES,
+    dispatch,
+    serve,
+)
 
 from .audit_tools import AuditTools
-from .retrieval import Retrieval, RetrievalError
+from .repro_isolation import LinuxRunner, TestRunner
+from .retrieval import Retrieval, RetrievalError, strict_json
+
+
+def source(args: argparse.Namespace, *, runner: TestRunner | None = None) -> Retrieval:
+    if args.isolation_proof is not None and args.cpu_tests_file is None:
+        raise ValueError("isolation proof requires a host-approved CPU-test allowlist")
+    options = {"ops_memory_sha": args.ops_memory_sha}
+    if args.cpu_tests_file is None:
+        return Retrieval(
+            args.repo,
+            args.base_sha,
+            args.repository,
+            args.round_id,
+            args.journal_dir,
+            **options,
+        )
+    if args.ledger_path is None:
+        raise ValueError("CPU-test recording requires the pinned audit ledger")
+    raw = args.cpu_tests_file.read_bytes()
+    if len(raw) > 64 * 1024:
+        raise ValueError("CPU allowlist exceeds byte limit")
+    allowlist = strict_json(raw)
+    if (
+        not isinstance(allowlist, dict)
+        or set(allowlist) != {"base_sha", "nodeids"}
+        or allowlist["base_sha"] != args.base_sha
+    ):
+        raise ValueError("host CPU-test allowlist must match the fixed base SHA")
+    from .reproduction_server import ReproductionServer
+
+    return ReproductionServer(
+        args.repo,
+        args.base_sha,
+        args.repository,
+        args.round_id,
+        args.journal_dir,
+        args.ledger_path,
+        allowlist["nodeids"],
+        runner=runner if runner is not None else LinuxRunner(args.isolation_proof),
+        **options,
+    )
 
 
 def main() -> int:
@@ -27,16 +72,11 @@ def main() -> int:
     parser.add_argument("--input-path", type=Path)
     parser.add_argument("--ending-path", type=Path)
     parser.add_argument("--max-threads", type=int)
+    parser.add_argument("--cpu-tests-file", type=Path)
+    parser.add_argument("--isolation-proof", type=Path)
     args = parser.parse_args()
     try:
-        retrieval = Retrieval(
-            args.repo,
-            args.base_sha,
-            args.repository,
-            args.round_id,
-            args.journal_dir,
-            ops_memory_sha=args.ops_memory_sha,
-        )
+        retrieval = source(args)
         server: Retrieval | AuditTools = retrieval
         state_args = (
             args.ledger_path,

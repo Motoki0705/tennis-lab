@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Any
 
 
-def read_pins(config: Path) -> dict[str, str]:
+def resolve(
+    config: Path,
+    agent: str,
+    profile: str | None,
+    model: str | None,
+    effort: str | None,
+    mode: str,
+) -> dict[str, Any]:
     raw = config.read_bytes()
     pins: dict[str, str] = {}
     for line in raw.decode().splitlines():
@@ -23,19 +30,6 @@ def read_pins(config: Path) -> dict[str, str]:
         if key in pins or not value.strip():
             raise ValueError("agents.conf contains duplicate/empty pins")
         pins[key] = value
-    return pins
-
-
-def resolve(
-    config: Path,
-    agent: str,
-    profile: str | None,
-    model: str | None,
-    effort: str | None,
-    mode: str,
-) -> dict[str, Any]:
-    raw = config.read_bytes()
-    pins = read_pins(config)
     if profile is not None:
         if not re.fullmatch(r"[a-z][a-z0-9_]*", profile):
             raise ValueError("invalid --profile")
