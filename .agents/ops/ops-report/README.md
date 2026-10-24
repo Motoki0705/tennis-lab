@@ -9,11 +9,12 @@
 
 | パス | 役割 |
 |---|---|
-| `ops_report.py` | CLI入口（`report` / `triage` / `schedule init` / `schedule status`） |
+| `ops_report.py` | CLI入口（`report` / `triage` / `migrate-checkpoint` / `schedule init` / `schedule status`） |
 | `opsreport/collect.py` | 公開履歴・集計境界・基準版・専用memoryの固定。調査資料は一括収集しない |
 | `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 共通 `lib/review_tools` の固定版・GitHub取得とMCP通信を使う入口、調査の台帳adapter |
 | `opsreport/agent.py` | 目的と最小メタデータのプロンプト、共通ランナーによるread-only親の起動、専用memory更新の最終返却 |
 | `opsreport/audit.py` / `audit_tools.py` | 調査checkout、version 2 checkpoint、MCPからのタスク・発見・根拠・終了要求、nativeと取得receiptの照合 |
+| `opsreport/migration.py` / `legacy_checkpoint.py` | 旧checkpointの検証・明示移行、移行元の保全と再実行、旧担当結果の起点の照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
 | `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
 | `opsreport/reproduction.py` / `repro_isolation.py` / `repro_linux.py` / `repro_sandbox.py` / `reproduction_server.py` | CPUテスト要求の制限、使い捨てclone・台帳根拠・ログ、実機proofで許可するOS隔離backend |
@@ -64,7 +65,7 @@ native起動の確認済み引数・証拠の扱いは「native起動の実行�
 
 checkpointはstate dirの `audit/<slot>.json`（version 2）で、固定入力・台帳・native親runの参照だけを持つ。
 `audit/<slot>.ledger.json` に可変タスクと履歴、`audit/<slot>/sources/retrieval.jsonl` に範囲取得の原本を保存する。
-巨大な履歴を再開プロンプトへ再注入しない。version 1は #1458 の明示移行を案内して停止し、黙って読み替えない。
+巨大な履歴を再開プロンプトへ再注入しない。version 1は下記の `migrate-checkpoint` を案内して停止し、黙って読み替えない。
 破損・基準版/入力不一致・根拠欠落は理由付きで停止または未完了とし、元の回・issueを保存する。
 
 ホストは各native runの実起動・完了・実効設定と、台帳のtask/session対応、取得receiptの内容を照合する。
@@ -192,7 +193,7 @@ CPU根拠は自動記録されるため `audit_evidence` へ再登録しない�
 ## 調査台帳ライブラリ
 
 `opsreport.ledger.Ledger` は調査回の永続記録だけを扱う。CLIとMCPがこのライブラリへ接続し、
-情報取得、native起動の照合、描画、公開を担う。旧checkpointの移行は #1458 の範囲。
+情報取得、native起動の照合、描画、公開を担う。旧checkpointは下記の明示移行だけで取り込む。
 native agent IDの記録だけで実起動や正式レビューを証明したことにはならない。
 
 ```python
@@ -226,6 +227,7 @@ IDは種類ごとに一意とし、更新時は同じIDで新しい記録を追�
 | `end` | `status`（`completed` / `incomplete`）, `reason`, `checked_scope`, `excluded_scope`（範囲の文字列配列）, `unverified_risks`（`scope`, `reason`, `resume` の配列）, `further_investigation`（理由の文字列配列） |
 
 タスクの起点 `origin.kind` は `goal` / `task` / `finding`。全体目的のIDはslotとし、他は既存のIDを参照する。
+明示移行で作る `legacy` 起点だけは、保存した旧担当結果を示す `legacy-assignment` 根拠IDを参照する。
 タスクは `planned` で登録して `running` へ進み、`completed` / `failed` / `interrupted` / `cancelled` で終了する。
 起動前の失敗・中断・取消も記録できる。`failed` / `interrupted` は同じIDで `running` へ戻し、
 新しい開始時刻・native IDを記録する。成功には根拠と結論、失敗・中断・取消には未確認範囲・理由・再開方法が必須。
@@ -410,6 +412,53 @@ page = reobservation_input(
   親stateの読取とコメントはparent CLIのregistry lockで直列化する。ロックは消して回避しない。
 - `→ #番号` はtriageが検証して付ける。PRタイトル等の同じ形は `→ \#番号` にエスケープし、
   本文メタデータと一致しないリンクはエラーにする。
+
+## 旧checkpointの明示移行
+
+固定4担当の **checkpoint version 1** を同じslot・レポートissue・基準SHAでversion 2へ移す入口は
+`migrate-checkpoint`。本文の `ops-report:v1 week=` を移す機能ではなく、その本文形式は引き続きエラーにする。
+実stateと既存レポートへの適用は、変更のmerge後に担当親が行う。CLIはagent・triage・memory保存・timerを起動しない。
+
+```bash
+# 元の予定回と未完了レポートissueを明示。最初は書込みなしで照合する。
+.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+  --slot YYYYMMDD --report-issue NUMBER --dry-run
+# 同じ引数から --dry-run を外すと移行する。
+.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+  --slot YYYYMMDD --report-issue NUMBER
+# 移行成功後、同じ回の不足分を新しい調査経路で再開する。
+.venv/bin/python .agents/ops/ops-report/ops_report.py report --if-due
+```
+
+- stateの置き場所は下記「予定と状態」と同じ。scheduleのanchor・3日周期・成功/失敗履歴は変更しない。
+  旧planを保存済み基準commitの全inventoryと照合し、担当結果のrole・版・時刻・根拠・未確認範囲・IDの重複を検証する。
+  GitHubの同slotのissue、open/未完了、基準版・集計境界・入力digest、repositoryを照合する。
+  close・採用チェック（選択肢を含む）・子リンク済みは停止する。
+- 集計境界と専用memory・採否・保存状態の入力はそのまま保持する。旧入力は一括再収集しない。
+  repository情報の明示と旧履歴の構造変換により新入力のdigestは変わるため、旧入力digest・元checkpointの内容hash・
+  新入力digestの対応を保存する。実行補助の `audit_runtime` は旧digestの対象外だったことも旧検証器で扱う。
+  旧checkpointは補助情報も含めてバイト単位で保存し、新入力で置換しない。
+- `audit/<slot>.migration/` に `source.json`（旧checkpoint原文）、`issue-before.json` / `issue-after.json`、
+  `ledger.json`（移行直後の台帳）、`checkpoint.json`（新入力と保存先）を準備してdirectoryごと確定する。
+  台帳には移行元の内容hash・旧入力digestを根拠として記録する。旧結果0件ならタスクは空のまま。
+  completedの旧結果だけを `legacy_<担当>` の完了タスクにし、担当起点・native ID・元時刻・結論・根拠・反証を保存する。
+  失敗/中断結果も原本に残す。旧発見は新契約での統合が必要な `unverified` とし、移行だけで確定問題・採用案にしない。
+- `audit_status` の `legacy_import` から移行元と完了タスクの原本参照を取得できる。
+  `audit_original` で移行元を指定すると旧checkpoint全体を文字範囲で読める。起動プロンプトへ全件添付しない。
+  通常runは旧結果を元checkpointと再照合し、新規native実行や取得receiptとして偽装しない。
+- `schedule.lock` → 共通issue lockの順でreport/triageと排他する。台帳を保存し、同じissueの本文metadataに
+  新旧digestと移行元hashを記録する。タイトル・本文の他の部分・提案・チェックはそのまま保持する。
+  本文更新の確認後、最後にcheckpointをfsync付きatomic replaceで切り替える。各local保存でdirectoryもfsyncする。
+  GitHubとlocalを同時に確定するtransactionはないため、本文更新直後の中断では旧checkpointのまま停止する。
+  通常runはこれを拒否し、同じ移行CLIを再実行すると保存済み変更前/後の本文だけを受理して不足段階を再開する。
+  issue更新の応答喪失も再取得で照合し、別issueを作らない。成功直後の再実行は `already_migrated` で書き換えない。
+- 破損・欠落・入力不一致・保存失敗・途中の本文変更は非ゼロ終了し、標準出力とrun dirの `result.json` に
+  `reason` / `facts` / `resume` を残す。欠落原本や基準commitは検証済みbackupから復元し、close・採用・子リンクは
+  担当親が公開issueと実作業を照合して扱いを決める。archiveやlockを削除してやり直さず、最新mainの入力に置き換えない。
+  移行後の通常runは原本・台帳の移行履歴・入力を照合し、欠落/改変時はagent起動前に停止する。
+
+`test_ops_report_migration.py` は匿名化した旧形式fixture、fake GitHub、実gitで、0件/部分完了、
+原本保全、同じissueの再開、原子的保存、同時実行、更新失敗/応答喪失、再実行と拒否条件を検証する。
 
 ## 予定と状態
 

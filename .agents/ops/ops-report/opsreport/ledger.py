@@ -170,6 +170,9 @@ def _origin(value: Any, state: dict[str, Any], slot: str) -> tuple[str, str]:
     elif kind in {"task", "finding"}:
         if key not in state[_TABLES[kind]]:
             raise LedgerError(f"origin: unknown {kind} {key!r}")
+    elif kind == "legacy":
+        if state["evidence"].get(key, {}).get("source_kind") != "legacy-assignment":
+            raise LedgerError("origin: legacy assignment provenance is required")
     else:
         raise LedgerError(f"origin: unknown kind {kind!r}")
     return kind, key
