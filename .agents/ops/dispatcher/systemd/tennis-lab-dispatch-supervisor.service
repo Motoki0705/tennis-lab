@@ -1,0 +1,18 @@
+[Unit]
+Description=Supervise reserved tennis-lab development parents and worker events
+Documentation=file://%h/projects/tennis-lab/.agents/ops/dispatcher/README.md
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/dispatcher/dispatch.py supervise
+TimeoutStopSec=30
+KillMode=control-group
+# Restart does not override local disable/shutdown or create new agent sessions.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

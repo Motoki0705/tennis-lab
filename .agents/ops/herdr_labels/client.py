@@ -76,6 +76,8 @@ class Herdr:
         display: str | None,
         tokens: dict[str, str],
         validate: Callable[[], None] | None = None,
+        source: str = "tennis-parent",
+        tokens_only: bool = False,
     ) -> dict[str, Any]:
         """Recheck the occupant, patch our fields, and verify the actual readback."""
         current = self.pane(pane["pane_id"])
@@ -92,6 +94,9 @@ class Herdr:
         if validate:
             validate()
         existing = current.get("tokens", {})
+        other_tokens = {
+            key: value for key, value in existing.items() if key not in tokens
+        }
         fields_match = all(existing.get(k, "") == value for k, value in tokens.items())
         if current.get("display_agent") == display and fields_match:
             return {"status": "unchanged", "pane": pane["pane_id"]}
@@ -100,13 +105,13 @@ class Herdr:
             "report-metadata",
             pane["pane_id"],
             "--source",
-            "tennis-parent",
-            "--agent",
-            agent,
+            source,
         ]
-        args.extend(
-            ["--display-agent", display] if display else ["--clear-display-agent"]
-        )
+        if not tokens_only:
+            args.extend(["--agent", agent])
+            args.extend(
+                ["--display-agent", display] if display else ["--clear-display-agent"]
+            )
         for key, value in tokens.items():
             args.extend(
                 ["--token", f"{key}={value}"] if value else ["--clear-token", key]
@@ -117,8 +122,18 @@ class Herdr:
             validate()
         if (after["terminal_id"], after.get("agent")) != (pane["terminal_id"], agent):
             raise ValueError("Herdr pane changed during metadata update")
-        if after.get("display_agent") != display or any(
-            after.get("tokens", {}).get(k, "") != value for k, value in tokens.items()
+        if (
+            after.get("display_agent") != display
+            or any(
+                after.get("tokens", {}).get(k, "") != value
+                for k, value in tokens.items()
+            )
+            or {
+                key: value
+                for key, value in after.get("tokens", {}).items()
+                if key not in tokens
+            }
+            != other_tokens
         ):
             raise ValueError(
                 "Herdr metadata readback does not match the requested label"

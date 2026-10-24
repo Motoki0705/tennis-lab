@@ -1,4 +1,4 @@
-"""Command line: ``report`` (three-day slots), ``schedule`` (local state) and ``triage`` (daily, gh only)."""
+"""Command line: three-day reports, local scheduling and daily adopted-task triage."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ def _env_int(name: str, default: int) -> int:
 
 
 def _state_dir() -> Path:
-    return schedule.state_dir().parent
+    return Path(schedule.state_dir()).parent
 
 
 def _default_log_dir() -> Path:
@@ -68,7 +68,10 @@ def _issue_lock() -> AbstractContextManager[None]:
     path = Path(
         os.environ.get("OPS_REPORT_LOCK_FILE") or _state_dir() / "ops-report.lock"
     )
-    return lock.exclusive(path, timeout=_env_int("OPS_REPORT_LOCK_TIMEOUT", 600))
+    context: AbstractContextManager[None] = lock.exclusive(
+        path, timeout=_env_int("OPS_REPORT_LOCK_TIMEOUT", 600)
+    )
+    return context
 
 
 def _parser() -> argparse.ArgumentParser:

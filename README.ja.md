@@ -1,12 +1,12 @@
 <div align="center">
-  <img src="assets/branding/tennis-lab-logo.png" width="280" alt="Tennis-Lab logo">
-  <h1>Tennis-Lab</h1>
+  <img src="assets/branding/tennis-lab-header.png" width="420" alt="Tennis-Lab">
 </div>
 
 <hr>
 <div align="center">
   <a href="README.md"><img src="https://img.shields.io/badge/Language-English-blue" alt="English"></a>
   <a href="README.ja.md"><img src="https://img.shields.io/badge/Language-%E6%97%A5%E6%9C%AC%E8%AA%9E-blue" alt="日本語"></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue" alt="简体中文"></a>
   <br>
   <a href="https://huggingface.co/Motoki098/tennis-lab-models"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-ffc107" alt="Hugging Face Model"></a>
   <a href="https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-ffc107" alt="Hugging Face Dataset"></a>

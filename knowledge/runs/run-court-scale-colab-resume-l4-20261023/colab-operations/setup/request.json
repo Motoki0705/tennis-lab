@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "job_id": "setup",
+  "argv": [
+    "bash",
+    "-lc",
+    "set -euo pipefail\nexport PATH=\"$(uv tool dir --bin):$PATH\"\nOUT=outputs/synthetic_data_generation/profile/court-scale-smoke/setup\nmkdir -p \"$OUT\"\nTIMEFORMAT=\"elapsed_seconds=%R\"\ngit rev-parse HEAD\nnvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader\ntime uv sync --locked\ntime MAX_JOBS=2 .venv/bin/python -m spin setup-nht --render-only\nnht-render --help\ngit submodule status third_party/nht\ngit -C third_party/nht/gsplat rev-parse HEAD\n.venv/bin/python --version\n"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/synthetic_data_generation/profile/court-scale-smoke/setup"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-10-23T05:43:49.891211+00:00",
+  "source_commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/court-scale-generation-l4-20261023-6ed3f29e8/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/court-scale-generation-l4-20261023-6ed3f29e8/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

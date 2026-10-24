@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# name: court-assets-memory-comparison
+# added: 2026-10-22T15:44:03+09:00
+# provider: codex
+# session: 01a16252-1bf7-79a3-bf16-c2256f96a386
+# issue: 1351
+# resource: all
+# external_teardown_ack: 0
+# prune_ckpt: 0
+# idempotency_key_sha256: 874d7ce64ca10bf8f0445370d7acb6772daa16943f7118678e2c698f46b1f347
+# request_sha256: 601c1016e3a3e042210033a6245aff1723dba79369976fcfcc2de0fcf4b14af4
+cd /home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets
+export TENNIS_RUN_ID=0-8207348556832534680_2026-10-22T06-44-03-167465319Z_2484940_court-assets-memory-comparison
+export TENNIS_REPRO_DIR=/home/kamimura/projects/tennis-lab/.training_queue/repro/0-8207348556832534680_2026-10-22T06-44-03-167465319Z_2484940_court-assets-memory-comparison
+export TENNIS_GPU_RESOURCE=all
+bash /home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets/.agents/skills/training-queue/scripts/training_queue.sh __capture-repro --dir /home/kamimura/projects/tennis-lab/.training_queue/repro/0-8207348556832534680_2026-10-22T06-44-03-167465319Z_2484940_court-assets-memory-comparison --name court-assets-memory-comparison --provider codex --session 01a16252-1bf7-79a3-bf16-c2256f96a386 --issue 1351 --cmd PYTHONPATH=\"\$PWD/third_party/nht\"\ OMP_NUM_THREADS=2\ /home/kamimura/.local/share/uv/tools/nht/bin/python\ tmp/court_assets_probe.py\ --scenes\ tmp/court-scene-assets-drive-roundtrip/scenes\ --output\ tmp/court-assets-local-memory-probe\ --working\ tmp/court-assets-local-memory-working\ --repeats\ 2
+PYTHONPATH="$PWD/third_party/nht" OMP_NUM_THREADS=2 /home/kamimura/.local/share/uv/tools/nht/bin/python tmp/court_assets_probe.py --scenes tmp/court-scene-assets-drive-roundtrip/scenes --output tmp/court-assets-local-memory-probe --working tmp/court-assets-local-memory-working --repeats 2

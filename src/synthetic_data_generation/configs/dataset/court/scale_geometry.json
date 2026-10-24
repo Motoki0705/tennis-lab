@@ -1,0 +1,1 @@
+{"arc_intervals":8192,"arc_tolerance_m":0.01,"base_step_m":4.0,"count_multiple":1,"height":360,"hfov_degrees":[75.0,92.5,110.0],"hull_expansion_percent":0.0,"hull_margin_m":0.5,"jitter_radius_m":1.0,"look_at_heights_m":[0.0,1.5],"minimum_points":8,"near_plane_m":0.01,"schema":"court_scale_geometry_recipe_v1","width":640}

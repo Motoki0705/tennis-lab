@@ -1,0 +1,1747 @@
+[
+  {
+    "scene": "B00",
+    "condition": "hfov45_90",
+    "n": 130,
+    "existing_pre_gate_pass": 100,
+    "existing_post_gate_pass": 104,
+    "existing_gate_pass": 100,
+    "candidate_target4_pass": 96,
+    "candidate_roi01_pass": 96,
+    "candidate_roi05_pass": 96,
+    "candidate_roi10_pass": 96,
+    "coverage_counts": {
+      "none": 25,
+      "sparse": 6,
+      "partial": 91,
+      "near_full": 5,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.006439786832956694
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9496339440345765,
+      "median": 0.9992550015449524,
+      "p95": 0.9997874438762665
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 9.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 9.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 122,
+      "p05": 0.0,
+      "median": 1.399999976158142,
+      "p95": 6.571009683609004
+    },
+    "line_ridge_within3px": {
+      "n": 122,
+      "p05": 0.27172861050929203,
+      "median": 0.7465326431234705,
+      "p95": 0.9766046319194702
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 4.265012304113526,
+      "median": 6.617845585146044,
+      "p95": 10.708769902313698
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.7429126827543189,
+      "median": 1.7429126827543193,
+      "p95": 2.574407675122821
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "hull5",
+    "n": 130,
+    "existing_pre_gate_pass": 116,
+    "existing_post_gate_pass": 122,
+    "existing_gate_pass": 116,
+    "candidate_target4_pass": 108,
+    "candidate_roi01_pass": 108,
+    "candidate_roi05_pass": 108,
+    "candidate_roi10_pass": 108,
+    "coverage_counts": {
+      "partial": 73,
+      "near_full": 34,
+      "sparse": 13,
+      "none": 6,
+      "full": 1,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0005001304090717104
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9732010245323182,
+      "median": 0.9994291067123413,
+      "p95": 0.9997691750526428
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 1.0,
+      "p95": 3.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.517412059695735,
+      "median": 0.7841975308641975,
+      "p95": 0.9774430038245463
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 3.7422550806925674,
+      "median": 6.172546085583328,
+      "p95": 10.442167132213058
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.7429126827543189,
+      "median": 1.7429126827543193,
+      "p95": 2.574407675122821
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "jitter0",
+    "n": 130,
+    "existing_pre_gate_pass": 118,
+    "existing_post_gate_pass": 125,
+    "existing_gate_pass": 118,
+    "candidate_target4_pass": 110,
+    "candidate_roi01_pass": 110,
+    "candidate_roi05_pass": 110,
+    "candidate_roi10_pass": 110,
+    "coverage_counts": {
+      "partial": 78,
+      "near_full": 32,
+      "sparse": 15,
+      "none": 2,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0007199600028189557
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9793972373008728,
+      "median": 0.999295711517334,
+      "p95": 0.9997663617134094
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 1.0,
+      "p95": 3.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.5192638471917748,
+      "median": 0.800531914893617,
+      "p95": 0.98588032718934
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 4.265012304113526,
+      "median": 6.617845585146044,
+      "p95": 10.708769902313698
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.7429126827543189,
+      "median": 1.7429126827543193,
+      "p95": 2.574407675122821
+    }
+  },
+  {
+    "scene": "B00",
+    "condition": "recommended",
+    "n": 130,
+    "existing_pre_gate_pass": 113,
+    "existing_post_gate_pass": 118,
+    "existing_gate_pass": 113,
+    "candidate_target4_pass": 106,
+    "candidate_roi01_pass": 106,
+    "candidate_roi05_pass": 106,
+    "candidate_roi10_pass": 106,
+    "coverage_counts": {
+      "partial": 75,
+      "near_full": 31,
+      "sparse": 11,
+      "none": 10,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0014564721119466487
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9712101995944977,
+      "median": 0.999363899230957,
+      "p95": 0.9997714161872864
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 125,
+      "p05": 0.0,
+      "median": 1.0,
+      "p95": 3.196899890899658
+    },
+    "line_ridge_within3px": {
+      "n": 125,
+      "p05": 0.4866104387773878,
+      "median": 0.8011249497790277,
+      "p95": 0.9888582399427485
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 4.265012304113526,
+      "median": 6.617845585146044,
+      "p95": 10.708769902313698
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.7429126827543189,
+      "median": 1.7429126827543193,
+      "p95": 2.574407675122821
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hfov45_90",
+    "n": 130,
+    "existing_pre_gate_pass": 102,
+    "existing_post_gate_pass": 113,
+    "existing_gate_pass": 102,
+    "candidate_target4_pass": 100,
+    "candidate_roi01_pass": 100,
+    "candidate_roi05_pass": 100,
+    "candidate_roi10_pass": 100,
+    "coverage_counts": {
+      "sparse": 12,
+      "none": 15,
+      "partial": 76,
+      "near_full": 24,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.09781169455003788
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.8298330903053284,
+      "median": 0.9798780083656311,
+      "p95": 0.9995344936847687
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 7.0,
+      "p95": 10.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 123,
+      "p05": 1.399999976158142,
+      "median": 10.992249488830566,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 123,
+      "p05": 0.043780020225497686,
+      "median": 0.31505515898767034,
+      "p95": 0.6065546748248849
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.8862415360363984,
+      "median": 8.066381294190858,
+      "p95": 12.858088904691048
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.187579832275256,
+      "median": 2.2103828527872915,
+      "p95": 2.408291404122774
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "hull5",
+    "n": 130,
+    "existing_pre_gate_pass": 113,
+    "existing_post_gate_pass": 118,
+    "existing_gate_pass": 113,
+    "candidate_target4_pass": 112,
+    "candidate_roi01_pass": 112,
+    "candidate_roi05_pass": 112,
+    "candidate_roi10_pass": 112,
+    "coverage_counts": {
+      "partial": 47,
+      "sparse": 6,
+      "near_full": 62,
+      "none": 9,
+      "full": 3,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.12524643083146403
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7963113486766815,
+      "median": 0.980626106262207,
+      "p95": 0.999152421951294
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 9.5,
+      "p95": 12.549999999999997
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 9.5,
+      "p95": 12.549999999999997
+    },
+    "line_ridge_distance_median_px": {
+      "n": 126,
+      "p05": 0.0,
+      "median": 5.596899747848511,
+      "p95": 19.55949831008911
+    },
+    "line_ridge_within3px": {
+      "n": 126,
+      "p05": 0.17577512473271562,
+      "median": 0.4143606865912032,
+      "p95": 0.8003946628960077
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.054291880368482,
+      "median": 7.4027271946432895,
+      "p95": 12.702034768877587
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.1875794998602154,
+      "median": 2.2103828527872915,
+      "p95": 2.4082989738840745
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "jitter0",
+    "n": 130,
+    "existing_pre_gate_pass": 112,
+    "existing_post_gate_pass": 119,
+    "existing_gate_pass": 112,
+    "candidate_target4_pass": 110,
+    "candidate_roi01_pass": 110,
+    "candidate_roi05_pass": 110,
+    "candidate_roi10_pass": 110,
+    "coverage_counts": {
+      "partial": 55,
+      "sparse": 9,
+      "near_full": 53,
+      "none": 8,
+      "full": 2,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.10483234821065049
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.828542721271515,
+      "median": 0.9788613319396973,
+      "p95": 0.9981577098369598
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 9.0,
+      "p95": 12.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 9.0,
+      "p95": 12.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 126,
+      "p05": 0.25,
+      "median": 6.393799781799316,
+      "p95": 23.9457368850708
+    },
+    "line_ridge_within3px": {
+      "n": 126,
+      "p05": 0.11470192147498195,
+      "median": 0.403638126159816,
+      "p95": 0.7910687988266142
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.8862415360363984,
+      "median": 8.066381294190858,
+      "p95": 12.858088904691048
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.187579832275256,
+      "median": 2.2103828527872915,
+      "p95": 2.408291404122774
+    }
+  },
+  {
+    "scene": "B01",
+    "condition": "recommended",
+    "n": 130,
+    "existing_pre_gate_pass": 113,
+    "existing_post_gate_pass": 118,
+    "existing_gate_pass": 113,
+    "candidate_target4_pass": 111,
+    "candidate_roi01_pass": 111,
+    "candidate_roi05_pass": 111,
+    "candidate_roi10_pass": 111,
+    "coverage_counts": {
+      "partial": 55,
+      "sparse": 7,
+      "near_full": 54,
+      "none": 9,
+      "full": 2,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.12224968865929654
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7967844724655152,
+      "median": 0.9768819212913513,
+      "p95": 0.9985113322734833
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 8.5,
+      "p95": 12.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 8.5,
+      "p95": 12.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 125,
+      "p05": 1.0,
+      "median": 6.196899890899658,
+      "p95": 22.853956604003905
+    },
+    "line_ridge_within3px": {
+      "n": 125,
+      "p05": 0.13905205192080766,
+      "median": 0.4119513484928609,
+      "p95": 0.7719741853985919
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.8862415360363984,
+      "median": 8.066381294190858,
+      "p95": 12.858088904691048
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.187579832275256,
+      "median": 2.2103828527872915,
+      "p95": 2.408291404122774
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hfov45_90",
+    "n": 130,
+    "existing_pre_gate_pass": 93,
+    "existing_post_gate_pass": 120,
+    "existing_gate_pass": 93,
+    "candidate_target4_pass": 93,
+    "candidate_roi01_pass": 93,
+    "candidate_roi05_pass": 93,
+    "candidate_roi10_pass": 93,
+    "coverage_counts": {
+      "sparse": 27,
+      "partial": 93,
+      "none": 7,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.008870390527131273
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9465149998664856,
+      "median": 0.9851536750793457,
+      "p95": 0.9996154606342316
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 4.0,
+      "p95": 7.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 4.0,
+      "p95": 7.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.017812963879267688,
+      "p95": 0.044575159464117595
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.741929438631592,
+      "median": 4.874489863352073,
+      "p95": 9.225784338406635
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.222398101520124,
+      "median": 2.222398101520124,
+      "p95": 2.5660435701703523
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "hull5",
+    "n": 130,
+    "existing_pre_gate_pass": 120,
+    "existing_post_gate_pass": 126,
+    "existing_gate_pass": 120,
+    "candidate_target4_pass": 120,
+    "candidate_roi01_pass": 120,
+    "candidate_roi05_pass": 120,
+    "candidate_roi10_pass": 120,
+    "coverage_counts": {
+      "partial": 118,
+      "sparse": 6,
+      "near_full": 2,
+      "none": 1,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.020837627461921752
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9381612956523895,
+      "median": 0.9874892234802246,
+      "p95": 0.9983777225017547
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 2.0,
+      "median": 7.0,
+      "p95": 8.549999999999997
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 2.0,
+      "median": 7.0,
+      "p95": 8.549999999999997
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0019900155951022044,
+      "median": 0.029981261711430358,
+      "p95": 0.16193656617561789
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.3996592951237803,
+      "median": 4.644461511796218,
+      "p95": 9.176073436186625
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.222398101520124,
+      "median": 2.222398101520124,
+      "p95": 2.5660435701703523
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "jitter0",
+    "n": 130,
+    "existing_pre_gate_pass": 122,
+    "existing_post_gate_pass": 127,
+    "existing_gate_pass": 122,
+    "candidate_target4_pass": 122,
+    "candidate_roi01_pass": 122,
+    "candidate_roi05_pass": 122,
+    "candidate_roi10_pass": 122,
+    "coverage_counts": {
+      "partial": 120,
+      "sparse": 5,
+      "near_full": 2,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.02691051900364018
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9366392433643341,
+      "median": 0.9852629899978638,
+      "p95": 0.9979527592658997
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 2.45,
+      "median": 7.0,
+      "p95": 7.549999999999997
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 2.45,
+      "median": 7.0,
+      "p95": 7.549999999999997
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.02145922746781116,
+      "p95": 0.10083290148299225
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.741929438631592,
+      "median": 4.874489863352073,
+      "p95": 9.225784338406635
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.222398101520124,
+      "median": 2.222398101520124,
+      "p95": 2.5660435701703523
+    }
+  },
+  {
+    "scene": "B02",
+    "condition": "recommended",
+    "n": 130,
+    "existing_pre_gate_pass": 120,
+    "existing_post_gate_pass": 126,
+    "existing_gate_pass": 120,
+    "candidate_target4_pass": 120,
+    "candidate_roi01_pass": 120,
+    "candidate_roi05_pass": 120,
+    "candidate_roi10_pass": 120,
+    "coverage_counts": {
+      "partial": 118,
+      "sparse": 6,
+      "near_full": 2,
+      "none": 1,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.02532556546928932
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.9382747828960418,
+      "median": 0.9854762554168701,
+      "p95": 0.9979831576347351
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 2.0,
+      "median": 6.0,
+      "p95": 8.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 2.0,
+      "median": 6.0,
+      "p95": 8.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.022241231822070145,
+      "p95": 0.10899721482644807
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.741929438631592,
+      "median": 4.874489863352073,
+      "p95": 9.225784338406635
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 2.222398101520124,
+      "median": 2.222398101520124,
+      "p95": 2.5660435701703523
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hfov45_90",
+    "n": 130,
+    "existing_pre_gate_pass": 78,
+    "existing_post_gate_pass": 114,
+    "existing_gate_pass": 78,
+    "candidate_target4_pass": 78,
+    "candidate_roi01_pass": 78,
+    "candidate_roi05_pass": 78,
+    "candidate_roi10_pass": 78,
+    "coverage_counts": {
+      "sparse": 36,
+      "none": 13,
+      "partial": 78,
+      "undefined": 3
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 6.45134804122055e-05
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0165403618262194,
+      "p95": 0.3547203484423816
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7178448796272278,
+      "median": 0.9372655749320984,
+      "p95": 0.995880389213562
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 4.0,
+      "p95": 7.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 4.0,
+      "p95": 7.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 126,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 126,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.211243853260666,
+      "median": 6.02954151698817,
+      "p95": 9.227954441009514
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.551290798623203,
+      "median": 1.5512907986232034,
+      "p95": 2.4459590828958886
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "hull5",
+    "n": 130,
+    "existing_pre_gate_pass": 114,
+    "existing_post_gate_pass": 125,
+    "existing_gate_pass": 114,
+    "candidate_target4_pass": 114,
+    "candidate_roi01_pass": 114,
+    "candidate_roi05_pass": 114,
+    "candidate_roi10_pass": 114,
+    "coverage_counts": {
+      "partial": 113,
+      "sparse": 11,
+      "none": 2,
+      "undefined": 3,
+      "near_full": 1
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.007595138014899631,
+      "p95": 0.22516191028550817
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7772652685642243,
+      "median": 0.9620804786682129,
+      "p95": 0.9969501256942749
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 7.0,
+      "p95": 8.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 7.0,
+      "p95": 8.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0019809001439296684
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 1.9282558254003401,
+      "median": 5.7489366081061455,
+      "p95": 9.178647587690225
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.551290798623203,
+      "median": 1.5512907986232032,
+      "p95": 2.4459615771487493
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "jitter0",
+    "n": 130,
+    "existing_pre_gate_pass": 111,
+    "existing_post_gate_pass": 126,
+    "existing_gate_pass": 111,
+    "candidate_target4_pass": 111,
+    "candidate_roi01_pass": 111,
+    "candidate_roi05_pass": 111,
+    "candidate_roi10_pass": 111,
+    "coverage_counts": {
+      "partial": 110,
+      "sparse": 15,
+      "none": 1,
+      "undefined": 3,
+      "near_full": 1
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.008471548864506252,
+      "p95": 0.2583642107633045
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7470920622348786,
+      "median": 0.9580842852592468,
+      "p95": 0.9946866631507874
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 6.0,
+      "p95": 7.549999999999997
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 6.0,
+      "p95": 7.549999999999997
+    },
+    "line_ridge_distance_median_px": {
+      "n": 127,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.211243853260666,
+      "median": 6.02954151698817,
+      "p95": 9.227954441009514
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.551290798623203,
+      "median": 1.5512907986232034,
+      "p95": 2.4459590828958886
+    }
+  },
+  {
+    "scene": "B03",
+    "condition": "recommended",
+    "n": 130,
+    "existing_pre_gate_pass": 113,
+    "existing_post_gate_pass": 124,
+    "existing_gate_pass": 113,
+    "candidate_target4_pass": 113,
+    "candidate_roi01_pass": 113,
+    "candidate_roi05_pass": 113,
+    "candidate_roi10_pass": 113,
+    "coverage_counts": {
+      "partial": 112,
+      "sparse": 11,
+      "none": 3,
+      "undefined": 3,
+      "near_full": 1
+    },
+    "all_joint_hole": {
+      "n": 130,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_depth_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_joint_hole": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt05": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0
+    },
+    "roi_alpha_lt09": {
+      "n": 127,
+      "p05": 0.0,
+      "median": 0.009502265144235073,
+      "p95": 0.2637839625236365
+    },
+    "all_positive_depth": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_positive_depth": {
+      "n": 127,
+      "p05": 1.0,
+      "median": 1.0,
+      "p95": 1.0
+    },
+    "roi_alpha_p05": {
+      "n": 127,
+      "p05": 0.7671292245388031,
+      "median": 0.9570339918136597,
+      "p95": 0.9945815086364747
+    },
+    "geometry_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 6.0,
+      "p95": 8.0
+    },
+    "renderer_target_kp": {
+      "n": 130,
+      "p05": 1.0,
+      "median": 6.0,
+      "p95": 8.0
+    },
+    "line_ridge_distance_median_px": {
+      "n": 126,
+      "p05": 24.0,
+      "median": 24.0,
+      "p95": 24.0
+    },
+    "line_ridge_within3px": {
+      "n": 126,
+      "p05": 0.0,
+      "median": 0.0,
+      "p95": 0.0011831201892281047
+    },
+    "hull_clearance_m": {
+      "n": 130,
+      "p05": 2.211243853260666,
+      "median": 6.02954151698817,
+      "p95": 9.227954441009514
+    },
+    "height_m": {
+      "n": 130,
+      "p05": 1.551290798623203,
+      "median": 1.5512907986232034,
+      "p95": 2.4459590828958886
+    }
+  }
+]

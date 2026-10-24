@@ -130,6 +130,8 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         pipelines = self._train_pipelines if split == "train" else self._eval_pipelines
         datasets: dict[str, CourtDetectionDataset] = {}
         for name in _SOURCE_ORDER:
+            if split == "train" and self.mixed_config.train_batch_counts[name] == 0:
+                continue
             dataset = self._source_dataset(split=split, pipeline=pipelines[name])
             if dataset is not None:
                 datasets[name] = dataset
@@ -146,7 +148,11 @@ class CourtDetectionDataModule(pl.LightningDataModule):
             return
         if stage in ("fit", None):
             train = self._datasets_for_split("train")
-            if tuple(train) != _SOURCE_ORDER:
+            if set(train) != {
+                name
+                for name, count in self.mixed_config.train_batch_counts.items()
+                if count > 0
+            }:
                 raise ValueError(
                     "Every configured mixed source requires train samples."
                 )
@@ -177,7 +183,10 @@ class CourtDetectionDataModule(pl.LightningDataModule):
             raise RuntimeError("Mixed Court train source lengths are unresolved.")
         sampler = MixedSourceBatchSampler(
             self._train_source_lengths,
-            self.mixed_config.train_batch_counts,
+            {
+                name: self.mixed_config.train_batch_counts[name]
+                for name in self._train_source_lengths
+            },
             seed=self.seed,
         )
         return DataLoader(

@@ -1,0 +1,798 @@
+{
+  "base_commit": "7e307f0499be3a2511afaba51966ae3362ec81b1",
+  "prototype_sha256": "955e2d5c3dd7c5adec4d98e8526ed7a7e1d2129465f52091c2d7451d298923c1",
+  "inputs_unchanged": true,
+  "python": "3.11.15",
+  "numpy": "2.3.5",
+  "scipy": "1.17.1",
+  "probe": {
+    "seed": 20261022,
+    "eval_seed": 77123,
+    "base_groups": 16,
+    "base_target": 24,
+    "max_density_level": 4,
+    "step_m": 6.0,
+    "guard_m": 0.5,
+    "synthetic_acceptance_rate": 0.8
+  },
+  "scenes": [
+    {
+      "scene": "B00",
+      "input_sha256": {
+        "alignment/alignment.json": "d973abf8f6e8f82ac4322562f1b468c24e4472d7ed7164f79eac06a264a86581",
+        "reconstruction/export/scene.json": "18251128c91985103ef2bcfb5c5e6019a452a6be07f8b59ca4c82028485f1743",
+        "reconstruction/export/cameras.json": "9c2b6e6e927f484280a3bc53f3ce94eb27afa77bbaa380d1afd9e560c67ba075",
+        "resolved-config.yaml": "5abc57074b5829575d167815db6f015204ce90032f8eab214cea7e5c8c12d379",
+        "datasets/court/dataset.json": "f2e37e8ad6df7a1b944ec34580b60c7c26f315ebb2b803273d1e3fd0a080e6ad",
+        "datasets/court/samples/index.npz": "24721bcc3e621b536fd0673d606143384eca941d1052dcf6773e2a4d60d57e63"
+      },
+      "compatibility": [],
+      "alignment_schema": "semantic_multi_court_alignment_v2",
+      "captured_cameras": 491,
+      "courts": 2,
+      "saved_hfov": [
+        75.0,
+        110.0
+      ],
+      "saved_hull_center": false,
+      "saved_expansion_percent": 5.0,
+      "saved_candidate_inventory": 2187,
+      "capture_local_xyz_min": [
+        -14.998188290813635,
+        -19.53707688199851,
+        1.4502834329584795
+      ],
+      "capture_local_xyz_max": [
+        16.028418349085328,
+        14.384856696704913,
+        2.834055121112612
+      ],
+      "length_min_m": 24.74534808782866,
+      "length_median_m": 65.32039864873246,
+      "length_max_m": 82.66091751525488,
+      "guard_excluded_families": 1347,
+      "empty_baseline_families": 0,
+      "guard_kept_families": 256,
+      "train_shape_counts": {
+        "circle": 132,
+        "rectangle": 39,
+        "ellipse": 44,
+        "superellipse": 41
+      },
+      "train_center_counts": {
+        "complex": 174,
+        "court": 82
+      },
+      "evaluation_hash": "e884f3b89434d45b18cbd9a96bbd2017549adbc1d4b10b7afb8f8d2fe92ffee6",
+      "evaluation_points": 24,
+      "evaluation_families": [
+        "01cbbc8d915eabc9f0dcd512fff38fa64a6b8a1bbfdd0f1b2c63a0fe3c6a03e2",
+        "3909fc5b3fcdf975e3f8516d3ecf083be1ddbb1748273868cc82cb9b90398c18"
+      ],
+      "evaluation_guard": "position only, dense 1024 point bound; approximate arc-length error not certified",
+      "common_geometry_equal": {
+        "more_tracks": 192,
+        "more_density": 192
+      },
+      "counts": [
+        {
+          "level": 0,
+          "target_per_scene": 24,
+          "a1_planned_groups": 16,
+          "a1_candidates": 192,
+          "a1_eligible_new": 148,
+          "a1_selected": 24,
+          "a1_used_groups": 16,
+          "a2_candidates": 192,
+          "a2_eligible_new": 148,
+          "a2_selected": 24,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 1,
+          "target_per_scene": 48,
+          "a1_planned_groups": 32,
+          "a1_candidates": 196,
+          "a1_eligible_new": 149,
+          "a1_selected": 48,
+          "a1_used_groups": 32,
+          "a2_candidates": 384,
+          "a2_eligible_new": 137,
+          "a2_selected": 48,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 2,
+          "target_per_scene": 96,
+          "a1_planned_groups": 64,
+          "a1_candidates": 400,
+          "a1_eligible_new": 295,
+          "a1_selected": 96,
+          "a1_used_groups": 64,
+          "a2_candidates": 768,
+          "a2_eligible_new": 289,
+          "a2_selected": 96,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 3,
+          "target_per_scene": 192,
+          "a1_planned_groups": 128,
+          "a1_candidates": 804,
+          "a1_eligible_new": 593,
+          "a1_selected": 192,
+          "a1_used_groups": 128,
+          "a2_candidates": 1536,
+          "a2_eligible_new": 571,
+          "a2_selected": 192,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 4,
+          "target_per_scene": 384,
+          "a1_planned_groups": 256,
+          "a1_candidates": 1576,
+          "a1_eligible_new": 1182,
+          "a1_selected": 384,
+          "a1_used_groups": 256,
+          "a2_candidates": 3072,
+          "a2_eligible_new": 1157,
+          "a2_selected": 384,
+          "a2_used_groups": 16
+        }
+      ],
+      "length_count_drift": [
+        {
+          "level": 0,
+          "a1_candidates": 192,
+          "a2_candidates": 192
+        },
+        {
+          "level": 1,
+          "a1_candidates": 388,
+          "a2_candidates": 384
+        },
+        {
+          "level": 2,
+          "a1_candidates": 788,
+          "a2_candidates": 768
+        },
+        {
+          "level": 3,
+          "a1_candidates": 1592,
+          "a2_candidates": 1536
+        },
+        {
+          "level": 4,
+          "a1_candidates": 3168,
+          "a2_candidates": 3072
+        }
+      ],
+      "geometry_reasons": {
+        "insufficient_target_coverage_probe": 80,
+        "ok": 2934,
+        "insufficient_pre_render_semantic_coverage": 118,
+        "ambiguous_camera_relative_near_far": 36
+      },
+      "simulated_acceptance_counts": {
+        "1.0": 2934,
+        "0.9": 2644,
+        "0.7": 2081
+      },
+      "shortage": "insufficient accepted candidates: target=1, available=0",
+      "selected_union_count": 744,
+      "candidate_union_count": 6048,
+      "b_count_per_scene": {
+        "1": 384,
+        "2": 192,
+        "3": 128,
+        "4": 96
+      },
+      "b_subset_of_a1_max": true,
+      "current_sampling": {
+        "coarse": 32,
+        "fine": 56,
+        "common": 8
+      },
+      "current_split_changes": 4,
+      "a1_selected_hash": "e56c422b4a0f7523bc3f23b2f458d2e9042ef4185a6e1c300bd3e32844ea3abe",
+      "a2_selected_hash": "15051635a10fddb51769d40c515e23635a7ed70c57f41b308c8d0a7b6c899fad"
+    },
+    {
+      "scene": "B01",
+      "input_sha256": {
+        "alignment/alignment.json": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9",
+        "reconstruction/export/scene.json": "e753f8857a2d588d73fcae87d8982efc3ce1772dbc14d38bc5a9e46f69af2c57",
+        "reconstruction/export/cameras.json": "52ee696ddf39166f198577e5010b32c68a30413f3aed00e04b2d3c8848d8361b",
+        "resolved-config.yaml": "fa77bd3107b9f5b5e5620d793a9830dbcfe1f80cb8c4f9beff8a0fa8db74e170",
+        "datasets/court/dataset.json": "a2f7ee3a04bb3c6e39732b7917a1af5af0ad093446b36a0f7974e4569f436f4e",
+        "datasets/court/samples/index.npz": "422b18d17e38b47560daf055e21c9562de96662ecef5dee0316feaa38b5e40cd"
+      },
+      "compatibility": [
+        "B01: explicit experimental addition sfm_complex_center_on_hull=false; source unchanged"
+      ],
+      "alignment_schema": "human_confirmed_multi_court_alignment_v1",
+      "captured_cameras": 266,
+      "courts": 3,
+      "saved_hfov": [
+        45.0,
+        90.0
+      ],
+      "saved_hull_center": false,
+      "saved_expansion_percent": 5.0,
+      "saved_candidate_inventory": 2916,
+      "capture_local_xyz_min": [
+        -20.94833280378559,
+        -16.244919354333216,
+        1.47748713187841
+      ],
+      "capture_local_xyz_max": [
+        25.14182190353235,
+        19.69860273785964,
+        2.734413540681655
+      ],
+      "length_min_m": 25.010073241084033,
+      "length_median_m": 59.826848636794736,
+      "length_max_m": 117.82354945593221,
+      "guard_excluded_families": 923,
+      "empty_baseline_families": 0,
+      "guard_kept_families": 256,
+      "train_shape_counts": {
+        "circle": 129,
+        "ellipse": 50,
+        "superellipse": 45,
+        "rectangle": 32
+      },
+      "train_center_counts": {
+        "complex": 134,
+        "court": 122
+      },
+      "evaluation_hash": "b56080403e45d0a31a4c3c6e30553fea19d179c00af330df5f85fffd74e684e4",
+      "evaluation_points": 28,
+      "evaluation_families": [
+        "ecd61cf9b7878ddee776d069be51ca044a540608c281a0987217e9602ebfc8ab",
+        "4c7e520782779db78465183e2672ef0e7c8923c4adb2a7978a9cc297aa04957e"
+      ],
+      "evaluation_guard": "position only, dense 1024 point bound; approximate arc-length error not certified",
+      "common_geometry_equal": {
+        "more_tracks": 192,
+        "more_density": 192
+      },
+      "counts": [
+        {
+          "level": 0,
+          "target_per_scene": 24,
+          "a1_planned_groups": 16,
+          "a1_candidates": 192,
+          "a1_eligible_new": 135,
+          "a1_selected": 24,
+          "a1_used_groups": 16,
+          "a2_candidates": 192,
+          "a2_eligible_new": 135,
+          "a2_selected": 24,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 1,
+          "target_per_scene": 48,
+          "a1_planned_groups": 32,
+          "a1_candidates": 176,
+          "a1_eligible_new": 120,
+          "a1_selected": 48,
+          "a1_used_groups": 31,
+          "a2_candidates": 384,
+          "a2_eligible_new": 140,
+          "a2_selected": 48,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 2,
+          "target_per_scene": 96,
+          "a1_planned_groups": 64,
+          "a1_candidates": 412,
+          "a1_eligible_new": 286,
+          "a1_selected": 96,
+          "a1_used_groups": 63,
+          "a2_candidates": 768,
+          "a2_eligible_new": 280,
+          "a2_selected": 96,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 3,
+          "target_per_scene": 192,
+          "a1_planned_groups": 128,
+          "a1_candidates": 744,
+          "a1_eligible_new": 507,
+          "a1_selected": 192,
+          "a1_used_groups": 127,
+          "a2_candidates": 1536,
+          "a2_eligible_new": 556,
+          "a2_selected": 192,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 4,
+          "target_per_scene": 384,
+          "a1_planned_groups": 256,
+          "a1_candidates": 1576,
+          "a1_eligible_new": 1102,
+          "a1_selected": 384,
+          "a1_used_groups": 254,
+          "a2_candidates": 3072,
+          "a2_eligible_new": 1091,
+          "a2_selected": 384,
+          "a2_used_groups": 16
+        }
+      ],
+      "length_count_drift": [
+        {
+          "level": 0,
+          "a1_candidates": 192,
+          "a2_candidates": 192
+        },
+        {
+          "level": 1,
+          "a1_candidates": 368,
+          "a2_candidates": 384
+        },
+        {
+          "level": 2,
+          "a1_candidates": 780,
+          "a2_candidates": 768
+        },
+        {
+          "level": 3,
+          "a1_candidates": 1524,
+          "a2_candidates": 1536
+        },
+        {
+          "level": 4,
+          "a1_candidates": 3100,
+          "a2_candidates": 3072
+        }
+      ],
+      "geometry_reasons": {
+        "ok": 2709,
+        "insufficient_pre_render_semantic_coverage": 240,
+        "insufficient_target_coverage_probe": 87,
+        "ambiguous_camera_relative_near_far": 64
+      },
+      "simulated_acceptance_counts": {
+        "1.0": 2709,
+        "0.9": 2424,
+        "0.7": 1885
+      },
+      "shortage": "insufficient accepted candidates: target=1, available=0",
+      "selected_union_count": 744,
+      "candidate_union_count": 5980,
+      "b_count_per_scene": {
+        "1": 384,
+        "2": 192,
+        "3": 128,
+        "4": 96
+      },
+      "b_subset_of_a1_max": true,
+      "current_sampling": {
+        "coarse": 88,
+        "fine": 168,
+        "common": 8
+      },
+      "current_split_changes": 5,
+      "a1_selected_hash": "19a406de2b54824b0874b11f2bf4a6cc53eef8c5c04808d8e0abc65d0bb51124",
+      "a2_selected_hash": "43b8912a7049f314b9fddb54ce98dd46791f0374eb9026f298aca6b76096c7bb"
+    },
+    {
+      "scene": "B02",
+      "input_sha256": {
+        "alignment/alignment.json": "5cf7a69e60df3a6551f21404047df27e9e5808742518da6c7540f58232207b9d",
+        "reconstruction/export/scene.json": "ce2a7f14c7410ca76994fce9b3f054aa9d18a95d51167136642f4e94ab53d631",
+        "reconstruction/export/cameras.json": "a3a8bdf8be8736340e6e6d78ddd3655dec9993277d6e5e65c6b076271d5f263d",
+        "resolved-config.yaml": "5bf1a0d32b22dc337d180b144ac2903490d5e9fbaba7f52582bf33012a133ad4",
+        "datasets/court/dataset.json": "40f17dd3345570c5f4897d2ee454909a678583e0a8237f4dca352e34cfc9b568",
+        "datasets/court/samples/index.npz": "c6761029a4b20132e8c0eb873c6945e518a608f8f9bc0dff8c361afe901c062b"
+      },
+      "compatibility": [],
+      "alignment_schema": "human_confirmed_multi_court_alignment_v1",
+      "captured_cameras": 157,
+      "courts": 1,
+      "saved_hfov": [
+        75.0,
+        110.0
+      ],
+      "saved_hull_center": true,
+      "saved_expansion_percent": 5.0,
+      "saved_candidate_inventory": 2430,
+      "capture_local_xyz_min": [
+        -9.587443230173466,
+        -16.659541442293687,
+        1.6234220255604495
+      ],
+      "capture_local_xyz_max": [
+        9.23125072421406,
+        16.99582066748131,
+        2.731298131405507
+      ],
+      "length_min_m": 28.29877439312738,
+      "length_median_m": 42.96768336600516,
+      "length_max_m": 77.35971439777553,
+      "guard_excluded_families": 787,
+      "empty_baseline_families": 0,
+      "guard_kept_families": 256,
+      "train_shape_counts": {
+        "ellipse": 62,
+        "superellipse": 58,
+        "circle": 64,
+        "rectangle": 72
+      },
+      "train_center_counts": {
+        "complex": 125,
+        "court": 131
+      },
+      "evaluation_hash": "4a9a4950244c40476ffa9cb7fadbedc8a8a110703a82d2742a921127edd5b287",
+      "evaluation_points": 20,
+      "evaluation_families": [
+        "e475fb7027f0be242f3619fed5e4b8c9553a3b774ca3780d7d4dbc89d0fe993e",
+        "25065abc9f41c1658b546041e6d480a562d19dc3ab35f9d39c85f7f9fd66f418"
+      ],
+      "evaluation_guard": "position only, dense 1024 point bound; approximate arc-length error not certified",
+      "common_geometry_equal": {
+        "more_tracks": 156,
+        "more_density": 156
+      },
+      "counts": [
+        {
+          "level": 0,
+          "target_per_scene": 24,
+          "a1_planned_groups": 16,
+          "a1_candidates": 156,
+          "a1_eligible_new": 111,
+          "a1_selected": 24,
+          "a1_used_groups": 16,
+          "a2_candidates": 156,
+          "a2_eligible_new": 111,
+          "a2_selected": 24,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 1,
+          "target_per_scene": 48,
+          "a1_planned_groups": 32,
+          "a1_candidates": 140,
+          "a1_eligible_new": 104,
+          "a1_selected": 48,
+          "a1_used_groups": 32,
+          "a2_candidates": 312,
+          "a2_eligible_new": 117,
+          "a2_selected": 48,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 2,
+          "target_per_scene": 96,
+          "a1_planned_groups": 64,
+          "a1_candidates": 288,
+          "a1_eligible_new": 219,
+          "a1_selected": 96,
+          "a1_used_groups": 64,
+          "a2_candidates": 624,
+          "a2_eligible_new": 229,
+          "a2_selected": 96,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 3,
+          "target_per_scene": 192,
+          "a1_planned_groups": 128,
+          "a1_candidates": 596,
+          "a1_eligible_new": 430,
+          "a1_selected": 192,
+          "a1_used_groups": 128,
+          "a2_candidates": 1248,
+          "a2_eligible_new": 456,
+          "a2_selected": 192,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 4,
+          "target_per_scene": 384,
+          "a1_planned_groups": 256,
+          "a1_candidates": 1200,
+          "a1_eligible_new": 867,
+          "a1_selected": 384,
+          "a1_used_groups": 256,
+          "a2_candidates": 2496,
+          "a2_eligible_new": 921,
+          "a2_selected": 384,
+          "a2_used_groups": 16
+        }
+      ],
+      "length_count_drift": [
+        {
+          "level": 0,
+          "a1_candidates": 156,
+          "a2_candidates": 156
+        },
+        {
+          "level": 1,
+          "a1_candidates": 296,
+          "a2_candidates": 312
+        },
+        {
+          "level": 2,
+          "a1_candidates": 584,
+          "a2_candidates": 624
+        },
+        {
+          "level": 3,
+          "a1_candidates": 1180,
+          "a2_candidates": 1248
+        },
+        {
+          "level": 4,
+          "a1_candidates": 2380,
+          "a2_candidates": 2496
+        }
+      ],
+      "geometry_reasons": {
+        "ok": 2174,
+        "insufficient_pre_render_semantic_coverage": 142,
+        "ambiguous_camera_relative_near_far": 64
+      },
+      "simulated_acceptance_counts": {
+        "1.0": 2174,
+        "0.9": 1938,
+        "0.7": 1520
+      },
+      "shortage": "insufficient accepted candidates: target=1, available=0",
+      "selected_union_count": 744,
+      "candidate_union_count": 4720,
+      "b_count_per_scene": {
+        "1": 384,
+        "2": 192,
+        "3": 128,
+        "4": 96
+      },
+      "b_subset_of_a1_max": true,
+      "current_sampling": {
+        "coarse": 56,
+        "fine": 104,
+        "common": 8
+      },
+      "current_split_changes": 3,
+      "a1_selected_hash": "1290f8006b90b293a921dfe191b365f8bfde99d5660b25786fc7a631f09e4984",
+      "a2_selected_hash": "f8f7c94ddd40d23b1e328dc5dc1e3d9a9f60acd07d063b832c63d554285ca7bb"
+    },
+    {
+      "scene": "B03",
+      "input_sha256": {
+        "alignment/alignment.json": "8e1029f091a8d0a1bbea4992353b7dd3836bdb1b8c3bb7ecab0a00d51dba8e99",
+        "reconstruction/export/scene.json": "df7e51b9dd819164bb5915fae8cb2e4093f7af91756b723ce62c97a80065433d",
+        "reconstruction/export/cameras.json": "4d03c5a27728be0ff7e9598d42ce4459960a0af8ff0c638d9af34aa8a7c1b381",
+        "resolved-config.yaml": "51dceb2865c2be1f80dbf4a76749a8a45447bf89ab68879adbcb97fcb083cbd6",
+        "datasets/court/dataset.json": "84c8195ac34c4cf0a9eb4852ec85e37ce7940a58cc2b29a7637c1fa087d12607",
+        "datasets/court/samples/index.npz": "062dceb390c2fbb1be86540bd2637623860ce3e2d5dc4a0306c105a19ae4807d"
+      },
+      "compatibility": [],
+      "alignment_schema": "semantic_multi_court_alignment_v2",
+      "captured_cameras": 153,
+      "courts": 1,
+      "saved_hfov": [
+        75.0,
+        110.0
+      ],
+      "saved_hull_center": false,
+      "saved_expansion_percent": 5.0,
+      "saved_candidate_inventory": 2430,
+      "capture_local_xyz_min": [
+        -7.50079520590619,
+        -19.620035920832485,
+        1.5013657387536308
+      ],
+      "capture_local_xyz_max": [
+        11.339603605723855,
+        18.39578051642713,
+        2.762745384388017
+      ],
+      "length_min_m": 20.6985099325488,
+      "length_median_m": 30.2888421804998,
+      "length_max_m": 70.09764378181151,
+      "guard_excluded_families": 1399,
+      "empty_baseline_families": 1,
+      "guard_kept_families": 256,
+      "train_shape_counts": {
+        "rectangle": 66,
+        "circle": 85,
+        "superellipse": 58,
+        "ellipse": 47
+      },
+      "train_center_counts": {
+        "complex": 226,
+        "court": 30
+      },
+      "evaluation_hash": "744be196e6cf7a6f9a30b71fc06e5db31661b4281a4819fb8e9940bdaa047858",
+      "evaluation_points": 20,
+      "evaluation_families": [
+        "1594db30147b9d307952b9047899bae141411ba3a383746bc9eba5d53662aaef",
+        "09eb7d59e52b09b8d32c4a3c8730558acfdb043cffbea8a56215b36ae461497b"
+      ],
+      "evaluation_guard": "position only, dense 1024 point bound; approximate arc-length error not certified",
+      "common_geometry_equal": {
+        "more_tracks": 132,
+        "more_density": 132
+      },
+      "counts": [
+        {
+          "level": 0,
+          "target_per_scene": 24,
+          "a1_planned_groups": 16,
+          "a1_candidates": 132,
+          "a1_eligible_new": 88,
+          "a1_selected": 24,
+          "a1_used_groups": 16,
+          "a2_candidates": 132,
+          "a2_eligible_new": 88,
+          "a2_selected": 24,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 1,
+          "target_per_scene": 48,
+          "a1_planned_groups": 32,
+          "a1_candidates": 132,
+          "a1_eligible_new": 87,
+          "a1_selected": 48,
+          "a1_used_groups": 32,
+          "a2_candidates": 264,
+          "a2_eligible_new": 97,
+          "a2_selected": 48,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 2,
+          "target_per_scene": 96,
+          "a1_planned_groups": 64,
+          "a1_candidates": 256,
+          "a1_eligible_new": 156,
+          "a1_selected": 96,
+          "a1_used_groups": 64,
+          "a2_candidates": 528,
+          "a2_eligible_new": 178,
+          "a2_selected": 96,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 3,
+          "target_per_scene": 192,
+          "a1_planned_groups": 128,
+          "a1_candidates": 536,
+          "a1_eligible_new": 351,
+          "a1_selected": 192,
+          "a1_used_groups": 128,
+          "a2_candidates": 1056,
+          "a2_eligible_new": 338,
+          "a2_selected": 192,
+          "a2_used_groups": 16
+        },
+        {
+          "level": 4,
+          "target_per_scene": 384,
+          "a1_planned_groups": 256,
+          "a1_candidates": 1052,
+          "a1_eligible_new": 678,
+          "a1_selected": 384,
+          "a1_used_groups": 256,
+          "a2_candidates": 2112,
+          "a2_eligible_new": 709,
+          "a2_selected": 384,
+          "a2_used_groups": 16
+        }
+      ],
+      "length_count_drift": [
+        {
+          "level": 0,
+          "a1_candidates": 132,
+          "a2_candidates": 132
+        },
+        {
+          "level": 1,
+          "a1_candidates": 264,
+          "a2_candidates": 264
+        },
+        {
+          "level": 2,
+          "a1_candidates": 520,
+          "a2_candidates": 528
+        },
+        {
+          "level": 3,
+          "a1_candidates": 1056,
+          "a2_candidates": 1056
+        },
+        {
+          "level": 4,
+          "a1_candidates": 2108,
+          "a2_candidates": 2112
+        }
+      ],
+      "geometry_reasons": {
+        "ok": 1683,
+        "insufficient_pre_render_semantic_coverage": 407,
+        "ambiguous_camera_relative_near_far": 18
+      },
+      "simulated_acceptance_counts": {
+        "1.0": 1683,
+        "0.9": 1523,
+        "0.7": 1209
+      },
+      "shortage": "insufficient accepted candidates: target=1, available=0",
+      "selected_union_count": 744,
+      "candidate_union_count": 4088,
+      "b_count_per_scene": {
+        "1": 384,
+        "2": 192,
+        "3": 128,
+        "4": 96
+      },
+      "b_subset_of_a1_max": true,
+      "current_sampling": {
+        "coarse": 40,
+        "fine": 72,
+        "common": 8
+      },
+      "current_split_changes": 3,
+      "a1_selected_hash": "441bcad251f1f64d188abec46cb568fc3e0b3b9753daf04502aecb65cf2c07b4",
+      "a2_selected_hash": "cd9a81f4b1d85e1de89aebf7ad49f353d92d9312ff9c36672da225b5535ce56f"
+    }
+  ],
+  "saved_overlay_examples": [
+    {
+      "scene": "B00",
+      "kind": "few target KPs",
+      "sample_id": "court-sample-001772",
+      "visible_target": 0
+    },
+    {
+      "scene": "B00",
+      "kind": "many target KPs",
+      "sample_id": "court-sample-001996",
+      "visible_target": 14
+    },
+    {
+      "scene": "B01",
+      "kind": "few target KPs",
+      "sample_id": "court-sample-000177",
+      "visible_target": 0
+    },
+    {
+      "scene": "B01",
+      "kind": "many target KPs",
+      "sample_id": "court-sample-001445",
+      "visible_target": 14
+    },
+    {
+      "scene": "B02",
+      "kind": "few target KPs",
+      "sample_id": "court-sample-000096",
+      "visible_target": 4
+    },
+    {
+      "scene": "B02",
+      "kind": "many target KPs",
+      "sample_id": "court-sample-001507",
+      "visible_target": 14
+    },
+    {
+      "scene": "B03",
+      "kind": "few target KPs",
+      "sample_id": "court-sample-000120",
+      "visible_target": 4
+    },
+    {
+      "scene": "B03",
+      "kind": "many target KPs",
+      "sample_id": "court-sample-002255",
+      "visible_target": 14
+    }
+  ]
+}

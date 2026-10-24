@@ -1,0 +1,22 @@
+bringing up nodes...
+bringing up nodes...
+
+
+==================================== ERRORS ====================================
+____________________ ERROR collecting tests/test_export.py _____________________
+ImportError while importing test module '/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets/third_party/nht/tests/test_export.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/home/kamimura/.local/share/uv/python/cpython-3.11.15-linux-x86_64-gnu/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+third_party/nht/tests/test_export.py:8: in <module>
+    from nht_pipeline.export import load_validated_scene_export, validate_scene_export
+third_party/nht/nht_pipeline/export.py:16: in <module>
+    from .schema import validate_schema_payload
+third_party/nht/nht_pipeline/schema.py:10: in <module>
+    import jsonschema
+E   ModuleNotFoundError: No module named 'jsonschema'
+=========================== short test summary info ============================
+ERROR third_party/nht/tests/test_export.py - ImportError while importing test...
+1 error in 2.78s

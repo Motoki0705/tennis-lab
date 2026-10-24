@@ -1,0 +1,4 @@
+kind: tennis_court_evaluation
+root: court_detection/tennis_court_detector-v1
+# ARTIFACT root relative, produced by scripts.freeze_real_evaluation.
+registry: ???

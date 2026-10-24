@@ -30,6 +30,16 @@ export function project(p, view) {
     depth,
   ];
 }
+export function trajectoryPolyline(group) {
+  if (group.planned_points) return group.planned_points;
+  const seen = new Set();
+  return group.points.filter((p, i) => {
+    const key = JSON.stringify(group.samples[i].arc_fraction ?? group.samples[i].frame);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 export class SceneView {
   constructor(canvas, onSelect) {
     this.canvas = canvas;
@@ -61,7 +71,7 @@ export class SceneView {
     this.courts = data.courts;
     this.edges = data.edges;
     const pts = [
-      ...this.groups.flatMap((g) => g.points),
+      ...this.groups.flatMap((g) => trajectoryPolyline(g)),
       ...this.courts.flatMap((c) => c.points),
     ];
     const low = [0, 1, 2].map((i) => Math.min(...pts.map((p) => p[i]))),
@@ -171,30 +181,34 @@ export class SceneView {
     for (const g of ordered) {
       const active = g.id === this.selected,
         color = COLORS[g.split] || "#fff",
-        seen = new Set(),
-        unique = [];
-      g.points.forEach((p, i) => {
-        const key = g.samples[i].frame;
-        if (!seen.has(key)) {
-          seen.add(key);
-          unique.push(p);
-        }
-      });
+        unique = trajectoryPolyline(g);
+      if (g.planned_points) c.setLineDash([5, 4]);
       this.line(
         unique,
         color,
         active ? 3 : 1.3,
         active ? 1 : this.selected ? 0.22 : 0.5,
       );
+      c.setLineDash([]);
       const points = unique.map((p) => project(p, v));
       for (let i = 1; i < points.length; i++)
         this.hits.push({ id: g.id, a: points[i - 1], b: points[i] });
       c.fillStyle = color;
-      for (const q of points) {
+      const cameras = (g.planned_points ? g.points : unique).map((p) => project(p, v));
+      for (const q of cameras) {
         c.globalAlpha = active ? 0.9 : this.selected ? 0.22 : 0.45;
         c.beginPath();
         c.arc(q[0], q[1], active ? 2.2 : 1.3, 0, Math.PI * 2);
         c.fill();
+      }
+      for (const p of g.rejected_points ?? []) {
+        const q = project(p, v);
+        c.strokeStyle = "#e47c78";
+        c.globalAlpha = active ? 0.9 : 0.3;
+        c.beginPath();
+        c.moveTo(q[0]-3, q[1]-3); c.lineTo(q[0]+3, q[1]+3);
+        c.moveTo(q[0]-3, q[1]+3); c.lineTo(q[0]+3, q[1]-3);
+        c.stroke();
       }
       c.globalAlpha = 1;
       if (active) {

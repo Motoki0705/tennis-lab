@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "job_id": "setup",
+  "status": "cancelled",
+  "updated_at": "2026-10-22T06:39:12.978219+00:00",
+  "returncode": 130,
+  "completion_target": "cancelled",
+  "save_pid": 2850,
+  "save_token": "42189",
+  "drive_saved_at": "2026-10-22T06:39:26.116944+00:00",
+  "finished_at": "2026-10-22T06:39:26.116959+00:00"
+}

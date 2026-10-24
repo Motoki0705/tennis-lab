@@ -14,6 +14,7 @@ import pytest
 
 from tests.e2e.agents_ops.test_herdr_labels import OPS, Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
+from tests.e2e.agents_ops.test_herdr_labels import named_labels as named_labels
 
 
 def terminal_clear(
@@ -104,6 +105,43 @@ def test_native_clear_handles_migrated_and_unmanaged_displays(
         display if display == "custom display" else None
     )
     assert after["tokens"] == {"other": "keep"}
+
+
+def test_native_clear_removes_board_name_and_badge_together(
+    named_labels: Labels,
+) -> None:
+    labels = named_labels
+    old, new = str(uuid4()), str(uuid4())
+    env = codex_pane(labels, old)
+    labels.set_registry({"o/r#42": labels.owner(identity=f"codex:{old}")})
+    assert (
+        labels.run(
+            "bind",
+            "--herdr-session",
+            "default",
+            "--pane",
+            "w1:p1",
+            "--terminal",
+            "term-a",
+            env=env,
+        ).returncode
+        == 0
+    )
+    assert labels.run("sync", env=env).returncode == 0
+    state = labels.read()
+    assert state["panes"]["w1:p1"]["display_agent"] == "Alice · #42 · 親"
+    state["panes"]["w1:p1"]["tokens"].update(tl_inbox="1", tl_inbox_label="未読:1")
+    labels.write(state)
+    registry = labels.registry.read_bytes()
+    result = terminal_clear(
+        labels, {"version": 1, "event": "clear", "session_id": new}, env
+    )
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    assert "display_agent" not in pane
+    assert pane["tokens"] == {"other": "keep"}
+    assert labels.registry.read_bytes() == registry
+    assert labels.read()["panes"]["w1:p2"] == state["panes"]["w1:p2"]
 
 
 @pytest.mark.parametrize(

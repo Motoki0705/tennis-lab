@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "upload",
+  "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "source": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scale-3dgs-colab-assets/tmp/court-scene-assets-v1",
+  "destination": "gdrive:tennis_lab/staging/court-scene-assets-a9281d9a41e39fc9",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}

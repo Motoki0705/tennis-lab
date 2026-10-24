@@ -1,0 +1,14 @@
+elapsed_seconds=57.061
+elapsed_seconds=21.370
+{
+  "schema": "court_scene_assets_receipt_v1",
+  "manifest_sha256": "a9281d9a41e39fc944e684f7bdeb5b3517cb9424b297d318a557bcb263e8009b",
+  "scene_ids": [
+    "B00",
+    "B01",
+    "B02",
+    "B03"
+  ],
+  "file_count": 24,
+  "size_bytes": 958142735
+}

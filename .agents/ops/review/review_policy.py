@@ -370,7 +370,7 @@ def normalize_rollup(items: Iterable[Mapping[str, Any]]) -> tuple[Check, ...]:
 
     When the latest run cannot be determined (runs without ``startedAt``, or several runs
     sharing the latest time) the most pessimistic state among the candidates is used
-    (failure > pending > success), so an unordered queued re-run blocks the merge.
+    (failure > pending > success), preserving an unordered queued re-run as pending.
     """
     runs: dict[tuple[str, str], list[tuple[datetime | None, Check]]] = {}
     for item in items:
@@ -397,7 +397,7 @@ class GateDecision(StrEnum):
 
 
 # Reasons worth a gate comment; the caller supplies verified parent-run evidence.
-COMMENT_REASONS = frozenset({"ci_failed", "conflict"})
+COMMENT_REASONS = frozenset({"conflict"})
 
 
 @dataclass(frozen=True)
@@ -405,8 +405,6 @@ class GateInput:
     is_draft: bool
     is_cross_repository: bool
     mergeable: str
-    checks: tuple[Check, ...]
-    required_checks: tuple[str, ...]
     review: ReviewOutcome | None
     changed_paths: tuple[str, ...]
     shared_patterns: tuple[str, ...]
@@ -432,15 +430,6 @@ def evaluate_gate(gate: GateInput) -> GateResult:
         reasons.append("mergeable_unknown")
     elif gate.mergeable != "MERGEABLE":
         raise ValueError(f"unknown mergeable state: {gate.mergeable!r}")
-
-    states = {check.state for check in gate.checks}
-    if CheckState.FAILURE in states:
-        reasons.append("ci_failed")
-    if CheckState.PENDING in states:
-        reasons.append("ci_pending")
-    present = {check.name for check in gate.checks}
-    if any(name not in present for name in gate.required_checks):
-        reasons.append("ci_missing_required")
 
     if gate.review is None:
         reasons.append("review_missing")

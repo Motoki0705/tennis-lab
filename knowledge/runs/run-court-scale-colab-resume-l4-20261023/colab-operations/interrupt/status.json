@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "interrupt",
+  "status": "completed",
+  "updated_at": "2026-10-23T06:25:29.691077+00:00",
+  "returncode": 0,
+  "worker_pid": 13957,
+  "worker_token": "243602",
+  "launch_guarded": true,
+  "pid": 14163,
+  "process_token": "246993",
+  "started_at": "2026-10-23T06:12:48.121458+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-23T06:25:42.018846+00:00",
+  "finished_at": "2026-10-23T06:25:42.018861+00:00"
+}

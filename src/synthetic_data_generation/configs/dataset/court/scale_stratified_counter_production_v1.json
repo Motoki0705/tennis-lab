@@ -1,0 +1,28 @@
+{
+  "schema": "court_scale_production_recipe_v1",
+  "name": "stratified_counter_production_v1",
+  "method": "stratified_counter",
+  "geometry": {
+    "schema": "court_scale_geometry_recipe_v1",
+    "hull_expansion_percent": 0.0,
+    "hull_margin_m": 0.5,
+    "hfov_degrees": [75.0, 92.5, 110.0],
+    "look_at_heights_m": [0.0, 1.5],
+    "jitter_radius_m": 1.0,
+    "base_step_m": 4.0,
+    "minimum_points": 8,
+    "count_multiple": 1,
+    "arc_intervals": 8192,
+    "arc_tolerance_m": 0.01,
+    "near_plane_m": 0.01,
+    "width": 640,
+    "height": 360
+  },
+  "quality": {
+    "schema": "court_scale_quality_policy_v2",
+    "rule_version": "target_kp4_roi_holes_1pct_v1",
+    "minimum_target_visible_kp": 4,
+    "maximum_roi_hole_fraction": 0.01
+  },
+  "jitter": "stable_point_uniform_area_disk_v1"
+}

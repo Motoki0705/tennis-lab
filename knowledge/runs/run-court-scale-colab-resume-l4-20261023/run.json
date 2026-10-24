@@ -1,0 +1,50 @@
+{
+  "schema": "court_scale_colab_verification_run_v1",
+  "outcome": "verified_and_stopped",
+  "tennis_lab_commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "nht_commit": "d4962c503f76d27fef27ac3f458edddc0a7d35c2",
+  "gsplat_commit": "c8d5acd22314c1c1144a30e635e08d9c738a8b39",
+  "session": "court-scale-generation-l4-20261023-6ed3f29e8",
+  "drive_dataset_path": "data/synthetic_data_generation/court-scale/smoke-20261023-6ed3f29e8",
+  "request_sha256": "a751e6ade3e30698ce4c5e234cf08f496d4bae755e88ccc490fa64de31675ce7",
+  "input_verification": "input-verification.json",
+  "interrupted_attempt": "interrupted-attempt.json",
+  "isolation_evidence": "isolation.json",
+  "initial_cache_metrics": "first-cache-metrics.json",
+  "timing_seconds": {
+    "uv_sync": 24.798,
+    "setup_nht_render_only": 899.545,
+    "asset_download_and_verify": 57.061,
+    "asset_manifest_and_geometry_verify": 21.37,
+    "first_render_colab_command": 733.712,
+    "resumed_render_colab_command": 8622.014,
+    "fetch_command": 3663.088
+  },
+  "timing_scope": "Command times exclude worker preflight/final saves; per-cache generation excludes Drive transfer and restoration.",
+  "transport_failure": {
+    "job_id": "plan",
+    "outcome": "cancelled_before_execution",
+    "returncode": 130,
+    "log": "plan-transport.log",
+    "recovery": "Reconnected the same assignment, cancelled and saved the old job, terminated its disconnected local client, then submitted plan-retry."
+  },
+  "gpu_memory_sampling_interval_seconds": 0.5,
+  "torch_allocator_peaks_available": false,
+  "dataset_version_path": "50bb4f33f1a85e9a0afd35b6fd3ce8f3f0a1b0827b56af574e1fd6f59862537e.dataset.json",
+  "dataset_version_sha256": "b790b1b0c252526062ef0fb24c7d71311ee449079452be9034523ddb9179c625",
+  "generation_report": "reports/a751e6ade3e30698ce4c5e234cf08f496d4bae755e88ccc490fa64de31675ce7.json",
+  "renderer_log_verification": "renderer-log-verification.json",
+  "drive_dataset_id": "1N2pmdJVxLRxrPJeONWT41YvVoDlo1g7p",
+  "initial_cache_counts_note": "The initial cache has 11 candidates, one geometry rejection and 10 rendered frames; total resumed rendered_unique is 276.",
+  "verification": "verification.json",
+  "environment": "environment.json",
+  "all_jobs_terminal": "all-jobs-terminal.json",
+  "colab_stop": "stop.json",
+  "drive_roundtrip": {
+    "compared_file_count": 184,
+    "compared_inventory_sha256": "0ed32b707410e64adb0462f7797e982d8fc1188a8f861976f6f6cf2757869c1b",
+    "sample_store_count": 24,
+    "decoded_image_count": 282
+  },
+  "doctor_after_stop": "doctor-after-stop.json"
+}
