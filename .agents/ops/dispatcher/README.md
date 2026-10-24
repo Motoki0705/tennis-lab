@@ -327,6 +327,7 @@ dispatcherは起動選択を再実装せず、既存の委任予約を受け取�
 子終了イベントまたは明示resumeは既存親を再開待ちにし、枠とauthorizationを再確認して、最新runから同じsessionをresumeする。
 CI/人間判断待ちの解除はworkflow側の明示通知を使う。時間経過から解除しない。
 completedは子の終了確認後にだけ担当endedへ移す。GitHubのmerge/closeと受入条件の検証は親workflowの責務。
+単独issueのmerge/close後に中断した親の復帰条件は [開発workflowの終了照合](../parent/development_workflow.md#待機完了担当終了) に従う。
 
 ```bash
 # 自動の新規判定・割当・起動を無効化（既存runtimeは継続）

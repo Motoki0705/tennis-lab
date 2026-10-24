@@ -186,6 +186,68 @@ class Supervisor:
         ):
             raise ValueError("managed execution basis changed")
 
+    def _validate_completion_resume(
+        self,
+        session: ParentSession,
+        row: dict[str, Any],
+        job: dict[str, Any],
+        issue: dict[str, Any],
+    ) -> None:
+        """Resume an accepted standalone parent only to verify its merged work."""
+        if issue.get("state_reason") != "completed" or job["resume_from"] is None:
+            raise ValueError(
+                "closed parent requires completed merge evidence and an accepted resume source"
+            )
+        _, items = session.work_items()
+        if set(items) != {session.parent}:
+            raise ValueError(
+                "closed parent recovery requires the standalone implementation target"
+            )
+        parents = [
+            previous
+            for previous in row["dispatch"]["jobs"].values()
+            if previous["role"] == "parent" and previous["sequence"] < job["sequence"]
+        ]
+        if not parents:
+            raise ValueError("closed parent has no accepted parent runtime")
+        previous_parent = max(parents, key=lambda j: j["sequence"])
+        if (
+            previous_parent["authorization"] != job["authorization"]
+            or previous_parent["assignment_id"] != job["assignment_id"]
+            or self.resume_source(row, previous_parent) != job["resume_from"]
+        ):
+            raise ValueError(
+                "closed parent resume source differs from the accepted session"
+            )
+        implementations = [
+            previous
+            for previous in row["dispatch"]["jobs"].values()
+            if previous["role"] == "implementation"
+            and previous["child"] == session.parent
+        ]
+        task = row["tasks"].get(str(session.parent), {})
+        if not implementations:
+            raise ValueError(
+                "closed parent has no implementation delegation to reconcile"
+            )
+        previous = max(implementations, key=lambda j: j["sequence"])
+        if (
+            not task.get("delegated")
+            or not task.get("delegation_id")
+            or task["delegation_id"] != previous["delegation_id"]
+            or task.get("authorization") != job["authorization"]
+            or previous["authorization"] != job["authorization"]
+            or previous["assignment_id"] != job["assignment_id"]
+            or task.get("worktree") != previous["cwd"]
+            or task.get("branch") != previous["branch"]
+        ):
+            raise ValueError(
+                "closed parent implementation delegation/generation changed"
+            )
+        from parent.development import verify_completion
+
+        verify_completion(session)
+
     def _validate_start(
         self, key: str, row: dict[str, Any], job: dict[str, Any]
     ) -> None:
@@ -204,7 +266,11 @@ class Supervisor:
             )
         self._authorized(key, row)
         session = self._session(key, row)
-        session.agreed()
+        issue = self.gh.issue(session.parent)
+        if job["role"] == "parent" and issue["state"] == "closed":
+            self._validate_completion_resume(session, row, job, issue)
+        else:
+            session.agreed()
         check_task_adoptions(self.gh, self.gh.issue(session.parent)["body"])
         if job["role"] == "parent":
             if dispatch["active_job"] != job["id"]:

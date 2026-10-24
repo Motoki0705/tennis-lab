@@ -118,6 +118,7 @@ def start_worker(
         raise ValueError("unknown implementation model")
     with session.store.locked():
         dispatch = accepted(session, env)
+        session.agreed()
         control = controller(session, directory)
         if authorization(session) != dispatch["authorization"]:
             raise ValueError("dispatcher execution basis changed")

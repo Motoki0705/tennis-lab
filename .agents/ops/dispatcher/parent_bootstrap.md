@@ -14,6 +14,8 @@
    [parent-session skill](../../skills/parent-session/SKILL.md) を読み、実装・検証・レビュー・mergeを進める。
    自律根拠を人間合意として再登録しない。候補の目的・範囲・動作・受入条件、正式な親子・依存・採用状態を
    最新のissue/コメント/PR/worktreeと照合し、具体化できる通常の実装判断は親が行う。
+   単独issue自身が既にmergeでclosed/completedなら、開発workflowのclose後の終了照合手順へ戻る。
+   この復帰では新しい実装・分割・worker起動/継続を行わず、全体受入と最終報告を終える。
    必要な場合だけ分割する。単独issueは自身の番号をworkerの担当とし、不要な子issueを作らない。
    parent CLIには `--state-dir <parent_state_dir>`、worker操作にはさらに
    `--dispatcher-state-dir <dispatcher_state_dir>` を渡し、review/mergeも同じprivate stateを使う。

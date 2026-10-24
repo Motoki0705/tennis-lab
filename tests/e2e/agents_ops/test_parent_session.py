@@ -126,7 +126,7 @@ if path == "repos/o/r/pulls":
             state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
         save()
     response(paged(state["prs"]))
-match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", path)
+match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", path)
 assert match, endpoint
 n, tail = match.groups()
 if n is None:
@@ -149,6 +149,8 @@ row = state["issues"].get(n)
 if tail == "parent":
     parent = state["parents"].get(n)
     response(state["issues"][str(parent)] if parent else {"message": "No parent issue found"}, 200 if parent else 404)
+if tail == "dependencies/blocked_by":
+    response(paged([state["issues"][str(d)] for d in state.get("dependencies", {}).get(n, [])]))
 if tail == "sub_issues":
     if method == "GET":
         response(paged([i for key, i in state["issues"].items() if state["parents"].get(key) == int(n)]))

@@ -9,8 +9,9 @@ worker操作CLIはdispatcherで受理済みの親が使う。手動親の起動�
 ## 引受・分割・起動
 
 1. bootstrapのaccept後、parentの `status` / `reconcile`、dispatcherの `status` とGitHubの全コメント・正式な親子・
-   依存・既存PR・ローカルworktreeを照合する。`session.agreed()` / `authorization()` が有効なこと、
+   依存・既存PR・ローカルworktreeを照合する。openの場合は `session.agreed()` / `authorization()` が有効なこと、
    外部依存の実状態・採用状態が変わっていないことを確認する。根拠を作り直して明示停止を解除しない。
+   単独issueがclosed/completedなら、[終了照合](#待機完了担当終了)へ進み、以下の分割・起動は行わない。
 2. 分割が必要な場合だけissues規約で親へ移行し、`create-child` へ共通specを渡す。
    正式な子はその親へ戻し、単独issueは自身の番号を以下の `--child` に指定する。新しい階層は作らない。
 3. `launch_plan` の起動対象ごとに、メインcheckoutの `.claude/worktrees/` 配下へ専用branch/worktreeを作る。
@@ -133,6 +134,14 @@ dry-run結果、子の成功JSON、PR作成やチェック数だけではcomplet
 親に子がある場合はsyncで進捗を照合するが、未closeの親テーマを勝手にcloseしない。
 自律親は生存中にreleaseせず、最終イベント受領後にsupervisorが担当をendedへ移す。
 waiting/failedは担当を保持し、子終了イベントまたは理由付きの明示dispatcher resumeで同じ親sessionへ戻す。
+単独issue自身がmergeでclosed/completedになり、最終イベントを返す前に親が中断した場合も、同じstateで
+`dispatcher resume --parent N --reason-file tmp/resume.md` を明示する。supervisorは通常の実行枠・入力鮮度に加え、
+終了済みの直前の親runtimeと受理済みsession、実行根拠・担当generation・現在の実装委任IDと保存jobの一致、
+全workerの終了、対応PRの実merge/close・gateの試行journal・親レビュー・検証記録を再照合してから予約を起動する。
+これは子を持たない単独issueの終了照合への復帰であり、初回の親起動と実装子の起動にはopenが必要なまま。
+再開後もbootstrapのacceptを通し、残るProject更新・全体受入の確認とworkflow-reportを終えて最終JSONを返す。
+新しい実装・子の作成・workerの起動/継続は行わず、issueを再openしたり別sessionへ振り替えたりしない。
+取消close・merge未確認・根拠や委任の変更・保存証拠不足は理由付きで起動を拒否し、担当を保持する。
 手動親は全体受入を確認後、従来の `release --ended` を使う。
 worker操作とworkflow-reportはdispatcherと同じregistry欠落検査を使う。
 scheduleやworker履歴が残っているのにregistryだけが欠落・空になった場合は保存・起動を止め、

@@ -121,7 +121,12 @@ def gate_env(
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> GateEnv:
-    variant = getattr(request, "param", None)
+    return make_gate_env(parent_env, monkeypatch, getattr(request, "param", None))
+
+
+def make_gate_env(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, variant: str | None = None
+) -> GateEnv:
     review_env = make_review_env(
         parent_env,
         independent=variant in {"independent", "dependency", "research_dependency"},
