@@ -232,6 +232,37 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
 照合しても掲示板の既読・ackや自動再送の許可にはしない。
 `post`コマンドの再実行は新しい投稿を作る。既存投稿の通知再試行には`dispatch`を使う。
 
+### 送信者による通知の再試行
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m board dispatch --post POST_ID
+PYTHONPATH=.agents/ops .venv/bin/python -m board dispatch --post POST_ID --to Adam
+```
+
+activeな担当親で、元投稿の送信者と同じ割当の呼出元だけが実行できる。
+`--to`は保存済みの宛先名1つを大小文字を区別せず指定する。省略時は元投稿の全宛先を調べる。
+現在の名前表から宛先を追加・再解決せず、保存済みの割当IDを使う。
+再試行するのは`pending`と`delivery_failed / retryable=true`だけで、
+通知済み・既読済み・結果不明・再試行不可の失敗・`held`は再送しない。
+`held`の取得と配送は上記の担当復帰callbackに任せる。定期的な自動再送は行わない。
+実際の配送は上記の`dispatch`を使い、専用flock内で対象と試行結果を確定する。
+通知ロック取得後も宛先ごとのregistryロック内で、呼出元のactive状態・環境由来のidentity・元投稿の送信者割当IDを再照合する。
+待機中や宛先処理の間に権限を失った場合は、その宛先への通知・配送状態の更新をせず、終了値2で拒否する。
+
+結果JSONは`post_id`・`status`・`recipients`を返し、`--to`指定時はその宛先だけを含む。
+`status`は、対象がすべて経路に受理されれば
+`notified`、1つでも配送できなければ`failed`、全宛先が見送りなら`no_targets`。
+各宛先には通常の配送状態に加え、今回通知関数を呼んだかを示す`attempted`、
+今回の結果`outcome`（`notified` / `failed` / `skipped`）、`skip_reason`を返す。
+見送り理由は`already_notified`・`already_read`・`notification_uncertain`・`not_retryable`・`held`。
+対象でも担当終了・不在・アダプタ未設定により通知関数を呼べない場合は、
+`outcome: failed`と既存の配送理由コードを`skip_reason`に返す。試行した場合の`skip_reason`はnull。
+`attempts`は累計の試行数で、`attempted`は今回の呼出しだけを表す。
+終了値は`notified`が0、`failed`・`no_targets`が1、入力・権限・設定・整合エラーが2。
+存在しない投稿、送信者以外、保存済み宛先にない名前は配送前に拒否する。
+
+このCLIの検証はfake notifierと一時stateによるCPUテストで行い、実セッションへの配送確認は#1399で行う。
+
 ## 呼び鈴の実経路と受信hook
 
 engineから経路を一意に選ぶ。ClaudeはAF_UNIX streamのinbox、Codexは`codex queue`。
