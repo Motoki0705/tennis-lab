@@ -14,22 +14,23 @@ from .access import as_parent, parent_state
 from .delivery import Notifiers, dispatch
 from .errors import BoardError
 from .names import Assignment, load_names, resolve_name, timestamp
+from .prose import without_code
 from .records import post_row, post_view, require_participant
 from .safety import public, text
 from .service import _assigned, _reference
 from .storage import Store, directory
 
-# Scan code blocks and inline code as well as prose. A word/email/path prefix
-# prevents an @ token from being interpreted as a board mention.
+# A word/email/path prefix prevents an @ token from becoming a board mention.
 MENTION = re.compile(r"(?<![\w@.+/\-])@([A-Za-z]+)(?![\w@\-])", re.ASCII)
 
 
-def _mentions(body: str, recipients: Sequence[Assignment], broadcast: bool) -> None:
-    catalog = {name.casefold() for name in load_names()}
-    addressed = {recipient.name.casefold() for recipient in recipients}
-    mentioned = {match[1].casefold() for match in MENTION.finditer(body)}
-    if (mentioned & catalog) - addressed or ("all" in mentioned and not broadcast):
-        raise BoardError("body mentions a board name outside the recipients")
+def _mentions(body: str) -> list[str]:
+    """Extract catalog names and all from prose, leaving code as documentation."""
+    catalog = {name.casefold() for name in load_names()} | {"all"}
+    return sorted(
+        {match[1].casefold() for match in MENTION.finditer(without_code(body))}
+        & catalog
+    )
 
 
 def _recipient(assignment: Assignment, parents: Mapping[str, Any]) -> str:
@@ -137,8 +138,9 @@ def _create(
             subject = ("Re: " + original["subject"])[:200]
         text(body, parents, env)
         text(subject, parents, env, subject=True)
-        recipients, broadcast = _destinations(connection, parents, sender, to, original)
-        _mentions(body, recipients, broadcast)
+        recipients, broadcast = _destinations(
+            connection, parents, sender, [*to, *_mentions(body)], original
+        )
         post_id, stamp = _identity(
             connection, now if now is not None else datetime.now(UTC)
         )
@@ -201,7 +203,7 @@ def _create(
 def post(
     env: Mapping[str, str],
     *,
-    to: Sequence[str],
+    to: Sequence[str] = (),
     kind: str,
     subject: str,
     body: str,
