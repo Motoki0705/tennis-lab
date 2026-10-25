@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import io
 import json
 import os
 import signal
@@ -454,6 +455,7 @@ def test_runner_elapsed_time_survives_wall_clock_reversal(
 
     class FinishedTest:
         pid = 12345
+        stdout = io.BytesIO()
 
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             events = _observation(output)
@@ -497,10 +499,22 @@ def test_default_measurement_runs_while_legacy_pytest_lock_is_held(
         fcntl.flock(held, fcntl.LOCK_EX)
         result = subprocess.run(
             [
-                sys.executable, "-m", "scripts.ci_metrics", "run",
-                "--output", str(output), "--workers", "1", "--", str(suite),
+                sys.executable,
+                "-m",
+                "scripts.ci_metrics",
+                "run",
+                "--output",
+                str(output),
+                "--workers",
+                "1",
+                "--",
+                str(suite),
             ],
-            cwd=REPO, env=environment, capture_output=True, text=True, timeout=120,
+            cwd=REPO,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=120,
         )
     assert result.returncode == 0, result.stdout + result.stderr
     summary = json.loads((output / "summary.json").read_text())
@@ -552,6 +566,49 @@ def test_runner_cancellation_while_waiting_for_lock_leaves_partial_artifacts(
     assert run["status"] == "cancelled"
     assert run.get("started_at") is None
     assert run["exitcode"] is None
+    assert (
+        json.loads((output / "summary.json").read_text())["successful_test_baseline"]
+        is False
+    )
+
+
+def test_closed_job_log_terminates_the_test_process(tmp_path: Path) -> None:
+    output = tmp_path / "observed"
+    suite = tmp_path / "test_wait.py"
+    suite.write_text("import time\ndef test_wait(): time.sleep(60)\n")
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "scripts.ci_metrics",
+            "run",
+            "--output",
+            str(output),
+            "--workers",
+            "1",
+            "--",
+            str(suite),
+        ],
+        cwd=REPO,
+        env=headless_environment(dict(os.environ)),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    process.stdout.close()
+    process.stdout = None
+    try:
+        _, stderr = process.communicate(timeout=30)
+        assert process.returncode != 0, stderr
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.communicate(timeout=5)
+    state = json.loads((output / "run.json").read_text())
+    assert state["status"] == "launcher_error"
+    assert "BrokenPipeError" in state["launcher_error"]
+    with pytest.raises(ProcessLookupError):
+        os.kill(state["process_group_id"], 0)
     assert (
         json.loads((output / "summary.json").read_text())["successful_test_baseline"]
         is False

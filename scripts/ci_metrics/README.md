@@ -10,6 +10,9 @@ its existing explicit exclusion. Both CI and the local measurement runner use
 `spin test -q --no-cov --dist=worksteal`, two workers, native thread counts of one,
 CUDA hidden, `--durations=50 --durations-min=1`, and JUnit.
 
+Pytest stdout/stderr is streamed to the job log and saved in `pytest.log`. This preserves the existing `ci_watch` failure signatures, including failed nodeids and setup exceptions. A closed output pipe fails the launcher and terminates its test process group.
+
+
 ## Run and recover
 
 From the checkout being measured, with its locked environment installed:

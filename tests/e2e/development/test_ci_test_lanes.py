@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import shlex
@@ -94,6 +95,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     tmp_path: Path,
     failing_test: bool,
     shard_count: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job = _ci_job()
     template = next(step["run"] for step in job["steps"] if step["name"] == "Test")
@@ -158,6 +160,10 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     summaries = []
     results = []
     failures = 0
+    signatures = []
+    job_logs = []
+    monkeypatch.syspath_prepend(str(REPO_ROOT / ".agents/ops"))
+    classify = importlib.import_module("ci_watch.classify")
     for index in range(shard_count):
         command = shlex.split(
             template.replace("${{ matrix.shard }}", str(index)).replace(
@@ -173,8 +179,24 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             env={**os.environ, **job["env"]},
             timeout=60,
         )
-        assert completed.returncode in {0, 1}, completed.stdout + completed.stderr
+        output = completed.stdout + completed.stderr
+        job_logs.append(output)
+        assert completed.returncode in {0, 1}, output
+        if completed.returncode:
+            signatures.extend(
+                classify.signatures(
+                    "ci.yml",
+                    {
+                        "name": f"CPU tests ({index})",
+                        "conclusion": "failure",
+                        "steps": [{"name": "Test", "conclusion": "failure"}],
+                    },
+                    output,
+                    {"endpoint": f"fixture job log {index}", "object": "fixture"},
+                )
+            )
         measured = tmp_path / f".ci-metrics/shard-{index}/tests"
+        assert (measured / "pytest.log").read_text() in output
         summary = json.loads((measured / "summary.json").read_text())
         assert summary["issues"] == []
         assert summary["successful_test_baseline"] == (completed.returncode == 0)
@@ -210,6 +232,18 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             row for row in results if row["nodeid"].endswith("::test_new")
         )
         assert "AssertionError" in call_error["failure_details"]["call"]
+        # Failure identities survive each real matrix job log.
+        assert {row["test_id"] for row in signatures} == {
+            "tests/newly_added_test.py::test_new",
+            "tests/test_setup_outcomes.py::test_setup_error",
+        }
+        assert all(row["specific"] for row in signatures)
+        assert len({row["signature"] for row in signatures}) == 2
+        combined_log = "\n".join(job_logs)
+        assert (
+            "AssertionError" in combined_log
+            and "RuntimeError: setup failure" in combined_log
+        )
     assert {nodeid.split("::")[0] for nodeid in inventory} == {
         "tests/unit/test_unit.py",
         "tests/integration/test_integration.py",

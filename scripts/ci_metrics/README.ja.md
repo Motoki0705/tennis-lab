@@ -8,6 +8,9 @@
 既存の明示除外を維持します。CIとローカル計測は `spin test -q --no-cov --dist=worksteal`、
 2 worker、native thread各1、CUDA不可視、`--durations=50 --durations-min=1`、JUnitを使います。
 
+pytestのstdout/stderrはjobログへ転送し、`pytest.log`にも保存します。既存の`ci_watch`が失敗nodeidとsetup例外を識別できます。出力pipeが閉じた場合はlauncherを失敗にし、テストのprocess groupを停止します。
+
+
 ## 実行・中断後の回収
 
 計測対象のcheckoutとlock済み環境で実行します。

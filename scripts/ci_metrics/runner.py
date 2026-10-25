@@ -236,12 +236,23 @@ def run(
             process = subprocess.Popen(
                 command,
                 env=test_environment(dict(os.environ)),
-                stdout=log,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                bufsize=0,
                 start_new_session=True,
             )
             state["process_group_id"] = process.pid
             write_json(output / "run.json", state)
+            # Keep the live job log consumed by ci_watch as well as the artifact.
+            # An unbuffered pipe forwards available bytes without waiting for a
+            # full buffer or newline; cancellation still targets the whole group.
+            assert process.stdout is not None
+            with process.stdout:
+                while chunk := process.stdout.read(65536):
+                    log.write(chunk)
+                    log.flush()
+                    sys.stdout.buffer.write(chunk)
+                    sys.stdout.buffer.flush()
             exitcode = process.wait()
             state["command_finished_at"] = time.time()
             state["command_finished_monotonic_s"] = time.perf_counter()
@@ -249,6 +260,15 @@ def run(
         pass
     except BaseException as error:
         state["launcher_error"] = f"{type(error).__name__}: {error}"
+        if process is not None and process.poll() is None:
+            with suppress(ProcessLookupError):
+                os.killpg(process.pid, signal.SIGTERM)
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                with suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGKILL)
+                process.wait()
         raise
     finally:
         for sig, handler in previous.items():
