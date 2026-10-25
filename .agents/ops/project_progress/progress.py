@@ -79,7 +79,7 @@ def related_pulls(
 ) -> dict[int, list[dict[str, Any]]]:
     result: dict[int, list[dict[str, Any]]] = {n: [] for n in tree}
     seen = set()
-    for raw in gh.pulls():
+    for raw in gh.pulls(set(tree)):
         n = number(raw["number"])
         if n in seen:
             raise ValueError("duplicate PR within/across pages")

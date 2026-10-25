@@ -51,8 +51,8 @@ def matches(post: dict[str, Any], name: str, direction: str) -> bool:
 class BoardReader:
     """Cache external roster sources until an explicit refresh is requested.
 
-    Cursors track recipient/delivery updates as well as appended posts. Each
-    post keeps its latest revision, so clients do not need a retained event log.
+    Cursors track reactions, recipient/delivery updates and appended posts.
+    Each post keeps its latest revision, so clients need no retained event log.
     A process restart or changed name/direction requires a full reset.
     """
 
@@ -80,7 +80,9 @@ class BoardReader:
         self.roster = roster
         self.roster_observed_at = datetime.now(UTC).isoformat()
 
-    def _snapshot(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    def _snapshot(
+        self,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
         with self.store.read() as connection:
             posts = []
             for (post_id,) in connection.execute(
@@ -113,10 +115,22 @@ class BoardReader:
                     unread_count=state.unread_count,
                     last_activity=state.last_post_at,
                 )
+            state = activity.summary(connection, None)
+            human = {
+                "name": "human",
+                "assignment_id": None,
+                "repo": None,
+                "parent": None,
+                "unread_count": state.unread_count,
+                "awaiting_response_count": state.awaiting_response_count,
+                "last_activity": state.last_post_at,
+            }
         # Revalidate saved public text, including legacy/direct-SQL data. Never
         # serialize private source records or exception messages to the browser.
-        public({"posts": posts, "agents": roster}, self.parents, self.env)
-        return posts, roster
+        public(
+            {"posts": posts, "agents": roster, "human": human}, self.parents, self.env
+        )
+        return posts, roster, human
 
     def changes(
         self,
@@ -138,9 +152,11 @@ class BoardReader:
         with self.lock:
             if refresh_roster:
                 self._refresh_roster()
-            posts, roster = self._snapshot()
+            posts, roster, human = self._snapshot()
+            # Include the complete projection, including reaction actors and
+            # timestamps, so additions/removals also refresh open threads.
             hashes = {post["id"]: fingerprint(post) for post in posts}
-            roster_hash = fingerprint([roster, self.roster_observed_at])
+            roster_hash = fingerprint([roster, human, self.roster_observed_at])
             changed = [
                 post_id
                 for post_id, value in hashes.items()
@@ -166,6 +182,7 @@ class BoardReader:
                     and matches(post, name, direction)
                 ],
                 "agents": roster if reset or self.roster_revision > after else None,
+                "human": human,
                 "changed_threads": sorted(
                     {
                         post["thread_id"]
@@ -181,7 +198,7 @@ class BoardReader:
         if POST_ID.fullmatch(post_id) is None:
             raise InvalidQuery
         with self.lock:
-            posts, _ = self._snapshot()
+            posts, _, _ = self._snapshot()
         selected = next((post for post in posts if post["id"] == post_id), None)
         if selected is None:
             raise MissingPost

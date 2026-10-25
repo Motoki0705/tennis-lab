@@ -23,6 +23,51 @@ from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "INSERT OR REPLACE INTO recipients SELECT * FROM recipients WHERE assignment_id IS NULL",
+        "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries WHERE assignment_id IS NULL",
+        "UPDATE recipients SET name='Human' WHERE assignment_id IS NULL",
+        "UPDATE deliveries SET state='notified', notified_at='changed' WHERE assignment_id IS NULL",
+        "UPDATE name_assignments SET name='Human' WHERE parent=1",
+        "INSERT INTO name_assignments(name,repo,parent,assigned_at) VALUES('HUMAN','o/r',99,'now')",
+    ],
+)
+def test_reserved_human_rows_preserve_identity_uniqueness_and_delivery_contract(
+    world: World, statement: str
+) -> None:
+    world.post(to=["human"])
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(statement)
+    assert world.message_rows() == before
+    with world.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM name_assignments WHERE lower(name)='human'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_human_delivery_requires_an_existing_human_recipient(world: World) -> None:
+    root = world.post()
+    before = world.message_rows()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,NULL,'orphan-human','available')",
+            (root["id"],),
+        )
+    assert world.message_rows() == before
+
+
 @dataclass
 class World:
     board: SimpleNamespace
@@ -59,6 +104,35 @@ class World:
         data["parents"][f"o/r#{parent}"].update(values)
         self.labels.set_registry(data["parents"])
 
+    def live_parent(self, parent: int, *, status: str = "idle") -> str:
+        """A confirmed parent in the fake Herdr, independent of registry status."""
+        owner = json.loads(self.labels.registry.read_text())["parents"][f"o/r#{parent}"]
+        identity = owner["session"]
+        token = self.board.service.owner_token(identity)
+        terminal = f"board-terminal-{parent}"
+        owners = self.labels.registry.parent.parent / "herdr-labels/owners"
+        owners.mkdir(parents=True, exist_ok=True)
+        (owners / f"{token}.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "scope": self.board.service.owner_token("/fake/herdr.sock"),
+                    "terminal_id": terminal,
+                }
+            )
+        )
+        pane = f"w1:board-{parent}"
+        runtime = self.labels.read()
+        runtime["panes"][pane] = {
+            "pane_id": pane,
+            "terminal_id": terminal,
+            "agent": identity.partition(":")[0],
+            "agent_status": status,
+            "tokens": {"tl_owner": token},
+        }
+        self.labels.write(runtime)
+        return pane
+
     def post(self, **values: Any) -> dict[str, Any]:
         return cast(
             dict[str, Any],
@@ -90,10 +164,25 @@ class World:
                 for table in ("posts", "recipients", "deliveries")
             }
 
+    def assert_delivered(self, post: dict[str, Any], parents: list[int]) -> None:
+        assert [row["parent"] for row in post["recipients"]] == parents
+        assert [row["name"] for row in post["recipients"]] == [
+            self.assignments[parent].name for parent in parents
+        ]
+        assert all(row["delivery_state"] == "notified" for row in post["recipients"])
+        calls = [call.parent for call in self.fake.calls if call.post_id == post["id"]]
+        assert calls == parents
+        with self.store.read() as connection:
+            for table in ("recipients", "deliveries"):
+                assert connection.execute(
+                    f"SELECT assignment_id FROM {table} WHERE post_id=? ORDER BY assignment_id",
+                    (post["id"],),
+                ).fetchall() == [(self.assignments[parent].id,) for parent in parents]
+
 
 @pytest.fixture
 def world(board: SimpleNamespace, labels: Labels) -> World:
-    for name in ("messages", "delivery", "records", "redelivery"):
+    for name in ("messages", "delivery", "records", "reactions", "redelivery"):
         setattr(board, name, importlib.import_module("board." + name))
     statuses = ("active", "active", "active", "released", "handoff_pending", "ended")
     labels.set_registry(
@@ -120,7 +209,10 @@ def world(board: SimpleNamespace, labels: Labels) -> World:
                 connection, "o/r", parent, None, now=NOW
             )
         board.names.retire_name(connection, "o/r", 6, now=NOW)
-    return World(board, labels, assignments, board.delivery.FakeNotifier())
+    world = World(board, labels, assignments, board.delivery.FakeNotifier())
+    for parent in (1, 2, 3):
+        world.live_parent(parent)
+    return world
 
 
 def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
@@ -245,7 +337,57 @@ def test_renamed_parents_keep_message_identity_state_and_reply_routes(
 
 
 @pytest.mark.parametrize("command", ["post", "reply"])
-@pytest.mark.parametrize("audience", ["named", "all", "mixed"])
+@pytest.mark.parametrize("audience", ["named", "all"])
+def test_body_mentions_without_to_are_saved_and_delivered(
+    world: World, command: str, audience: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    body = (
+        f"Ask @{w.assignments[3].name.swapcase()}." if audience == "named" else "@aLl"
+    )
+    if root:
+        post = w.board.messages.reply(
+            w.env(2), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 3]  # A mention adds to the immediate author's assignment.
+        assert w.own_state(root["id"])["recipients"][0]["state"] == "answered"
+    else:
+        post = w.board.messages.post(
+            w.env(), kind="info", subject="Mention only", body=body, notifiers=w.routes
+        )["post"]
+        expected = [3] if audience == "named" else [2, 3]
+    assert post["broadcast"] is (audience == "all")
+    assert post["body"] == body
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+def test_to_and_body_mentions_form_a_case_insensitive_union(
+    world: World, command: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    other = 1 if root else 2
+    name = w.assignments[other].name
+    additional = w.assignments[3].name
+    arguments = {
+        "to": [name.lower(), name.upper()],
+        "body": f"@{name.swapcase()}, ask @{additional} and @{additional.lower()}.",
+        "notifiers": w.routes,
+    }
+    if root:
+        post = w.board.messages.reply(w.env(2), post_id=root["id"], **arguments)["post"]
+    else:
+        post = w.post(**arguments)
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [other, 3])
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize(
+    "audience", ["named", "all", "mixed", "body-named", "body-all", "body-mixed"]
+)
 def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
     world: World, command: str, audience: str
 ) -> None:
@@ -257,9 +399,19 @@ def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
         "named": [w.assignments[parent].name for parent in recipients],
         "all": ["all"],
         "mixed": [w.assignments[3].name.lower(), "aLl"],
+        "body-named": [],
+        "body-all": [],
+        "body-mixed": [w.assignments[3].name.lower()],
     }[audience]
     body_file = w.labels.root / "input.md"
-    body_file.write_text("A public update without body mentions.")
+    body = {
+        "body-named": " ".join(
+            f"@{w.assignments[parent].name.swapcase()}" for parent in recipients
+        ),
+        "body-all": "@aLl",
+        "body-mixed": f"@ALL @{w.assignments[3].name.upper()}",
+    }.get(audience, "A public update without body mentions.")
+    body_file.write_text(body)
     args = [command, "--body-file", str(body_file)]
     if root:
         args += ["--post", root["id"]]
@@ -270,7 +422,7 @@ def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
     created = run_board(w.env(caller), *args)
     assert created.returncode == 0, created.stderr
     post = json.loads(created.stdout)["post"]
-    broadcast = audience != "named"
+    broadcast = audience not in {"named", "body-named"}
     assert post["broadcast"] is broadcast
     # Explicit names and all expand to the same recipients, but keep their intent.
     assert [row["parent"] for row in post["recipients"]] == recipients
@@ -341,7 +493,9 @@ def test_cli_self_recipient_is_rejected_atomically(
     }
 
 
-def test_cli_reply_to_own_post_requires_explicit_recipient(world: World) -> None:
+def test_cli_reply_to_own_post_without_to_or_body_mentions_is_rejected(
+    world: World,
+) -> None:
     w = world
     root = w.post(to=["all"])
     before = w.message_rows()
@@ -362,19 +516,20 @@ def test_cli_reply_to_own_post_requires_explicit_recipient(world: World) -> None
     assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
 
 
-@pytest.mark.parametrize("audience", ["named", "all"])
-def test_reply_to_own_post_only_notifies_explicit_recipients(
+@pytest.mark.parametrize("audience", ["named", "all", "body-named", "body-all"])
+def test_reply_to_own_post_uses_to_or_mentions_without_inheriting_recipients(
     world: World, audience: str
 ) -> None:
     w = world
     root = w.post()
-    names = [w.assignments[3].name] if audience == "named" else ["all"]
-    expected = [3] if audience == "named" else [2, 3]
+    target = w.assignments[3].name if audience.endswith("named") else "all"
+    names = [] if audience.startswith("body-") else [target]
+    expected = [3] if audience.endswith("named") else [2, 3]
     reply = w.board.messages.reply(
         w.env(),
         post_id=root["id"],
         to=names,
-        body="An update.",
+        body=f"An update for @{target}." if not names else "An update.",
         notifiers=w.routes,
     )["post"]
     assert [row["parent"] for row in reply["recipients"]] == expected
@@ -384,7 +539,7 @@ def test_reply_to_own_post_only_notifies_explicit_recipients(
     )
     assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
     assert [post["id"] for post in w.board.messages.inbox(w.env(2))["posts"]] == (
-        [root["id"]] if audience == "named" else [root["id"], reply["id"]]
+        [root["id"]] if audience.endswith("named") else [root["id"], reply["id"]]
     )
     original_recipient = w.own_state(root["id"])["recipients"][0]
     assert original_recipient["read_at"] is None
@@ -401,17 +556,21 @@ def test_reply_to_own_post_only_notifies_explicit_recipients(
 
 
 @pytest.mark.parametrize("command", ["post", "reply"])
-@pytest.mark.parametrize("audience", ["named", "all"])
-def test_cli_self_mention_is_rejected_as_outside_recipients(
+@pytest.mark.parametrize("audience", ["named", "all", "mention-only"])
+def test_cli_self_mention_is_rejected_as_self_addressing_atomically(
     world: World, command: str, audience: str
 ) -> None:
     w = world
     root = w.post() if command == "reply" else None
-    names = [w.assignments[3].name] if audience == "named" else ["all"]
+    names = {
+        "named": [w.assignments[3].name],
+        "all": ["all"],
+        "mention-only": [],
+    }[audience]
     body = f"An update from @{w.assignments[1].name.swapcase()}."
     before = w.message_rows()
     calls = list(w.fake.calls)
-    with pytest.raises(w.board.errors.BoardError, match="outside the recipients"):
+    with pytest.raises(w.board.errors.BoardError, match="sender cannot be a recipient"):
         if root:
             w.board.messages.reply(
                 w.env(),
@@ -424,13 +583,15 @@ def test_cli_self_mention_is_rejected_as_outside_recipients(
             w.post(to=names, body=body)
     body_file = w.labels.root / "input.md"
     body_file.write_text(body)
-    args = [command, "--to", names[0], "--body-file", str(body_file)]
+    args = [command, "--body-file", str(body_file)]
+    for name in names:
+        args += ["--to", name]
     args += (
         ["--post", root["id"]] if root else ["--kind", "info", "--subject", "Public"]
     )
     result = run_board(w.env(), *args)
     assert result.returncode == 2 and result.stdout == ""
-    assert "outside the recipients" in result.stderr
+    assert "sender cannot be a recipient" in result.stderr
     assert w.message_rows() == before
     assert w.fake.calls == calls
     assert w.board.messages.inbox(w.env(), unread=True) == {"posts": []}
@@ -459,6 +620,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
+    w.live_parent(7)
     with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}
@@ -575,6 +737,63 @@ def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
     again = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
     assert again["status"] == "no_targets" and len(w.fake.calls) == 3
     private_output_absent(json.dumps(result), w.env())
+
+
+def test_sender_dispatch_never_rings_the_human_recipient(world: World) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    calls = len(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    assert [call.parent for call in w.fake.calls[calls:]] == [3]
+    by_parent = {r["parent"]: r for r in result["recipients"]}
+    assert by_parent[3]["outcome"] == "notified" and by_parent[3]["attempted"]
+    human = by_parent.get(None)
+    if human is not None:
+        assert human["outcome"] == "skipped" and not human["attempted"]
+        assert human["skip_reason"] == "human_recipient"
+    states = {
+        r["name"]: r["delivery_state"] for r in w.own_state(root["id"])["recipients"]
+    }
+    assert states["human"] == "available"
+
+
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+def test_dispatch_to_human_leaves_retryable_parent_deliveries_unchanged(
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+) -> None:
+    w = world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    parent = next(row for row in root["recipients"] if row["parent"] == 3)
+    assert parent["delivery_state"] == "delivery_failed" and parent["retryable"]
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    if entrypoint == "cli":
+        cli = importlib.import_module("board.__main__")
+        monkeypatch.setattr(cli, "os", SimpleNamespace(environ=w.env()))
+        monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+        assert cli.main(["dispatch", "--post", root["id"], "--to", "HuMaN"]) == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        result = json.loads(captured.out)
+    else:
+        result = w.board.redelivery.dispatch_post(
+            w.env(), w.routes, post_id=root["id"], to="human"
+        )
+    assert result["status"] == "no_targets"
+    assert len(result["recipients"]) == 1
+    human = result["recipients"][0]
+    assert human["name"] == "human" and human["assignment_id"] is None
+    assert human["post_id"] == root["id"]
+    assert human["outcome"] == "skipped" and not human["attempted"]
+    assert human["skip_reason"] == "human_recipient"
+    assert w.fake.calls == calls
+    assert w.message_rows() == before
 
 
 def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
@@ -918,41 +1137,328 @@ def test_claude_receiver_must_accept_and_notified_does_not_read_or_answer(
 
 
 @pytest.mark.parametrize(
-    "body,allowed",
+    "body,parents,broadcast",
     [
-        ("Contact help@Adam.example.test; @NotInTheCatalog is a code handle.", True),
+        (
+            "Contact help@{other}.example.test; @NotInTheCatalog is a handle.",
+            [2],
+            False,
+        ),
         (
             "The relative file is src/lib/example.py. See https://example.test/docs.",
-            True,
+            [2],
+            False,
         ),
-        ("Addressed @adam and #1395.", True),
-        ("Addressed @ADAM.", True),
-        ("宛先は@Adamです。", True),
-        ("宛先外の@Adrianへ質問。", False),
-        ("An info / question / request with a / b calculation.", True),
-        ("Please ask @Adrian.", False),
-        ("```python\n# Ask @Adrian\n```", False),
-        ("Inline `@Adrian` is checked too.", False),
-        ("Do not imply @all delivery.", False),
+        ("Addressed @{target} and #1395.", [2], False),
+        ("Addressed @{upper}.", [2], False),
+        ("宛先は@{target}です。", [2], False),
+        ("追加の宛先@{other}へ質問。", [2, 3], False),
+        ("An info / question / request with a / b calculation.", [2], False),
+        ("Please ask @{other}.", [2, 3], False),
+        ("```python\n# Example @{other}\n```", [2], False),
+        ("Inline `@{other}` is documentation, not a destination.", [2], False),
+        ("Notify @aLl.", [2, 3], True),
+        ("x@{other} _@{other} .@{other} +@{other} src/@{other}", [2], False),
+        ("@{other}_handle @{other}-handle @{other}@example.test", [2], False),
     ],
 )
-def test_known_name_mentions_include_code_but_ignore_email_and_unknown_handles(
-    world: World, body: str, allowed: bool
+def test_prose_mentions_add_destinations_but_code_email_and_unknown_handles_do_not(
+    world: World, body: str, parents: list[int], broadcast: bool
 ) -> None:
-    recipient = world.assignments[2].name
-    body = (
-        body.replace("Adam", recipient)
-        .replace("adam", recipient.lower())
-        .replace("ADAM", recipient.upper())
+    body = body.format(
+        target=world.assignments[2].name.lower(),
+        upper=world.assignments[2].name.upper(),
+        other=world.assignments[3].name,
     )
-    if allowed:
-        assert world.post(body=body)["body"] == body
+    post = world.post(body=body)
+    assert post["body"] == body
+    assert post["broadcast"] is broadcast
+    world.assert_delivered(post, parents)
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "Inline `{mentions}` is an example.",
+        "Inline ``{mentions} with `nested` ticks`` is an example.",
+        "Inline `{mentions}\nover multiple lines` is an example.",
+        "```python\n{mentions}\n```",
+        "~~~text\n{mentions}\n~~~",
+        "   ```text\n{mentions}\n   ```  \n",
+        "````text\n{mentions}\n```\n{mentions}\n````",
+        "```text\n{mentions}\n~~~\n{mentions}\n```",
+        "```text\n{mentions}",
+    ],
+)
+def test_code_mentions_are_neither_destinations_nor_recipient_errors(
+    world: World, code: str
+) -> None:
+    w = world
+    mentions = " ".join(
+        f"@{name}"
+        for name in (
+            w.assignments[1].name,
+            w.assignments[3].name,
+            w.assignments[6].name,
+            w.board.names.load_names()[10],
+            "NotInTheCatalog",
+            "aLl",
+        )
+    )
+    body = code.format(mentions=mentions)
+    post = w.post(body=body)
+    assert post["body"] == body
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [2])
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    with pytest.raises(w.board.errors.BoardError, match="at least one recipient"):
+        w.post(to=[], body=body)
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+@pytest.mark.parametrize("outside", [False, True])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> {fence}text\n> {mentions}\n> {fence}",
+        "> > {fence}text\n> > {mentions}\n> > {fence}",
+        ">>>{fence}text\n>>>{mentions}\n>>>{fence}",
+        "   >   > {fence}text\n > > {mentions}\n> > {fence}",
+        "- {fence}text\n  {mentions}\n  {fence}",
+        "* {fence}text\n  {mentions}\n  {fence}",
+        "+ {fence}text\n  {mentions}\n  {fence}",
+        "1. {fence}text\n   {mentions}\n   {fence}",
+        "12) {fence}text\n    {mentions}\n    {fence}",
+        "123456789. {fence}text\n           {mentions}\n           {fence}",
+        "- Example\n\n  {fence}text\n  {mentions}\n  {fence}",
+        "12. Example\n\n    {fence}text\n    {mentions}\n    {fence}",
+        "-    Example\n\n     {fence}text\n     {mentions}\n     {fence}",
+        "- Example\n  1. {fence}text\n     {mentions}\n     {fence}",
+        "> - {fence}text\n>   {mentions}\n>   {fence}",
+        "- > {fence}text\n  > {mentions}\n  > {fence}",
+        "-\t{fence}text\n\t{mentions}\n\t{fence}",
+        ">\t{fence}text\n>\t{mentions}\n>\t{fence}",
+        "> Example\n1. {fence}text\n   {mentions}\n   {fence}",
+        "> Example\n- {fence}text\n  {mentions}\n  {fence}",
+        "> Example\n{fence}text\n{mentions}\n{fence}",
+        "- Example\n{fence}text\n{mentions}\n{fence}",
+        "1. Example\n2. {fence}text\n   {mentions}\n   {fence}",
+        "1) Example\n0) {fence}text\n   {mentions}\n   {fence}",
+        "1. Example\n2.\n   Example\n3. {fence}text\n   {mentions}\n   {fence}",
+        "> 1. Example\n> 2. {fence}text\n>    {mentions}\n>    {fence}",
+        "- 1. Example\n  2. {fence}text\n     {mentions}\n     {fence}",
+        "1. > Example\n2. {fence}text\n   {mentions}\n   {fence}",
+    ],
+)
+def test_container_code_mentions_do_not_change_post_or_reply_delivery(
+    world: World, command: str, fence: str, outside: bool, template: str
+) -> None:
+    w = world
+    # A fourth active parent makes accidental @all expansion observable even
+    # when a prose mention adds the third parent intentionally.
+    w.change(4, status="active")
+    root = w.post() if command == "reply" else None
+    sender, target = (2, 1) if root else (1, 2)
+    mentions = " ".join(
+        f"@{name}"
+        for name in (
+            "aLl",
+            w.assignments[sender].name,
+            w.assignments[4].name,
+            w.assignments[6].name,
+            w.board.names.load_names()[10],
+            "NotInTheCatalog",
+        )
+    )
+    body = template.format(fence=fence, mentions=mentions)
+    if outside:
+        body += f"\n\n宛先は@{w.assignments[3].name}です。"
+    arguments = {
+        "body": body,
+        "to": [w.assignments[target].name],
+        "notifiers": w.routes,
+    }
+    if root:
+        post = w.board.messages.reply(w.env(sender), post_id=root["id"], **arguments)[
+            "post"
+        ]
     else:
-        with pytest.raises(
-            world.board.errors.BoardError, match="outside the recipients"
-        ):
-            world.post(body=body)
-        assert world.board.messages.status(world.env()) == {"posts": []}
+        post = w.post(**arguments)
+    assert post["body"] == body
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [target, 3] if outside else [target])
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> {fence}\n> {mentions}\n@{other}",
+        "> > {fence}\n> > {mentions}\n> @{other}",
+        "- {fence}\n  {mentions}\n@{other}",
+        "- {fence}\n  {mentions}\n- @{other}",
+        "1. {fence}\n   {mentions}\n2. @{other}",
+        "> - {fence}\n>   {mentions}\n> - @{other}",
+        "- > {fence}\n  > {mentions}\n  @{other}",
+        "- Example\n  - {fence}\n    {mentions}\n  @{other}",
+        "> Example\n1. {fence}\n   {mentions}\n@{other}",
+        "> - Example\n1. {fence}\n   {mentions}\n@{other}",
+        "1. Example\n2. {fence}\n   {mentions}\n@{other}",
+    ],
+)
+def test_unclosed_container_fence_ends_with_its_container(
+    world: World, command: str, fence: str, template: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    sender = 2 if root else 1
+    body = template.format(
+        fence=fence,
+        mentions=f"@all @{w.assignments[sender].name}",
+        other=w.assignments[3].name,
+    )
+    if root:
+        post = w.board.messages.reply(
+            w.env(sender), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 3]
+    else:
+        post = w.post(to=[], body=body)
+        expected = [3]
+    assert post["broadcast"] is False
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> Example\n2. ~~~\n   @{other}",
+        "> Example\n2. ```\n   @{other}",
+        "> Example\n0) ~~~\n   @{other}",
+        "> Example\n02. ~~~\n    @{other}",
+        "> > Example\n2. ~~~\n   @{other}",
+        "> - Example\n2. ~~~\n   @{other}",
+        "> 1. Example\n2. ~~~\n   @{other}",
+        "- Example\n2. ~~~\n   @{other}",
+        "* Example\n2. ```\n   @{other}",
+        "1. Example\n2) ~~~\n   @{other}",
+        "1) Example\n0. ~~~\n   @{other}",
+        "- > Example\n  2. ~~~\n     @{other}",
+        "- 1. Example\n2. ~~~\n   @{other}",
+        "> - 1. Example\n> 2. ~~~\n>    @{other}",
+        "> Example\n*\n2. ~~~\n   @{other}",
+        "> Example\n+\n2. ~~~\n   @{other}",
+        "> Example\n1.\n2. ~~~\n   @{other}",
+        "+ Example\n*\n2. ~~~\n   @{other}",
+        "- Example\n1.\n2. ~~~\n   @{other}",
+        "> Example\n~~\n@{other}",
+        "- Example\n~~\n@{other}",
+        "> Example\n```invalid`info\n@{other}",
+        "- Example\n```invalid`info\n@{other}",
+        "> Example\n    ~~~\n    @{other}",
+        "- Example\n  2. ~~~\n     @{other}",
+    ],
+)
+def test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery(
+    world: World, command: str, template: str
+) -> None:
+    w = world
+    root = w.post(to=[w.assignments[3].name]) if command == "reply" else None
+    body = template.format(other=w.assignments[2].name)
+    # Another explicit or automatic recipient would let a missing mention
+    # silently succeed; check the saved recipients and actual deliveries too.
+    if root:
+        post = w.board.messages.reply(
+            w.env(3), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 2]
+    else:
+        post = w.post(to=[w.assignments[3].name], body=body)
+        expected = [2, 3]
+    assert post["body"] == body
+    assert post["broadcast"] is False
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "- Example\nlazy paragraph\n  ~~~\n  {mentions}\n  ~~~\n@{other}",
+        "> > Example\n    lazy paragraph\n> > ~~~\n> > {mentions}\n> > ~~~\n> > @{other}",
+        "> ~~~\n> > ~~~\n> {mentions}\n> ~~~\n> @{other}",
+        "> ~~~~\n> ~~~\n> {mentions}\n> ~~~~\n> @{other}",
+        "- ~~~\n  ~~~ suffix\n  {mentions}\n  ~~~\n  @{other}",
+        "-\n\n    ~~~\n    {mentions}\n    ~~~\n@{other}",
+        "-     ~~~\n      {mentions}\n      ~~~\n@{other}",
+        "- Example\n\n      ~~~\n      {mentions}\n      ~~~\n@{other}",
+    ],
+)
+def test_container_and_fence_boundaries_preserve_prose_destinations(
+    world: World, template: str
+) -> None:
+    w = world
+    body = template.format(
+        mentions=f"@all @{w.assignments[1].name}", other=w.assignments[3].name
+    )
+    post = w.post(to=[], body=body)
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [3])
+
+
+@pytest.mark.parametrize(
+    "template",
+    [
+        "> ~~text\n> @{other}\n> ~~",
+        "> ```invalid`info\n> @{other}",
+        "- ```invalid`info\n  @{other}",
+        "text\n2. ~~~\n   @{other}",
+        "1234567890. ~~~\n   @{other}",
+    ],
+)
+def test_invalid_fence_or_list_syntax_keeps_prose_mentions(
+    world: World, template: str
+) -> None:
+    w = world
+    post = w.post(to=[], body=template.format(other=w.assignments[3].name))
+    assert post["broadcast"] is False
+    w.assert_delivered(post, [3])
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+def test_code_mentions_do_not_hide_adjacent_prose_destinations(
+    world: World, command: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    body = (
+        f"`@{w.assignments[2 if root else 1].name}` is an example.\n"
+        f"```text\n@all @{w.assignments[6].name}\n```\n"
+        f"宛先は@{w.assignments[3].name}です。"
+    )
+    if root:
+        post = w.board.messages.reply(
+            w.env(2), post_id=root["id"], body=body, notifiers=w.routes
+        )["post"]
+        expected = [1, 3]
+    else:
+        post = w.post(to=[], body=body)
+        expected = [3]
+    assert post["broadcast"] is False
+    w.assert_delivered(post, expected)
+
+
+@pytest.mark.parametrize("body", ["An unmatched ` @{name}.", r"Escaped \` @{name} \`."])
+def test_unmatched_or_escaped_backticks_leave_mentions_in_prose(
+    world: World, body: str
+) -> None:
+    post = world.post(to=[], body=body.format(name=world.assignments[3].name))
+    world.assert_delivered(post, [3])
 
 
 @pytest.mark.parametrize(
@@ -1014,9 +1520,7 @@ def test_known_other_parent_session_and_identifier_output_are_guarded(
             w.post(body=f"Reference {secret}")
 
 
-@pytest.mark.parametrize(
-    "recipient", ["unknown", "retired", "unassigned", "outside-body"]
-)
+@pytest.mark.parametrize("recipient", ["unknown", "retired", "unassigned"])
 def test_cli_recipient_rejections_are_exit_2_and_atomic(
     world: World, recipient: str
 ) -> None:
@@ -1025,14 +1529,10 @@ def test_cli_recipient_rejections_are_exit_2_and_atomic(
         "unknown": "NotInCatalog",
         "retired": w.assignments[6].name,
         "unassigned": w.board.names.load_names()[10],
-        "outside-body": w.assignments[2].name,
     }[recipient]
+    before = w.message_rows()
     body_file = w.labels.root / "input.md"
-    body_file.write_text(
-        f"Ask @{w.assignments[3].name}"
-        if recipient == "outside-body"
-        else "A public update."
-    )
+    body_file.write_text("A public update.")
     result = run_board(
         w.env(),
         "post",
@@ -1051,7 +1551,75 @@ def test_cli_recipient_rejections_are_exit_2_and_atomic(
         and result.stderr.startswith("board: ")
     )
     private_output_absent(result.stderr, w.env())
-    assert w.board.messages.status(w.env()) == {"posts": []}
+    assert w.message_rows() == before
+    assert w.fake.calls == []
+
+
+@pytest.mark.parametrize("command", ["post", "reply"])
+@pytest.mark.parametrize("recipient", ["retired", "unassigned", "unregistered"])
+def test_invalid_known_body_mention_rejects_all_destinations_atomically(
+    world: World, command: str, recipient: str
+) -> None:
+    w = world
+    root = w.post() if command == "reply" else None
+    caller = 2 if root else 1
+    name = {
+        "retired": w.assignments[6].name,
+        "unassigned": w.board.names.load_names()[10],
+        "unregistered": w.assignments[4].name,
+    }[recipient]
+    if recipient == "unregistered":
+        parents = json.loads(w.labels.registry.read_text())["parents"]
+        del parents["o/r#4"]
+        w.labels.set_registry(parents)
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    body = f"Ask @{w.assignments[3].name} and @{name.swapcase()}."
+    with pytest.raises(w.board.errors.BoardError):
+        if root:
+            w.board.messages.reply(
+                w.env(caller), post_id=root["id"], body=body, notifiers=w.routes
+            )
+        else:
+            w.post(to=[], body=body)
+    body_file = w.labels.root / "input.md"
+    body_file.write_text(body)
+    args = [command, "--body-file", str(body_file)]
+    args += (
+        ["--post", root["id"]] if root else ["--kind", "info", "--subject", "Public"]
+    )
+    result = run_board(w.env(caller), *args)
+    assert result.returncode == 2 and result.stdout == ""
+    private_output_absent(result.stderr, w.env(caller))
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+
+
+@pytest.mark.parametrize(
+    "body", ["No recipients.", "@NotInTheCatalog", "`@all`", "```text\n@all\n```"]
+)
+def test_post_without_to_or_prose_board_mentions_has_no_recipient_and_saves_nothing(
+    world: World, body: str
+) -> None:
+    w = world
+    before = w.message_rows()
+    with pytest.raises(w.board.errors.BoardError, match="at least one recipient"):
+        w.post(to=[], body=body)
+    body_file = w.labels.root / "input.md"
+    body_file.write_text(body)
+    result = run_board(
+        w.env(),
+        "post",
+        "--kind",
+        "info",
+        "--subject",
+        "Public",
+        "--body-file",
+        str(body_file),
+    )
+    assert result.returncode == 2 and result.stdout == ""
+    assert "at least one recipient" in result.stderr
+    assert w.message_rows() == before
     assert w.fake.calls == []
 
 
@@ -1107,6 +1675,8 @@ def test_cli_identity_rejects_every_message_mutation(
         ["reply", "--post", root["id"], "--body-file", str(body_file)],
         ["read", root["id"]],
         ["ack", "--post", root["id"], "--state", "done"],
+        ["react", "--post", root["id"], "--emoji", "+1"],
+        ["react", "--post", root["id"], "--emoji", "+1", "--remove"],
     ]:
         result = run_board(env, *args, *extra)
         assert (
@@ -1117,6 +1687,7 @@ def test_cli_identity_rejects_every_message_mutation(
         private_output_absent(result.stderr, env)
     assert len(w.board.messages.status(w.env())["posts"]) == 1
     assert w.own_state(root["id"])["recipients"][0]["state"] == "notified"
+    assert w.own_state(root["id"])["reactions"] == []
 
 
 def test_unrelated_parent_cannot_read_reply_ack_or_access_thread(world: World) -> None:
@@ -1436,3 +2007,257 @@ def test_history_cannot_be_edited_deleted_or_retargeted(
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
         connection.execute(statement)
     assert w.board.messages.read(w.env(), root["id"])["post"]["body"] == root["body"]
+
+
+def test_reactions_are_idempotent_and_each_participant_removes_only_their_own(
+    world: World,
+) -> None:
+    w = world
+    post = w.post()
+    react = w.board.reactions.react
+    first = react(w.env(2), post_id=post["id"], emoji="+1", now=NOW)["post"]
+    again = react(
+        w.env(2), post_id=post["id"], emoji="+1", now=NOW + timedelta(days=1)
+    )["post"]
+    assert first == again  # Duplicate adds retain the original timestamp.
+    assert first["reactions"] == [
+        {
+            "code": "+1",
+            "emoji": "👍",
+            "reactors": [
+                {
+                    "type": "parent",
+                    "assignment_id": w.assignments[2].id,
+                    "name": w.assignments[2].name,
+                    "repo": "o/r",
+                    "parent": 2,
+                    "created_at": w.board.names.timestamp(NOW),
+                }
+            ],
+        }
+    ]
+    # The sender is a participant too; the same stamp now has two actors.
+    both = react(w.env(), post_id=post["id"], emoji="+1")["post"]
+    assert [row["parent"] for row in both["reactions"][0]["reactors"]] == [1, 2]
+    react(w.env(2), post_id=post["id"], emoji="eyes")
+    remaining = react(w.env(2), post_id=post["id"], emoji="+1", remove=True)["post"]
+    assert [row["code"] for row in remaining["reactions"]] == ["+1", "eyes"]
+    assert [row["parent"] for row in remaining["reactions"][0]["reactors"]] == [1]
+    assert (
+        react(w.env(2), post_id=post["id"], emoji="+1", remove=True)["post"]
+        == remaining
+    )
+    react(w.env(), post_id=post["id"], emoji="+1", remove=True)
+    assert (
+        react(w.env(2), post_id=post["id"], emoji="eyes", remove=True)["post"][
+            "reactions"
+        ]
+        == []
+    )
+    with w.store.read() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM reactions").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize(
+    ("code", "glyph"),
+    [
+        ("+1", "👍"),
+        ("eyes", "👀"),
+        ("white_check_mark", "✅"),
+        ("tada", "🎉"),
+        ("pray", "🙏"),
+        ("question", "❓"),
+        ("warning", "⚠️"),
+    ],
+)
+def test_fixed_reaction_codes(world: World, code: str, glyph: str) -> None:
+    root = world.post()
+    result = world.board.reactions.react(world.env(2), post_id=root["id"], emoji=code)
+    assert result["post"]["reactions"][0]["emoji"] == glyph
+
+
+@pytest.mark.parametrize("remove", [False, True])
+@pytest.mark.parametrize("invalid", ["outsider", "emoji", "missing", "invalid-id"])
+def test_cli_reaction_rejections_leave_all_rows_unchanged(
+    world: World, remove: bool, invalid: str
+) -> None:
+    w = world
+    root = w.post()
+    w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")
+    before = w.message_rows()
+    with w.store.read() as connection:
+        reactions = connection.execute("SELECT * FROM reactions").fetchall()
+    args = [
+        "react",
+        "--post",
+        "f" * 32
+        if invalid == "missing"
+        else "/private/post"
+        if invalid == "invalid-id"
+        else root["id"],
+        "--emoji",
+        "/private/emoji" if invalid == "emoji" else "+1",
+    ]
+    if remove:
+        args.append("--remove")
+    env = w.env(3 if invalid == "outsider" else 2)
+    result = run_board(env, *args)
+    assert result.returncode == 2 and result.stdout == ""
+    assert "/private/" not in result.stderr
+    private_output_absent(result.stderr, env)
+    assert w.message_rows() == before
+    with w.store.read() as connection:
+        assert connection.execute("SELECT * FROM reactions").fetchall() == reactions
+
+
+def test_reactions_allow_later_thread_participants_without_marking_posts_read(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    reply = w.board.messages.reply(
+        w.env(2),
+        post_id=root["id"],
+        to=[w.assignments[3].name],
+        body="Adding another participant.",
+        notifiers=w.routes,
+    )["post"]
+    before = w.message_rows()
+    result = w.board.reactions.react(w.env(3), post_id=root["id"], emoji="eyes")
+    assert result["post"]["reactions"][0]["reactors"][0]["parent"] == 3
+    # A participant of the root may react to a later reply, too.
+    w.board.reactions.react(w.env(), post_id=reply["id"], emoji="+1")
+    assert w.message_rows() == before
+
+
+@pytest.mark.parametrize("acknowledgement", [None, "accepted", "declined", "done"])
+def test_reactions_do_not_change_reads_responses_deliveries_or_bells(
+    world: World, acknowledgement: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    w = world
+    root = w.post()
+    if acknowledgement:
+        w.board.messages.ack(w.env(2), post_id=root["id"], state=acknowledgement)
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    with w.store.read() as connection:
+        activity = w.board.activity.summary(connection, w.assignments[2].id)
+
+    def no_dispatch(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("A reaction attempted notification dispatch")
+
+    monkeypatch.setattr(w.board.delivery, "dispatch", no_dispatch)
+    for emoji in ("+1", "white_check_mark", "question"):
+        w.board.reactions.react(w.env(2), post_id=root["id"], emoji=emoji)
+        w.board.reactions.react(w.env(2), post_id=root["id"], emoji=emoji, remove=True)
+    assert w.message_rows() == before
+    assert w.fake.calls == calls
+    with w.store.read() as connection:
+        assert w.board.activity.summary(connection, w.assignments[2].id) == activity
+
+
+def test_cli_reactions_appear_in_every_post_projection(world: World) -> None:
+    w = world
+    root = w.post()
+    added = run_board(w.env(2), "react", "--post", root["id"], "--emoji", "tada")
+    assert added.returncode == 0, added.stderr
+    expected = json.loads(added.stdout)["post"]["reactions"]
+    assert expected[0]["code"] == "tada"
+    for env, args in (
+        (w.env(2), ["inbox", "--unread"]),
+        (w.env(2), ["read", root["id"]]),
+        (w.env(), ["thread", root["id"]]),
+        (w.env(), ["status"]),
+    ):
+        result = run_board(env, *args)
+        assert result.returncode == 0, result.stderr
+        data = json.loads(result.stdout)
+        post = data["post"] if "post" in data else data["posts"][0]
+        assert post["reactions"] == expected
+    for _ in range(2):
+        removed = run_board(
+            w.env(2), "react", "--post", root["id"], "--emoji", "tada", "--remove"
+        )
+        assert removed.returncode == 0, removed.stderr
+        assert json.loads(removed.stdout)["post"]["reactions"] == []
+
+
+def test_reactors_keep_assignment_identity_across_rename_and_name_reuse(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    first = w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")["post"]
+    renamed = importlib.import_module("board.renaming").rename(w.env(), parent=2)
+    after = w.own_state(root["id"])
+    actor = after["reactions"][0]["reactors"][0]
+    assert actor["assignment_id"] == w.assignments[2].id
+    assert actor["name"] == renamed["new_name"]
+    assert after["recipients"] == first["recipients"]
+    # Retire an unrenamed reactor and reuse their name with a different ID.
+    w.board.reactions.react(w.env(), post_id=root["id"], emoji="eyes")
+    with w.store.transaction() as connection:
+        w.board.names.retire_name(connection, "o/r", 1, now=NOW)
+        reused = w.board.names.ensure_name(
+            connection,
+            "o/r",
+            7,
+            None,
+            now=NOW + timedelta(days=31),
+            catalog=[w.assignments[1].name],
+        )
+    assert reused.id != w.assignments[1].id
+    after = w.board.messages.inbox(w.env(2))["posts"][0]
+    actor = next(row for row in after["reactions"] if row["code"] == "eyes")[
+        "reactors"
+    ][0]
+    assert actor["assignment_id"] == w.assignments[1].id and actor["parent"] == 1
+
+
+def test_reaction_schema_can_represent_the_reserved_human_without_a_parent(
+    world: World,
+) -> None:
+    w = world
+    root = w.post()
+    with w.store.transaction() as connection:
+        connection.execute(
+            "INSERT INTO reactions VALUES(?,'human',NULL,'+1',?)",
+            (root["id"], w.board.names.timestamp(NOW)),
+        )
+    with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
+        connection.execute("INSERT INTO reactions SELECT * FROM reactions")
+    human = w.own_state(root["id"])["reactions"][0]["reactors"][0]
+    assert human == {
+        "type": "human",
+        "assignment_id": None,
+        "name": "human",
+        "repo": None,
+        "parent": None,
+        "created_at": w.board.names.timestamp(NOW),
+    }
+    parent = w.board.reactions.react(w.env(), post_id=root["id"], emoji="+1")["post"]
+    assert len(parent["reactions"][0]["reactors"]) == 2
+
+
+@pytest.mark.parametrize(
+    "reactor_type,assignment_id",
+    [("parent", None), ("human", 1), ("other", None), ("parent", 9999)],
+)
+def test_reaction_schema_rejects_invalid_reactor_identity(
+    world: World, reactor_type: str, assignment_id: int | None
+) -> None:
+    root = world.post()
+    with (
+        pytest.raises(world.board.errors.BoardError),
+        world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO reactions VALUES(?,?,?,?,?)",
+            (
+                root["id"],
+                reactor_type,
+                assignment_id,
+                "+1",
+                world.board.names.timestamp(NOW),
+            ),
+        )

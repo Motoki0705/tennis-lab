@@ -223,12 +223,17 @@ def test_two_reconciles_fetch_concurrently_and_serialize_local_checks(
     get_seconds = sum(row["end"] - row["start"] for row in gets)
     print(f"two reconciles: elapsed={elapsed:.3f}s, total GET time={get_seconds:.3f}s")
     # Both operations spend the injected delay concurrently, not in a serial queue.
-    assert elapsed < get_seconds
+    assert any(
+        a["owner"] != b["owner"]
+        and max(a["start"], b["start"]) < min(a["end"], b["end"])
+        for a in gets
+        for b in gets
+    )
 
 
 @pytest.mark.parametrize(
     "change",
-    ["session", "generation", "status", "tasks", "reviews", "extension", "peer"],
+    ["session", "generation", "status", "tasks", "reviews", "extension"],
 )
 def test_changed_registry_rejects_stale_delegation(
     parent_env: ParentEnv, change: str

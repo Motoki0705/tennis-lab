@@ -14,6 +14,7 @@ from typing import Any
 
 from lib.identity import session_identity
 
+from . import metrics
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
@@ -45,7 +46,14 @@ def parser() -> argparse.ArgumentParser:
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
-    for command in ("register", "status", "checking", "reconcile", "sync"):
+    for command in (
+        "register",
+        "status",
+        "checking",
+        "reconcile",
+        "sync",
+        "state-migrate",
+    ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
     from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
@@ -138,7 +146,14 @@ def parser() -> argparse.ArgumentParser:
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
     request = commands.add_parser("review-request")
-    request.add_argument("--run-id", required=True)
+    selection = request.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--run-id")
+    selection.add_argument("--prs", type=int, nargs="+")
+    request.add_argument("--evidence-file")
+    request.add_argument(
+        "--worker-runs", help="JSON map of child number to common-runner directory"
+    )
+    request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
     state = commands.add_parser("review-state")
     state.add_argument("--run-id", required=True)
@@ -151,9 +166,21 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == "state-migrate":
+            with Store(args.state_dir or state_directory()).locked() as migration_store:
+                migration_store.migrate()
+                print(
+                    json.dumps(
+                        {
+                            "version": migration_store.data["version"],
+                            "parents": len(migration_store.parents),
+                        }
+                    )
+                )
+                return 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.
@@ -336,9 +363,28 @@ def main(argv: list[str] | None = None) -> int:
                     read_text(args.reason_file) if args.reason_file else None,
                 )
             elif command == "review-request":
-                result = transition(
-                    session, args.run_id, "instructed", read_text(args.instruction_file)
-                )
+                if args.prs:
+                    from .review_handoff import request as handoff_review
+
+                    if not args.evidence_file:
+                        raise ValueError(
+                            "--prs requires --evidence-file with verified results"
+                        )
+                    result = handoff_review(
+                        session,
+                        args.prs,
+                        read_text(args.instruction_file),
+                        read_text(args.evidence_file),
+                        read_object(args.worker_runs) if args.worker_runs else {},
+                        read_text(args.reason_file) if args.reason_file else None,
+                    )
+                else:
+                    result = transition(
+                        session,
+                        args.run_id,
+                        "instructed",
+                        read_text(args.instruction_file),
+                    )
             else:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
@@ -419,6 +465,17 @@ def main(argv: list[str] | None = None) -> int:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    destination = os.environ.get("PARENT_METRICS_FILE")
+    with metrics.command(
+        args.command, Path(destination) if destination else None
+    ) as row:
+        result = _main(argv)
+        row["exit_code"] = result
+        return result
 
 
 if __name__ == "__main__":

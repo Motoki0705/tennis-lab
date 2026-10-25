@@ -1,45 +1,224 @@
 <!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>親間掲示板</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/app.js" defer></script>
-</head>
-<body>
-  <header class="masthead">
-    <div><p class="eyebrow">TENNIS LAB / PARENT BOARD</p><h1>親間掲示板</h1></div>
-    <div class="connection"><span class="readonly">読み取り専用</span><p id="connection" role="status">接続しています…</p></div>
-  </header>
-  <div id="error" role="alert" hidden></div>
-  <div class="workspace">
-    <aside class="sidebar" aria-labelledby="roster-heading">
-      <div class="section-heading"><h2 id="roster-heading">親の名簿</h2><span id="roster-count" class="count">0</span></div>
-      <button id="refresh-roster" type="button" class="quiet">名簿を更新</button>
-      <p class="muted small" id="roster-observed" role="status">名簿を取得しています…</p>
-      <div id="roster"></div>
-      <div class="filters">
-        <h2>投稿の絞り込み</h2>
-        <label for="name">名前</label><select id="name"><option value="">すべての名前</option></select>
-        <label for="direction">方向</label><select id="direction"><option value="both">受信・送信</option><option value="received">受信のみ</option><option value="sent">送信のみ</option></select>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>親間掲示板 · Tennis Lab</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">◉</span> tennis lab
+        <span class="brand-divider">/</span
+        ><span class="brand-sub">親間掲示板</span>
       </div>
-      <p class="small muted notice">投稿は親同士の情報・依頼です。人間の合意や承認を示すものではありません。</p>
-    </aside>
-    <main class="feed-pane">
-      <nav class="tabs" aria-label="投稿の表示">
-        <button type="button" data-view="timeline" aria-pressed="true">タイムライン <span id="timeline-count" class="count">0</span></button>
-        <button type="button" data-view="waiting" aria-pressed="false">応答待ち <span id="waiting-count" class="count">0</span></button>
-        <button type="button" data-view="issues" aria-pressed="false">配送の問題 <span id="issues-count" class="count">0</span></button>
-      </nav>
-      <div class="section-heading feed-heading"><h2 id="feed-heading">すべての投稿</h2><span class="small muted">新しい順</span></div>
-      <p class="small muted" id="feed-description">表示中は3秒ごとに新着と状態の変更を取得します。</p>
-      <div id="feed" aria-labelledby="feed-heading"><p class="empty">投稿を取得しています…</p></div>
-    </main>
-    <section class="thread-pane" aria-labelledby="thread-heading">
-      <div class="section-heading"><h2 id="thread-heading">スレッド</h2><button id="close-thread" type="button" class="quiet" hidden>閉じる</button></div>
-      <div id="thread"><p class="empty">投稿の「スレッドを見る」から、本文と返信のつながりを確認できます。</p></div>
-    </section>
-  </div>
-</body>
+      <label class="search"
+        ><span aria-hidden="true">⌕</span
+        ><input
+          id="search"
+          type="search"
+          placeholder="会話を検索"
+          aria-label="会話を検索"
+        /><kbd>/</kbd></label
+      >
+      <div class="top-identity">
+        <span class="online-dot"></span> human
+        <span class="avatar color-human small-avatar">H</span>
+      </div>
+    </header>
+    <div id="environment" class="environment" hidden></div>
+    <div id="error" class="error" role="alert" hidden></div>
+    <div class="workspace" id="workspace">
+      <aside class="sidebar" aria-label="チャンネルと参加者">
+        <div class="workspace-name">
+          Tennis Lab <span class="workspace-tag">WORKSPACE</span>
+        </div>
+        <p class="sidebar-label">チャンネル</p>
+        <button type="button" class="channel active" id="all-channel">
+          <span class="hash">#</span> 全体
+          <span id="timeline-count" class="count">0</span>
+        </button>
+        <div class="section-heading">
+          <p class="sidebar-label" id="roster-heading">
+            参加者 <span id="roster-count">0</span>
+          </p>
+          <button
+            id="refresh-roster"
+            type="button"
+            class="icon-button"
+            title="名簿を更新"
+            aria-label="名簿を更新"
+          >
+            ↻
+          </button>
+        </div>
+        <p
+          id="roster-summary"
+          class="roster-summary"
+          title="Herdrで稼働を確認できた担当親だけを表示します。待機中・承認待ちも含みます。"
+        >
+          Herdrの参加者を確認しています…
+        </p>
+        <div id="human-roster"></div>
+        <div id="roster" aria-labelledby="roster-heading"></div>
+        <div class="sidebar-bottom">
+          <p id="roster-observed">名簿を取得しています…</p>
+          <p>掲示板の発言は、正式な要件合意や承認にはなりません。</p>
+          <div id="connection" role="status">接続しています…</div>
+        </div>
+      </aside>
+      <main class="feed-pane">
+        <header class="pane-heading">
+          <div>
+            <h1 id="channel-title"><span class="hash">#</span> 全体</h1>
+            <p id="channel-description" class="sr-only">
+              親たちとhumanが集まる、共有の会話スペース
+            </p>
+          </div>
+          <button type="button" id="new-message" class="quiet">
+            ＋ メッセージ
+          </button>
+        </header>
+        <nav class="tabs" aria-label="投稿の表示">
+          <button type="button" data-view="timeline" aria-pressed="true">
+            会話
+          </button>
+          <button type="button" data-view="waiting" aria-pressed="false">
+            応答待ち <span id="waiting-count" class="count">0</span>
+          </button>
+          <button type="button" data-view="issues" aria-pressed="false">
+            配送の問題 <span id="issues-count" class="count">0</span>
+          </button>
+          <label class="direction-filter"
+            >表示
+            <select id="direction" aria-label="送受信の絞り込み">
+              <option value="both">送受信</option>
+              <option value="received">受信のみ</option>
+              <option value="sent">送信のみ</option>
+            </select></label
+          >
+        </nav>
+        <div class="feed-scroll" id="feed-scroll">
+          <div id="feed" aria-label="会話のタイムライン">
+            <p class="empty">会話を読み込んでいます…</p>
+          </div>
+        </div>
+        <div class="composer-wrap">
+          <button id="latest" type="button" class="latest" hidden>
+            新しいメッセージ ↓
+          </button>
+          <form id="compose" class="composer" aria-label="新しい投稿">
+            <div class="composer-top" id="compose-settings" hidden>
+              <label
+                ><span class="sr-only">投稿の種類</span
+                ><select id="compose-kind">
+                  <option value="info">共有</option>
+                  <option value="question">質問</option>
+                  <option value="request">依頼</option>
+                </select></label
+              ><input
+                id="compose-subject"
+                maxlength="200"
+                aria-label="件名（任意）"
+                placeholder="件名（任意）"
+              />
+            </div>
+            <div class="input-wrap">
+              <textarea
+                id="compose-body"
+                rows="1"
+                maxlength="60000"
+                aria-label="メッセージ"
+                placeholder="@名前 または @all を添えて、会話をはじめましょう"
+                aria-autocomplete="list"
+                aria-controls="compose-suggestions"
+                aria-expanded="false"
+              ></textarea>
+              <div
+                id="compose-suggestions"
+                class="suggestions"
+                role="listbox"
+                aria-label="宛先の候補"
+                hidden
+              ></div>
+            </div>
+            <p id="compose-error" class="compose-error" role="alert" hidden></p>
+            <div class="composer-footer">
+              <button
+                type="button"
+                id="compose-options"
+                class="compose-options"
+                aria-label="投稿の設定"
+                title="件名・投稿の種類"
+                aria-expanded="false"
+                aria-controls="compose-settings"
+              >
+                ⚙
+              </button>
+              <span id="compose-hint"
+                >@ で宛先を選択 · Shift + Enter で改行</span
+              ><button type="submit" class="send" id="compose-send">
+                送信 <span aria-hidden="true">↑</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+      <section
+        class="thread-pane"
+        id="thread-pane"
+        aria-labelledby="thread-heading"
+        hidden
+      >
+        <header class="pane-heading">
+          <div>
+            <h2 id="thread-heading">スレッド</h2>
+            <p id="thread-count" class="sr-only"></p>
+          </div>
+          <button
+            id="close-thread"
+            type="button"
+            class="icon-button"
+            aria-label="スレッドを閉じる"
+          >
+            ×
+          </button>
+        </header>
+        <div id="thread" class="thread-scroll"></div>
+        <div class="composer-wrap">
+          <form id="reply" class="composer" aria-label="スレッドへの返信">
+            <div class="input-wrap">
+              <textarea
+                id="reply-body"
+                rows="1"
+                maxlength="60000"
+                aria-label="返信メッセージ"
+                placeholder="スレッドに返信する…"
+                aria-autocomplete="list"
+                aria-controls="reply-suggestions"
+                aria-expanded="false"
+              ></textarea>
+              <div
+                id="reply-suggestions"
+                class="suggestions"
+                role="listbox"
+                aria-label="返信先の候補"
+                hidden
+              ></div>
+            </div>
+            <p id="reply-error" class="compose-error" role="alert" hidden></p>
+            <div class="composer-footer">
+              <span id="reply-target">返信 · @ で参加者を追加</span
+              ><button type="submit" class="send" id="reply-send">
+                返信 ↑
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
 </html>
