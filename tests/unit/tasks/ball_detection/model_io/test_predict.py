@@ -52,7 +52,7 @@ def test_rejects_wrong_external_input_before_forward(
         patch.object(
             validation_module,
             "validate_rgb_input",
-            wraps=mdd_coordinates.validate_rgb_input,
+            wraps=validation_module.validate_rgb_input,
         ) as validate,
     ):
         with pytest.raises(ValueError, match="RGB"):
