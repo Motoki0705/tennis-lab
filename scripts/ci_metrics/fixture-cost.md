@@ -22,7 +22,7 @@ restore that retired rule. Normal review, human holds and auto-merge opt-in rema
 
 ## Validation and sample
 
-Both modified files pass: **259 passed**. The split of the four invalid-value
+The two primary files pass: **259 passed**. The split of the four invalid-value
 cases into four policy cases and one CLI case adds one case; this is a preparation
 reduction, not a claim of fewer total tests.
 
@@ -35,6 +35,10 @@ dry-run, a non-main default branch, a multi-PR decision, and invalid auto-merge 
 Both observations used two workers, native thread limits of one, CUDA hidden and
 the same dependencies. Other local validation was active; these are n=1 subset
 observations, not GitHub runner or whole-CI performance claims.
+
+Downstream consumers in `test_execution_basis.py` and `test_judgement_execution.py`
+explicitly retain the three-PR scenario. Their combined 17 tests pass with the
+current API compatibility fixes; the reduced default must not change their scenarios.
 
 | Observation | Before | After |
 |---|---:|---:|
