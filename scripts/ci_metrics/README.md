@@ -3,7 +3,8 @@
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 These tools observe the existing CPU suite. They do not delete tests, add markers,
-change fixtures, select tests by changed paths, or shard the suite. The CPU marker
+change fixtures or select tests by changed paths. CI uses the complete-target
+[sharding and coverage audit](sharding.md); the default local command remains unsharded. The CPU marker
 expression remains owned by `.spin/cmds.py`; the court dataset integration retains
 its existing explicit exclusion. Both CI and the local measurement runner use
 `spin test -q --no-cov --dist=worksteal`, two workers, native thread counts of one,

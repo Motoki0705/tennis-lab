@@ -122,7 +122,13 @@ def environment_metadata(workers: int, command: list[str]) -> dict[str, Any]:
     }
 
 
-def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) -> int:
+def run(
+    output: Path,
+    workers: int,
+    extra_args: list[str],
+    lock: Path | None,
+    shard: tuple[int, int, Path] | None = None,
+) -> int:
     from .report import summarize
 
     if output.exists() and any(output.iterdir()):
@@ -148,8 +154,35 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
         f"--junitxml={output / 'junit.xml'}",
         *extra_args,
     ]
+    shard_metadata = None
+    if shard is not None:
+        from .shards import read_timing_profile
+
+        index, count, profile = shard
+        if not 0 <= index < count <= 32:
+            raise ValueError("invalid shard index/count")
+        _, profile_digest = read_timing_profile(profile)
+        command.extend(
+            [
+                "-p",
+                "scripts.ci_metrics.shard_plugin",
+                "--ci-shard-index",
+                str(index),
+                "--ci-shard-count",
+                str(count),
+                "--ci-shard-weights",
+                str(profile),
+            ]
+        )
+        shard_metadata = {
+            "index": index,
+            "count": count,
+            "profile_sha256": profile_digest,
+        }
     metadata = environment_metadata(workers, command)
-    metadata["full_cpu_target"] = not extra_args
+    metadata["full_cpu_target"] = not extra_args and shard is None
+    metadata["cpu_target_before_sharding"] = not extra_args
+    metadata["shard"] = shard_metadata
     metadata["lock_path"] = str(lock) if lock else None
     write_json(output / "environment.json", metadata)
     state: dict[str, Any] = {
