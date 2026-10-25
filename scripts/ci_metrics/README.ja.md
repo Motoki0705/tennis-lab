@@ -15,12 +15,10 @@
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-出力先は空である必要があります。ローカルでは `.agents/ops/pytest_locked.sh` と同じ
-ホストlockを取得します。`${PYTEST_LOCK}` がなければ
-`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock` です。
-`--lock /absolute/path` で明示変更できますが、実計測では共通の既定lockを使います。
-回帰テスト内だけ一時lockを使い、入れ子待機を避けます。GitHub-hosted runnerには
-ローカルlockは不要です。通常の回帰用wrapperの固定4 workerは変更しません。
+出力先は空である必要があります。repoのpytest並列実行方針に合わせ、既定では
+ホスト共有lockを取得せず、`PYTEST_LOCK` も使いません。明示的に調整する比較計測だけ、
+`--lock /absolute/path` で同じpathを指定した計測同士を直列化できます。通常のpytestは
+排他対象にならないため、ホストの競合負荷を記録し、同条件で比較してください。
 
 lock待ちを含め、起動後のsourceは固定します。待機中に変わった場合は、import済みの計測
 コードが古いまま動かないよう新しいprocessで起動し直します。
@@ -41,6 +39,8 @@ lock待ちを含め、起動後のsourceは固定します。待機中に変わ�
 
 `run` はpytestの非0終了を保持します。pytestが成功しても計測に欠損があれば終了値2です。
 `report` も成功した観測を確立できなければ終了値2です。欠損を別runで埋めません。
+cancelや起動失敗でテストcommandが始まらなかった場合、`run.json` のテスト終了値は
+nullです。CLI自体のsignal/error終了値とは分けます。
 
 ## 成果物と時間の意味
 
@@ -58,6 +58,12 @@ lock待ちを含め、起動後のsourceは固定します。待機中に変わ�
 runner/session/JUnit欠測、worker収集不一致、phase欠落・重複、JUnitとの件数・identity・
 時間の不一致、実行中のsource変更があれば不成立です。失敗とcancelは成功にしません。
 収集中のmodule skip/errorは選択nodeidに対応しない場合があるため別eventです。
+
+UTC時刻はActionsとの対応に使います。command、lock待機、起動、収集、後処理の区間は
+同じhost上の `time.perf_counter` で測り、host時計の補正に影響されない経過時間を残します。
+後処理の起点は最後のworker phase reportです。実時刻の差と単調時計の経過時間との差も
+別に保存します。単調時計の観測が欠けた区間は未確定とし、成功baselineにはしません。
+実時刻の引き算で埋め合わせません。
 
 phase時間は**worker間の経過時間の合計**で、CPU時間やjob実時間ではありません。
 起動はPython/spin/pytestからplugin importまで、worker収集はsession開始から収集完了まで

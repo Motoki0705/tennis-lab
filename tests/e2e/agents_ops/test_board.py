@@ -90,6 +90,8 @@ def test_catalog_is_about_200_short_distinct_public_names(
         ["Álice"],
         ["Alice", "ALICE"],
         ["All"],
+        ["Human"],
+        ["HUMAN"],
         ["Ann", "Anna"],
         ["Ben", "Bob", "Jen"],
         ["Bob", "Rob"],
@@ -108,7 +110,14 @@ def test_name_resolution_rejects_reserved_outside_unassigned_and_retired(
     with store.transaction() as connection:
         assigned = board.names.ensure_name(connection, "o/r", 1, "開発", now=NOW)
         assert board.names.resolve_name(connection, assigned.name.lower()) == assigned
-        for invalid in ("all", "ALL", "NotInCatalog", board.names.load_names()[1]):
+        for invalid in (
+            "all",
+            "ALL",
+            "human",
+            "HUMAN",
+            "NotInCatalog",
+            board.names.load_names()[1],
+        ):
             with pytest.raises(board.errors.BoardError):
                 board.names.resolve_name(connection, invalid)
         board.names.retire_name(connection, "o/r", 1, now=NOW)
@@ -595,6 +604,132 @@ def test_version_two_migration_failure_rolls_back_schema_version_and_rows(
             assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
 
 
+@pytest.fixture
+def v3_store(board: SimpleNamespace, v2_store: SimpleNamespace) -> SimpleNamespace:
+    with sqlite3.connect(v2_store.store.path) as connection:
+        board.storage.MIGRATIONS[2](connection)
+        connection.execute("PRAGMA user_version=3")
+        board.names.rename_name(connection, "o/r", 2, now=NOW)
+        rows = {
+            table: connection.execute(f"SELECT * FROM {table}").fetchall()
+            for table in (*v2_store.rows, "name_renames")
+        }
+        schema = connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+    return SimpleNamespace(store=v2_store.store, rows=rows, schema=schema)
+
+
+def test_version_three_migration_adds_reactions_without_changing_history(
+    board: SimpleNamespace, v3_store: SimpleNamespace
+) -> None:
+    with (
+        pytest.raises(board.errors.BoardError, match="migration"),
+        v3_store.store.read(),
+    ):
+        pass
+    with v3_store.store.transaction() as connection:
+        assert (
+            connection.execute("PRAGMA user_version").fetchone()[0]
+            == board.storage.SCHEMA_VERSION
+        )
+        for table, rows in v3_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+        assert connection.execute("SELECT * FROM reactions").fetchall() == []
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+
+
+def test_version_three_migration_failure_rolls_back_reactions_and_version(
+    board: SimpleNamespace, v3_store: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    migration = board.storage.MIGRATIONS[3]
+
+    def fail_after_schema(connection: sqlite3.Connection) -> None:
+        migration(connection)
+        raise RuntimeError("injected reactions migration failure")
+
+    monkeypatch.setattr(
+        board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS[:3], fail_after_schema)
+    )
+    with pytest.raises(RuntimeError, match="injected"), v3_store.store.transaction():
+        pass
+    with sqlite3.connect(v3_store.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert (
+            connection.execute(
+                "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+            ).fetchall()
+            == v3_store.schema
+        )
+        for table, rows in v3_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+
+
+@pytest.fixture
+def v4_store(board: SimpleNamespace, v3_store: SimpleNamespace) -> SimpleNamespace:
+    with sqlite3.connect(v3_store.store.path) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        board.storage.MIGRATIONS[3](connection)
+        connection.execute("PRAGMA user_version=4")
+        root = v3_store.rows["posts"][0]
+        reply = list(root)
+        reply[0], reply[6], reply[10] = "1" * 32, "reply", root[0]
+        connection.execute("INSERT INTO posts VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", reply)
+        connection.executemany(
+            "INSERT INTO reactions VALUES(?,?,?,?,?)",
+            [
+                (root[0], "parent", 2, "+1", board.names.timestamp(NOW)),
+                (reply[0], "human", None, "eyes", board.names.timestamp(NOW)),
+            ],
+        )
+        rows = {
+            table: connection.execute(f"SELECT * FROM {table}").fetchall()
+            for table in (*v3_store.rows, "reactions")
+        }
+        schema = connection.execute(
+            "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+        ).fetchall()
+    return SimpleNamespace(store=v3_store.store, rows=rows, schema=schema)
+
+
+def test_version_four_migration_preserves_thread_graph_reactions_and_history(
+    board: SimpleNamespace, v4_store: SimpleNamespace
+) -> None:
+    with v4_store.store.transaction() as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        for table, rows in v4_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+    with v4_store.store.read() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 2
+
+
+def test_human_migration_failure_rolls_back_the_complete_graph(
+    board: SimpleNamespace, v4_store: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    migration = board.storage.MIGRATIONS[4]
+
+    def fail_after_rebuild(connection: sqlite3.Connection) -> None:
+        migration(connection)
+        raise RuntimeError("injected human migration failure")
+
+    monkeypatch.setattr(
+        board.storage, "MIGRATIONS", (*board.storage.MIGRATIONS[:4], fail_after_rebuild)
+    )
+    with pytest.raises(RuntimeError, match="injected"), v4_store.store.transaction():
+        pass
+    with sqlite3.connect(v4_store.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert (
+            connection.execute(
+                "SELECT type,name,tbl_name,sql FROM sqlite_master ORDER BY type,name"
+            ).fetchall()
+            == v4_store.schema
+        )
+        for table, rows in v4_store.rows.items():
+            assert connection.execute(f"SELECT * FROM {table}").fetchall() == rows
+
+
 def test_private_permissions_wal_and_rollback(
     board: SimpleNamespace, tmp_path: Path
 ) -> None:
@@ -1023,7 +1158,8 @@ def test_peer_lookup_failure_is_explicit_and_broadcast_remains_atomic(
         p.note("全員に共有します。"),
     )
     assert blocked.returncode == 2 and blocked.stdout == ""
-    assert "o/r#2" in blocked.stderr and "no live board name" in blocked.stderr
+    # None of these registrations has a confirmed running Herdr conversation.
+    assert "post requires at least one recipient" in blocked.stderr
     with board.storage.Store(board.storage.directory(p.env)).read() as connection:
         for table in ("posts", "recipients", "deliveries"):
             assert connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone() == (
@@ -1084,10 +1220,7 @@ def test_standalone_parent_has_a_name_and_null_identifier(
         assert board.names.resolve_name(connection, first["name"]) == assignment
     roster = run_board(p.env, "agents")
     assert roster.returncode == 0
-    entry = json.loads(roster.stdout)["agents"][0]
-    assert entry["identifier"] is None
-    assert entry["name"] == first["name"]
-    assert entry["name_status"] == "assigned"
+    assert json.loads(roster.stdout)["agents"] == []  # No confirmed Herdr session.
     identity = run_board(p.env, "whoami")
     assert identity.returncode == 0
     assert json.loads(identity.stdout)["name"] == first["name"]
@@ -1259,10 +1392,12 @@ def test_codex_root_identity_and_unassigned_human_reading(
     assert run_board(env, "whoami").returncode == 2
     roster = run_board(env, "agents")
     assert roster.returncode == 0
-    assert json.loads(roster.stdout)["agents"][0]["engine"] == "codex"
+    assert json.loads(roster.stdout)["agents"] == []
 
 
-def prepare_roster(board: SimpleNamespace, labels: Labels) -> tuple[str, str]:
+def prepare_roster(
+    board: SimpleNamespace, labels: Labels, *, assign_names: bool = True
+) -> tuple[str, str]:
     identities = ("claude:test-owner", "codex:private-second-owner")
     labels.set_registry(
         {
@@ -1275,13 +1410,14 @@ def prepare_roster(board: SimpleNamespace, labels: Labels) -> tuple[str, str]:
             "o/r#46": labels.owner(status="ended", identity="claude:ended-owner"),
         }
     )
-    with board.storage.Store(
-        board.storage.directory(labels.env)
-    ).transaction() as connection:
-        for number in (42, 43):
-            board.names.ensure_name(
-                connection, "o/r", number, "開発" + str(number), now=NOW
-            )
+    if assign_names:
+        with board.storage.Store(
+            board.storage.directory(labels.env)
+        ).transaction() as connection:
+            for number in (42, 43):
+                board.names.ensure_name(
+                    connection, "o/r", number, "開発" + str(number), now=NOW
+                )
     owners = labels.registry.parent.parent / "herdr-labels/owners"
     for identity, terminal in zip(identities, ("term-a", "term-b"), strict=True):
         (owners / (board.service.owner_token(identity) + ".json")).write_text(
@@ -1334,6 +1470,7 @@ def test_roster_joins_only_active_parents_and_never_mutates_registry(
 def test_roster_includes_unassigned_active_parents(
     board: SimpleNamespace, labels: Labels, database: str
 ) -> None:
+    prepare_roster(board, labels, assign_names=False)
     labels.set_registry(
         {
             "o/r#42": labels.owner(),
@@ -1388,13 +1525,18 @@ def test_roster_includes_unassigned_active_parents(
     assert "private-second-owner" not in result.stdout + response.stderr
 
 
+@pytest.mark.parametrize("field", ["state", "agent_status"])
 @pytest.mark.parametrize("status", ["idle", "working", "blocked", "done"])
 def test_runtime_states_and_post_activity_boundary(
-    board: SimpleNamespace, labels: Labels, status: str, monkeypatch: pytest.MonkeyPatch
+    board: SimpleNamespace,
+    labels: Labels,
+    status: str,
+    field: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     prepare_roster(board, labels)
     state = labels.read()
-    state["panes"]["w1:p1"]["state"] = status
+    state["panes"]["w1:p1"][field] = status
     labels.write(state)
     monkeypatch.setattr(
         board.activity,
@@ -1423,7 +1565,7 @@ def test_runtime_states_and_post_activity_boundary(
         "ended_runtime",
     ],
 )
-def test_runtime_unknown_when_it_cannot_be_verified(
+def test_unverified_sessions_are_excluded_and_runtime_errors_are_explicit(
     board: SimpleNamespace, labels: Labels, cause: str
 ) -> None:
     identities = prepare_roster(board, labels)
@@ -1474,11 +1616,15 @@ def test_runtime_unknown_when_it_cannot_be_verified(
         executable.chmod(0o755)
     labels.write(state)
     result = run_board(labels.env, "agents")
+    if cause in {"bad_owner", "unavailable"}:
+        assert result.returncode == 2 and not result.stdout
+        assert "private runtime details" not in result.stderr
+        return
     assert result.returncode == 0
-    assert json.loads(result.stdout)["agents"][0]["state"] == "unknown"
+    assert [
+        (row["parent"], row["state"]) for row in json.loads(result.stdout)["agents"]
+    ] == [(43, "idle")]
     assert "private runtime details" not in result.stderr
-    if cause != "unavailable":
-        assert json.loads(result.stdout)["agents"][1]["state"] == "idle"
 
 
 @pytest.mark.parametrize(
@@ -1582,6 +1728,9 @@ def test_cleared_display_uses_current_pane_record(
                 "version": 1,
                 "owner": board.service.owner_token(identities[0]),
                 "state": "active",
+                "processes": board.service.process_stamp(
+                    board.service.Herdr(labels.env), state["panes"]["w1:p1"]
+                ),
             }
         )
     )

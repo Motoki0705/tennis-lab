@@ -72,109 +72,6 @@ def test_reviewer_is_codex_for_every_author() -> None:
 # --------------------------------------------------------------------------- shared paths
 
 
-@pytest.mark.parametrize(
-    ("path", "pattern"),
-    [
-        ("src/utils/io.py", "src/utils"),
-        ("src/utils", "src/utils"),
-        ("src/tasks/blcs/model_io/x.py", "src/tasks/*/model_io"),
-        ("a/b/c/pyproject.toml", "**/pyproject.toml"),
-        ("pyproject.toml", "**/pyproject.toml"),
-        (".github/workflows/ci.yml", ".github/"),
-        ("src/utils/new\nline.py", "src/utils"),
-        ("src/utils/a\n/b.py", "src/utils"),
-        ("x/\n/pyproject.toml", "**/pyproject.toml"),
-        ("src/tasks/a\nb/model_io/x.py", "src/tasks/*/model_io"),
-    ],
-)
-def test_glob_matches(path: str, pattern: str) -> None:
-    assert P.shared_path_hits([path], [pattern]) == ((path, pattern),)
-
-
-@pytest.mark.parametrize(
-    ("path", "pattern"),
-    [
-        ("src/utils_extra/io.py", "src/utils"),
-        ("src/tasks/blcs/a/model_io/x.py", "src/tasks/*/model_io"),
-        ("xAGENTS.md", "AGENTS.md"),
-    ],
-)
-def test_glob_does_not_overmatch(path: str, pattern: str) -> None:
-    assert P.shared_path_hits([path], [pattern]) == ()
-
-
-def test_exclusion_patterns_remove_paths_from_the_shared_set() -> None:
-    patterns = (".agents", "!.agents/memory", "src/utils")
-    paths = [
-        ".agents/memory/SUMMARY.md",
-        ".agents/memory",
-        ".agents/ops/review/x.py",
-        ".agents/memory_policy.md",
-    ]
-    assert P.shared_path_hits(paths, patterns) == (
-        (".agents/ops/review/x.py", ".agents"),
-        (".agents/memory_policy.md", ".agents"),
-    )
-    # Order does not matter: an exclusion listed first still applies.
-    assert P.shared_path_hits(paths, patterns[::-1]) == P.shared_path_hits(
-        paths, patterns
-    )
-
-
-def test_repo_shared_paths_file_covers_foundations() -> None:
-    patterns = P.load_shared_patterns(REVIEW_DIR / "shared_paths.txt")
-    shared = [
-        "src/utils/geometry/angles.py",
-        "src/utils/日本語.py",
-        "src/tasks/base/training/runner.py",
-        "src/tennis_scene/schema.py",
-        "src/synthetic_data_generation/scene_contract.py",
-        "AGENTS.md",
-        "CLAUDE.md",
-        ".agents/ops/review/shared_paths.txt",
-        ".agents/skills/tennis-drive/references/storage-policy.md",
-        ".github/workflows/ci.yml",
-        "pyproject.toml",
-        "uv.lock",
-        "setup.py",
-    ]
-    task_local = [
-        "src/tasks/blcs/models/model.py",
-        "src/tasks/ball_detection/README.md",
-        "tests/unit/tasks/blcs/test_model.py",
-        "knowledge/nodes/x.md",
-        ".agents/memory/SUMMARY.md",
-        ".agents/memory/review/focused-pull-requests.md",
-    ]
-    hit_paths = {path for path, _ in P.shared_path_hits(shared + task_local, patterns)}
-    assert hit_paths == set(shared)
-    # Every included pattern must still point at something in the repo (exclusions may
-    # name directories that do not exist yet; the loader checks they sit under an include).
-    for pattern in patterns:
-        if not pattern.startswith("!"):
-            assert any(ROOT.glob(pattern.rstrip("/"))), pattern
-
-
-@pytest.mark.parametrize(
-    "content",
-    [
-        "# only comments\n\n",
-        "/abs/path\n",
-        "./rel\n",
-        "!src/utils\n",
-        "src/utils\n!\n",
-        "src/utils\n!!src/utils/x\n",
-        "src/utils\n!/src/utils/x\n",
-        "src/utils\n!src/tasks/blcs\n",
-    ],
-)
-def test_invalid_shared_paths_file_is_rejected(tmp_path: Path, content: str) -> None:
-    path = tmp_path / "shared.txt"
-    path.write_text(content, encoding="utf-8")
-    with pytest.raises(ValueError):
-        P.load_shared_patterns(path)
-
-
 # --------------------------------------------------------------------------- review parsing
 
 
@@ -345,8 +242,6 @@ def _gate(**overrides: Any) -> Any:
         "is_cross_repository": False,
         "mergeable": "MERGEABLE",
         "review": P.ReviewOutcome("approve", 0),
-        "changed_paths": ("src/tasks/blcs/models/model.py",),
-        "shared_patterns": ("src/utils", "AGENTS.md"),
     }
     base.update(overrides)
     return P.evaluate_gate(P.GateInput(**base))
@@ -357,13 +252,6 @@ def test_gate_merge_when_review_and_merge_conditions_pass() -> None:
     assert result.decision is P.GateDecision.MERGE
     assert result.reasons == ()
     assert P.gate_should_comment(result)
-
-
-def test_gate_needs_human_for_shared_paths() -> None:
-    result = _gate(changed_paths=("src/tasks/blcs/a.py", "src/utils/io.py"))
-    assert result.decision is P.GateDecision.NEEDS_HUMAN
-    assert result.reasons == ("touches_shared",)
-    assert result.shared_hits == (("src/utils/io.py", "src/utils"),)
 
 
 @pytest.mark.parametrize(
@@ -384,8 +272,7 @@ def test_gate_needs_human_for_shared_paths() -> None:
 def test_gate_blocked_reasons(
     overrides: dict[str, Any], reason: str, comment: bool
 ) -> None:
-    # Shared paths are also touched: blocking reasons take precedence over needs_human.
-    result = _gate(changed_paths=("AGENTS.md",), **overrides)
+    result = _gate(**overrides)
     assert result.decision is P.GateDecision.BLOCKED
     assert result.reasons == (reason,)
     assert P.gate_should_comment(result) is comment

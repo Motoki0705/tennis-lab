@@ -15,11 +15,9 @@
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-输出目录必须为空。本地运行取得与 `.agents/ops/pytest_locked.sh` 相同的主机锁：
-`${PYTEST_LOCK}`，或 `${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock`。
-`--lock /absolute/path` 可明确覆盖。实际性能测量应使用共享默认锁；只有嵌套回归测试使用
-临时绝对路径锁。GitHub-hosted runner 无需本地主机锁。普通回归 wrapper 仍固定使用 4 个
-worker，本工具不改变它。
+输出目录必须为空。遵循仓库的 pytest 并行运行规则，默认不取得主机共享锁，
+也不使用 `PYTEST_LOCK`。显式协调的性能比较可用 `--lock /absolute/path`，
+仅串行化指定相同路径的测量。普通 pytest 不受该锁约束；须记录主机竞争负载并在相同条件下比较。
 
 从启动起（包括锁等待）须固定源码。等待期间发生变化时，应重新启动进程，避免已导入的
 测量代码仍是旧版本。
@@ -39,6 +37,8 @@ runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层
 
 `run` 保留 pytest 的非零退出值；pytest 成功但测量不完整时返回 2。`report` 无法确认成功
 观测时也返回 2，不用另一次执行填补缺失证据。
+若取消或启动失败导致测试命令尚未开始，`run.json` 的测试退出值保持 null，
+与 CLI 自身的信号或错误退出值分开。
 
 ## 产物与时间定义
 
@@ -56,6 +56,11 @@ runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层
 收集不一致、phase 缺失/重复、JUnit 数量/标识/时间不一致或运行中源码变化，都会使其无效。
 失败和取消不会变成成功。收集时的 module skip/error 可能没有对应的选中 nodeid，因此另存
 事件。
+
+UTC 时间戳用于关联 Actions。命令、锁等待、启动、收集和后处理区间使用同一主机的
+`time.perf_counter`，使经过时间不受主机时钟校正影响。后处理从最后一个 worker phase
+报告开始。另存 UTC 差值与单调时钟经过时间的差异。缺少单调时钟观测时，相应区间保持
+未知且不能构成成功 baseline，不用 UTC 相减作为回退。
 
 phase 时间是**各 worker 的经过时间之和**，不是 CPU 时间或 job 墙钟时间。启动区间为
 Python/spin/pytest 到 plugin import；worker 收集为 session 开始到收集结束，同时保留原始

@@ -134,7 +134,8 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
         prompt = (Path(job["directory"]) / "prompt.md").read_text()
         assert f"担当issue: #{target}" in prompt
         assert "pytest_locked.sh" in prompt
-        assert f"PYTEST_LOCK: {env['PYTEST_LOCK']}" in prompt
+        assert "PYTEST_LOCK:" not in prompt
+        assert "pytestは共有lockなし" in prompt
         with session.store.locked():
             state = mod.inspect_worker(session, target)
             assert state["termination_confirmed"] and state["task_success"] is None

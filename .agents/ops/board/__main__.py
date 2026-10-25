@@ -12,6 +12,7 @@ from typing import NoReturn
 from . import messages
 from .errors import BoardError
 from .notifiers import configured, receipts
+from .reactions import react
 from .redelivery import dispatch_post
 from .renaming import rename
 from .service import agents, whoami
@@ -34,7 +35,12 @@ def main(argv: list[str] | None = None) -> int:
         renaming.add_argument("--parent", type=int, required=True)
         renaming.add_argument("--name")
         posting = commands.add_parser("post", help="append a post to board names")
-        posting.add_argument("--to", action="append", required=True)
+        posting.add_argument(
+            "--to",
+            action="append",
+            default=[],
+            help="optional recipient name or all; combined with body @mentions; repeatable",
+        )
         posting.add_argument(
             "--kind", choices=("info", "question", "request"), required=True
         )
@@ -42,7 +48,12 @@ def main(argv: list[str] | None = None) -> int:
         posting.add_argument("--body-file", required=True)
         replying = commands.add_parser("reply", help="reply to the original author")
         replying.add_argument("--post", required=True)
-        replying.add_argument("--to", action="append", default=[])
+        replying.add_argument(
+            "--to",
+            action="append",
+            default=[],
+            help="additional name or all; combined with body @mentions and the original author; repeatable",
+        )
         replying.add_argument("--body-file", required=True)
         commands.add_parser(
             "read", help="retrieve a post and mark it read"
@@ -58,6 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         acknowledging.add_argument(
             "--state", choices=("accepted", "declined", "done"), required=True
         )
+        reacting = commands.add_parser("react", help="add or remove a free reaction")
+        reacting.add_argument("--post", required=True)
+        reacting.add_argument("--emoji", required=True)
+        reacting.add_argument("--remove", action="store_true")
         commands.add_parser("status", help="show per-recipient states of sent posts")
         dispatching = commands.add_parser(
             "dispatch", help="retry eligible notifications of a sent post"
@@ -67,7 +82,9 @@ def main(argv: list[str] | None = None) -> int:
         commands.add_parser(
             "receipts", help="refresh Codex queue receipt phases without sending"
         )
-        viewing = commands.add_parser("web", help="serve the local read-only board")
+        viewing = commands.add_parser(
+            "web", help="serve the local board for human participation"
+        )
         viewing.add_argument("--port", type=int, default=8790)
         args = parser.parse_args(argv)
         env = os.environ
@@ -110,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
             result = messages.inbox(env, unread=args.unread)
         elif args.command == "ack":
             result = messages.ack(env, post_id=args.post, state=args.state)
+        elif args.command == "react":
+            result = react(env, post_id=args.post, emoji=args.emoji, remove=args.remove)
         elif args.command == "status":
             result = messages.status(env)
         elif args.command == "dispatch":

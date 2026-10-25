@@ -1,4 +1,4 @@
-"""Run the complete CPU selection under the same host lock as ordinary pytest."""
+"""Run the complete CPU selection with optional coordinated measurement locking."""
 
 from __future__ import annotations
 
@@ -118,6 +118,7 @@ def environment_metadata(workers: int, command: list[str]) -> dict[str, Any]:
         },
         "memory_metric": "largest individual pytest process high-water RSS, Linux KiB; not process-tree peak",
         "cache_condition": os.environ.get("UV_CACHE_HIT", "unknown"),
+        "elapsed_clock": "time.perf_counter; monotonic on this host",
     }
 
 
@@ -151,7 +152,11 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
     metadata["full_cpu_target"] = not extra_args
     metadata["lock_path"] = str(lock) if lock else None
     write_json(output / "environment.json", metadata)
-    state: dict[str, Any] = {"requested_at": time.time(), "status": "waiting_for_lock"}
+    state: dict[str, Any] = {
+        "requested_at": time.time(),
+        "requested_monotonic_s": time.perf_counter(),
+        "status": "waiting_for_lock",
+    }
     process: subprocess.Popen[bytes] | None = None
     received_signal: int | None = None
 
@@ -168,7 +173,8 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
         sig: signal.signal(sig, interrupted) for sig in (signal.SIGINT, signal.SIGTERM)
     }
     lock_stream = None
-    exitcode = 2
+    # No test command has an exit status until it actually starts and finishes.
+    exitcode: int | None = None
     try:
         write_json(output / "run.json", state)
         if lock is not None:
@@ -184,8 +190,14 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
             )
         metadata.update(acquired_metadata)
         write_json(output / "environment.json", metadata)
-        state.update(started_at=time.time(), status="running")
-        state["lock_wait_s"] = state["started_at"] - state["requested_at"]
+        state.update(
+            started_at=time.time(),
+            started_monotonic_s=time.perf_counter(),
+            status="running",
+        )
+        state["lock_wait_s"] = (
+            state["started_monotonic_s"] - state["requested_monotonic_s"]
+        )
         write_json(output / "run.json", state)
         with (output / "pytest.log").open("wb") as log:
             process = subprocess.Popen(
@@ -199,6 +211,7 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
             write_json(output / "run.json", state)
             exitcode = process.wait()
             state["command_finished_at"] = time.time()
+            state["command_finished_monotonic_s"] = time.perf_counter()
     except InterruptedError:
         pass
     except BaseException as error:
@@ -213,6 +226,7 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
         state["source_unchanged"] = state["source_at_finish"] == metadata["source"]
         state.update(
             finished_at=time.time(),
+            finished_monotonic_s=time.perf_counter(),
             load_average_at_finish=list(os.getloadavg()),
             exitcode=exitcode,
             signal=received_signal,
@@ -228,5 +242,7 @@ def run(output: Path, workers: int, extra_args: list[str], lock: Path | None) ->
     if received_signal:
         return 128 + received_signal
     if exitcode == 0 and not summary["successful_test_baseline"]:
+        return 2
+    if exitcode is None:
         return 2
     return exitcode if exitcode >= 0 else 128 - exitcode

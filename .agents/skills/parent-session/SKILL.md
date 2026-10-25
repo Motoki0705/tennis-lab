@@ -19,7 +19,7 @@ description: 人間が会話で親issueの番号・URLと担当意図を示す�
 dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept` で結合してから
 [開発workflow](../../ops/parent/development_workflow.md) に従う。下の手動担当のregister/checking/agreeを繰り返さない。
 既存の自律根拠とissue/コメント・正式関係・依存・採用状態を照合し、通常の実装判断は親が具体化する。
-人間合意や共有基盤許可を生成せず、重要な未決事項は理由・再開条件付きで待機する。
+人間合意を生成せず、重要な未決事項は理由・再開条件付きで待機する。
 同じprivate stateでworkerとreview/mergeを扱う。Projectへの節目の反映も開発workflowを参照する。
 
 ## 担当と要件を確定する
@@ -61,7 +61,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    自律親は開発workflowの `start-worker`（delegate → dispatcher start-child）、
    手動親は `delegate` の `action: launch` 後に [共通ランナー](../../ops/lib/README.md) を使い、この親セッション内で直ちに起動する。
    先に起動した子の完了を待たず、残る `launchable_children` を再計算してすべて委任する。
-   子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件と共有pytest lockを渡す。
+   子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件を渡す。
    子が実装・検証・PRを作り、親が成果物と検証記録を集約する。workerの終了はrunnerの証拠と照合し、
    `record-worker-ended` で当該 `delegation_id` の予約枠を解放する。PR作成や停止記録だけから終了を推測しない。
 3. PRに各子を閉じる指示を記載し、`record-result` で子の成果物欄にPRと検証結果を残す。
@@ -79,7 +79,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
   親issueの進捗に起動予約の一覧・起動可能な子・待機理由が表示されることを確認する。
 - 人間の判断待ちは**その子だけを `stop`** し、影響する依存子だけを保留する。
   起動時にも適用し、独立した子は同じターンで起動・継続する。
-- pytestは [共有lockラッパー](../../ops/parent/README.md#pytest共有lock) で1件ずつ実行する。
+- pytestは [並列実行の手順](../../ops/parent/README.md#pytestの並列実行) に従い、親・子・worktree間で並列実行してよい。共有lockは使わない。
   テスト待ちはworker全体を逐次にする理由にしない。GPU・Blenderは既存の
   [training queue](../training-queue/SKILL.md) の `half` / `all` 枠とメインrepoの共有stateを使う。
 
@@ -91,14 +91,12 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    競合や未確定の仕様を解消できなければ、その子に理由を記録し、独立した子を進める。
 2. [stacked branchのCLI手順](../../ops/parent/README.md#stacked-branchの確認とrebase) に従い、
    起動時の依存headを固定して `delegate` する。CLIは全依存headが子のHEADの祖先であることを検査する。
-   stacked branchのPR（`Closes #子`）は、先行PRのmerge後にrebaseしてから作る。親単位レビューとmerge gateは
-   全open子PRの集合をレビュー時の対象と照合するため、先行PRのレビュー後に後続のPRを開くと
-   先行PRのgateが `pr_set_changed` で止まる。それまではbranchのpushと子issueへの記録にとどめる。
+   stacked branchのPR（`Closes #子`）は先行branchをbaseとして早期に作成・レビューできる。
    先行branchが更新されたら差分・インターフェースを確認して積み直す。
-3. 先行PRのmerge後は、固定した古い依存headを境界としてmainへ `rebase --onto` する。
-   squash mergeでも先行の変更を重複させず、子自身の差分・テストを確認しPRのbaseをmainへ変更する。
-   レビュー対象のhead/base/diffが変わるため、親の対象固定はrebase後に行う。
-   既存レビューのcoverageを変更後へ流用せず、必要な新要求は理由付きで明示する。自動再レビューはしない。
+3. 先行PRのmerge後は、固定した古い依存headを境界としてmainへ `rebase --onto` し、
+   子自身の差分・テストを確認してPRのbaseをmainへ変更する。
+   [reviewの継承条件](../../ops/review/README.md#base取込みrebase後の継承) を満たせば再レビューせず、
+   coverageと解消確認を引き継ぐ。それ以外の追加変更は親がresolveする。mergeは依存順に行う。
 
 ## 進捗と部分停止を扱う
 
@@ -113,21 +111,19 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 
 ## レビュー要求と完了確認
 
-親が準備できたと判断した時点で、その時点の対象PR群を確定し、`review-prepare` で
-head/base/merge-base/diff SHA-256とreview run IDを固定する。
-PR群・受入条件・統合上の確認点を明示して `review-request` を実行し、READMEのJSON契約で
+親が準備できたopen子PRを選び、`review-request --prs` に成果の証拠と受入条件・統合上の確認点を渡す。
+終了記録の照合・成果登録・対象固定・明示指示をまとめ、READMEのJSON契約で
 [親単位レビュー入口](../../ops/review/README.md) の `parent_review.py run --request` へ引き渡す。
 担当親自身が同じ環境・stateで実行する。PR作成・push・CI完了はレビュー指示にしない。
 
 結果を受領したら状態と証拠を記録し、阻害指摘を担当子へ戻す。修正差分・CI・回帰テスト・
 指摘解消を親が確認し、`parent_review.py resolve` で指摘ごとの修正head・実差分・CI・回帰テスト・
 解消根拠を記録する。coverage不成立・失敗・部分結果を成功にしない。自動再レビューを起動しない。
-障害後の再送でもCodexは再実行しない。追加のレビューが必要なら理由と新しいrun IDの明示指示を残す。
+起動回数0の準備失敗だけは同run IDで明示再試行でき、起動後の障害では再実行しない。追加のレビューが必要なら理由と新しいrun IDの明示指示を残す。
 結果を受領した証拠を `review-state --state result_received`、修正差分・CI・回帰テストと指摘解消の確認を
 `review-state --state fixes_verified` へ記録する。指摘なしでも親の確認を記録する。
 続けて [merge gate](../../ops/review/README.md#merge-gate) の `merge_gate.py --parent N merge` を明示実行する。
 既定のdry-runで理由と実効設定を読み、人間が有効化を合意済みならREADMEの環境変数で実mergeする。
-共有基盤を含めた親mergeの合意が既にある場合は、同READMEの `shared-permission` で根拠を記録する。
 条件を満たすPRは依存順に進み、親全体の完了まで独立PRをためない。
 merge後の子の自動closeと親進捗への反映を確認する。停止・未完了や試行済み記録が出たら、
 実状態と保存証拠を照合して復旧し、gateを通すための自動再レビューや同headへの二重mergeを行わない。
