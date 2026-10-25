@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "scope": "#1403 targeted CPU files",
+  "observations": [
+    {
+      "version": "before",
+      "source": {
+        "commit": "502b2909d71b7a1d374e9f9f72701824c62b275e",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "workers": 0,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.13.0"
+      },
+      "cpu_model": "AMD Ryzen 7 9700X 8-Core Processor",
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "selected_count": 114,
+      "counts": {
+        "passed": 114
+      },
+      "test_command_wall_s": 13.279659768000101,
+      "files": [
+        {
+          "count": 90,
+          "file": "tests/unit/utils/models/components/test_block.py",
+          "phase_s": {
+            "call": 0.8342773989988927,
+            "setup": 0.16038287799892714,
+            "teardown": 0.02667122399930122
+          }
+        },
+        {
+          "count": 24,
+          "file": "tests/unit/tasks/ball_detection/model_io/test_predict.py",
+          "phase_s": {
+            "call": 0.14634703499950774,
+            "setup": 0.03675152699906903,
+            "teardown": 0.008856981000462838
+          }
+        }
+      ],
+      "fixtures": [
+        {
+          "count": 114,
+          "errors": 0,
+          "fixture": "tests.conftest._deterministic_seed [function]",
+          "setup_s": 0.12336182399963036,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 382,
+          "errors": 0,
+          "fixture": "_pytest.python.get_direct_param_fixture_func [function]",
+          "setup_s": 0.009090867996974339,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "complete": true
+    },
+    {
+      "version": "after",
+      "source": {
+        "commit": "67efdf19bf38cbfabb9d745ad5e368ee3108a527",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "workers": 0,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.13.0"
+      },
+      "cpu_model": "AMD Ryzen 7 9700X 8-Core Processor",
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "selected_count": 82,
+      "counts": {
+        "passed": 82
+      },
+      "test_command_wall_s": 7.434819394999977,
+      "files": [
+        {
+          "count": 69,
+          "file": "tests/unit/utils/models/components/test_block.py",
+          "phase_s": {
+            "call": 0.27585835299987593,
+            "setup": 0.09015204000024823,
+            "teardown": 0.01769870199950674
+          }
+        },
+        {
+          "count": 4,
+          "file": "tests/unit/tasks/ball_detection/model_io/test_predict.py",
+          "phase_s": {
+            "call": 0.029095679999954882,
+            "setup": 0.006043848999979673,
+            "teardown": 0.0017533509999339003
+          }
+        },
+        {
+          "count": 9,
+          "file": "tests/unit/tasks/ball_detection/model_io/test_mdd_coordinates.py",
+          "phase_s": {
+            "call": 0.0031967119998626004,
+            "setup": 0.01362091999999393,
+            "teardown": 0.00260644299987689
+          }
+        }
+      ],
+      "fixtures": [
+        {
+          "count": 82,
+          "errors": 0,
+          "fixture": "tests.conftest._deterministic_seed [function]",
+          "setup_s": 0.06531272299889679,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 182,
+          "errors": 0,
+          "fixture": "_pytest.python.get_direct_param_fixture_func [function]",
+          "setup_s": 0.004866409995884169,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "complete": true
+    }
+  ],
+  "limitations": [
+    "one local observation per revision",
+    "other local verification was active",
+    "no claim of CI wall-time or warm-cache median/p95 improvement"
+  ],
+  "mutations": [
+    {
+      "version": "before",
+      "mutation": "dense_dtype",
+      "exitcode": 1,
+      "failures": 6,
+      "errors": 0
+    },
+    {
+      "version": "before",
+      "mutation": "rgb_dtype",
+      "exitcode": 1,
+      "failures": 4,
+      "errors": 0
+    },
+    {
+      "version": "before",
+      "mutation": "dpt_wiring",
+      "exitcode": 1,
+      "failures": 12,
+      "errors": 0
+    },
+    {
+      "version": "after",
+      "mutation": "dense_dtype",
+      "exitcode": 1,
+      "failures": 7,
+      "errors": 0
+    },
+    {
+      "version": "after",
+      "mutation": "rgb_dtype",
+      "exitcode": 1,
+      "failures": 5,
+      "errors": 0
+    },
+    {
+      "version": "after",
+      "mutation": "dpt_wiring",
+      "exitcode": 1,
+      "failures": 2,
+      "errors": 0
+    }
+  ]
+}
