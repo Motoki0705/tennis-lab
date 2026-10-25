@@ -41,6 +41,8 @@ lock待ちを含め、起動後のsourceは固定します。待機中に変わ�
 
 `run` はpytestの非0終了を保持します。pytestが成功しても計測に欠損があれば終了値2です。
 `report` も成功した観測を確立できなければ終了値2です。欠損を別runで埋めません。
+cancelや起動失敗でテストcommandが始まらなかった場合、`run.json` のテスト終了値は
+nullです。CLI自体のsignal/error終了値とは分けます。
 
 ## 成果物と時間の意味
 
@@ -58,6 +60,12 @@ lock待ちを含め、起動後のsourceは固定します。待機中に変わ�
 runner/session/JUnit欠測、worker収集不一致、phase欠落・重複、JUnitとの件数・identity・
 時間の不一致、実行中のsource変更があれば不成立です。失敗とcancelは成功にしません。
 収集中のmodule skip/errorは選択nodeidに対応しない場合があるため別eventです。
+
+UTC時刻はActionsとの対応に使います。command、lock待機、起動、収集、後処理の区間は
+同じhost上の `time.perf_counter` で測り、host時計の補正に影響されない経過時間を残します。
+後処理の起点は最後のworker phase reportです。実時刻の差と単調時計の経過時間との差も
+別に保存します。単調時計の観測が欠けた区間は未確定とし、成功baselineにはしません。
+実時刻の引き算で埋め合わせません。
 
 phase時間は**worker間の経過時間の合計**で、CPU時間やjob実時間ではありません。
 起動はPython/spin/pytestからplugin importまで、worker収集はsession開始から収集完了まで

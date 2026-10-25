@@ -47,6 +47,8 @@ partial directory without rerunning tests:
 `run` preserves pytest's nonzero exit status; an otherwise successful run with
 incomplete measurements exits 2. `report` exits 2 unless it can establish a
 successful test observation. It never repairs missing evidence with another run.
+If cancellation or a launcher failure prevents the test command from starting,
+`run.json` keeps its test exit status null; the CLI's signal/error status is separate.
 
 ## Artifacts and time definitions
 
@@ -67,11 +69,18 @@ changes invalidate it. Failure and cancellation remain observations, never succe
 Collection-time module skips/errors remain separate events because they do not
 necessarily correspond to a selected test nodeid.
 
+UTC timestamps support correlation with Actions. Command, lock-wait, startup,
+collection and post-test intervals use `time.perf_counter` on the measured host,
+so host clock corrections cannot change elapsed costs. Post-test time starts at
+the final worker phase report. The wall-clock difference from monotonic command
+time is recorded separately. Missing monotonic observations leave elapsed values
+unavailable and prevent a successful baseline; UTC subtraction is not a fallback.
+
 Phase totals are **summed elapsed time across workers**, not CPU time or job wall
 time. Startup includes Python/spin/pytest before plugin import; worker collection
 is session start to collection completion; timestamps and the controller's final
 worker-collection notification expose scheduling/startup differences. Post-test
-time is the last phase report to command exit. Fixture setup counts cover actual
+time is the last worker phase report to command exit. Fixture setup counts cover actual
 executions after dependency resolution, including errors; they exclude fixture
 finalizers, which remain in test teardown. Fixture setup is contained in test
 setup and must not be added to it. Shared fixture setup is attributed to its
