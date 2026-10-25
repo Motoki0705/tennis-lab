@@ -14,6 +14,7 @@ from typing import Any, TextIO
 import pytest
 
 _IMPORTED_AT = time.time()
+_IMPORTED_MONOTONIC_S = time.perf_counter()
 _STREAM: TextIO | None = None
 _WRITE_SECONDS = 0.0
 _ROLE = os.environ.get("PYTEST_XDIST_WORKER", "controller")
@@ -34,7 +35,17 @@ def _emit(event: str, **data: Any) -> None:
     if _STREAM is None:
         return
     started = time.perf_counter()
-    _STREAM.write(json.dumps({"event": event, "at": time.time(), **data}) + "\n")
+    _STREAM.write(
+        json.dumps(
+            {
+                "event": event,
+                "at": time.time(),
+                "monotonic_s": time.perf_counter(),
+                **data,
+            }
+        )
+        + "\n"
+    )
     _STREAM.flush()
     _WRITE_SECONDS += time.perf_counter() - started
 
@@ -51,7 +62,13 @@ def pytest_configure(config: pytest.Config) -> None:
     root = Path(destination)
     root.mkdir(parents=True, exist_ok=True)
     _STREAM = (root / f"events-{_ROLE}-{os.getpid()}.jsonl").open("x", encoding="utf-8")
-    _emit("configured", role=_ROLE, pid=os.getpid(), imported_at=_IMPORTED_AT)
+    _emit(
+        "configured",
+        role=_ROLE,
+        pid=os.getpid(),
+        imported_at=_IMPORTED_AT,
+        imported_monotonic_s=_IMPORTED_MONOTONIC_S,
+    )
 
 
 def pytest_sessionstart(session: pytest.Session) -> None:
@@ -88,6 +105,7 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
         # xdist serializes custom report fields after this hook. Observe existing
         # per-test thread changes without importing torch or changing its state.
         report.ci_torch_threads = _torch_threads()
+        report.ci_reported_monotonic_s = time.perf_counter()
         return
     _emit(
         "phase",
@@ -97,6 +115,9 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
         duration_s=report.duration,
         start=report.start,
         stop=report.stop,
+        reported_monotonic_s=getattr(
+            report, "ci_reported_monotonic_s", time.perf_counter()
+        ),
         worker=getattr(report, "worker_id", "controller"),
         wasxfail=getattr(report, "wasxfail", None),
         torch_threads=getattr(report, "ci_torch_threads", _torch_threads()),
@@ -112,6 +133,12 @@ def pytest_fixture_setup(
     outcome = "passed"
     try:
         return (yield)
+    except pytest.skip.Exception:
+        outcome = "skipped"
+        raise
+    except pytest.xfail.Exception:
+        outcome = "xfailed"
+        raise
     except BaseException:
         outcome = "error"
         raise

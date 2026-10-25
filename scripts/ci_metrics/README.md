@@ -17,13 +17,14 @@ From the checkout being measured, with its locked environment installed:
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-The destination must be empty. Local runs acquire the same host-wide lock as
-`.agents/ops/pytest_locked.sh`: `${PYTEST_LOCK}` or
-`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock`.
-`--lock /absolute/path` explicitly overrides it. Keep the shared default for actual
-measurements. Only isolated regression fixtures use temporary locks. GitHub-hosted
-Actions runners need no local host lock. Ordinary regression still uses the
-existing wrapper with its fixed four workers; this tool does not change it.
+The destination must be empty. Runs do not acquire a host-wide pytest lock,
+matching the repository’s parallel pytest policy. `PYTEST_LOCK` is ignored.
+For an explicitly coordinated performance comparison, `--lock /absolute/path`
+serializes only measurements that opt into that path. It does not exclude ordinary
+pytest processes: record competing host load and compare under matching conditions.
+
+Keep the source unchanged from launch, including lock wait. If it changes while
+queued, start a fresh process so already imported measurement code cannot be stale.
 
 An optional subset goes after `--`, for example `-- tests/unit/utils/geometry/test_angles.py`.
 Any extra arguments make `full_cpu_target` false. A subset cannot establish the
@@ -44,6 +45,8 @@ partial directory without rerunning tests:
 `run` preserves pytest's nonzero exit status; an otherwise successful run with
 incomplete measurements exits 2. `report` exits 2 unless it can establish a
 successful test observation. It never repairs missing evidence with another run.
+If cancellation or a launcher failure prevents the test command from starting,
+`run.json` keeps its test exit status null; the CLI's signal/error status is separate.
 
 ## Artifacts and time definitions
 
@@ -64,11 +67,18 @@ changes invalidate it. Failure and cancellation remain observations, never succe
 Collection-time module skips/errors remain separate events because they do not
 necessarily correspond to a selected test nodeid.
 
+UTC timestamps support correlation with Actions. Command, lock-wait, startup,
+collection and post-test intervals use `time.perf_counter` on the measured host,
+so host clock corrections cannot change elapsed costs. Post-test time starts at
+the final worker phase report. The wall-clock difference from monotonic command
+time is recorded separately. Missing monotonic observations leave elapsed values
+unavailable and prevent a successful baseline; UTC subtraction is not a fallback.
+
 Phase totals are **summed elapsed time across workers**, not CPU time or job wall
 time. Startup includes Python/spin/pytest before plugin import; worker collection
 is session start to collection completion; timestamps and the controller's final
 worker-collection notification expose scheduling/startup differences. Post-test
-time is the last phase report to command exit. Fixture setup counts cover actual
+time is the last worker phase report to command exit. Fixture setup counts cover actual
 executions after dependency resolution, including errors; they exclude fixture
 finalizers, which remain in test teardown. Fixture setup is contained in test
 setup and must not be added to it. Shared fixture setup is attributed to its

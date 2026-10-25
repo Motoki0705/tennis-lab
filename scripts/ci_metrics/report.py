@@ -17,6 +17,18 @@ def _json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text()) if path.exists() else {}
 
 
+def _junit_address(nodeid: str) -> tuple[str, str]:
+    address, bracket, parameters = nodeid.partition("[")
+    parts = address.split("::")
+    parts[0] = parts[0].replace("/", ".").removesuffix(".py")
+    parts[-1] += bracket + parameters
+    return ".".join(parts[:-1]), parts[-1]
+
+
+def _elapsed(stop: float | None, start: float | None) -> float | None:
+    return stop - start if stop is not None and start is not None else None
+
+
 def summarize(root: Path) -> dict[str, Any]:
     report_started = time.perf_counter()
     issues: list[str] = []
@@ -32,6 +44,13 @@ def summarize(root: Path) -> dict[str, Any]:
             except json.JSONDecodeError:
                 issues.append(f"invalid event JSON: {path.name}:{number}")
         configured = [e for e in events if e.get("event") == "configured"]
+        if any(e.get("monotonic_s") is None for e in events):
+            issues.append(f"missing monotonic event timing: {path.name}")
+        if any(
+            e["event"] == "phase" and e.get("reported_monotonic_s") is None
+            for e in events
+        ):
+            issues.append(f"missing monotonic phase report timing: {path.name}")
         if len(configured) != 1:
             issues.append(f"missing/duplicate process configuration: {path.name}")
             continue
@@ -56,10 +75,23 @@ def summarize(root: Path) -> dict[str, Any]:
                 "pid": configured[0]["pid"],
                 "plugin_import_at": configured[0]["imported_at"],
                 "configured_at": configured[0]["at"],
+                "plugin_import_monotonic_s": configured[0].get("imported_monotonic_s"),
+                "configured_monotonic_s": configured[0].get("monotonic_s"),
                 "session_start_at": next(
                     (e["at"] for e in events if e["event"] == "session_start"), None
                 ),
                 "collection_finished_at": collections[0]["at"] if collections else None,
+                "session_start_monotonic_s": next(
+                    (
+                        e.get("monotonic_s")
+                        for e in events
+                        if e["event"] == "session_start"
+                    ),
+                    None,
+                ),
+                "collection_finished_monotonic_s": (
+                    collections[0].get("monotonic_s") if collections else None
+                ),
                 "first_phase_at": first_phase,
                 "finish": finished[0] if len(finished) == 1 else None,
                 "deselected_count": sum(
@@ -72,11 +104,21 @@ def summarize(root: Path) -> dict[str, Any]:
                 continue
             key = f"{event['source']} [{event['scope']}]"
             item = fixtures.setdefault(
-                key, {"fixture": key, "count": 0, "setup_s": 0.0, "errors": 0}
+                key,
+                {
+                    "fixture": key,
+                    "count": 0,
+                    "setup_s": 0.0,
+                    "errors": 0,
+                    "skipped": 0,
+                    "xfailed": 0,
+                },
             )
             item["count"] += 1
             item["setup_s"] += event["setup_s"]
-            item["errors"] += event["outcome"] != "passed"
+            item["errors"] += event["outcome"] == "error"
+            item["skipped"] += event["outcome"] == "skipped"
+            item["xfailed"] += event["outcome"] == "xfailed"
     metadata = _json(root / "environment.json")
     run = _json(root / "run.json")
     if not metadata:
@@ -84,7 +126,28 @@ def summarize(root: Path) -> dict[str, Any]:
     if not run or run.get("finished_at") is None:
         issues.append("missing runner completion")
     if run.get("source_unchanged") is False:
-        issues.append("source changed during test execution")
+        issues.append("source changed after measurement launch")
+    if run.get("started_at") is not None and (
+        run.get("started_monotonic_s") is None
+        or run.get("command_finished_monotonic_s") is None
+    ):
+        issues.append("missing monotonic command timing")
+    if (
+        run.get("started_monotonic_s") is not None
+        and run.get("command_finished_monotonic_s") is not None
+        and run["command_finished_monotonic_s"] < run["started_monotonic_s"]
+    ):
+        issues.append("negative monotonic command duration")
+    for process_row in processes:
+        if any(
+            process_row[key] is None
+            for key in (
+                "plugin_import_monotonic_s",
+                "configured_monotonic_s",
+                "session_start_monotonic_s",
+            )
+        ):
+            issues.append(f"missing monotonic process timing: {process_row['role']}")
     workers = metadata.get("workers")
     worker_collections = [e for e in controller if e["event"] == "worker_collection"]
     if workers is not None and workers > 0:
@@ -128,7 +191,7 @@ def summarize(root: Path) -> dict[str, Any]:
             status = "incomplete"
         elif "failed" in outcomes:
             status = "failed"
-        elif any(e.get("wasxfail") for e in reports):
+        elif any(e.get("wasxfail") is not None for e in reports):
             status = "xfailed" if "skipped" in outcomes else "xpassed"
         elif "skipped" in outcomes:
             status = "skipped"
@@ -139,6 +202,7 @@ def summarize(root: Path) -> dict[str, Any]:
                 "nodeid": nodeid,
                 "status": status,
                 "phase_s": {e["phase"]: e["duration_s"] for e in reports},
+                "phase_outcomes": {e["phase"]: e["outcome"] for e in reports},
                 "worker": reports[0]["worker"] if reports else None,
                 "torch_threads": [e.get("torch_threads") for e in reports],
             }
@@ -159,37 +223,41 @@ def summarize(root: Path) -> dict[str, Any]:
             ),
             "skipped": sum(case.find("skipped") is not None for case in cases),
         }
-        if len(cases) != len(phases) + len(collection_results):
+        double_failures = {
+            nodeid
+            for nodeid, events in phases.items()
+            if {e["phase"] for e in events if e["outcome"] == "failed"}
+            >= {"call", "teardown"}
+        }
+        if len(cases) != len(phases) + len(collection_results) + len(double_failures):
             issues.append(
                 "JUnit testcase count differs from execution/collection reports"
             )
-        if not collection_results and junit["failed"] != counts.get("failed", 0):
+        failed_cases = sum(
+            any(e["outcome"] == "failed" for e in events) for events in phases.values()
+        )
+        failed_cases += len(double_failures) + sum(
+            e["outcome"] == "failed" for e in collection_results
+        )
+        skipped_cases = sum(
+            any(e["outcome"] == "skipped" for e in events) for events in phases.values()
+        )
+        skipped_cases += sum(e["outcome"] == "skipped" for e in collection_results)
+        if junit["failed"] != failed_cases:
             issues.append("JUnit failure count differs from phase reports")
-        if not collection_results and junit["skipped"] != counts.get(
-            "skipped", 0
-        ) + counts.get("xfailed", 0):
+        if junit["skipped"] != skipped_cases:
             issues.append("JUnit skip count differs from phase reports")
-        if not collection_results:
-            addresses = []
-            for nodeid in phases:
-                address, bracket, parameters = nodeid.partition("[")
-                address_parts = address.split("::")
-                address_parts[0] = (
-                    address_parts[0].replace("/", ".").removesuffix(".py")
-                )
-                address_parts[-1] += bracket + parameters
-                addresses.append((".".join(address_parts[:-1]), address_parts[-1]))
-            if Counter(addresses) != Counter(
-                (case.get("classname"), case.get("name")) for case in cases
-            ):
-                issues.append("JUnit test identities differ from phase reports")
-            phase_total = sum(
-                e["duration_s"] for events in phases.values() for e in events
+        addresses = [_junit_address(nodeid) for nodeid in [*phases, *double_failures]]
+        addresses.extend(_junit_address(e["nodeid"]) for e in collection_results)
+        if Counter(addresses) != Counter(
+            (case.get("classname"), case.get("name")) for case in cases
+        ):
+            issues.append("JUnit test identities differ from phase reports")
+        phase_total = sum(e["duration_s"] for events in phases.values() for e in events)
+        if abs(junit["time_s"] - phase_total) > 0.001 * len(cases) + 0.01:
+            issues.append(
+                "JUnit total time differs from phase reports (beyond XML rounding)"
             )
-            if abs(junit["time_s"] - phase_total) > 0.001 * len(cases) + 0.01:
-                issues.append(
-                    "JUnit total time differs from phase reports (beyond XML rounding)"
-                )
     except (FileNotFoundError, ET.ParseError, ValueError) as error:
         issues.append(f"missing/invalid JUnit: {type(error).__name__}")
     phase_s = {
@@ -234,32 +302,45 @@ def summarize(root: Path) -> dict[str, Any]:
         row["count"] += 1
         for phase, seconds in item["phase_s"].items():
             row["phase_s"][phase] += seconds
-    started = run.get("started_at")
-    finished_at = run.get("command_finished_at", run.get("finished_at"))
+    started = run.get("started_monotonic_s")
+    command_finished = run.get("command_finished_monotonic_s")
     controller_process = next((p for p in processes if p["role"] == "controller"), None)
-    last_phase_at = max(
-        (e["stop"] for events in phases.values() for e in events), default=None
+    last_phase_report = max(
+        (
+            e["reported_monotonic_s"]
+            for events in phases.values()
+            for e in events
+            if e.get("reported_monotonic_s") is not None
+        ),
+        default=None,
     )
     timing = {
-        "command_to_plugin_import_s": controller_process["plugin_import_at"] - started
-        if controller_process and started
+        "command_to_plugin_import_s": _elapsed(
+            controller_process["plugin_import_monotonic_s"], started
+        )
+        if controller_process
         else None,
-        "plugin_import_to_configure_s": controller_process["configured_at"]
-        - controller_process["plugin_import_at"]
+        "plugin_import_to_configure_s": _elapsed(
+            controller_process["configured_monotonic_s"],
+            controller_process["plugin_import_monotonic_s"],
+        )
         if controller_process
         else None,
         "worker_session_to_collection_s": {
-            p["role"]: p["collection_finished_at"] - p["session_start_at"]
+            p["role"]: _elapsed(
+                p["collection_finished_monotonic_s"], p["session_start_monotonic_s"]
+            )
             for p in processes
-            if p["session_start_at"] and p["collection_finished_at"]
+            if p["collection_finished_at"] is not None
         },
-        "command_to_all_workers_collected_s": max(e["at"] for e in worker_collections)
-        - started
-        if worker_collections and started
-        else None,
-        "last_phase_to_command_exit_s": finished_at - last_phase_at
-        if finished_at and last_phase_at
-        else None,
+        "command_to_all_workers_collected_s": _elapsed(
+            max(
+                (e["monotonic_s"] for e in worker_collections if "monotonic_s" in e),
+                default=None,
+            ),
+            started,
+        ),
+        "last_phase_report_to_command_exit_s": _elapsed(command_finished, last_phase_report),
     }
     summary = {
         "schema_version": 1,
@@ -291,9 +372,15 @@ def summarize(root: Path) -> dict[str, Any]:
         "processes": processes,
         "timing_breakdown": timing,
         "report_generation_s": time.perf_counter() - report_started,
-        "test_command_wall_s": finished_at - started
-        if started and finished_at
-        else None,
+        "test_command_wall_s": _elapsed(command_finished, started),
+        "wall_clock_adjustment_s": (
+            run["command_finished_at"] - run["started_at"] - (command_finished - started)
+            if started is not None
+            and command_finished is not None
+            and run.get("command_finished_at") is not None
+            and run.get("started_at") is not None
+            else None
+        ),
         "event_write_s": sum(
             p["finish"]["event_write_s"] for p in processes if p["finish"]
         ),
@@ -312,9 +399,11 @@ def summarize(root: Path) -> dict[str, Any]:
     lines = [
         "# CPU test measurements",
         "",
-        f"Successful test baseline: **{successful}**; full CPU target: **{summary['full_cpu_baseline']}**.",
+        f"Successful test baseline: **{successful}**; successful full CPU baseline: **{summary['full_cpu_baseline']}**.",
+        f"Full CPU target requested: **{metadata.get('full_cpu_target')}**.",
         f"Selected: {len(nodeids)}; outcomes: `{json.dumps(counts, sort_keys=True)}`.",
         f"Command wall seconds: {summary['test_command_wall_s']}; lock wait seconds: {run.get('lock_wait_s')}.",
+        f"Wall-clock adjustment relative to monotonic elapsed seconds: {summary['wall_clock_adjustment_s']}.",
         f"Summed worker phase seconds: `{json.dumps(phase_s, sort_keys=True)}`.",
         f"Largest individual pytest process RSS (KiB, not tree peak): {summary['largest_process_max_rss_kib']}.",
         f"Measured event serialization/write seconds (lower bound on overhead): {summary['event_write_s']:.4f}.",

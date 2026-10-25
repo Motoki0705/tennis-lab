@@ -13,8 +13,6 @@ from typing import Any, cast
 from parent.snapshot import git
 from parent_review_policy import BaseAdvance, hex_value, snapshots, validate_result
 
-MAX_DIFF_CHARS = 200_000
-
 
 def changed_paths(before: str, after: str) -> list[str]:
     raw = git(
@@ -183,27 +181,51 @@ def build_prompt(
     diffs: Mapping[int, bytes],
     template: str,
 ) -> str:
-    remaining = MAX_DIFF_CHARS
-    parts = []
-    for pr in request["prs"]:
-        n = pr["number"]
-        text = diffs[n].decode("utf-8", errors="replace")
-        excerpt = text[:remaining]
-        remaining -= len(excerpt)
-        note = (
-            "全文" if len(excerpt) == len(text) else "一部のみ。全文ファイルを必ず読む"
-        )
-        parts.append(
-            f"### PR #{n}: {note}\nhead: pr-{n}/、全文diff: pr-{n}.diff、base規則: base-{n}-AGENTS.md\n```diff\n{excerpt}\n```"
-        )
-    # Large issue/PR bodies also stay in the full context file; never silently omit them.
-    metadata = json.dumps(context, ensure_ascii=False, indent=2)
-    if len(metadata) > MAX_DIFF_CHARS:
-        metadata = "大きな入力のため context.json の全文を必ず読んでください。"
+    targets = [
+        {**pr, "checkout": f"pr-{pr['number']}/", "diff": f"pr-{pr['number']}.diff"}
+        for pr in request["prs"]
+    ]
     return string.Template(template).substitute(
         parent=request["parent_issue"],
         run_id=request["review_run_id"],
-        request=json.dumps(request, ensure_ascii=False, indent=2),
-        context=metadata,
-        diffs="\n\n".join(parts),
+        instruction=context.get(
+            "instruction", "親・子の要件と対象PRの正しさを確認してください。"
+        ),
+        targets=json.dumps(targets, ensure_ascii=False, separators=(",", ":")),
     )
+
+
+def verify_rebased_snapshot(
+    original: Mapping[str, Any], current: Mapping[str, Any]
+) -> bool:
+    """Only base-touched files may change a PR's own per-file delta."""
+    if (
+        original["number"] != current["number"]
+        or original["branch"] != current["branch"]
+    ):
+        return False
+    base_paths = set(changed_paths(original["base_sha"], current["base_sha"]))
+
+    def deltas(entry: Mapping[str, Any]) -> dict[bytes, bytes]:
+        raw = git(
+            "diff",
+            "--raw",
+            "--no-abbrev",
+            "--no-renames",
+            "--no-ext-diff",
+            "--no-textconv",
+            "-z",
+            entry["merge_base_sha"],
+            entry["head_sha"],
+            "--",
+        )
+        parts = raw.split(b"\0")
+        if parts[-1] != b"" or (len(parts) - 1) % 2:
+            raise ValueError("invalid per-file git delta")
+        return dict(zip(parts[1:-1:2], parts[:-1:2], strict=True))
+
+    before, after = deltas(original), deltas(current)
+    for path in before.keys() | after.keys():
+        if before.get(path) != after.get(path) and os.fsdecode(path) not in base_paths:
+            return False
+    return True

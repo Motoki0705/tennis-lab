@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 from .actions import fetch_attempts, markdown, summarize_attempts
@@ -19,7 +18,7 @@ def main() -> int:
     runner.add_argument("--output", required=True, type=Path)
     runner.add_argument("--workers", type=int, default=2)
     runner.add_argument(
-        "--lock", type=Path, help="Absolute host-wide pytest lock (local only)"
+        "--lock", type=Path, help="Optional absolute lock for a coordinated comparison"
     )
     runner.add_argument("pytest_args", nargs=argparse.REMAINDER)
     report = sub.add_parser(
@@ -48,21 +47,10 @@ def main() -> int:
     if args.command == "run":
         if args.workers < 0:
             parser.error("--workers must be nonnegative")
-        state_root = Path(
-            os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))
-        )
-        lock: Path | None = args.lock or Path(
-            os.environ.get(
-                "PYTEST_LOCK", str(state_root / "tennis-lab-agents/pytest.lock")
-            )
-        )
-        # Actions runners are isolated hosts. Local callers always share the lock.
-        if os.environ.get("GITHUB_ACTIONS") == "true" and args.lock is None:
-            lock = None
         extra = args.pytest_args
         if extra[:1] == ["--"]:
             extra = extra[1:]
-        return run(args.output, args.workers, extra, lock)
+        return run(args.output, args.workers, extra, args.lock)
     if args.command == "report":
         args.output.mkdir(parents=True, exist_ok=True)
         result = summarize(args.output)

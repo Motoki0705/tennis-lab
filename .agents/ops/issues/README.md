@@ -175,7 +175,7 @@ anchorが別の正式親へ移っても、元の親・分割子の出典は対�
 `parse_task_metadata(body)` は位置・未知キー・canonical JSON・重複・digest・sourceとの一致を検査する。
 各bindingは `source: {report_number, proposal_id, option}` と `proposal_sha256` を持ち、report番号・ID順に並べる。
 内容digestは `ParsedProposal.snapshot()` のcanonical JSON SHA-256で、全選択肢・タイトル・目的・本文・受入条件を含む。
-採用チェック・選択値・関連親・見送りは別途現在値を照合する。digestから人間合意・共有基盤承認を生成しない。
+採用チェック・選択値・関連親・見送りは別途現在値を照合する。digestから人間合意を生成しない。
 
 `plan_sha256` と `node` は、作成応答を失ったときに同じ計画のissueを全open/closed状態から復旧する識別子。
 actor/sessionの所有権を表さない。既存作業をreuseするときは内容・タイトル・state・正式親・labelsを保持し、

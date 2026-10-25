@@ -331,7 +331,6 @@ def select_prs(
         for p in prs
         if closing_issues(p.get("body") or "", repo) & child_numbers
     }
-    expected = {n for n in related if by_number[n]["state"] == "open"}
     for n in selected:
         if n not in by_number or n not in related:
             raise ValueError(f"PR #{n}: missing or unrelated to this parent")
@@ -340,10 +339,6 @@ def select_prs(
             raise ValueError(f"PR #{n}: closed/draft or unknown draft state")
         if pr["head"]["repo"]["full_name"].casefold() != repo.casefold():
             raise ValueError(f"PR #{n}: fork is not supported")
-    if set(selected) != expected:
-        raise ValueError(
-            f"PR set has missing/extra entries: missing={sorted(expected - set(selected))}, extra={sorted(set(selected) - expected)}"
-        )
     return [by_number[n] for n in sorted(selected)]
 
 
