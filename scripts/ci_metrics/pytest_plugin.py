@@ -112,6 +112,7 @@ def pytest_runtest_logreport(report: pytest.TestReport) -> None:
         nodeid=report.nodeid,
         phase=report.when,
         outcome=report.outcome,
+        failure_detail=str(report.longrepr) if report.failed else None,
         duration_s=report.duration,
         start=report.start,
         stop=report.stop,
