@@ -1,4 +1,4 @@
-<!-- knowledge-review: ceb483a769ce3598c8e25950d121dc417ad0cde2f1f410d4b54dc4357a167003 on 2026-10-25 -->
+<!-- knowledge-review: 16742bf6f373f7e29baa888f433f3d36739eae9951646a6d6c4fe7b839d5620a on 2026-10-25 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-24（ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
@@ -549,7 +549,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-25の[固定6000枚・シーン多様性比較の準備](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)では、DINOv3-S＋幅384・33160更新、train5500/合成val500と元の実画像val2211枚を固定する入口を追加した。生成と本番GPU確認は継続中で、CPUの入出力・学習評価検証を精度結果として扱わない。既存のモデル採用判断は変更しない。
+2026-10-25の[固定6000枚・シーン多様性比較の準備](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)では、DINOv3-S＋幅384・33160更新、train5500/合成val500と元の実画像val2211枚を固定する入口を追加した。生成データの照合とRTX 5060 Tiでのbatch8・3更新の容量確認が完了した。実験精度は未測定で、次はユーザー指示によるDrive保存とColab L4の4条件学習をサブエージェントが実行する。既存のモデル採用判断は変更しない。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 
