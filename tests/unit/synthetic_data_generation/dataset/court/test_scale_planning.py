@@ -64,7 +64,10 @@ def inputs(method, captured_cameras, multi_court_layout, preset="sfm_bounded"):
     )
 
 
-@pytest.mark.parametrize("method", list(TrajectoryMethod))
+@pytest.mark.parametrize(
+    "method",
+    [m for m in TrajectoryMethod if m is not TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES],
+)
 def test_every_method_retains_common_camera_target_and_projection(
     method, captured_cameras, multi_court_layout
 ):

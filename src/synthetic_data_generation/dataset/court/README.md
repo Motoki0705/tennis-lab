@@ -1185,6 +1185,22 @@ Those orchestration responsibilities remain with the distributed caller.
 
 ### Dataset-version consumer contract
 
+An explicit `saved_train_trajectories` importer is also available through
+`scale.saved_train`. It requires caller-pinned descriptor/index hashes and reads
+the published v3 metadata's **existing train groups** directly. It does not run
+budget selection or split assignment. The complete original group inventory,
+split, centre, shape, orientation, vertical phase, selected view, resolution and
+arc policy are frozen with the plan and checked by the scale validator. Saved
+views are the authority for this method; `GeometryRecipe`'s procedural HFOV and
+look-height layer lists are unused. Its 4096-interval base arc table must reproduce
+the source camera positions within 1e-9 m and retain the original base counts.
+Density levels add nested points on those same curves. The new jitter stream is
+scale's stable-point-ID uniform-area disk RNG, with the saved radius and an
+explicit generation seed; it does not reuse legacy sample-index seeds. This
+method is deliberately excluded from procedural CLI `--methods`; callers must
+use `pin_saved_source`, `saved_train_header`, and `iter_saved_train_groups`, then
+the common frozen-request/publication API. Source stores remain immutable.
+
 A version is an explicit `*.dataset.json` under the output root. Its
 explicit `schema=court_scale_dataset_version_v1` (comparison) or
 `court_scale_dataset_version_v2` (production), content-derived `dataset_version`,

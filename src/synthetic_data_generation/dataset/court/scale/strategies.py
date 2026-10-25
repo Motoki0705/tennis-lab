@@ -101,6 +101,10 @@ class CurveSequence:
     ) -> None:
         if not isinstance(method, TrajectoryMethod):
             raise ValueError("An explicit TrajectoryMethod is required.")
+        if method is TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES:
+            raise ValueError(
+                "Saved train trajectories require the explicit saved_train importer."
+            )
         if (method is TrajectoryMethod.GRID_BUDGET_REPLAY) != (
             replay_configuration is not None
         ):

@@ -22,6 +22,7 @@ class TrajectoryMethod(StrEnum):
     SOBOL = "sobol"
     CAPTURE_LOCAL = "capture_local"
     OPEN_BEZIER = "open_bezier"
+    SAVED_TRAIN_TRAJECTORIES = "saved_train_trajectories"
 
 
 def canonical_bytes(value: Any) -> bytes:
