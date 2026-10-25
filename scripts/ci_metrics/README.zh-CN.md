@@ -7,6 +7,9 @@
 集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
 2 个 worker、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
 
+pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保持现有`ci_watch`对失败nodeid和setup异常的识别。输出pipe关闭时launcher失败并停止测试process group。
+
+
 ## 执行与中断恢复
 
 在待测 checkout 中安装锁定环境后运行：
