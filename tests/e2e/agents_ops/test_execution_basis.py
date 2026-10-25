@@ -1256,6 +1256,7 @@ def test_review_collection_rejects_new_closing_child_after_result_adoption(
     assert r.calls() == []
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_result_and_merge_gate_reject_missing_closing_child_requirements(
     gate_env: GateEnv,
 ) -> None:
