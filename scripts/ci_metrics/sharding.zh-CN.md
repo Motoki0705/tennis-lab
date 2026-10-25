@@ -52,6 +52,6 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 需另测Actions耗时及runner成本。显式拆分merge gate、parent session、board messages
 三个file，并在收集时检查function fixture隔离；其他file保持整体。
 
-当前完整收集有 **12,774个唯一CPU用例**，四片分配2,927 / 2,994 / 3,442 / 3,411例，并验证fixture隔离。这是收集证据，不是执行成功或性能结果。新增2个file及23个变更/新增拆分case使用显式估计。
+当前完整收集有 **12,775个唯一CPU用例**，四片分配2,927 / 2,994 / 3,442 / 3,412例，并验证fixture隔离。这是收集证据，不是执行成功或性能结果。新增2个file及23个变更/新增拆分case使用显式估计。
 
 依赖准备检查已有ffmpeg/rclone版本，仅安装缺失binary，再验证两个命令。apt各限180秒，网络重试2次、超时30秒，Actions step上限8分钟。7个subprocess场景覆盖已有/缺失、update/install失败、timeout、安装后仍缺失与版本检查失败。

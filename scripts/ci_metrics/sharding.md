@@ -87,6 +87,6 @@ per-job setup/collection; actual Actions wall time and runner cost must be measu
 The explicit split files are merge gate, parent session and board messages; their
 function fixture isolation is checked during collection. Other files stay together.
 
-Current full collection contains **12,774 unique CPU cases**, assigned 2,927 / 2,994 / 3,442 / 3,411 across four shards. Collection validates fixture isolation. This is a collection proof, not a passing execution or a performance result. The two new files and 23 changed/new split-case IDs receive explicit estimates.
+Current full collection contains **12,775 unique CPU cases**, assigned 2,927 / 2,994 / 3,442 / 3,412 across four shards. Collection validates fixture isolation. This is a collection proof, not a passing execution or a performance result. The two new files and 23 changed/new split-case IDs receive explicit estimates.
 
 System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.

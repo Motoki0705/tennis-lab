@@ -55,6 +55,6 @@ fixtureやsuiteが大きく変わったら完全な計測からprofileを更新�
 個別caseへ分けるのはmerge gate・parent session・board messagesの3 fileです。
 function fixtureの独立性は収集時に検査し、その他のfileはまとめます。
 
-現行の全収集は **12,774件の一意なCPU case** で、4 shardへ2,927 / 2,994 / 3,442 / 3,411件を割り当てます。fixture独立性も収集で確認しました。これは収集の証拠であり実行成功や性能の証拠ではありません。新規2 fileと変更・追加された分割case 23件は明示した見積りを使います。
+現行の全収集は **12,775件の一意なCPU case** で、4 shardへ2,927 / 2,994 / 3,442 / 3,412件を割り当てます。fixture独立性も収集で確認しました。これは収集の証拠であり実行成功や性能の証拠ではありません。新規2 fileと変更・追加された分割case 23件は明示した見積りを使います。
 
 依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。
