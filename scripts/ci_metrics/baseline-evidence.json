@@ -9378,5 +9378,372 @@
     "1509": "completion evidence API arity",
     "1511": "final delegation freshness",
     "screening": "15-second deadline failed under competing load; isolated rerun passed"
+  },
+  "overhead_live_log": {
+    "source": {
+      "commit": "e4cd4827384c089c5469426cc60e2d625427d8e4",
+      "status": "",
+      "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "untracked_sha256": {}
+    },
+    "summary": {
+      "False": {
+        "n": 3,
+        "median_s": 4.213095727998734,
+        "samples_s": [
+          4.297669544999735,
+          4.1567985519996,
+          4.213095727998734
+        ]
+      },
+      "True": {
+        "n": 3,
+        "median_s": 4.467161413998838,
+        "samples_s": [
+          4.445954843000436,
+          4.467161413998838,
+          4.612829679999777
+        ]
+      }
+    },
+    "observations": [
+      {
+        "sample": 0,
+        "instrumented": false,
+        "elapsed_s": 4.297669544999735,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      },
+      {
+        "sample": 0,
+        "instrumented": true,
+        "elapsed_s": 4.445954843000436,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      },
+      {
+        "sample": 1,
+        "instrumented": true,
+        "elapsed_s": 4.467161413998838,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      },
+      {
+        "sample": 1,
+        "instrumented": false,
+        "elapsed_s": 4.1567985519996,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      },
+      {
+        "sample": 2,
+        "instrumented": false,
+        "elapsed_s": 4.213095727998734,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      },
+      {
+        "sample": 2,
+        "instrumented": true,
+        "elapsed_s": 4.612829679999777,
+        "returncode": 0,
+        "tests": [
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_batched_shape"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_error_is_non_negative_and_wrapped"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestAngularError",
+            "test_orthogonal_cos_sin_pairs"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_preserves_direction_batched"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_unit_norm_result"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestNormalizeVector",
+            "test_zero_vector_is_safe"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_component_along_axis_is_ignored"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_quarter_turn_around_z"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestSignedAngleAroundAxis",
+            "test_sign_flips_with_direction"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_result_wrapped_into_pi_range"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_sign_is_preserved"
+          ],
+          [
+            "tests.unit.utils.geometry.test_angles.TestWrappedAngleDiff",
+            "test_zero_difference"
+          ]
+        ]
+      }
+    ],
+    "limitations": "Three alternating matched 12-case pairs after live-log forwarding; startup dominated, not a full-suite overhead rate or between-version performance comparison."
   }
 }
