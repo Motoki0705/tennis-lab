@@ -103,6 +103,7 @@ class FakeGitHub:
     repo = "o/r"
 
     def __init__(self) -> None:
+        self._fresh = False
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -162,6 +163,9 @@ class FakeGitHub:
             list[dict[str, Any]],
             importlib.import_module("parent.github").GitHub.rows(self, endpoint),
         )
+
+    def fresh_reads(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.fresh_reads(self)
 
     def identity(self, raw: object) -> int:
         return cast(
