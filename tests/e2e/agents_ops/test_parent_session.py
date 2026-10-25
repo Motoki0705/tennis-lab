@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -1165,7 +1166,12 @@ def test_issue_body_metadata_and_existing_evidence_survive_updates(
 
 
 def review_setup(
-    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+    p: ParentEnv,
+    *,
+    independent: bool = False,
+    standalone: bool = False,
+    pr_count: int = 3,
+    shared: bool = False,
 ) -> list[int]:
     if standalone:
         state = p.state()
@@ -1178,12 +1184,16 @@ def review_setup(
     p.agreed()
     state = p.state()
     state["prs"] = []
-    for i in range(1 if standalone else 3):
+    for i in range(1 if standalone else pr_count):
         if not standalone:
             p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
         filename = f"change-{i}.txt" if independent else "change.txt"
         (worktree / filename).write_text(f"new {i}\n")
+        if shared and i == 0:
+            (worktree / ".agents").mkdir()
+            (worktree / ".agents/shared.txt").write_text("shared foundation\n")
+            run_git(worktree, "add", ".agents/shared.txt")
         run_git(worktree, "add", filename)
         run_git(worktree, "commit", "-m", f"child {i}")
         state["prs"].append(
@@ -1207,7 +1217,7 @@ def test_invalid_review_set_has_no_public_request(
     parent_env: ParentEnv, case: str
 ) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=3 if case == "missing" else 1)
     state = p.state()
     if case == "missing":
         selected.pop()
@@ -1339,7 +1349,7 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
     parent_env: ParentEnv,
 ) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=1)
     request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     run_id = request["review_run_id"]
     temporary = (
@@ -1683,13 +1693,27 @@ class ReviewEnv:
 
 
 def make_review_env(
-    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+    p: ParentEnv,
+    *,
+    independent: bool = False,
+    standalone: bool = False,
+    pr_count: int = 3,
+    shared: bool = False,
+    before_review: Callable[[ParentEnv], None] | None = None,
 ) -> ReviewEnv:
     # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
     (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
-    selected = review_setup(p, independent=independent, standalone=standalone)
+    selected = review_setup(
+        p,
+        independent=independent,
+        standalone=standalone,
+        pr_count=pr_count,
+        shared=shared,
+    )
+    if before_review is not None:
+        before_review(p)
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(
@@ -1697,7 +1721,7 @@ def make_review_env(
             "--run-id",
             manifest["review_run_id"],
             "--instruction-file",
-            p.note("この3PRと親の受入条件・依存を1回で確認する。"),
+            p.note("この対象PRと親の受入条件・依存を1回で確認する。"),
         ).stdout
     )
     request_path = p.root / "review-request.json"
