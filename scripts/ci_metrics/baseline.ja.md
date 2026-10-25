@@ -2,9 +2,42 @@
 
 [English](baseline.md) · [简体中文](baseline.zh-CN.md)
 
-#1401の計測記録で、#1402〜#1405の判断に使います。**現行sourceの全CPU計測は未完了です。**
+#1401の計測記録で、#1402〜#1405の判断に使います。**現行sourceの全CPU観測は完了しましたが、失敗があり成功baselineではありません。**
 CI目標の達成や短縮効果を実証したとは記録しません。正確なsource・対象集合は機械可読の
 環境metadata、inventory、JUnit、phase eventを正本とし、失敗・cancelを成功へ置き換えません。
+
+## 完了したローカル観測
+
+全CPU対象 **12,764件（12,551成功、88 skip、125失敗〔setup error 8件を含む〕）** を
+**5,790.692秒**で実行しました。inventory・phase・JUnitに欠測はありません。
+これは**失敗した観測**であり、成功baselineではありません。pytestの117 failedと8 errorsを
+計測summaryではともにfailedへ集計します。
+
+WSL2、Python 3.11.15、Ryzen 7 9700Xの可視論理CPU 12、RAM 23.47 GiB、2 worker、
+native thread各1、CUDA不可視です。他のローカル検証も動き、cache条件は不明です。
+収集完了は78.673秒、最終報告・終了は25.273秒。個別process最大RSSは1,531,464 KiBで、
+同時process treeのpeakではありません。wall clockに−183.694秒の補正が発生しましたが、
+経過時間は単調時計で測定しています。
+
+| File | 件数 | setup秒 | call秒 |
+|---|---:|---:|---:|
+| merge gate | 161 | 1630.339 | 766.868 |
+| board messages | 539 | 88.313 | 877.462 |
+| parent session | 97 | 194.544 | 380.229 |
+| ball refiner coordinate training | 9 | 4.012 | 559.781 |
+| annotation screening | 86 | 168.074 | 254.512 |
+
+merge fixture準備と実測に基づく分割を優先します。dense/RGB契約は別の対応計測で初期化削減を
+確認し、SLCS/MDD smokeは寄与が小さいため維持しました。結果の詳細は子の文書を参照します。
+既存API/Fakeの失敗は #1504・#1509・#1511 で修復します。screening 1件は負荷下で15秒制限を
+超え、単独再実行では成功しました。不安定性の観測として残し、元の失敗を消しません。
+
+同じ12テストを交互に測った3組の中央値は通常 **5.992秒**、計測付き **6.243秒**（+0.251秒）です。
+起動の寄与が大きく他作業も動いた部分測定で、全suiteのoverhead率へ外挿しません。
+全件実行のevent書込みは4.269秒で、overheadの下限のみです。成功した全件実行の中央値・p95は
+未測定です。失敗n=1と5,790.692秒を集計から除外しません。[機械証拠](baseline-evidence.json)に
+出典・環境・対象識別・phase/fixture・overhead 3組を保存します。同sourceのActions比較は統合後に行います。
+
 
 ## Actionsの参考観測
 
@@ -40,7 +73,7 @@ worker間の寄与時間は重なり得るため、そのままjob実時間の�
 
 | 候補・後続 | 現行テスト | 重複契約・想定コスト | 残す境界 | 採否と不確実性 |
 |---|---|---|---|---|
-| merge gate準備 / #1402 | `tests/e2e/agents_ops/test_merge_gate.py`（`gate_env`）、`test_parent_session.py`（`parent_env`・`make_review_env`） | caseごとの使い捨てgit履歴、3PR worktree、review/CLI準備。過去部分実行の合計641.41秒 | 人間の指示と1回review消費、最新head/base/diffのcoverage、独立/依存merge順、共有基盤承認、stale/merge失敗の回復、dry-runとauto-merge権限。CIは観測のみ | 現行計測確認後、fixture再利用・scenario最小化を優先。case専用の書換可能状態と実git/CLI境界は残し、速さだけで可変session状態を共有しない。 |
+| merge gate準備 / #1402 | `tests/e2e/agents_ops/test_merge_gate.py`（`gate_env`）、`test_parent_session.py`（`parent_env`・`make_review_env`） | caseごとの使い捨てgit履歴、3PR worktree、review/CLI準備。過去部分実行の合計641.41秒 | 人間の指示と1回review消費、最新head/base/diffのcoverage、独立/依存merge順、通常レビュー、stale/merge失敗の回復、dry-runとauto-merge権限。CIは観測のみ | 現行計測確認後、fixture再利用・scenario最小化を優先。case専用の書換可能状態と実git/CLI境界は残し、速さだけで可変session状態を共有しない。 |
 | dense mask直積 / #1403 | `test_block.py::test_dense_boundary_rejects_noncanonical_full_masks`（30組） | 異常5分類×MHA/GQA×module/direct/update | bool dtype、厳密rank/shape、batch/query broadcast拒否、device不一致。各public入口のvalidator接続、方式固有経路、mask/state排他 | 共通validatorの異常分類＋代表入口接続への整理候補。限定的な不具合注入の根拠を必要とし、無条件の30→5は採用しない。 |
 | direct/module一致 / #1403 | `test_block.py::test_direct_forward_matches_module_call_for_valid_arguments`（3）、`...values_gradients_and_state`（3） | 出力一致の反復 | 厳密出力、全入力/parameter勾配、state。MHA/GQA、CSWAのall-validと部分invalid分岐 | CSWAの固有分岐を対応づけてから統合。assertが似ているだけでは包含とみなさない。 |
 | RGB predictor直積 / #1403 | `tests/unit/tasks/ball_detection/model_io/test_predict.py`（24組） | channel2設定×実model2種類×RGB異常6分類。forward patch前のモデル割当 | frame/channel/layout/dtype/spatial/empty拒否、DPT/DeepQueryとchannels2/5の接続、forward未到達、実型dispatch | 全異常を共通validatorへ、実入口の接続を代表例へ整理する候補。`isinstance`分岐を消すgeneric Mockは不可。 |
@@ -64,5 +97,4 @@ worker間の寄与時間は重なり得るため、そのままjob実時間の�
 4. 固定したsourceで [README.ja.md](README.ja.md) の全CPU経路を実行します。部分計測は
    優先順位用であり、全体の同等性や50%・約15分の目標達成を認定しません。
 
-全件完了、ローカル競合、計測overhead、現行sourceの候補別寄与は、#1401の受入前に
-この記録へ追加する必要があります。
+全件観測と計測上の制約は上記に記録しました。成功した同sourceのActions比較は統合後に記録します。
