@@ -146,6 +146,15 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             item for item in summary["fixtures"] if "broken_fixture" in item["fixture"]
         )
         assert broken["errors"] == 1
+        results = json.loads((measured / "results.json").read_text())
+        setup_error = next(
+            row for row in results if row["nodeid"].endswith("::test_setup_error")
+        )
+        assert "setup failure" in setup_error["failure_details"]["setup"]
+        call_error = next(
+            row for row in results if row["nodeid"].endswith("::test_new")
+        )
+        assert "AssertionError" in call_error["failure_details"]["call"]
     assert {nodeid.split("::")[0] for nodeid in inventory} == {
         "tests/unit/test_unit.py",
         "tests/integration/test_integration.py",

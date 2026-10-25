@@ -203,6 +203,11 @@ def summarize(root: Path) -> dict[str, Any]:
                 "status": status,
                 "phase_s": {e["phase"]: e["duration_s"] for e in reports},
                 "phase_outcomes": {e["phase"]: e["outcome"] for e in reports},
+                "failure_details": {
+                    e["phase"]: e["failure_detail"]
+                    for e in reports
+                    if e.get("failure_detail") is not None
+                },
                 "worker": reports[0]["worker"] if reports else None,
                 "torch_threads": [e.get("torch_threads") for e in reports],
             }
@@ -340,7 +345,9 @@ def summarize(root: Path) -> dict[str, Any]:
             ),
             started,
         ),
-        "last_phase_report_to_command_exit_s": _elapsed(command_finished, last_phase_report),
+        "last_phase_report_to_command_exit_s": _elapsed(
+            command_finished, last_phase_report
+        ),
     }
     summary = {
         "schema_version": 1,
@@ -374,7 +381,9 @@ def summarize(root: Path) -> dict[str, Any]:
         "report_generation_s": time.perf_counter() - report_started,
         "test_command_wall_s": _elapsed(command_finished, started),
         "wall_clock_adjustment_s": (
-            run["command_finished_at"] - run["started_at"] - (command_finished - started)
+            run["command_finished_at"]
+            - run["started_at"]
+            - (command_finished - started)
             if started is not None
             and command_finished is not None
             and run.get("command_finished_at") is not None
