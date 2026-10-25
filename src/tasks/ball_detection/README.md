@@ -52,8 +52,8 @@ SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../..
 |---|---|
 | `generate_dataset` | 設定からframe storeを生成 |
 | `prepare_data` | 凍結したプレイ窓・pose/MDD-onlyのmanifestと比較設定を準備 |
-| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid\|temporal_heatmap`。新heatmapはarchitectureとphaseも明示 |
-| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid\|temporal_heatmap`。保存されたcheckpoint契約で採点 |
+| `train` | `--stage convnext_heatmap\|dpt_pretrain\|coordinates\|hybrid\|temporal`。新heatmapはarchitectureとphaseも明示 |
+| `evaluate` | `--mode heatmap\|manifest\|coordinates\|hybrid\|temporal`。保存されたcheckpoint契約で採点 |
 | `review` | `--mode dataset\|inference`でWebUIを起動 |
 | `visualize` | checkpointのclip推論をGIFへ描画（overlayはMP4も出力） |
 | `visualize_temporal_heatmaps` | 同じclip区間のowner予測を複数のT/アーキテクチャで横に並べてMP4へ出力 |

@@ -10,7 +10,7 @@ import cv2
 import pytest
 import torch
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import initialize_finetuning
+from src.tasks.ball_detection.checkpoints.temporal import initialize_finetuning
 from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.evaluation.temporal_heatmap import (
@@ -18,8 +18,8 @@ from src.tasks.ball_detection.evaluation.temporal_heatmap import (
 )
 from src.tasks.ball_detection.model_io.mdd_heatmap import restore_heatmap_model
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
-from src.tasks.ball_detection.training.temporal_heatmap.runner import (
-    train_temporal_heatmap,
+from src.tasks.ball_detection.training.temporal.runner import (
+    train_temporal_model,
 )
 from src.tasks.ball_detection.visualization.presentation.temporal_heatmap import (
     render_temporal_heatmap_comparison,
@@ -44,7 +44,7 @@ def train(prepared: Path, output: Path, architecture: str, *, frames: int = 32, 
                    budget=update_budget(), runtime=CoordinateRuntime(cpu_threads=1), device=torch.device("cpu"),
                    augmentation=None, distance_px=20.)
     options.update(kwargs)
-    result: dict[str, Any] = train_temporal_heatmap(**options)
+    result: dict[str, Any] = train_temporal_model(**options)
     return result
 
 
@@ -109,12 +109,13 @@ def test_pretrain32_full_state_finetune64_and_fixed_test_evaluation(prepared: Pa
     assert train(prepared, post, architecture, frames=64, initial_artifact=parent,
                  initial_artifact_sha256=dual_sha256(parent), parent_update=3)["complete"]
     saved = checkpoint(post)
-    assert saved["updates_completed"] == 3 and saved["sample_position"] == 3
+    assert saved["updates_completed"] == 3 and saved["sample_position"] == 6
     assert saved["recipe"]["initialization"]["artifact_sha256"] == dual_sha256(parent)
-    assert logs(post)[0]["update"] == 1 and logs(post)[0]["sample_position"] == 1
-    for a, b in zip(logs(pre), logs(post), strict=True):
-        for key in ("pack_ids", "pack_indices", "input_frames", "teachers_by_kind", "sample_position"):
-            assert a[key] == b[key]
+    assert logs(post)[0]["update"] == 1 and logs(post)[0]["sample_position"] == 4
+    from src.tasks.ball_detection.training.temporal.packs import pack_index
+    assert [r['pack_indices'][0] for r in logs(post)]==[pack_index(42,p,3) for p in range(3,6)]
+    assert logs(post)[-1]['cumulative_updates']==6
+    assert logs(post)[-1]['cumulative_input_frames']==768
     assert all(int(state["step"]) == 3 for state in saved["optimizer"]["state"].values())
     val = json.loads((post / "validation-update-00000003.json").read_text())
     artifact = post / "weights-update-00000003.pt"

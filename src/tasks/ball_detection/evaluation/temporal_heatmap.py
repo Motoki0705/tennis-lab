@@ -12,7 +12,7 @@ from typing import Any
 
 import torch
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import json_bytes, save_json
+from src.tasks.ball_detection.checkpoints.temporal import json_bytes, save_json
 from src.tasks.ball_detection.data.windows.all_frames import LABEL_KINDS
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
 from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import (

@@ -70,7 +70,7 @@ class CoordinateMetrics:
                 if not bool(batch["position_valid"][row, position]):
                     continue
                 key = step, clip_id, int(frame)
-                owner = abs(position - 15.5), start
+                owner = abs(position - (batch["frame_indices"].shape[1] - 1) / 2), start
                 value = float(errors[row, position])
                 if not np.isfinite(value) or value < 0:
                     raise ValueError("Coordinate error must be finite and nonnegative")

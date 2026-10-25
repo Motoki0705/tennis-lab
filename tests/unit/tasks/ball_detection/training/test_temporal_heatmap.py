@@ -19,10 +19,10 @@ from src.tasks.ball_detection.data.windows.dataset import (
     collate_pack_samples,
 )
 from src.tasks.ball_detection.training.heatmap_objective import heatmap_objective
-from src.tasks.ball_detection.training.temporal_heatmap.configuration import (
+from src.tasks.ball_detection.training.temporal.configuration import (
     UpdateBudget,
 )
-from src.tasks.ball_detection.training.temporal_heatmap.packs import (
+from src.tasks.ball_detection.training.temporal.packs import (
     PackSampler,
     augment_pack,
     supervised_loss_sum,
@@ -102,7 +102,7 @@ def test_invalid_budget_is_rejected(field: str, value: float) -> None:
 def test_missing_budget_has_no_training_default(tmp_path: Path) -> None:
     with pytest.raises(TypeError):
         UpdateBudget()  # type: ignore[call-arg]
-    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "temporal_heatmap",
+    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "temporal",
                              "--architecture", "dpt", "--phase", "pretrain", "--output", str(tmp_path / "run")],
                             capture_output=True, text=True, timeout=30)
     assert result.returncode != 0 and "--updates" in result.stderr and "--warmup-updates" in result.stderr
@@ -112,7 +112,7 @@ def test_missing_budget_has_no_training_default(tmp_path: Path) -> None:
 def test_training_cli_validates_disjoint_inputs_and_optional_paths_before_learning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from src.tasks.ball_detection.training.temporal_heatmap import cli
+    from src.tasks.ball_detection.training.temporal import cli
 
     paths = {name: tmp_path / name / filename for name, filename in (
         ("manifest", "train.json"), ("evaluation_manifest", "val.json"), ("model_config", "model.yaml"),
@@ -136,7 +136,7 @@ def test_training_cli_validates_disjoint_inputs_and_optional_paths_before_learni
     def capture(**kwargs: Any) -> None:
         called.update(kwargs)
 
-    monkeypatch.setattr(cli, "train_temporal_heatmap", capture)
+    monkeypatch.setattr(cli, "train_temporal_model", capture)
     argv = ["train", *(item for name, value in values.items() for item in (f"--{name}", value))]
     monkeypatch.setattr(sys, "argv", argv)
     cli.main()
@@ -154,7 +154,7 @@ def test_training_cli_validates_disjoint_inputs_and_optional_paths_before_learni
 def test_evaluation_cli_rejects_invalid_optional_calibration_before_loading(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, calibration: str,
 ) -> None:
-    from src.tasks.ball_detection.evaluation import temporal_heatmap_cli as cli
+    from src.tasks.ball_detection.evaluation import temporal_cli as cli
     from src.utils.configuration import PathContractError
 
     artifact, manifest = tmp_path / "weights.pt", tmp_path / "evaluation.json"

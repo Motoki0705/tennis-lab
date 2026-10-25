@@ -187,8 +187,8 @@ def test_snapshot_restoration_preserves_training_budget_rng_and_samples(store: F
     import torch
 
     from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
-    from src.tasks.ball_detection.training.temporal_heatmap.runner import (
-        train_temporal_heatmap,
+    from src.tasks.ball_detection.training.temporal.runner import (
+        train_temporal_model,
     )
     from tests.support.tasks.ball_detection.temporal_heatmap import (
         prepare_fixture,
@@ -202,7 +202,7 @@ def test_snapshot_restoration_preserves_training_budget_rng_and_samples(store: F
                    budget=update_budget(), runtime=CoordinateRuntime(cpu_threads=1), device=torch.device("cpu"),
                    augmentation=None, distance_px=20.)
     baseline = tmp_path / "baseline"
-    train_temporal_heatmap(output=baseline, **options)
+    train_temporal_model(output=baseline, **options)
     root = tmp_path / "interrupted"
     store.local_root = root
     receipts: list[dict[str, Any]] = []
@@ -211,11 +211,11 @@ def test_snapshot_restoration_preserves_training_budget_rng_and_samples(store: F
         assert output == root
         receipts.append(store.publish(f"{stage}-{len(receipts)}"))
 
-    train_temporal_heatmap(output=root, stop_after_update=1, persist=persist, **options)
+    train_temporal_model(output=root, stop_after_update=1, persist=persist, **options)
     root.rename(tmp_path / "discarded-vm")
     saved = receipts[-1]
     store.restore(saved["generation"], manifest_sha256=saved["manifest_sha256"])
-    result = train_temporal_heatmap(output=root, resume=root / "checkpoint-update-00000001.pt", persist=persist, **options)
+    result = train_temporal_model(output=root, resume=root / "checkpoint-update-00000001.pt", persist=persist, **options)
     assert result["complete"] and result["updates_completed"] == result["sample_position"] == 3
     before = [json.loads(line) for line in (baseline / "train.jsonl").read_text().splitlines()]
     after = [json.loads(line) for line in (root / "train.jsonl").read_text().splitlines()]
