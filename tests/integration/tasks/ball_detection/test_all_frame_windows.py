@@ -182,7 +182,8 @@ def test_preparation_reuses_only_the_exact_distribution_hash_manifest(
         assert path.suffix != ".bin", (
             "Preparation must reuse the explicitly selected payload digests"
         )
-        return original(path)
+        digest: str = original(path)
+        return digest
 
     monkeypatch.setattr(preparation, "dual_sha256", small_files_only)
     plan = prepare_all_frame_training(

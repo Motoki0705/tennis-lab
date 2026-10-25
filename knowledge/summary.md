@@ -1,7 +1,7 @@
-<!-- knowledge-review: d23f5913c8cf0fd3e26f24cdf119e96c31bee47b0ee821fe1b5a5a3b1da987a0 on 2026-10-24 -->
+<!-- knowledge-review: a2ad23f3d5b0b5b67c40d00ae05d73bd6b977ca69033392ac85cb76986707cb4 on 2026-10-25 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-25（ボールの逐次T64学習の実装・入力取得と実データ速度検証を追加。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,15 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-25のボール逐次学習
+
+[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)で、
+5ch・128入力frame/更新を保つDPTと直接座標queryの継承・再開を実装した。
+157.03 GBのtrain/validation入力を取得・照合し、位置教師のない組を除いて30,478組を再生成した。
+ユーザー指定により今回のT128実行は除外する。共通10k、DPT T64の6k、query T32/T64の各6kを計画し、
+実データ30更新の速度検証は約2.04秒/更新で、10kの計算部分は約5.66時間。全validationを計測中で、
+本学習の完了やモデル採用、精度向上はまだ主張しない。
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 
