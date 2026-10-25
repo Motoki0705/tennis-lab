@@ -15,12 +15,16 @@ jobs:
     name: Python
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
     env:
       # Keep two pytest workers; native libraries use one thread each.
       PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
+      CUDA_VISIBLE_DEVICES: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -28,7 +32,11 @@ jobs:
           fetch-depth: 0
           submodules: false
 
+      - name: Record runner environment
+        run: python3 -m scripts.ci_metrics capture --output .ci-metrics/preparation
+
       - name: Set up uv and Python 3.11
+        id: setup-uv
         uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
@@ -56,8 +64,41 @@ jobs:
       - name: Lint
         run: .venv/bin/python -m spin lint
 
+      - name: Lint measurement tools
+        run: |
+          .venv/bin/python -m ruff check scripts/ci_metrics
+          .venv/bin/python -m mypy --follow-imports=skip scripts/ci_metrics
+
       - name: Test
         # Long dataset generation/recovery integrations are run explicitly.
+        env:
+          UV_CACHE_HIT: ${{ steps.setup-uv.outputs.cache-hit }}
         run: >-
-          .venv/bin/python -m spin test -q --no-cov --dist=worksteal
-          --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
+          .venv/bin/python -m scripts.ci_metrics run
+          --output .ci-metrics/tests --workers 2
+
+      - name: Summarize test measurements
+        if: always()
+        run: |
+          status=0
+          python3 -m scripts.ci_metrics report --output .ci-metrics/tests || status=$?
+          cat .ci-metrics/tests/summary.md >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Snapshot attempt timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          python3 -m scripts.ci_metrics fetch-actions --repo "$GITHUB_REPOSITORY"
+          --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+          --output .ci-metrics/actions
+
+      - name: Upload test measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpu-test-measurements-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-metrics/
+          include-hidden-files: true
+          if-no-files-found: error
