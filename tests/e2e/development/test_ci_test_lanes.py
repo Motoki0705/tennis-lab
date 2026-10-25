@@ -19,27 +19,43 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _ci_job() -> dict[str, Any]:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
-    assert set(workflow["jobs"]) == {"lint-and-test"}
-    return cast(dict[str, Any], workflow["jobs"]["lint-and-test"])
+    assert set(workflow["jobs"]) == {"lint", "tests", "python"}
+    return cast(dict[str, Any], workflow["jobs"]["tests"])
 
 
-def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
+def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     job = _ci_job()
-    assert "strategy" not in job
-    assert job["timeout-minutes"] == 60
+    shards = list(range(4))
+    assert (
+        job["strategy"]["matrix"]["shard"]
+        == "${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || '[0,1,2,3]') }}"
+    )
+    assert job["strategy"]["fail-fast"] is False
+    assert "needs" not in job
+    assert job["timeout-minutes"] == "${{ inputs.shards == '1' && 120 || 60 }}"
     assert job["env"]["PYTEST_XDIST_AUTO_NUM_WORKERS"] == "2"
     for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         assert job["env"][variable] == "1"
 
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    choices = triggers["workflow_dispatch"]["inputs"]["shards"]
+    assert choices["options"] == ["1", "2", "4"]
+    assert choices["default"] == "4"
+    assert workflow["env"]["CI_SHARD_COUNT"] == "${{ inputs.shards || '4' }}"
+    lint = workflow["jobs"]["lint"]
+    assert "needs" not in lint
     commands = [
         shlex.split(step["run"])
-        for step in job["steps"]
+        for step in lint["steps"]
         if step.get("run", "").startswith(".venv/bin/python -m spin ")
     ]
     assert len(commands) == 1
     assert commands[0] == [".venv/bin/python", "-m", "spin", "lint"]
     command = shlex.split(
         next(step["run"] for step in job["steps"] if step["name"] == "Test")
+        .replace("${{ matrix.shard }}", "0")
+        .replace("$CI_SHARD_COUNT", "4")
     )
     assert command[:5] == [
         ".venv/bin/python",
@@ -48,20 +64,39 @@ def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
         "run",
         "--output",
     ]
-    assert command[-2:] == ["--workers", "2"]
+    assert command[command.index("--workers") + 1] == "2"
+    assert command[command.index("--shard-count") + 1] == str(len(shards))
+    aggregate = workflow["jobs"]["python"]
+    assert aggregate["name"] == "Python"
+    assert aggregate["if"] == "always()"
+    assert set(aggregate["needs"]) == {"lint", "tests"}
+    verification = next(
+        step
+        for step in aggregate["steps"]
+        if step["name"] == "Verify jobs and complete CPU coverage"
+    )
+    assert verification["if"] == "always()"
+    assert verification["env"]["CI_JOB_RESULTS"] == "${{ toJSON(needs) }}"
+    assert shlex.split(verification["run"].replace("$CI_SHARD_COUNT", "4"))[-2:] == [
+        "--count",
+        str(len(shards)),
+    ]
+    assert aggregate["steps"][-1]["if"] == "always()"
+    assert aggregate["steps"][-1]["with"]["if-no-files-found"] == "error"
     assert "uv sync --locked --no-group gpu --group cpu" in [
         step.get("run") for step in job["steps"]
     ]
 
 
 @pytest.mark.parametrize("failing_test", [False, True], ids=["success", "failure"])
+@pytest.mark.parametrize("shard_count", [1, 2, 4])
 def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code(
-    tmp_path: Path, failing_test: bool
+    tmp_path: Path,
+    failing_test: bool,
+    shard_count: int,
 ) -> None:
     job = _ci_job()
-    command = shlex.split(
-        next(step["run"] for step in job["steps"] if step["name"] == "Test")
-    )
+    template = next(step["run"] for step in job["steps"] if step["name"] == "Test")
     # Use the repository CLI and pytest settings with a small independent suite.
     (tmp_path / ".spin").mkdir()
     shutil.copy2(REPO_ROOT / ".spin/cmds.py", tmp_path / ".spin/cmds.py")
@@ -113,37 +148,56 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(source, encoding="utf-8")
 
-    completed = subprocess.run(
-        [sys.executable, *command[1:]],
-        cwd=tmp_path,
-        check=False,
-        capture_output=True,
-        text=True,
-        env={
-            **os.environ,
-            **job["env"],
-            "PYTEST_LOCK": str(tmp_path / "inner-pytest.lock"),
-        },
-        timeout=60,
+    profile = tmp_path / "scripts/ci_metrics/cpu-file-times.json"
+    profile.write_text(
+        json.dumps(
+            {"schema_version": 1, "file_seconds": {"tests/unit/test_unit.py": 1}}
+        )
     )
-    output = completed.stdout + completed.stderr
-    assert completed.returncode == int(failing_test), output
-    measured = tmp_path / ".ci-metrics/tests"
-    summary = json.loads((measured / "summary.json").read_text())
-    inventory = json.loads((measured / "inventory.json").read_text())
-    assert summary["selected_count"] == (6 if failing_test else 5)
-    assert summary["successful_test_baseline"] is not failing_test
-    assert summary["issues"] == []
-    assert summary["counts"]["skipped"] == 1
+    inventory = []
+    summaries = []
+    failures = 0
+    for index in range(shard_count):
+        command = shlex.split(
+            template.replace("${{ matrix.shard }}", str(index)).replace(
+                "$CI_SHARD_COUNT", str(shard_count)
+            )
+        )
+        completed = subprocess.run(
+            [sys.executable, *command[1:]],
+            cwd=tmp_path,
+            check=False,
+            capture_output=True,
+            text=True,
+            env={**os.environ, **job["env"]},
+            timeout=60,
+        )
+        assert completed.returncode in {0, 1}, completed.stdout + completed.stderr
+        measured = tmp_path / f".ci-metrics/shard-{index}/tests"
+        summary = json.loads((measured / "summary.json").read_text())
+        assert summary["issues"] == []
+        assert summary["successful_test_baseline"] == (completed.returncode == 0)
+        assert summary["full_cpu_baseline"] is False
+        failures += summary["counts"].get("failed", 0)
+        inventory.extend(json.loads((measured / "inventory.json").read_text()))
+        summaries.append(summary)
+    assert len(inventory) == len(set(inventory)) == (6 if failing_test else 5)
+    assert failures == (2 if failing_test else 0)
+    assert sum(s["counts"].get("skipped", 0) for s in summaries) == 1
     skipped = next(
-        item for item in summary["fixtures"] if "skipped_fixture" in item["fixture"]
+        item
+        for s in summaries
+        for item in s["fixtures"]
+        if "skipped_fixture" in item["fixture"]
     )
     assert skipped["errors"] == 0
     assert skipped["skipped"] == 1
     if failing_test:
-        assert summary["counts"]["failed"] == 2
         broken = next(
-            item for item in summary["fixtures"] if "broken_fixture" in item["fixture"]
+            item
+            for s in summaries
+            for item in s["fixtures"]
+            if "broken_fixture" in item["fixture"]
         )
         assert broken["errors"] == 1
     assert {nodeid.split("::")[0] for nodeid in inventory} == {
@@ -153,9 +207,6 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/newly_added_test.py",
         "tests/test_setup_outcomes.py",
     }
-    log = (measured / "pytest.log").read_text()
-    assert f"2 workers [{6 if failing_test else 5} items]" in log
-    assert ("1 failed, 3 passed" if failing_test else "4 passed") in log
 
 
 def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:

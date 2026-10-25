@@ -3,7 +3,8 @@
 [English](README.md) · [日本語](README.ja.md)
 
 这些工具观测现有 CPU 测试集，不删除测试、不增加 marker、不修改 fixture，也不按改动
-路径省略测试或拆分 shard。CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
+路径省略测试。CI 使用[完整目标分片与覆盖审计](sharding.zh-CN.md)，默认本地命令仍不分片。
+CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
 集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
 2 个 worker、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
 

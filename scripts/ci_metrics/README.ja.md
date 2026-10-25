@@ -3,7 +3,8 @@
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 既存のCPU対象を観測する道具です。テストの削除、marker追加、fixture変更、変更パスでの
-省略、shard化は行いません。CPUのmarker式は `.spin/cmds.py` が正本で、court datasetの
+省略は行いません。CIは[全件の分割と完全性照合](sharding.ja.md)を使い、既定のローカル
+コマンドは全件を1 jobで実行します。CPUのmarker式は `.spin/cmds.py` が正本で、court datasetの
 既存の明示除外を維持します。CIとローカル計測は `spin test -q --no-cov --dist=worksteal`、
 2 worker、native thread各1、CUDA不可視、`--durations=50 --durations-min=1`、JUnitを使います。
 

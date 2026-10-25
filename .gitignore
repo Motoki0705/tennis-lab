@@ -208,3 +208,4 @@ paper/reference/
 .codex-loop/**/logs/
 # CPU CI measurement artifacts are retained by Actions or an explicit output path.
 .ci-metrics/
+.ci-results/
