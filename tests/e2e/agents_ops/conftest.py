@@ -74,6 +74,10 @@ elif args[0] == "api" and "--method" in args:
         return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
                 "state_reason": row.get("state_reason"), "assignees": row.get("assignees", []),
                 "repository_url": "https://api.github.com/repos/o/r"}
+    def api_pr(row):
+        return {**row, "state": row.get("state", "open").lower(), "merged_at": row.get("mergedAt"),
+                "body": state.get("pr_details", {}).get(str(row["number"]), {}).get("body", ""),
+                "head": {"ref": row["headRefName"], "sha": "a" * 40}}
     def page(rows):
         p = int(re.search(r"(?:^|&)page=(\d+)", query)[1]) if "page=" in query else 1
         return rows[(p-1)*100:p*100]
@@ -94,9 +98,15 @@ elif args[0] == "api" and "--method" in args:
     if api_path == "user":
         api_emit({"login": "bot"})
     if api_path == "repos/o/r/pulls":
-        api_emit(page([{**r, "state": r.get("state", "open").lower(), "merged_at": r.get("mergedAt"),
-                        "body": state.get("pr_details", {}).get(str(r["number"]), {}).get("body", ""),
-                        "head": {"ref": r["headRefName"], "sha": "a" * 40}} for r in state["prs"]]))
+        api_emit(page([api_pr(r) for r in state["prs"]]))
+    if api_path.startswith("repos/o/r/pulls/"):
+        api_emit(api_pr(next(r for r in state["prs"] if r["number"] == int(api_path.rsplit("/", 1)[1]))))
+    timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", api_path)
+    if timeline:
+        rows = [api_pr(r) for r in state["prs"]]
+        api_emit(page([{"id": r["number"], "event": "cross-referenced", "source": {"issue": {
+            **r, "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "fixture-pr"}}}}
+            for r in rows if re.search(r"#" + timeline[1] + r"\b", r["body"])]))
     m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", api_path)
     assert m, args
     n, tail = m.groups()
