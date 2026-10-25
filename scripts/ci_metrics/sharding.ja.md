@@ -46,3 +46,15 @@ artifact名はrun/attempt/shardを含み、`cpu-test-coverage-*` の `coverage.j
 分配に使うphase合計はrunner実時間ではありません。jobを増やすと環境準備・収集も増えます。
 負荷分散・メモリは実測で確認し、証拠と比較の制限は[baseline](baseline.ja.md)を参照してください。
 fixtureやsuiteが大きく変わったら完全な計測からprofileを更新します。file件数だけで分割数を決めません。
+
+初期profileは[baseline](baseline.ja.md#完了したローカル観測)の全件・失敗観測に基づき、
+失敗も含めます。fixture/契約整理前で他作業の負荷もあり、配分の手掛かりであって成功や
+高速化の証明ではありません。旧inventoryのphase合計見積りは1 jobで11,284.355秒、
+2 jobは各約5,642.178秒、4 jobの最大は2,821.090秒です。worker間の重なりとjobごとの
+準備・収集を含む実時間ではなく、Actionsの実時間・runner費用は別途測定します。
+個別caseへ分けるのはmerge gate・parent session・board messagesの3 fileです。
+function fixtureの独立性は収集時に検査し、その他のfileはまとめます。
+
+現行の全収集は **12,774件の一意なCPU case** で、4 shardへ2,927 / 2,994 / 3,442 / 3,411件を割り当てます。fixture独立性も収集で確認しました。これは収集の証拠であり実行成功や性能の証拠ではありません。新規2 fileと変更・追加された分割case 23件は明示した見積りを使います。
+
+依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。

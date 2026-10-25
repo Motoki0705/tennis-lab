@@ -231,6 +231,90 @@ def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:
     ].index("Install locked CPU environment")
 
 
+@pytest.mark.parametrize(
+    "scenario, expected",
+    [
+        ("existing", 0),
+        ("install", 0),
+        ("update_failure", 42),
+        ("install_failure", 43),
+        ("timeout", 124),
+        ("missing_after", 127),
+        ("version_failure", 44),
+    ],
+)
+def test_system_dependencies_are_verified_and_failures_are_not_hidden(
+    tmp_path: Path, scenario: str, expected: int
+) -> None:
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    log = tmp_path / "calls.jsonl"
+
+    def executable(name: str, source: str) -> None:
+        path = binary / name
+        path.write_text(f"#!{sys.executable}\n" + source)
+        path.chmod(0o755)
+
+    executable("ffmpeg", "print('ffmpeg version fixture')\n")
+    if scenario in {"existing", "version_failure"}:
+        executable(
+            "rclone",
+            "print('rclone fixture'); raise SystemExit("
+            + ("44" if scenario == "version_failure" else "0")
+            + ")\n",
+        )
+    common = (
+        "import json, os, sys\nfrom pathlib import Path\n"
+        f"scenario = {scenario!r}\n"
+        f"with open({str(log)!r}, 'a') as stream: "
+        "stream.write(json.dumps(sys.argv) + '\\n')\n"
+    )
+    executable(
+        "timeout",
+        common
+        + "assert sys.argv[1] == '180s'\n"
+        + "if scenario == 'timeout': raise SystemExit(124)\n"
+        + "os.execvp(sys.argv[2], sys.argv[2:])\n",
+    )
+    installed_script = f"#!{sys.executable}\nprint(chr(82))\n"
+    executable(
+        "sudo",
+        common
+        + "assert sys.argv[1] == 'apt-get'\n"
+        + "if 'update' in sys.argv and scenario == 'update_failure': raise SystemExit(42)\n"
+        + "if 'install' in sys.argv:\n"
+        + "    assert sys.argv[-1] == 'rclone' and 'ffmpeg' not in sys.argv\n"
+        + "    if scenario == 'install_failure': raise SystemExit(43)\n"
+        + "    if scenario != 'missing_after':\n"
+        + f"        path = Path({str(binary / 'rclone')!r})\n"
+        + f"        path.write_text({installed_script!r})\n"
+        + "        path.chmod(0o755)\n",
+    )
+    step = next(
+        s for s in _ci_job()["steps"] if s["name"] == "Install system dependencies"
+    )
+    assert step["timeout-minutes"] == 8
+    completed = subprocess.run(
+        ["/bin/bash", *shlex.split(step["run"])[1:]],
+        cwd=REPO_ROOT,
+        env={**os.environ, "PATH": str(binary)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert completed.returncode == expected, completed.stdout + completed.stderr
+    calls = (
+        [json.loads(line) for line in log.read_text().splitlines()]
+        if log.exists()
+        else []
+    )
+    assert bool(calls) == (scenario not in {"existing", "version_failure"})
+    if expected == 0:
+        assert "ffmpeg version fixture" in completed.stdout
+    if scenario == "update_failure":
+        assert not any("install" in row for row in calls)
+
+
 def test_cpu_dependency_group_preserves_default_gpu_environment() -> None:
     import tomllib
 

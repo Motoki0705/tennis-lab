@@ -76,3 +76,17 @@ runner time. Review load balance and memory with the actual runner observations;
 use [baseline](baseline.md) for evidence and comparison limitations. Refresh the
 profile from complete measurements after material fixture or suite changes.
 No runner-count recommendation is inferred from the number of test files alone.
+
+The initial profile comes from the complete but failed local observation in
+[baseline](baseline.md#completed-local-observation), including failures. It predates
+the fixture/contract changes and includes costs from competing work. It is a
+scheduling hint, not proof of a passing baseline or speedup. Estimated summed
+phase loads for the original inventory are 11,284.355 s (1 job), 5,642.178 s per job
+(2), and 2,821.090 s maximum (4). These totals overlap across workers and exclude
+per-job setup/collection; actual Actions wall time and runner cost must be measured.
+The explicit split files are merge gate, parent session and board messages; their
+function fixture isolation is checked during collection. Other files stay together.
+
+Current full collection contains **12,774 unique CPU cases**, assigned 2,927 / 2,994 / 3,442 / 3,411 across four shards. Collection validates fixture isolation. This is a collection proof, not a passing execution or a performance result. The two new files and 23 changed/new split-case IDs receive explicit estimates.
+
+System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.

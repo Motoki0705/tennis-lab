@@ -44,3 +44,14 @@ artifact 名包含 run/attempt/shard。`cpu-test-coverage-*` 中的 `coverage.js
 phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收集。负载与内存须结合实际
 观测，证据及比较限制见[baseline](baseline.zh-CN.md)。fixture/suite 大幅变化后，从完整
 测量刷新 profile，不能只按文件数量选择分片数。
+
+初始profile来自[baseline](baseline.zh-CN.md#已完成的本地观测)的完整失败观测，包含失败成本。
+它早于fixture/契约优化，且存在其他工作负载，只是调度提示，不能证明成功或提速。
+原inventory的phase总量估计为1 job 11,284.355秒，2 job各约5,642.178秒，
+4 job最大2,821.090秒。这不是墙钟时间：worker时间重叠，且各job还有准备和收集成本。
+需另测Actions耗时及runner成本。显式拆分merge gate、parent session、board messages
+三个file，并在收集时检查function fixture隔离；其他file保持整体。
+
+当前完整收集有 **12,774个唯一CPU用例**，四片分配2,927 / 2,994 / 3,442 / 3,411例，并验证fixture隔离。这是收集证据，不是执行成功或性能结果。新增2个file及23个变更/新增拆分case使用显式估计。
+
+依赖准备检查已有ffmpeg/rclone版本，仅安装缺失binary，再验证两个命令。apt各限180秒，网络重试2次、超时30秒，Actions step上限8分钟。7个subprocess场景覆盖已有/缺失、update/install失败、timeout、安装后仍缺失与版本检查失败。
