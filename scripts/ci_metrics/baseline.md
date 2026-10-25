@@ -122,3 +122,5 @@ by #1401.
    equivalence or the target of 50% / approximately 15 minutes.
 
 Completed observations and limitations are recorded above. Successful same-source Actions comparisons follow integration.
+
+After live job-log forwarding was added, a new set of three alternating matched 12-test pairs measured plain median **4.213 s** and instrumented median **4.467 s** (+0.254 s). All six runs passed with identical inventories. These startup-dominated samples have separate provenance in `overhead_live_log` in the machine evidence; differences from the earlier samples are not a between-version speedup.
