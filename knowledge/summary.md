@@ -1,7 +1,7 @@
-<!-- knowledge-review: 16742bf6f373f7e29baa888f433f3d36739eae9951646a6d6c4fe7b839d5620a on 2026-10-25 -->
+<!-- knowledge-review: cb648c63614d6bf7b65489e0aef971770a07dfa7661f9a566fd2190823258ee6 on 2026-10-25 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-25（Courtの既存train軌道を固定した6000枚scene比較データを追加。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,15 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-25のCourt固定6000枚scene比較データ
+
+[既存train軌道だけを使うローカル3DGS生成](nodes/synthetic_data_generation/000028-run-court-scene-diversity-6000-v1.md)で、
+#983の元train軌道113本を保持して19,934枚を採択し、各条件train5500枚・合成val500枚となる4条件を固定した。
+scene別のtrain/val軌道分離と各splitのnested選択、全JPEG/教師、元資産の不変、4scene動画を検証した。
+旧all-court QAを維持したためB01由来のtarget KP0画像がtrainに含まれ、valの低支持点数画像も条件ごとに異なる。
+画質にはぼけ・暗さが残り、実画像汎化やscene数による性能差は学習後の判断となる。
+既存モデルの採用判断を維持し、次は固定した合成valと実画像valを別集計して4条件を評価する。
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 

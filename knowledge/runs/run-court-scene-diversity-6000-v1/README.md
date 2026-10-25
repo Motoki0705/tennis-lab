@@ -75,3 +75,16 @@ PYTHONPATH=. .venv/bin/python "$SCRIPT" finalize --output-root "$OUT"
 
 通常検証は`tests/unit/synthetic_data_generation/dataset/court/test_saved_train_scale.py`、
 既存scale planning/publication、および生成CLIのテスト。
+
+生成後の追加監査は次のコマンドで再現する。
+
+```bash
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-court-scene-diversity-6000-v1/verify_subsets.py \
+  --repo-root "$REPO" --output-root "$OUT"
+```
+
+`subset-quality-audit.json`は各subset・scene別のtarget可視KP0/<4件数とcoverage、
+元資産の不変、train/val軌道分離、nested prefix、画像一意性、動画全frame decodeを記録する。
+poolや選択manifest、QA、軌道割当は変更しない。結果と限界の正本は
+[生成run node](../../nodes/synthetic_data_generation/000028-run-court-scene-diversity-6000-v1.md)。
+描画を再現するときは同nodeの`repro.commit`を使い、追加監査には結果記録commitのscriptを使う。
