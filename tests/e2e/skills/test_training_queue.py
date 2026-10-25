@@ -2403,7 +2403,10 @@ def test_worker_term_after_move_fails_job_without_launch_and_releases_capacity(
             replacement.communicate(timeout=5)
 
 
-def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> None:
+@pytest.mark.parametrize("stop_during_empty_scan", [False, True])
+def test_cooperative_stop_after_move_requeues_without_launch(
+    tmp_path: Path, stop_during_empty_scan: bool
+) -> None:
     queue_dir = tmp_path / "queue"
     lock_file = tmp_path / "gpu.lock"
     target_started = tmp_path / "target-started"
@@ -2411,6 +2414,34 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
     barrier = tmp_path / "post-move-barrier"
     os.mkfifo(barrier)
     barrier_fd = os.open(barrier, os.O_RDWR | os.O_NONBLOCK)
+    empty_ready = tmp_path / "empty-scan-ready"
+    empty_barrier = tmp_path / "empty-scan-barrier"
+    os.mkfifo(empty_barrier)
+    empty_fd = os.open(empty_barrier, os.O_RDWR | os.O_NONBLOCK)
+    worker_env = {
+        "TRAINING_QUEUE_TEST_POST_MOVE_READY_FILE": str(ready),
+        "TRAINING_QUEUE_TEST_POST_MOVE_BARRIER_FIFO": str(barrier),
+    }
+    if stop_during_empty_scan:
+        # Freeze an actual empty history result. The wrapper requeues and exits
+        # before the supervisor sees that stale result and counts active jobs.
+        binary = tmp_path / "bin"
+        binary.mkdir()
+        python = binary / "python3"
+        python.write_text(
+            f"#!{sys.executable}\n"
+            "import subprocess, sys\nfrom pathlib import Path\n"
+            f"result = subprocess.run([{sys.executable!r}, *sys.argv[1:]], capture_output=True)\n"
+            f"ready = Path({str(empty_ready)!r})\n"
+            "if result.returncode == 0 and 'order' in sys.argv and sys.argv[-1] == 'first' and not result.stdout.strip() and not ready.exists():\n"
+            "    ready.write_text('empty')\n"
+            f"    with open({str(empty_barrier)!r}) as barrier: barrier.readline()\n"
+            "sys.stdout.buffer.write(result.stdout)\n"
+            "sys.stderr.buffer.write(result.stderr)\n"
+            "raise SystemExit(result.returncode)\n"
+        )
+        python.chmod(0o755)
+        worker_env["PATH"] = f"{binary}:{os.environ['PATH']}"
     target_job = _add(
         queue_dir,
         lock_file,
@@ -2423,20 +2454,29 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
         queue_dir,
         lock_file,
         cwd=tmp_path,
-        extra_env={
-            "TRAINING_QUEUE_TEST_POST_MOVE_READY_FILE": str(ready),
-            "TRAINING_QUEUE_TEST_POST_MOVE_BARRIER_FIFO": str(barrier),
-        },
+        extra_env=worker_env,
     )
     replacement: subprocess.Popen[str] | None = None
     try:
         _wait_for(ready.exists)
         assert (queue_dir / "running" / target_job).is_file()
         assert not target_started.exists()
+        if stop_during_empty_scan:
+            _wait_for(empty_ready.exists)
 
         stop_result = _queue(queue_dir, lock_file, "stop", cwd=tmp_path)
         assert "stop requested" in stop_result.stdout
         os.write(barrier_fd, b"release\n")
+        if stop_during_empty_scan:
+            wrapper_pid = int(ready.read_text())
+
+            def wrapper_exited() -> bool:
+                state = _process_state(wrapper_pid)
+                return not state or state.startswith("Z")
+
+            _wait_for(wrapper_exited)
+            assert (queue_dir / "jobs" / target_job).is_file()
+            os.write(empty_fd, b"release\n")
         stdout, stderr = worker.communicate(timeout=5)
 
         assert worker.returncode == 0, f"stdout={stdout}\nstderr={stderr}"
@@ -2458,6 +2498,8 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
         assert target_started.is_file()
         assert (queue_dir / "done" / target_job).is_file()
     finally:
+        os.write(empty_fd, b"release\n")
+        os.close(empty_fd)
         os.close(barrier_fd)
         if worker.poll() is None:
             worker.terminate()
