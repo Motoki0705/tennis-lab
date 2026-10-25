@@ -443,7 +443,7 @@ def auto_gate(
     return gate
 
 
-def test_autonomous_shared_merge_still_requires_separate_human_permission(
+def test_autonomous_shared_merge_uses_current_review_without_path_permission(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
@@ -451,18 +451,10 @@ def test_autonomous_shared_merge_still_requires_separate_human_permission(
     request = g.review.request
     assert request["schema_version"] == 2
     assert request["authorization"]["execution_basis_kind"] == "autonomous_decision"
-    blocked = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert blocked[100]["decision"] == "needs_human"
-    assert "touches_shared" in blocked[100]["reasons"]
+    allowed = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert allowed[100]["decision"] == "merge"
+    assert "shared_exemption" not in allowed[100]
     assert g.merge_calls() == []
-    allowed = g.cli(
-        "shared-permission",
-        "--allow-shared-foundation",
-        "--evidence-file",
-        p.note("人間の明示許可と合意コメントURLを確認した。"),
-    )
-    assert allowed.returncode == 0, allowed.stderr
-    assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["decision"] == "merge"
     assert not any('"event": "agreed"' in c["body"] for c in p.state()["comments"]["1"])
     assert len(g.review.calls()) == 1
 
@@ -510,18 +502,11 @@ def test_new_basis_does_not_reauthorize_old_review(
     assert g.merge_calls() == []
 
 
-def test_classifying_unrelated_comment_preserves_existing_review_and_permission(
+def test_classifying_unrelated_comment_preserves_existing_review(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
     g = auto_gate(p, monkeypatch, shared=True)
-    allowed = g.cli(
-        "shared-permission",
-        "--allow-shared-foundation",
-        "--evidence-file",
-        p.note("人間の明示許可を確認済み"),
-    )
-    assert allowed.returncode == 0, allowed.stderr
     state = p.state()
     comment = {
         "id": 9900,
@@ -1014,19 +999,10 @@ def test_human_agreement_comment_changes_block_delegation_review_and_merge(
 
 
 @pytest.mark.parametrize("gate_env", ["shared"], indirect=True)
-def test_human_unrelated_comment_classification_preserves_review_and_permission(
+def test_human_unrelated_comment_classification_preserves_review(
     gate_env: GateEnv,
 ) -> None:
     g, p = gate_env, gate_env.review.p
-    assert (
-        g.cli(
-            "shared-permission",
-            "--allow-shared-foundation",
-            "--evidence-file",
-            p.note("人間が共有基盤を含むmergeを合意した発言。"),
-        ).returncode
-        == 0
-    )
     frozen = (g.review.run_dir / "result.json").read_bytes(), registry(p).read_bytes()
     comments = [
         ordinary_comment(p, "要件と無関係な雑談。", login)
@@ -1048,7 +1024,7 @@ def test_human_unrelated_comment_classification_preserves_review_and_permission(
     ) == frozen
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert all(row["decision"] == "merge" for row in rows.values())
-    assert rows[100]["shared_exemption"] is not None
+    assert "shared_exemption" not in rows[100]
     assert g.merge_calls() == [] and len(g.review.calls()) == 1
 
 
