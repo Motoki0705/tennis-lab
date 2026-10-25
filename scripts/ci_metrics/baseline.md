@@ -3,11 +3,51 @@
 [日本語](baseline.ja.md) · [简体中文](baseline.zh-CN.md)
 
 This is the measurement record for #1401, supporting #1402–#1405.
-**The current full CPU measurement has not completed.** This document does not
+**The full CPU observation completed with failures; it is not a successful baseline.** This document does not
 claim that the CI target or a performance improvement has been demonstrated.
 The machine-readable run metadata, inventory, JUnit and phase events are the
 authority for the exact source and collection; a failed or cancelled run remains
 a failed or cancelled observation.
+
+## Completed local observation
+
+The complete CPU request selected **12,764 cases: 12,551 passed, 88 skipped and
+125 failed (including 8 setup errors)**. The command finished in **5,790.692 s**,
+with no missing inventory, phase or JUnit records. It is a **failed observation**,
+not a successful performance baseline. The raw pytest result is 117 failures and
+8 errors; the measurement summary groups both under `failed`.
+
+Two workers ran on WSL2, Python 3.11.15, 12 visible logical CPUs (Ryzen 7 9700X),
+23.47 GiB RAM, native thread limits of one and hidden CUDA. Other validation was
+active. Cache condition is unknown. Collection completed at 78.673 s and final
+reporting/shutdown took 25.273 s. Individual process max RSS was 1,531,464 KiB;
+this is not the concurrent process-tree peak. A wall-clock correction of −183.694 s
+occurred; elapsed measurements use the monotonic clock.
+
+| File | Cases | Setup s | Call s |
+|---|---:|---:|---:|
+| merge gate | 161 | 1630.339 | 766.868 |
+| board messages | 539 | 88.313 | 877.462 |
+| parent session | 97 | 194.544 | 380.229 |
+| ball refiner coordinate training | 9 | 4.012 | 559.781 |
+| annotation screening | 86 | 168.074 | 254.512 |
+
+This prioritizes merge fixture preparation and measured scheduling. Dense/RGB
+contracts have independently measured construction reductions; SLCS/MDD smoke
+costs do not justify a change. Outcome details are in the child documents. The
+failed APIs/fakes are tracked in #1504, #1509 and #1511. The screening case exceeded
+its 15-second deadline under load and passed an isolated rerun; it remains a
+flakiness observation, not an erased failure.
+
+Three alternating matched 12-test overhead pairs had plain median **5.992 s** and
+instrumented median **6.243 s** (+0.251 s). They are startup-dominated and ran with
+other local work; do not extrapolate this as full-suite percentage overhead. Event
+serialization/write time in the full observation was 4.269 s, only a lower bound.
+There is no successful local full-suite median or p95 yet. The n=1 failed run and
+its full 5,790.692 s cost remain included. [Machine evidence](baseline-evidence.json)
+records provenance, environment, inventory identity, phase/fixture costs and the
+three overhead pairs. Same-source Actions comparisons follow integration.
+
 
 ## Reference Actions observations
 
@@ -49,7 +89,7 @@ in call. Summed worker elapsed time can overlap and is not predicted wall saving
 
 | Candidate / follow-up | Current tests | Repeated contract / possible cost | Boundaries that must survive | Decision and uncertainty |
 |---|---|---|---|---|
-| Merge-gate preparation / #1402 | `tests/e2e/agents_ops/test_merge_gate.py` (`gate_env`); `test_parent_session.py` (`parent_env`, `make_review_env`) | Per-case disposable git history, three PR worktrees, review/CLI preparation; historical partial sum 641.41 s | Human instruction and one-review consumption, current head/base/diff coverage, independent/dependent merge order, shared foundation permission, stale/failing merge recovery, dry run and auto-merge authority; current CI is observational | Prioritize fixture reuse/minimal scenario construction after current timing confirmation. Each test must retain private writable state and real git/CLI boundaries; sharing mutable session state is not justified by time alone. |
+| Merge-gate preparation / #1402 | `tests/e2e/agents_ops/test_merge_gate.py` (`gate_env`); `test_parent_session.py` (`parent_env`, `make_review_env`) | Per-case disposable git history, three PR worktrees, review/CLI preparation; historical partial sum 641.41 s | Human instruction and one-review consumption, current head/base/diff coverage, independent/dependent merge order, ordinary review, stale/failing merge recovery, dry run and auto-merge authority; current CI is observational | Prioritize fixture reuse/minimal scenario construction after current timing confirmation. Each test must retain private writable state and real git/CLI boundaries; sharing mutable session state is not justified by time alone. |
 | Dense-mask matrix / #1403 | `test_block.py::test_dense_boundary_rejects_noncanonical_full_masks` (30 combinations) | Five invalid classifications × MHA/GQA × module/direct/update | Bool dtype, exact rank/shape, batch/query broadcast rejection, device mismatch; each public invocation must reach validation; attention-specific paths and mask/state exclusions | Candidate for shared validator classifications plus representative public-entry connections, subject to defect-injection evidence. A blanket 30→5 reduction is not accepted. |
 | Direct/module equivalence / #1403 | `test_block.py::test_direct_forward_matches_module_call_for_valid_arguments` (3); `...values_gradients_and_state` (3) | Repeated value comparison | Exact outputs, all input/parameter gradients and state; MHA/GQA; CSWA all-valid versus partially-invalid state branch | Consolidate only after accounting for the distinct CSWA branch. Similar assertions alone do not prove containment. |
 | RGB predictor matrix / #1403 | `tests/unit/tasks/ball_detection/model_io/test_predict.py` (24 combinations) | Two channel configurations × two concrete model classes × six bad RGB inputs; model allocation before forward patch | RGB frame/channel/layout/dtype/spatial/empty rejection; DPT/DeepQuery and channels 2/5 wiring; forward must not be reached; preserve concrete type dispatch | Candidate to move full invalid classes to the common validator and keep concrete entry checks. A generic mock that removes `isinstance` behavior is insufficient. |
@@ -81,6 +121,6 @@ by #1401.
    Partial candidate measurements rank work; they do not certify whole-suite
    equivalence or the target of 50% / approximately 15 minutes.
 
-Full-run completion, local contention, instrumentation overhead, and measured
-current-source candidate contributions remain to be attached to this record
-before #1401 is accepted.
+Completed observations and limitations are recorded above. Successful same-source Actions comparisons follow integration.
+
+After live job-log forwarding was added, a new set of three alternating matched 12-test pairs measured plain median **4.213 s** and instrumented median **4.467 s** (+0.254 s). All six runs passed with identical inventories. These startup-dominated samples have separate provenance in `overhead_live_log` in the machine evidence; differences from the earlier samples are not a between-version speedup.

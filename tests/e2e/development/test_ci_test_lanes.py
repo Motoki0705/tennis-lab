@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import shlex
@@ -56,7 +57,7 @@ def test_actions_use_one_cpu_job_with_bounded_parallelism() -> None:
 
 @pytest.mark.parametrize("failing_test", [False, True], ids=["success", "failure"])
 def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code(
-    tmp_path: Path, failing_test: bool
+    tmp_path: Path, failing_test: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     job = _ci_job()
     command = shlex.split(
@@ -146,6 +147,35 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             item for item in summary["fixtures"] if "broken_fixture" in item["fixture"]
         )
         assert broken["errors"] == 1
+        results = json.loads((measured / "results.json").read_text())
+        setup_error = next(
+            row for row in results if row["nodeid"].endswith("::test_setup_error")
+        )
+        assert "setup failure" in setup_error["failure_details"]["setup"]
+        call_error = next(
+            row for row in results if row["nodeid"].endswith("::test_new")
+        )
+        assert "AssertionError" in call_error["failure_details"]["call"]
+        # The existing main-CI consumer reads the job log, not artifacts.
+        monkeypatch.syspath_prepend(str(REPO_ROOT / ".agents/ops"))
+        classify = importlib.import_module("ci_watch.classify")
+        signatures = classify.signatures(
+            "ci.yml",
+            {
+                "name": "Python",
+                "conclusion": "failure",
+                "steps": [{"name": "Test", "conclusion": "failure"}],
+            },
+            output,
+            {"endpoint": "fixture job log", "object": "fixture"},
+        )
+        assert {row["test_id"] for row in signatures} == {
+            "tests/newly_added_test.py::test_new",
+            "tests/test_setup_outcomes.py::test_setup_error",
+        }
+        assert all(row["specific"] for row in signatures)
+        assert len({row["signature"] for row in signatures}) == 2
+        assert "AssertionError" in output and "RuntimeError: setup failure" in output
     assert {nodeid.split("::")[0] for nodeid in inventory} == {
         "tests/unit/test_unit.py",
         "tests/integration/test_integration.py",
@@ -154,6 +184,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/test_setup_outcomes.py",
     }
     log = (measured / "pytest.log").read_text()
+    assert log in output
     assert f"2 workers [{6 if failing_test else 5} items]" in log
     assert ("1 failed, 3 passed" if failing_test else "4 passed") in log
 
