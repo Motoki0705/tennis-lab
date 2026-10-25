@@ -5,6 +5,36 @@ video-disjoint validation and final testing. The default mixed-source training
 and all `train_dinov3_size_ablation*` configurations retain their existing behavior.
 Output paths follow [task output conventions](../../OUTPUTS.md).
 
+## Ordered subsets and original validation
+
+`data/source=synthetic_court_dataset_subset` selects explicit `manifest` and
+`validation_manifest` paths under the DATA root. Both JSON files use
+`schema: court_dataset_subset_v1`, `source_manifest` (relative to their parent,
+without traversal), `source_manifest_sha256`, `selection_seed`, `split`
+(`train` or `val`) and ordered `samples: [{scene_id, sample_id}]` with raw IDs.
+Both files must reference the same complete scale publication and selection seed.
+The full pool is verified by the generator before selecting records. Unknown or
+duplicate IDs and train/validation trajectory overlap are errors. The original
+pool remains unchanged; selected validation records are remapped only in memory.
+Checkpoint provenance binds both selections, their order, training/validation
+counts and the complete source publication. Resume/evaluation rejects drift.
+
+To reproduce the original TennisCourtDetector validation population and order,
+use `freeze_real_evaluation --policy original-val --version NAME` with the usual
+root/output paths. Do not supply a seed or val fraction for this policy. Its
+separate `court_real_original_val_evaluation_v1` schema exposes only validation;
+it creates no test set and never includes original training images. The default
+video-disjoint policy still requires an explicit seed and is unchanged.
+
+`evaluate_ablation --expected-step N --split val --series NAME
+--include-synthetic-val` evaluates synthetic validation and real validation in
+separate passes, preserving each population's own order and metrics. Pose metrics
+are reported only for synthetic data. The normal fit-time `val/loss` remains the
+combined monitor, so it is not a domain-gap score; exact-update checkpoints and
+the separate post-fit evaluations are authoritative. The image-count scaling
+comparison command remains real-only. Experiments that vary synthetic validation
+populations must make that difference explicit in their own comparison reports.
+
 ## Freeze real evaluation once
 
 Use the complete original TennisCourtDetector JPEG store, including its old
