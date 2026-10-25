@@ -156,6 +156,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     )
     inventory = []
     summaries = []
+    results = []
     failures = 0
     for index in range(shard_count):
         command = shlex.split(
@@ -180,6 +181,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         assert summary["full_cpu_baseline"] is False
         failures += summary["counts"].get("failed", 0)
         inventory.extend(json.loads((measured / "inventory.json").read_text()))
+        results.extend(json.loads((measured / "results.json").read_text()))
         summaries.append(summary)
     assert len(inventory) == len(set(inventory)) == (6 if failing_test else 5)
     assert failures == (2 if failing_test else 0)
@@ -200,7 +202,6 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             if "broken_fixture" in item["fixture"]
         )
         assert broken["errors"] == 1
-        results = json.loads((measured / "results.json").read_text())
         setup_error = next(
             row for row in results if row["nodeid"].endswith("::test_setup_error")
         )
