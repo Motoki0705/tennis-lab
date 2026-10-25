@@ -1,4 +1,4 @@
-"""Run the complete CPU selection under the same host lock as ordinary pytest."""
+"""Run the complete CPU selection with optional coordinated measurement locking."""
 
 from __future__ import annotations
 

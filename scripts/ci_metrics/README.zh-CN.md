@@ -15,11 +15,9 @@
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-输出目录必须为空。本地运行取得与 `.agents/ops/pytest_locked.sh` 相同的主机锁：
-`${PYTEST_LOCK}`，或 `${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock`。
-`--lock /absolute/path` 可明确覆盖。实际性能测量应使用共享默认锁；只有嵌套回归测试使用
-临时绝对路径锁。GitHub-hosted runner 无需本地主机锁。普通回归 wrapper 仍固定使用 4 个
-worker，本工具不改变它。
+输出目录必须为空。遵循仓库的 pytest 并行运行规则，默认不取得主机共享锁，
+也不使用 `PYTEST_LOCK`。显式协调的性能比较可用 `--lock /absolute/path`，
+仅串行化指定相同路径的测量。普通 pytest 不受该锁约束；须记录主机竞争负载并在相同条件下比较。
 
 从启动起（包括锁等待）须固定源码。等待期间发生变化时，应重新启动进程，避免已导入的
 测量代码仍是旧版本。

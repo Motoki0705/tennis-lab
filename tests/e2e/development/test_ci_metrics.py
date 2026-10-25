@@ -482,6 +482,33 @@ def test_runner_elapsed_time_survives_wall_clock_reversal(
     )
 
 
+def test_default_measurement_runs_while_legacy_pytest_lock_is_held(
+    tmp_path: Path,
+) -> None:
+    import fcntl
+
+    lock = tmp_path / "legacy.lock"
+    output = tmp_path / "observed"
+    suite = tmp_path / "test_small.py"
+    suite.write_text("def test_one():\n    assert 2 + 2 == 4\n")
+    environment = headless_environment(dict(os.environ))
+    environment["PYTEST_LOCK"] = str(lock)
+    with lock.open("a") as held:
+        fcntl.flock(held, fcntl.LOCK_EX)
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "scripts.ci_metrics", "run",
+                "--output", str(output), "--workers", "1", "--", str(suite),
+            ],
+            cwd=REPO, env=environment, capture_output=True, text=True, timeout=30,
+        )
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads((output / "summary.json").read_text())
+    assert summary["successful_test_baseline"] is True
+    assert summary["counts"] == {"passed": 1}
+    assert json.loads((output / "environment.json").read_text())["lock_path"] is None
+
+
 def test_runner_cancellation_while_waiting_for_lock_leaves_partial_artifacts(
     tmp_path: Path,
 ) -> None:

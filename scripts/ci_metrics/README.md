@@ -17,13 +17,11 @@ From the checkout being measured, with its locked environment installed:
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-The destination must be empty. Local runs acquire the same host-wide lock as
-`.agents/ops/pytest_locked.sh`: `${PYTEST_LOCK}` or
-`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock`.
-`--lock /absolute/path` explicitly overrides it. Keep the shared default for actual
-measurements. Only isolated regression fixtures use temporary locks. GitHub-hosted
-Actions runners need no local host lock. Ordinary regression still uses the
-existing wrapper with its fixed four workers; this tool does not change it.
+The destination must be empty. Runs do not acquire a host-wide pytest lock,
+matching the repository’s parallel pytest policy. `PYTEST_LOCK` is ignored.
+For an explicitly coordinated performance comparison, `--lock /absolute/path`
+serializes only measurements that opt into that path. It does not exclude ordinary
+pytest processes: record competing host load and compare under matching conditions.
 
 Keep the source unchanged from launch, including lock wait. If it changes while
 queued, start a fresh process so already imported measurement code cannot be stale.

@@ -15,12 +15,10 @@
 .venv/bin/python -m scripts.ci_metrics run --output /absolute/new/output --workers 2
 ```
 
-出力先は空である必要があります。ローカルでは `.agents/ops/pytest_locked.sh` と同じ
-ホストlockを取得します。`${PYTEST_LOCK}` がなければ
-`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/pytest.lock` です。
-`--lock /absolute/path` で明示変更できますが、実計測では共通の既定lockを使います。
-回帰テスト内だけ一時lockを使い、入れ子待機を避けます。GitHub-hosted runnerには
-ローカルlockは不要です。通常の回帰用wrapperの固定4 workerは変更しません。
+出力先は空である必要があります。repoのpytest並列実行方針に合わせ、既定では
+ホスト共有lockを取得せず、`PYTEST_LOCK` も使いません。明示的に調整する比較計測だけ、
+`--lock /absolute/path` で同じpathを指定した計測同士を直列化できます。通常のpytestは
+排他対象にならないため、ホストの競合負荷を記録し、同条件で比較してください。
 
 lock待ちを含め、起動後のsourceは固定します。待機中に変わった場合は、import済みの計測
 コードが古いまま動かないよう新しいprocessで起動し直します。
