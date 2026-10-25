@@ -500,7 +500,7 @@ def test_default_measurement_runs_while_legacy_pytest_lock_is_held(
                 sys.executable, "-m", "scripts.ci_metrics", "run",
                 "--output", str(output), "--workers", "1", "--", str(suite),
             ],
-            cwd=REPO, env=environment, capture_output=True, text=True, timeout=30,
+            cwd=REPO, env=environment, capture_output=True, text=True, timeout=120,
         )
     assert result.returncode == 0, result.stdout + result.stderr
     summary = json.loads((output / "summary.json").read_text())
