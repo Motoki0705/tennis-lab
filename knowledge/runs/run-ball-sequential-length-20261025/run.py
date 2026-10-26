@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import shutil
 import statistics
 import subprocess
 import sys
@@ -22,6 +23,7 @@ sys.path.insert(0, str(Path.cwd()))
 import numpy as np
 import torch
 
+from src.tasks.ball_detection.checkpoints.provenance import source_identity
 from src.tasks.ball_detection.checkpoints.temporal import save_json
 from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
 from src.tasks.ball_detection.data.windows.all_frame_preparation import (
@@ -430,13 +432,55 @@ def benchmark(args):
 
 
 def train(args):
+    download = json.loads(
+        (
+            args.workspace_root
+            / "outputs/ball_detection/precompute/sequential_length/drive-download-20261025/progress.json"
+        ).read_text()
+    )
+    if not download["complete"] or any(
+        download[f"verified_{unit}"] != download[f"expected_{unit}"]
+        for unit in ("files", "bytes")
+    ):
+        raise ValueError("The full dataset download must verify before training")
     root = (
         args.workspace_root
         / "outputs/ball_detection/train/sequential_length"
         / args.run_id
     )
-    measured = json.loads(args.benchmark.read_text())
-    microbatch = measured["selected"]["microbatch_windows"]
+    saved_plan = None
+    if args.resume:
+        saved_plan = json.loads((root / "plan.json").read_text())
+        # The benchmark summary was not part of the old persistence selection.
+        # Its hash and selected batch sizes survive in the original plan. Keep
+        # that evidence intact instead of manufacturing a replacement benchmark.
+        microbatch = saved_plan["microbatch_T32"]
+        benchmark_sha256 = saved_plan["benchmark_sha256"]
+        if (
+            args.benchmark is not None
+            and dual_sha256(args.benchmark) != benchmark_sha256
+        ):
+            raise ValueError("Resume benchmark differs from the original plan")
+        current_code = source_identity()
+        found = False
+        for name, *_ in saved_plan["stages"]:
+            path = root / name / "run.json"
+            if path.exists():
+                found = True
+                previous_code = json.loads(path.read_text())["code"]
+                for key in ("source_sha256", "torch_version"):
+                    if previous_code[key] != current_code[key]:
+                        raise ValueError(
+                            "Campaign resume code or torch version changed"
+                        )
+        if not found:
+            raise ValueError("Campaign resume requires a saved stage recipe")
+    else:
+        if args.benchmark is None:
+            raise ValueError("New training requires a completed real-data benchmark")
+        measured = json.loads(args.benchmark.read_text())
+        microbatch = measured["selected"]["microbatch_windows"]
+        benchmark_sha256 = dual_sha256(args.benchmark)
     stages = [
         ["common-dpt-T32", "dpt", 32, None],
         ["dpt-T64", "dpt", 64, "common-dpt-T32"],
@@ -462,8 +506,10 @@ def train(args):
         frame_chunk_size=None,
         microbatch_T32=microbatch,
         microbatch_T64=1,
-        benchmark_sha256=dual_sha256(args.benchmark),
-        commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        benchmark_sha256=benchmark_sha256,
+        commit=saved_plan["commit"]
+        if saved_plan
+        else subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
     )
     if root.exists():
         if not args.resume or json.loads((root / "plan.json").read_text()) != plan:
@@ -480,9 +526,39 @@ def train(args):
         config_path=args.rclone_config,
     )
     index.publish_file(root / "plan.json")
+    if args.benchmark is not None:
+        retained_benchmark = root / "benchmark-complete.json"
+        if args.benchmark.resolve() != retained_benchmark.resolve():
+            shutil.copyfile(args.benchmark, retained_benchmark)
+        if dual_sha256(retained_benchmark) != benchmark_sha256:
+            raise ValueError("Retained benchmark differs from the original plan")
+        index.publish_file(retained_benchmark)
+    if args.resume:
+        attempt = root / f"resume-{uuid.uuid4().hex}.json"
+        save_json(
+            attempt,
+            dict(
+                schema="ball_sequential_resume.v1",
+                original_plan=plan,
+                code=source_identity(),
+                controller_sha256=dual_sha256(Path(__file__)),
+                benchmark_file_available=args.benchmark is not None,
+            ),
+        )
+        index.publish_file(attempt)
     for name, architecture, frames, parent_name in stages:
         output = root / name
         if (output / "COMPLETED.json").exists():
+            latest = json.loads((output / "latest.json").read_text())
+            completed = json.loads((output / "COMPLETED.json").read_text())
+            expected_updates = 10000 if parent_name is None else 6000
+            if (
+                completed.get("complete") is not True
+                or completed.get("updates_completed") != expected_updates
+                or latest["update"] != expected_updates
+                or dual_sha256(output / latest["checkpoint"]) != latest["sha256"]
+            ):
+                raise ValueError("Completed stage has an invalid terminal checkpoint")
             continue
         resume = None
         if (output / "latest.json").exists():
@@ -531,6 +607,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.mode != "prepare" and (not args.run_id or args.rclone_config is None):
         parser.error("run-id and rclone-config are required")
-    if args.mode == "train" and args.benchmark is None:
+    if args.mode == "train" and args.benchmark is None and not args.resume:
         parser.error("train requires a completed real-data benchmark")
     dict(prepare=prepare, benchmark=benchmark, train=train)[args.mode](args)

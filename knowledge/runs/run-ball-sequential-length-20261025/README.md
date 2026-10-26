@@ -72,3 +72,45 @@ VMが消失した場合は、Driveのreceiptで指定されたgenerationと`mani
 ローカルpathが既存の場合、restoreは上書きしない。
 元の`plan.json`、benchmark、prepared manifest、入力データも同じpathへ戻す。
 コードや計画が変わった実行を同じcampaignとして黙って再開しない。
+
+## VM消失後の復旧（2026-10-26）
+
+データ取得は上の`download_inputs.py`を最初に実行する。Python 3.11.17の
+`.venv/bin/python`を使い、`uv sync --locked`で保存時と同じTorch／torchvisionを
+準備する。新しい学習も再開も、全2,925ファイルのサイズとSHA-256の検証が
+完了していない場合は開始を拒否する。
+
+Drive mountと、そのmountを参照する明示的な`mounted_drive` rclone aliasを
+用意したうえで、次を実行する。mountからローカルSSDへデータを取得し、
+学習中はローカルの入力を使う。
+
+```bash
+.venv/bin/python -B knowledge/runs/run-ball-sequential-length-20261025/recover.py \
+  --workspace-root /content/tennis-lab \
+  --drive-root /content/drive/MyDrive/tennis_lab \
+  --rclone-config /tmp/ball-drive-mount.conf
+
+# データ取得の完了後、共有training queueから起動する。
+.venv/bin/python -B knowledge/runs/run-ball-sequential-length-20261025/run.py train \
+  --workspace-root /content/tennis-lab --run-id s42-20261025-main \
+  --rclone-config /tmp/ball-drive-mount.conf --resume
+```
+
+`recover.py`は保存receiptがある最新更新を選び、同じ更新では完了世代を優先する。
+receipt・marker・全payloadのhashを検証し、common DPT T32の10,000更新、
+DPT T64の6,000更新、query T32の3,000更新を復元できる。
+同じ更新に複数の候補がある場合や、最新receiptが破損している場合は停止する。
+再実行時に異なるローカル状態を上書きしない。prepared manifestの内容と
+データの絶対pathも、checkpointに保存されたrecipeと照合する。
+
+旧実行では`benchmark-complete.json`自体がDriveへ保存されていなかった。
+再開は元の`plan.json`に残るbenchmarkのdigestと選択済みbatchを保持し、
+要約を再生成したことにしない。新しい実行では要約もcampaignへ保存する。
+学習・データ・モデルのsourceとTorch版は全保存stageと照合し、各stageの
+厳密なresume recipe検証も維持する。復旧controllerの変更は許容し、
+元の計画を変更せず`resume-*.json`に今回のコードとcontrollerを記録する。
+
+完了済みのDPTを再学習せず、query T32はupdate 3,001から再開する。
+optimizer、RNG、抽出位置を復元し、T32終了後に全重みと対応するoptimizer状態を
+query T64へ継承する。T64の冒頭600更新ではCNNを凍結する。
+T128は引き続き対象外である。
