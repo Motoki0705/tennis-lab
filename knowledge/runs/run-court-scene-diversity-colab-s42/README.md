@@ -73,5 +73,18 @@ and stop the owned session after all jobs and saves are verified.
 
 Local progress lives in
 `outputs/court_detection/campaign/scene-diversity-6000-v1/colab-status.json`.
-The parent checks it and resumes this same execution agent every 30 minutes;
+The parent checks it and resumes this same execution agent every 300 minutes;
 there is no child timer or short-interval monitoring loop.
+
+`continue_campaign.py` connects the remaining approved stages on one managed
+Notebook command. It verifies scene 2's actual final checkpoint, permits only a
+same-condition `run.resume` configuration difference, evaluates the two validation
+domains, checks their exact counts and ordered IDs, and verifies Drive content
+before starting each next condition. Scenes 3 and 4 start independently from the
+original pretrained weight and seed. Their final checkpoint verification,
+separate-domain evaluation and four-condition comparison follow serially; any
+failed command or gate stops the sequence. The model, training and evaluation
+source trees, lockfile, preparation bundle and original execution helper retain
+their original Git object identities. This continuation changes orchestration
+and evidence checks only. Declare both fresh run outputs with `--runner-output`
+and persist the evaluation/comparison parent directories and audit directory.
