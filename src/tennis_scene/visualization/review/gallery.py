@@ -246,7 +246,8 @@ class Review(StoreReader):
         versions = (version,) if isinstance(version, int) else version
         if reference["schema"] != schema or reference["version"] not in versions:
             raise ValueError(f"{node} is {reference['schema']} v{reference['version']}; the gallery renders {schema} v{version}")
-        return super().payload(node)
+        payload, descriptor = super().payload(node)
+        return payload, descriptor
 
     def render(self, node: str) -> RenderResult:
         payload, descriptor = self.payload(node)
@@ -348,7 +349,7 @@ class Review(StoreReader):
             ])
         return [image, timeline], details
 
-    @renders("ball_points", "ball_points", 3)
+    @renders("ball_points", "ball_points", (3, 4))
     def render_ball_points(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
         positions = _array(value["uv_px"])
         observed: np.ndarray = _array(value["observed"]).astype(bool)
@@ -363,9 +364,16 @@ class Review(StoreReader):
 
         image = self.sheet(node, camera, draw)
         self.movie(node, camera, draw)
-        return [image], [("observed frames", str(_count(observed))),
-                         ("missing frames", str(_count(~observed))),
-                         ("point", "detector observations only")]
+        details = [("observed frames", str(_count(observed))),
+                   ("missing frames", str(_count(~observed)))]
+        if "smoothing" in value:
+            smoothing = value["smoothing"]
+            details.extend((name, str(_count(_array(smoothing[name]))))
+                           for name in ("source_observed", "rejected", "interpolated", "smoothed", "restored_turn"))
+            details.append(("point", "LOESS at accepted real observations; fills are diagnostic only"))
+        else:
+            details.append(("point", "detector observations only (historical v3)"))
+        return [image], details
 
     @renders("person_detection", "person_detections", 2)
     def render_person_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:

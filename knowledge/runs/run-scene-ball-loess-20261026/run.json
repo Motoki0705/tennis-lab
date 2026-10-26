@@ -1,0 +1,100 @@
+{
+  "id": "run-scene-ball-loess-20261026",
+  "device": "cpu",
+  "base_commit": "ebca0fa34c130481de77fba56443960be3f4b621",
+  "branch": "codex/scene-ball-loess",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-ball-loess",
+  "date": "2026-10-26",
+  "source_store": "/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/tennis_scene/cache/multiview_sample_release_20261021_a2/1d41f5ad9e2a0cbbc5b2",
+  "run_outputs": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-ball-loess/outputs/scene-ball-loess",
+  "commands": {
+    "replay": "env CUDA_VISIBLE_DEVICES= OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 PYTHONPATH=. .venv/bin/python knowledge/runs/run-scene-ball-loess-20261026/replay.py --store SOURCE_STORE --videos VIDEOS_DIR --output outputs/scene-ball-loess/replay_final",
+    "repeat": "same replay command with --output outputs/scene-ball-loess/replay_repeat",
+    "render": "bash knowledge/runs/run-scene-ball-loess-20261026/render.sh SCENE_NPZ VIDEOS_DIR CHECKPOINT_ROOT outputs/scene-ball-loess/render BLENDER_BIN",
+    "comparison": ".venv/bin/python knowledge/runs/run-scene-ball-loess-20261026/compare.py --store SOURCE_STORE --replay outputs/scene-ball-loess/replay_final --repeat outputs/scene-ball-loess/replay_repeat --output outputs/scene-ball-loess/comparison",
+    "reproduce_all": "bash knowledge/runs/run-scene-ball-loess-20261026/repro.sh SOURCE_STORE VIDEOS_DIR CHECKPOINT_ROOT NEW_OUTPUT_DIR BLENDER_BIN"
+  },
+  "environment": {
+    "python": "3.11.15",
+    "CUDA_VISIBLE_DEVICES": "",
+    "OMP_NUM_THREADS": "2",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "2",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "GALLIUM_DRIVER": "llvmpipe",
+    "EGL_PLATFORM": "surfaceless",
+    "blender_renderer": "llvmpipe (LLVM 20.1.2, 256 bits)",
+    "blender_version": "5.2.1 LTS"
+  },
+  "validation": {
+    "pytest": "138 passed (pipeline + gallery + temporal smoothing)",
+    "ruff": "passed (14 changed Python files)",
+    "mypy": "passed (14 changed Python files)",
+    "validator_requested": 0,
+    "validator_attempted": 0,
+    "configuration_audit": "passed; 125 runtime boundaries",
+    "deterministic_replay": "full ball arrays, diagnostics/provenance and manifest match",
+    "blender": "1010 mask/ball frames; 9 mesh frames; 0 mesh/ball error; max camera projection difference 0.000131px",
+    "media": "3 GIFs and MP4 fully decoded; 504 source input RGB comparisons exact; ball display mask equals replay mask; no ball display fills",
+    "extremes": "reviewed source crops near 57..59, 762/764 and 969->970; retained gap/jump limitations documented",
+    "pre_commit": "ruff and mypy passed",
+    "knowledge": "602 nodes, 0 errors; 219 advisory warnings for missing historical issue references",
+    "reproduction_paths": "408 scripts, 510 references, 0 missing/unverifiable",
+    "reproduction_patch_reverse_check": "passed",
+    "diff_whitespace": "passed outside literal patch text"
+  },
+  "limits": [
+    "saved production detector output reused; DPT presentation checkpoint is different",
+    "frozen cameras/people: not a full current-code pipeline run",
+    "no independent 3D ground truth",
+    "original NPZ/NPY, videos and rendered full videos stay outside knowledge"
+  ],
+  "captured_at": "2026-10-26T07:31:57.872859+00:00",
+  "final_source_code_sha256": "4a41f50e0545fca6a6b9e2b802b4271160d7f3b17c667592a63bd3e0f5c3c2dd",
+  "source_code_matches_replay": true,
+  "executed_replay_argv": [
+    "env",
+    "CUDA_VISIBLE_DEVICES=",
+    "OMP_NUM_THREADS=2",
+    "OPENBLAS_NUM_THREADS=1",
+    "MKL_NUM_THREADS=2",
+    "PYTHONPATH=.",
+    ".venv/bin/python",
+    "knowledge/runs/run-scene-ball-loess-20261026/replay.py",
+    "--store",
+    "/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/tennis_scene/cache/multiview_sample_release_20261021_a2/1d41f5ad9e2a0cbbc5b2",
+    "--videos",
+    "/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/multiview_sample_preflight/input_data/samples",
+    "--output",
+    "outputs/scene-ball-loess/replay_final"
+  ],
+  "executed_render_argv": [
+    "bash",
+    "knowledge/runs/run-scene-ball-loess-20261026/render.sh",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-ball-loess/outputs/scene-ball-loess/replay_final/scene.npz",
+    "/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/multiview_sample_preflight/input_data/samples",
+    "/home/kamimura/projects/tennis-lab/ckpt",
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-ball-loess/outputs/scene-ball-loess/render",
+    "/home/kamimura/.cache/tennis-lab/blender/blender-5.2.1-linux-x64/blender"
+  ],
+  "artifacts_published_in_pr": {
+    "multiview_reconstruction.gif": {
+      "path": "assets/tennis_scene/multiview_reconstruction.gif",
+      "previous_git_blob": "973d94f884e4bb7efd006e74f7437a3a81d1905d",
+      "sha256": "fdf6efbb0e704cad3357e5aec765426f2836ae03cfcbb237e385d0017b104df7",
+      "bytes": 5794518
+    },
+    "blender_reveal_meiji_cam1.gif": {
+      "path": "assets/tennis_scene/blender_reveal_meiji_cam1.gif",
+      "previous_git_blob": "ef927f94082c580f8a9aadad36478d6b40945bf9",
+      "sha256": "3c3169613ebc4f8f71905c3ab87e85fcba160dd5c79a504b754b008bdbcfaa18",
+      "bytes": 4391463
+    },
+    "rich_scene_rendering.gif": {
+      "path": "assets/tennis_scene/rich_scene_rendering.gif",
+      "previous_git_blob": "c9067e8393d313db8bb95ca1fa5cced8a6a49f2b",
+      "sha256": "4b27a21c05e7addf40f2a4ac4404d00d6b8c49c6b2212c4fdd2c6fc347d1d9ba",
+      "bytes": 391368
+    }
+  }
+}

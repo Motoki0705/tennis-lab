@@ -53,6 +53,7 @@ directory名や`bpy`のimportだけでは除外しません。未登録のshot�
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
 - **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
+- **`temporal_smoothing.py`**: FPSと画像対角長に合わせた局所運動consensus、confidence重み付きの頑健な2次LOESS。実観測・除外・短い内側補間・平滑化のmaskを分離し、長い欠損と両端を埋めない。幾何には`accepted`の実観測だけを使う。
 - **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
 
 ### `matching/`
