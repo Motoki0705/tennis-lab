@@ -1,0 +1,15 @@
+{
+  "deterministic_scene_ball_arrays": true,
+  "deterministic_component_arrays_and_provenance": true,
+  "deterministic_replay_manifest": true,
+  "common_valid_frames": 802,
+  "common_raw_observation_count": 1986,
+  "raw_reprojection_before_median_px": 3.554317890100016,
+  "raw_reprojection_after_median_px": 4.810261841053709,
+  "raw_reprojection_before_p95_px": 11.294080775597966,
+  "raw_reprojection_after_p95_px": 12.697105462521348,
+  "common_adjacent_step_before_p95_m": 0.6821850538253784,
+  "common_adjacent_step_after_p95_m": 0.4049496054649353,
+  "comparison_is_ground_truth": false,
+  "comparison_mp4_sha256": "f0b88b55ff1e036837d9bbfedafa070c0c8579df33a8da004b0d6405c89c4cf5"
+}
