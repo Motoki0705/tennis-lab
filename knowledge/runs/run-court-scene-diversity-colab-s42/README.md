@@ -1,5 +1,61 @@
 # Fixed-budget Court scene diversity on Colab L4
 
+## Completed results (2026-10-27)
+
+The four individual run records are
+[scene1](../../nodes/court_detection/000051-run-court-scene-diversity-colab-scene-1-s42.md),
+[scene2](../../nodes/court_detection/000052-run-court-scene-diversity-colab-scene-2-s42.md),
+[scene3](../../nodes/court_detection/000053-run-court-scene-diversity-colab-scene-3-s42.md),
+and [scene4](../../nodes/court_detection/000054-run-court-scene-diversity-colab-scene-4-s42.md).
+The [comparison group](../../nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)
+records Japanese findings and limitations. Each run retains its own resolved
+configuration, complete evaluation metadata/ordered IDs, compact metrics, payload
+verification and curves. Shared execution code is kept only in this bundle.
+
+`comparison.{json,csv,png}` was produced by the original preparation `report.py`
+from the four final evaluations. `final-acceptance.json`, `terminal-status.json`
+and `continuation-completion.json` document the successful gates and terminal
+managed command. `parent-verification.json` is the parent's independent review of
+the retrieved results, including an identical comparison recomputation, rather
+than another training/evaluation trial. `execution-receipt.json` identifies exact
+execution commits, sessions, environment and durable Drive locations. Large
+images/checkpoints and raw TensorBoard files remain in Drive, outside Git.
+
+Scene2 resumed its own saved update26528 optimizer/scheduler/loop state and
+finished at update33160 in `version_1`. The original job's terminal status remains
+unknown. The last periodic observation was27112, while the final retained
+TensorBoard contains update27150, so at least622 attempted updates were discarded.
+The non-resumable mid-epoch DataLoader does not guarantee exact worker RNG/sampler
+order continuation. The cause of the two earlier VM disappearances is unknown.
+At final verification the owned session was already absent; official doctor
+reported zero active assignments and usage0.00/hr (`gpu-release.json`). No stop
+request was sent to a session that no longer existed.
+
+### Fit-time curves
+
+`kg_curves.py` was run for all four run IDs using the verified final TensorBoard
+sources. The final `curves.json`/`curves.png` are then exported by the script below,
+which clips scene2's old attempt at26528, excludes its discarded tail and adds a
+visible resume boundary. The discarded old points remain separately labelled in
+`curves.json`; they are never mixed into final-model history. Event steps are
+zero-based, so optimizer updates are `event.step + 1`. Each history contains ten
+validation observations at3316..33160. Validation curves are fit-time aggregate
+synthetic500 + real2211; final evaluation is domain-separated in each run's
+`evaluation.json`. All KP pixel units are post-preprocessing model coordinates
+with longside512, rather than original-image coordinates.
+
+The verified event source filenames, SHA-256 and Drive file paths are recorded in
+`curve-sources.json`. Download those immutable files into the documented relative
+layout under a local transfer directory, then run:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
+  knowledge/runs/run-court-scene-diversity-colab-s42/export_curves.py \
+  --source-root /path/to/verified/colab-transfer
+```
+
+The original experiment protocol and execution commands follow.
+
 The four immutable source configurations and input plan are in
 [the preparation bundle](../run-court-scene-diversity-preparation-s42/README.md).
 `colab_campaign.py` relocates their seven path roots to `/content/tennis-lab`,
