@@ -5,6 +5,7 @@
 ## [workflow](workflow/index.md) — 作業のコツ
 
 - 新しいworktreeには `.venv` が無いので、メインtreeの `.venv` へsymlinkを張る。
+- 親たちへの一斉指示では、全員の応答がそろうのを待つ条件を作らず、届いた親から進める。止まった担当と人間の操作が要る手順は、人間にまとめて伝える。
 
 ## [decision](decision/index.md) — ユーザーの判断
 
