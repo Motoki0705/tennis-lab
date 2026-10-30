@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -14,6 +15,8 @@ from src.tasks.blcs.data.dataset import (
 )
 from src.tasks.blcs.generate_dataset.io.dataset_io import BLCSDatasetWriter
 from src.tasks.blcs.generate_dataset.scene_generator import BLCSSceneData, CameraData
+from src.tasks.blcs.inference.predictor import BLCSPredictor
+from src.tasks.blcs.model_io.checkpoints import load_checkpoint_model
 from src.tasks.blcs.model_io.factory import compose_blcs_model_io
 from src.tasks.blcs.model_io.training import compose_blcs_training
 from src.tasks.blcs.training.lightning_module import BLCSLightningModule
@@ -113,18 +116,27 @@ def _write_dataset(root: Path) -> None:
 
 def _build(config: DictConfig) -> tuple[Any, Any]:
     _write_dataset(Path(config.paths.data_root) / "sceneset")
+    return _components(config)
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
     composition = compose_blcs_training(config, generator_config=None)
     return composition.lightning_module, composition.datamodule
 
 
 def _restore(config: DictConfig, path: Path) -> BLCSLightningModule:
-    return BLCSLightningModule.load_from_checkpoint(
-        path,
-        config=config,
-        model_io=compose_blcs_model_io(config),
-        map_location="cpu",
-        strict=True,
-        weights_only=False,
+    saved = torch.load(path, map_location="cpu", weights_only=False)[
+        "hyper_parameters"
+    ]["config"]
+    return cast(
+        BLCSLightningModule,
+        BLCSLightningModule.load_from_checkpoint(
+            path,
+            model_io=compose_blcs_model_io(saved),
+            map_location="cpu",
+            strict=True,
+            weights_only=False,
+        ),
     )
 
 
@@ -215,13 +227,38 @@ def _supervised_result(module: Any, batch: Any) -> Any:
     return result
 
 
+def _predict(module: Any, batch: Any) -> Any:
+    normalized = module.model_io.run(batch)
+    predictor = BLCSPredictor(module.model_io, torch.device("cpu"))
+    physical = predictor.predict_batch(batch, denormalize=True)
+    assert physical.coordinates_in_metres
+    assert physical.physics_parameters is not None and physical.event_logits is not None
+    return dict(
+        normalized=normalized,
+        physical=physical,
+        padding_mask=batch["padding_mask"],
+        ball_vis=batch["ball_vis"],
+    )
+
+
+def _predict_artifact(path: Path, batch: Any) -> Any:
+    binding, _ = load_checkpoint_model(path)
+    binding.model.eval()
+    return _predict(SimpleNamespace(model_io=binding), batch)
+
+
 AXIAL = ModelFamily(
     name="blcs_multiview_axial",
     compose=_compose,
     build=_build,
+    rebuild=_components,
+    training_state=lambda module: (
+        module.gan_training.state_dict() if module.gan_training is not None else None
+    ),
     batch=_batch,
     supervised_result=_supervised_result,
-    predict=lambda module, batch: module.model_io.run(batch),
+    predict=_predict,
+    predict_artifact=_predict_artifact,
     save=save_checkpoint,
     restore=_restore,
     parameters=_parameters,

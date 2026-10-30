@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import torch
@@ -16,6 +16,7 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
 from src.tasks.plcs.generate_dataset.io.dataset_io import PLCSDatasetWriter
 from src.tasks.plcs.generate_dataset.scene_generator import CameraData, SceneData
+from src.tasks.plcs.inference.predictor import PLCSPredictor
 from src.tasks.plcs.training.composition import (
     build_plcs_datamodule,
     build_plcs_lightning_module,
@@ -135,16 +136,22 @@ def _write_dataset(root: Path) -> None:
 
 def _build(config: DictConfig) -> tuple[Any, Any]:
     _write_dataset(Path(config.paths.data_root) / "sceneset")
+    return _components(config)
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
     return build_plcs_lightning_module(config), build_plcs_datamodule(config)
 
 
 def _restore(config: DictConfig, path: Path) -> PLCSLightningModule:
-    return PLCSLightningModule.load_from_checkpoint(
-        path,
-        config=config,
-        map_location="cpu",
-        strict=True,
-        weights_only=False,
+    return cast(
+        PLCSLightningModule,
+        PLCSLightningModule.load_from_checkpoint(
+            path,
+            map_location="cpu",
+            strict=True,
+            weights_only=False,
+        ),
     )
 
 
@@ -237,13 +244,38 @@ def _supervised_result(module: Any, batch: Any) -> Any:
     return result
 
 
+def _predict(module: Any, batch: Any) -> Any:
+    predictor = PLCSPredictor(
+        model=module.model, adapter=module.io_adapter, device=torch.device("cpu")
+    )
+    physical = predictor.predict(
+        batch["human_kp"],
+        batch["court_kp"],
+        batch["human_vis"],
+        batch["padding_mask"],
+        batch["court_vis"],
+        denormalize=True,
+        court_keypoint_metadata=batch["court_keypoint_metadata"],
+    )
+    return dict(
+        normalized=module.model_io.run(batch),
+        physical=physical,
+        padding_mask=batch["padding_mask"],
+        human_vis=batch["human_vis"],
+    )
+
+
 AXIAL = ModelFamily(
     name="plcs_multiview_axial",
     compose=_compose,
     build=_build,
+    rebuild=_components,
+    training_state=lambda module: (
+        module.gan_training.state_dict() if module.gan_training is not None else None
+    ),
     batch=_batch,
     supervised_result=_supervised_result,
-    predict=lambda module, batch: module.model_io.run(batch),
+    predict=_predict,
     save=save_checkpoint,
     restore=_restore,
     parameters=_parameters,
@@ -254,6 +286,7 @@ TEMPORAL = ModelFamily(
     name="plcs_multiview_axial/temporal_decomposition",
     compose=lambda root, gan: _compose(root, gan, temporal=True),
     build=_build,
+    rebuild=_components,
     batch=_batch,
     supervised_result=AXIAL.supervised_result,
     predict=AXIAL.predict,

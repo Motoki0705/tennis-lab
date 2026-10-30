@@ -43,11 +43,27 @@ class _TinyModule(BaseLightningModule):
 def test_enabling_qualitative_logging_requires_renderer(make_training_config) -> None:
     config = make_training_config()
     config["training"]["qualitative_logging"]["enabled"] = True
-    with pytest.raises(ValueError, match="_TinyModule to implement render_qualitative_samples"):
+    with pytest.raises(
+        ValueError, match="_TinyModule to implement render_qualitative_samples"
+    ):
         _TinyModule(config)
 
 
-def test_unimplemented_renderer_raises_when_called_directly(make_training_config) -> None:
+def test_explicit_step_budget_does_not_prefetch_the_resume_loader() -> None:
+    module = _TinyModule(_config(max_epochs=4, steps_per_epoch=3))
+
+    class LoaderMustNotBeTouched:
+        @property
+        def estimated_stepping_batches(self):
+            raise AssertionError("scheduler estimation would consume data RNG")
+
+    module._trainer = cast(Any, LoaderMustNotBeTouched())
+    assert module._estimate_total_steps() == 12
+
+
+def test_unimplemented_renderer_raises_when_called_directly(
+    make_training_config,
+) -> None:
     module = _TinyModule(make_training_config())
     with pytest.raises(NotImplementedError, match="qualitative rendering"):
         module.render_qualitative_samples([], [], Path("unused"), None, 0, 0)
@@ -199,7 +215,9 @@ def test_hyperparameters_only_capture_serializable_config(tmp_path: Path) -> Non
     logger.save()
 
 
-def test_hyperparameters_save_raw_config_passed_by_typed_subclass(tmp_path: Path) -> None:
+def test_hyperparameters_save_raw_config_passed_by_typed_subclass(
+    tmp_path: Path,
+) -> None:
     config = _config()
     module = _ModuleWithTypedConfig(_RuntimeConfig(config, tmp_path))
     logger = TensorBoardLogger(save_dir=tmp_path)
@@ -409,14 +427,15 @@ def test_save_test_predictions_uses_configured_run_location(
         diagnostic_metrics={"x_error_m": 0.05, "loss_position": 0.01},
     )
     assert npz_path is not None
-    assert npz_path == tmp_path / "outputs/tiny/train/default/run-1/predictions/pred_test.npz"
+    assert (
+        npz_path
+        == tmp_path / "outputs/tiny/train/default/run-1/predictions/pred_test.npz"
+    )
     loaded = np.load(npz_path)
     assert loaded["position"].shape == (3, 5, 3)  # batch 2+1, T padded to 5
     assert loaded["scene_ids"].shape == (3,)
     metrics = json.loads((npz_path.parent / "metrics.json").read_text())
-    diagnostics = json.loads(
-        (npz_path.parent / "diagnostic_metrics.json").read_text()
-    )
+    diagnostics = json.loads((npz_path.parent / "diagnostic_metrics.json").read_text())
     assert metrics == {"position_error_m": 0.1}
     assert diagnostics == {"x_error_m": 0.05, "loss_position": 0.01}
 
@@ -492,22 +511,32 @@ def test_save_test_predictions_none_when_empty(tmp_path: Path) -> None:
     assert m.save_test_predictions() is None  # nothing collected
 
 
-def test_saved_padding_excludes_short_batch_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_saved_padding_excludes_short_batch_tail(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     class PredModule(_TinyModule):
-        def test_prediction_payload(self, batch: Any, result: dict[str, Any]) -> dict[str, np.ndarray]:
+        def test_prediction_payload(
+            self, batch: Any, result: dict[str, Any]
+        ) -> dict[str, np.ndarray]:
             return {key: self._to_numpy(value) for key, value in result.items()}
 
     monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
     module = PredModule(_config(artifact_root=tmp_path))
     for length in (2, 4):
-        module.collect_test_predictions(None, {
-            "position": torch.ones(1, length, 3),
-            "padding_mask": torch.zeros(1, length, dtype=torch.bool),
-        })
+        module.collect_test_predictions(
+            None,
+            {
+                "position": torch.ones(1, length, 3),
+                "padding_mask": torch.zeros(1, length, dtype=torch.bool),
+            },
+        )
     saved = module.save_test_predictions()
     assert saved is not None
     with np.load(saved) as payload:
-        assert payload["padding_mask"].tolist() == [[False, False, True, True], [False, False, False, False]]
+        assert payload["padding_mask"].tolist() == [
+            [False, False, True, True],
+            [False, False, False, False],
+        ]
         assert (~payload["padding_mask"]).sum() == 6
 
 
@@ -528,9 +557,11 @@ def test_prediction_ids_preserve_namespace_and_legacy_paths(
         dataset.prediction_ids = dataset.scenes  # type: ignore[attr-defined]
     module = _TinyModule(_config())
     module._reset_test_prediction_buffer()
-    monkeypatch.setattr(module, "_safe_trainer", lambda: SimpleNamespace(
-        datamodule=SimpleNamespace(test_dataset=dataset)
-    ))
+    monkeypatch.setattr(
+        module,
+        "_safe_trainer",
+        lambda: SimpleNamespace(datamodule=SimpleNamespace(test_dataset=dataset)),
+    )
     ids = module._scene_ids_for_test_batch(1) + module._scene_ids_for_test_batch(1)
     assert ids == (dataset.scenes if explicit else ["clip@cam@000000"] * 2)
     if explicit:
@@ -552,8 +583,10 @@ def test_invalid_explicit_prediction_ids_fail(
 
     module = _TinyModule(_config())
     module._reset_test_prediction_buffer()
-    monkeypatch.setattr(module, "_safe_trainer", lambda: SimpleNamespace(
-        datamodule=SimpleNamespace(test_dataset=Dataset())
-    ))
+    monkeypatch.setattr(
+        module,
+        "_safe_trainer",
+        lambda: SimpleNamespace(datamodule=SimpleNamespace(test_dataset=Dataset())),
+    )
     with pytest.raises(ValueError, match="prediction_ids"):
         module._scene_ids_for_test_batch(1)

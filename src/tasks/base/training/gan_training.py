@@ -68,6 +68,22 @@ class ManualGANTrainingStrategy:
             raise ValueError("GAN weight must be a finite value >= 0.")
         self.current_weight = float(weight)
 
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "phase_active": self.phase_active,
+            "start_epoch": self.start_epoch,
+            "current_weight": self.current_weight,
+            "supervised_only_step_count": self.supervised_only_step_count,
+            "hybrid_gan_step_count": self.hybrid_gan_step_count,
+        }
+
+    def load_state_dict(self, state: dict[str, Any]) -> None:
+        self.phase_active = state["phase_active"]
+        self.start_epoch = state["start_epoch"]
+        self.set_weight(state["current_weight"])
+        self.supervised_only_step_count = state["supervised_only_step_count"]
+        self.hybrid_gan_step_count = state["hybrid_gan_step_count"]
+
     def shared_step(
         self, module: Any, batch: Any, stage: str
     ) -> tuple[Tensor, dict[str, Any]]:
@@ -294,10 +310,20 @@ class ManualGANSupportMixin:
         self._test_metric_diagnostic_accumulator = WeightedMetricAccumulator()
 
     def activate_gan_phase(self, start_epoch: int) -> None:
-        if self.gan_training is None:
+        if self.gan_training is None or self.gan_training.phase_active:
             return
         self.reset_gan_phase_schedules(start_epoch)
         self.gan_training.activate_phase(start_epoch)
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        cast("Any", super()).on_save_checkpoint(checkpoint)
+        if self.gan_training is not None:
+            checkpoint["manual_gan_state"] = self.gan_training.state_dict()
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        cast("Any", super()).on_load_checkpoint(checkpoint)
+        if self.gan_training is not None and "manual_gan_state" in checkpoint:
+            self.gan_training.load_state_dict(checkpoint["manual_gan_state"])
 
     def set_gan_weight(self, weight: float) -> None:
         if self.gan_training is None:

@@ -20,7 +20,6 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-import pytorch_lightning as pl
 from torch.utils.data import DataLoader, RandomSampler
 
 from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_data
@@ -44,12 +43,14 @@ from src.tasks.ball_detection.data.supervision import (
     FrameSupervisionPolicy,
     resolve_frame_supervision,
 )
+from src.tasks.base.data.loader_state import LoaderRNGDataModule
+from src.tasks.base.data.rng import require_run_seed
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
 
 
-class BallStoreDataModule(pl.LightningDataModule):
+class BallStoreDataModule(LoaderRNGDataModule):
     """Mixed-source training and evaluation on one ball frame store version.
 
     ``data.train_sampling: null`` draws every train window once per epoch in a
@@ -57,7 +58,7 @@ class BallStoreDataModule(pl.LightningDataModule):
     """
 
     def __init__(self, config: DictConfig) -> None:
-        super().__init__()
+        super().__init__(loader_seed=require_run_seed(config))
         self.config = config
         paths = BallRuntimePaths.from_config(config)
         data_cfg = validate_data(config, paths=paths)
@@ -66,7 +67,8 @@ class BallStoreDataModule(pl.LightningDataModule):
         self.pin_memory = bool(data_cfg["pin_memory"])
         self.store = BallFrameStore(paths.data(str(data_cfg["data_dir"])))
         self.sources: tuple[Source, ...] = tuple(
-            cast(Source, str(name)) for name in cast(Sequence[object], data_cfg["sources"])
+            cast(Source, str(name))
+            for name in cast(Sequence[object], data_cfg["sources"])
         )
         missing = sorted(set(self.sources) - {clip.source for clip in self.store.clips})
         if missing:
@@ -158,7 +160,7 @@ class BallStoreDataModule(pl.LightningDataModule):
         if dataset is None:
             raise RuntimeError("setup('fit') must run before train_dataloader().")
         if self.train_sampling is None:
-            return RandomSampler(dataset)
+            return RandomSampler(dataset, generator=self.loader_generator("train"))
         source_indices: dict[str, list[int]] = {name: [] for name in self.sources}
         for index in range(len(dataset)):
             source_indices[dataset.source_of(index)].append(index)
@@ -178,6 +180,7 @@ class BallStoreDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             drop_last=False,
+            generator=self.loader_generator("train"),
         )
 
     def _eval_loader(
@@ -191,6 +194,7 @@ class BallStoreDataModule(pl.LightningDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
+            generator=self.loader_generator({"validate": "val", "test": "test"}[stage]),
         )
 
     def val_dataloader(self) -> DataLoader[Any]:

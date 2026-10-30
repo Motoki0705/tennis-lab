@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytorch_lightning as pl
+import torch
 import torch.distributed as distributed
 from torch.utils.data import DataLoader
 
+from src.tasks.base.data.loader_state import LoaderRNGDataModule
 from src.tasks.slcs.configuration import SLCSDataRuntimeConfig
 from src.tasks.slcs.data.dataset import SLCSWindowDataset, collate_slcs
 from src.tasks.slcs.data.sampling import DomainBalancedSampler
 
 
-class SLCSDataModule(pl.LightningDataModule):
+class SLCSDataModule(LoaderRNGDataModule):
     """Builds train/val/test :class:`SLCSWindowDataset` loaders.
 
     Required ``config.data`` keys: ``dataset_root``, ``split_file``,
@@ -24,7 +25,7 @@ class SLCSDataModule(pl.LightningDataModule):
     def __init__(
         self, config: SLCSDataRuntimeConfig, *, seed: int | None = None
     ) -> None:
-        super().__init__()
+        super().__init__(loader_seed=torch.initial_seed() if seed is None else seed)
         self.config = config
         self.seed = seed
         self.dataset_root = config.dataset_root
@@ -65,7 +66,9 @@ class SLCSDataModule(pl.LightningDataModule):
             ),
         )
 
-    def _loader(self, dataset: SLCSWindowDataset, *, shuffle: bool) -> DataLoader[Any]:
+    def _loader(
+        self, dataset: SLCSWindowDataset, *, shuffle: bool, stage: str
+    ) -> DataLoader[Any]:
         sampler = None
         sampling = self.config.domain_sampling
         if shuffle and sampling is not None and sampling.enabled:
@@ -94,22 +97,23 @@ class SLCSDataModule(pl.LightningDataModule):
             drop_last=False,
             pin_memory=self.pin_memory,
             persistent_workers=self.num_workers > 0,
+            generator=self.loader_generator(stage),
         )
 
     def train_dataloader(self) -> DataLoader[Any]:
         if self.train_dataset is None:
             raise RuntimeError("setup('fit') must run before train_dataloader().")
-        return self._loader(self.train_dataset, shuffle=True)
+        return self._loader(self.train_dataset, shuffle=True, stage="train")
 
     def val_dataloader(self) -> DataLoader[Any]:
         if self.val_dataset is None:
             raise RuntimeError("setup('fit') must run before val_dataloader().")
-        return self._loader(self.val_dataset, shuffle=False)
+        return self._loader(self.val_dataset, shuffle=False, stage="val")
 
     def test_dataloader(self) -> DataLoader[Any]:
         if self.test_dataset is None:
             raise RuntimeError("setup('test') must run before test_dataloader().")
-        return self._loader(self.test_dataset, shuffle=False)
+        return self._loader(self.test_dataset, shuffle=False, stage="test")
 
 
 __all__ = ["SLCSDataModule"]

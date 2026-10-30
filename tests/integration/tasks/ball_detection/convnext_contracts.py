@@ -1,11 +1,13 @@
 """The legacy ConvNeXt heatmap selector through its actual Lightning loop."""
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import torch
 from omegaconf import DictConfig
 
+from src.tasks.ball_detection.checkpoints.heatmap import load_ball_checkpoint
 from src.tasks.ball_detection.data.store_datamodule import BallStoreDataModule
 from src.tasks.ball_detection.training.convnext_heatmap.module import (
     BallDetectionLightningModule,
@@ -96,16 +98,51 @@ def _assert_prediction(output: Any) -> None:
     assert output.dtype == torch.float32 and torch.isfinite(output).all()
 
 
+def _predict(module: Any, batch: Any) -> Any:
+    call = module.model_io.prepare_training_batch(
+        batch, image_normalization=module.image_normalization
+    )
+    logits = module.model(*call.model_call.model_args)
+    public = module.model_io.prediction(
+        logits,
+        call.model_call,
+        subpixel_refine=bool(module.config.metrics.subpixel_refine),
+    )
+    return dict(
+        logits=logits,
+        public=public,
+        supervised=call.supervised,
+        original_size=call.original_size,
+        normalization=module.image_normalization,
+    )
+
+
+def _predict_artifact(path: Path, batch: Any) -> Any:
+    loaded = load_ball_checkpoint(path, weights_only=False)
+    loaded.model_io.model.eval()
+    return _predict(
+        SimpleNamespace(
+            model=loaded.model_io.model,
+            model_io=loaded.model_io.adapter,
+            config=loaded.config,
+            image_normalization=loaded.image_normalization,
+        ),
+        batch,
+    )
+
+
 CONVNEXT = ModelFamily(
     name="conv_next_unet",
     compose=_compose,
     build=_build,
+    rebuild=lambda config: (BallDetectionLightningModule(config), _data(config)),
     batch=_batch,
     supervised_result=_result,
-    predict=lambda module, batch: _result(module, batch)["outputs"],
+    predict=_predict,
+    predict_artifact=_predict_artifact,
     save=save_checkpoint,
     restore=lambda config, path: BallDetectionLightningModule.load_from_checkpoint(
-        path, config=config, map_location="cpu", weights_only=False
+        path, strict=True, map_location="cpu", weights_only=False
     ),
     parameters=_parameters,
     assert_batch=_assert_batch,
