@@ -3,15 +3,15 @@ from __future__ import annotations
 import hashlib
 import multiprocessing as mp
 import os
-import time
 from pathlib import Path
-from typing import Any
+from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
 
 from src.utils.checksum import dual_sha256
-from src.utils.data.verification import SharedFileVerification
+from src.utils.data.verification import SharedFileVerification, stat_version
 
 
 def _verify_worker(cache: SharedFileVerification, path: Path, gate: Any, counter: Any) -> None:
@@ -56,15 +56,24 @@ def test_workers_share_successful_hash_once(tmp_path: Path, method: str) -> None
             worker.join(5)
 
 
-def test_rejects_mutation_even_if_size_and_mtime_are_restored(tmp_path: Path) -> None:
+def test_rejects_mutation_even_if_size_and_mtime_are_restored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     path = tmp_path / "source"
     path.write_bytes(b"old")
     cache = SharedFileVerification({path: hashlib.sha256(b"old").hexdigest()})
     cache.verify(path)
     stat = path.stat()
-    time.sleep(.02)  # Cross the timestamp granularity of the WSL filesystem.
     path.write_bytes(b"new")
     os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
+    # Inject the ctime transition rather than wait for filesystem clock precision.
+    changed = SimpleNamespace(
+        st_dev=stat.st_dev, st_ino=stat.st_ino, st_size=stat.st_size,
+        st_mtime_ns=stat.st_mtime_ns, st_ctime_ns=stat.st_ctime_ns + 1_000_000_000,
+    )
+    monkeypatch.setattr(
+        "src.utils.data.verification.file_version", lambda _: stat_version(cast(os.stat_result, changed))
+    )
     with pytest.raises(ValueError, match="changed"):
         cache.verify(path)
 
