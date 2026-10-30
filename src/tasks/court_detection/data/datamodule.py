@@ -207,12 +207,13 @@ class CourtDetectionDataModule(LoaderRNGDataModule):
         dataset: Dataset[Any] | None,
         *,
         stage: str,
+        rng_stage: str,
     ) -> DataLoader[Any]:
         return DataLoader(
             self._require_dataset(dataset, stage=stage),
             batch_size=self.batch_size,
             shuffle=False,
-            generator=self.loader_generator(stage),
+            generator=self.loader_generator(rng_stage),
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=partial(
@@ -224,7 +225,7 @@ class CourtDetectionDataModule(LoaderRNGDataModule):
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
-        return self._eval_loader(self.val_dataset, stage="validate")
+        return self._eval_loader(self.val_dataset, stage="validate", rng_stage="val")
 
     def source_eval_dataloader(
         self, source: str, split: CourtSourceSplit
@@ -241,7 +242,7 @@ class CourtDetectionDataModule(LoaderRNGDataModule):
         )
         if dataset is None:
             raise ValueError(f"Court source {source!r} has no {split!r} split.")
-        return self._eval_loader(dataset, stage=f"{source}/{split}")
+        return self._eval_loader(dataset, stage=f"{source}/{split}", rng_stage=split)
 
     def test_dataloader(self) -> DataLoader[Any]:
-        return self._eval_loader(self.test_dataset, stage="test")
+        return self._eval_loader(self.test_dataset, stage="test", rng_stage="test")

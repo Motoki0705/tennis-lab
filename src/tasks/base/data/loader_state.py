@@ -28,7 +28,9 @@ class LoaderRNGDataModule(pl.LightningDataModule):
         }
 
     def loader_generator(self, stage: str) -> torch.Generator:
-        return self._loader_rng[stage]
+        # Lightning calls the validation lifecycle "validate"; checkpoint keys
+        # use the dataset split name "val" in every task.
+        return self._loader_rng["val" if stage == "validate" else stage]
 
     def state_dict(self) -> dict[str, Any]:
         return {

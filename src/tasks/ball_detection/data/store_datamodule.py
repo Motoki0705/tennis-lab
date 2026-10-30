@@ -20,6 +20,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+import torch
 from torch.utils.data import DataLoader, RandomSampler
 
 from src.tasks.ball_detection.configuration import BallRuntimePaths, validate_data
@@ -44,7 +45,6 @@ from src.tasks.ball_detection.data.supervision import (
     resolve_frame_supervision,
 )
 from src.tasks.base.data.loader_state import LoaderRNGDataModule
-from src.tasks.base.data.rng import require_run_seed
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
@@ -58,7 +58,7 @@ class BallStoreDataModule(LoaderRNGDataModule):
     """
 
     def __init__(self, config: DictConfig) -> None:
-        super().__init__(loader_seed=require_run_seed(config))
+        super().__init__(loader_seed=torch.initial_seed())
         self.config = config
         paths = BallRuntimePaths.from_config(config)
         data_cfg = validate_data(config, paths=paths)
@@ -194,7 +194,7 @@ class BallStoreDataModule(LoaderRNGDataModule):
             shuffle=False,
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
-            generator=self.loader_generator({"validate": "val", "test": "test"}[stage]),
+            generator=self.loader_generator(stage),
         )
 
     def val_dataloader(self) -> DataLoader[Any]:

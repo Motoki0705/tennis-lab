@@ -35,7 +35,7 @@ def test_fresh_loader_continues_shuffled_epochs_and_preserves_model_rng():
 def test_evaluation_iterator_does_not_advance_train_order():
     data = LoaderRNGDataModule(loader_seed=123)
     other = LoaderRNGDataModule(loader_seed=123)
-    list(DataLoader(list(range(11)), generator=data.loader_generator("val")))
+    list(DataLoader(list(range(11)), generator=data.loader_generator("validate")))
     assert _epoch(data) == _epoch(other)
 
 
