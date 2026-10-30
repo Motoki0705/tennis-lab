@@ -45,7 +45,18 @@ children = refreshed["parents"][0]["children"]
 
 - 親registryは`parent.state.Store.read_data()`を使う。version 1/2を読み、後者は親別JSONと
   所有索引を照合する。operation・registry・session lockを取らず、作成・初期化・saveを呼ばない。
-  取得前後でregistryが変わったら`registry_changed_retry`で失敗し、世代を混ぜない。
+  照合対象は出力に含める各親の行だけ。repo・parent・担当状態のフィルタで対象外となる親の
+  更新は取得を失敗させない。破損・未知schemaなどregistryそのものの検証失敗は従来どおりエラー。
+  対象候補は呼出し開始時に選び、各親の取得直前にその行を読み直す。直前に担当終了した親は
+  `include_inactive=False`なら除外し、新たに追加された親は次の呼出しから対象にする。
+- GitHubは各親の取得直後にその親の行を取得前と比較する。変更があれば、その親だけ最新行を
+  読み直して**1回だけ**GitHubを取り直し、旧結果は捨てる。取り直しも変化した場合や対象行が
+  消失した場合は`registry_changed_retry`で全体を失敗させ、部分成功を返さない。
+  再取得ではGETキャッシュを引き継がず、新旧担当の私的な識別子はどちらも秘匿検査に保持する。
+  各親の担当世代・task・GitHub結果を一組として確定し、別の親の取得中に以前の親が更新されても
+  確定済みの観測を無効にしない。複数親の状態は同一瞬間のsnapshotではない。
+- `github=False`も各親のローカル投影の直前・直後にその行だけ照合する。対象行が変化したら
+  `registry_changed_retry`で全体を失敗させる。ローカル取得には自動再試行を加えない。
 - 手動workerはtaskの`worker_runs`を読む。形式・保存側の契約は#1548。
   現在の`delegation_id`と一致する記録の最後の要素を選び、古い委任へ戻らない。
   相対runパスは親state内、外部runは絶対パスでなければならない。
