@@ -58,7 +58,7 @@ def epoch(value: Any) -> str | None:
 
 def json_record(path: Path) -> tuple[dict[str, Any], str]:
     # Metadata has a separate hard bound; event streams use seek/tail below.
-    source = "runner.result" if path.name == "result.json" else "runner.session"
+    source = "runner." + path.stem
     try:
         with path.open("rb") as stream:
             raw = stream.read(1024 * 1024 + 1)
@@ -226,9 +226,25 @@ def summarize(
 
 
 def inspect_run(
-    directory: Path, guard: Guard, *, bound: int, tool_limit: int
+    directory: Path,
+    guard: Guard,
+    *,
+    expected_contract: dict[str, Any],
+    bound: int,
+    tool_limit: int,
 ) -> dict[str, Any]:
-    result, updated = json_record(directory / "result.json")
+    guard.remember(expected_contract.get("task_id"))
+    guard.remember_path(expected_contract.get("cwd"))
+    try:
+        result, updated = json_record(directory / "result.json")
+    except RecordError as exc:
+        if exc.code != "record_missing":
+            raise
+        invocation, _ = json_record(directory / "invocation.json")
+        verify_contract(invocation, expected_contract, "runner.invocation")
+        # An invocation proves the binding, but contains no runtime state.
+        raise exc
+    verify_contract(result, expected_contract, "runner.result")
     if (
         result.get("run_dir") != str(directory)
         or not isinstance(result.get("session_root"), str)
@@ -316,3 +332,31 @@ def inspect_run(
         },
         **summary,
     }
+
+
+def verify_contract(
+    record: dict[str, Any], expected: dict[str, Any], source: str
+) -> None:
+    """Reject wrong/missing provenance before using any runtime status or text."""
+    contract = record.get("contract")
+    if not isinstance(contract, dict):
+        raise RecordError(source, ["contract"], "contract_missing")
+    for field in ("task_id", "cwd", "branch"):
+        actual, required = contract.get(field), expected.get(field)
+        if (
+            not isinstance(actual, str)
+            or not actual.strip()
+            or not isinstance(required, str)
+            or not required.strip()
+        ):
+            raise RecordError(source, ["contract." + field], "contract_missing")
+        if field == "cwd":
+            matches = (
+                Path(actual).is_absolute()
+                and Path(required).is_absolute()
+                and Path(actual).resolve() == Path(required).resolve()
+            )
+        else:
+            matches = actual == required
+        if not matches:
+            raise RecordError(source, ["contract." + field], "contract_mismatch")

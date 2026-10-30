@@ -138,6 +138,14 @@ def parser() -> argparse.ArgumentParser:
     ended.add_argument("--child", type=int, required=True)
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
+    manual = commands.add_parser("run-worker")
+    manual.add_argument("--child", type=int, required=True)
+    manual.add_argument("--prompt-file", type=Path, required=True)
+    manual.add_argument("--resume", action="store_true")
+    manual.add_argument("--restart-evidence-file")
+    run_record = commands.add_parser("record-worker-run")
+    run_record.add_argument("--child", type=int, required=True)
+    run_record.add_argument("--run-dir", type=Path, required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -150,9 +158,6 @@ def parser() -> argparse.ArgumentParser:
     selection.add_argument("--run-id")
     selection.add_argument("--prs", type=int, nargs="+")
     request.add_argument("--evidence-file")
-    request.add_argument(
-        "--worker-runs", help="JSON map of child number to common-runner directory"
-    )
     request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
     state = commands.add_parser("review-state")
@@ -200,6 +205,25 @@ def _main(argv: list[str] | None = None) -> int:
             store = Store(args.state_dir)
         gh = GitHub(args.repo, store=store)
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "run-worker":
+            from .manual_workers import run_worker
+
+            code, worker_result = run_worker(
+                gh,
+                store,
+                parent,
+                nonempty(identity, "parent identity"),
+                child=number(args.child),
+                prompt=args.prompt_file,
+                resume=args.resume,
+                restart_evidence=read_text(args.restart_evidence_file)
+                if args.restart_evidence_file
+                else None,
+            )
+            print(
+                json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
+            )
+            return code
         operation = (
             nullcontext()
             if args.command
@@ -335,6 +359,10 @@ def _main(argv: list[str] | None = None) -> int:
                     args.delegation_id,
                     read_text(args.evidence_file),
                 )
+            elif command == "record-worker-run":
+                from .manual_workers import record_worker_run
+
+                result = record_worker_run(session, number(args.child), args.run_dir)
             elif command == "delegate":
                 result = session.delegate(
                     number(args.child),
@@ -375,7 +403,6 @@ def _main(argv: list[str] | None = None) -> int:
                         args.prs,
                         read_text(args.instruction_file),
                         read_text(args.evidence_file),
-                        read_object(args.worker_runs) if args.worker_runs else {},
                         read_text(args.reason_file) if args.reason_file else None,
                     )
                 else:

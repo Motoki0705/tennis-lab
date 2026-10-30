@@ -56,6 +56,31 @@ TASK_MARKER = re.compile(
 )
 
 
+def private_run_paths(task: dict[str, Any], directory: Path) -> set[str]:
+    return {
+        path
+        for run in task.get("worker_runs", [])
+        for path in (run["run_dir"], str((directory / run["run_dir"]).resolve()))
+    }
+
+
+def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any]:
+    """Runner locations are private registry data, including external paths."""
+    paths = sorted(private_paths, key=len, reverse=True)
+
+    def redact(value: Any) -> Any:
+        if isinstance(value, str):
+            for path in paths:
+                value = value.replace(path, "[private run]")
+        elif isinstance(value, dict):
+            return {key: redact(item) for key, item in value.items()}
+        elif isinstance(value, list):
+            return [redact(item) for item in value]
+        return value
+
+    return {key: redact(value) for key, value in task.items() if key != "worker_runs"}
+
+
 class ParentSession:
     def __init__(
         self, gh: GitHub, store: Store, parent: int, session: str | None
@@ -90,6 +115,14 @@ class ParentSession:
         execution.current_basis(self)
         return row
 
+    def run_paths(self) -> set[str]:
+        return {
+            path
+            for row in self.store.parents.values()
+            for task in row["tasks"].values()
+            for path in private_run_paths(task, self.store.directory)
+        }
+
     def public(self, value: Any) -> None:
         serialized = json.dumps(value, ensure_ascii=False)
         secrets = {self.session.partition(":")[2]} if self.session else set()
@@ -97,6 +130,7 @@ class ParentSession:
         for row in self.store.parents.values():
             secrets.add(row["session"].partition(":")[2])
             secrets.update(task.get("worktree", "") for task in row["tasks"].values())
+        secrets.update(self.run_paths())
         if any(secret and secret in serialized for secret in secrets):
             raise ValueError(
                 "public payload contains private session/worktree information"
@@ -146,13 +180,17 @@ class ParentSession:
     def status(self) -> dict[str, Any]:
         row = self.row
         history = self.history()
+        run_paths = self.run_paths()
         return {
             "repo": self.gh.repo,
             "parent": self.parent,
             "assignment": row.get("status", "unassigned"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
-            "tasks": row.get("tasks", {}),
+            "tasks": {
+                n: visible_task(task, run_paths)
+                for n, task in row.get("tasks", {}).items()
+            },
             "launch_plan": self.launch_plan(),
             "review": self.review_status(history),
             "proposal_receipts": proposals.receipts(history),
@@ -728,6 +766,7 @@ class ParentSession:
         initial_plan = self.launch_plan()
         states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
         prs = self.gh.pulls()
+        run_paths = self.run_paths()
         from .policy import closing_issues
 
         result = []
@@ -753,7 +792,7 @@ class ParentSession:
                 {
                     "child": n,
                     "state": states[n],
-                    "assignment": task,
+                    "assignment": visible_task(task, run_paths),
                     "prs": [
                         {
                             "number": p["number"],
@@ -880,6 +919,7 @@ class ParentSession:
             "worktree": str(worktree.resolve()),
             "delegated": True,
             "delegation_id": uuid.uuid4().hex,
+            "worker_runs": previous.get("worker_runs", []),
             "stacked_on": planned["stacked_on"],
             "dependencies": deps if deps is not None else planned["dependencies"],
             "stopped": False,
@@ -936,7 +976,7 @@ class ParentSession:
         return {
             "action": "launch",
             "child": child,
-            "assignment": task,
+            "assignment": visible_task(task, self.run_paths()),
             "parent": parent.number,
             "launch_plan": self.launch_plan(),
         }

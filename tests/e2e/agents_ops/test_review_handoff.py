@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -25,17 +26,26 @@ def test_handoff_accepts_only_completed_current_worker(
 ) -> None:
     task: dict[str, Any] = {
         "delegated": True,
-        "delegation_id": "current",
+        "delegation_id": "a" * 32,
         "branch": "codex/worker",
         "worktree": str(tmp_path),
+        "worker_runs": [
+            {
+                "delegation_id": "a" * 32,
+                "run_dir": "run",
+                "kind": "registered",
+                "recorded_at": "2026-10-30T00:00:00+00:00",
+            }
+        ],
     }
     saved: list[bool] = []
     session = SimpleNamespace(
         row={"tasks": {"10": task}},
-        store=SimpleNamespace(save=lambda: saved.append(True)),
+        store=SimpleNamespace(directory=tmp_path, save=lambda: saved.append(True)),
     )
-    contract = {"task_id": "current", "branch": "codex/worker", "cwd": str(tmp_path)}
+    contract = {"task_id": "a" * 32, "branch": "codex/worker", "cwd": str(tmp_path)}
     record = {
+        "schema_version": 1,
         "result": "completed",
         "cleanup_complete": True,
         "run_id": "run-1",
@@ -52,6 +62,8 @@ def test_handoff_accepts_only_completed_current_worker(
         contract["branch"] = "codex/other"
     elif change == "worktree":
         contract["cwd"] = str(tmp_path / "other")
+    (tmp_path / "run").mkdir()
+    (tmp_path / "run/result.json").write_text(json.dumps(record))
     monkeypatch.setattr(
         development.Runtime,
         "inspect",
@@ -59,11 +71,13 @@ def test_handoff_accepts_only_completed_current_worker(
     )
     if change != "none":
         with pytest.raises(ValueError, match="current delegation"):
-            handoff.runner_ended(session, 10, {"10": str(tmp_path)})
+            handoff.runner_ended(session, 10)
         assert "worker_ended" not in task and not saved
     else:
-        handoff.runner_ended(session, 10, {"10": str(tmp_path)})
-        assert task["worker_ended"]["delegation_id"] == "current"
-        assert task["worker_ended"]["run_id"] == "run-1"
-        handoff.runner_ended(session, 10, {})
+        handoff.runner_ended(session, 10)
+        assert task["worker_ended"] == {
+            "delegation_id": "a" * 32,
+            "evidence": "Common runner confirmed termination and cleanup.",
+        }
+        handoff.runner_ended(session, 10)
         assert saved == [True]
