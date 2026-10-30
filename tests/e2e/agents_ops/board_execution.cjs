@@ -226,6 +226,30 @@ async function main() {
     0,
   );
   assert.ok(tree.textContent.includes("<img src=x onerror=alert(1)>"));
+  // Evidence remains a collector projection: new contract codes render through
+  // the same text-only path, without Web-side state inference or field values.
+  for (const [code, status, label] of [
+    ["contract_verified", "turn_completed", "ターン終了"],
+    ["contract_missing", "unknown", "状態不明"],
+    ["contract_mismatch", "unknown", "状態不明"],
+  ]) {
+    context.contractParent = input.local.parents[0];
+    context.contractChild = {
+      ...structuredClone(input.local.parents[0].children[0]),
+      status,
+      label,
+      evidence: [
+        { source: "runner.result", code, fields: ["contract.branch"] },
+      ],
+    };
+    const card = vm.runInContext(
+      "executionView.childCard(contractParent, contractChild)",
+      context,
+    );
+    assert.ok(card.textContent.includes(`${code} · contract.branch`));
+    assert.ok(card.textContent.includes(label));
+    assert.ok(!card.textContent.includes("undefined"));
+  }
   await tick();
   assert.equal(executionRequests().length, 2);
   elements.get("refresh-execution").events.click();

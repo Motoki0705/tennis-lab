@@ -396,13 +396,35 @@ def test_execution_scripts_render_and_poll_only_the_visible_tab(
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+# Exercise the Web projection at the producer/collector boundary. Register a
+# matching run through the actual producer, then model one missing/mismatched
+# contract field or a new reservation retaining the old run. Four expansions;
+# the collector's field-by-field validation remains in its own tests.
+@pytest.mark.parametrize(
+    ("case", "expected_status", "expected_code"),
+    [
+        ("matching", "turn_completed", "contract_verified"),
+        ("missing", "unknown", "contract_missing"),
+        ("mismatch", "unknown", "contract_mismatch"),
+        ("redelegated", "not_started", "reserved"),
+    ],
+)
 def test_execution_reads_real_collector_records_without_changing_any_file(
-    world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+    world: World,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    expected_status: str,
+    expected_code: str,
 ) -> None:
     state = world.labels.registry.parent
     run = state / "private-worker-run"
     run.mkdir()
-    runtime = {
+    worktree = state.parent / "private-worker-worktree"
+    worktree.mkdir()
+    delegation = "a" * 32
+    branch = "codex/board-contract-fixture"
+    runtime: dict[str, Any] = {
         "schema_version": 1,
         "run_id": "private-run-token",
         "run_dir": str(run),
@@ -413,7 +435,12 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
         "process": None,
         "started_at": 1793360000,
         "finished_at": 1793360200,
-        "contract": {"settings": {"agent": "codex"}},
+        "contract": {
+            "task_id": delegation,
+            "cwd": str(worktree),
+            "branch": branch,
+            "settings": {"agent": "codex"},
+        },
         "runtime": {"session_id": "private-child-session", "turn_id": "private-turn"},
     }
     (run / "result.json").write_text(json.dumps(runtime))
@@ -442,18 +469,42 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
     )
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#1"]["tasks"]["11"] = {
+        "agent": "codex",
         "delegated": True,
-        "delegation_id": "a" * 32,
-        "worker_runs": [
-            {
-                "delegation_id": "a" * 32,
-                "run_dir": run.name,
-                "kind": "initial",
-                "recorded_at": "2026-10-30T12:00:00+00:00",
-            }
-        ],
+        "delegation_id": delegation,
+        "worktree": str(worktree),
+        "branch": branch,
+        "worker_runs": [],
     }
     world.labels.set_registry(parents)
+
+    class FixtureGitHub:
+        repo = "o/r"
+
+        def get(self, endpoint: str) -> dict[str, str]:
+            assert endpoint == "user"  # Session construction only; no network.
+            return {"login": "fixture-user"}
+
+    parent_state = importlib.import_module("parent.state")
+    parent_session = importlib.import_module("parent.session")
+    manual = importlib.import_module("parent.manual_workers")
+    with parent_state.Store(state).locked() as registry:
+        session = parent_session.ParentSession(
+            FixtureGitHub(), registry, 1, parents["o/r#1"]["session"]
+        )
+        manual.record_worker_run(session, 11, run)
+        [record] = registry.parents["o/r#1"]["tasks"]["11"]["worker_runs"]
+        assert set(record) == {"delegation_id", "run_dir", "kind", "recorded_at"}
+    if case == "missing":
+        runtime["contract"].pop("branch")
+    elif case == "mismatch":
+        runtime["contract"]["branch"] = "codex/another-delegation"
+    elif case == "redelegated":
+        # delegate preserves prior worker_runs when reserving a new delegation.
+        with parent_state.Store(state).locked() as registry:
+            registry.parents["o/r#1"]["tasks"]["11"]["delegation_id"] = "b" * 32
+            registry.save()
+    (run / "result.json").write_text(json.dumps(runtime))
     paths = [world.labels.registry, world.store.path, *run.iterdir()]
     wal = Path(str(world.store.path) + "-wal")
     if wal.exists():
@@ -473,15 +524,21 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
         response = client.get("/api/execution")
         assert response.status_code == 200
         child = response.json()["parents"][0]["children"][0]
-        assert child["status"] == "turn_completed"
-        assert child["summary"]["message"]["status"] == "hidden"
-        assert child["summary"]["message"]["text"] is None
+        assert child["status"] == expected_status
+        assert expected_code in {row["code"] for row in child["evidence"]}
+        if case == "matching":
+            assert child["run"]["kind"] == "registered"
+            assert child["summary"]["message"]["status"] == "hidden"
+            assert child["summary"]["message"]["text"] is None
         for private in (
             str(run),
+            str(worktree),
             run.name,
             "private-child-session",
             "private-run-token",
             "a" * 32,
+            "b" * 32,
+            branch,
             "/private/hidden-output",
         ):
             assert private not in response.text

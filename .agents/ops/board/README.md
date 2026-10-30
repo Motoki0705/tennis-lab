@@ -626,6 +626,8 @@ Windowsのブラウザからのlocalhost接続と新着反映は、実機パイ�
 実行状況はfake collectorのHTTP応答と実collectorの一時runで、明示更新・キャッシュ保持・秘匿検査・
 GET以外の拒否・ファイル内容/mtime/modeの不変を検証する。`board_execution.cjs`はproductionの
 JSと仮想タイマーで、10秒周期・タブ切替/ページ非表示での停止・失敗時の表示保持を検証する。
+実collector用のrunはproducerの`record_worker_run`で登録し、契約一致・欠落・不一致と
+旧委任のrunだけを保持する新予約を確認する。新しい契約の根拠コードも同じ描画経路で表示する。
 GitHub/名簿取得をEventで止める並行HTTPテストで、ローカルGETと重複更新の202応答が
 解除前に返ることを確認する。仮想タイマーでは長い明示更新の途中も10秒更新・描画が続き、
 取得中表示とボタン無効が保たれ、完了後に解除されることを確認する。
