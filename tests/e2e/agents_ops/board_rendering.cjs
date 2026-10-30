@@ -81,6 +81,16 @@ const context = vm.createContext({
     };
   },
 });
+vm.runInContext(
+  fs.readFileSync(
+    require("node:path").join(
+      require("node:path").dirname(process.argv[2]),
+      "execution.js",
+    ),
+    "utf8",
+  ),
+  context,
+);
 vm.runInContext(fs.readFileSync(process.argv[2], "utf8"), context);
 
 const descendants = (node) => [node, ...node.children.flatMap(descendants)];

@@ -10,7 +10,12 @@ const input = JSON.parse(fs.readFileSync(0, "utf8"));
 const { url, rootId, recipient, body } = input;
 
 async function main() {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    ...(process.env.BOARD_BROWSER_EXECUTABLE
+      ? { executablePath: process.env.BOARD_BROWSER_EXECUTABLE }
+      : {}),
+  });
   try {
     const page = await browser.newPage({
       viewport: { width: 1440, height: 1000 },
@@ -20,7 +25,15 @@ async function main() {
       writes = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
-      if (message.type() === "error" && !message.text().includes("503"))
+      // Chromium may request an implicit favicon; it is not a board asset.
+      const favicon =
+        message.location().url === `${url}/favicon.ico` &&
+        message.text().includes("404");
+      if (
+        message.type() === "error" &&
+        !message.text().includes("503") &&
+        !favicon
+      )
         errors.push(message.text());
     });
     page.on("request", (request) => {
@@ -133,6 +146,9 @@ async function main() {
     await page.waitForFunction(
       () => document.querySelectorAll("#thread article").length === 3,
     );
+    // A read poll can observe the committed reply while POST still waits for
+    // notification delivery. Wait for the submission itself before its reset.
+    await page.waitForFunction(() => !composers.reply.busy);
     assert.equal(await replyInput.inputValue(), "");
     const thread = (
       await (await page.request.get(`${url}/api/thread/${rootId}`)).json()
@@ -335,6 +351,42 @@ async function main() {
       ),
       true,
     );
+    await page.locator('[data-view="execution"]').click();
+    await page.locator(".execution-child").first().waitFor();
+    assert.equal(await page.locator("#thread-pane").isVisible(), false);
+    assert.equal(await page.locator("#compose").isVisible(), false);
+    assert.ok(
+      (await page.locator("#execution-parents").textContent()).includes(
+        "親 · Herdr 待機中",
+      ),
+    );
+    assert.equal(await page.locator("#execution-parents img").count(), 0);
+    await page.locator("#refresh-execution").click();
+    await page
+      .getByText("Issue 未完了（OPEN）", { exact: true })
+      .first()
+      .waitFor();
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    if (process.env.BOARD_BROWSER_ARTIFACT_DIR) {
+      await page.screenshot({
+        path: path.join(
+          process.env.BOARD_BROWSER_ARTIFACT_DIR,
+          "board-execution-mobile.png",
+        ),
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.screenshot({
+        path: path.join(
+          process.env.BOARD_BROWSER_ARTIFACT_DIR,
+          "board-execution.png",
+        ),
+      });
+    }
     assert.deepEqual(external, [], "no external assets or requests");
     assert.deepEqual(errors, [], "no JavaScript or CSP errors");
     console.log(

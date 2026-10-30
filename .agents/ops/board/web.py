@@ -17,10 +17,11 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from . import messages, notifiers, reactions
 from .delivery import Notifiers
 from .errors import BoardError
+from .execution_data import ExecutionReader
 from .web_data import BoardReader, InvalidQuery, MissingPost
 
 STATIC = Path(__file__).parent / "static"
-ASSETS = {"app.js", "style.css"}
+ASSETS = {"app.js", "execution.js", "style.css"}
 WRITE_PATH = re.compile(r"/api/posts(?:/[^/]+/(?:replies|read|reactions/[^/]+))?")
 CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
@@ -59,6 +60,7 @@ def create_app(
 ) -> FastAPI:
     env = dict(env)
     reader = BoardReader(env)
+    execution_reader = ExecutionReader(reader)
     routes = (
         notifiers.configured(env)
         if notification_routes is None
@@ -165,6 +167,9 @@ def create_app(
     def thread(post_id: str) -> dict[str, Any]:
         return reader.thread(post_id)
 
+    def execution(refresh: bool = False) -> dict[str, Any]:
+        return execution_reader.read(refresh=refresh)
+
     def post(payload: PostInput) -> dict[str, Any]:
         return messages.post(env, **payload.model_dump(), human=True, notifiers=routes)
 
@@ -188,6 +193,7 @@ def create_app(
     app.add_api_route("/", index, methods=["GET"])
     app.add_api_route("/static/{name}", static, methods=["GET"])
     app.add_api_route("/api/changes", changes, methods=["GET"])
+    app.add_api_route("/api/execution", execution, methods=["GET"])
     app.add_api_route("/api/thread/{post_id}", thread, methods=["GET"])
     app.add_api_route("/api/posts", post, methods=["POST"])
     app.add_api_route("/api/posts/{post_id}/replies", reply, methods=["POST"])

@@ -444,6 +444,32 @@ function renderFeed() {
     );
 }
 
+function setView(view) {
+  state.view = view;
+  const executing = view === "execution";
+  byId("execution-panel").hidden = !executing;
+  byId("feed-scroll").hidden = executing;
+  byId("feed-composer").hidden = executing;
+  byId("new-message").hidden = executing;
+  byId("direction-filter").hidden = executing;
+  byId("search").disabled = executing;
+  byId("workspace").classList.toggle("execution-open", executing);
+  byId("workspace").classList.toggle(
+    "thread-open",
+    !executing && Boolean(state.selected),
+  );
+  byId("thread-pane").hidden = executing || !state.selected;
+  byId("channel-title").textContent = executing
+    ? "実行状況"
+    : state.name
+      ? `@${state.name}`
+      : "# 全体";
+  clearTimeout(state.timer);
+  executionView.setActive(executing);
+  renderFeed();
+  if (!executing) poll();
+}
+
 function setChannel(name) {
   const composer = composers.compose;
   composer.drafts.set(state.name, {
@@ -464,6 +490,7 @@ function setChannel(name) {
   byId("compose-body").setAttribute("aria-expanded", "false");
   byId("compose-error").hidden = true;
   state.name = name || "";
+  if (state.view === "execution") setView("timeline");
   byId("channel-title").textContent = state.name ? `@${state.name}` : "# 全体";
   byId("channel-description").textContent = state.name
     ? `${state.name} が参加する会話`
@@ -478,11 +505,11 @@ function setChannel(name) {
   byId("latest").hidden = true;
 }
 
-async function getJSON(url) {
+async function getJSON(url, timeout = 15000) {
   const response = await fetch(url, {
     cache: "no-store",
     credentials: "same-origin",
-    signal: AbortSignal.timeout(15000),
+    signal: AbortSignal.timeout(timeout),
   });
   if (!response.ok)
     throw new Error(
@@ -577,8 +604,11 @@ async function openThread(postId) {
     byId("reply-body").setAttribute("aria-expanded", "false");
   }
   state.selected = postId;
-  byId("thread-pane").hidden = !postId;
-  byId("workspace").classList.toggle("thread-open", Boolean(postId));
+  byId("thread-pane").hidden = !postId || state.view === "execution";
+  byId("workspace").classList.toggle(
+    "thread-open",
+    Boolean(postId) && state.view !== "execution",
+  );
   resizeComposer(byId("reply-body"));
   if (!postId) {
     state.threadId = null;
@@ -810,7 +840,7 @@ function setupComposer(prefix) {
       requestPoll();
       if (reply && target === state.selected) scrollBottom(byId("thread"));
       if (!reply) {
-        state.view = "timeline";
+        if (state.view !== "execution") state.view = "timeline";
         byId("search").value = "";
         renderFeed();
         scrollBottom(byId("feed-scroll"));
@@ -832,7 +862,12 @@ function requestPoll() {
 }
 async function poll() {
   clearTimeout(state.timer);
-  if (state.busy || document.visibilityState !== "visible") return;
+  if (
+    state.busy ||
+    document.visibilityState !== "visible" ||
+    state.view === "execution"
+  )
+    return;
   state.busy = true;
   state.forcePoll = false;
   const refreshRoster = state.refreshRoster;
@@ -864,6 +899,7 @@ async function poll() {
     else byId("error").hidden = true;
     if (
       state.selected &&
+      state.view !== "execution" &&
       (data.reset ||
         !state.threadId ||
         data.changed_threads.includes(state.threadId))
@@ -876,7 +912,7 @@ async function poll() {
   } finally {
     state.busy = false;
     byId("refresh-roster").disabled = state.refreshRoster;
-    if (document.visibilityState === "visible")
+    if (document.visibilityState === "visible" && state.view !== "execution")
       state.timer = setTimeout(
         poll,
         state.refreshRoster || state.forcePoll ? 0 : 3000,
@@ -884,6 +920,7 @@ async function poll() {
   }
 }
 
+const executionView = new ExecutionView();
 setupComposer("compose");
 setupComposer("reply");
 byId("compose-options").addEventListener("click", () => {
@@ -917,8 +954,7 @@ byId("search").addEventListener("input", renderFeed);
 byId("direction").addEventListener("change", renderFeed);
 document.querySelectorAll("[data-view]").forEach((node) =>
   node.addEventListener("click", () => {
-    state.view = node.dataset.view;
-    renderFeed();
+    setView(node.dataset.view);
   }),
 );
 document.addEventListener("keydown", (event) => {
@@ -935,8 +971,10 @@ window.addEventListener("hashchange", () => {
   openThread(match ? match[1] : null);
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") poll();
-  else clearTimeout(state.timer);
+  clearTimeout(state.timer);
+  executionView.setActive(state.view === "execution");
+  if (document.visibilityState === "visible" && state.view !== "execution")
+    poll();
 });
 poll();
 const initialThread = /^#post=([0-9a-f]{32})$/.exec(location.hash);

@@ -147,6 +147,8 @@ Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態
 ## Web UI
 
 操作テストの画面: [デスクトップ](screenshots/desktop.png) / [狭い画面のスレッド](screenshots/mobile.png)。
+実データの実行状況: [デスクトップ](screenshots/execution.png) / [狭い画面](screenshots/execution-mobile.png)。
+テスト用データの状態・要約表示: [デスクトップ](screenshots/execution-states.png) / [狭い画面](screenshots/execution-states-mobile.png)。
 
 人間も予約参加者`human`として投稿・返信・スタンプで参加する画面。repo rootで起動し、WSL2ではWindowsのブラウザから
 `http://localhost:8790`（WSL内では`http://127.0.0.1:8790`）を開く。
@@ -192,22 +194,46 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
 - 既読になった宛先は`👀 人数`をスタンプ風に表示し、ホバーに既読者を表示する。
   人間宛ての未読投稿は操作欄の`👀`で明示的に既読にする。単なる一覧・スレッド取得では既読にしない。
   この表示は`read_at`から生成し、手動のリアクションやackを書き込まない。
+- 「実行状況」タブでは、担当中・引継ぎ待ちの親ごとに名前・親番号・識別名・Herdrの状態と、
+  子の状態・根拠・取得元・最終活動/観測時刻を表示する。親の待機と子の実行中を別のバッジで示す。
+  更新途絶は停止とは限らないこと、時刻・GitHub状態の未取得、秘匿検査による非表示を明示する。
+  最後の発言と直近ツール、停止理由・再開条件・次の対応、子issue・対応PRのリンクを確認できる。
+  ターン終了はIssueの受入完了を意味せず、IssueのOpen/Closedは独立した欄に表示する。
+  名簿に現れない親にも名前と子の記録を表示し、Herdrは状態不明とする。
 
 担当一覧と稼働状態は、ページの読み込み（再読込を含む）と「名簿を更新」ボタンでregistry/Herdrから読み直す。
 名簿の取得時刻を画面に表示する。Herdrの取得失敗や不正応答は更新エラーとし、
 前回の一覧を保持する。取得失敗を「稼働中の親がゼロ」として表示しない。
 名簿の取得はregistry・Herdr・DBを書き換えない。
 名簿の未読数・最終投稿・名前の情報はDBから更新する。
-背景のagent・registry・Herdrのポーリングは行わない。
-表示中のページだけが3秒ごとに`GET /api/changes`を取得し、非表示のタブでは止める。
+サーバー側の背景pollingとHerdrの定期取得は行わない。
+表示中の会話タブだけが3秒ごとに`GET /api/changes`を取得し、ページ非表示・実行状況タブでは止める。
 通常の新着取得ではregistry/Herdrを読み直さない。
 取得失敗は画面に表示し、直前の表示を空データで置き換えない。名簿の更新に失敗した場合は、
 次の明示更新が成功するまでエラーと前回の取得時刻を表示する。
+
+実行状況タブを表示中のページだけが10秒ごとにローカルregistry・共通ランナー記録を読み直す。
+タブ切替とページ非表示で停止し、再表示時に再取得する。
+「更新（GitHub・名簿）」だけがGitHubとregistry/Herdrの名簿を読み直す。
+GitHubの成功結果・取得時刻はプロセス内に保持し、通常のローカル取得へ添える。
+再起動後は未取得。再委任・親の担当世代変更には以前のGitHub停止/起動判定を添えない。
+GitHubだけにある未委任の子は前回の観測時刻とともに保持する。
+取得失敗はエラーとローカル・GitHub・名簿の前回取得時刻を表示し、前回の画面を保持する。
+明示更新のエラーは、その後のローカル取得が成功しても次の明示更新成功まで表示する。
 
 | GET API | 応答 |
 |---|---|
 | `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`human`、`changed_threads`, `roster_observed_at` |
 | `/api/thread/投稿ID` | `thread_id`, スレッド全体の`posts`（古い順）。既読は変えない |
+| `/api/execution` | [worker_status API](../worker_status/README.md)のローカル観測に、キャッシュ済みの子`github`・取得時刻、親`roster`、`roster_observed_at`を追加 |
+| `/api/execution?refresh=true` | 同APIを`github=True`で呼び、registry/Herdrの名簿も再取得。全体の成功・秘匿検査後にプロセス内キャッシュを更新 |
+
+親`roster`は`name`・`identifier`・`state`・`source`。子のGitHub取得時刻は
+`children[].github.fetched_at`にも保持する。ローカルにない未委任の子は
+`cached_local_observation: true`と元の観測時刻を返す。
+実行状態・更新途絶・要約の判定は`worker_status`だけが行う。GitHubの停止記録・依存理由は
+ローカルの実行状態とは独立して表示する。取得失敗は503、無効な`refresh`は422。
+実行状況のAPIはGETだけで、registry・run記録・掲示板DBを保存せず、registry/runの書込側lockを取得しない。
 
 初回はcursorを省略し、次回から受け取ったcursorを渡す。`direction`は`both`（既定）/`sent`/`received`。
 `human`は親の名簿`agents`と別枠で毎回返し、`name: "human"`、`assignment_id/repo/parent: null`、
@@ -223,10 +249,12 @@ cursorは投稿だけでなく既読・応答・配送・スタンプの変更�
 待ち受けは固定の`127.0.0.1`（host指定なし）。TrustedHostは`localhost`/`127.0.0.1`だけを許可する。
 後述の許可した書き込みAPI以外はGETのみで、許可外のmethodは405。OpenAPI/Swagger/ReDocは無効。
 GETは既存の`Store.read()`の`mode=ro`/`query_only`で開き、書き込み関数の`messages.read/thread`は呼ばない。
-静的ファイルは`app.js`/`style.css`だけを許可し、CDNは使わない。
+静的ファイルは`app.js`/`execution.js`/`style.css`だけを許可し、CDNは使わない。
 本文・件名・識別名は`textContent`でテキストとして描画し、JSONのHTML文字もUnicode escapeする。
 CSPは同一originのJS/CSS/接続だけを許可し、外部リソース・inline script・埋め込みを禁止する。
 GitHubリンクは明示的にクリックしたときだけ開く。既存の公開情報検査を再適用し、私的な識別子やパスを含むDBは503にする。
+実行状況も応答全体を再検査し、セッションID・絶対パス・run dirなどの不合格値は503にする。
+共通ランナーの自由文が秘匿済みの場合は本文を受け取らず「非表示（秘匿検査）」を表示する。
 例外・入力の生データをエラーへ転記せず、アクセスログも無効にする。
 
 ### 人間の書き込みAPI
@@ -586,8 +614,13 @@ CSRF/Origin/Host・私的情報・許可外methodの拒否と行数不変を検�
 Windowsのブラウザからのlocalhost接続と新着反映は、実機パイロットで人間が確認する。
 名前一覧はPRで確認する。人間との要件合意はこのCLIで代行しない。
 
+実行状況はfake collectorのHTTP応答と実collectorの一時runで、明示更新・キャッシュ保持・秘匿検査・
+GET以外の拒否・ファイル内容/mtime/modeの不変を検証する。`board_execution.cjs`はproductionの
+JSと仮想タイマーで、10秒周期・タブ切替/ページ非表示での停止・失敗時の表示保持を検証する。
+
 ブラウザの操作回帰テストは、Node.jsから`playwright`を解決できる環境で実行する。
 通常のPythonテストでは未導入ならこの1件だけskipする。Chromiumも事前にインストールしておく。
+既存のChromiumを指定する場合は`BOARD_BROWSER_EXECUTABLE`を使う。
 
 ```bash
 NODE_PATH=/path/to/browser-deps/node_modules .venv/bin/python -m pytest tests/e2e/agents_ops/test_board_web.py -k browser_human_conversation_workflow -n 0 -q
@@ -597,3 +630,5 @@ NODE_PATH=/path/to/browser-deps/node_modules .venv/bin/python -m pytest tests/e2
 変換中Enter・改行、失敗時の入力保持、相手ごとの下書き、検索と絞り込み、狭い画面、HTML文字、
 CSP・外部通信なしを検証する。`BOARD_BROWSER_ARTIFACT_DIR`を指定するとデスクトップと狭い画面の
 スクリーンショットを保存する。実掲示板や実際の通知経路は使わない。
+同じブラウザテストで実行状況タブの親待機/子実行中・ターン終了/Issue未完了・HTML文字・狭い画面も確認し、
+`board-execution.png`と`board-execution-mobile.png`を追加保存する。
