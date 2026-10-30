@@ -29,6 +29,7 @@ from review_policy import (
     GateDecision,
     GateInput,
     ReviewOutcome,
+    check_started_at,
     detect_author_agent,
     evaluate_gate,
     normalize_rollup,
@@ -38,11 +39,12 @@ REQUIRED_CHECK = "Python"
 
 
 def python_ci_errors(runs: Sequence[Mapping[str, Any]], head: str) -> tuple[str, ...]:
-    """Require actual success from every latest Python check run at this HEAD."""
+    """Require actual success from the latest Python runs at this HEAD."""
     required = [run for run in runs if run.get("name") == REQUIRED_CHECK]
     if not required:
         return ("ci_python_missing",)
     reasons = []
+    dated_errors = []
     for run in required:
         if not isinstance(run.get("head_sha"), str) or not re.fullmatch(
             r"[0-9a-f]{40}", run["head_sha"]
@@ -50,6 +52,7 @@ def python_ci_errors(runs: Sequence[Mapping[str, Any]], head: str) -> tuple[str,
             raise ValueError("Python check run has no valid head_sha")
         if run["head_sha"] != head:
             reasons.append("ci_python_head_mismatch")
+        errors = []
         status = run.get("status")
         if status not in {
             "queued",
@@ -61,23 +64,34 @@ def python_ci_errors(runs: Sequence[Mapping[str, Any]], head: str) -> tuple[str,
         }:
             raise ValueError(f"unknown Python check run status: {status!r}")
         if status != "completed":
-            reasons.append("ci_python_pending")
-            continue
-        conclusion = run.get("conclusion")
-        if conclusion not in {
-            "success",
-            "failure",
-            "neutral",
-            "cancelled",
-            "skipped",
-            "timed_out",
-            "action_required",
-            "startup_failure",
-            "stale",
-        }:
-            raise ValueError(f"unknown Python check run conclusion: {conclusion!r}")
-        if conclusion != "success":
-            reasons.append(f"ci_python_{conclusion}")
+            errors.append("ci_python_pending")
+        else:
+            conclusion = run.get("conclusion")
+            if conclusion not in {
+                "success",
+                "failure",
+                "neutral",
+                "cancelled",
+                "skipped",
+                "timed_out",
+                "action_required",
+                "startup_failure",
+                "stale",
+            }:
+                raise ValueError(f"unknown Python check run conclusion: {conclusion!r}")
+            if conclusion != "success":
+                errors.append(f"ci_python_{conclusion}")
+        dated_errors.append(
+            (check_started_at({"startedAt": run.get("started_at")}), errors)
+        )
+    dated = [started for started, _ in dated_errors if started is not None]
+    latest = max(dated) if dated else None
+    reasons.extend(
+        error
+        for started, errors in dated_errors
+        if started is None or started == latest
+        for error in errors
+    )
     return tuple(dict.fromkeys(reasons))
 
 

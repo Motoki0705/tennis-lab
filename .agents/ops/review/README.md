@@ -239,7 +239,8 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 - 競合・mergeable不明は停止する。CI取得時のheadも最新snapshotと一致させる。
   対象HEADの `Python` check runが完了し、結論が `success` であることを必須とする。
   commitを指定したREST `commits/<head>/check-runs?check_name=Python&filter=latest` を全ページ取得し、
-  各runの `head_sha` も照合する。最新runが複数あればすべて成功が必要で、古い成功では代用しない。
+  各runの `head_sha` も照合する。既存のCI正規化と共通の時刻検証を使い、開始時刻が最新のrunで判定する。
+  時刻なし・同時刻の候補はすべて成功が必要で、古い成功では代用しない。再実行の成功は古い失敗を置き換える。
   欠落は `ci_python_missing`、別HEADは `ci_python_head_mismatch`、未完了は `ci_python_pending`、
   失敗・取消等は `ci_python_<conclusion>` で停止する。`neutral` / `skipped` も成功として通さない。
   同名のStatusContextやlabelerの成功では代用しない。

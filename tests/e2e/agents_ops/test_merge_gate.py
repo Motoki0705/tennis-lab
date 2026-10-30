@@ -615,6 +615,83 @@ def test_other_head_or_status_context_cannot_substitute_for_python_check_run(
 
 
 @pytest.mark.parametrize(
+    "old_conclusion,new_status,new_conclusion,new_started,reason",
+    [
+        ("failure", "completed", "success", "2026-10-30T02:00:00Z", None),
+        (
+            "success",
+            "completed",
+            "failure",
+            "2026-10-30T02:00:00Z",
+            "ci_python_failure",
+        ),
+        (
+            "success",
+            "completed",
+            "cancelled",
+            "2026-10-30T02:00:00Z",
+            "ci_python_cancelled",
+        ),
+        (
+            "failure",
+            "completed",
+            "success",
+            "2026-10-30T01:00:00Z",
+            "ci_python_failure",
+        ),
+        ("failure", "completed", "success", None, "ci_python_failure"),
+        (
+            "failure",
+            "completed",
+            "success",
+            "0001-01-01T00:00:00Z",
+            "ci_python_failure",
+        ),
+        ("success", "queued", None, None, "ci_python_pending"),
+    ],
+)
+def test_python_reruns_use_latest_time_and_pessimism_when_unordered(
+    gate_env: GateEnv,
+    old_conclusion: str,
+    new_status: str,
+    new_conclusion: str | None,
+    new_started: str | None,
+    reason: str | None,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    pr["ci_check_runs"] = [
+        {
+            "id": 1,
+            "name": "Python",
+            "head_sha": pr["head"]["sha"],
+            "status": "completed",
+            "conclusion": old_conclusion,
+            "started_at": "2026-10-30T01:00:00Z",
+        },
+        {
+            "id": 2,
+            "name": "Python",
+            "head_sha": pr["head"]["sha"],
+            "status": new_status,
+            "conclusion": new_conclusion,
+            "started_at": new_started,
+        },
+    ]
+    p.save(state)
+    response = g.cli("merge")
+    row = g.results(response)[100]
+    if reason is None:
+        assert response.returncode == 0, response.stderr
+        assert row["action"] == "merged"
+    else:
+        assert response.returncode == 1, response.stderr
+        assert reason in row["reasons"]
+        assert not g.merge_calls()
+
+
+@pytest.mark.parametrize(
     "case", ["missing_page", "duplicate", "bad_conclusion", "bad_status"]
 )
 def test_invalid_required_check_run_evidence_is_a_collection_error(
