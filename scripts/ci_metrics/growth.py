@@ -76,6 +76,8 @@ def validate_snapshot(data: dict[str, Any]) -> dict[str, Any]:
         phases = row["phase_s"]
         if not {"setup", "teardown"} <= phases.keys() <= {"setup", "call", "teardown"}:
             raise ValueError("invalid growth phases")
+        if row["status"] in {"passed", "xpassed"} and "call" not in phases:
+            raise ValueError("missing growth call phase for a completed case")
         for seconds in phases.values():
             if (
                 type(seconds) not in (float, int)

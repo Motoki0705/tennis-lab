@@ -330,6 +330,7 @@ def test_split_family_is_counted_once_and_cheap_fixture_repeats_stay_below_budge
         "schema",
         "coverage_schema",
         "missing_field",
+        "missing_call",
         "wrong_attempt",
         "partial",
         "corrupt_zip",
@@ -364,6 +365,8 @@ def test_main_baseline_requires_the_latest_full_ancestor_and_explains_missing_ev
         coverage["schema_version"] = 1
     elif fault == "missing_field":
         del snapshot["results"]
+    elif fault == "missing_call":
+        del snapshot["results"][0]["phase_s"]["call"]
     elif fault == "wrong_attempt":
         snapshot["attempt"] = "1"
     archive = io.BytesIO()
@@ -445,6 +448,7 @@ def test_main_baseline_requires_the_latest_full_ancestor_and_explains_missing_ev
         "missing_growth",
         "schema",
         "missing_field",
+        "missing_call",
         "wrong_attempt",
         "coverage_schema",
         "expired",
