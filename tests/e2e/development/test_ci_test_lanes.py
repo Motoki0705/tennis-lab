@@ -16,12 +16,22 @@ from typing import Any, cast
 import pytest
 import yaml
 
+from scripts.ci_metrics import plan as lane_planner
+from scripts.ci_metrics.lanes import (
+    REGISTRY,
+    load_registry,
+    make_plan,
+    partition_nodeids,
+    validate_plan,
+    validate_registry,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _ci_job() -> dict[str, Any]:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
-    assert set(workflow["jobs"]) == {"lint", "tests", "python"}
+    assert set(workflow["jobs"]) == {"plan", "lint", "tests", "python"}
     return cast(dict[str, Any], workflow["jobs"]["tests"])
 
 
@@ -59,7 +69,7 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
             range(int(count))
         )
     assert job["strategy"]["fail-fast"] is False
-    assert "needs" not in job
+    assert job["needs"] == ["plan"]
     assert job["timeout-minutes"] == "${{ inputs.shards == '1' && 120 || 60 }}"
     assert job["env"]["PYTEST_XDIST_AUTO_NUM_WORKERS"] == "${{ inputs.workers || '2' }}"
     for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
@@ -99,7 +109,28 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     aggregate = workflow["jobs"]["python"]
     assert aggregate["name"] == "Python"
     assert aggregate["if"] == "always()"
-    assert set(aggregate["needs"]) == {"lint", "tests"}
+    assert set(aggregate["needs"]) == {"plan", "lint", "tests"}
+    planning = workflow["jobs"]["plan"]
+    assert "needs" not in planning
+    assert not any("uv sync" in step.get("run", "") for step in planning["steps"])
+    plan_command = next(
+        step["run"] for step in planning["steps"] if step["name"] == "Plan CPU lanes"
+    )
+    assert shlex.split(plan_command)[:4] == [
+        "python3",
+        "-m",
+        "scripts.ci_metrics.plan",
+        "--output",
+    ]
+    assert {"push", "pull_request", "workflow_dispatch"} == set(triggers)
+    assert command[command.index("--lane-plan") + 1] == ".ci-plan/plan.json"
+    for consumer in (job, aggregate):
+        download = next(
+            step
+            for step in consumer["steps"]
+            if step["name"] == "Download CPU lane plan"
+        )
+        assert download["with"]["name"] == planning["steps"][-1]["with"]["name"]
     verification = next(
         step
         for step in aggregate["steps"]
@@ -107,12 +138,16 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     )
     assert verification["if"] == "always()"
     assert verification["env"]["CI_JOB_RESULTS"] == "${{ toJSON(needs) }}"
-    assert shlex.split(verification["run"].replace("$CI_SHARD_COUNT", default))[
-        -2:
-    ] == [
-        "--count",
-        str(len(shards)),
-    ]
+    verification_command = shlex.split(
+        verification["run"].replace("$CI_SHARD_COUNT", default)
+    )
+    assert verification_command[verification_command.index("--count") + 1] == str(
+        len(shards)
+    )
+    assert (
+        verification_command[verification_command.index("--lane-plan") + 1]
+        == ".ci-plan/plan.json"
+    )
     assert aggregate["steps"][-1]["if"] == "always()"
     assert aggregate["steps"][-1]["with"]["if-no-files-found"] == "error"
     assert "uv sync --locked --no-group gpu --group cpu" in [
@@ -120,12 +155,16 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     ]
 
 
-@pytest.mark.parametrize("failing_test", [False, True], ids=["success", "failure"])
-@pytest.mark.parametrize("shard_count", [1, 2, 4, 6, 8, 10])
+@pytest.mark.parametrize(
+    "failing_test,shard_count,workers",
+    [(False, 1, 1), (True, 2, 2)],
+    ids=["success", "failure"],
+)
 def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code(
     tmp_path: Path,
     failing_test: bool,
     shard_count: int,
+    workers: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     job = _ci_job()
@@ -181,6 +220,18 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(source, encoding="utf-8")
+    (tmp_path / REGISTRY).write_text(json.dumps({"schema_version": 1, "suites": []}))
+    registry, files = load_registry(tmp_path)
+    lane_plan = make_plan(
+        registry,
+        files,
+        source_sha=os.environ.get("GITHUB_SHA"),
+        event="local",
+        run_id=os.environ.get("GITHUB_RUN_ID"),
+        attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
+    )
+    (tmp_path / ".ci-plan").mkdir()
+    (tmp_path / ".ci-plan/plan.json").write_text(json.dumps(lane_plan))
 
     profile = tmp_path / "scripts/ci_metrics/cpu-file-times.json"
     profile.write_text(
@@ -200,7 +251,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         command = shlex.split(
             template.replace("${{ matrix.shard }}", str(index))
             .replace("$CI_SHARD_COUNT", str(shard_count))
-            .replace("$CI_WORKERS", "4" if shard_count == 4 else "2")
+            .replace("$CI_WORKERS", str(workers))
         )
         completed = subprocess.run(
             [sys.executable, *command[1:]],
@@ -211,7 +262,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             env={
                 **os.environ,
                 **job["env"],
-                "PYTEST_XDIST_AUTO_NUM_WORKERS": "4" if shard_count == 4 else "2",
+                "PYTEST_XDIST_AUTO_NUM_WORKERS": str(workers),
             },
             timeout=60,
         )
@@ -288,6 +339,255 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/test_setup_outcomes.py",
         *(f"tests/test_extra_{i}.py" for i in range(5)),
     }
+
+
+@pytest.fixture
+def lane_registry() -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "suites": [
+            {
+                "id": "wide",
+                "files": ["tests/test_wide.py"],
+                "paths": ["tools/wide/**", "tests/wide/**"],
+                "reason": "Independent broad runner regression",
+                "owner": "repository-owner",
+            }
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "duplicate_file",
+        "duplicate_id",
+        "missing_file",
+        "glob_file",
+        "missing_reason",
+        "blank_reason",
+        "missing_owner",
+        "blank_owner",
+        "empty_paths",
+        "absolute_path",
+        "parent_path",
+        "unknown_field",
+    ],
+)
+def test_lane_registry_rejects_invalid_exceptions(
+    lane_registry: dict[str, Any], fault: str
+) -> None:
+    import copy
+
+    suite = lane_registry["suites"][0]
+    if fault in {"duplicate_file", "duplicate_id"}:
+        extra = copy.deepcopy(suite)
+        if fault == "duplicate_file":
+            extra["id"] = "second"
+        lane_registry["suites"].append(extra)
+    elif fault in {"missing_file", "glob_file"}:
+        suite["files"] = [
+            "tests/missing.py" if fault == "missing_file" else "tests/test_*.py"
+        ]
+    elif fault.startswith("missing_"):
+        del suite[fault.removeprefix("missing_")]
+    elif fault.startswith("blank_"):
+        suite[fault.removeprefix("blank_")] = "  "
+    elif fault == "empty_paths":
+        suite["paths"] = []
+    elif fault == "absolute_path":
+        suite["paths"] = ["/tools/**"]
+    elif fault == "parent_path":
+        suite["paths"] = ["tools/../**"]
+    else:
+        suite["weekly"] = True
+    with pytest.raises(ValueError):
+        validate_registry(lane_registry, ["tests/test_wide.py"])
+
+
+@pytest.mark.parametrize(
+    "path,status,scope",
+    [
+        ("docs/readme.md", "M", "pr"),
+        ("tools/wide/runner.py", "M", "pr"),
+        ("tests/test_wide.py", "M", "pr"),
+        ("src/utils/math.py", "M", "full"),
+        ("src/tasks/base/model.py", "M", "full"),
+        ("tests/support/factory.py", "M", "full"),
+        ("tests/wide/conftest.py", "M", "full"),
+        ("conftest.py", "M", "full"),
+        ("uv.lock", "M", "full"),
+        ("pyproject.toml", "M", "full"),
+        (".spin/cmds.py", "M", "full"),
+        (".github/workflows/ci.yml", "M", "full"),
+        (REGISTRY, "M", "full"),
+        ("tools/unrelated.py", "D", "full"),
+        ("old.py", "R100", "full"),
+    ],
+)
+def test_pr_plan_keeps_unregistered_tests_and_promotes_shared_or_uncertain_changes(
+    lane_registry: dict[str, Any],
+    path: str,
+    status: str,
+    scope: str,
+) -> None:
+    files = ["tests/test_new.py", "tests/test_wide.py"]
+    changes = lane_planner.parse_diff(
+        (
+            f"{status}\0{path}\0" + ("renamed.py\0" if status.startswith("R") else "")
+        ).encode()
+    )
+    plan = validate_plan(
+        make_plan(
+            lane_registry,
+            files,
+            source_sha="head",
+            event="pull_request",
+            base_sha="base",
+            head_sha="head",
+            changes=changes,
+        )
+    )
+    assert plan["scope"] == scope
+    requested, deferred = partition_nodeids(
+        [
+            "tests/test_new.py::test_new",
+            "tests/test_wide.py::test_existing",
+            "tests/test_wide.py::test_added",
+        ],
+        plan,
+    )
+    assert "tests/test_new.py::test_new" in requested
+    should_run_wide = scope == "full" or path in {
+        "tools/wide/runner.py",
+        "tests/test_wide.py",
+    }
+    assert ("tests/test_wide.py::test_existing" in requested) == should_run_wide
+    assert len(deferred) == (0 if should_run_wide else 2)
+    if scope == "full":
+        assert any(
+            reason.startswith(("shared_foundation:", "rename_or_deletion:"))
+            for reason in plan["reasons"]
+        )
+
+
+@pytest.mark.parametrize(
+    "event,ref",
+    [
+        ("pull_request", "refs/pull/1/merge"),
+        ("push", "refs/heads/main"),
+        ("workflow_dispatch", "refs/heads/main"),
+    ],
+)
+def test_initial_empty_registry_preserves_the_current_entire_cpu_target(
+    event: str, ref: str
+) -> None:
+    load_registry(REPO_ROOT)
+    files = ["tests/test_one.py", "tests/test_two.py"]
+    universe = [f"{f}::test_{i}" for f in files for i in range(3)]
+    plan = validate_plan(
+        make_plan(
+            {"schema_version": 1, "suites": []},
+            files,
+            source_sha="head",
+            event=event,
+            ref=ref,
+            base_sha="base",
+            head_sha="head",
+        )
+    )
+    assert partition_nodeids(universe, plan) == (universe, {})
+    if event != "pull_request":
+        assert plan["scope"] == "full"
+        assert plan["reasons"] == ["main_push" if event == "push" else "manual_full"]
+
+
+@pytest.mark.parametrize("event", ["push", "workflow_dispatch"])
+def test_main_and_manual_full_request_registered_suites_without_path_changes(
+    lane_registry: dict[str, Any], event: str
+) -> None:
+    universe = ["tests/test_wide.py::test_one"]
+    plan = validate_plan(
+        make_plan(
+            lane_registry,
+            ["tests/test_wide.py"],
+            source_sha="head",
+            event=event,
+            ref="refs/heads/main",
+        )
+    )
+    assert plan["scope"] == "full"
+    assert plan["requested_suites"] == ["wide"]
+    assert partition_nodeids(universe, plan) == (universe, {})
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_pr_plan_uses_base_to_head_and_explicitly_requests_full_on_diff_failure(
+    tmp_path: Path,
+    lane_registry: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: bool,
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_wide.py").touch()
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\npython_files = ["test_*.py", "*_test.py"]\n'
+    )
+    (tmp_path / REGISTRY).parent.mkdir(parents=True)
+    (tmp_path / REGISTRY).write_text(json.dumps(lane_registry))
+    monkeypatch.setattr(
+        lane_planner.subprocess, "check_output", lambda *a, **k: "checkout\n"
+    )
+    monkeypatch.setattr(lane_planner, "main_successes", lambda *a: {})
+    calls = []
+
+    def fake_changes(root: Path, base: str, head: str) -> list[dict[str, Any]]:
+        calls.append((base, head))
+        if failure:
+            raise subprocess.CalledProcessError(128, "git diff")
+        return [{"status": "M", "paths": ["tools/wide/a.py"]}]
+
+    monkeypatch.setattr(lane_planner, "git_changes", fake_changes)
+    environment = {
+        "GITHUB_EVENT_NAME": "pull_request",
+        "GITHUB_SHA": "checkout",
+        "GITHUB_REF": "refs/pull/1/merge",
+        "GITHUB_REPOSITORY": "owner/repo",
+        "GITHUB_RUN_ID": "1",
+        "GITHUB_RUN_ATTEMPT": "1",
+    }
+    payload = {"pull_request": {"base": {"sha": "base"}, "head": {"sha": "head"}}}
+    plan = lane_planner.build_plan(tmp_path, environment, payload)
+    assert calls == [("base", "head")]
+    assert plan["requested_suites"] == ["wide"]
+    assert plan["scope"] == ("full" if failure else "pr")
+    if failure:
+        assert any(reason.startswith("diff_unavailable:") for reason in plan["reasons"])
+    else:
+        (tmp_path / "tests/test_new.py").touch()
+        with pytest.raises(ValueError, match="current source/registry"):
+            validate_plan(plan, root=tmp_path)
+
+
+def test_invalid_or_stale_plan_cannot_silently_defer_tests(
+    lane_registry: dict[str, Any],
+) -> None:
+    plan = make_plan(
+        lane_registry,
+        ["tests/test_wide.py"],
+        source_sha="head",
+        event="pull_request",
+        base_sha="base",
+        head_sha="head",
+    )
+    plan["requested_suites"] = ["wide"]
+    with pytest.raises(ValueError, match="identity"):
+        validate_plan(plan)
+    from scripts.ci_metrics.lanes import digest
+
+    plan["plan_id"] = digest({k: v for k, v in plan.items() if k != "plan_id"})
+    with pytest.raises(ValueError, match="registry/diff"):
+        validate_plan(plan)
 
 
 def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:

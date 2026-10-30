@@ -39,6 +39,8 @@ def build_profile(root: Path, split_files: list[str] | None = None) -> dict[str,
     )
     if not audit["observations_complete"]:
         raise ValueError(f"cannot profile incomplete observations: {audit['issues']}")
+    if not audit["full_cpu_coverage"]:
+        raise ValueError("cannot profile a partial CPU scope with deferred tests")
     file_seconds: dict[str, float] = defaultdict(float)
     test_seconds: dict[str, float] = {}
     observed_splits: set[str] = set()

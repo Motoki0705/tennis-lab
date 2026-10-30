@@ -79,7 +79,9 @@ JavaScript の単体・ブラウザ検証も各領域にある。pytest が収�
 
 `unit/integration/e2e` は検証範囲の分類であり、実行頻度とは別である。配置を移しただけで CI から外れたり、実行時間が減ったりするわけではない。
 
-CI レーンの登録表は [#1543](https://github.com/Motoki0705/tennis-lab/issues/1543) で導入予定。導入後、定常実行から外すテストはそこで登録する。この文書に別の登録表や選別規則を作らない。
+CI の常時実行から外す file は [`scripts/ci_metrics/lanes.json`](../scripts/ci_metrics/lanes.json) に登録する。
+項目・PR/mainの選別・監査・成功証拠は [CI レーンの正本](../scripts/ci_metrics/README.ja.md#レーン登録表と計画)を参照する。
+この文書に別の登録表や選別規則を作らない。
 
 ## 配置例
 

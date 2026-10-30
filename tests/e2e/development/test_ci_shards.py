@@ -12,13 +12,14 @@ from typing import Any
 
 import pytest
 
+from scripts.ci_metrics.lanes import load_registry, make_plan
 from scripts.ci_metrics.profile import build_profile
 from scripts.ci_metrics.runner import test_environment as headless_environment
 from scripts.ci_metrics.shards import assign_groups, read_timing_profile, verify_shards
 
 REPO = Path(__file__).resolve().parents[3]
-CONTEXT = {"sha": "a" * 40, "run_id": "123", "attempt": "1"}
-SUCCESS = {"lint": {"result": "success"}, "tests": {"result": "success"}}
+CONTEXT: dict[str, Any] = {"sha": "a" * 40, "run_id": "123", "attempt": "1"}
+SUCCESS = {name: {"result": "success"} for name in ("plan", "lint", "tests")}
 
 
 def test_assignment_uses_cost_and_preserves_files_including_new_tests() -> None:
@@ -109,6 +110,9 @@ def observed_shards(tmp_path_factory: pytest.TempPathFactory) -> Path:
         suite / "scripts/ci_metrics",
         ignore=shutil.ignore_patterns("__pycache__"),
     )
+    (suite / "scripts/ci_metrics/lanes.json").write_text(
+        json.dumps({"schema_version": 1, "suites": []})
+    )
     (suite / "src").mkdir()
     (suite / "src/__init__.py").touch()
     (suite / "tests").mkdir()
@@ -196,7 +200,18 @@ def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
         assert summary["full_cpu_baseline"] is False
         plan = json.loads((directory / "shard-gw0.json").read_text())
         assert plan["unmeasured_files"] == ["tests/test_new.py"]
-        assert len(plan["full_nodeids"]) == 5
+        assert len(plan["universe_nodeids"]) == 5
+        assert plan["requested_nodeids"] == plan["universe_nodeids"]
+        assert plan["deferred"] == {}
+        for path in directory.glob("events-gw*.jsonl"):
+            events = [json.loads(line) for line in path.read_text().splitlines()]
+            universe = next(
+                e["nodeids"] for e in events if e["event"] == "cpu_universe"
+            )
+            assert universe == plan["universe_nodeids"]
+            assert all(
+                "test_gpu" not in node and "test_local" not in node for node in universe
+            )
         assert (
             plan["assignments"]["tests/test_first.py::test_cpu[0]"]
             != plan["assignments"]["tests/test_first.py::test_cpu[1]"]
@@ -257,6 +272,98 @@ def test_profile_recomputes_measured_file_and_split_costs(
     assert read_timing_profile(destination)[0] == profile
 
 
+def test_real_lane_selection_records_the_universe_before_deferring_a_file(
+    tmp_path: Path,
+    observed_shards: Path,
+) -> None:
+    suite = tmp_path / "suite"
+    shutil.copytree(observed_shards.parent / "suite", suite)
+    registry_path = suite / "scripts/ci_metrics/lanes.json"
+    registry_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "suites": [
+                    {
+                        "id": "new",
+                        "files": ["tests/test_new.py"],
+                        "paths": ["tools/new/**"],
+                        "reason": "Independent broad regression",
+                        "owner": "repository-owner",
+                    }
+                ],
+            }
+        )
+    )
+    registry, files = load_registry(suite)
+    plan = make_plan(
+        registry,
+        files,
+        source_sha=CONTEXT["sha"],
+        event="pull_request",
+        run_id=CONTEXT["run_id"],
+        attempt=CONTEXT["attempt"],
+        base_sha="base",
+        head_sha="head",
+        changes=[{"status": "M", "paths": ["docs/readme.md"]}],
+    )
+    plan_path = suite / "plan.json"
+    plan_path.write_text(json.dumps(plan))
+    artifacts = tmp_path / "artifacts"
+    output = artifacts / "shard-0/tests"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.ci_metrics",
+            "run",
+            "--output",
+            str(output),
+            "--workers",
+            "1",
+            "--shard-index",
+            "0",
+            "--shard-count",
+            "1",
+            "--shard-weights",
+            str(suite / "weights.json"),
+            "--lane-plan",
+            str(plan_path),
+        ],
+        cwd=suite,
+        env={
+            **headless_environment(dict(os.environ)),
+            "GITHUB_SHA": CONTEXT["sha"],
+            "GITHUB_RUN_ID": CONTEXT["run_id"],
+            "GITHUB_RUN_ATTEMPT": CONTEXT["attempt"],
+        },
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    path = output / "environment.json"
+    metadata = json.loads(path.read_text())
+    metadata["source"] = {"commit": CONTEXT["sha"], "status": ""}
+    path.write_text(json.dumps(metadata))
+    audit = verify_shards(
+        artifacts, 1, needs=SUCCESS, lane_plan=plan, source_root=suite, **CONTEXT
+    )
+    assert audit["success"], audit
+    assert (
+        audit["universe_count"],
+        audit["requested_count"],
+        audit["deferred_count"],
+    ) == (5, 4, 1)
+    assert audit["counts"] == {"passed": 4}
+    assert audit["full_cpu_success"] is False
+    assert json.loads((output / "shard-gw0.json").read_text())["deferred"] == {
+        "tests/test_new.py::test_cpu": "new"
+    }
+    with pytest.raises(ValueError, match="partial CPU scope"):
+        build_profile(artifacts)
+
+
 def test_split_file_rejects_new_shared_fixture(
     tmp_path: Path,
     observed_shards: Path,
@@ -314,6 +421,9 @@ def test_split_file_rejects_new_shared_fixture(
         "missing_test",
         "duplicate_test",
         "profile",
+        "all_manifests_omit_case",
+        "missing_universe_event",
+        "mixed_plan",
     ],
 )
 def test_aggregation_rejects_incomplete_or_mixed_evidence(
@@ -350,6 +460,30 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
         else:
             rows.append(phase)
         events.write_text("".join(json.dumps(row) + "\n" for row in rows))
+    elif fault == "all_manifests_omit_case":
+        omitted = json.loads((first / "shard-gw0.json").read_text())[
+            "universe_nodeids"
+        ][0]
+        for path in root.glob("*/tests/shard-*.json"):
+            plan = json.loads(path.read_text())
+            for key in ("universe_nodeids", "requested_nodeids", "selected_nodeids"):
+                plan[key] = [node for node in plan[key] if node != omitted]
+            path.write_text(json.dumps(plan))
+    elif fault == "missing_universe_event":
+        for path in second.glob("events-gw*.jsonl"):
+            rows = [json.loads(line) for line in path.read_text().splitlines()]
+            path.write_text(
+                "".join(
+                    json.dumps(row) + "\n"
+                    for row in rows
+                    if row["event"] != "cpu_universe"
+                )
+            )
+    elif fault == "mixed_plan":
+        path = second / "lane-plan.json"
+        plan = json.loads(path.read_text())
+        plan["scope"] = "pr"
+        path.write_text(json.dumps(plan))
     else:
         paths = (
             [second / "shard-gw0.json"]
@@ -359,7 +493,7 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
         for path in paths:
             plan = json.loads(path.read_text())
             if fault in {"worker_inventory", "missing_test"}:
-                plan["full_nodeids"].pop()
+                plan["universe_nodeids"].pop()
             elif fault == "duplicate_test":
                 other = json.loads((first / "shard-gw0.json").read_text())
                 plan["selected_nodeids"].append(other["selected_nodeids"][0])
@@ -369,11 +503,13 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
     result = verify_shards(root, 2, needs=SUCCESS, **CONTEXT)
     assert result["success"] is False, result
     assert result["issues"]
+    if fault == "all_manifests_omit_case":
+        assert any("pre-selection CPU universe" in issue for issue in result["issues"])
     with pytest.raises(ValueError, match="incomplete"):
         build_profile(root)
 
 
-@pytest.mark.parametrize("job", ["lint", "tests"])
+@pytest.mark.parametrize("job", ["plan", "lint", "tests"])
 @pytest.mark.parametrize("outcome", ["failure", "cancelled", "skipped", None])
 def test_aggregation_requires_all_upstream_jobs(
     observed_shards: Path,
