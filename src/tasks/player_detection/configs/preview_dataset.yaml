@@ -3,7 +3,7 @@ defaults:
   - _self_
 
 preview:
-  dataset_dir: ${tennis_dataset:player_detection,chat-player-v1}
+  dataset_dir: ${tennis_dataset:player_detection,chat-player-v2}
   frames_per_split: 12
 
 run:
