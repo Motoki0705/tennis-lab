@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any
@@ -92,9 +92,11 @@ def _batches(kind: str) -> Iterator[list[Any]]:
 
 
 def exercise_mdd_resume(
-    family: ModelFamily, root: Path, *, fault: str | None = None
+    family: ModelFamily, root: Path, *, fault: str | None = None,
+    epochs: int = 3, mutate: Callable[[dict[str, Any]], None] | None = None,
 ) -> None:
-    """N=2 plus another update; restart before the freeze-to-joint transition."""
+    """Compare a committed prefix and subsequent updates across a real restart."""
+    assert epochs >= 2
     pl.seed_everything(219, workers=True)
     config = family.compose(root, False)
     config.model.dropout = 0.1
@@ -128,13 +130,13 @@ def exercise_mdd_resume(
                     ),
                     suppress(_Interrupted),
                 ):
-                    run_loop(fresh, inputs, output, epochs=3)
+                    run_loop(fresh, inputs, output, epochs=epochs)
             else:
                 run_loop(
                     fresh,
                     inputs,
                     output,
-                    epochs=3,
+                    epochs=epochs,
                     stop=0 if stop else None,
                     resume=resume,
                 )
@@ -144,6 +146,7 @@ def exercise_mdd_resume(
     interrupted = root / "interrupted"
     expected_batches = run(continuous)
     first_batches = run(interrupted, stop=True)
+    assert not (interrupted / "COMPLETED.json").exists(), "prefix reported completion"
     checkpoint = _artifact(interrupted, kind, 1)
     assert_tree_equal(
         _state(_artifact(continuous, kind, 1), kind), _state(checkpoint, kind), "prefix"
@@ -151,6 +154,10 @@ def exercise_mdd_resume(
     assert_tree_equal(
         expected_batches[: len(first_batches)], first_batches, "prefix.batch"
     )
+    if mutate is not None:
+        payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
+        mutate(payload)
+        torch.save(payload, checkpoint)
     pl.seed_everything(731, workers=True)
     if fault is None:
         remaining = run(interrupted, resume=checkpoint)
@@ -175,7 +182,7 @@ def exercise_mdd_resume(
     else:
         raise ValueError(f"Unknown resume fault {fault}")
     assert_tree_equal(expected_batches[len(first_batches) :], remaining, "resume.batch")
-    for completed in (2, 3):
+    for completed in range(2, epochs + 1):
         assert_tree_equal(
             _state(_artifact(continuous, kind, completed), kind),
             _state(_artifact(interrupted, kind, completed), kind),

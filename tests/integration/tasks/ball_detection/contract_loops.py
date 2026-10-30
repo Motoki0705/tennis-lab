@@ -155,7 +155,8 @@ def _pretrain(
         epochs=epochs,
         windows_per_epoch=1,
         learning_rate=0.001,
-        warmup_updates=0,
+        # Resume profiles cross a nonzero warmup without extending the run.
+        warmup_updates=min(1, epochs - 1),
         seed=42,
         device="cpu",
         precision="fp32",
@@ -207,7 +208,7 @@ def _deep_query(
         windows_per_epoch=1,
         learning_rate=0.001,
         encoder_lr_ratio=0.1,
-        warmup_updates=0,
+        warmup_updates=1,
         seed=42,
         device="cpu",
         precision="fp32",
