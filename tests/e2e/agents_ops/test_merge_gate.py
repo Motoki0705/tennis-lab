@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +26,10 @@ from tests.e2e.agents_ops.test_parent_session import (
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
+from tests.support.agents_ops.directory_seed import DirectorySeed
 
 SCRIPT = OPS / "review/merge_gate.py"
+SEEDS = pytest.StashKey[dict[str | None, "GateSeed"]]()
 
 
 def ci_rollup(state: str) -> list[dict[str, str]]:
@@ -135,13 +138,62 @@ class GateEnv:
         p.save(state)
 
 
+@dataclass(frozen=True)
+class GateSeed:
+    directory: DirectorySeed
+    template: GateEnv
+
+    @classmethod
+    def capture(cls, gate: GateEnv, snapshot: Path) -> GateSeed:
+        # Keep metadata separate from the first test's mutable dataclasses, too.
+        review = replace(
+            gate.review,
+            p=replace(gate.review.p, env=gate.review.p.env.copy()),
+            request=copy.deepcopy(gate.review.request),
+        )
+        return cls(DirectorySeed.capture(review.p.root, snapshot), replace(gate, review=review))
+
+    def restore(self, p: ParentEnv, monkeypatch: pytest.MonkeyPatch) -> GateEnv:
+        self.directory.restore(p.root)
+        run_git(p.repo, "worktree", "repair")
+        review = self.template.review
+        original = self.directory.original
+        root: Path = p.root
+
+        def relocated(path: Path) -> Path:
+            return root / path.relative_to(original)
+
+        return GateEnv(
+            replace(
+                review,
+                p=p,
+                request=copy.deepcopy(review.request),
+                request_path=relocated(review.request_path),
+                fake=relocated(review.fake),
+                output=relocated(review.output),
+                calls_path=relocated(review.calls_path),
+                clock_script=relocated(review.clock_script) if review.clock_script else None,
+            ),
+            review_policy_module(monkeypatch),
+        )
+
+
 @pytest.fixture
 def gate_env(
     parent_env: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> GateEnv:
-    return make_gate_env(parent_env, monkeypatch, getattr(request, "param", None))
+    # Each worker/shard prepares its own immutable seeds through the real CLI.
+    # Only private copies reach tests; case-level sharding remains independent.
+    seeds: dict[str | None, GateSeed] = request.config.stash.setdefault(SEEDS, {})
+    variant = getattr(request, "param", None)
+    if variant not in seeds:
+        gate = make_gate_env(parent_env, monkeypatch, variant)
+        cache = request.getfixturevalue("tmp_path_factory").mktemp("merge-gate-seed")
+        seeds[variant] = GateSeed.capture(gate, cache / "snapshot")
+        return gate
+    return seeds[variant].restore(parent_env, monkeypatch)
 
 
 def make_gate_env(
@@ -206,6 +258,65 @@ def make_gate_env(
     gate = GateEnv(review_env, policy)
     gate.confirm()
     return gate
+
+
+def test_gate_seed_keeps_git_github_review_and_metadata_private(
+    gate_env: GateEnv,
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    seed_root = tmp_path_factory.mktemp("private-gate-seed")
+    seed = GateSeed.capture(g, seed_root / "snapshot")
+    original_state = p.state()
+    original_request = copy.deepcopy(g.review.request)
+    original_result = (g.review.run_dir / "result.json").read_bytes()
+    original_head = run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD")
+
+    def fingerprint() -> dict[Path, str]:
+        return {
+            path.relative_to(seed.directory.snapshot): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in seed.directory.snapshot.rglob("*")
+            if path.is_file()
+        }
+
+    before = fingerprint()
+    root = seed_root / "copy"
+    private = replace(
+        p,
+        root=root,
+        repo=root / "repo",
+        state_path=root / "github.json",
+        calls_path=root / "calls.jsonl",
+        env={key: value.replace(str(p.root), str(root)) for key, value in p.env.items()},
+    )
+    cloned = seed.restore(private, monkeypatch)
+    worktree = private.repo / ".claude/worktrees/pr-0"
+    (worktree / "change.txt").write_text("a private committed change\n")
+    run_git(worktree, "commit", "-am", "private fix")
+    private.worktree("only-in-copy")
+    state = private.state()
+    state["prs"][0]["draft"] = True
+    private.save(state)
+    (cloned.review.run_dir / "result.json").unlink()
+    assert cloned.cli("merge").returncode == 1
+    assert not cloned.merge_calls()
+    assert p.state() == original_state
+    assert (g.review.run_dir / "result.json").read_bytes() == original_result
+    assert run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD") == original_head
+    assert "only-in-copy" not in run_git(p.repo, "branch", "--list")
+    assert str(root) in run_git(private.repo, "worktree", "list", "--porcelain")
+    for source in (p.repo / ".git/objects").rglob("*"):
+        if source.is_file():
+            copied = private.repo / ".git/objects" / source.relative_to(p.repo / ".git/objects")
+            assert source.stat().st_ino != copied.stat().st_ino
+    assert fingerprint() == before
+    response = g.cli("merge", AGENT_AUTO_MERGE="0")
+    assert response.returncode == 0, response.stderr
+    assert g.results(response)[100]["action"] == "dry_run"
+    # First-case mutations must not alter the cached Python metadata either.
+    g.review.request["reason"] = "mutated after capture"
+    assert seed.template.review.request == original_request
 
 
 @pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)
