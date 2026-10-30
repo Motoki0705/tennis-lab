@@ -2,20 +2,20 @@
 
 [日本語](sharding.ja.md) · [简体中文](sharding.zh-CN.md)
 
-The CI workflow runs lint independently and partitions the complete CPU target
+The CI workflow runs lint independently and partitions the requested CPU target
 over ten test jobs by default, each with two pytest workers. Manual dispatch
 accepts `shards=1/2/4/6/8/10` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
 The manual one-job reference has a 120-minute limit; ordinary shards retain 60 minutes. The fixed `Python` job runs with
-`always()` and succeeds only when lint, all test jobs and the coverage audit succeed.
-CI remains an observation rather than a pre-merge requirement. The existing
-triggers are retained for this change; the daily maintenance transition belongs
-to [#1349](https://github.com/Motoki0705/tennis-lab/issues/1349).
+`always()` and succeeds only when plan, lint, all test jobs and the coverage audit succeed.
+It remains the required merge check. The [lane registry and planning contract](README.md#lane-registry-and-planning)
+defines PR selection and full main/manual requests. Only PR runs cancel previous runs.
 
 ## Assignment and fixture boundaries
 
 Every worker collects the current source using the normal `spin test` CPU marker
 expression and the existing court dataset exclusion. The shard hook runs after
-ordinary selection. It assigns every remaining nodeid, including new tests.
+ordinary marker selection. It journals the CPU universe before lane selection,
+then assigns the requested nodeids, including unregistered new tests.
 
 `cpu-file-times.json` stores measured summed phase seconds. The greedy assignment
 places the most expensive group into the currently lightest shard, with stable
@@ -40,21 +40,32 @@ Run one local partition from a fixed checkout:
 Use indices 0–9 in separate output directories to cover the suite. The unpartitioned
 full CPU command in [README](README.md#run-and-recover) remains available. Each
 partition reports `full_cpu_baseline=false`; only the complete aggregate can prove
-full CPU coverage. Sharding is by collected tests, not changed paths or a `slow` filter.
+full CPU coverage. Lane selection precedes sharding; timing and `slow` markers do not decide membership.
 
 ## Evidence and failure semantics
 
-Each `shard-gw*.json` records the full CPU inventory, group assignment, selected
-nodeids, profile identity and unknown estimates. Ordinary measurement artifacts
+Each schema-2 `shard-gw*.json` records `universe_nodeids` (U), `requested_nodeids` (R),
+`deferred` (D: nodeid to suite id), plan/policy/scope identity, group assignment,
+selected nodeids (S_i), profile identity and unknown estimates. A separate
+`cpu_universe` event records U after CPU marker selection and before lane selection.
+`lane-plan.json` preserves the fixed request. Ordinary measurement artifacts
 record actual phases, outcomes, JUnit, source and environment. The aggregate
 recomputes the per-shard report from those events and requires:
 
 - all expected shard indices exactly once and every expected worker manifest;
-- matching clean source revision, workflow run and attempt, profile and full inventory;
-- a full CPU request before partitioning, successful complete observations, and
-  executed inventory equal to the selected plan;
-- the multiset union of executed nodeids equal to the complete CPU inventory;
-- successful lint and every matrix job, without treating skipped/cancelled jobs as success.
+- matching clean source revision, run/attempt, profile, plan, policy and universe;
+- registry/source file inventory matching the fixed plan and independent events matching manifest U;
+- U = R disjoint-union D, with every deferred node justified by the registry and plan;
+- successful complete observations of the requested scope and executed inventory equal to the selected plan;
+- R = S_0 disjoint-union ... disjoint-union S_n; no missing, duplicate or empty shard;
+- successful plan, lint and every matrix job; skipped/cancelled jobs are not successes.
+
+Deleting the same case from every manifest is detected against the independent
+pre-selection events. Deferred cases are neither skips nor successes. The aggregate
+reports `scoped_cpu_success`; `full_cpu_success` additionally requires D to be empty.
+The existing marker/explicit exclusions define the CPU universe, not all tests in
+every possible environment. Historical schema-1 artifacts retain `full_nodeids`
+and remain readable for profiling; mixing schemas or using them with a lane plan fails.
 
 Preparation failures, invalid partitioning, missing artifacts, failure, cancellation
 or a newer HEAD fail `Python`. Intentional CPU exclusions and genuine setup/module
@@ -63,7 +74,7 @@ so other shards can still leave evidence. Apt network retries and each apt step 
 bounded; failure is not converted into test omission.
 
 Artifacts include run/attempt and shard index. `cpu-test-coverage-*` contains the
-aggregate `coverage.json`, including failure reasons. Consumers of daily CI can
+aggregate `coverage.json`, including scope, suite outcomes and failure reasons. Consumers can
 join this with each shard's JUnit and manifest using those identities. Rerun **all
 jobs** for a self-contained new attempt; successful artifacts from an earlier
 attempt are deliberately not mixed into a partial rerun.
@@ -87,6 +98,9 @@ Download all `cpu-test-measurements-RUN-ATTEMPT-shard-*` artifacts from one atte
 ```
 
 The command rebuilds phase/JUnit reports and audits source/run/attempt, all worker manifests, assignment, and the exact full-inventory multiset. Missing phases, duplicates, dirty/mixed sources, cancellations and collection failures are rejected. Complete test failures remain in the weights and in `source.counts`/`unsuccessful_cases`; generating weights never turns them into passing CI. `Python` still requires successful jobs and observations. The audit now also reports `observations_complete` separately from success.
+
+Any deferred case rejects profile generation. A successful subset cannot overwrite
+the full CPU scheduling profile or claim a full CPU baseline.
 
 By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard; its nine cases cost 579.907 s in the reference observation. No test bodies or fixture scopes change.
 

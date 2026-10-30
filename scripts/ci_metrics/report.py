@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from .lanes import audit_partition, read_plan
 from .runner import write_json
 
 
@@ -35,6 +36,7 @@ def summarize(root: Path) -> dict[str, Any]:
     processes = []
     controller: list[dict[str, Any]] = []
     inventories: list[list[str]] = []
+    universes: dict[str, list[list[str]]] = defaultdict(list)
     fixtures: dict[str, dict[str, Any]] = {}
     for path in sorted(root.glob("events-*.jsonl")):
         events = []
@@ -55,6 +57,9 @@ def summarize(root: Path) -> dict[str, Any]:
             issues.append(f"missing/duplicate process configuration: {path.name}")
             continue
         role = configured[0]["role"]
+        universes[role].extend(
+            e["nodeids"] for e in events if e["event"] == "cpu_universe"
+        )
         finished = [e for e in events if e["event"] == "session_finish"]
         if len(finished) != 1:
             issues.append(f"missing/duplicate session finish: {path.name}")
@@ -170,6 +175,50 @@ def summarize(root: Path) -> dict[str, Any]:
         issues.append("worker collection mismatch")
     if len(set(nodeids)) != len(nodeids):
         issues.append("duplicate selected nodeids")
+    lane_scope = None
+    if metadata.get("lane_plan_id") is not None:
+        try:
+            plan = read_plan(root / "lane-plan.json")
+            if plan["plan_id"] != metadata["lane_plan_id"]:
+                raise ValueError("lane plan differs from runner metadata")
+            roles = {f"gw{i}" for i in range(workers)} if workers else {"controller"}
+            manifests = {
+                p.stem.removeprefix("shard-"): json.loads(p.read_text())
+                for p in root.glob("shard-*.json")
+            }
+            if (
+                set(manifests) != roles
+                or {role for role, ids in universes.items() if ids} != roles
+            ):
+                raise ValueError(
+                    "missing/extra pre-selection CPU universe or worker manifest"
+                )
+            reference = None
+            for role in sorted(roles):
+                if len(universes[role]) != 1:
+                    raise ValueError("missing/duplicate pre-selection CPU universe")
+                universe = universes[role][0]
+                if reference is not None and reference != universe:
+                    raise ValueError("workers disagree on pre-selection CPU universe")
+                reference = universe
+                audit_partition(manifests[role], universe, plan)
+                if manifests[role]["selected_nodeids"] != nodeids:
+                    raise ValueError(
+                        "executed inventory differs from lane/shard selection"
+                    )
+            manifest = manifests[sorted(roles)[0]]
+            lane_scope = {
+                "plan_id": plan["plan_id"],
+                "scope": plan["scope"],
+                "universe_count": len(manifest["universe_nodeids"]),
+                "requested_count": len(manifest["requested_nodeids"]),
+                "deferred_count": len(manifest["deferred"]),
+                "deferred_suites": plan["deferred_suites"],
+            }
+        except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            issues.append(f"invalid lane evidence: {error}")
+    elif (root / "lane-plan.json").exists() or any(universes.values()):
+        issues.append("lane evidence has no runner plan identity")
     phases: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for event in controller:
         if event["event"] == "phase":
@@ -352,9 +401,13 @@ def summarize(root: Path) -> dict[str, Any]:
     summary = {
         "schema_version": 1,
         "successful_test_baseline": successful,
+        "scoped_cpu_success": successful and lane_scope is not None,
+        "lane_scope": lane_scope,
         "full_cpu_baseline": (
             successful
             and metadata.get("full_cpu_target") is True
+            and metadata.get("shard") is None
+            and (lane_scope is None or lane_scope["deferred_count"] == 0)
             and bool(metadata.get("source", {}).get("commit"))
             and run.get("source_unchanged") is True
         ),
@@ -411,6 +464,7 @@ def summarize(root: Path) -> dict[str, Any]:
         f"Successful test baseline: **{successful}**; successful full CPU baseline: **{summary['full_cpu_baseline']}**.",
         f"Full CPU target requested: **{metadata.get('full_cpu_target')}**.",
         f"Selected: {len(nodeids)}; outcomes: `{json.dumps(counts, sort_keys=True)}`.",
+        f"Lane coverage (deferred cases are not skips or passes): `{json.dumps(lane_scope, sort_keys=True)}`.",
         f"Command wall seconds: {summary['test_command_wall_s']}; lock wait seconds: {run.get('lock_wait_s')}.",
         f"Wall-clock adjustment relative to monotonic elapsed seconds: {summary['wall_clock_adjustment_s']}.",
         f"Summed worker phase seconds: `{json.dumps(phase_s, sort_keys=True)}`.",
