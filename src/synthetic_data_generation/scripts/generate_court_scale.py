@@ -136,15 +136,7 @@ def main() -> None:
     plan.add_argument("--asset-manifest", type=Path)
     plan.add_argument("--asset-manifest-sha256")
     selection = plan.add_mutually_exclusive_group(required=True)
-    selection.add_argument(
-        "--methods",
-        nargs="+",
-        choices=[
-            m
-            for m in TrajectoryMethod
-            if m is not TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES
-        ],
-    )
+    selection.add_argument("--methods", nargs="+", choices=list(TrajectoryMethod))
     selection.add_argument("--production-recipe", type=Path)
     plan.add_argument("--output-root", type=Path, required=True)
     plan.add_argument("--recipe", type=Path, help="comparison geometry recipe")

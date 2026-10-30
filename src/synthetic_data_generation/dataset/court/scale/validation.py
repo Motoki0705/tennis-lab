@@ -27,10 +27,6 @@ def validate_plan_geometry(
         layout, courts=tuple(sorted(layout.courts, key=lambda c: c.court_instance_id))
     )
     planned: dict[str, dict[str, Any]] = {}
-    if plan["method"] == TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES:
-        from .saved_train import validate_saved_train_authority
-
-        validate_saved_train_authority(plan)
     for group in plan["trajectory_groups"]:
         if group["curve"] is None:
             if group["samples"] or not group["reasons"]:
