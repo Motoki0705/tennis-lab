@@ -49,9 +49,17 @@ def ensure_labels(names: list[str], *, repo_root: Path, dry_run: bool) -> None:
             continue
         spec = specs[name]
         shell.gh(
-            ["label", "create", name, "--color", spec["color"], "--description", spec["description"]],
+            [
+                "label",
+                "create",
+                name,
+                "--color",
+                spec["color"],
+                "--description",
+                spec["description"],
+            ],
             cwd=repo_root,
-        )  # fmt: skip
+        )
 
 
 @dataclass
