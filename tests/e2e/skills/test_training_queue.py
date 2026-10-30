@@ -2384,15 +2384,22 @@ def test_worker_term_after_move_fails_job_without_launch_and_releases_capacity(
         assert not (
             queue_dir / "cancel-requests" / f"{active_job[:-4]}.cancel"
         ).exists()
+        assert (queue_dir / "stop").is_file()
+        assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        assert not _process_state(wrapper_pid)
         assert not list((queue_dir / "state").glob(".launch.*"))
         _assert_lock_namespace_reacquirable(lock_file)
 
         replacement = _serve(queue_dir, lock_file, cwd=tmp_path)
-        _wait_for(successor_started.exists, timeout=0.75)
+        _wait_for(successor_started.exists)
         replacement_output = replacement.communicate(timeout=5)
         assert replacement.returncode == 0, replacement_output
+        assert (queue_dir / "done" / successor_job).is_file()
         assert not (queue_dir / "stop").exists()
         assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        _assert_lock_namespace_reacquirable(lock_file)
     finally:
         os.close(barrier_fd)
         if worker.poll() is None:
@@ -2459,6 +2466,7 @@ def test_cooperative_stop_after_move_requeues_without_launch(
     replacement: subprocess.Popen[str] | None = None
     try:
         _wait_for(ready.exists)
+        wrapper_pid = int(ready.read_text(encoding="utf-8"))
         assert (queue_dir / "running" / target_job).is_file()
         assert not target_started.exists()
         if stop_during_empty_scan:
@@ -2468,7 +2476,6 @@ def test_cooperative_stop_after_move_requeues_without_launch(
         assert "stop requested" in stop_result.stdout
         os.write(barrier_fd, b"release\n")
         if stop_during_empty_scan:
-            wrapper_pid = int(ready.read_text())
 
             def wrapper_exited() -> bool:
                 state = _process_state(wrapper_pid)
@@ -2480,6 +2487,8 @@ def test_cooperative_stop_after_move_requeues_without_launch(
         stdout, stderr = worker.communicate(timeout=5)
 
         assert worker.returncode == 0, f"stdout={stdout}\nstderr={stderr}"
+        if stop_during_empty_scan:
+            assert "queue empty for 0s; exiting." in stdout
         assert not target_started.exists()
         assert (queue_dir / "jobs" / target_job).is_file()
         assert not (queue_dir / "running" / target_job).exists()
@@ -2489,6 +2498,8 @@ def test_cooperative_stop_after_move_requeues_without_launch(
         ).exists()
         assert not (queue_dir / "stop").exists()
         assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        assert not _process_state(wrapper_pid)
         assert not list((queue_dir / "state").glob(".launch.*"))
         _assert_lock_namespace_reacquirable(lock_file)
 
@@ -2497,6 +2508,12 @@ def test_cooperative_stop_after_move_requeues_without_launch(
         assert replacement.returncode == 0, replacement_output
         assert target_started.is_file()
         assert (queue_dir / "done" / target_job).is_file()
+        assert not (queue_dir / "jobs" / target_job).exists()
+        assert not (queue_dir / "running" / target_job).exists()
+        assert not (queue_dir / "stop").exists()
+        assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        _assert_lock_namespace_reacquirable(lock_file)
     finally:
         os.write(empty_fd, b"release\n")
         os.close(empty_fd)
