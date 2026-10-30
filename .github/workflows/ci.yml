@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload test measurements
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cpu-test-measurements-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: .ci-metrics/shard-${{ matrix.shard }}/
@@ -158,7 +158,7 @@ jobs:
         with:
           submodules: false
       - name: Download all shard observations
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: cpu-test-measurements-${{ github.run_id }}-${{ github.run_attempt }}-shard-*
           path: .ci-results
@@ -169,7 +169,7 @@ jobs:
         run: python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
       - name: Upload CPU coverage result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cpu-test-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: .ci-results/coverage.json
