@@ -194,6 +194,7 @@ def triangulate_points(
         rays /= np.maximum(np.linalg.norm(rays, axis=-1, keepdims=True), 1e-12)
         best: tuple[int, float, tuple[str, str], NDArray[np.bool_]] | None = None
         reasons[index] = int(PointRejection.DEGENERATE_RAYS)
+        pair_rejection = PointRejection.DEGENERATE_RAYS
         for first, second in combinations(active, 2):
             angle = math.degrees(math.acos(float(np.clip(abs(rays[first] @ rays[second]), 0, 1))))
             if angle < config.min_ray_angle_deg:
@@ -204,17 +205,21 @@ def triangulate_points(
                 continue
             residual, front = project(candidate, uv[:, index])
             if not front[pair].all():
-                reasons[index] = int(PointRejection.BEHIND_CAMERA)
+                # Keep the furthest gate reached by any pair, independently
+                # of camera iteration order: rays -> depth -> reprojection.
+                pair_rejection = max(pair_rejection, PointRejection.BEHIND_CAMERA)
                 continue
             selected = observed[:, index] & front & (residual <= config.max_reprojection_px)
             number = int(selected.sum())
             if number < 2:
-                reasons[index] = int(PointRejection.REPROJECTION)
+                pair_rejection = PointRejection.REPROJECTION
                 continue
-            key = (-number, float(residual[selected].mean()), tuple(sorted((cameras[first].camera_id, cameras[second].camera_id))))
+            first_id, second_id = sorted((cameras[first].camera_id, cameras[second].camera_id))
+            key = (-number, float(residual[selected].mean()), (first_id, second_id))
             if best is None or key < best[:3]:
                 best = (*key, selected)
         if best is None:
+            reasons[index] = int(pair_rejection)
             continue
         selected = best[3]
         candidate = _dlt(uv[selected, index], matrices[selected], weights[selected, index])
