@@ -6,7 +6,6 @@ import hashlib
 import math
 import os
 import re
-import shlex
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -36,6 +35,13 @@ SHELL_WRAPPERS = {
     ("/bin/sh", "-c"),
     ("sh", "-c"),
 }
+HTTP_URL = re.compile(
+    r"""'https?://[^\s']*'|"https?://[^\s"\\$`]*"|https?://[^\s"'`;&|()<>]*""",
+    re.IGNORECASE,
+)
+ATTACHED_OPTION_PATH = re.compile(
+    r"""(?:^|[\s"'`;&|()<>])-[^\s"'`;&|()<>]*[A-Za-z0-9]/"""
+)
 
 
 class RecordError(ValueError):
@@ -117,22 +123,80 @@ def tail(path: Path, bound: int) -> tuple[list[tuple[int, int, bytes]], bool, st
     return lines, size > bound, updated, size
 
 
+def literal_shell_words(value: str) -> list[str] | None:
+    """Decode literal shell words; reject expansions and unsupported syntax."""
+    words: list[str] = []
+    word: list[str] = []
+    quote = ""
+    started = False
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if quote == "'":
+            if char == "'":
+                quote = ""
+            else:
+                word.append(char)
+        elif quote == '"':
+            if char == '"':
+                quote = ""
+            elif char in "$`":
+                return None
+            elif char == "\\":
+                index += 1
+                if index == len(value):
+                    return None
+                escaped = value[index]
+                if escaped not in '$`"\\\n':
+                    word.append("\\")
+                if escaped != "\n":
+                    word.append(escaped)
+            else:
+                word.append(char)
+        elif char in "'\"":
+            quote = char
+            started = True
+        elif char in " \t":
+            if started:
+                words.append("".join(word))
+                word = []
+                started = False
+                if len(words) > 3:
+                    return None
+        elif char in "\\$`*?[]~#{}();<>|&\n":
+            # Unquoted escapes are deliberately unsupported as well.
+            return None
+        else:
+            word.append(char)
+            started = True
+        index += 1
+    if quote:
+        return None
+    if started:
+        words.append("".join(word))
+    return words
+
+
 def unwrap_shell_command(value: Any) -> Any:
-    """Unquote one known shell invocation, without evaluating its command."""
+    """Unquote one known literal invocation, without evaluating its command."""
     if not isinstance(value, str):
         return value
-    lexer = shlex.shlex(value, posix=True, punctuation_chars="();<>|&\n")
-    # Outer operators/newlines are syntax, not part of a single shell argument.
-    lexer.whitespace = " \t"
-    lexer.whitespace_split = True
-    lexer.commenters = ""
-    try:
-        args = list(lexer)
-    except ValueError:
-        return value
-    if len(args) == 3 and (args[0], args[1]) in SHELL_WRAPPERS:
+    args = literal_shell_words(value)
+    if args is not None and len(args) == 3 and (args[0], args[1]) in SHELL_WRAPPERS:
         return args[2]
     return value
+
+
+def command_summary(value: Any, guard: Guard) -> dict[str, Any]:
+    """Apply full-text guards and command-only path checks before publishing."""
+    command = unwrap_shell_command(value)
+    shown: dict[str, Any] = guard.text(command, first_line=True)
+    # Guard sees the original command; URL masking is only for this extra scan.
+    if isinstance(command, str) and ATTACHED_OPTION_PATH.search(
+        HTTP_URL.sub(" ", command)
+    ):
+        return {"status": "hidden", "text": None, "truncated": False}
+    return shown
 
 
 def summarize(
@@ -223,9 +287,7 @@ def summarize(
                 "time_status": "observed" if when else "unavailable",
             }
             if kind == "command_execution":
-                tool["command"] = guard.text(
-                    unwrap_shell_command(item.get("command")), first_line=True
-                )
+                tool["command"] = command_summary(item.get("command"), guard)
             elif kind == "mcp_tool_call":
                 tool["server"] = guard.text(item.get("server"))
                 tool["tool"] = guard.text(item.get("tool"))
