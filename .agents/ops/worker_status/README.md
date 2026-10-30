@@ -60,10 +60,18 @@ children = refreshed["parents"][0]["children"]
 - 手動workerはtaskの`worker_runs`を読む。形式・保存側の契約は#1548。
   現在の`delegation_id`と一致する記録の最後の要素を選び、古い委任へ戻らない。
   相対runパスは親state内、外部runは絶対パスでなければならない。
+  `worker_runs`キーがある委任で現在の委任IDに対応するrunがなければ、旧委任のrunが残っていても
+  未起動とする。キーのない旧委任は「記録なし」であり、読み取りでキーを補わない。
 - dispatcherのscheduleが存在すれば`Schedule.read()`で検証し、registryの
   `dispatch.jobs`から現在の委任・子に一致する最大sequenceのjobの`runtime`を読む。
   手動の`worker_runs`があればそちらを優先する。scheduleがなければ
   `dispatcher.status=unused`・「自律dispatcher未使用」。壊れたscheduleを未使用扱いにしない。
+- 選択したrunの`result.json`の`contract.task_id/cwd/branch`を、現在の委任ID・子taskの
+  worktree・branchと照合する。dispatcherのjobの場合は委任IDの代わりにそのjobのtask_idを使う。
+  cwdは絶対パスの実体、残る2項目は文字列の完全一致。取得側・期待値側の欠落も一致とみなさず、
+  状態不明と`contract_missing`または`contract_mismatch`、不一致フィールド名を返す。
+  resultがない場合だけinvocation.jsonの同じ契約を照合する。照合できてもinvocationだけから
+  実行中とは推測しない。破損したresultをinvocationで置き換えない。
 - 各runの`result.json`と初回runの`session.json`はそれぞれ最大1 MiB。
   `events.jsonl`と`event-receipts.jsonl`は末尾だけ有限byteで読む。
   上限境界にかかる最初の断片は捨て、省略を`summary.tail_truncated`で示す。
@@ -82,16 +90,16 @@ children = refreshed["parents"][0]["children"]
 | `failed` / 失敗 | `result=failed`。終了理由は`run.turn_end_reason` |
 | `stopped` / 停止中 | taskの明示停止記録、または明示GitHub取得で確認した停止マーカー。プロセス終了を意味しない |
 | `dependency_wait` / 依存待ち | 未起動・未委任の子で、ローカル依存先に停止記録、またはGitHubの既存launch_planに依存待ち理由がある |
-| `not_started` / 委任予約済み・未起動 | 委任済みで空の`worker_runs`が明示されている、またはdispatcherの未起動予約 |
+| `not_started` / 委任予約済み・未起動 | 委任済みで`worker_runs`キーがあり現在の委任のrunがない（旧委任のrunだけ残る場合も含む）、またはdispatcherの未起動予約 |
 | `not_delegated` / 未委任 | 委任予約がない |
-| `unknown` / 状態不明 | 委任済みだがrun記録なし、現在の委任のrunなし、runner喪失・identity不一致、JSON破損・未知schema・記録間不一致など |
+| `unknown` / 状態不明 | run記録方式のキーがない旧委任、runner契約の不一致・欠落、runner喪失・identity不一致、JSON破損・未知schema・記録間不一致など |
 
 既存の委任に`worker_runs`キー自体がなければ、未起動と推定せず「記録なし」の状態不明にする。
 最新runが壊れていても古い正常runへ戻らない。現在のrun/sessionの対応も照合する。
 既に起動したrunの状態を、依存先が現在未完了であることだけで依存待ちに置き換えない。
 
 `evidence[]`は`source`（parent_registry.task / parent_registry.worker_runs /
-parent_registry.dispatch.jobs / runner.result / runner.records / github.issue /
+parent_registry.dispatch.jobs / runner.result / runner.invocation / runner.session / runner.records / github.issue /
 github.launch_plan）、`fields`（判断に使った入力フィールド名）、`code`（判断理由）を持つ。
 入力フィールド名は説明用で、フィールドの私的な値をコピーしない。
 
@@ -159,8 +167,11 @@ GitHub認証・OSのstate読取権限は既存実行ユーザーのものを使�
 ## 検証
 
 ```bash
-bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_worker_status.py tests/e2e/agents_ops/test_agent_exec.py tests/e2e/agents_ops/test_agent_runtime.py tests/e2e/agents_ops/test_board*.py -n 4 -q
+bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_worker_status.py tests/e2e/agents_ops/test_worker_status_manual_runs.py tests/e2e/agents_ops/test_manual_worker_runs.py tests/e2e/agents_ops/test_agent_runtime.py -n 4 -q
 ```
 
 一時registry/run、fake CLI/fake gh、固定時計、現在のテストプロセスのidentityを使うCPUテスト。
 実agentを起動せず、実registry・run・GitHubは変更しない。
+結合テストはparent CLIのdelegate・run-worker・record-worker-runが作った記録を使い、
+未起動→実行中→ターン終了/失敗、外部runの登録、旧runを保持した再委任後の未起動を確認する。
+fake runnerの実行中区間はsocketで同期し、worker_runsをテストから手書きしない。

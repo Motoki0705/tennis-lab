@@ -94,6 +94,8 @@ def latest_run(
     if not isinstance(runs, list):
         raise ValueError("invalid worker runs")
     current = task.get("delegation_id")
+    if current is None and task.get("delegated") and "worker_runs" in task:
+        raise RecordError("parent_registry.task", ["delegation_id"], "contract_missing")
     if current is not None and (
         not isinstance(current, str) or not re.fullmatch(r"[0-9a-f]{32}", current)
     ):
@@ -124,6 +126,7 @@ def latest_run(
                     "kind": run["kind"],
                     "recorded_at": recorded,
                     "source": "parent_registry.worker_runs",
+                    "task_id": current,
                 }
             )
     if found:
@@ -167,9 +170,8 @@ def latest_run(
                 "kind": "resume" if job.get("resume_from") else "initial",
                 "recorded_at": None,
                 "source": "parent_registry.dispatch.jobs",
+                "task_id": job.get("task_id"),
             }, "recorded"
-    if runs:
-        return None, "no_current_delegation_run"
     return None, "reserved" if "worker_runs" in task else "no_run_record"
 
 
@@ -251,9 +253,19 @@ def child_status(
         run, availability = latest_run(task, row, child, state, dispatch_enabled)
         if run:
             details = inspect_run(
-                run["directory"], guard, bound=tail_bytes, tool_limit=tool_limit
+                run["directory"],
+                guard,
+                expected_contract={
+                    "task_id": run["task_id"],
+                    "cwd": task.get("worktree"),
+                    "branch": task.get("branch"),
+                },
+                bound=tail_bytes,
+                tool_limit=tool_limit,
             )
-            value["run"] = {k: v for k, v in run.items() if k != "directory"}
+            value["run"] = {
+                k: run[k] for k in ("alias", "kind", "recorded_at", "source")
+            }
             for key in ("summary", "last_activity_at", "activity_time_status"):
                 value[key] = details.pop(key)
             value["run"].update(details)
@@ -262,6 +274,13 @@ def child_status(
                     run["source"],
                     ["delegation_id", "run_dir"],
                     "current_delegation_latest_run",
+                )
+            )
+            value["evidence"].append(
+                evidence(
+                    "runner.result",
+                    ["contract.task_id", "contract.cwd", "contract.branch"],
+                    "contract_verified",
                 )
             )
             if details["result"] == "running":

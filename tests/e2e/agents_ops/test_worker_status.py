@@ -70,6 +70,8 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
 
         def record(self, result: str = "completed", **kwargs: Any) -> None:
             self.task.update(delegated=True, delegation_id=DELEGATION)
+            self.task.setdefault("worktree", str(tmp_path / "private-worktree"))
+            self.task.setdefault("branch", "codex/fixture-worker")
             self.task["worker_runs"] = [
                 {
                     "delegation_id": DELEGATION,
@@ -90,7 +92,12 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
                 "process": None,
                 "started_at": NOW.timestamp() - 1000,
                 "finished_at": NOW.timestamp() if result != "running" else None,
-                "contract": {"settings": {"agent": "codex"}},
+                "contract": {
+                    "task_id": DELEGATION,
+                    "cwd": self.task["worktree"],
+                    "branch": self.task["branch"],
+                    "settings": {"agent": "codex"},
+                },
                 "runtime": {
                     "session_id": "private-child-session",
                     "turn_id": "private-turn",
@@ -236,7 +243,9 @@ def test_untrusted_records_never_show_running(fixture: Any, damage: str) -> None
     else:
         (f.run / "events.jsonl").write_text('{"type":wrong}\n')
     child = f.child()
-    assert child["status"] == "unknown"
+    assert child["status"] == (
+        "not_started" if damage == "old_delegation" else "unknown"
+    )
     assert child["evidence"]
     if damage == "version":
         assert child["evidence"][-1]["code"] == "unsupported_schema"
@@ -244,6 +253,93 @@ def test_untrusted_records_never_show_running(fixture: Any, damage: str) -> None
         assert child["evidence"][-1]["code"] == "corrupt_json"
     elif damage == "pid_reused":
         assert child["run"]["identity_status"] == "identity_mismatch"
+
+
+@pytest.mark.parametrize("record", ["result", "invocation"])
+@pytest.mark.parametrize("field", ["task_id", "cwd", "branch"])
+@pytest.mark.parametrize("missing", [False, True])
+def test_runner_contract_must_match_the_current_delegation(
+    fixture: Any, record: str, field: str, missing: bool
+) -> None:
+    f = fixture
+    f.record(
+        "running",
+        runner=importlib.import_module("lib.opsproc").process_identity(os.getpid()),
+    )
+    path = f.run / "result.json"
+    value = json.loads(path.read_text())
+    if missing:
+        value["contract"].pop(field)
+    else:
+        value["contract"][field] = {
+            "task_id": "b" * 32,
+            "cwd": str(f.state / "other-worktree"),
+            "branch": "codex/other-worker",
+        }[field]
+    if record == "invocation":
+        path.unlink()
+        path = f.run / "invocation.json"
+    path.write_text(json.dumps(value))
+    child = f.child()
+    assert child["status"] == "unknown"
+    assert child["evidence"][-1] == {
+        "source": f"runner.{record}",
+        "fields": [f"contract.{field}"],
+        "code": "contract_missing" if missing else "contract_mismatch",
+    }
+    assert value["contract"].get(field, "not-in-output") not in json.dumps(child)
+
+
+def test_legacy_delegation_without_run_tracking_is_unknown(fixture: Any) -> None:
+    f = fixture
+    f.task.update(delegated=True, delegation_id=DELEGATION)
+    child = f.child()
+    assert child["status"] == "unknown"
+    assert child["evidence"][-1]["code"] == "no_run_record"
+    assert "worker_runs" not in f.task
+
+
+def test_missing_result_only_uses_invocation_to_verify_contract(fixture: Any) -> None:
+    f = fixture
+    f.record()
+    result = f.run / "result.json"
+    (f.run / "invocation.json").write_bytes(result.read_bytes())
+    result.unlink()
+    child = f.child()
+    assert child["status"] == "unknown"
+    assert child["evidence"][-1]["code"] == "record_missing"
+
+
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [
+        ("delegation_id", "delegation_id"),
+        ("worktree", "contract.cwd"),
+        ("branch", "contract.branch"),
+    ],
+)
+def test_current_delegation_contract_fields_are_required(
+    fixture: Any, field: str, expected: str
+) -> None:
+    f = fixture
+    f.record()
+    f.task.pop(field)
+    child = f.child()
+    assert child["status"] == "unknown"
+    assert child["evidence"][-1]["code"] == "contract_missing"
+    assert child["evidence"][-1]["fields"] == [expected]
+
+
+def test_corrupt_result_does_not_fall_back_to_matching_invocation(fixture: Any) -> None:
+    f = fixture
+    f.record()
+    path = f.run / "result.json"
+    (f.run / "invocation.json").write_bytes(path.read_bytes())
+    path.write_text("{")
+    child = f.child()
+    assert child["status"] == "unknown"
+    assert child["evidence"][-1]["source"] == "runner.result"
+    assert child["evidence"][-1]["code"] == "corrupt_json"
 
 
 def test_staleness_uses_received_time_and_never_stops_a_live_runner(
@@ -867,6 +963,10 @@ def test_dispatcher_current_child_job_and_unused_schedule_are_distinct(
     for name in ("result.json", "session.json"):
         path = runtime_dir / name
         path.write_text(path.read_text().replace(str(f.run), str(runtime_dir)))
+    result_path = runtime_dir / "result.json"
+    result = json.loads(result_path.read_text())
+    result["contract"]["task_id"] = "private-dispatcher-job"
+    result_path.write_text(json.dumps(result))
     f.row["dispatch"] = {
         "schema_version": 1,
         "jobs": {
@@ -883,6 +983,7 @@ def test_dispatcher_current_child_job_and_unused_schedule_are_distinct(
                 "delegation_id": DELEGATION,
                 "directory": str(job_root),
                 "phase": "ended",
+                "task_id": "private-dispatcher-job",
             },
         },
     }
