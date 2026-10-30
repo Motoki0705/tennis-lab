@@ -241,9 +241,22 @@ class AuditTools:
         )
 
     def status(self, page: int = 1, per_page: int = 20) -> Retrieved:
-        return self.response(
-            self.book().summary(limit=per_page, offset=(page - 1) * per_page)
-        )
+        from . import migration
+
+        book = self.book()
+        data = book.summary(limit=per_page, offset=(page - 1) * per_page)
+        if migration.SOURCE_ID in book.snapshot["evidence"]:
+            keys = sorted(migration.verify_import(book)[0])
+            offset = (page - 1) * per_page
+            data["legacy_import"] = {
+                "source": book.reference("evidence", migration.SOURCE_ID),
+                "completed_tasks": [
+                    book.reference("task", k) for k in keys[offset : offset + per_page]
+                ],
+                "total": len(keys),
+                "remaining": max(0, len(keys) - offset - per_page),
+            }
+        return self.response(data)
 
     def records(
         self, entity: str, slot: str | None = None, page: int = 1, per_page: int = 20
@@ -273,6 +286,8 @@ class AuditTools:
         return result
 
     def original(self, ref: dict[str, Any], **ranges: Any) -> Retrieved:
+        from . import migration
+
         if ref.get("path") == str(self.ledger_path):
             book = self.book()
         else:
@@ -289,9 +304,10 @@ class AuditTools:
                     "reference is outside the fixed current/previous ledgers"
                 )
             book = self.previous_book(matches[0])
-        data, pagination = text_page(
-            json.dumps(book.original(ref), ensure_ascii=False), **ranges
-        )
+        record = book.original(ref)
+        if ref["entity"] == "evidence" and ref["id"] == migration.SOURCE_ID:
+            record = {**record, "original_checkpoint": migration.source_original(book)}
+        data, pagination = text_page(json.dumps(record, ensure_ascii=False), **ranges)
         result = self.response(data, book=book)
         result.pagination = pagination
         return result
@@ -353,6 +369,10 @@ class AuditTools:
     def plan(
         self, id: str, question: str, scope: list[str], origin: dict[str, Any]
     ) -> Retrieved:
+        if origin.get("kind") == "legacy":
+            raise LedgerError(
+                "legacy origin is reserved for explicit checkpoint migration"
+            )
         if not re.fullmatch(r"[a-z][a-z0-9_]{0,79}", id):
             raise LedgerError(
                 "task id must be a native task_name: lowercase letters, digits, underscores"

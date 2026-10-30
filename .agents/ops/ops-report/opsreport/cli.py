@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import signal
 import sys
@@ -21,6 +22,7 @@ from . import (
     lock,
     memory,
     memory_pr,
+    migration,
     proposals,
     report,
     schedule,
@@ -79,13 +81,21 @@ def _issue_lock() -> AbstractContextManager[None]:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ops_report.py", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("report", "triage"):
+    for name in ("report", "triage", "migrate-checkpoint"):
         p = sub.add_parser(name)
         p.add_argument(
             "--dry-run", action="store_true", help="do not create/edit issues"
         )
         p.add_argument("--repo-root", type=Path, default=REPO_ROOT)
         p.add_argument("--log-dir", type=Path, default=None)
+    migrate = sub.choices["migrate-checkpoint"]
+    migrate.add_argument("--slot", required=True, help="original YYYYMMDD slot")
+    migrate.add_argument(
+        "--report-issue",
+        required=True,
+        type=int,
+        help="original incomplete report issue number",
+    )
     rep = sub.choices["report"]
     rep.add_argument(
         "--agent",
@@ -463,6 +473,16 @@ def _generate_report(
                 source_checkpoint.parent / tag, round_dir, dirs_exist_ok=True
             )
             state = {**state, "ledger": str(ledger_path)}
+            if "migration" in collected:
+                shutil.copytree(
+                    migration.archive_path(source_checkpoint),
+                    migration.archive_path(checkpoint),
+                )
+                prepared_path = migration.archive_path(checkpoint) / "checkpoint.json"
+                prepared = strict_json(prepared_path.read_bytes())
+                memory_pr._atomic_json(
+                    prepared_path, {**prepared, "ledger": str(ledger_path)}
+                )
         book = Ledger.load(ledger_path, slot=tag, base_sha=base.sha)
     if published:
         bound = book.snapshot["run"]["report_issue"]
@@ -751,6 +771,52 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
     return 1 if result.errors or memory_errors else 0
 
 
+def _run_migration(args: argparse.Namespace, run_dir: Path) -> int:
+    checkpoint = schedule.state_dir() / "audit" / f"{args.slot}.json"
+    try:
+        if not re.fullmatch(r"[0-9]{8}", args.slot):
+            raise ValueError("slot must be YYYYMMDD")
+        # Same lock ordering as report. No schedule or memory state is updated.
+        with (
+            lock.exclusive(
+                schedule.state_dir() / "schedule.lock",
+                timeout=_env_int("OPS_REPORT_LOCK_TIMEOUT", 600),
+            ),
+            _issue_lock(),
+        ):
+            result = migration.migrate(
+                repo=args.repo_root.resolve(),
+                checkpoint=checkpoint,
+                number=args.report_issue,
+                run_dir=run_dir,
+                dry_run=args.dry_run,
+            )
+    except (
+        CommandError,
+        ValueError,
+        OSError,
+        KeyError,
+        TypeError,
+        AttributeError,
+    ) as exc:
+        result = {
+            "status": "stopped",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "facts": {
+                "slot": args.slot,
+                "report_issue": args.report_issue,
+                "checkpoint": str(checkpoint),
+                "checkpoint_exists": checkpoint.exists(),
+                "archive_exists": migration.archive_path(checkpoint).exists(),
+            },
+            "resume": "元checkpoint・保存原本・同じissueの本文と採用/子リンクを照合し、不足/不一致を明示修復して同じ migrate-checkpoint を再実行する。新しい入力で作り直さず、archiveを削除しない。",
+        }
+        LOG.error("migration stopped: %s", result["reason"])
+    memory_pr._atomic_json(run_dir / "result.json", result)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return 1 if result["status"] == "stopped" else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "report":
@@ -773,6 +839,8 @@ def main(argv: list[str] | None = None) -> int:
             return _run_schedule(args)
         if args.command == "report":
             return _run_report(args, run_dir)
+        if args.command == "migrate-checkpoint":
+            return _run_migration(args, run_dir)
         return _run_triage(args, run_dir)
     except (CommandError, ConfigError, ValueError, OSError) as exc:
         LOG.error("%s failed: %s", args.command, exc)
