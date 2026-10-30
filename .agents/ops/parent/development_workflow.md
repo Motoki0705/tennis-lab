@@ -108,8 +108,10 @@ CI・回帰テストと指摘解消を親が確認して既存の `parent_review
 ```
 
 既定のdry-runを読み、呼出元環境の `AGENT_AUTO_MERGE` に従う。workflow自身が有効値を設定しない。
-gateはcoverage/HEAD/CI/依存と、
+PRへのpushごとにCIを実行し、コミットに `[skip ci]` を付けない。
+gateは対象HEADの `Python` check runの成功を必須とし、coverage/HEAD/CI/依存と、
 親・対象子に含まれる全採用提案の鮮度を検査し、通るPRだけ順次mergeする。
+CI未完了・失敗・取消・欠落・別HEADのPRは理由付きで停止し、条件を満たす独立PRから進める。
 応答喪失・試行済みheadはremoteと試行journalを照合し、記録を消して再mergeしない。
 
 ## 待機・完了・担当終了

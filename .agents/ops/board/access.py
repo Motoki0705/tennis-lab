@@ -12,6 +12,7 @@ from parent.state import Store as ParentStore
 
 from .errors import BoardError
 from .names import Assignment
+from .participants import HUMAN, Participant
 from .service import _assigned, _reference
 from .storage import Store, directory
 
@@ -43,3 +44,24 @@ def as_parent(
         store = Store(directory(env))
         with store.transaction() if write else store.read() as connection:
             yield connection, _assigned(connection, repo, number), parents
+
+
+@contextmanager
+def as_participant(
+    env: Mapping[str, str], *, human: bool = False, write: bool = False
+) -> Iterator[tuple[sqlite3.Connection, Participant, dict[str, Any]]]:
+    if not human:
+        with as_parent(env, write=write) as context:
+            yield context
+        return
+    # Web selects this path in code; never derive human identity from a session
+    # environment, a name argument, or the parent's registration.
+    with parent_state(env) as parents:
+        store = Store(directory(env))
+        if write:
+            # The Web API requires an already migrated board; it cannot
+            # initialize state or upgrade an older schema on a browser request.
+            with store.read():
+                pass
+        with store.transaction() if write else store.read() as connection:
+            yield connection, HUMAN, parents

@@ -35,6 +35,10 @@
 © 2026 Motoki0705 · CC BY-NC-ND 4.0 · [完整署名与适用范围](LICENSES.zh-CN.md#sample-dataset-terms)。
 
 左侧是公开示例 `video_000/clip_000` 的三个视角，右侧是同一帧的 3D 重建结果。
+球轨迹在三角测量前先去除运动离群点，再使用稳健的二次 LOESS 平滑。
+本演示仅从已保存的检测观测重新处理球，固定原有相机和人物重建。
+插值的 2D 点不计为观测，3D 结果仍要求至少两个真实观测视角。
+比较和限制见 [CPU 重放与演示验证记录](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)。
 
 请预先同步输入视频，并保持 FPS、分辨率和帧数一致。输入限制及包含观测缺失和质量信息的输出格式，见[处理流程 README](src/tennis_scene/README.md)。
 

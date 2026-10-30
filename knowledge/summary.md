@@ -1,7 +1,7 @@
-<!-- knowledge-review: 18b1f1eb0f78b52f032daae80115fce184ae6731f3a3bc976872fcc9f2e4bcb4 on 2026-10-28 -->
+<!-- knowledge-review: c53789d7dc8551e62d6001b2656abb42fd14ec093b141006564eaee2f8c3264d on 2026-10-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-28（Court固定6000枚・4条件のColab学習と別domain評価を完了。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-30（Court固定6000枚・4条件のColab学習と別domain評価を統合し、#1343の完了判断を反映。2026-10-26の球LOESS・公開デモ更新も維持。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -20,8 +20,22 @@
 pxは長辺512の前処理後モデル座標である。2sceneでは悪化しており、単調改善とは言えない。
 単一seed・固定追加順・条件ごとに異なる合成valと、scene2だけの26528更新からの再開／RNG・sampler順の制約がある。
 生成画像には旧QAを維持したぼけ・暗さとtarget支持不足も残る。scene数単独の因果効果や独立testへの性能保証は未確定。
-全結果・checkpointのDrive保存とGPU解放を確認した。既存のモデル採用判断は維持し、次は複数seed・scene組合せと独立な実画像testで確かめる。
+全結果・checkpointのDrive保存とGPU解放を確認した。既存のモデル採用判断は維持する。
+2026-10-30に#1343はこの比較をもって完了とし、画像数スケーリングの本実験と追加seedは実施しない判断になった。
+複数seed・scene組合せ・独立な実画像testでの確認は未着手の課題として残る。
 #983は幅1024・合成＋実画像学習の別契約なので、今回の合成専用学習と直接の優劣比較をしない。
+
+## 2026-10-26の球LOESSと公開デモ更新
+
+[公開サンプルの保存済みproduction検出観測をCPUで再三角測量](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)し、
+局所運動consensusで外れ値を除き、頑健な2次LOESSを適用した。元のカメラ・人物を固定した比較で、
+球3D有効frameは821→859/1010、共通有効frameの隣接移動量p95は0.682→0.405 m。
+補間座標は診断だけに保持し、実観測2view未満で有効な3Dは0frameだった。
+一方、元の未平滑2D観測への再投影中央値は3.554→4.810 pxへ増え、最大の3D跳びも改善しない。
+新たに有効になった969→970の1.077 mの跳びと、バウンド付近57〜59の速度gate欠損を実写と局所図で確認した。
+滑らかさと観測追従の交換関係であり、独立3D精度の向上は主張しない。
+README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
+通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 
@@ -561,7 +575,7 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
-2026-10-27の[固定6000枚・シーン多様性比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、[準備run](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)のDINOv3-S＋幅384・33160更新、train5500/合成val500と元実画像val2211の4条件学習・最終別domain評価を完了した。4sceneが実画像集計5指標で最良だったが2sceneは悪化した。seed42単一試行・固定追加順・合成val構成差・scene2の再開制約を残し、複数seedとscene組合せ・独立実画像testを次の課題とする。#983とは学習domainと幅が異なるため直接比較せず、既存のモデル採用判断は維持する。
+2026-10-27の[固定6000枚・シーン多様性比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、[準備run](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)のDINOv3-S＋幅384・33160更新、train5500/合成val500と元実画像val2211の4条件学習・最終別domain評価を完了した。4sceneが実画像集計5指標で最良だったが2sceneは悪化した。seed42単一試行・固定追加順・合成val構成差・scene2の再開制約を残す。#1343は2026-10-30にこの比較をもって完了し、画像数スケーリングの本実験と追加seedは実施しない判断になった。複数seedとscene組合せ・独立実画像testは未着手の課題である。#983とは学習domainと幅が異なるため直接比較せず、既存のモデル採用判断は維持する。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 

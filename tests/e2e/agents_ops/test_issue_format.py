@@ -664,7 +664,7 @@ def child_spec() -> dict[str, Any]:
         "summary": "共通書式を実装する",
         "parent": {"identifier": "開発ループ", "number": 10},
         "sections": CHILD_SECTIONS,
-        "labels": ["enhancement", "ai-proposed"],
+        "labels": ["enhancement", "ci", "module: base"],
         "source": {
             "proposal_id": "R-20261018-01",
             "report_number": 90,
@@ -683,7 +683,7 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
     output = json.loads(first.stdout)
     assert output["dry_run"] is True
     assert output["title"] == "[開発ループ #10] 共通書式を実装する"
-    assert set(output["labels"]) == {fmt.CHILD_LABEL, "enhancement", "ai-proposed"}
+    assert set(output["labels"]) == {fmt.CHILD_LABEL, "enhancement", "ci", "module: base"}
     assert fmt.parse_proposal_source(output["body"]).proposal_id == "R-20261018-01"
     assert issue_cli.calls() == []
     assert (

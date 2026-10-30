@@ -1,33 +1,97 @@
 # `tests`
 
-`tests/` は、このリポジトリの検証を `unit/`, `integration/`, `e2e/` の3軸で管理する入口です。AI がテストを追加するときは、まずここを見て「どこに置くか」を決めてください。
+`tests/` は、このリポジトリのテスト設計と配置の入口です。追加・改善の前に、[テスト作成方針](#テスト作成方針)に沿って守る契約と検出したい不具合を決めてください。
 
 ## 何を実装しているか
 
-- `tests/unit/`: `src/` のうち、純粋関数や軽量な shape 変換のように入出力が明確な実装を検証する。
-- `tests/integration/`: 複数モジュールの接続、最小データでの 1-step train/inference のような smoke test を置く。
-- `tests/e2e/`: script や pipeline の entry point をコマンドレベルで検証する。
-- `tests/conftest.py`: 全体で共有する fixture を置く。タスク固有 fixture は必要に応じて各サブツリーの `conftest.py` に分ける。
+- `tests/unit/`, `tests/integration/`, `tests/e2e/`: 検証する範囲で分ける。選び方は[層と配置](#層と配置)を参照する。`src/` に加え、開発ツールや `.agents/ops` の検証も含む。
+- `tests/conftest.py`: seed や小さな入力 factory など、全体共通で依存の軽い fixture を置く。タスク固有の fixture は各サブツリーの `conftest.py` に置く。
+- `tests/support/`: 複数のテストから使う helper や契約の検証部品を置く。
+- `tests/benchmarks/`: 実データ・固定 bundle による診断や qualification を置く。実行方法は [benchmarks README](benchmarks/README.md) を参照する。
 
-現在の実装もこの方針に沿っており、`unit` では `utils`, `tasks/base`, `tasks/ball_detection`, `tasks/court_detection`, `tasks/plcs` を、`integration` では `tasks/base` の smoke test を、`e2e` では `ball_detection` の entry point を扱っています。
+JavaScript の単体・ブラウザ検証も各領域にある。pytest が収集しない入口は、対象モジュールの README にある実行方法を確認する。
 
-## どこに追加するか
+## テスト作成方針
+
+### 実装前に設計する
+
+変更するコードと既存テストを読み、次の5点を issue や作業計画に書いてから実装する。
+
+| 設計項目 | 決めること |
+|---|---|
+| 守る契約 | 利用者・下流が観測する入出力、拒否条件、状態遷移、数値・単位・mask の意味と、その期待値の根拠 |
+| 見逃したくない不具合 | どの誤った変更で失敗すべきか。例: view 軸の入れ替え、無効値の有効扱い、学習 head の loss からの脱落 |
+| 置く層 | 下の[層と配置](#層と配置)から、契約を検出できる最も軽い層を選ぶ |
+| 再利用する既存テスト | `path::class::test_name` などの node を挙げ、実行・拡張・統合で足りるか、新規追加が必要かを決める |
+| コストの上限 | 展開後のケース数、1件の時間、fixture の setup 時間・初期化回数、必要な資産・実行環境の予算を決める。未計測なら測定方法も書く |
+
+既存テストの実行・assert の拡張を先に検討する。新規追加は、既存では見逃す不具合・境界を説明できる場合に選ぶ。追加不要なら、その理由と確認した既存 node を PR に残す。
+
+期待値は仕様、手計算、独立した数値計算、実際に再現した不具合から決める。実装の式・分岐を写した期待値や、コンストラクタに渡した値をそのまま読むだけの確認を増やさない。数値や軸対応を守るときは非対称な入力と具体的な値を使い、shape・finite や同じ helper による往復だけで正しさを判断しない。
+
+### 層と配置
+
+| 層 | 確かめる範囲と置き方 |
+|---|---|
+| `unit/` | 局所的な入出力、数値契約、入力の同値クラス・異常分類を検証する。`src/` の純粋ロジックは原則として階層を mirror し、`test_<module>.py` に置く |
+| `integration/` | 複数モジュールの接続、実 Trainer と model/loss/optimizer の最小更新、保存・復元など、単体では守れない境界を検証する |
+| `e2e/` | CLI、実 git、HTTP、pipeline の公開入口から、接続・終了状態・失敗伝播を代表例で検証する |
+
+異常入力の網羅は軽い層で行い、重い公開入口で同じ異常分類を繰り返さない。入口ごとに異なる契約がある場合はそれを残し、同じ入力軸との直積を避ける。fixture や mock の有無だけで層を決めず、何を実行して何を代替したかを明記する。
+
+学習 smoke は、そのモデルの契約を踏む最小の有効構成・データ・更新回数にする。共通学習基盤の検証をモデルごとに複写せず、モデル固有の loss、勾配接続、更新、保存・再開などの不足を補う。共通基盤の成功だけで各モデルの正しさを保証したことにはしない。
+
+### ケース数と実行時間
+
+この節は CI summary（[#1542](https://github.com/Motoki0705/tennis-lab/issues/1542)）が参照する閾値の正本とする。
+
+| 対象 | 基準と超える場合の扱い |
+|---|---|
+| parametrize の展開数 | 1つのテスト関数は展開後 **50件まで**を原則とする。重ねた decorator、parametrized fixture、動的生成を含む収集結果で数える。超える場合は同値クラスや独立した軸を見直し、残す各軸の検出契約と件数・理由を PR に書く |
+| 1ケースの時間 | **5秒**を超える場合は、測定した所要時間と、その層で検証する必要性・軽量化できない理由を PR に書く。時間は `setup + call + teardown` の合計とする |
+| setup 時間 | 1ケースの **setup が1秒**を超える場合は、関連 fixture の scope・初期化回数・所要時間と、共有できない理由または共有後も必要な理由を PR に書く |
+
+件数は `--collect-only`、時間は `--durations=0 --durations-min=0` や CI の計測結果で確認する。共有 fixture の時間は最初の利用ケースに付くことがあるため、fixture の実測時間をケースの setup 時間に再加算しない。複数 worker の時間合計と CI 全体の経過時間を混同せず、未実行・skip は成功や0秒の実測に数えない。
+
+基準超過は設計を見直し、必要性を説明する契機であり、自動 skip・削除・CI 失敗の条件にはしない。関数を分割したり、無関係な assert を束ねたりして件数だけを合わせない。
+
+### fixture の共有と分離
+
+各テストに必要な最小構成を作る。読み取り専用の入力や走査・解析結果は module/session scope で共有し、変更するファイル、DB、git、モデル・optimizer、乱数などの可変状態はテストごとに分離・復元する。共有のためにテスト順序への依存を作らない。
+
+待機のための実時間 `sleep` は使わない。時刻依存の判定には clock を注入し、プロセス間の同期には通知や Event・pipe を使う。timeout でハングを検出することと、固定秒数を待って完了を推測することを分ける。
+
+### 文書テストで確かめる範囲
+
+リンク先・アンカーの存在、必須節や機械可読 schema、実行コマンドの入口、公開 API の識別子など、利用上の契約を検証する。禁止された旧入口や矛盾する設定の再導入も、具体的な不具合として確認する。
+
+文書・prompt・翻訳の任意の言い回し、段落全体の完全一致、数字やキーワードの出現回数は固定しない。エラーの種類や必要な識別子など、契約に必要な部分だけを確認する。3言語の版がある文書は、同じ構造・コマンド・参照先を保ち、翻訳表現の字面には依存しない。
+
+### 削除・統合・配置変更
+
+旧ケースの node → 守っていた契約 → 存続・拡張する node の対応表を PR に残す。契約を廃止する場合も、廃止理由と影響先を書く。削除数や時間短縮だけで完了としない。
+
+代表的な不具合を一時的に注入し、変更前後のテストが対応する契約違反で失敗することを確認する。例えば view 軸の入れ替えや拒否分岐の無効化を使い、単なる起動失敗を検出力の証拠にしない。注入を戻した通常実行が通ることも確かめ、変異・実行 node・失敗内容・復元後の結果を記録する。未実施なら理由と未確認の範囲を明記する。
+
+重さ、private API の利用、mock、往復検証という属性だけで価値を判断しない。重くても固有の契約を守るテストは残す。
+
+### CI レーンとの関係
+
+`unit/integration/e2e` は検証範囲の分類であり、実行頻度とは別である。配置を移しただけで CI から外れたり、実行時間が減ったりするわけではない。
+
+CI の常時実行から外す file は [`scripts/ci_metrics/lanes.json`](../scripts/ci_metrics/lanes.json) に登録する。
+項目・PR/mainの選別・監査・成功証拠は [CI レーンの正本](../scripts/ci_metrics/README.ja.md#レーン登録表と計画)を参照する。
+この文書に別の登録表や選別規則を作らない。
+
+## 配置例
 
 - `src/utils/geometry/angles.py` のような純粋ロジックは `tests/unit/utils/geometry/test_angles.py` に置く。
 - `src/tasks/...` 配下でも、軽量で局所的なロジックなら `tests/unit/tasks/...` に mirror する。
-- 学習 loop, 重い forward, rendering, 実運用に近い module 接続は `tests/integration/...` に置く。
-- `scripts/` や pipeline 全体の検証は `tests/e2e/...` に置く。
 
-mirror するのは `unit/` だけです。`src/` を 1 段落として同じ階層を保ち、ファイル名は `test_<module>.py` にします。
+mirror の起点は `src/` を除いた階層です。既存テストには複数モジュールをまとめたものや旧配置もあるため、対応先の探索はファイル名だけでなく API 名でも行ってください。
 
 ## mirror しないもの
 
-- `configs/**/*.yaml`: Python の unit test と 1:1 対応させない。必要なら config compose の観点で `integration` に置く。
-- `src/tasks/blcs/generate_dataset/webui/`: Next.js / TypeScript のため `tests/` には mirror しない。
-- 空の `__init__.py`: test を作らない。
-
-## 追加時の実務ルール
-
-- すべての `src/` モジュールに機械的に `test_*.py` を作らない。
-- 優先度は `utils/` → `tasks/base/` → 各 task の純粋ロジック。
-- 置き場所に迷ったら「純粋関数なら `unit`、重い処理や接続確認なら `integration`、entry point なら `e2e`」で判断する。
+- `configs/**/*.yaml`: Python の unit test と 1:1 対応させない。必要な schema や compose の契約に合わせて層を選ぶ。
+- `src/tasks/blcs/generate_dataset/webui/`: Next.js / TypeScript のため Python の mirror 対象にしない。対象側の検証方法に従う。
+- 空の `__init__.py`: test を作らない。全モジュールへ機械的に test file を作らず、変更の影響と未検証の契約から優先度を決める。

@@ -18,6 +18,7 @@ sys.path.insert(0, str(HERE.parent))
 
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
+    REQUIRED_CHECK,
     MergeInput,
     MergeResult,
     auto_merge,
@@ -102,6 +103,45 @@ def check_adoptions(
         check_task_adoptions(session.gh, children[n].body)
 
 
+def python_check_runs(session: ParentSession, head: str) -> list[dict[str, Any]]:
+    """Fetch the complete latest check-run evidence for the pinned commit."""
+    runs: list[dict[str, Any]] = []
+    ids: set[int] = set()
+    total = None
+    page = 1
+    while True:
+        data = object_value(
+            session.gh.get(
+                f"repos/{session.gh.repo}/commits/{head}/check-runs"
+                f"?check_name={REQUIRED_CHECK}&filter=latest&per_page=100&page={page}"
+            )
+        )
+        count, rows = data.get("total_count"), data.get("check_runs")
+        if (
+            type(count) is not int
+            or count < 0
+            or not isinstance(rows, list)
+            or len(rows) > 100
+            or (total is not None and count != total)
+        ):
+            raise ValueError("incomplete or inconsistent Python check-runs response")
+        total = count
+        for row in rows:
+            run = object_value(row)
+            identity = run.get("id")
+            if type(identity) is not int or identity < 1 or identity in ids:
+                raise ValueError("invalid or duplicate Python check-run identity")
+            ids.add(identity)
+            runs.append(run)
+        if len(runs) > total:
+            raise ValueError("Python check-runs count exceeds total_count")
+        if len(rows) < 100:
+            if len(runs) != total:
+                raise ValueError("Python check-runs page is missing entries")
+            return runs
+        page += 1
+
+
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
     with session.gh.fresh_reads():
         return _collect(session, request)
@@ -172,6 +212,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
             ).hexdigest()
         raw["statusCheckRollup"] = []
         raw["ci_head_sha"] = None
+        raw["ci_check_runs"] = []
         if raw["state"] == "open":
             with session.store.unlocked_read():
                 ci = subprocess.run(
@@ -199,6 +240,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
                 errors[n].append("head_changed_during_ci")
             raw["statusCheckRollup"] = data["statusCheckRollup"]
             raw["ci_head_sha"] = data["headRefOid"]
+            raw["ci_check_runs"] = python_check_runs(session, current["head_sha"])
         details[n] = raw
     # Use the fresh individual PRs for dependency/duplicate checks, too.
     pulls = [details.get(p["number"], p) for p in pulls]
