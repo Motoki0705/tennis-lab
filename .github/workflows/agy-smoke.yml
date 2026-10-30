@@ -1,0 +1,38 @@
+name: AGY smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: tennis-lab-agy-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    if: ${{ github.actor == github.repository_owner && github.ref == 'refs/heads/main' }}
+    runs-on: [self-hosted, linux, x64, tennis-lab]
+    timeout-minutes: 10
+    env:
+      HOME: /var/lib/tennis-lab-actions/home
+      AGY_CLI_DISABLE_AUTO_UPDATE: "true"
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+          submodules: false
+
+      - name: Read the parent template and report validated diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --isolated --no-project --with jsonschema==4.26.0 \
+            python scripts/github_actions/agy_smoke.py

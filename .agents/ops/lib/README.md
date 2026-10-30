@@ -12,10 +12,89 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
+| `agy_headless.py` | issue書き直し用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
+
+## agyの共通呼び出し部品
+
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue書き直しの writer/verifier 用の同期Python API。
+導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
+`sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
+外部参照の拒否は既存の `OutputSchema` に従う。
+
+```python
+from pathlib import Path
+from agy_headless import DEFAULT_AGY, AgyError, AgyResult, run_headless
+
+try:
+    result: AgyResult = run_headless(
+        agy=DEFAULT_AGY,
+        cwd=Path.cwd(),
+        prompt_file=Path("writer-prompt.md"),
+        json_schema=Path("writer.schema.json"),
+        log_file=Path("private-run/writer.log"),
+        timeout=300,
+    )
+except AgyError as error:
+    reason = error.reason
+    denied_actions = error.denied_actions
+else:
+    rewritten = result.structured_output
+```
+
+`run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
+log_file: Path, timeout: float, model: str | None = None,
+config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
+相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
+schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLIとローカル検証を行う。
+`timeout` は有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
+timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
+
+- `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
+  `AgyConfig` は `version: str`, `url: str`, `sha512: str`, `model: str` を持つfrozen dataclass。
+  `DEFAULT_CONFIG` はこのモジュールの隣の設定ファイル。環境変数の同名キーは読まない。
+  導入テスト用の明示configでは `file://` のtarballも使える。通常は版付きHTTPS URLを固定する。
+- `model` の省略時は `ISSUE_REWRITE_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
+  `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
+  logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
+  新しいモデルを採用するときは設定と `MODEL_LABELS` の対応を一緒に更新する。
+- `readonly_settings() -> dict[str, Any]` が生成する `permissions` をJSON文字列として `--settings` へ渡す。
+  `cat`, `ls`, `rg`, `grep`, `head`, `tail`, `wc`, `git log/show/diff/grep`,
+  `gh issue view/list`, `gh pr view` だけをコマンドのallowに置く。
+  `write_file(*)`, `edit_file(*)`, `mcp(*)`, `execute_url(*)` はdenyとし、`--mode plan` を指定する。
+  これはagyのpermission規則であり、runnerのOS隔離の代わりにはしない。
+- `log_file` は呼び出しごとの未作成パスが必須。親ディレクトリがなければ0700で作成し、logは0600にする。
+  存在するファイルやsymlinkを再利用しない。writer、verifier、修正呼び出しごとに別パスを渡す。
+  毎回新しい会話を作り、自動再試行・resume・別モデルへの振替は行わない。
+
+`AgyResult` はfrozen dataclassで、フィールドは次のとおり。
+
+| フィールド | 型・意味 |
+|---|---|
+| `structured_output` | `Any`。指定schemaを通ったJSON値。自由文の `response` から補完しない |
+| `usage` | `dict[str, int] \| None`。CLIが返した非負整数の使用量。欠測は `None` で、0を補わない |
+| `denied_actions` | `list[dict[str, str]]`。CLIが返した拒否一覧。フィールド省略時だけ空リスト |
+| `observed_model` | `str`。今回のlogで照合したlabel（現行は `Gemini 3.8 Flash (High)`） |
+| `observed_version` | `str`。実行前後で固定値との一致を確認した版 |
+| `duration_seconds` | `float \| None`。CLIの所要秒数。欠測は `None` |
+| `elapsed_seconds` | `float`。版の確認を含め、部品が計測した実行秒数 |
+
+`AgyError(RuntimeError)` は `reason: str` と `denied_actions: list[dict[str, str]]` を持つ。
+`reason` は `invalid_input`（設定・入力・既存log）、`version_mismatch`（版欠落・相違）、
+`cli_error`（起動失敗・非0終了）、`timeout`、`invalid_output`（不正JSON・status・構造化出力・schema・観測値）、
+`model_mismatch`（今回のlogのlabel欠落・相違）。呼出元はこの型をcatchし、成功結果を捏造しない。
+例外の文字列にはstderrやpromptが含まれ得るため、そのまま公開しない。
+拒否一覧はparseできた出力から得たものだけを保持する。非0終了やparse不能時は空の場合がある。
+有効な構造化出力もある拒否は `AgyResult.denied_actions` に残し、タスクとしての合否は呼出元が判断する。
+exit 0・`status: SUCCESS` でも、構造化出力欠落やschema違反なら例外になる。
+[1.4.11の公式release notes](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.4.11)に従い、
+途中終了を示す `finished_reason` がある出力も拒否する。
+
+この部品は本文の不変条件・意味の同等性・秘密情報の検査・GitHubへの書き込みを行わない。
+writerとverifierの結果を受け取った呼出元が、これらの条件を判定してから公開する。
 
 ## Codex queueの共通部品
 
