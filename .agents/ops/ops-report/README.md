@@ -516,8 +516,9 @@ agentはread-onlyのまま、`memory_update`（`summary` / `upsert` / 理由付�
    mainの専用memoryが入力後に進んでいれば古い更新で上書きせず停止する。
 6. [`required_checks.txt`](required_checks.txt) の必須CIがすべて存在し成功し、他のcheckも成功、競合なしの場合だけ、
    PRとCIを再取得してHEADを照合し `gh pr merge --merge --match-head-commit <head>`。
-   CI状態の正規化は既存の `review_policy.normalize_rollup` を使い、PRレビューgateは呼ばない。
-   通常PRのmerge gateがCIを条件にしなくても、この専用経路のCI要件は維持する。
+   CI状態の正規化は既存の `review_policy.normalize_rollup` を使い、必須checkはCheckRunの `SUCCESS` だけを認める。
+   同名のStatusContextや `NEUTRAL` / `SKIPPED` では代用せず、PRレビューgateは呼ばない。
+   通常PRも対象HEADの `Python` 成功が必須である。この専用経路はさらに一覧中の必須checkと他のcheckの成功も求める。
    GitHubのmergeとorigin/mainへの取り込みを確認して初めて `merged` と記録し、cleanな専用worktreeを削除する。
 
 この専用経路は人間と合意済みのメモリ限定の例外で、Codexレビューや `AGENT_AUTO_MERGE` を要件にしない。

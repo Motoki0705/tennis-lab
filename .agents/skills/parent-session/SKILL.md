@@ -156,6 +156,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 続けて [merge gate](../../ops/review/README.md#merge-gate) の `merge_gate.py --parent N merge` を明示実行する。
 既定のdry-runで理由と実効設定を読み、人間が有効化を合意済みならREADMEの環境変数で実mergeする。
 条件を満たすPRは依存順に進み、親全体の完了まで独立PRをためない。
+PRへのpushごとにCIを実行し、コミットに `[skip ci]` を付けない。対象HEADの `Python` check runの成功をmergeの必須条件とし、未完了・失敗・取消・欠落・別HEADなら停止する。
 merge後の子の自動closeと親進捗への反映を確認する。停止・未完了や試行済み記録が出たら、
 実状態と保存証拠を照合して復旧し、gateを通すための自動再レビューや同headへの二重mergeを行わない。
 

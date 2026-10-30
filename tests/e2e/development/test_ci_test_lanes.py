@@ -25,6 +25,18 @@ def _ci_job() -> dict[str, Any]:
     return cast(dict[str, Any], workflow["jobs"]["tests"])
 
 
+def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs() -> None:
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers["push"]["branches"] == ["main"]
+    assert triggers["pull_request"] is None
+    assert "paths" not in triggers["push"] and "paths-ignore" not in triggers["push"]
+    assert workflow["concurrency"] == {
+        "group": "ci-${{ github.event.pull_request.number || github.ref }}",
+        "cancel-in-progress": "${{ github.event_name == 'pull_request' }}",
+    }
+
+
 def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     job = _ci_job()
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())

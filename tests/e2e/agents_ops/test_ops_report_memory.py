@@ -267,7 +267,9 @@ def test_partial_failures_preserve_last_main_and_recover(
     assert "検証した観察 1" in _main_files(ops)["ci-wait.md"]
 
 
-@pytest.mark.parametrize("ci", ["PENDING", "MISSING", "FAILURE"])
+@pytest.mark.parametrize(
+    "ci", ["PENDING", "MISSING", "FAILURE", "CANCELLED", "SKIPPED", "NEUTRAL"]
+)
 def test_pending_or_failed_memory_is_disclosed_and_main_is_used(
     memory_env: Any, ci: str
 ) -> None:
@@ -276,7 +278,9 @@ def test_pending_or_failed_memory_is_disclosed_and_main_is_used(
     assert ops.run("report").returncode == 0
     _payload(ops, 2)
     second = ops.run("report", "--now", "2026-10-15T08:00:00+09:00", FAKE_MEMORY_CI=ci)
-    assert second.returncode == (1 if ci == "FAILURE" else 0), second.stderr
+    assert second.returncode == (0 if ci in {"PENDING", "MISSING"} else 1), (
+        second.stderr
+    )
     assert _main_files(ops) == original
     data = _collected(ops, "2026-10-15")
     assert data["ops_memory"]["files"] == original
@@ -284,6 +288,16 @@ def test_pending_or_failed_memory_is_disclosed_and_main_is_used(
     assert "最後の有効版" in _reports(ops)[-1]["body"]
     assert not any(c[:2] == ["pr", "merge"] for c in ops.calls())
     assert _journal(ops)["records"]["20261012"]["state"] == "pending"
+
+
+def test_memory_required_ci_cannot_be_a_status_context() -> None:
+    pr = {
+        "mergeable": "MERGEABLE",
+        "statusCheckRollup": [
+            {"__typename": "StatusContext", "context": "Python", "state": "SUCCESS"}
+        ],
+    }
+    assert memory_pr.Store._ci_ready(pr) is False
 
 
 def test_changed_head_between_ci_and_merge_fails_closed(memory_env: Any) -> None:
