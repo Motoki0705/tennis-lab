@@ -32,6 +32,29 @@ permissions:
   actions: read
 
 jobs:
+  plan:
+    name: CPU lane plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: false
+      - name: Plan CPU lanes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
+      - name: Upload CPU lane plan
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpu-lane-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-plan/
+          include-hidden-files: true
+          if-no-files-found: error
+
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -59,6 +82,7 @@ jobs:
 
   tests:
     name: CPU tests (${{ matrix.shard }})
+    needs: [plan]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.shards == '1' && 120 || 60 }}
     strategy:
@@ -78,6 +102,12 @@ jobs:
         with:
           fetch-depth: 0
           submodules: false
+
+      - name: Download CPU lane plan
+        uses: actions/download-artifact@v8
+        with:
+          name: cpu-lane-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-plan
 
       - name: Record runner environment
         run: python3 -m scripts.ci_metrics capture --workers "$CI_WORKERS" --output .ci-metrics/shard-${{ matrix.shard }}/preparation
@@ -116,6 +146,7 @@ jobs:
           --output .ci-metrics/shard-${{ matrix.shard }}/tests --workers "$CI_WORKERS"
           --shard-index ${{ matrix.shard }} --shard-count "$CI_SHARD_COUNT"
           --shard-weights scripts/ci_metrics/cpu-file-times.json
+          --lane-plan .ci-plan/plan.json
 
       - name: Summarize test measurements
         if: always()
@@ -149,7 +180,7 @@ jobs:
   python:
     name: Python
     if: always()
-    needs: [lint, tests]
+    needs: [plan, lint, tests]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -157,6 +188,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: false
+      - name: Download CPU lane plan
+        uses: actions/download-artifact@v8
+        with:
+          name: cpu-lane-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-plan
       - name: Download all shard observations
         uses: actions/download-artifact@v8
         with:
@@ -166,7 +202,9 @@ jobs:
         if: always()
         env:
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
-        run: python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
+        run: >-
+          python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
+          --lane-plan .ci-plan/plan.json
       - name: Upload CPU coverage result
         if: always()
         uses: actions/upload-artifact@v7
@@ -174,3 +212,4 @@ jobs:
           name: cpu-test-coverage-${{ github.run_id }}-${{ github.run_attempt }}
           path: .ci-results/coverage.json
           if-no-files-found: error
+          retention-days: 90

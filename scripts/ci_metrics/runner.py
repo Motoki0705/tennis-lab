@@ -128,8 +128,17 @@ def run(
     extra_args: list[str],
     lock: Path | None,
     shard: tuple[int, int, Path] | None = None,
+    lane_plan: Path | None = None,
 ) -> int:
+    from .lanes import load_registry, make_plan, read_plan
     from .report import summarize
+
+    if lane_plan is not None and shard is None:
+        raise ValueError("--lane-plan requires an explicit shard configuration")
+    if lane_plan is not None and extra_args:
+        raise ValueError(
+            "lane plans cannot be combined with arbitrary pytest arguments"
+        )
 
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"measurement directory must be empty: {output}")
@@ -180,6 +189,37 @@ def run(
             "profile_sha256": profile_digest,
         }
     metadata = environment_metadata(workers, command)
+    plan = None
+    if shard is not None:
+        if extra_args:
+            raise ValueError("CPU sharding requires the default CPU target")
+        if lane_plan is not None:
+            plan = read_plan(lane_plan, root=Path.cwd())
+        else:
+            registry, files = load_registry(Path.cwd())
+            plan = make_plan(
+                registry,
+                files,
+                source_sha=metadata["environment"].get("GITHUB_SHA")
+                or metadata["source"].get("commit"),
+                event="local",
+                run_id=metadata["environment"].get("GITHUB_RUN_ID"),
+                attempt=metadata["environment"].get("GITHUB_RUN_ATTEMPT"),
+            )
+        if plan["source_sha"] != (
+            metadata["environment"].get("GITHUB_SHA")
+            or metadata["source"].get("commit")
+        ):
+            raise ValueError("lane plan source revision differs from the measurement")
+        for key, variable in (
+            ("run_id", "GITHUB_RUN_ID"),
+            ("attempt", "GITHUB_RUN_ATTEMPT"),
+        ):
+            if plan[key] != metadata["environment"].get(variable):
+                raise ValueError("lane plan run/attempt differs from the measurement")
+        write_json(output / "lane-plan.json", plan)
+        command.extend(["--ci-lane-plan", str(output / "lane-plan.json")])
+    metadata["lane_plan_id"] = plan["plan_id"] if plan else None
     metadata["full_cpu_target"] = not extra_args and shard is None
     metadata["cpu_target_before_sharding"] = not extra_args
     metadata["shard"] = shard_metadata
