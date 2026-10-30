@@ -346,6 +346,13 @@ class TrajectoryModelIOAdapter(ABC):
             raise ModelInputContractError(
                 "All camera parameter tensors must match the target UV camera axis."
             )
+        padding_mask = cast(Tensor, call.kwargs["padding_mask"])
+        if self.input_profile == "single":
+            padding_mask = padding_mask.unsqueeze(1)
+        if num_cameras != padding_mask.shape[1]:
+            raise ModelInputContractError(
+                "Target UV camera axis must match the validated model call."
+            )
         _validate_uv("target_uv", target_uv, target_vis)
         _validate_mask("target_vis", target_vis)
         _validate_mask("loss_mask", loss_mask)
@@ -360,6 +367,19 @@ class TrajectoryModelIOAdapter(ABC):
                 **cameras,
             }
         )
+        # Padding may use finite sentinel values, but never NaN/Inf. Camera
+        # positivity depends on real frames, independently of target visibility.
+        for name, tensor in cameras.items():
+            if not bool(torch.isfinite(tensor).all()):
+                raise ModelInputContractError(
+                    f"{name} must contain only finite values."
+                )
+        valid_views = ~padding_mask.all(dim=-1)
+        for name in ("camera_f", "camera_w", "camera_h"):
+            if bool((cameras[name][valid_views] <= 0).any()):
+                raise ModelInputContractError(
+                    f"{name} must be positive for every non-padded camera view."
+                )
         return BLCSTrajectoryTrainingBatch(
             call=call,
             position=position,
