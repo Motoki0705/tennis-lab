@@ -260,6 +260,9 @@ elif head == ["label", "list"]:
     emit([{"name": n} for n in state["labels"]])
 elif head == ["label", "create"]:
     state["labels"].append(args[2])
+    state.setdefault("label_specs", {})[args[2]] = {
+        "color": opt("--color"), "description": opt("--description")
+    }
     save()
 else:
     print(f"fake gh: unsupported {args}", file=sys.stderr)
