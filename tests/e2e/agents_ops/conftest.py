@@ -74,6 +74,7 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(0 if code < 300 else 1)
     def api_issue(row):
         return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
+                "created_at": row["createdAt"],
                 "state_reason": row.get("state_reason"), "assignees": row.get("assignees", []),
                 "repository_url": "https://api.github.com/repos/o/r"}
     def api_pr(row):
@@ -99,6 +100,8 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(1)
     if api_path == "user":
         api_emit({"login": "bot"})
+    if api_path == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+        api_emit({"message": "Not Found"}, 404)
     if api_path == "repos/o/r/pulls":
         api_emit(page([api_pr(r) for r in state["prs"]]))
     if api_path.startswith("repos/o/r/pulls/"):

@@ -80,6 +80,15 @@ area:
     description: ""
 
 status:
+  - name: "rewrite:done"
+    color: "0E8A16"
+    description: "親issue本文の書き直しが完了"
+  - name: "rewrite:failed"
+    color: "D73A4A"
+    description: "親issue本文の書き直しが失敗し原文で確定"
+  - name: "rewrite:skipped"
+    color: "B6B6B6"
+    description: "人間の判断で親issue本文の書き直しを省略"
   - name: needs-human
     color: "D93F0B"
     description: "人間の承認が必要"

@@ -492,6 +492,12 @@ def _apply(
                 parent_issue.body, TASKS_HEADING, render_child_tasks(tasks)
             )
             if body != parent_issue.body:
+                with gh.fresh_reads():
+                    current_body = gh.issue(p)["body"]
+                if current_body != parent_issue.body:
+                    raise ValueError(
+                        f"#{p}: body changed before checklist PATCH; reconcile and retry triage"
+                    )
                 gh.write("PATCH", f"repos/{gh.repo}/issues/{p}", {"body": body})
             _guard(gh, store, root, tx)
         for n in numbers.values():

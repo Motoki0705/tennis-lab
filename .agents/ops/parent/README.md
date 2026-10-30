@@ -113,6 +113,29 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 既存issueにマーカーなしの人間との合意がある場合は、その発言と合意内容を読み、
 `checking` / `agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
 
+### 書き直しの確定待ち
+
+`checking` と `agree` は[共有の書き直し判定](../issues/README.md#親issueの書き直し状態)が
+`pending` なら、コメントなどを書き込む前に拒否する。待機には次の読み取り専用入口を使う。
+担当登録・session identityは不要で、registryや親の操作lockを保持したまま待たない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-rewrite
+```
+
+workflowファイル名は `issue-rewrite.yml`、runの表示名は厳密に `issue-rewrite #<親番号>`。
+ページを辿って一致する最新runを探し、`gh run watch <ID> --repo <repo>` で終了を待ってから
+GitHubのラベルを再取得する。定期的にrunやラベルを確認するループは持たない。
+JSONは `{parent, rewrite_state, run_id}`（既に確定または非対象なら `run_id=null`）。watchの表示はstderrへ出す。
+runが無いまま保留なら `workflow_dispatch` の手動実行、または人間によるskipの付与を案内する。
+runの終了後も保留なら成功扱いにせず、runの確認と再実行を案内する。待機コマンド自身はラベルを変更しない。
+
+本文更新の内部API `update_body(n, body, expected_body)` は計算元の本文を必須にする。
+PATCH直前にキャッシュを使わず再取得し、元本文とも更新先とも異なれば上書きせず拒否する。
+既に更新先と一致する再送は書き込まない。
+
+### 合意・進捗コメント
+
 コメントの1行目は `<!-- parent-session:v1 <JSON> -->`。
 JSONは `parent`、`event` とイベント固有の値を持ち、`<` / `>` をUnicode escapeする。
 現在の `gh api user` と同じloginによるコメントだけを読み、本文中の引用マーカーを無視する。

@@ -41,6 +41,7 @@ def raw_issue(n: int, **changes: Any) -> dict[str, Any]:
         "repository_url": "https://api.github.com/repos/o/r",
         "state": "open",
         "state_reason": None,
+        "created_at": "2026-10-31T00:00:00Z",
         "labels": [],
         "assignees": [],
         **changes,
@@ -79,6 +80,10 @@ class FakeGitHub:
             raise ValueError("injected GET failure")
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+            raise importlib.import_module("issues.cli").GitHubHTTPError(
+                endpoint, 404, "Not Found"
+            )
         path, _, query = endpoint.partition("?")
         params = parse_qs(query)
         page = int(params.get("page", ["1"])[0])
@@ -636,6 +641,53 @@ def test_adds_child_to_unowned_existing_parent_and_preserves_old_requirements(
     before = fmt.parse_sections(body)
     after = fmt.parse_sections(h.gh.issues[1]["body"])
     assert all(after[k] == v for k, v in before.items() if k != fmt.TASKS_HEADING)
+
+
+def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h = harness
+    original_body = fmt.render_parent_body(parent_node()["sections"])
+    h.gh.issues[1] = raw_issue(
+        1,
+        title="[保守性改善] 既存の親",
+        body=original_body,
+        labels=[{"name": "issue:parent"}],
+    )
+    h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
+        "関連親issue: 未指定", "関連親issue: #1"
+    )
+    h.response(plan([task_node(role="child", parent=1)]))
+    original_family = h.gh.family
+    rewritten_body = policy.replace_section(
+        original_body, "目的・背景", "Geminiが文脈を説明し直した本文。"
+    )
+
+    def racing_family(n: int) -> dict[int, Any]:
+        family: dict[int, Any] = original_family(n)
+        if n == 1 and h.gh.parents.get(101) == 1:
+            h.gh.issues[1]["body"] = rewritten_body
+        return family
+
+    monkeypatch.setattr(h.gh, "family", racing_family)
+    result = h.run()
+    assert any(
+        "body changed before checklist PATCH" in error for error in result.errors
+    )
+    assert h.gh.issues[1]["body"] == rewritten_body
+    assert not any(
+        method == "PATCH" and endpoint == "repos/o/r/issues/1"
+        for method, endpoint, _ in h.gh.writes
+    )
+    assert h.gh.parents == {101: 1}
+    journal = json.loads(h.tmp.joinpath("triage.json").read_text())
+    assert not journal["transactions"][0]["complete"]
+    # Explicit reconciliation restores the fixed input, then the same journal repairs the checklist.
+    monkeypatch.setattr(h.gh, "family", original_family)
+    h.gh.issues[1]["body"] = original_body
+    assert not h.run().errors
+    assert len(h.calls()) == 1 and set(h.gh.issues) == {1, 100, 101}
+    assert "#101" in h.gh.issues[1]["body"]
 
 
 @pytest.mark.parametrize("closed", [False, True])

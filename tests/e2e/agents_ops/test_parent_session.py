@@ -43,6 +43,12 @@ def fail():
     sys.exit(1)
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
+if args[:2] == ["run", "watch"]:
+    assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
+    if state.get("watch_label"):
+        state["issues"]["1"]["labels"].append({"name": state["watch_label"]})
+        save()
+    sys.exit(state.get("watch_returncode", 0))
 if args[:2] == ["pr", "view"]:
     if os.environ.get("PARENT_FAIL_CI_VIEW"):
         fail()
@@ -106,6 +112,11 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+if path == "repos/o/r/actions/variables/issue_rewrite_enabled_since":
+    code = state.get("rewrite_variable_status", 200 if "rewrite_enabled_since" in state else 404)
+    response({"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": state.get("rewrite_enabled_since")}, code)
+if path == "repos/o/r/actions/workflows/issue-rewrite.yml/runs":
+    response({"workflow_runs": paged(state.get("rewrite_runs", []))}, state.get("rewrite_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
@@ -177,7 +188,7 @@ if n is None:
     state["next"] += 1
     row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
            "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
-           "state": "open", "state_reason": None}
+           "state": "open", "state_reason": None, "created_at": "2026-10-31T00:00:00Z"}
     state["issues"][n] = row
     save()
     if os.environ.get("PARENT_FAIL_AFTER_CREATE"):
@@ -459,6 +470,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
             "labels": [{"name": "issue:parent"}],
             "state": "open",
             "state_reason": None,
+            "created_at": "2026-10-31T00:00:00Z",
         }
         for n in (1, 2)
     }
@@ -507,6 +519,202 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
     )
     herdr.chmod(0o755)
     return ParentEnv(tmp_path, repo, env, state_path, calls_path, formats)
+
+
+@pytest.mark.parametrize(
+    "final", [None, "rewrite:done", "rewrite:failed", "rewrite:skipped", "old_parent"]
+)
+def test_rewrite_gates_checking_and_agree_before_writes(
+    parent_env: ParentEnv, final: str | None
+) -> None:
+    p = parent_env
+    p.cli("register")
+    p.cli("checking")
+    state = p.state()
+    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    if final == "old_parent":
+        state["issues"]["1"]["created_at"] = "2026-10-29T23:59:59Z"
+    elif final:
+        state["issues"]["1"]["labels"].append({"name": final})
+    p.save(state)
+    offset = len(p.calls())
+    checked = p.cli("checking", ok=final is not None)
+    agreed = p.cli(
+        "agree",
+        "--spec",
+        p.spec(
+            {
+                "purpose": "本文を固定する",
+                "scope": "親issue",
+                "behavior": "書き直し確定後に合意する",
+                "acceptance": "書込み順を守る",
+                "human_confirmation": "この内容で合意する。",
+            }
+        ),
+        ok=final is not None,
+    )
+    if final is None:
+        for result in (checked, agreed):
+            assert "pending" in result.stderr
+            assert (
+                "wait-rewrite" in result.stderr and "rewrite:skipped" in result.stderr
+            )
+        assert not any(
+            "--method" in call and call[call.index("--method") + 1] != "GET"
+            for call in p.calls()[offset:]
+        )
+        assert p.state() == state
+    else:
+        assert json.loads(agreed.stdout)["phase"] == "要件合意済み"
+
+
+@pytest.mark.parametrize("final", ["rewrite:done", "rewrite:failed", "rewrite:skipped"])
+def test_wait_rewrite_watches_latest_exact_title_and_refreshes_labels(
+    parent_env: ParentEnv, final: str
+) -> None:
+    p = parent_env
+    state = p.state()
+    state.update(
+        rewrite_enabled_since="2026-10-30T00:00:00Z",
+        rewrite_runs=[
+            {
+                "id": 104,
+                "display_title": "issue-rewrite #11",
+                "created_at": "2026-10-31T04:00:00Z",
+            },
+            {
+                "id": 102,
+                "display_title": "issue-rewrite #1",
+                "created_at": "2026-10-31T02:00:00Z",
+            },
+            {
+                "id": 101,
+                "display_title": "issue-rewrite #1",
+                "created_at": "2026-10-31T01:00:00Z",
+            },
+        ],
+        watch_label=final,
+    )
+    p.save(state)
+    result = p.cli("wait-rewrite", extra={"CLAUDE_CODE_SESSION_ID": ""})
+    assert json.loads(result.stdout) == {
+        "parent": 1,
+        "rewrite_state": final.removeprefix("rewrite:"),
+        "run_id": 102,
+    }
+    assert [c for c in p.calls() if c[:2] == ["run", "watch"]] == [
+        ["run", "watch", "102", "--repo", "o/r"]
+    ]
+    assert not any(
+        "--method" in c and c[c.index("--method") + 1] != "GET" for c in p.calls()
+    )
+
+
+@pytest.mark.parametrize("workflow_status", [200, 404])
+def test_wait_rewrite_without_run_guides_dispatch_or_human_skip(
+    parent_env: ParentEnv, workflow_status: int
+) -> None:
+    p = parent_env
+    state = p.state()
+    state.update(
+        rewrite_enabled_since="2026-10-30T00:00:00Z",
+        rewrite_workflow_status=workflow_status,
+    )
+    p.save(state)
+    result = p.cli("wait-rewrite", ok=False)
+    assert all(
+        word in result.stderr
+        for word in ("issue-rewrite.yml", "workflow_dispatch", "rewrite:skipped")
+    )
+    assert not any(c[:2] == ["run", "watch"] for c in p.calls())
+
+
+@pytest.mark.parametrize("watch_code", [0, 1])
+def test_wait_rewrite_does_not_claim_success_when_watch_or_final_state_fails(
+    parent_env: ParentEnv, watch_code: int
+) -> None:
+    p = parent_env
+    state = p.state()
+    state.update(
+        rewrite_enabled_since="2026-10-30T00:00:00Z",
+        rewrite_runs=[
+            {
+                "id": 101,
+                "display_title": "issue-rewrite #1",
+                "created_at": "2026-10-31T01:00:00Z",
+            }
+        ],
+        watch_returncode=watch_code,
+    )
+    p.save(state)
+    result = p.cli("wait-rewrite", ok=False)
+    assert ("still pending" if watch_code == 0 else "watch 101 failed") in result.stderr
+    assert len([c for c in p.calls() if c[:2] == ["run", "watch"]]) == 1
+
+
+def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    state = p.state()
+    state.update(
+        rewrite_enabled_since="2026-10-30T00:00:00Z",
+        rewrite_runs=[
+            {
+                "id": 200 + n,
+                "display_title": "issue-rewrite #2",
+                "created_at": "2026-10-31T02:00:00Z",
+            }
+            for n in range(100)
+        ]
+        + [
+            {
+                "id": 101,
+                "display_title": "issue-rewrite #1",
+                "created_at": "2026-10-31T01:00:00Z",
+            }
+        ],
+        watch_label="rewrite:done",
+    )
+    p.save(state)
+    assert json.loads(p.cli("wait-rewrite").stdout)["run_id"] == 101
+    assert any("page=2" in a for c in p.calls() for a in c)
+    offset = len(p.calls())
+    assert json.loads(p.cli("wait-rewrite").stdout) == {
+        "parent": 1,
+        "rewrite_state": "done",
+        "run_id": None,
+    }
+    assert not any(c[:2] == ["run", "watch"] for c in p.calls()[offset:])
+
+
+def test_parent_body_update_detects_rewrite_despite_cached_issue(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    store_module = importlib.import_module("parent.state")
+    github_module = importlib.import_module("parent.github")
+    session_module = importlib.import_module("parent.session")
+    policy_module = importlib.import_module("parent.policy")
+    with store_module.Store(p.root / "cache-test-state").locked() as store:
+        gh = github_module.GitHub("o/r", store=store)
+        session = session_module.ParentSession(gh, store, 1, None)
+        old = gh.issue(1)["body"]
+        proposed = policy_module.replace_section(
+            old, "進捗概要", "子タスクを照合した。"
+        )
+        state = p.state()
+        rewritten = policy_module.replace_section(
+            old, "目的・背景", "Geminiによる読みやすい本文。"
+        )
+        state["issues"]["1"]["body"] = rewritten
+        p.save(state)
+        with pytest.raises(ValueError, match="body changed"):
+            session.update_body(1, proposed, old)
+    assert p.state()["issues"]["1"]["body"] == rewritten
+    assert not any("PATCH" in c for c in p.calls())
 
 
 def peer_board_request(p: ParentEnv, body: str) -> dict[str, Any]:
@@ -829,7 +1037,10 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
     child = state["issues"]["10"]
     assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
     assert {x["name"] for x in child["labels"]} == {
-        "enhancement", "ci", "tests", "issue:child"
+        "enhancement",
+        "ci",
+        "tests",
+        "issue:child",
     }
     assert "- [ ] #10 idempotent" in state["issues"]["1"]["body"]
     assert "private-session-a-unique" not in json.dumps(state)
