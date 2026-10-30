@@ -167,6 +167,34 @@ def _wait_for(predicate: Callable[[], bool], *, timeout: float = 5) -> None:
     raise AssertionError("condition was not satisfied before timeout")
 
 
+def _wait_for_slot_waiter(queue_dirs: list[Path], lock_file: Path) -> None:
+    def has_waiter() -> bool:
+        return any(
+            "state=waiting\n" in state.read_text() and "wait=slot-capacity\n" in state.read_text()
+            for queue_dir in queue_dirs for state in (queue_dir / "state").glob("*.state")
+        )
+
+    _wait_for(has_waiter)
+    # Both actual reservations must remain held while a third worker waits.
+    for slot in _lock_namespace(lock_file)[2:]:
+        with slot.open("a+") as handle, pytest.raises(BlockingIOError):
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _wait_for_external_ack_rejection(queue_dir: Path, job: str) -> None:
+    state = queue_dir / "state" / f"{job.removesuffix('.job')}.state"
+    # Two publications ensure a complete validation cycle after the ack was
+    # installed, even if the first write was already in flight.
+    def next_publication() -> None:
+        inode = state.stat().st_ino
+        _wait_for(lambda: state.stat().st_ino != inode)
+        assert "wait=external-teardown\n" in state.read_text()
+
+    for _ in range(2):
+        next_publication()
+    assert (queue_dir / "running" / job).is_file()
+
+
 def _lock_namespace(lock_file: Path) -> tuple[Path, Path, Path, Path]:
     return (
         lock_file,
@@ -845,8 +873,7 @@ def test_half_capacity_status_and_repro_metadata(tmp_path: Path) -> None:
         assert listing.count("state=running") == 2
         assert "state=waiting" in listing
         assert "wait=slot-capacity" in listing
-        time.sleep(0.15)
-        assert not third_marker.exists()
+        _wait_for_slot_waiter([queue_dir], lock_file)
     finally:
         release.touch()
         stdout, stderr = worker.communicate(timeout=10)
@@ -936,7 +963,7 @@ def test_separate_workers_share_the_two_slot_namespace(tmp_path: Path) -> None:
         _wait_for(
             lambda: len(list(tmp_path.glob("started-*"))) == 2,
         )
-        time.sleep(0.15)
+        _wait_for_slot_waiter([tmp_path / f"queue-{i}" for i in range(3)], lock_file)
         assert len(list(tmp_path.glob("started-*"))) == 2
     finally:
         release.touch()
@@ -1119,7 +1146,9 @@ def test_git_common_root_default_is_shared_by_linked_worktrees(tmp_path: Path) -
 
     try:
         _wait_for(lambda: len(list(tmp_path.glob("started-*"))) == 2, timeout=10)
-        time.sleep(0.15)
+        _wait_for_slot_waiter(
+            [tmp_path / f"queue-{i}" for i in range(3)], repository / ".training_queue/gpu.lock"
+        )
         assert len(list(tmp_path.glob("started-*"))) == 2
         assert all(
             member.is_file()
@@ -2202,12 +2231,10 @@ def test_running_cancel_waits_for_required_external_teardown_ack(
         protected = tmp_path / "protected-ack-target"
         protected.write_text(f"{active_job}\n", encoding="utf-8")
         ack.symlink_to(protected)
-        time.sleep(0.15)
-        assert (queue_dir / "running" / active_job).is_file()
+        _wait_for_external_ack_rejection(queue_dir, active_job)
         ack.unlink()
         ack.write_text("wrong-job.job\n", encoding="utf-8")
-        time.sleep(0.15)
-        assert (queue_dir / "running" / active_job).is_file()
+        _wait_for_external_ack_rejection(queue_dir, active_job)
         ack.unlink()
 
         temporary_ack = ack.parent / ".tmp.test-ack"
@@ -2221,7 +2248,8 @@ def test_running_cancel_waits_for_required_external_teardown_ack(
         assert not ack.exists()
         _assert_lock_namespace_reacquirable(lock_file)
     finally:
-        if not ack.exists() and (queue_dir / "running" / active_job).exists():
+        if (queue_dir / "running" / active_job).exists():
+            ack.unlink(missing_ok=True)
             ack.write_text(f"{active_job}\n", encoding="utf-8")
         if pgid and _process_group_exists(pgid):
             with contextlib.suppress(ProcessLookupError):
@@ -2286,7 +2314,7 @@ def test_terminating_half_never_allows_three_live_cross_queue_halves(
                 _serve(tmp_path / f"successor-{index}", lock_file, cwd=tmp_path)
             )
         _wait_for(lambda: sum(marker.exists() for marker in successor_markers) == 1)
-        time.sleep(0.15)
+        _wait_for_slot_waiter([tmp_path / f"successor-{i}" for i in range(2)], lock_file)
         assert sum(marker.exists() for marker in successor_markers) == 1
 
         active_worker.terminate()

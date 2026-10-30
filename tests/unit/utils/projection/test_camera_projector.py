@@ -12,6 +12,7 @@ from src.utils.projection.camera_projector import (
     FIXED_LAYOUT,
     Camera,
     CameraView,
+    camera_from_mapping,
     project_points,
 )
 from src.utils.projection.camera_projector import (
@@ -168,23 +169,37 @@ class TestCameraProjector:
             visible, torch.tensor([[True, True, True], [True, False, True]])
         )
 
-    def test_project_court_keypoints_shape(self) -> None:
+    def test_camera_view_preserves_court_subject_and_serialized_projection(self) -> None:
         projector = CameraProjector()
-        cam = make_look_at_camera(center=(0.0, -15.0, 5.0), look_at=(0.0, 0.0, 0.0))
-        uv, visible = projector.project_court_keypoints(cam)
-        assert uv.shape == (20, 2)
-        assert visible.shape == (20,)
-        assert visible.dtype == torch.bool
-
-    def test_generate_camera_view_serializes_params(self) -> None:
-        projector = CameraProjector()
-        cam = make_look_at_camera(center=(0.0, -15.0, 5.0), look_at=(0.0, 0.0, 0.0))
-        view = projector.generate_camera_view(torch.rand(3, 3), cam)
+        cam = Camera(
+            C=torch.tensor([1.0, 2.0, -10.0]),
+            R=torch.tensor([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]),
+            f=80, cx=60, cy=30, w=240, h=100,
+        )
+        # q=(2-y, x-1, z+10). Include an out-of-image and a behind-camera point.
+        points = torch.tensor([[3.0, 1.0, -6.0], [1.0, 4.0, -8.0], [1.0, 2.0, -11.0]])
+        expected_points = torch.tensor([[80/240, 70/100], [-20/240, 30/100], [60/240, 30/100]])
+        view = projector.generate_camera_view(points, cam)
         assert isinstance(view, CameraView)
-        assert set(view.camera_params) == {"C", "R", "f", "cx", "cy", "w", "h"}
+        torch.testing.assert_close(view.points_uv, expected_points)
+        torch.testing.assert_close(view.points_vis, torch.tensor([True, False, False]))
+        assert view.court_kp_uv.shape == (20, 2)
         assert view.court_kp_vis.shape == (20,)
-        assert view.points_uv is not None and view.points_uv.shape == (3, 2)
-        assert view.points_vis is not None and view.points_vis.shape == (3,)
+        # Standard CourtKP20 corners (+/-5.485, +/-11.885, 0) and net ground center.
+        torch.testing.assert_close(
+            view.court_kp_uv[[0, 1, 2, 3, 14]],
+            torch.tensor([
+                [-19.08/240, -21.88/100], [-19.08/240, 65.88/100],
+                [171.08/240, -21.88/100], [171.08/240, 65.88/100], [76/240, 22/100],
+            ]),
+        )
+        torch.testing.assert_close(
+            view.court_kp_vis[[0, 1, 2, 3, 14]], torch.tensor([False, False, False, True, True])
+        )
+        restored = camera_from_mapping(view.camera_params)
+        restored_uv, restored_visible = projector.project_points_to_uv(points, restored)
+        torch.testing.assert_close(restored_uv, expected_points)
+        torch.testing.assert_close(restored_visible, torch.tensor([True, False, False]))
 
     def test_fixed_cameras_deterministic_without_noise(self) -> None:
         config = CameraConfig(
@@ -198,12 +213,6 @@ class TestCameraProjector:
         for a, b in zip(cams_a, cams_b, strict=True):
             assert torch.allclose(a.C, b.C)
             assert torch.allclose(a.R, b.R)
-
-
-class TestCameraDataclass:
-    def test_is_constructible(self) -> None:
-        cam = Camera(C=torch.zeros(3), R=torch.eye(3), f=1.0, cx=0.5, cy=0.5, w=2, h=2)
-        assert cam.f == 1.0
 
 
 def _deterministic_broadcast_config(**overrides: object) -> _CameraConfig:
@@ -369,16 +378,19 @@ class TestBroadcastRanges:
         with pytest.raises(ValueError, match="mutually exclusive"):
             projector.broadcast_cameras()
 
-    def test_explicit_config_preserves_ranges(self) -> None:
-        cfg = CameraConfig(
-            layout="broadcast",
-            broadcast_setback_range=(15.0, 40.0),
-            broadcast_height_range=(5.0, 15.0),
-            broadcast_court_width_frac_range=(0.5, 0.9),
-        )
-        assert cfg.broadcast_setback_range == (15.0, 40.0)
-        assert cfg.broadcast_height_range == (5.0, 15.0)
-        assert cfg.broadcast_court_width_frac_range == (0.5, 0.9)
+    def test_degenerate_ranges_define_camera_geometry_and_framing(self) -> None:
+        projector = CameraProjector(config=self._range_config(
+            broadcast_setback_range=(27.0, 27.0),
+            broadcast_height_range=(11.0, 11.0),
+            broadcast_court_width_frac_range=(0.65, 0.65),
+        ))
+        for camera, side in zip(projector.cameras(), (-1, 1), strict=True):
+            torch.testing.assert_close(camera.C, torch.tensor([0.0, side * (HALF_LENGTH + 27.0), 11.0]))
+            uv, visible = project_points(camera, torch.tensor([
+                [-5.485, side * HALF_LENGTH, 0.0], [5.485, side * HALF_LENGTH, 0.0],
+            ]))
+            assert bool(visible.all())
+            assert abs(float(uv[1, 0] - uv[0, 0])) / camera.w == pytest.approx(0.65, abs=1e-6)
 
 
 class TestCamerasDispatch:
@@ -409,15 +421,13 @@ class TestCameraConfigContract:
         with pytest.raises(TypeError, match="required positional arguments"):
             _CameraConfig()  # type: ignore[call-arg]
 
-    def test_direct_constructor_preserves_explicit_fields(self) -> None:
-        cfg = CameraConfig(
-            layout="broadcast",
-            image_size=(640, 360),
-            broadcast_height=9.0,
-        )
-        assert cfg.layout == "broadcast"
-        assert cfg.image_size == (640, 360)
-        assert cfg.broadcast_height == 9.0
+    def test_explicit_fields_control_generated_cameras(self) -> None:
+        cfg = _deterministic_broadcast_config(image_size=(640, 360), broadcast_height=9.0)
+        cameras = CameraProjector(config=cfg).cameras()
+        assert len(cameras) == 2
+        for camera in cameras:
+            assert camera.C[2].item() == pytest.approx(9.0)
+            assert (camera.w, camera.h) == (640, 360)
 
 
 def test_fixed_camera_candidates_preserve_requested_geometry_and_order() -> None:
