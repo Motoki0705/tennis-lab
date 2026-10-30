@@ -237,7 +237,12 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
   現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
 - 競合・mergeable不明は停止する。CI取得時のheadも最新snapshotと一致させる。
-  CIの有無・未完了・失敗は合否に使わず、CIが途中で始まっても完了を待たない。
+  対象HEADの `Python` check runが完了し、結論が `success` であることを必須とする。
+  commitを指定したREST `commits/<head>/check-runs?check_name=Python&filter=latest` を全ページ取得し、
+  各runの `head_sha` も照合する。最新runが複数あればすべて成功が必要で、古い成功では代用しない。
+  欠落は `ci_python_missing`、別HEADは `ci_python_head_mismatch`、未完了は `ci_python_pending`、
+  失敗・取消等は `ci_python_<conclusion>` で停止する。`neutral` / `skipped` も成功として通さない。
+  同名のStatusContextやlabelerの成功では代用しない。
   CI取得失敗・不正な応答・不明なCI結論は `input_or_collection_error` とし、未実行に読み替えない。
 - 子本文の最新依存欄を使い、依存先子がclosed・`state_reason=completed`（`task_status=completed`）であり、
   その子を閉じるPRが既定branchへmerge済みであることを求める。PR一覧は親子issueに関連する全状態・全ページを取得する。
@@ -250,7 +255,7 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   `input_or_collection_error`（終了コード2）で停止する。
   循環・親の外への依存も拒否する。状態の正本と停止/再開は [parent](../parent/README.md)。
 
-依存順で判定し、CI待ちをmergeの停止条件にしない。
+依存順で判定し、CI待ちのPRは停止する。CIを含む全条件を満たす独立PRは順次進める。
 実merge直前に全対象のhead/base/merge-base/diff・CI・競合・coverage・親状態を再取得し、
 `gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
 各merge後も残りを再取得し、[base取込み・rebase後の継承](#base取込みrebase後の継承)を検証する。
@@ -271,7 +276,8 @@ JSONの `results` が各PRの最終状態、`evaluations` が順次判定記録�
 各判定の `ci_checks` はCI観測値（check名と `success` / `pending` / `failure`）、`ci_head_sha` は取得応答のhead。
 `snapshot.head_sha` との不一致は `head_changed_during_ci` で停止する。
 CIが無い場合は空配列、closed/merge済みPRの再確認でCIを取得しない場合は `null`。
-CI状態による理由コードは付けず、merge直前や先行merge後の再取得でも完了待ち・再試行をしない。
+合否には上記のHEAD付きcheck runを使う。rollupの観測値だけでは成功と判定しない。
+merge直前や先行merge後も再取得し、未完了なら理由付きで返す。コマンド内にCI待ちループや自動再試行は持たない。
 `auto_merge` は実効フラグ、`agent_invocations` は常に0。
 終了コードは0=全件merge可/merge確認（dry-runを含む）、1=停止/未完了あり、2=入力・取得・整合エラー。
 2でも成功や再レビューへ置き換えず、stderrのblocked記録を確認する。
@@ -283,8 +289,10 @@ CI状態による理由コードは付けず、merge直前や先行merge後の�
 
 `normalize_rollup` / `CheckState` は全体調査も再利用する。
 workflow名＋check名ごとの最新runへ畳み、時刻なし/同時刻は最も悲観的な状態を採用する。
-成功扱いはSUCCESS/NEUTRAL/SKIPPEDのみ。不明値はエラー。
-`evaluate_gate(GateInput)` はdraft/fork・競合を判定する部品で、CIは判定入力に含めない。
+この観測値の正規化ではSUCCESS/NEUTRAL/SKIPPEDを `success` とする。不明値はエラー。
+`evaluate_gate(GateInput)` はdraft/fork・競合とレビューを判定する部品である。
+通常PRの必須CIは `merge_gate_policy.python_ci_errors` が別途厳密に判定する。
+固定名の集約job `Python` だけを必須とするため `REQUIRED_CHECK` 定数で明示し、通常PR用の一覧ファイルは持たない。
 `review` 引数には呼出側が親run/coverage/解消証拠から確認した `ReviewOutcome` を渡す。
 専用memory PRの必須CI一覧は [ops-report/required_checks.txt](../ops-report/required_checks.txt) で管理し、
 その限定経路のCI要件は維持する。通常PRのmerge gateはこの一覧を読まない。

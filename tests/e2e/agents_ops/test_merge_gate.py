@@ -38,6 +38,10 @@ def ci_rollup(state: str) -> list[dict[str, str]]:
     name, status, conclusion = {
         "pending": ("Python", "QUEUED", ""),
         "failure": ("Python", "COMPLETED", "FAILURE"),
+        "cancelled": ("Python", "COMPLETED", "CANCELLED"),
+        "skipped": ("Python", "COMPLETED", "SKIPPED"),
+        "neutral": ("Python", "COMPLETED", "NEUTRAL"),
+        "timed_out": ("Python", "COMPLETED", "TIMED_OUT"),
         "success": ("Python", "COMPLETED", "SUCCESS"),
         "unrelated": ("Labeler", "COMPLETED", "SUCCESS"),
     }[state]
@@ -521,7 +525,8 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert rows[100]["decision"] == "merge"
     assert "unresolved_findings" in rows[101]["reasons"]
-    assert rows[102]["decision"] == "merge"
+    assert rows[102]["decision"] == "blocked"
+    assert "ci_python_pending" in rows[102]["reasons"]
     assert rows[102]["ci_checks"] == [{"name": "Python", "state": "pending"}]
     assert len(g.review.calls()) == 1
     assert g.merge_calls() == []
@@ -529,16 +534,21 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
 
 @pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
 @pytest.mark.parametrize(
-    "ci_state,checks",
+    "ci_state,checks,reason",
     [
-        ("absent", []),
-        ("pending", [{"name": "Python", "state": "pending"}]),
-        ("failure", [{"name": "Python", "state": "failure"}]),
-        ("unrelated", [{"name": "Labeler", "state": "success"}]),
+        ("success", [{"name": "Python", "state": "success"}], None),
+        ("absent", [], "ci_python_missing"),
+        ("pending", [{"name": "Python", "state": "pending"}], "ci_python_pending"),
+        ("failure", [{"name": "Python", "state": "failure"}], "ci_python_failure"),
+        ("cancelled", [{"name": "Python", "state": "failure"}], "ci_python_cancelled"),
+        ("timed_out", [{"name": "Python", "state": "failure"}], "ci_python_timed_out"),
+        ("skipped", [{"name": "Python", "state": "success"}], "ci_python_skipped"),
+        ("neutral", [{"name": "Python", "state": "success"}], "ci_python_neutral"),
+        ("unrelated", [{"name": "Labeler", "state": "success"}], "ci_python_missing"),
     ],
 )
-def test_ci_observations_do_not_block_dependency_ordered_merges(
-    gate_env: GateEnv, ci_state: str, checks: list[dict[str, str]]
+def test_python_ci_is_required_for_dependency_ordered_merges(
+    gate_env: GateEnv, ci_state: str, checks: list[dict[str, str]], reason: str | None
 ) -> None:
     g, p = gate_env, gate_env.review.p
     state = p.state()
@@ -546,15 +556,21 @@ def test_ci_observations_do_not_block_dependency_ordered_merges(
         pr["statusCheckRollup"] = ci_rollup(ci_state)
     p.save(state)
     response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
-    assert response.returncode == 0, response.stderr
-    assert [c[2] for c in g.merge_calls()] == ["101", "100", "102"]
     rows = g.results(response)
-    assert all(
-        row["action"] == "merged" and not row["reasons"] for row in rows.values()
-    )
     assert all(row["ci_checks"] == checks for row in rows.values())
     assert all(
         row["ci_head_sha"] == row["snapshot"]["head_sha"] for row in rows.values()
+    )
+    if reason:
+        assert response.returncode == 1, response.stderr
+        assert all(row["decision"] == "blocked" for row in rows.values())
+        assert all(reason in row["reasons"] for row in rows.values())
+        assert not g.merge_calls()
+        return
+    assert response.returncode == 0, response.stderr
+    assert [c[2] for c in g.merge_calls()] == ["101", "100", "102"]
+    assert all(
+        row["action"] == "merged" and not row["reasons"] for row in rows.values()
     )
     assert len({row["snapshot"]["base_sha"] for row in rows.values()}) == 3
     for call in g.merge_calls():
@@ -563,6 +579,106 @@ def test_ci_observations_do_not_block_dependency_ordered_merges(
             rows[int(call[2])]["snapshot"]["head_sha"],
         ]
     assert len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("case", ["old_head", "status_context"])
+def test_other_head_or_status_context_cannot_substitute_for_python_check_run(
+    gate_env: GateEnv, case: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    if case == "old_head":
+        pr["ci_check_runs"] = [
+            {
+                "id": 1,
+                "name": "Python",
+                "head_sha": "f" * 40,
+                "status": "completed",
+                "conclusion": "success",
+            }
+        ]
+    else:
+        pr["statusCheckRollup"] = [
+            {"__typename": "StatusContext", "context": "Python", "state": "SUCCESS"}
+        ]
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 1, response.stderr
+    row = g.results(response)[100]
+    # The rollup alone looks successful in both cases.
+    assert row["ci_checks"] == [{"name": "Python", "state": "success"}]
+    assert (
+        "ci_python_head_mismatch" if case == "old_head" else "ci_python_missing"
+    ) in row["reasons"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize(
+    "case", ["missing_page", "duplicate", "bad_conclusion", "bad_status"]
+)
+def test_invalid_required_check_run_evidence_is_a_collection_error(
+    gate_env: GateEnv, case: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    run = {
+        "id": 1,
+        "name": "Python",
+        "head_sha": pr["head"]["sha"],
+        "status": "completed",
+        "conclusion": "success",
+    }
+    if case == "missing_page":
+        pr["ci_response"] = {"total_count": 2, "check_runs": [run]}
+    elif case == "duplicate":
+        pr["ci_check_runs"] = [run, run]
+    else:
+        run["conclusion" if case == "bad_conclusion" else "status"] = "unknown"
+        pr["ci_check_runs"] = [run]
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize("last_conclusion", ["success", "failure"])
+def test_required_check_run_pages_are_all_checked(
+    gate_env: GateEnv, last_conclusion: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    head = pr["head"]["sha"]
+    pr["ci_check_runs"] = [
+        {
+            "id": i + 1,
+            "name": "Python",
+            "head_sha": head,
+            "status": "completed",
+            "conclusion": "success",
+        }
+        for i in range(101)
+    ]
+    pr["ci_check_runs"][-1]["conclusion"] = last_conclusion
+    p.save(state)
+    response = g.cli("merge")
+    row = g.results(response)[100]
+    assert any(
+        f"commits/{head}/check-runs?check_name=Python&filter=latest&per_page=100&page=2"
+        in arg
+        for call in p.calls()
+        for arg in call
+    )
+    if last_conclusion == "success":
+        assert response.returncode == 0, response.stderr
+        assert row["action"] == "merged"
+    else:
+        assert response.returncode == 1, response.stderr
+        assert "ci_python_failure" in row["reasons"]
+        assert not g.merge_calls()
 
 
 @pytest.mark.parametrize("rollup", [None, {}, [{"__typename": "Mystery"}]])
@@ -582,6 +698,23 @@ def test_invalid_ci_observation_is_an_explicit_collection_error(
 def test_ci_read_failure_is_an_explicit_collection_error(gate_env: GateEnv) -> None:
     g = gate_env
     response = g.cli("merge", PARENT_FAIL_CI_VIEW="1")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+def test_check_run_read_failure_is_an_explicit_collection_error(
+    gate_env: GateEnv,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    head = p.state()["prs"][0]["head"]["sha"]
+    response = g.cli(
+        "merge",
+        PARENT_FAIL_GET_PATH=(
+            f"repos/o/r/commits/{head}/check-runs"
+            "?check_name=Python&filter=latest&per_page=100&page=1"
+        ),
+    )
     assert response.returncode == 2
     assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
     assert not g.merge_calls()
@@ -1176,11 +1309,15 @@ def test_remaining_prs_are_recollected_after_each_merge(
     }[change]
     env["PARENT_MERGE_ADVANCE_BASE"] = "1"
     rows = g.results(g.cli("merge", **env))
-    assert [c[2] for c in g.merge_calls()] == ["100", "101"]
-    assert rows[101]["action"] == "merged"
-    assert not rows[101]["reasons"]
     if change == "ci":
+        assert [c[2] for c in g.merge_calls()] == ["100"]
+        assert rows[101]["decision"] == "blocked"
+        assert "ci_python_pending" in rows[101]["reasons"]
         assert rows[101]["ci_checks"] == [{"name": "Python", "state": "pending"}]
+    else:
+        assert [c[2] for c in g.merge_calls()] == ["100", "101"]
+        assert rows[101]["action"] == "merged"
+        assert not rows[101]["reasons"]
 
 
 @pytest.mark.parametrize("failure", ["fail", "head", "response", "close"])

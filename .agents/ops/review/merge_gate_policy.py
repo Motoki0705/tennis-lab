@@ -34,6 +34,52 @@ from review_policy import (
     normalize_rollup,
 )
 
+REQUIRED_CHECK = "Python"
+
+
+def python_ci_errors(runs: Sequence[Mapping[str, Any]], head: str) -> tuple[str, ...]:
+    """Require actual success from every latest Python check run at this HEAD."""
+    required = [run for run in runs if run.get("name") == REQUIRED_CHECK]
+    if not required:
+        return ("ci_python_missing",)
+    reasons = []
+    for run in required:
+        if not isinstance(run.get("head_sha"), str) or not re.fullmatch(
+            r"[0-9a-f]{40}", run["head_sha"]
+        ):
+            raise ValueError("Python check run has no valid head_sha")
+        if run["head_sha"] != head:
+            reasons.append("ci_python_head_mismatch")
+        status = run.get("status")
+        if status not in {
+            "queued",
+            "in_progress",
+            "completed",
+            "requested",
+            "waiting",
+            "pending",
+        }:
+            raise ValueError(f"unknown Python check run status: {status!r}")
+        if status != "completed":
+            reasons.append("ci_python_pending")
+            continue
+        conclusion = run.get("conclusion")
+        if conclusion not in {
+            "success",
+            "failure",
+            "neutral",
+            "cancelled",
+            "skipped",
+            "timed_out",
+            "action_required",
+            "startup_failure",
+            "stale",
+        }:
+            raise ValueError(f"unknown Python check run conclusion: {conclusion!r}")
+        if conclusion != "success":
+            reasons.append(f"ci_python_{conclusion}")
+    return tuple(dict.fromkeys(reasons))
+
 
 def auto_merge(value: str | None) -> bool:
     if value not in {None, "0", "1"}:
@@ -324,6 +370,8 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
                 review = ReviewOutcome("approve", 0)
     if gate.review_state not in {"fixes_verified", "complete"}:
         reasons.append("parent_review_not_confirmed")
+    if pr["state"] == "open":
+        reasons.extend(python_ci_errors(pr["ci_check_runs"], pr["head"]["sha"]))
     mergeable = pr.get("mergeable")
     if mergeable is not None and type(mergeable) is not bool:
         raise ValueError("REST mergeable must be true, false or null")

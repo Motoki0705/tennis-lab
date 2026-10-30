@@ -13,6 +13,7 @@ GPU・Blenderはtraining queueの既存枠・共有stateを使う。未指定の
 
 意味のある検証を行い、pre-commitを通してコミットする。PRには `Closes #担当issue`、
 変更内容・各受入条件に対する検証コマンドと結果・未実施の理由・対象外・残課題を記載する。
+コミットに `[skip ci]` を付けず、PRへのpushごとにCIを実行する。対象HEADの `Python` 成功をmergeの必須条件とし、CI結果を親へ報告する。
 stacked branchは親の指示した依存headを保持し、先行merge後のrebaseとPR作成時点を親へ合わせる。
 レビュー指摘の修正は同じworker session・branch・PRへ戻し、実diff・CI・回帰テストと指摘の対応を返す。
 統合レビュー・merge・担当終了は親が行う。

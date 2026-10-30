@@ -108,6 +108,22 @@ if endpoint == "user":
     response({"login": "operator"})
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
+checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
+if checks:
+    assert method == "GET" and "check_name=Python&filter=latest" in query
+    pr = next(p for p in state["prs"] if p["head"]["sha"] == checks[1])
+    if "ci_response" in pr:
+        response(pr["ci_response"])
+    runs = pr.get("ci_check_runs")
+    if runs is None:
+        runs = [
+            {"id": pr["number"] * 1000 + i + 1, "name": c["name"],
+             "head_sha": checks[1], "status": c["status"].lower(),
+             "conclusion": (c["conclusion"] or "").lower() or None}
+            for i, c in enumerate(pr.get("statusCheckRollup") or [])
+            if c.get("__typename") == "CheckRun" and c.get("name") == "Python"
+        ]
+    response({"total_count": len(runs), "check_runs": paged(runs)})
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
     if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
