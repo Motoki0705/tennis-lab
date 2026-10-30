@@ -121,6 +121,7 @@ class BaseLightningModule(pl.LightningModule):
         self.min_lr = optimizer.min_lr
         self.optimizer_betas = optimizer.betas
         self._resume_random_state: dict[str, Any] | None = None
+        self._explicit_total_steps: int | None = None
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         checkpoint["training_random_state"] = capture_random_state()
@@ -129,6 +130,7 @@ class BaseLightningModule(pl.LightningModule):
         self._resume_random_state = checkpoint.get("training_random_state")
 
     def on_train_start(self) -> None:
+        self._validate_explicit_step_budget()
         # Constructors, optimizer setup and validation setup can consume RNG.
         # Restore only after those stages, immediately before the next iterator.
         if self._resume_random_state is not None:
@@ -137,6 +139,28 @@ class BaseLightningModule(pl.LightningModule):
         elif self.trainer.ckpt_path is not None:
             raise ValueError(
                 "Exact training resume requires training_random_state; use init_weights for legacy checkpoints"
+            )
+
+    def _validate_explicit_step_budget(self) -> None:
+        if self._explicit_total_steps is None:
+            return
+        # The fit loop has already set up the loader and resolved its length.
+        # Reading this here cannot trigger an extra setup/iterator before resume.
+        trainer = self.trainer
+        expected = trainer.estimated_stepping_batches
+        if self._explicit_total_steps != expected:
+            raise ValueError(
+                "Explicit step schedule budget does not match Trainer optimizer updates: "
+                f"training.steps_per_epoch={self.training_config.optimizer.steps_per_epoch}, "
+                f"configured_total_steps={self._explicit_total_steps}, "
+                f"expected_total_steps={expected}, "
+                f"num_training_batches={trainer.num_training_batches} (after limit), "
+                f"accumulate_grad_batches={trainer.accumulate_grad_batches}, "
+                f"limit_train_batches={trainer.limit_train_batches}, "
+                f"max_steps={trainer.max_steps}, max_epochs={trainer.max_epochs}, "
+                f"schedule_max_epochs={self.max_epochs}. "
+                "Set training.steps_per_epoch to the optimizer updates per epoch "
+                "or explicitly use null for automatic estimation."
             )
 
     def transfer_batch_to_device(
@@ -434,6 +458,7 @@ class BaseLightningModule(pl.LightningModule):
             total_steps = int(steps_per_epoch) * max_epochs
             if total_steps <= 0:
                 raise RuntimeError("Resolved total training steps must be > 0.")
+            self._explicit_total_steps = total_steps
             return total_steps
 
         estimated_steps = None
@@ -483,6 +508,7 @@ class BaseLightningModule(pl.LightningModule):
         """
         optimizer = self._build_optimizer()
         scheduler: LRScheduler
+        self._explicit_total_steps = None
 
         if self.warmup_epochs is not None:
             warmup_epochs = int(self.warmup_epochs)

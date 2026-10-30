@@ -329,9 +329,19 @@ def test_concat_padded_low_dim_arrays_concatenated() -> None:
 
 
 def test_estimate_total_steps_from_steps_per_epoch_attr() -> None:
-    m = _TinyModule(_config(max_epochs=4))
+    m = _TinyModule(_config(max_epochs=4, steps_per_epoch=3))
     m.steps_per_epoch = 50
+
+    class TaskBudgetTrainer:
+        ckpt_path = None
+
+        @property
+        def estimated_stepping_batches(self):
+            raise AssertionError("module-owned step budgets must not be compared")
+
+    m._trainer = cast(Any, TaskBudgetTrainer())
     assert m._estimate_total_steps() == 200
+    m.on_train_start()
 
 
 def test_estimate_total_steps_from_config_steps_per_epoch() -> None:

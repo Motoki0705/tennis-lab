@@ -142,9 +142,13 @@ def exercise_checkpoint(
         class SaveEpoch(pl.Callback):
             def on_train_epoch_end(self, trainer: pl.Trainer, pl_module: Any) -> None:
                 family.save(trainer, path)
+                trainer.should_stop = True
 
         trainer = _trainer(
-            root, [SaveEpoch()], epochs=1, validation=family.name.startswith("refiner/")
+            root,
+            [SaveEpoch()],
+            epochs=int(config.training.trainer.max_epochs),
+            validation=family.name.startswith("refiner/"),
         )
         _fit(trainer, module, data)
     else:

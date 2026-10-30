@@ -77,6 +77,12 @@ PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師�
 `training_random_state`のない旧checkpointは推論・`run.init_weights`での初期化用とし、full-state resumeは明示的に拒否する。
 手動GANのphase・更新数も保存し、GAN移行済みのresumeでLR scheduleを初期化し直さない。
 
+基底のstep scheduleで`training.steps_per_epoch`を明示した場合、loader setup後の
+`on_train_start`で、明示値×設定epoch数とTrainerの総optimizer更新数を照合する。
+蓄積・`limit_train_batches`・`max_steps`・端数batchなどによる不一致は、初回更新前に
+`ValueError`となる。optimizer構築中にloaderを先読みしない。
+module属性`steps_per_epoch`やtaskがoverrideした総step予算はtask側の契約を維持する。
+
 ## Training model compilation
 
 全taskのtraining configは次の共有契約を明示し、標準ではcompileを有効にする。
