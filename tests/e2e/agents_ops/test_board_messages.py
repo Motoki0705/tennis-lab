@@ -23,6 +23,53 @@ from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
 
 
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "INSERT OR REPLACE INTO recipients SELECT * FROM recipients WHERE assignment_id IS NULL",
+        "INSERT OR REPLACE INTO deliveries SELECT * FROM deliveries WHERE assignment_id IS NULL",
+        "UPDATE recipients SET name='Human' WHERE assignment_id IS NULL",
+        "UPDATE deliveries SET state='notified', notified_at='changed' WHERE assignment_id IS NULL",
+        "UPDATE name_assignments SET name='Human' WHERE parent=1",
+        "INSERT INTO name_assignments(name,repo,parent,assigned_at) VALUES('HUMAN','o/r',99,'now')",
+    ],
+)
+def test_reserved_human_rows_preserve_identity_uniqueness_and_delivery_contract(
+    message_world: World, statement: str
+) -> None:
+    message_world.post(to=["human"])
+    before = message_world.message_rows()
+    with (
+        pytest.raises(message_world.board.errors.BoardError),
+        message_world.store.transaction() as connection,
+    ):
+        connection.execute(statement)
+    assert message_world.message_rows() == before
+    with message_world.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT COUNT(*) FROM name_assignments WHERE lower(name)='human'"
+            ).fetchone()[0]
+            == 0
+        )
+
+
+def test_human_delivery_requires_an_existing_human_recipient(
+    message_world: World,
+) -> None:
+    root = message_world.post()
+    before = message_world.message_rows()
+    with (
+        pytest.raises(message_world.board.errors.BoardError),
+        message_world.store.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO deliveries(post_id,assignment_id,idempotency_key,state) VALUES(?,NULL,'orphan-human','available')",
+            (root["id"],),
+        )
+    assert message_world.message_rows() == before
+
+
 @dataclass
 class World:
     board: SimpleNamespace
@@ -58,6 +105,35 @@ class World:
         data = json.loads(self.labels.registry.read_text())
         data["parents"][f"o/r#{parent}"].update(values)
         self.labels.set_registry(data["parents"])
+
+    def live_parent(self, parent: int, *, status: str = "idle") -> str:
+        """A confirmed parent in the fake Herdr, independent of registry status."""
+        owner = json.loads(self.labels.registry.read_text())["parents"][f"o/r#{parent}"]
+        identity = owner["session"]
+        token = self.board.service.owner_token(identity)
+        terminal = f"board-terminal-{parent}"
+        owners = self.labels.registry.parent.parent / "herdr-labels/owners"
+        owners.mkdir(parents=True, exist_ok=True)
+        (owners / f"{token}.json").write_text(
+            json.dumps(
+                {
+                    "version": 1,
+                    "scope": self.board.service.owner_token("/fake/herdr.sock"),
+                    "terminal_id": terminal,
+                }
+            )
+        )
+        pane = f"w1:board-{parent}"
+        runtime = self.labels.read()
+        runtime["panes"][pane] = {
+            "pane_id": pane,
+            "terminal_id": terminal,
+            "agent": identity.partition(":")[0],
+            "agent_status": status,
+            "tokens": {"tl_owner": token},
+        }
+        self.labels.write(runtime)
+        return pane
 
     def post(self, **values: Any) -> dict[str, Any]:
         return cast(
@@ -106,8 +182,8 @@ class World:
                 ).fetchall() == [(self.assignments[parent].id,) for parent in parents]
 
 
-@pytest.fixture
-def world(board: SimpleNamespace, labels: Labels) -> World:
+def make_world(board: SimpleNamespace, labels: Labels) -> World:
+    """Each caller owns its registry, SQLite database and notification routes."""
     for name in ("messages", "delivery", "records", "reactions", "redelivery"):
         setattr(board, name, importlib.import_module("board." + name))
     statuses = ("active", "active", "active", "released", "handoff_pending", "ended")
@@ -136,6 +212,26 @@ def world(board: SimpleNamespace, labels: Labels) -> World:
             )
         board.names.retire_name(connection, "o/r", 6, now=NOW)
     return World(board, labels, assignments, board.delivery.FakeNotifier())
+
+
+@pytest.fixture
+def message_world(board: SimpleNamespace, labels: Labels) -> World:
+    """Message contracts do not need a confirmed unread-display terminal.
+
+    Keep real SQLite, registry locks and notification dispatch. Display routing
+    has dedicated doorbell tests; broadcasts and representative message/display
+    interactions below continue to use the full ``world`` fixture.
+    """
+    return make_world(board, labels)
+
+
+@pytest.fixture
+def world(board: SimpleNamespace, labels: Labels) -> World:
+    """Keep the confirmed-runtime scenario for broadcast and downstream suites."""
+    value = make_world(board, labels)
+    for parent in (1, 2, 3):
+        value.live_parent(parent)
+    return value
 
 
 def test_post_reply_thread_inbox_and_recipient_response(world: World) -> None:
@@ -287,9 +383,9 @@ def test_body_mentions_without_to_are_saved_and_delivered(
 
 @pytest.mark.parametrize("command", ["post", "reply"])
 def test_to_and_body_mentions_form_a_case_insensitive_union(
-    world: World, command: str
+    message_world: World, command: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     other = 1 if root else 2
     name = w.assignments[other].name
@@ -373,9 +469,9 @@ def test_cli_broadcast_is_persisted_and_returned_in_every_post_view(
 @pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize("audience", ["self", "other-self", "all-self"])
 def test_cli_self_recipient_is_rejected_atomically(
-    world: World, command: str, audience: str
+    message_world: World, command: str, audience: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     caller = 2 if root else 1
     names = {
@@ -481,9 +577,9 @@ def test_reply_to_own_post_uses_to_or_mentions_without_inheriting_recipients(
 @pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize("audience", ["named", "all", "mention-only"])
 def test_cli_self_mention_is_rejected_as_self_addressing_atomically(
-    world: World, command: str, audience: str
+    message_world: World, command: str, audience: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     names = {
         "named": [w.assignments[3].name],
@@ -543,6 +639,7 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
     data = json.loads(w.labels.registry.read_text())["parents"]
     data["o/r#7"] = w.labels.owner(identity="codex:board-owner-7")
     w.labels.set_registry(data)
+    w.live_parent(7)
     with pytest.raises(w.board.errors.BoardError, match="o/r#7 has no live board name"):
         w.post(to=["all"])
     assert w.board.messages.status(w.env()) == {"posts": []}
@@ -551,9 +648,9 @@ def test_all_rejects_unassigned_active_parent_atomically(world: World) -> None:
 
 @pytest.mark.parametrize("parent", [4, 5])
 def test_held_visible_to_sender_and_resumes_with_same_assignment(
-    world: World, parent: int
+    message_world: World, parent: int
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(to=[w.assignments[parent].name])
     recipient = root["recipients"][0]
     assert recipient["state"] == recipient["delivery_state"] == "held"
@@ -640,9 +737,9 @@ def test_partial_failure_retry_preserves_keys_and_never_resends_success(
 
 
 def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     w.fake.fail_once_for.add(w.assignments[3].id)
     root = w.post(to=[w.assignments[2].name, w.assignments[3].name])
     original_key = w.fake.calls[-1].idempotency_key
@@ -661,11 +758,68 @@ def test_sender_dispatch_retries_only_failed_recipients_with_the_same_key(
     private_output_absent(json.dumps(result), w.env())
 
 
+def test_sender_dispatch_never_rings_the_human_recipient(message_world: World) -> None:
+    w = message_world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    calls = len(w.fake.calls)
+    result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
+    assert result["status"] == "notified"
+    assert [call.parent for call in w.fake.calls[calls:]] == [3]
+    by_parent = {r["parent"]: r for r in result["recipients"]}
+    assert by_parent[3]["outcome"] == "notified" and by_parent[3]["attempted"]
+    human = by_parent.get(None)
+    if human is not None:
+        assert human["outcome"] == "skipped" and not human["attempted"]
+        assert human["skip_reason"] == "human_recipient"
+    states = {
+        r["name"]: r["delivery_state"] for r in w.own_state(root["id"])["recipients"]
+    }
+    assert states["human"] == "available"
+
+
+@pytest.mark.parametrize("entrypoint", ["api", "cli"])
+def test_dispatch_to_human_leaves_retryable_parent_deliveries_unchanged(
+    message_world: World,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entrypoint: str,
+) -> None:
+    w = message_world
+    w.fake.fail_once_for.add(w.assignments[3].id)
+    root = w.post(to=["human", w.assignments[3].name])
+    parent = next(row for row in root["recipients"] if row["parent"] == 3)
+    assert parent["delivery_state"] == "delivery_failed" and parent["retryable"]
+    before = w.message_rows()
+    calls = list(w.fake.calls)
+    if entrypoint == "cli":
+        cli = importlib.import_module("board.__main__")
+        monkeypatch.setattr(cli, "os", SimpleNamespace(environ=w.env()))
+        monkeypatch.setattr(cli, "configured", lambda _env: w.routes)
+        assert cli.main(["dispatch", "--post", root["id"], "--to", "HuMaN"]) == 1
+        captured = capsys.readouterr()
+        assert captured.err == ""
+        result = json.loads(captured.out)
+    else:
+        result = w.board.redelivery.dispatch_post(
+            w.env(), w.routes, post_id=root["id"], to="human"
+        )
+    assert result["status"] == "no_targets"
+    assert len(result["recipients"]) == 1
+    human = result["recipients"][0]
+    assert human["name"] == "human" and human["assignment_id"] is None
+    assert human["post_id"] == root["id"]
+    assert human["outcome"] == "skipped" and not human["attempted"]
+    assert human["skip_reason"] == "human_recipient"
+    assert w.fake.calls == calls
+    assert w.message_rows() == before
+
+
 def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry_flag(
-    world: World,
+    message_world: World,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    w = world
+    w = message_world
     # Simulate interruption after the post commit and before initial dispatch.
     with monkeypatch.context() as patch:
         patch.setattr(w.board.messages, "dispatch", lambda *_args, **_kwargs: [])
@@ -688,9 +842,9 @@ def test_sender_dispatch_selects_saved_recipient_and_sends_pending_without_retry
 
 @pytest.mark.parametrize("state", ["notified", "read", "uncertain", "terminal", "held"])
 def test_sender_dispatch_reports_skips_without_notifying(
-    world: World, state: str
+    message_world: World, state: str
 ) -> None:
-    w = world
+    w = message_world
     if state == "held":
         root = w.post(to=[w.assignments[4].name])
         w.change(
@@ -733,9 +887,9 @@ def test_sender_dispatch_reports_skips_without_notifying(
 
 
 def test_sender_dispatch_reports_retry_failure_and_keeps_it_retryable(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     w.fake.accepting = False
     root = w.post()
     result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
@@ -752,9 +906,9 @@ def test_sender_dispatch_reports_retry_failure_and_keeps_it_retryable(
 
 @pytest.mark.parametrize("status", ["handoff_pending", "ended"])
 def test_sender_dispatch_rechecks_recipient_before_attempt(
-    world: World, status: str
+    message_world: World, status: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(notifiers={})
     w.change(2, status=status)
     result = w.board.redelivery.dispatch_post(w.env(), w.routes, post_id=root["id"])
@@ -773,13 +927,13 @@ def test_sender_dispatch_rechecks_recipient_before_attempt(
     "change", ["released", "ended", "replaced", "assignment", "identity"]
 )
 def test_sender_dispatch_rechecks_authority_after_notification_lock_wait(
-    world: World,
+    message_world: World,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
     entrypoint: str,
     change: str,
 ) -> None:
-    w = world
+    w = message_world
     w.fake.fail_once_for.update(w.assignments[p].id for p in (2, 3))
     root = w.post(to=[w.assignments[p].name for p in (2, 3)])
     w.fake.calls.clear()
@@ -842,9 +996,9 @@ def test_sender_dispatch_rechecks_authority_after_notification_lock_wait(
 
 @pytest.mark.parametrize("change", ["released", "replaced"])
 def test_sender_dispatch_rechecks_authority_before_each_recipient(
-    world: World, monkeypatch: pytest.MonkeyPatch, change: str
+    message_world: World, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(to=[w.assignments[p].name for p in (2, 3)], notifiers={})
     before = w.message_rows()["deliveries"]
     env = w.env()
@@ -872,8 +1026,10 @@ def test_sender_dispatch_rechecks_authority_before_each_recipient(
     assert after[1:] == before[1:]
 
 
-def test_concurrent_sender_dispatch_reports_only_its_own_attempt(world: World) -> None:
-    w = world
+def test_concurrent_sender_dispatch_reports_only_its_own_attempt(
+    message_world: World,
+) -> None:
+    w = message_world
     root = w.post(notifiers={})
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(
@@ -891,9 +1047,9 @@ def test_concurrent_sender_dispatch_reports_only_its_own_attempt(world: World) -
 
 @pytest.mark.parametrize("caller", [2, 3])
 def test_cli_dispatch_rejects_recipients_and_other_parents(
-    world: World, caller: int
+    message_world: World, caller: int
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(notifiers={})
     before = w.message_rows()
     result = run_board(w.env(caller), "dispatch", "--post", root["id"])
@@ -905,9 +1061,9 @@ def test_cli_dispatch_rejects_recipients_and_other_parents(
 
 @pytest.mark.parametrize("post_id", ["f" * 32, "invalid"])
 def test_cli_dispatch_rejects_missing_or_invalid_post(
-    world: World, post_id: str
+    message_world: World, post_id: str
 ) -> None:
-    w = world
+    w = message_world
     before = w.message_rows()
     result = run_board(w.env(), "dispatch", "--post", post_id)
     assert result.returncode == 2 and result.stdout == ""
@@ -919,9 +1075,9 @@ def test_cli_dispatch_rejects_missing_or_invalid_post(
 
 @pytest.mark.parametrize("to", ["all", "unknown", "self", "nonrecipient"])
 def test_cli_dispatch_rejects_names_outside_saved_recipients(
-    world: World, to: str
+    message_world: World, to: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(notifiers={})
     name = {"self": w.assignments[1].name, "nonrecipient": w.assignments[3].name}.get(
         to, to
@@ -934,9 +1090,9 @@ def test_cli_dispatch_rejects_names_outside_saved_recipients(
 
 @pytest.mark.parametrize("crash", [False, True])
 def test_ambiguous_acceptance_or_process_interrupt_is_durable_and_not_retried(
-    world: World, crash: bool
+    message_world: World, crash: bool
 ) -> None:
-    w = world
+    w = message_world
     calls = []
 
     def uncertain(notification: Any) -> Any:
@@ -960,8 +1116,10 @@ def test_ambiguous_acceptance_or_process_interrupt_is_durable_and_not_retried(
     assert "private transport" not in json.dumps(root)
 
 
-def test_concurrent_dispatch_is_serialized_and_fake_deduplicates(world: World) -> None:
-    w = world
+def test_concurrent_dispatch_is_serialized_and_fake_deduplicates(
+    message_world: World,
+) -> None:
+    w = message_world
     root = w.post(notifiers={})
     assert root["recipients"][0]["delivery_reason"] == "notifier_unconfigured"
     with ThreadPoolExecutor(max_workers=4) as pool:
@@ -980,9 +1138,9 @@ def test_concurrent_dispatch_is_serialized_and_fake_deduplicates(world: World) -
 
 
 def test_claude_receiver_must_accept_and_notified_does_not_read_or_answer(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     w.fake.accepting = False
     root = w.post(to=[w.assignments[3].name])
     recipient = root["recipients"][0]
@@ -1056,9 +1214,9 @@ def test_prose_mentions_add_destinations_but_code_email_and_unknown_handles_do_n
     ],
 )
 def test_code_mentions_are_neither_destinations_nor_recipient_errors(
-    world: World, code: str
+    message_world: World, code: str
 ) -> None:
-    w = world
+    w = message_world
     mentions = " ".join(
         f"@{name}"
         for name in (
@@ -1120,12 +1278,13 @@ def test_code_mentions_are_neither_destinations_nor_recipient_errors(
     ],
 )
 def test_container_code_mentions_do_not_change_post_or_reply_delivery(
-    world: World, command: str, fence: str, outside: bool, template: str
+    message_world: World, command: str, fence: str, outside: bool, template: str
 ) -> None:
-    w = world
+    w = message_world
     # A fourth active parent makes accidental @all expansion observable even
     # when a prose mention adds the third parent intentionally.
     w.change(4, status="active")
+    w.live_parent(4)
     root = w.post() if command == "reply" else None
     sender, target = (2, 1) if root else (1, 2)
     mentions = " ".join(
@@ -1177,9 +1336,9 @@ def test_container_code_mentions_do_not_change_post_or_reply_delivery(
     ],
 )
 def test_unclosed_container_fence_ends_with_its_container(
-    world: World, command: str, fence: str, template: str
+    message_world: World, command: str, fence: str, template: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     sender = 2 if root else 1
     body = template.format(
@@ -1231,9 +1390,9 @@ def test_unclosed_container_fence_ends_with_its_container(
     ],
 )
 def test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery(
-    world: World, command: str, template: str
+    message_world: World, command: str, template: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(to=[w.assignments[3].name]) if command == "reply" else None
     body = template.format(other=w.assignments[2].name)
     # Another explicit or automatic recipient would let a missing mention
@@ -1265,9 +1424,9 @@ def test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_deliver
     ],
 )
 def test_container_and_fence_boundaries_preserve_prose_destinations(
-    world: World, template: str
+    message_world: World, template: str
 ) -> None:
-    w = world
+    w = message_world
     body = template.format(
         mentions=f"@all @{w.assignments[1].name}", other=w.assignments[3].name
     )
@@ -1287,9 +1446,9 @@ def test_container_and_fence_boundaries_preserve_prose_destinations(
     ],
 )
 def test_invalid_fence_or_list_syntax_keeps_prose_mentions(
-    world: World, template: str
+    message_world: World, template: str
 ) -> None:
-    w = world
+    w = message_world
     post = w.post(to=[], body=template.format(other=w.assignments[3].name))
     assert post["broadcast"] is False
     w.assert_delivered(post, [3])
@@ -1297,9 +1456,9 @@ def test_invalid_fence_or_list_syntax_keeps_prose_mentions(
 
 @pytest.mark.parametrize("command", ["post", "reply"])
 def test_code_mentions_do_not_hide_adjacent_prose_destinations(
-    world: World, command: str
+    message_world: World, command: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     body = (
         f"`@{w.assignments[2 if root else 1].name}` is an example.\n"
@@ -1320,10 +1479,12 @@ def test_code_mentions_do_not_hide_adjacent_prose_destinations(
 
 @pytest.mark.parametrize("body", ["An unmatched ` @{name}.", r"Escaped \` @{name} \`."])
 def test_unmatched_or_escaped_backticks_leave_mentions_in_prose(
-    world: World, body: str
+    message_world: World, body: str
 ) -> None:
-    post = world.post(to=[], body=body.format(name=world.assignments[3].name))
-    world.assert_delivered(post, [3])
+    post = message_world.post(
+        to=[], body=body.format(name=message_world.assignments[3].name)
+    )
+    message_world.assert_delivered(post, [3])
 
 
 @pytest.mark.parametrize(
@@ -1347,9 +1508,9 @@ def test_unmatched_or_escaped_backticks_leave_mentions_in_prose(
     ],
 )
 def test_private_body_and_subject_are_rejected_without_echo(
-    world: World, value: str
+    message_world: World, value: str
 ) -> None:
-    w = world
+    w = message_world
     for field in ("body", "subject"):
         with pytest.raises(w.board.errors.BoardError):
             w.post(**{field: value})
@@ -1375,9 +1536,9 @@ def test_private_body_and_subject_are_rejected_without_echo(
 
 
 def test_known_other_parent_session_and_identifier_output_are_guarded(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     for parent in (1, 2, 6):
         env = w.env(parent)
         secret = env.get("CLAUDE_CODE_SESSION_ID", env.get("CODEX_SESSION_ID"))
@@ -1387,9 +1548,9 @@ def test_known_other_parent_session_and_identifier_output_are_guarded(
 
 @pytest.mark.parametrize("recipient", ["unknown", "retired", "unassigned"])
 def test_cli_recipient_rejections_are_exit_2_and_atomic(
-    world: World, recipient: str
+    message_world: World, recipient: str
 ) -> None:
-    w = world
+    w = message_world
     name = {
         "unknown": "NotInCatalog",
         "retired": w.assignments[6].name,
@@ -1423,9 +1584,9 @@ def test_cli_recipient_rejections_are_exit_2_and_atomic(
 @pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize("recipient", ["retired", "unassigned", "unregistered"])
 def test_invalid_known_body_mention_rejects_all_destinations_atomically(
-    world: World, command: str, recipient: str
+    message_world: World, command: str, recipient: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post() if command == "reply" else None
     caller = 2 if root else 1
     name = {
@@ -1464,9 +1625,9 @@ def test_invalid_known_body_mention_rejects_all_destinations_atomically(
     "body", ["No recipients.", "@NotInTheCatalog", "`@all`", "```text\n@all\n```"]
 )
 def test_post_without_to_or_prose_board_mentions_has_no_recipient_and_saves_nothing(
-    world: World, body: str
+    message_world: World, body: str
 ) -> None:
-    w = world
+    w = message_world
     before = w.message_rows()
     with pytest.raises(w.board.errors.BoardError, match="at least one recipient"):
         w.post(to=[], body=body)
@@ -1502,9 +1663,9 @@ def test_post_without_to_or_prose_board_mentions_has_no_recipient_and_saves_noth
     ],
 )
 def test_cli_identity_rejects_every_message_mutation(
-    world: World, identity: str
+    message_world: World, identity: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     body_file = w.labels.root / "input.md"
     body_file.write_text("A public update.")
@@ -1555,8 +1716,10 @@ def test_cli_identity_rejects_every_message_mutation(
     assert w.own_state(root["id"])["reactions"] == []
 
 
-def test_unrelated_parent_cannot_read_reply_ack_or_access_thread(world: World) -> None:
-    w = world
+def test_unrelated_parent_cannot_read_reply_ack_or_access_thread(
+    message_world: World,
+) -> None:
+    w = message_world
     root = w.post()
     for action in (
         lambda: w.board.messages.read(w.env(3), root["id"]),
@@ -1570,8 +1733,8 @@ def test_unrelated_parent_cannot_read_reply_ack_or_access_thread(world: World) -
     assert w.own_state(root["id"])["recipients"][0]["state"] == "notified"
 
 
-def test_cli_all_commands_and_safe_errors(world: World) -> None:
-    w = world
+def test_cli_all_commands_and_safe_errors(message_world: World) -> None:
+    w = message_world
     body_file = w.labels.root / "input.md"
     body_file.write_text("Public CLI message.")
     created = run_board(
@@ -1621,9 +1784,9 @@ def test_cli_all_commands_and_safe_errors(world: World) -> None:
 
 
 def test_read_failed_delivery_remains_distinct_and_skips_unnecessary_bell(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     root = w.post(notifiers={})
     read = w.board.messages.read(w.env(2), root["id"])["post"]["recipients"][0]
     assert read["state"] == "read" and read["delivery_state"] == "delivery_failed"
@@ -1636,9 +1799,9 @@ def test_read_failed_delivery_remains_distinct_and_skips_unnecessary_bell(
 
 
 def test_real_unread_and_response_waiting_block_reuse_then_history_stays_fixed(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     target = w.assignments[2]
     with w.store.transaction() as connection:
@@ -1692,8 +1855,10 @@ def test_real_unread_and_response_waiting_block_reuse_then_history_stays_fixed(
     )
 
 
-def test_reply_never_redirects_to_reused_original_author_name(world: World) -> None:
-    w = world
+def test_reply_never_redirects_to_reused_original_author_name(
+    message_world: World,
+) -> None:
+    w = message_world
     root = w.post()
     author = w.assignments[1]
     with w.store.transaction() as connection:
@@ -1730,9 +1895,9 @@ def test_roster_gets_real_unread_counts_and_last_post_time(world: World) -> None
 
 
 def test_notifier_observes_committed_post_without_sqlite_writer_lock(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     seen = []
 
     def route(notification: Any) -> Any:
@@ -1755,8 +1920,10 @@ def test_notifier_observes_committed_post_without_sqlite_writer_lock(
     assert root["recipients"][0]["state"] == "notified"
 
 
-def test_recipient_ending_or_leaving_before_retry_is_rechecked(world: World) -> None:
-    w = world
+def test_recipient_ending_or_leaving_before_retry_is_rechecked(
+    message_world: World,
+) -> None:
+    w = message_world
     root = w.post(notifiers={})
     w.change(2, status="handoff_pending")
     w.board.delivery.dispatch(w.env(), w.routes, post_id=root["id"])
@@ -1804,9 +1971,9 @@ def test_v1_migration_preserves_name_lifetimes_and_nullable_identifier(
 
 @pytest.mark.parametrize("broadcast", [None, -1, 2])
 def test_posts_reject_non_boolean_broadcast(
-    world: World, broadcast: int | None
+    message_world: World, broadcast: int | None
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
         connection.execute(
@@ -1820,8 +1987,8 @@ def test_posts_reject_non_boolean_broadcast(
         assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 1
 
 
-def test_v2_schema_without_broadcast_is_rejected(world: World) -> None:
-    w = world
+def test_v2_schema_without_broadcast_is_rejected(message_world: World) -> None:
+    w = message_world
     with sqlite3.connect(w.store.path) as connection:
         connection.execute("ALTER TABLE posts DROP COLUMN broadcast")
         connection.execute("DROP TABLE name_renames")
@@ -1864,9 +2031,9 @@ def test_v2_schema_without_broadcast_is_rejected(world: World) -> None:
     ],
 )
 def test_history_cannot_be_edited_deleted_or_retargeted(
-    world: World, statement: str
+    message_world: World, statement: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     importlib.import_module("board.renaming").rename(w.env(), parent=1)
     with pytest.raises(w.board.errors.BoardError), w.store.transaction() as connection:
@@ -1875,9 +2042,9 @@ def test_history_cannot_be_edited_deleted_or_retargeted(
 
 
 def test_reactions_are_idempotent_and_each_participant_removes_only_their_own(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     post = w.post()
     react = w.board.reactions.react
     first = react(w.env(2), post_id=post["id"], emoji="+1", now=NOW)["post"]
@@ -1935,18 +2102,20 @@ def test_reactions_are_idempotent_and_each_participant_removes_only_their_own(
         ("warning", "⚠️"),
     ],
 )
-def test_fixed_reaction_codes(world: World, code: str, glyph: str) -> None:
-    root = world.post()
-    result = world.board.reactions.react(world.env(2), post_id=root["id"], emoji=code)
+def test_fixed_reaction_codes(message_world: World, code: str, glyph: str) -> None:
+    root = message_world.post()
+    result = message_world.board.reactions.react(
+        message_world.env(2), post_id=root["id"], emoji=code
+    )
     assert result["post"]["reactions"][0]["emoji"] == glyph
 
 
 @pytest.mark.parametrize("remove", [False, True])
 @pytest.mark.parametrize("invalid", ["outsider", "emoji", "missing", "invalid-id"])
 def test_cli_reaction_rejections_leave_all_rows_unchanged(
-    world: World, remove: bool, invalid: str
+    message_world: World, remove: bool, invalid: str
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")
     before = w.message_rows()
@@ -1976,9 +2145,9 @@ def test_cli_reaction_rejections_leave_all_rows_unchanged(
 
 
 def test_reactions_allow_later_thread_participants_without_marking_posts_read(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     reply = w.board.messages.reply(
         w.env(2),
@@ -1997,9 +2166,9 @@ def test_reactions_allow_later_thread_participants_without_marking_posts_read(
 
 @pytest.mark.parametrize("acknowledgement", [None, "accepted", "declined", "done"])
 def test_reactions_do_not_change_reads_responses_deliveries_or_bells(
-    world: World, acknowledgement: str | None, monkeypatch: pytest.MonkeyPatch
+    message_world: World, acknowledgement: str | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     if acknowledgement:
         w.board.messages.ack(w.env(2), post_id=root["id"], state=acknowledgement)
@@ -2021,8 +2190,8 @@ def test_reactions_do_not_change_reads_responses_deliveries_or_bells(
         assert w.board.activity.summary(connection, w.assignments[2].id) == activity
 
 
-def test_cli_reactions_appear_in_every_post_projection(world: World) -> None:
-    w = world
+def test_cli_reactions_appear_in_every_post_projection(message_world: World) -> None:
+    w = message_world
     root = w.post()
     added = run_board(w.env(2), "react", "--post", root["id"], "--emoji", "tada")
     assert added.returncode == 0, added.stderr
@@ -2048,9 +2217,9 @@ def test_cli_reactions_appear_in_every_post_projection(world: World) -> None:
 
 
 def test_reactors_keep_assignment_identity_across_rename_and_name_reuse(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     first = w.board.reactions.react(w.env(2), post_id=root["id"], emoji="+1")["post"]
     renamed = importlib.import_module("board.renaming").rename(w.env(), parent=2)
@@ -2080,9 +2249,9 @@ def test_reactors_keep_assignment_identity_across_rename_and_name_reuse(
 
 
 def test_reaction_schema_can_represent_the_reserved_human_without_a_parent(
-    world: World,
+    message_world: World,
 ) -> None:
-    w = world
+    w = message_world
     root = w.post()
     with w.store.transaction() as connection:
         connection.execute(
@@ -2109,12 +2278,12 @@ def test_reaction_schema_can_represent_the_reserved_human_without_a_parent(
     [("parent", None), ("human", 1), ("other", None), ("parent", 9999)],
 )
 def test_reaction_schema_rejects_invalid_reactor_identity(
-    world: World, reactor_type: str, assignment_id: int | None
+    message_world: World, reactor_type: str, assignment_id: int | None
 ) -> None:
-    root = world.post()
+    root = message_world.post()
     with (
-        pytest.raises(world.board.errors.BoardError),
-        world.store.transaction() as connection,
+        pytest.raises(message_world.board.errors.BoardError),
+        message_world.store.transaction() as connection,
     ):
         connection.execute(
             "INSERT INTO reactions VALUES(?,?,?,?,?)",
@@ -2123,6 +2292,6 @@ def test_reaction_schema_rejects_invalid_reactor_identity(
                 reactor_type,
                 assignment_id,
                 "+1",
-                world.board.names.timestamp(NOW),
+                message_world.board.names.timestamp(NOW),
             ),
         )

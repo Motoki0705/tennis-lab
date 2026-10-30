@@ -448,7 +448,7 @@ def verify_completion(session: ParentSession) -> list[int]:
         )
         require_request_authorization(session, request, required_issues={n})
         view = merge_gate.collect(session, request)
-        _, _, state, errors, _ = merge_gate.load_evidence(session, request, view)
+        _, _, state, errors = merge_gate.load_evidence(session, request, view)
         if (
             errors
             or view.errors[pr["number"]]

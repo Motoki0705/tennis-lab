@@ -1,0 +1,790 @@
+diff --git a/src/tennis_scene/README.md b/src/tennis_scene/README.md
+index c145156c6..462f021f7 100644
+--- a/src/tennis_scene/README.md
++++ b/src/tennis_scene/README.md
+@@ -9,7 +9,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不
+ 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
+ 3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
+ 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
+-5. 人物の同一ID観測と、各カメラの有効なボール観測を三角測量。
++5. ボールの動きの外れ値を除去し、頑健な2次LOESSで平滑化。人物の同一ID観測と、各カメラの採用した実ボール観測を三角測量。
+ 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
+ 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
+ 
+@@ -56,7 +56,7 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
+ CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
+ 
+ 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
+-無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の観測maskを保持して三角測量します。2view未満の時刻は3Dでも欠損です。
++無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の実観測から外れ値を除いたmaskで三角測量します。診断用の補間点は観測に数えず、2view未満の時刻は3Dでも欠損です。
+ 
+ sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
+ 決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する
+@@ -94,7 +94,7 @@ SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid`
+ camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS・frame数が異なる場合は拒否します。
+ 同期推定や欠測の補間は行わず、SceneResult v2の有効性maskを既存rendererへそのまま渡します。
+ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
+-[生成記録](../../knowledge/nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)を参照してください。
++[LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+ 
+ ## Blenderアニメーション
+ 
+diff --git a/src/tennis_scene/configs/pipeline.yaml b/src/tennis_scene/configs/pipeline.yaml
+index 0d5e07c34..96c927139 100644
+--- a/src/tennis_scene/configs/pipeline.yaml
++++ b/src/tennis_scene/configs/pipeline.yaml
+@@ -139,6 +139,17 @@ ball_detection:
+     k_support: 2
+     max_support_gap: 5
+     max_passes: 2
++# CPU temporal filtering before side resolution, alignment and triangulation.
++# Interpolated coordinates are diagnostic only; geometry still requires real observations.
++ball_smoothing:
++  enabled: true
++  consensus_seconds: 0.7
++  trials: 80
++  minimum_residual_diagonal: 0.012
++  residual_mad_multiplier: 4.0
++  max_gap_seconds: 0.20
++  loess_seconds: 0.35
++  seed: 42
+ # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
+ frame_sampling:
+   max_frames: 1024
+diff --git a/src/tennis_scene/configuration.py b/src/tennis_scene/configuration.py
+index 45ebb1297..4729f3e36 100644
+--- a/src/tennis_scene/configuration.py
++++ b/src/tennis_scene/configuration.py
+@@ -58,6 +58,7 @@ from src.utils.configuration import (
+     SemanticConfigurationError,
+     StrictConfigSchema,
+ )
++from src.utils.geometry.temporal_smoothing import TemporalSmoothingConfig
+ from src.utils.paths import PROJECT_ROOT
+ from src.utils.rendering.camera_view import CameraController
+ 
+@@ -214,6 +215,10 @@ _BALL_SCHEMA = StrictConfigSchema(
+     },
+ )
+ _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
++_BALL_SMOOTHING_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_smoothing", fields={
++    field.name: ConfigField.of(type(getattr(TemporalSmoothingConfig(), field.name)))
++    for field in fields(TemporalSmoothingConfig)
++})
+ _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observations", fields={
+     "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
+     "sideline_margin_m": ConfigField.of(float, int), "baseline_margin_m": ConfigField.of(float, int),
+@@ -256,6 +261,7 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
+     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
+     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
+     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
++    "ball_smoothing": ConfigField.mapping(_BALL_SMOOTHING_SCHEMA),
+     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
+     "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
+     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
+@@ -300,6 +306,7 @@ class PipelineRuntimeConfig:
+     tracking_encoder_weights: Path
+     aflink_checkpoint: Path
+     merge_duplicate_person_boxes: bool
++    ball_smoothing: TemporalSmoothingConfig
+ 
+     @classmethod
+     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
+@@ -354,6 +361,7 @@ class PipelineRuntimeConfig:
+                                            external_root=roots.external_asset_root)
+         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
+         ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
++        ball_smoothing = TemporalSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
+         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
+         _positive(sampling_max_frames, name="frame_sampling.max_frames")
+         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
+@@ -397,7 +405,7 @@ class PipelineRuntimeConfig:
+         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
+             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
+-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))
++            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
+ 
+ 
+ _EXPORT_SCHEMA = StrictConfigSchema(
+diff --git a/src/tennis_scene/pipeline/README.md b/src/tennis_scene/pipeline/README.md
+index e3f1bba46..81b58863e 100644
+--- a/src/tennis_scene/pipeline/README.md
++++ b/src/tennis_scene/pipeline/README.md
+@@ -119,10 +119,22 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不
+ ## ボール点と欠損
+ 
+ `ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。
+-`ball_points` schema v3は検出器の `observed` とconfidenceを保持する。
+-補間点・occlusion推定点は観測扱いせず、欠損はゼロ値とfalse maskで表す。
++`ball_points` schema v4は、`ball_smoothing`設定で局所的な2次運動consensusによる外れ値除去と、
++confidence重み付きの頑健な2次LOESSをCPUで実行する。時間窓は元動画のFPS、
++距離閾値は画像の対角長に合わせる。短い急な方向転換は近傍の実測移動量で再検査する。
++`observed`は採用した**実検出だけ**で、confidenceも元検出値を保持する。
++`smoothing`には`source_observed`・`accepted`・`rejected`・`interpolated`・`smoothed`・
++`consensus_supported`・`restored_turn`を個別に保存する。補間座標はこの診断だけに保持し、
++side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、maskをfalseにする。
++長い欠損と両端は埋めず、局所支持の少ない実観測は元の座標と`smoothed=false`を明示して保持する。
+ 有効な観測が2view未満の時刻は3Dでも欠損のまま保持する。
+-旧v1/v2 storeはload不可。executeで再生成する。2D Refinerのbundleは不要。
++旧v1/v2/v3 storeは現行pipelineへload不可。executeで再生成する。galleryは履歴v3とv4を区別して表示する。
++`ball_smoothing.enabled=false`は実観測だけを返す明示的な比較設定。2D Refinerのbundleは不要。
++
++保存済みREADME sceneの比較では、通常runnerのcode fingerprint検証を迂回して旧artifactを
++新しい実行identityへ付け替えない。カメラ・人物を固定する実験用replayを別出力として保存し、
++元storeの依存鎖・checksum、元動画の明示的なpath対応、再実行したcomponentと固定した配列を記録する。
++コマンド・定量比較・表示検証は[CPU replay記録](../../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照。
+ 
+ 
+ ## 成果物
+diff --git a/src/tennis_scene/pipeline/components/ball_points.py b/src/tennis_scene/pipeline/components/ball_points.py
+index ae11ae2cb..9ad91e989 100644
+--- a/src/tennis_scene/pipeline/components/ball_points.py
++++ b/src/tennis_scene/pipeline/components/ball_points.py
+@@ -1,4 +1,4 @@
+-"""Observed detector points; interpolated and occlusion estimates stay missing."""
++"""Motion-consistent, LOESS-smoothed detector points with explicit provenance."""
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+@@ -8,12 +8,21 @@ from numpy.typing import NDArray
+ 
+ from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+ from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort
++from src.utils.geometry.temporal_smoothing import (
++    DEFAULT_TEMPORAL_SMOOTHING,
++    TemporalSmoothingConfig,
++    TemporalSmoothingResult,
++    smooth_2d_trajectory,
++)
++
++BALL_POINTS_PORT = InputPort("ball_points", 4)
+ 
+ 
+ @dataclass(frozen=True)
+ class BallPointsInput:
+     detections: BallDetectionOutput
+     source_size_wh: tuple[int, int]
++    fps: float
+ 
+ 
+ @dataclass(frozen=True)
+@@ -25,6 +34,7 @@ class BallPointsOutput:
+     uv_px: NDArray[np.float32]
+     confidence: NDArray[np.float32]
+     observed: NDArray[np.bool_]
++    smoothing: TemporalSmoothingResult
+ 
+     def __post_init__(self) -> None:
+         n = len(self.frame_indices)
+@@ -43,14 +53,24 @@ class BallPointsOutput:
+             raise ValueError("Ball point confidence must be in [0,1]")
+         if np.any(self.uv_px[~self.observed] != 0) or np.any(self.confidence[~self.observed] != 0):
+             raise ValueError("Missing points must have zero coordinates/confidence")
++        if not np.array_equal(self.observed, self.smoothing.accepted):
++            raise ValueError("Ball observation mask must equal accepted source measurements")
++        if not np.array_equal(self.uv_px[self.observed], self.smoothing.coordinates[self.observed]):
++            raise ValueError("Accepted ball coordinates must match the smoothing result")
+ 
+ 
+ class BallPointsModule:
+     io = ComponentIO("ball_points", BallPointsInput, BallPointsOutput,
+-                     {"detections": InputPort("ball_detections", 2)}, "ball_points", version=3)
++                     {"detections": InputPort("ball_detections", 2)}, BALL_POINTS_PORT.schema, version=BALL_POINTS_PORT.version)
++
++    def __init__(self, config: TemporalSmoothingConfig = DEFAULT_TEMPORAL_SMOOTHING) -> None:
++        self.config = config
+ 
+     def process(self, inputs: BallPointsInput) -> BallPointsOutput:
+         row = inputs.detections
++        smoothing = smooth_2d_trajectory(row.uv_px, row.confidence, row.observed,
++            fps=inputs.fps, image_size_wh=inputs.source_size_wh, config=self.config)
++        observed = smoothing.accepted
+         return BallPointsOutput(row.camera_id, inputs.source_size_wh, row.frame_indices.copy(),
+-                                np.where(row.observed[:, None], row.uv_px, 0).astype(np.float32),
+-                                np.where(row.observed, row.confidence, 0).astype(np.float32), row.observed.copy())
++                                np.where(observed[:, None], smoothing.coordinates, 0).astype(np.float32),
++                                np.where(observed, row.confidence, 0).astype(np.float32), observed.copy(), smoothing)
+diff --git a/src/tennis_scene/pipeline/components/ball_reconstruction.py b/src/tennis_scene/pipeline/components/ball_reconstruction.py
+index ae2ca84e9..61c8c7d60 100644
+--- a/src/tennis_scene/pipeline/components/ball_reconstruction.py
++++ b/src/tennis_scene/pipeline/components/ball_reconstruction.py
+@@ -1,4 +1,4 @@
+-"""Triangulate the single ball supplied by each camera's unfiltered refiner."""
++"""Triangulate the single ball supplied by each camera's accepted, smoothed observations."""
+ 
+ from __future__ import annotations
+ 
+diff --git a/src/tennis_scene/pipeline/components/camera_alignment.py b/src/tennis_scene/pipeline/components/camera_alignment.py
+index 844196c68..5f01d3f86 100644
+--- a/src/tennis_scene/pipeline/components/camera_alignment.py
++++ b/src/tennis_scene/pipeline/components/camera_alignment.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+ 
++from src.tennis_scene.pipeline.components.ball_points import BALL_POINTS_PORT
+ from src.tennis_scene.pipeline.components.camera_geometry import (
+     CameraGeometryConfig,
+     CameraGeometryResult,
+@@ -40,7 +41,7 @@ class CameraAlignmentOutput:
+ def observation_ports(camera_ids: tuple[str, ...]) -> dict[str, InputPort]:
+     return {"calibration": InputPort("local_court_calibration"), "identities": IDENTITIES_PORT,
+         **{f"pose_{c}": InputPort("person_poses") for c in camera_ids},
+-        **{f"ball_{c}": InputPort("ball_points", version=3) for c in camera_ids}}
++        **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}}
+ 
+ 
+ class CameraAlignmentModule:
+diff --git a/src/tennis_scene/pipeline/components/court_side.py b/src/tennis_scene/pipeline/components/court_side.py
+index a58d544c1..4fb0750a1 100644
+--- a/src/tennis_scene/pipeline/components/court_side.py
++++ b/src/tennis_scene/pipeline/components/court_side.py
+@@ -12,6 +12,7 @@ from src.tasks.court_side.hypothesis import (
+     HypothesisScore,
+     decide_court_side,
+ )
++from src.tennis_scene.pipeline.components.ball_points import BALL_POINTS_PORT
+ from src.tennis_scene.pipeline.components.court_calibration import (
+     CourtCalibrationOutput,
+ )
+@@ -66,7 +67,7 @@ class CourtSideModule:
+     def __init__(self, camera_ids: tuple[str, ...], config: CourtSideConfig, *, max_frames: int) -> None:
+         self.config, self.max_frames = config, max_frames
+         self.io = ComponentIO(COURT_SIDE, CourtSideInput, CourtSideOutput,
+-            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": InputPort("ball_points", version=3) for c in camera_ids}},
++            {"calibration": InputPort("local_court_calibration"), **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}},
+             SIDE_PORT.schema, SIDE_PORT.version)
+ 
+     def process(self, inputs: CourtSideInput) -> CourtSideOutput:
+diff --git a/src/tennis_scene/pipeline/components/triangulation.py b/src/tennis_scene/pipeline/components/triangulation.py
+index 59a4670d4..ce1435c65 100644
+--- a/src/tennis_scene/pipeline/components/triangulation.py
++++ b/src/tennis_scene/pipeline/components/triangulation.py
+@@ -4,6 +4,7 @@ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+ 
++from src.tennis_scene.pipeline.components.ball_points import BALL_POINTS_PORT
+ from src.tennis_scene.pipeline.components.ball_reconstruction import (
+     BallReconstructionResult,
+     reconstruct_ball,
+@@ -56,7 +57,7 @@ class BallTriangulationModule:
+         self.reprojection_px, self.min_frames, self.enabled = reprojection_px, min_frames, enabled
+         self.io = ComponentIO("ball_triangulation", TriangulationInput, BallTriangulationOutput,
+             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
+-             **{f"ball_{c}": InputPort("ball_points", version=3) for c in camera_ids}}, "ball_trajectory")
++             **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}}, "ball_trajectory")
+ 
+     def process(self, inputs: TriangulationInput) -> BallTriangulationOutput:
+         geometry = inputs.alignment.geometry
+diff --git a/src/tennis_scene/pipeline/definition.py b/src/tennis_scene/pipeline/definition.py
+index 363f0bd99..08ab9e32d 100644
+--- a/src/tennis_scene/pipeline/definition.py
++++ b/src/tennis_scene/pipeline/definition.py
+@@ -145,9 +145,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
+             BallDetectionInputAssembler(), {},
+             lambda: {"config": cfg.processing_settings["ball_detection"],
+                      "checkpoint": file_identity(cfg.ball_detection.checkpoint)}, camera=camera)
+-        add(f"ball_points/{camera}", BallPointsModule(), BallPointsInputAssembler(),
++        add(f"ball_points/{camera}", BallPointsModule(cfg.ball_smoothing), BallPointsInputAssembler(),
+             {"detections": f"ball_detection/{camera}"},
+-            lambda: {"point": "detector_observed_only"}, camera=camera)
++            lambda: {"point": "motion_consensus_loess_observed_only", "smoothing": cfg.ball_smoothing}, camera=camera)
+     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
+         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
+     for camera in ids:
+diff --git a/src/tennis_scene/pipeline/input_assembly/ball_points.py b/src/tennis_scene/pipeline/input_assembly/ball_points.py
+index 848066e4a..2412412a1 100644
+--- a/src/tennis_scene/pipeline/input_assembly/ball_points.py
++++ b/src/tennis_scene/pipeline/input_assembly/ball_points.py
+@@ -12,7 +12,7 @@ from src.tennis_scene.pipeline.contracts import AssemblyContext
+ 
+ @dataclass(frozen=True)
+ class BallPointsInputAssembler:
+-    version: int = 2
++    version: int = 3
+ 
+     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> BallPointsInput:
+         row = artifacts["detections"]
+@@ -20,4 +20,4 @@ class BallPointsInputAssembler:
+             raise TypeError("Ball points require detector observations")
+         if row.camera_id != context.camera_id or not np.array_equal(row.frame_indices, np.arange(context.source.num_frames)):
+             raise ValueError("Ball detection camera/timeline mismatch")
+-        return BallPointsInput(row, context.source.size)
++        return BallPointsInput(row, context.source.size, context.source.fps)
+diff --git a/src/tennis_scene/visualization/blender/export/README.md b/src/tennis_scene/visualization/blender/export/README.md
+index c1563e22f..45d971856 100644
+--- a/src/tennis_scene/visualization/blender/export/README.md
++++ b/src/tennis_scene/visualization/blender/export/README.md
+@@ -5,7 +5,9 @@
+ 
+ ![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
+ 
+-実データの過去runの条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
++このプレビューはREADMEと同じ保存済み検出観測へ外れ値除去・LOESSを適用し、球を再三角測量したsceneです。
++カメラ・人物は固定し、球の表示補間は`ball_max_gap_frames=0`にして3D欠損を保ちます。
++CPU再処理・描画の条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+ 
+ - 書き出し: `python -m src.tennis_scene.scripts.export_blender`（設定 `configs/blender_export.yaml`）
+ - 撮影: `src/tennis_scene/visualization/blender/shots/reveal.py`（Blender 5.2同梱Python。repoをimportしない）
+diff --git a/src/tennis_scene/visualization/review/gallery.py b/src/tennis_scene/visualization/review/gallery.py
+index 2797d785e..b69e5e25e 100644
+--- a/src/tennis_scene/visualization/review/gallery.py
++++ b/src/tennis_scene/visualization/review/gallery.py
+@@ -246,7 +246,8 @@ class Review(StoreReader):
+         versions = (version,) if isinstance(version, int) else version
+         if reference["schema"] != schema or reference["version"] not in versions:
+             raise ValueError(f"{node} is {reference['schema']} v{reference['version']}; the gallery renders {schema} v{version}")
+-        return super().payload(node)
++        payload, descriptor = super().payload(node)
++        return payload, descriptor
+ 
+     def render(self, node: str) -> RenderResult:
+         payload, descriptor = self.payload(node)
+@@ -348,7 +349,7 @@ class Review(StoreReader):
+             ])
+         return [image, timeline], details
+ 
+-    @renders("ball_points", "ball_points", 3)
++    @renders("ball_points", "ball_points", (3, 4))
+     def render_ball_points(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+         positions = _array(value["uv_px"])
+         observed: np.ndarray = _array(value["observed"]).astype(bool)
+@@ -363,9 +364,16 @@ class Review(StoreReader):
+ 
+         image = self.sheet(node, camera, draw)
+         self.movie(node, camera, draw)
+-        return [image], [("observed frames", str(_count(observed))),
+-                         ("missing frames", str(_count(~observed))),
+-                         ("point", "detector observations only")]
++        details = [("observed frames", str(_count(observed))),
++                   ("missing frames", str(_count(~observed)))]
++        if "smoothing" in value:
++            smoothing = value["smoothing"]
++            details.extend((name, str(_count(_array(smoothing[name]))))
++                           for name in ("source_observed", "rejected", "interpolated", "smoothed", "restored_turn"))
++            details.append(("point", "LOESS at accepted real observations; fills are diagnostic only"))
++        else:
++            details.append(("point", "detector observations only (historical v3)"))
++        return [image], details
+ 
+     @renders("person_detection", "person_detections", 2)
+     def render_person_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+diff --git a/src/utils/README.md b/src/utils/README.md
+index 3d46630fd..4d2b0680d 100644
+--- a/src/utils/README.md
++++ b/src/utils/README.md
+@@ -53,6 +53,7 @@ directory名や`bpy`のimportだけでは除外しません。未登録のshot
+ - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
+ - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
+ - **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
++- **`temporal_smoothing.py`**: FPSと画像対角長に合わせた局所運動consensus、confidence重み付きの頑健な2次LOESS。実観測・除外・短い内側補間・平滑化のmaskを分離し、長い欠損と両端を埋めない。幾何には`accepted`の実観測だけを使う。
+ - **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
+ 
+ ### `matching/`
+diff --git a/src/utils/geometry/temporal_smoothing.py b/src/utils/geometry/temporal_smoothing.py
+new file mode 100644
+index 000000000..dd6ea2b5a
+--- /dev/null
++++ b/src/utils/geometry/temporal_smoothing.py
+@@ -0,0 +1,210 @@
++"""Deterministic local motion consensus and robust quadratic LOESS for 2D points.
++
++Observed, rejected and interpolated points have separate masks. A short sequence
++without enough local support retains its measurements with ``smoothed=False``;
++neither extrapolation nor interpolation creates an observed measurement.
++"""
++
++from __future__ import annotations
++
++import math
++from dataclasses import dataclass
++
++import numpy as np
++from numpy.typing import NDArray
++
++
++@dataclass(frozen=True)
++class TemporalSmoothingConfig:
++    enabled: bool = True
++    consensus_seconds: float = 0.7
++    trials: int = 80
++    minimum_residual_diagonal: float = 0.012
++    residual_mad_multiplier: float = 4.0
++    max_gap_seconds: float = 0.20
++    loess_seconds: float = 0.35
++    seed: int = 42
++
++    def __post_init__(self) -> None:
++        if type(self.enabled) is not bool:
++            raise TypeError("Smoothing enabled must be bool")
++        for name in ("consensus_seconds", "minimum_residual_diagonal", "residual_mad_multiplier", "loess_seconds"):
++            value = getattr(self, name)
++            if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
++                raise ValueError(f"{name} must be finite and positive")
++        if type(self.max_gap_seconds) not in (int, float) or not math.isfinite(self.max_gap_seconds) or self.max_gap_seconds < 0:
++            raise ValueError("max_gap_seconds must be finite and nonnegative")
++        if type(self.trials) is not int or self.trials < 1:
++            raise ValueError("trials must be a positive integer")
++        if type(self.seed) is not int or self.seed < 0:
++            raise ValueError("seed must be a nonnegative integer")
++
++
++@dataclass(frozen=True)
++class TemporalSmoothingResult:
++    coordinates: NDArray[np.float32]
++    source_observed: NDArray[np.bool_]
++    accepted: NDArray[np.bool_]
++    rejected: NDArray[np.bool_]
++    interpolated: NDArray[np.bool_]
++    smoothed: NDArray[np.bool_]
++    consensus_supported: NDArray[np.bool_]
++    restored_turn: NDArray[np.bool_]
++
++    def __post_init__(self) -> None:
++        n = len(self.source_observed)
++        masks = (self.source_observed, self.accepted, self.rejected, self.interpolated,
++                 self.smoothed, self.consensus_supported, self.restored_turn)
++        if any(mask.shape != (n,) or mask.dtype != np.bool_ for mask in masks):
++            raise ValueError("Temporal masks must be bool arrays on one frame axis")
++        if self.coordinates.shape != (n, 2) or self.coordinates.dtype != np.float32 or not np.isfinite(self.coordinates).all():
++            raise ValueError("Temporal coordinates must be finite float32 (T, 2)")
++        if np.any(self.accepted & self.rejected) or not np.array_equal(self.accepted | self.rejected, self.source_observed):
++            raise ValueError("Accepted and rejected must partition source observations")
++        if np.any(self.accepted & self.interpolated) or np.any(self.smoothed & ~(self.accepted | self.interpolated)):
++            raise ValueError("Interpolation must stay distinct from accepted observations")
++        if np.any(self.consensus_supported & ~self.source_observed) or np.any(self.restored_turn & ~self.accepted):
++            raise ValueError("Consensus and restored turns must be supported by observations")
++        if np.any(self.coordinates[~(self.accepted | self.interpolated)] != 0):
++            raise ValueError("Missing temporal coordinates must be zero")
++
++
++DEFAULT_TEMPORAL_SMOOTHING = TemporalSmoothingConfig()
++
++
++def _segments(ids: NDArray[np.int64], max_gap: int) -> list[NDArray[np.int64]]:
++    if not len(ids):
++        return []
++    return list(np.split(ids, np.flatnonzero(np.diff(ids) - 1 > max_gap) + 1))
++
++
++def _consensus(
++    points: NDArray[np.float64], ids: NDArray[np.int64], i: int, half: int,
++    config: TemporalSmoothingConfig, rng: np.random.Generator,
++) -> tuple[NDArray[np.float64], float] | None:
++    if len(ids) < 9:
++        return None
++    dt = (ids - i) / half
++    basis = np.column_stack((np.ones(len(ids)), dt, dt * dt))
++    values = points[ids]
++    best, score = None, float("inf")
++    # Include a well-spaced deterministic candidate; random trials use a pinned seed.
++    candidates = [np.array([0, len(ids) // 2, len(ids) - 1])]
++    candidates.extend(np.sort(rng.choice(len(ids), 3, replace=False)) for _ in range(config.trials))
++    for choice in candidates:
++        if np.min(np.diff(dt[choice])) < 0.15:
++            continue
++        coef = np.linalg.solve(basis[choice], values[choice])
++        residual = np.linalg.norm(basis @ coef - values, axis=1)
++        candidate_score = float(np.median(residual))
++        if candidate_score < score:
++            best, score = coef, candidate_score
++    if best is None:
++        return None
++    threshold = config.minimum_residual_diagonal
++    for _ in range(4):
++        residual = np.linalg.norm(basis @ best - values, axis=1)
++        scale = max(config.minimum_residual_diagonal / 3, 1.4826 * float(np.median(abs(residual - np.median(residual)))))
++        threshold = max(config.minimum_residual_diagonal, config.residual_mad_multiplier * scale)
++        support = residual <= threshold
++        if support.sum() < 6:
++            break
++        best = np.linalg.lstsq(basis[support], values[support], rcond=None)[0]
++    return best[0], threshold
++
++
++def _restore_turns(
++    points: NDArray[np.float64], observed: NDArray[np.bool_], accepted: NDArray[np.bool_], fps: float,
++) -> NDArray[np.bool_]:
++    restored: NDArray[np.bool_] = np.zeros(len(points), bool)
++    context_frames = max(2, round(5 * fps / 60))
++    for group in _segments(np.flatnonzero(observed & ~accepted), 0):
++        if len(group) > max(1, round(.067 * fps)):
++            continue
++        left, right = int(group[0]) - 1, int(group[-1]) + 1
++        if left < 0 or right >= len(points) or not accepted[left] or not accepted[right] or not observed[left:right + 1].all():
++            continue
++        speeds = []
++        for start, stop in ((max(0, left - context_frames), left + 1), (right, min(len(points), right + context_frames + 1))):
++            for k in range(start + 1, stop):
++                if accepted[k - 1] and accepted[k]:
++                    speeds.append(float(np.linalg.norm(points[k] - points[k - 1])))
++        if len(speeds) < 4:
++            continue
++        limit = max(.018 * 60 / fps, 3 * float(np.median(speeds)))
++        if np.linalg.norm(np.diff(points[left:right + 1], axis=0), axis=1).max() <= limit:
++            accepted[group] = True
++            restored[group] = True
++    return restored
++
++
++def smooth_2d_trajectory(
++    xy: NDArray[np.floating], confidence: NDArray[np.floating], observed: NDArray[np.bool_], *,
++    fps: float, image_size_wh: tuple[int, int], config: TemporalSmoothingConfig = DEFAULT_TEMPORAL_SMOOTHING,
++) -> TemporalSmoothingResult:
++    """Reject transient excursions and smooth retained measurements, without manual intervals.
++
++    Distances use the image diagonal; temporal windows use source FPS. Long
++    gaps separate local fits. Only bounded gaps up to ``max_gap_seconds`` can
++    have interpolated coordinates; callers must use ``accepted`` for geometry.
++    """
++    if not math.isfinite(fps) or fps <= 0:
++        raise ValueError("FPS must be finite and positive")
++    if len(image_size_wh) != 2 or any(type(v) is not int or v < 2 for v in image_size_wh):
++        raise ValueError("Image size must contain two integer dimensions >= 2")
++    points = np.asarray(xy, dtype=np.float64)
++    scores = np.asarray(confidence, dtype=np.float64)
++    n = len(points)
++    if points.shape != (n, 2) or scores.shape != (n,) or observed.shape != (n,) or observed.dtype != np.bool_:
++        raise ValueError("Expected coordinates (T,2), confidence (T,) and bool observed (T,)")
++    if not np.isfinite(scores).all() or np.any((scores < 0) | (scores > 1)) or not np.isfinite(points[observed]).all():
++        raise ValueError("Observed coordinates and confidence must be finite; confidence must be in [0,1]")
++    accepted = observed.copy()
++    rejected: NDArray[np.bool_] = np.zeros(n, bool)
++    interpolated: NDArray[np.bool_] = np.zeros(n, bool)
++    smoothed: NDArray[np.bool_] = np.zeros(n, bool)
++    supported: NDArray[np.bool_] = np.zeros(n, bool)
++    restored: NDArray[np.bool_] = np.zeros(n, bool)
++    output = np.where(observed[:, None], points, 0).astype(np.float32)
++    if not config.enabled or not observed.any():
++        return TemporalSmoothingResult(output, observed.copy(), accepted, rejected, interpolated, smoothed, supported, restored)
++    diagonal = math.hypot(*image_size_wh)
++    normalized = points / diagonal
++    half = max(6, round(config.consensus_seconds * fps / 2))
++    max_gap = round(config.max_gap_seconds * fps)
++    rng = np.random.default_rng(config.seed)
++    for segment in _segments(np.flatnonzero(observed), max_gap):
++        for i in segment:
++            ids = segment[abs(segment - i) <= half]
++            fit = _consensus(normalized, ids, int(i), half, config, rng)
++            if fit is not None:
++                prediction, threshold = fit
++                supported[i] = True
++                accepted[i] = np.linalg.norm(normalized[i] - prediction) <= threshold
++    restored = _restore_turns(normalized, observed, accepted, fps)
++    rejected = observed & ~accepted
++    output[~accepted] = 0
++    half_loess = max(3, round(config.loess_seconds * fps / 2))
++    for segment in _segments(np.flatnonzero(accepted), max_gap):
++        for i in range(int(segment[0]), int(segment[-1]) + 1):
++            near = segment[abs(segment - i) <= half_loess]
++            if len(near) < 4:
++                near = segment[np.argsort(abs(segment - i), kind="stable")[:min(8, len(segment))]]
++            if len(near) < 3:
++                continue  # Accepted raw measurements remain, with smoothed=False.
++            d = (near - i).astype(np.float64)
++            radius = max(float(abs(d).max()) * 1.0001, 1.)
++            x = d / radius
++            basis = np.column_stack((np.ones(len(x)), x, x * x))
++            base = (1 - abs(x) ** 3) ** 3 * np.maximum(scores[near], .1) ** 1.2
++            weights = base.copy()
++            for _ in range(4):
++                root = np.sqrt(np.maximum(weights, 1e-8))
++                coef = np.linalg.lstsq(basis * root[:, None], points[near] * root[:, None], rcond=None)[0]
++                residual = np.linalg.norm(basis @ coef - points[near], axis=1)
++                scale = max(diagonal * .001, 1.4826 * float(np.median(residual)))
++                weights = base * np.minimum(1, 1.4 * scale / np.maximum(residual, 1e-8))
++            output[i] = coef[0]
++            smoothed[i] = True
++            interpolated[i] = not accepted[i]
++    return TemporalSmoothingResult(output, observed.copy(), accepted, rejected, interpolated, smoothed, supported, restored)
+diff --git a/tests/unit/tennis_scene/pipeline/components/test_ball_points.py b/tests/unit/tennis_scene/pipeline/components/test_ball_points.py
+index 27fa65b24..ad491e158 100644
+--- a/tests/unit/tennis_scene/pipeline/components/test_ball_points.py
++++ b/tests/unit/tennis_scene/pipeline/components/test_ball_points.py
+@@ -3,18 +3,25 @@ from pathlib import Path
+ 
+ import numpy as np
+ import pytest
++from numpy.typing import NDArray
+ 
+ from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
+ from src.tennis_scene.pipeline.components.ball_points import (
++    BallPointsInput,
+     BallPointsModule,
+     BallPointsOutput,
+ )
++from src.tennis_scene.pipeline.components.ball_reconstruction import (
++    reconstruct_ball,
++    single_ball_observations,
++)
+ from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource, SourceVideo
+ from src.tennis_scene.pipeline.input_assembly.ball_points import (
+     BallPointsInputAssembler,
+ )
+ from src.tennis_scene.pipeline.input_assembly.observations import gather_balls
+ from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
++from src.utils.geometry.triangulation import PinholeCamera
+ 
+ 
+ def output() -> BallDetectionOutput:
+@@ -27,7 +34,7 @@ def output() -> BallDetectionOutput:
+ def test_only_observed_points_survive_storage_and_join(tmp_path: Path) -> None:
+     source = ClipSource('test', (SourceVideo('cam0', tmp_path / 'x.mp4', 'hash', 4, 30., 1920, 1080),))
+     module = BallPointsModule()
+-    assert module.io.version == 3
++    assert module.io.version == 4
+     assembled = BallPointsInputAssembler().assemble(AssemblyContext(source, 'cam0'), {'detections': output()})
+     points = module.process(assembled)
+     # Even a real observation at pixel (0, 0) remains observed. Interpolation/occlusion estimates do not.
+@@ -60,3 +67,37 @@ def test_assembler_checks_camera_timeline_and_payload_type(tmp_path: Path) -> No
+         BallPointsInputAssembler().assemble(context, {'detections': object()})
+     with pytest.raises(TypeError, match='observed masks'):
+         gather_balls(source, {'ball_cam0': object()})
++
++
++def test_filled_and_rejected_points_cannot_supply_the_second_real_view(tmp_path: Path) -> None:
++    frames = 70
++    source = ClipSource('test', tuple(SourceVideo(c, tmp_path / f'{c}.mp4', 'hash', frames, 60., 1280, 720)
++                                   for c in ('cam0', 'cam1', 'cam2')))
++    intrinsic = np.array([[500., 0, 640], [0, 500, 360], [0, 0, 1]])
++    cameras = tuple(PinholeCamera(c, intrinsic, np.eye(3), np.array([shift, 0., 0.]))
++                    for c, shift in zip(source.camera_ids, (-1., 1., 0.), strict=True))
++    truth = np.column_stack((np.linspace(0, 1, frames), np.zeros(frames), np.full(frames, 2.)))
++    rows = {}
++    for index, camera in enumerate(cameras):
++        uv = camera.project(truth)[0].astype(np.float32)
++        observed: NDArray[np.bool_] = np.ones(frames, dtype=np.bool_)
++        if index == 1:
++            observed[20:24] = False
++            uv[40] += 500
++        if index == 2:
++            observed[:] = False
++        detections = BallDetectionOutput(camera.camera_id, np.arange(frames, dtype=np.int64), uv,
++            np.ones(frames, np.float32), observed, np.where(observed, 1, 0).astype(np.uint8),
++            'annotation_acceptance_not_probability', None)
++        rows[f'ball_{camera.camera_id}'] = BallPointsModule().process(BallPointsInput(detections, source.size, source.fps))
++    assert rows['ball_cam1'].smoothing.interpolated[20:24].all()
++    assert rows['ball_cam1'].smoothing.rejected[40]
++    grouped = single_ball_observations(gather_balls(source, rows), threshold=0)
++    result = reconstruct_ball(grouped, cameras, fps=60., reprojection_px=2)
++    assert not result.trajectory.valid[20:24].any()
++    assert not result.trajectory.valid[40]
++    assert not result.visibility[2].any()
++    supported: NDArray[np.bool_] = np.ones(frames, dtype=np.bool_)
++    supported[20:24] = supported[40] = False
++    np.testing.assert_array_equal(result.trajectory.valid, supported)
++    np.testing.assert_allclose(result.trajectory.positions[supported], truth[supported], atol=1e-4)
+diff --git a/tests/unit/tennis_scene/pipeline/test_auto_pipeline.py b/tests/unit/tennis_scene/pipeline/test_auto_pipeline.py
+index 06d97a813..950e0ca24 100644
+--- a/tests/unit/tennis_scene/pipeline/test_auto_pipeline.py
++++ b/tests/unit/tennis_scene/pipeline/test_auto_pipeline.py
+@@ -359,7 +359,7 @@ def test_missing_detector_frames_remain_missing_through_triangulation_and_reload
+         points = runner.store.load(runner.references[f"ball_points/{camera}"], ArtifactCodec(BallPointsOutput))
+         assert not points.observed[8:11].any()
+         assert (points.uv_px[8:11] == 0).all()
+-        assert runner.references[f"ball_points/{camera}"].version == 3
++        assert runner.references[f"ball_points/{camera}"].version == 4
+     pipeline.config = replace(pipeline.config, cache_source="load")
+     loaded = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
+     np.testing.assert_array_equal(loaded.ball_3d_valid, scene.ball_3d_valid)
+diff --git a/tests/unit/tennis_scene/pipeline/test_orchestrator.py b/tests/unit/tennis_scene/pipeline/test_orchestrator.py
+index 2706cc7f7..95879dd3e 100644
+--- a/tests/unit/tennis_scene/pipeline/test_orchestrator.py
++++ b/tests/unit/tennis_scene/pipeline/test_orchestrator.py
+@@ -50,7 +50,7 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
+     for consumer in ("court_side", "camera_alignment", "ball_triangulation"):
+         assert nodes[consumer].bindings["ball_cam0"] == "ball_points/cam0"
+         assert nodes[consumer].io.inputs["ball_cam0"].schema == "ball_points"
+-        assert nodes[consumer].io.inputs["ball_cam0"].version == 3
++        assert nodes[consumer].io.inputs["ball_cam0"].version == 4
+         assert nodes[consumer].assembler.ball_threshold == 0
+     assert order.index("court_side") < order.index("camera_alignment")
+     assert order.index("body_view_selection") < order.index("gvhmr") < order.index("body_placement")
+diff --git a/tests/unit/utils/geometry/test_temporal_smoothing.py b/tests/unit/utils/geometry/test_temporal_smoothing.py
+new file mode 100644
+index 000000000..876864933
+--- /dev/null
++++ b/tests/unit/utils/geometry/test_temporal_smoothing.py
+@@ -0,0 +1,80 @@
++from dataclasses import replace
++
++import numpy as np
++import pytest
++from numpy.typing import NDArray
++
++from src.utils.geometry.temporal_smoothing import (
++    DEFAULT_TEMPORAL_SMOOTHING,
++    TemporalSmoothingConfig,
++    smooth_2d_trajectory,
++)
++
++
++def smooth(xy, observed=None, *, fps=60., size=(1920, 1080), config=DEFAULT_TEMPORAL_SMOOTHING):
++    observed = np.ones(len(xy), bool) if observed is None else observed
++    return smooth_2d_trajectory(xy, np.ones(len(xy)), observed, fps=fps, image_size_wh=size, config=config)
++
++
++@pytest.mark.parametrize("fps", [30., 60., 120.])
++def test_fast_motion_and_bounce_survive_with_transient_outlier_removed(fps):
++    t = np.arange(int(2 * fps) + 1) / fps
++    truth = np.column_stack((200 + 900 * t, 600 - 250 * np.abs(t - 1)))
++    points = truth.copy()
++    bad = round(.5 * fps)
++    points[bad] += [400, -400]
++    result = smooth(points, fps=fps)
++    np.testing.assert_array_equal(np.flatnonzero(result.rejected), [bad])
++    assert result.accepted[round(fps)]
++    assert np.linalg.norm(result.coordinates[round(fps)] - truth[round(fps)]) < 8
++    assert np.max(np.linalg.norm(result.coordinates[result.accepted] - truth[result.accepted], axis=1)) < 8
++    repeated = smooth(points, fps=fps)
++    np.testing.assert_array_equal(result.coordinates, repeated.coordinates)
++    np.testing.assert_array_equal(result.rejected, repeated.rejected)
++
++
++def test_noise_reduced_without_phase_shift_and_resolution_scaled():
++    rng = np.random.default_rng(13)
++    t = np.arange(151) / 60
++    truth = np.column_stack((100 + 300 * t, 200 + 20 * t ** 2))
++    points = truth + rng.normal(0, 3, truth.shape)
++    result = smooth(points)
++    assert result.accepted.all()
++    assert np.mean((result.coordinates - truth) ** 2) < np.mean((points - truth) ** 2) / 2
++    small = smooth(points / 2, size=(960, 540))
++    np.testing.assert_allclose(small.coordinates, result.coordinates / 2, atol=1e-5)
++    np.testing.assert_array_equal(small.rejected, result.rejected)
++
++
++def test_short_fills_are_not_observations_long_gaps_and_edges_stay_missing():
++    t = np.arange(140)
++    truth = np.column_stack((50 + t * 2., 100 + .01 * t ** 2))
++    observed: NDArray[np.bool_] = np.ones(140, bool)
++    observed[:3] = observed[30:34] = observed[60:90] = observed[-3:] = False
++    points = truth.copy()
++    points[~observed] = np.nan
++    result = smooth(points, observed)
++    np.testing.assert_array_equal(result.accepted, observed)
++    assert result.interpolated[30:34].all()
++    assert not result.interpolated[60:90].any()
++    assert not result.interpolated[:3].any()
++    assert not result.interpolated[-3:].any()
++    assert np.all(result.coordinates[60:90] == 0)
++    np.testing.assert_allclose(result.coordinates[30:34], truth[30:34], atol=1e-4)
++
++
++def test_disabled_sparse_empty_and_invalid_inputs():
++    xy = np.array([[0., 0.], [100., 50.], [30., 20.]])
++    observed = np.array([True, False, True])
++    result = smooth(xy, observed, config=replace(DEFAULT_TEMPORAL_SMOOTHING, enabled=False))
++    np.testing.assert_array_equal(result.accepted, observed)
++    assert not result.smoothed.any()
++    assert not smooth(xy, np.zeros(3, bool)).accepted.any()
++    sparse = smooth(xy[:1])
++    assert sparse.accepted[0] and not sparse.smoothed[0]
++    with pytest.raises(ValueError, match="FPS"):
++        smooth(xy, fps=0)
++    with pytest.raises(ValueError, match="finite"):
++        smooth(np.full((3, 2), np.nan))
++    with pytest.raises(ValueError, match="trials"):
++        TemporalSmoothingConfig(trials=0)

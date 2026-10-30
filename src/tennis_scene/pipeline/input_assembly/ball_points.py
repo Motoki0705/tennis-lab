@@ -12,7 +12,7 @@ from src.tennis_scene.pipeline.contracts import AssemblyContext
 
 @dataclass(frozen=True)
 class BallPointsInputAssembler:
-    version: int = 2
+    version: int = 3
 
     def assemble(self, context: AssemblyContext, artifacts: Mapping[str, Any]) -> BallPointsInput:
         row = artifacts["detections"]
@@ -20,4 +20,4 @@ class BallPointsInputAssembler:
             raise TypeError("Ball points require detector observations")
         if row.camera_id != context.camera_id or not np.array_equal(row.frame_indices, np.arange(context.source.num_frames)):
             raise ValueError("Ball detection camera/timeline mismatch")
-        return BallPointsInput(row, context.source.size)
+        return BallPointsInput(row, context.source.size, context.source.fps)

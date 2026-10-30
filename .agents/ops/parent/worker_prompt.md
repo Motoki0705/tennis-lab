@@ -6,6 +6,11 @@ AGENTS.md・共有memory・対象READMEと親issue/担当issueの全コメント
 原文と親の指示が矛盾する場合、結果を左右する未決事項、権限不足・利用枠不足・失敗は、
 理由・確認事実・影響・再開条件・次の対応を親へ返す。独立した範囲だけ進める。
 
+渡されたテスト設計に従い、[tests/README.md のテスト作成方針](../../../tests/README.md#テスト作成方針)を参照する。
+調査と設計提案が最初の作業なら、親の承認を得てから実装する。設計にない重い e2e や直積が必要になったら、
+勝手に追加せず、検出したい不具合・既存で足りない理由・見込むコストを親へ返す。
+PRには設計との差と理由、テストの増分（node・展開後の件数・実測時間、追加不要なら既存の証拠）を書く。
+
 pytestは `.agents/ops/pytest_locked.sh` または `.venv/bin/python -m pytest` で実行する。
 共有lockによる直列化は行わず、他の親・子と並列実行できる。worker数は実行内容に合わせて指定する。
 GPU・Blenderはtraining queueの既存枠・共有stateを使う。未指定のGPU時間・費用等の資源予算を作らず、
@@ -13,6 +18,7 @@ GPU・Blenderはtraining queueの既存枠・共有stateを使う。未指定の
 
 意味のある検証を行い、pre-commitを通してコミットする。PRには `Closes #担当issue`、
 変更内容・各受入条件に対する検証コマンドと結果・未実施の理由・対象外・残課題を記載する。
+コミットに `[skip ci]` を付けず、PRへのpushごとにCIを実行する。対象HEADの `Python` 成功をmergeの必須条件とし、CI結果を親へ報告する。
 stacked branchは親の指示した依存headを保持し、先行merge後のrebaseとPR作成時点を親へ合わせる。
 レビュー指摘の修正は同じworker session・branch・PRへ戻し、実diff・CI・回帰テストと指摘の対応を返す。
 統合レビュー・merge・担当終了は親が行う。

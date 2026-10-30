@@ -1,0 +1,89 @@
+{
+  "as_of": "2026-10-26",
+  "github": {
+    "repository": "https://github.com/Motoki0705/tennis-lab",
+    "has_pages": false,
+    "homepage": null,
+    "releases": [
+      {
+        "tag": "tennis-scene-presentation-v5",
+        "assets": [
+          "tennis-scene-presentation-v5-preview.mp4",
+          "tennis-scene-presentation-v5.zip"
+        ],
+        "classification": "frozen_v5_presentation"
+      },
+      {
+        "tag": "issue1227-raw-pred-20261016",
+        "assets": [
+          "raw-pred-30b64ff2da6b.mp4",
+          "raw-pred-3635c37bed62.mp4",
+          "raw-pred-3a4818733ad9.mp4",
+          "raw-pred-70c4d1b86f2b.mp4",
+          "raw-pred-f82d25d99608.mp4",
+          "SHA256SUMS"
+        ],
+        "classification": "historical_detector_or_tracking_experiment"
+      },
+      {
+        "tag": "campaign930-i964-r9-review",
+        "assets": [
+          "cam1-diagnosis.mp4",
+          "review.mp4"
+        ],
+        "classification": "historical_detector_or_tracking_experiment"
+      },
+      {
+        "tag": "campaign930-i964-r8-review",
+        "assets": [
+          "review.mp4"
+        ],
+        "classification": "historical_detector_or_tracking_experiment"
+      },
+      {
+        "tag": "campaign930-i964-r11-review",
+        "assets": [
+          "review.mp4"
+        ],
+        "classification": "historical_detector_or_tracking_experiment"
+      },
+      {
+        "tag": "campaign930-i964-r10-review",
+        "assets": [
+          "review.mp4"
+        ],
+        "classification": "historical_detector_or_tracking_experiment"
+      }
+    ]
+  },
+  "huggingface": {
+    "Motoki098/tennis-lab-models": {
+      "repo_type": "model",
+      "file_count": 8,
+      "rendered_media": [],
+      "video_files": []
+    },
+    "Motoki098/tennis-lab-multiview-sample": {
+      "repo_type": "dataset",
+      "file_count": 10,
+      "rendered_media": [],
+      "video_files": [
+        "cam0.mp4",
+        "cam1.mp4",
+        "cam2.mp4"
+      ]
+    }
+  },
+  "spaces_for_Motoki098": [],
+  "replaced_assets": [
+    "assets/tennis_scene/multiview_reconstruction.gif",
+    "assets/tennis_scene/blender_reveal_meiji_cam1.gif",
+    "assets/tennis_scene/rich_scene_rendering.gif"
+  ],
+  "retained_assets": {
+    "assets/tennis_scene/tennis_clip.gif": "raw broadcast input; no reconstructed ball output",
+    "assets/tennis_scene/blender_player_placement_meiji_cam1.gif": "body-placement-only demo without a ball"
+  },
+  "readme_reference_scan": "rg -n gif|mp4|releases/download README* src/tennis_scene --glob *.md; plus repo-wide asset-name references excluding frozen knowledge patches",
+  "limits": "Does not enumerate arbitrary third-party mirrors or historical commit URLs; frozen experiment/release evidence retained."
+}
