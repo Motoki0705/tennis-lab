@@ -54,6 +54,7 @@ FAULTS = [
     (FAMILIES["mdd_hybrid"], "presence_head"),
     (FAMILIES["mdd_dpt_heatmap"], "head"),
     (FAMILIES["mdd_heatmap_hybrid"], "heatmap_head"),
+    (FAMILIES["mdd_temporal_query"], "head"),
 ]
 
 
