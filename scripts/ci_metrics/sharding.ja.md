@@ -2,7 +2,7 @@
 
 [English](sharding.md) · [简体中文](sharding.zh-CN.md)
 
-CIはlintを独立実行し、全CPU対象を既定4 job（各2 worker）に分けます。手動dispatchでは `shards=1/2/4` を選び、同じsourceで比較できます。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
+CIはlintを独立実行し、全CPU対象を既定4 job（各2 worker）に分けます。手動dispatchでは `shards=1/2/4/6/8` と `workers=2/4` を選び、同じsourceで比較できます。ホストに依存する `auto` ではなくworker数を明示します。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
 `always()` で動き、lint・全test job・完全性照合の成功を要求します。CIはmerge前の条件へ
 戻しません。今回は既存triggerを維持し、日次保守への移行は
 [#1349](https://github.com/Motoki0705/tennis-lab/issues/1349) の範囲とします。
@@ -47,14 +47,20 @@ artifact名はrun/attempt/shardを含み、`cpu-test-coverage-*` の `coverage.j
 負荷分散・メモリは実測で確認し、証拠と比較の制限は[baseline](baseline.ja.md)を参照してください。
 fixtureやsuiteが大きく変わったら完全な計測からprofileを更新します。file件数だけで分割数を決めません。
 
-初期profileは[baseline](baseline.ja.md#完了したローカル観測)の全件・失敗観測に基づき、
-失敗も含めます。fixture/契約整理前で他作業の負荷もあり、配分の手掛かりであって成功や
-高速化の証明ではありません。旧inventoryのphase合計見積りは1 jobで11,284.355秒、
-2 jobは各約5,642.178秒、4 jobの最大は2,821.090秒です。worker間の重なりとjobごとの
-準備・収集を含む実時間ではなく、Actionsの実時間・runner費用は別途測定します。
-個別caseへ分けるのはmerge gate・parent session・board messagesの3 fileです。
-function fixtureの独立性は収集時に検査し、その他のfileはまとめます。
+## 実測profileの再生成
 
-現行の全収集は **12,775件の一意なCPU case** で、4 shardへ2,927 / 2,994 / 3,442 / 3,412件を割り当てます。fixture独立性も収集で確認しました。これは収集の証拠であり実行成功や性能の証拠ではありません。新規2 fileと変更・追加された分割case 23件は明示した見積りを使います。
+同じattemptの `cpu-test-measurements-RUN-ATTEMPT-shard-*` を全件ダウンロードし、shardごとに1ディレクトリ置きます。
+
+```bash
+.venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
+  --output scripts/ci_metrics/cpu-file-times.json
+```
+
+phase/JUnit reportを再構築し、source/run/attempt、全worker manifest、割当、全inventoryの多重集合を照合します。phase欠測、重複、dirty/mixed source、cancel、収集失敗は拒否します。完全に記録されたテスト失敗は重みと `source.counts` / `unsuccessful_cases` に残します。重み生成はCI成功を意味せず、`Python` は引き続きjobと観測の成功を要求します。監査の `observations_complete` は成功と別に完全性を示します。
+
+既定は観測した `split_files` を維持します。fixtureを確認して一覧を置き換える場合だけ `--split-file tests/path.py` を繰り返し指定します。収集時のguardが現行fixture graphに対して検証します。merge gate、board messages、parent sessionはfunction fixture単位の分割を維持します。座標学習はmodule scopeの `shared` を使うため、9件579.907秒を同じshardに保持します。テスト本体とfixture scopeは変更しません。
+
+更新profileは[run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121)の830 file、12,782件（12,685 passed / 96 skipped / 1 failed）、合計8,527.317 phase秒に基づき、既知のREADME.zh-CN失敗も含みます。4 / 6 / 8 shardの推定最大負荷は2,131.830 / 1,421.220 / 1,065.916秒です。重複するworker phaseの和でありwall時間の予測ではありません。旧割当の実測は2,781 / 1,435 / 1,691 / 2,621秒でした。親がfixture最適化をmergeした後は再生成が必要です。
+
 
 依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。

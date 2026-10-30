@@ -9,12 +9,19 @@ on:
       shards:
         description: CPU job count for matched scheduling comparisons
         type: choice
-        options: ["1", "2", "4"]
+        options: ["1", "2", "4", "6", "8"]
         default: "4"
+        required: true
+      workers:
+        description: Pytest processes per 4-vCPU CPU runner (native threads remain one)
+        type: choice
+        options: ["2", "4"]
+        default: "2"
         required: true
 
 env:
   CI_SHARD_COUNT: ${{ inputs.shards || '4' }}
+  CI_WORKERS: ${{ inputs.workers || '2' }}
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -57,10 +64,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || '[0,1,2,3]') }}
+        shard: ${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || inputs.shards == '6' && '[0,1,2,3,4,5]' || inputs.shards == '8' && '[0,1,2,3,4,5,6,7]' || '[0,1,2,3]') }}
     env:
-      # Keep two pytest workers; native libraries use one thread each.
-      PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
+      # Pin worker count for reproducible comparisons; native threads stay at one.
+      PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ inputs.workers || '2' }}
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
@@ -73,7 +80,7 @@ jobs:
           submodules: false
 
       - name: Record runner environment
-        run: python3 -m scripts.ci_metrics capture --output .ci-metrics/shard-${{ matrix.shard }}/preparation
+        run: python3 -m scripts.ci_metrics capture --workers "$CI_WORKERS" --output .ci-metrics/shard-${{ matrix.shard }}/preparation
 
       - name: Set up uv and Python 3.11
         id: setup-uv
@@ -106,7 +113,7 @@ jobs:
           UV_CACHE_HIT: ${{ steps.setup-uv.outputs.cache-hit }}
         run: >-
           .venv/bin/python -m scripts.ci_metrics run
-          --output .ci-metrics/shard-${{ matrix.shard }}/tests --workers 2
+          --output .ci-metrics/shard-${{ matrix.shard }}/tests --workers "$CI_WORKERS"
           --shard-index ${{ matrix.shard }} --shard-count "$CI_SHARD_COUNT"
           --shard-weights scripts/ci_metrics/cpu-file-times.json
 

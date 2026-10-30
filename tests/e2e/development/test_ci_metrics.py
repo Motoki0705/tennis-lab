@@ -18,9 +18,11 @@ import pytest
 
 from scripts.ci_metrics import runner as measurement_runner
 from scripts.ci_metrics.actions import summarize_attempts
+from scripts.ci_metrics.profile import build_profile
 from scripts.ci_metrics.report import summarize
 from scripts.ci_metrics.runner import test_environment as headless_environment
 from scripts.ci_metrics.runner import write_json
+from scripts.ci_metrics.shards import assign_groups, verify_shards
 
 REPO = Path(__file__).resolve().parents[3]
 
@@ -144,6 +146,61 @@ def test_normal_failure_and_setup_skip_are_complete_observations(
     assert result["issues"] == []
     assert result["counts"] == {expected: 1}
     assert result["successful_test_baseline"] == (expected != "failed")
+
+
+@pytest.mark.parametrize("outcome", ["passed", "failed", "setup_failed"])
+def test_profile_retains_failures_without_accepting_them_in_python_job(
+    tmp_path: Path, outcome: str
+) -> None:
+    directory = tmp_path / "shard-0/tests"
+    directory.mkdir(parents=True)
+    _observation(directory, outcome)
+    nodeids = ["tests/test_sample.py::test_one"]
+    context = {"sha": "a" * 40, "run_id": "123", "attempt": "1"}
+    write_json(
+        directory / "environment.json",
+        {
+            "workers": 0,
+            "cpu_target_before_sharding": True,
+            "source": {"commit": context["sha"], "status": ""},
+            "environment": dict(
+                zip(
+                    ("GITHUB_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"),
+                    context.values(),
+                    strict=True,
+                )
+            ),
+            "shard": {"index": 0, "count": 1, "profile_sha256": "profile"},
+        },
+    )
+    write_json(
+        directory / "shard-controller.json",
+        {
+            "schema_version": 1,
+            "index": 0,
+            "count": 1,
+            "profile_sha256": "profile",
+            "full_nodeids": nodeids,
+            "selected_nodeids": nodeids,
+            **assign_groups(nodeids, 1, {"tests/test_sample.py": 1}),
+        },
+    )
+    profile = build_profile(tmp_path)
+    assert profile["file_seconds"] == {
+        "tests/test_sample.py": 1.0 if outcome == "setup_failed" else 1.5
+    }
+    assert profile["source"]["successful_test_observations"] == (outcome == "passed")
+    expected = {} if outcome == "passed" else {nodeids[0]: "failed"}
+    assert profile["source"]["unsuccessful_cases"] == expected
+    audit = verify_shards(
+        tmp_path,
+        1,
+        needs={"lint": {"result": "success"}, "tests": {"result": "success"}},
+        **context,
+    )
+    assert audit["selected_count"] == 1
+    assert audit["observations_complete"] is True
+    assert audit["success"] == (outcome == "passed")
 
 
 @pytest.mark.parametrize(

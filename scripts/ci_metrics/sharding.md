@@ -4,7 +4,7 @@
 
 The CI workflow runs lint independently and partitions the complete CPU target
 over four test jobs by default, each with two pytest workers. Manual dispatch
-accepts `shards=1`, `2` or `4` for same-source scheduling comparisons.
+accepts `shards=1/2/4/6/8` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
 The manual one-job reference has a 120-minute limit; ordinary shards retain 60 minutes. The fixed `Python` job runs with
 `always()` and succeeds only when lint, all test jobs and the coverage audit succeed.
 CI remains an observation rather than a pre-merge requirement. The existing
@@ -77,16 +77,19 @@ use [baseline](baseline.md) for evidence and comparison limitations. Refresh the
 profile from complete measurements after material fixture or suite changes.
 No runner-count recommendation is inferred from the number of test files alone.
 
-The initial profile comes from the complete but failed local observation in
-[baseline](baseline.md#completed-local-observation), including failures. It predates
-the fixture/contract changes and includes costs from competing work. It is a
-scheduling hint, not proof of a passing baseline or speedup. Estimated summed
-phase loads for the original inventory are 11,284.355 s (1 job), 5,642.178 s per job
-(2), and 2,821.090 s maximum (4). These totals overlap across workers and exclude
-per-job setup/collection; actual Actions wall time and runner cost must be measured.
-The explicit split files are merge gate, parent session and board messages; their
-function fixture isolation is checked during collection. Other files stay together.
+## Regenerate measured weights
 
-Current full collection contains **12,775 unique CPU cases**, assigned 2,927 / 2,994 / 3,442 / 3,412 across four shards. Collection validates fixture isolation. This is a collection proof, not a passing execution or a performance result. The two new files and 23 changed/new split-case IDs receive explicit estimates.
+Download all `cpu-test-measurements-RUN-ATTEMPT-shard-*` artifacts from one attempt into a directory with one artifact directory per shard, then run:
+
+```bash
+.venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
+  --output scripts/ci_metrics/cpu-file-times.json
+```
+
+The command rebuilds phase/JUnit reports and audits source/run/attempt, all worker manifests, assignment, and the exact full-inventory multiset. Missing phases, duplicates, dirty/mixed sources, cancellations and collection failures are rejected. Complete test failures remain in the weights and in `source.counts`/`unsuccessful_cases`; generating weights never turns them into passing CI. `Python` still requires successful jobs and observations. The audit now also reports `observations_complete` separately from success.
+
+By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard; its nine cases cost 579.907 s in the reference observation. No test bodies or fixture scopes change.
+
+The refreshed profile uses [run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121): 830 files, 12,782 cases (12,685 passed / 96 skipped / 1 failed), 8,527.317 summed phase seconds. It includes the known README.zh-CN failure. Estimated maximum loads are 2,131.830 / 1,421.220 / 1,065.916 s for 4 / 6 / 8 shards; these are overlapping phase costs, not predicted wall times. The previous assignment's measured loads were 2,781 / 1,435 / 1,691 / 2,621 s. Reprofile after the parent's fixture optimizations merge.
 
 System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.

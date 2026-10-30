@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -27,23 +28,30 @@ def _ci_job() -> dict[str, Any]:
 def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     job = _ci_job()
     shards = list(range(4))
-    assert (
-        job["strategy"]["matrix"]["shard"]
-        == "${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || '[0,1,2,3]') }}"
+    expression = job["strategy"]["matrix"]["shard"]
+    alternatives = dict(
+        re.findall(r"inputs.shards == '(\d+)' && '(\[[\d,]+\])'", expression)
     )
+    for count in (1, 2, 6, 8):
+        assert json.loads(alternatives[str(count)]) == list(range(count))
+    assert expression.endswith("|| '[0,1,2,3]') }}")
     assert job["strategy"]["fail-fast"] is False
     assert "needs" not in job
     assert job["timeout-minutes"] == "${{ inputs.shards == '1' && 120 || 60 }}"
-    assert job["env"]["PYTEST_XDIST_AUTO_NUM_WORKERS"] == "2"
+    assert job["env"]["PYTEST_XDIST_AUTO_NUM_WORKERS"] == "${{ inputs.workers || '2' }}"
     for variable in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
         assert job["env"][variable] == "1"
 
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
     triggers = workflow.get("on", workflow.get(True))
     choices = triggers["workflow_dispatch"]["inputs"]["shards"]
-    assert choices["options"] == ["1", "2", "4"]
+    assert choices["options"] == ["1", "2", "4", "6", "8"]
     assert choices["default"] == "4"
     assert workflow["env"]["CI_SHARD_COUNT"] == "${{ inputs.shards || '4' }}"
+    workers = triggers["workflow_dispatch"]["inputs"]["workers"]
+    assert workers["options"] == ["2", "4"]
+    assert workers["default"] == "2"
+    assert workflow["env"]["CI_WORKERS"] == "${{ inputs.workers || '2' }}"
     lint = workflow["jobs"]["lint"]
     assert "needs" not in lint
     commands = [
@@ -57,6 +65,7 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
         next(step["run"] for step in job["steps"] if step["name"] == "Test")
         .replace("${{ matrix.shard }}", "0")
         .replace("$CI_SHARD_COUNT", "4")
+        .replace("$CI_WORKERS", "2")
     )
     assert command[:5] == [
         ".venv/bin/python",
@@ -90,7 +99,7 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
 
 
 @pytest.mark.parametrize("failing_test", [False, True], ids=["success", "failure"])
-@pytest.mark.parametrize("shard_count", [1, 2, 4])
+@pytest.mark.parametrize("shard_count", [1, 2, 4, 6, 8])
 def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code(
     tmp_path: Path,
     failing_test: bool,
@@ -119,6 +128,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/integration/test_integration.py": "def test_integration(): pass\n",
         "tests/e2e/test_e2e.py": "def test_e2e(): pass\n",
         "tests/newly_added_test.py": f"def test_new(): assert {not failing_test}\n",
+        **{f"tests/test_extra_{i}.py": "def test_extra(): pass\n" for i in range(3)},
         "tests/test_setup_outcomes.py": (
             "import pytest\n"
             "@pytest.fixture\n"
@@ -166,9 +176,9 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     classify = importlib.import_module("ci_watch.classify")
     for index in range(shard_count):
         command = shlex.split(
-            template.replace("${{ matrix.shard }}", str(index)).replace(
-                "$CI_SHARD_COUNT", str(shard_count)
-            )
+            template.replace("${{ matrix.shard }}", str(index))
+            .replace("$CI_SHARD_COUNT", str(shard_count))
+            .replace("$CI_WORKERS", "4" if shard_count == 4 else "2")
         )
         completed = subprocess.run(
             [sys.executable, *command[1:]],
@@ -176,7 +186,11 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             check=False,
             capture_output=True,
             text=True,
-            env={**os.environ, **job["env"]},
+            env={
+                **os.environ,
+                **job["env"],
+                "PYTEST_XDIST_AUTO_NUM_WORKERS": "4" if shard_count == 4 else "2",
+            },
             timeout=60,
         )
         output = completed.stdout + completed.stderr
@@ -205,7 +219,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         inventory.extend(json.loads((measured / "inventory.json").read_text()))
         results.extend(json.loads((measured / "results.json").read_text()))
         summaries.append(summary)
-    assert len(inventory) == len(set(inventory)) == (6 if failing_test else 5)
+    assert len(inventory) == len(set(inventory)) == (9 if failing_test else 8)
     assert failures == (2 if failing_test else 0)
     assert sum(s["counts"].get("skipped", 0) for s in summaries) == 1
     skipped = next(
@@ -250,6 +264,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/e2e/test_e2e.py",
         "tests/newly_added_test.py",
         "tests/test_setup_outcomes.py",
+        *(f"tests/test_extra_{i}.py" for i in range(3)),
     }
 
 

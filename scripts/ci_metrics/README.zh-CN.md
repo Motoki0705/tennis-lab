@@ -6,7 +6,7 @@
 路径省略测试。CI 使用[完整目标分片与覆盖审计](sharding.zh-CN.md)，默认本地命令仍不分片。
 CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
 集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
-2 个 worker、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
+明确worker数量（本地默认2，CI参见[分片设置](sharding.zh-CN.md)）、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
 
 pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保持现有`ci_watch`对失败nodeid和setup异常的识别。输出pipe关闭时launcher失败并停止测试process group。
 
@@ -127,3 +127,5 @@ job 墙钟缩短量。保留上述完整 CPU 执行入口。候选决策和 base
 API 依据：[pytest hooks](https://docs.pytest.org/en/stable/reference/reference.html#hooks)、
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv` outputs](https://github.com/astral-sh/setup-uv#outputs)。
+
+使用[`profile`命令](sharding.zh-CN.md#重新生成实测profile)从完整Actions成果物重新生成权重。保留失败用例，拒绝不完整attempt。
