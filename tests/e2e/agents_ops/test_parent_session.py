@@ -1050,22 +1050,19 @@ def test_delegation_reconcile_and_completed_tasks_do_not_relaunch(
     p.child("b")
     a, b = p.worktree("a"), p.worktree("b")
     for child, name, path in ((10, "a", a), (11, "b", b)):
-        assert (
-            json.loads(
-                p.cli(
-                    "delegate",
-                    "--child",
-                    str(child),
-                    "--agent",
-                    "codex",
-                    "--branch",
-                    "codex/" + name,
-                    "--worktree",
-                    str(path),
-                ).stdout
-            )["action"]
-            == "launch"
+        response = p.cli(
+            "delegate",
+            "--child",
+            str(child),
+            "--agent",
+            "codex",
+            "--branch",
+            "codex/" + name,
+            "--worktree",
+            str(path),
         )
+        assert json.loads(response.stdout)["action"] == "launch"
+        assert "worker_runs" not in response.stdout
     p.cli(
         "delegate",
         "--child",

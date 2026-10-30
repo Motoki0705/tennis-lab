@@ -138,6 +138,9 @@ def test_launch_is_durable_private_and_preserves_registry(
     reserved: ParentEnv, version: int
 ) -> None:
     p = reserved
+    assert task(p)["worker_runs"] == []
+    for command in ("status", "reconcile"):
+        assert "worker_runs" not in p.cli(command).stdout
     previous = {
         "delegation_id": "f" * 32,
         "run_dir": str(p.root / "private-old-run"),
@@ -203,13 +206,45 @@ def test_run_paths_in_evidence_are_private_across_redelegation(
         "--restart-evidence-file",
         p.note(evidence),
     )
+    assert "worker_runs" not in response.stdout
     assert record["run_dir"] not in response.stdout
     assert sibling not in response.stdout
-    assert task(p)["worker_runs"] == [record]
-    assert task(p)["delegation_id"] != record["delegation_id"]
+    current = task(p)
+    assert current["worker_runs"] == [record]
+    assert current["delegation_id"] != record["delegation_id"]
+    assert not any(
+        run["delegation_id"] == current["delegation_id"]
+        for run in current["worker_runs"]
+    )
+    for command in ("status", "reconcile"):
+        assert "worker_runs" not in p.cli(command).stdout
     before = p.state()
     assert "private" in p.cli("note", "--body-file", p.note(evidence), ok=False).stderr
     assert p.state() == before
+
+
+def test_legacy_reservation_gains_run_tracking_only_when_redelegated(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    with store(p).locked() as registry:
+        registry.parents["o/r#1"]["tasks"]["10"].pop("worker_runs", None)
+        registry.save()
+    legacy = task(p)
+    assert "worker_runs" not in legacy
+    for command in ("status", "reconcile"):
+        assert "worker_runs" not in p.cli(command).stdout
+    assert task(p) == legacy
+    ended(p)
+    response = p.cli(
+        *delegation_args(Path(legacy["worktree"])),
+        "--restart-evidence-file",
+        p.note("旧委任の終了を確認し、run記録方式で再委任する。"),
+    )
+    current = task(p)
+    assert current["worker_runs"] == []
+    assert current["delegation_id"] != legacy["delegation_id"]
+    assert "worker_runs" not in response.stdout
 
 
 @pytest.mark.parametrize(
@@ -364,6 +399,7 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
         ended(p)
     args = ("record-worker-run", "--child", "10", "--run-dir", str(path))
     before = copy.deepcopy(task(p))
+    assert before.pop("worker_runs") == []
     output = manual(p, *args)
     manual(p, *args)
     [record] = task(p)["worker_runs"]

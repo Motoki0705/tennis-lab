@@ -919,6 +919,7 @@ class ParentSession:
             "worktree": str(worktree.resolve()),
             "delegated": True,
             "delegation_id": uuid.uuid4().hex,
+            "worker_runs": previous.get("worker_runs", []),
             "stacked_on": planned["stacked_on"],
             "dependencies": deps if deps is not None else planned["dependencies"],
             "stopped": False,

@@ -480,7 +480,14 @@ runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ラ�
 どちらも無い場合や片方でも不一致なら拒否し、同一runの再登録は冪等とする。
 起動はせず、既存の終了記録や委任フィールドも変更しない。
 
-子taskのprivateな `worker_runs` は次の4キーの配列を記録順で保持する。
+`delegate` は委任予約を保存するとき、子taskのprivateな `worker_runs` を必ず設定する。
+既存の記録は保持し、なければ空配列にする。このキーがある子は `run-worker` / `record-worker-run`
+でrunを記録する方式の委任であり、現在の委任IDに対応するrunがなければ「委任予約済み・未起動」を意味する。
+`delegate --restart-evidence-file` による再委任でも旧委任のrunを保持し、新しい委任IDのrunがない状態から始める。
+この変更より前の、キーを持たない旧委任は「run記録なし」であり、未起動とは区別する。
+読取だけで旧委任へキーを補わない。
+
+`worker_runs` は次の4キーの配列を記録順で保持する。
 
 ```json
 [{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00"}]
