@@ -15,15 +15,20 @@ class ExecutionReader:
     def __init__(self, board: BoardReader) -> None:
         self.board = board
         self.remote: dict[str, Any] | None = None
+        self.refreshing = False
+        self.refresh_revision = 0
+        self.refresh_result: str | None = None
         self.lock = Lock()
 
-    def _cached_github(self, observation: dict[str, Any]) -> None:
-        if self.remote is None:
+    def _cached_github(
+        self, observation: dict[str, Any], remote: dict[str, Any] | None
+    ) -> None:
+        if remote is None:
             return
-        observation["github"] = deepcopy(self.remote["github"])
+        observation["github"] = deepcopy(remote["github"])
         previous = {
             (row["repo"], row["parent"], row["generation"]): row
-            for row in self.remote["parents"]
+            for row in remote["parents"]
         }
         for parent in observation["parents"]:
             cached = previous.get(
@@ -47,23 +52,59 @@ class ExecutionReader:
                 parent["children"].append(child)
             parent["children"].sort(key=lambda row: row["child"])
 
-    def read(self, *, refresh: bool = False) -> dict[str, Any]:
+    def _refresh_state(self) -> dict[str, Any]:
+        """Caller holds the cache lock; never perform source reads here."""
+        return {
+            "epoch": self.board.epoch,
+            "status": "running" if self.refreshing else "idle",
+            "revision": self.refresh_revision,
+            "result": self.refresh_result,
+        }
+
+    def _local(self) -> dict[str, Any]:
+        observation = collect_status(
+            state_dir=self.board.store.directory.parent / "parent-sessions",
+            github=False,
+        )
         with self.lock:
+            # Published snapshots are immutable. Copy/merge outside the lock,
+            # alongside the fresh local observation, without blocking refresh.
+            remote = self.remote
+            state = self._refresh_state()
+        self._cached_github(observation, remote)
+        observation["github_refresh"] = state
+        return self.board.execution_roster(observation)
+
+    def read(self, *, refresh: bool = False) -> dict[str, Any]:
+        claimed = False
+        with self.lock:
+            if refresh and not self.refreshing:
+                self.refreshing = claimed = True
+                self.refresh_revision += 1
+        if not claimed:
+            # A duplicate explicit refresh receives a local observation with
+            # status=running; the HTTP route returns 202 instead of queuing it.
+            return self._local()
+        try:
             observation = collect_status(
                 state_dir=self.board.store.directory.parent / "parent-sessions",
-                github=refresh,
+                github=True,
             )
-            if refresh:
-                for parent in observation["parents"]:
-                    for child in parent["children"]:
-                        child["github"]["fetched_at"] = observation["github"][
-                            "fetched_at"
-                        ]
-            else:
-                self._cached_github(observation)
-            # This also validates the complete response before any cache is
-            # replaced. Failure must retain the last successful GitHub snapshot.
-            observation = self.board.execution_roster(observation, refresh=refresh)
-            if refresh:
-                self.remote = deepcopy(observation)
-            return observation
+            for parent in observation["parents"]:
+                for child in parent["children"]:
+                    child["github"]["fetched_at"] = observation["github"]["fetched_at"]
+            observation = self.board.execution_roster(observation, refresh=True)
+            published = deepcopy(observation)
+        except Exception:
+            with self.lock:
+                self.refreshing = False
+                self.refresh_result = "failed"
+                self.refresh_revision += 1
+            raise
+        with self.lock:
+            self.remote = published
+            self.refreshing = False
+            self.refresh_result = "succeeded"
+            self.refresh_revision += 1
+            observation["github_refresh"] = self._refresh_state()
+        return observation

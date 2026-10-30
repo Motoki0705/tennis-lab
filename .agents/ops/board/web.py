@@ -167,8 +167,11 @@ def create_app(
     def thread(post_id: str) -> dict[str, Any]:
         return reader.thread(post_id)
 
-    def execution(refresh: bool = False) -> dict[str, Any]:
-        return execution_reader.read(refresh=refresh)
+    def execution(response: Response, refresh: bool = False) -> dict[str, Any]:
+        result = execution_reader.read(refresh=refresh)
+        if refresh and result["github_refresh"]["status"] == "running":
+            response.status_code = 202
+        return result
 
     def post(payload: PostInput) -> dict[str, Any]:
         return messages.post(env, **payload.model_dump(), human=True, notifiers=routes)

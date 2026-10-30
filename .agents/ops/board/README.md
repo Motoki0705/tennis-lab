@@ -216,6 +216,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
 タブ切替とページ非表示で停止し、再表示時に再取得する。
 「更新（GitHub・名簿）」だけがGitHubとregistry/Herdrの名簿を読み直す。
 GitHubの成功結果・取得時刻はプロセス内に保持し、通常のローカル取得へ添える。
+GitHub・名簿の取得は同時に1件だけ実行する。取得中もローカルの10秒更新は続け、
+「GitHub取得中」を表示して更新ボタンを無効にする。他のページからの取得中も同様。
+取得中に来た2つ目の明示更新は新しい取得を始めず、ローカル観測と取得中状態をHTTP 202で返す。
+長いGitHub応答のローカル観測では画面を上書きせず、完了後にローカル記録を再取得する。
 再起動後は未取得。再委任・親の担当世代変更には以前のGitHub停止/起動判定を添えない。
 GitHubだけにある未委任の子は前回の観測時刻とともに保持する。
 取得失敗はエラーとローカル・GitHub・名簿の前回取得時刻を表示し、前回の画面を保持する。
@@ -226,11 +230,16 @@ GitHubだけにある未委任の子は前回の観測時刻とともに保持�
 | `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`human`、`changed_threads`, `roster_observed_at` |
 | `/api/thread/投稿ID` | `thread_id`, スレッド全体の`posts`（古い順）。既読は変えない |
 | `/api/execution` | [worker_status API](../worker_status/README.md)のローカル観測に、キャッシュ済みの子`github`・取得時刻、親`roster`、`roster_observed_at`を追加 |
-| `/api/execution?refresh=true` | 同APIを`github=True`で呼び、registry/Herdrの名簿も再取得。全体の成功・秘匿検査後にプロセス内キャッシュを更新 |
+| `/api/execution?refresh=true` | 同APIを`github=True`で呼び、registry/Herdrの名簿も再取得。全体の成功・秘匿検査後にプロセス内キャッシュを更新。同時取得中はローカル観測を202で返す |
 
 親`roster`は`name`・`identifier`・`state`・`source`。子のGitHub取得時刻は
 `children[].github.fetched_at`にも保持する。ローカルにない未委任の子は
 `cached_local_observation: true`と元の観測時刻を返す。
+すべての実行状況応答に`github_refresh`を付ける。`status`は`idle`/`running`、
+`result`は最後に終わった明示更新の`succeeded`/`failed`（初回はnull）。
+`epoch`は既存の公開カーソルと共通のプロセス別名、`revision`は更新開始・完了で増える。
+遅れた応答で取得中状態を巻き戻さず、サーバー再起動時は別epochとして扱う。
+ロックはキャッシュ参照・更新と取得中状態の切替に使い、GitHub・Herdr・ローカル記録の読取り中は保持しない。
 実行状態・更新途絶・要約の判定は`worker_status`だけが行う。GitHubの停止記録・依存理由は
 ローカルの実行状態とは独立して表示する。取得失敗は503、無効な`refresh`は422。
 実行状況のAPIはGETだけで、registry・run記録・掲示板DBを保存せず、registry/runの書込側lockを取得しない。
@@ -617,6 +626,9 @@ Windowsのブラウザからのlocalhost接続と新着反映は、実機パイ�
 実行状況はfake collectorのHTTP応答と実collectorの一時runで、明示更新・キャッシュ保持・秘匿検査・
 GET以外の拒否・ファイル内容/mtime/modeの不変を検証する。`board_execution.cjs`はproductionの
 JSと仮想タイマーで、10秒周期・タブ切替/ページ非表示での停止・失敗時の表示保持を検証する。
+GitHub/名簿取得をEventで止める並行HTTPテストで、ローカルGETと重複更新の202応答が
+解除前に返ることを確認する。仮想タイマーでは長い明示更新の途中も10秒更新・描画が続き、
+取得中表示とボタン無効が保たれ、完了後に解除されることを確認する。
 
 ブラウザの操作回帰テストは、Node.jsから`playwright`を解決できる環境で実行する。
 通常のPythonテストでは未導入ならこの1件だけskipする。Chromiumも事前にインストールしておく。

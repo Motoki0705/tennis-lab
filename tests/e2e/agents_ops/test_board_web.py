@@ -8,8 +8,10 @@ import sqlite3
 import subprocess
 import sys
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from typing import Any
 
@@ -146,7 +148,9 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             }
         ],
     }
-    fake = SimpleNamespace(api=api, snapshot=snapshot, calls=[], fail=False)
+    fake = SimpleNamespace(
+        api=api, snapshot=snapshot, calls=[], fail=False, fetched_at=now
+    )
 
     def collect(**kwargs: Any) -> dict[str, Any]:
         fake.calls.append(kwargs)
@@ -155,7 +159,7 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             raise ValueError("private runtime details")
         result: dict[str, Any] = deepcopy(fake.snapshot)
         if kwargs["github"]:
-            result["github"] = {"status": "observed", "fetched_at": now}
+            result["github"] = {"status": "observed", "fetched_at": fake.fetched_at}
             for parent in result["parents"]:
                 for child in parent["children"]:
                     child["github"] = {
@@ -214,6 +218,74 @@ def test_execution_explicit_refresh_cache_and_fresh_local_state(
     assert [call["github"] for call in execution.calls] == [False, True, False]
 
 
+# Concurrency contract: hold either external source on an Event, then require
+# local GET and duplicate refresh to finish before releasing it. This exposes
+# both reader locks without sleep-based timing or real GitHub/Herdr latency.
+# Two expansions; reuse the real HTTP route, cache and SQLite projection.
+@pytest.mark.parametrize("phase", ["github", "roster"])
+def test_execution_local_reads_and_duplicate_refresh_do_not_wait_for_external_io(
+    world: World,
+    client: TestClient,
+    execution: SimpleNamespace,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    entered, release = Event(), Event()
+    original_collect = execution.api.collect_status
+    original_agents = web.data.agents
+
+    def pause() -> None:
+        entered.set()
+        assert release.wait(5), "test did not release the external observation"
+
+    def collect(**kwargs: Any) -> dict[str, Any]:
+        if phase == "github" and kwargs["github"]:
+            pause()
+        result: dict[str, Any] = original_collect(**kwargs)
+        return result
+
+    def agents(*args: Any) -> dict[str, Any]:
+        if phase == "roster":
+            pause()
+        result: dict[str, Any] = original_agents(*args)
+        return result
+
+    monkeypatch.setattr(execution.api, "collect_status", collect)
+    monkeypatch.setattr(web.data, "agents", agents)
+    execution.snapshot["parents"][0]["children"][0]["label"] = "新しいローカル観測"
+    execution.fetched_at = "2026-10-30T12:01:00+00:00"
+    before = world.labels.registry.read_bytes(), world.store.path.read_bytes()
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        refreshing = pool.submit(client.get, "/api/execution?refresh=true")
+        try:
+            assert entered.wait(2)
+            local = pool.submit(client.get, "/api/execution").result(timeout=2)
+            assert local.status_code == 200
+            data = local.json()
+            assert data["parents"][0]["children"][0]["label"] == "新しいローカル観測"
+            assert data["github"] == previous["github"]
+            assert data["github_refresh"]["status"] == "running"
+            duplicate = pool.submit(client.get, "/api/execution?refresh=true").result(
+                timeout=2
+            )
+            assert duplicate.status_code == 202
+            assert duplicate.json()["github_refresh"] == data["github_refresh"]
+            assert not refreshing.done()
+        finally:
+            release.set()
+        completed = refreshing.result(timeout=2)
+    assert completed.status_code == 200
+    finished = client.get("/api/execution").json()
+    assert finished["github"]["fetched_at"] == execution.fetched_at
+    assert finished["github_refresh"]["status"] == "idle"
+    assert finished["github_refresh"]["result"] == "succeeded"
+    assert finished["github_refresh"]["revision"] > data["github_refresh"]["revision"]
+    assert sum(call["github"] for call in execution.calls) == 2
+    assert (world.labels.registry.read_bytes(), world.store.path.read_bytes()) == before
+
+
 def test_execution_failures_keep_last_cache_and_never_expose_errors(
     client: TestClient,
     execution: SimpleNamespace,
@@ -235,7 +307,13 @@ def test_execution_failures_keep_last_cache_and_never_expose_errors(
         patch.setattr(web.data, "agents", no_roster)
         assert client.get("/api/execution?refresh=true").status_code == 503
     cached = client.get("/api/execution").json()
+    state = cached.pop("github_refresh")
+    assert state["status"] == "idle" and state["result"] == "failed"
+    assert state["revision"] > previous.pop("github_refresh")["revision"]
     assert cached == previous
+    recovered = client.get("/api/execution?refresh=true")
+    assert recovered.status_code == 200
+    assert recovered.json()["github_refresh"]["result"] == "succeeded"
 
 
 def test_execution_cached_github_children_and_handoff_do_not_reuse_old_identity(
@@ -289,7 +367,10 @@ def test_execution_revalidates_public_response_and_keeps_safe_cache(
         assert response.status_code == 503
         assert private not in response.text
     message["text"] = saved
-    assert client.get("/api/execution").json() == previous
+    cached = client.get("/api/execution").json()
+    assert cached.pop("github_refresh")["result"] == "failed"
+    previous.pop("github_refresh")
+    assert cached == previous
 
 
 def test_execution_scripts_render_and_poll_only_the_visible_tab(

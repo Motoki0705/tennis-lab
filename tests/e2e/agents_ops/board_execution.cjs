@@ -78,6 +78,38 @@ const timers = new Map(),
   requests = [];
 let serial = 0,
   fail = false;
+let holdRefresh = false,
+  finishRefresh = null,
+  cacheAvailable = false;
+let serverRefresh = structuredClone(input.local.github_refresh);
+const response = (body, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => structuredClone(body),
+});
+const localData = () => ({
+  ...structuredClone(input.local),
+  github_refresh: { ...serverRefresh },
+});
+const completeRefresh = () => {
+  serverRefresh = {
+    epoch: serverRefresh.epoch,
+    status: "idle",
+    revision: serverRefresh.revision + 1,
+    result: fail ? "failed" : "succeeded",
+  };
+  if (!fail && !cacheAvailable) {
+    input.local = structuredClone(input.refreshed);
+    cacheAvailable = true;
+  }
+  return response(
+    {
+      ...structuredClone(input.refreshed),
+      github_refresh: { ...serverRefresh },
+    },
+    fail ? 503 : 200,
+  );
+};
 const context = vm.createContext({
   pendingSubmission: null,
   post: input.post,
@@ -99,14 +131,27 @@ const context = vm.createContext({
   },
   fetch: async (url) => {
     requests.push(url);
+    if (url.startsWith("/api/execution")) {
+      if (url.includes("refresh=true")) {
+        if (serverRefresh.status === "running")
+          return response(localData(), 202);
+        serverRefresh = {
+          ...serverRefresh,
+          status: "running",
+          revision: serverRefresh.revision + 1,
+        };
+        if (holdRefresh)
+          return new Promise((resolve) => {
+            finishRefresh = () => resolve(completeRefresh());
+          });
+        return completeRefresh();
+      }
+      return response(localData(), fail ? 503 : 200);
+    }
     return {
       ok: !fail,
       status: fail ? 503 : 200,
       json: async () => {
-        if (url.startsWith("/api/execution"))
-          return structuredClone(
-            url.includes("refresh=true") ? input.refreshed : input.local,
-          );
         return {
           reset: true,
           cursor: "cursor",
@@ -185,16 +230,94 @@ async function main() {
   assert.equal(executionRequests().length, 2);
   elements.get("refresh-execution").events.click();
   await settle();
-  assert.equal(executionRequests().at(-1), "/api/execution?refresh=true");
+  assert.equal(
+    executionRequests().filter((url) => url.includes("refresh=true")).length,
+    1,
+  );
   assert.ok(tree.textContent.includes("Issue 未完了（OPEN）"));
   assert.ok(
     tree.textContent.includes("ターン終了はIssueの受入完了を意味しません。"),
   );
   assert.ok(tree.textContent.includes("PR #88"));
+  holdRefresh = true;
+  elements.get("refresh-execution").events.click();
+  await settle();
+  assert.equal(elements.get("refresh-execution").disabled, true);
+  assert.equal(elements.get("execution-refresh").hidden, false);
+  assert.ok(
+    elements.get("execution-refresh").textContent.includes("GitHub取得中"),
+  );
+  const pendingCount = executionRequests().length;
+  const refreshCount = executionRequests().filter((url) =>
+    url.includes("refresh=true"),
+  ).length;
+  elements.get("refresh-execution").events.click();
+  await settle();
+  assert.equal(
+    executionRequests().length,
+    pendingCount,
+    "pending refresh cannot be submitted twice",
+  );
+  input.local.parents[0].children[0].label = "実行中（新しい観測）";
+  for (let ticks = 1; ticks <= 3; ticks++) {
+    await tick();
+    assert.equal(
+      executionRequests().length,
+      pendingCount + ticks,
+      "10s local polling continues during the long refresh",
+    );
+    assert.equal(elements.get("refresh-execution").disabled, true);
+    assert.ok(tree.textContent.includes("実行中（新しい観測）"));
+  }
+  assert.equal(
+    executionRequests().filter((url) => url.includes("refresh=true")).length,
+    refreshCount,
+  );
+  finishRefresh();
+  await settle();
+  holdRefresh = false;
+  assert.equal(elements.get("refresh-execution").disabled, false);
+  assert.equal(elements.get("execution-refresh").hidden, true);
+  assert.ok(
+    tree.textContent.includes("実行中（新しい観測）"),
+    "old local data in the GitHub response never rolls back the display",
+  );
+
+  // Another browser already started the refresh: HTTP 202 supplies progress,
+  // and subsequent local observations release the button on completion.
+  serverRefresh = {
+    ...serverRefresh,
+    status: "running",
+    revision: serverRefresh.revision + 1,
+  };
+  elements.get("refresh-execution").events.click();
+  await settle();
+  assert.equal(elements.get("refresh-execution").disabled, true);
+  assert.equal(elements.get("execution-refresh").hidden, false);
+  context.staleRefresh = {
+    epoch: serverRefresh.epoch,
+    status: "idle",
+    revision: 0,
+    result: "succeeded",
+  };
+  vm.runInContext("executionView.observeRefresh(staleRefresh)", context);
+  assert.equal(
+    elements.get("refresh-execution").disabled,
+    true,
+    "late completion from an older refresh cannot enable the button",
+  );
+  serverRefresh = {
+    epoch: serverRefresh.epoch,
+    status: "idle",
+    revision: serverRefresh.revision + 1,
+    result: "succeeded",
+  };
+  await tick();
+  assert.equal(elements.get("refresh-execution").disabled, false);
+  assert.equal(elements.get("execution-refresh").hidden, true);
   const saved = tree.textContent;
   // Simulate the server cache on subsequent local polls, without freezing the
   // local observation. Both snapshots are real HTTP responses supplied by pytest.
-  input.local = input.refreshed;
   fail = true;
   elements.get("refresh-execution").events.click();
   await settle();
@@ -228,6 +351,29 @@ async function main() {
   assert.equal(elements.get("execution-panel").hidden, true);
   assert.equal(elements.get("feed-composer").hidden, false);
   assert.ok(![...timers.values()].some((t) => t.delay === 10000));
+  view("execution");
+  await settle();
+  serverRefresh = {
+    ...serverRefresh,
+    status: "running",
+    revision: serverRefresh.revision + 1,
+  };
+  await tick();
+  assert.equal(elements.get("refresh-execution").disabled, true);
+  serverRefresh = {
+    epoch: "new-web-process",
+    status: "idle",
+    revision: 0,
+    result: null,
+  };
+  await tick();
+  assert.equal(
+    elements.get("refresh-execution").disabled,
+    false,
+    "a server restart resets the process-local revision",
+  );
+  view("timeline");
+  await settle();
   // A conversation POST can finish after the user has switched tabs. Its
   // completion must not change the active view or restart conversation polls.
   vm.runInContext(

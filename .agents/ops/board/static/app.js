@@ -509,7 +509,7 @@ async function getJSON(url, timeout = 15000) {
   const response = await fetch(url, {
     cache: "no-store",
     credentials: "same-origin",
-    signal: AbortSignal.timeout(timeout),
+    ...(timeout === null ? {} : { signal: AbortSignal.timeout(timeout) }),
   });
   if (!response.ok)
     throw new Error(

@@ -9,6 +9,11 @@ class ExecutionView {
     this.data = null;
     this.error = null;
     this.refreshError = null;
+    this.refreshBusy = false;
+    this.refreshState = "idle";
+    this.refreshRevision = -1;
+    this.refreshEpoch = null;
+    this.needsLocal = false;
     byId("refresh-execution").addEventListener("click", () => this.load(true));
   }
 
@@ -19,30 +24,86 @@ class ExecutionView {
   }
 
   async load(refresh = false) {
+    if (refresh) return this.refreshGithub();
     clearTimeout(this.timer);
     if (!this.active || document.visibilityState !== "visible" || this.busy)
       return;
     this.busy = true;
-    byId("refresh-execution").disabled = true;
+    this.needsLocal = false;
     try {
-      const data = await getJSON(
-        refresh ? "/api/execution?refresh=true" : "/api/execution",
-        refresh ? 120000 : 15000,
-      );
+      const data = await getJSON("/api/execution");
       this.data = data;
       this.error = null;
-      if (refresh) this.refreshError = null;
+      this.observeRefresh(data.github_refresh);
       this.render();
     } catch (error) {
-      if (refresh) this.refreshError = error;
-      else this.error = error;
+      this.error = error;
       this.renderError();
     } finally {
       this.busy = false;
-      byId("refresh-execution").disabled = false;
       if (this.active && document.visibilityState === "visible")
-        this.timer = setTimeout(() => this.load(), 10000);
+        this.timer = setTimeout(() => this.load(), this.needsLocal ? 0 : 10000);
     }
+  }
+
+  async refreshGithub() {
+    if (
+      !this.active ||
+      document.visibilityState !== "visible" ||
+      this.refreshBusy ||
+      this.refreshState === "running"
+    )
+      return;
+    this.refreshBusy = true;
+    this.renderRefresh();
+    try {
+      // GitHub can take minutes. Local requests keep their own timeout/timer.
+      const data = await getJSON("/api/execution?refresh=true", null);
+      this.observeRefresh(data.github_refresh);
+    } catch (error) {
+      this.refreshError = error;
+      // A network failure does not prove the server operation has finished.
+      // The next local observation resolves that state, including HTTP 202.
+      this.refreshState = "running";
+    } finally {
+      this.refreshBusy = false;
+      this.renderRefresh();
+      this.renderError();
+      this.needsLocal = true;
+      // Never render the old local snapshot returned by the long request.
+      this.load();
+    }
+  }
+
+  observeRefresh(meta) {
+    if (meta.epoch !== this.refreshEpoch) {
+      this.refreshEpoch = meta.epoch;
+      this.refreshRevision = -1;
+    }
+    if (meta.revision < this.refreshRevision) return;
+    const advanced = meta.revision > this.refreshRevision;
+    this.refreshRevision = meta.revision;
+    this.refreshState = meta.status;
+    if (advanced && meta.status === "idle") {
+      if (meta.result === "succeeded") this.refreshError = null;
+      if (meta.result === "failed" && !this.refreshError)
+        this.refreshError = new Error(
+          "GitHub・名簿の更新を完了できませんでした。",
+        );
+    }
+    this.renderRefresh();
+  }
+
+  renderRefresh() {
+    const running = this.refreshBusy || this.refreshState === "running";
+    const node = byId("execution-refresh");
+    node.hidden = !running;
+    node.textContent = running
+      ? "GitHub取得中 · ローカル記録の10秒更新は継続しています。"
+      : "";
+    const button = byId("refresh-execution");
+    button.disabled = running;
+    button.textContent = running ? "GitHub取得中…" : "更新（GitHub・名簿）";
   }
 
   renderError() {
