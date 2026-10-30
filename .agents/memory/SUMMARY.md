@@ -22,6 +22,7 @@
 ## [gotcha](gotcha/index.md) — 落とし穴
 
 - `src` はカレントディレクトリから import される。worktreeのコードは、worktreeで実行・enqueueしないと使われない。
+- 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。

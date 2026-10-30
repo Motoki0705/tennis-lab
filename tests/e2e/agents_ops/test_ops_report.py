@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/ops-report"))
 
@@ -390,6 +391,35 @@ def test_report_creates_issue_and_label(ops_env: Any) -> None:
     assert issue["labels"] == ["ops-report"]
     assert "agent: `codex`" in issue["body"]
     assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
+
+
+def test_triage_creates_labels_with_styles_from_manifest(
+    ops_env: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    triage: Any = importlib.import_module("opsreport.triage")
+    groups = yaml.safe_load(triage.LABEL_MANIFEST.read_text(encoding="utf-8"))
+    names = ["ops-report", "ai-proposed"]
+    expected = {}
+    for labels in groups.values():
+        for label in labels:
+            if label["name"] in names:
+                label["color"] = "123ABC"
+                label["description"] = f"manifest definition for {label['name']}"
+                expected[label["name"]] = {
+                    key: label[key] for key in ("color", "description")
+                }
+    manifest = tmp_path / "labels.yml"
+    manifest.write_text(yaml.safe_dump(groups), encoding="utf-8")
+    monkeypatch.setattr(triage, "LABEL_MANIFEST", manifest)
+    for key in ("PATH", "FAKE_GH_STATE", "FAKE_GH_CALLS"):
+        monkeypatch.setenv(key, ops_env.env[key])
+    state = ops_env.state
+    state["labels"] = []
+    ops_env.write_state(state)
+    triage.ensure_labels(names, repo_root=ops_env.repo, dry_run=True)
+    assert ops_env.state["labels"] == []
+    triage.ensure_labels(names, repo_root=ops_env.repo, dry_run=False)
+    assert ops_env.state["label_specs"] == expected
 
 
 def test_report_with_relative_log_dir_from_another_directory(ops_env: Any) -> None:

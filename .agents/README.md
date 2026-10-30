@@ -64,7 +64,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 ## GitHub運用ルール（初版）
 
-- **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。AIが起票したissueには `ai-proposed` ラベルを付ける。運用レポートで人間が整理する。
+- **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。作業中の起票には `ai-proposed` を付けず、運用レポートの採用提案からtriageが起票するときに付ける。ラベルの軸・付与主体は [親子issue規約](ops/issues/README.md#ラベル) に従う。
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
 - **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。

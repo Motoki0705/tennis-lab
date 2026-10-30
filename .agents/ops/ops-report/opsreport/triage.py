@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import yaml
 from issues import (
     ProposalSource,
     index_proposals,
@@ -19,7 +20,7 @@ from parent.session import ParentSession
 from parent.state import Store, state_directory
 
 from . import organization_apply, shell
-from .collect import AI_PROPOSED_LABEL, REPORT_LABEL
+from .collect import REPORT_LABEL
 from .proposals import (
     ParsedProposal,
     annotate_children,
@@ -28,13 +29,12 @@ from .proposals import (
 )
 
 LOG = logging.getLogger("ops_report.triage")
-LABEL_SPECS: dict[str, tuple[str, str]] = {
-    REPORT_LABEL: ("0E8A16", "運用レポート（.agents/ops/ops-report）"),
-    AI_PROPOSED_LABEL: ("C5DEF5", "AIが起票した提案・派生課題"),
-}
+LABEL_MANIFEST = Path(__file__).resolve().parents[4] / ".github/labels.yml"
 
 
 def ensure_labels(names: list[str], *, repo_root: Path, dry_run: bool) -> None:
+    groups = yaml.safe_load(LABEL_MANIFEST.read_text(encoding="utf-8"))
+    specs = {label["name"]: label for labels in groups.values() for label in labels}
     existing = {
         row["name"]
         for row in shell.gh_list(
@@ -47,9 +47,17 @@ def ensure_labels(names: list[str], *, repo_root: Path, dry_run: bool) -> None:
         if dry_run:
             LOG.info("dry-run: would create label %s", name)
             continue
-        color, description = LABEL_SPECS[name]
+        spec = specs[name]
         shell.gh(
-            ["label", "create", name, "--color", color, "--description", description],
+            [
+                "label",
+                "create",
+                name,
+                "--color",
+                spec["color"],
+                "--description",
+                spec["description"],
+            ],
             cwd=repo_root,
         )
 
