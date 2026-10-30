@@ -11,7 +11,7 @@ source:
   allowed_statuses: [completed, partial]
 
 dataset:
-  version: chat-player-v1
+  version: chat-player-v2
   jpeg_quality: 95
 
 split:
