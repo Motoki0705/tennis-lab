@@ -17,6 +17,8 @@ from src.tasks.player_detection.inference import (
     PlayerDetectionRequest,
 )
 
+pytestmark = [pytest.mark.cuda, pytest.mark.local_data]
+
 
 def test_exported_player_checkpoint_predicts_a_held_out_frame() -> None:
     if os.environ.get("PLAYER_DETECTION_GPU_TEST") != "1":

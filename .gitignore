@@ -59,6 +59,8 @@ annotation.json
 annotations/
 *.csv
 *.json
+!scripts/ci_metrics/package.json
+!scripts/ci_metrics/package-lock.json
 !/.claude/settings.json
 !/tests/support/development/ci_attempts.json
 !/scripts/ci_metrics/lanes.json
@@ -211,3 +213,7 @@ paper/reference/
 .ci-metrics/
 .ci-results/
 .ci-plan/
+.ci-dino-cpu/
+.ci-browser/
+.ci-acceptance/
+/scripts/ci_metrics/node_modules/

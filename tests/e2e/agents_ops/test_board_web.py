@@ -1153,7 +1153,8 @@ def test_browser_human_conversation_workflow(
         timeout=15,
     )
     if available.returncode:
-        pytest.skip("Install the optional Playwright package and set NODE_PATH")
+        unavailable = pytest.fail if os.environ.get("CI_REQUIRE_BROWSER") == "1" else pytest.skip
+        unavailable("Install the optional Playwright package and set NODE_PATH")
     root = world.post(
         to=["human", world.assignments[2].name],
         body='@human <img src=x onerror="alert(1)"> を文字として表示',
