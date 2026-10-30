@@ -44,6 +44,36 @@ read-only Actions APIで直近30件までの成功したmain pushを探索し、
 証拠の欠落・期限切れ・非互換・API失敗は理由付きの **unknown** として残します。
 coverage artifactは90日保存し、成功indexをrepoへcommitしません。
 
+## テスト増減とコストの警告
+
+`Python` 集約jobはcoverage監査後に1つの参考レポートをjob summaryへ追加します。
+file別case追加・削除・純増、時間予算を超えるcase（新規・今回超過・既存・比較元なしで不明）、
+展開数の大きいparametrize関数、重いcase/fixture setup、file別profileと実測phase秒のずれ
+（差分と百分率）を示します。閾値と解釈の正本は
+[テスト方針](../../tests/README.md#ケース数と実行時間)で、超過によってCIを失敗にしません。
+
+比較元はPR baseの祖先（main/手動では現在commitの祖先）にある、直前の検証済み全件成功main push
+runです。現在runは除外します。read-only APIで成功したmain runを直近30件まで調べます。
+成果物の欠落・期限切れ、別schema、不正/欠損データ、祖先確認不能、API失敗は理由付きで表示します。
+直前の全件成功を特定した後は、そのgrowthデータの欠損・非互換を古い比較元で黙って埋めません。
+導入直後は通常growth比較元がない旨を表示しますが、現在のコストとprofile差は表示できます。
+
+Dがある回では、比較元側も含めて比較をRのfileだけに限定すると明示します。
+繰延べcaseは未計測で、削除・skip・0秒として扱いません。関数のfamilyはpytestの `originalname`・
+parent identity・callspec情報で決め、parameter IDの括弧を解析しません。
+collection詳細はworker間で照合し、既存の `inventory.json` とlane/coverage schemaは変更しません。
+詳細が欠けた場合は理由付きでコストレポートを省き、coverageの判定には影響させません。
+
+fixture行にはscope・実setup回数・setup合計・最長の単発setupを示します。
+予算超過は単発の実行で判定し、軽い複数回の合計を重い1回と誤認しません。
+fixture時間はcase setupの内数で、phase合計へ再加算しません。setup skipに伴うcall欠測は
+未計測のままstatusを表示します。profileは実際の分割に使ったfingerprintと照合し、
+欠落・不一致は理由を示し、新規fileはprofile未計測と表示します。
+
+`cpu-test-coverage-<run>-<attempt>` artifactには、`growth.json`（schema 1、完全な要求対象
+inventory/詳細/results/fixtureコストとrun identity、または不完全な理由）、`growth-summary.json`（全レポート行）、
+`growth-summary.md` も90日保存します。summaryの各表は20行までで、全行はJSONに残します。
+
 ## 実行・中断後の回収
 
 計測対象のcheckoutとlock済み環境で実行します。
@@ -87,10 +117,12 @@ nullです。CLI自体のsignal/error終了値とは分けます。
 | `run.json` | 要求・開始・終了、lock待機、終了値/signal、実行中のsource整合性 |
 | `events-*.jsonl` | processごとにflushした収集・除外nodeid、収集失敗/skip、worker収集、fixture setup、各phase、終了 |
 | `inventory.json` | 選択されたnodeid。すべてのworkerで順序も含め一致を確認 |
+| `inventory-details.json` | schema 1のoriginalname/callspecを含む収集詳細、または欠測理由。lane実行ではUを保持 |
 | `lane-plan.json`, `shard-*.json`, `cpu_universe` event | 固定要求、U/R/D、レーン選別前の独立収集証拠。[分割](sharding.ja.md#証拠と失敗)を参照 |
 | `results.json` | nodeごとの成功・skip・失敗・xfail・xpass・未完了とphase時間 |
 | `junit.xml`, `pytest.log` | 独立したJUnit件数・identity・時間照合、標準durations出力 |
 | `summary.json`, `summary.md` | 完全性、process起動/収集、file/fixtureごとの寄与、結果件数 |
+| 集約の `growth.json`, `growth-summary.json`, `growth-summary.md` | 監査済みの要求対象の観測と参考の増減/コスト比較。[警告](#テスト増減とコストの警告)を参照 |
 
 `full_cpu_baseline` は既定の全CPU対象と成功した観測の両方を必要とします。
 runner/session/JUnit欠測、worker収集不一致、phase欠落・重複、JUnitとの件数・identity・

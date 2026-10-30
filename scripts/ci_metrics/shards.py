@@ -12,6 +12,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze
+from .growth import markdown as growth_markdown
+from .growth_baseline import previous_main
 from .lanes import read_plan, validate_plan
 from .report import summarize
 
@@ -350,11 +353,81 @@ def verify_shards(
     return result
 
 
+def write_growth_report(
+    root: Path,
+    audit: dict[str, Any],
+    timing_profile: Path,
+    *,
+    source_root: Path,
+    repository: str | None,
+    ancestor: str,
+) -> str:
+    """Cost evidence is optional and cannot change the existing coverage verdict."""
+    try:
+        snapshot = aggregate_snapshot(root, audit)
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        report = {
+            "schema_version": SCHEMA_VERSION,
+            "available": False,
+            "reason": f"current growth observations unavailable: {type(error).__name__}: {error}",
+        }
+        (root / "growth.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": SCHEMA_VERSION,
+                    "complete": False,
+                    "reason": report["reason"],
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+    else:
+        (root / "growth.json").write_text(json.dumps(snapshot, indent=2) + "\n")
+        baseline, reason = (
+            previous_main(source_root, repository, ancestor, audit["run_id"])
+            if repository
+            else (
+                None,
+                "GITHUB_REPOSITORY is unavailable; main baseline lookup was not attempted",
+            )
+        )
+        profile = None
+        profile_reason = None
+        try:
+            profile, fingerprint = read_timing_profile(timing_profile)
+            for directory in root.glob("*/tests"):
+                metadata = json.loads((directory / "environment.json").read_text())
+                if metadata["shard"]["profile_sha256"] != fingerprint:
+                    raise ValueError(
+                        "profile differs from the scheduling profile used by shards"
+                    )
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            profile = None
+            profile_reason = f"{type(error).__name__}: {error}"
+        report = analyze(
+            snapshot,
+            baseline,
+            baseline_reason=reason,
+            profile=profile,
+            profile_reason=profile_reason,
+        )
+    document = growth_markdown(report)
+    (root / "growth-summary.json").write_text(json.dumps(report, indent=2) + "\n")
+    (root / "growth-summary.md").write_text(document)
+    return document
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--count", required=True, type=int)
     parser.add_argument("--lane-plan", required=True, type=Path)
+    parser.add_argument(
+        "--timing-profile",
+        type=Path,
+        default=Path(__file__).with_name("cpu-file-times.json"),
+    )
     args = parser.parse_args()
     plan_error: str | None
     try:
@@ -382,6 +455,16 @@ def main() -> int:
     print(json.dumps(result, indent=2))
     args.root.mkdir(parents=True, exist_ok=True)
     (args.root / "coverage.json").write_text(json.dumps(result, indent=2) + "\n")
+    growth_document = write_growth_report(
+        args.root,
+        result,
+        args.timing_profile,
+        source_root=Path.cwd(),
+        repository=os.environ.get("GITHUB_REPOSITORY"),
+        ancestor=lane_plan.get("base_sha") or result["source_sha"]
+        if lane_plan is not None
+        else result["source_sha"],
+    )
     if summary_file := os.environ.get("GITHUB_STEP_SUMMARY"):
         with Path(summary_file).open("a") as stream:
             stream.write(
@@ -401,6 +484,7 @@ def main() -> int:
                 from .plan import markdown
 
                 stream.write(markdown(lane_plan))
+            stream.write(growth_document)
     return 0 if result["success"] else 1
 
 
