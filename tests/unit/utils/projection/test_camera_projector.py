@@ -134,13 +134,39 @@ class TestCameraProjector:
         assert uv.shape == (0, 2)
         assert visible.shape == (0,)
 
-    def test_project_points_preserves_leading_dims(self) -> None:
+    def test_project_points_preserves_values_and_visibility_on_leading_dims(
+        self,
+    ) -> None:
         projector = CameraProjector()
-        cam = make_look_at_camera(center=(0.0, 0.0, 5.0))
-        pts = torch.rand(4, 7, 3)
+        cam = Camera(
+            C=torch.tensor([1.0, 2.0, 3.0], dtype=torch.float64),
+            R=torch.tensor([[0, -1, 0], [0, 0, -1], [1, 0, 0]], dtype=torch.float64),
+            f=100,
+            cx=80,
+            cy=45,
+            w=200,
+            h=120,
+        )
+        # q = (2-y, 3-z, x-1). All points are in front; one is outside the image.
+        pts = torch.tensor(
+            [
+                [[3, 2.5, 3.6], [5, 1, 2], [2, 1.4, 3.1]],
+                [[6, 4, 2], [1.5, 4, 3.5], [4, 2.6, 2.1]],
+            ],
+            dtype=torch.float64,
+        )
+        expected_uv = torch.tensor(
+            [
+                [[55 / 200, 15 / 120], [105 / 200, 70 / 120], [140 / 200, 35 / 120]],
+                [[40 / 200, 65 / 120], [-320 / 200, -55 / 120], [60 / 200, 75 / 120]],
+            ],
+            dtype=torch.float64,
+        )
         uv, visible = projector.project_points_to_uv(pts, cam)
-        assert uv.shape == (4, 7, 2)
-        assert visible.shape == (4, 7)
+        torch.testing.assert_close(uv, expected_uv)
+        torch.testing.assert_close(
+            visible, torch.tensor([[True, True, True], [True, False, True]])
+        )
 
     def test_project_court_keypoints_shape(self) -> None:
         projector = CameraProjector()

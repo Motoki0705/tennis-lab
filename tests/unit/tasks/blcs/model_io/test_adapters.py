@@ -19,6 +19,7 @@ from src.tasks.base.model_io import (
 )
 from src.tasks.base.models import ReferenceSelectorMode
 from src.tasks.blcs.model_io import AxialTrajectoryModelIOAdapter
+from tests.support.tasks.blcs_physics import physics_sample
 
 
 def _single_batch() -> dict[str, torch.Tensor]:
@@ -132,3 +133,75 @@ def test_scene_batch_rejects_too_few_court_visibility_entries() -> None:
             {"cameras": [camera]},
             [0],
         )
+
+
+def _training_batch() -> dict[str, torch.Tensor]:
+    return {
+        name: value.unsqueeze(0).expand(2, *value.shape).clone()
+        for name, value in physics_sample(frames=3).items()
+        if isinstance(value, torch.Tensor)
+    }
+
+
+@pytest.mark.parametrize("name", ["camera_f", "camera_w", "camera_h"])
+@pytest.mark.parametrize("invalid", [0.0, -1.0])
+def test_training_boundary_rejects_nonpositive_active_camera_values(
+    name: str, invalid: float
+) -> None:
+    batch = _training_batch()
+    # This view has one real frame and no visible targets. It still needs a camera.
+    batch["padding_mask"][1, 1, :-1] = True
+    batch["ball_vis_target"][1, 1] = False
+    batch[name][1, 1] = invalid
+    with pytest.raises(ModelInputContractError, match=f"{name} must be positive"):
+        _multiview_scene_adapter().build_training_batch(batch)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "camera_R",
+        "camera_C",
+        "camera_f",
+        "camera_cx",
+        "camera_cy",
+        "camera_w",
+        "camera_h",
+    ],
+)
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf")], ids=["nan", "inf"])
+@pytest.mark.parametrize("padded", [False, True], ids=["active", "padded"])
+def test_training_boundary_rejects_nonfinite_camera_values(
+    name: str, invalid: float, padded: bool
+) -> None:
+    batch = _training_batch()
+    batch["padding_mask"][1, 1] = padded
+    batch["ball_vis_target"][1, 1] = False
+    batch[name][1, 1] = invalid
+    with pytest.raises(ModelInputContractError, match=f"{name}.*finite"):
+        _multiview_scene_adapter().build_training_batch(batch)
+
+
+def test_training_boundary_allows_explicit_finite_padded_camera_values() -> None:
+    batch = _training_batch()
+    batch["padding_mask"][1, 1] = True
+    batch["ball_vis_target"][1, 1] = False
+    batch["camera_f"][1, 1] = 0.0
+    batch["camera_w"][1, 1] = 1.0
+    batch["camera_h"][1, 1] = 1.0
+
+    prepared = _multiview_scene_adapter().build_training_batch(batch)
+
+    assert prepared.camera_f[1, 1] == 0.0
+    assert prepared.camera_w[1, 1] == 1.0
+    assert prepared.camera_h[1, 1] == 1.0
+    assert prepared.loss_mask.all()
+
+
+def test_training_boundary_rejects_target_views_detached_from_model_views() -> None:
+    batch = _training_batch()
+    for name in batch:
+        if name.startswith("camera_") or name in {"ball_uv_target", "ball_vis_target"}:
+            batch[name] = batch[name][:, :1]
+    with pytest.raises(ModelInputContractError, match="camera axis.*model call"):
+        _multiview_scene_adapter().build_training_batch(batch)
