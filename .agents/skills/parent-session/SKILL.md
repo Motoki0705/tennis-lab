@@ -27,6 +27,10 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 1. 親issueの本文と全コメント、関連PR・既存の子を読み、最新の人間との合意を確認する。
    CLIの `status` で対応を確認し、`register` で担当登録する。別の担当や別の親が表示されたら
    黙って切り替えない。既存担当の解除・終了・明示引継ぎをREADMEに従って扱う。
+   担当登録時にタイトル先頭の `[識別名]` がなければ、内容から識別名を決め、
+   `gh issue edit <親番号> --title "[識別名] 元の要約"` で改名する。
+   `issue:parent` がなければ付与し、本文の親の必須節に不足があれば既存内容を保持して骨組みを補完する。
+   識別名・タイトル・必須節の規則は [issues README](../../ops/issues/README.md) に従う。
    Herdrでは結果の`display_sync`を確認する。表示の設定・修復には
    [herdr-session-label](../herdr-session-label/SKILL.md)を使い、名前・担当番号・短い題名を表示する。
    `board_sync`と`board_delivery`の成否も確認し、未読・配送の問題はparent-boardの手順で扱う。
@@ -54,6 +58,11 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 
 1. 実装単位・依存関係・担当を決め、issues APIを使う `create-child` で起票する。
    自由文の書式をコピーせず共通specを渡す。キーを固定し、再送時も同じキーで既存子を再利用する。
+   `spec.labels` に作業種別に加えて対象領域ラベルを1〜2件明示し、`ai-proposed` は付けない。
+   領域は `module: base` / `module: ball-detection` / `module: court-detection` / `module: blcs` /
+   `module: plcs` / `module: submodules` / `module: synthetic-data` / `module: tennis-scene` /
+   `ci` / `tests` / `dependencies` / `third-party` / `knowledge` 等から選ぶ。
+   一覧の正本は [.github/labels.yml](../../../.github/labels.yml) の `area` 軸を参照する。
 2. `status` / `reconcile` の `launch_plan` で完了済み・既存PR・既存委任と起動対象を照合する。
    **依存が許す子は、設定された枠内ですべて並列に起動するのが既定。** 手動親の既定枠は全子であり、
    固定3件にはしない。自律ループの各親の実装子2件という初期値は別の実行枠で、その設定を守る。

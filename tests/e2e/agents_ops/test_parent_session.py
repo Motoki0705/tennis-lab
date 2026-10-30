@@ -299,7 +299,7 @@ class ParentEnv:
             "summary": key,
             "parent": {"identifier": "開発", "number": 1},
             "sections": sections,
-            "labels": ["ai-proposed"],
+            "labels": ["enhancement", "ci", "tests"],
         }
         if source:
             # Report adoption is not the parent's existing requirements agreement.
@@ -809,9 +809,23 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
     assert len(state["issues"]) == 4 and state["parents"]["10"] == 1
     child = state["issues"]["10"]
     assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
-    assert {x["name"] for x in child["labels"]} == {"ai-proposed", "issue:child"}
+    assert {x["name"] for x in child["labels"]} == {
+        "enhancement", "ci", "tests", "issue:child"
+    }
     assert "- [ ] #10 idempotent" in state["issues"]["1"]["body"]
     assert "private-session-a-unique" not in json.dumps(state)
+
+
+def test_child_creation_only_adds_role_to_explicit_work_type_and_area_labels(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("explicit-labels")
+    labels = {x["name"] for x in p.state()["issues"]["10"]["labels"]}
+    assert labels == {"enhancement", "ci", "tests", "issue:child"}
+    p.child("explicit-labels")
+    assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
 
 
 def test_child_key_conflict_and_duplicate_existing_fail_closed(

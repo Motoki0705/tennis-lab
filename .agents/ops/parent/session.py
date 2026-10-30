@@ -509,7 +509,6 @@ class ParentSession:
         ):
             raise ValueError("migrate the parent using issues before splitting")
         draft = render_spec(spec)
-        draft["labels"] = sorted(set(draft["labels"]) | {"ai-proposed"})
         deps = value.get("dependencies", dependencies(draft["body"]))
         if not isinstance(deps, list) or len(deps) != len(set(deps)):
             raise ValueError("dependencies must be unique issue numbers")
