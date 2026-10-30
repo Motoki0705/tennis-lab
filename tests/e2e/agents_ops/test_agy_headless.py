@@ -63,7 +63,7 @@ def fake_agy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]
     config = tmp_path / "agents.conf"
     config.write_text(
         'AGY_VERSION="1.4.11"\nAGY_URL="https://example.invalid/1.4.11.tar.gz"\n'
-        f'AGY_SHA512="{"0" * 128}"\nISSUE_REWRITE_AGY_MODEL="gemini-3.8-flash-high"\n'
+        f'AGY_SHA256="{"0" * 64}"\nISSUE_REWRITE_AGY_MODEL="gemini-3.8-flash-high"\n'
     )
     return {
         "agy": executable,
@@ -82,6 +82,7 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     monkeypatch.setenv("AGY_VERSION", "9.0.0")
     monkeypatch.setenv("ISSUE_REWRITE_AGY_MODEL", "other-model")
     monkeypatch.setenv("AGY_CLI_DISABLE_AUTO_UPDATE", "false")
+    fake_agy.pop("config_file")  # use the production pins through the default API
     payload_path = fake_agy["cwd"] / "payload.json"
     payload = json.loads(payload_path.read_text())
     payload["denied_actions"] = [{"action": "command", "display_name": "RunCommand"}]

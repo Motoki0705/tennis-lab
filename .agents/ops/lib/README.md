@@ -54,9 +54,11 @@ schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLI�
 timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
 
 - `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
-  `AgyConfig` は `version: str`, `url: str`, `sha512: str`, `model: str` を持つfrozen dataclass。
+  `AgyConfig` は `version: str`, `url: str`, `sha256: str`, `model: str` を持つfrozen dataclass。
   `DEFAULT_CONFIG` はこのモジュールの隣の設定ファイル。環境変数の同名キーは読まない。
-  導入テスト用の明示configでは `file://` のtarballも使える。通常は版付きHTTPS URLを固定する。
+  4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_REWRITE_AGY_MODEL`。
+  導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
+  release APIが返したSHA-256 digestを固定する。
 - `model` の省略時は `ISSUE_REWRITE_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
@@ -74,7 +76,7 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 
 | フィールド | 型・意味 |
 |---|---|
-| `structured_output` | `Any`。指定schemaを通ったJSON値。自由文の `response` から補完しない |
+| `structured_output` | `Any`。指定schemaを通った非nullのJSON値。自由文の `response` から補完しない |
 | `usage` | `dict[str, int] \| None`。CLIが返した非負整数の使用量。欠測は `None` で、0を補わない |
 | `denied_actions` | `list[dict[str, str]]`。CLIが返した拒否一覧。フィールド省略時だけ空リスト |
 | `observed_model` | `str`。今回のlogで照合したlabel（現行は `Gemini 3.8 Flash (High)`） |

@@ -43,7 +43,7 @@ READ_COMMANDS = (
 class AgyConfig:
     version: str
     url: str
-    sha512: str
+    sha256: str
     model: str
 
 
@@ -80,13 +80,13 @@ def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
         config = AgyConfig(
             version=pins["AGY_VERSION"],
             url=pins["AGY_URL"],
-            sha512=pins["AGY_SHA512"],
+            sha256=pins["AGY_SHA256"],
             model=pins["ISSUE_REWRITE_AGY_MODEL"],
         )
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", config.version):
             raise ValueError("invalid AGY_VERSION")
-        if not re.fullmatch(r"[0-9a-f]{128}", config.sha512):
-            raise ValueError("invalid AGY_SHA512")
+        if not re.fullmatch(r"[0-9a-f]{64}", config.sha256):
+            raise ValueError("invalid AGY_SHA256")
         if not config.url.startswith(("https://", "file://")) or any(
             char.isspace() for char in config.url
         ):

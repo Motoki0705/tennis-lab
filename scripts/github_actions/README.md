@@ -114,9 +114,9 @@ TRAINING_QUEUE_DIR=/var/lib/tennis-lab-actions/training-queue \
 
 親issueの書き直しは `tennis-actions` のGoogleアカウントログインを使う。
 固定版の導入とログインはデスクトップで人間が行う。GPU runnerの導入スクリプトとは独立している。
-Linux x64のversion・版付きURL・sha512・モデルの正本は
+Linux x64のversion・版付きURL・sha256・モデルの正本は
 [`agents.conf`](../../.agents/ops/lib/agents.conf) の `AGY_VERSION`, `AGY_URL`,
-`AGY_SHA512`, `ISSUE_REWRITE_AGY_MODEL`。環境変数でこれらを上書きしない。
+`AGY_SHA256`, `ISSUE_REWRITE_AGY_MODEL`。環境変数でこれらを上書きしない。
 
 ### 導入とログイン
 
@@ -129,7 +129,7 @@ sudo -u tennis-actions env HOME=/var/lib/tennis-lab-actions/home \
   /var/lib/tennis-lab-actions/home/.local/bin/agy
 ```
 
-導入スクリプトは固定tarballを取得し、sha512が一致してから中の `antigravity` を `agy` として配置する。
+導入スクリプトは公式GitHub Releaseの固定assetを取得し、SHA-256が一致してから中の `antigravity` を `agy` として配置する。
 所有者は `tennis-actions`、置き先は `/var/lib/tennis-lab-actions/home/.local/bin/agy`。
 同じpinと導入記録があり、実行ファイルも改変されていなければ再取得しない。
 検証不一致では新規配置せず、既存の実行ファイルも置き換えない。公式のlatest用 `install.sh` は使わない。
@@ -149,8 +149,16 @@ runner serviceと同じUnix user・HOMEでログインする。認証が切れ�
 
 共通部品は自動更新の停止だけに頼らず、各headless呼び出しの前後で `--version` を照合する。
 版が変わっていたら失敗し、別の版で続行しない。ログイン後に疎通を実行して、この確認も通す。
-更新するときは、[公式manifest](https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/linux_amd64.json)の
-版・URL・sha512を取得し、tarballの一致を確認してから、同じPRで設定を更新する。
+更新するときは、[公式GitHub Release](https://github.com/google-antigravity/antigravity-cli/releases)の
+tagとLinux x64 assetのURL・`digest`（`sha256:`）をrelease APIから取得する。
+
+```bash
+gh api repos/google-antigravity/antigravity-cli/releases/tags/1.4.11 \
+  --jq '{tag: .tag_name, asset: [.assets[] | select(.name == "agy_cli_linux_x64.tar.gz") | {url: .browser_download_url, digest: .digest}]}'
+```
+
+新しい版を採用するときは上のtagを変更し、返されたassetを取得してSHA-256の一致と
+tarball内の実行ファイル名を確認してから、同じPRで `agents.conf` を更新する。
 merge後に導入コマンドを再実行し、疎通が成功してから書き直しに使う。
 
 ### 手動の疎通

@@ -30,7 +30,7 @@ def installation(tmp_path: Path) -> tuple[Path, Path, Path, bytes]:
     config = tmp_path / "agents.conf"
     config.write_text(
         f'AGY_VERSION="1.4.11"\nAGY_URL="{archive.as_uri()}"\n'
-        f'AGY_SHA512="{hashlib.sha512(archive.read_bytes()).hexdigest()}"\n'
+        f'AGY_SHA256="{hashlib.sha256(archive.read_bytes()).hexdigest()}"\n'
         'ISSUE_REWRITE_AGY_MODEL="gemini-3.8-flash-high"\n'
     )
     return archive, config, tmp_path / "install root/bin", content
@@ -84,12 +84,12 @@ def test_checksum_mismatch_never_creates_or_replaces_the_installation(
         (destination / "agy").write_text("old installation")
     config.write_text(
         re.sub(
-            r'AGY_SHA512="[0-9a-f]+"', f'AGY_SHA512="{"0" * 128}"', config.read_text()
+            r'AGY_SHA256="[0-9a-f]+"', f'AGY_SHA256="{"0" * 64}"', config.read_text()
         )
     )
     proc = install(config, destination)
     assert proc.returncode != 0
-    assert "sha512 mismatch" in proc.stderr
+    assert "sha256 mismatch" in proc.stderr
     if existing:
         assert (destination / "agy").read_text() == "old installation"
         assert sorted(path.name for path in destination.iterdir()) == ["agy"]
