@@ -104,7 +104,8 @@ elif args[0] == "api" and "--method" in args:
     timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", api_path)
     if timeline:
         rows = [api_pr(r) for r in state["prs"]]
-        api_emit(page([{"id": r["number"], "event": "cross-referenced", "source": {"issue": {
+        events = state.get("timeline", {}).get(timeline[1], [])
+        api_emit(page(events + [{"id": r["number"], "event": "cross-referenced", "source": {"issue": {
             **r, "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "fixture-pr"}}}}
             for r in rows if re.search(r"#" + timeline[1] + r"\b", r["body"])]))
     m = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", api_path)
