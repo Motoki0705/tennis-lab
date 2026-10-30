@@ -21,6 +21,7 @@ def main() -> int:
     runner.add_argument("--shard-index", type=int)
     runner.add_argument("--shard-count", type=int)
     runner.add_argument("--shard-weights", type=Path)
+    runner.add_argument("--lane-plan", type=Path)
     runner.add_argument(
         "--lock", type=Path, help="Optional absolute lock for a coordinated comparison"
     )
@@ -82,6 +83,7 @@ def main() -> int:
             extra,
             args.lock,
             shard_values if args.shard_index is not None else None,
+            args.lane_plan,
         )
     if args.command == "report":
         args.output.mkdir(parents=True, exist_ok=True)

@@ -2,14 +2,44 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-这些工具观测现有 CPU 测试集，不删除测试、不增加 marker、不修改 fixture，也不按改动
-路径省略测试。CI 使用[完整目标分片与覆盖审计](sharding.zh-CN.md)，默认本地命令仍不分片。
+这些工具规划并观测 CPU 测试集。CI 使用[分片与覆盖审计](sharding.zh-CN.md)，默认本地命令仍完整执行且不分片。
 CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
 集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
 明确worker数量（本地默认2，CI参见[分片设置](sharding.zh-CN.md)）、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
 
 pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保持现有`ci_watch`对失败nodeid和setup异常的识别。输出pipe关闭时launcher失败并停止测试process group。
 
+
+## 通道注册表与计划
+
+[`lanes.json`](lanes.json) **只注册按文件指定的例外**，其余 CPU 测试始终执行。
+初始 `suites` 为空，保持原有目标。每个suite必须包含 `id`（唯一标识）、`files`（存在的明确测试路径）、
+`paths`（依赖项的仓库相对shell pattern）、`reason` 和 `owner`（非空字符串）。文件重复、不存在、
+未知字段、缺少负责人/理由或非法pattern都会使plan失败。文件发现遵循 `pyproject.toml` 的pytest设置。
+未注册文件始终执行；已注册文件的全部收集用例，包括新增用例，都属于该例外。
+suite自身的测试文件修改也会要求执行，不受 `paths` 限制。注册时须包括局部helper、配置与依赖路径。
+
+PR比较event中的 `base.sha..head.sha`，即使之前的PR run被取消，也包含所有commit的改动。
+仅PR按路径选择。main push和手动dispatch始终要求完整CPU，不设置定期通道。
+共享基础设施（`src/utils`、`src/tasks/base`、`tests/support`、所有 `conftest.py`、依赖配置/lock、
+`.spin`、workflow及本CI工具/注册表）修改、rename、删除或无法取得diff时，记录理由并执行全部。
+非法注册表或plan直接失败，不转成部分执行。
+
+只使用标准库的 `plan` job生成一个固定source/run/attempt的 `plan.json`，供所有shard与 `Python` 汇总使用：
+
+```bash
+python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
+```
+
+命令读取 `GITHUB_EVENT_PATH` 与Actions context，并将注册表、源码测试文件清单与各checkout核对。
+普通shard命令添加 `--lane-plan .ci-plan/plan.json`，不能同时传任意pytest参数。
+本地分片测量未指定plan时明确要求完整CPU。
+
+plan与汇总summary列出延后suite、负责人、理由以及main最近一次完整成功的commit。
+只读Actions API最多检查最近30次成功的main push，核对祖先关系、policy、run/attempt与
+`cpu-test-coverage-*` 证据。绿色job、部分run、全部skip的suite不能证明成功。
+缺失/过期/不兼容证据与API失败均保留为附理由的 **unknown**。coverage artifact保留90天；
+不向仓库commit成功index。
 
 ## 执行与中断恢复
 
@@ -52,6 +82,7 @@ runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层
 | `run.json` | 请求/开始/结束时间、独立锁等待、退出值/信号、执行期间源码一致性 |
 | `events-*.jsonl` | 每进程及时 flush 的收集/排除 nodeid、收集失败/skip、worker 收集、fixture setup、测试 phase、结束记录 |
 | `inventory.json` | 被选中的 nodeid，逐 worker 检查顺序与内容一致 |
+| `lane-plan.json`, `shard-*.json`, `cpu_universe` event | 固定请求、U/R/D和通道选择前的独立收集证据，见[分片](sharding.zh-CN.md#证据与失败语义) |
 | `results.json` | 每个 node 的 passed/skipped/failed/xfail/xpass/incomplete 及 phase 时间 |
 | `junit.xml`, `pytest.log` | 独立核对的 JUnit 数量、标识与时间，以及标准 durations 输出 |
 | `summary.json`, `summary.md` | 完整性检查、进程启动/收集、file/fixture 时间贡献、结果数量 |
@@ -105,8 +136,7 @@ queue 分别记录 attempt 起点到首个 job，以及每个 job 创建到启�
 `created_at`；重试通常无法取得请求时刻，因此 `run_started_at` **明确标为代理值**。
 仅在独立观测到真实请求时刻时提供 `requested_at`。check 完成时间是起点到所有指定
 check 完成（默认 `--check Python`，可重复）；它与包含失败/取消 attempt 及其他并行 job
-的**所有 job runner 时间之和**分开。`Python` 只是观测 check 名称，不恢复已废止的 CI
-merge 条件。
+的**所有 job runner 时间之和**分开。`Python` 也是[仓库规则](../../.agents/README.md#github運用ルール初版)规定的merge必需check。
 
 step 分类区分 checkout、uv/cache/install、apt、lint、pytest、post 和其他工作，保留原始
 时间戳及结论。时间缺失产生带原因的未知总量，不会作为零耗时成功；skip 保持为 skip。

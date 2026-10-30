@@ -61,6 +61,7 @@ annotations/
 *.json
 !/.claude/settings.json
 !/tests/support/development/ci_attempts.json
+!/scripts/ci_metrics/lanes.json
 *.xml
 
 # Model files and checkpoints
@@ -209,3 +210,4 @@ paper/reference/
 # CPU CI measurement artifacts are retained by Actions or an explicit output path.
 .ci-metrics/
 .ci-results/
+.ci-plan/

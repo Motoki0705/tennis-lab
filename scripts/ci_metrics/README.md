@@ -2,9 +2,8 @@
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
-These tools observe the existing CPU suite. They do not delete tests, add markers,
-change fixtures or select tests by changed paths. CI uses the complete-target
-[sharding and coverage audit](sharding.md); the default local command remains unsharded. The CPU marker
+These tools plan and observe the CPU suite using the
+[sharding and coverage audit](sharding.md); the default local command remains unsharded and complete. The CPU marker
 expression remains owned by `.spin/cmds.py`; the court dataset integration retains
 its existing explicit exclusion. Both CI and the local measurement runner use
 `spin test -q --no-cov --dist=worksteal`, an explicit worker count (local default two; CI choices in [sharding](sharding.md)), native thread counts of one,
@@ -12,6 +11,48 @@ CUDA hidden, `--durations=50 --durations-min=1`, and JUnit.
 
 Pytest stdout/stderr is streamed to the job log and saved in `pytest.log`. This preserves the existing `ci_watch` failure signatures, including failed nodeids and setup exceptions. A closed output pipe fails the launcher and terminates its test process group.
 
+
+## Lane registry and planning
+
+[`lanes.json`](lanes.json) registers **only file-level exceptions** to always-run
+CPU tests. The initial `suites` array is empty, preserving the existing target.
+Each suite requires `id` (unique identifier), `files` (existing explicit test
+paths), `paths` (repository-relative shell patterns for dependencies), `reason`
+and `owner` (nonempty strings). Overlapping files, missing files, unknown fields,
+missing owners/reasons and invalid patterns fail planning. Files follow the
+pytest discovery patterns in `pyproject.toml`. Unregistered files always run;
+an exception covers every collected case in that file, including new cases.
+Changing the suite's own test file also requests it, regardless of `paths`.
+Include local helpers, configuration and dependency paths when registering a suite.
+
+PRs compare the event's `base.sha..head.sha`, covering all commits even after a
+previous PR run was cancelled. Path selection applies only to PRs. Main pushes
+and manual dispatch always request the complete CPU target; there is no scheduled
+lane. Shared infrastructure (`src/utils`, `src/tasks/base`, `tests/support`, any
+`conftest.py`, dependency configuration/lock, `.spin`, workflows and these CI
+tools/registry), renames, deletions and unavailable diffs request all tests with
+explicit reasons. Invalid registries/plans fail instead of becoming a subset.
+
+The standard-library-only `plan` job produces one immutable, source/run/attempt
+specific `plan.json` for every shard and the `Python` aggregate:
+
+```bash
+python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
+```
+
+The command reads `GITHUB_EVENT_PATH` and the Actions context. The registry and
+source test-file inventory are checked against each checkout. Pass that plan to
+the normal shard command with `--lane-plan .ci-plan/plan.json`; arbitrary pytest
+arguments cannot be combined with a lane plan. Without a plan, local sharded
+measurements explicitly request the full CPU target.
+
+Plan and aggregate summaries list deferred suites, owner, reason and the last
+verified full main success commit. Read-only Actions API lookup checks up to the
+latest 30 successful main push runs and verifies ancestry, policy, run/attempt
+and `cpu-test-coverage-*` evidence. Green jobs, partial runs or all-skipped suites
+do not establish suite success. Missing/expired/incompatible evidence and API
+errors remain **unknown**, with a reason. Coverage artifacts are kept for 90 days;
+no success index is committed to the repository.
 
 ## Run and recover
 
@@ -60,6 +101,7 @@ If cancellation or a launcher failure prevents the test command from starting,
 | `run.json` | Requested/start/finish times, separate lock wait, exit/signal, source consistency |
 | `events-*.jsonl` | Flushed per-process observations: selected/deselected nodeids, collection failures/skips, worker collection, fixture setup, test phases, process finish |
 | `inventory.json` | Selected nodeids; compared in exact order across every worker |
+| `lane-plan.json`, `shard-*.json`, `cpu_universe` events | Fixed request, U/R/D partition and independent collection evidence before lane selection; see [sharding](sharding.md#evidence-and-failure-semantics) |
 | `results.json` | Per-node passed/skipped/failed/xfail/xpass/incomplete status and phase times |
 | `junit.xml`, `pytest.log` | Independent JUnit totals/identities and standard durations output |
 | `summary.json`, `summary.md` | Completeness checks, process startup/collection times, costs by file/fixture, outcome counts |
@@ -132,7 +174,7 @@ Provide `requested_at` only when independently observed. Check completion is fro
 that origin to completion of all named observed checks (`--check Python`, repeat
 for several). It is reported separately from the **sum of every job's runner
 time**, including failed/cancelled attempts and other concurrent jobs. `Python`
-is an observed check name, not a restored merge condition.
+is also the required merge check, as defined in the [repository workflow](../../.agents/README.md#github運用ルール初版).
 
 Step categories distinguish checkout, uv/cache/install, apt, lint, pytest, post,
 and other setup/measurement work. Raw step timestamps and conclusions are kept.
