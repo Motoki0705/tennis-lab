@@ -1,7 +1,7 @@
-<!-- knowledge-review: a2ad23f3d5b0b5b67c40d00ae05d73bd6b977ca69033392ac85cb76986707cb4 on 2026-10-25 -->
+<!-- knowledge-review: ccc64f9737aae6eae95bae6110042badcc2606974f4a462871ccb9dcd7c488e5 on 2026-10-31 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-25（ボールの逐次T64学習の実装・入力取得と実データ速度検証を追加。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-31（ボール逐次学習の完了・終端validationを反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -11,14 +11,17 @@
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
 
-## 2026-10-25のボール逐次学習
+## 2026-10-25のボール逐次学習（2026-10-31完了）
 
-[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)で、
-5ch・128入力frame/更新を保つDPTと直接座標queryの継承・再開を実装した。
-157.03 GBのtrain/validation入力を取得・照合し、位置教師のない組を除いて30,478組を再生成した。
-ユーザー指定により今回のT128実行は除外する。共通10k、DPT T64の6k、query T32/T64の各6kを計画し、
-実データ30更新の速度検証は約2.04秒/更新で、10kの計算部分は約5.66時間。全validationを計測中で、
-本学習の完了やモデル採用、精度向上はまだ主張しない。
+[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)は、
+VM消失後に完全checkpointから再開し、共通10kと事後3段×6kの計28k更新をDrive保存まで完了した。
+同じobserved 85,473 frameでDPT T64のmean/P95は36.56/183.20px、query T64は28.20/116.89pxだった。
+一方、≤20px率はDPT T64の86.58%に対しquery T64は76.29%。DPTの位置誤差は不在判定されたframeも含む。
+DPTのval調整閾値ではT32→T64でFPRが下がるがFNRは上がり、queryはpresence出力を持たないため検出率を比較していない。
+query T32のFPS別中央値20.27〜26.46pxから系統ずれを疑う余地はあるが、符号付き残差や時刻対応は未検証。
+T32→T64の追加6k、最終DPT16k/query22k、方式差が交絡し、seed42単一・validationのみである。
+次は等更新数でのT比較、query T32の残差・overlay確認、#1476 / PR #1489を前提とした独立test評価を行う。
+既存モデル・checkpointの採用判断は維持し、T128は今回の実行から除外したままとする。
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 
