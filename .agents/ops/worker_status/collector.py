@@ -433,41 +433,64 @@ def collect_status(
                 )
             ):
                 continue
-            remote = parent_snapshot(repository, n, store, guard) if github else {}
-            record = {
-                "repo": repository,
-                "parent": n,
-                "assignment": row["status"],
-                "generation": row["generation"],
-                "source": "parent_registry",
-                "children": [],
-            }
-            for child in sorted({int(k) for k in row["tasks"]} | set(remote)):
-                record["children"].append(
-                    child_status(
-                        child,
-                        row["tasks"].get(str(child), {}),
-                        row,
-                        guard,
-                        state=store.directory,
-                        dispatch_enabled=exists,
-                        remote=remote.get(child),
-                        now=now,
-                        stale_after=stale_after,
-                        tail_bytes=tail_bytes,
-                        tool_limit=tool_limit,
+            for attempt in range(2 if github else 1):
+                # A preceding parent's GitHub observation may take seconds.
+                # Start this parent's window from a fresh row, not the registry
+                # captured at the beginning of the whole request.
+                current = registry(store)
+                guard.observe_parents(current)
+                row = current.get(key)
+                if row is None:
+                    raise StatusError("registry_changed_retry")
+                if not include_inactive and row["status"] not in {
+                    "active",
+                    "handoff_pending",
+                }:
+                    break
+                remote = parent_snapshot(repository, n, store, guard) if github else {}
+                if github:
+                    fresh = registry(store)
+                    guard.observe_parents(fresh)
+                    if fresh.get(key) != row:
+                        if attempt == 0:
+                            continue
+                        raise StatusError("registry_changed_retry")
+                record = {
+                    "repo": repository,
+                    "parent": n,
+                    "assignment": row["status"],
+                    "generation": row["generation"],
+                    "source": "parent_registry",
+                    "children": [],
+                }
+                for child in sorted({int(k) for k in row["tasks"]} | set(remote)):
+                    record["children"].append(
+                        child_status(
+                            child,
+                            row["tasks"].get(str(child), {}),
+                            row,
+                            guard,
+                            state=store.directory,
+                            dispatch_enabled=exists,
+                            remote=remote.get(child),
+                            now=now,
+                            stale_after=stale_after,
+                            tail_bytes=tail_bytes,
+                            tool_limit=tool_limit,
+                        )
                     )
-                )
-            output["parents"].append(record)
+                if not github:
+                    fresh = registry(store)
+                    guard.observe_parents(fresh)
+                    if fresh.get(key) != row:
+                        raise StatusError("registry_changed_retry")
+                output["parents"].append(record)
+                break
         if github:
             output["github"] = {
                 "status": "observed",
                 "fetched_at": datetime.now(UTC).isoformat(),
             }
-        # Detect handoff/task changes during a GitHub fetch without holding a
-        # writer's lock. Never return a mixture of ownership generations.
-        if registry(store) != parents:
-            raise StatusError("registry_changed_retry")
         guard.check(output)
         return output
     except StatusError:

@@ -17,6 +17,7 @@ import json
 import os
 import subprocess
 import sys
+from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -386,6 +387,199 @@ def test_inactive_parents_and_unknown_registry_are_explicit(fixture: Any) -> Non
     (f.state / "registry.json").write_text('{"version":77,"parents":{}}')
     with pytest.raises(f.api.StatusError):
         f.api.collect_status(state_dir=f.state)
+
+
+def write_registry(state: Path, parents: dict[str, Any], version: int = 1) -> None:
+    """Publish coherent disposable v1/v2 rows, without production mutations."""
+    entries = parents
+    if version == 2:
+        digest = importlib.import_module("parent.policy").digest
+        directory = state / "parents"
+        directory.mkdir(exist_ok=True)
+        for key, row in parents.items():
+            (directory / (digest(key) + ".json")).write_text(json.dumps(row))
+        entries = {
+            key: {field: row[field] for field in ("session", "status", "generation")}
+            for key, row in parents.items()
+        }
+    (state / "registry.json").write_text(
+        json.dumps({"version": version, "parents": entries})
+    )
+
+
+@pytest.mark.parametrize("github", [False, True])
+@pytest.mark.parametrize("excluded_by", ["parent", "repo", "inactive"])
+def test_updates_to_excluded_parents_do_not_invalidate_observation(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch, github: bool, excluded_by: str
+) -> None:
+    f = fixture
+    collector = importlib.import_module("worker_status.collector")
+    peer = deepcopy(f.row)
+    peer["session"] = "claude:private-excluded-owner"
+    peer_key = "other/repo#2" if excluded_by == "repo" else "o/r#2"
+    if excluded_by == "inactive":
+        peer["status"] = "ended"
+    parents = {"o/r#1": f.row, peer_key: peer}
+    write_registry(f.state, parents)
+    queries: dict[str, Any] = (
+        {"parent": 1}
+        if excluded_by == "parent"
+        else {"repo": "o/r"}
+        if excluded_by == "repo"
+        else {}
+    )
+    calls = []
+    if github:
+
+        def snapshot(repo: str, parent: int, store: Any, guard: Any) -> dict[int, Any]:
+            calls.append(parent)
+            peer["generation"] += 1
+            write_registry(f.state, parents)
+            return {}
+
+        monkeypatch.setattr(collector, "parent_snapshot", snapshot)
+    else:
+        original = collector.child_status
+
+        def child_status(*args: Any, **kwargs: Any) -> dict[str, Any]:
+            peer["generation"] += 1
+            write_registry(f.state, parents)
+            result: dict[str, Any] = original(*args, **kwargs)
+            return result
+
+        monkeypatch.setattr(collector, "child_status", child_status)
+    result = f.api.collect_status(state_dir=f.state, github=github, now=NOW, **queries)
+    assert [p["parent"] for p in result["parents"]] == [1]
+    assert result["parents"][0]["generation"] == 2
+    assert peer["generation"] == 3
+    assert calls == ([1] if github else [])
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("changes", [1, 2])
+def test_changed_parent_is_retrieved_once_without_mixing_generations(
+    fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    version: int,
+    changes: int,
+) -> None:
+    f = fixture
+    collector = importlib.import_module("worker_status.collector")
+    stable = deepcopy(f.row)
+    stable.update(session="claude:private-stable-owner", generation=5)
+    parents = {"o/r#1": stable, "o/r#2": f.row}
+    write_registry(f.state, parents, version)
+    calls = []
+    stable_calls = []
+    old_owner = "private-owner-session"
+
+    def snapshot(repo: str, parent: int, store: Any, guard: Any) -> dict[int, Any]:
+        row = store.parents[f"o/r#{parent}"]
+        if parent == 1:
+            stable_calls.append(parent)
+            return {}
+        calls.append(row["generation"])
+        child = int(next(iter(row["tasks"])))
+        remote = {
+            child: {
+                "status": "observed",
+                "issue": {
+                    "state": "open" if row["generation"] == 2 else "closed",
+                    "state_reason": None if row["generation"] == 2 else "completed",
+                },
+                "stopped": True,
+                "stop_record": {
+                    "reason": guard.text(row["session"].partition(":")[2]),
+                    "facts": guard.text(old_owner),
+                },
+                "launch": {"reasons": []},
+            }
+        }
+        if len(calls) <= changes:
+            f.row.update(
+                generation=f.row["generation"] + 1,
+                session="claude:private-new-owner",
+                tasks={"12": {}},
+            )
+            write_registry(f.state, parents, version)
+        return remote
+
+    monkeypatch.setattr(collector, "parent_snapshot", snapshot)
+    if changes == 1:
+        result = f.api.collect_status(state_dir=f.state, github=True, now=NOW)
+        assert result["parents"][0]["generation"] == 5
+        parent = result["parents"][1]
+        assert parent["parent"] == 2
+        assert parent["generation"] == 3
+        assert [c["child"] for c in parent["children"]] == [12]
+        child = parent["children"][0]
+        assert child["github"]["issue"] == {
+            "state": "closed",
+            "state_reason": "completed",
+        }
+        assert child["stop_record"]["reason"]["status"] == "hidden"
+        assert child["stop_record"]["facts"]["status"] == "hidden"
+        assert "private-new-owner" not in json.dumps(result)
+        assert result["github"]["status"] == "observed"
+    else:
+        cli = importlib.import_module("worker_status.__main__")
+        assert cli.main(["--state-dir", str(f.state), "--github"]) == 2
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert json.loads(captured.err) == {"error": "registry_changed_retry"}
+    assert calls == [2, 3]
+    assert stable_calls == [1]
+
+
+def test_each_parent_is_checked_before_fetching_the_next_parent(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    f = fixture
+    collector = importlib.import_module("worker_status.collector")
+    peer = deepcopy(f.row)
+    peer["session"] = "claude:private-peer-owner"
+    parents = {"o/r#1": f.row, "o/r#2": peer}
+    write_registry(f.state, parents)
+    calls = []
+
+    def snapshot(repo: str, parent: int, store: Any, guard: Any) -> dict[int, Any]:
+        row = store.parents[f"o/r#{parent}"]
+        calls.append((parent, row["generation"]))
+        if parent == 1:
+            peer["generation"] = 7
+        else:
+            f.row["generation"] = 9
+        write_registry(f.state, parents)
+        return {}
+
+    monkeypatch.setattr(collector, "parent_snapshot", snapshot)
+    result = f.api.collect_status(state_dir=f.state, github=True, now=NOW)
+    assert [(p["parent"], p["generation"]) for p in result["parents"]] == [
+        (1, 2),
+        (2, 7),
+    ]
+    assert calls == [(1, 2), (2, 7)]
+    assert f.row["generation"] == 9
+
+
+def test_local_change_to_selected_parent_still_fails(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    f = fixture
+    f.save()
+    collector = importlib.import_module("worker_status.collector")
+    original = collector.child_status
+
+    def child_status(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        f.row["generation"] += 1
+        f.save()
+        result: dict[str, Any] = original(*args, **kwargs)
+        return result
+
+    monkeypatch.setattr(collector, "child_status", child_status)
+    with pytest.raises(f.api.StatusError, match="^registry_changed_retry$"):
+        f.api.collect_status(state_dir=f.state, github=False, now=NOW)
 
 
 def test_github_is_explicit_get_only_and_separates_turn_from_acceptance(

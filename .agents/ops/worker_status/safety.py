@@ -24,7 +24,12 @@ class Guard:
         # Logs can quote arbitrary environment values. Do not expose them just
         # because their variable name is not one of the board's identity keys.
         self.private.update(v for v in self.env.values() if len(v) >= 8)
+        self.observe_parents(parents)
+
+    def observe_parents(self, parents: Mapping[str, Any]) -> None:
+        """Keep all observed owners/run references private across a handoff retry."""
         for row in parents.values():
+            self.remember(row["session"].partition(":")[2])
             for task in row["tasks"].values():
                 self.remember(task.get("delegation_id"))
                 self.remember_path(task.get("worktree"))
