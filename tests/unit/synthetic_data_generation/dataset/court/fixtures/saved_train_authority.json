@@ -1,0 +1,594 @@
+{
+  "schema": "court_scale_candidate_plan_v1",
+  "scene_id": "fixture",
+  "method": "saved_train_trajectories",
+  "recipe": {
+    "arc_intervals": 4096,
+    "arc_tolerance_m": 0.01,
+    "base_step_m": 1.05,
+    "count_multiple": 8,
+    "height": 48,
+    "hfov_degrees": [
+      75.0,
+      92.5,
+      110.0
+    ],
+    "hull_expansion_percent": 0.0,
+    "hull_margin_m": 0.5,
+    "jitter_radius_m": 1.0,
+    "look_at_heights_m": [
+      0.0,
+      1.5
+    ],
+    "minimum_points": 24,
+    "near_plane_m": 0.01,
+    "schema": "court_scale_geometry_recipe_v1",
+    "width": 80
+  },
+  "recipe_sha256": "6c009352ad23f5219161f33094484cf82a8e127de35df0d12ffc8ac1cd68ab28",
+  "generation_seed": 42,
+  "trajectory_count": 2,
+  "density_level": 0,
+  "split": "train",
+  "scene_geometry_id": "76efe2dfda83d387b40d7241912a7ceb9bea2688a809eb32ef1909927f89ea80",
+  "saved_source": {
+    "schema": "court_saved_train_source_v1",
+    "scene_id": "fixture",
+    "dataset_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "index_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "source_seed": 695,
+    "sampling_policy": {
+      "mode": "uniform_arc_length",
+      "max_arc_step_m": 1.05,
+      "minimum_sample_count": 24,
+      "sample_count_multiple": 8,
+      "seed": 695,
+      "stable_field_order": [
+        "shape",
+        "center_kind",
+        "radius_scale",
+        "axis_ratio",
+        "orientation_degrees",
+        "base_height_m",
+        "vertical_modulation_m",
+        "curve_mode"
+      ],
+      "coverage_objective": [
+        "coverage_mode",
+        "semantic_visibility",
+        "trajectory_group"
+      ],
+      "proposal_budget": 4800,
+      "minimum_trajectory_groups": 24,
+      "minimum_accepted_frames": 2000,
+      "minimum_accepted_fraction": 0.9,
+      "split_fractions": [
+        0.8,
+        0.1,
+        0.1
+      ],
+      "shard_count": 8
+    },
+    "width": 80,
+    "height": 48,
+    "trajectory_groups": [
+      {
+        "trajectory": {
+          "trajectory_id": "trajectory-0",
+          "trajectory_group_id": "group-0",
+          "shape": "circle",
+          "center_kind": "complex",
+          "center_court_instance_id": null,
+          "base_radius_m": 12.0,
+          "radius_scale": 0.8,
+          "axis_ratio": 1.0,
+          "orientation_radians": 0.7,
+          "base_height_m": 2.25,
+          "vertical_amplitude_m": 0.25,
+          "vertical_cycles": 1,
+          "vertical_phase_radians": 1.1,
+          "curve_mode": "sinusoidal_height"
+        },
+        "center": {
+          "center_kind": "complex",
+          "court_instance_id": null,
+          "reference_court_instance_id": "court-0",
+          "scene_from_center": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "center_scene_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "base_radius_m": 12.0,
+          "captured_offset_median_m": 10.0,
+          "captured_offset_q90_m": 12.0,
+          "captured_camera_count": 12
+        },
+        "views": [
+          {
+            "view_id": "view-0",
+            "target_kind": "court",
+            "target_mode": "court_center",
+            "coverage_mode": "partial",
+            "look_at_height_m": 1.5,
+            "hfov_degrees": 45.0,
+            "look_at_jitter_radius_m": 1.0
+          }
+        ],
+        "split": "train",
+        "shard_id": "shard-0",
+        "target_court_policy": {
+          "mode": "nearest_camera",
+          "centre_court_instance_id": null
+        },
+        "sample_count": 64
+      },
+      {
+        "trajectory": {
+          "trajectory_id": "trajectory-1",
+          "trajectory_group_id": "group-1",
+          "shape": "circle",
+          "center_kind": "complex",
+          "center_court_instance_id": null,
+          "base_radius_m": 13.0,
+          "radius_scale": 0.8,
+          "axis_ratio": 1.0,
+          "orientation_radians": 0.7,
+          "base_height_m": 2.25,
+          "vertical_amplitude_m": 0.25,
+          "vertical_cycles": 1,
+          "vertical_phase_radians": 1.1,
+          "curve_mode": "sinusoidal_height"
+        },
+        "center": {
+          "center_kind": "complex",
+          "court_instance_id": null,
+          "reference_court_instance_id": "court-0",
+          "scene_from_center": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "center_scene_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "base_radius_m": 12.0,
+          "captured_offset_median_m": 10.0,
+          "captured_offset_q90_m": 12.0,
+          "captured_camera_count": 12
+        },
+        "views": [
+          {
+            "view_id": "view-1",
+            "target_kind": "court",
+            "target_mode": "court_center",
+            "coverage_mode": "partial",
+            "look_at_height_m": 1.5,
+            "hfov_degrees": 45.0,
+            "look_at_jitter_radius_m": 1.0
+          }
+        ],
+        "split": "validation",
+        "shard_id": "shard-0",
+        "target_court_policy": {
+          "mode": "nearest_camera",
+          "centre_court_instance_id": null
+        },
+        "sample_count": 64
+      },
+      {
+        "trajectory": {
+          "trajectory_id": "trajectory-2",
+          "trajectory_group_id": "group-2",
+          "shape": "circle",
+          "center_kind": "complex",
+          "center_court_instance_id": null,
+          "base_radius_m": 14.0,
+          "radius_scale": 0.8,
+          "axis_ratio": 1.0,
+          "orientation_radians": 0.7,
+          "base_height_m": 2.25,
+          "vertical_amplitude_m": 0.25,
+          "vertical_cycles": 1,
+          "vertical_phase_radians": 1.1,
+          "curve_mode": "sinusoidal_height"
+        },
+        "center": {
+          "center_kind": "complex",
+          "court_instance_id": null,
+          "reference_court_instance_id": "court-0",
+          "scene_from_center": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "center_scene_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "base_radius_m": 12.0,
+          "captured_offset_median_m": 10.0,
+          "captured_offset_q90_m": 12.0,
+          "captured_camera_count": 12
+        },
+        "views": [
+          {
+            "view_id": "view-2",
+            "target_kind": "court",
+            "target_mode": "court_center",
+            "coverage_mode": "partial",
+            "look_at_height_m": 1.5,
+            "hfov_degrees": 45.0,
+            "look_at_jitter_radius_m": 1.0
+          }
+        ],
+        "split": "train",
+        "shard_id": "shard-0",
+        "target_court_policy": {
+          "mode": "nearest_camera",
+          "centre_court_instance_id": null
+        },
+        "sample_count": 72
+      },
+      {
+        "trajectory": {
+          "trajectory_id": "trajectory-3",
+          "trajectory_group_id": "group-3",
+          "shape": "circle",
+          "center_kind": "complex",
+          "center_court_instance_id": null,
+          "base_radius_m": 15.0,
+          "radius_scale": 0.8,
+          "axis_ratio": 1.0,
+          "orientation_radians": 0.7,
+          "base_height_m": 2.25,
+          "vertical_amplitude_m": 0.25,
+          "vertical_cycles": 1,
+          "vertical_phase_radians": 1.1,
+          "curve_mode": "sinusoidal_height"
+        },
+        "center": {
+          "center_kind": "complex",
+          "court_instance_id": null,
+          "reference_court_instance_id": "court-0",
+          "scene_from_center": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "center_scene_m": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "base_radius_m": 12.0,
+          "captured_offset_median_m": 10.0,
+          "captured_offset_q90_m": 12.0,
+          "captured_camera_count": 12
+        },
+        "views": [
+          {
+            "view_id": "view-3",
+            "target_kind": "court",
+            "target_mode": "court_center",
+            "coverage_mode": "partial",
+            "look_at_height_m": 1.5,
+            "hfov_degrees": 45.0,
+            "look_at_jitter_radius_m": 1.0
+          }
+        ],
+        "split": "test",
+        "shard_id": "shard-0",
+        "target_court_policy": {
+          "mode": "nearest_camera",
+          "centre_court_instance_id": null
+        },
+        "sample_count": 72
+      }
+    ]
+  },
+  "saved_replay_rule": "published_train_group_geometry_v1",
+  "view_authority": "saved_source.trajectory_groups[].views",
+  "trajectory_storage": "inline_v1",
+  "trajectory_groups": [
+    {
+      "ordinal": 0,
+      "trajectory_id": "4290eaa68829cca6c96c7f09e02de747a4116e10c14467bb45a28b0a3cdbe7c6",
+      "provenance": {
+        "replay_rule_version": "published_train_group_geometry_v1",
+        "source_index_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "saved_group": {
+          "trajectory": {
+            "trajectory_id": "trajectory-0",
+            "trajectory_group_id": "group-0",
+            "shape": "circle",
+            "center_kind": "complex",
+            "center_court_instance_id": null,
+            "base_radius_m": 12.0,
+            "radius_scale": 0.8,
+            "axis_ratio": 1.0,
+            "orientation_radians": 0.7,
+            "base_height_m": 2.25,
+            "vertical_amplitude_m": 0.25,
+            "vertical_cycles": 1,
+            "vertical_phase_radians": 1.1,
+            "curve_mode": "sinusoidal_height"
+          },
+          "center": {
+            "center_kind": "complex",
+            "court_instance_id": null,
+            "reference_court_instance_id": "court-0",
+            "scene_from_center": [
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "center_scene_m": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "base_radius_m": 12.0,
+            "captured_offset_median_m": 10.0,
+            "captured_offset_q90_m": 12.0,
+            "captured_camera_count": 12
+          },
+          "views": [
+            {
+              "view_id": "view-0",
+              "target_kind": "court",
+              "target_mode": "court_center",
+              "coverage_mode": "partial",
+              "look_at_height_m": 1.5,
+              "hfov_degrees": 45.0,
+              "look_at_jitter_radius_m": 1.0
+            }
+          ],
+          "split": "train",
+          "shard_id": "shard-0",
+          "target_court_policy": {
+            "mode": "nearest_camera",
+            "centre_court_instance_id": null
+          },
+          "sample_count": 64
+        }
+      },
+      "view": {
+        "schema": "court_scale_view_v1",
+        "target_policy": "center_court_else_nearest_camera",
+        "hfov_degrees": 45.0,
+        "look_at_height_m": 1.5,
+        "look_at_jitter_radius_m": 1.0,
+        "jitter": "stable_point_uniform_area_disk_v1",
+        "width": 80,
+        "height": 48
+      },
+      "curve": {
+        "kind": "orbit",
+        "scene_from_local": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "parameters": {
+          "shape": "circle",
+          "radius_x_m": 9.600000000000001,
+          "radius_y_m": 9.600000000000001,
+          "orientation": 0.7,
+          "height": 2.25,
+          "amplitude": 0.25,
+          "phase": 1.1,
+          "cycles": 1
+        },
+        "center_court_id": null
+      },
+      "reasons": [],
+      "duplicate_of": null
+    },
+    {
+      "ordinal": 1,
+      "trajectory_id": "4ee46f147ff451d4892e23b0d4692ec12b80274cb18fc969606aeaf03fd0e8b9",
+      "provenance": {
+        "replay_rule_version": "published_train_group_geometry_v1",
+        "source_index_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "saved_group": {
+          "trajectory": {
+            "trajectory_id": "trajectory-2",
+            "trajectory_group_id": "group-2",
+            "shape": "circle",
+            "center_kind": "complex",
+            "center_court_instance_id": null,
+            "base_radius_m": 14.0,
+            "radius_scale": 0.8,
+            "axis_ratio": 1.0,
+            "orientation_radians": 0.7,
+            "base_height_m": 2.25,
+            "vertical_amplitude_m": 0.25,
+            "vertical_cycles": 1,
+            "vertical_phase_radians": 1.1,
+            "curve_mode": "sinusoidal_height"
+          },
+          "center": {
+            "center_kind": "complex",
+            "court_instance_id": null,
+            "reference_court_instance_id": "court-0",
+            "scene_from_center": [
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "center_scene_m": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "base_radius_m": 12.0,
+            "captured_offset_median_m": 10.0,
+            "captured_offset_q90_m": 12.0,
+            "captured_camera_count": 12
+          },
+          "views": [
+            {
+              "view_id": "view-2",
+              "target_kind": "court",
+              "target_mode": "court_center",
+              "coverage_mode": "partial",
+              "look_at_height_m": 1.5,
+              "hfov_degrees": 45.0,
+              "look_at_jitter_radius_m": 1.0
+            }
+          ],
+          "split": "train",
+          "shard_id": "shard-0",
+          "target_court_policy": {
+            "mode": "nearest_camera",
+            "centre_court_instance_id": null
+          },
+          "sample_count": 72
+        }
+      },
+      "view": {
+        "schema": "court_scale_view_v1",
+        "target_policy": "center_court_else_nearest_camera",
+        "hfov_degrees": 45.0,
+        "look_at_height_m": 1.5,
+        "look_at_jitter_radius_m": 1.0,
+        "jitter": "stable_point_uniform_area_disk_v1",
+        "width": 80,
+        "height": 48
+      },
+      "curve": {
+        "kind": "orbit",
+        "scene_from_local": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "parameters": {
+          "shape": "circle",
+          "radius_x_m": 11.200000000000001,
+          "radius_y_m": 11.200000000000001,
+          "orientation": 0.7,
+          "height": 2.25,
+          "amplitude": 0.25,
+          "phase": 1.1,
+          "cycles": 1
+        },
+        "center_court_id": null
+      },
+      "reasons": [],
+      "duplicate_of": null
+    }
+  ]
+}
