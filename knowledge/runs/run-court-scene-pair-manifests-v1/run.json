@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "run_id": "run-court-scene-pair-manifests-v1",
+  "issue": 1583,
+  "parent_issue": 1581,
+  "recorded_at": "2026-10-30T22:29:42.120048+00:00",
+  "status": "completed",
+  "python": "3.12.3",
+  "branch": "codex/scene-pair-manifests",
+  "base_commit": "b959533b8ba7d7ac481ce3332935fb7e6cd7f80c",
+  "selection_script_sha256": "61bb0e8dbe562e086f3b1bc8ab27d70df1f2d19d6f6c048f942a21634dcb5d55",
+  "ranking_source_sha256": "5dfacf9f4977d6ad3e342bf7e4851d28fe151a4705e3815d3c646f2b4f003822",
+  "final_transfer_script_sha256": "c4268f5acd3176634561e7208b7dec70d92cd7a4f5315a5041b46b10f89e72ea",
+  "source_pool": "gdrive:tennis_lab/data/court_scene_diversity_6000_v1",
+  "manifest_data_root_relative_directory": "court_scene_diversity_6000_v1",
+  "selection": {
+    "seed": 42,
+    "pairs": [
+      "P02",
+      "P03",
+      "P12",
+      "P13",
+      "P23"
+    ],
+    "scene_train_images": 2750,
+    "scene_validation_images": 250,
+    "evaluation_images": 2439
+  },
+  "artifacts": {
+    "p01": "p01-equivalence.json",
+    "creation": "manifest-creation.json",
+    "verification": "manifest-verification.json",
+    "publication": "drive-publication.json",
+    "tests": "test-results.json",
+    "resources": "cpu-resources.json",
+    "compatibility": "consumer-compatibility.json",
+    "read_recovery": "publication-read-recovery.json"
+  },
+  "manifests": [
+    "eval-4scene.val.subset.json",
+    "pair-b00-b02.train.subset.json",
+    "pair-b00-b02.val.subset.json",
+    "pair-b00-b03.train.subset.json",
+    "pair-b00-b03.val.subset.json",
+    "pair-b01-b02.train.subset.json",
+    "pair-b01-b02.val.subset.json",
+    "pair-b01-b03.train.subset.json",
+    "pair-b01-b03.val.subset.json",
+    "pair-b02-b03.train.subset.json",
+    "pair-b02-b03.val.subset.json"
+  ],
+  "publication": {
+    "files": 11,
+    "bytes": 3182035,
+    "preexisting_entries_checked": 3790,
+    "changed_preexisting_entries": []
+  },
+  "transfer_recovery": {
+    "path_copy_attempts_interrupted_by_worker": 3,
+    "reason": "Deep path lookup did not complete promptly; retained files were checked against inventory before reuse.",
+    "id_copy_probe_verified_bytes": 137722,
+    "four_batch_id_copy_interrupted_after_verified_files": 260,
+    "final_id_copy_max_io_batches": 16,
+    "all_919_metadata_files_content_verified": true,
+    "raw_receipts_directory": "tmp/court-scene-pairs-v1/receipts"
+  },
+  "limits": {
+    "images_downloaded": 0,
+    "renderer_invoked": false,
+    "gpu_or_colab_invoked": false,
+    "full_legacy_consumer": "Blocked by unsupported saved_train_trajectories method at this run base; parent notified."
+  }
+}
