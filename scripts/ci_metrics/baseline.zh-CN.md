@@ -109,9 +109,12 @@ fixture 时间已包含在 setup 内，测试中的 model/CLI 构建属于 call�
 | [6 × 4 / 40995509440](https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440) | 16.22 | 11.73–15.77 (242) | 87.98 | 6/6 | 1.64 | 2 |
 | [6 × 2 / 40997143981](https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981) | 18.30 | 9.93–17.88 (477) | 90.33 | 6/6 | 1.60 | 1 |
 | [8 × 2 / 40999125159](https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159) | 15.02 | 10.20–14.62 (265) | 104.20 | 8/8 | 1.51 | 1 |
+| [10 × 2 / 41001256601](https://github.com/Motoki0705/tennis-lab/actions/runs/41001256601) | 14.33 | 9.57–13.88 (259) | 118.45 | 10/10 | 1.50 | 1 |
 
 profile重新生成与fixture边界以[分片文档](sharding.zh-CN.md#重新生成实测profile)为准。单进程RSS不包含测试子进程，也不是同时process tree峰值。实测runner均有4 vCPU、约16 GB RAM，但CPU代际不同。完整shard观测保留全部worker结束记录，未观察到OOM或worker丢失。native library环境变量保持1，但部分既有测试将PyTorch intraop改为2/4并泄漏到后续用例，因此4 worker仍可能争用CPU。测试本体修复交由父会话。
 
 所有run均保留已知README.zh-CN失败。两次4 worker观测还出现 `test_timeout_reaps_group_when_output_is_open_or_closed[True]` 失败：timeout cleanup后立即检查时观察到仍在运行的child。没有忽略失败或转为成功。这些失败观测不能建立成功warm-cache的中位数或p95。source/profile/inventory审计保留；完整执行但失败时记录 `observations_complete=true`、`success=false`。
 
 可选的本地全量collect-only在竞争负载下取消，不作为性能或成功证据。完整执行证据来自Actions manifest和coverage成果物。父会话合并fixture优化后应重新生成profile并重测所选配置。hardware差异、样本量与thread状态泄漏限制结果外推。
+
+默认选择10 × 2，这是实测2 worker配置中，仅有已知README失败且Python在900秒内完成的最小配置；8 shard耗时901秒。观测runner成本从104.20升至118.45分钟（+13.7%），比旧参照82.60分钟增加43.4%。CPU代际与source不同，不能将全部成本差归因于增加job。新增5个attempt共消耗467.80 runner分钟，包含所有失败，无取消。父会话合并fixture优化后，应重新生成profile并重新评估减少job数量。

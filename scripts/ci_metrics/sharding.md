@@ -3,7 +3,7 @@
 [日本語](sharding.ja.md) · [简体中文](sharding.zh-CN.md)
 
 The CI workflow runs lint independently and partitions the complete CPU target
-over four test jobs by default, each with two pytest workers. Manual dispatch
+over ten test jobs by default, each with two pytest workers. Manual dispatch
 accepts `shards=1/2/4/6/8/10` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
 The manual one-job reference has a 120-minute limit; ordinary shards retain 60 minutes. The fixed `Python` job runs with
 `always()` and succeeds only when lint, all test jobs and the coverage audit succeed.
@@ -34,10 +34,10 @@ Run one local partition from a fixed checkout:
 
 ```bash
 .venv/bin/python -m scripts.ci_metrics run --workers 2 --output /absolute/new/shard-0/tests \
-  --shard-index 0 --shard-count 4 --shard-weights scripts/ci_metrics/cpu-file-times.json
+  --shard-index 0 --shard-count 10 --shard-weights scripts/ci_metrics/cpu-file-times.json
 ```
 
-Use indices 0–3 in separate output directories to cover the suite. The unpartitioned
+Use indices 0–9 in separate output directories to cover the suite. The unpartitioned
 full CPU command in [README](README.md#run-and-recover) remains available. Each
 partition reports `full_cpu_baseline=false`; only the complete aggregate can prove
 full CPU coverage. Sharding is by collected tests, not changed paths or a `slow` filter.
@@ -90,6 +90,12 @@ The command rebuilds phase/JUnit reports and audits source/run/attempt, all work
 
 By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard; its nine cases cost 579.907 s in the reference observation. No test bodies or fixture scopes change.
 
-The refreshed profile uses [run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121): 830 files, 12,782 cases (12,685 passed / 96 skipped / 1 failed), 8,527.317 summed phase seconds. It includes the known README.zh-CN failure. Estimated maximum loads are 2,131.830 / 1,421.220 / 1,065.916 s for 4 / 6 / 8 shards; these are overlapping phase costs, not predicted wall times. The previous assignment's measured loads were 2,781 / 1,435 / 1,691 / 2,621 s. Reprofile after the parent's fixture optimizations merge.
+The refreshed profile uses [run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121): 830 files, 12,782 cases (12,685 passed / 96 skipped / 1 failed), 8,527.317 summed phase seconds. It includes the known README.zh-CN failure. Estimated maximum loads are 2,131.830 / 1,421.220 / 1,065.916 / 852.732 s for 4 / 6 / 8 / 10 shards; these are overlapping phase costs, not predicted wall times. The previous assignment's measured loads were 2,781 / 1,435 / 1,691 / 2,621 s. Reprofile after the parent's fixture optimizations merge.
 
 System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.
+
+## Default selection
+
+The default is 10 shards with two workers: the smallest measured two-worker configuration meeting the 15-minute completion target with no failures beyond the known README case. Four workers reproduced an additional process-cleanup assertion failure and remain available for manual comparisons. The complete timing/cost/cache/RSS table and sample limitations are owned by [baseline](baseline.md#runner-scheduling-observations). After the parent’s fixture changes merge, regenerate the profile and remeasure whether 6/8 shards suffice.
+
+The function fixtures in `test_parent_development.py`, `test_execution_basis.py` and `test_parent_completion_resume.py` were also reviewed. Their file costs fit the refreshed per-shard budget. Retain the three existing split-file declarations for the measured default, then reassess with new timings after the planned fixture changes.

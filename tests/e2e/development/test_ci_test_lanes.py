@@ -54,8 +54,8 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
         assert job["env"][variable] == "1"
 
     assert choices["options"] == ["1", "2", "4", "6", "8", "10"]
-    assert choices["default"] == "4"
-    assert workflow["env"]["CI_SHARD_COUNT"] == "${{ inputs.shards || '4' }}"
+    assert choices["default"] == "10"
+    assert workflow["env"]["CI_SHARD_COUNT"] == "${{ inputs.shards || '10' }}"
     workers = triggers["workflow_dispatch"]["inputs"]["workers"]
     assert workers["options"] == ["2", "4"]
     assert workers["default"] == "2"

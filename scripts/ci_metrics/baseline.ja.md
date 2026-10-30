@@ -112,9 +112,12 @@ jobログへの転送追加後、同じ12テストの交互測定を新たに3�
 | [6 × 4 / 40995509440](https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440) | 16.22 | 11.73–15.77 (242) | 87.98 | 6/6 | 1.64 | 2 |
 | [6 × 2 / 40997143981](https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981) | 18.30 | 9.93–17.88 (477) | 90.33 | 6/6 | 1.60 | 1 |
 | [8 × 2 / 40999125159](https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159) | 15.02 | 10.20–14.62 (265) | 104.20 | 8/8 | 1.51 | 1 |
+| [10 × 2 / 41001256601](https://github.com/Motoki0705/tennis-lab/actions/runs/41001256601) | 14.33 | 9.57–13.88 (259) | 118.45 | 10/10 | 1.50 | 1 |
 
 profile再生成とfixture境界の正本は[分割文書](sharding.ja.md#実測profileの再生成)です。個別process RSSはテスト子processを含まず、同時process treeのピークではありません。実測runnerはいずれも4 vCPU・約16 GB RAMですがCPU世代は異なります。完全なshard観測では全workerの終了記録が揃い、OOMやworker消失は観測されませんでした。native libraryの環境変数は1を維持していますが、既存テストの一部はPyTorch intraopを2/4へ変え、後続へ状態を残します。4 workerでは環境変数だけでCPU競合を防げません。テスト本体の修正は親へ引き継ぎます。
 
 全runに既知のREADME.zh-CN失敗が残ります。4 workerの両観測には `test_timeout_reaps_group_when_output_is_open_or_closed[True]` の追加失敗もあります。timeout cleanup直後のassertが実行中のchildを観測したもので、無視も成功への変換もしていません。失敗観測から成功warm-cacheの中央値やp95は確定できません。source/profile/inventoryの監査は維持し、全件実行した失敗は `observations_complete=true`・`success=false` と区別します。
 
 任意のローカル全件collect-onlyは競合負荷下で中止し、cancelを性能や成功の証拠へ含めていません。全件実行の証拠はActionsのmanifestとcoverage成果物です。親がfixture最適化をmergeした後はprofileを再生成し、選定構成を再計測してください。hardware差、標本数、thread状態の漏れが比較の制限です。
+
+既定は10 × 2です。実測した2 worker構成のうち、既知のREADME失敗のみで900秒以内にPythonが完了した最小構成で、8 shardは901秒でした。観測runner費用は104.20→118.45分（+13.7%）、旧参照82.60分に対して+43.4%です。CPU世代・sourceが異なり、費用差のすべてをjob追加の影響とは断定しません。新規5 attemptの合計は失敗を含め467.80 runner分、cancelはありません。親のfixture軽量化後、profileを再生成してjob数の削減を再評価してください。

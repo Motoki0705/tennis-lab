@@ -2,7 +2,7 @@
 
 [English](sharding.md) · [日本語](sharding.ja.md)
 
-CI 独立执行 lint，并默认将完整 CPU 目标分给4个测试 job，每个使用2个 worker。手动dispatch可选 `shards=1/2/4/6/8/10` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
+CI 独立执行 lint，并默认将完整 CPU 目标分给10个测试 job，每个使用2个 worker。手动dispatch可选 `shards=1/2/4/6/8/10` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
 `Python` 使用 `always()`，仅在 lint、所有测试 job 和覆盖审计成功后通过。CI 不恢复为
 merge 前条件。本次保留现有 trigger；每日维护迁移属于
 [#1349](https://github.com/Motoki0705/tennis-lab/issues/1349)。
@@ -60,4 +60,10 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 
 默认保留观测中的 `split_files`。检查fixture后，重复传入 `--split-file tests/path.py` 可明确替换列表。收集guard会根据当前fixture graph验证声明。merge gate、board messages、parent session继续按function fixture拆分。坐标训练使用module scope的 `shared`，所以9个用例的579.907秒保留在一个shard内；不修改测试本体与fixture scope。
 
-新profile来自[run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121)：830个文件、12,782例（12,685 passed / 96 skipped / 1 failed）、共8,527.317 phase秒，保留已知README.zh-CN失败。4 / 6 / 8 shard的估计最大负荷为2,131.830 / 1,421.220 / 1,065.916秒。这是并行worker phase的累计值，不是wall时间预测。旧分配的实测负荷为2,781 / 1,435 / 1,691 / 2,621秒。父会话合并fixture优化后需重新生成。
+新profile来自[run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121)：830个文件、12,782例（12,685 passed / 96 skipped / 1 failed）、共8,527.317 phase秒，保留已知README.zh-CN失败。4 / 6 / 8 / 10 shard的估计最大负荷为2,131.830 / 1,421.220 / 1,065.916 / 852.732秒。这是并行worker phase的累计值，不是wall时间预测。旧分配的实测负荷为2,781 / 1,435 / 1,691 / 2,621秒。父会话合并fixture优化后需重新生成。
+
+## 默认配置选择
+
+默认使用10 shard、2 worker，这是实测2 worker配置中，在15分钟内完成且没有已知README之外失败的最小配置。4 worker重复出现process cleanup后立即检查的额外assert失败，保留为手动比较选项。时间、runner成本、cache、RSS的完整表与样本限制以[baseline](baseline.zh-CN.md#runner配置比较)为准。父会话合并fixture优化后，应重新生成profile并重测6/8 shard是否足够。
+
+也检查了 `test_parent_development.py`、`test_execution_basis.py` 和 `test_parent_completion_resume.py` 的function fixture。其文件成本在更新后的每shard预算内，因此实测默认配置保留既有3个文件的拆分声明，待计划中的fixture优化后用新测量重新判断。
