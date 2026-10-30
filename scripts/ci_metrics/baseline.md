@@ -2,7 +2,7 @@
 
 [日本語](baseline.ja.md) · [简体中文](baseline.zh-CN.md)
 
-This is the measurement record for #1401, supporting #1402–#1405.
+This records #1401, supporting #1402–#1405, and the runner scheduling follow-up #1523.
 **The full CPU observation completed with failures; it is not a successful baseline.** This document does not
 claim that the CI target or a performance improvement has been demonstrated.
 The machine-readable run metadata, inventory, JUnit and phase events are the
@@ -124,3 +124,24 @@ by #1401.
 Completed observations and limitations are recorded above. Successful same-source Actions comparisons follow integration.
 
 After live job-log forwarding was added, a new set of three alternating matched 12-test pairs measured plain median **4.213 s** and instrumented median **4.467 s** (+0.254 s). All six runs passed with identical inventories. These startup-dominated samples have separate provenance in `overhead_live_log` in the machine evidence; differences from the earlier samples are not a between-version speedup.
+
+## Runner scheduling observations
+
+The initial four branch comparisons use the same source, refreshed profile and 12,795-case CPU inventory, including 13 new CI regression cases. The 10-shard follow-up adds three CI regression cases (12,798 total); production tests are unchanged, and its source is identified separately in the machine evidence. Each configuration has n=1. The earlier 4 × 2 reference uses the old profile and 12,782 cases; it is descriptive context, not a same-source control. Elapsed time starts at Actions `created_at` (including queue) and ends at completion of `Python`, including aggregation and post steps. Runner time sums every job, including lint and aggregation. All attempts and failures remain in [machine evidence](scheduling-evidence.json).
+
+| Configuration / run | Python completion min | Shard min–max min (spread s) | All-job runner min | Test cache hits | Largest process RSS GiB | Failed cases |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| [4 × 2 / 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121) | 26.22 | 14.42–25.80 (683) | 82.60 | 4/4 | 1.70 | 1 |
+| [4 × 4 / 40992996490](https://github.com/Motoki0705/tennis-lab/actions/runs/40992996490) | 20.53 | 12.62–20.13 (451) | 66.83 | 4/4 | 1.65 | 2 |
+| [6 × 4 / 40995509440](https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440) | 16.22 | 11.73–15.77 (242) | 87.98 | 6/6 | 1.64 | 2 |
+| [6 × 2 / 40997143981](https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981) | 18.30 | 9.93–17.88 (477) | 90.33 | 6/6 | 1.60 | 1 |
+| [8 × 2 / 40999125159](https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159) | 15.02 | 10.20–14.62 (265) | 104.20 | 8/8 | 1.51 | 1 |
+| [10 × 2 / 41001256601](https://github.com/Motoki0705/tennis-lab/actions/runs/41001256601) | 14.33 | 9.57–13.88 (259) | 118.45 | 10/10 | 1.50 | 1 |
+
+The profile refresh procedure and fixture boundaries are owned by [sharding](sharding.md#regenerate-measured-weights). Individual process RSS excludes test subprocesses and is not the simultaneous process-tree peak. All measured runners expose 4 vCPUs and about 16 GB RAM, but CPU generations vary. Every complete shard observation has all expected worker session finishes; no OOM or worker loss was observed. Native-library environment variables remain one; some existing tests override PyTorch intraop threads to 2/4 and leak that state into subsequent cases. Thus four workers can contend for the same CPUs despite the environment limits. Fixing those test bodies belongs to the parent.
+
+All runs retain the known README.zh-CN failure. Both four-worker observations also fail `test_timeout_reaps_group_when_output_is_open_or_closed[True]`: the assertion sees a running child immediately after timeout cleanup. This failure is not ignored or converted to success. No successful warm-cache median or p95 is established from these failed observations. Source/profile and inventory checks still run, and a complete failing run reports `observations_complete=true` with `success=false`.
+
+The optional local full collect-only observation was cancelled under competing host load and is not a performance or passing result. The Actions manifests and coverage artifacts provide the full execution proof. Repeat the chosen configuration and regenerate weights after the parent's fixture optimizations merge; hardware variation, limited sample count and test thread leakage limit extrapolation.
+
+The selected default is 10 × 2: it is the smallest measured two-worker configuration completing Python within 900 s with only the known README failure. Eight shards took 901 s. Observed runner cost rises from 104.20 to 118.45 min (+13.7%), or +43.4% against the earlier 82.60 min reference. CPU generations and source differ, so the full cost difference cannot be attributed to adding jobs. The five new attempts consumed 467.80 runner min in total, including all failures; none was cancelled. Reprofile after the parent’s fixture optimizations before reducing the job count.

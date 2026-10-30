@@ -107,20 +107,17 @@ def assign_groups(
     }
 
 
-def verify_shards(
+def inspect_shards(
     root: Path,
     count: int,
     *,
     sha: str,
     run_id: str,
     attempt: str,
-    needs: dict[str, Any],
 ) -> dict[str, Any]:
+    """Audit complete observations, retaining failed tests as measured evidence."""
     issues: list[str] = []
-    if set(needs) != {"lint", "tests"} or any(
-        row.get("result") != "success" for row in needs.values()
-    ):
-        issues.append("lint and every CPU test job must succeed")
+    successful = True
     directories = sorted(root.glob("*/tests"))
     if len(directories) != count:
         issues.append(f"expected {count} shard artifacts, found {len(directories)}")
@@ -190,10 +187,16 @@ def verify_shards(
                 raise ValueError("shards disagree on full inventory or timing profile")
             summary = summarize(directory)
             inventory = json.loads((directory / "inventory.json").read_text())
-            if summary["successful_test_baseline"] is not True:
-                raise ValueError(
-                    f"incomplete/failed test observations: {summary['issues']}"
+            if (
+                summary["issues"]
+                or summary["run"]["status"] != "completed"
+                or summary["run"]["exitcode"] not in {0, 1}
+                or any(
+                    row["outcome"] == "failed" for row in summary["collection_results"]
                 )
+            ):
+                raise ValueError(f"incomplete test observations: {summary['issues']}")
+            successful &= summary["successful_test_baseline"] is True
             if inventory != selected:
                 raise ValueError("executed inventory differs from the shard plan")
             executed.extend(inventory)
@@ -208,7 +211,8 @@ def verify_shards(
         )
     return {
         "schema_version": 1,
-        "success": not issues,
+        "observations_complete": not issues,
+        "successful_test_observations": not issues and successful,
         "issues": issues,
         "source_sha": sha,
         "run_id": run_id,
@@ -217,6 +221,26 @@ def verify_shards(
         "selected_count": len(executed),
         "counts": dict(outcomes),
     }
+
+
+def verify_shards(
+    root: Path,
+    count: int,
+    *,
+    sha: str,
+    run_id: str,
+    attempt: str,
+    needs: dict[str, Any],
+) -> dict[str, Any]:
+    result = inspect_shards(root, count, sha=sha, run_id=run_id, attempt=attempt)
+    if not result["successful_test_observations"]:
+        result["issues"].append("incomplete/failed test observations")
+    if set(needs) != {"lint", "tests"} or any(
+        row.get("result") != "success" for row in needs.values()
+    ):
+        result["issues"].append("lint and every CPU test job must succeed")
+    result["success"] = not result["issues"]
+    return result
 
 
 def main() -> int:

@@ -6,7 +6,7 @@
 省略は行いません。CIは[全件の分割と完全性照合](sharding.ja.md)を使い、既定のローカル
 コマンドは全件を1 jobで実行します。CPUのmarker式は `.spin/cmds.py` が正本で、court datasetの
 既存の明示除外を維持します。CIとローカル計測は `spin test -q --no-cov --dist=worksteal`、
-2 worker、native thread各1、CUDA不可視、`--durations=50 --durations-min=1`、JUnitを使います。
+worker数の明示（ローカル既定2、CIは[分割設定](sharding.ja.md)参照）、native thread各1、CUDA不可視、`--durations=50 --durations-min=1`、JUnitを使います。
 
 pytestのstdout/stderrはjobログへ転送し、`pytest.log`にも保存します。既存の`ci_watch`が失敗nodeidとsetup例外を識別できます。出力pipeが閉じた場合はlauncherを失敗にし、テストのprocess groupを停止します。
 
@@ -132,3 +132,5 @@ job構成比較ではsource、inventory、runner image/CPU/RAM、依存、worker
 APIの正本は [pytest hooks](https://docs.pytest.org/en/stable/reference/reference.html#hooks)、
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv`出力](https://github.com/astral-sh/setup-uv#outputs)です。
+
+完全なActions成果物からの重み再生成は[`profile`コマンド](sharding.ja.md#実測profileの再生成)を使います。失敗caseを残し、不完全なattemptは拒否します。

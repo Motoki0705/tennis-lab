@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from .actions import fetch_attempts, markdown, summarize_attempts
+from .profile import build_profile
 from .report import summarize
 from .runner import environment_metadata, run, write_json
 
@@ -46,7 +47,22 @@ def main() -> int:
     fetch.add_argument("--run-id", required=True, type=int)
     fetch.add_argument("--attempt", type=int)
     fetch.add_argument("--output", required=True, type=Path)
+    profile = sub.add_parser(
+        "profile", help="Build weights from complete shard artifacts"
+    )
+    profile.add_argument("--root", required=True, type=Path)
+    profile.add_argument("--output", required=True, type=Path)
+    profile.add_argument(
+        "--split-file",
+        action="append",
+        help="Reviewed independent fixture file (repeatable)",
+    )
     args = parser.parse_args()
+    if args.command == "profile":
+        result = build_profile(args.root, args.split_file)
+        write_json(args.output, result)
+        print(json.dumps(result["source"], indent=2))
+        return 0
     if args.command == "run":
         if args.workers < 0:
             parser.error("--workers must be nonnegative")

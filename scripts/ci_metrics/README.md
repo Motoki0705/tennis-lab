@@ -7,7 +7,7 @@ change fixtures or select tests by changed paths. CI uses the complete-target
 [sharding and coverage audit](sharding.md); the default local command remains unsharded. The CPU marker
 expression remains owned by `.spin/cmds.py`; the court dataset integration retains
 its existing explicit exclusion. Both CI and the local measurement runner use
-`spin test -q --no-cov --dist=worksteal`, two workers, native thread counts of one,
+`spin test -q --no-cov --dist=worksteal`, an explicit worker count (local default two; CI choices in [sharding](sharding.md)), native thread counts of one,
 CUDA hidden, `--durations=50 --durations-min=1`, and JUnit.
 
 Pytest stdout/stderr is streamed to the job log and saved in `pytest.log`. This preserves the existing `ci_watch` failure signatures, including failed nodeids and setup exceptions. A closed output pipe fails the launcher and terminates its test process group.
@@ -160,3 +160,5 @@ The measured candidate decisions and baseline evidence are in
 The implementation uses [pytest hooks](https://docs.pytest.org/en/stable/reference/reference.html#hooks),
 [Actions attempt APIs](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt),
 and [`setup-uv` cache outputs](https://github.com/astral-sh/setup-uv#outputs).
+
+Regenerate scheduling weights from complete Actions artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Failed cases remain visible; incomplete attempts are rejected.

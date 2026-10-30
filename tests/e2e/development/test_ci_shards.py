@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+from scripts.ci_metrics.profile import build_profile
 from scripts.ci_metrics.runner import test_environment as headless_environment
 from scripts.ci_metrics.shards import assign_groups, read_timing_profile, verify_shards
 
@@ -40,6 +41,25 @@ def test_assignment_uses_cost_and_preserves_files_including_new_tests() -> None:
         assign_groups(nodeids + nodeids[:1], 2, weights)
     with pytest.raises(ValueError, match="fewer files"):
         assign_groups(nodeids, 5, weights)
+
+
+@pytest.mark.parametrize("count", [1, 2, 4, 6, 8, 10])
+def test_every_dispatch_partition_covers_new_and_split_cases_once(count: int) -> None:
+    weights = {f"tests/test_{i}.py": float(20 - i) for i in range(10)}
+    nodeids = [f"{name}::test_{i}" for name in weights for i in range(3)]
+    nodeids += ["tests/new.py::test_new", "tests/test_0.py::test_new"]
+    plan = assign_groups(nodeids, count, weights, split_files=["tests/test_0.py"])
+    selected = [
+        nodeid
+        for index in range(count)
+        for nodeid in nodeids
+        if plan["assignments"].get(
+            nodeid, plan["assignments"].get(nodeid.split("::")[0])
+        )
+        == index
+    ]
+    assert sorted(selected) == sorted(nodeids)
+    assert set(plan["assignments"].values()) == set(range(count))
 
 
 def test_only_explicit_function_fixture_files_split_by_measured_case_cost() -> None:
@@ -183,6 +203,60 @@ def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
         )
 
 
+def test_profile_recomputes_measured_file_and_split_costs(
+    observed_shards: Path,
+    tmp_path: Path,
+) -> None:
+    profile = build_profile(observed_shards)
+    results = [
+        row
+        for path in observed_shards.glob("*/tests/results.json")
+        for row in json.loads(path.read_text())
+    ]
+    assert profile["source"]["selected_count"] == len(results) == 5
+    assert profile["source"]["counts"] == {"passed": 5}
+    assert profile["source"]["successful_test_observations"] is True
+    assert profile["split_files"] == ["tests/test_first.py"]
+    assert profile["file_seconds"]["tests/test_first.py"] == pytest.approx(
+        sum(
+            sum(row["phase_s"].values())
+            for row in results
+            if "test_first.py::" in row["nodeid"]
+        ),
+        abs=1e-6,
+    )
+    assert profile["test_seconds"] == {
+        row["nodeid"]: max(round(sum(row["phase_s"].values()), 6), 0.000001)
+        for row in results
+        if "test_first.py::" in row["nodeid"]
+    }
+    assert profile == build_profile(observed_shards)
+    assert build_profile(observed_shards, ["tests/test_second.py"])["split_files"] == [
+        "tests/test_second.py"
+    ]
+    with pytest.raises(ValueError, match="unique measured"):
+        build_profile(observed_shards, ["tests/unmeasured.py"])
+    destination = tmp_path / "profile.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.ci_metrics",
+            "profile",
+            "--root",
+            str(observed_shards),
+            "--output",
+            str(destination),
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_timing_profile(destination)[0] == profile
+
+
 def test_split_file_rejects_new_shared_fixture(
     tmp_path: Path,
     observed_shards: Path,
@@ -295,6 +369,8 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
     result = verify_shards(root, 2, needs=SUCCESS, **CONTEXT)
     assert result["success"] is False, result
     assert result["issues"]
+    with pytest.raises(ValueError, match="incomplete"):
+        build_profile(root)
 
 
 @pytest.mark.parametrize("job", ["lint", "tests"])
