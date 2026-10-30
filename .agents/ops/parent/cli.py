@@ -8,12 +8,13 @@ import os
 import re
 import subprocess
 import sys
-from contextlib import suppress
+from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
 from lib.identity import session_identity
 
+from . import metrics
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
@@ -36,12 +37,23 @@ def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     root.add_argument("--repo", help="owner/repo; default: gh repo view")
     root.add_argument(
+        "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
+    )
+    root.add_argument("--dispatcher-state-dir", type=Path)
+    root.add_argument(
         "--parent",
         required=True,
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
-    for command in ("register", "status", "checking", "reconcile", "sync"):
+    for command in (
+        "register",
+        "status",
+        "checking",
+        "reconcile",
+        "sync",
+        "state-migrate",
+    ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
     from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
@@ -60,6 +72,23 @@ def parser() -> argparse.ArgumentParser:
         if command == "project-sync":
             project.add_argument("--event", choices=EVENTS, required=True)
             project.add_argument("--spec", required=True)
+    commands.add_parser("workflow-report").add_argument("--spec", required=True)
+    cancellation = commands.add_parser("record-cancellation")
+    cancellation.add_argument("--child", type=int, required=True)
+    cancellation.add_argument("--spec", required=True)
+    for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
+        worker = commands.add_parser(name)
+        worker.add_argument("--child", type=int, required=True)
+        if name in {"start-worker", "continue-worker"}:
+            worker.add_argument("--prompt-file", required=True)
+            worker.add_argument("--model", choices=("gpt-6.1-sol", "gpt-6-astra"))
+        if name == "start-worker":
+            worker.add_argument("--branch", required=True)
+            worker.add_argument("--worktree", type=Path, required=True)
+        if name == "continue-worker":
+            worker.add_argument("--evidence-file", required=True)
+        if name == "stop-worker":
+            worker.add_argument("--spec", required=True)
     inputs = commands.add_parser("basis-input")
     inputs.add_argument("--ignored-comments")
     inputs.add_argument("--context")
@@ -117,7 +146,14 @@ def parser() -> argparse.ArgumentParser:
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
     request = commands.add_parser("review-request")
-    request.add_argument("--run-id", required=True)
+    selection = request.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--run-id")
+    selection.add_argument("--prs", type=int, nargs="+")
+    request.add_argument("--evidence-file")
+    request.add_argument(
+        "--worker-runs", help="JSON map of child number to common-runner directory"
+    )
+    request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
     state = commands.add_parser("review-state")
     state.add_argument("--run-id", required=True)
@@ -130,9 +166,21 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == "state-migrate":
+            with Store(args.state_dir or state_directory()).locked() as migration_store:
+                migration_store.migrate()
+                print(
+                    json.dumps(
+                        {
+                            "version": migration_store.data["version"],
+                            "parents": len(migration_store.parents),
+                        }
+                    )
+                )
+                return 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.
@@ -141,9 +189,42 @@ def main(argv: list[str] | None = None) -> int:
             if args.command in {"status", "basis-input", "basis-record", "basis-check"}
             else session_identity(dict(os.environ))
         )
-        gh = GitHub(args.repo)
+        args.state_dir = (args.state_dir or state_directory()).resolve()
+        workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
+        store: Store
+        if args.command in workers | {"workflow-report", "record-cancellation"}:
+            from .development import workflow_store
+
+            store = workflow_store(args.state_dir, args.dispatcher_state_dir)
+        else:
+            store = Store(args.state_dir)
+        gh = GitHub(args.repo, store=store)
         parent = issue_number(args.parent, gh.repo)
-        with Store(state_directory()).locked() as store:
+        operation = (
+            nullcontext()
+            if args.command
+            in {"status", "reconcile", "basis-input", "basis-check", "inspect-worker"}
+            else store.operation(f"{gh.repo.casefold()}#{parent}")
+        )
+        project_operation = (
+            store.operation(f"project:{args.owner.casefold()}#{args.project}")
+            if args.command in {"project-setup", "project-sync"}
+            else nullcontext()
+        )
+        transaction = nullcontext() if args.command in workers else store.locked()
+        with operation, project_operation, transaction:
+            if args.command in workers:
+                from .development import worker_command
+
+                worker_result = worker_command(
+                    args, gh, parent, nonempty(identity, "parent identity"), store
+                )
+                print(
+                    json.dumps(
+                        worker_result, ensure_ascii=False, indent=2, sort_keys=True
+                    )
+                )
+                return 0
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
@@ -198,6 +279,16 @@ def main(argv: list[str] | None = None) -> int:
                 result = session.checking()
             elif command == "note":
                 result = session.note(read_text(args.body_file))
+            elif command == "workflow-report":
+                from .development import load, report
+
+                result = report(session, load(Path(args.spec)))
+            elif command == "record-cancellation":
+                from .development import load, record_cancellation
+
+                result = record_cancellation(
+                    session, number(args.child), load(Path(args.spec))
+                )
             elif command == "agree":
                 result = session.agree(
                     read_object(args.spec), args.report, args.proposal
@@ -272,17 +363,36 @@ def main(argv: list[str] | None = None) -> int:
                     read_text(args.reason_file) if args.reason_file else None,
                 )
             elif command == "review-request":
-                result = transition(
-                    session, args.run_id, "instructed", read_text(args.instruction_file)
-                )
+                if args.prs:
+                    from .review_handoff import request as handoff_review
+
+                    if not args.evidence_file:
+                        raise ValueError(
+                            "--prs requires --evidence-file with verified results"
+                        )
+                    result = handoff_review(
+                        session,
+                        args.prs,
+                        read_text(args.instruction_file),
+                        read_text(args.evidence_file),
+                        read_object(args.worker_runs) if args.worker_runs else {},
+                        read_text(args.reason_file) if args.reason_file else None,
+                    )
+                else:
+                    result = transition(
+                        session,
+                        args.run_id,
+                        "instructed",
+                        read_text(args.instruction_file),
+                    )
             else:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
         integration_failed = False
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
-            # The mutation is durable and its registry lock is released. Allocate
-            # the name before projecting it; attempt both integrations on failure.
+            # The mutation is durable and its registry lock is released. Sync
+            # the caller and unnamed active peers before projecting the name.
             result = {**result, "parent_action_applied": True}
             from board.errors import BoardError
             from board.service import sync_parent
@@ -303,6 +413,8 @@ def main(argv: list[str] | None = None) -> int:
                     "status": "error",
                     "error": "board name synchronization failed; inspect storage and parent configuration",
                 }
+                integration_failed = True
+            if name_sync["status"] == "error":
                 integration_failed = True
             result = {**result, "board_sync": name_sync}
             from herdr_labels.service import sync as sync_display
@@ -353,6 +465,17 @@ def main(argv: list[str] | None = None) -> int:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    destination = os.environ.get("PARENT_METRICS_FILE")
+    with metrics.command(
+        args.command, Path(destination) if destination else None
+    ) as row:
+        result = _main(argv)
+        row["exit_code"] = result
+        return result
 
 
 if __name__ == "__main__":

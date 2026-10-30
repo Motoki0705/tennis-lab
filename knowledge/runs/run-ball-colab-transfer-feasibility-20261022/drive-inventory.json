@@ -1,0 +1,215 @@
+{
+  "action": "inventory",
+  "remote_root": "gdrive:tennis_lab",
+  "rclone_config": "${RCLONE_CONFIG}",
+  "observed_at": "2026-10-22T05:25:07.436163+00:00",
+  "schema_version": 1,
+  "path": "staging/ball-detection-transfer-probe-20261022",
+  "entries": [
+    {
+      "path": "sample-1",
+      "id": "<redacted>",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T05:15:51.449Z"
+    },
+    {
+      "path": "sample-1/clip-00053.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 13038519,
+      "hashes": {
+        "md5": "7bca4224f67ba0751f9774cf6d13dd80"
+      },
+      "modified": "2026-09-27T14:07:57.272Z"
+    },
+    {
+      "path": "sample-1/clip-00177.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 40210890,
+      "hashes": {
+        "md5": "3c3658b33801286955c2870d9e2489e5"
+      },
+      "modified": "2026-10-01T06:25:15.900Z"
+    },
+    {
+      "path": "sample-1/clip-01101.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 57555604,
+      "hashes": {
+        "md5": "54fa85b802da670a69ac142ae1a0ad36"
+      },
+      "modified": "2026-10-04T05:40:41.082Z"
+    },
+    {
+      "path": "sample-1/clip-01217.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 93777319,
+      "hashes": {
+        "md5": "98db0e7b5afdd9aee527e2d66e1da5b9"
+      },
+      "modified": "2026-10-04T05:46:09.744Z"
+    },
+    {
+      "path": "sample-1/clip-01327.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 143876798,
+      "hashes": {
+        "md5": "d19497a21e09e357ebe0ecd9f9eabb05"
+      },
+      "modified": "2026-10-18T01:39:49.224Z"
+    },
+    {
+      "path": "sample-1/clip-01537.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 196227387,
+      "hashes": {
+        "md5": "814dd93d749f2304ab790a9548901038"
+      },
+      "modified": "2026-10-18T01:47:58.490Z"
+    },
+    {
+      "path": "sample-2",
+      "id": "<redacted>",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T05:17:16.515Z"
+    },
+    {
+      "path": "sample-2/clip-00069.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 20409027,
+      "hashes": {
+        "md5": "179b550fbd74a40bc8d1935b944dda1f"
+      },
+      "modified": "2026-09-27T14:08:00.836Z"
+    },
+    {
+      "path": "sample-2/clip-00176.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 57982790,
+      "hashes": {
+        "md5": "4dd8a3eb91058aa97b19bee49a30a38d"
+      },
+      "modified": "2026-10-01T06:25:14.730Z"
+    },
+    {
+      "path": "sample-2/clip-00277.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 99839991,
+      "hashes": {
+        "md5": "d503fb022d8765849dc12e0117f5e253"
+      },
+      "modified": "2026-10-01T06:28:37.451Z"
+    },
+    {
+      "path": "sample-2/clip-00999.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 201836166,
+      "hashes": {
+        "md5": "4a57bb54124fb58b5b14f702af11580f"
+      },
+      "modified": "2026-10-04T05:36:09.415Z"
+    },
+    {
+      "path": "sample-2/clip-01179.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 147250362,
+      "hashes": {
+        "md5": "87a9c0c5e7302b028c6ecd096fcdb2b2"
+      },
+      "modified": "2026-10-04T05:44:28.886Z"
+    },
+    {
+      "path": "sample-2/clip-01419.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 59009601,
+      "hashes": {
+        "md5": "f9299edfa12fd17bf523d96e35476a06"
+      },
+      "modified": "2026-10-18T01:43:24.228Z"
+    },
+    {
+      "path": "sample-3",
+      "id": "<redacted>",
+      "type": "directory",
+      "size_bytes": -1,
+      "hashes": {},
+      "modified": "2026-10-22T05:18:45.770Z"
+    },
+    {
+      "path": "sample-3/clip-00047.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 29965467,
+      "hashes": {
+        "md5": "d1b0ec612a6397aadac4e81318f095c0"
+      },
+      "modified": "2026-09-27T14:07:56.536Z"
+    },
+    {
+      "path": "sample-3/clip-00223.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 95484618,
+      "hashes": {
+        "md5": "c78425a3842508af092217b81c287555"
+      },
+      "modified": "2026-10-01T06:26:50.077Z"
+    },
+    {
+      "path": "sample-3/clip-00519.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 152076164,
+      "hashes": {
+        "md5": "1bb23bc90239e588813a03a5461d31ba"
+      },
+      "modified": "2026-10-01T06:40:44.338Z"
+    },
+    {
+      "path": "sample-3/clip-00667.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 209252266,
+      "hashes": {
+        "md5": "ede998edbed04494ca45a3c58cb5da12"
+      },
+      "modified": "2026-10-01T06:49:01.264Z"
+    },
+    {
+      "path": "sample-3/clip-01346.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 59748971,
+      "hashes": {
+        "md5": "7da01841c5e461dd62e064194b1e0008"
+      },
+      "modified": "2026-10-18T01:40:40.470Z"
+    },
+    {
+      "path": "sample-3/clip-01776.bin",
+      "id": "<redacted>",
+      "type": "file",
+      "size_bytes": 103561783,
+      "hashes": {
+        "md5": "c01a687179da5443a1161c3b227bd8e3"
+      },
+      "modified": "2026-10-18T01:57:40.733Z"
+    }
+  ],
+  "ambiguous_paths": []
+}

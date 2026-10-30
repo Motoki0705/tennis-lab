@@ -1,0 +1,24 @@
+{
+  "blender_version": "5.2.1 LTS",
+  "frames_checked": 1010,
+  "mesh_frames_checked": [
+    0,
+    126,
+    252,
+    378,
+    504,
+    630,
+    756,
+    882,
+    1009
+  ],
+  "max_mesh_error_m": 0.0,
+  "max_ball_error_m": 0.0,
+  "max_camera_projection_error_px": 0.00013076003665446478,
+  "visibility_matches_masks": true,
+  "fps": 59.940057141856784,
+  "render_frame_step": 6,
+  "render_resolution_percentage": 50,
+  "render_samples": 4,
+  "camera_moved": true
+}

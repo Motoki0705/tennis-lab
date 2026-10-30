@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import replace
+from functools import partial
 
 import numpy as np
 import pytest
@@ -14,6 +15,7 @@ from src.tasks.ball_refiner_3d.configuration.generation import CameraSampling
 from src.tasks.ball_refiner_3d.data.dataset import SharedDataset
 from src.tasks.ball_refiner_3d.data.preprocessing import prepare
 from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
+from src.tasks.ball_refiner_3d.evaluation.physics import PhysicsProtocol, physics_report
 from src.tasks.ball_refiner_3d.generate_dataset.generator import generate_dataset
 from src.tasks.ball_refiner_3d.generate_dataset.reprojection import reproject_dataset
 from src.tasks.ball_refiner_3d.inference.files import predict_file
@@ -36,6 +38,10 @@ def shared(tmp_path_factory):
                 "generation.val_rallies=1",
                 "generation.test_rallies=1",
                 "generation.workers=1",
+                # Keep multi-flight validation/test rallies after truncation.
+                "generation.seed=992",
+                "generation.min_frames=32",
+                "rally.max_total_frames=256",
             ],
         )
     path = generate_dataset(cfg)
@@ -85,8 +91,25 @@ def test_shared_training_roundtrip(
     shared, tmp_path, monkeypatch, dimensions, architecture, gan, gan_only, physics
 ):
     torch.set_num_threads(1)
+    # Exercise the real nonlinear fit and saved diagnostics with a smoke budget.
+    # Numerical convergence of the production protocol has separate unit tests.
+    protocol = PhysicsProtocol(
+        fit_segment_iterations=0,
+        fit_iterations=1,
+        fit_starts=((0.007, 0.001, 0, 0),),
+    )
+    monkeypatch.setattr(
+        "src.tasks.ball_refiner_3d.evaluation.evaluator.physics_report",
+        partial(physics_report, protocol=protocol),
+    )
     root, dataset_path = shared
     data = SharedDataset(dataset_path)
+    assert all(32 <= len(rally.xyz) <= 64 for rally in data.rallies)
+    assert all(
+        len(rally.physics.segments) >= 2
+        for split in ("val", "test")
+        for rally in data.split(split)
+    )
     assert len(list((dataset_path / "rallies").glob("*.npz"))) == 4
     split_ids = {
         name: {r.name for r in data.split(name)} for name in ("train", "val", "test")
@@ -117,6 +140,7 @@ def test_shared_training_roundtrip(
                 "training.batch_size=2",
                 "training.evaluate_every=2",
                 "training.log_every=1",
+                "training.cpu_threads=1",
                 "training.gan.transition.start_step=1",
                 "training.gan.schedule_enabled=true",
                 "training.gan.warmup_steps=2",
@@ -130,7 +154,7 @@ def test_shared_training_roundtrip(
                 "model.layers=1",
                 "model.heads=2",
                 "data.window.length=32",
-                "data.window.max_length=160",
+                "data.window.max_length=64",
                 "model.flow_steps=3",
             ],
         )
@@ -171,6 +195,12 @@ def test_shared_training_roundtrip(
     last = torch.load(
         output / "logs/version_0/checkpoints/last.ckpt", weights_only=True
     )
+    assert last["step"] == 4
+    assert {
+        int(state["step"])
+        for state in last["optimizer_states"][0]["state"].values()
+    } == {4}
+    assert any((output / "logs/version_0").glob("events.out.tfevents.*"))
     if gan:
         assert {
             int(state["step"])
@@ -185,6 +215,8 @@ def test_shared_training_roundtrip(
         )
     checkpoint = output / "logs/version_0/checkpoints/best.ckpt"
     model, metadata = load_checkpoint(checkpoint, torch.device("cpu"))
+    assert model.config.width == 16 and model.config.layers == 1
+    assert model.config.architecture == architecture
     assert metadata["manifest_sha256"] == data.manifest_hash
     from src.tasks.ball_refiner_3d.visualization.dataset_review.checkpoints import (
         describe,
@@ -278,6 +310,11 @@ def test_shared_training_roundtrip(
     final_report = json.loads(
         (output / "predictions_last/diagnostic_metrics.json").read_text()
     )
+    for report in (first_report, final_report):
+        assert report["physics"]["settings"]["fit_iterations"] == 1
+        assert report["physics"]["settings"]["fit_segment_iterations"] == 0
+        assert len(report["physics"]["settings"]["fit_starts"]) == 1
+        assert np.isfinite(report["physics"]["fit_residual_rmse"]["all"])
     assert (
         first_report["evaluation_input_sha256"]
         == final_report["evaluation_input_sha256"]
@@ -361,6 +398,7 @@ def test_native_resume_matches_uninterrupted_partial_final_epoch(
                 "training.evaluate_every=2",
                 "training.log_every=3",
                 "training.batch_size=2",
+                "training.cpu_threads=1",
                 f"model={architecture}",
                 "model.width=16",
                 "model.layers=1",
@@ -368,7 +406,7 @@ def test_native_resume_matches_uninterrupted_partial_final_epoch(
                 "model.rope_dim=8",
                 "model.ffn_dim=64",
                 "data.window.length=32",
-                "data.window.max_length=160",
+                "data.window.max_length=64",
                 "model.flow_steps=3",
                 "model.dropout=0.1",
                 f"training.gan.enabled={str(gan).lower()}",

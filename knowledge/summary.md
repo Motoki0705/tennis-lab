@@ -1,7 +1,7 @@
-<!-- knowledge-review: 301555d490b6d20da609d8d7d5cf07411b59563fbdfdf00f6f94edfb1fbe1ecb on 2026-10-23 -->
+<!-- knowledge-review: c53789d7dc8551e62d6001b2656abb42fd14ec093b141006564eaee2f8c3264d on 2026-10-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-22（Court新規視点の描画診断・データ規模設計への判断と、Court発表素材の採用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-26（保存済みsceneの球への外れ値除去・LOESS適用とCPU再三角測量・公開デモ更新を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,38 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-26の球LOESSと公開デモ更新
+
+[公開サンプルの保存済みproduction検出観測をCPUで再三角測量](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)し、
+局所運動consensusで外れ値を除き、頑健な2次LOESSを適用した。元のカメラ・人物を固定した比較で、
+球3D有効frameは821→859/1010、共通有効frameの隣接移動量p95は0.682→0.405 m。
+補間座標は診断だけに保持し、実観測2view未満で有効な3Dは0frameだった。
+一方、元の未平滑2D観測への再投影中央値は3.554→4.810 pxへ増え、最大の3D跳びも改善しない。
+新たに有効になった969→970の1.077 mの跳びと、バウンド付近57〜59の速度gate欠損を実写と局所図で確認した。
+滑らかさと観測追従の交換関係であり、独立3D精度の向上は主張しない。
+README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
+通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
+
+## 2026-10-23のCourt分割生成・Drive復旧検証
+
+[固定production recipeの4シーンL4生成](nodes/synthetic_data_generation/000027-run-court-scale-colab-resume-l4-20261023.md)で、
+seed42・各6軌道・密度0の303候補から282枚をtrainへ採択し、Drive版として再取得・厳格再読込できた。
+1 cache保存後に中断し、元の出力pathを使わず空のrootへ復旧して、完了cacheを再描画せず未完了23 cacheだけを生成した。
+取得後の24 store・282画像と184ファイルの内容一致、GPU解放、全jobのDrive保存、Colab停止を確認した。
+生成本体137秒に対し、durable commandやfetchのwall timeが大きく、本番規模の見積りでは永続化・確認の費用を含める。
+Drive操作をまとめる効率化は未profileの改善候補で、品質・hash・保存完了の境界を維持して調べる。
+実画像への汎化・精度スケーリング・規模上限は未評価。次は#1356で写り方別評価と生成・学習費用を確認し、既存モデルの採用判断は維持する。
+
+## 2026-10-22のCourt資産Colab照合
+
+[B00〜B03の可搬資産とL4描画](nodes/synthetic_data_generation/000026-run-court-assets-colab-l4-20261022.md)は、
+資産のbyte照合と固定runtimeでの32枚の描画・Drive保存を確認した。各GPU内の2回の描画と
+投影・可視KPは一致し、ユーザーの2026-10-22の判断により教師の完全一致とRGBのPSNR下限を
+受入基準にした。2回とも基準を通り、入力資産をDriveの採用位置へcopyし、再取得後の内容と幾何も照合した。
+GPU間のalpha/depth外れ値とコート領域の差、staging資産は保持し、全raster一致は主張しない。
+本番生成をL4へ統一した。後続の分割生成・採択率・Drive復旧の確認は上記のrunへ記録した。
+既存モデルの採用判断、3DGSの品質、合成画像数による精度改善の判断は更新していない。
 
 ## 2026-10-21の公開3カメラサンプル
 
@@ -293,6 +325,66 @@ CIと登録SKILLの整合性を再確認した。保存形式・未完成の記�
 
 ### Ball Detection
 
+2026-10-22の[Drive・Colab転送実測](nodes/ball_detection/000061-run-ball-colab-transfer-feasibility-20261022.md)では、
+直近720p snapshot（185.522 GB）の代表18 shard・1.781 GBを3組に分け、往復経路の内容照合を通過した。
+初回uploadのコピー工程は全量換算約5.8〜6.3時間、Colab取得は約39〜43分。ただし全量実測ではなく、
+path検査・hash照合・環境準備は別に必要で、小分けCLI総時間の比例見積もりはさらに長い。
+今回のL4は初期空き206.568 GBで、全量配置後の余裕と絶対path・不在原注釈の移植が課題。
+現行storeはtestを含む全shardを要求するため、train/validationだけの軽量配布には独立した版の準備が要る。
+同日の追加指示で、[親issue #1367](https://github.com/Motoki0705/tennis-lab/issues/1367)は
+転送・環境・容量・速度・Drive保存と新VM再開を検証し、最終的にColabで本学習を完了する計画へ更新した。
+精度・モデルの優劣・deploy判断はこの転送実測で更新しない。
+同日のユーザー指定で、次実験の主軸は**時系列長 × DPT / Transformer＋DPT（hybrid）**に固定した。
+RGB＋MDDの5ch、共通の出力・損失、両モデル32フレームで同量の事前学習を固定し、その後に系列長を伸ばす。
+実験行列・予算・教師領域・評価・進捗の正本は同親issueへ移した。
+続く[中央targetのCPU調査](nodes/ball_detection/000062-run-ball-temporal-target-survey-20261022.md)では、
+元32窓の中央16枚を固定し、全splitでplay内文脈とreference/PTS境界を守るclip内文脈を比較した。
+後者の128共通集合は元32窓の位置教師の約76〜81%、256共通集合は約51〜61%を保持し、
+256では低FPS・TrackNetの減少が大きかった。これは後続runにより置き換えた不採用案の記録として保持する。
+ユーザーはclip内文脈・上限128を選び、教師は**入力Tの全フレーム**へ変更した。
+[全フレーム教師の再調査](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)では、
+128枚を置ける全適格区間を共通集合とし、旧32位置教師の約99.5%以上を保持した。
+同じ128枚を4/2/1窓へ分割すると、入力frameと教師の多重度をT間で一致させられる。
+この共通区間定義では不在専用集合案と共通不在は全重複する。不在専用集合案は採用せず、
+共通集合内の確認済み不在をkind別に別集計する。調査時の専用列挙は同一性監査の証拠としてのみ残す。
+validationのemptyは回復したが、不在はほぼChat、自然遮蔽付きobservedは0で、source/遮蔽への一般化は依然限定される。
+具体規則は**決定（2026-10-23、ユーザー確認）**となり、合意は親issue、実装・検証規則は新runのprotocolを参照する。
+共通区間・学習組・clip対応表・評価規則を常設窓実装と配布へ渡す。不在専用列挙は入力から外した。
+可変T契約と共通heatmap objectiveに続き、[学習経路の診断](nodes/ball_detection/000065-run-ball-temporal-heatmap-gpu-diagnostic-20261023.md)で、
+CPUの32→64全重み転送・更新全体の損失正規化・厳密resume・評価/動画を確認した。
+両モデルとも64×64の合成JPEG・T=32・BF16で30更新を完了し、更新入力・pack列・教師数が一致した。
+これは低解像度の機能確認で、既存の採用判断を変えない。
+本学習用の速度・メモリ・精度の比較は未実施。上限と更新数・実効batchの数値はColab試走で本学習前に固定する。
+
+2026-10-23の[配布store可搬化](nodes/ball_detection/000064-run-ball-portable-distribution-20261023.md)では、
+合意済み共通区間が参照するtrain/validationのclipを独立した版にし、固定testは別単位に分けた。
+既存RGB shardを複製・hardlinkせず、小さなindex・metadata・原注釈・protocol入力を生成してローカル照合を通過した。
+Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256・18窓の意味一致・停止を確認した。
+新VMでは取得＋CLI照合が約46.6分、全件SHA-256が約7.4分で、取得後の空きは約42.7 GBだった。
+初回の検証APIで見つかった相対path・receiptのJSON型は回帰テスト付きで修正し、取得済みデータの再転送を省いて照合した。
+長時間uploadはモデルsession終了による中断後、内容一致の963ファイルを再送せずに保持して完了した。
+窓生成・hybrid不在教師・統計readerの原注釈pathをstore resolverへ統一した。
+移動fixtureのdataset読込と、実データの全T・train/evaluationで、共通区間・pack・owner・教師kindの一致を確認した。
+ローカルの未配置stageは元payloadを明示する読み取り専用の照合経路を使い、通常読込のshard不足は引き続き失敗する。
+PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
+精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
+
+続く[保存再開の事前検査](nodes/ball_detection/000066-run-ball-colab-persistence-preflight-20261023.md)では、
+実配布storeの原注釈がresolverで取得・hash照合できる一方、窓準備と空frame証拠の消費側が
+相対pathを直接読むためmanifest生成で停止した。先行範囲は修正せず親へ返し、Colabは割り当てていない。
+既存の配布・窓テスト44件の成功はこの接続を保証しない。次は両消費側のresolver接続と移動済みstoreの
+統合テストを揃え、その後にcheckpoint直後の保存・失敗注入・新VM再開を実証する。採用判断は維持する。
+
+2026-10-24に両消費側のresolver接続と実データの6 manifest照合が反映され、保存再開の阻害は解消した。
+[720pの保存復旧検査](nodes/ball_detection/000067-run-ball-colab-checkpoint-resume-20261024.md)を再開し、
+同期した世代保存とサイズ/hash検証・失敗伝播を確認した。最初のL4を5更新で止めて停止し、
+新L4へ固定pathで復元して12更新を完了した。対照とpack・教師・LR・元予算・optimizer step・CPU/CUDA RNGが一致し、
+全損失列は事前許容差内で、過去5行のlogもbyte一致した。最終重みのbit一致はせず、中断前から微差がある。
+既定Pythonのパッチ版の変化を検出し、builderとPythonを固定して環境を再構築した。
+Notebook接続断の未実行要求はcancel・保存確認後に同じVMで再提出し、取得データを保持した。
+両所有sessionの停止を確認した。これは4 clip・native 720p・本番幅の保存復旧診断であり、
+精度の採否や長系列の速度・VRAM・本学習予算は引き続き後続の試走で判断する。
+
 新しいMDD座標モデルはBF16を維持し、GPU上の固定FP32 MDDとcompileを使う。
 [CPU reader再計測](nodes/ball_detection/000032-run-i986-rgb-reader-baseline-20261009.md)でhash・RGB配置・collateの負担を確認し、
 ユーザー承認の[CUDA nvJPEG復号](nodes/ball_detection/000033-run-i986-nvjpeg-pixels-20261009.md)へ移行した。
@@ -469,6 +561,10 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 
 ### Court Detection
 
+2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
+
+2026-10-22の[合成専用・固定20更新のGPU起動確認](nodes/court_detection/000048-run-court-data-scaling-smoke-s42.md)で、ViT-B＋幅768・長辺512、B00の8枚・batch 1・compile無効から指定更新数checkpointの実画像val/test別評価と集計まで通した。実画像全体の固定一覧は498動画を249動画ずつへ分け、退化注釈除外後val 4,468枚・test 4,372枚、動画重複0を記録した。全体testは未評価で、起動確認の少数fixtureから精度や本番batch 8の容量は判断しない。既存の採用判断は維持し、次は#1356のColab試走で本番更新数・評価間隔と容量を固定する。
+
 [B00〜B03のCPU軌道計画診断](nodes/synthetic_data_generation/000024-run-court-nested-plan-cpu-20261022.md)では、
 固定弧長表の2倍細分と点IDによって共通視点を保てたが、軌道長・棄却により単純な軌道prefixだけでは等枚数にならず、
 評価軌道近傍の保守的な除外で形状・中心の分布も大きく偏った。
@@ -481,8 +577,9 @@ B02/B03はほぼpartialのままで、強いalpha条件も分布を偏らせた�
 2026-10-22のユーザー判断で、合成は全てtrain、実画像は動画単位val/testの評価専用、
 poseは学習するが主評価外、枚数は全採択候補の実測値とした。枚数揃えのquota/補充と合成評価guardは不要。
 [設計文書](reports/court-scale-trajectory-design.md)に格子・層別counter・Sobol・撮影近傍・開Bézierの5候補を記録し、
-#1352で実装してCourt Review Web UIからユーザーが選ぶ。D2/D5/D6も診断動画を材料に同UI比較で最終判断する。
-既存モデルの採用判断は維持し、診断標本の棄却率を本番へ流用せず、方式/品質の合意と全分布の試走を規模比較に先行させる。
+#1352のUI比較後は#1343の合意による層別counterのproduction recipeを固定した。
+その条件でのL4分割生成・Drive復旧を上記runで検証したが、コート全体が写る視点が少ない制約の実画像への影響は未評価。
+既存モデルの採用判断は維持し、今回の小規模採択率を本番全分布へ流用せず、#1356の試走を規模比較に先行させる。
 
 2026-10-21の[発表素材用の再探索](nodes/court_detection/000045-run-court-hybrid-fit-search-20261021.md)では、
 PROSACの向き修正を含む版と固定b863 checkpointを使い、以前と同じval先頭300件・入力hash・

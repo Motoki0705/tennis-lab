@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "version": "Version: 0.7.4",
+  "usage": "[colab] A new version of Colab CLI is available: 0.7.5 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\nCurrent balance: 352.23 compute units\nUsage rate: 0.00/hr\nActive assignments: 0"
+}

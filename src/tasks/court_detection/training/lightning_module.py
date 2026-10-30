@@ -18,6 +18,7 @@ import numpy as np
 import torch
 from torch import Tensor
 
+from src.tasks.base.configuration import as_config_mapping
 from src.tasks.base.training.lightning_module import BaseLightningModule
 from src.tasks.base.training.qualitative_saving import save_qualitative_clip
 from src.tasks.court_detection.configuration import (
@@ -145,6 +146,39 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self._matrix_step_count = 0
         self._matrix_peak_memory_bytes = 0
         self._matrix_active_gradient_branches = self._active_gradient_branches()
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        from src.tasks.court_detection.scaling.schedule import has_step_schedule
+
+        if has_step_schedule(self.config):
+            hyper = checkpoint["hyper_parameters"]
+            if hyper.get("data_condition") != self.hparams.get("data_condition"):
+                raise ValueError(
+                    "Cannot resume with a changed data condition or evaluation registry."
+                )
+            saved = as_config_mapping(hyper["config"], path="checkpoint.config")
+            current = as_config_mapping(self.config, path="configuration")
+            for section in ("training", "model", "loss"):
+                if saved[section] != current[section]:
+                    raise ValueError(
+                        f"Cannot resume with changed {section}; use a new run for a different schedule or model."
+                    )
+
+            for key in ("processing", "augmentation", "batch_size"):
+                if saved["data"][key] != current["data"][key]:
+                    raise ValueError(
+                        "Cannot resume with changed data preprocessing or batch size."
+                    )
+
+    def _estimate_total_steps(self) -> int:
+        from src.tasks.court_detection.scaling.schedule import (
+            StepSchedule,
+            has_step_schedule,
+        )
+
+        if has_step_schedule(self.config):
+            return StepSchedule.from_config(self.config).max_steps
+        return int(super()._estimate_total_steps())
 
     def forward(
         self, *model_args: Tensor

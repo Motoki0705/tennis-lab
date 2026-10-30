@@ -1,0 +1,28 @@
+{
+  "completed_marker": false,
+  "exception": "ArtifactStoreError",
+  "latest": {
+    "checkpoint": "checkpoint-update-00000001.pt",
+    "sha256": "d6e6cf372ec3548158e9e6945278c5319f41aeaf1deacf872e42e7b851457239",
+    "update": 1
+  },
+  "message": "Injected Drive communication failure at checkpoint publication",
+  "publications": [
+    {
+      "files": 5,
+      "generation": "initialized-00000000-a35a65dddabf42d389002b7ccdab799d",
+      "manifest_md5": "620c5ab354dee8b90138b2f7c73442a4",
+      "manifest_sha256": "6fc16a2691a0e88fc9ac76df40d4989914536c31af50dcc33b16ae06256f8c97",
+      "marker_id": "1BZIIVGoOz-nQ5ovuk2oGUHbluxINJZPt",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/failure/initialized-00000000-a35a65dddabf42d389002b7ccdab799d",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 28.905213508000088,
+      "size_bytes": 42003,
+      "stage": "initialized",
+      "status": "verified",
+      "update": 0
+    }
+  ],
+  "schema_version": 1,
+  "seconds": 41.107161988999906
+}

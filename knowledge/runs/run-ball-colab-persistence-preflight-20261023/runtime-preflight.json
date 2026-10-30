@@ -1,0 +1,18 @@
+{
+  "account_assignment_ownership": "unidentified; no pre-existing assignment was stopped",
+  "attributable_compute_units": null,
+  "colab_doctor": {
+    "ok": true,
+    "schema_version": 1,
+    "usage": "[colab] A new version of Colab CLI is available: 0.7.5 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\nCurrent balance: 348.19 compute units\nUsage rate: 1.54/hr\nActive assignments: 1",
+    "version": "Version: 0.7.4"
+  },
+  "compute_units_note": "No VM was allocated for this task. Account-wide usage includes an unidentified pre-existing assignment; do not attribute its balance change to this task.",
+  "execution_status": "not_started; blocked by portable annotation-path consumer",
+  "external_assets_modified": false,
+  "observed_at": "2026-10-23T14:20:58.627208+00:00",
+  "own_jobs_submitted": 0,
+  "own_sessions_started": 0,
+  "own_sessions_stopped": 0,
+  "schema_version": 1
+}

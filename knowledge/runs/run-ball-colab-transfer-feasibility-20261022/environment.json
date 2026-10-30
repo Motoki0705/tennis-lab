@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-22T05:16:39.109571+00:00",
+  "disk_usage": {
+    "total": 253055008768,
+    "used": 46470590464,
+    "free": 206567641088
+  },
+  "memory": "MemTotal:       55530600 kB\nMemFree:        48290824 kB\nMemAvailable:   53887156 kB\nBuffers:          181764 kB\nCached:          5845060 kB\nSwapCached:            0 kB\nActive:           630356 kB\nInactive:        5956716 kB\nActive(anon):       1496 kB\nInactive(anon):   561484 kB\nActive(file):     628860 kB\nInactive(file):  5395232 kB\nUnevictable:           8 kB\nMlocked:               8 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nDirty:               328 kB\nWriteback:             0 kB\nAnonPages:        560280 kB\nMapped:           443740 kB\nShmem:              2724 kB\nKReclaimable:     196724 kB\nSlab:             270520 kB\nSReclaimable:     196724 kB\nSUnreclaim:        73796 kB\nKernelStack:        8768 kB\nPageTables:         8012 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    27765300 kB\nCommitted_AS:    4192036 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:       60432 kB\nVmallocChunk:          0 kB\nPercpu:             8768 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:      162608 kB\nDirectMap2M:    14514176 kB\nDirectMap1G:    44040192 kB\n",
+  "gpu": "NVIDIA L4, 23034 MiB",
+  "python": "Python 3.13.15",
+  "rclone_version": "rclone v1.60.1-DEV"
+}

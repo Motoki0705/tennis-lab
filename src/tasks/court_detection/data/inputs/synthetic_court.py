@@ -6,6 +6,7 @@ import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path, PurePosixPath
 from typing import TypedDict, cast
 
@@ -29,7 +30,11 @@ from src.synthetic_data_generation.dataset.court.schema import (
     COURT_SAMPLE_SCHEMA_V3,
 )
 from src.synthetic_data_generation.scene_contract import SceneCamera
-from src.tasks.court_detection.configuration import SyntheticCourtSourceConfig
+from src.tasks.court_detection.configuration import (
+    SyntheticCourtDatasetVersionSourceConfig,
+    SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
+)
 from src.tasks.court_detection.data.contracts import (
     CourtInputCapability,
     CourtInputSpec,
@@ -135,7 +140,14 @@ class _ParsedPoint(TypedDict):
 class SyntheticCourtInput:
     """Load only the synthetic schema explicitly selected in typed config."""
 
-    def __init__(self, config: SyntheticCourtSourceConfig) -> None:
+    _additional_sample_keys: frozenset[str] = frozenset()
+
+    def __init__(
+        self,
+        config: SyntheticCourtSourceConfig
+        | SyntheticCourtStoresSourceConfig
+        | SyntheticCourtDatasetVersionSourceConfig,
+    ) -> None:
         self.config = config
         self._image_stores: dict[Path, ImageRecordStore] = {}
         flip_permutation: tuple[int, ...]
@@ -256,23 +268,22 @@ class SyntheticCourtInput:
         }
         global_ids: set[str] = set()
         group_splits: dict[tuple[str, str], CourtSourceSplit] = {}
-        workspace_root = self.config.workspace_root.resolve(strict=False)
-        for scene_id in self.config.scene_ids:
-            root = (workspace_root / scene_id / "datasets" / "court").resolve(
-                strict=False
-            )
-            if root == workspace_root or not root.is_relative_to(workspace_root):
-                raise ValueError(
-                    "Synthetic Court manifest root must remain below workspace_root."
-                )
+        explicit = isinstance(self.config, SyntheticCourtStoresSourceConfig)
+        for expected_scene_id, root in self._dataset_roots():
             manifest_path = root / "dataset.json"
             if manifest_path.is_symlink():
                 raise ValueError(
                     "Synthetic Court dataset.json must be an ordinary file."
                 )
-            manifest = read_court_manifest(root)
+            if explicit:
+                store = open_court_store(root)
+                store.validate(decode=False)
+                self._image_stores[root] = store
+                manifest = read_court_manifest(root, store=store)
+            else:
+                manifest = read_court_manifest(root)
             compact = "storage" in manifest
-            if compact:
+            if compact and root not in self._image_stores:
                 self._image_stores[root] = open_court_store(root)
             if set(manifest) != _DATASET_KEYS | ({"storage"} if compact else set()):
                 raise ValueError("Synthetic Court dataset.json fields changed.")
@@ -282,7 +293,8 @@ class SyntheticCourtInput:
                 )
             if manifest["status"] != "completed":
                 raise ValueError("Synthetic Court dataset stage must be completed.")
-            if manifest["scene_id"] != scene_id:
+            scene_id = self._identifier(manifest["scene_id"], name="scene_id")
+            if expected_scene_id is not None and scene_id != expected_scene_id:
                 raise ValueError(
                     "Synthetic Court scene_id disagrees with configuration."
                 )
@@ -298,6 +310,8 @@ class SyntheticCourtInput:
                     scene_id=scene_id,
                     manifest_digest=manifest_digest,
                 )
+                if explicit:
+                    record = replace(record, split="train")
                 if record.sample_id in global_ids:
                     raise ValueError(
                         "Synthetic Court stable sample IDs must be unique."
@@ -312,11 +326,29 @@ class SyntheticCourtInput:
                     )
                 grouped[record.split].append(record)
         empty = [split for split, records in grouped.items() if not records]
-        if empty:
+        if empty and not explicit:
             raise ValueError(
                 f"Synthetic Court V3 requires non-empty train/validation/test splits; empty={empty}."
             )
         return {split: tuple(values) for split, values in grouped.items()}
+
+    def _dataset_roots(self) -> tuple[tuple[str | None, Path], ...]:
+        if isinstance(self.config, SyntheticCourtStoresSourceConfig):
+            return tuple(
+                (None, root.resolve(strict=True)) for root in self.config.store_roots
+            )
+        if not isinstance(self.config, SyntheticCourtSourceConfig):
+            raise TypeError("Dataset versions require the explicit scale adapter.")
+        workspace = self.config.workspace_root.resolve(strict=False)
+        roots = []
+        for scene in self.config.scene_ids:
+            root = (workspace / scene / "datasets" / "court").resolve(strict=False)
+            if root == workspace or not root.is_relative_to(workspace):
+                raise ValueError(
+                    "Synthetic Court manifest root must remain below workspace_root."
+                )
+            roots.append((scene, root))
+        return tuple(roots)
 
     @classmethod
     def _validate_manifest_envelope(cls, manifest: Mapping[str, object]) -> None:
@@ -360,6 +392,7 @@ class SyntheticCourtInput:
             expected_keys.difference_update(LEGACY_SAMPLE_FILES)
             expected_keys.add("image_index")
         expected_keys.add("target_court")
+        expected_keys.update(self._additional_sample_keys)
         if not isinstance(value, Mapping) or set(value) != expected_keys:
             raise ValueError("Synthetic Court accepted sample record fields changed.")
         source_sample_id = self._identifier(value["sample_id"], name="sample_id")
@@ -392,7 +425,7 @@ class SyntheticCourtInput:
         camera = SceneCamera.from_dict(value["camera"])
         if (
             camera.camera_id != source_sample_id
-            or camera.source_frame_index != value["sample_index"]
+            or camera.source_frame_index != self._camera_source_frame_index(value)
             or camera.width != width
             or (camera.height != height)
         ):
@@ -491,6 +524,9 @@ class SyntheticCourtInput:
                 ),
             },
         )
+
+    def _camera_source_frame_index(self, value: Mapping[str, object]) -> int:
+        return cast(int, value["sample_index"])
 
     @staticmethod
     def _resolve_published_directory(root: Path, value: object) -> Path:

@@ -1,0 +1,27 @@
+2026/10/22 14:16:04 INFO  : clip-00053.bin: Copied (new)
+2026/10/22 14:16:08 INFO  : clip-01101.bin: Copied (new)
+2026/10/22 14:16:11 INFO  : clip-00177.bin: Copied (new)
+2026/10/22 14:16:17 NOTICE: 
+Transferred:   	  251.105 MiB / 519.454 MiB, 48%, 8.902 MiB/s, ETA 30s
+Transferred:            3 / 6, 50%
+Elapsed time:        34.2s
+Transferring:
+ *                                clip-01217.bin: 71% /89.433Mi, 2.350Mi/s, 10s
+ *                                clip-01327.bin: 30% /137.212Mi, 2.857Mi/s, 33s
+ *                                clip-01537.bin: 21% /187.137Mi, 3.600Mi/s, 40s
+
+2026/10/22 14:16:30 INFO  : clip-01217.bin: Copied (new)
+2026/10/22 14:16:45 INFO  : clip-01327.bin: Copied (new)
+2026/10/22 14:16:45 NOTICE: 
+Transferred:   	  519.454 MiB / 519.454 MiB, 100%, 8.264 MiB/s, ETA 0s
+Transferred:            5 / 6, 83%
+Elapsed time:       1m4.2s
+Transferring:
+ *                                clip-01537.bin:100% /187.137Mi, 4.763Mi/s, 0s
+
+2026/10/22 14:16:47 INFO  : clip-01537.bin: Copied (new)
+2026/10/22 14:16:47 NOTICE: 
+Transferred:   	  519.454 MiB / 519.454 MiB, 100%, 7.263 MiB/s, ETA 0s
+Transferred:            6 / 6, 100%
+Elapsed time:       1m5.9s
+

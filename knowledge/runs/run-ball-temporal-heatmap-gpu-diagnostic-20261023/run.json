@@ -1,0 +1,15 @@
+{
+  "run_id": "0-8207272514964363125_2026-10-23T03-51-25-035636874Z_242438_ball-temporal-heatmap-bf16-diagnostic-retry",
+  "name": "ball-temporal-heatmap-bf16-diagnostic-retry",
+  "command": "PYTHONPATH=. .venv/bin/python knowledge/runs/run-ball-temporal-heatmap-gpu-diagnostic-20261023/diagnose.py --output tmp/temporal-heatmap-gpu-diagnostic",
+  "provider": "codex",
+  "issue": "1373",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "b5d983cff98c29d26f8d6bbc5972297bc40bbaef",
+  "branch": "codex/ball-temporal-training-path",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "<repo>",
+  "repo_root": "<repo>",
+  "captured_at": "2026-10-23T12:51:34+09:00"
+}

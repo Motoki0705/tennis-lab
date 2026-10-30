@@ -1,0 +1,1452 @@
+{
+  "dpt": {
+    "train_log_sha256": "92cd1b12fd42d0466deb281cee55684a76bebdac573dd19f577bf87f69b0bc26",
+    "updates": [
+      {
+        "update": 1,
+        "sample_position": 1,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 128,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ffb5c68961636a5dc6f3e8d78b11df4eaa6247ea660a5e07c93bcda84fcd8abb"
+        ]
+      },
+      {
+        "update": 2,
+        "sample_position": 2,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 256,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "3e36651cd08cb829feddd56af02df7cae555ab8dfec2a874048f9c9743c21259"
+        ]
+      },
+      {
+        "update": 3,
+        "sample_position": 3,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 384,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "05289a9c1e3623d07ca08918c29a338182419e9926456e02bb3a0377a0bb86a7"
+        ]
+      },
+      {
+        "update": 4,
+        "sample_position": 4,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 512,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "a58f6b1d50d2b6183d8910c63386c6f192553b16d7e64dd53f3d98b92ea7014b"
+        ]
+      },
+      {
+        "update": 5,
+        "sample_position": 5,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 640,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "6fc9cb9b0083ab0b48e6967fa3180da81a25c3d69be8f636077cc4d1212fa56f"
+        ]
+      },
+      {
+        "update": 6,
+        "sample_position": 6,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 768,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "97efb492b7327f3846525fcac777b36c93167ba42b113803c9e8eeff314f2491"
+        ]
+      },
+      {
+        "update": 7,
+        "sample_position": 7,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 896,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "c1e506e23a118661e072faef5ad10a4b1b4cf6a04c026219d2872f059da384ab"
+        ]
+      },
+      {
+        "update": 8,
+        "sample_position": 8,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1024,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "1984c5f896e72bbc2772d45c77551f832c83731ef365bfb3de93a1770898409c"
+        ]
+      },
+      {
+        "update": 9,
+        "sample_position": 9,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1152,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "cbb02977bac323a1cfe078cacd7576d6f2f6ac5fbe4c337d53ffee79713e4dad"
+        ]
+      },
+      {
+        "update": 10,
+        "sample_position": 10,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1280,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "16e87ce6877aaf3a44534d8d45f4491e94aca2faeadd840fe749af916281b2d2"
+        ]
+      },
+      {
+        "update": 11,
+        "sample_position": 11,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1408,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ab4451a31d39e681f4716140ed0688c242f670f430ca4f16f5f851b7ddbf4f90"
+        ]
+      },
+      {
+        "update": 12,
+        "sample_position": 12,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1536,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "950d46945fcee113dfa47c041bb56b2d5cf1e344b7a86ffdbcdd352f998ee2b0"
+        ]
+      },
+      {
+        "update": 13,
+        "sample_position": 13,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1664,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "1bf81353593560214f3d9e197fdd5d962d85be4c7a24b16e284949e406d5e61f"
+        ]
+      },
+      {
+        "update": 14,
+        "sample_position": 14,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1792,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "fdd9d9a1c9c6a8b2bf8218bbc306a85082ce053186b777762c15bc7107d211e2"
+        ]
+      },
+      {
+        "update": 15,
+        "sample_position": 15,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1920,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "03681a324c0936fbae994736f6b3cac638cd596b076324e894b0d7711b6cd7d4"
+        ]
+      },
+      {
+        "update": 16,
+        "sample_position": 16,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2048,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "b3297ef1631a5a99bae3e3e16e7a971b2b5494bf4f4471a5b85e01a16b82324b"
+        ]
+      },
+      {
+        "update": 17,
+        "sample_position": 17,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2176,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "d8fa45814b7980187dd124b78030e70a7f69f4801c367371ede5537fb46b204f"
+        ]
+      },
+      {
+        "update": 18,
+        "sample_position": 18,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2304,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9e0df75fbde8f2ad9d898bbea9799f672c8125442cc01d2317cd638352ec8174"
+        ]
+      },
+      {
+        "update": 19,
+        "sample_position": 19,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2432,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9054e0f2382a26f325c832d90426b02110438ed983b051ba8ebab0d188d2d232"
+        ]
+      },
+      {
+        "update": 20,
+        "sample_position": 20,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2560,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9c50bebc2f3194f0e967c8c841c02c75237e787cb636de80d82298109b1b8453"
+        ]
+      },
+      {
+        "update": 21,
+        "sample_position": 21,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2688,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "93116cdfd277348c1e6466c8a7809aa569fa969a400c7bed762b1166b63c7e27"
+        ]
+      },
+      {
+        "update": 22,
+        "sample_position": 22,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2816,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "58d55d6fd17207db45f852b13f1226a8c6e659420e9b3d9a2420044aa2682336"
+        ]
+      },
+      {
+        "update": 23,
+        "sample_position": 23,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2944,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "108641b7bc1f13e73a2de9d28b3818221d14b7c083420b75d1ec6bd7ae21fe08"
+        ]
+      },
+      {
+        "update": 24,
+        "sample_position": 24,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3072,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "dde361b4e50431a79f52a89e2a4f232ace90de786e0ac5fdad85ea539b11dae6"
+        ]
+      },
+      {
+        "update": 25,
+        "sample_position": 25,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3200,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ae837da9a0ac9130f08dfcead3571bfeeeba9aeaef9e4ebfbd61573ab3eec8e4"
+        ]
+      },
+      {
+        "update": 26,
+        "sample_position": 26,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3328,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "73bba76fd22c529e90def3deefe1e9238bdf7bc614c8bc269f5bcefc7ab6daaa"
+        ]
+      },
+      {
+        "update": 27,
+        "sample_position": 27,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3456,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "a12fb704baa3345a1d571b657fe9a11eb1b9c1d6f2c4a1d11351873727170ef9"
+        ]
+      },
+      {
+        "update": 28,
+        "sample_position": 28,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3584,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "572f6f8946a3438e2aa8eb02fbddf292c0795e03cb02d5e8d99a8fcaf12163e3"
+        ]
+      },
+      {
+        "update": 29,
+        "sample_position": 29,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3712,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "47da1383ba249d860deffc5a0511a56a92fe175ecfbff02d40de7b3872a97744"
+        ]
+      },
+      {
+        "update": 30,
+        "sample_position": 30,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3840,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "05e91d7f97ea491b67a67596064466703ef66f083ac120dddff7a67943934a14"
+        ]
+      }
+    ]
+  },
+  "hybrid": {
+    "train_log_sha256": "5fbfabea9b1f91c73ef68a382f2487f3eeec354668f8d7b13fa4e58db7db3344",
+    "updates": [
+      {
+        "update": 1,
+        "sample_position": 1,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 128,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ffb5c68961636a5dc6f3e8d78b11df4eaa6247ea660a5e07c93bcda84fcd8abb"
+        ]
+      },
+      {
+        "update": 2,
+        "sample_position": 2,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 256,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "3e36651cd08cb829feddd56af02df7cae555ab8dfec2a874048f9c9743c21259"
+        ]
+      },
+      {
+        "update": 3,
+        "sample_position": 3,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 384,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "05289a9c1e3623d07ca08918c29a338182419e9926456e02bb3a0377a0bb86a7"
+        ]
+      },
+      {
+        "update": 4,
+        "sample_position": 4,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 512,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "a58f6b1d50d2b6183d8910c63386c6f192553b16d7e64dd53f3d98b92ea7014b"
+        ]
+      },
+      {
+        "update": 5,
+        "sample_position": 5,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 640,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "6fc9cb9b0083ab0b48e6967fa3180da81a25c3d69be8f636077cc4d1212fa56f"
+        ]
+      },
+      {
+        "update": 6,
+        "sample_position": 6,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 768,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "97efb492b7327f3846525fcac777b36c93167ba42b113803c9e8eeff314f2491"
+        ]
+      },
+      {
+        "update": 7,
+        "sample_position": 7,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 896,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "c1e506e23a118661e072faef5ad10a4b1b4cf6a04c026219d2872f059da384ab"
+        ]
+      },
+      {
+        "update": 8,
+        "sample_position": 8,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1024,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "1984c5f896e72bbc2772d45c77551f832c83731ef365bfb3de93a1770898409c"
+        ]
+      },
+      {
+        "update": 9,
+        "sample_position": 9,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1152,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "cbb02977bac323a1cfe078cacd7576d6f2f6ac5fbe4c337d53ffee79713e4dad"
+        ]
+      },
+      {
+        "update": 10,
+        "sample_position": 10,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1280,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "16e87ce6877aaf3a44534d8d45f4491e94aca2faeadd840fe749af916281b2d2"
+        ]
+      },
+      {
+        "update": 11,
+        "sample_position": 11,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1408,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ab4451a31d39e681f4716140ed0688c242f670f430ca4f16f5f851b7ddbf4f90"
+        ]
+      },
+      {
+        "update": 12,
+        "sample_position": 12,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1536,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "950d46945fcee113dfa47c041bb56b2d5cf1e344b7a86ffdbcdd352f998ee2b0"
+        ]
+      },
+      {
+        "update": 13,
+        "sample_position": 13,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1664,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "1bf81353593560214f3d9e197fdd5d962d85be4c7a24b16e284949e406d5e61f"
+        ]
+      },
+      {
+        "update": 14,
+        "sample_position": 14,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1792,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "fdd9d9a1c9c6a8b2bf8218bbc306a85082ce053186b777762c15bc7107d211e2"
+        ]
+      },
+      {
+        "update": 15,
+        "sample_position": 15,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 1920,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "03681a324c0936fbae994736f6b3cac638cd596b076324e894b0d7711b6cd7d4"
+        ]
+      },
+      {
+        "update": 16,
+        "sample_position": 16,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2048,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "b3297ef1631a5a99bae3e3e16e7a971b2b5494bf4f4471a5b85e01a16b82324b"
+        ]
+      },
+      {
+        "update": 17,
+        "sample_position": 17,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2176,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "d8fa45814b7980187dd124b78030e70a7f69f4801c367371ede5537fb46b204f"
+        ]
+      },
+      {
+        "update": 18,
+        "sample_position": 18,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2304,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9e0df75fbde8f2ad9d898bbea9799f672c8125442cc01d2317cd638352ec8174"
+        ]
+      },
+      {
+        "update": 19,
+        "sample_position": 19,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2432,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9054e0f2382a26f325c832d90426b02110438ed983b051ba8ebab0d188d2d232"
+        ]
+      },
+      {
+        "update": 20,
+        "sample_position": 20,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2560,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "9c50bebc2f3194f0e967c8c841c02c75237e787cb636de80d82298109b1b8453"
+        ]
+      },
+      {
+        "update": 21,
+        "sample_position": 21,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2688,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "93116cdfd277348c1e6466c8a7809aa569fa969a400c7bed762b1166b63c7e27"
+        ]
+      },
+      {
+        "update": 22,
+        "sample_position": 22,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2816,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "58d55d6fd17207db45f852b13f1226a8c6e659420e9b3d9a2420044aa2682336"
+        ]
+      },
+      {
+        "update": 23,
+        "sample_position": 23,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 2944,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "108641b7bc1f13e73a2de9d28b3818221d14b7c083420b75d1ec6bd7ae21fe08"
+        ]
+      },
+      {
+        "update": 24,
+        "sample_position": 24,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3072,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "dde361b4e50431a79f52a89e2a4f232ace90de786e0ac5fdad85ea539b11dae6"
+        ]
+      },
+      {
+        "update": 25,
+        "sample_position": 25,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3200,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "ae837da9a0ac9130f08dfcead3571bfeeeba9aeaef9e4ebfbd61573ab3eec8e4"
+        ]
+      },
+      {
+        "update": 26,
+        "sample_position": 26,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3328,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "73bba76fd22c529e90def3deefe1e9238bdf7bc614c8bc269f5bcefc7ab6daaa"
+        ]
+      },
+      {
+        "update": 27,
+        "sample_position": 27,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3456,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "a12fb704baa3345a1d571b657fe9a11eb1b9c1d6f2c4a1d11351873727170ef9"
+        ]
+      },
+      {
+        "update": 28,
+        "sample_position": 28,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3584,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "572f6f8946a3438e2aa8eb02fbddf292c0795e03cb02d5e8d99a8fcaf12163e3"
+        ]
+      },
+      {
+        "update": 29,
+        "sample_position": 29,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3712,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "47da1383ba249d860deffc5a0511a56a92fe175ecfbff02d40de7b3872a97744"
+        ]
+      },
+      {
+        "update": 30,
+        "sample_position": 30,
+        "pack_ids": [
+          "tracknet/train/diagnostic:0:128"
+        ],
+        "pack_indices": [
+          0
+        ],
+        "input_frames": 128,
+        "cumulative_input_frames": 3840,
+        "child_windows": 4,
+        "microbatches": 4,
+        "valid_teachers": 128,
+        "teachers_by_kind": {
+          "masked": 0,
+          "observed": 80,
+          "out_of_frame": 24,
+          "reviewed_empty": 24
+        },
+        "augmentation_sha256": [
+          "05e91d7f97ea491b67a67596064466703ef66f083ac120dddff7a67943934a14"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "disk": {
+    "free": 199697702912,
+    "total": 253055008768,
+    "used": 53340528640
+  },
+  "files": [],
+  "returncode": null,
+  "schema_version": 1,
+  "status": "before_full_copy"
+}

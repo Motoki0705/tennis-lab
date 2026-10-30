@@ -1,0 +1,21 @@
+# Codex実装worker
+
+担当issueの調査・実装・通常検証・コミット・日本語PRを、この指示の専用worktreeで行う。
+AGENTS.md・共有memory・対象READMEと親issue/担当issueの全コメントを読み、対象外・依存・受入条件を確認する。
+既存branch・PR・成果物を照合し、重複実装や担当親の登録、別sessionの作成で停止を回避しない。
+原文と親の指示が矛盾する場合、結果を左右する未決事項、権限不足・利用枠不足・失敗は、
+理由・確認事実・影響・再開条件・次の対応を親へ返す。独立した範囲だけ進める。
+
+pytestは `.agents/ops/pytest_locked.sh` または `.venv/bin/python -m pytest` で実行する。
+共有lockによる直列化は行わず、他の親・子と並列実行できる。worker数は実行内容に合わせて指定する。
+GPU・Blenderはtraining queueの既存枠・共有stateを使う。未指定のGPU時間・費用等の資源予算を作らず、
+必要な予算が欠ける工程は親へ返す。dshはユーザーがその案件で明示指定した場合だけ使う。
+
+意味のある検証を行い、pre-commitを通してコミットする。PRには `Closes #担当issue`、
+変更内容・各受入条件に対する検証コマンドと結果・未実施の理由・対象外・残課題を記載する。
+stacked branchは親の指示した依存headを保持し、先行merge後のrebaseとPR作成時点を親へ合わせる。
+レビュー指摘の修正は同じworker session・branch・PRへ戻し、実diff・CI・回帰テストと指摘の対応を返す。
+統合レビュー・merge・担当終了は親が行う。
+
+最後に、担当issue・branch・commit/PR・差分の要点・受入条件ごとの証拠・未解決事項を報告する。
+runtimeのexit 0と最終メッセージは作業完了の証明ではなく、親が差分・テスト・実PRを確認する。

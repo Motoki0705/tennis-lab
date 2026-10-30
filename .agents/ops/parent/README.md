@@ -3,7 +3,9 @@
 親issueを1セッションで統括するための明示CLI。人間合意と自律着手判断を別の実行根拠として扱う。
 会話の解釈・質問・委任・完了確認は [parent-session skill](../../skills/parent-session/SKILL.md)、
 親子issueの書式・ラベル・段階移行は [issues](../issues/README.md) が正本。
-このCLIは agent・レビュー・CI・merge を実行しない。timer・poll・hookへの登録も行わない。
+`start-worker` / `continue-worker` は委任予約をdispatcherへ渡す。実agentの起動はsupervisor、
+レビュー・mergeは親が明示する既存入口で行う。timer・poll・hookへの登録は行わない。
+自律親の開発手順とworker/reportコマンドの契約は [development workflow](development_workflow.md) が正本。
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
@@ -13,7 +15,7 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 
 | 対象 | 正本 |
 |---|---|
-| 親issueと担当セッションの対応、解除・終了・引継ぎ待ち、委任の起動予約、worktree | マシンローカルの `registry.json` |
+| 親issueと担当セッションの対応、解除・終了・引継ぎ待ち、委任の起動予約、worktree | マシンローカルの `registry.json` と `parents/` |
 | 担当開始、要件確認、要件合意と人間の確認の引用 | 親issueコメント |
 | 自律着手の根拠・入力・コメント分類・取消 | 親issueコメントの `execution_basis` / `basis_revoked` イベント |
 | 正式な親子関係、子のopen/closedと理由 | GitHub sub-issue / issue |
@@ -22,21 +24,49 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 | レビュー対象のバイト列 | ローカル `reviews/<run ID>/pr-<N>.diff` と `request.json` |
 
 stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`。
-同じホストの全worktree・Claude/Codexで共有し、state内のflockで登録・起票・更新を直列化する。
-`registry.json` の外側はversion=1を維持し、`parents` のキーは `owner/repo#親番号`。
-キーの `owner/repo` は大文字小文字を区別せず、小文字に正規化する。
-既存キーも読込時に正規化し、同じ親の別名レコードが衝突した場合は、統合・上書きせず読込を拒否する。
-各行に `session`（実行環境の識別子）、`status`、`generation`、`tasks`（子番号→担当/branch/worktree/依存/委任予約）、
-`reviews` を持つ。ファイルは0600、ディレクトリは0700で作り、fsyncとrenameで保存する。
-破損・未知version・取得失敗を空の状態に置き換えない。
+同じホストの全worktree・Claude/Codexで共有する。更新操作は親ごとの操作ロックを先に取り、
+registryロックで担当の衝突・二重予約を防ぐ。GitHub通信中はregistryロックを離す。
+取得前後で対象親の担当・generation・tasks・reviewsが変われば終了値2で停止する。
+他の親だけの変更は、その親の保存済み行を取り込み、自分の未保存の変更と参照を保持して続行する。
+`status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らない。
+Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
+途中まで保存・公開済みの操作は取り消さず、非ゼロ終了後は不足分だけ再実行する。
 
-移行はtasks/reviews内へのversion付き根拠・要求の追加だけとし、外側のversionを上げて運用中の旧CLIを読込不能にしない。
-旧行へ架空のauthorizationを補わず、新しい操作時だけ新形式を記録する。読み取りだけでは書き換えない。
-担当・generation・tasks（委任予約を含む）・reviews・拡張フィールドを保持し、過去の証拠を最新の根拠に付け替えない。
-旧taskにauthorizationが無い場合も予約は維持する。自律根拠で既存成果を使うときは、親が差分・要件・検証を確認し
-`record-result` で現在の根拠へ明示的に結び付ける。JSONの重複キー・不正型・未知のreview schemaは読込エラー。
-旧公開マーカーと保存済みrequest/result/executionは書き換えず、旧request version=1を引き続き照合する。
-導入前の全担当停止や実registryの削除・一括再登録は不要。
+状態のキーは小文字の `owner/repo#親番号`。version=1も読み書きできる。
+version=2では `registry.json` に担当・status・generationの最小索引だけを持ち、
+`parents/` 内の親ごとのJSONにtasks・reviews・拡張フィールドを保存する。
+通常の子・レビュー更新では他の親のファイルも索引も書き換えない。
+ファイル0600・ディレクトリ0700、fsyncとrenameで保存する。
+破損・重複キー・別名衝突・未知version・索引との不一致を空の状態に置き換えない。
+旧公開記録、実行根拠、委任予約、レビュー証拠は書き換えない。
+
+### 状態の移行
+
+全親のCLI呼出元をこの版へ更新してから、次を明示実行する。
+旧worktreeを更新できない場合は、mainの `.agents/ops` を `PYTHONPATH` に指定して新CLIを使う。
+子workerのコード・会話や学習ジョブを停止する必要はない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
+```
+
+元の全記録を `registry-v1.backup.json` に保存し、親別ファイルを作成した後、索引をversion=2へ切り替える。
+既存担当・世代・委任・レビュー・拡張フィールドをすべて保持する。再送は冪等。
+移行後に旧CLIを使うと未知versionで停止する。旧CLIへ戻すためにversionだけを書き換えてはならない。
+移行中の旧CLIは取得前後の比較で停止する。失敗時は新CLIで保存済み状態を照合して再実行する。
+移行前のbackupは移行後の更新を含まないため、復旧では新しい親別記録と照合する。
+
+### 取得範囲と計測
+
+親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
+親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
+sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
+ページ内・ページ間の重複は最大3回取り直し、解消しなければ失敗する。空結果への変換はしない。
+
+`PARENT_METRICS_FILE` にローカルJSONLの保存先を指定すると、コマンド・経過秒・lock待機秒・
+GitHub要求数/ページ数/通信秒・cache hit・処理秒・競合数・終了値を記録する。
+再実行時は `PARENT_METRICS_ATTEMPT=2` などで試行番号を渡し、retry_countを記録できる。
+本文・取得URL・識別子・資格情報は記録しない。未指定ならファイルを作らない。
 
 識別子は実行agentの環境から取得する。Claudeは `CLAUDE_CODE_SESSION_ID`、Codexは `CODEX_SESSION_ID`。
 欠落・空値・両方の混在はエラーにする。人間にIDを聞いたり、引数・PID・作業パスで補ったりしない。
@@ -59,6 +89,8 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 以下のコマンドは会話を受けたagentが実行する。人間に実行させる手順ではない。
 共通引数はサブコマンドの前に置く。`--repo` 省略時は `gh repo view` で特定する。
 `--parent` は番号、`#番号`、同じrepoのHTTPS issue URLを受け取る。
+`--state-dir` でdispatcher/review/mergeと同じregistryを明示できる。省略時は従来のXDG state。
+workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
@@ -111,7 +143,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agreement-ignore
 `[{"id":123,"sha256":"parent.execution.comment_snapshotのcanonical JSON digest","reason":"要件と無関係な理由"}]`。
 未分類変更をすべて含め、現存する本文・login・IDのdigestを指定する。重複・古いdigest・欠落は拒否する。
 `event=agreement_comments` に元の合意digest/revision・分類連番・現在のsnapshot・分類理由を記録し、
-実行根拠・要件・担当generation・既存レビュー・共有基盤許可は変更しない。再送は冪等。
+実行根拠・要件・担当generation・既存レビューは変更しない。再送は冪等。
 分類済みコメントも編集・削除を再検査する。人間の指示を無関係として除外してはならない。
 要件変更・停止指示・削除への対応は `checking` → 実際の認識合わせ → `agree` で再合意する。
 同じ `agree` の再送だけでは鮮度不一致を解除せず、再合意後も旧レビューを流用しない。
@@ -140,7 +172,7 @@ activeな担当セッション本人だけが実行でき、要件確認中で�
 出力は `{parent, body_sha256}`。同じ担当generation・本文の再送は再投稿しない。
 
 noteは合意後コメント検査、自律根拠の指示コメント射影、review/mergeの要件digestから除外され、
-根拠・要件・既存レビュー・共有基盤許可を変更しない。noteに要件を書いても要件変更の合意にはならない。
+根拠・要件・既存レビューを変更しない。noteに要件を書いても要件変更の合意にはならない。
 要件変更は従来どおり `checking` → 人間との認識合わせ → `agree` で扱う。
 note後の通常コメントも毎回検査し、同じ本文でもマーカーのないコメントは自動除外しない。
 
@@ -229,7 +261,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 }
 ```
 
-文章とsourcesは非空。`human_confirmation` や共有基盤の許可を入れた自律根拠は拒否する。
+文章とsourcesは非空。`human_confirmation` を入れた自律根拠は拒否する。
 `basis_sha256` はbasis全体のcanonical JSON digest。人間合意は既存のagreedイベントを
 `kind=human_agreement, policy_version=human-agreement/v1` の同形式（実際のhuman_confirmation付き）へ
 読み替える。合意原文・agreement digest・公開マーカーは保持し、自律判断からagreedを作らない。
@@ -269,7 +301,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 有効な根拠の変更は旧reviewを失効させる。新しい根拠の記録だけで旧runを再承認できず、新しい理由とrunが必要。
 `basis-revoke --reason-file tmp/reason.md` と既存の `checking` は明示的な取消/保留として扱い、
 自律根拠の再登録では解除できない。人間との実際の再合意を既存agree経路で記録する。
-子の停止もbasis-recordでは解除しない。共有基盤の許可はreview側の別コマンドだけが扱う。
+子の停止もbasis-recordでは解除しない。
 ops-report報告容器への根拠登録を拒否し、提案由来の子には従来の採用/受領/別途合意の検証を維持する。
 採用済み提案の新たなIssue化経路はtriage側の後続実装が接続する。
 
@@ -299,6 +331,8 @@ GitHubコメントから復元する。明示的な `checking` は親全体と�
 親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
 採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。
 受領・起票・委任時は、出典がopenで完了済みの `ops-report` issueであることも検査する。
+triageの引渡し・受領・提案別合意は既存のマーカー付きイベントとして記録する。
+担当親の自由文の連絡には [note](#自由文の進捗連絡) を使い、既存合意のコメント鮮度を保つ。
 人間が独立に作ったissueには受領操作は不要で、同じregister/checking/agreeから開始する。
 
 ## 子の作成・委任・再開
@@ -322,11 +356,19 @@ open/closed全issueをページングしてキーを照合し、spec不一致・
 既存があれば再利用し、ラベル・正式なsub-issue・親一覧の不足だけを揃える。
 作成応答の喪失や関係登録・親編集の途中失敗も、**同じキーとspec**で再実行する。
 別の正式な親へ所属したissueを自動付替えしない。stateの消失だけを理由に新しいキーで作り直さない。
-レポート由来specは受領・その提案を含む要件合意・現在の採用を検証し、共通 `index_proposals` でも照合して、既存提案を別キーで二重起票しない。
+手動のレポート由来specは受領・その提案を含む要件合意・現在の採用を検証し、共通 `index_proposals` でも照合して、既存提案を別キーで二重起票しない。
+triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](../ops-report/README.md#採用提案の自動issue化) を参照する。
+その子の委任では、有効な独立の `autonomous_decision`、現在の正式親、open/完了レポートの採用・選択肢・内容digestを
+`adopted_tasks.py` で照合する。関連親の手動記入や架空のproposal_received/proposal_agreedは要求・生成しない。
+これは出典の検証経路だけを追加し、担当・generation・レビュー・mergeの条件を変えない。
+開発workflowは `adopted_tasks.check_task_adoptions(gh, body)` を親と対象子の両方へ実行・merge直前に呼ぶ。
+単一anchorを持たない共通親・分割した子にもcontext出典があるため、`parse_proposal_source()` だけで省略しない。
+返却は出典の確認であり実行根拠ではない。既存のauthorizationとdispatcherの鮮度検査も必要。
 同じ提案の既存子はキー・タイトル変更・親付替え後も再利用し、現在の正式な親を返す。自動で親を戻さない。
 親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
+未分割の単独issueは自身の番号を `--child` に指定でき、正式な子を新しい親として扱うことは拒否する。
 `action: launch` を受けた親がサブエージェントを起動する。CLI自身は起動しない。
 既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
@@ -342,6 +384,7 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠/担当/子の要件が変わった既存成果は、親が現在の要件で確認してrecord-resultを実行するまで新review/mergeへ渡さない。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
+単独issueの結果も同じ入口を使い、親用の子一覧は生成しない。
 
 ### 並列起動の選択と予約上限
 
@@ -386,7 +429,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-worker-en
 
 上の4件は設定方法の例で、推奨初期値ではない。固定3件の根拠だった事故は、ホストRAM上限24GB・GPU 16GBの環境で
 2026-10-18にpytestとtraining jobが重なってPCが落ちた事例。子の数の実測上限ではないため、
-pytestは下記lock、GPU・Blenderはtraining queueの既存 `half` / `all` 枠で調停し、子の上限は追加の実測に基づき設定する。
+pytestは他の親・子と並列実行できる。GPU・Blenderはtraining queueの既存 `half` / `all` 枠で調停し、子の上限は追加の実測に基づき設定する。
 自律ループの「各親の実装子2件」という初期値と実プロセスの稼働枠・担当排他はdispatcherの責務で、ここでは変更しない。
 dispatcher/親workflowはその実行枠内でこの計画を使い、必要なら同じ予約上限を明示設定する。
 
@@ -430,21 +473,28 @@ git -C .claude/worktrees/downstream diff origin/main...HEAD
 競合は親が解消・検証し、判断が必要ならその子を停止する。head/base/diff変更は既存review coverageで承認済みにせず、
 rebase後にレビュー対象を固定する。既にレビューした対象の変更には理由付きの新しい明示要求が必要で、自動再レビューしない。
 
-### pytest共有lock
+### pytestの並列実行
+
+pytestのホスト全体の共有lock制約は廃止した。親・子・worktree間で並列実行してよい。
+GPU・Blenderのtraining queueは従来どおり使用する。
 
 ```bash
 bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
-# キャンペーンが専用の共有lockを指定している場合は、全子に同じ絶対パスを渡す
-PYTEST_LOCK=/absolute/shared/pytest.lock bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -q
+# worker数も実行内容に合わせて指定できる
+bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_launch.py -n 2 -q
 ```
 
-ラッパーは自身のworktree rootへ移動し、その `.venv/bin/python -m pytest -n 4` を実行する。
-lockは `PYTEST_LOCK`、未指定なら `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/pytest.lock`。
-全worktreeで同じホストstateを使い、**1つのpytestだけ**をflockで通す。worktreeごとのlockは作らない。
-`-n` / `--numprocesses` の上書きと相対lockを拒否し、pytestの終了値をそのまま返す。
-`flock --no-fork` でlockを実行プロセスに保持し、正常終了・異常終了後に解放する。
-lockを取らない直接実行は排他の対象にならないため、親・全子・通常の手動テストもこの入口を使う。
-テストではfake Pythonを使って2つのworktreeから同時要求し、実行区間が重ならないことと失敗後の解放を検査する。
+既存の呼出元のためファイル名は維持するが、`pytest_locked.sh` はlockを取得しない。
+自身のworktree rootへ移動し、その `.venv/bin/python -m pytest` を実行する。
+worker数は指定がなければ `-n 4`、指定があればその値を使い、pytestの終了値を返す。
+`PYTEST_LOCK` と `XDG_STATE_HOME` は実行制御に使わない。
+`.venv/bin/python -m pytest` の直接実行も許可する。
+
+旧版のworktreeや起動済みの `flock` はmainの更新だけでは変わらない。
+待機中の検証はその起動元で中止してから、変更を取り込むか、同じworktreeで
+lockなしのpytestコマンドを起動する。lockファイルの削除による解除は行わない。
+テストでは2つのworktreeの同時実行、旧lockの保持中でも開始できること、
+worker数の指定と失敗終了値の保持を検査する。
 
 ## 停止・再開・改善候補
 
@@ -493,13 +543,21 @@ recoverも既存の委任予約を保持し、照合結果から自動再起動�
 ## レビュー要求契約（schema version 2、version 1読取互換）
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-prepare --prs 1250 1251 1252 > tmp/targets.json
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request --run-id parent-1216-UUID --instruction-file tmp/instruction.md > tmp/review-request.json
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --prs 1250 1251 --instruction-file tmp/instruction.md \
+  --evidence-file tmp/result.md --worker-runs tmp/worker-runs.json > tmp/review-request.json
 ```
 
-`review-prepare` は全直属子にclosing指示がある全open PRを対象集合と照合する。
-PR未取得・欠落・重複・closed・draft・fork・親と無関係をエラーにし、部分的な要求を公開しない。
-未実装の子にPRがまだ無いことは許容する。段階ごとに、その時点の全open子PRを束ねる。
+`review-request --prs` は成果の登録・対象固定・明示指示を1コマンドで行う。
+子の終了は共通ランナーの記録から検査する。自律workerはdispatcherの現在のjob、
+手動workerは `--worker-runs` の `{子番号: 共通runnerのlog-dir}` を参照する。
+手動workerのtask IDは現在のdelegation IDを使う。未委任ならworker-runsは省略できる。
+終了・cleanup・worktree・branch・task IDの一致なしに予約を解放しない。
+従来の分離操作 `record-result` → `review-prepare` → `review-request --run-id` も使える。
+
+対象は直属子にclosing指示があるopen PRの任意の部分集合。
+PR未取得・重複・closed・draft・fork・親と無関係をエラーにする。
+他のopen PRの追加・更新・closeは選択した対象のcoverageを失効させない。
 分割していない単独issueではそのissueを閉じるPRを同じ方法で扱う。
 GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
 不足オブジェクトだけ `origin` からSHAをfetchする。

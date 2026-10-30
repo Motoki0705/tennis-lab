@@ -1,0 +1,67 @@
+{
+  "after_stop_phase": "stopped",
+  "bootstrap_commit": "1eedc16ac23418eefd88dfb7dbfc9dfb7bae1211",
+  "created_at": "2026-10-23T15:17:53.214067+00:00",
+  "elapsed_seconds_to_stop_receipt": 6418.914872,
+  "jobs": {
+    "baseline": {
+      "drive_saved_at": "2026-10-23T16:57:50.222882+00:00",
+      "finished_at": "2026-10-23T16:57:50.222923+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T16:52:13.764466+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T16:57:44.129061+00:00"
+    },
+    "distribution-download": {
+      "drive_saved_at": "2026-10-23T16:26:37.633587+00:00",
+      "finished_at": "2026-10-23T16:26:37.633631+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T15:23:39.472430+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T16:26:28.981941+00:00"
+    },
+    "failure-injection": {
+      "drive_saved_at": "2026-10-23T17:03:26.735730+00:00",
+      "finished_at": "2026-10-23T17:03:26.735756+00:00",
+      "returncode": 1,
+      "started_at": "2026-10-23T17:02:25.605951+00:00",
+      "status": "failed",
+      "updated_at": "2026-10-23T17:03:15.709570+00:00"
+    },
+    "interrupted": {
+      "drive_saved_at": "2026-10-23T17:01:30.330070+00:00",
+      "finished_at": "2026-10-23T17:01:30.330121+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T16:58:32.009637+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T17:01:22.335833+00:00"
+    },
+    "locked-environment": {
+      "drive_saved_at": "2026-10-23T15:20:53.956824+00:00",
+      "finished_at": "2026-10-23T15:20:53.956837+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T15:19:51.711261+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T15:20:42.236187+00:00"
+    },
+    "prepare-inputs": {
+      "drive_saved_at": "2026-10-23T16:51:20.135812+00:00",
+      "finished_at": "2026-10-23T16:51:20.135828+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-23T16:27:18.548834+00:00",
+      "status": "completed",
+      "updated_at": "2026-10-23T16:51:15.196109+00:00"
+    }
+  },
+  "observed_gpu": "NVIDIA L4, 23034 MiB",
+  "ready_at": "2026-10-23T15:18:33.960545+00:00",
+  "recovered_source_commit": "768322617a9e3eb6c354bca834e90820ed0b6760",
+  "schema_version": 1,
+  "scope": "Only this experiment-owned session; no operation on pre-existing unknown assignments",
+  "session": "ball-resume-proof-a-20261024",
+  "stop_cli_ok": true,
+  "stop_receipt_captured_at": "2026-10-23T17:04:52.128939+00:00",
+  "stop_status": "stopped",
+  "stop_timestamp_source": "Local stop-receipt mtime, after CLI returned",
+  "untracked_source": []
+}

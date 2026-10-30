@@ -71,3 +71,59 @@ node --test tests/unit/synthetic_data_generation/dataset/court/review/scene.test
 PLAYWRIGHT_MODULE=/path/to/playwright-core COURT_REVIEW_URL=http://127.0.0.1:8905 \
   node tests/e2e/synthetic_data_generation/court_review_browser.cjs
 ```
+
+## 明示したデータ版で方式を比較する
+
+train専用scale profileは、固定scene ownerを探索する既存モードとは別に、
+データ版manifestまたは生成器が書いたcatalogを明示して起動する。
+
+```bash
+.venv/bin/python -m src.synthetic_data_generation.scripts.review_court_dataset \
+  --catalog tmp/court-scale-review/run-03/review-catalog.json --port 8906
+# 個別指定でもよい（同じsceneの異なる方式・recipe・版を同時に渡せる）
+.venv/bin/python -m src.synthetic_data_generation.scripts.review_court_dataset \
+  --dataset-version /path/to/output/AAA.dataset.json /path/to/output/BBB.dataset.json \
+  --port 8906
+```
+
+`http://127.0.0.1:8906` の左上「方式・データ版」を切り替えると、同じ実sceneを
+維持して比較できる。選択keyと画像cacheはデータ版・sceneに結び付き、元のscene名を
+別名として保存しない。版切替中の古いscene／sample応答は既存のsequence guardで破棄する。
+
+scaleモードの3D表示は **点線＝計画曲線、点＝採択camera、赤×＝棄却camera**。
+採択点だけを結んで棄却区間を跨ぐ線は描かない。開線分・開Bézierは始点へ閉じず、
+未撮影の終点も計画曲線に含める。採択0件の軌道も一覧・計画線・診断を残し、
+画像欄に「採択0件・画像なし」を表示する。曲線自体が境界検査で落ちた場合は理由のみを示す。
+
+「比較設定・採否診断」でmethod・recipe・seed・密度段・候補／描画／再利用／採択／棄却数、
+品質設定、対象KP≥4／ROI穴≤1%の感度集計を確認する。この2つは、hard gateを明示指定
+していなければ診断だけである。画像hoverでは対象renderer KP数とROI穴率も表示する。
+RGBとtarget限定教師を見て、線・地面・ネットのぼけ、未観測領域の破綻、target切替、
+局所方式の近接画像の反復を確認する。ROI穴率0だけでは画質合格を意味しない。
+保存されていないreject RGBに他の画像を代入しない。
+
+scene alignmentはハッシュでpinした資産snapshotを使う。storeは版manifestの明示rootから
+解決し、複数の共有storeを1sceneとして表示する。起動時にschema・hash・membership・
+train専用の計数・v3幾何を検証するが、全JPEGのdecodeは行わない。既存の画像cache128件、
+scene cache2件、overlay並行2件を共有する。版・request・curve plan・資産・QA・descriptor・
+index・JPEG shardの変更はrevisionを変え、古い取得を拒否する。
+
+合成版・保存・生成コマンドの正本は[scale profile](../README.md#explicit-scale-comparison-profile)。
+方式やD2/D5/D6の最終採用はユーザーが比較後に親issueへ記録し、UIの閲覧から自動採用しない。
+
+ブラウザでのscale profileの受入検証は、生成済みの4scene×5方式を含むcatalogを指定した
+上記サーバーに対して実行する。GPUは使わない。target限定の14KP、採択0件の表示、
+開曲線の終点、method/scene/version切替、古い応答の破棄を検査し、B00の各版を撮影する。
+
+```bash
+PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chrome \
+  COURT_REVIEW_URL=http://127.0.0.1:8906 \
+  COURT_SCALE_SCREENSHOT_DIR=tmp/court-scale-review/run-03/screenshots \
+  node tests/e2e/synthetic_data_generation/court_scale_review_browser.cjs
+```
+
+比較データを生成したworktreeから起動すること。`src`はcwdからimportされる。
+`review-catalog.json`、`*.dataset.json`、JPEG store、スクリーンショットはgit管理外の
+同じoutput rootに残し、catalogの絶対path参照を保つ。密度追加版やjitter 0m版を同じ
+catalogへ渡すと、左上のn/k/jitter/seed/版で識別できる。採用を決める際は、
+候補／採択枚数や層の空きを含めて確認し、親issueへ採用方式とD2/D5/D6を記録する。

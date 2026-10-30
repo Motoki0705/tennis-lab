@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -35,8 +36,8 @@ def validate_names(values: Sequence[str]) -> tuple[str, ...]:
     if not values or any(not re.fullmatch(r"[A-Z][a-zA-Z]*", name) for name in values):
         raise BoardError("name set requires ASCII letters and initial capitals")
     folded = [name.casefold() for name in values]
-    if "all" in folded:
-        raise BoardError("name set contains the reserved name all")
+    if {"all", "human"} & set(folded):
+        raise BoardError("name set contains a reserved name")
     if len(set(folded)) != len(folded):
         raise BoardError("name set contains a duplicate")
     if any(one_edit_apart(a, b) for i, a in enumerate(folded) for b in folded[i + 1 :]):
@@ -50,8 +51,8 @@ def load_names() -> tuple[str, ...]:
 
 def canonical_name(value: str, catalog: Sequence[str] | None = None) -> str:
     names = load_names() if catalog is None else validate_names(catalog)
-    if value.casefold() == "all":
-        raise BoardError("all is reserved, not an individual name")
+    if value.casefold() in {"all", "human"}:
+        raise BoardError("reserved participant is not a parent name")
     for name in names:
         if name.casefold() == value.casefold():
             return name
@@ -100,11 +101,73 @@ def resolve_name(
 ) -> Assignment:
     name = canonical_name(value, catalog)
     row = connection.execute(
-        "SELECT * FROM name_assignments WHERE name=? ORDER BY id DESC LIMIT 1", (name,)
+        "SELECT * FROM name_assignments WHERE name=? AND retired_at IS NULL", (name,)
     ).fetchone()
-    if not row or row[-1] is not None:
+    if not row:
         raise BoardError("name is unassigned or retired")
     return Assignment(*row)
+
+
+def _reserved(
+    connection: sqlite3.Connection, name: str, assignment_id: int | None
+) -> bool:
+    return (
+        connection.execute(
+            "SELECT 1 FROM name_renames WHERE old_name=? AND assignment_id IS NOT ? LIMIT 1",
+            (name, assignment_id),
+        ).fetchone()
+        is not None
+    )
+
+
+def _latest_name(connection: sqlite3.Connection, name: str) -> Assignment | None:
+    # A rename can give an older assignment ID a newer name lifetime.
+    row = connection.execute(
+        "SELECT * FROM name_assignments WHERE name=? "
+        "ORDER BY (retired_at IS NULL) DESC, retired_at DESC, id DESC LIMIT 1",
+        (name,),
+    ).fetchone()
+    return Assignment(*row) if row else None
+
+
+def _available(
+    connection: sqlite3.Connection,
+    name: str,
+    now: datetime,
+    pending: PendingCheck,
+    assignment_id: int | None = None,
+) -> bool:
+    if _reserved(connection, name, assignment_id):
+        return False
+    assignment = _latest_name(connection, name)
+    if assignment is None:
+        return True
+    if assignment.retired_at is None:
+        return False
+    retired = datetime.fromisoformat(assignment.retired_at)
+    if retired.tzinfo is None:
+        raise BoardError("invalid name retirement timestamp")
+    return now - retired >= REUSE_DELAY and not pending(connection, assignment.id)
+
+
+def _select_name(
+    connection: sqlite3.Connection,
+    names: Sequence[str],
+    now: datetime,
+    pending: PendingCheck,
+    assignment_id: int | None = None,
+) -> str:
+    counts = Counter(
+        row[0][0].casefold()
+        for row in connection.execute(
+            "SELECT name FROM name_assignments WHERE retired_at IS NULL"
+        )
+    )
+    # Stable sorting retains catalog order within the least-used initial.
+    for name in sorted(names, key=lambda value: counts[value[0].casefold()]):
+        if _available(connection, name, now, pending, assignment_id):
+            return name
+    raise BoardError("name set exhausted; a human must extend names.txt")
 
 
 def ensure_name(
@@ -125,11 +188,10 @@ def ensure_name(
     previous = for_parent(connection, repo, parent)
     if previous:
         canonical_name(previous.name, names)
-        latest = connection.execute(
-            "SELECT id FROM name_assignments WHERE name=? ORDER BY id DESC LIMIT 1",
-            (previous.name,),
-        ).fetchone()[0]
-        if previous.retired_at is None or latest == previous.id:
+        latest = _latest_name(connection, previous.name)
+        if (previous.retired_at is None or latest == previous) and not _reserved(
+            connection, previous.name, previous.id
+        ):
             # Resuming the same parent is not reuse by a different parent.
             connection.execute(
                 "UPDATE name_assignments SET retired_at=NULL, identifier=? WHERE id=?",
@@ -145,32 +207,62 @@ def ensure_name(
                 None,
             )
     pending_check = pending if pending is not None else activity.has_pending
-    for name in names:
-        latest_row = connection.execute(
-            "SELECT * FROM name_assignments WHERE name=? ORDER BY id DESC LIMIT 1",
-            (name,),
-        ).fetchone()
-        if latest_row:
-            latest_assignment = Assignment(*latest_row)
-            if latest_assignment.retired_at is None:
-                continue
-            retired = datetime.fromisoformat(latest_assignment.retired_at)
-            if retired.tzinfo is None:
-                raise BoardError("invalid name retirement timestamp")
-            if now - retired < REUSE_DELAY or pending_check(
-                connection, latest_assignment.id
-            ):
-                continue
-        cursor = connection.execute(
-            "INSERT INTO name_assignments(name,repo,parent,identifier,assigned_at) VALUES(?,?,?,?,?)",
-            (name, repo.casefold(), parent, identifier, stamp),
+    name = _select_name(connection, names, now, pending_check)
+    cursor = connection.execute(
+        "INSERT INTO name_assignments(name,repo,parent,identifier,assigned_at) VALUES(?,?,?,?,?)",
+        (name, repo.casefold(), parent, identifier, stamp),
+    )
+    if cursor.lastrowid is None:
+        raise BoardError("name allocation did not return an assignment")
+    return Assignment(
+        cursor.lastrowid, name, repo.casefold(), parent, identifier, stamp, None
+    )
+
+
+def rename_name(
+    connection: sqlite3.Connection,
+    repo: str,
+    parent: int,
+    *,
+    now: datetime,
+    name: str | None = None,
+    catalog: Sequence[str] | None = None,
+) -> Assignment:
+    """Rename one live assignment in the caller's transaction, retaining its ID."""
+    names = load_names() if catalog is None else validate_names(catalog)
+    stamp = timestamp(now)
+    previous = for_parent(connection, repo, parent)
+    if previous is None or previous.retired_at is not None:
+        raise BoardError("parent has no live name to rename")
+    canonical_name(previous.name, names)
+    if name is None:
+        selected = _select_name(
+            connection, names, now, activity.has_pending, previous.id
         )
-        if cursor.lastrowid is None:
-            raise BoardError("name allocation did not return an assignment")
-        return Assignment(
-            cursor.lastrowid, name, repo.casefold(), parent, identifier, stamp, None
-        )
-    raise BoardError("name set exhausted; a human must extend names.txt")
+    else:
+        selected = canonical_name(name, names)
+        if selected == previous.name:
+            return previous
+        if not _available(connection, selected, now, activity.has_pending, previous.id):
+            raise BoardError(
+                "name is assigned, reserved by rename history or awaiting reuse"
+            )
+    connection.execute(
+        "INSERT INTO name_renames(assignment_id,old_name,new_name,renamed_at) VALUES(?,?,?,?)",
+        (previous.id, previous.name, selected, stamp),
+    )
+    connection.execute(
+        "UPDATE name_assignments SET name=? WHERE id=?", (selected, previous.id)
+    )
+    return Assignment(
+        previous.id,
+        selected,
+        previous.repo,
+        previous.parent,
+        previous.identifier,
+        previous.assigned_at,
+        previous.retired_at,
+    )
 
 
 def retire_name(

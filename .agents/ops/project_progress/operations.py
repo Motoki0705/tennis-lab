@@ -537,7 +537,7 @@ def parent_command(
     spec: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     session.owner()
-    api = Projects()
+    api = Projects(store=session.store)
     if command == "project-setup":
         return setup(api, owner, project_number, apply)
     if spec is None or event is None:

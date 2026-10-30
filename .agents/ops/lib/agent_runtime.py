@@ -22,6 +22,7 @@ from agent_events import (
     EvidenceError,
     codex_checkpoint,
     interrupted_codex_turn,
+    parse_cli_event,
     parse_json,
 )
 from agent_output import OutputSchema
@@ -130,6 +131,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "--json-schema", type=Path, help="JSON Schema file for the final response"
     )
+    result.add_argument(
+        "--mcp-config", type=Path, help="host-provided stdio MCP server configuration"
+    )
     result.add_argument("--mode", choices=("read-only", "write"), default="read-only")
     result.add_argument("--profile")
     result.add_argument("--model")
@@ -179,6 +183,7 @@ def capture(
                 stderr=stderr,
                 start_new_session=True,
             )
+            result["agent_spawned"] = True
             result["process"] = process_identity(proc.pid)
             save()
             assert proc.stdout is not None
@@ -308,6 +313,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
     if output_schema is not None:
         contract["json_schema_sha256"] = output_schema.sha256
+    mcp_bytes = None
+    if args.mcp_config is not None:
+        if (
+            agent != "codex"
+            or args.profile not in {"review", "ops_report"}
+            or args.mode != "read-only"
+        ):
+            raise ValueError(
+                "MCP config requires a read-only Codex review/audit profile"
+            )
+        mcp_bytes = args.mcp_config.read_bytes()
+        contract["mcp_config_sha256"] = hashlib.sha256(mcp_bytes).hexdigest()
     if branch == "(detached)":
         head = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
@@ -424,6 +441,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "cli_exit_code": None,
             "runner": process_identity(os.getpid()),
             "process": None,
+            "agent_spawned": False,
             "terminated_pids": [],
             "cleanup_complete": False,
             "started_at": time.time(),
@@ -446,6 +464,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if schema_path is not None:
             assert output_schema is not None
             schema_path.write_bytes(output_schema.raw)
+        mcp_path = run_dir / "mcp-config.json" if mcp_bytes is not None else None
+        if mcp_path is not None:
+            assert mcp_bytes is not None
+            mcp_path.write_bytes(mcp_bytes)
         save()
         env = {k: v for k, v in os.environ.items() if k not in IDENTITY_ENV}
         env.update(
@@ -466,6 +488,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 state["session_id"],
                 read_dirs,
                 schema_path,
+                mcp_path,
             )
             write_json(
                 run_dir / "invocation.json",
@@ -578,7 +601,7 @@ def recover_lost_turn(result: dict[str, Any], state: dict[str, Any]) -> None:
     for line in (run_dir / "events.jsonl").read_bytes().splitlines():
         if line.strip():
             events.feed(line)
-            if parse_json(line).get("type") == "turn.started":
+            if parse_cli_event(line, agent).get("type") == "turn.started":
                 started_turns += 1
     if (
         not events.started

@@ -1,0 +1,225 @@
+{
+  "maximum_adjacent_step": {
+    "before": {
+      "frames": [
+        570,
+        571
+      ],
+      "step_m": 1.0741184949874878,
+      "before_valid": [
+        true,
+        true
+      ],
+      "after_valid": [
+        true,
+        true
+      ],
+      "before_real_views": [
+        3,
+        2
+      ],
+      "after_real_views": [
+        3,
+        2
+      ]
+    },
+    "after": {
+      "frames": [
+        969,
+        970
+      ],
+      "step_m": 1.0766195058822632,
+      "before_valid": [
+        false,
+        false
+      ],
+      "after_valid": [
+        true,
+        true
+      ],
+      "before_real_views": [
+        3,
+        2
+      ],
+      "after_real_views": [
+        3,
+        2
+      ]
+    }
+  },
+  "lost_valid_frames": [
+    {
+      "frame": 57,
+      "reason": "EXCESSIVE_SPEED",
+      "real_views_before": 2,
+      "real_views_after": 2,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 58,
+      "reason": "EXCESSIVE_SPEED",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 59,
+      "reason": "EXCESSIVE_SPEED",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 139,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam1"
+      ]
+    },
+    {
+      "frame": 143,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam1"
+      ]
+    },
+    {
+      "frame": 144,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam1"
+      ]
+    },
+    {
+      "frame": 307,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam2"
+      ]
+    },
+    {
+      "frame": 432,
+      "reason": "REPROJECTION",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 615,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam2"
+      ]
+    },
+    {
+      "frame": 616,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam2"
+      ]
+    },
+    {
+      "frame": 737,
+      "reason": "EXCESSIVE_SPEED",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 738,
+      "reason": "EXCESSIVE_SPEED",
+      "real_views_before": 2,
+      "real_views_after": 2,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 762,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam0"
+      ]
+    },
+    {
+      "frame": 764,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam0"
+      ]
+    },
+    {
+      "frame": 767,
+      "reason": "REPROJECTION",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 768,
+      "reason": "REPROJECTION",
+      "real_views_before": 3,
+      "real_views_after": 3,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 780,
+      "reason": "REPROJECTION",
+      "real_views_before": 2,
+      "real_views_after": 2,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 781,
+      "reason": "REPROJECTION",
+      "real_views_before": 2,
+      "real_views_after": 2,
+      "rejected_cameras": []
+    },
+    {
+      "frame": 786,
+      "reason": "INSUFFICIENT_VIEWS",
+      "real_views_before": 2,
+      "real_views_after": 1,
+      "rejected_cameras": [
+        "cam2"
+      ]
+    }
+  ],
+  "review_frame_groups": {
+    "bounce_gap": [
+      56,
+      57,
+      58,
+      59,
+      60
+    ],
+    "recovered_max_step": [
+      968,
+      969,
+      970,
+      971
+    ],
+    "rejected_detector_excursion": [
+      761,
+      762,
+      764,
+      765
+    ]
+  },
+  "interpretation": "No 3D ground truth. Remaining/newly exposed pair-change discontinuity at 969->970 and speed-gate gap at 57..59 are retained, not hidden by manual intervals."
+}

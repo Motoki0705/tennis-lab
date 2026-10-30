@@ -1,0 +1,25 @@
+{
+  "argv": [
+    ".venv/bin/python",
+    "knowledge/runs/run-ball-portable-distribution-20261023/verify_window_consumers.py",
+    "--source-repo-root",
+    "<source-repo>",
+    "--distribution",
+    "<worktree>/tmp/ball-portable-distribution/train-val",
+    "--output",
+    "<worktree>/tmp/ball-window-consumer-verification-20261023"
+  ],
+  "boot_id": "41fa84dd-f4de-45d5-88de-f5f4e61d2649",
+  "command_pid": 3463353,
+  "cwd": "<worktree>",
+  "elapsed_seconds": 1124.686799095005,
+  "finished_at": "2026-10-23T14:59:45.868494+00:00",
+  "pid": 3463352,
+  "process_group_id": 3463352,
+  "returncode": 0,
+  "schema_version": 1,
+  "session_id": 3463352,
+  "start_token": "4157437",
+  "started_at": "2026-10-23T14:41:49.765564+00:00",
+  "status": "completed"
+}

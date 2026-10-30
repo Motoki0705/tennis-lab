@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "/content/tennis-lab/.venv/bin/python",
+    ".agents/skills/tennis-drive/scripts/drive.py",
+    "--timeout-seconds",
+    "10800",
+    "download",
+    "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "--verify",
+    "--overwrite"
+  ],
+  "elapsed_seconds": 2830.506462479,
+  "returncode": 0,
+  "schema_version": 1,
+  "started_at": "2026-10-23T11:10:34.713831+00:00"
+}

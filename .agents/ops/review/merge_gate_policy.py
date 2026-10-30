@@ -8,27 +8,24 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from issues import Issue, task_status
-from parent.execution import authorization_revoked, task_errors, validate_authorization
+from parent.execution import authorization_revoked, task_errors
 from parent.policy import (
     closing_issues,
     dependencies,
     digest,
-    events,
-    nonempty,
-    number,
     progress,
     review_state,
 )
 from parent_review_policy import (
     BaseAdvance,
     evaluate_coverage,
-    exact,
     pr_findings,
     records,
     validate_result,
 )
 from review_policy import (
     AuthorConflictError,
+    Check,
     GateDecision,
     GateInput,
     ReviewOutcome,
@@ -133,68 +130,6 @@ def confirmed_state(
     return review_state(recent, request)
 
 
-def shared_permission(
-    comments: Sequence[Mapping[str, Any]],
-    login: str,
-    request: Mapping[str, Any],
-    auth: Mapping[str, Any],
-) -> dict[str, Any] | None:
-    history = events(comments, login, request["parent_issue"])
-    latest = None
-    for event in history:
-        if authorization_revoked(event, auth):
-            latest = None
-        if event["event"] != "merge_permission":
-            continue
-        event_auth = {
-            k: v
-            for k, v in event.items()
-            if k
-            in {
-                "generation",
-                "agreement_sha256",
-                "execution_basis_sha256",
-                "execution_basis_kind",
-            }
-        }
-        validate_authorization(event_auth, legacy=True)
-        data = exact(
-            {k: v for k, v in event.items() if k != "body"},
-            {
-                "parent",
-                "event",
-                "review_run_id",
-                "request_sha256",
-                "allow_shared_foundation",
-                "evidence",
-                "revision",
-            }
-            | set(event_auth),
-        )
-        if type(data["allow_shared_foundation"]) is not bool:
-            raise ValueError("shared-foundation permission must be an explicit boolean")
-        nonempty(data["evidence"], "human agreement evidence")
-        number(data["revision"])
-        if (
-            data["review_run_id"] != request["review_run_id"]
-            or data["request_sha256"] != digest(request)
-            or event_auth != auth
-        ):
-            continue
-        comment = next(
-            c
-            for c in reversed(comments)
-            if c.get("body") == event["body"]
-            and c.get("user", {}).get("login") == login
-        )
-        latest = {
-            "allow_shared_foundation": data["allow_shared_foundation"],
-            "evidence": data["evidence"],
-            "comment_url": f"https://github.com/{request['repo']}/issues/{request['parent_issue']}#issuecomment-{comment['id']}",
-        }
-    return latest if latest and latest["allow_shared_foundation"] else None
-
-
 def dependency_order(
     prs: Sequence[Mapping[str, Any]], children: Mapping[int, Issue], repo: str
 ) -> list[int]:
@@ -285,10 +220,8 @@ class MergeInput:
     changed_paths: tuple[str, ...]
     review_state: str | None
     evidence_errors: tuple[str, ...]
-    required_checks: tuple[str, ...]
-    shared_patterns: tuple[str, ...]
     base_advances: Sequence[BaseAdvance] = ()
-    permission: Mapping[str, Any] | None = None
+    inherited_snapshots: frozenset[tuple[str, str]] = frozenset()
     parent_needs_human: bool = False
 
 
@@ -296,9 +229,9 @@ class MergeInput:
 class MergeResult:
     decision: GateDecision
     reasons: tuple[str, ...]
-    shared_hits: tuple[tuple[str, str], ...] = ()
-    shared_exemption: Mapping[str, Any] | None = None
     dependency_statuses: Mapping[int, str] = field(default_factory=dict)
+    ci_checks: tuple[Check, ...] | None = None
+    ci_head_sha: str | None = None
 
 
 def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
@@ -375,6 +308,7 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
                 gate.fix_paths,
                 fix_diff_digests=gate.fix_diff_digests,
                 base_advances=gate.base_advances,
+                inherited_snapshots=gate.inherited_snapshots,
             )
             # Global identity/set errors block all; another PR's coverage/finding does
             # not delay an independently covered PR. Merged targets remain in current.
@@ -403,27 +337,14 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             else "CONFLICTING"
             if mergeable is False
             else "UNKNOWN",
-            checks=normalize_rollup(pr["statusCheckRollup"]),
-            required_checks=gate.required_checks,
             review=review,
-            changed_paths=gate.changed_paths,
-            shared_patterns=gate.shared_patterns,
         )
     )
     reasons.extend(base.reasons)
-    exemption = (
-        gate.permission
-        if base.shared_hits
-        and gate.permission
-        and gate.permission.get("allow_shared_foundation") is True
-        else None
-    )
-    if exemption:
-        reasons = [r for r in reasons if r != "touches_shared"]
     if needs_human:
         reasons.append("human_judgment_pending")
     reasons = list(dict.fromkeys(reasons))
-    human_reasons = {"touches_shared", "human_judgment_pending"}
+    human_reasons = {"human_judgment_pending"}
     decision = (
         GateDecision.BLOCKED
         if set(reasons) - human_reasons
@@ -432,5 +353,11 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
         else GateDecision.MERGE
     )
     return MergeResult(
-        decision, tuple(reasons), base.shared_hits, exemption, dependency_statuses
+        decision,
+        tuple(reasons),
+        dependency_statuses,
+        ci_checks=normalize_rollup(pr["statusCheckRollup"])
+        if pr["state"] == "open"
+        else None,
+        ci_head_sha=pr["ci_head_sha"],
     )

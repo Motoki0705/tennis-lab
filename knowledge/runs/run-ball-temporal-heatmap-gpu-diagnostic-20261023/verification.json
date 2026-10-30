@@ -1,0 +1,47 @@
+{
+  "cpu_command": "flock $PYTEST_LOCK .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py tests/unit/tasks/ball_detection/training/test_cli_arguments.py tests/unit/tasks/ball_detection/training/test_heatmap_objective.py tests/integration/tasks/ball_detection/test_mdd_heatmap.py tests/integration/tasks/ball_detection/test_all_frame_windows.py -n 4 -q",
+  "cpu_tests_passed": 116,
+  "cpu_test_seconds": 31.18,
+  "pre_commit": [
+    "ruff: passed",
+    "mypy --follow-imports=skip: passed"
+  ],
+  "public_cpu_evaluation_cli": "test with saved validation calibration: exit 0",
+  "public_cpu_comparison_cli": "T32/T64 MP4: exit 0",
+  "successful_queue_job": "0-8207272514964363125_2026-10-23T03-51-25-035636874Z_242438_ball-temporal-heatmap-bf16-diagnostic-retry",
+  "queue_state": "done",
+  "queue_resource": "all",
+  "initial_failed_job": "0-8207272587689586835_2026-10-23T03-50-12-310413164Z_191189_ball-temporal-heatmap-bf16-diagnostic",
+  "initial_failure": "tests.support import failed before any GPU updates; explicit fixture-file loader fixed in subsequent commit",
+  "gpu_comparison": "tmp/temporal-heatmap-gpu-diagnostic/comparison.mp4",
+  "cpu_comparisons": [
+    "tmp/temporal-heatmap-cpu-comparisons/dpt-T32-T64.mp4",
+    "tmp/temporal-heatmap-cpu-comparisons/hybrid-T32-T64.mp4",
+    "tmp/temporal-heatmap-cpu-comparisons/cli-T32-T64.mp4"
+  ],
+  "rgb_pin_queue_job": "0-8207271893258046926_2026-10-23T04-01-46-741953073Z_266552_ball-temporal-heatmap-bf16-rgb-pinned",
+  "rgb_pin_queue_state": "done",
+  "rgb_pin_gpu_training_commit": "29286104d19998e6f67c1512e1d0588bdb80adff",
+  "post_rgb_pin_scoped_cpu_tests": 21,
+  "post_rgb_pin_scoped_cpu_seconds": 15.45,
+  "rational_fps_and_comparison_rgb_guard": "CPU integration tests after GPU training; model arithmetic unchanged",
+  "knowledge_base_validation": {
+    "base_ref": "7bf1b73e2",
+    "errors": 0,
+    "warnings": 218
+  },
+  "knowledge_latest_main_comparison": {
+    "base_ref": "origin/main",
+    "commit": "0b89c173542c90433e8f30a311c90d3b62146b50",
+    "errors": 39,
+    "reason": "newer unrelated Court artifacts and synthetic sequence are absent on the task base; not changed by this task"
+  },
+  "reproducibility_path_check": {
+    "missing": 0,
+    "unverifiable_existing": 8
+  },
+  "final_scoped_cpu_tests": 21,
+  "final_scoped_cpu_seconds": 15.24,
+  "final_source_commit": "ca8745b82",
+  "final_cpu_command": "flock $PYTEST_LOCK .venv/bin/python -m pytest tests/unit/tasks/ball_detection/training/test_temporal_heatmap.py tests/unit/tasks/ball_detection/evaluation/test_temporal_heatmap_metrics.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py -n 4 -q"
+}

@@ -11,9 +11,8 @@
 | `issue:parent` | 全体の目的・合意・進捗を管理する親。分割前にも付ける |
 | `issue:child` | GitHubの正式なsub-issueとして直属の親を持ち、具体的な1タスクを担当する子 |
 
-両方を兼ねるissueには両ラベルを付ける。`bug` / `enhancement` / `research` は作業種別、
-`ai-proposed` は起票元を示す別軸であり、親子区分の代わりにならない。ラベルから親番号を推測しない。
-ラベルの作成はリポジトリ管理者、付与と整合維持は起票者と担当親セッションが行う。
+両方を兼ねるissueには両ラベルを付ける。別軸のラベルは親子区分の代わりにならない。
+ラベルから親番号を推測しない。
 
 | 利用場面 | テンプレート |
 |---|---|
@@ -24,6 +23,39 @@
 
 単独タスクを分割するときは親へ移行する。単独タスクを既存の親へ編入するときは子へ移行する。
 研究の指標・評価条件・合意・知見の置き場やclose判断は[research-loop](../../skills/research-loop/SKILL.md)に従う。
+
+## ラベル
+
+名前・色・説明と軸ごとの一覧の正本は [.github/labels.yml](../../../.github/labels.yml)。
+意味と付与主体はここで定義する。ラベルの作成・更新・削除は管理者が下記の同期CLIで行う。
+
+| 軸（マニフェストのキー） | 意味 | 付与主体 |
+|---|---|---|
+| 階層（`hierarchy`） | 親・子の役割（上表） | 起票者・担当親・親CLI。`issues check` で正式な関係と照合する |
+| 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
+| 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
+| 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
+| 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` は運用レポートの容器 | 承認を必要とする仕組み・担当者、レポート生成CLI |
+
+issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml) のタイトル先頭prefixから
+作業種別だけを付け、本文を読まない。対象領域をタイトルからも推測しない。
+親子の識別名prefixは作業種別を意味しないため、テンプレートや明示指定で補う。
+
+同期と既存open issueの誤ラベル解除は次で計画を確認する。`--repo` 省略時は `gh repo view` を使う。
+
+```bash
+.venv/bin/python scripts/sync_github_labels.py sync --repo Motoki0705/tennis-lab --prune
+.venv/bin/python scripts/sync_github_labels.py strip-auto-labels --repo Motoki0705/tennis-lab
+```
+
+既定はdry-run。内容を確認後、各コマンドに `--apply` を加えて実行する。
+`sync` は不足ラベルの作成・色と説明の更新を行い、`--prune` 指定時だけ正本にないラベルを削除する。
+色の英字の大小は区別しない。名前の変更・別名の移行は行わない。
+`strip-auto-labels` はPRとclosed issueを除外し、`area` 軸の現在のラベルについて全ページのissue eventsを取得する。
+最後の `labeled` イベントのactorが `github-actions[bot]` のものだけを解除する。
+人間・agentによる付与は残し、イベント・actorを特定できないものも理由を表示して残す。
+全対象の取得に成功してから書き込みを始め、解除直前にもissueの状態と全イベントを再確認する。
+取得失敗を空結果へ置き換えず、非ゼロで終了する。
 
 ## タイトル
 
@@ -143,10 +175,11 @@ parent_body = render_parent_body(
 その場合は子の必須節もsectionsに含める。本文の各値に別の `##` 節を埋め込まず、別のキーにする。
 生成時の形式違反は `ValueError`、`validate_body` はエラー文字列のtupleを返す。
 `parse_title` / `parent_reference` / `parse_child_tasks` / `parse_sections` は検査・更新に再利用できる。
-`PARENT_LABEL` / `CHILD_LABEL` をimportして付与し、作業種別・起票元ラベルを維持する。
+`PARENT_LABEL` / `CHILD_LABEL` をimportして付与し、作業種別・対象領域・起票元ラベルを維持する。
 
-レポート経由でも、親は**レポートissueではなく担当親issue**。採用と要件合意は別に扱い、起票の可否は
-[parent CLI](../parent/README.md#採用提案の受領) が受領・要件合意・現在の採用から判定する。書式・重複検出には以下を使う。
+レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
+区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
+[triage](../ops-report/README.md#採用提案の自動issue化) が扱う。書式・重複検出には以下を使う。
 
 1. `render_child_body(..., source=ProposalSource(proposal_id, report_number, option))` を使う。
    提案IDは周期に依存しない不透明なASCII tokenとして受け取り、ID生成はレポート側に任せる。
@@ -156,6 +189,30 @@ parent_body = render_parent_body(
    戻り値は `(report_number, proposal_id) -> issue_number`。タイトルやprefixから検索・重複判定しない。
    同じキーの複数issue、不正・重複メタデータはエラー。`parse_proposal_source(body)` で現在の選択肢まで
    比較し、一致しない既存issueを再利用しない。タイトル改名・親付替えで重複起票しないことをテスト済み。
+
+## triageによる出典と復旧契約
+
+`render_standalone_body(sections)` は子の具体的な必須節・Acceptanceを持ち、親参照・親子ラベルを持たない
+単独作業を生成する。親・子は従来の共通APIを使い、`ai-proposed` と役割ラベル、正式なsub-issue、親一覧を揃える。
+レポートの `ops-report` ラベルと容器メタデータは作業issueへコピーしない。
+
+既存の `ProposalSource` / `index_proposals` は1提案→1つの**索引anchor**を維持する。
+1提案を複数子へ分ける場合は親をanchorにする。複数提案を共通親へまとめる場合は各提案の子に別anchorを置く。
+親には全提案のcontextを持たせる。1つのissueへの複数の提案markerや同一提案の複数issueへの登録は拒否する。
+dispatcherは索引anchorに加え、contextの全bindingからも出典レポートを`source_reports`へ投影する。
+anchorが別の正式親へ移っても、元の親・分割子の出典は対象閉包と分割入力に残る。索引の一意性は変えない。
+
+`bind_task(body, plan=SHA256, node=KEY, bindings=[...], source=ProposalSource|None)` が生成する
+`ops-report-task:v1` markerは本文先頭（anchorでは従来のproposal markerの直後）に置く。
+`parse_task_metadata(body)` は位置・未知キー・canonical JSON・重複・digest・sourceとの一致を検査する。
+各bindingは `source: {report_number, proposal_id, option}` と `proposal_sha256` を持ち、report番号・ID順に並べる。
+内容digestは `ParsedProposal.snapshot()` のcanonical JSON SHA-256で、全選択肢・タイトル・目的・本文・受入条件を含む。
+採用チェック・選択値・関連親・見送りは別途現在値を照合する。digestから人間合意を生成しない。
+
+`plan_sha256` と `node` は、作成応答を失ったときに同じ計画のissueを全open/closed状態から復旧する識別子。
+actor/sessionの所有権を表さない。既存作業をreuseするときは内容・タイトル・state・正式親・labelsを保持し、
+出典markerと元提案の出典節だけを追加する。他の提案で索引済みのissueや取消された作業へ無断で統合しない。
+計画の保存・書込前の再照合・中断復旧の手順は上記triage READMEを正本とする。
 
 ## CLIと整合検査
 
@@ -175,7 +232,7 @@ specは次の形。`role: parent` では `identifier` と任意の `children` �
   "role": "child",
   "summary": "親子issueの書式を統一する",
   "parent": {"identifier": "開発ループ", "number": 1216},
-  "labels": ["enhancement"],
+  "labels": ["enhancement", "ci"],
   "sections": {
     "このタスクの目的": "親の目的に沿って書式の共通化を行う。",
     "具体的な変更内容・対象範囲": ".agents/ops/issues/ と起票テンプレート。",
@@ -189,7 +246,7 @@ specは次の形。`role: parent` では `identifier` と任意の `children` �
 
 親specの `children` は `[{"number":1225,"title":"親子issueの書式を統一する","status":"open"}]`。
 未分割なら空配列。`source` は任意で `{"proposal_id":"ID","report_number":90,"option":null}`。
-`labels` は作業種別・起票元のみ指定する（親子ラベルは生成する）。未知のキーはエラー。
+`labels` は作業種別・対象領域・起票元を指定する（親子ラベルは生成する）。未知のキーはエラー。
 
 `check` は `gh repo view`（`--repo` 省略時）とGETだけを使い、
 [GitHub REST sub-issues API](https://docs.github.com/en/rest/issues/sub-issues) の `.../parent` と
@@ -206,6 +263,7 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 
 **新規は起票時、既存は着手・再開・親付替えなど今後作業対象になる時**に、起票者と担当親が適用する。
 対象外のOpen全件・Closedを含む過去全件の一括改名・ラベル付与・本文移行は行わない。
+#1284で合意した一度だけのopen issueの誤ラベル解除は例外とし、上記 `strip-auto-labels` で行う。
 途中失敗しても新issueを作り直さず、実番号・現在の関係を再取得して不足分を揃える。
 
 今回の導入後は担当親が明示的に #1216, #1217〜#1223, #1225 だけを次の順で移行する。
@@ -218,7 +276,7 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
    `render` でdraftを生成し、元本文と比較する。proposalメタデータがある場合はsourceへ移し1行目を維持する。
    その他の旧管理コメントは本文に戻してから `validate_body` でも確認する。
 4. 担当親がdraftのbodyをUTF-8ファイルに取り出し、明示した番号にだけ `gh issue edit --body-file` と
-   `--title` / `--add-label` を適用する。既存の作業種別・起票元ラベルとissueの状態は変えない。
+   `--title` / `--add-label` を適用する。既存の作業種別・対象領域・起票元ラベルとissueの状態は変えない。
    例: `gh issue edit 1225 --title '[開発ループ #1216] 親子issueの書式を統一する' --add-label issue:child --body-file tmp/1225.body.md`。
 5. 正式な関係が未登録なら、確認した親にsub-issues APIのPOSTを行う。`sub_issue_id` は子の**RESTのid**で、
    issue番号ではない。既に正しい関係なら再追加しない。親付替えが必要なら旧親から外して新親へ登録し、

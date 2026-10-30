@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import json
 import subprocess
+import time
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+from parent import metrics
 from parent.policy import nonempty, number, object_value
+
+if TYPE_CHECKING:
+    from parent.state import Store
 
 PAGE = "pageInfo { hasNextPage endCursor } totalCount"
 NESTED_PAGE = "pageInfo { hasNextPage endCursor }"
@@ -45,17 +50,31 @@ def complete(connection: Any) -> list[dict[str, Any]]:
 
 
 class Projects:
+    def __init__(self, *, store: Store | None = None) -> None:
+        self._store = store
+
     def api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        result = subprocess.run(
-            ["gh", "api", "graphql", "--input", "-"],
-            input=json.dumps(
-                {"query": query, "variables": variables}, ensure_ascii=False
-            ),
-            text=True,
-            capture_output=True,
-            timeout=60,
-            check=False,
-        )
+        if self._store is not None and query.lstrip().startswith("query "):
+            with self._store.unlocked_read():
+                return self._api(query, variables)
+        return self._api(query, variables)
+
+    def _api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        started = time.monotonic()
+        metrics.count("github_requests")
+        try:
+            result = subprocess.run(
+                ["gh", "api", "graphql", "--input", "-"],
+                input=json.dumps(
+                    {"query": query, "variables": variables}, ensure_ascii=False
+                ),
+                text=True,
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        finally:
+            metrics.count("github_seconds", time.monotonic() - started)
         if result.returncode:
             raise ValueError(f"gh GraphQL failed: {result.stderr.strip()}")
         response = object_value(json.loads(result.stdout))

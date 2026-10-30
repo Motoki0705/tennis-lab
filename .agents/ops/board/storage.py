@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .errors import BoardError
+from .human_schema import upgrade as _human_schema
 
 
 def _names_schema(connection: sqlite3.Connection) -> None:
@@ -119,11 +120,66 @@ def _posts_schema(connection: sqlite3.Connection) -> None:
         )
 
 
+def _renames_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """CREATE TABLE name_renames (
+            id INTEGER PRIMARY KEY,
+            assignment_id INTEGER NOT NULL REFERENCES name_assignments(id),
+            old_name TEXT NOT NULL COLLATE NOCASE,
+            new_name TEXT NOT NULL COLLATE NOCASE,
+            renamed_at TEXT NOT NULL,
+            CHECK (old_name != new_name)
+        )"""
+    )
+    connection.execute("CREATE INDEX renamed_names ON name_renames(old_name)")
+    for operation in ("UPDATE", "DELETE"):
+        connection.execute(
+            f"CREATE TRIGGER name_renames_no_{operation.lower()} "
+            f"BEFORE {operation} ON name_renames "
+            "BEGIN SELECT RAISE(ABORT, 'board rename history is append-only'); END"
+        )
+    connection.execute(
+        "CREATE TRIGGER name_renames_no_replace BEFORE INSERT ON name_renames "
+        "WHEN EXISTS(SELECT 1 FROM name_renames WHERE id=NEW.id) "
+        "BEGIN SELECT RAISE(ABORT, 'board rename history cannot be replaced'); END"
+    )
+
+
+def _reactions_schema(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """CREATE TABLE reactions (
+            post_id TEXT NOT NULL REFERENCES posts(id),
+            reactor_type TEXT NOT NULL CHECK (reactor_type IN ('parent','human')),
+            assignment_id INTEGER REFERENCES name_assignments(id),
+            emoji TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            CHECK ((reactor_type = 'parent' AND assignment_id IS NOT NULL)
+                OR (reactor_type = 'human' AND assignment_id IS NULL))
+        )"""
+    )
+    connection.execute(
+        "CREATE UNIQUE INDEX reactions_parent ON reactions(post_id, assignment_id, emoji) "
+        "WHERE reactor_type='parent'"
+    )
+    # The reserved human participant has no parent assignment. A partial index
+    # also enforces uniqueness here, where a nullable composite key would not.
+    connection.execute(
+        "CREATE UNIQUE INDEX reactions_human ON reactions(post_id, emoji) "
+        "WHERE reactor_type='human'"
+    )
+    connection.execute(
+        "CREATE INDEX reactions_post ON reactions(post_id, emoji, reactor_type, assignment_id)"
+    )
+
+
 # Entry N upgrades user_version N to N+1. Append migrations; never edit a
 # released migration.
 MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _names_schema,
     _posts_schema,
+    _renames_schema,
+    _reactions_schema,
+    _human_schema,
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -165,6 +221,22 @@ def _validate(connection: sqlite3.Connection) -> None:
         "SELECT post_id, assignment_id, idempotency_key, engine, state, reason, retryable, "
         "attempts, attempted_at, notified_at FROM deliveries LIMIT 0"
     )
+    connection.execute(
+        "SELECT id, assignment_id, old_name, new_name, renamed_at FROM name_renames LIMIT 0"
+    )
+    connection.execute(
+        "SELECT post_id, reactor_type, assignment_id, emoji, created_at FROM reactions LIMIT 0"
+    )
+    reaction_indexes = {
+        row[1] for row in connection.execute("PRAGMA index_list(reactions)")
+    }
+    if not {"reactions_parent", "reactions_human"} <= reaction_indexes:
+        raise BoardError("board reactions schema is incomplete")
+    for table in ("recipients", "deliveries"):
+        if f"{table}_human" not in {
+            row[1] for row in connection.execute(f"PRAGMA index_list({table})")
+        }:
+            raise BoardError("board human participant schema is incomplete")
 
 
 class Store:

@@ -20,8 +20,11 @@ from src.tasks.base.configuration import (
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
     CourtTrainingConfig,
+    SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
+    SyntheticCourtStoresSourceConfig,
     TennisCourtDetectorSourceConfig,
+    TennisCourtEvaluationSourceConfig,
 )
 from src.tasks.court_detection.data.collate import court_detection_collate
 from src.tasks.court_detection.data.contracts import (
@@ -87,6 +90,13 @@ class CourtMixedDataConfig:
                 "tennis_court_detector."
             )
 
+        scaling = isinstance(
+            runtime.data.source,
+            (
+                SyntheticCourtStoresSourceConfig,
+                SyntheticCourtDatasetVersionSourceConfig,
+            ),
+        )
         sources: dict[str, CourtSourceConfig] = {}
         for name in _SOURCE_ORDER:
             raw_source = require_config_mapping(
@@ -103,12 +113,32 @@ class CourtMixedDataConfig:
                     path=f"mixed.sources.{name}",
                 ),
             )
-            if kind != name:
+            expected_kind = (
+                {
+                    "synthetic_court": runtime.data.source.kind,
+                    "tennis_court_detector": "tennis_court_evaluation",
+                }[name]
+                if scaling
+                else name
+            )
+            if kind != expected_kind:
                 raise SemanticConfigurationError(
-                    f"mixed.sources.{name}.kind must be {name!r}."
+                    f"mixed.sources.{name}.kind must be {expected_kind!r}."
                 )
             source: CourtSourceConfig
-            if kind == "synthetic_court":
+            if kind == "synthetic_court_dataset_version":
+                source = SyntheticCourtDatasetVersionSourceConfig.from_mapping(
+                    raw_source, resolver=runtime.shared.resolver
+                )
+            elif kind == "synthetic_court_stores":
+                source = SyntheticCourtStoresSourceConfig.from_mapping(
+                    raw_source, resolver=runtime.shared.resolver
+                )
+            elif kind == "tennis_court_evaluation":
+                source = TennisCourtEvaluationSourceConfig.from_mapping(
+                    raw_source, resolver=runtime.shared.resolver
+                )
+            elif kind == "synthetic_court":
                 source = SyntheticCourtSourceConfig.from_mapping(
                     raw_source,
                     resolver=runtime.shared.resolver,
@@ -119,6 +149,11 @@ class CourtMixedDataConfig:
                     resolver=runtime.shared.resolver,
                 )
             sources[name] = source
+
+        if scaling and sources["synthetic_court"] != runtime.data.source:
+            raise SemanticConfigurationError(
+                "Scaling mixed.sources.synthetic_court must match data.source exactly."
+            )
 
         counts_mapping = require_config_mapping(
             mapping,
@@ -138,9 +173,14 @@ class CourtMixedDataConfig:
                 int,
                 path="mixed.train_batch_counts",
             )
-            if type(value_at_source) is not int or value_at_source <= 0:
+            valid = (
+                value_at_source == 0
+                if scaling and name == "tennis_court_detector"
+                else value_at_source > 0
+            )
+            if type(value_at_source) is not int or not valid:
                 raise SemanticConfigurationError(
-                    f"mixed.train_batch_counts.{name} must be a positive integer."
+                    f"Invalid mixed.train_batch_counts.{name}: expected zero for evaluation-only real data, otherwise a positive integer."
                 )
             counts[name] = value_at_source
         if sum(counts.values()) != runtime.data.batch_size:

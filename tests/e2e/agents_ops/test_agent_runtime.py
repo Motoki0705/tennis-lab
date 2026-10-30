@@ -781,6 +781,31 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
         assert not process_alive(int((h.root / "child.pid").read_text()))
 
 
+@pytest.mark.parametrize("profile", [None, "review"])
+def test_web_search_completes_and_resumes_without_losing_raw_events(
+    h: Harness, profile: str | None
+) -> None:
+    extra = ("--profile", profile) if profile else ()
+    proc = h.run(scenario="web_search", extra=extra)
+    assert proc.returncode == 0, proc.stderr
+    initial = h.result()
+    assert initial["turn_end_reason"] == "completed"
+    raw = (h.root / "initial/events.jsonl").read_text()
+    assert raw.count('"id":"item_1","type":"web_search","id":"exec-search"') == 2
+    assert "web_search_id" not in raw
+    proc = h.run(
+        "continued",
+        action="resume",
+        scenario="web_search",
+        extra=(*extra, "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 0, proc.stderr
+    resumed = h.result("continued")
+    assert resumed["runtime"]["session_id"] == initial["runtime"]["session_id"]
+    assert resumed["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
+    assert resumed["runtime"]["effective"]["model"]["status"] == "observed"
+
+
 @pytest.mark.parametrize("agent", ["codex", "claude"])
 def test_whitespace_final_is_not_a_completed_turn(h: Harness, agent: str) -> None:
     proc = h.run(agent=agent, prompt=" \n")
@@ -1203,6 +1228,31 @@ def test_lost_runner_recovery_repairs_a_partial_session_save(
     )
     assert stale.returncode == 2 and "latest" in stale.stderr
     assert (h.root / "initial/session.json").read_bytes() == latest
+
+
+def test_lost_runner_recovers_web_search_before_same_session_resume(
+    h: Harness, lost_turn: dict[str, Any]
+) -> None:
+    events = h.root / "interrupted/events.jsonl"
+    with events.open("a") as stream:
+        stream.write(
+            '{"type":"item.started","item":{"id":"item_13",'
+            '"type":"web_search","id":"exec-search","query":"",'
+            '"action":{"type":"other"}}}\n'
+        )
+    confirmation = h.cleanup_confirmation("interrupted")
+    stopped = h.query(
+        "stop", "interrupted", extra=("--cleanup-confirmation", str(confirmation))
+    )
+    assert stopped.returncode == 0, stopped.stderr
+    assert h.result("interrupted")["runtime"]["turn_id"] != lost_turn["last_turn_id"]
+    resumed = h.run(
+        "recovered",
+        action="resume",
+        extra=("--resume-from", str(h.root / "interrupted")),
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert h.result("recovered")["runtime"]["session_id"] == lost_turn["session_id"]
 
 
 def test_cleanup_confirmation_cannot_override_live_processes(

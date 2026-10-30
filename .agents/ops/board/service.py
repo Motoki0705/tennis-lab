@@ -13,7 +13,12 @@ from pathlib import Path
 from typing import Any
 
 from herdr_labels.client import Herdr
-from herdr_labels.coordination import owner_token, read_record, state_root
+from herdr_labels.coordination import (
+    owner_token,
+    process_stamp,
+    read_record,
+    state_root,
+)
 from herdr_labels.service import registry
 from issues import CHILD_LABEL, PARENT_LABEL, parse_title
 from lib.identity import session_identity
@@ -52,29 +57,33 @@ def _identifier(value: str, parents: Mapping[str, Any], env: Mapping[str, str]) 
     return value
 
 
-def sync_parent(
-    env: Mapping[str, str], repo: str, parent: int, *, now: datetime | None = None
+def _sync_assignment(
+    env: Mapping[str, str],
+    repo: str,
+    parent: int,
+    parents: Mapping[str, Any],
+    *,
+    now: datetime | None,
 ) -> dict[str, Any]:
-    """Run after a successful parent action and after releasing its registry lock.
-
-    Fetch GitHub metadata before taking the board write lock, then recheck the
-    owner, status and generation so a delayed callback cannot update a new owner
-    or resurrect a name after release/ended.
-    """
-    identity = session_identity(env)
     key = f"{repo.casefold()}#{parent}"
-    parents = registry(env)
-    expected = parents.get(key)
-    if expected is None or expected["session"] != identity:
-        raise BoardError("parent assignment changed before board synchronization")
+    expected = parents[key]
     identifier = None
     if expected["status"] == "active":
-        issue = GitHub(repo).issue(parent)
-        labels = {label["name"] for label in issue["labels"]}
+        try:
+            issue = GitHub(repo).issue(parent)
+            labels = {label["name"] for label in issue["labels"]}
+        except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+            raise BoardError(
+                f"parent {key}: GitHub title/label lookup failed"
+            ) from None
         if labels & {PARENT_LABEL, CHILD_LABEL}:
-            identifier = _identifier(
-                parse_title(issue["title"]).identifier or "", parents, env
-            )
+            try:
+                parsed = parse_title(issue["title"])
+            except (ValueError, KeyError, TypeError):
+                raise BoardError(
+                    f"parent {key}: invalid parent/child issue title"
+                ) from None
+            identifier = _identifier(parsed.identifier or "", parents, env)
         # Standalone issues have no own identifier, even if their arbitrary
         # title happens to look like the parent/child naming convention.
     store = Store(directory(env))
@@ -85,7 +94,9 @@ def sync_parent(
             row[field] != expected[field]
             for field in ("session", "status", "generation")
         ):
-            raise BoardError("parent assignment changed before board synchronization")
+            raise BoardError(
+                f"parent {key}: assignment changed before board synchronization"
+            )
         clock = now if now is not None else datetime.now(UTC)
         previous = for_parent(connection, repo, parent)
         assignment: Assignment | None
@@ -111,10 +122,66 @@ def sync_parent(
         return result
 
 
+def sync_parent(
+    env: Mapping[str, str], repo: str, parent: int, *, now: datetime | None = None
+) -> dict[str, Any]:
+    """Sync the caller's lifecycle and every unnamed active parent, without ownership writes.
+
+    Each assignment fetches GitHub metadata before its board write transaction
+    and rechecks owner, status and generation inside it. Peer failures are
+    explicit partial failures; they do not undo the caller's lifecycle or stop
+    synchronization of the remaining peers.
+    """
+    identity = session_identity(env)
+    key = f"{repo.casefold()}#{parent}"
+    parents = registry(env)
+    expected = parents.get(key)
+    if expected is None or expected["session"] != identity:
+        raise BoardError("parent assignment changed before board synchronization")
+    result = _sync_assignment(env, repo, parent, parents, now=now)
+    targets = []
+    # The caller's synchronization has initialized/migrated the store. Reading
+    # peers here avoids fetching metadata for parents that already have names.
+    with Store(directory(env)).read() as connection:
+        for other_key, row in sorted(parents.items()):
+            if other_key == key or row["status"] != "active":
+                continue
+            other_repo, other_parent = _reference(other_key)
+            assignment = for_parent(connection, other_repo, other_parent)
+            if assignment is None or assignment.retired_at is not None:
+                targets.append((other_repo, other_parent))
+    additional = []
+    for other_repo, other_parent in targets:
+        try:
+            additional.append(
+                _sync_assignment(env, other_repo, other_parent, parents, now=now)
+            )
+        except BoardError as exc:
+            additional.append(
+                {
+                    "status": "error",
+                    "repo": other_repo,
+                    "parent": other_parent,
+                    "error": str(exc),
+                }
+            )
+    if additional:
+        result["additional_parents"] = additional
+        if any(entry["status"] == "error" for entry in additional):
+            result.update(
+                status="error",
+                error="active parent name synchronization failed; inspect additional_parents and retry the parent action",
+            )
+    _public(result, registry(env), env)
+    return result
+
+
 def _assigned(connection: sqlite3.Connection, repo: str, parent: int) -> Assignment:
     assignment = for_parent(connection, repo, parent)
     if assignment is None or assignment.retired_at is not None:
-        raise BoardError("active parent has no live board name; retry parent register")
+        raise BoardError(
+            f"active parent {repo.casefold()}#{parent} has no live board name; retry parent register to synchronize active parents"
+        )
     canonical_name(assignment.name)
     return assignment
 
@@ -146,7 +213,12 @@ def whoami(env: Mapping[str, str]) -> dict[str, str | int]:
 
 
 def _runtime_state(
-    root: Path, scope: str, identity: str, owner: dict[str, Any], agents: list[Any]
+    root: Path,
+    scope: str,
+    identity: str,
+    owner: dict[str, Any],
+    agents: list[Any],
+    client: Herdr,
 ) -> str:
     candidates = [
         agent
@@ -168,6 +240,11 @@ def _runtime_state(
         return "unknown"
     if token != expected and (token or runtime is None):
         return "unknown"
+    if runtime is not None and "processes" in runtime:
+        if process_stamp(client, agent) != runtime["processes"]:
+            return "unknown"
+    elif token != expected:
+        return "unknown"
     # Native references, when available, fence a replaced conversation even if
     # its terminal still has old display metadata. Never expose the reference.
     native = agent.get("agent_session")
@@ -178,15 +255,16 @@ def _runtime_state(
         or native.get("value") != identity.partition(":")[2]
     ):
         return "unknown"
-    state = agent.get("state")
+    # Current Herdr emits agent_status; older installations emitted state.
+    state = agent.get("agent_status", agent.get("state"))
     return state if isinstance(state, str) and state in STATES else "unknown"
 
 
 def _runtime_states(env: Mapping[str, str], identities: list[str]) -> dict[str, str]:
     """Join confirmed owners to server scope and terminal, never pane focus/title.
 
-    Runtime data is advisory. Missing/malformed/unavailable Herdr data has the
-    single specified representation, unknown, and never changes the registry.
+    Unknown ownership excludes a session. Source failures are explicit: they
+    must not look like an empty live roster or a successfully resolved @all.
     """
     result = dict.fromkeys(identities, "unknown")
     records: dict[str, dict[str, Any]] = {}
@@ -201,21 +279,24 @@ def _runtime_states(env: Mapping[str, str], identities: list[str]) -> dict[str, 
             ):
                 records[identity] = record
         except (OSError, ValueError, TypeError):
-            continue
+            raise BoardError("Herdr owner records are unavailable or invalid") from None
     if not records:
         return result
     try:
-        sessions = Herdr(env).call("session", "list", "--json").get("sessions", [])
+        sessions = Herdr(env).call("session", "list", "--json").get("sessions")
         if not isinstance(sessions, list):
-            return result
+            raise BoardError("Herdr server list is invalid")
         for server in sessions:
-            if (
-                not isinstance(server, dict)
-                or not server.get("running")
-                or not isinstance(server.get("socket_path"), str)
-                or not isinstance(server.get("name"), str)
+            if not isinstance(server, dict) or not isinstance(
+                server.get("running"), bool
             ):
+                raise BoardError("Herdr server entry is invalid")
+            if not server["running"]:
                 continue
+            if not isinstance(server.get("socket_path"), str) or not isinstance(
+                server.get("name"), str
+            ):
+                raise BoardError("Herdr server identity is invalid")
             scope = owner_token(str(Path(server["socket_path"]).resolve()))
             matching = {
                 identity: row
@@ -225,16 +306,17 @@ def _runtime_states(env: Mapping[str, str], identities: list[str]) -> dict[str, 
             if not matching:
                 continue
             try:
-                agents = Herdr(env, server["name"]).call("agent", "list").get("agents")
+                client = Herdr(env, server["name"])
+                agents = client.call("agent", "list").get("agents")
                 if not isinstance(agents, list):
-                    continue
+                    raise BoardError("Herdr agent list is invalid")
                 for identity, owner in matching.items():
                     try:
                         result[identity] = _runtime_state(
-                            root, scope, identity, owner, agents
+                            root, scope, identity, owner, agents, client
                         )
                     except (OSError, ValueError, KeyError, TypeError, AttributeError):
-                        continue
+                        raise BoardError("Herdr session verification failed") from None
             except (
                 OSError,
                 ValueError,
@@ -243,9 +325,9 @@ def _runtime_states(env: Mapping[str, str], identities: list[str]) -> dict[str, 
                 AttributeError,
                 subprocess.SubprocessError,
             ):
-                continue
+                raise BoardError("Herdr runtime is unavailable") from None
     except (OSError, ValueError, TypeError, subprocess.SubprocessError):
-        return result
+        raise BoardError("Herdr runtime is unavailable") from None
     return result
 
 
@@ -262,6 +344,8 @@ def agents(env: Mapping[str, str]) -> dict[str, list[dict[str, Any]]]:
     )
     with snapshot as connection:
         for key, row in sorted(active):
+            if states[row["session"]] == "unknown":
+                continue
             repo, parent = _reference(key)
             engine, separator, session = row["session"].partition(":")
             if engine not in {"claude", "codex"} or not separator or not session:

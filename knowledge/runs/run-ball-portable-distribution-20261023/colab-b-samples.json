@@ -1,0 +1,532 @@
+{
+  "opencv_version": "5.0.0",
+  "schema_version": 1,
+  "window_spec_sha256": "1a550dc4b29149a29ca64396f160b4752bb945902f8cec92b8c19d6dbbd29092",
+  "windows": [
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "59e636e9a99c73bbcb7d4b36dfe13453f6ab7ddd704a54dfda7aee581bbfbc91",
+        "camera_id": null,
+        "clip_id": "tracknet/game1/Clip1",
+        "fps": "30",
+        "frame_count": 207,
+        "group_id": "game1",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "da14017b94a4f3081fe4b8d45d7571495ae2164ab9979598381d198c2981ce51",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "train",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "ac7ae187f011251fe2f8274ef8cafae5a9f472b878f3b437060fc92fa86fe746",
+      "length": 32,
+      "pts_sha256": "bcc9bcfc670935c6018dc26a74956a373b655f8930dd55ab074d816d7d233780",
+      "rgb_sha256": "e98431e0c45d6b4ad9a8c12b61734e1339af165e616ab33002ad397f690e1801",
+      "start": 0,
+      "teacher_inputs_sha256": "ac99245a3a0f1934afc730a487d01618e664e0dad1ca5f9011813d27725ad63e"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "59e636e9a99c73bbcb7d4b36dfe13453f6ab7ddd704a54dfda7aee581bbfbc91",
+        "camera_id": null,
+        "clip_id": "tracknet/game1/Clip1",
+        "fps": "30",
+        "frame_count": 207,
+        "group_id": "game1",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "da14017b94a4f3081fe4b8d45d7571495ae2164ab9979598381d198c2981ce51",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "train",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "e8b2ae3579010e899854fded19e69668cabcf533b48c033a5f475edfc06b10e1",
+      "length": 64,
+      "pts_sha256": "7a4644928f3a08db905254fd7e5e53ef19a46d932a2ecd372b45462413a82619",
+      "rgb_sha256": "ae0beca0545c2ae227682540bf81a5c7d22ce0205eb42931e6d5b6856af11857",
+      "start": 0,
+      "teacher_inputs_sha256": "df4fc3993a01a5572eda86bc4fa020699bf0fa66e47f36df11d0e0fe3acf9894"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "59e636e9a99c73bbcb7d4b36dfe13453f6ab7ddd704a54dfda7aee581bbfbc91",
+        "camera_id": null,
+        "clip_id": "tracknet/game1/Clip1",
+        "fps": "30",
+        "frame_count": 207,
+        "group_id": "game1",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "da14017b94a4f3081fe4b8d45d7571495ae2164ab9979598381d198c2981ce51",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "train",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "5ab70d96ad5183dd4b714820c7c4d1235d1a3feaf60c714a53002713b1741ed0",
+      "length": 128,
+      "pts_sha256": "3e4f0a2fd9498da7c1440a355a22b6292161a5216c63aa0bc59b5a4742fd1e36",
+      "rgb_sha256": "a72756ff27080435d370b4d8dc6b8a2c1772ffac4f678f813d65aeabced25e83",
+      "start": 0,
+      "teacher_inputs_sha256": "d479c9920edd67d1cc87ef546f06b61d80c2115920d0ad63edbaa1de3ab327f9"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "6cd8670f95a91f25e6aa6bbaee475139ecdc89e93cb8d97eaa6ee792ca9df2cf",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_002/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 312,
+        "group_id": "video_002",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "3be7cc84d9e625b16b46574e3e67503b6259555a776b6f61f331bd5445ee4893",
+      "length": 32,
+      "pts_sha256": "59710958907139a72623caa3ae59a1a4a6bdbb55b86c7bfa41e6b06bbeb6a852",
+      "rgb_sha256": "c7430d9e858b7fd909458c6aed193a0b779555c17f3dd56b0ccd3637742317e5",
+      "start": 0,
+      "teacher_inputs_sha256": "1d07253d0063ddf4d0d578e85bd2e2cd827ef04ca317b59a0acb02e0a45c4b68"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "6cd8670f95a91f25e6aa6bbaee475139ecdc89e93cb8d97eaa6ee792ca9df2cf",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_002/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 312,
+        "group_id": "video_002",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "559ae44d7d1cc26bd124d13460d933fb37d0c33846e93ac9db8fcc91bc09367e",
+      "length": 64,
+      "pts_sha256": "40154a94c047a11e108907271dac74a74913b961ae2c828ba767bfc0bb8be35a",
+      "rgb_sha256": "6e73b13d05ad83c50880da60329dd828eb6dc146b86449dd748d247bbfed668d",
+      "start": 0,
+      "teacher_inputs_sha256": "2e269630df272c32a3d6f44a9d0eed9e85fb0133c2e15826b28f0126845a22b3"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "6cd8670f95a91f25e6aa6bbaee475139ecdc89e93cb8d97eaa6ee792ca9df2cf",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_002/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 312,
+        "group_id": "video_002",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "73df0d94b4ad7088fc41968ecc1591434ff0e442edebf4a3dae2ba32ff7e0c22",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "6a97dbc39e587da8023b7a83b375feff253cc15798864f15e52343e62dcc7db7",
+      "length": 128,
+      "pts_sha256": "f1ae674f4c4f8f968090f6ed8962383c5873d071455fa261c962b4f05bb34db2",
+      "rgb_sha256": "bde2cc8ff471f0f8438ba951b6b3053c7eac3c29889c0c0245ad5ac98f3617ac",
+      "start": 0,
+      "teacher_inputs_sha256": "68c08ed9e94f5f2771c61cb635df41f88c9e1ad9ced3aa36987fc1237e4bfb0e"
+    },
+    {
+      "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+      "clip": {
+        "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+        "fps": "25",
+        "frame_count": 375,
+        "group_id": "-6UwVW0DeO4",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "2c8fa90eb8cd095cd6480acbe930a110bec60b214a69cc313b740597351af749",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/12800",
+        "track_ids": [
+          "b1",
+          "b2"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "a0814c2a0594c3a5fd5adab5ff9765d3d5d84692193cf9ee7a8738b0a86662d4",
+      "length": 32,
+      "pts_sha256": "4f18c19d62718c711908999b35c355817b47b7cd65a3e329c5c2ee574abe7bde",
+      "rgb_sha256": "5a277461d4afa135691858d90a2a881984895443fed5a1df69863dc970ff0082",
+      "start": 25,
+      "teacher_inputs_sha256": "856820ed9eee36a1700de44761766aa02577afdfa0097a2a66e65a1cc84b6f8f"
+    },
+    {
+      "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+      "clip": {
+        "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+        "fps": "25",
+        "frame_count": 375,
+        "group_id": "-6UwVW0DeO4",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "2c8fa90eb8cd095cd6480acbe930a110bec60b214a69cc313b740597351af749",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/12800",
+        "track_ids": [
+          "b1",
+          "b2"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "088d9a3c83c9188be0fad4823b23a7714b8aeb310b71ac23a4067df9b0b49fdb",
+      "length": 64,
+      "pts_sha256": "cf08b6b7d4d86201b5a5fd482c23fb83eb59fe4595b103a1e9b844721e34e435",
+      "rgb_sha256": "f9400c34a655be966532cdf7a5ba2df076fdafdd2e9f80130f0feb39ef51e881",
+      "start": 25,
+      "teacher_inputs_sha256": "60b0f028daaaf43a5adf5be3841b6b66b0f1cd7d49ab316ce88723f4c23bdeba"
+    },
+    {
+      "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+      "clip": {
+        "annotation_sha256": "a18ad2d356c29353b28bbc4f17dd2cf6947c001951454506be24e05a23a9dd82",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-6UwVW0DeO4__f056b9d6649bee3a__f000000496-000000821",
+        "fps": "25",
+        "frame_count": 375,
+        "group_id": "-6UwVW0DeO4",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "2c8fa90eb8cd095cd6480acbe930a110bec60b214a69cc313b740597351af749",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "train",
+        "time_base": "1/12800",
+        "track_ids": [
+          "b1",
+          "b2"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "9b44991d7849323732d3a7baea6ebc6f7c5829c4ea70845393d3b39654c043e2",
+      "length": 128,
+      "pts_sha256": "1490c4e597c898082bacf4373ac017d18001f16b3b7f5d34648debb2c081a981",
+      "rgb_sha256": "13a106c9735c8c173b860c2295078c5ceffe48d80472b3af0a9d424735afb2b3",
+      "start": 25,
+      "teacher_inputs_sha256": "75501e7c11fb38e2a8ece623c0dd0f3961c43a6c5196ae8b27edbdc567910736"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d03560ab232440559b4a9cac0e92704819a84266f3ab409493e96a87a122c747",
+        "camera_id": null,
+        "clip_id": "tracknet/game9/Clip2",
+        "fps": "30",
+        "frame_count": 258,
+        "group_id": "game9",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "val",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "cc1891c16f98e781ae2658a967914ceabe588d7a4b337dcf880fb3b236d7134f",
+      "length": 32,
+      "pts_sha256": "bcc9bcfc670935c6018dc26a74956a373b655f8930dd55ab074d816d7d233780",
+      "rgb_sha256": "de207bb9d404b4c0934c6e52710da66ed2c2a62ec22e518bcf058a18018e0990",
+      "start": 0,
+      "teacher_inputs_sha256": "e5b0c11b3dfd4b254c5b691a97c9c112f83d225bdafdce9f7e85f0644386878e"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d03560ab232440559b4a9cac0e92704819a84266f3ab409493e96a87a122c747",
+        "camera_id": null,
+        "clip_id": "tracknet/game9/Clip2",
+        "fps": "30",
+        "frame_count": 258,
+        "group_id": "game9",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "val",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "df44e4f98019699b41878c8a099191455d989a320d93214b1dcafd00722501b0",
+      "length": 64,
+      "pts_sha256": "7a4644928f3a08db905254fd7e5e53ef19a46d932a2ecd372b45462413a82619",
+      "rgb_sha256": "1cc236cf4d1f887c4edb5afd05d72f05e435186671bbb00d8db1b97c9c81fa86",
+      "start": 0,
+      "teacher_inputs_sha256": "ef2166cc5403a78b885442c3d41c365202000f66d845d38daac6459ca9286ebf"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d03560ab232440559b4a9cac0e92704819a84266f3ab409493e96a87a122c747",
+        "camera_id": null,
+        "clip_id": "tracknet/game9/Clip2",
+        "fps": "30",
+        "frame_count": 258,
+        "group_id": "game9",
+        "has_events": true,
+        "height": 720,
+        "media_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+        "source": "tracknet",
+        "source_height": 720,
+        "source_width": 1280,
+        "split": "val",
+        "time_base": "1/30",
+        "track_ids": [
+          "ball"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "a85aa84e671e5a825551d8eea12f03e88d6c808277f354e24ff1bd84fb9e4b19",
+      "length": 128,
+      "pts_sha256": "3e4f0a2fd9498da7c1440a355a22b6292161a5216c63aa0bc59b5a4742fd1e36",
+      "rgb_sha256": "a4f7c65881f5e43c77d44114d02ac85baccb32874aae3aad5ec94a431c1fafd9",
+      "start": 0,
+      "teacher_inputs_sha256": "5a50e0619e056b6c46ec5deb377ee3588d9a68c6ecd1072eca802388b76d737b"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_000/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 1010,
+        "group_id": "video_000",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "b70b517be9ea8a84703799abc74b96f3152386466fc0d08136b1b69cb53ef231",
+      "length": 32,
+      "pts_sha256": "59710958907139a72623caa3ae59a1a4a6bdbb55b86c7bfa41e6b06bbeb6a852",
+      "rgb_sha256": "45b39d659d8a13c19788d73e2218f7679b5dd9d69fb927dfe39007c238cc2554",
+      "start": 0,
+      "teacher_inputs_sha256": "fbc2a6a1eb8b74146fe2b8efba80e97598210f3f6b9202b70ce448c6f8acf2f6"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_000/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 1010,
+        "group_id": "video_000",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "043d5f5dc9e1d3aad62b45b9a4a2972ded75d78e13dab218be4695334e5b397e",
+      "length": 64,
+      "pts_sha256": "40154a94c047a11e108907271dac74a74913b961ae2c828ba767bfc0bb8be35a",
+      "rgb_sha256": "60f7a328b9a9590f0e13d03f01643b7daee2c7e7e8eae21f6aab3c61d134e01a",
+      "start": 0,
+      "teacher_inputs_sha256": "bdb52cd4ed27e411f2eea210554d2cbf5d82be720681494cba67893662bc7b82"
+    },
+    {
+      "annotation_sha256": null,
+      "clip": {
+        "annotation_sha256": "d87f2f100afb82badd555b3cfb3b9d2a1015cfe40a06af7b51a9001c0c2f2979",
+        "camera_id": "cam0",
+        "clip_id": "meiji/video_000/clip_000/cam0",
+        "fps": "2997003/50000",
+        "frame_count": 1010,
+        "group_id": "video_000",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "source": "meiji",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/2997003",
+        "track_ids": [
+          "1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "879ba8430c0ac5ffa82fc8cc8160124cdc7bdd1b586c8e1ec27feda64f49f6fb",
+      "length": 128,
+      "pts_sha256": "f1ae674f4c4f8f968090f6ed8962383c5873d071455fa261c962b4f05bb34db2",
+      "rgb_sha256": "b5fedf06f47688449bbbf6fcb4082394f5f3d87e052385b224cb70a7934e8328",
+      "start": 0,
+      "teacher_inputs_sha256": "b9d44ee56c0158a4e8bf85b7c9f375e6df82a0f2972844b1eadfd64211a207ba"
+    },
+    {
+      "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+      "clip": {
+        "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000000695-000001345",
+        "fps": "50",
+        "frame_count": 750,
+        "group_id": "-ygefQ6dXFc",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "5a1b40822fe59a7bd8f0e1fb4034f89d13ee7d67bd0b794bc7632dcbf4cc86df",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/90000",
+        "track_ids": [
+          "b1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "184d65611020f232652d6cf135d02654bdae6f7e01af0856467dbed890009dc4",
+      "length": 32,
+      "pts_sha256": "b9979dc2db30c0fddae1eaa1e42bec7ff25d731abb4bd9a78c61fa6f1ee7ebbc",
+      "rgb_sha256": "b2862a6908d4de1535f46e9392fd330d0d3fee46247822f4a27b819c10ddc307",
+      "start": 50,
+      "teacher_inputs_sha256": "55af7f15fb81b03e38c7891edce4093147f6289d32791e8595af446a40165b2d"
+    },
+    {
+      "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+      "clip": {
+        "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000000695-000001345",
+        "fps": "50",
+        "frame_count": 750,
+        "group_id": "-ygefQ6dXFc",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "5a1b40822fe59a7bd8f0e1fb4034f89d13ee7d67bd0b794bc7632dcbf4cc86df",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/90000",
+        "track_ids": [
+          "b1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "93076e357605c90b4e66c68f0544b0cb8461e358d8b02784af38121cb71466a3",
+      "length": 64,
+      "pts_sha256": "24371dc1ca0dc4b3af56358d412f5b48b7660dd278256be07e73460cc7a6db5b",
+      "rgb_sha256": "e1fdfa45f1c07fff5ab292c7793ee192221aeb47c53793a8e2e6f8ee6163f739",
+      "start": 50,
+      "teacher_inputs_sha256": "537915a8162073e0cbc436ec6ed7b9980c8b89d3e11f763ff0f2c37be8a7fc6a"
+    },
+    {
+      "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+      "clip": {
+        "annotation_sha256": "d620b4af31beff1eed93941facbba077a437027e410709bd192c658e91b54ae1",
+        "camera_id": null,
+        "clip_id": "chat_annotation/-ygefQ6dXFc__8609b19949134194__f000000695-000001345",
+        "fps": "50",
+        "frame_count": 750,
+        "group_id": "-ygefQ6dXFc",
+        "has_events": false,
+        "height": 720,
+        "media_sha256": "5a1b40822fe59a7bd8f0e1fb4034f89d13ee7d67bd0b794bc7632dcbf4cc86df",
+        "source": "chat_annotation",
+        "source_height": 1080,
+        "source_width": 1920,
+        "split": "val",
+        "time_base": "1/90000",
+        "track_ids": [
+          "b1"
+        ],
+        "width": 1280
+      },
+      "jpeg_sha256": "37aef58619c59d24b851a9ab466021e9a72fc830fd52237b617c9b22cf90a24e",
+      "length": 128,
+      "pts_sha256": "66e36419231fa1ca57245a3e3f653986d42102925a44ba34d9217dfac04c7c5e",
+      "rgb_sha256": "3a20ea2b7f79f078c0c6d85010cc44f9473728847924a23bb19bf3bf41af4ea3",
+      "start": 50,
+      "teacher_inputs_sha256": "10530f70f1b71541566304e487d7ff990a8c22d35c78c031a3b1ab71baea2556"
+    }
+  ]
+}

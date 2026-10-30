@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "session": "court-scale-generation-l4-20261023-6ed3f29e8",
+  "phase": "ready",
+  "created_at": "2026-10-23T05:42:11.266017+00:00",
+  "jobs": {},
+  "colab_bin": "/home/kamimura/.local/share/tennis-lab/colab-tools/google-colab-cli/bin/colab",
+  "gpu": "L4",
+  "repo_url": "https://github.com/Motoki0705/tennis-lab.git",
+  "commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+  "drive": "gdrive:tennis_lab",
+  "repo_root": "/content/tennis-lab",
+  "drive_remote": "gdrive",
+  "drive_root": "tennis_lab",
+  "drive_root_id": "1gWS1fLDgKGyknpBj_n4h9dE_4wonv_r_",
+  "updated_at": "2026-10-23T05:43:04.108232+00:00",
+  "observed": {
+    "ok": true,
+    "gpu": "NVIDIA L4, 23034 MiB",
+    "commit": "6ed3f29e848e71217d083f50ef0f050ecacb0981",
+    "python": "3.13.15 (main, Aug  6 2026, 11:06:22) [GCC 13.3.0]",
+    "quota": {
+      "total": 5497558138880,
+      "used": 751571653413,
+      "trashed": 150427013608,
+      "other": 34799862912,
+      "free": 4711186622555
+    }
+  },
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/court-scale-generation-l4-20261023-6ed3f29e8/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/court-scale-generation-l4-20261023-6ed3f29e8/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

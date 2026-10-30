@@ -104,7 +104,7 @@ def render_spec(value: object) -> dict[str, object]:
         or len(set(labels)) != len(labels)
     ):
         raise ValueError(
-            "labels must contain unique work-type/origin labels only; role labels are generated"
+            "labels must contain unique work-type/area/origin labels; role labels are generated"
         )
     if role == "parent":
         raw_tasks = data.get("children", [])

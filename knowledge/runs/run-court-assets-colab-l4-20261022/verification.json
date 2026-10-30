@@ -1,0 +1,35 @@
+{
+  "schema": "court_assets_verification_checks_v1",
+  "pytest": {
+    "argv": [
+      "flock",
+      "/home/kamimura/.local/state/tennis-lab-agents/campaign-1329/pytest.lock",
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/e2e/development/test_spin.py",
+      "tests/integration/synthetic_data_generation/test_court_dataset.py",
+      "tests/unit/synthetic_data_generation/reconstruction/test_scene_export.py",
+      "tests/unit/synthetic_data_generation/rendering/nht/test_client.py",
+      "tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py",
+      "-n",
+      "4",
+      "-q"
+    ],
+    "passed": 56,
+    "failed": 0,
+    "seconds": 328.44
+  },
+  "ruff_changed_python_files": 12,
+  "mypy_changed_python_files": 12,
+  "knowledge_errors": 0,
+  "knowledge_advisory_warnings": 218,
+  "raw_rendering_equivalence": "not_accepted",
+  "production_input_promoted": false,
+  "recompute": {
+    "command": "OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 bash knowledge/runs/run-court-assets-colab-l4-20261022/recompute.sh tmp/court-scene-assets-drive-roundtrip tmp/court-assets-local-memory-probe tmp/court-assets-colab-recovered tmp/court-assets-recomputed",
+    "exit_code": 0,
+    "json_outputs_match": 7,
+    "figure_bytes_match": true
+  }
+}

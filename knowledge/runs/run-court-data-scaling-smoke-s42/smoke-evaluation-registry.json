@@ -1,0 +1,43 @@
+{
+  "schema": "court_real_video_evaluation_v1",
+  "version": "smoke-real-v1",
+  "seed": 42,
+  "val_fraction": 0.5,
+  "excluded_sample_ids": [
+    "QszoUKyCOHo_600"
+  ],
+  "source_sha256": {
+    "dataset.json": "4571a5537bff2db89d3cd5a87796d5b23d8a5011c8d08b25ff1f6a4263217f71",
+    "index.npz": "0793716022412378c41e6f49a18b9d00f2d2453762b491c8a223c434eb188ca7"
+  },
+  "splits": {
+    "val": [
+      "EF-hx40Q4Mg_700",
+      "PuXlxKdUIes_2450"
+    ],
+    "test": [
+      "3iQCaCGROsE_650",
+      "_CT7KRej9AY_3550"
+    ]
+  },
+  "summary": {
+    "val": {
+      "images": 2,
+      "videos": 2,
+      "original_split_images": {
+        "train": 1,
+        "val": 1
+      }
+    },
+    "test": {
+      "images": 2,
+      "videos": 2,
+      "original_split_images": {
+        "train": 1,
+        "val": 1
+      }
+    }
+  },
+  "video_overlap": 0,
+  "sha256": "cf176890aa87d38580d7bbef13ded4b1f085d80ea195344a89aaf2225e1f68c3"
+}

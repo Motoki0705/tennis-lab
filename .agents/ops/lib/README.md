@@ -15,6 +15,8 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
+固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
+
 ## Codex queueの共通部品
 
 `codex_queue.py`は、呼出元が固定したthread/cwd/rollout/実行環境を使う。
@@ -93,6 +95,11 @@ JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.
 
 ### JSON Schemaによる構造化出力
 
+`--mcp-config FILE` はread-onlyのCodex review/ops_reportだけで使うホスト提供MCP接続。
+JSONはserver名をキーにcommand/args/env/tool_timeout_sec/startup_timeout_secを指定する。
+原文をrun dirへ保存し、SHA-256をcontractへ固定する。resume時の変更は拒否する。
+この指定でsandboxや追加agentの設定を変更しない。
+
 `--json-schema FILE` を指定すると、そのUTF-8 JSON Schemaを起動前に検査し、原文をrun dirの
 `output-schema.json`へ固定する。検証にはproject依存の`jsonschema`を使う（導入時は`uv sync --locked`）。
 未指定のreview / ops_reportを含む既存呼出しの引数・テキスト出力・profile設定は変わらない。
@@ -170,6 +177,14 @@ cwd/branch等と同様に契約不一致として終了値2で拒否する。rea
 
 run dirは新規0700、ファイルは0600（umask 077）。JSONはfsync・renameで保存する。
 既存runを上書きせず、不正JSON・重複key・未知versionを空状態へ置換しない。
+
+Codex CLI 0.163.0 の `web_search` は、`ThreadItem.id` と flatten された
+`WebSearchItem.id` を同じitem objectへ出力する。CLIイベントの
+`item.started` / `item.updated` / `item.completed` に限り、先頭の `item_数字` を
+`id`、2つ目の非空文字列を内部の `web_search_id` として区別する。
+この例外はitem直下のidがちょうど2件の場合だけで、他の重複キー・不正型は拒否する。
+`events.jsonl` は正規化せず受信した原文を保持し、中断後の復旧も同じ境界処理を使う。
+Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重複キー検査は緩めない。
 
 | 保存先 | 内容 |
 |---|---|

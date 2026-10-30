@@ -1,0 +1,27 @@
+{
+  "argv": [
+    "<worktree>/.venv/bin/python",
+    "knowledge/runs/run-ball-portable-distribution-20261023/transfer_data.py",
+    "--distribution",
+    "<worktree>/tmp/ball-portable-distribution/train-val",
+    "--source-store",
+    "<source-repo>/outputs/ball_detection/precompute/mdd_hybrid_1231/20261018-mix1800-720p-v1/ball_snapshot",
+    "--drive-path",
+    "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+    "--receipts",
+    "<worktree>/tmp/ball-distribution-transfer"
+  ],
+  "boot_id": "41fa84dd-f4de-45d5-88de-f5f4e61d2649",
+  "command_pid": 1122193,
+  "cwd": "<worktree>",
+  "elapsed_seconds": 10245.5819996,
+  "finished_at": "2026-10-23T10:54:42.313559+00:00",
+  "pid": 1122192,
+  "process_group_id": 1122192,
+  "returncode": 0,
+  "schema_version": 1,
+  "session_id": 1122192,
+  "start_token": "1718048",
+  "started_at": "2026-10-23T08:09:13.838196+00:00",
+  "status": "completed"
+}

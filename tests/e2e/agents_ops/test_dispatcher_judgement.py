@@ -103,6 +103,7 @@ class FakeGitHub:
     repo = "o/r"
 
     def __init__(self) -> None:
+        self._fresh = False
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -163,6 +164,9 @@ class FakeGitHub:
             importlib.import_module("parent.github").GitHub.rows(self, endpoint),
         )
 
+    def fresh_reads(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.fresh_reads(self)
+
     def identity(self, raw: object) -> int:
         return cast(
             int, importlib.import_module("parent.github").GitHub.identity(self, raw)
@@ -172,6 +176,12 @@ class FakeGitHub:
         return cast(
             dict[str, Any],
             importlib.import_module("parent.github").GitHub.issue(self, n),
+        )
+
+    def family(self, n: int) -> dict[int, Any]:
+        return cast(
+            dict[int, Any],
+            importlib.import_module("parent.github").GitHub.family(self, n),
         )
 
     def comments(self, n: int) -> list[dict[str, Any]]:

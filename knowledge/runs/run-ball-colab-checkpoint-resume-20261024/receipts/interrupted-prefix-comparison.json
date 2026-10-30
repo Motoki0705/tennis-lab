@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "sample_sequence_equal": true,
+  "loss_baseline": [
+    0.07586044606154527,
+    0.007006632133585508,
+    0.0019557591378688813,
+    0.0011719866860203628,
+    0.00384259136750343
+  ],
+  "loss_interrupted": [
+    0.07586044606154527,
+    0.007007365710422641,
+    0.001955639362335205,
+    0.001171998106079494,
+    0.003843488627450263
+  ],
+  "max_absolute_difference": 8.972599468332933e-07,
+  "within_tolerance": true,
+  "stop": {
+    "complete": false,
+    "phase": "pretrain",
+    "sample_position": 5,
+    "schema": "ball_temporal_heatmap_run.v1",
+    "updates_completed": 5
+  },
+  "publications": [
+    {
+      "files": 5,
+      "generation": "initialized-00000000-3a514f2803254ae28c83b2f21433216f",
+      "manifest_md5": "15fcabe6e0d7bc805cbac5ec75a1e006",
+      "manifest_sha256": "99b75f24251f41ab718b2a6610845d399883ef498ad72e7eff048d1280c5cf6b",
+      "marker_id": "1yeUibVfKRjLASNUh987n9_QMf_k3A5dQ",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/initialized-00000000-3a514f2803254ae28c83b2f21433216f",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 29.871890374999566,
+      "size_bytes": 42003,
+      "stage": "initialized",
+      "status": "verified",
+      "update": 0
+    },
+    {
+      "files": 8,
+      "generation": "checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b",
+      "manifest_md5": "81d76c6317fd42505fc925022367c6d5",
+      "manifest_sha256": "dd72912f3e86a7ca5060e6f78aebbd9ffa3d741e689722bf06f0257a76ac18f6",
+      "marker_id": "13IRUbARN3kWiXwWE_YwgX0vyjqbv-nUy",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/checkpoint-00000005-93f77096d8694cc29639b01e2deb1c6b",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 42.55876535900006,
+      "size_bytes": 174508847,
+      "stage": "checkpoint",
+      "status": "verified",
+      "update": 5
+    },
+    {
+      "files": 9,
+      "generation": "stopped-00000005-82b9885cda9d4add91b7251aca7872d3",
+      "manifest_md5": "fbe4d6a37451b4fe8119822ccf39e034",
+      "manifest_sha256": "f58a090613ed3d174e6f289551327a9b342f6edd1d1631a3db890cec906f8a7c",
+      "marker_id": "1heTukhixs5P-CJXS-vnzlBRXt_TwNExS",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/temporal_heatmap/resume-proof-20261024/resumed/stopped-00000005-82b9885cda9d4add91b7251aca7872d3",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 45.02351437099969,
+      "size_bytes": 174509572,
+      "stage": "stopped",
+      "status": "verified",
+      "update": 5
+    }
+  ],
+  "seconds": 159.21418842100047
+}

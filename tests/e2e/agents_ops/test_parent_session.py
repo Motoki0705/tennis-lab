@@ -2,18 +2,22 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
+
+from tests.support.agents_ops.directory_seed import DirectorySeed
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
@@ -40,6 +44,8 @@ def fail():
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["pr", "view"]:
+    if os.environ.get("PARENT_FAIL_CI_VIEW"):
+        fail()
     pr = next(p for p in state["prs"] if p["number"] == int(args[2]))
     values = {"statusCheckRollup": pr.get("statusCheckRollup", []),
               "headRefOid": pr["head"]["sha"]}
@@ -77,7 +83,10 @@ if args[:2] == ["pr", "merge"]:
                 other["head"]["sha"] = subprocess.check_output(["git", "-C", os.environ["PARENT_MERGE_FOLLOW_WORKTREE"], "rev-parse", "HEAD"], text=True).strip()
     if os.environ.get("PARENT_MERGE_CI_PENDING"):
         target = int(os.environ["PARENT_MERGE_CI_PENDING"])
-        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = []
+        next(p for p in state["prs"] if p["number"] == target)["statusCheckRollup"] = [
+            {"__typename": "CheckRun", "name": "Python", "workflowName": "CI",
+             "status": "QUEUED", "conclusion": ""}
+        ]
     save()
     if os.environ.get("PARENT_MERGE_RESPONSE_LOST"):
         fail()
@@ -106,6 +115,17 @@ if pull:
         if state["detail_reads"] == 2:
             next(p for p in state["prs"] if p["number"] == 100)["head"]["sha"] = os.environ["PARENT_READ_HEAD_RACE"]
         save()
+    if int(pull[1]) == state["prs"][0]["number"]:
+        if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
+            state["closing_reads"] = state.get("closing_reads", 0) + 1
+            if state["closing_reads"] == 2:
+                state["prs"][0]["body"] = os.environ["PARENT_CHANGE_CLOSING_ON_READ"]
+            save()
+        if os.environ.get("PARENT_CHANGE_PULLS_ON_READ"):
+            state["pull_reads"] = state.get("pull_reads", 0) + 1
+            if state["pull_reads"] == 2:
+                state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
+            save()
     response(next(p for p in state["prs"] if p["number"] == int(pull[1])))
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
@@ -114,6 +134,10 @@ if comment_edit:
     comment["body"] = payload["body"]
     save()
     response(comment)
+timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", path)
+if timeline:
+    rows = [{"event": "cross-referenced", "created_at": "2026-10-24T00:00:00Z", "source": {"issue": {"id": p["number"] + 10000, "number": p["number"], "body": p.get("body", ""), "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "pr"}}}} for p in state["prs"] if re.search(r"#" + timeline[1] + r"\b", p.get("body", ""))]
+    response(rows[(page-1)*100:page*100])
 if path == "repos/o/r/pulls":
     if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
         state["closing_reads"] = state.get("closing_reads", 0) + 1
@@ -126,7 +150,7 @@ if path == "repos/o/r/pulls":
             state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
         save()
     response(paged(state["prs"]))
-match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments))?", path)
+match = re.fullmatch(r"repos/o/r/issues(?:/(\d+))?(?:/(parent|sub_issues|comments|dependencies/blocked_by))?", path)
 assert match, endpoint
 n, tail = match.groups()
 if n is None:
@@ -149,6 +173,8 @@ row = state["issues"].get(n)
 if tail == "parent":
     parent = state["parents"].get(n)
     response(state["issues"][str(parent)] if parent else {"message": "No parent issue found"}, 200 if parent else 404)
+if tail == "dependencies/blocked_by":
+    response(paged([state["issues"][str(d)] for d in state.get("dependencies", {}).get(n, [])]))
 if tail == "sub_issues":
     if method == "GET":
         response(paged([i for key, i in state["issues"].items() if state["parents"].get(key) == int(n)]))
@@ -276,7 +302,7 @@ class ParentEnv:
             "summary": key,
             "parent": {"identifier": "開発", "number": 1},
             "sections": sections,
-            "labels": ["ai-proposed"],
+            "labels": ["enhancement", "ci", "tests"],
         }
         if source:
             # Report adoption is not the parent's existing requirements agreement.
@@ -786,9 +812,23 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
     assert len(state["issues"]) == 4 and state["parents"]["10"] == 1
     child = state["issues"]["10"]
     assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
-    assert {x["name"] for x in child["labels"]} == {"ai-proposed", "issue:child"}
+    assert {x["name"] for x in child["labels"]} == {
+        "enhancement", "ci", "tests", "issue:child"
+    }
     assert "- [ ] #10 idempotent" in state["issues"]["1"]["body"]
     assert "private-session-a-unique" not in json.dumps(state)
+
+
+def test_child_creation_only_adds_role_to_explicit_work_type_and_area_labels(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("explicit-labels")
+    labels = {x["name"] for x in p.state()["issues"]["10"]["labels"]}
+    assert labels == {"enhancement", "ci", "tests", "issue:child"}
+    p.child("explicit-labels")
+    assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
 
 
 def test_child_key_conflict_and_duplicate_existing_fail_closed(
@@ -812,7 +852,9 @@ def test_concurrent_registration_never_owns_two_parents(parent_env: ParentEnv) -
         results = list(
             pool.map(lambda n: p.cli("register", parent=str(n), ok=None), (1, 2))
         )
-    assert sorted(r.returncode for r in results) == [0, 2]
+    assert sorted(r.returncode for r in results) == [0, 2], [
+        (r.stdout, r.stderr) for r in results
+    ]
     registry = (
         Path(p.env["XDG_STATE_HOME"])
         / "tennis-lab-agents/parent-sessions/registry.json"
@@ -1141,7 +1183,12 @@ def test_issue_body_metadata_and_existing_evidence_survive_updates(
 
 
 def review_setup(
-    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+    p: ParentEnv,
+    *,
+    independent: bool = False,
+    standalone: bool = False,
+    pr_count: int = 3,
+    shared: bool = False,
 ) -> list[int]:
     if standalone:
         state = p.state()
@@ -1154,12 +1201,16 @@ def review_setup(
     p.agreed()
     state = p.state()
     state["prs"] = []
-    for i in range(1 if standalone else 3):
+    for i in range(1 if standalone else pr_count):
         if not standalone:
             p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
         filename = f"change-{i}.txt" if independent else "change.txt"
         (worktree / filename).write_text(f"new {i}\n")
+        if shared and i == 0:
+            (worktree / ".agents").mkdir()
+            (worktree / ".agents/shared.txt").write_text("shared foundation\n")
+            run_git(worktree, "add", ".agents/shared.txt")
         run_git(worktree, "add", filename)
         run_git(worktree, "commit", "-m", f"child {i}")
         state["prs"].append(
@@ -1183,7 +1234,7 @@ def test_invalid_review_set_has_no_public_request(
     parent_env: ParentEnv, case: str
 ) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=3 if case == "missing" else 1)
     state = p.state()
     if case == "missing":
         selected.pop()
@@ -1200,7 +1251,9 @@ def test_invalid_review_set_has_no_public_request(
     else:
         state["prs"][0]["head"]["repo"]["full_name"] = "other/r"
     p.save(state)
-    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    p.cli("review-prepare", "--prs", *map(str, selected), ok=case == "missing")
+    if case == "missing":
+        return
     assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
 
 
@@ -1280,7 +1333,7 @@ def test_review_snapshot_explicit_once_handoff_and_states(
 
 def test_changed_review_target_refuses_instruction(parent_env: ParentEnv) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=2)
     request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     state = p.state()
     state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
@@ -1303,7 +1356,7 @@ def test_snapshot_collection_window_update_is_not_published(
     parent_env: ParentEnv,
 ) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=2)
     p.env["PARENT_CHANGE_PULLS_ON_READ"] = "1"
     p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
     assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
@@ -1313,7 +1366,7 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
     parent_env: ParentEnv,
 ) -> None:
     p = parent_env
-    selected = review_setup(p)
+    selected = review_setup(p, pr_count=1)
     request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     run_id = request["review_run_id"]
     temporary = (
@@ -1334,6 +1387,87 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
     )
     status = json.loads(p.cli("status").stdout)
     assert status["review"][0]["state"] == "instructed"
+
+
+def test_nested_manual_parent_keeps_status_reconcile_and_result_commands(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("nested")
+    state = p.state()
+    render = importlib.import_module("issues.cli").render_spec
+    sections = p.formats.parse_sections(state["issues"]["10"]["body"])
+    sections.update(
+        {
+            heading: "内側の親として管理する。"
+            for heading in p.formats.PARENT_REQUIRED
+            if heading != p.formats.TASKS_HEADING
+        }
+    )
+    child_sections = {
+        heading: "具体的に実装する。" for heading in p.formats.CHILD_REQUIRED
+    }
+    child_sections["依存関係"] = "なし。"
+    child_sections["Acceptance checklist"] = (
+        "- [ ] 動作する\n  文脈: 入れ子。\n  下流への影響: 管理の継続。\n  検証方法・証拠: fake。"
+    )
+    leaf = render(
+        {
+            "role": "child",
+            "summary": "leaf",
+            "sections": child_sections,
+            "parent": {"number": 10, "identifier": "内側"},
+        }
+    )
+    nested = render(
+        {
+            "role": "parent",
+            "identifier": "内側",
+            "summary": "nested",
+            "parent": {"number": 1, "identifier": "開発"},
+            "sections": sections,
+            "children": [{"number": 20, "title": leaf["title"]}],
+        }
+    )
+    state["issues"]["10"].update({k: nested[k] for k in ("title", "body")})
+    state["issues"]["10"]["labels"] = [{"name": n} for n in nested["labels"]]
+    state["issues"]["20"] = {
+        **state["issues"]["10"],
+        "number": 20,
+        "id": 10020,
+        **{k: leaf[k] for k in ("title", "body")},
+        "labels": [{"name": n} for n in leaf["labels"]],
+    }
+    state["parents"]["20"] = 10
+    state["prs"].append(p.pr(50, 20))
+    p.save(state)
+    identity = {"CLAUDE_CODE_SESSION_ID": "private-nested-parent"}
+    p.cli("register", parent="10", extra=identity)
+    status = json.loads(p.cli("status", parent="10", extra=identity).stdout)
+    assert status["parent"] == 10 and status["assignment"] == "active"
+    assert status["launch_plan"]["tasks"][0]["child"] == 20
+    tasks = json.loads(p.cli("reconcile", parent="10", extra=identity).stdout)["tasks"]
+    assert len(tasks) == 1 and tasks[0]["child"] == 20
+    result = p.cli(
+        "record-result",
+        "--child",
+        "20",
+        "--evidence-file",
+        p.note("内側の親が差分とテストを確認した。"),
+        parent="10",
+        extra=identity,
+    )
+    assert json.loads(result.stdout)["prs"] == [50]
+    assert "検証結果:" in p.state()["issues"]["20"]["body"]
+    assert json.loads(p.cli("status", parent="20").stdout)["launch_plan"]["tasks"] == []
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    registry = directory / "registry.json"
+    data = json.loads(registry.read_text())
+    data["parents"]["o/r#10"]["dispatch"] = {}
+    registry.write_text(json.dumps(data))
+    refused = p.cli("status", parent="10", extra=identity, ok=False)
+    assert "formal parent" in refused.stderr
 
 
 def test_cancelled_is_not_success_and_missing_pr_verification_is_rejected(
@@ -1576,13 +1710,27 @@ class ReviewEnv:
 
 
 def make_review_env(
-    p: ParentEnv, *, independent: bool = False, standalone: bool = False
+    p: ParentEnv,
+    *,
+    independent: bool = False,
+    standalone: bool = False,
+    pr_count: int = 3,
+    shared: bool = False,
+    before_review: Callable[[ParentEnv], None] | None = None,
 ) -> ReviewEnv:
     # The real repo has base AGENTS.md; review_setup freezes this commit as the base.
     (p.repo / "AGENTS.md").write_text("# rules\n静かなフォールバック禁止\n")
     run_git(p.repo, "add", "AGENTS.md")
     run_git(p.repo, "commit", "-m", "base rules")
-    selected = review_setup(p, independent=independent, standalone=standalone)
+    selected = review_setup(
+        p,
+        independent=independent,
+        standalone=standalone,
+        pr_count=pr_count,
+        shared=shared,
+    )
+    if before_review is not None:
+        before_review(p)
     manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
     request = json.loads(
         p.cli(
@@ -1590,7 +1738,7 @@ def make_review_env(
             "--run-id",
             manifest["review_run_id"],
             "--instruction-file",
-            p.note("この3PRと親の受入条件・依存を1回で確認する。"),
+            p.note("この対象PRと親の受入条件・依存を1回で確認する。"),
         ).stdout
     )
     request_path = p.root / "review-request.json"
@@ -1636,15 +1784,127 @@ def make_review_env(
     return ReviewEnv(p, request, request_path, fake, output, calls, clock)
 
 
+@dataclass(frozen=True)
+class ReviewSeed:
+    directory: DirectorySeed
+    template: ReviewEnv
+
+    @classmethod
+    def capture(cls, review: ReviewEnv, snapshot: Path) -> ReviewSeed:
+        template = replace(
+            review,
+            p=replace(review.p, env=review.p.env.copy()),
+            request=copy.deepcopy(review.request),
+        )
+        return cls(DirectorySeed.capture(review.p.root, snapshot), template)
+
+    def restore(self, p: ParentEnv) -> ReviewEnv:
+        self.directory.restore(p.root)
+        run_git(p.repo, "worktree", "repair")
+        # A copied preparation journal is not an operation in this test.
+        p.calls_path.write_text("")
+
+        def relocated(path: Path) -> Path:
+            return p.root / path.relative_to(self.directory.original)
+
+        return replace(
+            self.template,
+            p=p,
+            request=copy.deepcopy(self.template.request),
+            request_path=relocated(self.template.request_path),
+            fake=relocated(self.template.fake),
+            output=relocated(self.template.output),
+            calls_path=relocated(self.template.calls_path),
+            clock_script=relocated(self.template.clock_script)
+            if self.template.clock_script
+            else None,
+        )
+
+
+REVIEW_SEEDS = pytest.StashKey[dict[tuple[int, bool], ReviewSeed]]()
+
+
+def prepared_review(
+    p: ParentEnv,
+    request: pytest.FixtureRequest,
+    *,
+    pr_count: int,
+    independent: bool = False,
+) -> ReviewEnv:
+    # Seed only untouched, instructed reviews. Each test gets private git,
+    # registry, GitHub state and review files; real review execution stays local.
+    seeds: dict[tuple[int, bool], ReviewSeed] = request.config.stash.setdefault(
+        REVIEW_SEEDS, {}
+    )
+    key = (pr_count, independent)
+    if key not in seeds:
+        review = make_review_env(p, pr_count=pr_count, independent=independent)
+        cache = request.getfixturevalue("tmp_path_factory").mktemp("parent-review-seed")
+        seeds[key] = ReviewSeed.capture(review, cache / "snapshot")
+        return review
+    return seeds[key].restore(p)
+
+
 @pytest.fixture
-def review_env(parent_env: ParentEnv) -> ReviewEnv:
-    return make_review_env(parent_env)
+def review_env(parent_env: ParentEnv, request: pytest.FixtureRequest) -> ReviewEnv:
+    # Keep three targets for multi-PR assertions and downstream consumers.
+    return prepared_review(parent_env, request, pr_count=3)
+
+
+@pytest.fixture
+def single_review_env(
+    parent_env: ParentEnv, request: pytest.FixtureRequest
+) -> ReviewEnv:
+    return prepared_review(parent_env, request, pr_count=1)
+
+
+@pytest.fixture
+def pair_review_env(parent_env: ParentEnv, request: pytest.FixtureRequest) -> ReviewEnv:
+    return prepared_review(parent_env, request, pr_count=2)
+
+
+@pytest.fixture
+def independent_pair_review_env(
+    parent_env: ParentEnv, request: pytest.FixtureRequest
+) -> ReviewEnv:
+    return prepared_review(parent_env, request, pr_count=2, independent=True)
 
 
 def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS / "review"))
     monkeypatch.syspath_prepend(str(OPS))
     return importlib.import_module("parent_review_policy")
+
+
+def test_review_seed_isolates_request_environment_and_writable_state(
+    single_review_env: ReviewEnv,
+) -> None:
+    original = single_review_env
+    p = original.p
+    seed = ReviewSeed.capture(original, p.root.parent / "isolated-review-snapshot")
+    destination = p.root.parent / "isolated-review-copy"
+    copied_parent = replace(
+        p,
+        root=destination,
+        repo=destination / "repo",
+        state_path=destination / "github.json",
+        calls_path=destination / "calls.jsonl",
+        env={k: v.replace(str(p.root), str(destination)) for k, v in p.env.items()},
+    )
+    original.request["prs"].append(copy.deepcopy(original.request["prs"][0]))
+    original.output.write_text("invalid reviewer output")
+    p.env["PARENT_FAIL_GET_PATH"] = "repos/o/r/issues/1"
+    state = p.state()
+    state["prs"][0]["draft"] = True
+    p.save(state)
+
+    restored = seed.restore(copied_parent)
+    assert len(restored.request["prs"]) == 1
+    assert "PARENT_FAIL_GET_PATH" not in seed.template.p.env
+    result = json.loads(restored.run().stdout)["result"]
+    assert result["status"] == "succeeded"
+    assert [pr["number"] for pr in result["prs"]] == [100]
+    assert len(restored.calls()) == 1 and original.calls() == []
 
 
 def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
@@ -1672,7 +1932,9 @@ def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
         '"event": "agreed"' in c["body"] for c in call["context"]["parent_comments"]
     )
     assert len(call["context"]["children"]) == 3
-    assert "インターフェース" in call["prompt"]
+    assert "--json-schema" in args and "--mcp-config" in args
+    assert "全体の完了条件" not in call["prompt"]
+    assert len(call["prompt"]) < 6000
     policy = review_policy_module(monkeypatch)
     parent_results = [
         x for x in policy.records(r.comments(1), "operator") if x["kind"] == "result"
@@ -1719,9 +1981,9 @@ def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
     ],
 )
 def test_invalid_or_uninstructed_review_never_launches(
-    review_env: ReviewEnv, case: str
+    single_review_env: ReviewEnv, case: str
 ) -> None:
-    r = review_env
+    r = single_review_env
     p = r.p
     registry_path = r.run_dir.parents[1] / "registry.json"
     registry = json.loads(registry_path.read_text())
@@ -1777,9 +2039,9 @@ def test_invalid_or_uninstructed_review_never_launches(
     ],
 )
 def test_changed_or_incomplete_review_targets_fail_closed(
-    review_env: ReviewEnv, case: str
+    pair_review_env: ReviewEnv, case: str
 ) -> None:
-    r = review_env
+    r = pair_review_env
     state = r.p.state()
     pr = state["prs"][0]
     extra: dict[str, str] = {}
@@ -1805,7 +2067,10 @@ def test_changed_or_incomplete_review_targets_fail_closed(
     else:
         (r.run_dir / "pr-100.diff").write_bytes(b"changed bytes")
     r.p.save(state)
-    value = r.run(ok=False, extra=extra)
+    value = r.run(ok=case == "added", extra=extra)
+    if case == "added":
+        assert len(r.calls()) == 1
+        return
     assert r.calls() == []
     if case != "diff":
         result = json.loads(value.stdout)["result"]
@@ -1819,9 +2084,9 @@ def test_changed_or_incomplete_review_targets_fail_closed(
     "case", ["agent", "parse", "partial", "post", "head_during_review"]
 )
 def test_failed_run_is_durable_and_never_automatically_retried(
-    review_env: ReviewEnv, case: str
+    pair_review_env: ReviewEnv, case: str
 ) -> None:
-    r = review_env
+    r = pair_review_env
     extra = {}
     if case == "agent":
         extra["REVIEW_AGENT_FAIL"] = "1"
@@ -1848,8 +2113,10 @@ def test_failed_run_is_durable_and_never_automatically_retried(
     )
 
 
-def test_interrupted_consumed_run_is_not_restarted(review_env: ReviewEnv) -> None:
-    r = review_env
+def test_interrupted_consumed_run_is_not_restarted(
+    single_review_env: ReviewEnv,
+) -> None:
+    r = single_review_env
     r.run()
     execution = json.loads((r.run_dir / "execution.json").read_text())
     execution["status"] = "running"
@@ -1891,7 +2158,7 @@ def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
     assert result["exception"]["previous_runs"] == [r.request["review_run_id"]]
     assert "追加レビュー" in result["exception"]["reason"]
     r.request_path.write_text(json.dumps(r.request))
-    r.run(ok=False)
+    assert json.loads(r.run().stdout)["reused"]
     assert len(r.calls()) == 2
 
 
@@ -2092,9 +2359,11 @@ def test_sequential_peer_merges_reuse_one_review_run(
     ],
 )
 def test_base_advance_requires_github_merge_and_complete_git_history(
-    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, case: str
+    independent_pair_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
 ) -> None:
-    r = make_review_env(parent_env, independent=True)
+    r = independent_pair_review_env
     result = json.loads(r.run().stdout)["result"]
     review_policy_module(monkeypatch)
     inputs = importlib.import_module("review_workspace")
@@ -2213,10 +2482,10 @@ def test_resolve_after_peer_merge_keeps_explicit_fix_coverage(
     assert len(r.calls()) == 1
 
 
-def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
-    parent_env: ParentEnv,
+def test_merging_main_into_a_reviewed_pr_accepts_parent_resolution(
+    independent_pair_review_env: ReviewEnv,
 ) -> None:
-    r = make_review_env(parent_env, independent=True)
+    r = independent_pair_review_env
     r.with_findings()
     r.run()
     state = r.p.state()
@@ -2230,7 +2499,7 @@ def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
     peer["head"]["sha"] = head
     peer["base"]["sha"] = tip
     r.p.save(state)
-    failure = r.cli(
+    r.cli(
         "resolve",
         "--run",
         r.request["review_run_id"],
@@ -2249,10 +2518,8 @@ def test_merging_main_into_a_reviewed_pr_requires_a_new_explicit_review(
                 "reviewed_paths": ["change-1.txt"],
             }
         ),
-        ok=False,
     )
-    assert "a new explicit review is required" in failure.stderr
-    assert not list(r.run_dir.glob("resolution-*.json"))
+    assert list(r.run_dir.glob("resolution-*.json"))
     assert len(r.calls()) == 1
 
 
@@ -2277,49 +2544,30 @@ def test_no_poll_or_timer_entrypoint_and_events_never_launch(
 
 
 def test_large_diff_is_available_in_full_without_extra_review(
-    review_env: ReviewEnv,
+    parent_env: ParentEnv,
 ) -> None:
-    r = review_env
-    # Prepare a new explicit snapshot after expanding a real PR diff.
-    worktree = r.p.repo / ".claude/worktrees/pr-0"
-    text = "full-diff-content\n" * 15_000
-    (worktree / "change.txt").write_text(text)
-    run_git(worktree, "add", "change.txt")
-    run_git(worktree, "commit", "-m", "large diff")
-    state = r.p.state()
-    state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
-    r.p.save(state)
-    manifest = json.loads(
-        r.p.cli(
-            "review-prepare",
-            "--prs",
-            "100",
-            "101",
-            "102",
-            "--reason-file",
-            r.p.note("対象更新、大きなdiffを全文確認する。"),
-        ).stdout
-    )
-    request = json.loads(
-        r.p.cli(
-            "review-request",
-            "--run-id",
-            manifest["review_run_id"],
-            "--instruction-file",
-            r.p.note(),
-        ).stdout
-    )
-    r.request_path.write_text(json.dumps(request))
+    def expand_diff(p: ParentEnv) -> None:
+        worktree = p.repo / ".claude/worktrees/pr-0"
+        (worktree / "change.txt").write_text("full-diff-content\n" * 15_000)
+        run_git(worktree, "add", "change.txt")
+        run_git(worktree, "commit", "-m", "large diff")
+        state = p.state()
+        state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
+        p.save(state)
+
+    r = make_review_env(parent_env, pr_count=1, before_review=expand_diff)
     r.run()
     assert len(r.calls()) == 1
     call = r.calls()[0]
     assert call["diffs"]["100"].count("full-diff-content") == 15_000
-    assert call["prompt"].count("full-diff-content") < 15_000
-    assert "一部のみ。全文ファイルを必ず読む" in call["prompt"]
+    assert "full-diff-content" not in call["prompt"]
+    assert len(call["prompt"]) < 6000
 
 
-def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> None:
-    r = review_env
+def test_concurrent_resends_consume_the_run_only_once(
+    single_review_env: ReviewEnv,
+) -> None:
+    r = single_review_env
 
     def invoke() -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -2349,7 +2597,9 @@ def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> 
     assert any(p.returncode == 0 for p in completed), [p.stderr for p in completed]
     for proc in completed:
         if proc.returncode:
-            assert "running/interrupted" in proc.stderr
+            assert (
+                "already active" in proc.stderr or "running/interrupted" in proc.stderr
+            )
     assert len(r.calls()) == 1
     assert (
         json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 1
@@ -2357,11 +2607,88 @@ def test_concurrent_resends_consume_the_run_only_once(review_env: ReviewEnv) -> 
 
 
 def test_parent_stopping_during_review_invalidates_the_result(
-    review_env: ReviewEnv,
+    single_review_env: ReviewEnv,
 ) -> None:
-    r = review_env
+    r = single_review_env
     value = json.loads(r.run(ok=False, extra={"REVIEW_STOP_PARENT": "1"}).stdout)
     assert value["result"]["status"] == "failed"
     assert all(p["coverage"] == "not_reviewed" for p in value["result"]["prs"])
     r.run(ok=False)
     assert len(r.calls()) == 1
+
+
+def test_preparation_failure_can_retry_same_run_without_public_failure(
+    single_review_env: ReviewEnv,
+) -> None:
+    r = single_review_env
+    state = r.p.state()
+    original = state["prs"][0].get("statusCheckRollup", [])
+    state["prs"][0]["statusCheckRollup"] = None
+    r.p.save(state)
+    r.run(ok=False)
+    execution = json.loads((r.run_dir / "execution.json").read_text())
+    assert execution["agent_invocations"] == 0
+    assert execution["status"] == "preparation_failed"
+    assert r.calls() == []
+    assert not any("parent-review:v1" in c["body"] for c in r.comments(1))
+    state = r.p.state()
+    state["prs"][0]["statusCheckRollup"] = original
+    r.p.save(state)
+    completed = json.loads(r.run().stdout)
+    assert completed["result"]["status"] == "succeeded"
+    assert len(r.calls()) == 1
+    assert len(list((r.run_dir / "preparation-attempts").glob("*/execution.json"))) == 1
+    r.run()
+    assert len(r.calls()) == 1
+
+
+def test_combined_handoff_registers_results_and_instructs_subset(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    review_setup(p, independent=True)
+    requested = json.loads(
+        p.cli(
+            "review-request",
+            "--prs",
+            "100",
+            "--instruction-file",
+            p.note("PR 100の受入条件を確認する。"),
+            "--evidence-file",
+            p.note("実装と回帰テストを確認済み。"),
+        ).stdout
+    )
+    assert [pr["number"] for pr in requested["prs"]] == [100]
+    assert requested["review_state"] == "instructed"
+    state = json.loads(p.cli("status").stdout)
+    assert state["review"][-1]["state"] == "instructed"
+
+
+def test_common_runner_prelaunch_failure_does_not_consume_review(
+    single_review_env: ReviewEnv,
+) -> None:
+    r = single_review_env
+    original = r.fake.read_text()
+    injected = """
+if os.environ.get("REVIEW_WRAPPER_PRELAUNCH_FAIL"):
+    runtime = pathlib.Path(opt("--run-dir"))
+    runtime.mkdir()
+    (runtime / "result.json").write_text(json.dumps({"result":"failed", "agent_spawned":False, "cleanup_complete":True}))
+    sys.exit(1)
+"""
+    r.fake.write_text(
+        original.replace(
+            'cwd = pathlib.Path(opt("--cwd"))',
+            injected + '\ncwd = pathlib.Path(opt("--cwd"))',
+        )
+    )
+    r.run(ok=False, extra={"REVIEW_WRAPPER_PRELAUNCH_FAIL": "1"})
+    assert (
+        json.loads((r.run_dir / "execution.json").read_text())["agent_invocations"] == 0
+    )
+    assert r.calls() == []
+    r.run()
+    assert len(r.calls()) == 1
+    assert list(
+        (r.run_dir / "preparation-attempts").glob("*/agent-runtime/result.json")
+    )

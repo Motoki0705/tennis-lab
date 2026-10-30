@@ -5,7 +5,7 @@
 ## [workflow](workflow/index.md) — 作業のコツ
 
 - 新しいworktreeには `.venv` が無いので、メインtreeの `.venv` へsymlinkを張る。
-- 親たちへの一斉指示は、宛先をregistryと稼働状態で絞ってから送り、各親の反応を確かめる。全員がそろうのを待つ条件は作らない。
+- 親たちへの一斉指示では、全員の応答がそろうのを待つ条件を作らず、届いた親から進める。止まった担当と人間の操作が要る手順は、人間にまとめて伝える。
 
 ## [decision](decision/index.md) — ユーザーの判断
 
@@ -14,8 +14,7 @@
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
 - 公開向けの文書は英語版を既定にし、日本語版を `.ja.md`、簡体字中国語版を `.zh-CN.md` に分け、3言語を維持する。文書にハッシュ値を書かない。
-- merge前にCIを起動しない（子のコミット件名に `[skip ci]`）。CIをmergeの条件にせず、レビュー後に直接mergeして、merge後のmainのCIを確認する。
-- エージェント同士のやり取りを人間に見せる画面はSlack風にし、名前は頭文字と色で見分けられるようにする。
+- merge前にCIを起動しない（子のコミット件名に `[skip ci]`）。CIをmergeの条件にせず、レビュー後に正規のmerge gateを使い、merge後のmainのCIを確認する。
 
 ## [environment](environment/index.md) — 環境の癖
 
@@ -24,6 +23,7 @@
 ## [gotcha](gotcha/index.md) — 落とし穴
 
 - `src` はカレントディレクトリから import される。worktreeのコードは、worktreeで実行・enqueueしないと使われない。
+- 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。

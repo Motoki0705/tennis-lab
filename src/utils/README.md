@@ -18,7 +18,7 @@
 - **`training_queue.py`**: queueの新旧IDの登録順・名前と終了記録を読む共有API。保持・移行・状態ファイルの契約は [training-queue skill](../../.agents/skills/training-queue/SKILL.md) を参照する。
 - **`hydra.py`**: 型付き `hydra_main()`。CLI エントリポイントで `hydra.main` の型回避を再実装しないための共通化先。
 - **`tensor_utils.py`**: `clone_tensor_dict()`、`to_numpy()`、`masked_mean()`、`normalize_padding_mask()`、`flatten_time_to_batch()`/`restore_time_from_batch()`。テンソル辞書の複製、NumPy 変換、mask 付き集約、(B,C,T,H,W)↔(B·T,C,H,W) の変形。
-- **`artifact_store/`**: taskやLightningに依存しないlocal artifact treeの永続化契約と、headlessな`RcloneArtifactStore`。credentialはconfig値ではなく呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
+- **[`artifact_store/`](artifact_store/README.md)**: taskやLightningに依存しないlocal artifact treeの永続化契約。`RcloneSnapshotStore`は世代を上書きせずサイズ・hashを照合し、receiptで固定した世代を復元する。credentialは呼び出し側が安全なfileとして渡し、失敗時のbackend fallbackは行わない。
 
 ### `configuration/`
 - **`cli.py`**: 明示されたselectorで操作を選ぶ。literalな委譲先mapを`discovery.py`が再帰的に追跡し、全ての終端のschema/path validatorをcatalogと監査へ結び付ける。未知・動的・循環する経路は検証済みとして扱わない。
@@ -53,6 +53,7 @@ directory名や`bpy`のimportだけでは除外しません。未登録のshot�
 - **`bbox.py`**: bbox の最大辺比率 `bbox_max_side_ratio()`。bbox の縦横スケール比較が必要なときに見る。
 - **`image_size.py`**: `resize_short_side_aligned()`。short side 指定 + 8 の倍数 align の画像サイズ計算。
 - **`triangulation.py`**: CPUのconfidence重み付きDLTと画素再投影誤差最小化。対応済み2D観測と同じ座標系のカメラ行列から3D点・valid maskを返す。
+- **`temporal_smoothing.py`**: FPSと画像対角長に合わせた局所運動consensus、confidence重み付きの頑健な2次LOESS。実観測・除外・短い内側補間・平滑化のmaskを分離し、長い欠損と両端を埋めない。幾何には`accepted`の実観測だけを使う。
 - **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
 
 ### `matching/`

@@ -1,9 +1,10 @@
-"""Event-only unread projection onto the confirmed parent terminal."""
+"""Event-only unread and renamed-name projections onto confirmed parent terminals."""
 
 from __future__ import annotations
 
 import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -16,11 +17,15 @@ from .errors import BoardError
 from .storage import Store, directory
 
 
-def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
+@contextmanager
+def _confirmed_target(
+    env: Mapping[str, str], identity: str
+) -> Iterator[tuple[Herdr, Guard] | None]:
     root = state_root(env) / "herdr-labels"
     owner = read_record(root / "owners" / f"{owner_token(identity)}.json")
     if owner is None:
-        return "not_configured"
+        yield None
+        return
     servers = Herdr(env).call("session", "list", "--json")["sessions"]
     matches = [
         row
@@ -64,6 +69,15 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
         token = pane.get("tokens", {}).get("tl_owner")
         if token and token != owner_token(identity):
             raise BoardError("confirmed display owner changed")
+        yield client, guard
+
+
+def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
+    with _confirmed_target(env, identity) as destination:
+        if destination is None:
+            return "not_configured"
+        client, guard = destination
+        pane = guard.pane
         desired = {
             "tl_inbox": str(count),
             "tl_inbox_label": f"未読:{count}" if count else "",
@@ -99,7 +113,39 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
     return "updated"
 
 
-def update(env: Mapping[str, str], assignments: Sequence[int]) -> list[dict[str, Any]]:
+def _publish_name(
+    env: Mapping[str, str], identity: str, repo: str, parent: int, name: str
+) -> str:
+    with _confirmed_target(env, identity) as destination:
+        if destination is None:
+            return "not_configured"
+        client, guard = destination
+        pane = guard.pane
+        tokens = pane.get("tokens", {})
+        if (
+            tokens.get("tl_owner") != owner_token(identity)
+            or tokens.get("tl_parent") != f"{repo}#{parent}"
+            or tokens.get("tl_engine") != pane["agent"]
+        ):
+            raise BoardError(
+                "confirmed parent label changed; synchronize parent display"
+            )
+        result = client.publish(
+            pane,
+            agent=pane["agent"],
+            display=f"{name} · #{parent} · 親",
+            tokens={
+                "tl_name": name,
+                **{key: tokens[key] for key in ("tl_owner", "tl_parent", "tl_engine")},
+            },
+            validate=guard.check,
+        )
+        return str(result["status"])
+
+
+def update(
+    env: Mapping[str, str], assignments: Sequence[int], *, renamed: bool = False
+) -> list[dict[str, Any]]:
     results = []
     for assignment_id in sorted(set(assignments)):
         result: dict[str, Any] = {"assignment_id": assignment_id}
@@ -119,6 +165,10 @@ def update(env: Mapping[str, str], assignments: Sequence[int]) -> list[dict[str,
                 owner = parents.get(f"{repo}#{parent}")
                 if retired or not owner or owner["status"] != "active":
                     result["status"] = "recipient_unavailable"
+                elif renamed:
+                    result["status"] = _publish_name(
+                        env, owner["session"], repo, parent, name
+                    )
                 else:
                     count = summary(connection, assignment_id).unread_count
                     result["status"] = _publish(env, owner["session"], count)
@@ -143,7 +193,10 @@ def posted(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, Any]:
         post["sender"]["assignment_id"],
         *(r["assignment_id"] for r in post["recipients"]),
     ]
-    return {**result, "inbox_display": update(env, ids)}
+    return {
+        **result,
+        "inbox_display": update(env, [value for value in ids if value is not None]),
+    }
 
 
 def read_by_caller(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, Any]:
