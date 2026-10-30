@@ -148,6 +148,37 @@ def h(tmp_path: Path) -> Harness:
     return Harness(tmp_path)
 
 
+@pytest.mark.parametrize("scenario", ["success", "web_search", "malformed"])
+def test_event_receipts_match_exact_cli_bytes_and_utc_receive_times(
+    h: Harness, scenario: str
+) -> None:
+    from datetime import UTC, datetime
+
+    before = datetime.now(UTC)
+    proc = h.run(scenario=scenario)
+    after = datetime.now(UTC)
+    assert proc.returncode == (1 if scenario == "malformed" else 0), proc.stderr
+    raw = (h.root / "initial/events.jsonl").read_bytes()
+    path = h.root / "initial/event-receipts.jsonl"
+    receipts = [json.loads(line) for line in path.read_text().splitlines()]
+    assert len(receipts) == len([line for line in raw.splitlines() if line.strip()])
+    end = 0
+    for receipt in receipts:
+        assert receipt["schema_version"] == 1
+        assert receipt["event_start"] == end
+        end = receipt["event_end"]
+        line = raw[receipt["event_start"]:end].removesuffix(b"\n")
+        assert receipt["sha256"] == hashlib.sha256(line).hexdigest()
+        when = datetime.fromisoformat(receipt["received_at"])
+        offset = when.utcoffset()
+        assert offset is not None and offset.total_seconds() == 0
+        assert before <= when <= after
+    assert end == len(raw)
+    assert path.stat().st_mode & 0o077 == 0
+    if scenario == "web_search":
+        assert b'"id":"item_1","type":"web_search","id":"exec-search"' in raw
+
+
 @pytest.fixture
 def output_schema(h: Harness) -> Path:
     path = h.root / "response.schema.json"

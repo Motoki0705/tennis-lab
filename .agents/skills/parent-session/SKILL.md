@@ -68,14 +68,15 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    固定3件にはしない。自律ループの各親の実装子2件という初期値は別の実行枠で、その設定を守る。
    各子の専用worktreeを作り、既定のCodexへ共通ランナー経由で委任する。
    自律親は開発workflowの `start-worker`（delegate → dispatcher start-child）、
-   手動親は `delegate` の `action: launch` 後に [共通ランナー](../../ops/lib/README.md) を使い、この親セッション内で直ちに起動する。
+   手動親は `delegate` の `action: launch` 後に [run-worker](../../ops/parent/README.md#手動workerの起動継続とrun記録) をこの親セッションからバックグラウンド実行する。
+   この入口だけを使い、Codex CLIの直接実行や `--model`・`--effort` 指定はしない。共通ランナーの既定値を使う。
    先に起動した子の完了を待たず、残る `launchable_children` を再計算してすべて委任する。
    子の番号・担当範囲・対象外・受入条件・依存先・worktree・検証条件を渡す。
    子が実装・検証・PRを作り、親が成果物と検証記録を集約する。workerの終了はrunnerの証拠と照合し、
    `record-worker-ended` で当該 `delegation_id` の予約枠を解放する。PR作成や停止記録だけから終了を推測しない。
 3. PRに各子を閉じる指示を記載し、`record-result` で子の成果物欄にPRと検証結果を残す。
    `reconcile` と `sync` で子⇔担当/branch/worktree⇔PRと全体進捗を照合する。
-   単独issueのworkerには自身の番号を使う。PR作成後の修正も自律親の `continue-worker` で同じsessionへ戻し、
+   単独issueのworkerには自身の番号を使う。PR作成後の修正は自律親の `continue-worker`、手動親の `run-worker --resume` で同じsessionへ戻し、
    終了・差分・テスト・PRの確認を省略しない。dshを案件で明示指定された場合は
    [deepseek-harness skill](../deepseek-harness/SKILL.md) に従う。
 

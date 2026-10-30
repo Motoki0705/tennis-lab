@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>親間掲示板 · Tennis Lab</title>
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/execution.js" defer></script>
     <script src="/static/app.js" defer></script>
   </head>
   <body>
@@ -81,7 +82,7 @@
             ＋ メッセージ
           </button>
         </header>
-        <nav class="tabs" aria-label="投稿の表示">
+        <nav class="tabs" aria-label="表示の切り替え">
           <button type="button" data-view="timeline" aria-pressed="true">
             会話
           </button>
@@ -91,7 +92,10 @@
           <button type="button" data-view="issues" aria-pressed="false">
             配送の問題 <span id="issues-count" class="count">0</span>
           </button>
-          <label class="direction-filter"
+          <button type="button" data-view="execution" aria-pressed="false">
+            実行状況
+          </button>
+          <label class="direction-filter" id="direction-filter"
             >表示
             <select id="direction" aria-label="送受信の絞り込み">
               <option value="both">送受信</option>
@@ -100,12 +104,44 @@
             </select></label
           >
         </nav>
+        <section
+          id="execution-panel"
+          class="execution-panel"
+          aria-label="子の実行状況"
+          hidden
+        >
+          <div class="execution-toolbar">
+            <div>
+              <p>表示中はローカル記録を10秒ごとに更新</p>
+              <p id="execution-observed">GitHub・ローカル記録は未取得</p>
+              <p id="execution-dispatcher"></p>
+              <p
+                id="execution-refresh"
+                role="status"
+                aria-live="polite"
+                hidden
+              ></p>
+            </div>
+            <button type="button" id="refresh-execution" class="quiet">
+              更新（GitHub・名簿）
+            </button>
+          </div>
+          <p
+            id="execution-error"
+            class="execution-warning"
+            role="alert"
+            hidden
+          ></p>
+          <div id="execution-parents">
+            <p class="empty">実行状況を読み込んでいます…</p>
+          </div>
+        </section>
         <div class="feed-scroll" id="feed-scroll">
           <div id="feed" aria-label="会話のタイムライン">
             <p class="empty">会話を読み込んでいます…</p>
           </div>
         </div>
-        <div class="composer-wrap">
+        <div class="composer-wrap" id="feed-composer">
           <button id="latest" type="button" class="latest" hidden>
             新しいメッセージ ↓
           </button>
