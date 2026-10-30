@@ -13,13 +13,15 @@ pytestのstdout/stderrはjobログへ転送し、`pytest.log`にも保存しま�
 ## レーン登録表と計画
 
 [`lanes.json`](lanes.json) には、CPUの常時実行から外す **file単位の例外だけ** を登録します。
-初版の `suites` は空で、従来の対象を維持します。各suiteは `id`（一意の識別子）、
+各suiteは `id`（一意の識別子）、
 `files`（実在する明示的なtest path）、`paths`（依存先のrepo相対shell pattern）、
 `reason`・`owner`（空でない文字列）を持ちます。fileの重複・不存在、未知の項目、
 担当者・理由の欠落、不正なpatternはplanを失敗にします。fileの探索は `pyproject.toml` の
 pytest設定に従います。未登録fileは常に実行し、登録済みfileは新規caseを含む収集case全体が
-例外の対象です。suite自身のtest file変更でも、`paths` にかかわらず実行します。
-登録時は局所helper・設定・依存先のpathも含めてください。
+例外の対象です。`paths` が空でないsuiteは、自身のtest file変更でも実行します。
+空の `paths` 配列は、通常のpath選別PRでは自身のtest file変更も含めて繰延べる明示指定です。
+ユーザーが承認した全repoのarchitecture巡回に使います。後述の全件要求には、すべてのsuiteを含めます。
+登録時は局所helper・設定・依存先のpathも含めてください。suite一覧・理由・担当者の正本は登録表です。
 
 PRではeventの `base.sha..head.sha` を比較し、前のPR runが取消されても全commitの変更を含めます。
 path選別はPRだけです。mainへのpushと手動dispatchは常に全CPUを要求し、定期レーンは作りません。

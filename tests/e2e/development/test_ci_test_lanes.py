@@ -368,7 +368,7 @@ def lane_registry() -> dict[str, Any]:
         "blank_reason",
         "missing_owner",
         "blank_owner",
-        "empty_paths",
+        "non_list_paths",
         "absolute_path",
         "parent_path",
         "unknown_field",
@@ -393,8 +393,8 @@ def test_lane_registry_rejects_invalid_exceptions(
         del suite[fault.removeprefix("missing_")]
     elif fault.startswith("blank_"):
         suite[fault.removeprefix("blank_")] = "  "
-    elif fault == "empty_paths":
-        suite["paths"] = []
+    elif fault == "non_list_paths":
+        suite["paths"] = None
     elif fault == "absolute_path":
         suite["paths"] = ["/tools/**"]
     elif fault == "parent_path":

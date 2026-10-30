@@ -1,4 +1,733 @@
 {
   "schema_version": 1,
-  "suites": []
+  "suites": [
+    {
+      "id": "ops-scenarios",
+      "files": [
+        "tests/e2e/agents_ops/test_adopted_proposal_issues.py",
+        "tests/e2e/agents_ops/test_board.py",
+        "tests/e2e/agents_ops/test_board_doorbell.py",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_board_presence.py",
+        "tests/e2e/agents_ops/test_board_web.py",
+        "tests/e2e/agents_ops/test_ci_watch.py",
+        "tests/e2e/agents_ops/test_cleanup.py",
+        "tests/e2e/agents_ops/test_codex_terminal_clear.py",
+        "tests/e2e/agents_ops/test_dispatcher_judgement.py",
+        "tests/e2e/agents_ops/test_dispatcher_supervisor.py",
+        "tests/e2e/agents_ops/test_execution_basis.py",
+        "tests/e2e/agents_ops/test_herdr_labels.py",
+        "tests/e2e/agents_ops/test_human_agreement.py",
+        "tests/e2e/agents_ops/test_issue_format.py",
+        "tests/e2e/agents_ops/test_judgement_execution.py",
+        "tests/e2e/agents_ops/test_judgement_sources.py",
+        "tests/e2e/agents_ops/test_ops_report.py",
+        "tests/e2e/agents_ops/test_ops_report_audit.py",
+        "tests/e2e/agents_ops/test_ops_report_ledger.py",
+        "tests/e2e/agents_ops/test_ops_report_memory.py",
+        "tests/e2e/agents_ops/test_ops_report_native.py",
+        "tests/e2e/agents_ops/test_ops_report_reproduction.py",
+        "tests/e2e/agents_ops/test_ops_report_retrieval.py",
+        "tests/e2e/agents_ops/test_ops_report_schedule.py",
+        "tests/e2e/agents_ops/test_ops_report_triage.py",
+        "tests/e2e/agents_ops/test_parent_completion_resume.py",
+        "tests/e2e/agents_ops/test_parent_development.py",
+        "tests/e2e/agents_ops/test_parent_launch.py",
+        "tests/e2e/agents_ops/test_parent_lock_scope.py",
+        "tests/e2e/agents_ops/test_parent_notes.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_storage_split.py",
+        "tests/e2e/agents_ops/test_project_progress.py"
+      ],
+      "paths": [
+        "tests/e2e/agents_ops/test_adopted_proposal_issues.py",
+        "tests/e2e/agents_ops/test_board.py",
+        "tests/e2e/agents_ops/test_board_doorbell.py",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_board_presence.py",
+        "tests/e2e/agents_ops/test_board_web.py",
+        "tests/e2e/agents_ops/test_ci_watch.py",
+        "tests/e2e/agents_ops/test_cleanup.py",
+        "tests/e2e/agents_ops/test_codex_terminal_clear.py",
+        "tests/e2e/agents_ops/test_dispatcher_judgement.py",
+        "tests/e2e/agents_ops/test_dispatcher_supervisor.py",
+        "tests/e2e/agents_ops/test_execution_basis.py",
+        "tests/e2e/agents_ops/test_herdr_labels.py",
+        "tests/e2e/agents_ops/test_human_agreement.py",
+        "tests/e2e/agents_ops/test_issue_format.py",
+        "tests/e2e/agents_ops/test_judgement_execution.py",
+        "tests/e2e/agents_ops/test_judgement_sources.py",
+        "tests/e2e/agents_ops/test_ops_report.py",
+        "tests/e2e/agents_ops/test_ops_report_audit.py",
+        "tests/e2e/agents_ops/test_ops_report_ledger.py",
+        "tests/e2e/agents_ops/test_ops_report_memory.py",
+        "tests/e2e/agents_ops/test_ops_report_native.py",
+        "tests/e2e/agents_ops/test_ops_report_reproduction.py",
+        "tests/e2e/agents_ops/test_ops_report_retrieval.py",
+        "tests/e2e/agents_ops/test_ops_report_schedule.py",
+        "tests/e2e/agents_ops/test_ops_report_triage.py",
+        "tests/e2e/agents_ops/test_parent_completion_resume.py",
+        "tests/e2e/agents_ops/test_parent_development.py",
+        "tests/e2e/agents_ops/test_parent_launch.py",
+        "tests/e2e/agents_ops/test_parent_lock_scope.py",
+        "tests/e2e/agents_ops/test_parent_notes.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_storage_split.py",
+        "tests/e2e/agents_ops/test_project_progress.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        ".agents/ops/**",
+        ".agents/skills/**",
+        ".agents/README.md",
+        "AGENTS.md",
+        ".claude/settings.json",
+        "tests/e2e/agents_ops/**",
+        "tests/support/agents_ops/**"
+      ],
+      "reason": "Independent AI operations: board/HTTP delivery, parent authorization and recovery, dispatcher, Projects, Herdr and report publication. Preserve real process/Git/DB scenarios on related changes; keep merge gate and GPU queue always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "agents-documentation",
+      "files": [
+        "tests/e2e/agents_ops/test_agents_docs.py"
+      ],
+      "paths": [
+        "tests/e2e/agents_ops/test_agents_docs.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".agents/**",
+        ".claude/skills",
+        ".github/copilot-instructions.md",
+        "tests/e2e/agents_ops/**",
+        "tests/support/agents_ops/**",
+        "**/README*.md"
+      ],
+      "reason": "AI documentation links, skill entrypoints, memory limits and privacy checks are independent of model changes (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "architecture-boundaries",
+      "files": [
+        "tests/e2e/development/test_architecture_boundaries.py"
+      ],
+      "paths": [],
+      "reason": "User-approved whole-repository architecture sweep: defer ordinary PRs, including source and own-file changes; run on every main push and every conservative full request (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "ball-learning",
+      "files": [
+        "tests/integration/tasks/ball_detection/test_annotation_cohorts.py",
+        "tests/integration/tasks/ball_detection/test_annotation_learning.py",
+        "tests/integration/tasks/ball_detection/test_coordinate_training.py",
+        "tests/integration/tasks/ball_detection/test_dataset_statistics.py",
+        "tests/integration/tasks/ball_detection/test_full_model_training.py",
+        "tests/integration/tasks/ball_detection/test_holdout_benchmark.py",
+        "tests/integration/tasks/ball_detection/test_hybrid_training.py",
+        "tests/integration/tasks/ball_detection/test_mdd_posttraining.py",
+        "tests/integration/tasks/ball_detection/test_mdd_pretraining.py",
+        "tests/integration/tasks/ball_detection/test_play_review.py"
+      ],
+      "paths": [
+        "tests/integration/tasks/ball_detection/test_annotation_cohorts.py",
+        "tests/integration/tasks/ball_detection/test_annotation_learning.py",
+        "tests/integration/tasks/ball_detection/test_coordinate_training.py",
+        "tests/integration/tasks/ball_detection/test_dataset_statistics.py",
+        "tests/integration/tasks/ball_detection/test_full_model_training.py",
+        "tests/integration/tasks/ball_detection/test_holdout_benchmark.py",
+        "tests/integration/tasks/ball_detection/test_hybrid_training.py",
+        "tests/integration/tasks/ball_detection/test_mdd_posttraining.py",
+        "tests/integration/tasks/ball_detection/test_mdd_pretraining.py",
+        "tests/integration/tasks/ball_detection/test_play_review.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "tests/integration/tasks/ball_detection/**",
+        "tests/support/tasks/ball_detection/**",
+        "tests/support/annotation_storage.py",
+        "tests/support/legacy_annotations.py",
+        "src/tasks/ball_detection/**",
+        "src/tasks/annotation/**",
+        "src/tasks/player_detection/**",
+        "src/tasks/person_tracking/**",
+        "src/tasks/blcs/**",
+        "src/tennis_scene/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "src/tasks/plcs/**",
+        "src/tasks/ball_refiner_3d/**",
+        "src/tasks/player_association/**",
+        "src/tasks/court_side/**",
+        "tests/benchmarks/ball_detection/detection_holdout.py"
+      ],
+      "reason": "Ball annotation cohorts, cumulative learning/publication, CPU training and exact MDD resume, holdout and review scenarios have domain-specific dependencies; lightweight numerical/window/heatmap contracts stay always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "configuration-audit",
+      "files": [
+        "tests/e2e/development/test_configuration_audit.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_configuration_audit.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "scripts/audit_configuration.py",
+        "src/utils/configuration/**"
+      ],
+      "reason": "Configuration audit CLI help and rejected legacy options; shared configuration changes already request full CPU (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "precommit-wrapper",
+      "files": [
+        "tests/e2e/development/test_precommit.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_precommit.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "scripts/run_in_repo_venv.sh",
+        ".pre-commit-config.yaml"
+      ],
+      "reason": "Developer hook/virtualenv wrapper shell boundary is independent of research code (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "github-labels",
+      "files": [
+        "tests/e2e/development/test_sync_github_labels.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_sync_github_labels.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "scripts/sync_github_labels.py",
+        ".github/labels.yml"
+      ],
+      "reason": "Label manifest synchronization and safe dry-run/apply CLI are development tooling (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "public-documentation",
+      "files": [
+        "tests/e2e/development/test_license_documents.py",
+        "tests/e2e/development/test_readme_layout.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_readme_layout.py",
+        "tests/e2e/development/test_license_documents.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "README*.md",
+        "LICENSE*",
+        "docs/installation/**",
+        "assets/**",
+        "src/tennis_scene/installation_assets.py",
+        "src/submodules/**",
+        "src/utils/**",
+        "third_party/**",
+        ".gitmodules",
+        "src/__init__.py",
+        "src/tennis_scene/__init__.py"
+      ],
+      "reason": "Public README/license language inventories, local links and installation asset authorities are independent of model computation (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "geometry-documentation",
+      "files": [
+        "tests/e2e/development/test_reference_camera_documentation.py",
+        "tests/integration/tasks/test_court_keypoint_contract_documentation.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_reference_camera_documentation.py",
+        "tests/integration/tasks/test_court_keypoint_contract_documentation.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/tasks/base/generate_dataset/README.md",
+        "src/tasks/blcs/README.md",
+        "src/tasks/plcs/README.md",
+        "src/utils/README.md"
+      ],
+      "reason": "Documentation authority for camera geometry and CourtKP20; executable coordinate/keypoint contracts remain always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "real-rgb-entrypoints",
+      "files": [
+        "tests/e2e/development/test_real_rgb_entrypoints.py"
+      ],
+      "paths": [
+        "tests/e2e/development/test_real_rgb_entrypoints.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/**",
+        "scripts/**"
+      ],
+      "reason": "Real RGB CLI help, runtime validator inventory and reverse-import scan traverse source ownership, requiring all source/script changes (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "dsh-runtime",
+      "files": [
+        "tests/e2e/dsh/test_events.py",
+        "tests/e2e/dsh/test_headless.py",
+        "tests/e2e/dsh/test_runner.py",
+        "tests/e2e/dsh/test_runtime.py"
+      ],
+      "paths": [
+        "tests/e2e/dsh/test_events.py",
+        "tests/e2e/dsh/test_headless.py",
+        "tests/e2e/dsh/test_runner.py",
+        "tests/e2e/dsh/test_runtime.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "tools/dsh/**",
+        "tests/e2e/dsh/**"
+      ],
+      "reason": "Pinned dsh Node runtime, headless configuration and worktree runner isolation are independent developer tooling; manual session-state acceptance is unchanged (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "agent-skills",
+      "files": [
+        "tests/e2e/skills/test_codex_scheduled_followup.py",
+        "tests/e2e/skills/test_research_loop.py"
+      ],
+      "paths": [
+        "tests/e2e/skills/test_codex_scheduled_followup.py",
+        "tests/e2e/skills/test_research_loop.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        ".agents/skills/**",
+        ".agents/aris/**",
+        ".github/ISSUE_TEMPLATE/**",
+        "scripts/lit_search.py"
+      ],
+      "reason": "Heartbeat entrypoints and research-loop templates/offline literature helper are skill-specific operational contracts (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "drive-cli",
+      "files": [
+        "tests/integration/skills/test_tennis_drive_cli.py"
+      ],
+      "paths": [
+        "tests/integration/skills/test_tennis_drive_cli.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        ".agents/skills/tennis-drive/**",
+        "tests/integration/skills/**"
+      ],
+      "reason": "Real rclone local-alias copy/hash/move and overwrite refusal need the storage CLI boundary only on related changes (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "synthetic-publication",
+      "files": [
+        "tests/e2e/synthetic_data_generation/test_generate_publication_visualizations.py",
+        "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
+        "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py",
+        "tests/e2e/synthetic_data_generation/test_visualize_dataset.py",
+        "tests/integration/synthetic_data_generation/test_configuration.py",
+        "tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "tests/integration/synthetic_data_generation/test_package_layout.py"
+      ],
+      "paths": [
+        "tests/e2e/synthetic_data_generation/test_generate_publication_visualizations.py",
+        "tests/e2e/synthetic_data_generation/test_removed_architecture.py",
+        "tests/e2e/synthetic_data_generation/test_run_scene_pipeline.py",
+        "tests/e2e/synthetic_data_generation/test_visualize_dataset.py",
+        "tests/integration/synthetic_data_generation/test_configuration.py",
+        "tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "tests/integration/synthetic_data_generation/test_package_layout.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "src/tasks/blcs/**",
+        "src/tasks/plcs/**",
+        "src/tennis_scene/**",
+        "tests/e2e/synthetic_data_generation/**",
+        "tests/integration/synthetic_data_generation/**",
+        "tests/support/synthetic_data_generation/**",
+        "scripts/**"
+      ],
+      "reason": "Synthetic Hydra generation/visualization, package ownership and publication contracts depend on court/NHT and scene inputs; existing local_data markers and explicit court-dataset exclusion are preserved (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "scene-cli",
+      "files": [
+        "tests/e2e/tennis_scene/test_generate_dataset_cli.py",
+        "tests/e2e/tennis_scene/test_preflight_cli.py",
+        "tests/e2e/tennis_scene/test_prepare_clean_install.py"
+      ],
+      "paths": [
+        "tests/e2e/tennis_scene/test_generate_dataset_cli.py",
+        "tests/e2e/tennis_scene/test_preflight_cli.py",
+        "tests/e2e/tennis_scene/test_prepare_clean_install.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/**",
+        "scripts/prepare_clean_install.py",
+        "docs/installation/**",
+        "tests/e2e/tennis_scene/**",
+        "tests/support/tennis_scene/**"
+      ],
+      "reason": "Scene generation exit propagation, asset preflight and clean-install shell/path refusal use pipeline/asset/configuration authorities (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "ball-learning-visualization",
+      "files": [
+        "tests/e2e/ball_detection/test_learning_stages_cli.py"
+      ],
+      "paths": [
+        "tests/e2e/ball_detection/test_learning_stages_cli.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/ball_detection/**",
+        "src/tasks/annotation/**",
+        "src/tasks/player_detection/**",
+        "src/tasks/person_tracking/**",
+        "src/tasks/blcs/**",
+        "src/tennis_scene/**",
+        "tests/e2e/ball_detection/**",
+        "tests/support/tasks/ball_detection/**"
+      ],
+      "reason": "Learning-stage CLI exports video/GIF/still manifests; numerical detector and checkpoint contracts remain always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "blcs-generation",
+      "files": [
+        "tests/e2e/tasks/blcs/test_generate_dataset_cli.py"
+      ],
+      "paths": [
+        "tests/e2e/tasks/blcs/test_generate_dataset_cli.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/blcs/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "tests/e2e/tasks/blcs/**",
+        "tests/support/tasks/blcs_physics.py"
+      ],
+      "reason": "BLCS Hydra generation CLI court/camera selection and legacy profile refusal are isolated from training numerics (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "plcs-operations",
+      "files": [
+        "tests/e2e/plcs/test_analyze_dataset_distribution.py",
+        "tests/e2e/tasks/plcs/test_generate_dataset_cli.py"
+      ],
+      "paths": [
+        "tests/e2e/tasks/plcs/test_generate_dataset_cli.py",
+        "tests/e2e/plcs/test_analyze_dataset_distribution.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/plcs/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "tests/e2e/tasks/plcs/**",
+        "tests/e2e/plcs/**"
+      ],
+      "reason": "PLCS generation root publication/selector and distribution CLI contract-before-array-load checks are domain-specific (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "slcs-analysis",
+      "files": [
+        "tests/e2e/slcs/test_analyze_predictions.py"
+      ],
+      "paths": [
+        "tests/e2e/slcs/test_analyze_predictions.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/slcs/**",
+        "src/tennis_scene/**",
+        "tests/e2e/slcs/**",
+        "tests/support/tasks/slcs/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "src/tasks/ball_detection/**",
+        "src/tasks/player_association/**",
+        "src/tasks/person_tracking/**",
+        "src/tasks/court_side/**"
+      ],
+      "reason": "Saved SLCS prediction analysis must preserve padding mask semantics and reject legacy artifacts; model/loss contracts stay always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "tracking-migration",
+      "files": [
+        "tests/e2e/tasks/person_tracking/test_migrate_features.py"
+      ],
+      "paths": [
+        "tests/e2e/tasks/person_tracking/test_migrate_features.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/person_tracking/**",
+        "src/tasks/player_association/**",
+        "src/tasks/player_detection/**",
+        "src/tasks/ball_detection/**",
+        "src/tasks/annotation/**",
+        "src/tasks/blcs/**",
+        "src/tennis_scene/**",
+        "tests/e2e/tasks/person_tracking/**",
+        "tests/support/tasks/person_tracking/**"
+      ],
+      "reason": "Feature archive v2-to-v3 CLI migration and early path refusal are migration-specific research data boundaries (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "player-publication",
+      "files": [
+        "tests/e2e/tasks/player_detection/test_migrate_store.py",
+        "tests/integration/tasks/player_detection/test_annotation_publication.py",
+        "tests/integration/tasks/player_detection/test_publication_loss.py",
+        "tests/integration/tasks/player_detection/test_qualitative_training.py"
+      ],
+      "paths": [
+        "tests/e2e/tasks/player_detection/test_migrate_store.py",
+        "tests/integration/tasks/player_detection/test_annotation_publication.py",
+        "tests/integration/tasks/player_detection/test_publication_loss.py",
+        "tests/integration/tasks/player_detection/test_qualitative_training.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/tasks/player_detection/**",
+        "src/tasks/person_tracking/**",
+        "src/tasks/player_association/**",
+        "src/tasks/ball_detection/**",
+        "src/tasks/annotation/**",
+        "src/tasks/blcs/**",
+        "src/tennis_scene/**",
+        "tests/e2e/tasks/player_detection/**",
+        "tests/integration/tasks/player_detection/**",
+        "tests/support/tasks/player_detection/**",
+        "tests/support/annotation_storage.py",
+        "tests/support/legacy_annotations.py",
+        "tests/support/tasks/ball_detection/**"
+      ],
+      "reason": "Player store migration, atomic annotation/pose publication, upstream DINO loss and qualitative training require domain and annotation dependencies; no new upstream/GPU provisioning is introduced (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "github-automation",
+      "files": [
+        "tests/integration/github/test_automation_config.py"
+      ],
+      "paths": [
+        "tests/integration/github/test_automation_config.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        ".github/**",
+        ".gitmodules"
+      ],
+      "reason": "Dependabot and labeler real-file configuration contracts are development automation; local GPU Actions/queue contracts remain always-run (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "court-publication",
+      "files": [
+        "tests/integration/tasks/court_detection/test_scale_dataset_version.py"
+      ],
+      "paths": [
+        "tests/integration/tasks/court_detection/test_scale_dataset_version.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/synthetic_data_generation/**",
+        "src/tasks/court_detection/**",
+        "tests/integration/tasks/court_detection/**",
+        "tests/support/synthetic_data_generation/**"
+      ],
+      "reason": "Court scale publication through dataset, training/evaluation and tamper refusal depends on synthetic/NHT and court configuration (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "scene-visualization",
+      "files": [
+        "tests/integration/tennis_scene/test_blender_export.py",
+        "tests/integration/tennis_scene/test_clip_studio_web.py"
+      ],
+      "paths": [
+        "tests/integration/tennis_scene/test_blender_export.py",
+        "tests/integration/tennis_scene/test_clip_studio_web.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/**",
+        "tests/integration/tennis_scene/**",
+        "tests/support/tennis_scene/**"
+      ],
+      "reason": "Blender bundles and Clip Studio HTTP frame/range/export boundaries depend on scene archives, video and pipeline configuration (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "scene-benchmarks",
+      "files": [
+        "tests/integration/tennis_scene/test_court_side_counterfactuals.py",
+        "tests/integration/tennis_scene/test_pipeline_qualification.py",
+        "tests/integration/tennis_scene/test_pipeline_stop_collection.py"
+      ],
+      "paths": [
+        "tests/integration/tennis_scene/test_court_side_counterfactuals.py",
+        "tests/integration/tennis_scene/test_pipeline_qualification.py",
+        "tests/integration/tennis_scene/test_pipeline_stop_collection.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/**",
+        "tests/benchmarks/**",
+        "tests/integration/tennis_scene/**",
+        "tests/support/tennis_scene/**"
+      ],
+      "reason": "Court-side counterfactuals and pipeline qualification/stop evidence invoke benchmark entrypoints and shared pipeline recipes (#1544).",
+      "owner": "Motoki0705"
+    },
+    {
+      "id": "tracking-benchmarks",
+      "files": [
+        "tests/integration/tasks/person_tracking/test_coco_fullframe.py",
+        "tests/integration/tasks/person_tracking/test_far_diagnosis.py",
+        "tests/integration/tasks/person_tracking/test_feature_benchmark.py",
+        "tests/integration/tasks/person_tracking/test_feature_guard.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_dev.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_features.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_fit_gate.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_resume.py",
+        "tests/integration/tasks/person_tracking/test_reservation.py",
+        "tests/integration/tasks/person_tracking/test_unseen.py",
+        "tests/integration/tasks/person_tracking/test_unseen_freeze.py",
+        "tests/integration/tasks/person_tracking/test_unseen_labels.py",
+        "tests/integration/tasks/person_tracking/test_unseen_resume.py",
+        "tests/integration/tasks/person_tracking/test_unseen_review_video.py"
+      ],
+      "paths": [
+        "tests/integration/tasks/person_tracking/test_coco_fullframe.py",
+        "tests/integration/tasks/person_tracking/test_far_diagnosis.py",
+        "tests/integration/tasks/person_tracking/test_feature_benchmark.py",
+        "tests/integration/tasks/person_tracking/test_feature_guard.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_dev.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_features.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_fit_gate.py",
+        "tests/integration/tasks/person_tracking/test_recalibration_resume.py",
+        "tests/integration/tasks/person_tracking/test_reservation.py",
+        "tests/integration/tasks/person_tracking/test_unseen.py",
+        "tests/integration/tasks/person_tracking/test_unseen_freeze.py",
+        "tests/integration/tasks/person_tracking/test_unseen_labels.py",
+        "tests/integration/tasks/person_tracking/test_unseen_resume.py",
+        "tests/integration/tasks/person_tracking/test_unseen_review_video.py",
+        "tests/conftest.py",
+        "tests/README.md",
+        "src/__init__.py",
+        "src/tasks/__init__.py",
+        "src/config.yaml",
+        "src/utils/**",
+        "src/tasks/base/**",
+        "src/submodules/**",
+        "third_party/**",
+        "src/**",
+        "tests/benchmarks/**",
+        "tests/integration/tasks/person_tracking/**",
+        "tests/support/tasks/person_tracking/**"
+      ],
+      "reason": "Tracking/association blind-clip reservation, freeze, replay, feature guards and diagnosis test benchmark tools with cross-domain pipeline dependencies (#1544).",
+      "owner": "Motoki0705"
+    }
+  ]
 }
