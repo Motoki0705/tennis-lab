@@ -1,7 +1,6 @@
+"""Encoder handoff, stress reports and the historical query resume boundary."""
+
 import json
-import os
-import subprocess
-import sys
 from dataclasses import asdict, replace
 from pathlib import Path
 
@@ -9,13 +8,24 @@ import pytest
 import torch
 import yaml
 
-from src.tasks.ball_detection.data.augmentation.video import (
-    AugmentationConfig,
+from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
+from src.tasks.ball_detection.evaluation import coordinate_cli
+from src.tasks.ball_detection.training.coordinates import finetune
+from tests.integration.tasks.ball_detection.lifecycle_contracts import (
+    exercise_mdd_resume,
 )
-from tests.integration.tasks.ball_detection.test_coordinate_training import (
-    preparation as preparation_fixture,
+from tests.integration.tasks.ball_detection.mdd_training_contracts import (
+    encoder_arguments,
+    invoke_main,
+    omit_explicit_channels,
+    pretrained_run,
+    read_json,
+    weights,
 )
+from tests.integration.tasks.ball_detection.model_contracts import family
 from tests.unit.tasks.ball_detection.models.mdd.test_cnn import small_config
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.mark.cuda
@@ -57,78 +67,46 @@ def test_shared_epoch_bf16_compile_freeze_and_unfreeze(tmp_path: Path) -> None:
     assert all(torch.isfinite(p).all() for p in model.parameters())
 
 
-@pytest.mark.parametrize("input_channels,historical", [(2, False), (2, True), (5, False)])
-def test_pretrained_cnn_freeze_then_joint_training_and_fixed_stress_reports(
-    tmp_path: Path, input_channels: int, historical: bool,
-) -> None:
-    _, plan = preparation_fixture.__wrapped__(tmp_path)
-    manifest = plan["datasets"]["mdd_only"]["path"]
-    cfg = tmp_path / "model.yaml"
-    cfg.write_text(yaml.safe_dump(dict(name="mdd_dpt_pretrain", **asdict(replace(small_config(), input_channels=input_channels)))))
-    aug = tmp_path / "augmentation.yaml"
-    aug.write_text(yaml.safe_dump(asdict(replace(AugmentationConfig.load(Path(__file__).resolve().parents[4] / "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml"), camera_probability=1., occlusion_probability=1.))))
-    pre, post = tmp_path / "pre", tmp_path / "post"
-    env = dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2")
-    base = ["--manifest", manifest, "--device", "cpu", "--precision", "fp32", "--jpeg-decoder", "opencv",
-            "--seed", "42", "--input-verification", "lazy",
-            "--num-workers", "0", "--compile-mode", "off", "--warmup-updates", "0", "--windows-per-epoch", "3", "--log-every", "1"]
-    first = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "dpt_pretrain", *base,
-        "--model-config", str(cfg), "--output", str(pre), "--epochs", "1", "--learning-rate", ".001", "--preview-clips", "0"],
-        env=env, capture_output=True, text=True, timeout=180)
-    assert first.returncode == 0, first.stdout + first.stderr
-    second = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "coordinates", "--initialize", "encoder", *base,
-        "--pretraining-run", str(pre), "--augmentation-config", str(aug), "--output", str(post),
-        "--epochs", "2", "--freeze-epochs", "1", "--learning-rate", ".001", "--stress-evaluation", "--preview-clips", "1"],
-        env=env, capture_output=True, text=True, timeout=240)
-    assert second.returncode == 0, second.stdout + second.stderr
-    initial = torch.load(pre / "epoch-000.pt", weights_only=True)["state_dict"]
-    frozen = torch.load(post / "epoch-000.pt", weights_only=True)["state_dict"]
-    joint = torch.load(post / "epoch-001.pt", weights_only=True)["state_dict"]
-    names = [key for key in initial if key.startswith("encoder.")]
-    assert all(torch.equal(initial[key], frozen[key]) for key in names)
-    assert any(not torch.equal(initial[key], joint[key]) for key in names)
-    logs = [json.loads(line) for line in (post / "train.jsonl").read_text().splitlines()]
-    assert all(r["encoder_frozen"] and r["encoder_learning_rate"] == 0 for r in logs if r["epoch"] == 0)
-    assert all(not r["encoder_frozen"] and r["encoder_learning_rate"] > 0 for r in logs if r["epoch"] == 1)
-    assert set(json.loads((post / "stress.json").read_text())) == {"camera", "occlusion", "combined"}
-    assert json.loads((post / "COMPLETED.json").read_text())["stage"] == "query_posttraining"
-    assert json.loads((post / "config.json").read_text())["recipe"]["runtime"]["input_verification"] == "lazy"
-    assert list((post / "previews").rglob("*.gif"))
+def test_encoder_handoff_freeze_joint_and_fixed_stress_reports(tmp_path: Path) -> None:
+    inputs, pre = pretrained_run(tmp_path)
+    output = tmp_path / "post"
+    arguments = encoder_arguments(inputs.manifest, pre, output)
+    default = Path("src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml")
+    augmentation = tmp_path / "augmentation.yaml"
+    augmentation.write_text(yaml.safe_dump(asdict(replace(
+        AugmentationConfig.load(default), camera_probability=1., occlusion_probability=1.,
+    ))))
+    invoke_main(finetune.main, [
+        *arguments, "--augmentation-config", str(augmentation),
+        "--stress-evaluation", "--preview-clips", "1",
+    ])
+    parent = weights(pre / "epoch-000.pt")
+    frozen, joint = (weights(output / f"epoch-{epoch:03d}.pt") for epoch in (0, 1))
+    names = [key for key in parent["state_dict"] if key.startswith("encoder.")]
+    assert all(torch.equal(parent["state_dict"][key], frozen["state_dict"][key]) for key in names)
+    assert any(not torch.equal(parent["state_dict"][key], joint["state_dict"][key]) for key in names)
+    assert joint["recipe"]["parent"]["mode"] == "encoder"
+    assert joint["recipe"]["parent"]["ancestry"]["data"] == parent["recipe"]["data_identity"]
+    assert joint["recipe"]["data_identity"] == parent["recipe"]["data_identity"]
+    logs = [json.loads(line) for line in (output / "train.jsonl").read_text().splitlines()]
+    assert [(r["epoch"], r["global_step"], r["encoder_frozen"]) for r in logs] == [(0, 1, True), (1, 2, False)]
+    assert logs[0]["encoder_learning_rate"] == 0 < logs[1]["encoder_learning_rate"]
+    assert set(read_json(output / "stress.json")) == {"camera", "occlusion", "combined"}
+    assert read_json(output / "COMPLETED.json")["stage"] == "query_posttraining"
+    assert joint["recipe"]["runtime"]["input_verification"] == "lazy"
+    assert list((output / "previews").rglob("*.gif"))
 
-    if historical:
-        for checkpoint in post.glob("epoch-*.pt"):
-            saved = torch.load(checkpoint, weights_only=True)
-            saved["model_config"].pop("input_channels")
-            saved["recipe"]["model"].pop("input_channels")
-            torch.save(saved, checkpoint)
+    evaluation = tmp_path / "evaluation.json"
+    invoke_main(coordinate_cli.main, [
+        "--checkpoint", str(output / "epoch-001.pt"), "--manifest", str(inputs.manifest),
+        "--output", str(evaluation), "--split", "val", "--device", "cpu",
+        "--artifact-root", str(tmp_path), "--output-root", str(tmp_path), "--cpu-threads", "1",
+    ])
+    assert read_json(evaluation)["scopes"] == joint["validation"]["scopes"]
 
-    evaluation = tmp_path / "post-evaluation.json"
-    evaluated = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate",
-        "--mode", "coordinates", "--checkpoint", str(post / "epoch-001.pt"),
-        "--manifest", manifest, "--output", str(evaluation), "--split", "val", "--device", "cpu",
-        "--artifact-root", str(tmp_path), "--output-root", str(tmp_path)],
-        env=env, capture_output=True, text=True, timeout=180)
-    assert evaluated.returncode == 0, evaluated.stdout + evaluated.stderr
-    latest = json.loads((post / "metrics.jsonl").read_text().splitlines()[-1])
-    assert json.loads(evaluation.read_text())["scopes"] == latest["scopes"]
 
-    # Recreate an interrupted run from its completed frozen epoch, then resume.
-    import shutil
-
-    resumed = tmp_path / "resumed"
-    shutil.copytree(post, resumed)
-    for name in ("epoch-001.pt", "COMPLETED.json", "stress.json"):
-        (resumed / name).unlink()
-    for name in ("metrics.jsonl", "train.jsonl"):
-        rows = [json.loads(line) for line in (resumed / name).read_text().splitlines()]
-        (resumed / name).write_text(''.join(json.dumps(row) + '\n' for row in rows if row['epoch'] == 0))
-    result = subprocess.run([sys.executable, "-m", "src.tasks.ball_detection.scripts.train",
-        "--stage", "coordinates", "--initialize", "encoder", *base,
-        "--pretraining-run", str(pre), "--augmentation-config", str(aug), "--output", str(resumed),
-        "--resume", str(resumed / "epoch-000.pt"), "--epochs", "2", "--freeze-epochs", "1",
-        "--learning-rate", ".001", "--stress-evaluation", "--preview-clips", "1"],
-        env=env, capture_output=True, text=True, timeout=240)
-    assert result.returncode == 0, result.stdout + result.stderr
-    replayed = torch.load(resumed / "epoch-001.pt", weights_only=True)["state_dict"]
-    assert all(torch.equal(replayed[name], value) for name, value in joint.items())
-    assert json.loads((resumed / "stress.json").read_text()) == json.loads((post / "stress.json").read_text())
+def test_historical_query_restores_then_matches_the_next_update(tmp_path: Path) -> None:
+    exercise_mdd_resume(
+        family("mdd_dpt_pretrain", "deep_query", name="historical_query"),
+        tmp_path, epochs=2, mutate=omit_explicit_channels,
+    )

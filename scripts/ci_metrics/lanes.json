@@ -120,6 +120,7 @@
     {
       "id": "ball-learning",
       "files": [
+        "tests/e2e/ball_detection/test_mdd_training_cli.py",
         "tests/integration/tasks/ball_detection/test_annotation_cohorts.py",
         "tests/integration/tasks/ball_detection/test_annotation_learning.py",
         "tests/integration/tasks/ball_detection/test_coordinate_training.py",
@@ -132,6 +133,7 @@
         "tests/integration/tasks/ball_detection/test_play_review.py"
       ],
       "paths": [
+        "tests/e2e/ball_detection/test_mdd_training_cli.py",
         "tests/integration/tasks/ball_detection/test_annotation_cohorts.py",
         "tests/integration/tasks/ball_detection/test_annotation_learning.py",
         "tests/integration/tasks/ball_detection/test_coordinate_training.py",

@@ -32,7 +32,10 @@ MDD専用loopはepoch/pack更新境界を使う。GAN切替前後、freeze解除
 head欠落、同shapeの設定/閾値変更、optimizer・乱数・データ位置の復元漏れは故障注入で検出する。
 
 Ballの専用loop adapterは`integration/tasks/ball_detection/lifecycle_contracts.py`に置く。
-既存の多段CLI試験はこの登録とは別に存続し、削除・移動するときは[削除・統合・配置変更](#削除統合配置変更)の対応表と実測を残す。
+固定長MDDのCLI代表例は`e2e/ball_detection/test_mdd_training_cli.py`で入口ごとに実行する。
+旧2chの復元と次更新、段階間の転送・固定validation・stress・累積snapshotの契約は
+`integration/tasks/ball_detection/test_{mdd_pretraining,mdd_posttraining,full_model_training,hybrid_training}.py`に置く。
+削除・移動するときは[削除・統合・配置変更](#削除統合配置変更)の対応表と実測を残す。
 
 ## テスト作成方針
 
