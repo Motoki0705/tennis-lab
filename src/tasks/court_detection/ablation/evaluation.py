@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
 
@@ -21,15 +23,25 @@ from src.tasks.court_detection.configuration import (
     SyntheticCourtStoresSourceConfig,
     TennisCourtEvaluationSourceConfig,
 )
-from src.tasks.court_detection.data.contracts import CourtSourceSplit
+from src.tasks.court_detection.data.contracts import (
+    CourtSampleRecord,
+    CourtSourceSplit,
+    CourtTargetBundleSpec,
+    CourtTargetKind,
+)
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
 from src.tasks.court_detection.data.dataset import CourtDetectionDataset
+from src.tasks.court_detection.data.inputs.synthetic_court_dataset_subset import (
+    SyntheticCourtDatasetSubsetInput,
+    read_subset,
+)
 from src.tasks.court_detection.geometry.pose import (
     canonical_semantic_court_points_batched,
     decode_pose10d_strict,
     project_predicted_canonical_points,
 )
 from src.tasks.court_detection.inference.checkpoint import file_sha256
+from src.tasks.court_detection.model_io.contracts import CourtPoseTrainingResult
 from src.tasks.court_detection.models.dinov3_dpt import CourtModelOutput
 from src.tasks.court_detection.scaling.provenance import data_condition
 from src.tasks.court_detection.scaling.schedule import has_step_schedule
@@ -37,7 +49,10 @@ from src.tasks.court_detection.training.lightning_module import (
     CourtDetectionLightningModule,
     _move_to_device,
 )
-from src.tasks.court_detection.training.metrics import COURT_RESULT_METRIC_NAMES
+from src.tasks.court_detection.training.metrics import (
+    COURT_RESULT_METRIC_NAMES,
+    CourtDetectionMetrics,
+)
 from src.tasks.court_detection.visualization.adapters.render_inputs import (
     batch_to_court_frame,
 )
@@ -56,7 +71,10 @@ DENSE_METRICS = (
 
 
 def sample_identity(dataset: CourtDetectionDataset) -> dict[str, Any]:
-    ids = [record.sample_id for record in dataset.records]
+    return _ordered_identity([record.sample_id for record in dataset.records])
+
+
+def _ordered_identity(ids: list[str]) -> dict[str, Any]:
     if len(set(ids)) != len(ids):
         raise ValueError("Evaluation sample IDs must be unique within a source/split")
     encoded = json.dumps(ids, separators=(",", ":")).encode()
@@ -65,6 +83,175 @@ def sample_identity(dataset: CourtDetectionDataset) -> dict[str, Any]:
         "sample_ids": ids,
         "ordered_sample_ids_sha256": hashlib.sha256(encoded).hexdigest(),
     }
+
+
+def _synthetic_evaluation_records(
+    manifest: Path,
+    *,
+    source_manifest_sha256: str,
+    pool_records: tuple[CourtSampleRecord, ...],
+    training_records: tuple[CourtSampleRecord, ...],
+) -> tuple[CourtSampleRecord, ...]:
+    document, _ = read_subset(manifest, "val")
+    if document["source_manifest_sha256"] != source_manifest_sha256:
+        raise ValueError(
+            "Synthetic evaluation must use the checkpoint's verified pool."
+        )
+    lookup = {record.sample_id: record for record in pool_records}
+    training_ids = {record.sample_id for record in training_records}
+    training_groups = {
+        (str(record.payload["scene_id"]), str(record.payload["trajectory_group_id"]))
+        for record in training_records
+    }
+    selected = []
+    seen: set[str] = set()
+    for row in document["samples"]:
+        identity = f"{row['scene_id']}:{row['sample_id']}"
+        if identity in seen or identity not in lookup:
+            raise ValueError(
+                f"Duplicate or unknown synthetic evaluation sample: {identity}"
+            )
+        if identity in training_ids:
+            raise ValueError(
+                f"Synthetic evaluation overlaps training sample: {identity}"
+            )
+        record = lookup[identity]
+        group = (
+            str(record.payload["scene_id"]),
+            str(record.payload["trajectory_group_id"]),
+        )
+        if group in training_groups:
+            raise ValueError(
+                f"Synthetic evaluation overlaps training trajectory: {group}"
+            )
+        seen.add(identity)
+        selected.append(replace(record, split="val"))
+    return tuple(selected)
+
+
+def _synthetic_evaluation_loader(
+    dm: CourtDetectionDataModule, manifest: Path
+) -> DataLoader[Any]:
+    training_input = dm._train_pipelines["synthetic_court"].input_layer
+    if not isinstance(training_input, SyntheticCourtDatasetSubsetInput):
+        raise ValueError(
+            "An evaluation manifest requires checkpoint dataset subset provenance."
+        )
+    records = _synthetic_evaluation_records(
+        manifest,
+        source_manifest_sha256=training_input.version_manifest_sha256,
+        pool_records=training_input.source.records("train"),
+        training_records=training_input.records("train"),
+    )
+    dataset = CourtDetectionDataset(
+        records, pipeline=dm._eval_pipelines["synthetic_court"]
+    )
+    return dm._eval_loader(dataset, stage="synthetic_court/val")
+
+
+class _SceneMetrics:
+    """Partition the original forward's predictions without changing batch padding."""
+
+    def __init__(
+        self, records: tuple[CourtSampleRecord, ...], bundle: CourtTargetBundleSpec
+    ) -> None:
+        self.identities: dict[str, dict[str, Any]] = {}
+        self.sample_scenes = {
+            record.sample_id: str(record.payload["scene_id"]) for record in records
+        }
+        self.expected_ids = [record.sample_id for record in records]
+        self.observed_ids: list[str] = []
+        _ordered_identity(self.expected_ids)
+        for scene in dict.fromkeys(self.sample_scenes.values()):
+            self.identities[scene] = _ordered_identity(
+                [
+                    record.sample_id
+                    for record in records
+                    if self.sample_scenes[record.sample_id] == scene
+                ]
+            )
+        self.trackers = {
+            scene: {
+                kind: CourtDetectionMetrics(kind, spec.output_channels)
+                for kind, spec in bundle.targets.items()
+            }
+            for scene in self.identities
+        }
+
+    def update(
+        self,
+        ids: list[str],
+        logits: Mapping[CourtTargetKind, torch.Tensor],
+        targets: Mapping[CourtTargetKind, object],
+        image_size: torch.Tensor,
+    ) -> None:
+        indices: dict[str, list[int]] = {}
+        for index, identity in enumerate(ids):
+            indices.setdefault(self.sample_scenes[identity], []).append(index)
+        self.observed_ids.extend(ids)
+        for scene, selected in indices.items():
+            for kind, tracker in self.trackers[scene].items():
+                target = targets[kind]
+                sliced = (
+                    {
+                        name: value[selected]
+                        for name, value in cast(
+                            Mapping[str, torch.Tensor], target
+                        ).items()
+                    }
+                    if isinstance(target, Mapping)
+                    else cast(torch.Tensor, target)[selected]
+                )
+                tracker.update(
+                    logits[kind][selected], sliced, image_size=image_size[selected]
+                )
+
+    def compute(self) -> dict[str, Any]:
+        if self.observed_ids != self.expected_ids:
+            raise ValueError(
+                "Synthetic evaluation did not consume the manifest's exact ID order."
+            )
+        scenes = {}
+        for scene, trackers in self.trackers.items():
+            values = {
+                f"{kind}_{name}": value
+                for kind, tracker in trackers.items()
+                for name, value in tracker.compute().items()
+            }
+            scenes[scene] = {
+                **self.identities[scene],
+                "metrics": select_metrics(values, has_pose=False),
+            }
+        return {
+            "scene_order": list(scenes),
+            "scenes": scenes,
+            "scene_macro_mean": {
+                name: sum(scene["metrics"][name] for scene in scenes.values())
+                / len(scenes)
+                for name in DENSE_METRICS
+            },
+        }
+
+
+class _SceneEvaluationModule(CourtDetectionLightningModule):
+    scene_metrics: _SceneMetrics | None = None
+
+    def validation_step(self, batch: dict[str, object], batch_idx: int) -> None:
+        if self.scene_metrics is None:
+            super().validation_step(batch, batch_idx)
+            return
+        result = self._shared_step(batch, "val")
+        logits = (
+            result.output.dense_logits
+            if isinstance(result, CourtPoseTrainingResult)
+            else result.logits
+        )
+        self.scene_metrics.update(
+            cast(list[str], batch["sample_id"]),
+            logits,
+            cast(Mapping[CourtTargetKind, object], batch["targets"]),
+            cast(torch.Tensor, batch["image_size"]),
+        )
 
 
 def select_metrics(values: dict[str, float], *, has_pose: bool) -> dict[str, float]:
@@ -158,7 +345,7 @@ def _qualitative(
     has_pose: bool,
 ) -> list[dict[str, Any]]:
     dataset = cast(CourtDetectionDataset, loader.dataset)
-    indices = np.linspace(
+    indices: list[int] = np.linspace(
         0, len(dataset) - 1, num=min(4, len(dataset)), dtype=int
     ).tolist()
     selected = DataLoader(
@@ -220,8 +407,13 @@ def evaluate_checkpoint(
     real_split: str | None = None,
     series: str | None = None,
     include_synthetic_val: bool = False,
+    synthetic_eval_manifest: Path | None = None,
 ) -> dict[str, Any]:
     """Score both complete splits with the checkpoint's configuration and targets."""
+    if include_synthetic_val and synthetic_eval_manifest is not None:
+        raise ValueError(
+            "Choose either include_synthetic_val or synthetic_eval_manifest."
+        )
     if device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("CUDA evaluation requested but no GPU is available")
     digest = file_sha256(checkpoint)
@@ -233,7 +425,8 @@ def evaluate_checkpoint(
         else OmegaConf.create(hyper["config"])
     )
     scaling = has_step_schedule(cfg)
-    if include_synthetic_val and (not scaling or real_split != "val"):
+    synthetic_validation = include_synthetic_val or synthetic_eval_manifest is not None
+    if synthetic_validation and (not scaling or real_split != "val"):
         raise ValueError(
             "Synthetic validation requires step-based real validation evaluation."
         )
@@ -270,9 +463,17 @@ def evaluate_checkpoint(
         raise ValueError(
             "Training data condition or fixed evaluation registry changed since checkpoint publication."
         )
-    module = CourtDetectionLightningModule(
-        cfg, target_bundle_state=hyper["target_bundle_state"]
+    synthetic_loader = None
+    synthetic_digest = None
+    if synthetic_eval_manifest is not None:
+        synthetic_digest = file_sha256(synthetic_eval_manifest)
+        synthetic_loader = _synthetic_evaluation_loader(dm, synthetic_eval_manifest)
+    module_type = (
+        _SceneEvaluationModule
+        if synthetic_eval_manifest is not None
+        else CourtDetectionLightningModule
     )
+    module = module_type(cfg, target_bundle_state=hyper["target_bundle_state"])
     if dm.target_bundle_spec != module.target_bundle:
         raise ValueError(
             "Checkpoint target schema disagrees with the current evaluation data"
@@ -281,7 +482,11 @@ def evaluate_checkpoint(
     output.mkdir(parents=True, exist_ok=False)
     plain = cast(dict[str, Any], OmegaConf.to_container(cfg, resolve=True))
     result: dict[str, Any] = {
-        "schema": "court_data_scaling_evaluation_v1"
+        "schema": (
+            "court_data_scaling_evaluation_v2"
+            if synthetic_eval_manifest is not None
+            else "court_data_scaling_evaluation_v1"
+        )
         if scaling
         else "court_ablation_evaluation_v1",
         "checkpoint_sha256": digest,
@@ -301,6 +506,11 @@ def evaluate_checkpoint(
     if scaling:
         result["data_condition"] = condition
         result["series"] = series
+    if synthetic_eval_manifest is not None:
+        result["synthetic_evaluation_manifest"] = {
+            "path": str(synthetic_eval_manifest.resolve()),
+            "sha256": synthetic_digest,
+        }
     manifests = {}
     for source_config in dm.mixed_config.sources.values():
         if isinstance(source_config, SyntheticCourtSourceConfig):
@@ -331,6 +541,8 @@ def evaluate_checkpoint(
                 source_config.root / "dataset.json"
             )
     result["data_manifest_sha256"] = manifests
+    if synthetic_digest is not None:
+        manifests["synthetic_court/evaluation_subset"] = synthetic_digest
     del payload
     trainer = pl.Trainer(
         accelerator="gpu" if device == "cuda" else "cpu",
@@ -347,11 +559,24 @@ def evaluate_checkpoint(
         if scaling
         else EVALUATION_SPLITS
     )
-    if include_synthetic_val:
+    if synthetic_validation:
         splits = (("synthetic_court", "val"), *splits)
     for source, split in splits:
-        loader = dm.source_eval_dataloader(source, split)
+        loader = (
+            synthetic_loader
+            if source == "synthetic_court" and synthetic_loader is not None
+            else dm.source_eval_dataloader(source, split)
+        )
         identity = sample_identity(cast(CourtDetectionDataset, loader.dataset))
+        if isinstance(module, _SceneEvaluationModule):
+            module.scene_metrics = (
+                _SceneMetrics(
+                    cast(CourtDetectionDataset, loader.dataset).records,
+                    module.target_bundle,
+                )
+                if source == "synthetic_court"
+                else None
+            )
         # validate uses the existing whole-split accumulators without buffering
         # every dense prediction. The receipt retains the true source/split name.
         measured = trainer.validate(module, dataloaders=loader, verbose=False)[0]
@@ -375,8 +600,18 @@ def evaluate_checkpoint(
                 has_pose=has_pose,
             ),
         }
+        if (
+            isinstance(module, _SceneEvaluationModule)
+            and module.scene_metrics is not None
+        ):
+            result["splits"][key].update(module.scene_metrics.compute())
     if file_sha256(checkpoint) != digest:
         raise ValueError("Checkpoint changed during evaluation")
+    if (
+        synthetic_eval_manifest is not None
+        and file_sha256(synthetic_eval_manifest) != synthetic_digest
+    ):
+        raise ValueError("Synthetic evaluation manifest changed during evaluation")
     (output / "evaluation.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
     )

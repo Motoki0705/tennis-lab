@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -198,6 +199,71 @@ def test_subset_cpu_train_and_exact_checkpoint_evaluation(
     assert result["global_step"] == 6
     assert result["data_condition"]["accepted_images"] == 2
     assert result["splits"]["tennis_court_detector-val"]["count"] == 2
+    assert result["schema"] == "court_data_scaling_evaluation_v1"
+    # A second selection from the validation trajectory replaces the saved val,
+    # while the checkpoint still authenticates the original train/val manifests.
+    source = dm._train_pipelines["synthetic_court"].input_layer
+    training_group = source.records("train")[0].payload["trajectory_group_id"]
+    candidates = [
+        record
+        for record in source.source.records("train")
+        if record.payload["trajectory_group_id"] != training_group
+    ]
+    selected = candidates[:3][::-1]
+    assert len(selected) == 3
+    document = json.loads(selection.read_text())
+    document.update(
+        split="val",
+        samples=[
+            dict(
+                zip(
+                    ("scene_id", "sample_id"),
+                    record.sample_id.split(":", 1),
+                    strict=True,
+                )
+            )
+            for record in selected
+        ],
+    )
+    manifest = selection.parent / "shared-evaluation.subset.json"
+    manifest.write_text(json.dumps(document))
+    shared = evaluate_checkpoint(
+        checkpoint,
+        tmp_path / "shared-evaluation",
+        device="cpu",
+        expected_step=6,
+        real_split="val",
+        series="scene-count",
+        synthetic_eval_manifest=manifest,
+    )
+    assert shared["schema"] == "court_data_scaling_evaluation_v2"
+    synthetic = shared["splits"]["synthetic_court-val"]
+    expected_ids = [record.sample_id for record in selected]
+    assert synthetic["sample_ids"] == expected_ids
+    assert synthetic["count"] == 3
+    assert (
+        synthetic["ordered_sample_ids_sha256"]
+        == hashlib.sha256(
+            json.dumps(expected_ids, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
+    assert synthetic["scenes"]["fixture"]["sample_ids"] == expected_ids
+    for name, value in synthetic["scene_macro_mean"].items():
+        # Lightning serializes logged whole-split scalars through float32.
+        assert value == pytest.approx(synthetic["metrics"][name])
+    assert shared["data_condition"] == result["data_condition"]
+    assert shared["synthetic_evaluation_manifest"]["sha256"] == file_sha256(manifest)
+    assert shared["data_manifest_sha256"][
+        "synthetic_court/evaluation_subset"
+    ] == file_sha256(manifest)
+    assert (
+        shared["splits"]["tennis_court_detector-val"]
+        == result["splits"]["tennis_court_detector-val"]
+    )
+    assert (
+        json.loads((tmp_path / "shared-evaluation/evaluation.json").read_text())
+        == shared
+    )
     doc = json.loads(selection.read_text())
     doc["samples"].reverse()
     selection.write_text(json.dumps(doc))
