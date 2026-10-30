@@ -166,6 +166,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         self.test_metrics = _build_metrics()
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_save_checkpoint(checkpoint)
         add_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
         write_plcs_checkpoint_court_keypoints(
             checkpoint,
@@ -173,6 +174,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_load_checkpoint(checkpoint)
         validate_court_coordinate_normalization(checkpoint, artifact="PLCS checkpoint")
         validate_plcs_checkpoint_court_keypoints(
             checkpoint,

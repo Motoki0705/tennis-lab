@@ -140,6 +140,10 @@ def _new_module(config: DictConfig, **kwargs: Any) -> Any:
 
 def _build(config: DictConfig) -> tuple[Any, Any]:
     _prepare_court_roots(Path(config.paths.project_root), calibrated_pose=True)
+    return _components(config)
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
     data = CourtDetectionDataModule(config)
     data.setup("fit")
     return _new_module(config, target_bundle=data.target_bundle_spec), data
@@ -216,7 +220,13 @@ def _assert_prediction(output: Any) -> None:
 
 def _predict(module: Any, batch: Any) -> Any:
     prepared = module.model_io.prepare_training_batch(batch)
-    return module.model(*prepared.model_call.model_args)
+    raw = module.model(*prepared.model_call.model_args)
+    return dict(
+        raw=raw,
+        decoded=module.model_io.decode_output(raw),
+        targets=module.target_bundle,
+        pose_supervision_mask=batch["pose_supervision_mask"],
+    )
 
 
 def _restore(config: DictConfig, path: Path) -> Any:
@@ -225,7 +235,7 @@ def _restore(config: DictConfig, path: Path) -> Any:
         side_effect=lambda **_kwargs: DINOv3BackboneAdapter(_PretrainedBoundary()),
     ):
         return CourtDetectionLightningModule.load_from_checkpoint(
-            path, config=config, map_location="cpu", weights_only=False
+            path, strict=True, map_location="cpu", weights_only=False
         )
 
 
@@ -233,6 +243,7 @@ FROZEN = ModelFamily(
     name="court_hierarchical/fake_pretrained",
     compose=_compose,
     build=_build,
+    rebuild=_components,
     batch=_batch,
     supervised_result=_result,
     predict=_predict,

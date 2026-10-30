@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -40,6 +41,7 @@ class StepAudit:
         self._handles: list[RemovableHandle] = []
         self._before: Any = None
         self._update: OptimizerContract | None = None
+        self.artifact: Path | None = None
 
     def record_loss(self, loss: Tensor) -> None:
         assert loss.ndim == 0 and torch.isfinite(loss), "nonfinite/scalar training loss"

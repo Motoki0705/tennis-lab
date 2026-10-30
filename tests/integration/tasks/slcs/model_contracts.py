@@ -95,6 +95,10 @@ def _build(config: DictConfig) -> tuple[Any, Any]:
     )
     # Reuse train only through the explicit overfit data mode; no implicit split fallback.
     config.data.overfit = True
+    return _components(config)
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
     runner = SLCSTrainingRunner()
     data = runner.build_datamodule(config)
     data.setup("fit")
@@ -176,16 +180,26 @@ def _assert_prediction(output: Any) -> None:
         ), key
 
 
+def _predict(module: Any, batch: Any) -> Any:
+    output = module.forward_batch(batch).detached_cpu()
+    return dict(
+        normalized=output,
+        physical=module.model_adapter.to_physical(output),
+        targets=module.model_adapter.build_training_targets(batch),
+    )
+
+
 SHARED = ModelFamily(
     name="slcs_fusion",
     compose=_compose,
     build=_build,
+    rebuild=_components,
     batch=_batch,
     supervised_result=_result,
-    predict=lambda module, batch: module.forward_batch(batch),
+    predict=_predict,
     save=save_checkpoint,
     restore=lambda config, path: SLCSLightningModule.load_from_checkpoint(
-        path, config=config, map_location="cpu", weights_only=False
+        path, strict=True, map_location="cpu", weights_only=False
     ),
     parameters=_parameters,
     assert_batch=_assert_batch,
