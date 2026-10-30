@@ -27,6 +27,10 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 1. 親issueの本文と全コメント、関連PR・既存の子を読み、最新の人間との合意を確認する。
    CLIの `status` で対応を確認し、`register` で担当登録する。別の担当や別の親が表示されたら
    黙って切り替えない。既存担当の解除・終了・明示引継ぎをREADMEに従って扱う。
+   担当登録時にタイトル先頭の `[識別名]` がなければ、内容から2〜6文字の識別名を決め、
+   `gh issue edit <親番号> --title "[識別名] 元の要約"` で改名する。
+   `issue:parent` がなければ付与し、本文の親の必須節に不足があれば既存内容を保持して骨組みを補完する。
+   識別名・タイトル・必須節の規則は [issues README](../../ops/issues/README.md) に従う。
    Herdrでは結果の`display_sync`を確認する。表示の設定・修復には
    [herdr-session-label](../herdr-session-label/SKILL.md)を使い、名前・担当番号・短い題名を表示する。
    `board_sync`と`board_delivery`の成否も確認し、未読・配送の問題はparent-boardの手順で扱う。
@@ -54,6 +58,11 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 
 1. 実装単位・依存関係・担当を決め、issues APIを使う `create-child` で起票する。
    自由文の書式をコピーせず共通specを渡す。キーを固定し、再送時も同じキーで既存子を再利用する。
+   `spec.labels` に作業種別に加えて対象領域ラベルを1〜2件明示し、`ai-proposed` は付けない。
+   領域は `module: base` / `module: ball-detection` / `module: court-detection` / `module: blcs` /
+   `module: plcs` / `module: submodules` / `module: synthetic-data` / `module: tennis-scene` /
+   `ci` / `tests` / `dependencies` / `third-party` / `knowledge` 等から選ぶ。
+   一覧の正本は [.github/labels.yml](../../../.github/labels.yml) の `area` 軸を参照する。
 2. `status` / `reconcile` の `launch_plan` で完了済み・既存PR・既存委任と起動対象を照合する。
    **依存が許す子は、設定された枠内ですべて並列に起動するのが既定。** 手動親の既定枠は全子であり、
    固定3件にはしない。自律ループの各親の実装子2件という初期値は別の実行枠で、その設定を守る。
@@ -69,6 +78,28 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    単独issueのworkerには自身の番号を使う。PR作成後の修正も自律親の `continue-worker` で同じsessionへ戻し、
    終了・差分・テスト・PRの確認を省略しない。dshを案件で明示指定された場合は
    [deepseek-harness skill](../deepseek-harness/SKILL.md) に従う。
+
+### テスト設計を委任へ渡す
+
+親は [tests/README.md のテスト作成方針](../../../tests/README.md#テスト作成方針)に沿って設計し、
+子issueの「検証方法・証拠」の行に、再利用する既存テストの node・新しく置く層・検出したい不具合を具体的に書く。
+設計の5点をその行またはそこから参照する作業計画にまとめ、委任時に同じ設計を子へ渡す。
+受入条件1つにつき新規テスト1つという機械的な割当はしない。
+
+設計前に調査が必要なら、子の最初の作業を既存テストの調査と設計案の提案にし、親が承認してから実装へ進める。
+子から設計変更の提案が来たら、必要性とコストを確認して子issueの設計を更新し、指示を返す。
+
+子issueの記入例（既存 unit の拡張で契約を守る場合）:
+
+```markdown
+- [ ] 不正batchをモデル実行前に拒否する
+  文脈: 無効な入力をモデル計算へ流さないため。
+  下流への影響: adapter経由の推論・学習で、入力破損を早期に検出する。
+  検証方法・証拠: 契約は不正batchの計算前拒否、検出したい不具合は検証より先にforwardする変更。既存nodeは tests/unit/tasks/base/model_io/test_contracts.py::test_invalid_batch_fails_before_model_forward。新しく置く層はunit（既存nodeを拡張し、新規e2eなし）。コスト上限は追加1ケースでREADMEの時間基準内、--collect-onlyと--durations=0で確認する。
+```
+
+レビュー依頼には、渡した設計への参照、設計からのずれと理由、テストの増分（追加・削除・統合した node、展開後の件数・実測時間）を含める。
+新規テストがないことだけで差し戻さず、既存テストによる証拠と未検証の契約を確認する。
 
 ### 並列にしない理由と資源の扱い
 
@@ -125,6 +156,7 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
 続けて [merge gate](../../ops/review/README.md#merge-gate) の `merge_gate.py --parent N merge` を明示実行する。
 既定のdry-runで理由と実効設定を読み、人間が有効化を合意済みならREADMEの環境変数で実mergeする。
 条件を満たすPRは依存順に進み、親全体の完了まで独立PRをためない。
+PRへのpushごとにCIを実行し、コミットに `[skip ci]` を付けない。対象HEADの `Python` check runの成功をmergeの必須条件とし、未完了・失敗・取消・欠落・別HEADなら停止する。
 merge後の子の自動closeと親進捗への反映を確認する。停止・未完了や試行済み記録が出たら、
 実状態と保存証拠を照合して復旧し、gateを通すための自動再レビューや同headへの二重mergeを行わない。
 

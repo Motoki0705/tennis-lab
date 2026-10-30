@@ -1,0 +1,16 @@
+{
+  "schema": "court_scene_diversity_run_runtime_v1",
+  "condition": 1,
+  "execution_receipt": "../run-court-scene-diversity-colab-s42/execution-receipt.json",
+  "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+  "evaluation_sha256": "2ed28c9cf98e95ee82b8344632e4271ace255f509526dd61afc73c6764505a8a",
+  "source_evaluation": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-1-evaluation.json",
+  "initialization": "independent original DINOv3-S pretrained weight, seed42",
+  "training_drive": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42",
+  "evaluation_drive": "gdrive:tennis_lab/outputs/court_detection/evaluate/scene-diversity-6000-s384-colab/scene-1-s42",
+  "allowed_configuration_changes": [],
+  "fit_validation": "Aggregate mixed synthetic500 + real2211; separate final domain evaluation is in evaluation.json.",
+  "session": "court-scene-diversity-l4-20261025-v1",
+  "training_job": "scene-1-train-attempt-1",
+  "evaluation_job": "scene-1-eval-attempt-1"
+}

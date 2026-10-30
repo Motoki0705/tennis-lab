@@ -1,0 +1,19 @@
+{
+  "schema": "court_scene_diversity_execution_summary_v1",
+  "job_id": "0-8207086017856490539_2026-10-25T07-39-42-143509460Z_2172746_court-scene-diversity-render-v1",
+  "queue_state": "done",
+  "started_at": "2026-10-25T16:39:42+09:00",
+  "finished_at": "2026-10-25T18:25:14.793268+09:00",
+  "job_wall_seconds": 6332.793268203735,
+  "generation_with_strict_validation_seconds": 6160.682139908999,
+  "output_file_count": 2422,
+  "output_bytes": 2534070855,
+  "output_gib": 2.360037392936647,
+  "strict_validation": true,
+  "tests": {
+    "cpu_passed": 34,
+    "precommit_ruff": "passed",
+    "precommit_mypy": "passed"
+  },
+  "output_root": "/home/kamimura/projects/tennis-lab/data/court_scene_diversity_6000_v1"
+}

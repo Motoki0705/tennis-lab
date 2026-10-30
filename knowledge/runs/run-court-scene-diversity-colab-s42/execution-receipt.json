@@ -1,0 +1,28 @@
+{
+  "schema": "court_scene_diversity_execution_receipt_v1",
+  "source_commit": "de71dbd66bec194fa0aeebfaf0aecd79a38c3f84",
+  "continuation_commit": "9541316258518ef636402d43d1430e49be9224be",
+  "monitor_interval_minutes_final": 300,
+  "sessions": [
+    "court-scene-diversity-l4-20261025-v1",
+    "court-scene-diversity-l4-20261026-r1",
+    "court-scene-diversity-l4-20261027-r2"
+  ],
+  "final_job": "scene-2-eval-scenes-3-4-continue-v1",
+  "drive_input": "gdrive:tennis_lab/data/court_scene_diversity_6000_v1",
+  "drive_input_folder_id": "1ftBhZ8xZ9leIjV8WlWy330t2Uzx1rPxf",
+  "drive_train": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab",
+  "drive_evaluation": "gdrive:tennis_lab/outputs/court_detection/evaluate/scene-diversity-6000-s384-colab",
+  "drive_comparison": "gdrive:tennis_lab/outputs/court_detection/compare/scene-diversity-6000-s384-colab/s42",
+  "environment": {
+    "python": "3.11.17",
+    "torch": "2.14.1+cu130",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "gpu": "NVIDIA L4",
+    "gpu_memory_mib": 23034
+  },
+  "input_policy": "Full immutable publication subtree and eight subsets verified; original real validation registry and pretrained weight reused by SHA.",
+  "parent_review": "parent-verification.json is the parent review of retrieved evidence, including independent comparison recomputation; it is not a new experiment.",
+  "release": "Official session registry absent, active assignments 0, usage 0.00/hr. Stop was not issued against an absent session; disappearance cause unknown."
+}

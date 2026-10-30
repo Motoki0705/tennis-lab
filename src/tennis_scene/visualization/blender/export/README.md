@@ -5,7 +5,9 @@
 
 ![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
 
-実データの過去runの条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000027-run-blender-reveal-meiji-cam1-20261016.md)を参照してください。
+このプレビューはREADMEと同じ保存済み検出観測へ外れ値除去・LOESSを適用し、球を再三角測量したsceneです。
+カメラ・人物は固定し、球の表示補間は`ball_max_gap_frames=0`にして3D欠損を保ちます。
+CPU再処理・描画の条件と検証結果は[検証記録](../../../../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
 
 - 書き出し: `python -m src.tennis_scene.scripts.export_blender`（設定 `configs/blender_export.yaml`）
 - 撮影: `src/tennis_scene/visualization/blender/shots/reveal.py`（Blender 5.2同梱Python。repoをimportしない）

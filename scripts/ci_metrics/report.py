@@ -10,6 +10,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from .growth import inventory_details
+from .lanes import audit_partition, read_plan
 from .runner import write_json
 
 
@@ -31,11 +33,14 @@ def _elapsed(stop: float | None, start: float | None) -> float | None:
 
 def summarize(root: Path) -> dict[str, Any]:
     report_started = time.perf_counter()
+    metadata = _json(root / "environment.json")
     issues: list[str] = []
     processes = []
     controller: list[dict[str, Any]] = []
     inventories: list[list[str]] = []
+    universes: dict[str, list[list[str]]] = defaultdict(list)
     fixtures: dict[str, dict[str, Any]] = {}
+    detail_events: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for path in sorted(root.glob("events-*.jsonl")):
         events = []
         for number, line in enumerate(path.read_text().splitlines(), 1):
@@ -55,6 +60,13 @@ def summarize(root: Path) -> dict[str, Any]:
             issues.append(f"missing/duplicate process configuration: {path.name}")
             continue
         role = configured[0]["role"]
+        if role != "controller" or not metadata.get("workers"):
+            for event in events:
+                if event["event"] in {"collection", "cpu_universe"}:
+                    detail_events[event["event"]].append(event)
+        universes[role].extend(
+            e["nodeids"] for e in events if e["event"] == "cpu_universe"
+        )
         finished = [e for e in events if e["event"] == "session_finish"]
         if len(finished) != 1:
             issues.append(f"missing/duplicate session finish: {path.name}")
@@ -107,8 +119,11 @@ def summarize(root: Path) -> dict[str, Any]:
                 key,
                 {
                     "fixture": key,
+                    "name": event["name"],
+                    "scope": event["scope"],
                     "count": 0,
                     "setup_s": 0.0,
+                    "max_setup_s": 0.0,
                     "errors": 0,
                     "skipped": 0,
                     "xfailed": 0,
@@ -116,10 +131,10 @@ def summarize(root: Path) -> dict[str, Any]:
             )
             item["count"] += 1
             item["setup_s"] += event["setup_s"]
+            item["max_setup_s"] = max(item["max_setup_s"], event["setup_s"])
             item["errors"] += event["outcome"] == "error"
             item["skipped"] += event["outcome"] == "skipped"
             item["xfailed"] += event["outcome"] == "xfailed"
-    metadata = _json(root / "environment.json")
     run = _json(root / "run.json")
     if not metadata:
         issues.append("missing environment metadata")
@@ -170,6 +185,50 @@ def summarize(root: Path) -> dict[str, Any]:
         issues.append("worker collection mismatch")
     if len(set(nodeids)) != len(nodeids):
         issues.append("duplicate selected nodeids")
+    lane_scope = None
+    if metadata.get("lane_plan_id") is not None:
+        try:
+            plan = read_plan(root / "lane-plan.json")
+            if plan["plan_id"] != metadata["lane_plan_id"]:
+                raise ValueError("lane plan differs from runner metadata")
+            roles = {f"gw{i}" for i in range(workers)} if workers else {"controller"}
+            manifests = {
+                p.stem.removeprefix("shard-"): json.loads(p.read_text())
+                for p in root.glob("shard-*.json")
+            }
+            if (
+                set(manifests) != roles
+                or {role for role, ids in universes.items() if ids} != roles
+            ):
+                raise ValueError(
+                    "missing/extra pre-selection CPU universe or worker manifest"
+                )
+            reference = None
+            for role in sorted(roles):
+                if len(universes[role]) != 1:
+                    raise ValueError("missing/duplicate pre-selection CPU universe")
+                universe = universes[role][0]
+                if reference is not None and reference != universe:
+                    raise ValueError("workers disagree on pre-selection CPU universe")
+                reference = universe
+                audit_partition(manifests[role], universe, plan)
+                if manifests[role]["selected_nodeids"] != nodeids:
+                    raise ValueError(
+                        "executed inventory differs from lane/shard selection"
+                    )
+            manifest = manifests[sorted(roles)[0]]
+            lane_scope = {
+                "plan_id": plan["plan_id"],
+                "scope": plan["scope"],
+                "universe_count": len(manifest["universe_nodeids"]),
+                "requested_count": len(manifest["requested_nodeids"]),
+                "deferred_count": len(manifest["deferred"]),
+                "deferred_suites": plan["deferred_suites"],
+            }
+        except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            issues.append(f"invalid lane evidence: {error}")
+    elif (root / "lane-plan.json").exists() or any(universes.values()):
+        issues.append("lane evidence has no runner plan identity")
     phases: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for event in controller:
         if event["event"] == "phase":
@@ -352,9 +411,13 @@ def summarize(root: Path) -> dict[str, Any]:
     summary = {
         "schema_version": 1,
         "successful_test_baseline": successful,
+        "scoped_cpu_success": successful and lane_scope is not None,
+        "lane_scope": lane_scope,
         "full_cpu_baseline": (
             successful
             and metadata.get("full_cpu_target") is True
+            and metadata.get("shard") is None
+            and (lane_scope is None or lane_scope["deferred_count"] == 0)
             and bool(metadata.get("source", {}).get("commit"))
             and run.get("source_unchanged") is True
         ),
@@ -405,12 +468,21 @@ def summarize(root: Path) -> dict[str, Any]:
     }
     write_json(root / "inventory.json", nodeids)
     write_json(root / "results.json", results)
+    observed_details = detail_events["cpu_universe"] or detail_events["collection"]
+    detail_report = inventory_details(
+        [event.get("details") for event in observed_details],
+        observed_details[0]["nodeids"] if observed_details else nodeids,
+    )
+    write_json(root / "inventory-details.json", detail_report)
+    summary["growth_detail_issues"] = detail_report["issues"]
     lines = [
         "# CPU test measurements",
         "",
         f"Successful test baseline: **{successful}**; successful full CPU baseline: **{summary['full_cpu_baseline']}**.",
         f"Full CPU target requested: **{metadata.get('full_cpu_target')}**.",
         f"Selected: {len(nodeids)}; outcomes: `{json.dumps(counts, sort_keys=True)}`.",
+        f"Lane coverage (deferred cases are not skips or passes): `{json.dumps(lane_scope, sort_keys=True)}`.",
+        f"Collection detail issues (informational): `{json.dumps(detail_report['issues'])}`.",
         f"Command wall seconds: {summary['test_command_wall_s']}; lock wait seconds: {run.get('lock_wait_s')}.",
         f"Wall-clock adjustment relative to monotonic elapsed seconds: {summary['wall_clock_adjustment_s']}.",
         f"Summed worker phase seconds: `{json.dumps(phase_s, sort_keys=True)}`.",

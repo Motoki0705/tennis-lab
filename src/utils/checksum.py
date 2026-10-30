@@ -6,10 +6,13 @@ import hashlib
 import importlib
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Protocol, cast
 
 _CHUNK_SIZE = 1024 * 1024
+# CPython 3.12 merged the SHA-2 constructors into the built-in _sha2 module.
+_INDEPENDENT_PROVIDER = "_sha2" if sys.version_info >= (3, 12) else "_sha256"
 
 
 class FileIntegrityError(Exception):
@@ -41,7 +44,7 @@ def _stat_identity(stat: os.stat_result) -> dict[str, int]:
 
 
 def dual_sha256(path: str | Path) -> str:
-    """Hash identical immutable chunks using hashlib and CPython's _sha256.
+    """Hash identical immutable chunks using hashlib and CPython's SHA-2 module.
 
     Reject provider disagreement, changed path/descriptor metadata, and an
     unexpected byte count. Symlinks and hardlinks are followed normally.
@@ -61,10 +64,12 @@ def dual_sha256(path: str | Path) -> str:
         "path_after": None,
     }
     try:
-        independent = cast(_SHA256Module, importlib.import_module("_sha256")).sha256()
+        independent = cast(
+            _SHA256Module, importlib.import_module(_INDEPENDENT_PROVIDER)
+        ).sha256()
     except (ImportError, AttributeError) as error:
         raise FileIntegrityError(
-            "CPython _sha256 provider is required", details=details
+            f"CPython {_INDEPENDENT_PROVIDER} provider is required", details=details
         ) from error
     primary = hashlib.sha256()
     length = 0

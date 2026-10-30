@@ -10,19 +10,40 @@ import signal
 import subprocess
 import sys
 import time
+import zipfile
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
+from scripts.ci_metrics import plan as lane_planner
 from scripts.ci_metrics import runner as measurement_runner
 from scripts.ci_metrics.actions import summarize_attempts
+from scripts.ci_metrics.growth import aggregate_snapshot, analyze
+from scripts.ci_metrics.lanes import digest, make_plan, partition_nodeids
+from scripts.ci_metrics.profile import build_profile
 from scripts.ci_metrics.report import summarize
 from scripts.ci_metrics.runner import test_environment as headless_environment
 from scripts.ci_metrics.runner import write_json
+from scripts.ci_metrics.shards import assign_groups, verify_shards, write_growth_report
 
 REPO = Path(__file__).resolve().parents[3]
+
+
+def _collection_details(nodeids: list[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "nodeid": node,
+            "file": node.split("::", 1)[0],
+            "family": node,
+            "originalname": node.rsplit("::", 1)[-1],
+            "parametrized": False,
+            "callspec_id": None,
+            "fixtures": ["shared"],
+        }
+        for node in nodeids
+    ]
 
 
 def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
@@ -79,7 +100,13 @@ def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
             "monotonic_s": 1.02,
         },
         {"event": "session_start", "at": 1.1, "monotonic_s": 1.1},
-        {"event": "collection", "at": 1.2, "monotonic_s": 1.2, "nodeids": [nodeid]},
+        {
+            "event": "collection",
+            "at": 1.2,
+            "monotonic_s": 1.2,
+            "nodeids": [nodeid],
+            "details": _collection_details([nodeid]),
+        },
         *[
             {
                 "event": "phase",
@@ -144,6 +171,447 @@ def test_normal_failure_and_setup_skip_are_complete_observations(
     assert result["issues"] == []
     assert result["counts"] == {expected: 1}
     assert result["successful_test_baseline"] == (expected != "failed")
+
+
+@pytest.mark.parametrize("outcome", ["passed", "failed", "setup_failed"])
+def test_profile_retains_failures_without_accepting_them_in_python_job(
+    tmp_path: Path, outcome: str
+) -> None:
+    directory = tmp_path / "shard-0/tests"
+    directory.mkdir(parents=True)
+    _observation(directory, outcome)
+    nodeids = ["tests/test_sample.py::test_one"]
+    context: dict[str, Any] = {"sha": "a" * 40, "run_id": "123", "attempt": "1"}
+    write_json(
+        directory / "environment.json",
+        {
+            "workers": 0,
+            "cpu_target_before_sharding": True,
+            "source": {"commit": context["sha"], "status": ""},
+            "environment": dict(
+                zip(
+                    ("GITHUB_SHA", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT"),
+                    context.values(),
+                    strict=True,
+                )
+            ),
+            "shard": {"index": 0, "count": 1, "profile_sha256": "profile"},
+        },
+    )
+    write_json(
+        directory / "shard-controller.json",
+        {
+            "schema_version": 1,
+            "index": 0,
+            "count": 1,
+            "profile_sha256": "profile",
+            "full_nodeids": nodeids,
+            "selected_nodeids": nodeids,
+            **assign_groups(nodeids, 1, {"tests/test_sample.py": 1}),
+        },
+    )
+    profile = build_profile(tmp_path)
+    assert profile["file_seconds"] == {
+        "tests/test_sample.py": 1.0 if outcome == "setup_failed" else 1.5
+    }
+    assert profile["source"]["successful_test_observations"] == (outcome == "passed")
+    expected = {} if outcome == "passed" else {nodeids[0]: "failed"}
+    assert profile["source"]["unsuccessful_cases"] == expected
+    audit = verify_shards(
+        tmp_path,
+        1,
+        needs={name: {"result": "success"} for name in ("plan", "lint", "tests")},
+        **context,
+    )
+    assert audit["selected_count"] == 1
+    assert audit["observations_complete"] is True
+    assert audit["success"] == (outcome == "passed")
+
+
+@pytest.fixture
+def scoped_observation(tmp_path: Path) -> Path:
+    directory = tmp_path / "shard-0/tests"
+    directory.mkdir(parents=True)
+    events = _observation(directory)
+    universe = ["tests/test_sample.py::test_one", "tests/test_wide.py::test_deferred"]
+    registry = {
+        "schema_version": 1,
+        "suites": [
+            {
+                "id": "wide",
+                "files": ["tests/test_wide.py"],
+                "paths": ["tools/wide/**"],
+                "reason": "Broad independent regression",
+                "owner": "repository-owner",
+            }
+        ],
+    }
+    plan = make_plan(
+        registry,
+        ["tests/test_sample.py", "tests/test_wide.py"],
+        source_sha="a" * 40,
+        event="pull_request",
+        run_id="123",
+        attempt="1",
+        base_sha="base",
+        head_sha="head",
+    )
+    requested, deferred = partition_nodeids(universe, plan)
+    events.insert(
+        2,
+        {
+            "event": "cpu_universe",
+            "nodeids": universe,
+            "details": _collection_details(universe),
+            "at": 1.15,
+            "monotonic_s": 1.15,
+        },
+    )
+    _events(directory, events)
+    write_json(directory / "lane-plan.json", plan)
+    write_json(
+        directory / "environment.json",
+        {
+            "workers": 0,
+            "full_cpu_target": True,
+            "cpu_target_before_sharding": True,
+            "lane_plan_id": plan["plan_id"],
+            "source": {"commit": "a" * 40, "status": ""},
+            "environment": {
+                "GITHUB_SHA": "a" * 40,
+                "GITHUB_RUN_ID": "123",
+                "GITHUB_RUN_ATTEMPT": "1",
+            },
+            "shard": {"index": 0, "count": 1, "profile_sha256": "profile"},
+        },
+    )
+    write_json(
+        directory / "shard-controller.json",
+        {
+            "schema_version": 2,
+            "index": 0,
+            "count": 1,
+            "profile_sha256": "profile",
+            "plan_id": plan["plan_id"],
+            "policy_sha256": plan["policy_sha256"],
+            "scope": plan["scope"],
+            "universe_nodeids": universe,
+            "requested_nodeids": requested,
+            "deferred": deferred,
+            "selected_nodeids": requested,
+            **assign_groups(requested, 1, {"tests/test_sample.py": 1}),
+        },
+    )
+    return tmp_path
+
+
+def test_scoped_success_does_not_count_deferred_tests_as_skips_or_full_success(
+    scoped_observation: Path,
+) -> None:
+    summary = summarize(scoped_observation / "shard-0/tests")
+    assert summary["issues"] == []
+    assert summary["scoped_cpu_success"] is True
+    assert summary["full_cpu_baseline"] is False
+    assert summary["counts"] == {"passed": 1}
+    audit = verify_shards(
+        scoped_observation,
+        1,
+        sha="a" * 40,
+        run_id="123",
+        attempt="1",
+        needs={name: {"result": "success"} for name in ("plan", "lint", "tests")},
+    )
+    assert audit["success"] and audit["scoped_cpu_success"]
+    assert not audit["full_cpu_success"] and not audit["full_cpu_coverage"]
+    assert (
+        audit["universe_count"],
+        audit["requested_count"],
+        audit["deferred_count"],
+    ) == (2, 1, 1)
+    assert audit["suite_results"]["wide"]["verified_success"] is False
+    with pytest.raises(ValueError, match="partial CPU scope"):
+        build_profile(scoped_observation)
+    snapshot = aggregate_snapshot(scoped_observation, audit)
+    assert snapshot["nodeids"] == ["tests/test_sample.py::test_one"]
+    assert (
+        snapshot["universe_count"],
+        snapshot["requested_count"],
+        snapshot["deferred_count"],
+    ) == (2, 1, 1)
+
+
+def test_growth_combines_shards_without_recounting_fixture_time_or_inventory(
+    scoped_observation: Path,
+) -> None:
+    first = scoped_observation / "shard-0/tests"
+    scoped_plan = json.loads((first / "lane-plan.json").read_text())
+    plan = make_plan(
+        scoped_plan["registry"],
+        scoped_plan["source_files"],
+        source_sha="a" * 40,
+        event="push",
+        ref="refs/heads/main",
+        run_id="123",
+        attempt="1",
+    )
+    universe = ["tests/test_sample.py::test_one", "tests/test_wide.py::test_deferred"]
+    assignment = assign_groups(
+        universe, 2, {"tests/test_sample.py": 1, "tests/test_wide.py": 1}
+    )
+    base_metadata = json.loads((first / "environment.json").read_text())
+    for index, node in enumerate(universe):
+        directory = scoped_observation / f"shard-{index}/tests"
+        directory.mkdir(parents=True, exist_ok=True)
+        events = _observation(directory)
+        for event in events:
+            if event["event"] == "collection":
+                event.update(nodeids=[node], details=_collection_details([node]))
+            elif event["event"] == "phase":
+                event["nodeid"] = node
+                event["duration_s"] = {"setup": 1.2, "call": 2, "teardown": 2}[
+                    event["phase"]
+                ]
+        events.insert(
+            2,
+            {
+                "event": "cpu_universe",
+                "at": 1.15,
+                "monotonic_s": 1.15,
+                "nodeids": universe,
+                "details": _collection_details(universe),
+            },
+        )
+        events.insert(
+            4,
+            {
+                "event": "fixture",
+                "at": 1.5,
+                "monotonic_s": 1.5,
+                "name": "shared",
+                "scope": "session",
+                "source": "support.shared",
+                "nodeid": "",
+                "outcome": "passed",
+                "setup_s": 0.6 if index == 0 else 1.1,
+            },
+        )
+        _events(directory, events)
+        (directory / "junit.xml").write_text(
+            f'<testsuites><testsuite><testcase classname="{node.split("::")[0].removesuffix(".py").replace("/", ".")}" name="{node.split("::")[-1]}" time="5.2"/></testsuite></testsuites>'
+        )
+        metadata = copy.deepcopy(base_metadata)
+        metadata.update(
+            lane_plan_id=plan["plan_id"],
+            shard={"index": index, "count": 2, "profile_sha256": "profile"},
+        )
+        write_json(directory / "environment.json", metadata)
+        write_json(directory / "lane-plan.json", plan)
+        write_json(
+            directory / "shard-controller.json",
+            {
+                "schema_version": 2,
+                "index": index,
+                "count": 2,
+                "profile_sha256": "profile",
+                "plan_id": plan["plan_id"],
+                "policy_sha256": plan["policy_sha256"],
+                "scope": plan["scope"],
+                "universe_nodeids": universe,
+                "requested_nodeids": universe,
+                "deferred": {},
+                "selected_nodeids": [node],
+                **assignment,
+            },
+        )
+    audit = verify_shards(
+        scoped_observation,
+        2,
+        sha="a" * 40,
+        run_id="123",
+        attempt="1",
+        needs={name: {"result": "success"} for name in ("plan", "lint", "tests")},
+        lane_plan=plan,
+    )
+    assert audit["success"], audit
+    snapshot = aggregate_snapshot(scoped_observation, audit)
+    report = analyze(snapshot, None, baseline_reason="first full run")
+    assert len(snapshot["nodeids"]) == 2
+    assert sum(row["total_s"] for row in report["slow_cases"]) == pytest.approx(10.4)
+    assert report["slow_fixtures"][0]["count"] == 2
+    assert report["slow_fixtures"][0]["setup_s"] == pytest.approx(1.7)
+    assert report["slow_fixtures"][0]["max_setup_s"] == 1.1
+    # Missing comparison evidence and heavy tests leave the verified gate intact.
+    document = write_growth_report(
+        scoped_observation,
+        audit,
+        scoped_observation / "missing-profile.json",
+        source_root=scoped_observation,
+        repository=None,
+        ancestor="a" * 40,
+    )
+    assert "GITHUB_REPOSITORY is unavailable" in document
+    assert "Profile comparison unavailable" in document
+    assert audit["success"] is True
+    (first / "inventory-details.json").unlink()
+    unavailable = write_growth_report(
+        scoped_observation,
+        audit,
+        scoped_observation / "missing-profile.json",
+        source_root=scoped_observation,
+        repository=None,
+        ancestor="a" * 40,
+    )
+    assert (
+        "Report unavailable:" in unavailable and "inventory-details.json" in unavailable
+    )
+    assert (
+        json.loads((scoped_observation / "growth.json").read_text())["complete"]
+        is False
+    )
+    assert audit["success"] is True
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "unjustified_defer",
+        "missing_from_r_and_d",
+        "r_d_overlap",
+        "missing_from_u_r_d",
+        "wrong_policy",
+        "extra_assignment",
+        "mixed_schema",
+    ],
+)
+def test_scope_audit_rejects_unexplained_or_missing_cases(
+    scoped_observation: Path, fault: str
+) -> None:
+    path = scoped_observation / "shard-0/tests/shard-controller.json"
+    manifest = json.loads(path.read_text())
+    if fault == "unjustified_defer":
+        manifest["requested_nodeids"] = []
+        manifest["deferred"]["tests/test_sample.py::test_one"] = "wide"
+    elif fault == "missing_from_r_and_d":
+        manifest["deferred"] = {}
+    elif fault == "r_d_overlap":
+        manifest["deferred"]["tests/test_sample.py::test_one"] = "wide"
+    elif fault == "missing_from_u_r_d":
+        manifest["universe_nodeids"].pop()
+        manifest["deferred"] = {}
+    elif fault == "wrong_policy":
+        manifest["policy_sha256"] = "old"
+    elif fault == "extra_assignment":
+        manifest["assignments"]["tests/test_outside.py"] = 0
+    else:
+        manifest["schema_version"] = 1
+    write_json(path, manifest)
+    summary = summarize(path.parent)
+    assert not summary["successful_test_baseline"]
+    assert any("invalid lane evidence" in issue for issue in summary["issues"])
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "all_skipped",
+        "partial",
+        "old_attempt",
+        "old_policy",
+        "expired",
+        "api_error",
+    ],
+)
+def test_last_main_success_requires_same_attempt_full_audit_and_executed_suite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str | None,
+) -> None:
+    registry = {
+        "schema_version": 1,
+        "suites": [
+            {
+                "id": "wide",
+                "files": ["tests/test_wide.py"],
+                "paths": ["tools/wide/**"],
+                "reason": "Broad regression",
+                "owner": "repository-owner",
+            }
+        ],
+    }
+    coverage = {
+        "success": True,
+        "full_cpu_success": fault != "partial",
+        "source_sha": "main-sha",
+        "run_id": "42",
+        "attempt": "1" if fault != "old_attempt" else "2",
+        "event": "push",
+        "ref": "refs/heads/main",
+        "policy_sha256": digest(registry) if fault != "old_policy" else "old",
+        "suite_results": {
+            "wide": {
+                "verified_success": fault != "all_skipped",
+                "counts": {"passed": 1} if fault != "all_skipped" else {"skipped": 1},
+            }
+        },
+    }
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as stream:
+        stream.writestr("coverage.json", json.dumps(coverage))
+
+    def api(endpoint: str) -> bytes:
+        if fault == "api_error":
+            raise subprocess.CalledProcessError(1, "gh api")
+        if "/workflows/" in endpoint:
+            return json.dumps(
+                {
+                    "workflow_runs": [
+                        {
+                            "id": 42,
+                            "run_attempt": 1,
+                            "head_sha": "main-sha",
+                            "event": "push",
+                            "head_branch": "main",
+                            "conclusion": "success",
+                            "html_url": "https://github.com/owner/repo/actions/runs/42",
+                        }
+                    ]
+                }
+            ).encode()
+        if endpoint.endswith("/zip"):
+            return archive.getvalue()
+        return json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "name": "cpu-test-coverage-42-1",
+                        "id": 7,
+                        "expired": fault == "expired",
+                    }
+                ]
+            }
+        ).encode()
+
+    monkeypatch.setattr(lane_planner, "_api", api)
+    monkeypatch.setattr(
+        lane_planner.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0)
+    )
+    result = lane_planner.main_successes(tmp_path, "owner/repo", "head", registry)[
+        "wide"
+    ]
+    assert result["commit"] == ("main-sha" if fault is None else None)
+    plan = make_plan(
+        registry,
+        ["tests/test_wide.py"],
+        source_sha="head",
+        event="pull_request",
+        base_sha="base",
+        head_sha="head",
+        main_successes={"wide": result},
+    )
+    document = lane_planner.markdown(plan)
+    assert ("main-sha" in document) == (fault is None)
+    assert ("unknown:" in document) == (fault is not None)
 
 
 @pytest.mark.parametrize(
@@ -492,7 +960,9 @@ def test_default_measurement_runs_while_legacy_pytest_lock_is_held(
     lock = tmp_path / "legacy.lock"
     output = tmp_path / "observed"
     suite = tmp_path / "test_small.py"
-    suite.write_text("def test_one():\n    assert 2 + 2 == 4\n")
+    suite.write_text(
+        "import pytest\n@pytest.mark.parametrize('value', [4], ids=['outer[inner::id]'])\ndef test_one(value):\n    assert 2 + 2 == value\n"
+    )
     environment = headless_environment(dict(os.environ))
     environment["PYTEST_LOCK"] = str(lock)
     with lock.open("a") as held:
@@ -521,6 +991,14 @@ def test_default_measurement_runs_while_legacy_pytest_lock_is_held(
     assert summary["successful_test_baseline"] is True
     assert summary["counts"] == {"passed": 1}
     assert json.loads((output / "environment.json").read_text())["lock_path"] is None
+    detail = json.loads((output / "inventory-details.json").read_text())
+    assert detail["issues"] == []
+    assert len(detail["items"]) == 1
+    item = detail["items"][0]
+    assert item["originalname"] == "test_one"
+    assert item["family"].endswith("test_small.py::test_one")
+    assert item["callspec_id"] == "outer[inner::id]"
+    assert item["parametrized"] is True
 
 
 def test_runner_cancellation_while_waiting_for_lock_leaves_partial_artifacts(

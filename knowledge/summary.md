@@ -1,7 +1,7 @@
-<!-- knowledge-review: ccc64f9737aae6eae95bae6110042badcc2606974f4a462871ccb9dcd7c488e5 on 2026-10-31 -->
+<!-- knowledge-review: ea708b8aef68712f549d3f75a7161529246aee0b7a9d1bf6fa1a9b75c0d6fd17 on 2026-10-31 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-31（ボール逐次学習の完了・終端validationを反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-31（ボール逐次学習の完了・終端validationを反映。2026-10-30までのCourt比較・球LOESS・公開デモの記録と、既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,32 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-27のCourt固定6000枚scene比較
+
+[既存train軌道から生成したデータ](nodes/synthetic_data_generation/000028-run-court-scene-diversity-6000-v1.md)を使い、
+[1〜4sceneの固定5500枚学習と別domain評価](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)をColab L4で完了した。
+凍結DINOv3-S＋後段幅384・seed42・33160更新を固定し、各合成val500枚と元の同一実画像val2211枚を別々に評価した。
+4sceneは実画像の集計5指標で最良となり、KP平均は1sceneの53.9486から23.6058 pxへ低下した。
+pxは長辺512の前処理後モデル座標である。2sceneでは悪化しており、単調改善とは言えない。
+単一seed・固定追加順・条件ごとに異なる合成valと、scene2だけの26528更新からの再開／RNG・sampler順の制約がある。
+生成画像には旧QAを維持したぼけ・暗さとtarget支持不足も残る。scene数単独の因果効果や独立testへの性能保証は未確定。
+全結果・checkpointのDrive保存とGPU解放を確認した。既存のモデル採用判断は維持する。
+2026-10-30に#1343はこの比較をもって完了とし、画像数スケーリングの本実験と追加seedは実施しない判断になった。
+複数seed・scene組合せ・独立な実画像testでの確認は未着手の課題として残る。
+#983は幅1024・合成＋実画像学習の別契約なので、今回の合成専用学習と直接の優劣比較をしない。
+
+## 2026-10-26の球LOESSと公開デモ更新
+
+[公開サンプルの保存済みproduction検出観測をCPUで再三角測量](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)し、
+局所運動consensusで外れ値を除き、頑健な2次LOESSを適用した。元のカメラ・人物を固定した比較で、
+球3D有効frameは821→859/1010、共通有効frameの隣接移動量p95は0.682→0.405 m。
+補間座標は診断だけに保持し、実観測2view未満で有効な3Dは0frameだった。
+一方、元の未平滑2D観測への再投影中央値は3.554→4.810 pxへ増え、最大の3D跳びも改善しない。
+新たに有効になった969→970の1.077 mの跳びと、バウンド付近57〜59の速度gate欠損を実写と局所図で確認した。
+滑らかさと観測追従の交換関係であり、独立3D精度の向上は主張しない。
+README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
+通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
 
 ## 2026-10-25のボール逐次学習（2026-10-31完了）
 
@@ -22,6 +48,7 @@ query T32のFPS別中央値20.27〜26.46pxから系統ずれを疑う余地は�
 T32→T64の追加6k、最終DPT16k/query22k、方式差が交絡し、seed42単一・validationのみである。
 次は等更新数でのT比較、query T32の残差・overlay確認、#1476 / PR #1489を前提とした独立test評価を行う。
 既存モデル・checkpointの採用判断は維持し、T128は今回の実行から除外したままとする。
+
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 
@@ -560,6 +587,8 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 [PR #937のplayer検出推論実frame検証](nodes/player_detection/000003-run-pr937-player-inference-real-frame-20260928.md)では、best epochのexport重みをplayer専用入口からロードし、source分離testの1フレームで保存済み予測とbox・confidenceが一致した。これはロードと推論経路の検証であり、全動画の精度や観客席の誤検出対策を示すものではない。推論での使用はexport済み`.pth`とし、Lightning `.ckpt`は元学習の保存・再開用に保つ。
 
 ### Court Detection
+
+2026-10-27の[固定6000枚・シーン多様性比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、[準備run](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)のDINOv3-S＋幅384・33160更新、train5500/合成val500と元実画像val2211の4条件学習・最終別domain評価を完了した。4sceneが実画像集計5指標で最良だったが2sceneは悪化した。seed42単一試行・固定追加順・合成val構成差・scene2の再開制約を残す。#1343は2026-10-30にこの比較をもって完了し、画像数スケーリングの本実験と追加seedは実施しない判断になった。複数seedとscene組合せ・独立実画像testは未着手の課題である。#983とは学習domainと幅が異なるため直接比較せず、既存のモデル採用判断は維持する。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 

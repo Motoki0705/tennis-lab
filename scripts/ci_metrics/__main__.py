@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from .actions import fetch_attempts, markdown, summarize_attempts
+from .profile import build_profile
 from .report import summarize
 from .runner import environment_metadata, run, write_json
 
@@ -17,6 +18,10 @@ def main() -> int:
     runner = sub.add_parser("run", help="Run current CPU target, recording all workers")
     runner.add_argument("--output", required=True, type=Path)
     runner.add_argument("--workers", type=int, default=2)
+    runner.add_argument("--shard-index", type=int)
+    runner.add_argument("--shard-count", type=int)
+    runner.add_argument("--shard-weights", type=Path)
+    runner.add_argument("--lane-plan", type=Path)
     runner.add_argument(
         "--lock", type=Path, help="Optional absolute lock for a coordinated comparison"
     )
@@ -43,14 +48,43 @@ def main() -> int:
     fetch.add_argument("--run-id", required=True, type=int)
     fetch.add_argument("--attempt", type=int)
     fetch.add_argument("--output", required=True, type=Path)
+    profile = sub.add_parser(
+        "profile", help="Build weights from complete shard artifacts"
+    )
+    profile.add_argument("--root", required=True, type=Path)
+    profile.add_argument("--output", required=True, type=Path)
+    profile.add_argument(
+        "--split-file",
+        action="append",
+        help="Reviewed independent fixture file (repeatable)",
+    )
     args = parser.parse_args()
+    if args.command == "profile":
+        result = build_profile(args.root, args.split_file)
+        write_json(args.output, result)
+        print(json.dumps(result["source"], indent=2))
+        return 0
     if args.command == "run":
         if args.workers < 0:
             parser.error("--workers must be nonnegative")
         extra = args.pytest_args
         if extra[:1] == ["--"]:
             extra = extra[1:]
-        return run(args.output, args.workers, extra, args.lock)
+        shard_values = (args.shard_index, args.shard_count, args.shard_weights)
+        if any(value is not None for value in shard_values) and any(
+            value is None for value in shard_values
+        ):
+            parser.error(
+                "--shard-index, --shard-count and --shard-weights are required together"
+            )
+        return run(
+            args.output,
+            args.workers,
+            extra,
+            args.lock,
+            shard_values if args.shard_index is not None else None,
+            args.lane_plan,
+        )
     if args.command == "report":
         args.output.mkdir(parents=True, exist_ok=True)
         result = summarize(args.output)

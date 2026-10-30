@@ -1,0 +1,88 @@
+# 名前・色・説明の正本。軸・付与主体と同期手順は .agents/ops/issues/README.md を参照。
+hierarchy:
+  - name: "issue:parent"
+    color: "F97316"
+    description: "全体の目的・合意・進捗を管理する親issue（.agents/ops/issues/README.md）"
+  - name: "issue:child"
+    color: "FED7AA"
+    description: "正式なsub-issueとして直属の親を持つ子issue（.agents/ops/issues/README.md）"
+
+work-type:
+  - name: bug
+    color: "D73A4A"
+    description: "Something isn't working"
+  - name: enhancement
+    color: "A2EEEF"
+    description: "New feature or request"
+  - name: research
+    color: "0E8A16"
+    description: "Research task"
+  - name: documentation
+    color: "0075CA"
+    description: "Improvements or additions to documentation"
+  - name: followup
+    color: "C2C7CC"
+    description: "既存作業への追補（[追補]）"
+
+origin:
+  - name: ai-proposed
+    color: "C5DEF5"
+    description: "運用レポートの採用提案から起票したissue"
+  - name: "agent:claude"
+    color: "7057FF"
+    description: "Claude Code が作成"
+  - name: "agent:codex"
+    color: "0E8A16"
+    description: "Codex が作成"
+
+area:
+  - name: "module: base"
+    color: "0E8A16"
+    description: "Shared task foundations"
+  - name: "module: ball-detection"
+    color: "1D76DB"
+    description: "2D ball detection"
+  - name: "module: court-detection"
+    color: "006B75"
+    description: "2D court detection"
+  - name: "module: blcs"
+    color: "FBCA04"
+    description: "3D ball reconstruction (BLCS)"
+  - name: "module: plcs"
+    color: "D4C5F9"
+    description: "3D player localization (PLCS)"
+  - name: "module: submodules"
+    color: "BFDADC"
+    description: "Model submodules and wrappers"
+  - name: "module: synthetic-data"
+    color: "F9D0C4"
+    description: "Synthetic data generation"
+  - name: "module: tennis-scene"
+    color: "0052CC"
+    description: "Integrated tennis-scene reconstruction"
+  - name: ci
+    color: "5319E7"
+    description: "Continuous integration and GitHub Actions"
+  - name: tests
+    color: "C5DEF5"
+    description: "Test code and test infrastructure"
+  - name: dependencies
+    color: "0366D6"
+    description: "Dependency and lock-file updates"
+  - name: third-party
+    color: "E4E669"
+    description: "Vendored code and git submodules"
+  - name: python
+    color: "3572A5"
+    description: "Python dependency updates"
+  - name: knowledge
+    color: "EDEDED"
+    description: ""
+
+status:
+  - name: needs-human
+    color: "D93F0B"
+    description: "人間の承認が必要"
+  - name: ops-report
+    color: "0E8A16"
+    description: "運用レポート（.agents/ops/ops-report）"

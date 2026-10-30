@@ -75,8 +75,34 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     _emit("session_start")
 
 
+def record_cpu_universe(items: list[pytest.Item]) -> None:
+    """Called by the shard hook after marker selection, before lane selection."""
+    _emit(
+        "cpu_universe", nodeids=[item.nodeid for item in items], details=_details(items)
+    )
+
+
+def _details(items: list[pytest.Item]) -> list[dict[str, Any]]:
+    return [
+        {
+            "nodeid": item.nodeid,
+            "file": item.nodeid.split("::", 1)[0],
+            "originalname": getattr(item, "originalname", None) or item.name,
+            "family": f"{item.parent.nodeid}::{getattr(item, 'originalname', None) or item.name}",
+            "parametrized": hasattr(item, "callspec"),
+            "callspec_id": item.callspec.id if hasattr(item, "callspec") else None,
+            "fixtures": list(getattr(item, "fixturenames", [])),
+        }
+        for item in items
+    ]
+
+
 def pytest_collection_finish(session: pytest.Session) -> None:
-    _emit("collection", nodeids=[item.nodeid for item in session.items])
+    _emit(
+        "collection",
+        nodeids=[item.nodeid for item in session.items],
+        details=_details(session.items),
+    )
 
 
 def pytest_deselected(items: list[pytest.Item]) -> None:

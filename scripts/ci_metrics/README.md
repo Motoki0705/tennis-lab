@@ -2,15 +2,100 @@
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
-These tools observe the existing CPU suite. They do not delete tests, add markers,
-change fixtures, select tests by changed paths, or shard the suite. The CPU marker
+These tools plan and observe the CPU suite using the
+[sharding and coverage audit](sharding.md); the default local command remains unsharded and complete. The CPU marker
 expression remains owned by `.spin/cmds.py`; the court dataset integration retains
 its existing explicit exclusion. Both CI and the local measurement runner use
-`spin test -q --no-cov --dist=worksteal`, two workers, native thread counts of one,
+`spin test -q --no-cov --dist=worksteal`, an explicit worker count (local default two; CI choices in [sharding](sharding.md)), native thread counts of one,
 CUDA hidden, `--durations=50 --durations-min=1`, and JUnit.
 
 Pytest stdout/stderr is streamed to the job log and saved in `pytest.log`. This preserves the existing `ci_watch` failure signatures, including failed nodeids and setup exceptions. A closed output pipe fails the launcher and terminates its test process group.
 
+
+## Lane registry and planning
+
+[`lanes.json`](lanes.json) registers **only file-level exceptions** to always-run
+CPU tests. Each suite requires `id` (unique identifier), `files` (existing explicit test
+paths), `paths` (repository-relative shell patterns for dependencies), `reason`
+and `owner` (nonempty strings). Overlapping files, missing files, unknown fields,
+missing owners/reasons and invalid patterns fail planning. Files follow the
+pytest discovery patterns in `pyproject.toml`. Unregistered files always run;
+an exception covers every collected case in that file, including new cases.
+For a suite with nonempty `paths`, changing its own test file also requests it.
+An empty `paths` array explicitly defers the suite on ordinary path-selected PRs,
+including changes to its own test file. This is used for the user-approved whole-repository
+architecture sweep. Full requests described below still include every suite.
+Include local helpers, configuration and dependency paths when registering a suite;
+the registry owns the suite list, rationale and owner.
+
+PRs compare the event's `base.sha..head.sha`, covering all commits even after a
+previous PR run was cancelled. Path selection applies only to PRs. Main pushes
+and manual dispatch always request the complete CPU target; there is no scheduled
+lane. Shared infrastructure (`src/utils`, `src/tasks/base`, `tests/support`, any
+`conftest.py`, dependency configuration/lock, `.spin`, workflows and these CI
+tools/registry), renames, deletions and unavailable diffs request all tests with
+explicit reasons. Invalid registries/plans fail instead of becoming a subset.
+
+The standard-library-only `plan` job produces one immutable, source/run/attempt
+specific `plan.json` for every shard and the `Python` aggregate:
+
+```bash
+python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
+```
+
+The command reads `GITHUB_EVENT_PATH` and the Actions context. The registry and
+source test-file inventory are checked against each checkout. Pass that plan to
+the normal shard command with `--lane-plan .ci-plan/plan.json`; arbitrary pytest
+arguments cannot be combined with a lane plan. Without a plan, local sharded
+measurements explicitly request the full CPU target.
+
+Plan and aggregate summaries list deferred suites, owner, reason and the last
+verified full main success commit. Read-only Actions API lookup checks up to the
+latest 30 successful main push runs and verifies ancestry, policy, run/attempt
+and `cpu-test-coverage-*` evidence. Green jobs, partial runs or all-skipped suites
+do not establish suite success. Missing/expired/incompatible evidence and API
+errors remain **unknown**, with a reason. Coverage artifacts are kept for 90 days;
+no success index is committed to the repository.
+
+## Test growth and cost warnings
+
+The `Python` aggregate adds one informational report to the job summary after
+the coverage audit. It shows per-file case additions/removals/net changes, cases
+above the time budget (new case, newly over budget, existing, or unknown without
+a baseline), large parametrized functions, expensive case/fixture setups, and
+file-level profile versus measured phase seconds (absolute and percentage drift).
+The thresholds and their interpretation are owned by the
+[test policy](../../tests/README.md#ケース数と実行時間); exceeding them never fails CI.
+
+The comparison uses the latest verified full successful main push run whose
+commit is an ancestor of the PR base (or the current commit for main/manual
+runs), excluding the current run. Read-only API lookup checks at most 30 successful
+main runs. Missing/expired artifacts, incompatible schemas, malformed/missing
+data, unavailable ancestry and API failures are displayed with reasons. Once the
+latest full success is identified, incompatible/missing growth data does not
+silently select an older baseline. The first run after enabling this report will
+normally show no growth baseline; current costs and profile drift still appear.
+
+When D is nonempty, the report explicitly limits comparisons to R's files,
+including the baseline side. Deferred tests have no measured cost and are never
+reported as removed, skipped, or zero seconds. Pytest `originalname`, parent
+identity and callspec metadata determine function families; parameter IDs are
+not parsed for brackets. Collection metadata is checked across workers without
+changing `inventory.json` or the lane/coverage schema. Missing details disable
+the cost report with a reason, leaving the coverage verdict independent.
+
+Fixture rows show scope, actual setup executions, summed setup and the longest
+single setup. A fixture exceeds the budget only when a single execution does;
+many cheap executions are not one expensive setup. Fixture time is already
+contained in case setup and is never added to test phase totals. Missing call
+phases on setup skips remain unmeasured, with status shown. Profile comparison
+uses the exact scheduling profile fingerprint; missing or mismatched profiles
+show a reason, and new files are labelled unmeasured in the profile.
+
+The `cpu-test-coverage-<run>-<attempt>` artifact also keeps `growth.json`
+(schema 1, complete requested inventory/details/results/fixture costs and run
+identity, or an explicit incomplete reason), `growth-summary.json` (all report rows), and `growth-summary.md` for
+90 days. Summary tables show up to 20 rows each; full rows remain in JSON.
 
 ## Run and recover
 
@@ -59,9 +144,12 @@ If cancellation or a launcher failure prevents the test command from starting,
 | `run.json` | Requested/start/finish times, separate lock wait, exit/signal, source consistency |
 | `events-*.jsonl` | Flushed per-process observations: selected/deselected nodeids, collection failures/skips, worker collection, fixture setup, test phases, process finish |
 | `inventory.json` | Selected nodeids; compared in exact order across every worker |
+| `inventory-details.json` | Schema 1 collection metadata, including originalname/callspec, or explicit detail issues; contains U for lane runs |
+| `lane-plan.json`, `shard-*.json`, `cpu_universe` events | Fixed request, U/R/D partition and independent collection evidence before lane selection; see [sharding](sharding.md#evidence-and-failure-semantics) |
 | `results.json` | Per-node passed/skipped/failed/xfail/xpass/incomplete status and phase times |
 | `junit.xml`, `pytest.log` | Independent JUnit totals/identities and standard durations output |
 | `summary.json`, `summary.md` | Completeness checks, process startup/collection times, costs by file/fixture, outcome counts |
+| Aggregate `growth.json`, `growth-summary.json`, `growth-summary.md` | Audited requested observations and informational growth/cost comparison; see [warnings](#test-growth-and-cost-warnings) |
 
 `full_cpu_baseline` requires the complete default selection and a successful test
 observation. Missing runner/session/JUnit evidence, worker inventory disagreement,
@@ -131,7 +219,7 @@ Provide `requested_at` only when independently observed. Check completion is fro
 that origin to completion of all named observed checks (`--check Python`, repeat
 for several). It is reported separately from the **sum of every job's runner
 time**, including failed/cancelled attempts and other concurrent jobs. `Python`
-is an observed check name, not a restored merge condition.
+is also the required merge check, as defined in the [repository workflow](../../.agents/README.md#github運用ルール初版).
 
 Step categories distinguish checkout, uv/cache/install, apt, lint, pytest, post,
 and other setup/measurement work. Raw step timestamps and conclusions are kept.
@@ -159,3 +247,5 @@ The measured candidate decisions and baseline evidence are in
 The implementation uses [pytest hooks](https://docs.pytest.org/en/stable/reference/reference.html#hooks),
 [Actions attempt APIs](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt),
 and [`setup-uv` cache outputs](https://github.com/astral-sh/setup-uv#outputs).
+
+Regenerate scheduling weights from complete Actions artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Failed cases remain visible; incomplete attempts are rejected.

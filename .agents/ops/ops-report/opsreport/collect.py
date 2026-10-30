@@ -1,20 +1,10 @@
-"""Deterministic data collection for the ops report.
-
-Everything here is computed from git / gh / the filesystem without an agent, so
-the same repository state always yields the same facts. The agent only interprets
-this data and reads the codebase (read-only) for deeper analysis.
-"""
+"""Pin the report boundary and dedicated memory; research is fetched on demand."""
 
 from __future__ import annotations
 
 import hashlib
-import json
-import shlex
-import sys
-import tempfile
-from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,28 +13,6 @@ from .shell import CommandError
 
 REPORT_LABEL = "ops-report"
 AI_PROPOSED_LABEL = "ai-proposed"
-CLEANUP_DIR = Path(".agents/ops/cleanup")
-MEMORY_DIR = Path(".agents/memory")
-KNOWLEDGE_SUMMARY = Path("knowledge/summary.md")
-CODE_SUFFIXES = ("*.py", "*.sh", "*.ts", "*.tsx", "*.js")
-# Vendored / bundled third-party code would dominate size and TODO statistics.
-EXCLUDED_PATHSPECS = (
-    ":!third_party",
-    ":!**/vendor/**",
-    ":!**/three.*.js",
-    ":!**/*.min.js",
-)
-MAX_TEXT = 20_000
-MERGED_PR_LIMIT = 300
-STALE_PR_DETAIL_FIELDS = (
-    "additions,deletions,changedFiles,files,mergeable,mergeStateStatus,"
-    "statusCheckRollup,closingIssuesReferences,body"
-)
-
-_ISSUE_FIELDS = "number,title,labels,createdAt,updatedAt,author"
-_PR_FIELDS = "number,title,headRefName,author,createdAt,updatedAt,isDraft,labels,url"
-
-
 FETCH_TIMEOUT = 600
 
 
@@ -95,8 +63,6 @@ class CollectConfig:
     repo_root: Path
     now: datetime
     base: BaseRef
-    stale_pr_days: int
-    cleanup_cmd: tuple[str, ...] | None
 
     @property
     def base_ref(self) -> str:
@@ -110,20 +76,6 @@ class CollectConfig:
 
 def parse_ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
-
-
-def _names(labels: list[dict[str, Any]]) -> list[str]:
-    return sorted(str(label["name"]) for label in labels)
-
-
-def _truncate(text: str, limit: int = MAX_TEXT) -> str:
-    if len(text) <= limit:
-        return text
-    return text[:limit] + f"\n...[truncated: {len(text) - limit} more chars]"
-
-
-def _days(now: datetime, ts: str) -> int:
-    return (now - parse_ts(ts)).days
 
 
 def collect_report_history(repo_root: Path) -> dict[str, Any]:
@@ -193,459 +145,33 @@ def _proposal_status(p: proposals.ParsedProposal) -> dict[str, Any]:
     }
 
 
-def _in_period(ts: str, since: datetime, until: datetime) -> bool:
-    return since <= parse_ts(ts) < until
-
-
-def _list_since(
-    args: list[str],
-    *,
-    key: str,
-    since: datetime,
-    until: datetime,
-    limit: int,
-    cwd: Path,
-) -> list[dict[str, Any]]:
-    """List gh rows sorted newest-first by ``key`` and keep ``since <= key < until``.
-
-    Fails if the limit was hit before any row older than ``since`` was returned
-    (i.e. older in-period rows may be missing).
-    """
-    rows = shell.gh_json([*args, "--limit", str(limit)], cwd=cwd)
-    if not isinstance(rows, list):
-        raise CommandError(f"gh {shlex.join(args)} did not return a JSON list")
-    dated = [r for r in rows if r.get(key)]
-    if len(rows) >= limit and all(parse_ts(r[key]) >= since for r in dated):
-        raise CommandError(
-            f"gh {shlex.join(args)} hit --limit {limit} inside the report period"
-        )
-    return [r for r in dated if _in_period(r[key], since, until)]
-
-
-def _stale_pr_detail(number: int, cwd: Path) -> dict[str, Any]:
-    """Facts the agent cannot fetch itself (it runs without gh / network)."""
-    d = shell.gh_json(
-        ["pr", "view", str(number), "--json", STALE_PR_DETAIL_FIELDS], cwd=cwd
-    )
-    checks = Counter(
-        str(c.get("conclusion") or c.get("state") or c.get("status") or "UNKNOWN")
-        for c in d["statusCheckRollup"]
-    )
-    files = [f["path"] for f in d["files"]]
-    return {
-        "additions": d["additions"],
-        "deletions": d["deletions"],
-        "changed_files": d["changedFiles"],
-        "files": files[:40],
-        "mergeable": d["mergeable"],
-        "merge_state": d["mergeStateStatus"],
-        "checks": dict(sorted(checks.items())),
-        "closing_issues": [int(i["number"]) for i in d["closingIssuesReferences"]],
-        "body": _truncate(d["body"] or "", 2000),
-    }
-
-
-def collect_github(
-    cfg: CollectConfig, since: datetime, until: datetime
-) -> dict[str, Any]:
-    cwd = cfg.repo_root
-    open_prs = shell.gh_list(
-        ["pr", "list", "--state", "open", "--json", _PR_FIELDS], limit=300, cwd=cwd
-    )
-    prs = []
-    for pr in sorted(open_prs, key=lambda r: int(r["number"])):
-        idle = _days(cfg.now, pr["updatedAt"])
-        stale = idle >= cfg.stale_pr_days
-        prs.append(
-            {
-                "number": pr["number"],
-                "title": pr["title"],
-                "branch": pr["headRefName"],
-                "author": pr["author"]["login"],
-                "draft": pr["isDraft"],
-                "labels": _names(pr["labels"]),
-                "created_at": pr["createdAt"],
-                "updated_at": pr["updatedAt"],
-                "idle_days": idle,
-                "stale": stale,
-                "url": pr["url"],
-                "detail": _stale_pr_detail(int(pr["number"]), cwd) if stale else None,
-            }
-        )
-    # gh pr list sorts by creation date, so the merge window must be part of the
-    # search; the date-granular qualifier is a superset, refined by mergedAt below.
-    merged_since = since.astimezone(UTC).date().isoformat()
-    merged = [
-        p
-        for p in shell.gh_list(
-            [
-                "pr", "list", "--state", "merged",
-                "--search", f"merged:>={merged_since}",
-                "--json", "number,title,headRefName,mergedAt",
-            ],
-            limit=MERGED_PR_LIMIT,
-            cwd=cwd,
-        )
-        if _in_period(p["mergedAt"], since, until)
-    ]  # fmt: skip
-    issues = shell.gh_list(
-        ["issue", "list", "--state", "open", "--json", _ISSUE_FIELDS],
-        limit=2000,
-        cwd=cwd,
-    )
-    label_counts: Counter[str] = Counter()
-    for issue in issues:
-        label_counts.update(_names(issue["labels"]))
-    ai_proposed = [
-        {
-            "number": i["number"],
-            "title": i["title"],
-            "age_days": _days(cfg.now, i["createdAt"]),
-            "idle_days": _days(cfg.now, i["updatedAt"]),
-        }
-        for i in sorted(issues, key=lambda r: int(r["number"]))
-        if AI_PROPOSED_LABEL in _names(i["labels"])
-    ]
-    runs = _list_since(
-        [
-            "run", "list",
-            "--json", "databaseId,workflowName,conclusion,status,headBranch,event,createdAt,url",
-        ],
-        key="createdAt",
-        since=since,
-        until=until,
-        limit=1000,
-        cwd=cwd,
-    )  # fmt: skip
-    conclusions = Counter(str(r.get("conclusion") or r.get("status")) for r in runs)
-    failures = [r for r in runs if r.get("conclusion") == "failure"]
-    return {
-        "open_prs": prs,
-        "stale_pr_days": cfg.stale_pr_days,
-        "merged_prs_in_period": [
-            {"number": p["number"], "title": p["title"], "branch": p["headRefName"]}
-            for p in merged
-        ],
-        "open_issues": {
-            "total": len(issues),
-            "by_label": dict(sorted(label_counts.items())),
-            "ai_proposed": ai_proposed,
-            # Every open issue (gh_list fails rather than truncates), one compact
-            # line each, so the agent can refer to existing ones without gh.
-            "items": [
-                f"#{i['number']} [{','.join(_names(i['labels']))}] {i['title']}"
-                f"（{_days(cfg.now, i['updatedAt'])}日更新なし）"
-                for i in sorted(issues, key=lambda r: int(r["number"]))
-            ],
-        },
-        "ci_runs_in_period": {
-            "total": len(runs),
-            "by_conclusion": dict(sorted(conclusions.items())),
-            "failures": [
-                {
-                    "workflow": r["workflowName"],
-                    "branch": r["headBranch"],
-                    "event": r["event"],
-                    "created_at": r["createdAt"],
-                    "url": r["url"],
-                }
-                for r in failures[:30]
-            ],
-        },
-    }
-
-
-def _last_commit_date(cfg: CollectConfig, path: Path) -> str:
-    out = shell.git(
-        ["log", "-1", "--format=%cs", cfg.rev, "--", str(path)], cwd=cfg.repo_root
-    ).strip()
-    return out or "uncommitted"
-
-
-def collect_git(cfg: CollectConfig, since: datetime, until: datetime) -> dict[str, Any]:
-    cwd = cfg.repo_root
-    log = shell.git(
-        [
-            "log",
-            cfg.rev,
-            f"--since={since.isoformat()}",
-            f"--until={until.isoformat()}",
-            "--format=%h%x09%an%x09%s",
-        ],
-        cwd=cwd,
-    ).splitlines()
-    shortstat = shell.git(
-        [
-            "log",
-            cfg.rev,
-            f"--since={since.isoformat()}",
-            f"--until={until.isoformat()}",
-            "--shortstat",
-            "--format=",
-        ],
-        cwd=cwd,
-    )
-    added = removed = 0
-    for line in shortstat.splitlines():
-        for part in line.split(","):
-            words = part.split()
-            if len(words) >= 2 and words[1].startswith("insertion"):
-                added += int(words[0])
-            elif len(words) >= 2 and words[1].startswith("deletion"):
-                removed += int(words[0])
-    line_counts = shell.git(
-        ["grep", "-c", "", cfg.rev, "--", *CODE_SUFFIXES, *EXCLUDED_PATHSPECS],
-        cwd=cwd,
-        ok_codes=(0, 1),
-    )
-    files: list[tuple[str, int]] = []
-    for row in line_counts.splitlines():
-        path, _, count = row.removeprefix(f"{cfg.rev}:").rpartition(":")
-        files.append((path, int(count)))
-    files.sort(key=lambda item: (-item[1], item[0]))
-    todo = shell.git(
-        [
-            "grep", "-I", "-c", "-E", r"\b(TODO|FIXME|XXX|HACK)\b", cfg.rev,
-            "--", *EXCLUDED_PATHSPECS,
-        ],
-        cwd=cwd,
-        ok_codes=(0, 1),
-    )  # fmt: skip
-    todo_files: list[tuple[str, int]] = []
-    for row in todo.splitlines():
-        path, _, count = row.removeprefix(f"{cfg.rev}:").rpartition(":")
-        todo_files.append((path, int(count)))
-    todo_files.sort(key=lambda item: (-item[1], item[0]))
-    return {
-        "commits_in_period": len(log),
-        "commit_subjects": log[:120],
-        "lines_added": added,
-        "lines_removed": removed,
-        "code_files_total": len(files),
-        "code_lines_total": sum(c for _, c in files),
-        "largest_code_files": [{"path": p, "lines": c} for p, c in files[:25]],
-        "todo_markers_total": sum(c for _, c in todo_files),
-        "todo_markers_top_files": [{"path": p, "count": c} for p, c in todo_files[:15]],
-    }
-
-
-def collect_workspace(cfg: CollectConfig) -> dict[str, Any]:
-    cwd = cfg.repo_root
-    porcelain = shell.git(["worktree", "list", "--porcelain"], cwd=cwd).splitlines()
-    worktrees = [ln for ln in porcelain if ln.startswith("worktree ")]
-    branches = shell.git(
-        ["for-each-ref", "refs/heads", "--format=%(refname:short)"], cwd=cwd
-    ).splitlines()
-    merged = shell.git(
-        ["branch", "--merged", cfg.rev, "--format=%(refname:short)"], cwd=cwd
-    ).splitlines()
-    return {
-        "worktrees": len(worktrees),
-        "prunable_worktrees": sum(1 for ln in porcelain if ln.startswith("prunable")),
-        "local_branches": len(branches),
-        "local_branches_merged_into_base": len(merged),
-        "branches_by_prefix": dict(
-            sorted(
-                Counter(
-                    b.split("/", 1)[0] if "/" in b else "(none)" for b in branches
-                ).items()
-            )
-        ),
-    }
-
-
-def _cleanup_command(cfg: CollectConfig) -> tuple[str, ...]:
-    if cfg.cleanup_cmd is not None:
-        return cfg.cleanup_cmd
-    entry = cfg.repo_root / CLEANUP_DIR / "cleanup.py"
-    if not entry.is_file():
-        raise CommandError(
-            f"{CLEANUP_DIR} exists but has no cleanup.py; "
-            "set OPS_REPORT_CLEANUP_CMD to a command accepting --report-json FILE"
-        )
-    return (sys.executable, str(entry), "scan")
-
-
-def collect_cleanup(cfg: CollectConfig) -> dict[str, Any]:
-    if cfg.cleanup_cmd is None and not (cfg.repo_root / CLEANUP_DIR).is_dir():
-        return {
-            "status": "not_installed",
-            "note": f"{CLEANUP_DIR} が存在しない（掃除モジュール未導入）",
-        }
-    # Contract (see .agents/ops/cleanup/README.md): the command writes its report to
-    # the file given after --report-json and never deletes anything in scan mode.
-    with tempfile.TemporaryDirectory(prefix="ops-report-cleanup-") as tmp:
-        out = Path(tmp) / "cleanup.json"
-        cmd = (*_cleanup_command(cfg), "--report-json", str(out))
-        shell.run_process_group(cmd, cwd=cfg.repo_root, timeout=900)
-        if not out.is_file():
-            raise CommandError(f"{shlex.join(cmd)} did not write {out}")
-        try:
-            parsed = json.loads(out.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise CommandError(f"{shlex.join(cmd)} wrote invalid JSON") from exc
-    text = json.dumps(parsed, ensure_ascii=False, indent=1)
-    shown = shlex.join((*cmd[:-1], "<tmp>"))
-    return {"status": "ok", "command": shown, "report_json": _truncate(text)}
-
-
-def collect_memory(cfg: CollectConfig) -> dict[str, Any]:
-    tracked = shell.git(
-        ["ls-tree", "-r", "--name-only", cfg.rev, "--", str(MEMORY_DIR)],
-        cwd=cfg.repo_root,
-    ).splitlines()
-    summary = str(MEMORY_DIR / "SUMMARY.md")
-    if summary not in tracked:
-        return {
-            "status": "not_installed",
-            "note": f"{MEMORY_DIR} が存在しない（共有memory未導入）",
-        }
-    entries = []
-    for path in tracked:
-        rel = Path(path)
-        if (
-            rel.parent.name not in memory.SHARED_LAYERS
-            or rel.suffix != ".md"
-            or rel.name == "index.md"
-        ):
-            continue
-        head = shell.git(["show", f"{cfg.rev}:{path}"], cwd=cfg.repo_root).splitlines()[
-            :15
-        ]
-        entries.append(
-            {"path": str(rel), "last_commit": _last_commit_date(cfg, rel), "head": head}
-        )
-    return {
-        "status": "ok",
-        "summary": _truncate(
-            shell.git(["show", f"{cfg.rev}:{summary}"], cwd=cfg.repo_root)
-        ),
-        "entries": entries[:300],
-        "entries_total": len(entries),
-    }
-
-
-def collect_knowledge(
-    cfg: CollectConfig, since: datetime, until: datetime
-) -> dict[str, Any]:
-    if not shell.git(
-        ["ls-tree", "--name-only", cfg.rev, "--", str(KNOWLEDGE_SUMMARY)],
-        cwd=cfg.repo_root,
-    ).strip():
-        return {"status": "not_found", "note": f"{KNOWLEDGE_SUMMARY} が存在しない"}
-    changed = shell.git(
-        [
-            "log", cfg.rev, f"--since={since.isoformat()}",
-            f"--until={until.isoformat()}", "--name-only", "--format=",
-            "--", "knowledge/nodes", "knowledge/reports",
-        ],
-        cwd=cfg.repo_root,
-    )  # fmt: skip
-    paths = sorted({ln for ln in changed.splitlines() if ln.strip()})
-    return {
-        "status": "ok",
-        "summary_path": str(KNOWLEDGE_SUMMARY),
-        "summary_last_commit": _last_commit_date(cfg, KNOWLEDGE_SUMMARY),
-        "changed_in_period": paths[:60],
-        "changed_in_period_total": len(paths),
-    }
-
-
-def collect_ai_env(cfg: CollectConfig) -> dict[str, Any]:
-    tracked = shell.git(
-        [
-            "ls-tree", "-r", "--name-only", cfg.rev, "--",
-            "AGENTS.md", "CLAUDE.md", ".agents", ".github/agents",
-            ".github/copilot-instructions.md", ".claude",
-        ],
-        cwd=cfg.repo_root,
-    ).splitlines()  # fmt: skip
-    control = [
-        p
-        for p in tracked
-        if p.endswith(".md")
-        or "/systemd/" in p
-        or p.endswith((".sh", ".toml", ".json"))
-    ]
-    return {
-        "files": [
-            {"path": p, "last_commit": _last_commit_date(cfg, Path(p))}
-            for p in control[:150]
-        ],
-        "files_total": len(control),
-    }
-
-
-def collect_meta(
-    cfg: CollectConfig, since: datetime, until: datetime
-) -> dict[str, Any]:
-    cwd = cfg.repo_root
-    head_sha = shell.git(["rev-parse", "HEAD"], cwd=cwd).strip()
-    branch = shell.git(["branch", "--show-current"], cwd=cwd).strip() or "(detached)"
-    dirty = shell.git(["status", "--porcelain", "--untracked-files=all"], cwd=cwd)
-    # Files whose checkout content differs from the base, including untracked files.
-    # The agent cannot run git, so it needs this list to avoid citing them as base.
-    tracked_diff = shell.git(["diff", "--name-only", "-z", cfg.rev], cwd=cwd).split(
-        "\0"
-    )
-    untracked = shell.git(
-        ["ls-files", "--others", "--exclude-standard", "-z"], cwd=cwd
-    ).split("\0")
-    diff_files = sorted((set(tracked_diff) | set(untracked)) - {""})
-    return {
-        "generated_at": cfg.now.isoformat(timespec="minutes"),
-        "period_start": since.isoformat(timespec="seconds"),
-        "period_end": until.isoformat(timespec="seconds"),
-        "base_ref": cfg.base_ref,
-        "base_sha": cfg.rev,
-        "base_fetched_from": cfg.base.fetched_from,
-        "checkout_branch": branch,
-        "checkout_sha": head_sha[:10],
-        "checkout_matches_base": cfg.rev == head_sha,
-        "checkout_modified_files": len(dirty.splitlines()),
-        "checkout_diff_files": diff_files[:200],
-        "checkout_diff_files_total": len(diff_files),
-    }
-
-
 def collect_all(
     cfg: CollectConfig,
     *,
     history: dict[str, Any],
     initial_since: datetime,
 ) -> dict[str, Any]:
-    """Collect the period ``[since, until)``.
-
-    ``until`` is this run's ``now`` and is stored in the report's marker; the next
-    run starts exactly there (not at the issue's createdAt, which is later than the
-    collection), so consecutive reports neither drop nor double-count events.
-    """
+    """Freeze [previous completed boundary, now), never an inventory or logs."""
     reports = [r for r in history["reports"] if r["status"] == "complete"]
-    until = cfg.now
     since = (
         datetime.fromisoformat(reports[-1]["period_end"]).astimezone(cfg.now.tzinfo)
         if reports
         else initial_since
     )
-    if since > until:
-        raise CommandError(
-            f"previous report #{reports[-1]['number']} was collected until {since}, "
-            f"after this run's time {until}"
-        )
+    if since > cfg.now:
+        raise CommandError("previous report boundary is after this run's time")
+    repository = shell.gh_json(
+        ["repo", "view", "--json", "nameWithOwner"], cwd=cfg.repo_root
+    )["nameWithOwner"]
     return {
-        "meta": collect_meta(cfg, since, until),
-        "previous_reports": {
-            "reports": [
-                {k: v for k, v in row.items() if k != "body"}
-                for row in history["reports"]
-            ]
+        "meta": {
+            "generated_at": cfg.now.isoformat(timespec="seconds"),
+            "period_start": since.isoformat(timespec="seconds"),
+            "period_end": cfg.now.isoformat(timespec="seconds"),
+            "base_ref": cfg.base_ref,
+            "base_sha": cfg.rev,
+            "base_fetched_from": cfg.base.fetched_from,
+            "repository": repository,
         },
-        "github": collect_github(cfg, since, until),
-        "git": collect_git(cfg, since, until),
-        "workspace": collect_workspace(cfg),
-        "cleanup": collect_cleanup(cfg),
-        "memory": collect_memory(cfg),
         "ops_memory": memory.collect(cfg.repo_root, cfg.rev),
-        "knowledge": collect_knowledge(cfg, since, until),
-        "ai_env": collect_ai_env(cfg),
     }

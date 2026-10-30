@@ -87,7 +87,9 @@ class CoordinateMetrics:
         groups = {}
         means = []
         for step in self.frame_steps:
-            values = np.asarray([row[1] for key, row in rows if key[0] == step], np.float64)
+            values: np.ndarray[Any, np.dtype[np.float64]] = np.asarray(
+                [row[1] for key, row in rows if key[0] == step], np.float64
+            )
             group: dict[str, Any] = dict(observed_frames=len(values), available=bool(len(values)))
             for name, value in (("mean_error_px", np.mean(values) if len(values) else None),
                                 ("median_error_px", np.median(values) if len(values) else None),

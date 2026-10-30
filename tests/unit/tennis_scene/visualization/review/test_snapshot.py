@@ -6,16 +6,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.tennis_scene.schema import SceneResult
 from src.tennis_scene.visualization.review.gallery import Review
 from src.tennis_scene.visualization.review.snapshot import (
     build_snapshot,
     scene_snapshot,
 )
-from tests.unit.tennis_scene.test_archive import _v2_scene
 
 
-def test_snapshot_keeps_3d_masks_and_does_not_publish_meshes() -> None:
-    scene = _v2_scene()
+def test_snapshot_keeps_3d_masks_and_does_not_publish_meshes(v2_scene: SceneResult) -> None:
+    scene = v2_scene
     scene.metadata.update(camera_ids=["cam0", "cam1"], status="partial")
     value = {item.name: getattr(scene, item.name) for item in fields(scene)}
     snapshot = scene_snapshot(value)
@@ -25,8 +25,8 @@ def test_snapshot_keeps_3d_masks_and_does_not_publish_meshes() -> None:
     assert all(gap["end"] > gap["start"] for gap in snapshot["gaps"])
 
 
-def test_snapshot_rejects_a_reason_that_disagrees_with_validity() -> None:
-    scene = _v2_scene()
+def test_snapshot_rejects_a_reason_that_disagrees_with_validity(v2_scene: SceneResult) -> None:
+    scene = v2_scene
     scene.metadata.update(camera_ids=["cam0", "cam1"], status="partial")
     value = {item.name: getattr(scene, item.name) for item in fields(scene)}
     value["ball_rejection_code"] = np.zeros_like(scene.ball_rejection_code)
