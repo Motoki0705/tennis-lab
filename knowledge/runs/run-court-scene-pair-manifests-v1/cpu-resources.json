@@ -13,6 +13,10 @@
     "verify": {
       "max_rss_kib": 496412,
       "exit_code": 0
+    },
+    "verify_on_reader_base": {
+      "max_rss_kib": 496632,
+      "exit_code": 0
     }
   }
 }

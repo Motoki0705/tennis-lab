@@ -8,8 +8,8 @@
 ## 選択と検証
 
 `manifests.py`は[元の生成script](../run-court-scene-diversity-6000-v1/generate.py)の
-`nested_order`関数のASTだけを実行する。元script全体のimportは、mainから除いた
-実験用renderer依存を要求するため実行しない。順位の計算方法は複製しない。
+`nested_order`関数のASTだけを実行する。元script全体のimportは、常設srcから除いた
+実験固有の生成APIを要求するため実行しない。順位の計算方法は複製しない。
 `finalize`と同様、固定済みtrain/val軌道で採択画像を分け、scene順に順位のprefixを連結する。
 最初の`check-p01`でB00+B01のsample列を既存scene-2と完全照合し、不一致なら作成を止める。
 `create`でも同じgateを通り、既存8 manifestのprefixと新11 manifestの件数・一意性・
@@ -68,7 +68,7 @@ JSONは`schema, source_manifest, source_manifest_sha256, selection_seed, split, 
 選択済みmanifestは保存基準のサイズを超えるためGitへ複製せず、Driveに保持する。
 
 ```bash
-CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python -m pytest -n 0 \
+PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python -m pytest -n 0 \
   knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py \
   tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_preserves_order_and_supervision \
   tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership \
@@ -83,11 +83,18 @@ bundle内の新規15件は、このrun固有の件数とscene境界、P01 gate�
 `verify`は実際の新11 manifestを同階層に配置し、実consumerの`read_subset`も通す。
 画像を伴う全pool reader・学習・GPU・Blender・Colabの実行は、この入力作成runには含めない。
 
-## 現行mainでの全pool読込の阻害要因
+## 基底PRと全pool読込の確認範囲
 
-[consumer互換性のCPU再現](consumer-compatibility.json)では、実Drive publicationのmethod
-`saved_train_trajectories`を現行`TrajectoryMethod`が拒否する。PR #1570で当該enumと
-専用validatorが除かれたため、現行の全pool adapterはmanifestの選択後も使用できない。
-新manifestのschema・path・sample列の照合と、この既存pool readerの問題は区別する。
-#1582のworkerも同じ問題を親#1581へ報告しており、親による対応範囲の確定と
-旧publicationの厳密な読込の修復が、Colab実行の再開条件である。
+[作成開始時のCPU再現](consumer-compatibility.json)では、実Drive publicationのmethod
+`saved_train_trajectories`を当時のmainの`TrajectoryMethod`が拒否した。
+親の指示に従い、この回帰を修復する[PR #1594](https://github.com/Motoki0705/tennis-lab/pull/1594)の
+指定headを基底として本branchを積み直した。
+[enum復元の確認](consumer-on-reader-base.json)と
+[基底上のmanifest再照合](manifest-verification-on-reader-base.json)を保存している。
+
+`read_subset`で確認したのはschema・source参照・配置であり、画像shardを必要とする
+全publication readerの成功とは区別する。#1591で旧学習コードと修復版の両方に
+ラップトップの数値環境による幾何の末尾桁差が観測されている。
+全poolの厳密な読込は、[親の指示](https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6534951394)に従い、
+担当親が前回と同じColab環境で実行手順の最初に確認する。
+画像placeholder、比較の緩和、metadata-only consumerモードは追加しない。

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 512717411ac875c2316136d1d75b64b6292b97b29ab9e523a1067c13a446e070 on 2026-10-31 -->
+<!-- knowledge-review: 0c13da26376950c641c75a809a323636ed09afc1880379daed62e4979833d2ca on 2026-10-31 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-31（Courtシーン組合せの入力manifestを追加。固定6000枚・4条件比較と#1343の完了判断、球LOESS・公開デモの判断を維持。モデル・checkpoint採用判断は変更しない）
@@ -581,8 +581,8 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 既存poolのnested順位で新5ペアと4シーン共通評価を作り、Driveへ追加した。
 P01のsample列は既存scene-2と完全一致し、共通評価と全9 trainのsample・軌道の漏れは0だった。
 入力同一性の確認であり、ペア比較の学習・精度評価は未実施で、モデル採用判断は変えない。
-作業baseでは旧poolの`saved_train_trajectories`方式を現行readerが拒否するため、
-次は親#1581がその厳密な読込を修復したうえで共通評価を実行する。
+作成開始時のmainでは旧poolの方式をreaderが拒否したため、修復PR #1594を基底に再照合した。
+次は親#1581が、前回と同じColab環境で全poolの厳密な読込を確認したうえで共通評価を実行する。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 

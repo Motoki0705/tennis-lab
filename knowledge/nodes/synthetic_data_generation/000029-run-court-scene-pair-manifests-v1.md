@@ -48,6 +48,8 @@ artifacts:
   cpu_resources: knowledge/runs/run-court-scene-pair-manifests-v1/cpu-resources.json
   drive_publication: knowledge/runs/run-court-scene-pair-manifests-v1/drive-publication.json
   publication_read_recovery: knowledge/runs/run-court-scene-pair-manifests-v1/publication-read-recovery.json
+  reader_base_verification: knowledge/runs/run-court-scene-pair-manifests-v1/manifest-verification-on-reader-base.json
+  reader_base_compatibility: knowledge/runs/run-court-scene-pair-manifests-v1/consumer-on-reader-base.json
 parents:
 - run-court-scene-diversity-6000-v1
 relations: []
@@ -92,16 +94,19 @@ descriptor/index・accepted membership・固定済み軌道割当を検証し、
 作成・照合のCPU最大RSSは約485MiBだった。
 
 [テスト記録](../../runs/run-court-scene-pair-manifests-v1/test-results.json)は、
-bundle固有15件と既存consumerの9件の成功を保持する。新規caseは最大0.499秒で、
-既存のpublication fixtureを使うcaseは6.38〜11.384秒だった。
+基底PR #1594上でbundle固有15件と既存consumerの9件が計61秒で成功した記録を保持する。
+新規caseは最大0.203秒で、既存のpublication fixtureを使うcaseは4.634〜10.952秒だった。
 全画像の読込・教師やQAの再検証、学習・モデル評価は実施していない。
 データ選択処理のためTensorBoard曲線は該当しない。
 
-作業baseのmainでは、実poolのmethod `saved_train_trajectories`を`TrajectoryMethod`が
+作成開始時のmainでは、実poolのmethod `saved_train_trajectories`を`TrajectoryMethod`が
 拒否することも[CPUで確認](../../runs/run-court-scene-pair-manifests-v1/consumer-compatibility.json)した。
 これはmanifestのsample列や配置とは独立した、PR #1570で取り除いた旧publication readerの問題である。
 親#1581へ報告し、本runからvalidatorの迂回や担当外の復活は行っていない。
-次は親が旧poolの厳密な読込を修復したうえで、同じ条件の学習・共通評価を実行する。
+その修復PR #1594の指定headへ積み直し、enumが復元されたことと、全manifestの再照合成功を確認した。
+全publicationの厳密な読込は、旧学習コード・修復版の両方でラップトップ上の幾何の
+末尾桁差が観測されているため、親が前回と同じColab環境で確認する方針である。
+その確認後に、同じ条件の学習・共通評価を実行する。
 今回の入力検証から、シーン組合せによるモデル精度や汎化の効果は判断しない。
 
 ファイル名・Drive配置・DATA root相対の学習設定と再現手順は

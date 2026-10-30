@@ -8,7 +8,250 @@
     "expanded_cases": 24,
     "elapsed_seconds": 7.75
   },
-  "suites": [
+  "dependency_pr": 1594,
+  "dependency_head": "2b086d91853301d7a500f8b16d844b460f095d19",
+  "execution": {
+    "tests": 24,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "elapsed_seconds": 61.0,
+    "groups": {
+      "new-bundle": {
+        "expanded_cases": 15,
+        "case_elapsed_sum_seconds": 0.884,
+        "min_case_seconds": 0.001,
+        "max_case_seconds": 0.203,
+        "max_setup_seconds": 0.13
+      },
+      "existing-consumer": {
+        "expanded_cases": 9,
+        "case_elapsed_sum_seconds": 54.996,
+        "min_case_seconds": 4.634,
+        "max_case_seconds": 10.952,
+        "max_setup_seconds": 4.19
+      }
+    },
+    "cases": [
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_generated_manifest_boundaries_and_evaluation_population",
+        "elapsed_seconds": 0.06,
+        "phase_seconds_rounded": {
+          "setup": 0.04,
+          "call": 0.02,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_p01_mismatch_blocks_new_outputs[train]",
+        "elapsed_seconds": 0.137,
+        "phase_seconds_rounded": {
+          "setup": 0.1,
+          "call": 0.04,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_p01_mismatch_blocks_new_outputs[val]",
+        "elapsed_seconds": 0.14,
+        "phase_seconds_rounded": {
+          "setup": 0.13,
+          "call": 0.01,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_verifier_rejects_membership_drift[prefix]",
+        "elapsed_seconds": 0.203,
+        "phase_seconds_rounded": {
+          "call": 0.11,
+          "setup": 0.09,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_verifier_rejects_membership_drift[duplicate]",
+        "elapsed_seconds": 0.192,
+        "phase_seconds_rounded": {
+          "call": 0.1,
+          "setup": 0.09,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_disjoint_frames_still_detect_trajectory_leakage[trajectory_id]",
+        "elapsed_seconds": 0.001,
+        "phase_seconds_rounded": {
+          "call": 0.0,
+          "setup": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_disjoint_frames_still_detect_trajectory_leakage[trajectory_group_id]",
+        "elapsed_seconds": 0.001,
+        "phase_seconds_rounded": {
+          "setup": 0.0,
+          "call": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_trajectory_identity_is_scoped_to_the_scene",
+        "elapsed_seconds": 0.001,
+        "phase_seconds_rounded": {
+          "call": 0.0,
+          "teardown": 0.0,
+          "setup": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_existing_remote_filename_is_refused",
+        "elapsed_seconds": 0.001,
+        "phase_seconds_rounded": {
+          "call": 0.0,
+          "setup": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_existing_output_directory_is_refused",
+        "elapsed_seconds": 0.12,
+        "phase_seconds_rounded": {
+          "setup": 0.08,
+          "call": 0.04,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_publish_checks_verified_bytes_before_accessing_drive[failed-verification]",
+        "elapsed_seconds": 0.004,
+        "phase_seconds_rounded": {
+          "setup": 0.0,
+          "call": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_publish_checks_verified_bytes_before_accessing_drive[changed-file]",
+        "elapsed_seconds": 0.003,
+        "phase_seconds_rounded": {
+          "setup": 0.0,
+          "call": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_metadata_resume_rejects_corrupt_local_bytes",
+        "elapsed_seconds": 0.003,
+        "phase_seconds_rounded": {
+          "setup": 0.0,
+          "call": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_metadata_download_reports_every_failed_batch",
+        "elapsed_seconds": 0.01,
+        "phase_seconds_rounded": {
+          "call": 0.01,
+          "setup": 0.0,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "knowledge/runs/run-court-scene-pair-manifests-v1/test_manifests.py::test_inventory_surfaces_the_cli_failure_reason",
+        "elapsed_seconds": 0.008,
+        "phase_seconds_rounded": {
+          "teardown": 0.01,
+          "setup": 0.0,
+          "call": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_preserves_order_and_supervision",
+        "elapsed_seconds": 10.952,
+        "phase_seconds_rounded": {
+          "call": 6.76,
+          "setup": 4.19,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[hash]",
+        "elapsed_seconds": 5.177,
+        "phase_seconds_rounded": {
+          "setup": 3.4,
+          "call": 1.78,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[unknown]",
+        "elapsed_seconds": 6.086,
+        "phase_seconds_rounded": {
+          "setup": 3.32,
+          "call": 2.77,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[duplicate]",
+        "elapsed_seconds": 6.084,
+        "phase_seconds_rounded": {
+          "setup": 3.4,
+          "call": 2.69,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[empty]",
+        "elapsed_seconds": 4.964,
+        "phase_seconds_rounded": {
+          "setup": 3.51,
+          "call": 1.46,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[escape]",
+        "elapsed_seconds": 4.834,
+        "phase_seconds_rounded": {
+          "setup": 3.17,
+          "call": 1.66,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[schema]",
+        "elapsed_seconds": 4.984,
+        "phase_seconds_rounded": {
+          "setup": 3.21,
+          "call": 1.77,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_invalid_membership[split]",
+        "elapsed_seconds": 4.634,
+        "phase_seconds_rounded": {
+          "setup": 3.19,
+          "call": 1.44,
+          "teardown": 0.0
+        }
+      },
+      {
+        "node": "tests/integration/tasks/court_detection/test_dataset_subset.py::test_subset_rejects_disjoint_frames_on_the_same_trajectory",
+        "elapsed_seconds": 7.281,
+        "phase_seconds_rounded": {
+          "call": 3.92,
+          "setup": 3.36,
+          "teardown": 0.0
+        }
+      }
+    ]
+  },
+  "prior_individual_suites": [
     {
       "kind": "new-bundle",
       "tests": 15,
@@ -253,7 +496,7 @@
     "reason": "Existing tests construct separate tiny CPU publications and mutate selected inputs or validate their pipeline integration; no shared fixture/refactor in this manifest-only change."
   },
   "not_run": [
-    "Full legacy pool adapter (known saved_train_trajectories method rejection; see consumer-compatibility.json)",
-    "JPEG validation and GPU/Blender/Colab execution (no image/checkpoint assets on this laptop)."
+    "Full strict publication reader with image shards: parent will check in the original Colab environment per the parent instruction.",
+    "GPU/Blender/Colab training or evaluation: outside this manifest preparation task."
   ]
 }

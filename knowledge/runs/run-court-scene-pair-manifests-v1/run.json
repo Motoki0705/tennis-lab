@@ -34,7 +34,9 @@
     "tests": "test-results.json",
     "resources": "cpu-resources.json",
     "compatibility": "consumer-compatibility.json",
-    "read_recovery": "publication-read-recovery.json"
+    "read_recovery": "publication-read-recovery.json",
+    "reader_base_verification": "manifest-verification-on-reader-base.json",
+    "reader_base_compatibility": "consumer-on-reader-base.json"
   },
   "manifests": [
     "eval-4scene.val.subset.json",
@@ -68,6 +70,11 @@
     "images_downloaded": 0,
     "renderer_invoked": false,
     "gpu_or_colab_invoked": false,
-    "full_legacy_consumer": "Blocked by unsupported saved_train_trajectories method at this run base; parent notified."
+    "full_legacy_consumer": "Not run here. Enum support is restored by dependency PR #1594; the parent will verify the strict full publication with image shards in the original Colab environment."
+  },
+  "dependency": {
+    "pr": 1594,
+    "branch": "codex/saved-train-pool-reader",
+    "head": "2b086d91853301d7a500f8b16d844b460f095d19"
   }
 }
