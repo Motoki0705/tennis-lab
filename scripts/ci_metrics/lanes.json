@@ -728,6 +728,22 @@
       ],
       "reason": "Tracking/association blind-clip reservation, freeze, replay, feature guards and diagnosis test benchmark tools with cross-domain pipeline dependencies (#1544).",
       "owner": "Motoki0705"
+    },
+    {
+      "id": "javascript",
+      "files": [
+        "tests/e2e/development/test_javascript.py"
+      ],
+      "paths": [
+        "src/**/*.js",
+        "src/**/*.mjs",
+        "tests/**/*.mjs",
+        "tests/**/*.cjs",
+        "scripts/ci_metrics/package*.json",
+        ".agents/ops/board/*"
+      ],
+      "reason": "Existing Node regressions and the self-contained Chromium refresh race require Node/Playwright; run on UI changes and full main requests.",
+      "owner": "Motoki0705"
     }
   ]
 }

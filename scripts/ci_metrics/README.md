@@ -4,8 +4,8 @@
 
 These tools plan and observe the CPU suite using the
 [sharding and coverage audit](sharding.md); the default local command remains unsharded and complete. The CPU marker
-expression remains owned by `.spin/cmds.py`; the court dataset integration retains
-its existing explicit exclusion. Both CI and the local measurement runner use
+expression remains owned by `.spin/cmds.py`; the court dataset integration is
+selected through the registry with no runner exclusion. Both CI and the local measurement runner use
 `spin test -q --no-cov --dist=worksteal`, an explicit worker count (local default two; CI choices in [sharding](sharding.md)), native thread counts of one,
 CUDA hidden, `--durations=50 --durations-min=1`, and JUnit.
 
@@ -56,6 +56,24 @@ and `cpu-test-coverage-*` evidence. Green jobs, partial runs or all-skipped suit
 do not establish suite success. Missing/expired/incompatible evidence and API
 errors remain **unknown**, with a reason. Coverage artifacts are kept for 90 days;
 no success index is committed to the repository.
+
+## Optional test runtimes
+
+The `player-publication` lane initializes pinned `third_party/DINO` and runs
+`prepare_dino_cpu --output .ci-dino-cpu`. This compiles upstream `vision.cpp`
+without CUDA, solely so real matcher/loss imports work. Attention forward/backward
+still raise; no model forward is replaced. Add the output directory to `PYTHONPATH`.
+Missing preparation fails CI instead of skipping the two publication loss cases.
+
+The `javascript` lane wraps existing `*.test.mjs` with `node --test` and runs the
+self-contained detection refresh race. It and `ops-scenarios` prepare the pinned
+Playwright package in this directory and Chromium headless shell; the latter
+executes the board browser workflow. Browser preparation failures cannot skip
+requested CI tests. Court dataset fake-render integration and temporary-root
+typed configuration contracts use the normal CPU selection.
+
+Manual GPU and `local_data and not cuda` acceptance are documented in the
+[local runner instructions](../github_actions/README.md#使い方).
 
 ## Test growth and cost warnings
 

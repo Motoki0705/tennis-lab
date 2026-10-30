@@ -193,10 +193,10 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     )
     (tmp_path / "src").mkdir()
     (tmp_path / "src/__init__.py").touch()
-    excluded_files = {
+    restored_files = {
         "tests/integration/synthetic_data_generation/test_court_dataset.py",
     }
-    assert all((REPO_ROOT / path).is_file() for path in excluded_files)
+    assert all((REPO_ROOT / path).is_file() for path in restored_files)
     samples = {
         "tests/unit/test_unit.py": "def test_unit(): pass\n",
         "tests/integration/test_integration.py": "def test_integration(): pass\n",
@@ -224,10 +224,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             "@pytest.mark.cuda\n"
             "def test_cuda(): raise AssertionError('CUDA must be excluded')\n"
         ),
-        **dict.fromkeys(
-            excluded_files,
-            "raise AssertionError('manual integration must not be collected')\n",
-        ),
+        **dict.fromkeys(restored_files, "def test_court_contract(): pass\n"),
     }
     for relative, source in samples.items():
         path = tmp_path / relative
@@ -305,7 +302,8 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         inventory.extend(json.loads((measured / "inventory.json").read_text()))
         results.extend(json.loads((measured / "results.json").read_text()))
         summaries.append(summary)
-    assert len(inventory) == len(set(inventory)) == (11 if failing_test else 10)
+    assert len(inventory) == len(set(inventory)) == (12 if failing_test else 11)
+    assert any("test_court_dataset.py::test_court_contract" in node for node in inventory)
     assert failures == (2 if failing_test else 0)
     assert sum(s["counts"].get("skipped", 0) for s in summaries) == 1
     skipped = next(
@@ -345,6 +343,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             and "RuntimeError: setup failure" in combined_log
         )
     assert {nodeid.split("::")[0] for nodeid in inventory} == {
+        *restored_files,
         "tests/unit/test_unit.py",
         "tests/integration/test_integration.py",
         "tests/e2e/test_e2e.py",

@@ -129,13 +129,11 @@ def observed_shards(tmp_path_factory: pytest.TempPathFactory) -> Path:
             "@pytest.mark.local_data\n"
             "def test_local(): assert False\n"
         )
-    excluded = (
+    restored = (
         suite / "tests/integration/synthetic_data_generation/test_court_dataset.py"
     )
-    excluded.parent.mkdir(parents=True)
-    excluded.write_text(
-        "raise AssertionError('manual integration must not be collected')\n"
-    )
+    restored.parent.mkdir(parents=True)
+    restored.write_text("def test_court_contract(): pass\n")
     weights = suite / "weights.json"
     weights.write_text(
         json.dumps(
@@ -193,14 +191,17 @@ def observed_shards(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
     result = verify_shards(observed_shards, 2, needs=SUCCESS, **CONTEXT)
     assert result["success"], result
-    assert result["selected_count"] == 5
-    assert result["counts"] == {"passed": 5}
+    assert result["selected_count"] == 6
+    assert result["counts"] == {"passed": 6}
     for directory in observed_shards.glob("*/tests"):
         summary = json.loads((directory / "summary.json").read_text())
         assert summary["full_cpu_baseline"] is False
         plan = json.loads((directory / "shard-gw0.json").read_text())
-        assert plan["unmeasured_files"] == ["tests/test_new.py"]
-        assert len(plan["universe_nodeids"]) == 5
+        assert plan["unmeasured_files"] == [
+            "tests/integration/synthetic_data_generation/test_court_dataset.py",
+            "tests/test_new.py",
+        ]
+        assert len(plan["universe_nodeids"]) == 6
         assert plan["requested_nodeids"] == plan["universe_nodeids"]
         assert plan["deferred"] == {}
         for path in directory.glob("events-gw*.jsonl"):
@@ -228,8 +229,8 @@ def test_profile_recomputes_measured_file_and_split_costs(
         for path in observed_shards.glob("*/tests/results.json")
         for row in json.loads(path.read_text())
     ]
-    assert profile["source"]["selected_count"] == len(results) == 5
-    assert profile["source"]["counts"] == {"passed": 5}
+    assert profile["source"]["selected_count"] == len(results) == 6
+    assert profile["source"]["counts"] == {"passed": 6}
     assert profile["source"]["successful_test_observations"] is True
     assert profile["split_files"] == ["tests/test_first.py"]
     assert profile["file_seconds"]["tests/test_first.py"] == pytest.approx(
@@ -354,8 +355,8 @@ def test_real_lane_selection_records_the_universe_before_deferring_a_file(
         audit["universe_count"],
         audit["requested_count"],
         audit["deferred_count"],
-    ) == (5, 4, 1)
-    assert audit["counts"] == {"passed": 4}
+    ) == (6, 5, 1)
+    assert audit["counts"] == {"passed": 5}
     assert audit["full_cpu_success"] is False
     assert json.loads((output / "shard-gw0.json").read_text())["deferred"] == {
         "tests/test_new.py::test_cpu": "new"
