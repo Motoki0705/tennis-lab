@@ -2,7 +2,7 @@
 
 [English](baseline.md) · [简体中文](baseline.zh-CN.md)
 
-#1401の計測記録で、#1402〜#1405の判断に使います。**現行sourceの全CPU観測は完了しましたが、失敗があり成功baselineではありません。**
+#1401の計測記録とrunner構成の追試#1523をまとめ、#1402〜#1405の判断に使います。**現行sourceの全CPU観測は完了しましたが、失敗があり成功baselineではありません。**
 CI目標の達成や短縮効果を実証したとは記録しません。正確なsource・対象集合は機械可読の
 環境metadata、inventory、JUnit、phase eventを正本とし、失敗・cancelを成功へ置き換えません。
 
@@ -100,3 +100,21 @@ worker間の寄与時間は重なり得るため、そのままjob実時間の�
 全件観測と計測上の制約は上記に記録しました。成功した同sourceのActions比較は統合後に記録します。
 
 jobログへの転送追加後、同じ12テストの交互測定を新たに3組行い、通常中央値 **4.213秒**、計測付き **4.467秒**（+0.254秒）でした。6実行とも成功し対象は同一です。機械証拠の `overhead_live_log` に別の出典として記録します。起動の寄与が大きい部分測定で、旧測定との差を版間の短縮とは扱いません。
+
+## runner構成の比較
+
+初期4構成のbranch比較は同じsource・更新profile・12,795件のCPU inventoryで行いました。新しいCI回帰13件を含みます。10 shard追試ではCI回帰を3件追加（計12,798件）し、別sourceとして機械可読の証拠に記録します。プロダクト側テストは同じです。各構成n=1です。旧4 × 2参照は古いprofile・12,782件であり、同一sourceの対照実験ではありません。全体時間はActionsの `created_at`（queue込み）から `Python` の集約・後処理完了までです。runner時間はlint・集約を含む全jobの和です。失敗を含め全attemptを[機械可読の証拠](scheduling-evidence.json)に残します。
+
+| 構成 / run | Python完了 分 | shard最短–最長 分（差 秒） | 全job runner 分 | test cache hit | 最大個別RSS GiB | 失敗件数 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| [4 × 2 / 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121) | 26.22 | 14.42–25.80 (683) | 82.60 | 4/4 | 1.70 | 1 |
+| [4 × 4 / 40992996490](https://github.com/Motoki0705/tennis-lab/actions/runs/40992996490) | 20.53 | 12.62–20.13 (451) | 66.83 | 4/4 | 1.65 | 2 |
+| [6 × 4 / 40995509440](https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440) | 16.22 | 11.73–15.77 (242) | 87.98 | 6/6 | 1.64 | 2 |
+| [6 × 2 / 40997143981](https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981) | 18.30 | 9.93–17.88 (477) | 90.33 | 6/6 | 1.60 | 1 |
+| [8 × 2 / 40999125159](https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159) | 15.02 | 10.20–14.62 (265) | 104.20 | 8/8 | 1.51 | 1 |
+
+profile再生成とfixture境界の正本は[分割文書](sharding.ja.md#実測profileの再生成)です。個別process RSSはテスト子processを含まず、同時process treeのピークではありません。実測runnerはいずれも4 vCPU・約16 GB RAMですがCPU世代は異なります。完全なshard観測では全workerの終了記録が揃い、OOMやworker消失は観測されませんでした。native libraryの環境変数は1を維持していますが、既存テストの一部はPyTorch intraopを2/4へ変え、後続へ状態を残します。4 workerでは環境変数だけでCPU競合を防げません。テスト本体の修正は親へ引き継ぎます。
+
+全runに既知のREADME.zh-CN失敗が残ります。4 workerの両観測には `test_timeout_reaps_group_when_output_is_open_or_closed[True]` の追加失敗もあります。timeout cleanup直後のassertが実行中のchildを観測したもので、無視も成功への変換もしていません。失敗観測から成功warm-cacheの中央値やp95は確定できません。source/profile/inventoryの監査は維持し、全件実行した失敗は `observations_complete=true`・`success=false` と区別します。
+
+任意のローカル全件collect-onlyは競合負荷下で中止し、cancelを性能や成功の証拠へ含めていません。全件実行の証拠はActionsのmanifestとcoverage成果物です。親がfixture最適化をmergeした後はprofileを再生成し、選定構成を再計測してください。hardware差、標本数、thread状態の漏れが比較の制限です。

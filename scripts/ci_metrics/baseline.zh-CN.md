@@ -2,7 +2,7 @@
 
 [English](baseline.md) · [日本語](baseline.ja.md)
 
-这是 #1401 的测量记录，用于 #1402–#1405。**当前源码的完整CPU观测已完成但有失败，不是成功基线。** 本文不
+这里记录 #1401 及runner配置追试 #1523，用于 #1402–#1405。**当前源码的完整CPU观测已完成但有失败，不是成功基线。** 本文不
 声称已达到 CI 目标或证明性能提升。机器可读的环境 metadata、inventory、JUnit 和 phase
 事件是精确源码和测试集合的依据；失败及取消不会被替换为成功。
 
@@ -97,3 +97,21 @@ fixture 时间已包含在 setup 内，测试中的 model/CLI 构建属于 call�
 完整观测及限制已记录于上文；整合后记录成功的同source Actions比较。
 
 加入job日志转发后，重新交替测量相同12例3组：普通中位数 **4.213秒**，计测中位数 **4.467秒**（+0.254秒）。六次均成功且inventory相同。机器证据的 `overhead_live_log` 保留独立来源；启动成本占主导，不能将与旧样本的差异视为版本间提速。
+
+## runner配置比较
+
+最初四个branch配置使用相同source、更新后的profile和12,795例CPU inventory，其中包括13个新增CI回归用例。10 shard追试新增3个CI回归用例（共12,798例），在机器证据中单独标明source，产品侧测试保持相同。各配置n=1。旧4 × 2参照使用旧profile和12,782例，只是背景，不是同源码对照。总时间从Actions的 `created_at`（含queue）到 `Python` 汇总及后处理完成；runner时间累计lint和汇总在内的全部job。包括失败在内的所有attempt均保存在[机器证据](scheduling-evidence.json)中。
+
+| 配置 / run | Python完成 分钟 | shard最短–最长 分钟（差 秒） | 全部job runner 分钟 | test cache hit | 最大单进程RSS GiB | 失败用例 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| [4 × 2 / 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121) | 26.22 | 14.42–25.80 (683) | 82.60 | 4/4 | 1.70 | 1 |
+| [4 × 4 / 40992996490](https://github.com/Motoki0705/tennis-lab/actions/runs/40992996490) | 20.53 | 12.62–20.13 (451) | 66.83 | 4/4 | 1.65 | 2 |
+| [6 × 4 / 40995509440](https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440) | 16.22 | 11.73–15.77 (242) | 87.98 | 6/6 | 1.64 | 2 |
+| [6 × 2 / 40997143981](https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981) | 18.30 | 9.93–17.88 (477) | 90.33 | 6/6 | 1.60 | 1 |
+| [8 × 2 / 40999125159](https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159) | 15.02 | 10.20–14.62 (265) | 104.20 | 8/8 | 1.51 | 1 |
+
+profile重新生成与fixture边界以[分片文档](sharding.zh-CN.md#重新生成实测profile)为准。单进程RSS不包含测试子进程，也不是同时process tree峰值。实测runner均有4 vCPU、约16 GB RAM，但CPU代际不同。完整shard观测保留全部worker结束记录，未观察到OOM或worker丢失。native library环境变量保持1，但部分既有测试将PyTorch intraop改为2/4并泄漏到后续用例，因此4 worker仍可能争用CPU。测试本体修复交由父会话。
+
+所有run均保留已知README.zh-CN失败。两次4 worker观测还出现 `test_timeout_reaps_group_when_output_is_open_or_closed[True]` 失败：timeout cleanup后立即检查时观察到仍在运行的child。没有忽略失败或转为成功。这些失败观测不能建立成功warm-cache的中位数或p95。source/profile/inventory审计保留；完整执行但失败时记录 `observations_complete=true`、`success=false`。
+
+可选的本地全量collect-only在竞争负载下取消，不作为性能或成功证据。完整执行证据来自Actions manifest和coverage成果物。父会话合并fixture优化后应重新生成profile并重测所选配置。hardware差异、样本量与thread状态泄漏限制结果外推。

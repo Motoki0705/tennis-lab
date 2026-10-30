@@ -2,7 +2,7 @@
 
 [English](sharding.md) · [日本語](sharding.ja.md)
 
-CI 独立执行 lint，并默认将完整 CPU 目标分给4个测试 job，每个使用2个 worker。手动dispatch可选 `shards=1/2/4/6/8` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
+CI 独立执行 lint，并默认将完整 CPU 目标分给4个测试 job，每个使用2个 worker。手动dispatch可选 `shards=1/2/4/6/8/10` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
 `Python` 使用 `always()`，仅在 lint、所有测试 job 和覆盖审计成功后通过。CI 不恢复为
 merge 前条件。本次保留现有 trigger；每日维护迁移属于
 [#1349](https://github.com/Motoki0705/tennis-lab/issues/1349)。

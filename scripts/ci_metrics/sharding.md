@@ -4,7 +4,7 @@
 
 The CI workflow runs lint independently and partitions the complete CPU target
 over four test jobs by default, each with two pytest workers. Manual dispatch
-accepts `shards=1/2/4/6/8` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
+accepts `shards=1/2/4/6/8/10` and `workers=2/4` for same-source scheduling comparisons. Worker counts are explicit rather than host-dependent `auto`.
 The manual one-job reference has a 120-minute limit; ordinary shards retain 60 minutes. The fixed `Python` job runs with
 `always()` and succeeds only when lint, all test jobs and the coverage audit succeed.
 CI remains an observation rather than a pre-merge requirement. The existing

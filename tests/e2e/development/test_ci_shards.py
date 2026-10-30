@@ -43,7 +43,7 @@ def test_assignment_uses_cost_and_preserves_files_including_new_tests() -> None:
         assign_groups(nodeids, 5, weights)
 
 
-@pytest.mark.parametrize("count", [1, 2, 4, 6, 8])
+@pytest.mark.parametrize("count", [1, 2, 4, 6, 8, 10])
 def test_every_dispatch_partition_covers_new_and_split_cases_once(count: int) -> None:
     weights = {f"tests/test_{i}.py": float(20 - i) for i in range(10)}
     nodeids = [f"{name}::test_{i}" for name in weights for i in range(3)]
@@ -205,6 +205,7 @@ def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
 
 def test_profile_recomputes_measured_file_and_split_costs(
     observed_shards: Path,
+    tmp_path: Path,
 ) -> None:
     profile = build_profile(observed_shards)
     results = [
@@ -235,6 +236,25 @@ def test_profile_recomputes_measured_file_and_split_costs(
     ]
     with pytest.raises(ValueError, match="unique measured"):
         build_profile(observed_shards, ["tests/unmeasured.py"])
+    destination = tmp_path / "profile.json"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "scripts.ci_metrics",
+            "profile",
+            "--root",
+            str(observed_shards),
+            "--output",
+            str(destination),
+        ],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_timing_profile(destination)[0] == profile
 
 
 def test_split_file_rejects_new_shared_fixture(

@@ -9,7 +9,7 @@ on:
       shards:
         description: CPU job count for matched scheduling comparisons
         type: choice
-        options: ["1", "2", "4", "6", "8"]
+        options: ["1", "2", "4", "6", "8", "10"]
         default: "4"
         required: true
       workers:
@@ -64,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || inputs.shards == '6' && '[0,1,2,3,4,5]' || inputs.shards == '8' && '[0,1,2,3,4,5,6,7]' || '[0,1,2,3]') }}
+        shard: ${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || inputs.shards == '6' && '[0,1,2,3,4,5]' || inputs.shards == '8' && '[0,1,2,3,4,5,6,7]' || inputs.shards == '10' && '[0,1,2,3,4,5,6,7,8,9]' || '[0,1,2,3]') }}
     env:
       # Pin worker count for reproducible comparisons; native threads stay at one.
       PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ inputs.workers || '2' }}

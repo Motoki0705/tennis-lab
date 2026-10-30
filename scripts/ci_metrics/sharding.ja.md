@@ -2,7 +2,7 @@
 
 [English](sharding.md) · [简体中文](sharding.zh-CN.md)
 
-CIはlintを独立実行し、全CPU対象を既定4 job（各2 worker）に分けます。手動dispatchでは `shards=1/2/4/6/8` と `workers=2/4` を選び、同じsourceで比較できます。ホストに依存する `auto` ではなくworker数を明示します。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
+CIはlintを独立実行し、全CPU対象を既定4 job（各2 worker）に分けます。手動dispatchでは `shards=1/2/4/6/8/10` と `workers=2/4` を選び、同じsourceで比較できます。ホストに依存する `auto` ではなくworker数を明示します。手動1 jobの基準測定は上限120分、通常shardは60分です。固定名 `Python` は
 `always()` で動き、lint・全test job・完全性照合の成功を要求します。CIはmerge前の条件へ
 戻しません。今回は既存triggerを維持し、日次保守への移行は
 [#1349](https://github.com/Motoki0705/tennis-lab/issues/1349) の範囲とします。
