@@ -8,7 +8,10 @@ import sqlite3
 import subprocess
 import sys
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from typing import Any
 
@@ -41,6 +44,508 @@ def client(world: World, web: SimpleNamespace) -> Iterator[TestClient]:
         base_url="http://127.0.0.1",
     ) as client:
         yield client
+
+
+# Execution test design: preserve the collector's states and independent Issue
+# acceptance, explicit-only GitHub/Herdr reads, cache/failure semantics and public
+# GET boundaries. Extend the existing HTTP/read-only/security tests below, and
+# exercise the production scripts with a virtual clock (board_execution.cjs).
+# Budget: <50 expansions/function, <5s/case; measure via --durations=0. No agents,
+# GPU, live GitHub or extra browser dependencies are needed for these checks.
+@pytest.fixture
+def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
+    api = importlib.import_module("board.execution_data")
+    now = "2026-10-30T12:00:00+00:00"
+
+    def text(value: str | None, status: str = "visible") -> dict[str, Any]:
+        return {"status": status, "text": value, "truncated": False}
+
+    children = []
+    for number, (status, label) in enumerate(
+        (
+            ("running", "実行中"),
+            ("turn_completed", "ターン終了"),
+            ("failed", "失敗"),
+            ("stopped", "停止中"),
+            ("dependency_wait", "依存待ち"),
+            ("not_started", "委任予約済み・未起動"),
+            ("not_delegated", "未委任"),
+            ("unknown", "状態不明"),
+        ),
+        11,
+    ):
+        children.append(
+            {
+                "child": number,
+                "status": status,
+                "label": label,
+                "delegation": "delegation-display",
+                "run": None,
+                "observed_at": now,
+                "last_activity_at": now,
+                "activity_time_status": "observed",
+                "updates_stalled": status == "running",
+                "evidence": [
+                    {
+                        "source": "runner.result",
+                        "code": "identity_verified",
+                        "fields": ["result", "runner.start_ticks"],
+                    }
+                ],
+                "summary": {
+                    "message": {
+                        **text("<img src=x onerror=alert(1)> を文字として表示"),
+                        "received_at": now,
+                        "time_status": "observed",
+                    },
+                    "tools": [
+                        {
+                            "kind": "command_execution",
+                            "command": text(None, "hidden"),
+                            "received_at": now,
+                            "time_status": "observed",
+                        },
+                        {
+                            "kind": "mcp_tool_call",
+                            "server": text("lookup"),
+                            "tool": text("search"),
+                            "received_at": None,
+                            "time_status": "unavailable",
+                        },
+                        {
+                            "kind": "file_change",
+                            "change_count": 2,
+                            "received_at": now,
+                            "time_status": "observed",
+                        },
+                    ],
+                    "tail_truncated": True,
+                },
+                "stop_record": {
+                    "reason": text("依存PRを待っています。"),
+                    "next_action": text("親が差分を確認する。"),
+                }
+                if status == "stopped"
+                else {},
+                "dependencies": [],
+                "github": {"status": "not_requested"},
+            }
+        )
+    snapshot = {
+        "schema_version": 1,
+        "observed_at": now,
+        "stale_after_seconds": 300,
+        "dispatcher": {"status": "unused", "label": "自律dispatcher未使用"},
+        "github": {"status": "not_requested", "fetched_at": None},
+        "parents": [
+            {
+                "repo": "o/r",
+                "parent": 1,
+                "assignment": "active",
+                "generation": 1,
+                "source": "parent_registry",
+                "children": children,
+            }
+        ],
+    }
+    fake = SimpleNamespace(
+        api=api, snapshot=snapshot, calls=[], fail=False, fetched_at=now
+    )
+
+    def collect(**kwargs: Any) -> dict[str, Any]:
+        fake.calls.append(kwargs)
+        assert kwargs["state_dir"] == world.labels.registry.parent
+        if fake.fail:
+            raise ValueError("private runtime details")
+        result: dict[str, Any] = deepcopy(fake.snapshot)
+        if kwargs["github"]:
+            result["github"] = {"status": "observed", "fetched_at": fake.fetched_at}
+            for parent in result["parents"]:
+                for child in parent["children"]:
+                    child["github"] = {
+                        "status": "observed",
+                        "issue": {"state": "open", "state_reason": None},
+                        "pull_requests": [
+                            {
+                                "number": 88,
+                                "state": "open",
+                                "merged": False,
+                                "url": "https://github.com/o/r/pull/88",
+                            }
+                        ],
+                        "launch": {
+                            "action": "wait",
+                            "state": "waiting",
+                            "dependencies": [],
+                            "reasons": [],
+                        },
+                        "stopped": False,
+                        "stop_record": {},
+                    }
+        return result
+
+    monkeypatch.setattr(api, "collect_status", collect)
+    return fake
+
+
+def test_execution_explicit_refresh_cache_and_fresh_local_state(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    calls = len(world.labels.read()["calls"])
+    initial = client.get("/api/execution").json()
+    parent = initial["parents"][0]
+    assert parent["roster"]["name"] == world.assignments[1].name
+    assert parent["roster"]["state"] == "idle"
+    assert parent["children"][1]["status"] == "turn_completed"
+    assert parent["children"][1]["github"] == {"status": "not_requested"}
+    assert len(world.labels.read()["calls"]) == calls
+    refreshed = client.get("/api/execution?refresh=true").json()
+    child = refreshed["parents"][0]["children"][1]
+    assert child["status"] == "turn_completed"
+    assert child["github"]["issue"]["state"] == "open"
+    assert child["github"]["fetched_at"] == refreshed["github"]["fetched_at"]
+    assert len(world.labels.read()["calls"]) > calls
+    calls = len(world.labels.read()["calls"])
+    execution.snapshot["parents"][0]["children"][1].update(
+        status="running", label="実行中"
+    )
+    cached = client.get("/api/execution").json()
+    assert cached["parents"][0]["children"][1]["status"] == "running"
+    assert cached["parents"][0]["children"][1]["github"] == child["github"]
+    assert cached["github"] == refreshed["github"]
+    assert cached["roster_observed_at"] == refreshed["roster_observed_at"]
+    assert len(world.labels.read()["calls"]) == calls
+    assert [call["github"] for call in execution.calls] == [False, True, False]
+
+
+# Concurrency contract: hold either external source on an Event, then require
+# local GET and duplicate refresh to finish before releasing it. This exposes
+# both reader locks without sleep-based timing or real GitHub/Herdr latency.
+# Two expansions; reuse the real HTTP route, cache and SQLite projection.
+@pytest.mark.parametrize("phase", ["github", "roster"])
+def test_execution_local_reads_and_duplicate_refresh_do_not_wait_for_external_io(
+    world: World,
+    client: TestClient,
+    execution: SimpleNamespace,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    entered, release = Event(), Event()
+    original_collect = execution.api.collect_status
+    original_agents = web.data.agents
+
+    def pause() -> None:
+        entered.set()
+        assert release.wait(5), "test did not release the external observation"
+
+    def collect(**kwargs: Any) -> dict[str, Any]:
+        if phase == "github" and kwargs["github"]:
+            pause()
+        result: dict[str, Any] = original_collect(**kwargs)
+        return result
+
+    def agents(*args: Any) -> dict[str, Any]:
+        if phase == "roster":
+            pause()
+        result: dict[str, Any] = original_agents(*args)
+        return result
+
+    monkeypatch.setattr(execution.api, "collect_status", collect)
+    monkeypatch.setattr(web.data, "agents", agents)
+    execution.snapshot["parents"][0]["children"][0]["label"] = "新しいローカル観測"
+    execution.fetched_at = "2026-10-30T12:01:00+00:00"
+    before = world.labels.registry.read_bytes(), world.store.path.read_bytes()
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        refreshing = pool.submit(client.get, "/api/execution?refresh=true")
+        try:
+            assert entered.wait(2)
+            local = pool.submit(client.get, "/api/execution").result(timeout=2)
+            assert local.status_code == 200
+            data = local.json()
+            assert data["parents"][0]["children"][0]["label"] == "新しいローカル観測"
+            assert data["github"] == previous["github"]
+            assert data["github_refresh"]["status"] == "running"
+            duplicate = pool.submit(client.get, "/api/execution?refresh=true").result(
+                timeout=2
+            )
+            assert duplicate.status_code == 202
+            assert duplicate.json()["github_refresh"] == data["github_refresh"]
+            assert not refreshing.done()
+        finally:
+            release.set()
+        completed = refreshing.result(timeout=2)
+    assert completed.status_code == 200
+    finished = client.get("/api/execution").json()
+    assert finished["github"]["fetched_at"] == execution.fetched_at
+    assert finished["github_refresh"]["status"] == "idle"
+    assert finished["github_refresh"]["result"] == "succeeded"
+    assert finished["github_refresh"]["revision"] > data["github_refresh"]["revision"]
+    assert sum(call["github"] for call in execution.calls) == 2
+    assert (world.labels.registry.read_bytes(), world.store.path.read_bytes()) == before
+
+
+def test_execution_failures_keep_last_cache_and_never_expose_errors(
+    client: TestClient,
+    execution: SimpleNamespace,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    execution.fail = True
+    for url in ("/api/execution", "/api/execution?refresh=true"):
+        failed = client.get(url)
+        assert failed.status_code == 503
+        assert "private runtime details" not in failed.text
+    execution.fail = False
+
+    def no_roster(*args: Any) -> None:
+        raise web.app.BoardError("private roster details")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(web.data, "agents", no_roster)
+        assert client.get("/api/execution?refresh=true").status_code == 503
+    cached = client.get("/api/execution").json()
+    state = cached.pop("github_refresh")
+    assert state["status"] == "idle" and state["result"] == "failed"
+    assert state["revision"] > previous.pop("github_refresh")["revision"]
+    assert cached == previous
+    recovered = client.get("/api/execution?refresh=true")
+    assert recovered.status_code == 200
+    assert recovered.json()["github_refresh"]["result"] == "succeeded"
+
+
+def test_execution_cached_github_children_and_handoff_do_not_reuse_old_identity(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    parent = execution.snapshot["parents"][0]
+    parent["children"][-1]["delegation"] = None
+    client.get("/api/execution?refresh=true").raise_for_status()
+    removed = parent["children"].pop()
+    retained = client.get("/api/execution").json()["parents"][0]["children"][-1]
+    assert retained["child"] == removed["child"]
+    assert retained["cached_local_observation"] is True
+    assert retained["observed_at"] == removed["observed_at"]
+    # Removing a real local delegation must not leave a cached running worker.
+    running = parent["children"].pop(0)
+    children = client.get("/api/execution").json()["parents"][0]["children"]
+    assert running["child"] not in {row["child"] for row in children}
+    parent["children"][0]["delegation"] = "new-delegation"
+    assert client.get("/api/execution").json()["parents"][0]["children"][0][
+        "github"
+    ] == {"status": "not_requested"}
+    parent["generation"] = 2
+    fresh = client.get("/api/execution").json()["parents"][0]
+    assert fresh["roster"]["state"] == "unknown"
+    assert len(fresh["children"]) == len(parent["children"])
+    absent = deepcopy(parent)
+    absent.update(parent=5, generation=1, assignment="handoff_pending")
+    execution.snapshot["parents"].append(absent)
+    roster = client.get("/api/execution").json()["parents"][1]["roster"]
+    assert roster["name"] == world.assignments[5].name
+    assert roster["state"] == "unknown"
+
+
+@pytest.mark.parametrize(
+    "private",
+    [
+        "/private/run-directory",
+        "session_id=private",
+        "01234567-89ab-cdef-0123-456789abcdef",
+    ],
+)
+def test_execution_revalidates_public_response_and_keeps_safe_cache(
+    client: TestClient, execution: SimpleNamespace, private: str
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    message = execution.snapshot["parents"][0]["children"][0]["summary"]["message"]
+    saved = message["text"]
+    message["text"] = private
+    for url in ("/api/execution", "/api/execution?refresh=true"):
+        response = client.get(url)
+        assert response.status_code == 503
+        assert private not in response.text
+    message["text"] = saved
+    cached = client.get("/api/execution").json()
+    assert cached.pop("github_refresh")["result"] == "failed"
+    previous.pop("github_refresh")
+    assert cached == previous
+
+
+def test_execution_scripts_render_and_poll_only_the_visible_tab(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    local = client.get("/api/execution").json()
+    refreshed = client.get("/api/execution?refresh=true").json()
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("board_execution.cjs")),
+            str(Path(__file__).resolve().parents[3] / ".agents/ops/board/static"),
+        ],
+        input=json.dumps(
+            {"local": local, "refreshed": refreshed, "post": world.post()}
+        ),
+        env=world.env(),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+# Exercise the Web projection at the producer/collector boundary. Register a
+# matching run through the actual producer, then model one missing/mismatched
+# contract field or a new reservation retaining the old run. Four expansions;
+# the collector's field-by-field validation remains in its own tests.
+@pytest.mark.parametrize(
+    ("case", "expected_status", "expected_code"),
+    [
+        ("matching", "turn_completed", "contract_verified"),
+        ("missing", "unknown", "contract_missing"),
+        ("mismatch", "unknown", "contract_mismatch"),
+        ("redelegated", "not_started", "reserved"),
+    ],
+)
+def test_execution_reads_real_collector_records_without_changing_any_file(
+    world: World,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    expected_status: str,
+    expected_code: str,
+) -> None:
+    state = world.labels.registry.parent
+    run = state / "private-worker-run"
+    run.mkdir()
+    worktree = state.parent / "private-worker-worktree"
+    worktree.mkdir()
+    delegation = "a" * 32
+    branch = "codex/board-contract-fixture"
+    runtime: dict[str, Any] = {
+        "schema_version": 1,
+        "run_id": "private-run-token",
+        "run_dir": str(run),
+        "session_root": str(run),
+        "result": "completed",
+        "turn_end_reason": "completed",
+        "runner": None,
+        "process": None,
+        "started_at": 1793360000,
+        "finished_at": 1793360200,
+        "contract": {
+            "task_id": delegation,
+            "cwd": str(worktree),
+            "branch": branch,
+            "settings": {"agent": "codex"},
+        },
+        "runtime": {"session_id": "private-child-session", "turn_id": "private-turn"},
+    }
+    (run / "result.json").write_text(json.dumps(runtime))
+    (run / "session.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "session_id": "private-child-session",
+                "last_turn_id": "private-turn",
+                "latest_run": str(run),
+            }
+        )
+    )
+    (run / "events.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "message",
+                    "type": "agent_message",
+                    "text": "/private/hidden-output",
+                },
+            }
+        )
+        + "\n"
+    )
+    parents = json.loads(world.labels.registry.read_text())["parents"]
+    parents["o/r#1"]["tasks"]["11"] = {
+        "agent": "codex",
+        "delegated": True,
+        "delegation_id": delegation,
+        "worktree": str(worktree),
+        "branch": branch,
+        "worker_runs": [],
+    }
+    world.labels.set_registry(parents)
+
+    class FixtureGitHub:
+        repo = "o/r"
+
+        def get(self, endpoint: str) -> dict[str, str]:
+            assert endpoint == "user"  # Session construction only; no network.
+            return {"login": "fixture-user"}
+
+    parent_state = importlib.import_module("parent.state")
+    parent_session = importlib.import_module("parent.session")
+    manual = importlib.import_module("parent.manual_workers")
+    with parent_state.Store(state).locked() as registry:
+        session = parent_session.ParentSession(
+            FixtureGitHub(), registry, 1, parents["o/r#1"]["session"]
+        )
+        manual.record_worker_run(session, 11, run)
+        [record] = registry.parents["o/r#1"]["tasks"]["11"]["worker_runs"]
+        assert set(record) == {"delegation_id", "run_dir", "kind", "recorded_at"}
+    if case == "missing":
+        runtime["contract"].pop("branch")
+    elif case == "mismatch":
+        runtime["contract"]["branch"] = "codex/another-delegation"
+    elif case == "redelegated":
+        # delegate preserves prior worker_runs when reserving a new delegation.
+        with parent_state.Store(state).locked() as registry:
+            registry.parents["o/r#1"]["tasks"]["11"]["delegation_id"] = "b" * 32
+            registry.save()
+    (run / "result.json").write_text(json.dumps(runtime))
+    paths = [world.labels.registry, world.store.path, *run.iterdir()]
+    wal = Path(str(world.store.path) + "-wal")
+    if wal.exists():
+        paths.append(wal)
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_mode)
+        for path in paths
+    }
+
+    def no_write(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("execution attempted a board transaction")
+
+    monkeypatch.setattr(world.board.storage.Store, "transaction", no_write)
+    with TestClient(
+        web.app.create_app(world.env()), base_url="http://localhost"
+    ) as client:
+        response = client.get("/api/execution")
+        assert response.status_code == 200
+        child = response.json()["parents"][0]["children"][0]
+        assert child["status"] == expected_status
+        assert expected_code in {row["code"] for row in child["evidence"]}
+        if case == "matching":
+            assert child["run"]["kind"] == "registered"
+            assert child["summary"]["message"]["status"] == "hidden"
+            assert child["summary"]["message"]["text"] is None
+        for private in (
+            str(run),
+            str(worktree),
+            run.name,
+            "private-child-session",
+            "private-run-token",
+            "a" * 32,
+            "b" * 32,
+            branch,
+            "/private/hidden-output",
+        ):
+            assert private not in response.text
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_mode)
+        for path in paths
+    } == before
 
 
 def test_roster_posts_threads_and_delivery_problems(
@@ -373,14 +878,22 @@ def test_gets_and_disallowed_methods_leave_bytes_and_unread_unchanged(
         for url in (
             "/",
             "/static/app.js",
+            "/static/execution.js",
             "/static/style.css",
             "/api/changes",
             "/api/changes?refresh_roster=true",
+            "/api/execution",
             f"/api/thread/{post['id']}",
         ):
             assert client.get(url).status_code == 200
         for method in ("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"):
-            for url in ("/api/changes", f"/api/thread/{post['id']}", "/"):
+            for url in (
+                "/api/changes",
+                "/api/execution",
+                "/api/execution?refresh=true",
+                f"/api/thread/{post['id']}",
+                "/",
+            ):
                 response = client.request(method, url)
                 assert response.status_code == 405
                 assert response.headers["allow"] == "GET"
@@ -405,6 +918,7 @@ def test_security_headers_hosts_assets_and_html_text(
     for url in (
         "/",
         "/api/changes",
+        "/api/execution",
         f"/api/thread/{root['id']}",
         "/missing",
         "/static/missing.js",
@@ -1136,7 +1650,7 @@ def test_web_writes_do_not_initialize_or_migrate_a_database(
 
 
 def test_browser_human_conversation_workflow(
-    world: World, web: SimpleNamespace, tmp_path: Path
+    world: World, web: SimpleNamespace, tmp_path: Path, execution: SimpleNamespace
 ) -> None:
     """Optional real Chromium check; enable with Playwright on NODE_PATH."""
     import os
