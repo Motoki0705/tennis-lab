@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
 import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -25,8 +26,10 @@ from tests.e2e.agents_ops.test_parent_session import (
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
+from tests.support.agents_ops.directory_seed import DirectorySeed
 
 SCRIPT = OPS / "review/merge_gate.py"
+SEEDS = pytest.StashKey[dict[str | None, "GateSeed"]]()
 
 
 def ci_rollup(state: str) -> list[dict[str, str]]:
@@ -35,6 +38,10 @@ def ci_rollup(state: str) -> list[dict[str, str]]:
     name, status, conclusion = {
         "pending": ("Python", "QUEUED", ""),
         "failure": ("Python", "COMPLETED", "FAILURE"),
+        "cancelled": ("Python", "COMPLETED", "CANCELLED"),
+        "skipped": ("Python", "COMPLETED", "SKIPPED"),
+        "neutral": ("Python", "COMPLETED", "NEUTRAL"),
+        "timed_out": ("Python", "COMPLETED", "TIMED_OUT"),
         "success": ("Python", "COMPLETED", "SUCCESS"),
         "unrelated": ("Labeler", "COMPLETED", "SUCCESS"),
     }[state]
@@ -135,44 +142,72 @@ class GateEnv:
         p.save(state)
 
 
+@dataclass(frozen=True)
+class GateSeed:
+    directory: DirectorySeed
+    template: GateEnv
+
+    @classmethod
+    def capture(cls, gate: GateEnv, snapshot: Path) -> GateSeed:
+        # Keep metadata separate from the first test's mutable dataclasses, too.
+        review = replace(
+            gate.review,
+            p=replace(gate.review.p, env=gate.review.p.env.copy()),
+            request=copy.deepcopy(gate.review.request),
+        )
+        return cls(DirectorySeed.capture(review.p.root, snapshot), replace(gate, review=review))
+
+    def restore(self, p: ParentEnv, monkeypatch: pytest.MonkeyPatch) -> GateEnv:
+        self.directory.restore(p.root)
+        run_git(p.repo, "worktree", "repair")
+        review = self.template.review
+        original = self.directory.original
+        root: Path = p.root
+
+        def relocated(path: Path) -> Path:
+            return root / path.relative_to(original)
+
+        return GateEnv(
+            replace(
+                review,
+                p=p,
+                request=copy.deepcopy(review.request),
+                request_path=relocated(review.request_path),
+                fake=relocated(review.fake),
+                output=relocated(review.output),
+                calls_path=relocated(review.calls_path),
+                clock_script=relocated(review.clock_script) if review.clock_script else None,
+            ),
+            review_policy_module(monkeypatch),
+        )
+
+
 @pytest.fixture
 def gate_env(
     parent_env: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,
     request: pytest.FixtureRequest,
 ) -> GateEnv:
-    return make_gate_env(parent_env, monkeypatch, getattr(request, "param", None))
+    # Each worker/shard prepares its own immutable seeds through the real CLI.
+    # Only private copies reach tests; case-level sharding remains independent.
+    seeds: dict[str | None, GateSeed] = request.config.stash.setdefault(SEEDS, {})
+    variant = getattr(request, "param", None)
+    if variant not in seeds:
+        gate = make_gate_env(parent_env, monkeypatch, variant)
+        cache = request.getfixturevalue("tmp_path_factory").mktemp("merge-gate-seed")
+        seeds[variant] = GateSeed.capture(gate, cache / "snapshot")
+        return gate
+    return seeds[variant].restore(parent_env, monkeypatch)
 
 
 def make_gate_env(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, variant: str | None = None
 ) -> GateEnv:
-    review_env = make_review_env(
-        parent_env,
-        independent=variant in {"independent", "dependency", "research_dependency"},
-        standalone=variant == "standalone",
-    )
-    p = review_env.p
-    policy = review_policy_module(monkeypatch)
-    if variant in {
-        "shared",
-        "dependency",
-        "research_dependency",
-        "stacked",
-        "non_main_default",
-    }:
+    def configure(p: ParentEnv) -> None:
         if variant == "research_dependency":
             p.child("research")
         state = p.state()
-        if variant == "shared":
-            worktree = p.repo / ".claude/worktrees/pr-0"
-            (worktree / ".agents").mkdir()
-            (worktree / ".agents/shared.txt").write_text("shared foundation\n")
-            run_git(worktree, "add", ".agents/shared.txt")
-            run_git(worktree, "commit", "-m", "shared changes")
-            state["prs"][0]["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
-        elif variant in {"dependency", "research_dependency"}:
-            # Freeze dependencies before the one actual review, like other requirements.
+        if variant in {"dependency", "research_dependency"}:
             parent_policy = importlib.import_module("parent.policy")
             dependency = 13 if variant == "research_dependency" else 11
             if variant == "research_dependency":
@@ -183,33 +218,26 @@ def make_gate_env(
         elif variant == "stacked":
             state["prs"][0]["base"]["ref"] = "codex/lower"
             run_git(p.repo, "branch", "codex/lower")
-        else:
+        elif variant == "non_main_default":
             state["default_branch"] = "trunk"
             for pr in state["prs"]:
                 pr["base"]["ref"] = "trunk"
             run_git(p.repo, "branch", "-m", "main", "trunk")
         p.save(state)
-        manifest = json.loads(
-            p.cli(
-                "review-prepare",
-                "--prs",
-                "100",
-                "101",
-                "102",
-                "--reason-file",
-                p.note("変更パス・依存関係を含む対象をレビュー前に確定し直す。"),
-            ).stdout
-        )
-        review_env.request = json.loads(
-            p.cli(
-                "review-request",
-                "--run-id",
-                manifest["review_run_id"],
-                "--instruction-file",
-                p.note("この親の3PRを1回で確認する。"),
-            ).stdout
-        )
-        review_env.request_path.write_text(json.dumps(review_env.request))
+
+    # Only scenarios that exercise interactions between PRs need three targets.
+    review_env = make_review_env(
+        parent_env,
+        independent=variant in {"independent", "dependency", "research_dependency"},
+        standalone=variant == "standalone",
+        pr_count=3
+        if variant in {"multiple", "independent", "dependency", "research_dependency"}
+        else 1,
+        shared=variant == "shared",
+        before_review=configure,
+    )
+    p = review_env.p
+    policy = review_policy_module(monkeypatch)
     state = p.state()
     for pr in state["prs"]:
         pr.update(
@@ -234,6 +262,65 @@ def make_gate_env(
     gate = GateEnv(review_env, policy)
     gate.confirm()
     return gate
+
+
+def test_gate_seed_keeps_git_github_review_and_metadata_private(
+    gate_env: GateEnv,
+    tmp_path_factory: pytest.TempPathFactory,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    seed_root = tmp_path_factory.mktemp("private-gate-seed")
+    seed = GateSeed.capture(g, seed_root / "snapshot")
+    original_state = p.state()
+    original_request = copy.deepcopy(g.review.request)
+    original_result = (g.review.run_dir / "result.json").read_bytes()
+    original_head = run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD")
+
+    def fingerprint() -> dict[Path, str]:
+        return {
+            path.relative_to(seed.directory.snapshot): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in seed.directory.snapshot.rglob("*")
+            if path.is_file()
+        }
+
+    before = fingerprint()
+    root = seed_root / "copy"
+    private = replace(
+        p,
+        root=root,
+        repo=root / "repo",
+        state_path=root / "github.json",
+        calls_path=root / "calls.jsonl",
+        env={key: value.replace(str(p.root), str(root)) for key, value in p.env.items()},
+    )
+    cloned = seed.restore(private, monkeypatch)
+    worktree = private.repo / ".claude/worktrees/pr-0"
+    (worktree / "change.txt").write_text("a private committed change\n")
+    run_git(worktree, "commit", "-am", "private fix")
+    private.worktree("only-in-copy")
+    state = private.state()
+    state["prs"][0]["draft"] = True
+    private.save(state)
+    (cloned.review.run_dir / "result.json").unlink()
+    assert cloned.cli("merge").returncode == 1
+    assert not cloned.merge_calls()
+    assert p.state() == original_state
+    assert (g.review.run_dir / "result.json").read_bytes() == original_result
+    assert run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD") == original_head
+    assert "only-in-copy" not in run_git(p.repo, "branch", "--list")
+    assert str(root) in run_git(private.repo, "worktree", "list", "--porcelain")
+    for source in (p.repo / ".git/objects").rglob("*"):
+        if source.is_file():
+            copied = private.repo / ".git/objects" / source.relative_to(p.repo / ".git/objects")
+            assert source.stat().st_ino != copied.stat().st_ino
+    assert fingerprint() == before
+    response = g.cli("merge", AGENT_AUTO_MERGE="0")
+    assert response.returncode == 0, response.stderr
+    assert g.results(response)[100]["action"] == "dry_run"
+    # First-case mutations must not alter the cached Python metadata either.
+    g.review.request["reason"] = "mutated after capture"
+    assert seed.template.review.request == original_request
 
 
 @pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)
@@ -406,6 +493,7 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
     )  # Receive, agreement and merge never launch a review.
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
     g.edit_result(
@@ -437,7 +525,8 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert rows[100]["decision"] == "merge"
     assert "unresolved_findings" in rows[101]["reasons"]
-    assert rows[102]["decision"] == "merge"
+    assert rows[102]["decision"] == "blocked"
+    assert "ci_python_pending" in rows[102]["reasons"]
     assert rows[102]["ci_checks"] == [{"name": "Python", "state": "pending"}]
     assert len(g.review.calls()) == 1
     assert g.merge_calls() == []
@@ -445,16 +534,21 @@ def test_three_prs_use_one_run_and_make_individual_decisions(gate_env: GateEnv) 
 
 @pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
 @pytest.mark.parametrize(
-    "ci_state,checks",
+    "ci_state,checks,reason",
     [
-        ("absent", []),
-        ("pending", [{"name": "Python", "state": "pending"}]),
-        ("failure", [{"name": "Python", "state": "failure"}]),
-        ("unrelated", [{"name": "Labeler", "state": "success"}]),
+        ("success", [{"name": "Python", "state": "success"}], None),
+        ("absent", [], "ci_python_missing"),
+        ("pending", [{"name": "Python", "state": "pending"}], "ci_python_pending"),
+        ("failure", [{"name": "Python", "state": "failure"}], "ci_python_failure"),
+        ("cancelled", [{"name": "Python", "state": "failure"}], "ci_python_cancelled"),
+        ("timed_out", [{"name": "Python", "state": "failure"}], "ci_python_timed_out"),
+        ("skipped", [{"name": "Python", "state": "success"}], "ci_python_skipped"),
+        ("neutral", [{"name": "Python", "state": "success"}], "ci_python_neutral"),
+        ("unrelated", [{"name": "Labeler", "state": "success"}], "ci_python_missing"),
     ],
 )
-def test_ci_observations_do_not_block_dependency_ordered_merges(
-    gate_env: GateEnv, ci_state: str, checks: list[dict[str, str]]
+def test_python_ci_is_required_for_dependency_ordered_merges(
+    gate_env: GateEnv, ci_state: str, checks: list[dict[str, str]], reason: str | None
 ) -> None:
     g, p = gate_env, gate_env.review.p
     state = p.state()
@@ -462,15 +556,21 @@ def test_ci_observations_do_not_block_dependency_ordered_merges(
         pr["statusCheckRollup"] = ci_rollup(ci_state)
     p.save(state)
     response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
-    assert response.returncode == 0, response.stderr
-    assert [c[2] for c in g.merge_calls()] == ["101", "100", "102"]
     rows = g.results(response)
-    assert all(
-        row["action"] == "merged" and not row["reasons"] for row in rows.values()
-    )
     assert all(row["ci_checks"] == checks for row in rows.values())
     assert all(
         row["ci_head_sha"] == row["snapshot"]["head_sha"] for row in rows.values()
+    )
+    if reason:
+        assert response.returncode == 1, response.stderr
+        assert all(row["decision"] == "blocked" for row in rows.values())
+        assert all(reason in row["reasons"] for row in rows.values())
+        assert not g.merge_calls()
+        return
+    assert response.returncode == 0, response.stderr
+    assert [c[2] for c in g.merge_calls()] == ["101", "100", "102"]
+    assert all(
+        row["action"] == "merged" and not row["reasons"] for row in rows.values()
     )
     assert len({row["snapshot"]["base_sha"] for row in rows.values()}) == 3
     for call in g.merge_calls():
@@ -479,6 +579,183 @@ def test_ci_observations_do_not_block_dependency_ordered_merges(
             rows[int(call[2])]["snapshot"]["head_sha"],
         ]
     assert len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("case", ["old_head", "status_context"])
+def test_other_head_or_status_context_cannot_substitute_for_python_check_run(
+    gate_env: GateEnv, case: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    if case == "old_head":
+        pr["ci_check_runs"] = [
+            {
+                "id": 1,
+                "name": "Python",
+                "head_sha": "f" * 40,
+                "status": "completed",
+                "conclusion": "success",
+            }
+        ]
+    else:
+        pr["statusCheckRollup"] = [
+            {"__typename": "StatusContext", "context": "Python", "state": "SUCCESS"}
+        ]
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 1, response.stderr
+    row = g.results(response)[100]
+    # The rollup alone looks successful in both cases.
+    assert row["ci_checks"] == [{"name": "Python", "state": "success"}]
+    assert (
+        "ci_python_head_mismatch" if case == "old_head" else "ci_python_missing"
+    ) in row["reasons"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize(
+    "old_conclusion,new_status,new_conclusion,new_started,reason",
+    [
+        ("failure", "completed", "success", "2026-10-30T02:00:00Z", None),
+        (
+            "success",
+            "completed",
+            "failure",
+            "2026-10-30T02:00:00Z",
+            "ci_python_failure",
+        ),
+        (
+            "success",
+            "completed",
+            "cancelled",
+            "2026-10-30T02:00:00Z",
+            "ci_python_cancelled",
+        ),
+        (
+            "failure",
+            "completed",
+            "success",
+            "2026-10-30T01:00:00Z",
+            "ci_python_failure",
+        ),
+        ("failure", "completed", "success", None, "ci_python_failure"),
+        (
+            "failure",
+            "completed",
+            "success",
+            "0001-01-01T00:00:00Z",
+            "ci_python_failure",
+        ),
+        ("success", "queued", None, None, "ci_python_pending"),
+    ],
+)
+def test_python_reruns_use_latest_time_and_pessimism_when_unordered(
+    gate_env: GateEnv,
+    old_conclusion: str,
+    new_status: str,
+    new_conclusion: str | None,
+    new_started: str | None,
+    reason: str | None,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    pr["ci_check_runs"] = [
+        {
+            "id": 1,
+            "name": "Python",
+            "head_sha": pr["head"]["sha"],
+            "status": "completed",
+            "conclusion": old_conclusion,
+            "started_at": "2026-10-30T01:00:00Z",
+        },
+        {
+            "id": 2,
+            "name": "Python",
+            "head_sha": pr["head"]["sha"],
+            "status": new_status,
+            "conclusion": new_conclusion,
+            "started_at": new_started,
+        },
+    ]
+    p.save(state)
+    response = g.cli("merge")
+    row = g.results(response)[100]
+    if reason is None:
+        assert response.returncode == 0, response.stderr
+        assert row["action"] == "merged"
+    else:
+        assert response.returncode == 1, response.stderr
+        assert reason in row["reasons"]
+        assert not g.merge_calls()
+
+
+@pytest.mark.parametrize(
+    "case", ["missing_page", "duplicate", "bad_conclusion", "bad_status"]
+)
+def test_invalid_required_check_run_evidence_is_a_collection_error(
+    gate_env: GateEnv, case: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    run = {
+        "id": 1,
+        "name": "Python",
+        "head_sha": pr["head"]["sha"],
+        "status": "completed",
+        "conclusion": "success",
+    }
+    if case == "missing_page":
+        pr["ci_response"] = {"total_count": 2, "check_runs": [run]}
+    elif case == "duplicate":
+        pr["ci_check_runs"] = [run, run]
+    else:
+        run["conclusion" if case == "bad_conclusion" else "status"] = "unknown"
+        pr["ci_check_runs"] = [run]
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize("last_conclusion", ["success", "failure"])
+def test_required_check_run_pages_are_all_checked(
+    gate_env: GateEnv, last_conclusion: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    pr = state["prs"][0]
+    head = pr["head"]["sha"]
+    pr["ci_check_runs"] = [
+        {
+            "id": i + 1,
+            "name": "Python",
+            "head_sha": head,
+            "status": "completed",
+            "conclusion": "success",
+        }
+        for i in range(101)
+    ]
+    pr["ci_check_runs"][-1]["conclusion"] = last_conclusion
+    p.save(state)
+    response = g.cli("merge")
+    row = g.results(response)[100]
+    assert any(
+        f"commits/{head}/check-runs?check_name=Python&filter=latest&per_page=100&page=2"
+        in arg
+        for call in p.calls()
+        for arg in call
+    )
+    if last_conclusion == "success":
+        assert response.returncode == 0, response.stderr
+        assert row["action"] == "merged"
+    else:
+        assert response.returncode == 1, response.stderr
+        assert "ci_python_failure" in row["reasons"]
+        assert not g.merge_calls()
 
 
 @pytest.mark.parametrize("rollup", [None, {}, [{"__typename": "Mystery"}]])
@@ -498,6 +775,23 @@ def test_invalid_ci_observation_is_an_explicit_collection_error(
 def test_ci_read_failure_is_an_explicit_collection_error(gate_env: GateEnv) -> None:
     g = gate_env
     response = g.cli("merge", PARENT_FAIL_CI_VIEW="1")
+    assert response.returncode == 2
+    assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+def test_check_run_read_failure_is_an_explicit_collection_error(
+    gate_env: GateEnv,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    head = p.state()["prs"][0]["head"]["sha"]
+    response = g.cli(
+        "merge",
+        PARENT_FAIL_GET_PATH=(
+            f"repos/o/r/commits/{head}/check-runs"
+            "?check_name=Python&filter=latest&per_page=100&page=1"
+        ),
+    )
     assert response.returncode == 2
     assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
     assert not g.merge_calls()
@@ -523,35 +817,44 @@ def test_dependency_still_blocks_for_any_ci_state(
 
 
 @pytest.mark.parametrize(
-    "case,reason",
+    "case,reason,gate_env",
     [
-        ("no_review", "parent_review_missing_or_interrupted"),
-        ("not_received", "parent_review_not_confirmed"),
-        ("fixing", "parent_review_not_confirmed"),
-        ("interrupted", "review_not_published_or_authorized"),
-        ("outside", "pr_outside_review_targets"),
-        ("not_reviewed", "pr_100_not_reviewed"),
-        ("major", "unresolved_findings"),
-        ("blocker", "unresolved_findings"),
-        ("head", "pr_100_unverified_head"),
-        ("base_ref", "base_not_default_branch"),
-        ("draft", "draft"),
-        ("fork", "fork"),
-        ("closed", "pr_not_open"),
-        ("author", "author_unknown"),
-        ("conflict", "conflict"),
-        ("unknown", "mergeable_unknown"),
-        ("human", "human_judgment_pending"),
-        ("parent_human", "human_judgment_pending"),
-        ("child_human", "human_judgment_pending"),
-        ("stopped", "child_10_stopped"),
-        ("parent_missing", "parent_result_missing_or_inconsistent"),
-        ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
-        ("projection_digest", "pr_100_projection_missing_or_inconsistent"),
-        ("failed_record", "parent_result_missing_or_inconsistent"),
-        ("foreign_result", "parent_result_missing_or_inconsistent"),
-        ("quoted_result", "parent_result_missing_or_inconsistent"),
+        pytest.param(
+            case,
+            reason,
+            "multiple" if case == "head" else None,
+            id=f"{case}-{reason}",
+        )
+        for case, reason in [
+            ("no_review", "parent_review_missing_or_interrupted"),
+            ("not_received", "parent_review_not_confirmed"),
+            ("fixing", "parent_review_not_confirmed"),
+            ("interrupted", "review_not_published_or_authorized"),
+            ("outside", "pr_outside_review_targets"),
+            ("not_reviewed", "pr_100_not_reviewed"),
+            ("major", "unresolved_findings"),
+            ("blocker", "unresolved_findings"),
+            ("head", "pr_100_unverified_head"),
+            ("base_ref", "base_not_default_branch"),
+            ("draft", "draft"),
+            ("fork", "fork"),
+            ("closed", "pr_not_open"),
+            ("author", "author_unknown"),
+            ("conflict", "conflict"),
+            ("unknown", "mergeable_unknown"),
+            ("human", "human_judgment_pending"),
+            ("parent_human", "human_judgment_pending"),
+            ("child_human", "human_judgment_pending"),
+            ("stopped", "child_10_stopped"),
+            ("parent_missing", "parent_result_missing_or_inconsistent"),
+            ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
+            ("projection_digest", "pr_100_projection_missing_or_inconsistent"),
+            ("failed_record", "parent_result_missing_or_inconsistent"),
+            ("foreign_result", "parent_result_missing_or_inconsistent"),
+            ("quoted_result", "parent_result_missing_or_inconsistent"),
+        ]
     ],
+    indirect=["gate_env"],
 )
 @pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
 def test_rejections_never_merge_or_launch_agent(
@@ -685,15 +988,53 @@ def test_rejections_never_merge_or_launch_agent(
 
 
 @pytest.mark.parametrize("value", ["", "true", "2", " 1"])
-def test_auto_merge_flag_rejects_invalid_values_before_io(
-    gate_env: GateEnv, value: str
+def test_auto_merge_policy_rejects_invalid_values(
+    monkeypatch: pytest.MonkeyPatch, value: str
 ) -> None:
-    g = gate_env
-    before = len(g.review.p.calls())
-    result = g.cli("merge", AGENT_AUTO_MERGE=value)
+    review_policy_module(monkeypatch)
+    policy = importlib.import_module("merge_gate_policy")
+    with pytest.raises(ValueError, match="AGENT_AUTO_MERGE must be unset, 0 or 1"):
+        policy.auto_merge(value)
+
+
+def test_auto_merge_flag_rejects_invalid_values_before_io(tmp_path: Path) -> None:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    unexpected = tmp_path / "unexpected-cli.txt"
+    for name in ("git", "gh", "codex", "claude", "herdr"):
+        executable = bin_dir / name
+        executable.write_text(
+            f"#!{sys.executable}\nfrom pathlib import Path\n"
+            f"Path({str(unexpected)!r}).write_text({name!r})\nraise SystemExit(97)\n"
+        )
+        executable.chmod(0o755)
+    private_state = tmp_path / "private-state"
+    # No repository, agreement, identity or completed review is needed before I/O.
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--repo", "o/r", "--parent", "1", "merge"],
+        cwd=tmp_path,
+        env={
+            "PATH": str(bin_dir),
+            "PYTHONPATH": str(OPS),
+            "XDG_STATE_HOME": str(private_state),
+            "AGENT_AUTO_MERGE": "true",
+            "CUDA_VISIBLE_DEVICES": "",
+            "OMP_NUM_THREADS": "1",
+            "MKL_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1",
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
     assert result.returncode == 2
-    assert "AGENT_AUTO_MERGE" in result.stderr
-    assert len(g.review.p.calls()) == before
+    error = json.loads(result.stderr)
+    assert error["error"] == "ValueError: AGENT_AUTO_MERGE must be unset, 0 or 1"
+    assert error["reasons"] == ["input_or_collection_error"]
+    assert error["agent_invocations"] == 0
+    assert not unexpected.exists()
+    assert not private_state.exists()
 
 
 def test_unset_auto_merge_is_dry_run_without_any_writes(gate_env: GateEnv) -> None:
@@ -875,7 +1216,7 @@ def test_repository_default_branch_is_used_instead_of_main(gate_env: GateEnv) ->
         pr["mergeable"] = None
     p.save(state)
     response = g.cli("merge")
-    assert response.returncode == 1, response.stderr
+    assert response.returncode == 0, response.stderr
     assert g.results(response)[100]["action"] == "merged"
     assert [c[2] for c in g.merge_calls()] == ["100"]
     assert sum("repos/o/r" in call for call in p.calls()) >= 2
@@ -1045,14 +1386,19 @@ def test_remaining_prs_are_recollected_after_each_merge(
     }[change]
     env["PARENT_MERGE_ADVANCE_BASE"] = "1"
     rows = g.results(g.cli("merge", **env))
-    assert [c[2] for c in g.merge_calls()] == ["100", "101"]
-    assert rows[101]["action"] == "merged"
-    assert not rows[101]["reasons"]
     if change == "ci":
+        assert [c[2] for c in g.merge_calls()] == ["100"]
+        assert rows[101]["decision"] == "blocked"
+        assert "ci_python_pending" in rows[101]["reasons"]
         assert rows[101]["ci_checks"] == [{"name": "Python", "state": "pending"}]
+    else:
+        assert [c[2] for c in g.merge_calls()] == ["100", "101"]
+        assert rows[101]["action"] == "merged"
+        assert not rows[101]["reasons"]
 
 
 @pytest.mark.parametrize("failure", ["fail", "head", "response", "close"])
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_failed_or_lost_merge_is_never_repeated(
     gate_env: GateEnv, failure: str
 ) -> None:
@@ -1099,6 +1445,7 @@ def test_board_merge_notice_and_ack_cannot_enable_auto_merge(gate_env: GateEnv) 
 @pytest.mark.parametrize(
     "resolution", ["valid", "stale", "unpublished", "wrong_diff", "outside"]
 )
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_fix_push_requires_current_published_resolution_and_actual_diff(
     gate_env: GateEnv, extra_path: bool, resolution: str
 ) -> None:
@@ -1248,6 +1595,7 @@ def test_missing_parent_run_cannot_use_old_pr_approval(gate_env: GateEnv) -> Non
 
 
 @pytest.mark.parametrize("when", ["ci", "before_merge"])
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     g, p = gate_env, gate_env.review.p
     worktree = p.repo / ".claude/worktrees/pr-0"
@@ -1274,6 +1622,7 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     assert not g.merge_calls()
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_new_child_pr_does_not_invalidate_reviewed_prs(
     gate_env: GateEnv,
 ) -> None:

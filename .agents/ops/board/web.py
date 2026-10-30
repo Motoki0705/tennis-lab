@@ -1,21 +1,27 @@
-"""Loopback-only, read-only board web entry point. Imported only by board web."""
+"""Loopback board web entry point with explicit, CSRF-protected human writes."""
 
 from __future__ import annotations
 
+import re
+import secrets
 from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from . import messages, notifiers, reactions
+from .delivery import Notifiers
 from .errors import BoardError
 from .web_data import BoardReader, InvalidQuery, MissingPost
 
 STATIC = Path(__file__).parent / "static"
 ASSETS = {"app.js", "style.css"}
+WRITE_PATH = re.compile(r"/api/posts(?:/[^/]+/(?:replies|read|reactions/[^/]+))?")
 CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; "
     "img-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'"
@@ -34,8 +40,31 @@ class SafeJSONResponse(JSONResponse):
         )
 
 
-def create_app(env: Mapping[str, str]) -> FastAPI:
+class PostInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    subject: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1, max_length=60000)
+    kind: str
+    to: list[str] = Field(default_factory=list)
+
+
+class ReplyInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    body: str = Field(min_length=1, max_length=60000)
+    to: list[str] = Field(default_factory=list)
+
+
+def create_app(
+    env: Mapping[str, str], *, notification_routes: Notifiers | None = None
+) -> FastAPI:
+    env = dict(env)
     reader = BoardReader(env)
+    routes = (
+        notifiers.configured(env)
+        if notification_routes is None
+        else notification_routes
+    )
+    csrf_token = secrets.token_urlsafe(32)
     app = FastAPI(
         title="親間掲示板",
         docs_url=None,
@@ -52,11 +81,29 @@ def create_app(env: Mapping[str, str]) -> FastAPI:
     async def boundary(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        if request.method != "GET":
+        match = WRITE_PATH.fullmatch(request.url.path)
+        allowed = {"GET"}
+        if match:
+            allowed = (
+                {"PUT", "DELETE"} if "/reactions/" in request.url.path else {"POST"}
+            )
+        if request.method not in allowed:
             response: Response = JSONResponse(
-                {"detail": "Read-only board: GET required."},
+                {"detail": "Board method not allowed."},
                 status_code=405,
-                headers={"Allow": "GET"},
+                headers={"Allow": ", ".join(sorted(allowed))},
+            )
+        elif request.method != "GET" and (
+            request.headers.getlist("origin")
+            != [f"{request.url.scheme}://{request.url.netloc}"]
+            or len(request.headers.getlist("x-csrf-token")) != 1
+            or not secrets.compare_digest(
+                request.headers.get("x-csrf-token", "").encode(), csrf_token.encode()
+            )
+        ):
+            response = JSONResponse(
+                {"detail": "Invalid board request origin or CSRF token."},
+                status_code=403,
             )
         else:
             response = await call_next(request)
@@ -93,8 +140,12 @@ def create_app(env: Mapping[str, str]) -> FastAPI:
     app.add_exception_handler(RequestValidationError, invalid)
     app.add_exception_handler(MissingPost, missing)
 
-    def index() -> FileResponse:
-        return FileResponse(STATIC / "index.html")
+    def index() -> HTMLResponse:
+        page = (STATIC / "index.html").read_text(encoding="utf-8")
+        page = page.replace(
+            "</head>", f'<meta name="board-csrf-token" content="{csrf_token}">\n</head>'
+        )
+        return HTMLResponse(page, headers={"X-CSRF-Token": csrf_token})
 
     def static(name: str) -> Response:
         if name not in ASSETS:
@@ -114,10 +165,36 @@ def create_app(env: Mapping[str, str]) -> FastAPI:
     def thread(post_id: str) -> dict[str, Any]:
         return reader.thread(post_id)
 
+    def post(payload: PostInput) -> dict[str, Any]:
+        return messages.post(env, **payload.model_dump(), human=True, notifiers=routes)
+
+    def reply(post_id: str, payload: ReplyInput) -> dict[str, Any]:
+        return messages.reply(
+            env, post_id=post_id, **payload.model_dump(), human=True, notifiers=routes
+        )
+
+    def react(post_id: str, code: str, request: Request) -> dict[str, Any]:
+        return reactions.react(
+            env,
+            post_id=post_id,
+            emoji=code,
+            human=True,
+            remove=request.method == "DELETE",
+        )
+
+    def read(post_id: str) -> dict[str, Any]:
+        return messages.read(env, post_id, human=True)
+
     app.add_api_route("/", index, methods=["GET"])
     app.add_api_route("/static/{name}", static, methods=["GET"])
     app.add_api_route("/api/changes", changes, methods=["GET"])
     app.add_api_route("/api/thread/{post_id}", thread, methods=["GET"])
+    app.add_api_route("/api/posts", post, methods=["POST"])
+    app.add_api_route("/api/posts/{post_id}/replies", reply, methods=["POST"])
+    app.add_api_route(
+        "/api/posts/{post_id}/reactions/{code}", react, methods=["PUT", "DELETE"]
+    )
+    app.add_api_route("/api/posts/{post_id}/read", read, methods=["POST"])
     return app
 
 

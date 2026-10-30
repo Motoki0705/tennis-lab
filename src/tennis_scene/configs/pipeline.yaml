@@ -139,6 +139,17 @@ ball_detection:
     k_support: 2
     max_support_gap: 5
     max_passes: 2
+# CPU temporal filtering before side resolution, alignment and triangulation.
+# Interpolated coordinates are diagnostic only; geometry still requires real observations.
+ball_smoothing:
+  enabled: true
+  consensus_seconds: 0.7
+  trials: 80
+  minimum_residual_diagonal: 0.012
+  residual_mad_multiplier: 4.0
+  max_gap_seconds: 0.20
+  loess_seconds: 0.35
+  seed: 42
 # ~30 fps full-clip grid for camera alignment and body-view selection; longer clips are rejected.
 frame_sampling:
   max_frames: 1024

@@ -509,7 +509,6 @@ class ParentSession:
         ):
             raise ValueError("migrate the parent using issues before splitting")
         draft = render_spec(spec)
-        draft["labels"] = sorted(set(draft["labels"]) | {"ai-proposed"})
         deps = value.get("dependencies", dependencies(draft["body"]))
         if not isinstance(deps, list) or len(deps) != len(set(deps)):
             raise ValueError("dependencies must be unique issue numbers")
@@ -900,17 +899,19 @@ class ParentSession:
         if restart:
             task["restart_evidence"] = restart
         task.pop("worker_ended", None)
-        if source is not None:
-            proposals.require_source(self, source)
-        check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
-        check_task_adoptions(self.gh, self.gh.issue(child)["body"])
-        if execution.authorization(self) != auth:
-            raise ValueError("execution basis changed before delegation")
-        fresh = next(
-            t
-            for t in self.launch_plan(override, child if restart else None)["tasks"]
-            if t["child"] == child
-        )
+        # The final admission check must observe edits made during local validation.
+        with self.gh.fresh_reads():
+            if source is not None:
+                proposals.require_source(self, source)
+            check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
+            check_task_adoptions(self.gh, self.gh.issue(child)["body"])
+            if execution.authorization(self) != auth:
+                raise ValueError("execution basis changed before delegation")
+            fresh = next(
+                t
+                for t in self.launch_plan(override, child if restart else None)["tasks"]
+                if t["child"] == child
+            )
         if fresh != planned:
             raise ValueError(
                 "child launch inputs changed before delegation; reconcile before retry"

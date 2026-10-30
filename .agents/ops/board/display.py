@@ -193,7 +193,10 @@ def posted(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, Any]:
         post["sender"]["assignment_id"],
         *(r["assignment_id"] for r in post["recipients"]),
     ]
-    return {**result, "inbox_display": update(env, ids)}
+    return {
+        **result,
+        "inbox_display": update(env, [value for value in ids if value is not None]),
+    }
 
 
 def read_by_caller(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, Any]:

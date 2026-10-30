@@ -10,10 +10,13 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .access import as_parent, parent_state
+from herdr_labels.service import registry
+
+from .access import as_parent, as_participant, parent_state
 from .delivery import Notifiers, dispatch
 from .errors import BoardError
 from .names import Assignment, load_names, resolve_name, timestamp
+from .participants import HUMAN, Human, Participant
 from .prose import without_code
 from .records import (
     post_row,
@@ -22,7 +25,7 @@ from .records import (
     require_thread_participant,
 )
 from .safety import public, text
-from .service import _assigned, _reference
+from .service import _assigned, _reference, _runtime_states
 from .storage import Store, directory
 
 # A word/email/path prefix prevents an @ token from becoming a board mention.
@@ -30,15 +33,17 @@ MENTION = re.compile(r"(?<![\w@.+/\-])@([A-Za-z]+)(?![\w@\-])", re.ASCII)
 
 
 def _mentions(body: str) -> list[str]:
-    """Extract catalog names and all from prose, leaving code as documentation."""
-    catalog = {name.casefold() for name in load_names()} | {"all"}
+    """Extract catalog names and reserved recipients from prose, excluding code."""
+    catalog = {name.casefold() for name in load_names()} | {"all", "human"}
     return sorted(
         {match[1].casefold() for match in MENTION.finditer(without_code(body))}
         & catalog
     )
 
 
-def _recipient(assignment: Assignment, parents: Mapping[str, Any]) -> str:
+def _recipient(assignment: Participant, parents: Mapping[str, Any]) -> str:
+    if isinstance(assignment, Human):
+        return "available"
     owner = parents.get(f"{assignment.repo}#{assignment.parent}")
     if assignment.retired_at is not None or (owner and owner["status"] == "ended"):
         raise BoardError("recipient name is retired")
@@ -53,37 +58,47 @@ def _recipient(assignment: Assignment, parents: Mapping[str, Any]) -> str:
 def _destinations(
     connection: sqlite3.Connection,
     parents: Mapping[str, Any],
-    sender: Assignment,
+    sender: Participant,
     to: Sequence[str],
     original: dict[str, Any] | None,
-) -> tuple[list[Assignment], bool]:
-    destinations: dict[int, Assignment] = {}
+    live_sessions: set[str] | None = None,
+) -> tuple[list[Participant], bool]:
+    destinations: dict[int | None, Participant] = {}
     if original is not None and original["sender_assignment_id"] != sender.id:
-        row = connection.execute(
-            "SELECT * FROM name_assignments WHERE id=?",
-            (original["sender_assignment_id"],),
-        ).fetchone()
-        assignment = Assignment(*row)
+        if original["sender_assignment_id"] is None:
+            assignment: Participant = HUMAN
+        else:
+            row = connection.execute(
+                "SELECT * FROM name_assignments WHERE id=?",
+                (original["sender_assignment_id"],),
+            ).fetchone()
+            assignment = Assignment(*row)
         _recipient(assignment, parents)  # Never re-resolve a historical author by name.
         destinations[assignment.id] = assignment
     broadcast = any(value.casefold() == "all" for value in to)
     for value in to:
         if value.casefold() == "all":
             for key, owner in sorted(parents.items()):
-                if owner["status"] == "active":
+                if owner["status"] == "active" and (
+                    live_sessions is not None and owner["session"] in live_sessions
+                ):
                     repo, parent = _reference(key)
                     if (repo, parent) != (sender.repo, sender.parent):
                         assignment = _assigned(connection, repo, parent)
                         destinations[assignment.id] = assignment
         else:
-            assignment = resolve_name(connection, value)
+            assignment = (
+                HUMAN
+                if value.casefold() == "human"
+                else resolve_name(connection, value)
+            )
             if assignment.id == sender.id:
                 raise BoardError("sender cannot be a recipient")
             _recipient(assignment, parents)
             destinations[assignment.id] = assignment
     if not destinations:
         raise BoardError("post requires at least one recipient")
-    return sorted(destinations.values(), key=lambda entry: entry.id), broadcast
+    return sorted(destinations.values(), key=lambda entry: entry.id or 0), broadcast
 
 
 def _identity(connection: sqlite3.Connection, now: datetime) -> tuple[str, str]:
@@ -106,10 +121,10 @@ def _identity(connection: sqlite3.Connection, now: datetime) -> tuple[str, str]:
 
 
 def _mark_read(
-    connection: sqlite3.Connection, post_id: str, assignment_id: int, stamp: str
+    connection: sqlite3.Connection, post_id: str, assignment_id: int | None, stamp: str
 ) -> None:
     connection.execute(
-        "UPDATE recipients SET read_at=COALESCE(read_at, ?) WHERE post_id=? AND assignment_id=?",
+        "UPDATE recipients SET read_at=COALESCE(read_at, ?) WHERE post_id=? AND assignment_id IS ?",
         (stamp, post_id, assignment_id),
     )
 
@@ -131,10 +146,30 @@ def _create(
     original_id: str | None,
     notifiers: Notifiers | None,
     now: datetime | None,
+    human: bool,
 ) -> dict[str, Any]:
     if notifiers is not None and set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
-    with as_parent(env, write=True) as (connection, sender, parents):
+    destinations = [*to, *_mentions(body)]
+    observed_parents = None
+    live_sessions = None
+    if any(value.casefold() == "all" for value in destinations):
+        # Herdr subprocesses must run before taking the registry/SQLite locks.
+        observed_parents = registry(env)
+        states = _runtime_states(
+            env,
+            [
+                row["session"]
+                for row in observed_parents.values()
+                if row["status"] == "active"
+            ],
+        )
+        live_sessions = {
+            identity for identity, state in states.items() if state != "unknown"
+        }
+    with as_participant(env, human=human, write=True) as (connection, sender, parents):
+        if observed_parents is not None and parents != observed_parents:
+            raise BoardError("parent registry changed during recipient lookup; retry")
         original = (
             post_row(connection, original_id) if original_id is not None else None
         )
@@ -144,7 +179,7 @@ def _create(
         text(body, parents, env)
         text(subject, parents, env, subject=True)
         recipients, broadcast = _destinations(
-            connection, parents, sender, [*to, *_mentions(body)], original
+            connection, parents, sender, destinations, original, live_sessions
         )
         post_id, stamp = _identity(
             connection, now if now is not None else datetime.now(UTC)
@@ -168,7 +203,10 @@ def _create(
         )
         for recipient in recipients:
             state = _recipient(recipient, parents)
-            key = hashlib.sha256(f"board:{post_id}:{recipient.id}".encode()).hexdigest()
+            recipient_key = "human" if recipient.id is None else str(recipient.id)
+            key = hashlib.sha256(
+                f"board:{post_id}:{recipient_key}".encode()
+            ).hexdigest()
             connection.execute(
                 "INSERT INTO recipients(post_id,assignment_id,name,repo,parent) VALUES(?,?,?,?,?)",
                 (
@@ -194,7 +232,7 @@ def _create(
             _mark_read(connection, original["id"], sender.id, stamp)
             connection.execute(
                 """UPDATE recipients SET response_state='answered', responded_at=?
-                   WHERE post_id=? AND assignment_id=? AND response_state IS NULL""",
+                   WHERE post_id=? AND assignment_id IS ? AND response_state IS NULL""",
                 (stamp, original_id, sender.id),
             )
         public(post_view(connection, post_id), parents, env)
@@ -214,6 +252,7 @@ def post(
     body: str,
     notifiers: Notifiers | None = None,
     now: datetime | None = None,
+    human: bool = False,
 ) -> dict[str, Any]:
     if kind not in {"info", "question", "request"}:
         raise BoardError("invalid board post kind")
@@ -226,6 +265,7 @@ def post(
         original_id=None,
         notifiers=notifiers,
         now=now,
+        human=human,
     )
 
 
@@ -237,6 +277,7 @@ def reply(
     to: Sequence[str] = (),
     notifiers: Notifiers | None = None,
     now: datetime | None = None,
+    human: bool = False,
 ) -> dict[str, Any]:
     return _create(
         env,
@@ -247,16 +288,21 @@ def reply(
         original_id=post_id,
         notifiers=notifiers,
         now=now,
+        human=human,
     )
 
 
-def read(env: Mapping[str, str], post_id: str) -> dict[str, Any]:
-    with as_parent(env, write=True) as (connection, caller, parents):
+def read(
+    env: Mapping[str, str], post_id: str, *, human: bool = False
+) -> dict[str, Any]:
+    with as_participant(env, human=human, write=True) as (connection, caller, parents):
         row = post_row(connection, post_id)
         require_participant(connection, row, caller.id)
         _mark_read(connection, post_id, caller.id, timestamp(datetime.now(UTC)))
         result = {"post": post_view(connection, post_id)}
         public(result, parents, env)
+    if human:
+        return result
     from .display import read_by_caller
 
     return read_by_caller(env, result)
