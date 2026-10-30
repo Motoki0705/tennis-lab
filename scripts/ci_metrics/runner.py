@@ -24,7 +24,6 @@ IDENTITY_KEYS = {
     "CLAUDE_CODE_AGENT_ID",
 }
 THREAD_KEYS = ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")
-COURT_IGNORE = "tests/integration/synthetic_data_generation/test_court_dataset.py"
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -156,7 +155,6 @@ def run(
         str(workers),
         "--durations=50",
         "--durations-min=1",
-        f"--ignore={COURT_IGNORE}",
         "-p",
         "scripts.ci_metrics.pytest_plugin",
         f"--ci-metrics-dir={output}",

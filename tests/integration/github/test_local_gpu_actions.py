@@ -62,7 +62,7 @@ def test_local_gpu_workflows_are_manual_owner_gated_and_read_only() -> None:
 
 
 def test_cuda_workflow_runs_serial_marker_tests_under_shared_lock() -> None:
-    _, text = _load_workflow("local-gpu-tests.yml")
+    workflow, text = _load_workflow("local-gpu-tests.yml")
 
     assert "git submodule update --init --depth 1 third_party/DINO" in text
     assert "TENNIS_LAB_BUILD_CUDA_OPS=1" in text
@@ -71,6 +71,16 @@ def test_cuda_workflow_runs_serial_marker_tests_under_shared_lock() -> None:
     assert "flock --exclusive --timeout 5" in text
     assert "spin test --all --serial -m cuda --no-cov" in text
     assert "/var/lib/tennis-lab-actions/gpu.lock" in text
+    assert "-p scripts.ci_metrics.require_execution" in text
+    assert "export TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST=1" in text
+    assert "export PLAYER_DETECTION_GPU_TEST=1" in text
+    assert workflow[True]["workflow_dispatch"]["inputs"]["target"]["options"] == ["cuda", "local-data"]
+    local = next(step for step in workflow["jobs"]["cuda-tests"]["steps"] if step["name"] == "Run explicit local-data CPU acceptance")
+    assert local["if"] == "inputs.target == 'local-data'"
+    assert local["env"]["CUDA_VISIBLE_DEVICES"] == ""
+    assert "local_data and not cuda" in local["run"]
+    assert '"$ACCEPTANCE_TEST_FILE"' in local["run"]
+    assert "-p scripts.ci_metrics.require_execution" in local["run"]
 
 
 def test_training_workflow_passes_dispatch_input_through_environment() -> None:

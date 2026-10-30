@@ -36,6 +36,8 @@ jobs:
     name: CPU lane plan
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      suites: ${{ steps.runtimes.outputs.suites }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -46,6 +48,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
+      - name: Select runtime preparation
+        id: runtimes
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          suites = json.loads(Path('.ci-plan/plan.json').read_text())['requested_suites']
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print('suites=' + json.dumps(suites), file=output)
+          PY
       - name: Upload CPU lane plan
         if: always()
         uses: actions/upload-artifact@v7
@@ -96,6 +108,10 @@ jobs:
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
       CUDA_VISIBLE_DEVICES: ""
+      CI_REQUIRE_DINO_LOSS: "1"
+      CI_REQUIRE_BROWSER: "1"
+      NODE_PATH: ${{ github.workspace }}/scripts/ci_metrics/node_modules
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.ci-browser
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -136,6 +152,25 @@ jobs:
       - name: Install system dependencies
         timeout-minutes: 8
         run: bash scripts/ci_metrics/install_system_deps.sh
+
+      - name: Prepare pinned upstream DINO CPU losses
+        if: contains(fromJSON(needs.plan.outputs.suites), 'player-publication')
+        run: |
+          git submodule update --init --depth 1 third_party/DINO
+          .venv/bin/python -m scripts.ci_metrics.prepare_dino_cpu --output .ci-dino-cpu
+          echo "PYTHONPATH=$GITHUB_WORKSPACE/.ci-dino-cpu" >> "$GITHUB_ENV"
+
+      - name: Set up Node
+        if: contains(fromJSON(needs.plan.outputs.suites), 'javascript') || contains(fromJSON(needs.plan.outputs.suites), 'ops-scenarios')
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Prepare pinned Playwright and Chromium
+        if: contains(fromJSON(needs.plan.outputs.suites), 'javascript') || contains(fromJSON(needs.plan.outputs.suites), 'ops-scenarios')
+        run: |
+          npm ci --prefix scripts/ci_metrics --no-audit --no-fund
+          scripts/ci_metrics/node_modules/.bin/playwright install --with-deps chromium --only-shell
 
       - name: Test
         # Long dataset generation/recovery integrations are run explicitly.

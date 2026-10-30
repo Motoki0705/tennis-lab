@@ -4,7 +4,7 @@
 
 这些工具规划并观测 CPU 测试集。CI 使用[分片与覆盖审计](sharding.zh-CN.md)，默认本地命令仍完整执行且不分片。
 CPU marker 表达式仍以 `.spin/cmds.py` 为准，court dataset
-集成测试保留原有的明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
+集成测试通过注册表选择，不再由runner明确排除。CI 与本地测量均使用 `spin test -q --no-cov --dist=worksteal`、
 明确worker数量（本地默认2，CI参见[分片设置](sharding.zh-CN.md)）、各原生库线程数为 1、隐藏 CUDA、`--durations=50 --durations-min=1` 和 JUnit。
 
 pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保持现有`ci_watch`对失败nodeid和setup异常的识别。输出pipe关闭时launcher失败并停止测试process group。
@@ -43,6 +43,21 @@ plan与汇总summary列出延后suite、负责人、理由以及main最近一次
 `cpu-test-coverage-*` 证据。绿色job、部分run、全部skip的suite不能证明成功。
 缺失/过期/不兼容证据与API失败均保留为附理由的 **unknown**。coverage artifact保留90天；
 不向仓库commit成功index。
+
+## 额外的测试运行环境
+
+`player-publication` 通道准备固定版本的 `third_party/DINO`，通过
+`prepare_dino_cpu --output .ci-dino-cpu` 在无CUDA的环境编译上游 `vision.cpp`。
+将输出目录加入 `PYTHONPATH` 后运行真实 matcher/loss；attention forward/backward
+仍会报错，不替代模型前向计算。CI准备缺失时两项 publication loss 测试失败而非跳过。
+
+`javascript` 通道使用 `node --test` 运行现有 `*.test.mjs`，并运行不依赖外部数据的
+detection refresh race。它和 `ops-scenarios` 准备此目录固定版本的Playwright与
+Chromium headless shell；后者执行board浏览器交互。CI准备失败不能跳过测试。
+Court dataset的fake render集成和使用临时根目录的typed config契约纳入普通CPU选择。
+
+GPU和 `local_data and not cuda` 手动验收参见
+[本地runner说明](../github_actions/README.md#使い方)。
 
 ## 测试增减与成本警告
 

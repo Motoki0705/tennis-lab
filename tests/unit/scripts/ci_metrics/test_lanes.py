@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[4]
 # Independent examples from the import/CLI audit, including cross-domain users.
 # These must remain useful when a registry pattern is accidentally narrowed.
 DEPENDENCY_CHANGES = {
+    "javascript": ("src/tennis_scene/clip_studio/web/static/app.js",),
     "ops-scenarios": (
         ".agents/ops/lib/agent_exec.sh",
         ".agents/ops/review/merge_gate.py",

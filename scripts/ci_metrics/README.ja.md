@@ -4,7 +4,7 @@
 
 CPU対象を計画・観測する道具です。CIは[分割と完全性照合](sharding.ja.md)を使い、既定のローカル
 コマンドは全件を1 jobで実行します。CPUのmarker式は `.spin/cmds.py` が正本で、court datasetの
-既存の明示除外を維持します。CIとローカル計測は `spin test -q --no-cov --dist=worksteal`、
+登録表で選択し、runnerでの明示除外はありません。CIとローカル計測は `spin test -q --no-cov --dist=worksteal`、
 worker数の明示（ローカル既定2、CIは[分割設定](sharding.ja.md)参照）、native thread各1、CUDA不可視、`--durations=50 --durations-min=1`、JUnitを使います。
 
 pytestのstdout/stderrはjobログへ転送し、`pytest.log`にも保存します。既存の`ci_watch`が失敗nodeidとsetup例外を識別できます。出力pipeが閉じた場合はlauncherを失敗にし、テストのprocess groupを停止します。
@@ -45,6 +45,23 @@ read-only Actions APIで直近30件までの成功したmain pushを探索し、
 `cpu-test-coverage-*` の証拠を検証します。jobの緑・部分run・全skipのsuiteは成功証拠にしません。
 証拠の欠落・期限切れ・非互換・API失敗は理由付きの **unknown** として残します。
 coverage artifactは90日保存し、成功indexをrepoへcommitしません。
+
+## 追加のテスト実行環境
+
+`player-publication` レーンでは固定済み `third_party/DINO` を準備し、
+`prepare_dino_cpu --output .ci-dino-cpu` で上流の `vision.cpp` をCUDAなしでビルドします。
+出力先を `PYTHONPATH` に追加し、本物の matcher/loss を読み込みます。
+attention の forward/backward は例外のままで、model forwardの代替はしません。
+CIの準備不足は公開loss 2件のskipにせず失敗にします。
+
+`javascript` レーンは既存の `*.test.mjs` を `node --test` で実行し、
+外部資産不要の detection refresh race を実行します。このレーンと `ops-scenarios` は、
+本ディレクトリの固定済みPlaywrightとChromium headless shellを準備します。
+後者ではboardのブラウザ操作を実行し、CIの準備不足をskipにしません。
+court datasetのfake renderとtemp rootによるtyped configは通常のCPU選択に含みます。
+
+GPUと `local_data and not cuda` の手動受入は
+[ローカルrunnerの使い方](../github_actions/README.md#使い方)を参照してください。
 
 ## テスト増減とコストの警告
 

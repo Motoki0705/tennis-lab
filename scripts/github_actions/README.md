@@ -68,9 +68,17 @@ Windowsの電源・sleep設定もそれに合わせる。
 
 GitHubの **Actions** タブから次を手動実行する。
 
-- **Local GPU tests**: DINOを初期化してrepositoryのCUDA extensionsをbuildし、
+- **Local GPU tests**: `target=cuda`（既定）ではDINOを初期化してrepositoryのCUDA extensionsをbuildし、
   CUDA preflightの後、`spin test --all --serial -m cuda` を実行する。学習中なら
-  GPU lockを取得できず、明示的に失敗する。
+  GPU lockを取得できず、明示的に失敗する。rendered alignmentとexported player checkpointの
+  opt-inも明示的に有効にする。NHTの公開コマンド・B00の保存済みalignment・playerのcheckpointと
+  保存済み予測など、各テストが要求する資産/実行環境の準備が必要。
+  `target=local-data` では `test_file=tests/integration/submodules/test_checkpoint_loading.py`
+  のように実在する1ファイルを指定する。CPU backend・CUDA不可視・native thread各1で
+  `local_data and not cuda` を直列実行し、GPU lockやCUDA buildは使わない。
+  両方とも `-p scripts.ci_metrics.require_execution` でskip・収集時skip・0件を失敗にし、
+  `.ci-acceptance/` のJUnitと再現出力をartifactへ保存する。owner・variable・environmentの
+  制限と信頼されたmain refは両モードで共通。
 - **Queue local GPU training**: `name`、正確な学習`command`、任意のIssue番号、
   `resource` (`all`/`half`、既定`all`)を入力する。task固有のコマンドは各task READMEを正とし、isolated checkout内で
   依存関係を再現できる `uv run --locked ...` 形式を使う。
