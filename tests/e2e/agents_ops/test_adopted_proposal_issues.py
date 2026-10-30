@@ -1415,7 +1415,7 @@ def test_incomplete_adopted_requirement_records_specific_resume_instructions(
     ops_env: Any,
 ) -> None:
     ops = ops_env
-    assert ops.run("report").returncode == 0
+    ops.publish_proposal_fixture()
     data = ops.state
     report = next(row for row in data["issues"] if row["number"] == 100)
     report["body"] = (

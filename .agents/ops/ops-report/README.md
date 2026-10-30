@@ -10,10 +10,10 @@
 | パス | 役割 |
 |---|---|
 | `ops_report.py` | CLI入口（`report` / `triage` / `schedule init` / `schedule status`） |
-| `opsreport/collect.py` | 決定的な収集。gh（open PR/issue、merge済みPR、CI run、過去レポート）、git（期間内commit、行数の多いファイル、TODO系マーカー、worktree/branch数）、掃除モジュール出力、共有5層memory、`knowledge/`、AI制御ファイル |
-| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 固定版・GitHubの範囲取得、取得記録の追記、GET専用stdio MCP。profileへの接続は統合側が行う |
-| `opsreport/agent.py` | プロンプト組み立て、`../lib/agent_exec.sh` による親Codexのread-only実行、集約JSONの検証 |
-| `opsreport/audit.py` | 固定SHAの全対象・担当計画、調査worktree、native scoutの返却と統合の検証、再開入力の照合 |
+| `opsreport/collect.py` | 公開履歴・集計境界・基準版・専用memoryの固定。調査資料は一括収集しない |
+| `opsreport/retrieval.py` / `retrieval_git.py` / `retrieval_github.py` / `mcp_server.py` | 共通 `lib/review_tools` の固定版・GitHub取得とMCP通信を使う入口、調査の台帳adapter |
+| `opsreport/agent.py` | 目的と最小メタデータのプロンプト、共通ランナーによるread-only親の起動、専用memory更新の最終返却 |
+| `opsreport/audit.py` / `audit_tools.py` | 調査checkout、version 2 checkpoint、MCPからのタスク・発見・根拠・終了要求、nativeと取得receiptの照合 |
 | `opsreport/ledger.py` | 可変の調査タスク・発見・根拠・引渡しの追記履歴、再読込・整合検証・親向け要約（統合用ライブラリ） |
 | `opsreport/native.py` | 親runとCodex transcriptからnative起動・完了・実効設定を列挙し、台帳のタスクとnative IDを照合する読み取り専用API |
 | `opsreport/reproduction.py` / `repro_isolation.py` / `repro_linux.py` / `repro_sandbox.py` / `reproduction_server.py` | CPUテスト要求の制限、使い捨てclone・台帳根拠・ログ、実機proofで許可するOS隔離backend |
@@ -27,54 +27,73 @@
 | `opsreport/triage.py` | 採用チェック・既存受領の記録、既存issue照合、採否のmemory入力 |
 | `opsreport/organization.py` / `organize_prompt.md` | 全open/closed issueとコードの固定入力、read-only整理agent、構造化計画の検証 |
 | `opsreport/organization_apply.py` | 計画journal、作業issue生成・再利用、正式親子・親一覧・出典リンクの復旧 |
-| `prompt.md` | agentへの依頼文（分析観点・品質基準・出力JSON形式） |
+| `prompt.md` | 目的中心の依頼、取得・記録toolとnative委任、終了理由・権限の境界 |
 | `systemd/` | `report --if-due`（毎日 08:00 JST に予定判定）と `triage`（毎日 09:00 JST）の service / timer |
 
-分担: 収集はスクリプト（同じrepo状態なら同じ事実）、コードベース読解と提案文の生成はagent（read-only）、
-issue作成・編集はスクリプト。agentはJSONだけを返し、IDとMarkdownはスクリプトが付ける。
-read-only のagentは git / gh / ネットワークを使えないため、GitHub・git履歴の事実（放置PRの差分規模・mergeable・CI、
-全open issue、checkoutと基準refで内容が異なるファイル一覧など）はすべて `collect.py` が集めてプロンプトに埋め込む。
-親のmodel / effortは [`../lib/agents.conf`](../lib/agents.conf) の `ops_report` profile、
-子は実行環境のnative `scout` 定義に従う。子の設定を複製・上書きしない。
+分担: ホストは基準版・集計境界を固定し、issueの公開・専用memoryの保存を担当する。
+read-onlyの親とnative子はMCPから必要な資料を範囲取得し、発見に応じて問い・担当・順序を決める。
+親と子のmodel/effort・同時枠は [`../lib/agents.conf`](../lib/agents.conf) の `ops_report` profileを使う。
+正式な `review` profileと実装子の既定値・引数はこの調査経路とは独立している。
 
-## 並列調査と部分公開
+## 目的中心の起動と再開
 
-`audit_plan` は `base=` の固定commit SHAの全追跡パスを4担当（コード、基盤、AI運用/文書、issue/PR/研究）へ
-一意に割り当て、収集データの担当範囲・除外・終了条件と一緒に親へ渡す。親と全scoutは、元repoの
-`.claude/worktrees/ops-report-audit-<run-id>` に作る同じdetached checkoutをread-only sandboxで読む。
-外部submoduleはgitlinkの固定版と利用箇所を対象とし、外部内部ソースは対象外・未調査と本文に明記する。
-担当対象の未確認範囲は子が返す。実行後はcleanな調査worktreeだけを削除し、
-HEAD変更・dirty状態は強制resetせずエラーにする。呼び出し元checkoutの変更は調査の事実に混ぜない。
+起動プロンプトは目的とslot・repo・基準SHA・集計期間・レポートissue・出力先・同時枠だけを渡す。
+全パス一覧、全issue本文、CIログ、固定担当表、巨大な出力schemaは渡さない。
+親は `audit_status` の要約と原本参照を使い、先行結果から次の問いを作る。
+独立した後続調査は他の子の終了を待たずに進め、総数や段階数は固定しない。
+native起動の確認済み引数・証拠の扱いは「native起動の実行証拠」を参照する。
 
-親はnative `spawn_agent` の `scout` を並列起動し、枠が空いたら残りを進める。
-並列数はprofileの `OPS_REPORT_MAX_THREADS`。wrapperは `multi_agent` を明示的に有効化し、
-JSONL形式のCLIログと通常のセッション保存を維持する。native scoutを使わない旧Claude/alternate経路は削除し、
-指定されたらエラーにする。別モデルの独立CLIセッションへの置き換えはしない。
+調査CLIはホストが生成した接続情報を共通ランナーの `--mcp-config FILE` で渡す。
+接続JSONは `ops_report` をキーに `command` / `args` / `env.PYTHONPATH` を持ち、調査checkout・記録先・基準版を固定する。
+共通ランナーは接続原文と既存の `OPS_REPORT_MAX_THREADS` を記録し、MCP設定を `codex exec` の後へ渡す。
+読み取りtoolに加え、次の台帳toolを同じMCPへ接続する。agentのsandboxはread-onlyのまま。
 
-返却形式の正本は [prompt.md](prompt.md)。担当ごとのnative ID、基準SHA、開始/終了時刻、状態、結論・根拠・反証・
-未確認範囲・findingを親がJSONで返す。スクリプトは担当の欠落・重複・担当外・基準版/role違い・不正形式、
-2担当以上の時刻重複、全findingと統合判断・提案の対応を検証する。
-同じtopicは1判断へ統合し、重複は1提案へ、反対のpositionは根拠付き解決または未解決の矛盾にする。
-topicや根拠が意味的に同一か・正しいかは親が現物を照合する責務で、スクリプトだけでは証明しない。
-提案には担当findingと基準SHAを付け、カバレッジ・失敗理由・再開方法を本文に載せる。
+| tool | 記録・取得するもの |
+|---|---|
+| `audit_status` / `audit_records` / `audit_original` | 要約・後続候補、完了済みを含む全記録のversioned ref一覧、参照時点の原本の文字範囲 |
+| `audit_context` / `audit_previous_handoffs` | 固定した専用memoryの保存状態・採否・過去レポート参照、前回の引渡先と現在の採否 |
+| `audit_plan_task` / `audit_start_task` / `audit_finish_task` | 問いと起点、native metadataから解決した実session ID、子の結論・根拠・次の問い・不足範囲。重複・枠超過はエラー |
+| `audit_evidence` | 取得成功receiptから出典・時刻・範囲・版・PR headを固定。欠落receiptや取得失敗は根拠にできない |
+| `audit_finding` / `audit_handoff` | 発見の状態と根拠・反証、既存issue/PRや関連親。採用・合意・実装を代行しない |
+| `audit_end` | 確認/除外範囲・重要な未検証リスク・終了理由の要求。ホストの実行証拠照合後に終了を確定する |
 
-失敗・中断・不正返却・未解決の矛盾があれば、確認済みの担当結論と検証できた提案だけを**部分公開**する。
-本文冒頭に「未完了」、メタデータに `status=incomplete` を記録し、終了コードは1、予定状態はfailedにする。
-不正な親の統合に含まれる提案は掲載せず、有効な子の結論は残す。専用memoryの更新は全体完了まで全件保留する。
-triageは未完了レポートを処理しない。部分公開中は提案にチェックを付けない。
+発見・根拠のレコード構造は下記「調査台帳ライブラリ」が正本。
+`audit_records(entity, page, per_page)` はtask / finding / evidence / handoffの参照を列挙し、
+`pagination.next` で次ページへ進む。完了タスク・確定/反証済みの発見も再読できる。
+`slot` を指定する場合は固定入力の `previous_reports` にある完了回だけを許可する。
+`audit_previous_handoffs` と `audit_records` の過去回参照は `audit_original` で同じ原本へ戻れる。
+台帳の回・基準版・レポートissue・完了状態を照合し、一覧外のpath・symlink・破損を拒否する。
+タスクIDはnativeの `task_name` に使える小文字英字・数字・underscoreとし、問い・範囲の重複を禁止する。
+起動後に `audit_start_task` を呼び、native IDがまだ取得できないときは同じ照会を再試行する。
+未取得を成功へ読み替えず、別の子を重複起動しない。同時枠は子の完了受領で解放され、明示closeは不要。
 
-固定入力・全対象一覧・検証済み担当結果はstate dirの `audit/<slot>.json` にatomic replaceで保存する。
-次回の起動または `report --if-due` は未完了回を優先し、不足担当だけを補って**同じissueを更新**する。
-全担当受領済みなら親の再統合だけを行う。並列の証拠が不足した場合は2担当を再起動する。
-基準SHA・集計境界・入力ハッシュは再開時も固定し、後で新しいslotを作る際に前回完了回の境界から集計する。
-issueのclose、提案の選択/子リンク、収集中の本文変更、checkpoint欠落/破損/入力不一致は書き込み前に停止する。
-checkpointを失ったら `collected.json` のaudit_runtimeを除いた入力と `audit.json.results` を照合して明示復元する。
-入力ハッシュは本文の `audit=` とも一致しなければならず、新しいcheckoutへ黙って切り替えない。
+checkpointはstate dirの `audit/<slot>.json`（version 2）で、固定入力・台帳・native親runの参照だけを持つ。
+`audit/<slot>.ledger.json` に可変タスクと履歴、`audit/<slot>/sources/retrieval.jsonl` に範囲取得の原本を保存する。
+巨大な履歴を再開プロンプトへ再注入しない。version 1は #1458 の明示移行を案内して停止し、黙って読み替えない。
+破損・基準版/入力不一致・根拠欠落は理由付きで停止または未完了とし、元の回・issueを保存する。
 
-親+子の全体調査に経過時間の上限はない。`OPS_REPORT_AGENT_TIMEOUT` は削除し、残っていれば明示エラー。
-serviceの `TimeoutStartSec=infinity` とwrapperの `timeout=None` を使う。個別ツール・fetch・掃除・ロック待ちの
-制限は別で、失敗を全体調査の成功へ読み替えない。agent失敗やSIGINT/SIGTERMはプロセスグループを回収して未完了公開する。
-強制終了・停電等で公開できない中断はrunning/failed状態とcheckpointから再開する。
+ホストは各native runの実起動・完了・実効設定と、台帳のtask/session対応、取得receiptの内容を照合する。
+実行や根拠が照合できない発見は未検証に戻し、確定問題として提案しない。確認済みの独立結果は部分公開できる。
+発見直下の根拠・反証と `details.usage_paths[].evidence` を同じ一覧に集約して照合する。
+利用経路だけが参照する根拠でも、欠落やCPUの `needs-reproduction` は確定/反証済みの判定を失効させる。
+親の最終返却は `memory_update` だけで、全タスクや提案の集約JSONを再返却しない。
+
+失敗・中断・重要な未検証事項のある回は、本文に「未完了」、metadataに `status=incomplete` を付けて部分公開する。
+終了コードは1、予定状態はfailed、専用memory更新は全件保留、triageは処理しない。
+次回または `report --if-due` は公開済み未完了回を優先し、同じ基準版・集計境界・issueで不足分を再開する。
+完了タスクは再利用する。終了前に中断されたrunningタスクはinterruptedを記録して同じIDで再開する。
+spawn応答の記録前に中断した過去attemptは、runnerのstopped・終了コード・CLI終了・cleanupと実プロセスの終了を
+照合できた場合だけ、応答未受領の起動を失敗履歴として扱う。元のresult/transcriptと終了理由を保存し、
+応答が無い子を完了根拠にはしない。同じattemptの照合済みの別の子は再利用できる。
+現在attempt、completedの申告、設定不一致・破損・終了/cleanup未確認はこの扱いで除外しない。
+公開だけが失敗した完了台帳は再調査せず、保存済みの返却と根拠を再照合して同じ公開を再試行する。
+issueのclose・採用チェック・子リンク・実行中の本文変更は公開前に停止する。
+`--dry-run` は独立した台帳コピーで実行し、本番の再開状態を書き換えない。
+
+親+子の全体調査に経過時間の上限はない。旧 `OPS_REPORT_AGENT_TIMEOUT` は明示エラー。
+個別取得・fetch・ロック待ちの制限は全体調査の成功条件とは別で、取得失敗・起動不能を成功にしない。
+agent失敗やSIGINT/SIGTERMではプロセス群を回収し、保存済み台帳から未完了公開する。
+調査対象checkoutのHEAD変更・dirty状態は強制resetせず、明示復旧のために残す。
 
 ## オンデマンドの読み取り経路
 
@@ -91,7 +110,7 @@ PYTHONPATH=.agents/ops/ops-report .venv/bin/python -B -m opsreport.mcp_server \
 MCPのcommandにはこのcheckoutのPython、argsには `-B -m opsreport.mcp_server` と上記引数、
 envの `PYTHONPATH` にはこのcheckoutの `.agents/ops/ops-report` の絶対パスを渡す。
 Codex CLI 0.163.0の `-c mcp_servers.*` は **`exec` の後**に置く。
-`exec` より前では登録が見えてもサーバーが起動されなかった。共通ランナー・profileへの恒久接続は統合側で行う。
+`exec` より前では登録が見えてもサーバーが起動されなかった。上記のprofile接続でもこの位置を使う。
 Codexの `tools/list` は標準の `_meta` を伴うため受理する。cursorは省略または `null` のみ受理し、
 空文字を含むcursor値と未知の引数は拒否する。tool一覧は1回で全件返すため、cursorを黙って無視しない。
 
@@ -120,7 +139,7 @@ PR差分はhunk境界で切れた場合も独立した追加/削除行数で検�
 
 外部記録先は0700のディレクトリとし、`retrieval.jsonl` は0600・flock・追記・fsyncで親子のサーバー間で共有する。
 要求と応答をreceiptで結び、応答全文と内容のSHA-256を保存する。記録失敗時は取得前に止めるか、未記録の本文を返さずエラーにする。
-別の調査回/基準版の混在、途中で切れた末尾、記録の消失も停止対象。調査台帳への書込みtoolは提供しない。
+別の調査回/基準版の混在、途中で切れた末尾、記録の消失も停止対象。台帳への記録は上記の専用toolを使い、任意の書込み経路は提供しない。
 
 自動検証は `test_ops_report_retrieval.py`（fake gh・使い捨てGit repo・実stdioプロセス。実agent/GitHub書込みなし）。
 2026-10-24の接続probeでは、既存 `agent_exec.sh --agent codex --profile ops_report --mode read-only` と一時PATH shimを使い、
@@ -168,12 +187,23 @@ capabilityを全て除去してno-new-privilegesを設定し、実行前にも�
 拒否・失敗で発見を確定へ進めない。台帳の競合・書込失敗、根拠やログの欠落・改変は明示エラー。
 
 `test_ops_report_reproduction.py` はfake runnerと実gitで管理経路・proof拒否・scope条件を検証する。
-fakeの成功はOS隔離の証明ではない。profile・現行report CLIへの接続と、CPU allowlist・proofの配布は統合担当の責務。
+fakeの成功はOS隔離の証明ではない。
+
+全体調査CLIではホスト側の `OPS_REPORT_CPU_TESTS_FILE` に上記の許可リスト、
+`OPS_REPORT_ISOLATION_PROOF` に実機proofのファイルを指定する。許可リストはrunごとにprivateな
+`cpu-tests.json`へ固定し、プロンプトには添付しない。基準SHA不一致、proofだけの指定は明示エラー。
+同じMCPで `ReproductionServer` と台帳toolを組み合わせ、取得・隔離実行の実装は共通libを使う。
+許可リスト未指定時は `cpu_test_status` が不足理由を返し、`cpu_tests` は公開しない。
+有効なproofがない場合も実行toolは無効のまま。必要な再現ができない回は未完了にする。
+CPU根拠は自動記録されるため `audit_evidence` へ再登録しない。ホストはmanifest・ログのhash、
+取得receipt・基準版・終了状態・cleanupを照合する。欠落/改変は未完了にし、
+`needs-reproduction` の結果を参照する発見を確定/反証済みにはしない。
+再開時は同じ台帳・原本を再利用し、失敗の後に再検証できた場合は新しい結果との関係を発見へ明記する。
 
 ## 調査台帳ライブラリ
 
-`opsreport.ledger.Ledger` は調査回の永続記録だけを扱う。現行の `audit.py` / CLIとはまだ接続しておらず、
-旧checkpointの移行、情報取得、agent起動、レポート描画、GitHubへの引渡しは呼出元の責務。
+`opsreport.ledger.Ledger` は調査回の永続記録だけを扱う。CLIとMCPがこのライブラリへ接続し、
+情報取得、native起動の照合、描画、公開を担う。旧checkpointの移行は #1458 の範囲。
 native agent IDの記録だけで実起動や正式レビューを証明したことにはならない。
 
 ```python
@@ -252,7 +282,7 @@ IDは種類ごとに一意とし、更新時は同じIDで新しい記録を追�
 2026-10-24、Codex CLI **0.163.0**（`multi_agent` stable）を既存の
 `agent_exec.sh --agent codex --profile ops_report --mode read-only` で実行した。
 設定の変更・子の定義追加は行わず、profileの `agents.max_threads=3`、`agents.max_depth=1` を使った。
-この確認は以下の実行環境の契約であり、上の固定scout経路を切り替える実装は後続の統合で行う。
+この確認は以下の実行環境の契約であり、上記の目的中心の起動でもこの形式を使う。
 
 - 実際に使えた起動引数は `spawn_agent(task_name=..., message=..., fork_turns="none")`。
   `agent_type` や固定役割名は指定しない。戻り値の `task_name` は `/root/<名前>` というnativeの名前空間で、
@@ -267,10 +297,13 @@ IDは種類ごとに一意とし、更新時は同じIDで新しい記録を追�
 再確認は短いprobe用promptを用意し、既存runnerだけを使う。promptでは子2〜3件に短いsleepと定型文の返却を依頼し、
 枠不足を1回確認後、完了受領と後続起動を行う。probeのためにprofileやCODEX_HOME設定を変更しない。
 run dirは新規のものを指定する（#1448の確認は以下の `initial/` に保存した）。
+現在のprofileでは、そのrun用のMCP接続・台帳を先に準備する。通常は全体調査CLIが自動生成する。
+削除済みcheckoutを指す過去の `mcp.json` を再利用しない。
 
 ```bash
 probe_root="${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/campaign-1349/probe-1448"
 bash .agents/ops/lib/agent_exec.sh --agent codex --profile ops_report --mode read-only \
+  --mcp-config "$probe_root/<このrun用に準備した接続JSON>" \
   --task-id probe-1448 --cwd "$PWD" --branch codex/audit-native-evidence \
   --prompt-file "$probe_root/prompt.md" --run-dir "$probe_root/<新しいrun名>"
 ```
@@ -296,7 +329,7 @@ nativeの名前空間をsession IDの代わりに渡さない。複数runの台�
 記録欠落、不正/重複JSON、spawn応答の欠落、親子/turn/ID/実効設定の不一致、重複transcript、
 対応しない子は `NativeEvidenceError`。未確認のfork形式や起動エラーの形式も推測で補わない。
 CODEX_HOME内のmetadata headerも厳格にparseし、破損があれば停止する。
-既存の `agent.py` / `audit.py` への接続は後続の統合が行う。
+`audit.py` は各親runの記録と台帳を照合する。
 
 自動テストは `tests/e2e/agents_ops/test_ops_report_native.py`。
 fixtureの `fixtures/native_transcripts.json` は上記実行の必要なrecordを抽出し、実session ID・tool call ID・
@@ -307,8 +340,7 @@ filesystemパス・prompt本文を記号に置換したもの。`/root/...` はf
 
 `report.render_ledger_report` は終了済みの `Ledger` だけを入力とし、
 `(title, body, proposal_ids)` を返す。固定4担当のJSONや収集済み全データは使わない。
-この入口のCLIへの接続と旧生成経路の撤去は統合の子 #1457 が担う。
-現行CLIを自動的に新旧へ振り分けるfallbackは設けない。
+CLIはこの入口を使い、固定担当の旧生成経路は持たない。
 
 ```python
 from opsreport.handoff import record_proposal_handoffs, reobservation_input
@@ -425,37 +457,21 @@ cd ~/projects/tennis-lab
 .venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
 ```
 
-実headlessでの証拠取得（マージ後に親が実機で行う）:
-
-1. serviceの実効 `CODEX_HOME` と同じ環境で、native `scout` の定義・model/effort・read-only設定を確認する。
-   `codex features list` でmulti_agentが使えることを確認する。scoutが無い/使えない場合は定義元を整え、別CLIで代用しない。
-   env fileに旧 `OPS_REPORT_AGENT_TIMEOUT`、`OPS_REPORT_AGENT=claude|alternate` があれば削除/修正する。
-   `systemctl --user daemon-reload` 後、`systemctl --user show tennis-lab-ops-report.service -p TimeoutStartUSec` がinfinityであることを確認する。
-2. `schedule status` で予定回を確認し、予定が来たら `report --agent codex --if-due` を実行する。
-   予定前に確認したい場合は `report --dry-run --agent codex` を使う（成功済みslotもプレビュー可能。初回slot前は実行しない）。
-   serviceでの定期実行結果は `journalctl --user -u tennis-lab-ops-report.service` で確認する。
-3. 実レポートURL、run dirの `audit_plan.json`（全対象と担当）、`audit.json`（全担当受領・2担当以上の時刻重複）、
-   `collected.json` のbaseと専用memory入力SHA、CLIのJSONLログと実行環境のCodexセッション記録を保存する。
-   agent IDをnativeの起動/完了記録と照合する。自己申告のJSONだけで実際の並列起動を証明した扱いにしない。
-4. 未完了なら同じコマンドを再実行し、同じissueが完了へ移ることを確認する。
-   完了後、次の `report --if-due` または `triage` でメモリ専用PRを確認し、マージ後の
-   `origin/main:.agents/memory/ops-report/` の更新版とjournalのmergedを実レポートへ対応付ける。
-
-自動テストは実Codex/Claudeを起動しない。`test_ops_report_audit.py` のfake担当が並列に動く時刻記録、
-全返却、欠落/不正/重複/矛盾、無制限のwrapper設定、部分公開→同issue完了を検証する。
-実レポートURL・native親子セッション・mainに反映した専用memoryの実機証拠は上の手順で別途取得する。
+実headlessでの証拠取得と改善ループの通し確認は親の #1461 で行う。
+共通ランナーの実行記録、台帳の発見→後続タスクの連鎖、取得receipt、公開issue、専用memoryの保存結果を対応付ける。
+起動0件や照合不能を完了にしない。fakeテストの通過だけで実機検証済みとはしない。
 
 実行ごとに `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/ops-report/<時刻>-<command>[-dry]-<pid>/` へ
-`run.log`、`collected.json`、`audit_plan.json`、`audit.json`、`prompt.md`、`agent_output.md`、agent CLIのJSONLログ、`report.md`、`result.json` を残す。
-`--log-dir` / `OPS_REPORT_LOG_DIR` の相対パスは、起動時のカレントディレクトリを基準に解決する。
-agentのCLIイベント・実効設定・使用量は各回の `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
-gh・git・agent・掃除モジュールの失敗、agent出力の形式違反、設定値の不正はすべて非ゼロ終了になる（黙ってskipしない）。
-agentと掃除モジュールは専用のプロセスグループで起動し、失敗・中断・終了時（掃除はタイムアウトも）にグループ全体を
-SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子プロセスを残さない）。
+`run.log`、最小固定入力の `collected.json`、台帳の実行後snapshot `audit.json`、`mcp.json`、`ending.json`、
+`prompt.md`、`agent_output.md`、`report.md`、`result.json` を残す。
+agentの実CLIイベント・実効設定・使用量は `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
+`--log-dir` / `OPS_REPORT_LOG_DIR` の相対パスは起動時のカレントディレクトリ基準で解決する。
+privateなsession情報・ローカル参照は公開本文へそのまま載せない。
 
-集計期間は `[前回完了レポートの until, 今回の初回収集時刻)`（秒単位に切り捨て、メタデータと同じ精度にする）。境界は issue 作成時刻ではなく本文メタデータの `until`
-（収集の基準時刻）で引き継ぐので、収集〜公開の間のイベントも欠落・重複しない。初回の開始境界はanchorの3日前で、初回が遅延してもその境界を維持する。merge済みPRは
-`--search merged:>=<日付>` でmerge期間を検索条件に含めて取得し、件数上限に達したらエラーにする。
+集計期間は `[前回完了レポートの until, 今回の初回収集時刻)`（秒単位）。
+issueの作成時刻へ境界をずらさず、初回はanchorの3日前とする。実際の期間検索は親・子が取得toolの条件で指定する。
+自動テストは実agent/GitHub書込みを起動せず、大規模未取得fixture、発見で変わる後続、4件を超えるタスク、
+同時枠・重複・起動不能・native不一致、部分公開と同issue再開、PR更新・根拠欠落を検証する。
 
 ## 採用提案の自動Issue化
 
@@ -464,7 +480,7 @@ SIGTERM → SIGKILL で止めて回収する（claude/codex が起動した子�
 `organization-runtime/` に保存する。正常なターンと実効設定・プロセス回収を照合してから計画を検証する。
 `task_success:null` やexit 0だけでIssue化成功とは判定しない。別モデルや新sessionへの自動振替はない。
 
-選定理由: `ops_report` のAstra/maxとnative scoutは全repoの並列調査用であり、提案済み要件を整理する
+選定理由: `ops_report` のAstra/maxとnative子は全repoの並列調査用であり、提案済み要件を整理する
 この限定処理には使わない。Opusは自律着手・開発親の統括を担う。整理は担当・着手の権限を持たず、
 既存作業との比較と共通書式への具体化を実装子の既定で行い、機械的検証後にスクリプトだけが反映する。
 実agentの意味的な整理品質は実機検証で別途確認する。
@@ -518,23 +534,17 @@ CLI引数が優先。systemd実行時は `~/.config/tennis-lab-agents/ops-report
 
 | 環境変数 | 既定 | 意味 |
 |---|---|---|
-| `OPS_REPORT_AGENT` | `codex` | native scoutを起動する親。現在はcodexだけ（他の値はエラー） |
-| `OPS_REPORT_BASE_REF` | `origin/main` | 期間内commit・行数・TODO集計の対象ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、本文に「ローカルref、fetchなし」と明記する |
-| `OPS_REPORT_STALE_PR_DAYS` | `7` | 何日更新がなければ放置PRとして載せるか |
-| `OPS_REPORT_CLEANUP_CMD` | `<python> .agents/ops/cleanup/cleanup.py scan` | 掃除モジュールのコマンド。`--report-json <一時ファイル>` を自動付与し、そのファイルのJSONを読む |
+| `OPS_REPORT_AGENT` | `codex` | native子を起動する親。現在はcodexだけ（他の値はエラー） |
+| `OPS_REPORT_BASE_REF` | `origin/main` | 調査基準ref。remote追跡refなら実行開始時に `git fetch <remote> <branch>` し（失敗はエラー）、そのcommit SHAを実行中固定して本文メタデータ `base=` に記録する。ローカルref/SHAはfetchせず、その取得条件を固定入力に残す |
 | `OPS_REPORT_LOG_DIR` | 上記state dir | ログの保存先 |
 | `OPS_REPORT_AGENT_EXEC` | `../lib/agent_exec.sh` | 全体調査のagentラッパー（テストで差し替える） |
 | `OPS_REPORT_ORGANIZER_EXEC` | `../lib/agent_exec.sh` | 提案整理の共通ランナー（テストで差し替える） |
 | `OPS_REPORT_LOCK_FILE` | `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/ops-report.lock` | issue書き込みの排他ロック（下記） |
 | `OPS_REPORT_LOCK_TIMEOUT` | `600` | ロック待ちの上限（秒）。超えたら非ゼロ終了 |
 
-- 放置PRへの推奨: 完了には対象すべての `{"recommendation": "継続|rebaseして仕上げ|close", "reason": …}` が必要。欠け・余分・形式違反は未完了になる。
-- 掃除モジュール: `OPS_REPORT_CLEANUP_CMD` が未設定で `.agents/ops/cleanup/` も無ければ、本文に「掃除モジュール未導入」と書く。
-  ディレクトリがあれば `cleanup.py scan --report-json <一時ファイル>` を実行してJSONをそのままagentへ渡す（`cleanup.py` が無ければエラー）。
-  共有memory（`.agents/memory/`）も同様に、無ければ「未導入」と書く。あれば `SUMMARY.md` と、層の `index.md` を除く各エントリの先頭を渡す。
-- 共有memoryの収集対象は固定base版の workflow / decision / environment / gotcha / review の5層だけ。
-  専用memoryは以下の独立入力・保存経路を使う。
-- `--repo-root` は収集元repo（既定はこのcheckout）。その変更/未追跡パスも収集するが、調査担当は固定baseの専用checkoutを読む。
+- 共有memoryは固定base、専用memoryはorigin/mainの最後の有効版を範囲取得する。収集済み全件をプロンプトへ添付しない。
+- `--repo-root` は基準版・GitHubの解決元。調査担当は固定baseの専用checkoutを読む。
+- 旧 `OPS_REPORT_CLEANUP_CMD` / `OPS_REPORT_STALE_PR_DAYS` は明示エラー。旧一括掃除の任意コマンド起動は廃止した。必要なコード・記録は範囲取得し、再現は上記「隔離されたCPUテスト要求」の接続を使う。
 
 ## 専用memoryの保存
 
@@ -579,7 +589,7 @@ PR作成・CI未完了をメモリ更新成功とみなさない。CI未登録/�
 エラーとして非ゼロ終了し、他のレポート生成やtriageは進める。mainの観察が進んだPRと未mergeでcloseされたPRは
 `failed` として記録を残し、以後は再試行しない（次の調査から新しい更新を作る）。レポートの予定状態の成功は**完了issueの公開**を意味し、
 メモリの成功はjournalの `merged` / 更新不要の `unchanged` で区別する。
-次のレポートは保留/失敗/中断を冒頭に「専用メモリ未反映」と示し、mainの最後の有効版を使う。
+次のレポートは保留/失敗/中断を「専用メモリ未反映」と示し、親も `audit_context(section="ops_memory")` で確認する。mainの最後の有効版を使う。
 
 採否の入口: 全履歴の完了レポートをGitHubから読み、採用チェック・明示された見送り理由・親/子issue参照を
 `ops_memory.decisions`（`proposal_id` / `decision: selected|deferred` / `reason` / `source`）へ自動で渡す。
@@ -651,8 +661,8 @@ unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` �
 
 - 分析観点・品質基準・出力形式は `prompt.md` にある。観点の追加や言い回しの変更はここだけ直せばよい。
   レポート自身が「制御ルールの改訂」カテゴリでこのプロンプトや本ツールの改善を提案してよい（プロンプトにそう書いてある）。
-- カテゴリを増やす場合は `opsreport/proposals.py` の `CATEGORIES` を変える（プロンプトのカテゴリ一覧は自動で反映される）。
-- 収集項目を増やす場合は `opsreport/collect.py` に決定的な関数を足す。観察データ欄に出したいものは `opsreport/report.py`。
+- カテゴリを増やす場合は `opsreport/proposals.py` の `CATEGORIES` を変える（台帳からの分類は `handoff.py` が行う）。
+- 取得対象を増やす場合は範囲取得toolへ追加し、出典・receipt・ページング・失敗検出を維持する。起動入力へ資料を足さない。
 - 挙動を変えたら `tests/e2e/agents_ops/test_ops_report*.py`（fake gh / fake agent_exec）を更新する。
 
 ## 改善ループ全体の実機E2E（親が実施）

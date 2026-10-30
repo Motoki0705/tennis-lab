@@ -169,18 +169,8 @@ def test_two_reports_use_main_observations_and_human_decisions(memory_env: Any) 
         "R-20261012-02": "selected",
         "R-20261012-03": "deferred",
     }
-    assert (
-        data["previous_reports"]["reports"][-1]["proposals"][1]["state"] == "selected"
-    )
-    assert all(
-        not entry["path"].startswith(DIRECTORY) for entry in data["memory"]["entries"]
-    )
-    assert data["memory"]["entries_total"] == len(
-        [p for p in shared if not p.endswith(("index.md", "SUMMARY.md"))]
-    )
-    assert _shared_hashes(ops) == shared
-    assert len(ops.state["memory_prs"]) == 2
-
+    assert data["previous_reports"][-1]["number"] == 100
+    assert "memory" not in data  # shared records are acquired on demand
     # Daily triage does one CI check and merges the second version, without agent.
     Path(ops.env["FAKE_AGENT_USED"]).unlink()
     # Avoid filing a child in this test; adoption/requirements are #1223's job.
@@ -568,7 +558,9 @@ def test_publication_response_must_match_prepared_report(
     env = {
         "url": {"FAKE_GH_CREATE_URL": "https://github.com/o/r/issues/999"},
         "body": {
-            "FAKE_GH_CREATE_EDIT": json.dumps([["今回は", "書き換えられた結果は"]])
+            "FAKE_GH_CREATE_EDIT": json.dumps(
+                [["big.py を分割する", "書き換えられた結果は"]]
+            )
         },
         "author": {"FAKE_GH_CREATE_AUTHOR": "another-user"},
     }[mismatch]
@@ -719,8 +711,8 @@ def test_patch_requires_explicit_no_change_and_deletion_reason(
     agent_output: dict[str, Any],
 ) -> None:
     agent_output.pop("memory_update")
-    with pytest.raises(agent.AgentOutputError, match="memory_update is required"):
-        agent.parse_agent_output(json.dumps(agent_output), {7})
+    with pytest.raises(agent.AgentOutputError, match="requires exactly memory_update"):
+        agent.parse_completion("{}")
     update = _update()
     update["delete"] = [{"slug": "old", "reason": ""}]
     with pytest.raises(ValueError, match="deletion reason"):

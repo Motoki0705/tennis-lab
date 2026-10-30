@@ -850,13 +850,19 @@ def process_alive(pid: int) -> bool:
         return False
 
 
-def wait_child(h: Harness) -> int:
+def wait_child(h: Harness, name: str = "initial") -> int:
     deadline = time.monotonic() + 8
     while time.monotonic() < deadline:
-        if (h.root / "child.pid").exists():
-            return int((h.root / "child.pid").read_text())
+        if (h.root / "child.pid").exists() and (h.root / name / "result.json").exists():
+            result = h.result(name)
+            # A child can start before the runner persists its process/session.
+            # Crash only after those identities are available for stop recovery.
+            if result["process"] is not None and result["runtime"]["session_id"]:
+                return int((h.root / "child.pid").read_text())
         time.sleep(0.05)
-    raise AssertionError("fake child did not start")
+    raise AssertionError(
+        "fake child and recorded runner identities did not become ready"
+    )
 
 
 @pytest.mark.parametrize("scenario", ["hang", "closed_stdout", "detached"])
@@ -988,7 +994,7 @@ def test_lost_runner_recovers_a_resumed_turn_before_same_session_resume(
         text=True,
     )
     try:
-        child = wait_child(h)
+        child = wait_child(h, "interrupted")
         proc.kill()
         proc.communicate(timeout=5)
         assert h.query("stop", "interrupted").returncode == 0
