@@ -22,7 +22,7 @@ from tests.e2e.agents_ops.test_dispatcher_supervisor import (
     wait_until,
 )
 from tests.e2e.agents_ops.test_dispatcher_supervisor import d as d
-from tests.e2e.agents_ops.test_merge_gate import GateEnv
+from tests.e2e.agents_ops.test_merge_gate import GateEnv, GateSeed, make_gate_env
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
@@ -948,20 +948,42 @@ def test_stop_terminates_running_dependency_but_keeps_independent_worker(
         d.control.reconcile(stop=True)
 
 
-@pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
+COMPLETION_SEED = pytest.StashKey[GateSeed]()
+
+
+@pytest.fixture
+def completed_gate_env(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+) -> GateEnv:
+    # One real merged implementation plus one cancelled sibling exercises the
+    # completion/cancellation interaction; independent merge ordering is separate.
+    if COMPLETION_SEED not in request.config.stash:
+        gate = make_gate_env(parent_env, monkeypatch)
+        cache = request.getfixturevalue("tmp_path_factory").mktemp("completion-seed")
+        request.config.stash[COMPLETION_SEED] = GateSeed.capture(
+            gate, cache / "snapshot"
+        )
+        return gate
+    gate = request.config.stash[COMPLETION_SEED].restore(parent_env, monkeypatch)
+    parent_env.calls_path.write_text("")
+    return gate
+
+
 @pytest.mark.parametrize(
     "change", ["none", "missing", "body", "state_reason", "open_pr", "worker"]
 )
 def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
-    gate_env: GateEnv, change: str
+    completed_gate_env: GateEnv, change: str
 ) -> None:
-    g, p = gate_env, gate_env.review.p
+    g, p = completed_gate_env, completed_gate_env.review.p
     p.child("old-plan")
     state = p.state()
-    state["issues"]["13"].update(state="closed", state_reason="not_planned")
+    state["issues"]["11"].update(state="closed", state_reason="not_planned")
     p.save(state)
     p.cli("sync")
-    for n in (10, 11, 12):
+    for n in (10,):
         p.cli(
             "record-result",
             "--child",
@@ -972,28 +994,28 @@ def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
     spec = {
         "schema_version": 1,
         "reason": "旧案を代替実装へ統合した。",
-        "handoff": "残作業は #10・#11・#12 へ引き継いだ。",
+        "handoff": "残作業は #10 へ引き継いだ。",
         "evidence": "各issueの範囲・受入条件と旧案との差分を親が照合した。",
     }
     if change != "missing":
-        receipt = p.cli("record-cancellation", "--child", "13", "--spec", p.spec(spec))
+        receipt = p.cli("record-cancellation", "--child", "11", "--spec", p.spec(spec))
         assert json.loads(receipt.stdout)["state"] == "cancelled"
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr + merged.stdout
-    assert len(g.merge_calls()) == 3
+    assert len(g.merge_calls()) == 1
     state = p.state()
     if change == "body":
-        state["issues"]["13"]["body"] += "\n\n引継ぎ先が変更された。\n"
+        state["issues"]["11"]["body"] += "\n\n引継ぎ先が変更された。\n"
     elif change == "state_reason":
-        state["issues"]["13"]["state_reason"] = "duplicate"
+        state["issues"]["11"]["state_reason"] = "duplicate"
     elif change == "open_pr":
-        state["prs"].append(p.pr(200, 13))
+        state["prs"].append(p.pr(200, 11))
     p.save(state)
     directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
     if change == "worker":
         registry = directory / "registry.json"
         data = json.loads(registry.read_text())
-        data["parents"]["o/r#1"]["tasks"]["13"].update(
+        data["parents"]["o/r#1"]["tasks"]["11"].update(
             delegated=True, delegation_id="unfinished-cancelled-worker"
         )
         registry.write_text(json.dumps(data))
@@ -1017,9 +1039,9 @@ def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
         assert set(report) == {"schema_version", "state", "reason", "resume_condition"}
         assert report["state"] == "completed"
         row = json.loads((directory / "registry.json").read_text())["parents"]["o/r#1"]
-        assert row["development_result"]["cancelled"] == [13]
-        assert row["development_result"]["prs"] == [100, 101, 102]
-        assert "- [ ] #13 old-plan（取消）" in p.state()["issues"]["1"]["body"]
+        assert row["development_result"]["cancelled"] == [11]
+        assert row["development_result"]["prs"] == [100]
+        assert "- [ ] #11 old-plan（取消）" in p.state()["issues"]["1"]["body"]
     elif change == "worker":
         assert "termination" in result.stderr
     else:
@@ -1347,39 +1369,21 @@ def test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, target: int
 ) -> None:
     p = parent_env
-    review = make_review_env(p, independent=True)
-    bind_adoption(p, target)
-    if target == 1:
-        p.agreed()
-    for child in (10, 11, 12):
-        p.cli(
-            "record-result",
-            "--child",
-            str(child),
-            "--evidence-file",
-            p.note("出典を含む現在の要件で差分・テスト・PRを確認した。"),
-        )
-    manifest = json.loads(
-        p.cli(
-            "review-prepare",
-            "--prs",
-            "100",
-            "101",
-            "102",
-            "--reason-file",
-            p.note("採用出典を含めて対象を固定。まだレビューは実行していない。"),
-        ).stdout
-    )
-    review.request = json.loads(
-        p.cli(
-            "review-request",
-            "--run-id",
-            manifest["review_run_id"],
-            "--instruction-file",
-            p.note("この対象集合を1回でレビュー。"),
-        ).stdout
-    )
-    review.request_path.write_text(json.dumps(review.request))
+
+    def configure_adoption(p: ParentEnv) -> None:
+        bind_adoption(p, target)
+        if target == 1:
+            p.agreed()
+        for child in (10, 11, 12):
+            p.cli(
+                "record-result",
+                "--child",
+                str(child),
+                "--evidence-file",
+                p.note("出典を含む現在の要件で差分・テスト・PRを確認した。"),
+            )
+
+    review = make_review_env(p, independent=True, before_review=configure_adoption)
     state = p.state()
     for pr in state["prs"]:
         pr.update(

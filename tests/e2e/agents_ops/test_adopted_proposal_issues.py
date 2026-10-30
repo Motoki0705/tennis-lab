@@ -98,7 +98,9 @@ class FakeGitHub:
             return paged(self.prs)
         if path.startswith("repos/o/r/pulls/"):
             return copy.deepcopy(
-                next(p for p in self.prs if p["number"] == int(path.split("/")[-1]))
+                next(
+                    pr for pr in self.prs if pr["number"] == int(path.rsplit("/", 1)[1])
+                )
             )
         parts = path.removeprefix("repos/o/r/issues/").split("/")
         n = int(parts[0])
@@ -109,19 +111,20 @@ class FakeGitHub:
             return paged(
                 [
                     {
-                        "id": p["number"] + 10000,
+                        "id": pr["number"],
                         "event": "cross-referenced",
                         "source": {
                             "issue": {
-                                "id": p["number"] + 10000,
-                                "number": p["number"],
-                                "body": p.get("body", ""),
+                                **pr,
                                 "repository_url": "https://api.github.com/repos/o/r",
-                                "pull_request": {"url": "pr"},
+                                "pull_request": {
+                                    "url": f"https://api.github.com/repos/o/r/pulls/{pr['number']}"
+                                },
                             }
                         },
                     }
-                    for p in self.prs
+                    for pr in self.prs
+                    if n in policy.closing_issues(pr.get("body") or "", self.repo)
                 ]
             )
         if tail == "parent":

@@ -1,0 +1,31 @@
+{
+  "gif": "/home/kamimura/projects/tennis-lab/.claude/worktrees/scene-ball-loess/outputs/scene-ball-loess/render/multiview_reconstruction.gif",
+  "gif_sha256": "fdf6efbb0e704cad3357e5aec765426f2836ae03cfcbb237e385d0017b104df7",
+  "size_bytes": 5794518,
+  "width": 960,
+  "height": 620,
+  "frames": 168,
+  "duration_ms": 16750,
+  "loop": 0,
+  "all_input_hashes_unchanged": true,
+  "camera_source_comparisons": 504,
+  "unlabelled_input_panel_max_rgb_error": 0,
+  "gif_to_png_psnr_min_db": 36.31253878700064,
+  "gif_to_png_psnr_mean_db": 36.564151681184796,
+  "review_output_frames": [
+    0,
+    29,
+    59,
+    89,
+    119,
+    167
+  ],
+  "review_source_frames": [
+    6,
+    180,
+    360,
+    540,
+    720,
+    1008
+  ]
+}

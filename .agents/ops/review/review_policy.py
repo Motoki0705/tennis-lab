@@ -249,7 +249,7 @@ _ZERO_TIME = datetime(1, 1, 1, tzinfo=UTC)
 _SEVERITY = {CheckState.SUCCESS: 0, CheckState.PENDING: 1, CheckState.FAILURE: 2}
 
 
-def _started_at(item: Mapping[str, Any]) -> datetime | None:
+def check_started_at(item: Mapping[str, Any]) -> datetime | None:
     """``startedAt`` as an aware datetime, or ``None`` when unset (null, "" or zero time)."""
     raw = item.get("startedAt")
     if raw is None or raw == "":
@@ -293,7 +293,7 @@ def normalize_rollup(items: Iterable[Mapping[str, Any]]) -> tuple[Check, ...]:
     runs: dict[tuple[str, str], list[tuple[datetime | None, Check]]] = {}
     for item in items:
         key, check = _check_from_rollup(item)
-        runs.setdefault(key, []).append((_started_at(item), check))
+        runs.setdefault(key, []).append((check_started_at(item), check))
     result: list[Check] = []
     for entries in runs.values():
         dated = [started for started, _ in entries if started is not None]

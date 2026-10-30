@@ -5,22 +5,73 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      shards:
+        description: CPU job count for matched scheduling comparisons
+        type: choice
+        options: ["1", "2", "4", "6", "8", "10"]
+        default: "10"
+        required: true
+      workers:
+        description: Pytest processes per 4-vCPU CPU runner (native threads remain one)
+        type: choice
+        options: ["2", "4"]
+        default: "2"
+        required: true
+
+env:
+  CI_SHARD_COUNT: ${{ inputs.shards || '10' }}
+  CI_WORKERS: ${{ inputs.workers || '2' }}
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
-  lint-and-test:
-    name: Python
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          prune-cache: false
+          cache-dependency-glob: uv.lock
+          cache-suffix: cpu
+      - name: Install locked CPU environment
+        run: uv sync --locked --no-group gpu --group cpu
+      - name: Lint
+        run: .venv/bin/python -m spin lint
+      - name: Lint measurement tools
+        run: |
+          .venv/bin/python -m ruff check scripts/ci_metrics
+          .venv/bin/python -m mypy --follow-imports=skip scripts/ci_metrics
+
+  tests:
+    name: CPU tests (${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.shards == '1' && 120 || 60 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(inputs.shards == '1' && '[0]' || inputs.shards == '2' && '[0,1]' || inputs.shards == '4' && '[0,1,2,3]' || inputs.shards == '6' && '[0,1,2,3,4,5]' || inputs.shards == '8' && '[0,1,2,3,4,5,6,7]' || '[0,1,2,3,4,5,6,7,8,9]') }}
     env:
-      # Keep two pytest workers; native libraries use one thread each.
-      PYTEST_XDIST_AUTO_NUM_WORKERS: "2"
+      # Pin worker count for reproducible comparisons; native threads stay at one.
+      PYTEST_XDIST_AUTO_NUM_WORKERS: ${{ inputs.workers || '2' }}
       OMP_NUM_THREADS: "1"
       MKL_NUM_THREADS: "1"
       OPENBLAS_NUM_THREADS: "1"
+      CUDA_VISIBLE_DEVICES: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -28,7 +79,11 @@ jobs:
           fetch-depth: 0
           submodules: false
 
+      - name: Record runner environment
+        run: python3 -m scripts.ci_metrics capture --workers "$CI_WORKERS" --output .ci-metrics/shard-${{ matrix.shard }}/preparation
+
       - name: Set up uv and Python 3.11
+        id: setup-uv
         uses: astral-sh/setup-uv@v7
         with:
           python-version: "3.11"
@@ -49,15 +104,73 @@ jobs:
           PY
 
       - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg rclone
-
-      - name: Lint
-        run: .venv/bin/python -m spin lint
+        timeout-minutes: 8
+        run: bash scripts/ci_metrics/install_system_deps.sh
 
       - name: Test
         # Long dataset generation/recovery integrations are run explicitly.
+        env:
+          UV_CACHE_HIT: ${{ steps.setup-uv.outputs.cache-hit }}
         run: >-
-          .venv/bin/python -m spin test -q --no-cov --dist=worksteal
-          --ignore=tests/integration/synthetic_data_generation/test_court_dataset.py
+          .venv/bin/python -m scripts.ci_metrics run
+          --output .ci-metrics/shard-${{ matrix.shard }}/tests --workers "$CI_WORKERS"
+          --shard-index ${{ matrix.shard }} --shard-count "$CI_SHARD_COUNT"
+          --shard-weights scripts/ci_metrics/cpu-file-times.json
+
+      - name: Summarize test measurements
+        if: always()
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          status=0
+          python3 -m scripts.ci_metrics report --output ".ci-metrics/shard-$SHARD/tests" || status=$?
+          cat ".ci-metrics/shard-$SHARD/tests/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
+      - name: Snapshot attempt timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHARD: ${{ matrix.shard }}
+        run: >-
+          python3 -m scripts.ci_metrics fetch-actions --repo "$GITHUB_REPOSITORY"
+          --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT"
+          --output ".ci-metrics/shard-$SHARD/actions"
+
+      - name: Upload test measurements
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpu-test-measurements-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
+          path: .ci-metrics/shard-${{ matrix.shard }}/
+          include-hidden-files: true
+          if-no-files-found: error
+
+  python:
+    name: Python
+    if: always()
+    needs: [lint, tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+      - name: Download all shard observations
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cpu-test-measurements-${{ github.run_id }}-${{ github.run_attempt }}-shard-*
+          path: .ci-results
+      - name: Verify jobs and complete CPU coverage
+        if: always()
+        env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
+      - name: Upload CPU coverage result
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cpu-test-coverage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-results/coverage.json
+          if-no-files-found: error

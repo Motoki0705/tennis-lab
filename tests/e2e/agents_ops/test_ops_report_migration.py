@@ -493,6 +493,76 @@ def test_body_change_after_preparation_is_never_overwritten_on_retry(
     assert _path(ops_env).read_bytes() == original
 
 
+def test_previous_migrated_round_preserves_checkpoint_original_and_source_slot(
+    ops_env: Any,
+) -> None:
+    old = _seed(ops_env, completed=True)
+    migrated = ops_env.run(*ARGS)
+    assert migrated.returncode == 0, migrated.stderr + migrated.stdout
+    previous = _book(ops_env)
+    previous.resume("Finish the migrated round", at=audit.timestamp())
+    previous.end(
+        {
+            "status": "completed",
+            "reason": "Imported results verified",
+            "checked_scope": ["big.py"],
+            "excluded_scope": ["external submodule internals"],
+            "unverified_risks": [],
+            "further_investigation": [],
+        },
+        at=audit.timestamp(),
+    )
+    current_slot = "20261015"
+    current = ledger.Ledger.create(
+        previous.path.with_name(f"{current_slot}.ledger.json"),
+        slot=current_slot,
+        base_sha=previous.snapshot["base_sha"],
+        goal="Reobserve the completed migrated round",
+        at=audit.timestamp(),
+    )
+    pinned = ops_env.tmp / "next-input.json"
+    pinned.write_text(
+        json.dumps(
+            {
+                "previous_reports": [
+                    {
+                        "slot": SLOT,
+                        "number": NUMBER,
+                        "base_sha": previous.snapshot["base_sha"],
+                        "status": "complete",
+                    }
+                ]
+            }
+        )
+    )
+    tools = importlib.import_module("opsreport.audit_tools")
+    retrieval = importlib.import_module("opsreport.retrieval")
+    server = tools.AuditTools(
+        retrieval.Retrieval(
+            ops_env.repo,
+            current.snapshot["base_sha"],
+            "o/r",
+            current_slot,
+            ops_env.tmp / "next-sources",
+        ),
+        ledger_path=current.path,
+        runtime_dir=ops_env.tmp / "next-runtime",
+        input_path=pinned,
+        ending_path=ops_env.tmp / "next-ending.json",
+        max_threads=3,
+    )
+    records = server.call("audit_records", {"entity": "evidence", "slot": SLOT})
+    assert records["ok"], records
+    ref = next(
+        row["ref"] for row in records["data"] if row["id"] == migration.SOURCE_ID
+    )
+    original = server.call("audit_original", {"ref": ref, "max_chars": 12000})
+    assert original["ok"], original
+    assert not original["pagination"]["has_more"]
+    assert json.loads(original["data"]["text"])["original_checkpoint"] == old
+    assert {"kind": "audit-ledger", "slot": SLOT} in original["sources"]
+
+
 def test_imported_originals_are_bounded_and_available_through_mcp(ops_env: Any) -> None:
     _seed(ops_env, completed=True, findings=True)
     assert ops_env.run(*ARGS).returncode == 0

@@ -17,7 +17,8 @@
 取得・記録の入口:
 
 - `audit_status` で未完了タスク、未検証の発見、後続候補をページ単位で確認します。
-  再開時は確認済み結果を再利用し、必要な原本だけ `audit_original` で取得します。
+  `audit_records` で完了タスク・確定/反証済み発見・根拠・引渡しの参照もページ単位で列挙できます。
+  再開時は確認済み結果を再利用し、必要な参照の原本だけ `audit_original` で範囲取得します。
 - `code_paths` / `code_search` / `code_file`、`git_history` / `commit_diff`、
   `github_items` / `github_item` / `github_comments` / `github_comment` / `pr_diff`、
   `ci_runs` / `ci_jobs` / `ci_log` を必要な範囲で呼べます。大量の全パス・全ログ・全履歴を全読込しないこと。
@@ -26,6 +27,8 @@
   共有memoryと専用memoryのSUMMARYから必要な記録だけ辿り、再検証条件を確認します。
   `audit_context` で専用memoryの保存状態・採否、過去レポートの参照を取得できます。
   `audit_previous_handoffs` で前回の修正先と最新の採否を確認し、新基準版で修正結果を再観察します。
+  前回の参照も `audit_original` で取得でき、根拠IDは `audit_records(entity="evidence", slot=...)` から辿れます。
+  過去回は固定済みの `previous_reports` にある完了台帳だけを使います。
   保存記録が無いときは明示された不足として扱ってください。
 - 根拠は取得成功の `receipt` を `audit_evidence(id, receipt)` で記録します。
   版・PR head・取得時刻・範囲はサーバーが取得記録から固定します。コードを直接読んだ場合も根拠となる範囲をtoolで取得します。

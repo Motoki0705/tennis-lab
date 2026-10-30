@@ -1,0 +1,1617 @@
+{
+  "schema_version": 1,
+  "selected_run_id": 41001256601,
+  "latency_target_s": 900,
+  "campaign_attempts": 5,
+  "campaign_runner_s": 28068.0,
+  "campaign_conclusions": {
+    "failure": 5
+  },
+  "memory_metric": "largest individual pytest process high-water RSS; Linux KiB; not process-tree peak",
+  "runs": [
+    {
+      "run_id": 40986313121,
+      "attempt": 1,
+      "source_sha": "660c7decc39529ba667c3219339502edd8ab19f9",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121",
+      "shards": 4,
+      "workers": 2,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 1573.0,
+      "all_jobs_runner_s": 4956.0,
+      "min_shard_runner_s": 865.0,
+      "max_shard_runner_s": 1548.0,
+      "shard_spread_s": 683.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "run_id": "40986313121",
+        "attempt": "1",
+        "shard_count": 4,
+        "selected_count": 12782,
+        "counts": {
+          "passed": 12685,
+          "skipped": 96,
+          "failed": 1
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "success",
+          "runner_s": 1548.0,
+          "test_step_s": 1493.0,
+          "inventory_sha256": "cb3276af25e1a04826fafafbc0163da3c04fd484b370537a45a8849b63fdec58",
+          "profile_sha256": "1b17bf33edd252ac15fcf73253e8dd7505f9848288f477f19b113c0ae58639cc",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2821,
+            "skipped": 2
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1530192,
+          "collection_s": 89.59124814999998,
+          "phase_s": 2780.860966936003,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 865.0,
+          "test_step_s": 787.0,
+          "inventory_sha256": "cb3276af25e1a04826fafafbc0163da3c04fd484b370537a45a8849b63fdec58",
+          "profile_sha256": "1b17bf33edd252ac15fcf73253e8dd7505f9848288f477f19b113c0ae58639cc",
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 3033,
+            "skipped": 75
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1275612,
+          "collection_s": 60.79836887299999,
+          "phase_s": 1434.9599550599962,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 1001.0,
+          "test_step_s": 925.0,
+          "inventory_sha256": "cb3276af25e1a04826fafafbc0163da3c04fd484b370537a45a8849b63fdec58",
+          "profile_sha256": "1b17bf33edd252ac15fcf73253e8dd7505f9848288f477f19b113c0ae58639cc",
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 3476,
+            "skipped": 5
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1681192,
+          "collection_s": 61.592853993000006,
+          "phase_s": 1690.7595248550033,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 3,
+          "conclusion": "failure",
+          "runner_s": 1480.0,
+          "test_step_s": 1430.0,
+          "inventory_sha256": "cb3276af25e1a04826fafafbc0163da3c04fd484b370537a45a8849b63fdec58",
+          "profile_sha256": "1b17bf33edd252ac15fcf73253e8dd7505f9848288f477f19b113c0ae58639cc",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16763777024,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 3355,
+            "skipped": 14
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1778316,
+          "collection_s": 93.96322175199998,
+          "phase_s": 2620.7369183659976,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 3
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40986313121/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40986313121/artifacts"
+      ]
+    },
+    {
+      "run_id": 40992996490,
+      "attempt": 1,
+      "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/40992996490",
+      "shards": 4,
+      "workers": 4,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 1232.0,
+      "all_jobs_runner_s": 4010.0,
+      "min_shard_runner_s": 757.0,
+      "max_shard_runner_s": 1208.0,
+      "shard_spread_s": 451.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+        "run_id": "40992996490",
+        "attempt": "1",
+        "shard_count": 4,
+        "selected_count": 12795,
+        "counts": {
+          "passed": 12697,
+          "skipped": 96,
+          "failed": 2
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "success",
+          "runner_s": 757.0,
+          "test_step_s": 701.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759435264,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2850,
+            "skipped": 39
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1356920,
+          "collection_s": 95.11913993200001,
+          "phase_s": 2319.5047795989954,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 1000.0,
+          "test_step_s": 942.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "cpu_count": 4,
+          "memory_total_bytes": 16758407168,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 3427,
+            "skipped": 53
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1466452,
+          "collection_s": 116.00543351499999,
+          "phase_s": 3212.793809018999,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 1208.0,
+          "test_step_s": 1154.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759435264,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 3116
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1243208,
+          "collection_s": 139.488216362,
+          "phase_s": 3880.9759018019927,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 3,
+          "conclusion": "failure",
+          "runner_s": 998.0,
+          "test_step_s": 928.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 2,
+            "passed": 3304,
+            "skipped": 4
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1729932,
+          "collection_s": 118.57724826399999,
+          "phase_s": 3164.5565577429934,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/agents_ops/test_ops_report_reproduction.py::test_timeout_reaps_group_when_output_is_open_or_closed[True]",
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 5
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40992996490/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40992996490/artifacts"
+      ]
+    },
+    {
+      "run_id": 40995509440,
+      "attempt": 1,
+      "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/40995509440",
+      "shards": 6,
+      "workers": 4,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 973.0,
+      "all_jobs_runner_s": 5279.0,
+      "min_shard_runner_s": 704.0,
+      "max_shard_runner_s": 946.0,
+      "shard_spread_s": 242.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+        "run_id": "40995509440",
+        "attempt": "1",
+        "shard_count": 6,
+        "selected_count": 12795,
+        "counts": {
+          "passed": 12697,
+          "failed": 2,
+          "skipped": 96
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "failure",
+          "runner_s": 946.0,
+          "test_step_s": 878.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 1867,
+            "skipped": 8
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1242500,
+          "collection_s": 141.05002464199998,
+          "phase_s": 2494.8736783890013,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 5
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 918.0,
+          "test_step_s": 862.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1977,
+            "skipped": 2
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1182048,
+          "collection_s": 141.362520293,
+          "phase_s": 2701.8242382230014,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 885.0,
+          "test_step_s": 835.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1859,
+            "skipped": 42
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1622004,
+          "collection_s": 140.414843301,
+          "phase_s": 2565.589217052002,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 3,
+          "conclusion": "failure",
+          "runner_s": 906.0,
+          "test_step_s": 857.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 2267,
+            "skipped": 35
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1718208,
+          "collection_s": 138.056860783,
+          "phase_s": 2691.1271981449986,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/agents_ops/test_ops_report_reproduction.py::test_timeout_reaps_group_when_output_is_open_or_closed[True]"
+          ],
+          "finished_processes": 5
+        },
+        {
+          "index": 4,
+          "conclusion": "success",
+          "runner_s": 870.0,
+          "test_step_s": 813.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2289,
+            "skipped": 5
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1290868,
+          "collection_s": 147.522711765,
+          "phase_s": 2579.1432203029954,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        },
+        {
+          "index": 5,
+          "conclusion": "success",
+          "runner_s": 704.0,
+          "test_step_s": 639.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 4,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2438,
+            "skipped": 4
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1309428,
+          "collection_s": 113.733488098,
+          "phase_s": 1995.3739067450003,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 5
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40995509440/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40995509440/artifacts"
+      ]
+    },
+    {
+      "run_id": 40997143981,
+      "attempt": 1,
+      "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/40997143981",
+      "shards": 6,
+      "workers": 2,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 1098.0,
+      "all_jobs_runner_s": 5420.0,
+      "min_shard_runner_s": 596.0,
+      "max_shard_runner_s": 1073.0,
+      "shard_spread_s": 477.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+        "run_id": "40997143981",
+        "attempt": "1",
+        "shard_count": 6,
+        "selected_count": 12795,
+        "counts": {
+          "passed": 12698,
+          "failed": 1,
+          "skipped": 96
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "failure",
+          "runner_s": 596.0,
+          "test_step_s": 542.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 1867,
+            "skipped": 8
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1385504,
+          "collection_s": 63.98676294200001,
+          "phase_s": 938.5319972010017,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 3
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 808.0,
+          "test_step_s": 754.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1977,
+            "skipped": 2
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1260900,
+          "collection_s": 72.305896064,
+          "phase_s": 1294.8724476170005,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 1059.0,
+          "test_step_s": 998.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1859,
+            "skipped": 42
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1633316,
+          "collection_s": 92.822935697,
+          "phase_s": 1737.5463208499968,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 3,
+          "conclusion": "success",
+          "runner_s": 861.0,
+          "test_step_s": 777.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2268,
+            "skipped": 35
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1681948,
+          "collection_s": 73.65438519,
+          "phase_s": 1392.545720155999,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 4,
+          "conclusion": "success",
+          "runner_s": 1073.0,
+          "test_step_s": 1014.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2289,
+            "skipped": 5
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1339008,
+          "collection_s": 92.035624731,
+          "phase_s": 1818.2957656330016,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 5,
+          "conclusion": "success",
+          "runner_s": 971.0,
+          "test_step_s": 911.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759431168,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 2438,
+            "skipped": 4
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1308228,
+          "collection_s": 89.71749094799999,
+          "phase_s": 1622.499395373999,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40997143981/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40997143981/artifacts"
+      ]
+    },
+    {
+      "run_id": 40999125159,
+      "attempt": 1,
+      "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/40999125159",
+      "shards": 8,
+      "workers": 2,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 901.0,
+      "all_jobs_runner_s": 6252.0,
+      "min_shard_runner_s": 612.0,
+      "max_shard_runner_s": 877.0,
+      "shard_spread_s": 265.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "72e3bd83039357ca09893b12ba6db36f24f30ff8",
+        "run_id": "40999125159",
+        "attempt": "1",
+        "shard_count": 8,
+        "selected_count": 12795,
+        "counts": {
+          "passed": 12698,
+          "skipped": 96,
+          "failed": 1
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "success",
+          "runner_s": 612.0,
+          "test_step_s": 549.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759439360,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1015,
+            "skipped": 39
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1338328,
+          "collection_s": 76.345172738,
+          "phase_s": 917.6035961430009,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 877.0,
+          "test_step_s": 817.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1487,
+            "skipped": 44
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1281292,
+          "collection_s": 92.35746474500002,
+          "phase_s": 1435.394529730002,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 807.0,
+          "test_step_s": 754.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759439360,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1601,
+            "skipped": 1
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1367400,
+          "collection_s": 98.412136467,
+          "phase_s": 1281.2026050349996,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 3,
+          "conclusion": "success",
+          "runner_s": 717.0,
+          "test_step_s": 663.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759447552,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1490,
+            "skipped": 5
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1578860,
+          "collection_s": 78.48786619600001,
+          "phase_s": 1124.7342873319992,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 4,
+          "conclusion": "success",
+          "runner_s": 715.0,
+          "test_step_s": 646.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1773,
+            "skipped": 1
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1290056,
+          "collection_s": 80.10322996,
+          "phase_s": 1114.3716272689996,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 5,
+          "conclusion": "failure",
+          "runner_s": 802.0,
+          "test_step_s": 739.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 1705,
+            "skipped": 2
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1556728,
+          "collection_s": 92.27280804999998,
+          "phase_s": 1280.2026497550007,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 3
+        },
+        {
+          "index": 6,
+          "conclusion": "success",
+          "runner_s": 805.0,
+          "test_step_s": 755.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759439360,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1784
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1170584,
+          "collection_s": 92.09294984900001,
+          "phase_s": 1312.1166577679992,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 7,
+          "conclusion": "success",
+          "runner_s": 872.0,
+          "test_step_s": 823.0,
+          "inventory_sha256": "2003e9b1add5bd4e127504a4ecf19a7f13e3d05b0f920ac159cfee64b338e221",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1843,
+            "skipped": 4
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1342792,
+          "collection_s": 94.31329825,
+          "phase_s": 1424.6515562560019,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40999125159/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/40999125159/artifacts"
+      ]
+    },
+    {
+      "run_id": 41001256601,
+      "attempt": 1,
+      "source_sha": "33031a13ab5c56757270e54c415c5b3be7a245bd",
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/41001256601",
+      "shards": 10,
+      "workers": 2,
+      "conclusion": "failure",
+      "measurement_origin": "created_at; includes queue to Python job completed_at",
+      "python_completion_s": 860.0,
+      "all_jobs_runner_s": 7107.0,
+      "min_shard_runner_s": 574.0,
+      "max_shard_runner_s": 833.0,
+      "shard_spread_s": 259.0,
+      "actions_measurement_issues": [],
+      "coverage": {
+        "schema_version": 1,
+        "observations_complete": true,
+        "successful_test_observations": false,
+        "issues": [
+          "incomplete/failed test observations",
+          "lint and every CPU test job must succeed"
+        ],
+        "source_sha": "33031a13ab5c56757270e54c415c5b3be7a245bd",
+        "run_id": "41001256601",
+        "attempt": "1",
+        "shard_count": 10,
+        "selected_count": 12798,
+        "counts": {
+          "passed": 12701,
+          "skipped": 96,
+          "failed": 1
+        },
+        "success": false
+      },
+      "shard_observations": [
+        {
+          "index": 0,
+          "conclusion": "success",
+          "runner_s": 678.0,
+          "test_step_s": 623.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759439360,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1067,
+            "skipped": 10
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1154124,
+          "collection_s": 93.12725173,
+          "phase_s": 959.2391728759986,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 1,
+          "conclusion": "success",
+          "runner_s": 833.0,
+          "test_step_s": 733.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1142
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1401668,
+          "collection_s": 92.795811667,
+          "phase_s": 1218.8606211600015,
+          "observed_torch_intraop_threads": [
+            1
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 2,
+          "conclusion": "success",
+          "runner_s": 793.0,
+          "test_step_s": 666.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1484
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1300780,
+          "collection_s": 98.16681379900001,
+          "phase_s": 1119.1217367389968,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 3,
+          "conclusion": "success",
+          "runner_s": 574.0,
+          "test_step_s": 509.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1358,
+            "skipped": 3
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1575168,
+          "collection_s": 76.13748181500002,
+          "phase_s": 828.6423351979997,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 4,
+          "conclusion": "success",
+          "runner_s": 721.0,
+          "test_step_s": 668.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1192,
+            "skipped": 1
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1293016,
+          "collection_s": 102.201012331,
+          "phase_s": 1106.5064434910028,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 5,
+          "conclusion": "failure",
+          "runner_s": 685.0,
+          "test_step_s": 626.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "failed": 1,
+            "passed": 1602,
+            "skipped": 35
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1325844,
+          "collection_s": 93.05818293499999,
+          "phase_s": 1015.3657746410034,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [
+            "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]"
+          ],
+          "finished_processes": 3
+        },
+        {
+          "index": 6,
+          "conclusion": "success",
+          "runner_s": 596.0,
+          "test_step_s": 534.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1181,
+            "skipped": 1
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1362468,
+          "collection_s": 79.79979403800002,
+          "phase_s": 886.3219964590004,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 7,
+          "conclusion": "success",
+          "runner_s": 734.0,
+          "test_step_s": 672.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1116,
+            "skipped": 3
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1323772,
+          "collection_s": 101.116289301,
+          "phase_s": 1127.967701101,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 8,
+          "conclusion": "success",
+          "runner_s": 693.0,
+          "test_step_s": 628.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1172
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1181572,
+          "collection_s": 92.147378719,
+          "phase_s": 1054.212745916002,
+          "observed_torch_intraop_threads": [
+            1,
+            2,
+            4
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        },
+        {
+          "index": 9,
+          "conclusion": "success",
+          "runner_s": 708.0,
+          "test_step_s": 646.0,
+          "inventory_sha256": "260e05eaf93938f40d346b8dca41f8135565a5769a1d9fe73b14e35f9604eafc",
+          "profile_sha256": "0f0fcead63ee18803e5bb52e1f5dd519b88d5e25d975e410da9e93d1d93de60e",
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "cpu_count": 4,
+          "memory_total_bytes": 16759443456,
+          "image": "ubuntu26",
+          "image_version": "20261026.180.1",
+          "workers": 2,
+          "native_thread_environment": {
+            "CUDA_VISIBLE_DEVICES": "",
+            "MKL_NUM_THREADS": "1",
+            "OMP_NUM_THREADS": "1",
+            "OPENBLAS_NUM_THREADS": "1"
+          },
+          "cache_hit": "true",
+          "counts": {
+            "passed": 1387,
+            "skipped": 43
+          },
+          "issues": [],
+          "largest_process_max_rss_kib": 1335784,
+          "collection_s": 92.999345763,
+          "phase_s": 1069.4094379300006,
+          "observed_torch_intraop_threads": [
+            1,
+            2
+          ],
+          "failed_cases": [],
+          "finished_processes": 3
+        }
+      ],
+      "source_endpoints": [
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/41001256601/attempts/1",
+        "https://api.github.com/repos/Motoki0705/tennis-lab/actions/runs/41001256601/artifacts"
+      ]
+    }
+  ]
+}

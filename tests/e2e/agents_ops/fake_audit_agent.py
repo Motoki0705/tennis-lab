@@ -243,14 +243,54 @@ def main() -> None:
         max_threads=int(option("--max-threads")),
     )
 
+    mcp = importlib.import_module("opsreport.mcp_server")
+
+    def response(name: str, arguments: dict[str, Any]) -> Any:
+        result = mcp.dispatch(
+            server,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            },
+        )
+        return json.loads(result["result"]["content"][0]["text"])
+
     def call(name: str, **kw: Any) -> Any:
-        result = server.call(name, kw)
+        result = response(name, kw)
         if not result["ok"]:
             raise ValueError(f"{name}: {result['error']}")
         return result["data"]
 
+    def table(entity: str) -> dict[str, Any]:
+        rows = {}
+        arguments = {
+            "entity": entity,
+            "per_page": int(os.environ.get("FAKE_AUDIT_RECORD_PAGE_SIZE", "20")),
+        }
+        while True:
+            page = response("audit_records", arguments)
+            assert page["ok"], page
+            for row in page["data"]:
+                query = {"ref": row["ref"], "max_chars": 12000}
+                parts = []
+                while True:
+                    received = response("audit_original", query)
+                    assert received["ok"], received
+                    parts.append(received["data"]["text"])
+                    following = received["pagination"]["next"]
+                    if following is None:
+                        break
+                    query = {"ref": row["ref"], **following}
+                rows[row["id"]] = json.loads("".join(parts))
+            following = page["pagination"]["next"]
+            if following is None:
+                return rows
+            arguments = following
+
     def plan(name: str, question: str, origin: dict[str, str]) -> None:
-        if name not in server.book().snapshot["tasks"]:
+        if name not in table("task"):
             call(
                 "audit_plan_task",
                 id=name,
@@ -268,12 +308,12 @@ def main() -> None:
         runtime.finish_child(name, conclusion)
         evidence = []
         if not failed:
-            response = server.call(
+            acquired = response(
                 "code_file", {"path": "big.py", "start_line": 2, "line_count": 3}
             )
-            assert response["ok"], response
+            assert acquired["ok"], acquired
             key = f"e_{name}_{runtime.parent}"
-            call("audit_evidence", id=key, receipt=response["receipt"])
+            call("audit_evidence", id=key, receipt=acquired["receipt"])
             evidence = [key]
         call(
             "audit_finish_task",
@@ -338,7 +378,7 @@ def main() -> None:
         runtime.finish()
         output.write_text(json.dumps({"memory_update": None}))
         return
-    pending = server.book().snapshot["tasks"]
+    pending = table("task")
     if pending["initial"]["status"] != "completed":
         spawn("initial")
     if pending["independent"]["status"] != "completed":
@@ -375,8 +415,8 @@ def main() -> None:
         done("capacity", "空き枠で確認できた")
     # The first returned result, including a prior verified result on resume,
     # decides the next question. There is no fixed area/round count in production.
-    first = server.book().snapshot["tasks"]["initial"]["conclusion"]
-    initial = server.book().snapshot["tasks"]["initial"]
+    first = table("task")["initial"]["conclusion"]
+    initial = table("task")["initial"]
     initial_finding = {
         "id": "initial_finding",
         "task_id": "initial",
@@ -387,7 +427,7 @@ def main() -> None:
         "counterevidence": [],
         "details": {},
     }
-    if "initial_finding" not in server.book().snapshot["findings"]:
+    if "initial_finding" not in table("finding"):
         call("audit_finding", record=initial_finding)
     previous = "initial"
     for question in (
@@ -403,7 +443,7 @@ def main() -> None:
             if previous == "initial"
             else {"kind": "task", "id": previous},
         )
-        if server.book().snapshot["tasks"][question]["status"] != "completed":
+        if table("task")[question]["status"] != "completed":
             spawn(question)
             done(question, f"{question} を確認済み")
         previous = question
@@ -416,8 +456,8 @@ def main() -> None:
     if os.environ.get("FAKE_AUDIT_REJECT_ONCE"):
         done("busy", "独立調査の確認完了")
     # Findings are snapshots in the ledger, never an aggregate final JSON.
-    task = server.book().snapshot["tasks"][previous]
-    if server.book().snapshot["findings"]["initial_finding"]["status"] != "refuted":
+    task = table("task")[previous]
+    if table("finding")["initial_finding"]["status"] != "refuted":
         call(
             "audit_finding",
             record={
@@ -446,13 +486,13 @@ def main() -> None:
             "counterevidence": [],
             "details": {},
         }
-        current = server.book().snapshot["findings"].get(key)
+        current = table("finding").get(key)
         if current is None:
             call("audit_finding", record=row)
         if current is None or current["status"] != "confirmed":
             call("audit_finding", record={**row, "status": "confirmed"})
         if prop.get("related_parent") and not any(
-            h["finding_id"] == key for h in server.book().snapshot["handoffs"].values()
+            h["finding_id"] == key for h in table("handoff").values()
         ):
             call(
                 "audit_handoff",
@@ -465,9 +505,31 @@ def main() -> None:
                     "reason": "既存親の範囲確認へ戻す",
                 },
             )
-    gaps = [
-        g for t in server.book().snapshot["tasks"].values() for g in t["unconfirmed"]
-    ]
+    if os.environ.get("FAKE_AUDIT_UNPAIRED"):
+        plan("interrupted_launch", "応答前に中断した起動を確認する", origin)
+        runtime.spawn("interrupted_launch")
+        runtime.rows = [
+            row
+            for row in runtime.rows
+            if not (
+                row["type"] == "response_item"
+                and row["payload"].get("type") == "function_call_output"
+                and row["payload"]["call_id"].startswith("spawn-interrupted_launch-")
+            )
+        ]
+        runtime.result.update(
+            result="failed", turn_end_reason="stopped", exit_code=143, cli_exit_code=-15
+        )
+        runtime.save()
+        raise RuntimeError("interrupted before the native spawn acknowledgement")
+    if table("task").get("interrupted_launch", {}).get("status") in {
+        "planned",
+        "interrupted",
+        "failed",
+    }:
+        spawn("interrupted_launch")
+        done("interrupted_launch", "再起動の実行証拠を照合できた")
+    gaps = [g for t in table("task").values() for g in t["unconfirmed"]]
     call(
         "audit_end",
         status="incomplete" if gaps else "completed",

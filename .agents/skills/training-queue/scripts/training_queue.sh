@@ -1344,7 +1344,6 @@ cmd_worker() {
     if [ -f "$STOP_FILE" ]; then
       echo "[worker] stop requested; waiting for active jobs."
       _wait_worker_children
-      rm -f "$STOP_FILE"
       break
     fi
 
@@ -1395,6 +1394,10 @@ cmd_worker() {
   if [ "$worker_signal" -ne 0 ]; then
     return 143
   fi
+  # STOP may arrive after the empty-queue read while the final wrapper requeues
+  # and exits. Consume it on every normal exit, including idle-timeout=0.
+  # Signal teardown keeps its marker until a replacement worker starts.
+  rm -f "$STOP_FILE"
   echo "[worker] $(date -Iseconds) worker exited."
 }
 

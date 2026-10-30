@@ -1,7 +1,7 @@
-<!-- knowledge-review: d23f5913c8cf0fd3e26f24cdf119e96c31bee47b0ee821fe1b5a5a3b1da987a0 on 2026-10-24 -->
+<!-- knowledge-review: c53789d7dc8551e62d6001b2656abb42fd14ec093b141006564eaee2f8c3264d on 2026-10-26 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-24（ボールの全フレーム学習経路の診断・Colab保存と新VM再開の検証と、CourtのColab L4分割生成・Drive復旧検証と永続化費用を反映。既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-26（保存済みsceneの球への外れ値除去・LOESS適用とCPU再三角測量・公開デモ更新を反映。既存のモデル・checkpoint採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,18 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-10-26の球LOESSと公開デモ更新
+
+[公開サンプルの保存済みproduction検出観測をCPUで再三角測量](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)し、
+局所運動consensusで外れ値を除き、頑健な2次LOESSを適用した。元のカメラ・人物を固定した比較で、
+球3D有効frameは821→859/1010、共通有効frameの隣接移動量p95は0.682→0.405 m。
+補間座標は診断だけに保持し、実観測2view未満で有効な3Dは0frameだった。
+一方、元の未平滑2D観測への再投影中央値は3.554→4.810 pxへ増え、最大の3D跳びも改善しない。
+新たに有効になった969→970の1.077 mの跳びと、バウンド付近57〜59の速度gate欠損を実写と局所図で確認した。
+滑らかさと観測追従の交換関係であり、独立3D精度の向上は主張しない。
+README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
+通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
 
 ## 2026-10-23のCourt分割生成・Drive復旧検証
 

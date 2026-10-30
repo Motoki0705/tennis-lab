@@ -60,6 +60,7 @@ annotations/
 *.csv
 *.json
 !/.claude/settings.json
+!/tests/support/development/ci_attempts.json
 *.xml
 
 # Model files and checkpoints
@@ -205,3 +206,6 @@ paper/reference/
 # local and immutable at the paths recorded by STATE.md.
 .codex-loop/**/artifacts/
 .codex-loop/**/logs/
+# CPU CI measurement artifacts are retained by Actions or an explicit output path.
+.ci-metrics/
+.ci-results/

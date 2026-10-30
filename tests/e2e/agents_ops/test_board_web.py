@@ -1,4 +1,4 @@
-"""Read-only web contracts through fixture SQLite, registry and fake routes."""
+"""Web reads and human writes through temporary state and fake notifier routes."""
 
 from __future__ import annotations
 
@@ -16,7 +16,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.e2e.agents_ops.test_board import board as board
-from tests.e2e.agents_ops.test_board import prepare_roster, private_output_absent
+from tests.e2e.agents_ops.test_board import (
+    prepare_roster,
+    private_output_absent,
+    run_board,
+)
 from tests.e2e.agents_ops.test_board_messages import World
 from tests.e2e.agents_ops.test_board_messages import world as world
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
@@ -33,7 +37,8 @@ def web(world: World) -> SimpleNamespace:
 @pytest.fixture
 def client(world: World, web: SimpleNamespace) -> Iterator[TestClient]:
     with TestClient(
-        web.app.create_app(world.env()), base_url="http://127.0.0.1"
+        web.app.create_app(world.env(), notification_routes=world.routes),
+        base_url="http://127.0.0.1",
     ) as client:
         yield client
 
@@ -86,7 +91,7 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
-def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
+def test_stopped_parent_is_historical_recipient_but_not_live_roster_or_broadcast(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     w = world
@@ -107,8 +112,9 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
     with w.store.read() as connection:
         assignment = w.board.names.for_parent(connection, "o/r", 7)
     w.fake.fail_once_for.add(assignment.id)
-    root = w.post(to=["all"])
-    assert {row["parent"] for row in root["recipients"]} == {2, 3, 7}
+    broadcast = w.post(to=["all"])
+    assert {row["parent"] for row in broadcast["recipients"]} == {2, 3}
+    root = w.post(to=[assignment.name])
     status = w.own_state(root["id"])
     with TestClient(web.app.create_app(w.env()), base_url="http://127.0.0.1") as client:
         changes = client.get("/api/changes")
@@ -116,9 +122,7 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
         data = changes.json()
         thread = client.get(f"/api/thread/{root['id']}")
         assert thread.status_code == 200
-    roster = next(row for row in data["agents"] if row["parent"] == 7)
-    assert roster["name"] == assignment.name
-    assert roster["name_status"] == "assigned" and roster["unread_count"] == 1
+    assert {row["parent"] for row in data["agents"]} == {1, 2, 3}
     for view in (status, data["posts"][0], thread.json()["posts"][0]):
         failed = next(row for row in view["recipients"] if row["parent"] == 7)
         assert failed["name"] == assignment.name
@@ -189,6 +193,7 @@ def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> N
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#7"] = world.labels.owner(identity="codex:unassigned-owner")
     world.labels.set_registry(parents)
+    world.live_parent(7)
     with TestClient(
         web.app.create_app(world.env()), base_url="http://localhost"
     ) as client:
@@ -341,7 +346,7 @@ def test_reaction_changes_refresh_threads_outside_the_name_filter(
     assert thread["posts"][0]["reactions"][0]["reactors"][0]["parent"] == 2
 
 
-def test_db_read_mode_and_all_gets_leave_bytes_and_unread_unchanged(
+def test_gets_and_disallowed_methods_leave_bytes_and_unread_unchanged(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     post = world.post()
@@ -429,6 +434,43 @@ def test_security_headers_hosts_assets_and_html_text(
         assert client.get(url).status_code == 404
 
 
+@pytest.mark.parametrize("human_sender", [False, True])
+def test_human_posts_render_in_timeline_and_thread(
+    world: World, client: TestClient, human_sender: bool
+) -> None:
+    if human_sender:
+        response = client.post(
+            "/api/posts",
+            headers=write_headers(client),
+            json={
+                "kind": "question",
+                "subject": "Human question",
+                "body": f"@{world.assignments[2].name} Please check this post.",
+            },
+        )
+        assert response.status_code == 200
+    else:
+        world.post(to=["human"], body="@human Please check this post.")
+    posts = client.get("/api/changes").json()["posts"]
+    assert len(posts) == 1
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("board_rendering.cjs")),
+            str(
+                Path(__file__).resolve().parents[3] / ".agents/ops/board/static/app.js"
+            ),
+        ],
+        input=json.dumps(posts[0]),
+        env=world.env(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_no_external_source_polling_without_explicit_roster_refresh(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -493,9 +535,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
             (row["parent"], row["engine"], row["state"]) for row in refreshed["agents"]
         ] == [
             (43, "codex", "blocked"),
-            (44, "claude", "unknown"),
         ]
-        assert refreshed["agents"][1]["name_status"] == "unassigned"
         assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
         assert len(world.labels.read()["calls"]) > len(runtime["calls"])
         # A repeated page load still observes current sources, even with no row changes.
@@ -517,7 +557,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
         private_output_absent(json.dumps(reloaded), world.labels.env)
 
 
-def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
+def test_herdr_outage_is_explicit_and_keeps_last_observed_roster(
     world: World, web: SimpleNamespace
 ) -> None:
     prepare_roster(world.board, world.labels)
@@ -531,10 +571,10 @@ def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
         )
         before = world.labels.registry.read_bytes()
         response = client.get("/api/changes", params={"refresh_roster": "true"})
-        assert response.status_code == 200
-        refreshed = response.json()
-        assert [row["state"] for row in refreshed["agents"]] == ["unknown", "unknown"]
-        assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
+        assert response.status_code == 503
+        cached = client.get("/api/changes").json()
+        assert cached["agents"] == initial["agents"]
+        assert cached["roster_observed_at"] == initial["roster_observed_at"]
         assert "private runtime details" not in response.text
         assert world.labels.registry.read_bytes() == before
 
@@ -632,3 +672,537 @@ runpy.run_module('board', run_name='__main__')
     assert cli.main(["web", "--port", "0"]) == 2
     assert cli.main(["web", "--port", "65536"]) == 2
     assert cli.main(["web", "--host", "0.0.0.0"]) == 2
+
+
+def write_headers(client: TestClient) -> dict[str, str]:
+    page = client.get("/")
+    token = page.headers["x-csrf-token"]
+    assert f'<meta name="board-csrf-token" content="{token}">' in page.text
+    return {"Origin": str(client.base_url).rstrip("/"), "X-CSRF-Token": token}
+
+
+def saved_rows(world: World) -> dict[str, list[tuple[Any, ...]]]:
+    with world.store.read() as connection:
+        return {
+            name: connection.execute(f"SELECT * FROM {name}").fetchall()
+            for name in (
+                "posts",
+                "recipients",
+                "deliveries",
+                "reactions",
+                "name_assignments",
+            )
+        }
+
+
+def test_human_posts_and_replies_reach_parent_inbox_and_fake_bells(
+    world: World, client: TestClient
+) -> None:
+    w = world
+    headers = write_headers(client)
+    registry_before = w.labels.registry.read_bytes()
+    response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "subject": "人間からの質問",
+            "body": f"宛先は@{w.assignments[2].name.lower()}です。`@{w.assignments[4].name}`は例です。",
+            "kind": "question",
+            "to": [w.assignments[3].name, w.assignments[2].name.upper()],
+        },
+    )
+    assert response.status_code == 200, response.text
+    root = response.json()["post"]
+    assert root["sender"] == {
+        "assignment_id": None,
+        "name": "human",
+        "repo": None,
+        "parent": None,
+    }
+    w.assert_delivered(root, [2, 3])
+    assert all(
+        bell.sender_name == "human" and "None" not in bell.bell for bell in w.fake.calls
+    )
+    assert all(
+        root["body"] not in bell.bell and root["subject"] not in bell.bell
+        for bell in w.fake.calls
+    )
+    assert w.board.messages.inbox(w.env(2), unread=True)["posts"][0]["id"] == root["id"]
+    answer = w.board.messages.reply(
+        w.env(2), post_id=root["id"], body="回答します。", notifiers=w.routes
+    )["post"]
+    assert [row["name"] for row in answer["recipients"]] == ["human"]
+    assert answer["recipients"][0]["delivery_state"] == "available"
+    followup = client.post(
+        f"/api/posts/{answer['id']}/replies",
+        headers=headers,
+        json={"body": f"@{w.assignments[3].name}も確認してください。"},
+    )
+    assert followup.status_code == 200, followup.text
+    reply = followup.json()["post"]
+    w.assert_delivered(reply, [2, 3])
+    assert reply["sender"]["name"] == "human"
+    assert reply["thread_id"] == root["id"] and reply["in_reply_to"] == answer["id"]
+    assert client.get("/api/changes").json()["human"]["unread_count"] == 0
+    thread = client.get(f"/api/thread/{root['id']}").json()["posts"]
+    assert [row["id"] for row in thread] == [root["id"], answer["id"], reply["id"]]
+    assert thread[1]["recipients"][0]["response_state"] == "answered"
+    assert w.labels.registry.read_bytes() == registry_before
+    with w.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT 1 FROM name_assignments WHERE lower(name)='human'"
+            ).fetchall()
+            == []
+        )
+
+
+@pytest.mark.parametrize(
+    "body,to", [("@HuMaN 確認してください。", []), ("確認してください。", ["HUMAN"])]
+)
+def test_cli_human_recipient_unread_response_counts_and_read_api(
+    world: World, client: TestClient, tmp_path: Path, body: str, to: list[str]
+) -> None:
+    body_file = tmp_path / "message.md"
+    body_file.write_text(body, encoding="utf-8")
+    initial = client.get("/api/changes").json()
+    args = [
+        "post",
+        "--kind",
+        "question",
+        "--subject",
+        "人間への質問",
+        "--body-file",
+        str(body_file),
+    ]
+    for name in to:
+        args.extend(["--to", name])
+    result = run_board(world.env(), *args)
+    assert result.returncode == 0, result.stderr
+    post = json.loads(result.stdout)["post"]
+    assert len(post["recipients"]) == 1
+    recipient = post["recipients"][0]
+    assert recipient["name"] == "human" and recipient["assignment_id"] is None
+    assert recipient["repo"] is None and recipient["parent"] is None
+    assert recipient["delivery_state"] == "available" and recipient["attempts"] == 0
+    changed = client.get("/api/changes", params={"cursor": initial["cursor"]}).json()
+    assert changed["human"]["unread_count"] == 1
+    assert changed["human"]["awaiting_response_count"] == 1
+    assert changed["cursor"] != initial["cursor"]
+    assert [row["id"] for row in changed["posts"]] == [post["id"]]
+    assert (
+        client.get(
+            "/api/changes", params={"name": "human", "direction": "received"}
+        ).json()["posts"][0]["id"]
+        == post["id"]
+    )
+    headers = write_headers(client)
+    before = saved_rows(world)
+    assert client.get(f"/api/thread/{post['id']}").status_code == 200
+    assert saved_rows(world) == before  # Viewing a thread still never marks it read.
+    read = client.post(f"/api/posts/{post['id']}/read", headers=headers)
+    assert read.status_code == 200, read.text
+    receipt = read.json()["post"]["recipients"][0]
+    assert receipt["read_at"] is not None and receipt["response_state"] is None
+    assert receipt["delivery_state"] == "available"
+    repeated = client.post(f"/api/posts/{post['id']}/read", headers=headers).json()
+    assert repeated["post"]["recipients"][0]["read_at"] == receipt["read_at"]
+    updated = client.get("/api/changes", params={"cursor": changed["cursor"]}).json()
+    assert updated["human"]["unread_count"] == 0
+    assert updated["human"]["awaiting_response_count"] == 1
+    answered = client.post(
+        f"/api/posts/{post['id']}/replies",
+        headers=headers,
+        json={"body": "確認しました。"},
+    )
+    assert answered.status_code == 200, answered.text
+    counts = client.get("/api/changes").json()["human"]
+    assert counts["unread_count"] == counts["awaiting_response_count"] == 0
+    assert len(world.fake.calls) == 1 and world.fake.calls[0].parent == 1
+
+
+def test_human_can_join_visible_parent_thread_and_react_without_reading_it(
+    world: World, client: TestClient
+) -> None:
+    root = world.post()
+    world.board.reactions.react(world.env(1), post_id=root["id"], emoji="+1")
+    headers = write_headers(client)
+    before = world.message_rows()
+    bell_count = len(world.fake.calls)
+    initial = client.get("/api/changes").json()
+    url = f"/api/posts/{root['id']}/reactions/+1"
+    added = client.put(url, headers=headers)
+    assert added.status_code == 200, added.text
+    reactors = added.json()["post"]["reactions"][0]["reactors"]
+    assert len(reactors) == 2
+    human = next(row for row in reactors if row["type"] == "human")
+    assert human["assignment_id"] is None and human["name"] == "human"
+    assert human["repo"] is human["parent"] is None
+    assert (
+        client.put(url, headers=headers).json()["post"]["reactions"][0]["reactors"]
+        == reactors
+    )
+    changed = client.get("/api/changes", params={"cursor": initial["cursor"]}).json()
+    assert changed["changed_threads"] == [root["id"]]
+    assert changed["posts"][0]["reactions"][0]["reactors"] == reactors
+    removed = client.delete(url, headers=headers)
+    assert removed.status_code == 200
+    assert [
+        row["type"] for row in removed.json()["post"]["reactions"][0]["reactors"]
+    ] == ["parent"]
+    assert client.delete(url, headers=headers).json() == removed.json()
+    assert world.message_rows() == before and len(world.fake.calls) == bell_count
+    reply = client.post(
+        f"/api/posts/{root['id']}/replies",
+        headers=headers,
+        json={"body": "人間から補足します。"},
+    )
+    assert reply.status_code == 200, reply.text
+    assert [row["parent"] for row in reply.json()["post"]["recipients"]] == [1]
+
+
+@pytest.mark.parametrize(
+    "method,suffix",
+    [
+        ("POST", ""),
+        ("POST", "/replies"),
+        ("POST", "/read"),
+        ("PUT", "/reactions/eyes"),
+        ("DELETE", "/reactions/eyes"),
+    ],
+)
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "no_token",
+        "wrong_token",
+        "no_origin",
+        "other_origin",
+        "other_port",
+        "null_origin",
+        "bad_host",
+        "duplicate_origin",
+        "duplicate_token",
+    ],
+)
+def test_rejected_web_writes_preserve_all_rows(
+    world: World, client: TestClient, method: str, suffix: str, failure: str
+) -> None:
+    root = world.post()
+    url = "/api/posts" + (f"/{root['id']}" + suffix if suffix else "")
+    headers = write_headers(client)
+    if failure == "no_token":
+        del headers["X-CSRF-Token"]
+    elif failure == "wrong_token":
+        headers["X-CSRF-Token"] = "invalid"
+    elif failure == "no_origin":
+        del headers["Origin"]
+    elif failure == "other_origin":
+        headers["Origin"] = "http://evil.example"
+    elif failure == "other_port":
+        headers["Origin"] += ":8791"
+    elif failure == "null_origin":
+        headers["Origin"] = "null"
+    elif failure == "bad_host":
+        headers.update(Host="evil.example", Origin="http://evil.example")
+    request_headers = list(headers.items())
+    if failure == "duplicate_origin":
+        request_headers.append(("Origin", headers["Origin"]))
+    elif failure == "duplicate_token":
+        request_headers.append(("X-CSRF-Token", headers["X-CSRF-Token"]))
+    before = saved_rows(world)
+    registry_before = world.labels.registry.read_bytes()
+    calls = len(world.fake.calls)
+    response = client.request(
+        method,
+        url,
+        headers=request_headers,
+        json={
+            "kind": "info",
+            "subject": "hello",
+            "body": f"@{world.assignments[2].name} hello",
+        },
+    )
+    assert response.status_code == (400 if failure == "bad_host" else 403)
+    assert saved_rows(world) == before
+    assert world.labels.registry.read_bytes() == registry_before
+    assert len(world.fake.calls) == calls
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/private/file",
+        "~/secrets",
+        r"C:\private\file",
+        "session_id=private",
+        "board-owner-2",
+        "12345678-1234-1234-1234-123456789abc",
+        "control\x01",
+    ],
+)
+@pytest.mark.parametrize("field", ["subject", "body"])
+def test_private_human_input_is_rejected_before_any_save(
+    world: World, client: TestClient, value: str, field: str
+) -> None:
+    headers = write_headers(client)
+    payload = {
+        "kind": "info",
+        "subject": "安全な件名",
+        "body": f"@{world.assignments[2].name} 確認します。",
+    }
+    payload[field] = value
+    before = saved_rows(world)
+    response = client.post("/api/posts", headers=headers, json=payload)
+    assert response.status_code == 503
+    assert value not in response.text
+    assert saved_rows(world) == before and world.fake.calls == []
+
+
+def test_process_token_and_human_identity_do_not_depend_on_parent_environment(
+    world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+
+    def configured(env: dict[str, str]) -> dict[str, Any]:
+        calls.append(env)
+        return dict(world.routes)
+
+    monkeypatch.setattr(web.app.notifiers, "configured", configured)
+    env = {
+        **world.labels.env,
+        "CLAUDE_CODE_SESSION_ID": "unregistered-web-process",
+        "CODEX_SESSION_ID": "ambiguous-process",
+    }
+    with (
+        TestClient(web.app.create_app(env), base_url="http://localhost:8791") as one,
+        TestClient(web.app.create_app(env), base_url="http://localhost:8791") as two,
+    ):
+        headers = write_headers(one)
+        assert write_headers(one) == headers
+        other = write_headers(two)
+        assert other["X-CSRF-Token"] != headers["X-CSRF-Token"]
+        payload = {
+            "kind": "info",
+            "subject": "Webから",
+            "body": f"@{world.assignments[2].name} 確認してください。",
+        }
+        before = saved_rows(world)
+        assert two.post("/api/posts", headers=headers, json=payload).status_code == 403
+        assert saved_rows(world) == before
+        response = one.post("/api/posts", headers=headers, json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["post"]["sender"]["name"] == "human"
+        assert len(world.fake.calls) == 1 and world.fake.calls[0].parent == 2
+    assert calls == [env, env]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"subject": "hello", "body": "hello"},
+        {"kind": "info", "subject": "hello", "body": 42},
+        {"kind": "info", "subject": "hello", "body": "hello", "sender": "human"},
+        {"kind": "info", "subject": "hello", "body": "hello", "to": "all"},
+    ],
+)
+def test_write_payload_validation_never_echoes_or_saves_input(
+    world: World, client: TestClient, payload: dict[str, Any]
+) -> None:
+    before = saved_rows(world)
+    response = client.post("/api/posts", headers=write_headers(client), json=payload)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid board query."}
+    assert saved_rows(world) == before
+
+
+def test_human_broadcast_uses_all_active_parents_without_a_sender_session(
+    world: World, client: TestClient
+) -> None:
+    response = client.post(
+        "/api/posts",
+        headers=write_headers(client),
+        json={
+            "kind": "info",
+            "subject": "全員への連絡",
+            "body": "@all 確認してください。",
+        },
+    )
+    assert response.status_code == 200, response.text
+    post = response.json()["post"]
+    assert post["broadcast"] is True
+    world.assert_delivered(post, [1, 2, 3])
+    assert all(row["name"] != "human" for row in post["recipients"])
+
+
+def test_human_receipts_reactions_and_counts_are_separate_from_parent_receipts(
+    world: World, client: TestClient
+) -> None:
+    post = world.post(
+        to=["human", world.assignments[2].name], body="@HuMaN 確認してください。"
+    )
+    assert [row["name"] for row in post["recipients"]] == [
+        "human",
+        world.assignments[2].name,
+    ]
+    assert [bell.parent for bell in world.fake.calls] == [2]
+    headers = write_headers(client)
+    before = world.message_rows()
+    assert (
+        client.put(
+            f"/api/posts/{post['id']}/reactions/eyes", headers=headers
+        ).status_code
+        == 200
+    )
+    assert world.message_rows() == before
+    human = client.get("/api/changes").json()["human"]
+    assert human["unread_count"] == human["awaiting_response_count"] == 1
+    read = client.post(f"/api/posts/{post['id']}/read", headers=headers).json()["post"]
+    assert read["recipients"][0]["read_at"] is not None
+    assert read["recipients"][1]["read_at"] is None
+    world.board.messages.read(world.env(2), post["id"])
+    human = client.get("/api/changes").json()["human"]
+    assert human["unread_count"] == 0 and human["awaiting_response_count"] == 1
+    assert len(world.fake.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    ["@human @all 自分宛て", "`@all` の例だけ", "@Adam 未割当の名前", "/private/file"],
+)
+def test_invalid_human_post_or_reply_cannot_save_or_mark_the_original_read(
+    world: World, client: TestClient, body: str
+) -> None:
+    root = world.post(to=["human"])
+    headers = write_headers(client)
+    before = saved_rows(world)
+    for url, payload in (
+        ("/api/posts", {"subject": "不正入力", "kind": "info", "body": body}),
+        (f"/api/posts/{root['id']}/replies", {"body": body}),
+    ):
+        # A reply automatically has its original author as a recipient, so a
+        # code-only mention is allowed there. Root posts still need a recipient.
+        if "/replies" in url and body.startswith("`"):
+            continue
+        response = client.post(url, headers=headers, json=payload)
+        assert response.status_code == 503
+        assert saved_rows(world) == before
+    assert world.fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "suffix,allowed",
+    [
+        ("", "POST"),
+        ("/replies", "POST"),
+        ("/read", "POST"),
+        ("/reactions/eyes", "DELETE, PUT"),
+    ],
+)
+def test_write_paths_only_accept_their_declared_methods(
+    world: World, client: TestClient, suffix: str, allowed: str
+) -> None:
+    root = world.post()
+    url = "/api/posts" + (f"/{root['id']}" + suffix if suffix else "")
+    headers = write_headers(client)
+    before = saved_rows(world)
+    for method in ("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"):
+        if method in allowed.split(", "):
+            continue
+        response = client.request(method, url, headers=headers)
+        assert response.status_code == 405
+        assert response.headers["allow"] == allowed
+    assert saved_rows(world) == before
+
+
+def test_web_writes_do_not_initialize_or_migrate_a_database(
+    world: World, client: TestClient
+) -> None:
+    headers = write_headers(client)
+    payload = {
+        "subject": "hello",
+        "kind": "info",
+        "body": f"@{world.assignments[2].name} hello",
+    }
+    with world.store.transaction() as connection:
+        connection.execute("PRAGMA user_version=4")
+    assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
+    with sqlite3.connect(world.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+    world.store.path.unlink()
+    assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
+    assert not world.store.path.exists() and world.fake.calls == []
+
+
+def test_browser_human_conversation_workflow(
+    world: World, web: SimpleNamespace, tmp_path: Path
+) -> None:
+    """Optional real Chromium check; enable with Playwright on NODE_PATH."""
+    import os
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    available = subprocess.run(
+        ["node", "-e", "require.resolve('playwright')"],
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    if available.returncode:
+        pytest.skip("Install the optional Playwright package and set NODE_PATH")
+    root = world.post(
+        to=["human", world.assignments[2].name],
+        body='@human <img src=x onerror="alert(1)"> を文字として表示',
+    )
+    world.board.messages.reply(
+        world.env(2),
+        post_id=root["id"],
+        body="元の質問を確認しました。",
+        notifiers=world.routes,
+    )
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(
+        uvicorn.Config(
+            web.app.create_app(world.env(), notification_routes=world.routes),
+            log_level="error",
+            access_log=False,
+        )
+    )
+    worker = threading.Thread(
+        target=server.run, kwargs={"sockets": [sock]}, daemon=True
+    )
+    worker.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started and worker.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.started
+        result = subprocess.run(
+            ["node", str(Path(__file__).with_name("board_browser.cjs"))],
+            input=json.dumps(
+                {
+                    "url": f"http://127.0.0.1:{port}",
+                    "rootId": root["id"],
+                    "body": root["body"],
+                    "sender": world.assignments[1].name,
+                    "recipient": world.assignments[2].name,
+                }
+            ),
+            env={**os.environ, "XDG_STATE_HOME": str(tmp_path / "browser-state")},
+            text=True,
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    finally:
+        server.should_exit = True
+        worker.join(timeout=10)
+        sock.close()
+        assert not worker.is_alive()
