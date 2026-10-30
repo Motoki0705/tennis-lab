@@ -5,6 +5,7 @@ task: court_detection
 sequence: 51
 recorded_at: '2026-10-28'
 title: 固定5500枚・1 sceneのDINOv3-S384学習と別domain評価
+issue: 1343
 provider: codex
 session: court-scene-diversity-l4-20261025-v1
 date: '2026-10-25'

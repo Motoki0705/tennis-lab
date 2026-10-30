@@ -5,6 +5,7 @@ task: court_detection
 sequence: 50
 recorded_at: '2026-10-25'
 title: Courtの固定6000枚・4シーン条件と合成／実画像valの学習準備
+issue: 1343
 provider: codex
 status: done
 config: {backbone: dinov3_vits16, transformer_dim: 384, batch_size: 8, max_steps: 33160, train_images: 5500, synthetic_val_images: 500, real_val_images: 2211, training_seed: 42}

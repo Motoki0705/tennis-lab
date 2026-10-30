@@ -1,4 +1,4 @@
-<!-- knowledge-review: c53789d7dc8551e62d6001b2656abb42fd14ec093b141006564eaee2f8c3264d on 2026-10-26 -->
+<!-- knowledge-review: 20f8fd74c427ac5af05a47354c786ca8eb011783a7072cf14aabab003654dcfc on 2026-10-30 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-10-30（Court固定6000枚・4条件のColab学習と別domain評価を統合し、#1343の完了判断を反映。2026-10-26の球LOESS・公開デモ更新も維持。既存のモデル・checkpoint採用判断は維持）

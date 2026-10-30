@@ -5,6 +5,7 @@ task: synthetic_data_generation
 sequence: 28
 recorded_at: '2026-10-25'
 title: 既存train軌道を固定した6000枚scene数比較データのローカル3DGS生成
+issue: 1343
 provider: codex
 session: 01a171f1-ae7a-7d53-b09a-135549f91d0b
 date: '2026-10-25'
@@ -101,3 +102,5 @@ B01 poolにはtarget KP0の38枚があり、他courtの可視点で旧QAを通�
 32枚のsmoke、全sceneのcontact sheet、連続軌道動画の代表frameを実見した。B01/B02にはぼけやネット・地面のにじみ、B03には暗い描画が残る。4動画は48frameずつ全192frameのdecodeに成功した。代表B00/B01の奥側KP集中を旧画像・target binding・投影と照合し、同じtargetの近側点がカメラ後方や画面外に出る構成を確認した。[代表画像](../../runs/run-court-scene-diversity-6000-v1/representative-views.png)と[照合値](../../runs/run-court-scene-diversity-6000-v1/target-binding-interpretation.json)を保存した。独立3D GTとの残留alignment誤差は未測定である。
 
 生成と全量検証・finalizeを含むqueue jobは16:39:42〜18:25:14 JST、6332.8秒で成功した。出力rootは約2.36GiB。CPUテスト34件とruff/mypyが合格した。生成処理のためTensorBoard学習曲線は該当しない。学習・実画像評価は親の準備作業へ接続し、scene数による汎化の結論は学習後に判断する。再現手順と8manifestの契約は[生成bundle](../../runs/run-court-scene-diversity-6000-v1/README.md)を参照する。
+
+2026-10-30追記: `repro.commit`の`150eaeb0f`は、記録先branch `codex/court-scene-diversity-data`とそのworktreeが削除され、remoteにも無いため取得できない。mainへ統合した履歴で対応する生成実装commitは`35e582c2a`である。author時刻（16:37:55 JST）がjob開始前で、parentも同じ`cfbd5e729`であることから、同じ変更をcherry-pickしたものとみられる。元commitが無いため、byte単位の同一性は確認できていない。`35e582c2a`以降、bundleの`generate.py`と生成側の`scale/saved_train.py`は変わっていない。`saved_train.py`はmain統合時に常設srcから除いたので、描画を再現するときは`35e582c2a`をcheckoutする。
