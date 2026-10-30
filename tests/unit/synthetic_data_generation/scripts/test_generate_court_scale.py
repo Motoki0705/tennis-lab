@@ -12,6 +12,41 @@ from src.synthetic_data_generation.scripts import generate_court_scale
 from src.utils.configuration.errors import PathContractError
 
 
+def test_plan_rejects_saved_train_method_before_loading(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def unexpected(*args, **kwargs):
+        pytest.fail("Read-only trajectory method reached scene loading.")
+
+    monkeypatch.setattr(generate_court_scale, "load_scene_inputs", unexpected)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "generate_court_scale",
+            "plan",
+            "--scenes-root",
+            "unused-scenes",
+            "--scenes",
+            "B00",
+            "--methods",
+            "saved_train_trajectories",
+            "--output-root",
+            "unused-output",
+            "--generation-seed",
+            "42",
+            "--trajectory-count",
+            "1",
+            "--density-level",
+            "0",
+        ],
+    )
+    with pytest.raises(SystemExit) as error:
+        generate_court_scale.main()
+    assert error.value.code == 2
+    assert "invalid choice: 'saved_train_trajectories'" in capsys.readouterr().err
+
+
 @pytest.mark.parametrize("command", ["plan", "render", "render-colab", "validate"])
 @pytest.mark.parametrize("input_kind", ["missing", "directory"])
 def test_invalid_file_inputs_fail_before_loading_or_rendering(

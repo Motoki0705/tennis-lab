@@ -59,6 +59,11 @@ FORBIDDEN_ACTIVE_ARCHITECTURE_TOKENS = frozenset(
 # The digests validate/reuse the exact measured source; they do not restore the
 # removed artifact-reference, scene-identity, or content-addressed publication model.
 ALLOWED_ACTIVE_ARCHITECTURE_TOKENS = {
+    # Read-only saved-train validation compares historical recipe/index hash
+    # fields; it cannot import or generate a new source publication.
+    Path("src/synthetic_data_generation/dataset/court/scale/saved_train.py"): frozenset(
+        {"sha256"}
+    ),
     # Appearance variants use explicit scene IDs/paths. These hashes verify
     # fixed inputs, paid API responses and imported SfM, not scene identity.
     Path("src/synthetic_data_generation/appearance/batch.py"): frozenset({"sha256"}),
