@@ -187,6 +187,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           submodules: false
       - name: Download CPU lane plan
         uses: actions/download-artifact@v8
@@ -202,14 +203,20 @@ jobs:
         if: always()
         env:
           CI_JOB_RESULTS: ${{ toJSON(needs) }}
+          GH_TOKEN: ${{ github.token }}
         run: >-
           python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
           --lane-plan .ci-plan/plan.json
+          --timing-profile scripts/ci_metrics/cpu-file-times.json
       - name: Upload CPU coverage result
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: cpu-test-coverage-${{ github.run_id }}-${{ github.run_attempt }}
-          path: .ci-results/coverage.json
+          path: |
+            .ci-results/coverage.json
+            .ci-results/growth.json
+            .ci-results/growth-summary.json
+            .ci-results/growth-summary.md
           if-no-files-found: error
           retention-days: 90

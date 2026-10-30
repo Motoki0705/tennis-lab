@@ -41,6 +41,33 @@ plan与汇总summary列出延后suite、负责人、理由以及main最近一次
 缺失/过期/不兼容证据与API失败均保留为附理由的 **unknown**。coverage artifact保留90天；
 不向仓库commit成功index。
 
+## 测试增减与成本警告
+
+`Python` 汇总job在coverage审计后向job summary追加一份参考报告，显示每个文件的用例新增、
+删除、净增，超出时间预算的用例（新增、刚超标、已有或无baseline而未知），展开数过大的
+parametrize函数，耗时的case/fixture setup，以及文件级profile与实测phase秒数的差异
+（差值和百分比）。阈值及解释以[测试方针](../../tests/README.md#ケース数と実行時間)为准，超标不会使CI失败。
+
+baseline使用PR base的祖先（main/手动执行则为当前commit的祖先）中最近一次经验证的完整成功
+main push run，排除当前run。只读API最多检查最近30次成功main run。缺失/过期artifact、
+不兼容schema、损坏/缺失数据、无法核实祖先和API失败都明确显示原因。确认最近的完整成功后，
+不会用更旧的baseline悄悄替代缺失或不兼容的growth数据。启用后的首次执行通常没有growth
+baseline，但仍可显示当前成本及profile差异。
+
+D非空时明确只比较R的文件，baseline一侧也按相同范围限制。延后用例保持未测量，
+不会被记为删除、skip或零秒。函数family取自pytest的 `originalname`、parent identity及
+callspec信息，不解析参数ID中的括号。collection详情在worker间核对，不改变现有
+`inventory.json` 或lane/coverage schema。缺少详情时显示原因并省略成本报告，coverage判定保持独立。
+
+fixture行显示scope、实际setup次数、setup合计及最长的单次setup。只按单次执行判定预算，
+不会把多次廉价setup的合计当成一次昂贵setup。fixture时间已包含于case setup，不再加入phase
+合计。setup skip导致的call缺失保持未测量，并显示status。profile必须与实际分片使用的
+fingerprint一致；缺失或不一致时显示原因，新文件标为profile未测量。
+
+`cpu-test-coverage-<run>-<attempt>` artifact还保存 `growth.json`（schema 1，完整要求范围的
+inventory/详情/results/fixture成本与run identity，或明确的不完整原因）、`growth-summary.json`（全部报告行）及
+`growth-summary.md`，保留90天。summary每张表最多20行，JSON保留全部行。
+
 ## 执行与中断恢复
 
 在待测 checkout 中安装锁定环境后运行：
@@ -82,10 +109,12 @@ runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层
 | `run.json` | 请求/开始/结束时间、独立锁等待、退出值/信号、执行期间源码一致性 |
 | `events-*.jsonl` | 每进程及时 flush 的收集/排除 nodeid、收集失败/skip、worker 收集、fixture setup、测试 phase、结束记录 |
 | `inventory.json` | 被选中的 nodeid，逐 worker 检查顺序与内容一致 |
+| `inventory-details.json` | schema 1收集详情（含originalname/callspec）或缺失原因；lane执行时保留U |
 | `lane-plan.json`, `shard-*.json`, `cpu_universe` event | 固定请求、U/R/D和通道选择前的独立收集证据，见[分片](sharding.zh-CN.md#证据与失败语义) |
 | `results.json` | 每个 node 的 passed/skipped/failed/xfail/xpass/incomplete 及 phase 时间 |
 | `junit.xml`, `pytest.log` | 独立核对的 JUnit 数量、标识与时间，以及标准 durations 输出 |
 | `summary.json`, `summary.md` | 完整性检查、进程启动/收集、file/fixture 时间贡献、结果数量 |
+| 汇总 `growth.json`, `growth-summary.json`, `growth-summary.md` | 经审计的要求范围观测与参考增减/成本比较，见[警告](#测试增减与成本警告) |
 
 `full_cpu_baseline` 同时要求默认完整 CPU 集合及成功观测。runner/session/JUnit 缺失、worker
 收集不一致、phase 缺失/重复、JUnit 数量/标识/时间不一致或运行中源码变化，都会使其无效。

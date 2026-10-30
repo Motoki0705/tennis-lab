@@ -150,6 +150,19 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     )
     assert aggregate["steps"][-1]["if"] == "always()"
     assert aggregate["steps"][-1]["with"]["if-no-files-found"] == "error"
+    assert aggregate["steps"][0]["with"]["fetch-depth"] == 0
+    assert verification["env"]["GH_TOKEN"] == "${{ github.token }}"
+    assert (
+        verification_command[verification_command.index("--timing-profile") + 1]
+        == "scripts/ci_metrics/cpu-file-times.json"
+    )
+    uploaded = aggregate["steps"][-1]["with"]["path"].splitlines()
+    assert set(uploaded) == {
+        ".ci-results/coverage.json",
+        ".ci-results/growth.json",
+        ".ci-results/growth-summary.json",
+        ".ci-results/growth-summary.md",
+    }
     assert "uv sync --locked --no-group gpu --group cpu" in [
         step.get("run") for step in job["steps"]
     ]

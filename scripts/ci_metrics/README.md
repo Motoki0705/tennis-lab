@@ -54,6 +54,46 @@ do not establish suite success. Missing/expired/incompatible evidence and API
 errors remain **unknown**, with a reason. Coverage artifacts are kept for 90 days;
 no success index is committed to the repository.
 
+## Test growth and cost warnings
+
+The `Python` aggregate adds one informational report to the job summary after
+the coverage audit. It shows per-file case additions/removals/net changes, cases
+above the time budget (new case, newly over budget, existing, or unknown without
+a baseline), large parametrized functions, expensive case/fixture setups, and
+file-level profile versus measured phase seconds (absolute and percentage drift).
+The thresholds and their interpretation are owned by the
+[test policy](../../tests/README.md#ケース数と実行時間); exceeding them never fails CI.
+
+The comparison uses the latest verified full successful main push run whose
+commit is an ancestor of the PR base (or the current commit for main/manual
+runs), excluding the current run. Read-only API lookup checks at most 30 successful
+main runs. Missing/expired artifacts, incompatible schemas, malformed/missing
+data, unavailable ancestry and API failures are displayed with reasons. Once the
+latest full success is identified, incompatible/missing growth data does not
+silently select an older baseline. The first run after enabling this report will
+normally show no growth baseline; current costs and profile drift still appear.
+
+When D is nonempty, the report explicitly limits comparisons to R's files,
+including the baseline side. Deferred tests have no measured cost and are never
+reported as removed, skipped, or zero seconds. Pytest `originalname`, parent
+identity and callspec metadata determine function families; parameter IDs are
+not parsed for brackets. Collection metadata is checked across workers without
+changing `inventory.json` or the lane/coverage schema. Missing details disable
+the cost report with a reason, leaving the coverage verdict independent.
+
+Fixture rows show scope, actual setup executions, summed setup and the longest
+single setup. A fixture exceeds the budget only when a single execution does;
+many cheap executions are not one expensive setup. Fixture time is already
+contained in case setup and is never added to test phase totals. Missing call
+phases on setup skips remain unmeasured, with status shown. Profile comparison
+uses the exact scheduling profile fingerprint; missing or mismatched profiles
+show a reason, and new files are labelled unmeasured in the profile.
+
+The `cpu-test-coverage-<run>-<attempt>` artifact also keeps `growth.json`
+(schema 1, complete requested inventory/details/results/fixture costs and run
+identity, or an explicit incomplete reason), `growth-summary.json` (all report rows), and `growth-summary.md` for
+90 days. Summary tables show up to 20 rows each; full rows remain in JSON.
+
 ## Run and recover
 
 From the checkout being measured, with its locked environment installed:
@@ -101,10 +141,12 @@ If cancellation or a launcher failure prevents the test command from starting,
 | `run.json` | Requested/start/finish times, separate lock wait, exit/signal, source consistency |
 | `events-*.jsonl` | Flushed per-process observations: selected/deselected nodeids, collection failures/skips, worker collection, fixture setup, test phases, process finish |
 | `inventory.json` | Selected nodeids; compared in exact order across every worker |
+| `inventory-details.json` | Schema 1 collection metadata, including originalname/callspec, or explicit detail issues; contains U for lane runs |
 | `lane-plan.json`, `shard-*.json`, `cpu_universe` events | Fixed request, U/R/D partition and independent collection evidence before lane selection; see [sharding](sharding.md#evidence-and-failure-semantics) |
 | `results.json` | Per-node passed/skipped/failed/xfail/xpass/incomplete status and phase times |
 | `junit.xml`, `pytest.log` | Independent JUnit totals/identities and standard durations output |
 | `summary.json`, `summary.md` | Completeness checks, process startup/collection times, costs by file/fixture, outcome counts |
+| Aggregate `growth.json`, `growth-summary.json`, `growth-summary.md` | Audited requested observations and informational growth/cost comparison; see [warnings](#test-growth-and-cost-warnings) |
 
 `full_cpu_baseline` requires the complete default selection and a successful test
 observation. Missing runner/session/JUnit evidence, worker inventory disagreement,
