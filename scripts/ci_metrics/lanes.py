@@ -94,7 +94,6 @@ def validate_registry(data: Any, files: list[str]) -> dict[str, Any]:
         paths = suite["paths"]
         if (
             not isinstance(paths, list)
-            or not paths
             or any(not _relative_path(path, pattern=True) for path in paths)
             or len(set(paths)) != len(paths)
         ):
@@ -145,11 +144,16 @@ def _selection(
     requested = [
         suite["id"]
         for suite in suites
-        if paths.intersection(suite["files"])
-        or any(
-            fnmatch.fnmatchcase(path, pattern)
-            for path in paths
-            for pattern in suite["paths"]
+        # Empty paths explicitly defer a repository-wide sweep on ordinary PRs.
+        # Full requests above still include it, preserving conservative coverage.
+        if suite["paths"]
+        and (
+            paths.intersection(suite["files"])
+            or any(
+                fnmatch.fnmatchcase(path, pattern)
+                for path in paths
+                for pattern in suite["paths"]
+            )
         )
     ]
     return "pr", ["pr_changed_paths"], sorted(requested)

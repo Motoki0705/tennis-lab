@@ -13,11 +13,14 @@ pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保�
 ## 通道注册表与计划
 
 [`lanes.json`](lanes.json) **只注册按文件指定的例外**，其余 CPU 测试始终执行。
-初始 `suites` 为空，保持原有目标。每个suite必须包含 `id`（唯一标识）、`files`（存在的明确测试路径）、
+每个suite必须包含 `id`（唯一标识）、`files`（存在的明确测试路径）、
 `paths`（依赖项的仓库相对shell pattern）、`reason` 和 `owner`（非空字符串）。文件重复、不存在、
 未知字段、缺少负责人/理由或非法pattern都会使plan失败。文件发现遵循 `pyproject.toml` 的pytest设置。
 未注册文件始终执行；已注册文件的全部收集用例，包括新增用例，都属于该例外。
-suite自身的测试文件修改也会要求执行，不受 `paths` 限制。注册时须包括局部helper、配置与依赖路径。
+`paths` 非空时，修改suite自身的测试文件也会要求执行。
+空的 `paths` 数组明确表示在普通按路径选择的PR中延后执行，包括修改自身测试文件的PR。
+这用于用户批准的全仓库architecture巡查。下述完整执行要求仍包含所有suite。
+注册时须包括局部helper、配置与依赖路径；suite清单、理由与负责人以注册表为准。
 
 PR比较event中的 `base.sha..head.sha`，即使之前的PR run被取消，也包含所有commit的改动。
 仅PR按路径选择。main push和手动dispatch始终要求完整CPU，不设置定期通道。

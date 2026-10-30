@@ -15,15 +15,18 @@ Pytest stdout/stderr is streamed to the job log and saved in `pytest.log`. This 
 ## Lane registry and planning
 
 [`lanes.json`](lanes.json) registers **only file-level exceptions** to always-run
-CPU tests. The initial `suites` array is empty, preserving the existing target.
-Each suite requires `id` (unique identifier), `files` (existing explicit test
+CPU tests. Each suite requires `id` (unique identifier), `files` (existing explicit test
 paths), `paths` (repository-relative shell patterns for dependencies), `reason`
 and `owner` (nonempty strings). Overlapping files, missing files, unknown fields,
 missing owners/reasons and invalid patterns fail planning. Files follow the
 pytest discovery patterns in `pyproject.toml`. Unregistered files always run;
 an exception covers every collected case in that file, including new cases.
-Changing the suite's own test file also requests it, regardless of `paths`.
-Include local helpers, configuration and dependency paths when registering a suite.
+For a suite with nonempty `paths`, changing its own test file also requests it.
+An empty `paths` array explicitly defers the suite on ordinary path-selected PRs,
+including changes to its own test file. This is used for the user-approved whole-repository
+architecture sweep. Full requests described below still include every suite.
+Include local helpers, configuration and dependency paths when registering a suite;
+the registry owns the suite list, rationale and owner.
 
 PRs compare the event's `base.sha..head.sha`, covering all commits even after a
 previous PR run was cancelled. Path selection applies only to PRs. Main pushes
