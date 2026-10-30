@@ -148,9 +148,22 @@ messageとツールには`received_at`と`time_status=observed|unavailable`を�
 ## 安全契約と失敗
 
 [掲示板の既存public検査](../board/safety.py)を直接再利用する。
-セッション/thread ID・絶対パス・制御文字に加え、保存済みのrun/delegation ID・私的なrunパス、
-環境の長い値、一般的な認証token表記も検査する。検査前に文字列を切り詰めない。
-不合格の自由文は本文全体をhiddenにし、キーやURLなど構造化フィールドの不合格は
+構造検査と自由文の非表示検査は、次のように対象を分ける。
+
+| 対象 | 検査する値 |
+|---|---|
+| `Guard.check(output)`：キー・状態コード・ラベル・URLを含む出力全体 | boardのpublic検査（保存済み親のsession、3つのCLI session/thread環境値、UUID/ID表記・絶対パス・制御文字）に加え、観測済みのsession/turn/run/delegation/job ID・worktree/runパス、下記identity系環境値、既存の認証token表記 |
+| `Guard.text(...)`：発言・コマンド・ツール名・停止理由などの自由文 | 上記の構造検査と、起動環境の**8文字以上の全環境値**。全文を検査してから先頭300字・コマンド先頭行へ切り詰める |
+
+identity系環境値は`CLAUDE_CODE_SESSION_ID`、`CLAUDE_CODE_PARENT_SESSION_ID`、
+`CLAUDE_CODE_AGENT_ID`、`CODEX_SESSION_ID`、`CODEX_THREAD_ID`、
+`AGENT_RUNTIME_RUN_DIR`、`AGENT_RUNTIME_TASK_ID`。空でなければ長さによらず両方で検査する。
+再取得前後の担当・run参照も検査対象へ保持する。
+
+一般の`GITHUB_EVENT_NAME`・`USER`・`LOGNAME`・`WSL_DISTRO_NAME`・`LANG`などの環境値は、
+自由文の非表示判定だけに使う。コードで定義したキー・状態コード・ラベルとの部分一致によって
+出力全体を拒否しない（例：`GITHUB_EVENT_NAME=pull_request`と`pull_requests`キー）。
+不合格の自由文は本文全体をhiddenにし、明示的な私的情報を含むキーやURLなどの構造化フィールドは
 `unsafe_public_field`で取得全体を失敗させる。通常の出力にもエラーにも私的な原文を出さない。
 これは許可したフィールドの最小投影と既存秘匿検査による防御であり、任意の秘密情報の完全な分類器ではない。
 

@@ -420,6 +420,87 @@ def test_private_text_is_hidden_before_truncating(
     assert private not in json.dumps(child, ensure_ascii=False)
 
 
+@pytest.mark.parametrize("github", [False, True])
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("GITHUB_EVENT_NAME", "pull_request"),
+        ("USER", "completed"),
+        ("LOGNAME", "observed"),
+        ("WSL_DISTRO_NAME", "Ubuntu-24.04"),
+        ("LANG", "en_US.UTF-8"),
+    ],
+)
+def test_environment_metadata_only_hides_free_text(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch, github: bool, key: str, value: str
+) -> None:
+    f = fixture
+    monkeypatch.setenv(key, value)
+    f.record()
+    f.events(
+        [
+            item("agent_message", text="safe prefix " * 40 + value),
+            item("command_execution", command="pytest\n" + value),
+        ]
+    )
+    calls = []
+
+    def snapshot(repo: str, parent: int, store: Any, guard: Any) -> dict[int, Any]:
+        calls.append(parent)
+        return {
+            11: {
+                "status": "observed",
+                "issue": {"state": "open", "state_reason": None},
+                "pull_requests": [],
+                "stopped": False,
+                "stop_record": {},
+                "launch": {"reasons": []},
+            }
+        }
+
+    monkeypatch.setattr(
+        importlib.import_module("worker_status.collector"), "parent_snapshot", snapshot
+    )
+    output = f.collect(github=github)
+    assert calls == ([1] if github else [])
+    child = output["parents"][0]["children"][0]
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["message"]["status"] == "hidden"
+    assert child["summary"]["message"]["text"] is None
+    assert child["summary"]["tools"][0]["command"]["status"] == "hidden"
+    # #1569 adds these fields, then uses this same board public validator.
+    output["parents"][0]["roster"] = {
+        "name": "Test parent",
+        "identifier": "Worker",
+        "state": "unknown",
+        "source": "board_names / parent_registry / Herdr",
+    }
+    output["github_refresh"] = {
+        "epoch": "public-epoch",
+        "status": "idle",
+        "revision": 1,
+        "result": "succeeded",
+    }
+    importlib.import_module("board.safety").public(output, {"o/r#1": f.row}, os.environ)
+
+
+@pytest.mark.parametrize(
+    "key", ["CLAUDE_CODE_PARENT_SESSION_ID", "AGENT_RUNTIME_TASK_ID"]
+)
+def test_identity_environment_values_remain_private_in_structured_output(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch, key: str
+) -> None:
+    f = fixture
+    secret = "opaque-private-identity"
+    monkeypatch.setenv(key, secret)
+    f.record()
+    f.events([item("agent_message", text=secret)])
+    assert f.child()["summary"]["message"]["status"] == "hidden"
+    f.task.update(stopped=True, last_status={secret: "safe text"})
+    with pytest.raises(f.api.StatusError, match="^unsafe_public_field$"):
+        f.child()
+
+
 def tree_snapshot(path: Path) -> dict[str, Any]:
     return {
         str(p.relative_to(path)): (
@@ -755,6 +836,7 @@ def test_github_is_explicit_get_only_and_separates_turn_from_acceptance(
     p.save(gh_state)
     for key, value in p.env.items():
         monkeypatch.setenv(key, value)
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
     f.row["tasks"] = {"10": f.task}
     f.record()
     f.task.update(stopped=True, last_status={"reason": "古い停止理由"})

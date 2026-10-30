@@ -11,6 +11,16 @@ from typing import Any
 from board.errors import BoardError
 from board.safety import public
 
+PRIVATE_ENV_KEYS = (
+    "CLAUDE_CODE_SESSION_ID",
+    "CLAUDE_CODE_PARENT_SESSION_ID",
+    "CLAUDE_CODE_AGENT_ID",
+    "CODEX_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "AGENT_RUNTIME_RUN_DIR",
+    "AGENT_RUNTIME_TASK_ID",
+)
+
 
 class StatusError(ValueError):
     """A public error code, without private paths, log excerpts or identities."""
@@ -23,7 +33,8 @@ class Guard:
         self.private: set[str] = set()
         # Logs can quote arbitrary environment values. Do not expose them just
         # because their variable name is not one of the board's identity keys.
-        self.private.update(v for v in self.env.values() if len(v) >= 8)
+        self.text_environment = {v for v in self.env.values() if len(v) >= 8}
+        self.remember(*(self.env.get(key) for key in PRIVATE_ENV_KEYS))
         self.observe_parents(parents)
 
     def observe_parents(self, parents: Mapping[str, Any]) -> None:
@@ -86,6 +97,10 @@ class Guard:
         try:
             self.check(value)
         except StatusError:
+            safe = False
+        else:
+            safe = not any(secret in value for secret in self.text_environment)
+        if not safe:
             return {"status": "hidden", "text": None, "truncated": False}
         shown = value.split("\n", 1)[0] if first_line else value
         return {
