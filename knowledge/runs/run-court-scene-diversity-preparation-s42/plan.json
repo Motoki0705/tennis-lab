@@ -1,0 +1,56 @@
+{
+  "schema": "court_scene_diversity_campaign_v1",
+  "steps": 33160,
+  "train_images": 5500,
+  "synthetic_val_images": 500,
+  "real_val_images": 2211,
+  "training_seed": 42,
+  "train_scene_counts": [
+    {
+      "B00": 5500
+    },
+    {
+      "B00": 2750,
+      "B01": 2750
+    },
+    {
+      "B00": 1833,
+      "B01": 1833,
+      "B02": 1834
+    },
+    {
+      "B00": 1375,
+      "B01": 1375,
+      "B02": 1375,
+      "B03": 1375
+    }
+  ],
+  "val_scene_counts": [
+    {
+      "B00": 500
+    },
+    {
+      "B00": 250,
+      "B01": 250
+    },
+    {
+      "B00": 167,
+      "B01": 167,
+      "B02": 166
+    },
+    {
+      "B00": 125,
+      "B01": 125,
+      "B02": 125,
+      "B03": 125
+    }
+  ],
+  "config_sha256": {
+    "1": "4f6b35e6d1075d2303c4e6642a52b5d0f184b1a45accf9ea604b6d9e40151e90",
+    "2": "9d1aa1bbe46578c9829c560f9ea2cd1b746f673909e5751b373f5c977b4d1036",
+    "3": "c91e86ed70b24348612d57963f9a410e7689f9f6ad740c5904e51af73d88e74b",
+    "4": "47c57bdb6540b3b12abb9e850b12844e94c7808c669f197fb41f7e9aadfa89b8"
+  },
+  "real_registry_sha256": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+  "pretrained_sha256": "08c60483bc63c04f533611e34bf70b120eedb7240f469bc16e9e20bf344b941d"
+}

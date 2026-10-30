@@ -1,0 +1,77 @@
+{
+  "schema": "court_scene_diversity_resume_verification_v1",
+  "status": "passed",
+  "verified_at": "2026-10-26T11:44:15.397284+00:00",
+  "condition": 2,
+  "old_session": "court-scene-diversity-l4-20261025-v1",
+  "new_session": "court-scene-diversity-l4-20261026-r1",
+  "execution_commit": "de71dbd66bec194fa0aeebfaf0aecd79a38c3f84",
+  "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-2-s42/logs/version_0/checkpoints/update-00026528.ckpt",
+  "checkpoint_sha256": "2cf5da5939f4a77fcb7fa68287dd0a9ab62698d1469bc2e22de02a8d98283310",
+  "checkpoint_bytes": 536502772,
+  "global_step": 26528,
+  "optimizer_state_entries": 246,
+  "optimizer_step_values": [
+    26528.0
+  ],
+  "optimizer_param_group_learning_rates": [
+    1.3919058597577149e-05
+  ],
+  "lr_scheduler_state": {
+    "_milestones": [
+      4974
+    ],
+    "last_epoch": 26528,
+    "_last_lr": [
+      1.3919058597577149e-05
+    ],
+    "_schedulers": [
+      {
+        "start_factor": 0.01,
+        "end_factor": 1.0,
+        "total_iters": 4974,
+        "base_lrs": [
+          0.0001
+        ],
+        "last_epoch": 4973,
+        "_step_count": 4974,
+        "_is_initial": false,
+        "_get_lr_called_within_step": false,
+        "_last_lr": [
+          9.998009650180991e-05
+        ]
+      },
+      {
+        "T_max": 28186,
+        "eta_min": 1e-06,
+        "base_lrs": [
+          0.0001
+        ],
+        "last_epoch": 21554,
+        "_step_count": 21555,
+        "_is_initial": false,
+        "_get_lr_called_within_step": false,
+        "_last_lr": [
+          1.3919058597577149e-05
+        ]
+      }
+    ]
+  },
+  "loop_state_present": true,
+  "prepared_evidence_sha256": {
+    "portable-plan.json": "42c175c5a8604fc62dea720a2460f0c6810b2c2dfa0bb812b041ad7205d71029",
+    "data-readiness.json": "a51cb40d84c1cc3b52dd1b1a7eff2d75ca40c928d24acf8b92f61ff7700ab31d",
+    "gpu-probe.json": "1ba87bdf3b195e6b29a4e7fa97f621ba46c1558f760639bd8b094bb6916d980a"
+  },
+  "configuration_before_resume_matches_fixed_source": true,
+  "expected_config_difference_on_resume": "run.resume only",
+  "original_probe_evidence_reused": true,
+  "new_gpu": "NVIDIA L4",
+  "environment": {
+    "python": "3.11.17",
+    "torch": "2.14.1+cu130",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1"
+  },
+  "rng_sampler_limit": "Optimizer/scheduler/Lightning loop state restore is required and logged. Exact mid-epoch DataLoader worker RNG/sample-order continuation across a new VM/process is not guaranteed; retained last saved generation26528 restarts from that checkpoint."
+}

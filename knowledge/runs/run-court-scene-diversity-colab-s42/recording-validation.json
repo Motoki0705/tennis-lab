@@ -1,0 +1,51 @@
+{
+  "schema": "court_scene_diversity_recording_validation_v1",
+  "tests": {
+    "command": ".venv/bin/python -m pytest tests/unit/tasks/court_detection/test_scene_diversity_colab_continuation.py tests/unit/tasks/court_detection/test_scene_diversity_curves.py -q -n 0",
+    "passed": 13
+  },
+  "ruff": "check passed; format applied",
+  "mypy": {
+    "flags": "--follow-imports=skip",
+    "new_curve_script_and_test": "2 source files, no issues"
+  },
+  "knowledge": {
+    "base_ref": "5cdae92687fa327c0c6099340f740bbae0ba7f0e",
+    "check_summary": true,
+    "errors": 0,
+    "warnings": 224,
+    "warning_context": "Missing issue/evidence advisories; no fabricated issue IDs were introduced."
+  },
+  "repro_paths": {
+    "repro_scripts": 408,
+    "script_references": 511,
+    "missing": 0,
+    "unverifiable": 0
+  },
+  "curve_review": {
+    "all_four_exported": true,
+    "validation_updates_each": [
+      3316,
+      6632,
+      9948,
+      13264,
+      16580,
+      19896,
+      23212,
+      26528,
+      29844,
+      33160
+    ],
+    "scene2_boundary": 26528,
+    "scene2_old_tail_excluded": true,
+    "scene2_last_retained_old_event_update": 27150,
+    "scene2_discarded_updates_lower_bound": 622,
+    "scene2_png_visually_reviewed": true
+  },
+  "storage": "All ordinary files <=256KiB, figures <=512KiB and each run bundle <=2MiB. Raw TensorBoard/checkpoints/images excluded from Git.",
+  "precommit": {
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "git_diff_check": "passed with core.whitespace=cr-at-eol; original report.csv CRLF bytes retained for identity"
+}

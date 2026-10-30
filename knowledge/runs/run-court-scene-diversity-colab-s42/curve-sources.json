@@ -1,0 +1,40 @@
+{
+  "1": [
+    {
+      "path_relative_to_transfer": "scene-1-final.tfevents",
+      "sha256": "2f3f2c422bfb259bb0e720daf82a3675dde275b7b94f7673377271f5d52d83e7",
+      "bytes": 1885126,
+      "drive_file": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42/logs/version_0/events.out.tfevents.1792933574.d6ea976442b5.45568.0"
+    }
+  ],
+  "2": [
+    {
+      "path_relative_to_transfer": "curve-sources/scene-2-before/events.out.tfevents.1792971128.d6ea976442b5.223604.0",
+      "sha256": "0efb4711be67a1306644c7944b952c991193bf255136484b3bbb5d44ecd698ea",
+      "bytes": 1570618,
+      "drive_file": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-2-s42/logs/version_0/events.out.tfevents.1792971128.d6ea976442b5.223604.0"
+    },
+    {
+      "path_relative_to_transfer": "curve-sources/scene-2-resumed/events.out.tfevents.1793016214.87eea4cc79f9.11256.0",
+      "sha256": "a1a99f540ca3184b611acd2393289ddd0ca37768c59098b62cd90abedf7a4a20",
+      "bytes": 517305,
+      "drive_file": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-2-s42/logs/version_1/events.out.tfevents.1793016214.87eea4cc79f9.11256.0"
+    }
+  ],
+  "3": [
+    {
+      "path_relative_to_transfer": "curve-sources/scene-3/events.out.tfevents.1793036401.5b40ef3c4fa1.25088.0",
+      "sha256": "cbddea84876c719deb9b2a826dac823c5dd4e59da2a60fb304bd43cea8fbb7e9",
+      "bytes": 1885542,
+      "drive_file": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-3-s42/logs/version_0/events.out.tfevents.1793036401.5b40ef3c4fa1.25088.0"
+    }
+  ],
+  "4": [
+    {
+      "path_relative_to_transfer": "curve-sources/scene-4/events.out.tfevents.1793070689.5b40ef3c4fa1.201322.0",
+      "sha256": "34e4538c431b4396d88aaeee58de2f6eabce64278fae8d0e2f935e6f128c054e",
+      "bytes": 1885750,
+      "drive_file": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-4-s42/logs/version_0/events.out.tfevents.1793070689.5b40ef3c4fa1.201322.0"
+    }
+  ]
+}

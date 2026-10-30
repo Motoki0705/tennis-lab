@@ -1,0 +1,8 @@
+{
+  "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+  "condition": 1,
+  "global_step": 33160,
+  "resume_checkpoint": null,
+  "schema": "court_scene_diversity_colab_training_completion_v1"
+}

@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw
 from torch.utils.data import DataLoader, Subset
 
 from src.tasks.court_detection.configuration import (
+    SyntheticCourtDatasetSubsetSourceConfig,
     SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
@@ -218,6 +219,7 @@ def evaluate_checkpoint(
     expected_step: int | None = None,
     real_split: str | None = None,
     series: str | None = None,
+    include_synthetic_val: bool = False,
 ) -> dict[str, Any]:
     """Score both complete splits with the checkpoint's configuration and targets."""
     if device == "cuda" and not torch.cuda.is_available():
@@ -231,6 +233,10 @@ def evaluate_checkpoint(
         else OmegaConf.create(hyper["config"])
     )
     scaling = has_step_schedule(cfg)
+    if include_synthetic_val and (not scaling or real_split != "val"):
+        raise ValueError(
+            "Synthetic validation requires step-based real validation evaluation."
+        )
     if scaling:
         if (
             type(expected_step) is not int
@@ -302,6 +308,13 @@ def evaluate_checkpoint(
                 manifests[f"synthetic_court/{scene}"] = file_sha256(
                     source_config.workspace_root / scene / "datasets/court/dataset.json"
                 )
+        elif isinstance(source_config, SyntheticCourtDatasetSubsetSourceConfig):
+            manifests["synthetic_court/dataset_subset"] = file_sha256(
+                source_config.manifest
+            )
+            manifests["synthetic_court/validation_subset"] = file_sha256(
+                source_config.validation_manifest
+            )
         elif isinstance(source_config, SyntheticCourtDatasetVersionSourceConfig):
             manifests["synthetic_court/dataset_version"] = file_sha256(
                 source_config.manifest
@@ -334,6 +347,8 @@ def evaluate_checkpoint(
         if scaling
         else EVALUATION_SPLITS
     )
+    if include_synthetic_val:
+        splits = (("synthetic_court", "val"), *splits)
     for source, split in splits:
         loader = dm.source_eval_dataloader(source, split)
         identity = sample_identity(cast(CourtDetectionDataset, loader.dataset))

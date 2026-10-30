@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "scene-2-eval-scenes-3-4-continue-v1",
+  "status": "completed",
+  "updated_at": "2026-10-27T12:22:07.737736+00:00",
+  "returncode": 0,
+  "worker_pid": 9111,
+  "worker_token": "198954",
+  "launch_guarded": true,
+  "pid": 9303,
+  "process_token": "202210",
+  "started_at": "2026-10-26T16:35:09.803060+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-10-27T12:22:39.591007+00:00",
+  "finished_at": "2026-10-27T12:22:39.591024+00:00"
+}

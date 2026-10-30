@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8207086017856490539_2026-10-25T07-39-42-143509460Z_2172746_court-scene-diversity-render-v1",
+  "name": "court-scene-diversity-render-v1",
+  "command": "PYTHONPATH=. .venv/bin/python knowledge/runs/run-court-scene-diversity-6000-v1/generate.py render --output-root /home/kamimura/projects/tennis-lab/data/court_scene_diversity_6000_v1 && PYTHONPATH=. .venv/bin/python knowledge/runs/run-court-scene-diversity-6000-v1/generate.py finalize --output-root /home/kamimura/projects/tennis-lab/data/court_scene_diversity_6000_v1",
+  "provider": "codex",
+  "session": "01a171f1-ae7a-7d53-b09a-135549f91d0b",
+  "issue": "",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "150eaeb0f25406a437fe3306c011d3ae0e9a0b1f",
+  "branch": "codex/court-scene-diversity-data",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scene-diversity-data",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/court-scene-diversity-data",
+  "captured_at": "2026-10-25T16:39:42+09:00"
+}

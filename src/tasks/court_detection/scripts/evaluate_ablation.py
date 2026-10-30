@@ -79,6 +79,7 @@ def main() -> None:
     parser.add_argument("--expected-step", type=int)
     parser.add_argument("--split", choices=("val", "test"))
     parser.add_argument("--series")
+    parser.add_argument("--include-synthetic-val", action="store_true")
     for name in (
         "data-root",
         "checkpoint-root",
@@ -128,6 +129,7 @@ def main() -> None:
         expected_step=args.expected_step,
         real_split=args.split,
         series=args.series,
+        include_synthetic_val=args.include_synthetic_val,
         path_overrides={name: str(paths.declared(name).path) for name in overrides},
     )
     print(output / "evaluation.json")
