@@ -60,7 +60,7 @@ phase/JUnit reportを再構築し、source/run/attempt、全worker manifest、�
 
 既定は観測した `split_files` を維持します。fixtureを確認して一覧を置き換える場合だけ `--split-file tests/path.py` を繰り返し指定します。収集時のguardが現行fixture graphに対して検証します。merge gate、board messages、parent sessionはfunction fixture単位の分割を維持します。座標学習はmodule scopeの `shared` を使うため、9件579.907秒を同じshardに保持します。テスト本体とfixture scopeは変更しません。
 
-更新profileは[run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121)の830 file、12,782件（12,685 passed / 96 skipped / 1 failed）、合計8,527.317 phase秒に基づき、既知のREADME.zh-CN失敗も含みます。4 / 6 / 8 / 10 shardの推定最大負荷は2,131.830 / 1,421.220 / 1,065.916 / 852.732秒です。重複するworker phaseの和でありwall時間の予測ではありません。旧割当の実測は2,781 / 1,435 / 1,691 / 2,621秒でした。親がfixture最適化をmergeした後は再生成が必要です。
+更新profileは[run 41043837101](https://github.com/Motoki0705/tennis-lab/actions/runs/41043837101)（#1527/#1529のfixture最適化後）の832 file、12,883件（12,787 passed / 96 skipped / 0 failed）、合計6,681.075 phase秒に基づきます。4 / 6 / 8 / 10 shardの推定最大負荷は1,670.269 / 1,113.513 / 835.135 / 668.108秒です。重複するworker phaseの和でありwall時間の予測ではありません。旧profileでの10 shardの実測負荷は156–916秒でした。テストコストを変える変更がmergeされたら再生成します。
 
 
 依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。

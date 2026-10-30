@@ -60,7 +60,7 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 
 默认保留观测中的 `split_files`。检查fixture后，重复传入 `--split-file tests/path.py` 可明确替换列表。收集guard会根据当前fixture graph验证声明。merge gate、board messages、parent session继续按function fixture拆分。坐标训练使用module scope的 `shared`，所以9个用例的579.907秒保留在一个shard内；不修改测试本体与fixture scope。
 
-新profile来自[run 40986313121](https://github.com/Motoki0705/tennis-lab/actions/runs/40986313121)：830个文件、12,782例（12,685 passed / 96 skipped / 1 failed）、共8,527.317 phase秒，保留已知README.zh-CN失败。4 / 6 / 8 / 10 shard的估计最大负荷为2,131.830 / 1,421.220 / 1,065.916 / 852.732秒。这是并行worker phase的累计值，不是wall时间预测。旧分配的实测负荷为2,781 / 1,435 / 1,691 / 2,621秒。父会话合并fixture优化后需重新生成。
+新profile来自[run 41043837101](https://github.com/Motoki0705/tennis-lab/actions/runs/41043837101)（#1527/#1529 fixture优化之后）：832个文件、12,883例（12,787 passed / 96 skipped / 0 failed）、共6,681.075 phase秒。4 / 6 / 8 / 10 shard的估计最大负荷为1,670.269 / 1,113.513 / 835.135 / 668.108秒。这是并行worker phase的累计值，不是wall时间预测。旧profile下10 shard的实测负荷为156–916秒。合并改变测试成本的修改后需重新生成。
 
 ## 默认配置选择
 
