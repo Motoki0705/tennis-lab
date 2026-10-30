@@ -5,6 +5,7 @@
 親子issueの書式・ラベル・段階移行は [issues](../issues/README.md) が正本。
 `start-worker` / `continue-worker` は委任予約をdispatcherへ渡す。実agentの起動はsupervisor、
 レビュー・mergeは親が明示する既存入口で行う。timer・poll・hookへの登録は行わない。
+手動親は [run-worker](#手動workerの起動継続とrun記録) で委任と共通ランナーのrunを結び付けて起動する。
 自律親の開発手順とworker/reportコマンドの契約は [development workflow](development_workflow.md) が正本。
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
@@ -369,7 +370,7 @@ triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](.
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
 未分割の単独issueは自身の番号を `--child` に指定でき、正式な子を新しい親として扱うことは拒否する。
-`action: launch` を受けた親がサブエージェントを起動する。CLI自身は起動しない。
+`action: launch` を受けた手動親は [run-worker](#手動workerの起動継続とrun記録) を呼ぶ。`delegate` 自体は起動しない。
 既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
 記録済みbranchを照合して、PRと担当・検証記録を返す。
@@ -436,8 +437,61 @@ dispatcher/親workflowはその実行枠内でこの計画を使い、必要な�
 終了未確認の委任予約は停止・PR作成・子のclose・親の待機だけで解放しない。
 `record-worker-ended` は親が確認した終了証拠を現在の `delegation_id` へ結び付けるだけで、プロセスを停止しない。
 旧予約でIDがないものには明示値 `legacy` を使う。再委任は新しいIDになり、古い終了通知は拒否する。
-予約枠を解放しても `delegated` は保持し、自動再起動はしない。再予約は従来の証拠付き `delegate --restart-evidence-file` を使う。
+予約枠を解放しても `delegated` は保持し、自動再起動はしない。新しい委任への再予約は従来の証拠付き `delegate --restart-evidence-file` を使う。
 停止・根拠・PR検査は再予約でも省略しない。稼働中workerの終了を推測する新しい台帳は作らない。
+
+### 手動workerの起動・継続とrun記録
+
+activeな担当本人が `delegate` の予約を確認して次を呼ぶ。共通引数のstateは予約時と同じものを使う。
+会話ではこの前景コマンドをバックグラウンド実行し、独立した子を続けて起動できる。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --prompt-file tmp/task.md
+# 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
+# この入口の導入前に共通ランナーで起動したrunを、稼働中・終了済みとも登録できる
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  record-worker-run --child 1217 --run-dir "$existing_run"
+```
+
+`run-worker` は現在の32桁hexの委任ID・Codex担当・worktree・branchと、有効な根拠・要件・停止・依存を検査する。
+初回は終了未記録かつ当該委任のrun未登録に限る。モデル・effort引数を持たず、
+共通ランナーを `--role implementation --mode write --task-id 委任ID --cwd worktree --branch branch`
+で呼び、[`agents.conf`](../lib/agents.conf) の実装子の既定値を使う。
+Codex CLIを直接起動せず、この入口から共通ランナーへ渡す。
+
+runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ランナーの起動前にregistryへ保存する。
+実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
+`{child, delegation_id, exit_code, runner_summary}`。`runner_summary` はランナーの公開要約JSONであり、
+起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文・stderr・ローカルパスは出力しない。
+失敗・中断しても予約とrun記録を残し、自動再試行や別session起動をしない。
+
+`--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
+共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
+`record-worker-ended` 済みなら非空の `--restart-evidence-file` と空き枠を必須とし、
+同じトランザクションで終了記録を取り除き、予約枠を取り直して継続runを保存する。
+終了未記録なら予約枠を保持したまま継続する。既存PRがある修正も同じbranch・worktreeを使う。
+`launch_plan` の停止・依存・上限判定は省略しない。再開証拠はprivateな `restart_evidence` に残す。
+
+`record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
+`contract.task_id`・`contract.cwd`・`contract.branch` を現在の委任と照合する。
+どちらも無い場合や片方でも不一致なら拒否し、同一runの再登録は冪等とする。
+起動はせず、既存の終了記録や委任フィールドも変更しない。
+
+子taskのprivateな `worker_runs` は次の4キーの配列を記録順で保持する。
+
+```json
+[{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00"}]
+```
+
+`kind` は `initial` / `resume` / `registered`。`run_dir` は親state dir基準の相対パスで、
+state外の登録runは絶対パス。`recorded_at` はUTC ISO8601。
+version 1/2とも既存フィールドと過去の委任のrunを保持し、新しいrunだけ追記する。
+`status`・`reconcile`・委任応答からこのフィールドを除外し、issue本文・コメントにもrun dirを出さない。
+再開証拠等の文字列に同じrun dirが含まれる場合も、保存原文を保持してCLIでは `[private run]` へ伏せる。
+実行状況の読み取り側はこのprivate registryを参照する。CLI出力を別のrun台帳として使わない。
 
 ### stacked branchの確認とrebase
 
@@ -545,13 +599,14 @@ recoverも既存の委任予約を保持し、照合結果から自動再起動�
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 1251 --instruction-file tmp/instruction.md \
-  --evidence-file tmp/result.md --worker-runs tmp/worker-runs.json > tmp/review-request.json
+  --evidence-file tmp/result.md > tmp/review-request.json
 ```
 
 `review-request --prs` は成果の登録・対象固定・明示指示を1コマンドで行う。
 子の終了は共通ランナーの記録から検査する。自律workerはdispatcherの現在のjob、
-手動workerは `--worker-runs` の `{子番号: 共通runnerのlog-dir}` を参照する。
-手動workerのtask IDは現在のdelegation IDを使う。未委任ならworker-runsは省略できる。
+手動workerはregistryの `worker_runs` から現在の委任の登録runをすべて照合する。
+手動の終了記録があっても契約と終了を再照合し、記録なし・不一致・未終了なら拒否する。
+未委任の子はrunの検査対象外。runの導入前のworkerは `record-worker-run` で紐付けてから要求する。
 終了・cleanup・worktree・branch・task IDの一致なしに予約を解放しない。
 従来の分離操作 `record-result` → `review-prepare` → `review-request --run-id` も使える。
 
@@ -627,14 +682,14 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 
 自動割当側は上記の候補検査と既存registryの排他を使い、対象親の実行根拠とruntime identityを結び付ける。
 同じrepo・親番号/URL・環境由来ID・state・競合エラーを使い、子作成・実装・レビューの検査を飛ばさない。
-このCLIから判定agent・実装agent・timerは起動しない。
+判定agent・timerはこのCLIから起動しない。手動実装子の明示起動だけは `run-worker` が共通ランナーへ渡す。
 
-CLIはJSONをstdout、エラーをstderrへ出し、成功0・設定/取得/整合エラー2で終了する。
+CLIはJSONをstdout、エラーをstderrへ出し、成功0・設定/取得/整合エラー2で終了する。`run-worker` の実行後はランナーの終了値を返す。
 ghは現在認証中のアカウント、GitHub書込みにはIssuesのwrite権限が必要。
 親子ラベルの作成やsystemd操作は行わない。GitHubとローカルstateは単一トランザクションではないため、
 非ゼロ終了後は同じ入力で照合・不足更新を行う。未完了を成功や新規起票に置換しない。
 atomic write中にプロセスを強制終了して `.tmp` が残った場合は、稼働中プロセスが無いことと
 registryの内容を確認して、その一時ファイルだけを人間の管理下で退避してから再試行する。
 
-テスト: `bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_parent_launch.py tests/e2e/agents_ops/test_pytest_lock.py -q`。
+テスト: `bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_parent_launch.py tests/e2e/agents_ops/test_manual_worker_runs.py tests/e2e/agents_ops/test_review_handoff.py tests/e2e/agents_ops/test_pytest_lock.py -q`。
 fake gh・一時state・使い捨てgitを使い、本物のCodex/Claude/GitHub書込みは起動しない。
