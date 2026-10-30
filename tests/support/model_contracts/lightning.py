@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ import pytorch_lightning as pl
 import torch
 from torch import Tensor
 from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 from torch.utils.hooks import RemovableHandle
 
 from tests.support.model_contracts.parameters import (
@@ -31,10 +33,12 @@ class TrainingAudit(pl.Callback):
         optimizers: tuple[OptimizerContract, ...],
         *,
         gan: bool,
+        scheduled_gan: bool = False,
     ) -> None:
         self.parameters = parameters
         self.contracts = optimizers
         self.gan = gan
+        self.scheduled_gan = scheduled_gan
         self.updates: Counter[str] = Counter()
         self.backwards: list[str] = []
         self.losses: list[float] = []
@@ -63,7 +67,7 @@ class TrainingAudit(pl.Callback):
         self, trainer: pl.Trainer, pl_module: Any, batch: Any, batch_idx: int
     ) -> None:
         # Exercise supervised-only G first, then real D/G training on batch two.
-        if self.gan and self.updates["generator"] == 1:
+        if self.gan and not self.scheduled_gan and self.updates["generator"] == 1:
             pl_module.activate_gan_phase(int(trainer.current_epoch))
             pl_module.set_gan_weight(0.1)
 
@@ -76,7 +80,9 @@ class TrainingAudit(pl.Callback):
             name for name, p in pl_module.named_parameters() if p.requires_grad
         )
         matches = [
-            contract for contract in self.contracts if contract.parameters == enabled
+            contract
+            for contract in self.contracts
+            if contract.parameters - self.parameters.optimizer_frozen == enabled
         ]
         assert len(matches) == 1, (
             f"backward trainable names do not identify one optimizer: {sorted(enabled)}"
@@ -115,7 +121,13 @@ class TrainingAudit(pl.Callback):
     def _post_step(self, module: Any, contract: OptimizerContract) -> Any:
         def check(optimizer: Optimizer, args: Any, kwargs: Any) -> None:
             assert self._current is not None and self._current.name == contract.name
-            assert_update(module, self._before_step, contract)
+            assert_update(
+                module,
+                self._before_step,
+                replace(
+                    contract, parameters=contract.parameters & self.parameters.active
+                ),
+            )
             self.updates[contract.name] += 1
 
         return check
@@ -127,14 +139,16 @@ class TrainingAudit(pl.Callback):
 
 def fit_contract(
     module: pl.LightningModule,
-    datamodule: pl.LightningDataModule,
+    datamodule: pl.LightningDataModule | DataLoader[Any],
     parameters: ParameterContract,
     optimizers: tuple[OptimizerContract, ...],
     root: Path,
     *,
     gan: bool,
+    scheduled_gan: bool = False,
+    validation_batches: int = 0,
 ) -> TrainingAudit:
-    audit = TrainingAudit(parameters, optimizers, gan=gan)
+    audit = TrainingAudit(parameters, optimizers, gan=gan, scheduled_gan=scheduled_gan)
     trainer = pl.Trainer(
         default_root_dir=root,
         accelerator="cpu",
@@ -143,7 +157,8 @@ def fit_contract(
         max_steps=3 if gan else 1,
         max_epochs=2,
         limit_train_batches=1,
-        limit_val_batches=0,
+        limit_val_batches=validation_batches,
+        reload_dataloaders_every_n_epochs=1,
         num_sanity_val_steps=0,
         logger=False,
         enable_checkpointing=False,
@@ -152,7 +167,10 @@ def fit_contract(
         callbacks=[audit],
     )
     try:
-        trainer.fit(module, datamodule=datamodule)
+        if isinstance(datamodule, DataLoader):
+            trainer.fit(module, train_dataloaders=datamodule)
+        else:
+            trainer.fit(module, datamodule=datamodule)
     finally:
         audit.close()
     assert trainer.global_step == (3 if gan else 1)
@@ -165,6 +183,7 @@ def fit_contract(
     assert audit.losses
     parameters.validate(module)  # toggling must restore even unused/frozen flags
     if gan:
-        assert module.supervised_only_step_count == 1
-        assert module.hybrid_gan_step_count == 1
+        strategy = module.gan_training
+        assert strategy.supervised_only_step_count == 1
+        assert strategy.hybrid_gan_step_count == 1
     return audit

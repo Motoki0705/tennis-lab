@@ -23,6 +23,8 @@ class ParameterContract:
     active: frozenset[str]
     frozen: frozenset[str]
     unused: frozenset[str]
+    # Staged loops may retain frozen tensors in the optimizer at LR=0.
+    optimizer_frozen: frozenset[str] = frozenset()
 
     def validate(self, model: nn.Module) -> None:
         named = dict(model.named_parameters())
@@ -36,6 +38,7 @@ class ParameterContract:
         assert not any("*" in name or "?" in name for name in declared), (
             "parameter names must be exact, without wildcards"
         )
+        assert self.optimizer_frozen <= self.frozen, "optimizer_frozen must be frozen"
         expected = self.active | self.unused
         observed = {name for name, param in named.items() if param.requires_grad}
         assert observed == expected, (
@@ -101,7 +104,7 @@ def assert_optimizer_coverage(
         all_names.extend(observed)
     duplicates = sorted(name for name, n in Counter(all_names).items() if n > 1)
     assert not duplicates, f"parameters shared between optimizers: {duplicates}"
-    expected = parameters.active | parameters.unused
+    expected = parameters.active | parameters.unused | parameters.optimizer_frozen
     assert set(all_names) == expected, (
         f"optimizer union missing={sorted(expected - set(all_names))}, "
         f"unexpected={sorted(set(all_names) - expected)}"
