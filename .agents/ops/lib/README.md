@@ -192,6 +192,7 @@ Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重
 | `output-schema.json` | `--json-schema`指定時のschema原文。`contract.json_schema_sha256`と対応 |
 | `invocation.json` | contract、実引数と除去した環境変数の名前。環境の値は保存しない |
 | `events.jsonl` / `stderr.log` | CLIの構造化stdout原文 / stderr原文。失敗・途中切れも残す |
+| `event-receipts.jsonl` | 非空イベント行ごとのUTC受信時刻。schema_version=1、event_start/event_endは原文のbyte範囲（改行を含む）、sha256は改行を除いた行のdigest、received_atはUTC ISO8601。原文は変更しない。旧runには存在しない |
 | `final.md` | 最終文（schema指定時は検証済みJSON）。CodexではCLIのlast-messageファイルとイベント本文を照合。正常終了時は `--out` にもコピー |
 | `result.json` | run ID、contract、runtime情報、process情報、終了理由 |
 | 初回runの `session.json` / `session.lock` | runtime session、最後に観測したturn、最新runの対応と排他 |

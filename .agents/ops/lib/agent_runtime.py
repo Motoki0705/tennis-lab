@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -172,6 +173,7 @@ def capture(
         with (
             (run_dir / "prompt.md").open("rb") as prompt,
             (run_dir / "events.jsonl").open("wb") as raw,
+            (run_dir / "event-receipts.jsonl").open("w", encoding="utf-8") as receipts,
             (run_dir / "stderr.log").open("wb") as stderr,
         ):
             proc = subprocess.Popen(
@@ -188,6 +190,27 @@ def capture(
             save()
             assert proc.stdout is not None
             pending = b""
+            event_offset = 0
+
+            def receive(line: bytes, end: int) -> None:
+                """Keep timing separate from the exact CLI stdout bytes."""
+                nonlocal event_offset
+                if line.strip():
+                    receipt = {
+                        "schema_version": VERSION,
+                        "event_start": event_offset,
+                        "event_end": end,
+                        "sha256": hashlib.sha256(line).hexdigest(),
+                        "received_at": datetime.now(UTC).isoformat(),
+                    }
+                    receipts.write(json.dumps(receipt, sort_keys=True) + "\n")
+                    receipts.flush()
+                    previous = events.session
+                    events.feed(line)
+                    if previous != events.session:
+                        save()
+                event_offset = end
+
             started = time.monotonic()
             with selectors.DefaultSelector() as selector:
                 selector.register(proc.stdout, selectors.EVENT_READ)
@@ -206,15 +229,11 @@ def capture(
                         pending += chunk
                         while b"\n" in pending:
                             line, pending = pending.split(b"\n", 1)
-                            if line.strip():
-                                previous = events.session
-                                events.feed(line)
-                                if previous != events.session:
-                                    save()
+                            receive(line, event_offset + len(line) + 1)
                     elif proc.poll() is not None:
                         break
                 if pending.strip():
-                    events.feed(pending)
+                    receive(pending, event_offset + len(pending))
             # EOF alone is not process completion: a CLI may close stdout early.
             while proc.poll() is None:
                 if int(stop_signal[0]):
