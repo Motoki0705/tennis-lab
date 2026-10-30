@@ -75,6 +75,11 @@ def pytest_sessionstart(session: pytest.Session) -> None:
     _emit("session_start")
 
 
+def record_cpu_universe(items: list[pytest.Item]) -> None:
+    """Called by the shard hook after marker selection, before lane selection."""
+    _emit("cpu_universe", nodeids=[item.nodeid for item in items])
+
+
 def pytest_collection_finish(session: pytest.Session) -> None:
     _emit("collection", nodeids=[item.nodeid for item in session.items])
 
