@@ -7,6 +7,13 @@ These API/CLI e2e cases complement test_agent_runtime's fake CLI coverage and
 test_parent_launch's existing launch-plan coverage. No real agents or GitHub.
 Budget: fewer than 50 expansions per function; local cases should take <1s,
 GitHub fixture cases <5s. Measure setup/call/teardown with --durations=0.
+
+#1589: extend this fixture's real events.jsonl/receipt path to cover started and
+completed shell commands, quote preservation, first-line/length limits and item
+deduplication. Unsupported invocations must retain the original Guard result;
+private values on later lines must still hide the whole command. Reuse the
+existing redaction/environment cases rather than duplicating their input axes.
+New local cases need no agents/assets and keep the same <1s/case budget.
 """
 
 from __future__ import annotations
@@ -390,6 +397,124 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
 
 
 @pytest.mark.parametrize(
+    ("command", "expected", "truncated"),
+    [
+        (
+            '/bin/bash -lc "git diff --exit-code; git status --short"',
+            "git diff --exit-code; git status --short",
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git push origin codex/example-worker'",
+            "git push origin codex/example-worker",
+            False,
+        ),
+        (
+            '/bin/bash -lc "git status --short\ngit diff --stat"',
+            "git status --short",
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git status --short\ngit diff --stat'",
+            "git status --short",
+            False,
+        ),
+        ("/bin/sh -c 'git status --short'", "git status --short", False),
+        ("bash -lc 'git status --short'", "git status --short", False),
+        ("sh -c 'git status --short'", "git status --short", False),
+        (
+            '/bin/bash -lc "git log --format=\\"%h %s\\" -1"',
+            'git log --format="%h %s" -1',
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git show " + "x" * 310 + "\ngit status --short'",
+            "git show " + "x" * 291,
+            True,
+        ),
+    ],
+    ids=[
+        "double-quoted",
+        "single-quoted-push",
+        "double-quoted-multiline",
+        "single-quoted-multiline",
+        "absolute-sh",
+        "relative-bash",
+        "relative-sh",
+        "inner-quotes",
+        "long-first-line",
+    ],
+)
+def test_shell_wrapped_commands_show_the_inner_first_line(
+    fixture: Any, command: str, expected: str, truncated: bool
+) -> None:
+    f = fixture
+    f.record()
+    started = item("command_execution", command=command, status="in_progress")
+    started["type"] = "item.started"
+    completed = item(
+        "command_execution",
+        command=command,
+        status="completed",
+        aggregated_output="/private/tool-output",
+        exit_code=0,
+    )
+    for events in ([started], [started, completed]):
+        f.events(events)
+        child = f.child()
+        assert child["status"] == "turn_completed"
+        assert child["summary"]["tools"] == [
+            {
+                "kind": "command_execution",
+                "received_at": NOW.isoformat(),
+                "time_status": "observed",
+                "command": {
+                    "status": "visible",
+                    "text": expected,
+                    "truncated": truncated,
+                },
+            }
+        ]
+
+
+@pytest.mark.parametrize(
+    ("command", "status"),
+    [
+        ("git status --short", "visible"),
+        (None, "unavailable"),
+        ("/bin/bash -lc 'git status --short' extra", "hidden"),
+        ("bash -lc 'git status --short' extra", "visible"),
+        ("/bin/bash -lc 'git status --short", "hidden"),
+        ("bash -lc 'git status --short", "visible"),
+        ("bash -l -c 'git status --short'", "visible"),
+        ("bash --noprofile 'git status --short'", "visible"),
+        ("/usr/bin/bash -lc 'git status --short'", "hidden"),
+        ("zsh -c 'git status --short'", "visible"),
+        ("/bin/bash -lc", "hidden"),
+        ("/bin/bash -lc 'git status --short'|cat", "hidden"),
+        ("/bin/bash -lc 'git status --short';", "hidden"),
+        ("bash -lc 'git status --short';pwd", "visible"),
+        ("/bin/bash\n-lc 'git status --short'", "hidden"),
+        ("/bin/bash -lc 'git status --short' # comment", "hidden"),
+        ("/bin/bash -lc \"/bin/sh -c 'git status --short'\"", "hidden"),
+    ],
+)
+def test_unsupported_shell_invocations_keep_the_original_guard_result(
+    fixture: Any, command: str | None, status: str
+) -> None:
+    f = fixture
+    f.record()
+    f.events([item("command_execution", command=command)])
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["tools"][0]["command"] == {
+        "status": status,
+        "text": command if status == "visible" else None,
+        "truncated": False,
+    }
+
+
+@pytest.mark.parametrize(
     "private",
     [
         "/home/private/file",
@@ -411,12 +536,33 @@ def test_private_text_is_hidden_before_truncating(
         [
             item("agent_message", text="safe prefix " * 40 + private),
             item("command_execution", command="pytest\n" + private),
+            item(
+                "command_execution",
+                id="wrapped-first-line",
+                command=f"/bin/bash -lc 'cd {private} && git status --short'",
+            ),
+            item(
+                "command_execution",
+                id="wrapped-later-line",
+                command=f'/bin/bash -lc "git status --short\n{private}"',
+            ),
+            item(
+                "command_execution",
+                id="wrapped-after-limit",
+                command="/bin/bash -lc 'git status --short; "
+                + "echo done; " * 30
+                + private
+                + "'",
+            ),
         ]
     )
     child = f.child()
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
-    assert child["summary"]["tools"][0]["command"]["status"] == "hidden"
+    assert all(
+        tool["command"] == {"status": "hidden", "text": None, "truncated": False}
+        for tool in child["summary"]["tools"]
+    )
     assert private not in json.dumps(child, ensure_ascii=False)
 
 
@@ -441,6 +587,11 @@ def test_environment_metadata_only_hides_free_text(
         [
             item("agent_message", text="safe prefix " * 40 + value),
             item("command_execution", command="pytest\n" + value),
+            item(
+                "command_execution",
+                id="wrapped-environment",
+                command=f'/bin/bash -lc "git status --short\n{value}"',
+            ),
         ]
     )
     calls = []
@@ -467,7 +618,9 @@ def test_environment_metadata_only_hides_free_text(
     assert child["status"] == "turn_completed"
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
-    assert child["summary"]["tools"][0]["command"]["status"] == "hidden"
+    assert all(
+        tool["command"]["status"] == "hidden" for tool in child["summary"]["tools"]
+    )
     # #1569 adds these fields, then uses this same board public validator.
     output["parents"][0]["roster"] = {
         "name": "Test parent",

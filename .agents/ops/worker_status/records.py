@@ -6,6 +6,7 @@ import hashlib
 import math
 import os
 import re
+import shlex
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,12 @@ END_REASONS = {
     "stopped",
     "descendants_reaped",
     "cleanup_failed",
+}
+SHELL_WRAPPERS = {
+    ("/bin/bash", "-lc"),
+    ("bash", "-lc"),
+    ("/bin/sh", "-c"),
+    ("sh", "-c"),
 }
 
 
@@ -108,6 +115,24 @@ def tail(path: Path, bound: int) -> tuple[list[tuple[int, int, bytes]], bool, st
         offset = end
     assert updated is not None
     return lines, size > bound, updated, size
+
+
+def unwrap_shell_command(value: Any) -> Any:
+    """Unquote one known shell invocation, without evaluating its command."""
+    if not isinstance(value, str):
+        return value
+    lexer = shlex.shlex(value, posix=True, punctuation_chars="();<>|&\n")
+    # Outer operators/newlines are syntax, not part of a single shell argument.
+    lexer.whitespace = " \t"
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    try:
+        args = list(lexer)
+    except ValueError:
+        return value
+    if len(args) == 3 and (args[0], args[1]) in SHELL_WRAPPERS:
+        return args[2]
+    return value
 
 
 def summarize(
@@ -198,7 +223,9 @@ def summarize(
                 "time_status": "observed" if when else "unavailable",
             }
             if kind == "command_execution":
-                tool["command"] = guard.text(item.get("command"), first_line=True)
+                tool["command"] = guard.text(
+                    unwrap_shell_command(item.get("command")), first_line=True
+                )
             elif kind == "mcp_tool_call":
                 tool["server"] = guard.text(item.get("server"))
                 tool["tool"] = guard.text(item.get("tool"))

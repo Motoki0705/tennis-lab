@@ -145,6 +145,13 @@ messageとツールには`received_at`と`time_status=observed|unavailable`を�
 旧runのツール時刻は未取得と明示する。同じitem IDのツール更新は最新の1件へまとめる。
 ユーザー向け発言が末尾範囲に無ければmessageは未取得。
 
+`command_execution.command`は、`shlex`で厳密に「シェル・オプション・1引数」に
+分解できる`/bin/bash -lc`・`bash -lc`・`/bin/sh -c`・`sh -c`だけを1段外す。
+引用符を解いた内側コマンドの**全文**を従来の秘匿基準で検査してから、先頭行を最大300字で表示する。
+内側の引用符・改行を保持し、コマンドの実行・環境変数展開・再帰的なラッパー除去はしない。
+引用符を解けない形、未知のシェル・オプション、引数の過不足、引用符の外に演算子や改行がある形は、
+元の文字列をそのまま検査する。text objectの`status`・`text`・`truncated`と時刻の契約は変えない。
+
 ## 安全契約と失敗
 
 [掲示板の既存public検査](../board/safety.py)を直接再利用する。
