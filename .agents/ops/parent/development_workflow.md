@@ -4,7 +4,8 @@
 担当・実行根拠・子・PR・worktreeと受入条件を先に照合する。人間合意と自律根拠は別のまま扱い、
 通常の実装判断は親が具体化する。結果を左右する未決事項・停止指示・情報不足は理由付きで待機する。
 これは親の判断手順であり、timerやsupervisorがレビューを起動する仕組みではない。
-worker操作CLIはdispatcherで受理済みの親が使う。手動親の起動は [delegateの契約](README.md#子の作成委任再開) に従う。
+この文書のworker操作CLIはdispatcherで受理済みの親が使う。
+手動親は [run-workerの起動・継続・run登録契約](README.md#手動workerの起動継続とrun記録) に従う。
 
 ## 引受・分割・起動
 

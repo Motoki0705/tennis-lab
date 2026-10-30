@@ -10,49 +10,53 @@ from .session import ParentSession
 from .snapshot import prepare, transition
 
 
-def runner_ended(session: ParentSession, child: int, run_dirs: dict[str, Any]) -> None:
+def runner_ended(session: ParentSession, child: int) -> None:
     task = session.row["tasks"].get(str(child), {})
-    if not task.get("delegated") or task.get("worker_ended", {}).get(
-        "delegation_id"
-    ) == task.get("delegation_id"):
+    if not task.get("delegated"):
         return
     from .development import Runtime, managed, worker_jobs
 
     dispatch = managed(session.row)
     expected_task: str
     if dispatch:
+        if task.get("worker_ended", {}).get("delegation_id") == task.get(
+            "delegation_id"
+        ):
+            return
         jobs = worker_jobs(dispatch, child)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current delegation")
         job = jobs[-1]
-        directory = Path(job["directory"]) / "runtime"
+        directories = [Path(job["directory"]) / "runtime"]
         runner = Path(job["runner"])
         expected_task = job["task_id"]
     else:
-        path = run_dirs.get(str(child))
-        if not isinstance(path, str) or not path:
-            raise ValueError(
-                f"#{child}: provide --worker-runs for the current manual worker"
-            )
-        directory = Path(path)
-        runner = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
+        from .manual_workers import RUNNER, current_runs, validate_run
+
+        directories = current_runs(session, task)
+        for directory in directories:
+            validate_run(task, directory)
+        runner = RUNNER
         expected_task = task["delegation_id"]
     runtime = Runtime(runner)
-    proof = runtime.inspect(directory)
-    contract = object_value(proof["record"].get("contract"))
-    if (
-        not runtime.ended(proof)
-        or contract.get("task_id") != expected_task
-        or Path(contract.get("cwd", "")).resolve() != Path(task["worktree"]).resolve()
-        or contract.get("branch") != task["branch"]
-    ):
-        raise ValueError(
-            f"#{child}: runner completion does not match the current delegation"
-        )
+    for directory in directories:
+        proof = runtime.inspect(directory)
+        contract = object_value(proof["record"].get("contract"))
+        if (
+            not runtime.ended(proof)
+            or contract.get("task_id") != expected_task
+            or Path(contract.get("cwd", "")).resolve()
+            != Path(task["worktree"]).resolve()
+            or contract.get("branch") != task["branch"]
+        ):
+            raise ValueError(
+                f"#{child}: runner completion does not match the current delegation"
+            )
+    if task.get("worker_ended", {}).get("delegation_id") == task["delegation_id"]:
+        return
     task["worker_ended"] = {
         "delegation_id": task["delegation_id"],
         "evidence": "Common runner confirmed termination and cleanup.",
-        "run_id": proof["record"]["run_id"],
     }
     session.store.save()
 
@@ -62,7 +66,6 @@ def request(
     prs: list[int],
     instruction: str,
     evidence: str,
-    run_dirs: dict[str, Any],
     reason: str | None,
 ) -> dict[str, Any]:
     session.agreed()
@@ -76,7 +79,7 @@ def request(
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):
-        runner_ended(session, child, run_dirs)
+        runner_ended(session, child)
         session.record_result(child, evidence)
     fixed = prepare(session, prs, reason)
     return transition(session, fixed["review_run_id"], "instructed", instruction)
