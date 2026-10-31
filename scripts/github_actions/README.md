@@ -131,7 +131,8 @@ sudo -u tennis-actions env HOME=/var/lib/tennis-lab-actions/home \
 
 導入スクリプトは公式GitHub Releaseの固定assetを取得し、SHA-256が一致してから中の `antigravity` を `agy` として配置する。
 所有者は `tennis-actions`、置き先は `/var/lib/tennis-lab-actions/home/.local/bin/agy`。
-同じpinと導入記録があり、実行ファイルも改変されていなければ再取得しない。
+途中の `~/.local` も `tennis-actions` の所有にする。rootの所有だとjobのuvが `~/.local/share` を作れない。
+同じpinと導入記録があり、実行ファイルも改変されていなければ再取得しない。このときも2つのディレクトリの所有者を直す。
 検証不一致では新規配置せず、既存の実行ファイルも置き換えない。公式のlatest用 `install.sh` は使わない。
 
 2つ目のコマンドで開いた対話画面で、利用するGoogleアカウントへ直接ログインする。
