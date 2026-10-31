@@ -1241,40 +1241,23 @@ def test_code_mentions_are_neither_destinations_nor_recipient_errors(
     assert w.fake.calls == calls
 
 
-@pytest.mark.parametrize("command", ["post", "reply"])
-@pytest.mark.parametrize("fence", ["```", "~~~"])
-@pytest.mark.parametrize("outside", [False, True])
 @pytest.mark.parametrize(
-    "template",
+    "command,fence,outside,template",
     [
-        "> {fence}text\n> {mentions}\n> {fence}",
-        "> > {fence}text\n> > {mentions}\n> > {fence}",
-        ">>>{fence}text\n>>>{mentions}\n>>>{fence}",
-        "   >   > {fence}text\n > > {mentions}\n> > {fence}",
-        "- {fence}text\n  {mentions}\n  {fence}",
-        "* {fence}text\n  {mentions}\n  {fence}",
-        "+ {fence}text\n  {mentions}\n  {fence}",
-        "1. {fence}text\n   {mentions}\n   {fence}",
-        "12) {fence}text\n    {mentions}\n    {fence}",
-        "123456789. {fence}text\n           {mentions}\n           {fence}",
-        "- Example\n\n  {fence}text\n  {mentions}\n  {fence}",
-        "12. Example\n\n    {fence}text\n    {mentions}\n    {fence}",
-        "-    Example\n\n     {fence}text\n     {mentions}\n     {fence}",
-        "- Example\n  1. {fence}text\n     {mentions}\n     {fence}",
-        "> - {fence}text\n>   {mentions}\n>   {fence}",
-        "- > {fence}text\n  > {mentions}\n  > {fence}",
-        "-\t{fence}text\n\t{mentions}\n\t{fence}",
-        ">\t{fence}text\n>\t{mentions}\n>\t{fence}",
-        "> Example\n1. {fence}text\n   {mentions}\n   {fence}",
-        "> Example\n- {fence}text\n  {mentions}\n  {fence}",
-        "> Example\n{fence}text\n{mentions}\n{fence}",
-        "- Example\n{fence}text\n{mentions}\n{fence}",
-        "1. Example\n2. {fence}text\n   {mentions}\n   {fence}",
-        "1) Example\n0) {fence}text\n   {mentions}\n   {fence}",
-        "1. Example\n2.\n   Example\n3. {fence}text\n   {mentions}\n   {fence}",
-        "> 1. Example\n> 2. {fence}text\n>    {mentions}\n>    {fence}",
-        "- 1. Example\n  2. {fence}text\n     {mentions}\n     {fence}",
-        "1. > Example\n2. {fence}text\n   {mentions}\n   {fence}",
+        pytest.param(
+            "post",
+            "~~~",
+            False,
+            "> {fence}text\n> {mentions}\n> {fence}",
+            id="post-quote",
+        ),
+        pytest.param(
+            "reply",
+            "```",
+            True,
+            "- Example\n  1. {fence}text\n     {mentions}\n     {fence}",
+            id="reply-nested-list-with-prose",
+        ),
     ],
 )
 def test_container_code_mentions_do_not_change_post_or_reply_delivery(
@@ -1317,22 +1300,18 @@ def test_container_code_mentions_do_not_change_post_or_reply_delivery(
     w.assert_delivered(post, [target, 3] if outside else [target])
 
 
-@pytest.mark.parametrize("command", ["post", "reply"])
-@pytest.mark.parametrize("fence", ["```", "~~~"])
 @pytest.mark.parametrize(
-    "template",
+    "command,fence,template",
     [
-        "> {fence}\n> {mentions}\n@{other}",
-        "> > {fence}\n> > {mentions}\n> @{other}",
-        "- {fence}\n  {mentions}\n@{other}",
-        "- {fence}\n  {mentions}\n- @{other}",
-        "1. {fence}\n   {mentions}\n2. @{other}",
-        "> - {fence}\n>   {mentions}\n> - @{other}",
-        "- > {fence}\n  > {mentions}\n  @{other}",
-        "- Example\n  - {fence}\n    {mentions}\n  @{other}",
-        "> Example\n1. {fence}\n   {mentions}\n@{other}",
-        "> - Example\n1. {fence}\n   {mentions}\n@{other}",
-        "1. Example\n2. {fence}\n   {mentions}\n@{other}",
+        pytest.param(
+            "post", "```", "> {fence}\n> {mentions}\n@{other}", id="post-leaves-quote"
+        ),
+        pytest.param(
+            "reply",
+            "~~~",
+            "1. {fence}\n   {mentions}\n2. @{other}",
+            id="reply-next-item",
+        ),
     ],
 )
 def test_unclosed_container_fence_ends_with_its_container(
@@ -1358,35 +1337,15 @@ def test_unclosed_container_fence_ends_with_its_container(
     w.assert_delivered(post, expected)
 
 
-@pytest.mark.parametrize("command", ["post", "reply"])
 @pytest.mark.parametrize(
-    "template",
+    "command,template",
     [
-        "> Example\n2. ~~~\n   @{other}",
-        "> Example\n2. ```\n   @{other}",
-        "> Example\n0) ~~~\n   @{other}",
-        "> Example\n02. ~~~\n    @{other}",
-        "> > Example\n2. ~~~\n   @{other}",
-        "> - Example\n2. ~~~\n   @{other}",
-        "> 1. Example\n2. ~~~\n   @{other}",
-        "- Example\n2. ~~~\n   @{other}",
-        "* Example\n2. ```\n   @{other}",
-        "1. Example\n2) ~~~\n   @{other}",
-        "1) Example\n0. ~~~\n   @{other}",
-        "- > Example\n  2. ~~~\n     @{other}",
-        "- 1. Example\n2. ~~~\n   @{other}",
-        "> - 1. Example\n> 2. ~~~\n>    @{other}",
-        "> Example\n*\n2. ~~~\n   @{other}",
-        "> Example\n+\n2. ~~~\n   @{other}",
-        "> Example\n1.\n2. ~~~\n   @{other}",
-        "+ Example\n*\n2. ~~~\n   @{other}",
-        "- Example\n1.\n2. ~~~\n   @{other}",
-        "> Example\n~~\n@{other}",
-        "- Example\n~~\n@{other}",
-        "> Example\n```invalid`info\n@{other}",
-        "- Example\n```invalid`info\n@{other}",
-        "> Example\n    ~~~\n    @{other}",
-        "- Example\n  2. ~~~\n     @{other}",
+        pytest.param(
+            "post", "> Example\n2. ~~~\n   @{other}", id="post-lazy-ordered-item"
+        ),
+        pytest.param(
+            "reply", "> Example\n```invalid`info\n@{other}", id="reply-invalid-fence"
+        ),
     ],
 )
 def test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery(

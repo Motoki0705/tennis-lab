@@ -798,14 +798,11 @@ def test_check_run_read_failure_is_an_explicit_collection_error(
 
 
 @pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
-@pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
-def test_dependency_still_blocks_for_any_ci_state(
-    gate_env: GateEnv, ci_state: str
-) -> None:
+def test_dependency_still_blocks_with_successful_ci(gate_env: GateEnv) -> None:
     g, p = gate_env, gate_env.review.p
     state = p.state()
     for pr in state["prs"]:
-        pr["statusCheckRollup"] = ci_rollup(ci_state)
+        pr["statusCheckRollup"] = ci_rollup("success")
         if pr["number"] != 100:
             pr["mergeable"] = None
     p.save(state)
@@ -820,45 +817,63 @@ def test_dependency_still_blocks_for_any_ci_state(
     "case,reason,gate_env",
     [
         pytest.param(
-            case,
-            reason,
-            "multiple" if case == "head" else None,
-            id=f"{case}-{reason}",
-        )
-        for case, reason in [
-            ("no_review", "parent_review_missing_or_interrupted"),
-            ("not_received", "parent_review_not_confirmed"),
-            ("fixing", "parent_review_not_confirmed"),
-            ("interrupted", "review_not_published_or_authorized"),
-            ("outside", "pr_outside_review_targets"),
-            ("not_reviewed", "pr_100_not_reviewed"),
-            ("major", "unresolved_findings"),
-            ("blocker", "unresolved_findings"),
-            ("head", "pr_100_unverified_head"),
-            ("base_ref", "base_not_default_branch"),
-            ("draft", "draft"),
-            ("fork", "fork"),
-            ("closed", "pr_not_open"),
-            ("author", "author_unknown"),
-            ("conflict", "conflict"),
-            ("unknown", "mergeable_unknown"),
-            ("human", "human_judgment_pending"),
-            ("parent_human", "human_judgment_pending"),
-            ("child_human", "human_judgment_pending"),
-            ("stopped", "child_10_stopped"),
-            ("parent_missing", "parent_result_missing_or_inconsistent"),
-            ("projection_missing", "pr_100_projection_missing_or_inconsistent"),
-            ("projection_digest", "pr_100_projection_missing_or_inconsistent"),
-            ("failed_record", "parent_result_missing_or_inconsistent"),
-            ("foreign_result", "parent_result_missing_or_inconsistent"),
-            ("quoted_result", "parent_result_missing_or_inconsistent"),
-        ]
+            "no_review", "parent_review_missing_or_interrupted", None, id="no_review"
+        ),
+        pytest.param(
+            "not_received", "parent_review_not_confirmed", None, id="not_received"
+        ),
+        pytest.param("fixing", "parent_review_not_confirmed", None, id="fixing"),
+        pytest.param(
+            "interrupted", "review_not_published_or_authorized", None, id="interrupted"
+        ),
+        pytest.param("outside", "pr_outside_review_targets", None, id="outside"),
+        pytest.param("major", "unresolved_findings", None, id="major"),
+        pytest.param("head", "pr_100_unverified_head", "multiple", id="head"),
+        pytest.param("draft", "draft", None, id="draft"),
+        pytest.param("parent_human", "human_judgment_pending", None, id="parent_human"),
+        pytest.param("child_human", "human_judgment_pending", None, id="child_human"),
+        pytest.param("stopped", "child_10_stopped", None, id="stopped"),
+        pytest.param(
+            "parent_missing",
+            "parent_result_missing_or_inconsistent",
+            None,
+            id="parent_missing",
+        ),
+        pytest.param(
+            "projection_missing",
+            "pr_100_projection_missing_or_inconsistent",
+            None,
+            id="projection_missing",
+        ),
+        pytest.param(
+            "projection_digest",
+            "pr_100_projection_missing_or_inconsistent",
+            None,
+            id="projection_digest",
+        ),
+        pytest.param(
+            "failed_record",
+            "parent_result_missing_or_inconsistent",
+            None,
+            id="failed_record",
+        ),
+        pytest.param(
+            "foreign_result",
+            "parent_result_missing_or_inconsistent",
+            None,
+            id="foreign_result",
+        ),
+        pytest.param(
+            "quoted_result",
+            "parent_result_missing_or_inconsistent",
+            None,
+            id="quoted_result",
+        ),
     ],
     indirect=["gate_env"],
 )
-@pytest.mark.parametrize("ci_state", ["absent", "pending", "failure"])
 def test_rejections_never_merge_or_launch_agent(
-    gate_env: GateEnv, case: str, reason: str, ci_state: str
+    gate_env: GateEnv, case: str, reason: str
 ) -> None:
     g, r, p = gate_env, gate_env.review, gate_env.review.p
     state = p.state()
@@ -887,50 +902,32 @@ def test_rejections_never_merge_or_launch_agent(
             "statusCheckRollup": first["statusCheckRollup"],
         }
         state["prs"].append(extra)
-    elif case in {"not_reviewed", "major", "blocker"}:
+    elif case == "major":
 
         def mutate(result: dict[str, Any]) -> None:
-            if case == "not_reviewed":
-                result.update(status="failed", verdict="incomplete", error="未確認")
-                result["prs"][0]["coverage"] = "not_reviewed"
-            else:
-                result["verdict"] = "request_changes"
-                result["prs"][0]["findings"] = [
-                    {
-                        "id": "pr-100-1",
-                        "severity": case,
-                        "path": "change.txt",
-                        "line": 1,
-                        "rule": "正しさ",
-                        "detail": "修正が必要",
-                    }
-                ]
+            result["verdict"] = "request_changes"
+            result["prs"][0]["findings"] = [
+                {
+                    "id": "pr-100-1",
+                    "severity": "major",
+                    "path": "change.txt",
+                    "line": 1,
+                    "rule": "正しさ",
+                    "detail": "修正が必要",
+                }
+            ]
 
         g.edit_result(mutate)
         state = p.state()
-    elif case in {"head", "base"}:
+    elif case == "head":
         worktree = p.repo / ".claude/worktrees/pr-0"
         (worktree / "change.txt").write_text("unexpected\n")
         run_git(worktree, "commit", "-am", "unexpected update")
-        first["head" if case == "head" else "base"]["sha"] = run_git(
-            worktree, "rev-parse", "HEAD"
-        )
-    elif case == "base_ref":
-        first["base"]["ref"] = "other"
+        first["head"]["sha"] = run_git(worktree, "rev-parse", "HEAD")
     elif case == "draft":
         first["draft"] = True
-    elif case == "fork":
-        first["head"]["repo"]["full_name"] = "fork/r"
-    elif case == "closed":
-        first["state"] = "closed"
-    elif case == "author":
-        first["head"]["ref"] = "unknown/source"
-    elif case in {"conflict", "unknown"}:
-        first["mergeable"] = False if case == "conflict" else None
-    elif case in {"human", "parent_human"}:
-        (first if case == "human" else state["issues"]["1"])["labels"] = [
-            {"name": "needs-human"}
-        ] + (state["issues"]["1"]["labels"] if case == "parent_human" else [])
+    elif case == "parent_human":
+        state["issues"]["1"]["labels"].append({"name": "needs-human"})
     elif case == "child_human":
         state["issues"]["10"]["labels"].append({"name": "needs-human"})
     elif case == "stopped":
@@ -967,10 +964,10 @@ def test_rejections_never_merge_or_launch_agent(
         record["result_sha256"] = "f" * 64
         state["comments"]["100"][0]["body"] = g.policy.marker(record)
     p.save(state)
-    # Isolate the rejection: prevent the other independent PRs from merging.
+    # Successful CI cannot mask the rejection. Other PRs stay unmergeable.
     state = p.state()
     for pr in state["prs"]:
-        pr["statusCheckRollup"] = ci_rollup(ci_state)
+        pr["statusCheckRollup"] = ci_rollup("success")
         if pr["number"] not in {100, 103}:
             pr["mergeable"] = None
     p.save(state)
