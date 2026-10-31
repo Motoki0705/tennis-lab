@@ -1,11 +1,13 @@
 """Analyze which PLCS loss term is dominant for a trained checkpoint.
 
 Loads a trained checkpoint together with the ``hparams.yaml`` from its run
-directory, evaluates it on a split, and reports for every registered
-:class:`PLCSLoss` term its raw loss, configured weight, and weighted
-contribution to the total. This shows which term dominates the objective and
-how large the pose-naturalness terms (``joint_angle``, ``torsion_angle``,
-``torso_twist``, ``bone_length``) are relative to the supervised ones.
+directory, evaluates it on a split, and reports for every enabled
+(weight > 0) :class:`PLCSLoss` term its raw loss, configured weight, and
+weighted contribution to the total. This shows which term dominates the
+objective and how large the pose-naturalness terms (``joint_angle``,
+``torsion_angle``, ``torso_twist``, ``bone_length``) are relative to the
+supervised ones. Weight-0 terms are not evaluated; enable them through a
+loss override to preview their raw values.
 It also saves per-batch raw/weighted loss distributions as a plot.
 
 Usage:
