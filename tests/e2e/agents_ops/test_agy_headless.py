@@ -110,32 +110,33 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     assert len(calls) == 3
     assert calls[0]["args"] == calls[2]["args"] == ["--version"]
     assert all(call["disable_auto_update"] == "true" for call in calls)
+    assert all(
+        call["read_environment"]
+        == {
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_PAGER": "cat",
+            "GH_PAGER": "cat",
+            "RIPGREP_CONFIG_PATH": "/dev/null",
+        }
+        for call in calls
+    )
     assert calls[1]["cwd"] == str(fake_agy["cwd"])
     args = calls[1]["args"]
     assert args[args.index("-p") + 1] == fake_agy["prompt_file"].read_text()
     assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
     assert args[args.index("--mode") + 1] == "plan"
     settings = json.loads(args[args.index("--settings") + 1])["permissions"]
-    assert set(settings["allow"]) == {
-        f"command({name})"
-        for name in (
-            "cat",
-            "ls",
-            "rg",
-            "grep",
-            "head",
-            "tail",
-            "wc",
-            "git log",
-            "git show",
-            "git diff",
-            "git grep",
-            "gh issue view",
-            "gh issue list",
-            "gh pr view",
-        )
-    }
-    assert {"write_file(*)", "edit_file(*)"} <= set(settings["deny"])
+    assert all(
+        rule.startswith("command(regex:^") and rule.endswith("$)")
+        for rule in settings["allow"]
+    )
+    assert {
+        "write_file(*)",
+        "read_url(*)",
+        "execute_url(*)",
+        "unsandboxed(*)",
+        "mcp(*)",
+    } <= set(settings["deny"])
     assert fake_agy["log_file"].stat().st_mode & 0o777 == 0o600
 
 
@@ -272,3 +273,78 @@ def test_smoke_publishes_only_validated_diagnostics(
         ]
     else:
         assert report["status"] == "failed"
+
+
+@pytest.mark.parametrize(
+    ("scenario", "failure"),
+    [
+        ("probe_success", None),
+        ("probe_missing_denial", "missing_command_denial"),
+        ("probe_workspace_write", "workspace_modified"),
+        ("probe_outside_write", "outside_modified"),
+        ("probe_workspace_edit", "workspace_modified"),
+        ("probe_read_denied", "runtime_or_read_failure"),
+        ("probe_bad_model", "unconfirmed_model"),
+        ("probe_cli_error", "runtime_or_read_failure"),
+    ],
+)
+def test_permission_smoke_checks_denial_reads_and_file_integrity(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    scenario: str,
+    failure: str | None,
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", scenario)
+    summary = fake_agy["cwd"] / "summary.md"
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/github_actions/agy_smoke.py"),
+            "--agy",
+            str(fake_agy["agy"]),
+            "--config-file",
+            str(fake_agy["config_file"]),
+            "--permissions-probe",
+            "--timeout",
+            "3",
+        ],
+        cwd=ROOT,
+        env={**os.environ, "GITHUB_STEP_SUMMARY": str(summary)},
+        text=True,
+        capture_output=True,
+        timeout=10,
+    )
+    assert proc.returncode == (0 if failure is None else 1), proc.stderr
+    report = json.loads(proc.stdout)
+    for secret in (
+        "private-detail",
+        "private-session",
+        "AGY_PROBE_TOKEN=",
+        "execution-canary",
+        str(fake_agy["cwd"]),
+    ):
+        assert secret not in summary.read_text()
+    if failure is None:
+        assert report["read_checks_passed"] is True
+        assert report["read_commands_requested"] == 9
+        assert report["denial_commands_rejected"] == 20
+        assert all(
+            case["command_denials"] > 0
+            and case["workspace_unchanged"]
+            and case["outside_unchanged"]
+            for case in report["probes"]
+        )
+        calls = [
+            json.loads(line)
+            for line in (fake_agy["cwd"] / "invocations.jsonl").read_text().splitlines()
+        ]
+        probes = [
+            json.loads(call["args"][call["args"].index("-p") + 1].splitlines()[1])
+            for call in calls
+            if "-p" in call["args"]
+        ]
+        assert len(probes) == 21
+        assert len({probe["command"] for probe in probes[1:]}) == 20
+        assert any("\n" in probe["command"] for probe in probes[1:])
+    else:
+        assert report["reason"] == failure

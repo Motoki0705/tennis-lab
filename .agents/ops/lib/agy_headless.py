@@ -16,27 +16,12 @@ from typing import Any
 from agent_events import parse_json
 from agent_output import OutputSchema
 from agent_settings import read_pins
+from agy_permissions import command_permissions
 from opsproc import CommandError, run_process_group
 
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 DEFAULT_AGY = Path("/var/lib/tennis-lab-actions/home/.local/bin/agy")
 MODEL_LABELS = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)"}
-READ_COMMANDS = (
-    "cat",
-    "ls",
-    "rg",
-    "grep",
-    "head",
-    "tail",
-    "wc",
-    "git log",
-    "git show",
-    "git diff",
-    "git grep",
-    "gh issue view",
-    "gh issue list",
-    "gh pr view",
-)
 
 
 @dataclass(frozen=True)
@@ -101,11 +86,19 @@ def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
 
 
 def readonly_settings() -> dict[str, Any]:
-    """Explicit CLI permission rules; unlisted commands remain unapproved."""
+    """Deny shell syntax, then allow only complete enumerated command forms."""
+    commands = command_permissions()
     return {
         "permissions": {
-            "allow": [f"command({command})" for command in READ_COMMANDS],
-            "deny": ["write_file(*)", "edit_file(*)", "mcp(*)", "execute_url(*)"],
+            "allow": commands["allow"],
+            "deny": [
+                "write_file(*)",
+                "read_url(*)",
+                "execute_url(*)",
+                "unsandboxed(*)",
+                "mcp(*)",
+                *commands["deny"],
+            ],
         }
     }
 
@@ -120,6 +113,20 @@ def _observed_version(agy: Path, cwd: Path, timeout: float, env: dict[str, str])
     if len(versions) != 1:
         raise AgyError("version_mismatch", "agy --version did not report one version")
     return versions[0]
+
+
+def _observed_model(log_file: Path, model: str, denied: list[dict[str, str]]) -> str:
+    labels: list[str] = re.findall(
+        r'Propagating selected model override to backend: label="([^"\r\n]+)"',
+        log_file.read_text(encoding="utf-8"),
+    )
+    if not labels or set(labels) != {MODEL_LABELS[model]}:
+        raise AgyError(
+            "model_mismatch",
+            "agy log does not confirm the pinned model",
+            denied_actions=denied,
+        )
+    return labels[-1]
 
 
 def run_headless(
@@ -157,7 +164,14 @@ def run_headless(
     except (OSError, ValueError, UnicodeError) as exc:
         raise AgyError("invalid_input", f"invalid agy input: {exc}") from exc
 
-    env = {**os.environ, "AGY_CLI_DISABLE_AUTO_UPDATE": "true"}
+    env = {
+        **os.environ,
+        "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
+        "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_PAGER": "cat",
+        "GH_PAGER": "cat",
+        "RIPGREP_CONFIG_PATH": "/dev/null",
+    }
     started = time.monotonic()
     deadline = started + timeout
 
@@ -242,21 +256,12 @@ def run_headless(
                 raise ValueError("invalid duration_seconds")
         except (ValueError, UnicodeError) as exc:
             raise AgyError("invalid_output", str(exc), denied_actions=denied) from exc
-        labels: list[str] = re.findall(
-            r'Propagating selected model override to backend: label="([^"\r\n]+)"',
-            log_file.read_text(encoding="utf-8"),
-        )
-        if not labels or set(labels) != {MODEL_LABELS[selected_model]}:
-            raise AgyError(
-                "model_mismatch",
-                "agy log does not confirm the pinned model",
-                denied_actions=denied,
-            )
+        observed_model = _observed_model(log_file, selected_model, denied)
         return AgyResult(
             structured_output=payload["structured_output"],
             usage=usage,
             denied_actions=denied,
-            observed_model=labels[-1],
+            observed_model=observed_model,
             observed_version=observed_version,
             duration_seconds=duration,
             elapsed_seconds=time.monotonic() - started,
