@@ -261,6 +261,13 @@ def validate_plan(plan: Any, *, root: Path | None = None) -> dict[str, Any]:
     return plan
 
 
+def parse_attempt(value: Any) -> int:
+    """Actions attempts are positive integer strings, never coerced JSON values."""
+    if not isinstance(value, str) or not re.fullmatch(r"[1-9][0-9]*", value):
+        raise ValueError(f"attempt must be a positive integer string, got {value!r}")
+    return int(value)
+
+
 def read_plan(path: Path, *, root: Path | None = None) -> dict[str, Any]:
     return validate_plan(json.loads(path.read_text()), root=root)
 

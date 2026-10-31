@@ -29,8 +29,9 @@ path選別はPRだけです。mainへのpushと手動dispatchは常に全CPUを�
 `.spin`・workflow・本CIツール/登録表）の変更、rename、削除、差分取得不能では理由付きで全件を
 要求します。不正な登録表・planを部分実行へ変換しません。
 
-標準ライブラリだけを使う `plan` jobが、source/run/attemptに固定した `plan.json` を1つ生成し、
-全shardと `Python` 集約へ渡します。
+標準ライブラリだけを使う `plan` jobが、source・run・plan作成時のattemptを固定した
+`plan.json` を1つ生成し、全shardと `Python` 集約へ渡します。部分再実行でも
+[shardの識別情報とattemptの規則](sharding.ja.md#証拠と失敗)に従って同じplanを使います。
 
 ```bash
 python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
@@ -141,6 +142,7 @@ nullです。CLI自体のsignal/error終了値とは分けます。
 | `results.json` | nodeごとの成功・skip・失敗・xfail・xpass・未完了とphase時間 |
 | `junit.xml`, `pytest.log` | 独立したJUnit件数・identity・時間照合、標準durations出力 |
 | `summary.json`, `summary.md` | 完全性、process起動/収集、file/fixtureごとの寄与、結果件数 |
+| 集約の `coverage.json`, `artifacts.json` | coverage判定、plan/shard/集約のattempt、検査済みREST artifactのID・name・作成時刻・sizeまたは一覧エラー。[分割](sharding.ja.md#証拠と失敗)を参照 |
 | 集約の `growth.json`, `growth-summary.json`, `growth-summary.md` | 監査済みの要求対象の観測と参考の増減/コスト比較。[警告](#テスト増減とコストの警告)を参照 |
 
 `full_cpu_baseline` は既定の全CPU対象と成功した観測の両方を必要とします。
@@ -171,7 +173,13 @@ eventの直列化/flush時間とreport生成時間を記録します。write時�
 
 CIは依存準備より前にrunnerを記録します。summary・REST snapshot・artifactは `always()`
 で準備/テスト失敗後にも実行します。強制cancel・runner消失でuploadができない場合も、
-REST側ではcancel/不完全なattemptとして残ります。artifact名はrunとattemptを含みます。
+REST側ではcancel/不完全なattemptとして残ります。lane planとshard計測のartifact名は
+run（計測はshard indexも）を含み、再実行で上書きします。集約は欠落・重複・余分なshardを
+検査し、RESTのIDで取得対象を固定します。`cpu-test-coverage-RUN-ATTEMPT` は集約attemptを
+名前に残し、`coverage.json` にplan/shardのattempt、`artifacts.json` に取得一覧を保存します。
+部分再実行は同じrun/HEAD/plan内でshardごとの最新attemptを使い、全体の再実行ではGitHubが
+以前のartifactを削除します。失敗attemptの計測は上書きで失われることがあります。
+識別情報の照合と証拠の正本は[再実行の規則](sharding.ja.md#証拠と失敗)です。
 cache hitは `setup-uv` の出力から取り、取得できないものはunknownです。
 
 job内のREST snapshotは暫定値です。自身のjob、upload、post-cacheがまだ終わっていません。
@@ -218,4 +226,4 @@ APIの正本は [pytest hooks](https://docs.pytest.org/en/stable/reference/refer
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv`出力](https://github.com/astral-sh/setup-uv#outputs)です。
 
-完全なActions成果物からの重み再生成は[`profile`コマンド](sharding.ja.md#実測profileの再生成)を使います。失敗caseを残し、不完全なattemptは拒否します。
+同じrunの最新の完全なshard成果物からの重み再生成は[`profile`コマンド](sharding.ja.md#実測profileの再生成)を使います。妥当なattempt混在は出典を残して受理し、失敗caseを保持して、不完全な観測は拒否します。

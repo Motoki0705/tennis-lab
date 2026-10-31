@@ -129,7 +129,7 @@ def run(
     shard: tuple[int, int, Path] | None = None,
     lane_plan: Path | None = None,
 ) -> int:
-    from .lanes import load_registry, make_plan, read_plan
+    from .lanes import load_registry, make_plan, parse_attempt, read_plan
     from .report import summarize
 
     if lane_plan is not None and shard is None:
@@ -209,12 +209,20 @@ def run(
             or metadata["source"].get("commit")
         ):
             raise ValueError("lane plan source revision differs from the measurement")
-        for key, variable in (
-            ("run_id", "GITHUB_RUN_ID"),
-            ("attempt", "GITHUB_RUN_ATTEMPT"),
+        if plan["run_id"] != metadata["environment"].get("GITHUB_RUN_ID"):
+            raise ValueError("lane plan run differs from the measurement")
+        current_attempt = metadata["environment"].get("GITHUB_RUN_ATTEMPT")
+        # Auto-generated local plans have no Actions context. Explicit plans and
+        # all Actions measurements require both attempts, including on reruns.
+        actions_plan = (
+            lane_plan is not None
+            or plan["run_id"] is not None
+            or current_attempt is not None
+        )
+        if actions_plan and parse_attempt(plan.get("attempt")) > parse_attempt(
+            current_attempt
         ):
-            if plan[key] != metadata["environment"].get(variable):
-                raise ValueError("lane plan run/attempt differs from the measurement")
+            raise ValueError("lane plan attempt is newer than the measurement")
         write_json(output / "lane-plan.json", plan)
         command.extend(["--ci-lane-plan", str(output / "lane-plan.json")])
     metadata["lane_plan_id"] = plan["plan_id"] if plan else None
