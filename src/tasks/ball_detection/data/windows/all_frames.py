@@ -100,8 +100,9 @@ def stored_label_kinds(
 
 def training_packs(
     intervals: list[tuple[int, int]], codes: NDArray[np.uint8], config: AllFrameWindowConfig,
+    *, require_position: bool = True,
 ) -> list[dict[str, int]]:
-    prefix = np.r_[0, np.cumsum(codes != 0)]
+    prefix = np.r_[0, np.cumsum(codes == 1 if require_position else codes != 0)]
     return [dict(start=start, interval_index=i) for i, (a, b) in enumerate(intervals)
             for start in window_starts(a, b, config.pack_length, config.pack_stride)
             if prefix[start + config.pack_length] > prefix[start]]

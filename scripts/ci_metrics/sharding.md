@@ -53,7 +53,8 @@ record actual phases, outcomes, JUnit, source and environment. The aggregate
 recomputes the per-shard report from those events and requires:
 
 - all expected shard indices exactly once and every expected worker manifest;
-- matching clean source revision, run/attempt, profile, plan, policy and universe;
+- matching clean source revision, run, profile, fixed lane plan (`plan_id`), policy and universe;
+- positive integer string attempts with lane plan attempt ≤ each shard attempt ≤ aggregate job attempt;
 - registry/source file inventory matching the fixed plan and independent events matching manifest U;
 - U = R disjoint-union D, with every deferred node justified by the registry and plan;
 - successful complete observations of the requested scope and executed inventory equal to the selected plan;
@@ -73,11 +74,27 @@ skips retain the existing semantics and remain visible. Matrix fail-fast is disa
 so other shards can still leave evidence. Apt network retries and each apt step are
 bounded; failure is not converted into test omission.
 
-Artifacts include run/attempt and shard index. `cpu-test-coverage-*` contains the
-aggregate `coverage.json`, including scope, suite outcomes and failure reasons. Consumers can
-join this with each shard's JUnit and manifest using those identities. Rerun **all
-jobs** for a self-contained new attempt; successful artifacts from an earlier
-attempt are deliberately not mixed into a partial rerun.
+Partial reruns reuse the fixed lane plan and the latest result of each shard,
+including successful shards from earlier attempts, only within the same run,
+source HEAD (`source_sha`) and lane plan (`plan_id`). Attempts may differ within
+the bounds above; another run, HEAD or plan is rejected.
+
+The plan artifact is `cpu-lane-plan-RUN`; measurements are
+`cpu-test-measurements-RUN-shard-N`. Both upload with `overwrite: true`, replacing
+only the rerun plan/shard. Measurements from a failed attempt can be overwritten;
+its job logs remain available. GitHub deletes earlier artifacts when rerunning all jobs.
+Downloads use the run-wide REST API with explicit `run-id` and `github-token`.
+Before downloading, the aggregate pages through the REST inventory and requires
+exactly one non-expired plan and one artifact for every expected shard. Missing,
+duplicate or extra shard artifacts fail with explicit reasons. Downloads use the
+checked artifact IDs, keeping shard directories separate to prevent silent file mixing.
+
+`cpu-test-coverage-RUN-ATTEMPT` retains the aggregate job's attempt in its name.
+Its `coverage.json` records `attempt` (aggregate), `plan_attempt`, `shard_attempts`
+(shard index to attempt), scope, suite outcomes and failure reasons. The artifact
+also includes `artifacts.json`: the checked download set with IDs, names,
+`created_at`, `size_in_bytes` and inventory errors. A Python-only rerun can audit
+unchanged shards from earlier attempts while retaining this provenance.
 
 ## Measurement limits
 
@@ -90,14 +107,14 @@ No runner-count recommendation is inferred from the number of test files alone.
 
 ## Regenerate measured weights
 
-Download all `cpu-test-measurements-RUN-ATTEMPT-shard-*` artifacts from one attempt into a directory with one artifact directory per shard, then run:
+Download the latest `cpu-test-measurements-RUN-shard-*` artifacts from one run, with exactly one artifact directory per shard and the same HEAD and lane plan, then run:
 
 ```bash
 .venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
   --output scripts/ci_metrics/cpu-file-times.json
 ```
 
-The command rebuilds phase/JUnit reports and audits source/run/attempt, all worker manifests, assignment, and the exact full-inventory multiset. Missing phases, duplicates, dirty/mixed sources, cancellations and collection failures are rejected. Complete test failures remain in the weights and in `source.counts`/`unsuccessful_cases`; generating weights never turns them into passing CI. `Python` still requires successful jobs and observations. The audit now also reports `observations_complete` separately from success.
+The command rebuilds phase/JUnit reports and audits source/run/plan, attempt bounds, all worker manifests, assignment, and the exact full-inventory multiset. For mixed attempts it uses the maximum shard attempt as the aggregate attempt and records `source.plan_attempt` and `source.shard_attempts`. Missing phases, duplicates, dirty/mixed sources, cancellations and collection failures are rejected. Complete test failures remain in the weights and in `source.counts`/`unsuccessful_cases`; generating weights never turns them into passing CI. `Python` still requires successful jobs and observations. The audit also reports `observations_complete` separately from success.
 
 Any deferred case rejects profile generation. A successful subset cannot overwrite
 the full CPU scheduling profile or claim a full CPU baseline.

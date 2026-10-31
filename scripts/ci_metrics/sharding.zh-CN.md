@@ -27,7 +27,8 @@ schema-2的 `shard-gw*.json` 保存 `universe_nodeids`（U）、`requested_nodei
 汇总从实际 phase 重新生成报告，并要求：
 
 - 所有 shard index 和 worker manifest 恰好出现一次。
-- 干净源码commit、run、attempt、profile、plan、policy、U一致。
+- 干净源码commit、run、profile、固定lane plan（`plan_id`）、policy、U一致。
+- attempt必须为正整数字符串，且lane plan attempt ≤ 各shard attempt ≤ 汇总job attempt。
 - 注册表和源码文件清单与固定plan一致，独立event的U与manifest的U一致。
 - U = R ⊎ D，每个延后case均有注册表与plan依据。
 - 请求scope的观测完整且成功，实际执行等于计划。
@@ -43,9 +44,22 @@ U是既有marker与明确排除后的CPU集合，不代表所有环境的全部�
 原有合法 CPU 排除和 setup/module skip 保持可见。matrix 禁用 fail-fast。apt 的网络重试
 和 step 时长有上限，下载失败不会转换为省略测试。
 
-artifact 名包含 run/attempt/shard。`cpu-test-coverage-*` 中的 `coverage.json` 保存汇总
-scope、suite结果和失败原因，可用这些标识关联JUnit/manifest。重试须重新执行全部 job；
-不会将以前 attempt 的成功结果混入部分重试。
+部分重试仅在同一run、同一HEAD（`source_sha`）和同一lane plan（`plan_id`）内，
+复用固定plan与每个shard的最新结果。未重试的成功shard可保留之前的attempt。
+attempt可在上述范围内混用；其他run、HEAD或plan会被拒绝。
+
+plan artifact名为 `cpu-lane-plan-RUN`，测量名为 `cpu-test-measurements-RUN-shard-N`。
+两者上传均设置 `overwrite: true`，仅替换重试的plan/shard。
+失败attempt的测量可能被覆盖删除，job日志仍保留。重试全部job时，GitHub会删除之前的artifact。
+下载明确指定 `run-id` 与 `github-token`，使用覆盖整个run的REST API。
+汇总先取得REST清单的所有分页，要求未过期的plan与每个预期shard各恰好一个artifact。
+缺失、重复或额外shard均明确失败。下载使用检查过的artifact ID，并保持shard独立目录，防止文件静默混合。
+
+`cpu-test-coverage-RUN-ATTEMPT` 名称保留汇总job的attempt。
+`coverage.json` 保存 `attempt`（汇总）、`plan_attempt`、`shard_attempts`（index → attempt）、
+scope、suite结果与失败原因。同一artifact内的 `artifacts.json` 保存检查过的下载集合的
+ID、name、`created_at`、`size_in_bytes` 以及清单错误。
+仅重试Python时，也能带着这些证据重新验证较早attempt的shard。
 
 ## 测量限制
 
@@ -57,14 +71,14 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 
 ## 重新生成实测profile
 
-下载同一attempt的所有 `cpu-test-measurements-RUN-ATTEMPT-shard-*`，每个shard放在单独目录中。
+下载同一run、HEAD和lane plan的最新 `cpu-test-measurements-RUN-shard-*`，每个shard恰好放在一个独立目录中。
 
 ```bash
 .venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
   --output scripts/ci_metrics/cpu-file-times.json
 ```
 
-命令重建phase/JUnit报告，核对source/run/attempt、全部worker manifest、分配与完整inventory多重集合。拒绝phase缺失、重复、dirty/mixed source、取消和收集失败。完整记录的测试失败保留在权重及 `source.counts` / `unsuccessful_cases` 中；生成权重不会令CI通过。`Python` 仍要求job和观测成功。审计另用 `observations_complete` 表示完整性。
+命令重建phase/JUnit报告，核对source/run/plan、attempt范围、全部worker manifest、分配与完整inventory多重集合。混用attempt时，以shard的最大attempt作为汇总attempt，并记录 `source.plan_attempt` 与 `source.shard_attempts`。拒绝phase缺失、重复、dirty/mixed source、取消和收集失败。完整记录的测试失败保留在权重及 `source.counts` / `unsuccessful_cases` 中；生成权重不会令CI通过。`Python` 仍要求job和观测成功。审计另用 `observations_complete` 表示完整性。
 
 只要存在延后case，就拒绝生成profile。部分成功不能覆盖完整CPU权重或宣称完整baseline。
 

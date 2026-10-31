@@ -30,7 +30,8 @@ schema-2の各 `shard-gw*.json` に `universe_nodeids`（U）、`requested_nodei
 通常のphase・JUnit・source・環境と合わせ、集約は次を要求します。
 
 - 全shard indexと全worker manifestが過不足なく揃うこと。
-- cleanなcommit、run、attempt、profile、plan、policy、Uが一致すること。
+- cleanなcommit、run、profile、固定lane plan（`plan_id`）、policy、Uが一致すること。
+- attemptは正の整数の文字列で、lane planのattempt ≤ 各shardのattempt ≤ 集約jobのattemptを満たすこと。
 - 登録表とsourceのfile台帳が固定planと一致し、独立eventのUとmanifestのUが一致すること。
 - U = R ⊎ Dを満たし、各繰延べcaseが登録表とplanで説明できること。
 - 要求scopeの観測が完全で成功し、実行一覧が選択一覧と一致すること。
@@ -46,9 +47,24 @@ Uは既存のmarker・明示除外後のCPU対象であり、全環境の全テ�
 意図したCPU除外と既存の正当なsetup/module skipは従来どおり可視化します。matrixの
 fail-fastは無効です。aptのretryとstep時間には上限を設け、取得失敗を検証省略に変えません。
 
-artifact名はrun/attempt/shardを含み、`cpu-test-coverage-*` の `coverage.json` には
-scope・suite結果・失敗理由を保存します。利用側は同じ識別情報でJUnit/manifestと結合できます。
-再試行は全jobを実行してください。以前のattemptの成功結果を部分再試行へ混ぜません。
+部分再実行では、同じrun・同じHEAD（`source_sha`）・同じlane plan（`plan_id`）に限り、
+固定planとshardごとの最新結果を使います。再実行しなかった成功shardは以前のattemptでも利用できます。
+attemptは上記の範囲内で混在でき、別run・別HEAD・別planは拒否します。
+
+planのartifact名は `cpu-lane-plan-RUN`、計測は `cpu-test-measurements-RUN-shard-N` です。
+両方のuploadに `overwrite: true` を指定し、再実行したplan/shardだけを置き換えます。
+失敗attemptの計測は上書きで消えることがありますが、job logは残ります。
+全jobの再実行ではGitHubが以前のartifactを削除します。
+downloadには `run-id` と `github-token` を明示し、run全体のREST APIを使います。
+集約はdownload前にREST一覧を全ページ取得し、期限切れでないplanと各shardのartifactが
+ちょうど1つずつあることを要求します。欠落・重複・余分なshardは理由付きで失敗させます。
+検査済みのartifact IDでdownloadし、shard別ディレクトリを保ってファイルの静かな混在を防ぎます。
+
+`cpu-test-coverage-RUN-ATTEMPT` の名前には集約jobのattemptを残します。
+`coverage.json` に `attempt`（集約）、`plan_attempt`、`shard_attempts`（index → attempt）、
+scope・suite結果・失敗理由を記録します。同じartifact内の `artifacts.json` に検査した取得集合の
+ID・name・`created_at`・`size_in_bytes` と一覧の検査エラーを保存します。
+Pythonだけの再実行でも、以前のattemptのshardをこの証拠とともに再検証できます。
 
 ## 計測上の制約
 
@@ -58,14 +74,14 @@ fixtureやsuiteが大きく変わったら完全な計測からprofileを更新�
 
 ## 実測profileの再生成
 
-同じattemptの `cpu-test-measurements-RUN-ATTEMPT-shard-*` を全件ダウンロードし、shardごとに1ディレクトリ置きます。
+同じrun・HEAD・lane planの最新 `cpu-test-measurements-RUN-shard-*` を全件ダウンロードし、shardごとに1ディレクトリ置きます。
 
 ```bash
 .venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
   --output scripts/ci_metrics/cpu-file-times.json
 ```
 
-phase/JUnit reportを再構築し、source/run/attempt、全worker manifest、割当、全inventoryの多重集合を照合します。phase欠測、重複、dirty/mixed source、cancel、収集失敗は拒否します。完全に記録されたテスト失敗は重みと `source.counts` / `unsuccessful_cases` に残します。重み生成はCI成功を意味せず、`Python` は引き続きjobと観測の成功を要求します。監査の `observations_complete` は成功と別に完全性を示します。
+phase/JUnit reportを再構築し、source/run/plan、attemptの範囲、全worker manifest、割当、全inventoryの多重集合を照合します。attempt混在時はshardの最大attemptを集約attemptとし、`source.plan_attempt` と `source.shard_attempts` を記録します。phase欠測、重複、dirty/mixed source、cancel、収集失敗は拒否します。完全に記録されたテスト失敗は重みと `source.counts` / `unsuccessful_cases` に残します。重み生成はCI成功を意味せず、`Python` は引き続きjobと観測の成功を要求します。監査の `observations_complete` は成功と別に完全性を示します。
 
 繰延べcaseが1件でもある回からはprofileを生成できません。部分成功で全CPUの重みを上書きしたり、全件baselineと表示したりしません。
 

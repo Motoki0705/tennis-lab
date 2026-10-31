@@ -9,7 +9,7 @@ from typing import Any
 
 import cv2
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import save_json
+from src.tasks.ball_detection.checkpoints.temporal import save_json
 from src.tasks.ball_detection.data.store import BallFrameStore
 from src.tasks.ball_detection.evaluation.temporal_heatmap import EVALUATION_SCHEMA
 from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import present

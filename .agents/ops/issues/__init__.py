@@ -1,5 +1,6 @@
 """Shared issue contract for human filing, parent sessions and report triage."""
 
+from . import rewrite_state
 from .adoption import bind_task, parse_task_metadata, render_standalone_body
 from .consistency import Issue, Problem, check_consistency, task_status
 from .format import (
@@ -29,6 +30,15 @@ from .format import (
     validate_acceptance,
     validate_body,
 )
+from .rewrite_state import (
+    REWRITE_DONE_LABEL,
+    REWRITE_ENABLED_SINCE_VARIABLE,
+    REWRITE_FAILED_LABEL,
+    REWRITE_FINAL_LABELS,
+    REWRITE_SKIPPED_LABEL,
+    RewriteState,
+    read_enabled_since,
+)
 
 __all__ = [
     "ACCEPTANCE_FIELDS",
@@ -43,6 +53,12 @@ __all__ = [
     "ParsedTitle",
     "Problem",
     "ProposalSource",
+    "REWRITE_DONE_LABEL",
+    "REWRITE_ENABLED_SINCE_VARIABLE",
+    "REWRITE_FAILED_LABEL",
+    "REWRITE_FINAL_LABELS",
+    "REWRITE_SKIPPED_LABEL",
+    "RewriteState",
     "TASKS_HEADING",
     "check_consistency",
     "bind_task",
@@ -60,6 +76,8 @@ __all__ = [
     "render_child_tasks",
     "render_parent_body",
     "render_standalone_body",
+    "read_enabled_since",
+    "rewrite_state",
     "task_status",
     "validate_acceptance",
     "validate_body",

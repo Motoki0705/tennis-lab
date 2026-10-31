@@ -156,6 +156,14 @@ def _repo_name(value: str) -> str:
     return value
 
 
+class GitHubHTTPError(ValueError):
+    """A failed gh api response with its actual HTTP status preserved."""
+
+    def __init__(self, endpoint: str, status: int, detail: str) -> None:
+        self.status = status
+        super().__init__(f"gh api {endpoint}: HTTP {status} ({detail})")
+
+
 class GitHub:
     def __init__(self, repo: str | None) -> None:
         if repo is None:
@@ -198,9 +206,7 @@ class GitHub:
             if error.get("message") == "No parent issue found":
                 return None
         if result.returncode or status[1] != "200":
-            raise ValueError(
-                f"gh api {endpoint}: HTTP {status[1]} ({result.stderr.strip()})"
-            )
+            raise GitHubHTTPError(endpoint, int(status[1]), result.stderr.strip())
         if payload is None:
             raise ValueError(f"gh api {endpoint}: unexpected null response")
         return payload

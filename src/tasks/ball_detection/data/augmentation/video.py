@@ -108,6 +108,9 @@ class VideoAugmenter:
                     int(batch["frame_step"][i]), profile)) for i, clip in enumerate(batch["clip_id"])]
         camera = [r.random() < cfg.camera_probability for r in rngs]
         occlusion = [r.random() < cfg.occlusion_probability for r in rngs]
+        requested = torch.tensor(occlusion, device=rgb.device)
+        eligible = batch["position_valid"][:, 1:-1].any(1).to(rgb.device)
+        occlusion = [draw and bool(eligible[i]) for i, draw in enumerate(occlusion)]
         uv = batch["uv"].to(rgb.device, dtype=torch.float32)
         valid = batch["position_valid"].to(rgb.device)
         times = batch["timestamps"].to(rgb.device, dtype=torch.float32)
@@ -172,5 +175,6 @@ class VideoAugmenter:
             output = torch.stack(images)
         result = dict(batch, uv=transformed, position_valid=kept)
         audit = dict(matrix=matrices, artificially_occluded=covered, camera_rejected=rejected,
-                     removed_by_camera=valid & ~kept)
+                     removed_by_camera=valid & ~kept, occlusion_requested=requested,
+                     occlusion_eligible=eligible, occlusion_applied=requested & eligible)
         return output, result, audit

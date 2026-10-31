@@ -11,5 +11,6 @@
 - [pre-commit の mypy は staged ファイルだけを --follow-imports=skip で検査する](precommit-mypy-follow-imports-skip.md)
 - [spin setup-nht は、実行したtreeの third_party/nht に全体共通の nht-render を結び付ける](setup-nht-binds-global-tool-to-checkout.md)
 - [メインtreeの共有 .venv は pyproject.toml / uv.lock の依存追加に自動で追従しない](shared-venv-lags-lockfile.md)
+- [メインtreeのローカル main は自動で pull されず、そこで読む規則・memoryが古いまま残る](main-tree-main-lags-origin.md)
 - [src パッケージはインストールされておらず、カレントディレクトリから import される](src-imported-from-cwd.md)
 - [tests/ はPythonパッケージではないので、テストモジュール同士で import できない](tests-dir-not-a-package.md)

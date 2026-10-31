@@ -33,6 +33,7 @@ subjectsの全issueについて1件ずつ結果を返してください。ops-re
 正式parent/childrenが正本です。既存の子はexisting_parentとして最上位の既存親へ戻し、子を新しい親候補にしません。
 単独issueは自分の番号をtarget_parentにし、不要な階層を作りません。親候補は既存子の停止・依存と独立作業を区別してください。
 issue:childラベルだけがあって正式親がない場合はhuman_holdとして整合確認へ戻します。
+共有判定で本文の書き直しがpendingの親もhuman_holdです。mechanical_guardに従い、parentのwait-rewriteで確定を待つよう案内します。
 既存の担当、GitHub assignee、委任予約、関連PR（未mergeのclosedを含む）があればexisting_ownerとして照合・再開へ戻します。
 担当親の乗っ取り・新しい親の重複起動は行いません。人間合意のある既存経路は自律根拠で上書きせずhuman_holdとして引き継ぎます。
 dependenciesは正式blocked_byと「依存関係」節の和集合です。同repoの別親の依存も確認してください。

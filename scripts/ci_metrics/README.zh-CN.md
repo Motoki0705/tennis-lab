@@ -28,7 +28,8 @@ PR比较event中的 `base.sha..head.sha`，即使之前的PR run被取消，也�
 `.spin`、workflow及本CI工具/注册表）修改、rename、删除或无法取得diff时，记录理由并执行全部。
 非法注册表或plan直接失败，不转成部分执行。
 
-只使用标准库的 `plan` job生成一个固定source/run/attempt的 `plan.json`，供所有shard与 `Python` 汇总使用：
+只使用标准库的 `plan` job生成一个固定source、run与plan创建attempt的 `plan.json`，
+供所有shard与 `Python` 汇总使用。部分重试按[shard标识与attempt规则](sharding.zh-CN.md#证据与失败语义)复用同一plan：
 
 ```bash
 python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
@@ -132,6 +133,7 @@ runner 仅从测试子进程移除真实 agent 的 Herdr/session 标识及外层
 | `results.json` | 每个 node 的 passed/skipped/failed/xfail/xpass/incomplete 及 phase 时间 |
 | `junit.xml`, `pytest.log` | 独立核对的 JUnit 数量、标识与时间，以及标准 durations 输出 |
 | `summary.json`, `summary.md` | 完整性检查、进程启动/收集、file/fixture 时间贡献、结果数量 |
+| 汇总 `coverage.json`, `artifacts.json` | coverage结论、plan/shard/汇总attempt，以及检查过的REST artifact ID、name、创建时间、size或清单错误，见[分片](sharding.zh-CN.md#证据与失败语义) |
 | 汇总 `growth.json`, `growth-summary.json`, `growth-summary.md` | 经审计的要求范围观测与参考增减/成本比较，见[警告](#测试增减与成本警告) |
 
 `full_cpu_baseline` 同时要求默认完整 CPU 集合及成功观测。runner/session/JUnit 缺失、worker
@@ -160,8 +162,11 @@ RSS 为 pytest controller/worker 中**单进程的最大 high-water RSS**，单�
 
 CI 在依赖准备前记录 runner。summary、REST snapshot 和 artifact 步骤使用 `always()`，在
 准备或测试失败后仍尝试保存。强制取消或 runner 丢失可能阻止上传；REST 侧仍记录取消或
-不完整的 attempt。artifact 名称包含 run 和 attempt。cache hit 来自 `setup-uv` 输出；
+不完整的 attempt。cache hit 来自 `setup-uv` 输出；
 无法获得时明确标记 unknown，不假定 warm cache。
+
+lane plan与shard测量的artifact名称不含attempt，重试时会被覆盖。
+部分重试的条件、检查与证据请参阅[分片说明](sharding.zh-CN.md#证据与失败语义)。
 
 job 内 REST snapshot 是暂定值，其自身 job、上传和 post-cache 尚未结束。**job 完成后**
 重新获取，才能确定所有 runner 和后处理时间：
@@ -205,4 +210,4 @@ API 依据：[pytest hooks](https://docs.pytest.org/en/stable/reference/referenc
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv` outputs](https://github.com/astral-sh/setup-uv#outputs)。
 
-使用[`profile`命令](sharding.zh-CN.md#重新生成实测profile)从完整Actions成果物重新生成权重。保留失败用例，拒绝不完整attempt。
+使用[`profile`命令](sharding.zh-CN.md#重新生成实测profile)从同一run的最新完整shard成果物重新生成权重。合法的attempt混用保留来源；失败用例保持可见，不完整观测会被拒绝。

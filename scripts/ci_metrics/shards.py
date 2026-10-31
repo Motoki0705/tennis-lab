@@ -12,10 +12,11 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from .artifacts import read_manifest
 from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze
 from .growth import markdown as growth_markdown
 from .growth_baseline import previous_main
-from .lanes import read_plan, validate_plan
+from .lanes import parse_attempt, read_plan, validate_plan
 from .report import summarize
 
 
@@ -121,7 +122,7 @@ def inspect_shards(
     lane_plan: dict[str, Any] | None = None,
     source_root: Path | None = None,
 ) -> dict[str, Any]:
-    """Audit complete observations, retaining failed tests as measured evidence."""
+    """Audit latest shards for one run/plan; attempt is the aggregate job attempt."""
     issues: list[str] = []
     successful = True
     directories = sorted(root.glob("*/tests"))
@@ -138,9 +139,22 @@ def inspect_shards(
     executed: list[str] = []
     outcomes: Counter[str] = Counter()
     case_outcomes: dict[str, str] = {}
+    plan_attempt: str | None = None
+    shard_attempts: dict[str, str] = {}
+    try:
+        aggregate_attempt = parse_attempt(attempt)
+    except ValueError as error:
+        issues.append(f"invalid aggregate attempt: {error}")
+        aggregate_attempt = None
     if lane_plan is not None:
         try:
             validate_plan(lane_plan, root=source_root)
+            fixed_attempt = parse_attempt(lane_plan.get("attempt"))
+            if lane_plan["source_sha"] != sha or lane_plan["run_id"] != run_id:
+                raise ValueError("lane plan source/run mismatch")
+            if aggregate_attempt is not None and fixed_attempt > aggregate_attempt:
+                raise ValueError("lane plan attempt is newer than aggregate attempt")
+            plan_attempt = lane_plan["attempt"]
         except (OSError, ValueError, KeyError, TypeError) as error:
             issues.append(f"invalid fixed lane plan: {error}")
     for directory in directories:
@@ -152,12 +166,18 @@ def inspect_shards(
                 or metadata["source"]["status"]
                 or context["GITHUB_SHA"] != sha
                 or context["GITHUB_RUN_ID"] != run_id
-                or context["GITHUB_RUN_ATTEMPT"] != attempt
             ):
-                raise ValueError("source revision/run/attempt mismatch or dirty source")
+                raise ValueError("source revision/run mismatch or dirty source")
+            shard_attempt = parse_attempt(context.get("GITHUB_RUN_ATTEMPT"))
+            if aggregate_attempt is None or shard_attempt > aggregate_attempt:
+                raise ValueError(
+                    "shard attempt is newer than aggregate attempt or aggregate attempt is invalid"
+                )
             shard = metadata["shard"]
             if shard["count"] != count or not 0 <= shard["index"] < count:
                 raise ValueError("unexpected shard index/count")
+            if shard["index"] in indices:
+                raise ValueError("duplicate shard index")
             if metadata.get("cpu_target_before_sharding") is not True:
                 raise ValueError("shard did not request the full CPU target")
             indices.append(shard["index"])
@@ -189,19 +209,22 @@ def inspect_shards(
                 raise ValueError("mixed legacy and lane-aware shard schemas")
             if schema == 2:
                 observed_lane = read_plan(directory / "lane-plan.json")
+                observed_attempt = parse_attempt(observed_lane.get("attempt"))
                 if (
                     observed_lane["source_sha"] != sha
                     or observed_lane["run_id"] != run_id
-                    or observed_lane["attempt"] != attempt
                     or observed_lane["plan_id"] != metadata.get("lane_plan_id")
                 ):
-                    raise ValueError("lane plan source/run/attempt mismatch")
+                    raise ValueError("lane plan source/run/plan_id mismatch")
                 if reference_lane is None:
                     reference_lane = observed_lane
                 if observed_lane != reference_lane:
                     raise ValueError(
                         "shards disagree with the fixed lane plan/policy/scope"
                     )
+                if observed_attempt > shard_attempt:
+                    raise ValueError("shard attempt is older than lane plan attempt")
+                plan_attempt = observed_lane["attempt"]
                 all_ids = plan["universe_nodeids"]
                 requested_ids = plan["requested_nodeids"]
                 if reference_assignments is None:
@@ -220,6 +243,7 @@ def inspect_shards(
                         "legacy shard cannot establish lane-aware coverage"
                     )
                 all_ids = requested_ids = plan["full_nodeids"]
+            shard_attempts[str(shard["index"])] = context["GITHUB_RUN_ATTEMPT"]
             selected = plan["selected_nodeids"]
             if not all_ids or len(set(all_ids)) != len(all_ids):
                 raise ValueError("invalid full CPU inventory")
@@ -303,6 +327,8 @@ def inspect_shards(
         "source_sha": sha,
         "run_id": run_id,
         "attempt": attempt,
+        "plan_attempt": plan_attempt,
+        "shard_attempts": shard_attempts,
         "shard_count": count,
         "universe_count": len(full_inventory or []),
         "requested_count": len(requested_inventory or []),
@@ -332,6 +358,7 @@ def verify_shards(
     lane_plan: dict[str, Any] | None = None,
     source_root: Path | None = None,
 ) -> dict[str, Any]:
+    """Require successful jobs and observations up to the aggregate job attempt."""
     result = inspect_shards(
         root,
         count,
@@ -423,6 +450,7 @@ def main() -> int:
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--count", required=True, type=int)
     parser.add_argument("--lane-plan", required=True, type=Path)
+    parser.add_argument("--artifact-manifest", required=True, type=Path)
     parser.add_argument(
         "--timing-profile",
         type=Path,
@@ -447,9 +475,22 @@ def main() -> int:
         lane_plan=lane_plan,
         source_root=Path.cwd(),
     )
+    try:
+        manifest = read_manifest(
+            args.artifact_manifest, os.environ["GITHUB_RUN_ID"], args.count
+        )
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        result["issues"].append(f"artifact inventory unavailable/invalid: {error}")
+        result["success"] = False
+        result["observations_complete"] = False
+    else:
+        result["artifacts"] = manifest["artifacts"]
     if plan_error:
         result["issues"].append(plan_error)
         result["success"] = False
+        result["observations_complete"] = False
+    result["successful_test_observations"] &= result["observations_complete"]
+    result["full_cpu_coverage"] &= result["observations_complete"]
     result["full_cpu_success"] &= result["success"]
     result["scoped_cpu_success"] &= result["success"]
     print(json.dumps(result, indent=2))

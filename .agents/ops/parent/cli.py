@@ -50,6 +50,7 @@ def parser() -> argparse.ArgumentParser:
         "register",
         "status",
         "checking",
+        "wait-rewrite",
         "reconcile",
         "sync",
         "state-migrate",
@@ -191,7 +192,8 @@ def _main(argv: list[str] | None = None) -> int:
         # Missing identity is a configuration error before any network/state write.
         identity = (
             None
-            if args.command in {"status", "basis-input", "basis-record", "basis-check"}
+            if args.command
+            in {"status", "basis-input", "basis-record", "basis-check", "wait-rewrite"}
             else session_identity(dict(os.environ))
         )
         args.state_dir = (args.state_dir or state_directory()).resolve()
@@ -203,8 +205,16 @@ def _main(argv: list[str] | None = None) -> int:
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
         else:
             store = Store(args.state_dir)
-        gh = GitHub(args.repo, store=store)
+        gh = GitHub(args.repo, store=None if args.command == "wait-rewrite" else store)
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "wait-rewrite":
+            from .rewrite import wait_rewrite
+
+            # Waiting does not need ownership, a registry transaction or an operation lock.
+            print(
+                json.dumps(wait_rewrite(gh, parent), ensure_ascii=False, sort_keys=True)
+            )
+            return 0
         if args.command == "run-worker":
             from .manual_workers import run_worker
 

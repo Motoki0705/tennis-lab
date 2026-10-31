@@ -14,21 +14,19 @@ from unittest.mock import patch
 import torch
 from omegaconf import OmegaConf
 
-from src.tasks.ball_detection.model_io.mdd_heatmap import MDDHeatmapAdapter
 from src.tasks.ball_detection.training.coordinates import joint, scratch
 from src.tasks.ball_detection.training.dpt_pretrain import runner as pretrain
 from src.tasks.ball_detection.training.hybrid import runner as hybrid
 from src.tasks.ball_detection.training.runtime import execution
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
-from src.tasks.ball_detection.training.temporal_heatmap import runner as temporal
-from src.tasks.base.model_io import bind_model_io
+from src.tasks.ball_detection.training.temporal import runner as temporal
 from tests.integration.tasks.ball_detection.model_contracts import (
     LoopInputs,
     parameter_contract,
 )
 from tests.support.model_contracts.steps import StepAudit
 from tests.support.tasks.ball_detection.hybrid import hybrid_recipe
-from tests.support.tasks.ball_detection.temporal_heatmap import update_budget
+from tests.support.tasks.ball_detection.temporal import update_budget
 
 
 @contextmanager
@@ -276,19 +274,15 @@ def _temporal(
     resume: Path | None = None,
     stop: int | None = None,
 ) -> None:
-    adapter = MDDHeatmapAdapter(model.config)
-    adapter.validate_model_pair(model)
-    pair = bind_model_io(model, adapter)
-    architecture = (
-        "hybrid" if inputs.config.model.name == "mdd_heatmap_hybrid" else "dpt"
-    )
-
-    def build(spec: Any) -> Any:
-        assert spec == model.config
-        return pair
-
-    with patch.object(temporal, "build_mdd_heatmap_detector", side_effect=build):
-        temporal.train_temporal_heatmap(
+    architecture = {
+        "mdd_dpt_heatmap": "dpt",
+        "mdd_heatmap_hybrid": "hybrid",
+        "mdd_temporal_query": "query",
+    }[inputs.config.model.name]
+    with patch.object(
+        temporal, "build_temporal_model", side_effect=_same_model(model)
+    ):
+        temporal.train_temporal_model(
             architecture=architecture,
             phase="pretrain",
             manifest=inputs.manifest,
