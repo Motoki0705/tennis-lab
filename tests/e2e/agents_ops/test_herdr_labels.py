@@ -363,7 +363,9 @@ def test_session_start_moves_only_a_vacated_confirmed_destination(
         "SessionStart", source="resume" if vacancy == "replaced" else "startup"
     )
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout)["herdr_label"]["status"] == "updated", result.stdout
+    assert json.loads(result.stdout)["herdr_label"]["status"] == "updated", (
+        result.stdout
+    )
     assert owner_path.read_bytes() != previous
     owner = json.loads(owner_path.read_text())
     assert owner["scope"] == hashlib.sha256(b"/fake/herdr.sock").hexdigest()
@@ -422,6 +424,24 @@ def test_session_start_refuses_an_unverifiable_old_destination(
     assert_start_failure(result, reason)
     assert owner.read_bytes() == before
     assert labels.read()["panes"] == state["panes"]
+    assert not labels.mutations()
+
+
+def test_session_start_does_not_notify_when_registry_is_unverifiable(
+    resuming_labels: Labels,
+) -> None:
+    labels = resuming_labels
+    labels.registry.write_text('{"version": 999}')
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    panes = labels.read()["panes"]
+    result = labels.hook("SessionStart", source="resume")
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "cannot determine the active parent" in result.stderr
+    assert "original failure: invalid parent registry version" in result.stderr
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == panes
     assert not labels.mutations()
 
 
@@ -1126,10 +1146,12 @@ def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) 
             state["pid"] = sibling.pid
             labels.write(state)
             result = labels.hook("SessionStart")
+            assert result.returncode == 1
+            assert result.stdout == ""
             # A real Claude ancestor may reject this as a nested agent first.
-            reason = json.loads(result.stdout)["herdr_label"]["reason"]
-            assert "not a descendant" in reason or "nested agent" in reason
-            assert_start_failure(result, reason)
+            assert (
+                "not a descendant" in result.stderr or "nested agent" in result.stderr
+            )
             assert not labels.mutations()
         finally:
             sibling.terminate()
@@ -1155,7 +1177,9 @@ raise SystemExit(r.returncode)
         check=False,
         timeout=20,
     )
-    assert_start_failure(result, "nested agent")
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "nested agent" in result.stderr
     assert len(labels.mutations()) == count
     assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
 

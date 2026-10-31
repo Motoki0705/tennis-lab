@@ -17,6 +17,10 @@ from parent.state import Store
 from .client import Herdr
 
 
+class LifecycleCallerError(ValueError):
+    """A lifecycle event cannot be attributed to the pane's foreground agent."""
+
+
 def state_root(env: Mapping[str, str]) -> Path:
     base = Path(env.get("XDG_STATE_HOME") or Path.home() / ".local/state")
     if not base.is_absolute():
@@ -222,20 +226,23 @@ class Guard:
 
     def require_native_ancestor(self) -> None:
         """A lifecycle payload must originate from the pane's current agent."""
-        native = self.stamp[0]["pid"]
-        pid = os.getpid()
-        while pid > 1:
-            if pid == native:
-                self.native_verified = True
-                return
-            stat = (Path("/proc") / str(pid) / "stat").read_text()
-            command = stat.split("(", 1)[1].rsplit(")", 1)[0]
-            if command == self.pane.get("agent"):
-                raise ValueError(
-                    "nested agent cannot report lifecycle for its ancestor's pane"
-                )
-            pid = int(stat.rsplit(")", 1)[1].split()[1])
-        raise ValueError("lifecycle hook is not a descendant of this pane's agent")
+        try:
+            native = self.stamp[0]["pid"]
+            pid = os.getpid()
+            while pid > 1:
+                if pid == native:
+                    self.native_verified = True
+                    return
+                stat = (Path("/proc") / str(pid) / "stat").read_text()
+                command = stat.split("(", 1)[1].rsplit(")", 1)[0]
+                if command == self.pane.get("agent"):
+                    raise ValueError(
+                        "nested agent cannot report lifecycle for its ancestor's pane"
+                    )
+                pid = int(stat.rsplit(")", 1)[1].split()[1])
+            raise ValueError("lifecycle hook is not a descendant of this pane's agent")
+        except (ValueError, OSError, KeyError, TypeError) as exc:
+            raise LifecycleCallerError(str(exc)) from exc
 
     @contextmanager
     def hold(

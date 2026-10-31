@@ -13,11 +13,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lib.identity import session_identity  # noqa: E402
 
-from herdr_labels.service import sync  # noqa: E402
+from herdr_labels.coordination import LifecycleCallerError  # noqa: E402
+from herdr_labels.service import registry, sync  # noqa: E402
 
 
 def main() -> int:
     event = None
+    identity = None
+    env = dict(os.environ)
     try:
         payload = json.load(sys.stdin)
         if not isinstance(payload, dict):
@@ -28,11 +31,10 @@ def main() -> int:
         sid = payload.get("session_id")
         if not isinstance(sid, str) or not sid:
             raise ValueError("Claude hook session_id is missing")
-        env = dict(os.environ)
         if env.get("CODEX_SESSION_ID") or payload.get("agent_id"):
             raise ValueError("do not run parent display hooks from a child agent")
         env["CLAUDE_CODE_SESSION_ID"] = sid
-        session_identity(env)
+        identity = session_identity(env)
         if event == "SessionStart" and env.get("CLAUDE_ENV_FILE"):
             with Path(env["CLAUDE_ENV_FILE"]).open("a", encoding="utf-8") as stream:
                 stream.write(f"\nexport CLAUDE_CODE_SESSION_ID={shlex.quote(sid)}\n")
@@ -66,7 +68,25 @@ def main() -> int:
         TypeError,
         subprocess.SubprocessError,
     ) as exc:
-        if event == "SessionStart":
+        notify_parent = False
+        if (
+            event == "SessionStart"
+            and identity is not None
+            and not isinstance(exc, LifecycleCallerError)
+        ):
+            try:
+                notify_parent = any(
+                    row["session"] == identity and row["status"] == "active"
+                    for row in registry(env).values()
+                )
+            except (ValueError, OSError, KeyError, TypeError) as lookup_error:
+                print(
+                    f"herdr-label hook: cannot determine the active parent ({lookup_error}); "
+                    f"original failure: {exc}",
+                    file=sys.stderr,
+                )
+                return 1
+        if notify_parent:
             reason = str(exc)
             message = (
                 f"Herdrの担当表示の同期に失敗しました: {reason}。"
