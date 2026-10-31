@@ -9,10 +9,73 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import campaign as c  # noqa: E402
 import runtime as runtime  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    ("condition", "version"),
+    [("scene-1", 0), ("scene-2", 1), ("scene-3", 0), ("scene-4", 0)],
+)
+def test_legacy_final_checkpoint_uses_repository_records(
+    condition: str, version: int
+) -> None:
+    # Read the shipped evidence, including the bundles without training-completion.
+    bundle = runtime.prior_bundle(condition)
+    checked = runtime.legacy_final_checkpoint(condition)
+    expected = (
+        "outputs/court_detection/train/scene-diversity-6000-s384-colab/"
+        f"{condition}-s42/logs/version_{version}/checkpoints/update-00033160.ckpt"
+    )
+    assert checked["checkpoint"] == expected
+    evaluation = c.read(bundle / "evaluation.json")
+    assert checked["checkpoint_sha256"] == evaluation["checkpoint_sha256"]
+    config = yaml.safe_load((bundle / "resolved-config.yaml").read_text())
+    assert Path("outputs") / config["run"]["output_dir"] == Path(expected).parents[3]
+    assert runtime.plain(config) == evaluation["config"]
+    assert evaluation["data_condition"]["accepted_images"] == 5500
+    verification = c.read(runtime.PRIOR / "parent-verification.json")
+    parent_record = verification["conditions"][int(condition[-1]) - 1]
+    assert parent_record["condition"] == checked["condition"]
+    assert parent_record["global_step"] == checked["global_step"] == 33160
+    assert parent_record["checkpoint_sha256"] == checked["checkpoint_sha256"]
+    assert (
+        evaluation["splits"]["tennis_court_detector-val"]["ordered_sample_ids_sha256"]
+        == parent_record["real_order_sha256"]
+        == verification["conditions"][0]["real_order_sha256"]
+    )
+    if condition in {"scene-1", "scene-2"}:
+        completion = c.read(bundle / "training-completion.json")
+        for key in ("checkpoint", "checkpoint_sha256"):
+            assert checked[key] == completion[key]
+
+
+@pytest.mark.parametrize(
+    ("filename", "key", "value"),
+    [
+        ("final-checkpoint.json", "schema", "unknown_schema"),
+        ("final-checkpoint.json", "global_step", 29844),
+        ("final-checkpoint.json", "global_step", 33160.0),
+        ("final-checkpoint.json", "condition", 4),
+        ("final-checkpoint.json", "condition", "3"),
+        ("evaluation.json", "checkpoint", "/content/tennis-lab/wrong.ckpt"),
+        ("evaluation.json", "checkpoint_sha256", "changed"),
+    ],
+)
+def test_legacy_final_checkpoint_rejects_inconsistent_records(
+    tmp_path: Path, monkeypatch: Any, filename: str, key: str, value: Any
+) -> None:
+    for name in ("final-checkpoint.json", "evaluation.json"):
+        record = c.read(runtime.prior_bundle("scene-3") / name)
+        if name == filename:
+            record[key] = value
+        c.write(tmp_path / name, record)
+    monkeypatch.setattr(runtime, "prior_bundle", lambda condition: tmp_path)
+    with pytest.raises(ValueError, match="Legacy final checkpoint"):
+        runtime.legacy_final_checkpoint("scene-3")
 
 
 def test_five_configs_keep_actual_scene_two_semantics() -> None:

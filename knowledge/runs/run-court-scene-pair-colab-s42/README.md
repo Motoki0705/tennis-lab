@@ -105,7 +105,9 @@ probe専用には3更新・validation/保存間隔3・warmup 0を明示して適
 ローカル証拠は`local-config-audit.json`。実VMの設定とデータ来歴は
 `configs/`・`config-audit.json`・`inputs.json`へ保存する。
 
-既存4条件は、前回bundleの`training-completion.json`が指定する最終checkpointだけを取得し、
+既存4条件は、全条件にある前回bundleの`final-checkpoint.json`が指定する最終checkpointだけを取得する。
+schema `court_scene_diversity_final_checkpoint_verification_v1`、対象condition、33,160更新を確認し、
+同じbundleの`evaluation.json`のcheckpoint path・内容hashとの一致を必須にする。
 保存済み設定・来歴・内容・実際の33,160更新を照合する。scene-2は`logs/version_1`、他は`version_0`。
 既存の学習・評価treeには書き込まない。新しい9評価はすべて新experimentの出力へ保存する。
 
@@ -174,4 +176,6 @@ PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python 
 
 実行コストとnodeは`test-results.json`を参照する。モデル学習とDriveは小さいファイルfixtureと
 偽関数で代替し、checkpoint adapterだけは小さい実torchファイルを使う。
+既存4条件のcheckpoint解決はrepo内の実在bundleを読み、保存済み設定・評価・親の照合記録との整合と、
+scene-1・scene-2の`training-completion.json`とのpath・内容hashの一致を確認する。
 実poolの全経路読込、実9モデルの評価、L4のprobe・学習は担当親の実行工程で確認する。
