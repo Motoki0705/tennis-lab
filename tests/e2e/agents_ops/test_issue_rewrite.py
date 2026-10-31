@@ -6,6 +6,7 @@ import functools
 import importlib
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,6 +104,79 @@ def test_rephrasing_ordered_list_renumbering_and_nonrequired_subheadings_pass(
         .replace("先行依存なし。", "### 進め方\n\n先行依存はない。")
     )
     assert invariants.check_invariants(original, candidate) == []
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "changed"),
+    [
+        (
+            "[参照](https://example.org/method(alpha))",
+            "[参照](https://example.org/method(beta))",
+            True,
+        ),
+        (
+            "[参照](<https://example.org/method(alpha)>)",
+            "[参照](<https://example.org/method(beta)>)",
+            True,
+        ),
+        ("https://example.org/guide", "**https://example.org/guide**", False),
+        ("https://example.org/guide", "~~https://example.org/guide~~", False),
+        (
+            "https://example.org/guide",
+            "| 参照 |\n| --- |\n| https://example.org/guide |",
+            False,
+        ),
+        (
+            '<a href="https://example.org/method(alpha)">参照</a>',
+            '<a href="https://example.org/method(beta)">参照</a>',
+            True,
+        ),
+        (
+            "https://example.org/method(alpha).",
+            "**https://example.org/method(alpha)**.",
+            False,
+        ),
+        (
+            "[参照](https://example.org/method(alpha))",
+            "[参照][doc]\n\n[doc]: https://example.org/method(alpha)",
+            False,
+        ),
+    ],
+)
+def test_urls_preserve_complete_destinations_and_ignore_markdown_decoration(
+    original: str, before: str, after: str, changed: bool
+) -> None:
+    source = original.replace("先行依存なし。", before)
+    candidate = source.replace(before, after)
+    errors = invariants.check_invariants(source, candidate)
+    assert any(error["rule"] == "urls" for error in errors) is changed
+    if not changed:
+        assert errors == []
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "> 引用の先頭\nlazy continuation\n",
+        "> 外側の引用\n> > 内側の引用\nlazy continuation\n",
+        "> - 引用内の項目\n>   続き\nlazy continuation\n",
+    ],
+)
+def test_quote_lazy_continuations_are_protected_as_raw_blocks(
+    original: str, quote: str
+) -> None:
+    source = original.replace("> 人間の引用はそのまま。\n> 続きも保つ。\n", quote)
+    candidate = source.replace("lazy continuation", "changed continuation")
+    errors = invariants.check_invariants(source, candidate)
+    assert any(
+        item["rule"] == "quotes" and "continuation" in item["detail"] for item in errors
+    )
+    assert (
+        invariants.check_invariants(
+            source, source.replace("先行依存なし。", "先行する依存はない。")
+        )
+        == []
+    )
 
 
 def test_protected_fragments_and_managed_section_whitespace_are_exact(
@@ -284,6 +358,7 @@ def rewrite_env(
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
     monkeypatch.setenv("REWRITE_FAKE_ROOT", str(tmp_path))
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "github-output"))
     clock = Clock()
     monkeypatch.setattr(
         pipeline,
@@ -348,6 +423,9 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert (env.root / "private-1/input.json").is_file()
     assert (env.root / "private-1").stat().st_mode & 0o777 == 0o700
     assert env.mutations()[0]["payload"] == {"body": env.rewritten}
+    calls = env.calls("gh")
+    patch = next(i for i, call in enumerate(calls) if call["method"] == "PATCH")
+    assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
 
@@ -627,9 +705,122 @@ def test_manual_retry_of_failed_issue_replaces_only_the_final_label(
     state = env.state()
     state["issue"]["labels"].append({"name": "rewrite:failed"})
     env.save(state)
-    assert env.run("rewrite", manual=True) == 0
-    assert env.run("apply", manual=True) == 0
+    assert env.run("prepare", manual=True) == 0
+    assert "rewrite:failed" not in labels(env)
+    parent_reader = importlib.import_module("parent.github").GitHub("o/r")
+    with pytest.raises(ValueError, match="pending"):
+        importlib.import_module("parent.rewrite").require_final(parent_reader, 1)
+    assert env.run("rewrite") == 0
+    assert env.run("apply") == 0
     assert labels(env) == {"issue:parent", "enhancement", "rewrite:done"}
+
+
+@pytest.mark.parametrize(
+    "timing", ["before_prepare", "during_label_removal", "before_patch"]
+)
+def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
+    rewrite_env: RewriteEnv, timing: str
+) -> None:
+    env = rewrite_env
+    state = env.state()
+    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    if timing == "before_prepare":
+        state["comments"] = [comment(agreement())]
+    elif timing == "during_label_removal":
+        state["comments_after_delete"] = [comment(agreement())]
+    env.save(state)
+    assert env.run("prepare", manual=True) == 0
+    calls = env.calls("gh")
+    deletion = next(i for i, call in enumerate(calls) if call["method"] == "DELETE")
+    first_records = next(
+        i for i, call in enumerate(calls) if "/comments?" in call["endpoint"]
+    )
+    assert deletion < first_records
+    if timing == "before_patch":
+        assert env.run("rewrite") == 0
+        state = env.state()
+        state["comments_mutation"] = {
+            "read": state["comments_reads"] + 2,
+            "comments": [comment(agreement())],
+        }
+        env.save(state)
+        assert env.run("apply") == 0
+    else:
+        assert not env.calls("agy")
+    assert labels(env) == {"issue:parent", "enhancement", "rewrite:skipped"}
+    assert env.state()["issue"]["body"] == env.original
+    assert not any(call["method"] == "PATCH" for call in env.mutations())
+
+
+def test_readonly_generation_cannot_bypass_manual_prepare(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    state = env.state()
+    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    env.save(state)
+    assert env.run("rewrite") == 0 and env.bundle()["status"] == "not_target"
+    assert not env.calls("agy") and not env.mutations()
+
+
+def test_manual_prepare_stops_if_human_skip_appears_during_failed_removal(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    state = env.state()
+    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    state["label_delete_race"] = ["rewrite:skipped", "needs-human"]
+    env.save(state)
+    assert env.run("prepare", manual=True) == 1
+    assert labels(env) == {
+        "issue:parent",
+        "enhancement",
+        "rewrite:skipped",
+        "needs-human",
+    }
+    assert not env.calls("agy") and env.state()["issue"]["body"] == env.original
+    assert "rewrite_label_conflict" in (env.root / "summary.md").read_text()
+
+
+def test_final_label_addition_preserves_unrelated_concurrent_labels(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    state = env.state()
+    state["label_add_race"] = ["needs-human"]
+    env.save(state)
+    client = github.GitHub("o/r", enabled_since=state["enabled_since"])
+    assert pipeline.final_label(client, 1, "rewrite:done") == "done"
+    assert labels(env) == {"issue:parent", "enhancement", "needs-human", "rewrite:done"}
+    assert env.mutations() == [
+        {
+            "method": "POST",
+            "endpoint": "repos/o/r/issues/1/labels",
+            "payload": {"labels": ["rewrite:done"]},
+        }
+    ]
+
+
+@pytest.mark.parametrize("timing", ["before_add", "during_add"])
+def test_final_label_conflict_stops_without_removing_human_skip(
+    rewrite_env: RewriteEnv, timing: str
+) -> None:
+    env = rewrite_env
+    state = env.state()
+    if timing == "before_add":
+        state["mutation"] = {
+            "read": 1,
+            "add_labels": ["rewrite:skipped", "needs-human"],
+        }
+    else:
+        state["label_add_race"] = ["rewrite:skipped", "needs-human"]
+    env.save(state)
+    client = github.GitHub("o/r", enabled_since=state["enabled_since"])
+    with pytest.raises(ValueError, match="rewrite_label_conflict"):
+        pipeline.final_label(client, 1, "rewrite:done")
+    assert {"rewrite:skipped", "needs-human"} <= labels(env)
+    assert not any(call["method"] in {"PATCH", "DELETE"} for call in env.mutations())
+    assert len(env.mutations()) == (0 if timing == "before_add" else 1)
 
 
 def test_invalid_activation_is_never_treated_as_disabled(
@@ -655,7 +846,7 @@ def test_agreement_added_during_generation_is_rechecked_before_apply(
     assert env.state()["issue"]["body"] == env.original
 
 
-def test_body_conflict_dispatches_latest_input_once_then_exhausts(
+def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts(
     rewrite_env: RewriteEnv,
 ) -> None:
     env = rewrite_env
@@ -665,9 +856,8 @@ def test_body_conflict_dispatches_latest_input_once_then_exhausts(
     state["issue"]["body"] = latest
     env.save(state)
     assert env.run("apply") == 0
-    assert env.state()["dispatches"] == [
-        {"ref": "main", "inputs": {"issue_number": "1", "attempt": "2"}}
-    ]
+    assert "needs_retry=true" in (env.root / "github-output").read_text()
+    assert not env.mutations()
     assert not any("body" in call["payload"] for call in env.mutations())
     assert labels(env) == {"issue:parent", "enhancement"}
     (env.root / "agy-calls.jsonl").unlink()
@@ -677,16 +867,44 @@ def test_body_conflict_dispatches_latest_input_once_then_exhausts(
         ),
         PASS,
     )
-    assert env.run("rewrite", attempt=2, manual=True) == 0
+    assert env.run("rewrite", attempt=2) == 0
     assert env.bundle(2)["source"]["body"] == latest
     state = env.state()
     state["issue"]["body"] += "\n人間がさらに編集した。"
     env.save(state)
-    assert env.run("apply", attempt=2, manual=True) == 1
+    assert env.run("apply", attempt=2) == 1
     assert env.run("fail", attempt=2) == 0
-    assert len(env.state()["dispatches"]) == 1 and "rewrite:failed" in labels(env)
+    assert "rewrite:failed" in labels(env)
+    assert not any("/dispatches" in call["endpoint"] for call in env.calls("gh"))
     assert "人間がさらに編集した。" in env.state()["issue"]["body"]
     assert "body_conflict_retry_exhausted" in (env.root / "summary.md").read_text()
+
+
+def test_body_conflict_static_retry_can_finish_done_without_dispatch(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    assert env.run("rewrite") == 0
+    state = env.state()
+    latest = env.original.replace("先行依存なし。", "先行する依存はない。")
+    state["issue"]["body"] = latest
+    env.save(state)
+    assert env.run("apply") == 0
+    assert "needs_retry=true" in (env.root / "github-output").read_text()
+    assert labels(env) == {"issue:parent", "enhancement"}
+    (env.root / "agy-calls.jsonl").unlink()
+    env.turns(
+        env.writer(
+            latest.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer")
+        ),
+        PASS,
+    )
+    assert env.run("rewrite", attempt=2) == 0
+    assert env.bundle(2)["source"]["body"] == latest
+    assert env.run("apply", attempt=2) == 0
+    assert "rewrite:done" in labels(env)
+    assert not any("/dispatches" in call["endpoint"] for call in env.calls("gh"))
+    assert (env.root / "github-output").read_text().endswith("needs_retry=false\n")
 
 
 @pytest.mark.parametrize(
@@ -735,7 +953,8 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
         }
     )
     env.save(state)
-    assert env.run("apply") == 0 and len(env.state()["dispatches"]) == 1
+    assert env.run("apply") == 0
+    assert "needs_retry=true" in (env.root / "github-output").read_text()
     assert not any("body" in call["payload"] for call in env.mutations())
 
 
@@ -855,10 +1074,11 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
     assert workflow["concurrency"]["cancel-in-progress"] == "false"
     jobs = workflow["jobs"]
     rewrite = jobs["rewrite"]
-    assert "github.actor == github.repository_owner" in rewrite["if"]
-    assert "vars.ISSUE_REWRITE_ENABLED_SINCE != ''" in rewrite["if"]
-    assert "github.event.label.name == 'issue:parent'" in rewrite["if"]
-    assert "github.ref == 'refs/heads/main'" in rewrite["if"]
+    guard = jobs["prepare"]["if"]
+    assert "github.actor == github.repository_owner" in guard
+    assert "vars.ISSUE_REWRITE_ENABLED_SINCE != ''" in guard
+    assert "github.event.label.name == 'issue:parent'" in guard
+    assert "github.ref == 'refs/heads/main'" in guard
     assert rewrite["runs-on"] == ["self-hosted", "linux", "x64", "tennis-lab"]
     assert rewrite["permissions"] == {
         "contents": "read",
@@ -871,13 +1091,9 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         workflow["env"]["ISSUE_REWRITE_ENABLED_SINCE"]
         == "${{ vars.ISSUE_REWRITE_ENABLED_SINCE }}"
     )
-    for name in ("apply", "failed"):
+    for name in ("prepare", "apply", "apply_retry", "failed"):
         assert jobs[name]["runs-on"] == "ubuntu-latest"
-        assert (
-            jobs[name]["permissions"]["issues"]
-            == jobs[name]["permissions"]["actions"]
-            == "write"
-        )
+        assert jobs[name]["permissions"] == {"contents": "read", "issues": "write"}
         assert (
             "HOME" not in jobs[name]["env"]
             and "AGY_CLI_DISABLE_AUTO_UPDATE" not in jobs[name]["env"]
@@ -902,3 +1118,75 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
     )
     assert upload["with"]["path"].endswith("/public/handoff.json")
     assert "*" not in upload["with"]["path"]
+
+
+def test_workflow_retries_once_inside_the_original_owner_authorized_run() -> None:
+    workflow = yaml.load(
+        (ROOT / ".github/workflows/issue-rewrite.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    jobs = workflow["jobs"]
+    assert set(jobs) == {
+        "prepare",
+        "rewrite",
+        "apply",
+        "rewrite_retry",
+        "apply_retry",
+        "failed",
+    }
+    assert jobs["rewrite"]["needs"] == "prepare"
+    assert "needs.prepare.outputs.status == 'ready'" in jobs["rewrite"]["if"]
+    assert jobs["apply"]["needs"] == "rewrite"
+    assert set(jobs["rewrite_retry"]["needs"]) == {"prepare", "apply"}
+    assert "needs.apply.outputs.needs_retry == 'true'" in jobs["rewrite_retry"]["if"]
+    assert "github.actor == github.repository_owner" in jobs["prepare"]["if"]
+    assert "github.actor == github.repository_owner" in jobs["rewrite_retry"]["if"]
+    assert jobs["apply_retry"]["needs"] == "rewrite_retry"
+    assert (
+        jobs["apply"]["outputs"]["needs_retry"]
+        == "${{ steps.apply.outputs.needs_retry }}"
+    )
+    for name, attempt in (
+        ("rewrite", 1),
+        ("apply", 1),
+        ("rewrite_retry", 2),
+        ("apply_retry", 2),
+    ):
+        scripts = "\n".join(step.get("run", "") for step in jobs[name]["steps"])
+        assert f"--attempt {attempt}" in scripts
+        assert "--manual" not in scripts
+    for job in jobs.values():
+        assert "actions" not in job["permissions"]
+        assert all(
+            "dispatch" not in step.get("run", "")
+            for step in job["steps"]
+            if step.get("id") != "prepare"
+        )
+
+
+def test_privileged_workflow_actions_match_verified_official_release_tags() -> None:
+    # Verified against official tag refs through REST and git ls-remote.
+    expected = {
+        "actions/checkout": ("3d3c42e5aac5ba805825da76410c181273ba90b1", "v7.0.1"),
+        "actions/upload-artifact": (
+            "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "v7.0.2",
+        ),
+        "actions/download-artifact": (
+            "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+            "v8.0.2",
+        ),
+        "astral-sh/setup-uv": ("37802adc94f370d6bfd71619e3f0bf239e1f3b78", "v7.6.0"),
+    }
+    text = (ROOT / ".github/workflows/issue-rewrite.yml").read_text()
+    uses = re.findall(r"(?m)^\s*uses: (\S+)@(\S+) # (v\S+)$", text)
+    workflow = yaml.load(text, Loader=yaml.BaseLoader)
+    count = sum(
+        "uses" in step for job in workflow["jobs"].values() for step in job["steps"]
+    )
+    assert len(uses) == count
+    assert {action for action, _, _ in uses} == expected.keys()
+    assert all(
+        re.fullmatch("[0-9a-f]{40}", sha) and expected[action] == (sha, version)
+        for action, sha, version in uses
+    )

@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TypedDict, cast
+from urllib.parse import quote
 
 from agy_headless import DEFAULT_AGY, AgyError, load_config, run_headless
 from issues.format import CHILD_LABEL, validate_body
@@ -63,8 +64,34 @@ def issue_state(gh: GitHub, issue: dict[str, Any]) -> str:
     )
 
 
-def eligible(state: str, manual: bool) -> bool:
-    return state == "pending" or (manual and state == "failed")
+def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
+    """Close the agreement gate before inspecting records for a manual retry."""
+    bundle = bundle_for(gh.repo, number, 1)
+    state = issue_state(gh, gh.issue(number))
+    if state == "failed" and manual:
+        # Re-read immediately before the targeted deletion. Never clear a human
+        # skip or a completed run which appeared after the first read.
+        if issue_state(gh, gh.issue(number)) != "failed":
+            raise ValueError("rewrite_label_conflict")
+        gh.request(
+            "DELETE",
+            f"repos/{gh.repo}/issues/{number}/labels/{quote(REWRITE_FAILED_LABEL, safe='')}",
+            {},
+        )
+        state = issue_state(gh, gh.issue(number))
+        if state != "pending":
+            raise ValueError("rewrite_label_conflict")
+    if state != "pending":
+        return outcome(bundle, "not_target", f"state_{state}")["report"]
+    if has_execution_record(
+        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
+    ):
+        return outcome(
+            bundle,
+            final_label(gh, number, REWRITE_SKIPPED_LABEL),
+            "execution_record_exists",
+        )["report"]
+    return outcome(bundle, "ready")["report"]
 
 
 def stable_issue(
@@ -124,7 +151,6 @@ def generate(
     attempt: int,
     *,
     run_dir: Path,
-    manual: bool,
     agy: Path = DEFAULT_AGY,
     timeout: float = 300,
     wait: Callable[[GitHub, int], dict[str, Any]] | None = None,
@@ -139,7 +165,7 @@ def generate(
         write_json(
             run_dir / "initial-input.json", {"issue": issue, "comments": comments}
         )
-        if not eligible(state, manual):
+        if state != "pending":
             return outcome(bundle, "not_target", f"state_{state}")
         publisher = gh.repo.split("/")[0]
         if has_execution_record(comments, publisher, gh.repo, number):
@@ -151,7 +177,7 @@ def generate(
             run_dir / "input.json",
             {"issue": issue, "comments": comments, "history": history},
         )
-        if not eligible(issue_state(gh, issue), manual):
+        if issue_state(gh, issue) != "pending":
             return outcome(bundle, "not_target", "state_changed_during_wait")
         if has_execution_record(comments, publisher, gh.repo, number):
             return outcome(bundle, "skipped", "execution_record_exists")
@@ -283,23 +309,28 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
     issue = gh.issue(number)
     labels = [item["name"] for item in issue["labels"]]
     state = issue_state(gh, issue)
-    # Preserve a human's skip or a completed run, including races after checks.
-    if state in {"not_target", "done", "skipped"}:
+    if state == "not_target":
         return state
+    if set(labels) & (REWRITE_FINAL_LABELS - {label}):
+        raise ValueError("rewrite_label_conflict")
     if set(labels) & REWRITE_FINAL_LABELS == {label}:
         return label.removeprefix("rewrite:")
     gh.request(
-        "PATCH",
-        f"repos/{gh.repo}/issues/{number}",
-        {
-            "labels": [name for name in labels if name not in REWRITE_FINAL_LABELS]
-            + [label],
-        },
+        "POST",
+        f"repos/{gh.repo}/issues/{number}/labels",
+        {"labels": [label]},
     )
+    confirmed = {
+        item["name"] for item in gh.issue(number)["labels"]
+    } & REWRITE_FINAL_LABELS
+    if confirmed != {label}:
+        # GitHub has no atomic add-if-absent for labels. Detect the residual
+        # race explicitly; never erase the competing label to conceal it.
+        raise ValueError("rewrite_label_conflict")
     return label.removeprefix("rewrite:")
 
 
-def apply(gh: GitHub, bundle: Handoff, *, ref: str, manual: bool) -> dict[str, Any]:
+def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     from agent_output import OutputSchema
 
     number, attempt = bundle["issue_number"], bundle["attempt"]
@@ -310,7 +341,7 @@ def apply(gh: GitHub, bundle: Handoff, *, ref: str, manual: bool) -> dict[str, A
     if bundle["status"] == "not_target":
         return bundle["report"]
     current = gh.issue(number)
-    if not eligible(issue_state(gh, current), manual):
+    if issue_state(gh, current) != "pending":
         return outcome(bundle, "not_target", "state_changed_before_apply")["report"]
     if has_execution_record(
         gh.comments(number), gh.repo.split("/")[0], gh.repo, number
@@ -344,31 +375,28 @@ def apply(gh: GitHub, bundle: Handoff, *, ref: str, manual: bool) -> dict[str, A
     current = gh.issue(
         number
     )  # final uncached body comparison immediately before PATCH
-    if not eligible(issue_state(gh, current), manual):
+    if issue_state(gh, current) != "pending":
         return outcome(bundle, "not_target", "state_changed_before_patch")["report"]
-    if has_execution_record(
-        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
-    ):
-        state = final_label(gh, number, REWRITE_SKIPPED_LABEL)
-        return outcome(bundle, state, "execution_record_exists")["report"]
     if (
         current["body"] != source["body"]
         or before["body"] != source["body"]
         or before["edits"] != source["history"]["edits"]
     ):
         if attempt == 1:
-            gh.request(
-                "POST",
-                f"repos/{gh.repo}/actions/workflows/issue-rewrite.yml/dispatches",
-                {
-                    "ref": ref,
-                    "inputs": {"issue_number": str(number), "attempt": "2"},
-                },
-            )
-            return outcome(bundle, "retry_dispatched", "body_changed_before_patch")[
+            return outcome(bundle, "retry_required", "body_changed_before_patch")[
                 "report"
             ]
         raise ValueError("body_conflict_retry_exhausted")
+    # The last GitHub read before a body PATCH must check agreement/execution
+    # records, including one that completed while the failed label was cleared.
+    if has_execution_record(
+        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
+    ):
+        return outcome(
+            bundle,
+            final_label(gh, number, REWRITE_SKIPPED_LABEL),
+            "execution_record_exists",
+        )["report"]
     if candidate != source["body"]:
         patched = gh.request(
             "PATCH", f"repos/{gh.repo}/issues/{number}", {"body": candidate}

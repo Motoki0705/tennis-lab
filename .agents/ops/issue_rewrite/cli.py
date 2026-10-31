@@ -18,7 +18,16 @@ from agy_headless import DEFAULT_AGY
 from parent.judgement_comments import read_json
 
 from .github import GitHub
-from .pipeline import PACKAGE, Handoff, apply, bundle_for, fail, generate, outcome
+from .pipeline import (
+    PACKAGE,
+    Handoff,
+    apply,
+    bundle_for,
+    fail,
+    generate,
+    outcome,
+    prepare,
+)
 from .publication import publication_errors, summary, write_json
 
 PUBLIC_FAILURES = {
@@ -31,6 +40,7 @@ PUBLIC_FAILURES = {
     "artifact_invariants_failed",
     "failed_bundle_cannot_be_applied",
     "github_request_failed",
+    "rewrite_label_conflict",
 }
 
 
@@ -51,7 +61,7 @@ def read_bundle(path: Path, repo: str, number: int, attempt: int) -> Handoff:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("rewrite", "apply", "fail"))
+    parser.add_argument("command", choices=("prepare", "rewrite", "apply", "fail"))
     parser.add_argument("--repo", required=True)
     parser.add_argument(
         "--enabled-since",
@@ -62,9 +72,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--attempt", type=int, choices=(1, 2), default=1)
     parser.add_argument("--manual", action="store_true")
     parser.add_argument("--run-dir", type=Path)
-    parser.add_argument("--bundle", type=Path, required=True)
+    parser.add_argument("--bundle", type=Path)
     parser.add_argument("--agy", type=Path, default=DEFAULT_AGY)
-    parser.add_argument("--ref", default="main", choices=("main",))
     parser.add_argument(
         "--summary",
         type=Path,
@@ -77,17 +86,22 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(
             "positive issue number and a private rewrite run directory are required"
         )
+    if args.command != "prepare" and args.bundle is None:
+        parser.error("--bundle is required for rewrite, apply and fail")
+    if args.manual and args.command != "prepare":
+        parser.error("--manual is supported only by prepare")
     bundle = bundle_for(args.repo, args.issue_number, args.attempt)
     code = 0
     try:
         gh = GitHub(args.repo, enabled_since=args.enabled_since or None)
-        if args.command == "rewrite":
+        if args.command == "prepare":
+            report = prepare(gh, args.issue_number, manual=args.manual)
+        elif args.command == "rewrite":
             bundle = generate(
                 gh,
                 args.issue_number,
                 args.attempt,
                 run_dir=args.run_dir,
-                manual=args.manual,
                 agy=args.agy,
             )
             if publication_errors(json.dumps(bundle, ensure_ascii=False)):
@@ -105,7 +119,7 @@ def main(argv: list[str] | None = None) -> int:
             code = int(bundle["status"] == "failed")
         elif args.command == "apply":
             bundle = read_bundle(args.bundle, gh.repo, args.issue_number, args.attempt)
-            report = apply(gh, bundle, ref=args.ref, manual=args.manual)
+            report = apply(gh, bundle)
         else:
             # A checkout/upload/runtime failure can leave no artifact at all.
             if args.bundle.exists():
@@ -130,5 +144,10 @@ def main(argv: list[str] | None = None) -> int:
         )["report"]
         code = 1
     summary(args.summary, report)
+    if os.environ.get("GITHUB_OUTPUT"):
+        with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as handle:
+            handle.write(
+                f"status={report['status']}\nneeds_retry={'true' if report['status'] == 'retry_required' else 'false'}\n"
+            )
     print(json.dumps({"issue_number": args.issue_number, "status": report["status"]}))
     return code

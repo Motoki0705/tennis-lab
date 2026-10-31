@@ -10,7 +10,8 @@ from issues.format import CHILD_REQUIRED, PARENT_REQUIRED, parse_sections, valid
 from parent.execution import PROGRESS_SECTIONS
 from parent.policy import section_span
 
-URL = re.compile(r'https?://[^\s<>()\[\]`"。、，；！？「」『』（）]+')
+from .markdown import markdown_content
+
 REFERENCE = re.compile(r"#[0-9]+")
 MENTION = re.compile(
     r"(?<![\w./])@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:/[\w-]+)?"
@@ -51,7 +52,7 @@ def protected(body: str) -> dict[str, list[str]]:
         )
     ]
     return {
-        "quotes": re.findall(r"(?m)^[ \t]*>[^\n]*(?:\n|$)", body),
+        "quotes": markdown_content(body)[0],
         "html_comments": [match[0] for match in comments],
         "fenced_code": fences,
         "inline_code": inline,
@@ -123,7 +124,6 @@ def check_invariants(
             )
     for kind, pattern in (
         ("references", REFERENCE),
-        ("urls", URL),
         ("mentions", MENTION),
         ("numbers", NUMBER),
     ):
@@ -131,16 +131,16 @@ def check_invariants(
         if kind == "numbers":
             left_text = LIST_NUMBER.sub(r"\1", left_text)
             right_text = LIST_NUMBER.sub(r"\1", right_text)
-        left_values = Counter(
-            m[0].rstrip(".,;!?:") if kind == "urls" else m[0]
-            for m in pattern.finditer(left_text)
-        )
-        right_values = Counter(
-            m[0].rstrip(".,;!?:") if kind == "urls" else m[0]
-            for m in pattern.finditer(right_text)
-        )
+        left_values = Counter(m[0] for m in pattern.finditer(left_text))
+        right_values = Counter(m[0] for m in pattern.finditer(right_text))
         if left_values != right_values:
             add(kind, f"{kind} multiset changed: {_delta(left_values, right_values)}")
+    before_urls, after_urls = (
+        markdown_content(original)[1],
+        markdown_content(candidate)[1],
+    )
+    if before_urls != after_urls:
+        add("urls", f"urls multiset changed: {_delta(before_urls, after_urls)}")
     for name in dict.fromkeys([*before, *after]):
         left_boxes = Counter(
             "checked" if x.lower() == "x" else "unchecked"

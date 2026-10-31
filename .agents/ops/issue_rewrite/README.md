@@ -21,21 +21,25 @@ workflow以外の親CLI・dispatcherの取得契約は変更しない。
 同じissueのrunをconcurrencyで直列化し、実行中のrunは取り消さない。
 workflowファイル名 `issue-rewrite.yml` と表示名 `issue-rewrite #<番号>` は
 [`parent wait-rewrite`](../parent/README.md#書き直しの確定待ち)との共有契約。
-本文競合によるattempt 2は別runになる。wait-rewriteは終了後もpendingで、より新しい同名runが
-存在すれば1回だけ追う。登録を待つpollはしない。
+本文競合によるattempt 2も同じrun内で実行し、runの表示名とowner起点の認可を保持する。
+wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起動や追跡は行わない。
 
 ## 処理と責務
 
 | 部品 | 処理 |
 |---|---|
-| `pipeline.generate` / job `rewrite` | self-hosted runnerで入力を保存し、安定待ち・writer・不変条件・verifierを実行する。GitHubへの変更権限は持たない |
+| `pipeline.prepare` / job `prepare` | GitHub-hosted runnerで手動のfailed再実行をpendingに戻してから合意を確認する |
+| `pipeline.generate` / job `rewrite`・`rewrite_retry` | self-hosted runnerで入力を保存し、安定待ち・writer・不変条件・verifierを実行する。GitHubへの変更権限は持たない |
 | `invariants.py` | 元の本文から保持すべき情報を抽出し、違反した項目と理由を列挙する |
 | `github.py` | 既存の合意・実行根拠の解析、GitHubへの要求、編集履歴の全ページ取得と照合 |
 | `publication.py` | 公開する項目の選別、token等の検査、summaryの出力。生のagent診断は公開しない |
-| `pipeline.apply` / job `apply` | GitHub-hosted runnerでartifactを再検査し、最新入力との照合・PATCH・編集履歴の検査・確定ラベルの付与を行う |
+| `pipeline.apply` / job `apply`・`apply_retry` | GitHub-hosted runnerでartifactを再検査し、最新入力との照合・PATCH・編集履歴の検査・確定ラベルの付与を行う |
 | `pipeline.fail` / job `failed` | 上流jobの失敗時に、GitHub-hosted runnerで現在の対象・合意・確定状態を再取得して失敗を確定する |
 
-1. title・body・labels・created_at・作者・全コメントをprivateなrun dirへ保存する。
+1. ownerによる手動再実行でfailedの場合、prepareが現在の状態を読み直してfailedラベルだけを個別に削除し、
+   pendingを再取得してから合意・実行根拠を確認する。記録済みならskippedを付けて終了する。
+   done/skippedや非対象は再実行しない。通常のpendingでも生成前に記録を確認する。
+   title・body・labels・created_at・作者・全コメントをprivateなrun dirへ保存する。
    本文が60秒変わらなくなるまで10秒以下の間隔で確認する。10分以内に安定しなければ失敗。
 2. repository ownerをpublisherとして `parent.policy.events` の合意・実行根拠と、
    `parent.judgement_comments.owned_comment` が完全検証した `startable` の判定記録を調べる。
@@ -50,8 +54,10 @@ workflowファイル名 `issue-rewrite.yml` と表示名 `issue-rewrite #<番号
    schema不正・構造化出力なし・版/モデル/認証等の呼び出し失敗は修正を試さず失敗する。
 6. applyはartifactのschema、不変条件、verifier合格を再検査し、対象状態と合意記録も再取得する。
    元本文と現在の本文、入力時と現在の編集履歴が一致したときだけ本文をPATCHする。
-   不一致なら書かず、attempt 1から `workflow_dispatch(attempt=2)` を1回だけ行い、最新本文から作り直す。
-   attempt 2も不一致なら失敗。ラベルをpendingへ戻す操作は行わない。
+   不一致なら書かず、applyの `needs_retry=true` outputを受けた静的な `rewrite_retry`（self-hosted）と
+   `apply_retry`（GitHub-hosted）が最新本文から1回だけ作り直す。attempt 2も不一致なら失敗する。
+   dispatchは行わず、最終label以外のGitHub変更は手動再実行のfailed削除と本文PATCHに限る。
+   本文PATCHの直前の最後の読み取りでも、合意・実行根拠の記録を確認してから書く。
 7. PATCH後にGraphQLの `userContentEdits` を全ページ取得し、以前の履歴が変わっておらず、
    今のGitHub tokenのviewerによる編集が1件だけ増えたことと現在の本文を確認して `rewrite:done` にする。
    GitHubが最初の編集時に作成時の版も追加する場合は、`includesCreatedEdit` のfalse→true、
@@ -60,8 +66,11 @@ workflowファイル名 `issue-rewrite.yml` と表示名 `issue-rewrite #<番号
 
 不変条件は、必須 `##` 節の集合と順序、`validate_body`、
 `parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、
-引用行、HTMLコメント、fenced code、inline codeの原文と順序を保持する。
+引用ブロック全体（`>`を省略したlazy continuationを含む）、HTMLコメント、fenced code、inline codeの原文と順序を保持する。
 `#番号`・HTTP(S) URL・`@mention`・数値は多重集合で比較する。
+引用範囲とURLはmarkdown-it-pyのCommonMark解析を使い、括弧を含むリンク先を完全に取得する。
+参照リンクの使用回数をURL出現数へ重複計上せず、強調や句読点をURLへ取り込まない。
+workflowの隔離Pythonにも `markdown-it-py==4.0.0` を明示する。
 数値の字面も保持するが、行頭のMarkdownの番号付きリストの番号は除く。
 checkboxの数とchecked/uncheckedは節ごとに比較する。段落・箇条書き・表・小見出し等の表現はGeminiに任せる。
 
@@ -75,7 +84,9 @@ RESTの本文PATCHは原子的なcompare-and-swapではない。PATCH後に割�
 
 runnerのHOME・agyの場所・導入と直接ログインの手順は[runner README](../../../scripts/github_actions/README.md#agyの導入と疎通)が正本。
 rewrite jobのGitHub tokenはcontents・issues・pull-requestsのreadだけ、checkoutはcredentialを永続化しない。
-applyとfailedはissues/actionsのwriteとcheckoutのcontents readだけで、agyの導入やGoogle認証情報を持たない。
+prepare・apply・apply_retry・failedはissuesのwriteとcheckoutのcontents readだけで、
+agyの導入やGoogle認証情報を持たない。全jobからactionsのwriteを外している。
+外部actionは公式release tagと照合した完全commit SHAと版コメントで固定する。
 
 run dirは0700、保存ファイルは0600。入力・prompt・writerのnotes・verifierの説明・agy logはprivateに保つ。
 artifactへ渡すのは `public/handoff.json` 1ファイルだけで、globやrun dir全体をuploadしない。
@@ -94,14 +105,16 @@ verifierの自由文説明や拒否コマンドの生文字列は出さない。
 
 `rewrite:failed` は「原文で確定」の意味で、親CLI・dispatcherはこの確定状態で進められる。
 summaryの理由を確認してから、合意・実行根拠の記録がまだ無いfailed issueだけをownerが再実行できる。
-Actions → **Issue rewrite** → **Run workflow** でmain・issue番号・attempt 1を選ぶか、次を使う。
+Actions → **Issue rewrite** → **Run workflow** でmain・issue番号を選ぶか、次を使う。
 
 ```bash
-gh workflow run issue-rewrite.yml --ref main -f issue_number=123 -f attempt=1
+gh workflow run issue-rewrite.yml --ref main -f issue_number=123
 ```
 
-手動の再実行はfailedラベルを途中で外さず、成功時にdoneへ置き換える。
-生成中に合意が記録されても、applyで再確認して書き直しを省略する。
+手動の再実行ではprepareが合意の確認より先にfailedを外し、親CLI・dispatcherの確定待ちgateを閉じる。
+生成中もpendingを保つ。生成中やPATCH直前に合意を見つけた場合は、本文を変えずskippedにする。
+確定ラベルは個別の追加APIだけを使い、ラベル全体を置換しない。付与直前に別の確定ラベルがあれば停止する。
+追加APIの直後にも再確認し、残る競合は明示的な失敗として検出する。人間が付けたラベルを消して修復しない。
 done/skippedは手動実行でも再度書き直さない。
 
 `rewrite:skipped` は「この本文で進めてよいと人間が判断した」か、「既に合意・実行根拠があるため書き直さなかった」を表す。
@@ -110,9 +123,11 @@ runner待ちを省略する判断は人間が行い、GitHubのissue画面でこ
 実行中に人間がskipした場合、後続の失敗jobはそれをfailedへ置き換えない。
 書き直しworkflowはコメントを投稿しない。
 
-CLIは `.agents/ops` を `PYTHONPATH` にして `python -m issue_rewrite rewrite|apply|fail` を使う。
-`--repo`・`--issue-number`・`--enabled-since`・`--bundle` が必須、`--attempt` は1か2。
-rewriteには新しい `--run-dir`、明示的なfailed再実行には `--manual` を渡す。
+CLIは `.agents/ops` を `PYTHONPATH` にして `python -m issue_rewrite prepare|rewrite|apply|fail` を使う。
+`--repo`・`--issue-number`・`--enabled-since` が必須、prepare以外では `--bundle` も必須。
+`--attempt` は内部の1か2。rewriteには新しい `--run-dir` を渡す。
+`--manual` はprepareだけが受理し、read-onlyのrewrite/applyからfailed処理を迂回できない。
+`GITHUB_OUTPUT` へ `status` と `needs_retry` を出し、静的なjobの連鎖を制御する。
 通常処理は0、検査・処理の失敗は1、引数不正は2。failコマンドの0は確定ラベルの処理成功を意味し、
 上流のworkflow失敗を成功には変えない。実機の導入・有効化・1件目の確認は別タスクで行う。
 

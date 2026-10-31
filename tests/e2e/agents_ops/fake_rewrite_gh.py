@@ -6,6 +6,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any, NoReturn
+from urllib.parse import unquote
 
 root = Path(os.environ["REWRITE_FAKE_ROOT"])
 args = sys.argv[1:]
@@ -68,8 +69,14 @@ if endpoint == "repos/o/r/issues/1" and method == "GET":
             edit(mutation["body"], "human")
         if "comments" in mutation:
             state["comments"] = mutation["comments"]
+        for name in mutation.get("add_labels", []):
+            state["issue"]["labels"].append({"name": name})
     response(state["issue"])
 if endpoint.startswith("repos/o/r/issues/1/comments"):
+    state["comments_reads"] = state.get("comments_reads", 0) + 1
+    mutation = state.get("comments_mutation")
+    if mutation and state["comments_reads"] == mutation["read"]:
+        state["comments"] = mutation["comments"]
     page = int(endpoint.split("page=")[-1])
     response(state["comments"][(page - 1) * 100 : page * 100])
 if endpoint == "graphql":
@@ -102,6 +109,7 @@ if endpoint == "graphql":
         }
     )
 if endpoint == "repos/o/r/issues/1" and method == "PATCH":
+    assert set(payload) == {"body"}, "whole-issue label replacement is forbidden"
     if "body" in payload:
         if state.get("interference") in {"before", "same_author"}:
             editor = (
@@ -117,10 +125,25 @@ if endpoint == "repos/o/r/issues/1" and method == "PATCH":
         patch_response = json.loads(json.dumps(state["issue"]))
         if state.get("interference") == "after":
             edit("human's latest body", "human")
-    if "labels" in payload:
-        state["issue"]["labels"] = [{"name": name} for name in payload["labels"]]
-    response(patch_response if "body" in payload else state["issue"])
-if endpoint.endswith("/issue-rewrite.yml/dispatches") and method == "POST":
-    state.setdefault("dispatches", []).append(payload)
+    response(patch_response)
+if endpoint == "repos/o/r/issues/1/labels" and method == "POST":
+    assert set(payload) == {"labels"} and len(payload["labels"]) == 1
+    for name in state.get("label_add_race", []):
+        if name not in {item["name"] for item in state["issue"]["labels"]}:
+            state["issue"]["labels"].append({"name": name})
+    for name in payload["labels"]:
+        if name not in {item["name"] for item in state["issue"]["labels"]}:
+            state["issue"]["labels"].append({"name": name})
+    response(state["issue"]["labels"])
+if endpoint.startswith("repos/o/r/issues/1/labels/") and method == "DELETE":
+    for name in state.get("label_delete_race", []):
+        state["issue"]["labels"].append({"name": name})
+    name = unquote(endpoint.rsplit("/", 1)[-1])
+    assert name == "rewrite:failed"
+    state["issue"]["labels"] = [
+        item for item in state["issue"]["labels"] if item["name"] != name
+    ]
+    if "comments_after_delete" in state:
+        state["comments"] = state["comments_after_delete"]
     response(None, 204)
 raise AssertionError((args, payload))

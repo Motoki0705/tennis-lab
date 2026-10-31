@@ -227,7 +227,7 @@
             "not_target",
             "skipped",
             "done",
-            "retry_dispatched"
+            "retry_required"
           ]
         },
         "reasons": {
