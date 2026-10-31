@@ -11,6 +11,32 @@
 
 JavaScript の単体・ブラウザ検証も各領域にある。pytest が収集しない入口は、対象モジュールの README にある実行方法を確認する。
 
+## モデル契約キット
+
+`support/model_contracts/registry.py` の `ModelFamily` を、各taskのintegration側の
+`model_contracts.py`で登録し、`test_model_contracts.py`から実行する。
+`build`は小さい実データfixtureを準備し、`rebuild`は同じデータに対して新しいmodel/DataModuleを構築する。
+Courtの外部DINOv3 backbone、Playerの外部CUDA DINO/criterion境界だけは登録に明記したfakeを使う。
+
+`lifecycle.py`の保存復元契約は、実更新後にファイルへ保存し、新しいinstanceへstrictに復元する。
+保存configと、taskが公開predict経路から返す全fieldを再帰比較する。
+tensorの値・shape・dtype・device・NaN位置に加え、物理単位の出力型、mask、target schema、閾値も対象とする。
+同じ入力・seedでCPU FP32の厳密一致を要求し、期待出力のfieldを共通側で抜き出さない。
+
+再開契約は、固定したschedule予算で連続実行と中断後の実Trainer/runner再開を比較する。
+Nでのmodel・optimizer全moment・scheduler・Python/NumPy/Torch乱数・実際のbatch・データ乱数/位置と、
+N+1での追加更新が一致することを調べる。Lightningは完了epoch境界、Refinerは可変長窓を抽選する完了block境界、
+MDD専用loopはepoch/pack更新境界を使う。GAN切替前後、freeze解除、Flow専用乱数、physics付きRefinerを代表構成で含める。
+契約profileはaugmentationを無効にしたworker=0の小さいCPU入力を使う。
+独立したaugmentation engine/worker内部の乱数状態、任意のepoch途中、GPU数値一致はこの契約の保証範囲に含めない。
+head欠落、同shapeの設定/閾値変更、optimizer・乱数・データ位置の復元漏れは故障注入で検出する。
+
+Ballの専用loop adapterは`integration/tasks/ball_detection/lifecycle_contracts.py`に置く。
+固定長MDDのCLI代表例は`e2e/ball_detection/test_mdd_training_cli.py`で入口ごとに実行する。
+旧2chの復元と次更新、段階間の転送・固定validation・stress・累積snapshotの契約は
+`integration/tasks/ball_detection/test_{mdd_pretraining,mdd_posttraining,full_model_training,hybrid_training}.py`に置く。
+削除・移動するときは[削除・統合・配置変更](#削除統合配置変更)の対応表と実測を残す。
+
 ## テスト作成方針
 
 ### 実装前に設計する

@@ -12,6 +12,12 @@ from hydra import compose, initialize_config_dir
 from src.tasks.blcs.configuration import parse_model_config
 from tests.integration.tasks.blcs.model_contracts import AXIAL, CONFIG_DIR, SELECTORS
 from tests.support.model_contracts.exercise import exercise_family
+from tests.support.model_contracts.lifecycle import (
+    exercise_checkpoint,
+    exercise_resume,
+    omit_head,
+    resume_fault,
+)
 from tests.support.model_contracts.parameters import names_under
 from tests.support.model_contracts.registry import (
     assert_selector_coverage,
@@ -19,6 +25,22 @@ from tests.support.model_contracts.registry import (
 )
 
 pytestmark = pytest.mark.integration
+
+
+def test_checkpoint_all_public_outputs(tmp_path: Path) -> None:
+    exercise_checkpoint(AXIAL, tmp_path)
+
+
+@pytest.mark.parametrize("gan", [False, True], ids=["supervised", "gan"])
+def test_interrupted_training_matches_continuous(tmp_path: Path, gan: bool) -> None:
+    exercise_resume(AXIAL, tmp_path, gan=gan)
+
+
+def test_checkpoint_missing_head_is_detected(tmp_path: Path) -> None:
+    with pytest.raises(RuntimeError, match="Missing key.*velocity"):
+        exercise_checkpoint(
+            AXIAL, tmp_path, mutate=omit_head("model.output_head.velocity")
+        )
 
 
 @pytest.mark.parametrize("gan", [False, True], ids=["supervised", "gan"])
@@ -83,3 +105,21 @@ def test_contract_detects_disconnected_velocity_head(
     )
     with pytest.raises(AssertionError, match=error):
         exercise_family(AXIAL, tmp_path, mutate=mutate)
+
+
+@pytest.mark.parametrize("fault", ["optimizer", "rng", "data"])
+def test_checkpoint_resume_state_omission_is_detected(tmp_path, fault):
+    with pytest.raises(AssertionError, match="resume"):
+        exercise_resume(AXIAL, tmp_path, mutate=resume_fault(fault))
+
+
+def test_gan_resume_after_transition(tmp_path):
+    exercise_resume(AXIAL, tmp_path, gan=True, interrupt_epoch=2)
+
+
+def test_legacy_checkpoint_without_rng_cannot_silently_resume(tmp_path):
+    def omit_rng(payload):
+        del payload["training_random_state"]
+
+    with pytest.raises(ValueError, match="training_random_state.*init_weights"):
+        exercise_resume(AXIAL, tmp_path, mutate=omit_rng)

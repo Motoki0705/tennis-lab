@@ -38,6 +38,10 @@ class ModelFamily:
     assert_prediction: Callable[[Any], None]
     # Task-owned adapter for non-Lightning loops or a task-specific GAN schedule.
     fit: Callable[..., Any] | None = None
+    # Construct fresh modules/data without regenerating the immutable fixture.
+    rebuild: Callable[[DictConfig], tuple[Any, Any]] | None = None
+    training_state: Callable[[Any], Any] | None = None
+    predict_artifact: Callable[[Path, Any], Any] | None = None
 
 
 def save_checkpoint(trainer: pl.Trainer, path: Path) -> None:

@@ -290,6 +290,16 @@ class BLCSPredictor(BasePredictor[BLCSTrajectoryPrediction]):
         return BLCSTrajectoryPrediction(
             position=position.detach().cpu(),
             velocity=None if velocity is None else velocity.detach().cpu(),
+            physics_parameters=(
+                None
+                if prediction.physics_parameters is None
+                else prediction.physics_parameters.detach().cpu()
+            ),
+            event_logits=(
+                None
+                if prediction.event_logits is None
+                else prediction.event_logits.detach().cpu()
+            ),
             court_reference_provenance=provenance,
             coordinates_in_metres=denormalize,
             reference_metadata=metadata.cpu() if metadata is not None else None,

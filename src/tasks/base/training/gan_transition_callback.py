@@ -58,9 +58,9 @@ class GANTransitionCallback(pl.Callback):
 
         # Process-local guard so the one-time phase activation (which rebuilds the
         # optimizer/scheduler state) runs exactly once. Intentionally NOT persisted
-        # in state_dict: on resume the module is reconstructed with the GAN phase
-        # inactive, so a fresh process must re-activate it deterministically from
-        # ``current_epoch >= start_epoch``.
+        # in this callback's state_dict. The module restores its GAN phase and
+        # activation is idempotent, preserving the restored LR schedule. This
+        # callback reapplies the deterministic weight for the resumed epoch.
         self.has_switched_to_gan = False
 
     def on_fit_start(self, trainer: pl.Trainer, pl_module: pl.LightningModule) -> None:
@@ -101,5 +101,11 @@ class GANTransitionCallback(pl.Callback):
     def _ramp_weight(self, current_epoch: int) -> float:
         # Warmup is anchored to ``start_epoch`` (not the activation epoch) so a
         # resumed run picks the correct point on the ramp for its epoch.
-        return gan_weight_at(current_epoch, start=self.start_epoch,
-                             warmup=max(self.gan_warmup_epochs, 1), target=self.gan_target_weight)
+        return float(
+            gan_weight_at(
+                current_epoch,
+                start=self.start_epoch,
+                warmup=max(self.gan_warmup_epochs, 1),
+                target=self.gan_target_weight,
+            )
+        )

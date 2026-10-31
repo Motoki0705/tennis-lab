@@ -167,6 +167,20 @@ def test_mixed_court_training_boundary_remains_explicitly_registered() -> None:
     assert boundary.executable_module
 
 
+def test_temporal_ball_evaluation_registers_the_shared_runtime_boundary() -> None:
+    from src.tasks.ball_detection.evaluation.temporal_cli import PATH_BOUNDARY
+
+    boundary = next(
+        boundary
+        for boundary in EXPECTED_RUNTIME_BOUNDARIES
+        if boundary.module == "src.tasks.ball_detection.evaluation.temporal_cli"
+    )
+    assert boundary.validator_key == PATH_BOUNDARY.name == "ball_detection.evaluate_temporal"
+    assert boundary.validator_callable == (
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate"
+    )
+
+
 def test_court_learning_presentation_has_an_explicit_hydra_boundary() -> None:
     boundary = next(
         boundary

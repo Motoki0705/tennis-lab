@@ -7,6 +7,26 @@ These API/CLI e2e cases complement test_agent_runtime's fake CLI coverage and
 test_parent_launch's existing launch-plan coverage. No real agents or GitHub.
 Budget: fewer than 50 expansions per function; local cases should take <1s,
 GitHub fixture cases <5s. Measure setup/call/teardown with --durations=0.
+
+#1589: extend this fixture's real events.jsonl/receipt path to cover started and
+completed shell commands, quote preservation, first-line/length limits and item
+deduplication. Unsupported invocations must retain the original Guard result;
+private values on later lines must still hide the whole command. Reuse the
+existing redaction/environment cases rather than duplicating their input axes.
+New local cases need no agents/assets and keep the same <1s/case budget.
+
+Review regressions: compare accepted outer quoting with real bash argv parsing,
+reject expansion syntax without evaluating it, and hide attached option paths
+only in command summaries. Extend the existing positive/unsupported API cases;
+add the environment-value bypass and path/URL boundaries to this same fixture.
+The bash oracle evaluates trusted literal fixtures only, never runner input.
+Keep each function below 50 cases and measure durations; bash startup is local.
+
+Second review: inner word concatenation and escapes must not hide attached paths
+from inspection. A second trusted bash argv oracle covers those literal words;
+ANSI/locale quotes fail closed. Preserve whitespace between option/value words,
+safe real command examples and URL boundaries. Extend the current path cases
+and environment redaction case; keep new local cases below 1s including setup.
 """
 
 from __future__ import annotations
@@ -15,6 +35,7 @@ import hashlib
 import importlib
 import json
 import os
+import shlex
 import subprocess
 import sys
 from copy import deepcopy
@@ -390,6 +411,378 @@ def test_summary_last_message_recent_tools_and_legacy_times(fixture: Any) -> Non
 
 
 @pytest.mark.parametrize(
+    ("command", "expected", "truncated"),
+    [
+        (
+            '/bin/bash -lc "git diff --exit-code; git status --short"',
+            "git diff --exit-code; git status --short",
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git push origin codex/example-worker'",
+            "git push origin codex/example-worker",
+            False,
+        ),
+        (
+            '/bin/bash -lc "git status --short\ngit diff --stat"',
+            "git status --short",
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git status --short\ngit diff --stat'",
+            "git status --short",
+            False,
+        ),
+        ("/bin/sh -c 'git status --short'", "git status --short", False),
+        ("bash -lc 'git status --short'", "git status --short", False),
+        ("sh -c 'git status --short'", "git status --short", False),
+        (
+            '/bin/bash -lc "git log --format=\\"%h %s\\" -1"',
+            'git log --format="%h %s" -1',
+            False,
+        ),
+        (
+            "/bin/bash -lc \"printf '%s' 'alpha\\$bravo'\"",
+            "printf '%s' 'alpha$bravo'",
+            False,
+        ),
+        (
+            "/bin/bash -lc \"printf '%s' '\\`literal\\`'\"",
+            "printf '%s' '`literal`'",
+            False,
+        ),
+        (
+            '/bin/bash -lc "printf \\\\done"',
+            r"printf \done",
+            False,
+        ),
+        (
+            '/bin/bash -lc "git status --\\\nshort"',
+            "git status --short",
+            False,
+        ),
+        (r'/bin/bash -lc "printf \q"', r"printf \q", False),
+        (
+            "/bin/bash -lc 'printf alpha\\$bravo'",
+            r"printf alpha\$bravo",
+            False,
+        ),
+        (
+            "/bin/bash -lc 'git status --'\"short\"",
+            "git status --short",
+            False,
+        ),
+        (
+            """/bin/bash -lc 'printf '"'"'%s'"'"' done'""",
+            "printf '%s' done",
+            False,
+        ),
+        (
+            """/bin/bash -lc 'printf "$literal"'""",
+            'printf "$literal"',
+            False,
+        ),
+        ("bash -lc true", "true", False),
+        (
+            "/bin/bash -lc 'git show " + "x" * 310 + "\ngit status --short'",
+            "git show " + "x" * 291,
+            True,
+        ),
+    ],
+    ids=[
+        "double-quoted",
+        "single-quoted-push",
+        "double-quoted-multiline",
+        "single-quoted-multiline",
+        "absolute-sh",
+        "relative-bash",
+        "relative-sh",
+        "inner-quotes",
+        "escaped-dollar",
+        "escaped-backtick",
+        "escaped-backslash",
+        "escaped-line-break",
+        "preserved-backslash",
+        "single-literal-backslash",
+        "quote-concatenation",
+        "embedded-single-quote",
+        "single-literal-dollar",
+        "unquoted-literal",
+        "long-first-line",
+    ],
+)
+def test_shell_wrapped_commands_show_the_inner_first_line(
+    fixture: Any, command: str, expected: str, truncated: bool
+) -> None:
+    # Only these fixed literal inputs reach eval; no runner data or expansions.
+    oracle = subprocess.run(
+        [
+            "/bin/bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            'eval "set -- $1"; test "$#" -eq 3 && printf "%s" "$3"',
+            "_",
+            command,
+        ],
+        env={"LC_ALL": "C.UTF-8"},
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=5,
+    )
+    assert (
+        importlib.import_module("worker_status.records").unwrap_shell_command(command)
+        == oracle.stdout
+    )
+    f = fixture
+    f.record()
+    started = item("command_execution", command=command, status="in_progress")
+    started["type"] = "item.started"
+    completed = item(
+        "command_execution",
+        command=command,
+        status="completed",
+        aggregated_output="/private/tool-output",
+        exit_code=0,
+    )
+    for events in ([started], [started, completed]):
+        f.events(events)
+        child = f.child()
+        assert child["status"] == "turn_completed"
+        assert child["summary"]["tools"] == [
+            {
+                "kind": "command_execution",
+                "received_at": NOW.isoformat(),
+                "time_status": "observed",
+                "command": {
+                    "status": "visible",
+                    "text": expected,
+                    "truncated": truncated,
+                },
+            }
+        ]
+
+
+@pytest.mark.parametrize(
+    ("command", "status"),
+    [
+        ("git status --short", "visible"),
+        (None, "unavailable"),
+        ("/bin/bash -lc 'git status --short' extra", "hidden"),
+        ("bash -lc 'git status --short' extra", "visible"),
+        ("/bin/bash -lc 'git status --short", "hidden"),
+        ("bash -lc 'git status --short", "visible"),
+        ("bash -l -c 'git status --short'", "visible"),
+        ("bash --noprofile 'git status --short'", "visible"),
+        ("/usr/bin/bash -lc 'git status --short'", "hidden"),
+        ("zsh -c 'git status --short'", "visible"),
+        ("/bin/bash -lc", "hidden"),
+        ("/bin/bash -lc 'git status --short'|cat", "hidden"),
+        ("/bin/bash -lc 'git status --short';", "hidden"),
+        ("bash -lc 'git status --short';pwd", "visible"),
+        ("/bin/bash\n-lc 'git status --short'", "hidden"),
+        ("/bin/bash -lc 'git status --short' # comment", "hidden"),
+        ("/bin/bash -lc \"/bin/sh -c 'git status --short'\"", "hidden"),
+        ("/bin/bash -lc \"printf '$VALUE'\"", "hidden"),
+        ("bash -lc \"printf '$VALUE'\"", "visible"),
+        ("/bin/bash -lc \"printf '`whoami`'\"", "hidden"),
+        ("/bin/bash -lc $'git status --short'", "hidden"),
+        ('bash -lc $"git status --short"', "visible"),
+        ("bash -lc 'git status '*", "visible"),
+        ("bash -lc 'git status '?foo", "visible"),
+        ("bash -lc 'git status '[ab]", "visible"),
+        ("bash -lc ~", "visible"),
+        ("bash -lc {true,false}", "visible"),
+        (r"bash -lc git\ status", "visible"),
+        ("bash -lc git\\\nstatus", "visible"),
+        ("bash -lc git\\", "visible"),
+        ("bash -lc #", "visible"),
+        ("bash -lc $PAYLOAD", "visible"),
+        ("bash -lc `true`", "visible"),
+    ],
+)
+def test_unsupported_shell_invocations_keep_the_original_guard_result(
+    fixture: Any, command: str | None, status: str
+) -> None:
+    f = fixture
+    f.record()
+    f.events([item("command_execution", command=command)])
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    expected = None
+    if status == "visible":
+        assert isinstance(command, str)
+        expected = command.split("\n", 1)[0]
+    assert child["summary"]["tools"][0]["command"] == {
+        "status": status,
+        "text": expected,
+        "truncated": False,
+    }
+
+
+def test_shell_escaped_environment_value_stays_hidden(
+    fixture: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("WORKER_STATUS_FIXTURE_VALUE", "alpha$bravo")
+    f = fixture
+    f.record()
+    f.events(
+        [
+            item(
+                "command_execution",
+                command="/bin/bash -lc \"printf '%s' 'alpha\\$bravo'\"",
+            ),
+            item(
+                "command_execution",
+                id="inner-joined-value",
+                command="/bin/bash -lc " + shlex.quote("printf '%s' al'pha$bra'vo"),
+            ),
+        ]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert all(
+        tool["command"] == {"status": "hidden", "text": None, "truncated": False}
+        for tool in child["summary"]["tools"]
+    )
+    assert "alpha" not in json.dumps(child)
+
+
+@pytest.mark.parametrize(
+    ("script", "option"),
+    [
+        ('git -"C/srv/private-repo" status', "-C/srv/private-repo"),
+        ('git -"C/srv/x" status', "-C/srv/x"),
+        ("git -'C'/srv/x status", "-C/srv/x"),
+        ('git -C"/srv/x" status', "-C/srv/x"),
+        ('git "-C"/srv/x status', "-C/srv/x"),
+        (r"git -C\/srv/x status", "-C/srv/x"),
+        (r"git -C$'\x2fsrv' status", "-C/srv"),
+        ('git -\\\n"C/srv/x" status', "-C/srv/x"),
+        ("git -C$\\\n'\\x2fsrv' status", "-C/srv"),
+        ("git -''C/srv/x status", "-C/srv/x"),
+    ],
+)
+def test_inner_quoted_attached_paths_are_hidden(
+    fixture: Any, script: str, option: str
+) -> None:
+    # Fixed argv-only fixtures: set positional parameters, never execute git.
+    oracle = subprocess.run(
+        [
+            "/bin/bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            'eval "set -- $1"; printf "%s\\0" "$@"',
+            "_",
+            script,
+        ],
+        env={"LC_ALL": "C.UTF-8"},
+        capture_output=True,
+        check=True,
+        timeout=5,
+    )
+    assert oracle.stdout.split(b"\0") == [b"git", option.encode(), b"status", b""]
+    f = fixture
+    f.record()
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["tools"] == [
+        {
+            "kind": "command_execution",
+            "received_at": NOW.isoformat(),
+            "time_status": "observed",
+            "command": {"status": "hidden", "text": None, "truncated": False},
+        }
+    ]
+
+
+@pytest.mark.parametrize("script", ["printf $'ok'", 'printf $"ok"'])
+def test_inner_unsupported_quotes_are_hidden(fixture: Any, script: str) -> None:
+    f = fixture
+    f.record()
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["tools"][0]["command"] == {
+        "status": "hidden",
+        "text": None,
+        "truncated": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("script", "status"),
+    [
+        ("git -C/srv/private-repo status", "hidden"),
+        ("cc -I/srv/private/include -c source.c", "hidden"),
+        ("cc -L/srv/private/lib source.c", "hidden"),
+        ("tool -o/srv/private/output", "hidden"),
+        ("tool -xfoo/private", "hidden"),
+        ('git "-C/srv/private-repo" status', "hidden"),
+        ("tool --opt=/srv/private", "hidden"),
+        ("tool a:/private", "hidden"),
+        ("git status --short\ncc -I/srv/private/include -c source.c", "hidden"),
+        ("git status; " + "echo done; " * 30 + "cc -L/srv/private/lib", "hidden"),
+        ("ruff check src/utils", "visible"),
+        ("pytest tests/e2e/agents_ops/test_worker_status.py", "visible"),
+        ("curl https://example.test/docs", "visible"),
+        ("curl --url=https://example.test/docs", "visible"),
+        ("curl https://example.test/-C/public/assets", "visible"),
+        ('curl "https://example.test/?q=-C/path&more=yes"', "visible"),
+        ("curl https://example.test/docs;tool -C/srv/private", "hidden"),
+        ("cc -Iinclude -Llib source.c", "visible"),
+        ('git commit -m "a/b"', "visible"),
+        ("git status --short --branch", "visible"),
+        ("gh pr view 1557 --json number,url,headRefName", "visible"),
+        ('curl "https://example.test/?ok=yes&-C/path"', "visible"),
+        ('curl https://example.test/-"C/public/assets"', "visible"),
+        ('curl "https://example.test/docs";git -"C/srv/x" status', "hidden"),
+    ],
+)
+def test_command_summaries_hide_attached_paths_and_keep_relative_paths_and_urls(
+    fixture: Any, script: str, status: str
+) -> None:
+    f = fixture
+    f.record()
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["tools"][0]["command"] == {
+        "status": status,
+        "text": script if status == "visible" else None,
+        "truncated": False,
+    }
+
+
+def test_attached_path_rule_only_applies_to_command_summaries(fixture: Any) -> None:
+    f = fixture
+    f.record()
+    f.events(
+        [
+            item("agent_message", text="文書では -xfoo/path を例示する"),
+            item("command_execution", command="/bin/bash -lc 'tool -xfoo/path'"),
+        ]
+    )
+    summary = f.child()["summary"]
+    assert summary["message"]["status"] == "visible"
+    assert summary["message"]["text"] == "文書では -xfoo/path を例示する"
+    assert summary["tools"][0]["command"] == {
+        "status": "hidden",
+        "text": None,
+        "truncated": False,
+    }
+
+
+@pytest.mark.parametrize(
     "private",
     [
         "/home/private/file",
@@ -411,12 +804,33 @@ def test_private_text_is_hidden_before_truncating(
         [
             item("agent_message", text="safe prefix " * 40 + private),
             item("command_execution", command="pytest\n" + private),
+            item(
+                "command_execution",
+                id="wrapped-first-line",
+                command=f"/bin/bash -lc 'cd {private} && git status --short'",
+            ),
+            item(
+                "command_execution",
+                id="wrapped-later-line",
+                command=f'/bin/bash -lc "git status --short\n{private}"',
+            ),
+            item(
+                "command_execution",
+                id="wrapped-after-limit",
+                command="/bin/bash -lc 'git status --short; "
+                + "echo done; " * 30
+                + private
+                + "'",
+            ),
         ]
     )
     child = f.child()
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
-    assert child["summary"]["tools"][0]["command"]["status"] == "hidden"
+    assert all(
+        tool["command"] == {"status": "hidden", "text": None, "truncated": False}
+        for tool in child["summary"]["tools"]
+    )
     assert private not in json.dumps(child, ensure_ascii=False)
 
 
@@ -441,6 +855,11 @@ def test_environment_metadata_only_hides_free_text(
         [
             item("agent_message", text="safe prefix " * 40 + value),
             item("command_execution", command="pytest\n" + value),
+            item(
+                "command_execution",
+                id="wrapped-environment",
+                command=f'/bin/bash -lc "git status --short\n{value}"',
+            ),
         ]
     )
     calls = []
@@ -467,7 +886,9 @@ def test_environment_metadata_only_hides_free_text(
     assert child["status"] == "turn_completed"
     assert child["summary"]["message"]["status"] == "hidden"
     assert child["summary"]["message"]["text"] is None
-    assert child["summary"]["tools"][0]["command"]["status"] == "hidden"
+    assert all(
+        tool["command"]["status"] == "hidden" for tool in child["summary"]["tools"]
+    )
     # #1569 adds these fields, then uses this same board public validator.
     output["parents"][0]["roster"] = {
         "name": "Test parent",

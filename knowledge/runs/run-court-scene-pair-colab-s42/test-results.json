@@ -1,0 +1,240 @@
+{
+  "schema": "court_scene_pair_cpu_validation_v1",
+  "tests": 43,
+  "new_cases": 39,
+  "reused_cases": 4,
+  "workers": 2,
+  "elapsed_seconds": 13.69,
+  "new_case_time_sum_seconds": 2.38,
+  "maximum_new_case_seconds": 0.351,
+  "timing": "JUnit total includes setup/call/teardown; collection and worker startup are included only in suite elapsed.",
+  "gpu_runs": 0,
+  "real_pool_reads": 0,
+  "cases": [
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-1-0]",
+      "total_seconds": 0.05
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-29844]",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-33160.0]",
+      "total_seconds": 0.011
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-4]",
+      "total_seconds": 0.012
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-3]",
+      "total_seconds": 0.012
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-2-1]",
+      "total_seconds": 0.056
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint-/content/tennis-lab/wrong.ckpt]",
+      "total_seconds": 0.016
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint_sha256-changed]",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_five_configs_keep_actual_scene_two_semantics",
+      "total_seconds": 0.324
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-3-0]",
+      "total_seconds": 0.052
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-4-0]",
+      "total_seconds": 0.045
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-schema-unknown_schema]",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys3-/other/data]",
+      "total_seconds": 0.043
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys4-True]",
+      "total_seconds": 0.042
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys5-0]",
+      "total_seconds": 0.044
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_probe_has_only_explicit_schedule_exceptions",
+      "total_seconds": 0.107
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys0-16]",
+      "total_seconds": 0.042
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys1-0.0002]",
+      "total_seconds": 0.043
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path0]",
+      "total_seconds": 0.042
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys2-43]",
+      "total_seconds": 0.042
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path1]",
+      "total_seconds": 0.042
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[inputs]",
+      "total_seconds": 0.007
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[train]",
+      "total_seconds": 0.032
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path2]",
+      "total_seconds": 0.043
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[evaluate]",
+      "total_seconds": 0.013
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_latest_uses_numeric_update_not_listing_order_or_last",
+      "total_seconds": 0.067
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[publish]",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_corrupted_completion_is_rejected_instead_of_skipped",
+      "total_seconds": 0.054
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_vm_loss_resumes_same_pair_and_skips_verified_completed_stages",
+      "total_seconds": 0.079
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[valid]",
+      "total_seconds": 0.139
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[step]",
+      "total_seconds": 0.054
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[config]",
+      "total_seconds": 0.092
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[data]",
+      "total_seconds": 0.115
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[truncated]",
+      "total_seconds": 0.094
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[receipt]",
+      "total_seconds": 0.148
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_inventory_uses_new_exclusive_receipt_each_time",
+      "total_seconds": 0.007
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[order]",
+      "total_seconds": 0.002
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[macro]",
+      "total_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_checkpoint_io_publishes_after_local_serialization",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_conflicting_synthetic_selection",
+      "total_seconds": 0.008
+    },
+    {
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_binds_external_manifest_and_keeps_root_overrides_separate",
+      "total_seconds": 0.009
+    },
+    {
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_missing_evaluation_manifest_before_model_loading",
+      "total_seconds": 0.008
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_cli_failure_returns_nonzero_and_never_reaches_later_training",
+      "total_seconds": 0.351
+    }
+  ],
+  "configuration_rejection_mutation": {
+    "mutation": "validate_config replaced in memory by no-op via an isolated pytest plugin",
+    "expected_failures": 6,
+    "actual_failures": 6,
+    "failure": "DID NOT RAISE ValueError",
+    "restored_passed": 6,
+    "restored_elapsed_seconds": 0.46,
+    "tracked_source_modified": false
+  },
+  "readme_exec_parser_check": {
+    "runner_outputs": 6,
+    "persist_directories": 2,
+    "foreground_bootstrap_argv_verified": true,
+    "colab_jobs_submitted": 0
+  },
+  "junit_suite_seconds": 13.68,
+  "validation_context": "Current origin/main baseline; real legacy bundle records verified without GPU, dataset or checkpoint downloads.",
+  "legacy_final_checkpoint_increment": {
+    "cases": 11,
+    "nodes": [
+      "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records",
+      "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records"
+    ],
+    "repository_bundle_cases": 4,
+    "rejection_cases": 7,
+    "total_case_seconds": 0.296,
+    "maximum_case_seconds": 0.056,
+    "collection_tests": 43,
+    "collection_elapsed_seconds": 5.02,
+    "model_initializations": 0,
+    "gpu_runs": 0,
+    "network_calls": 0
+  },
+  "legacy_final_checkpoint_mutations": {
+    "injection": "Isolated pytest plugin substitutes the resolver in memory; tracked source is unchanged.",
+    "old_training_completion_source": {
+      "expected_failures": 2,
+      "actual_failures": 2,
+      "passed": 2,
+      "elapsed_seconds": 0.42,
+      "failure": "FileNotFoundError for repository scene-3/4 training-completion.json"
+    },
+    "disabled_record_validation": {
+      "expected_failures": 7,
+      "actual_failures": 7,
+      "failure": "DID NOT RAISE ValueError",
+      "elapsed_seconds": 0.41
+    },
+    "restored": {
+      "passed": 11,
+      "elapsed_seconds": 0.45
+    }
+  }
+}

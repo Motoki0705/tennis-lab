@@ -124,6 +124,7 @@ class RefinerLightningModule(BaseLightningModule):
         )
 
     def on_train_start(self) -> None:
+        super().on_train_start()
         self.start_time = time.monotonic()
         self.flow_rng = torch.Generator(device=self.device).manual_seed(
             self.settings.runtime.run.seed + 200
@@ -382,6 +383,9 @@ class RefinerLightningModule(BaseLightningModule):
         self._validation_arrays.clear()
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_save_checkpoint(checkpoint)
+        if self.gan_training is not None:
+            checkpoint["manual_gan_state"] = self.gan_training.state_dict()
         if self.flow_rng is None:
             raise RuntimeError("Cannot checkpoint before training RNG initialization")
         checkpoint.update(
@@ -450,6 +454,9 @@ class RefinerLightningModule(BaseLightningModule):
             )
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_load_checkpoint(checkpoint)
+        if self.gan_training is not None:
+            self.gan_training.load_state_dict(checkpoint["manual_gan_state"])
         self.validate_resume_checkpoint(self.settings, checkpoint)
         self.generator_updates = checkpoint["step"]
         self.validation_rmse = checkpoint["validation_rmse"]

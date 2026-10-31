@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "source": "Drive pool dataset publication",
+  "method": "saved_train_trajectories",
+  "status": "blocked-in-current-main",
+  "error_type": "ValueError",
+  "error": "'saved_train_trajectories' is not a valid TrajectoryMethod",
+  "impact": "SyntheticCourtDatasetVersionInput -> load_dataset_version -> validate_plan_geometry rejects this method before full pool loading. Header validation and metadata selection remain independently testable.",
+  "scope": "Reported to parent; no validator/consumer change in manifest task."
+}

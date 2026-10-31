@@ -124,13 +124,56 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     ]
     assert {"push", "pull_request", "workflow_dispatch"} == set(triggers)
     assert command[command.index("--lane-plan") + 1] == ".ci-plan/plan.json"
+    plan_name = "cpu-lane-plan-${{ github.run_id }}"
+    assert planning["steps"][-1]["with"]["name"] == plan_name
+    assert planning["steps"][-1]["with"]["overwrite"] is True
     for consumer in (job, aggregate):
         download = next(
             step
             for step in consumer["steps"]
             if step["name"] == "Download CPU lane plan"
         )
-        assert download["with"]["name"] == planning["steps"][-1]["with"]["name"]
+        assert download["with"]["run-id"] == "${{ github.run_id }}"
+        assert download["with"]["github-token"] == "${{ github.token }}"
+        if consumer is job:
+            assert download["with"]["name"] == plan_name
+        else:
+            assert (
+                download["with"]["artifact-ids"]
+                == "${{ steps.artifacts.outputs.plan_artifact_id }}"
+            )
+    selection = next(
+        step for step in aggregate["steps"] if step.get("id") == "artifacts"
+    )
+    assert selection["env"]["GH_TOKEN"] == "${{ github.token }}"
+    selection_command = shlex.split(
+        selection["run"].replace("$CI_SHARD_COUNT", default)
+    )
+    assert selection_command[:3] == ["python3", "-m", "scripts.ci_metrics.artifacts"]
+    assert (
+        selection_command[selection_command.index("--output") + 1]
+        == ".ci-results/artifacts.json"
+    )
+    assert selection_command[selection_command.index("--count") + 1] == default
+    downloads = [
+        step
+        for step in aggregate["steps"]
+        if "download-artifact@" in step.get("uses", "")
+    ]
+    assert all(
+        aggregate["steps"].index(selection) < aggregate["steps"].index(step)
+        for step in downloads
+    )
+    observations = next(
+        step for step in downloads if step["name"] == "Download all shard observations"
+    )
+    assert (
+        observations["with"]["artifact-ids"]
+        == "${{ steps.artifacts.outputs.shard_artifact_ids }}"
+    )
+    assert observations["with"]["run-id"] == "${{ github.run_id }}"
+    assert observations["with"]["github-token"] == "${{ github.token }}"
+    assert observations["with"].get("merge-multiple", False) is False
     verification = next(
         step
         for step in aggregate["steps"]
@@ -153,6 +196,10 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     assert aggregate["steps"][0]["with"]["fetch-depth"] == 0
     assert verification["env"]["GH_TOKEN"] == "${{ github.token }}"
     assert (
+        verification_command[verification_command.index("--artifact-manifest") + 1]
+        == ".ci-results/artifacts.json"
+    )
+    assert (
         verification_command[verification_command.index("--timing-profile") + 1]
         == "scripts/ci_metrics/cpu-file-times.json"
     )
@@ -162,7 +209,12 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
         ".ci-results/growth.json",
         ".ci-results/growth-summary.json",
         ".ci-results/growth-summary.md",
+        ".ci-results/artifacts.json",
     }
+    assert (
+        aggregate["steps"][-1]["with"]["name"]
+        == "cpu-test-coverage-${{ github.run_id }}-${{ github.run_attempt }}"
+    )
     assert "uv sync --locked --no-group gpu --group cpu" in [
         step.get("run") for step in job["steps"]
     ]
@@ -232,13 +284,18 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         path.write_text(source, encoding="utf-8")
     (tmp_path / REGISTRY).write_text(json.dumps({"schema_version": 1, "suites": []}))
     registry, files = load_registry(tmp_path)
+    actions_context = {
+        "GITHUB_SHA": "head",
+        "GITHUB_RUN_ID": "123",
+        "GITHUB_RUN_ATTEMPT": "1",
+    }
     lane_plan = make_plan(
         registry,
         files,
-        source_sha=os.environ.get("GITHUB_SHA"),
+        source_sha=actions_context["GITHUB_SHA"],
         event="local",
-        run_id=os.environ.get("GITHUB_RUN_ID"),
-        attempt=os.environ.get("GITHUB_RUN_ATTEMPT"),
+        run_id=actions_context["GITHUB_RUN_ID"],
+        attempt=actions_context["GITHUB_RUN_ATTEMPT"],
     )
     (tmp_path / ".ci-plan").mkdir()
     (tmp_path / ".ci-plan/plan.json").write_text(json.dumps(lane_plan))
@@ -272,6 +329,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             env={
                 **os.environ,
                 **job["env"],
+                **actions_context,
                 "PYTEST_XDIST_AUTO_NUM_WORKERS": str(workers),
             },
             timeout=60,
@@ -303,7 +361,9 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         results.extend(json.loads((measured / "results.json").read_text()))
         summaries.append(summary)
     assert len(inventory) == len(set(inventory)) == (12 if failing_test else 11)
-    assert any("test_court_dataset.py::test_court_contract" in node for node in inventory)
+    assert any(
+        "test_court_dataset.py::test_court_contract" in node for node in inventory
+    )
     assert failures == (2 if failing_test else 0)
     assert sum(s["counts"].get("skipped", 0) for s in summaries) == 1
     skipped = next(
@@ -609,6 +669,14 @@ def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:
     assert by_name["Snapshot attempt timings"]["if"] == "always()"
     assert by_name["Upload test measurements"]["if"] == "always()"
     assert by_name["Upload test measurements"]["with"]["if-no-files-found"] == "error"
+    assert (
+        by_name["Upload test measurements"]["with"]["name"]
+        == "cpu-test-measurements-${{ github.run_id }}-shard-${{ matrix.shard }}"
+    )
+    assert by_name["Upload test measurements"]["with"]["overwrite"] is True
+    assert (
+        '--attempt "$GITHUB_RUN_ATTEMPT"' in by_name["Snapshot attempt timings"]["run"]
+    )
     assert [step["name"] for step in steps].index("Record runner environment") < [
         step["name"] for step in steps
     ].index("Install locked CPU environment")

@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from scripts.ci_metrics.lanes import load_registry, make_plan
+from scripts.ci_metrics.lanes import digest, load_registry, make_plan
 from scripts.ci_metrics.profile import build_profile
 from scripts.ci_metrics.runner import test_environment as headless_environment
 from scripts.ci_metrics.shards import assign_groups, read_timing_profile, verify_shards
@@ -193,6 +193,8 @@ def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
     assert result["success"], result
     assert result["selected_count"] == 6
     assert result["counts"] == {"passed": 6}
+    assert result["plan_attempt"] == "1"
+    assert result["shard_attempts"] == {"0": "1", "1": "1"}
     for directory in observed_shards.glob("*/tests"):
         summary = json.loads((directory / "summary.json").read_text())
         assert summary["full_cpu_baseline"] is False
@@ -217,6 +219,149 @@ def test_real_shards_cover_exact_cpu_inventory(observed_shards: Path) -> None:
             plan["assignments"]["tests/test_first.py::test_cpu[0]"]
             != plan["assignments"]["tests/test_first.py::test_cpu[1]"]
         )
+
+
+def _replace_lane_plan(directory: Path, **changes: Any) -> dict[str, Any]:
+    path = directory / "lane-plan.json"
+    plan: dict[str, Any] = json.loads(path.read_text())
+    plan.update(changes)
+    plan["plan_id"] = digest({k: v for k, v in plan.items() if k != "plan_id"})
+    path.write_text(json.dumps(plan))
+    metadata_path = directory / "environment.json"
+    metadata = json.loads(metadata_path.read_text())
+    metadata["lane_plan_id"] = plan["plan_id"]
+    metadata_path.write_text(json.dumps(metadata))
+    for manifest_path in directory.glob("shard-*.json"):
+        manifest = json.loads(manifest_path.read_text())
+        manifest["plan_id"] = plan["plan_id"]
+        manifest_path.write_text(json.dumps(manifest))
+    return plan
+
+
+@pytest.mark.parametrize(
+    "plan_attempt,shard_attempts,aggregate_attempt",
+    [
+        ("1", ["1", "1"], "1"),
+        ("1", ["1", "2"], "2"),
+        ("2", ["2", "2"], "3"),
+        ("1", ["2", "10"], "10"),
+    ],
+    ids=[
+        "single-attempt",
+        "failed-shard-rerun",
+        "python-only-rerun",
+        "numeric-maximum",
+    ],
+)
+def test_aggregation_and_profile_accept_latest_shards_from_the_same_fixed_plan(
+    observed_shards: Path,
+    tmp_path: Path,
+    plan_attempt: str,
+    shard_attempts: list[str],
+    aggregate_attempt: str,
+) -> None:
+    root = tmp_path / "artifacts"
+    shutil.copytree(observed_shards, root)
+    for index, attempt in enumerate(shard_attempts):
+        directory = root / f"shard-{index}/tests"
+        plan = _replace_lane_plan(directory, attempt=plan_attempt)
+        metadata_path = directory / "environment.json"
+        metadata = json.loads(metadata_path.read_text())
+        metadata["environment"]["GITHUB_RUN_ATTEMPT"] = attempt
+        metadata_path.write_text(json.dumps(metadata))
+    result = verify_shards(
+        root,
+        2,
+        needs=SUCCESS,
+        lane_plan=plan,
+        **{**CONTEXT, "attempt": aggregate_attempt},
+    )
+    expected_attempts = {str(i): value for i, value in enumerate(shard_attempts)}
+    assert result["success"], result
+    assert result["counts"] == {"passed": 6}
+    assert result["attempt"] == aggregate_attempt
+    assert result["plan_attempt"] == plan_attempt
+    assert result["shard_attempts"] == expected_attempts
+    profile = build_profile(root)
+    assert profile["source"]["attempt"] == max(shard_attempts, key=int)
+    assert profile["source"]["plan_attempt"] == plan_attempt
+    assert profile["source"]["shard_attempts"] == expected_attempts
+    assert profile["source"]["selected_count"] == 6
+
+
+@pytest.mark.parametrize(
+    "fault,reason",
+    [
+        ("shard_before_plan", "attempt"),
+        ("shard_after_aggregate", "attempt"),
+        ("plan_after_aggregate", "attempt"),
+        ("different_plan", "fixed lane plan"),
+        ("plan_wrong_run", "source/run"),
+        ("plan_wrong_head", "source/run"),
+    ],
+)
+def test_aggregation_rejects_attempt_bounds_and_a_valid_but_different_plan(
+    observed_shards: Path, tmp_path: Path, fault: str, reason: str
+) -> None:
+    root = tmp_path / "artifacts"
+    shutil.copytree(observed_shards, root)
+    plan = json.loads((root / "shard-0/tests/lane-plan.json").read_text())
+    second = root / "shard-1/tests"
+    if fault == "different_plan":
+        _replace_lane_plan(second, main_successes={"unrelated": {"status": "unknown"}})
+    elif fault == "plan_wrong_run":
+        _replace_lane_plan(second, run_id="456")
+    elif fault == "plan_wrong_head":
+        _replace_lane_plan(second, source_sha="b" * 40)
+    elif fault in {"shard_before_plan", "plan_after_aggregate"}:
+        for directory in root.glob("*/tests"):
+            plan = _replace_lane_plan(directory, attempt="2")
+    else:
+        path = second / "environment.json"
+        metadata = json.loads(path.read_text())
+        metadata["environment"]["GITHUB_RUN_ATTEMPT"] = "3"
+        path.write_text(json.dumps(metadata))
+    aggregate_attempt = "1" if fault == "plan_after_aggregate" else "2"
+    result = verify_shards(
+        root,
+        2,
+        needs=SUCCESS,
+        lane_plan=plan,
+        **{**CONTEXT, "attempt": aggregate_attempt},
+    )
+    assert not result["success"]
+    assert any(reason in issue for issue in result["issues"]), result
+    if fault != "shard_after_aggregate":
+        with pytest.raises(ValueError, match="incomplete"):
+            build_profile(root)
+
+
+@pytest.mark.parametrize("field", ["plan", "shard", "aggregate"])
+@pytest.mark.parametrize("bad", [None, 1, True, "0", "-1", "1.5", " 1", "1\n", "one"])
+def test_attempts_must_be_positive_integer_strings(
+    observed_shards: Path, tmp_path: Path, field: str, bad: Any
+) -> None:
+    root = tmp_path / "artifacts"
+    shutil.copytree(observed_shards, root)
+    directory = root / "shard-0/tests"
+    aggregate_attempt = "2"
+    if field == "plan":
+        _replace_lane_plan(directory, attempt=bad)
+    elif field == "shard":
+        path = directory / "environment.json"
+        metadata = json.loads(path.read_text())
+        metadata["environment"]["GITHUB_RUN_ATTEMPT"] = bad
+        path.write_text(json.dumps(metadata))
+    else:
+        aggregate_attempt = bad
+    result = verify_shards(
+        root, 2, needs=SUCCESS, **{**CONTEXT, "attempt": aggregate_attempt}
+    )
+    assert not result["success"]
+    assert any("attempt" in issue for issue in result["issues"]), result
+    if field != "aggregate":
+        with pytest.raises(ValueError, match="attempt"):
+            build_profile(root)
 
 
 def test_profile_recomputes_measured_file_and_split_costs(
@@ -336,7 +481,7 @@ def test_real_lane_selection_records_the_universe_before_deferring_a_file(
             **headless_environment(dict(os.environ)),
             "GITHUB_SHA": CONTEXT["sha"],
             "GITHUB_RUN_ID": CONTEXT["run_id"],
-            "GITHUB_RUN_ATTEMPT": CONTEXT["attempt"],
+            "GITHUB_RUN_ATTEMPT": "2",
         },
         capture_output=True,
         text=True,
@@ -348,7 +493,12 @@ def test_real_lane_selection_records_the_universe_before_deferring_a_file(
     metadata["source"] = {"commit": CONTEXT["sha"], "status": ""}
     path.write_text(json.dumps(metadata))
     audit = verify_shards(
-        artifacts, 1, needs=SUCCESS, lane_plan=plan, source_root=suite, **CONTEXT
+        artifacts,
+        1,
+        needs=SUCCESS,
+        lane_plan=plan,
+        source_root=suite,
+        **{**CONTEXT, "attempt": "2"},
     )
     assert audit["success"], audit
     assert (
@@ -413,7 +563,9 @@ def test_split_file_rejects_new_shared_fixture(
         "missing_artifact",
         "duplicate_index",
         "old_head",
-        "old_attempt",
+        "wrong_run",
+        "wrong_source_commit",
+        "future_attempt",
         "subset",
         "worker_inventory",
         "missing_worker",
@@ -440,12 +592,23 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
     metadata = json.loads(metadata_path.read_text())
     if fault == "missing_artifact":
         shutil.rmtree(second.parent)
-    elif fault in {"duplicate_index", "old_head", "old_attempt", "subset"}:
+    elif fault in {
+        "duplicate_index",
+        "old_head",
+        "wrong_run",
+        "wrong_source_commit",
+        "future_attempt",
+        "subset",
+    }:
         if fault == "duplicate_index":
             metadata["shard"]["index"] = 0
         elif fault == "old_head":
             metadata["environment"]["GITHUB_SHA"] = "b" * 40
-        elif fault == "old_attempt":
+        elif fault == "wrong_run":
+            metadata["environment"]["GITHUB_RUN_ID"] = "456"
+        elif fault == "wrong_source_commit":
+            metadata["source"]["commit"] = "b" * 40
+        elif fault == "future_attempt":
             metadata["environment"]["GITHUB_RUN_ATTEMPT"] = "2"
         else:
             metadata["cpu_target_before_sharding"] = False
@@ -506,6 +669,10 @@ def test_aggregation_rejects_incomplete_or_mixed_evidence(
     assert result["issues"]
     if fault == "all_manifests_omit_case":
         assert any("pre-selection CPU universe" in issue for issue in result["issues"])
+    # Profiling derives its upper attempt bound from the shards themselves.
+    if fault == "future_attempt":
+        assert build_profile(root)["source"]["attempt"] == "2"
+        return
     with pytest.raises(ValueError, match="incomplete"):
         build_profile(root)
 

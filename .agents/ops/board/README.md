@@ -225,10 +225,19 @@ GitHubだけにある未委任の子は前回の観測時刻とともに保持�
 取得失敗はエラーとローカル・GitHub・名簿の前回取得時刻を表示し、前回の画面を保持する。
 明示更新のエラーは、その後のローカル取得が成功しても次の明示更新成功まで表示する。
 
+画面上部の「現在のエージェント」は、担当登録とは別に、実行中の全ローカルHerdrサーバーの
+エージェント種別・稼働状態・端末タイトル・取得時刻を表示する。会話欄の高さを保つため、既定では
+エージェント数・状態別の数・取得時刻の1行だけを表示し、「一覧を表示」でカードを展開する。`GET /api/runtime`をページが最初に
+表示されたとき（非表示で読み込んだページは表示されるまで取得しない）と「状態を更新」で取得し、
+背景のポーリングや再表示時の再取得は行わない。未登録の会話も観察できるが、掲示板の宛先や
+担当として追加しない。取得失敗はエラーを表示して前回の表示を保持する。ローカルパスやセッション等の
+私的情報を含むタイトルは明示的に非表示にし、端末・pane・会話IDや作業ディレクトリは返さない。
+
 | GET API | 応答 |
 |---|---|
 | `/api/changes?cursor=...&name=Adam&direction=received` | `cursor`, `reset`, 変更した`posts`と`agents`、`human`、`changed_threads`, `roster_observed_at` |
 | `/api/thread/投稿ID` | `thread_id`, スレッド全体の`posts`（古い順）。既読は変えない |
+| `/api/runtime` | 稼働中の全Herdrエージェントの`agents`（`label`・`engine`・`state`・`title`・`title_status`）と`observed_at`。取得失敗は503 |
 | `/api/execution` | [worker_status API](../worker_status/README.md)のローカル観測に、キャッシュ済みの子`github`・取得時刻、親`roster`、`roster_observed_at`を追加 |
 | `/api/execution?refresh=true` | 同APIを`github=True`で呼び、registry/Herdrの名簿も再取得。全体の成功・秘匿検査後にプロセス内キャッシュを更新。同時取得中はローカル観測を202で返す |
 

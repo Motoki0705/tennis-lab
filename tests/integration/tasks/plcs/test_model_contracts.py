@@ -14,6 +14,12 @@ from tests.integration.tasks.plcs.model_contracts import (
     TEMPORAL,
 )
 from tests.support.model_contracts.exercise import exercise_family
+from tests.support.model_contracts.lifecycle import (
+    exercise_checkpoint,
+    exercise_resume,
+    omit_head,
+    resume_fault,
+)
 from tests.support.model_contracts.parameters import names_under
 from tests.support.model_contracts.registry import (
     assert_selector_coverage,
@@ -69,9 +75,34 @@ def test_contract_detects_disconnected_canonical_head(
     error = (
         "optimizer missing=.*canonical_pose"
         if fault == "optimizer"
-        else "required group did not update: canonical"
-        if fault == "omit_loss"
         else "missing gradients.*canonical_pose"
     )
     with pytest.raises(AssertionError, match=error):
         exercise_family(AXIAL, tmp_path, mutate=mutate)
+
+
+@pytest.mark.parametrize("family", [AXIAL, TEMPORAL], ids=lambda family: family.name)
+def test_checkpoint_all_public_outputs(tmp_path, family):
+    exercise_checkpoint(family, tmp_path)
+
+
+def test_checkpoint_missing_head_is_detected(tmp_path):
+    with pytest.raises(RuntimeError, match="Missing key"):
+        exercise_checkpoint(
+            AXIAL, tmp_path, mutate=omit_head("model.canonical_pose_head")
+        )
+
+
+@pytest.mark.parametrize("gan", [False, True], ids=["supervised", "gan"])
+def test_interrupted_training_matches_continuous(tmp_path, gan):
+    exercise_resume(AXIAL, tmp_path, gan=gan)
+
+
+@pytest.mark.parametrize("fault", ["optimizer", "rng", "data"])
+def test_checkpoint_resume_state_omission_is_detected(tmp_path, fault):
+    with pytest.raises(AssertionError, match="resume"):
+        exercise_resume(AXIAL, tmp_path, mutate=resume_fault(fault))
+
+
+def test_gan_resume_after_transition(tmp_path):
+    exercise_resume(AXIAL, tmp_path, gan=True, interrupt_epoch=2)

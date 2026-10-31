@@ -24,6 +24,7 @@ from src.tasks.player_detection.configuration import PlayerTrainingConfig
 from src.tasks.player_detection.data.datamodule import PlayerDetectionDataModule
 from src.tasks.player_detection.data.detection_dataset import collate_detection
 from src.tasks.player_detection.generate_dataset.builder import build_dataset
+from src.tasks.player_detection.models.dino_detector import decode_player_detections
 from src.tasks.player_detection.training.lightning_module import (
     PlayerDetectionLightningModule,
 )
@@ -170,7 +171,22 @@ def _loader(config: DictConfig) -> Any:
 def _build(config: DictConfig) -> tuple[Any, Any]:
     fixture = make_synthetic_root(Path(config.paths.project_root))
     build_dataset(fixture.config)
-    return _new_module(config), _loader(config)
+    return _components(config)
+
+
+class _ContractPlayerData(PlayerDetectionDataModule):
+    def setup(self, stage: str | None = None) -> None:
+        # This fixture has a training split only; no validation is requested.
+        assert stage == "fit"
+        self._dataset("train")
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
+    data: Any = _ContractPlayerData(PlayerTrainingConfig.from_config(config).data)
+    # The real sampler permutes a negative/positive pair on each epoch.
+    # Keep the criterion boundary's fixed query matching meaningful at every step.
+    data._datasets["train"] = Subset(data._dataset("train"), [0, 1])
+    return _new_module(config), data
 
 
 def _result(module: Any, batch: Any) -> Any:
@@ -222,21 +238,33 @@ def _assert_prediction(output: Any) -> None:
 
 
 def _restore(config: DictConfig, path: Path) -> Any:
-    module = _new_module(config)
+    payload = torch.load(path, map_location="cpu", weights_only=False)
+    module = _new_module(payload["hyper_parameters"]["config"])
     module.load_state_dict(
-        torch.load(path, map_location="cpu", weights_only=False)["state_dict"],
+        payload["state_dict"],
         strict=True,
     )
     return module
+
+
+def _predict(module: Any, batch: Any) -> Any:
+    raw = module.model(batch.images, None)
+    decoded = decode_player_detections(
+        raw,
+        batch.original_sizes,
+        max_detections=module.runtime.evaluation.max_detections,
+    )
+    return dict(raw=raw, decoded=decoded, evaluation=module.runtime.evaluation)
 
 
 DINO = ModelFamily(
     name="player/dino_external_cuda_boundary",
     compose=_compose,
     build=_build,
+    rebuild=_components,
     batch=lambda config: next(iter(_loader(config))),
     supervised_result=_result,
-    predict=lambda module, batch: module.model(batch.images, None),
+    predict=_predict,
     save=save_checkpoint,
     restore=_restore,
     parameters=_parameters,
