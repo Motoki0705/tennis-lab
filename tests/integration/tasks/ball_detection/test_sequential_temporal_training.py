@@ -11,7 +11,7 @@ from src.tasks.ball_detection.model_io.mdd_temporal import restore_temporal_mode
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
 from src.tasks.ball_detection.training.temporal.runner import train_temporal_model
 from src.utils.checksum import dual_sha256
-from tests.support.tasks.ball_detection.temporal_heatmap import (
+from tests.support.tasks.ball_detection.temporal import (
     prepare_fixture,
     small_model,
     update_budget,

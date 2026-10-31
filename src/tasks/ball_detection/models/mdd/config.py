@@ -168,7 +168,7 @@ class MDDHeatmapConfig(MDDPretrainConfig):
 
     @classmethod
     def load(cls, path: Path) -> MDDHeatmapConfig:
-        return cls(**_heatmap_config_fields(path, "mdd_dpt_heatmap", cls))
+        return cls(**_temporal_config_fields(path, "mdd_dpt_heatmap", cls))
 
 
 @dataclass(frozen=True)
@@ -177,7 +177,7 @@ class MDDHeatmapHybridConfig(MDDHeatmapConfig):
 
     @classmethod
     def load(cls, path: Path) -> MDDHeatmapHybridConfig:
-        return cls(**_heatmap_config_fields(path, "mdd_heatmap_hybrid", cls))
+        return cls(**_temporal_config_fields(path, "mdd_heatmap_hybrid", cls))
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,15 +198,15 @@ class MDDTemporalQueryConfig(MDDPretrainConfig):
 
     @classmethod
     def load(cls, path: Path) -> MDDTemporalQueryConfig:
-        return cls(**_heatmap_config_fields(path, "mdd_temporal_query", cls))
+        return cls(**_temporal_config_fields(path, "mdd_temporal_query", cls))
 
 
-def _heatmap_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig]) -> dict[str, Any]:
+def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig]) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or raw.pop("name", None) != name:
         raise ValueError(f"Expected {name} model config")
     if set(raw) != set(config_type.__dataclass_fields__):
-        raise ValueError("Heatmap configuration must declare every field exactly")
+        raise ValueError("Temporal model configuration must declare every field exactly")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])
     return raw

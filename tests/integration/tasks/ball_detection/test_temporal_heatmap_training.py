@@ -25,7 +25,7 @@ from src.tasks.ball_detection.visualization.presentation.temporal_heatmap import
     render_temporal_heatmap_comparison,
 )
 from src.utils.checksum import dual_sha256
-from tests.support.tasks.ball_detection.temporal_heatmap import (
+from tests.support.tasks.ball_detection.temporal import (
     prepare_fixture,
     small_model,
     update_budget,
@@ -205,7 +205,7 @@ def test_resume_matches_uninterrupted_weights_optimizer_schedule_rng_and_pack_po
 def test_pretraining_cannot_change_t_and_finetuning_needs_explicit_parent(prepared: Path, tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="T=32"):
         train(prepared, tmp_path / "bad", "dpt", frames=64, phase="pretrain")
-    with pytest.raises(ValueError, match="initial heatmap artifact"):
+    with pytest.raises(ValueError, match="initial temporal model artifact"):
         train(prepared, tmp_path / "bad", "dpt", frames=64)
     assert not (tmp_path / "bad").exists()
 

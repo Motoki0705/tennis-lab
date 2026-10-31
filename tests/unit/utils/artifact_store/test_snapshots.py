@@ -190,7 +190,7 @@ def test_snapshot_restoration_preserves_training_budget_rng_and_samples(store: F
     from src.tasks.ball_detection.training.temporal.runner import (
         train_temporal_model,
     )
-    from tests.support.tasks.ball_detection.temporal_heatmap import (
+    from tests.support.tasks.ball_detection.temporal import (
         prepare_fixture,
         small_model,
         update_budget,

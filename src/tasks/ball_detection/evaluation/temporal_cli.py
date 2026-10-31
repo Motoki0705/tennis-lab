@@ -1,4 +1,4 @@
-"""Evaluate one fixed heatmap artifact, calibrating only on validation."""
+"""Evaluate a fixed temporal heatmap or coordinate artifact on owner frames."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from src.utils.configuration import (
 )
 
 PATH_BOUNDARY = NonHydraPathBoundary(
-    name="ball_detection.evaluate_temporal_heatmap",
+    name="ball_detection.evaluate_temporal",
     fields=(
         BoundaryPathField(
             "artifact",
@@ -71,7 +71,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate a fixed temporal heatmap artifact using owner windows"
+        description="Evaluate a fixed temporal heatmap or direct-coordinate artifact using owner windows"
     )
     for name in ("artifact", "manifest", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
@@ -79,7 +79,7 @@ def main() -> None:
     parser.add_argument(
         "--calibration",
         type=Path,
-        help="Validation report for this exact artifact; required for test",
+        help="Validation report for this exact heatmap artifact; required for heatmap test",
     )
     parser.add_argument("--distance-px", type=float, required=True)
     add_runtime_arguments(parser)

@@ -28,7 +28,7 @@ def load_model_config(path: Path, architecture: str) -> TemporalConfig:
         or raw.pop("name", None) != names[architecture]
     ):
         raise ValueError(
-            "Model config must match the explicitly selected heatmap architecture"
+            "Model config must match the explicitly selected temporal architecture"
         )
     cls = dict(
         dpt=MDDHeatmapConfig,
@@ -37,7 +37,7 @@ def load_model_config(path: Path, architecture: str) -> TemporalConfig:
     )[architecture]
     if set(raw) != set(cls.__dataclass_fields__):
         raise ValueError(
-            "Declare every heatmap model field, including frames and memory controls"
+            "Declare every temporal model field, including frames and memory controls"
         )
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])

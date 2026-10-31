@@ -1,13 +1,12 @@
-"""Frame-weighted location metrics and validation-only absence calibration."""
+"""Heatmap presence metrics and validation-only absence calibration."""
 
 from __future__ import annotations
 
 from fractions import Fraction
 from typing import Any
 
-import numpy as np
-
 from src.tasks.ball_detection.data.windows.all_frames import EDGE_BINS, LABEL_KINDS
+from src.tasks.ball_detection.evaluation import temporal_metrics
 
 CALIBRATION_METHOD = "minimize_balanced_fpr_fnr; tie_lower_fpr_then_higher_threshold; tied_scores_indivisible"
 
@@ -75,27 +74,6 @@ def calibrate(records: list[dict[str, Any]], *, split: str) -> dict[str, Any]:
     return best
 
 
-def location_metrics(
-    records: list[dict[str, Any]], *, distance_px: float
-) -> dict[str, Any]:
-    errors = [r["error_px"] for r in records if r["kind"] == "observed"]
-    counts = {kind: sum(r["kind"] == kind for r in records) for kind in LABEL_KINDS}
-    return dict(
-        support=dict(
-            frames=len(records), scored_frames=len(records) - counts["masked"], **counts
-        ),
-        mean_error_px=float(np.mean(errors)) if errors else None,
-        median_error_px=float(np.median(errors)) if errors else None,
-        p95_error_px=float(np.quantile(errors, 0.95, method="linear"))
-        if errors
-        else None,
-        within_distance_rate=sum(e <= distance_px for e in errors) / len(errors)
-        if errors
-        else None,
-        distance_threshold_source_px=distance_px,
-    )
-
-
 def frame_metrics(
     records: list[dict[str, Any]], calibration: dict[str, Any], *, distance_px: float
 ) -> dict[str, Any]:
@@ -111,7 +89,7 @@ def frame_metrics(
     )
     negatives = counts["reviewed_empty"] + counts["out_of_frame"]
     return dict(
-        **location_metrics(records, distance_px=distance_px),
+        **temporal_metrics.location_metrics(records, distance_px=distance_px),
         false_negative=fn,
         observed_fnr=fn / counts["observed"] if counts["observed"] else None,
         false_positive=sum(fp.values()),

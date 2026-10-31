@@ -210,7 +210,7 @@ def train_temporal_model(
         and any(value is None for value in supplied_parent)
     ):
         raise ValueError(
-            "Fine-tuning requires an initial heatmap artifact, its hash and the explicit parent update"
+            "Fine-tuning requires an initial temporal model artifact, its hash and the explicit parent update"
         )
     runtime.configure(device)
     packs = FrozenBallPackDataset(
@@ -434,11 +434,11 @@ def train_temporal_model(
                         dtype=torch.bfloat16,
                         enabled=runtime.precision == "bf16",
                     ):
-                        logits = temporal_forward(
+                        predictions = temporal_forward(
                             model, rgb[first:last], part["timestamps"].to(device)
                         )
                         loss_sum, teachers = supervised_loss_sum(
-                            logits,
+                            predictions,
                             part,
                             sigma_ratio=budget.sigma_ratio,
                             gamma=budget.gamma,

@@ -13,9 +13,9 @@ import torch
 from src.tasks.ball_detection.checkpoints.temporal import json_bytes, save_json
 from src.tasks.ball_detection.data.windows.all_frames import EDGE_BINS, LABEL_KINDS
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
-from src.tasks.ball_detection.evaluation.temporal_heatmap import prediction_identities
-from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import (
+from src.tasks.ball_detection.evaluation.temporal_metrics import (
     location_metrics,
+    prediction_identities,
 )
 from src.tasks.ball_detection.model_io.mdd_temporal import temporal_forward
 from src.tasks.ball_detection.models.mdd import (

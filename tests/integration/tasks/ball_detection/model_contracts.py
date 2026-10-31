@@ -59,7 +59,7 @@ from tests.support.model_contracts.parameters import (
     names_under,
 )
 from tests.support.model_contracts.registry import ModelFamily
-from tests.support.tasks.ball_detection.temporal_heatmap import prepare_fixture
+from tests.support.tasks.ball_detection.temporal import prepare_fixture
 
 CONFIG_DIR = Path("src/tasks/ball_detection/configs")
 SELECTORS = {

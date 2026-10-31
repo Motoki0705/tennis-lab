@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 import math
 import time
 from dataclasses import asdict
@@ -15,6 +13,7 @@ import torch
 from src.tasks.ball_detection.checkpoints.temporal import json_bytes, save_json
 from src.tasks.ball_detection.data.windows.all_frames import LABEL_KINDS
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
+from src.tasks.ball_detection.evaluation import temporal_metrics
 from src.tasks.ball_detection.evaluation.temporal_heatmap_metrics import (
     CALIBRATION_METHOD,
     calibrate,
@@ -98,20 +97,6 @@ def collect_predictions(model: HeatmapModel, dataset: FrozenBallWindowDataset, *
     return records
 
 
-def prediction_identities(records: list[dict[str, Any]]) -> dict[str, Any]:
-    digests = {name: hashlib.sha256() for name in ("target_identity", "teacher_identity", "scored_frame")}
-    for r in records:
-        key = [r["clip_id"], r["frame_index"], 1, r["native_fps"]]
-        # This is the manifest's compact JSONL identity, not the report's JSON encoding.
-        line = (json.dumps(key, separators=(",", ":")) + "\n").encode()
-        digests["target_identity"].update(line)
-        code = LABEL_KINDS.index(r["kind"])
-        digests["teacher_identity"].update((json.dumps([*key, code], separators=(",", ":")) + "\n").encode())
-        if code:
-            digests["scored_frame"].update(line)
-    return {f"{name}_sha256": digest.hexdigest() for name, digest in digests.items()}
-
-
 def evaluate_temporal_heatmap(
     model: HeatmapModel, manifest: Path, *, split: str, runtime: CoordinateRuntime, device: torch.device,
     artifact_sha256: str, distance_px: float, calibration_report: dict[str, Any] | None = None,
@@ -124,7 +109,7 @@ def evaluate_temporal_heatmap(
     started = time.perf_counter()
     dataset = FrozenBallWindowDataset(manifest, split=split, requires_pose=False, jpeg_decoder=runtime.jpeg_decoder)
     records = collect_predictions(model, dataset, runtime=runtime, device=device)
-    identities = prediction_identities(records)
+    identities = temporal_metrics.prediction_identities(records)
     expected = dataset.manifest["summaries"][split]
     if any(expected[key] != value for key, value in identities.items()) or len(records) != expected["counts"]["frames"]:
         raise ValueError("Actual scored/owner/teacher frame set differs from the frozen manifest")

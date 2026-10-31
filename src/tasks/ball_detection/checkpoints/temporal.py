@@ -116,7 +116,7 @@ def initialize_finetuning(
     path: Path, *, expected_sha256: str, parent_update: int, config: TemporalConfig
 ) -> tuple[TemporalModel, dict[str, Any]]:
     if dual_sha256(path) != expected_sha256:
-        raise ValueError("Initial heatmap artifact hash mismatch")
+        raise ValueError("Initial temporal model artifact hash mismatch")
     saved = torch.load(path, map_location="cpu", weights_only=True)
     has_optimizer = saved.get("schema") == CHECKPOINT_SCHEMA
     artifact = saved["model_artifact"] if has_optimizer else saved
@@ -248,7 +248,7 @@ def read_resume(
     saved: dict[str, Any] = torch.load(path, map_location="cpu", weights_only=True)
     if saved.get("schema") != CHECKPOINT_SCHEMA:
         raise ValueError(
-            "Resume requires an explicit temporal heatmap checkpoint, not a weights artifact"
+            "Resume requires an explicit temporal training checkpoint, not a weights artifact"
         )
     if json_bytes(saved["recipe"]) != json_bytes(recipe):
         raise ValueError(

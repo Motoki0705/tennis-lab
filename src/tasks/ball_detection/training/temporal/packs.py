@@ -77,7 +77,7 @@ def augment_pack(
         batch,
         uv=pack["uv"].reshape(children, frames, 2).cpu(),
         position_valid=kept,
-        heatmap_valid=kinds != 0,
+        heatmap_valid=kinds != 0,  # Dense heatmap supervision; query uses position_valid.
         label_kind=kinds,
         augmentation_eligibility={
             k: int(v.sum()) for k, v in audit.items() if k.startswith("occlusion_")
@@ -111,36 +111,36 @@ def microbatch(batch: dict[str, Any], start: int, stop: int) -> dict[str, Any]:
 
 
 def supervised_loss_sum(
-    logits: Tensor,
+    predictions: Tensor,
     batch: dict[str, Any],
     *,
     sigma_ratio: float,
     gamma: float,
     coordinates: bool = False,
 ) -> tuple[Tensor, int]:
-    if not bool(torch.isfinite(logits).all()):
-        raise ValueError("Nonfinite heatmap training output")
+    if not bool(torch.isfinite(predictions).all()):
+        raise ValueError("Nonfinite temporal training output")
     mask = batch["position_valid"] if coordinates else batch["heatmap_valid"]
     count = int(mask.sum())
     if count == 0:
         # Still forward/backward every child. Unknown frames never become negative targets.
-        return logits.float().sum() * 0, 0
+        return predictions.float().sum() * 0, 0
     if coordinates:
-        target = batch["uv"].to(logits.device)
-        if logits.shape != target.shape or mask.shape != target.shape[:-1]:
+        target = batch["uv"].to(predictions.device)
+        if predictions.shape != target.shape or mask.shape != target.shape[:-1]:
             raise ValueError("Temporal coordinate shape/mask mismatch")
-        selected = mask.to(logits.device)
+        selected = mask.to(predictions.device)
         # Match the legacy smooth-L1 mean across x/y, then sum over real teachers.
         loss = torch.nn.functional.smooth_l1_loss(
-            logits[selected].float(),
+            predictions[selected].float(),
             target[selected].float(),
             beta=0.01,
             reduction="none",
         )
         return loss.mean(-1).sum(), count
     _, per_frame = heatmap_objective(
-        logits, batch, sigma_ratio=sigma_ratio, gamma=gamma
+        predictions, batch, sigma_ratio=sigma_ratio, gamma=gamma
     )
     return torch.where(
-        batch["heatmap_valid"].to(logits.device), per_frame, 0.0
+        batch["heatmap_valid"].to(predictions.device), per_frame, 0.0
     ).sum(), count

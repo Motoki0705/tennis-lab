@@ -26,7 +26,7 @@ from tests.integration.tasks.ball_detection.model_contracts import (
 )
 from tests.support.model_contracts.steps import StepAudit
 from tests.support.tasks.ball_detection.hybrid import hybrid_recipe
-from tests.support.tasks.ball_detection.temporal_heatmap import update_budget
+from tests.support.tasks.ball_detection.temporal import update_budget
 
 
 @contextmanager

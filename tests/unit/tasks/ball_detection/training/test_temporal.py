@@ -27,7 +27,7 @@ from src.tasks.ball_detection.training.temporal.packs import (
     augment_pack,
     supervised_loss_sum,
 )
-from tests.support.tasks.ball_detection.temporal_heatmap import (
+from tests.support.tasks.ball_detection.temporal import (
     model_yaml,
     prepare_fixture,
     update_budget,

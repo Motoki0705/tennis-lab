@@ -39,7 +39,7 @@ position_validはheatmap_validの部分集合で、位置教師は有限の[0,1]
 任意Tのモデルと重み専用artifactは [MDDモデル](../models/mdd/README.md#任意長のheatmap専用モデル) を参照。
 このモデルAPIは、既存3段学習のrunnerやscene既定モデルを切り替えない。
 
-## 共通packによる更新数ベースのheatmap学習
+## 共通packによる更新数ベースのtemporal学習
 
 `--stage temporal`は存在headを持たないDPT/hybridのheatmapと、query-onlyの直接座標を扱う。
 DPT事前学習からqueryへはCNNのみ、それ以外の同構成の逐次段階へは全重みを継承する。
@@ -112,7 +112,8 @@ T・frame分割・activation checkpointing以外のモデル設定を変更し�
 
 runは`ball_temporal_run.v2`、再開checkpointは`ball_temporal_checkpoint.v2`。
 `run.json`へ解決済みrecipe・入力/コード/祖先の来歴、run内へ両manifestを保存する。
-`weights-update-NNNNNNNN.pt`は`mdd_heatmap_model.v1`の重み専用artifactで、更新数・段階・
+`weights-update-NNNNNNNN.pt`はheatmapが`mdd_heatmap_model.v1`、直接座標が
+`mdd_temporal_coordinates.v1`の重み専用artifactで、更新数・段階・
 snapshot/集合/decoder/コード/recipeの来歴を`training`へ追加する。
 評価または保存の更新間隔と最終更新で重みを保持する。checkpoint選択にtestは使わない。
 
@@ -142,17 +143,23 @@ callbackは学習予算・モデル・入力identityを変更せず、実験用c
   --device cuda --precision bf16 --jpeg-decoder nvjpeg --compile-mode off --input-verification upfront
 ```
 
-testは`--split test --calibration /absolute/validation.json`を指定する。
+共通の評価境界IDは`ball_detection.evaluate_temporal`。frame identityと位置指標は
+`evaluation/temporal_metrics.py`を両方式で共用する。全observed GTを分母として、
+元画像pixelの平均/中央値/P95・所定距離内率、source/FPS/group/自然遮蔽/区間端距離別の
+支持数を出す。支持数0の率・位置誤差はnull。自然遮蔽はstoreのobservedフラグだけを使う。
+queryのtestは`--split test`を指定し、`--calibration`は渡さない。
+queryは存在出力を持たず、FPR/FNR・存在閾値・較正結果・混同行列を出さない。
+
+heatmapのtestは`--split test --calibration /absolute/validation.json`を指定する。
 validationの正例・確認済み不在のいずれかが0なら較正不能として停止する。
 同scoreを分割しない変化点探索とall-present/all-absentの端点modeを保存し、同じartifact・
 validation教師集合・復号条件で較正した閾値だけをtestへ適用する。
-存在判定で位置誤差の分母を減らさず、元画像pixelの平均/中央値/P95・所定距離内率、
-observed FNR、不在kind別/合算FPR、source/FPS/group/自然遮蔽/区間端距離別の支持数を出す。
-支持数0の率・位置誤差はnull。自然遮蔽はstoreのobservedフラグだけを使う。
+存在判定で位置誤差の分母を減らさず、observed FNRと不在kind別/合算FPRを追加する。
 
-評価JSONはschema、artifact/manifest/snapshot/実採点集合のhash、較正规則と混同行列、
-runtime、主・副指標を持つ。隣接する`*.frames.jsonl`へ未知frameも含む全ownerの座標・score・
-実PTS・kind・owner offset・左右context・MDD先頭・区間端距離を保存する。
+評価JSONは方式別のschema、artifact/manifest/snapshot/実採点集合のhash、runtime、
+主・副指標を持ち、heatmapには較正规則と混同行列も保存する。
+隣接する`*.frames.jsonl`へ未知frameも含む全ownerの座標・実PTS・kind・owner offset・
+左右context・MDD先頭・区間端距離を保存する。scoreはheatmapの予測だけが持つ。
 実際のowner/教師/採点集合をmanifestと照合し、欠落・重複・非finite出力で停止する。
 
 ```bash
@@ -161,7 +168,7 @@ runtime、主・副指標を持つ。隣接する`*.frames.jsonl`へ未知frame�
   --clip-id <同じclip> --start <開始frame> --stop <終了frameの次> --output /absolute/comparison.mp4
 ```
 
-共通集合・snapshot・復号条件の一致と予測file hashを照合し、既存のoverlay/panel/VideoWriterで
+比較動画はheatmap評価専用。共通集合・snapshot・復号条件の一致と予測file hashを照合し、既存のoverlay/panel/VideoWriterで
 同じ区間を横に並べる。位置は閾値で隠さずorangeで描き、validation閾値による不在判定も表示する。
 入力評価・出力動画のhashと範囲をsidecar JSONへ保存する。
 
