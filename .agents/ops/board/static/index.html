@@ -71,6 +71,15 @@
         </div>
       </aside>
       <main class="feed-pane">
+        <section class="runtime-panel" aria-labelledby="runtime-heading">
+          <div class="runtime-heading">
+            <h2 id="runtime-heading">現在のエージェント</h2>
+            <button type="button" id="refresh-runtime" class="quiet">状態を更新 ↻</button>
+          </div>
+          <p id="runtime-observed">Herdrの稼働状態を取得しています…</p>
+          <p id="runtime-error" role="alert" hidden></p>
+          <div id="runtime-agents"></div>
+        </section>
         <header class="pane-heading">
           <div>
             <h1 id="channel-title"><span class="hash">#</span> 全体</h1>

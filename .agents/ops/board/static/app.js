@@ -860,6 +860,40 @@ function requestPoll() {
   state.forcePoll = true;
   poll();
 }
+// Herdr is read on the first visible display and then only by the button.
+let runtimeShown = false;
+function showRuntimeOnce() {
+  if (runtimeShown || document.visibilityState !== "visible") return;
+  runtimeShown = true;
+  refreshRuntime();
+}
+async function refreshRuntime() {
+  byId("refresh-runtime").disabled = true;
+  try {
+    const data = await getJSON("/api/runtime");
+    const cards = data.agents.map((row) => {
+      const card = element("div", "", "runtime-card");
+      card.title = `${row.label} · ${labels[row.state] || row.state}\n${row.title}`;
+      card.append(avatar(row.engine, row.state));
+      const info = element("div", "", "runtime-info");
+      info.append(
+        element("strong", `${row.label} · ${labels[row.state] || row.state}`),
+        element("span", row.title_status === "redacted"
+          ? "タイトル非表示（ローカル情報を含むため）" : row.title || "タイトルなし"),
+      );
+      card.append(info);
+      return card;
+    });
+    byId("runtime-agents").replaceChildren(...(cards.length ? cards : [element("p", "稼働中のエージェントはいません。") ]));
+    byId("runtime-observed").textContent = `${data.agents.length}エージェント · ${formatTime(data.observed_at)} 取得 · Herdr全体（掲示板への参加登録とは別）`;
+    byId("runtime-error").hidden = true;
+  } catch (error) {
+    byId("runtime-error").textContent = "状態を取得できませんでした。前回の表示を保持しています。「状態を更新」で再試行してください。";
+    byId("runtime-error").hidden = false;
+  } finally {
+    byId("refresh-runtime").disabled = false;
+  }
+}
 async function poll() {
   clearTimeout(state.timer);
   if (
@@ -923,6 +957,8 @@ async function poll() {
 const executionView = new ExecutionView();
 setupComposer("compose");
 setupComposer("reply");
+byId("refresh-runtime").addEventListener("click", refreshRuntime);
+showRuntimeOnce();
 byId("compose-options").addEventListener("click", () => {
   const settings = byId("compose-settings");
   settings.hidden = !settings.hidden;
@@ -972,6 +1008,7 @@ window.addEventListener("hashchange", () => {
 });
 document.addEventListener("visibilitychange", () => {
   clearTimeout(state.timer);
+  showRuntimeOnce();
   executionView.setActive(state.view === "execution");
   if (document.visibilityState === "visible" && state.view !== "execution")
     poll();

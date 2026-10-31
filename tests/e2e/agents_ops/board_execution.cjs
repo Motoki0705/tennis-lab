@@ -131,6 +131,11 @@ const context = vm.createContext({
   },
   fetch: async (url) => {
     requests.push(url);
+    if (url === "/api/runtime")
+      return response({
+        agents: [],
+        observed_at: input.local.roster_observed_at,
+      });
     if (url.startsWith("/api/execution")) {
       if (url.includes("refresh=true")) {
         if (serverRefresh.status === "running")
@@ -179,6 +184,7 @@ const view = (name) =>
   tabs.find((node) => node.dataset.view === name).events.click();
 const executionRequests = () =>
   requests.filter((url) => url.startsWith("/api/execution"));
+const runtimeRequests = () => requests.filter((url) => url === "/api/runtime");
 const tick = async () => {
   const [id, timer] = [...timers].find(([, timer]) => timer.delay === 10000);
   timers.delete(id);
@@ -370,6 +376,11 @@ async function main() {
   document.events.visibilitychange();
   await settle();
   assert.equal(executionRequests().length, count + 1);
+  assert.deepEqual(
+    runtimeRequests(),
+    ["/api/runtime"],
+    "Herdr overview loads once, on the first visible display",
+  );
   view("timeline");
   await settle();
   assert.equal(elements.get("execution-panel").hidden, true);
@@ -431,6 +442,12 @@ async function main() {
   view("timeline");
   await settle();
   assert.ok(![...timers.values()].some((t) => t.delay === 10000));
+  document.visibilityState = "hidden";
+  document.events.visibilitychange();
+  document.visibilityState = "visible";
+  document.events.visibilitychange();
+  await settle();
+  assert.equal(runtimeRequests().length, 1, "re-showing does not poll Herdr");
   console.log(
     "execution rendering, explicit refresh, failure retention and virtual-clock polling passed",
   );
