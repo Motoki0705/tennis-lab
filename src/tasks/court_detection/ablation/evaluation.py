@@ -146,7 +146,7 @@ def _synthetic_evaluation_loader(
     dataset = CourtDetectionDataset(
         records, pipeline=dm._eval_pipelines["synthetic_court"]
     )
-    return dm._eval_loader(dataset, stage="synthetic_court/val")
+    return dm._eval_loader(dataset, stage="synthetic_court/val", rng_stage="val")
 
 
 class _SceneMetrics:
