@@ -761,6 +761,7 @@ def _run_triage(args: argparse.Namespace, run_dir: Path) -> int:
         "received": result.received,
         "unassigned": result.unassigned,
         "linked_existing": result.linked_existing,
+        "checklist_updates": result.checklist_updates,
         "errors": result.errors,
         "memory_errors": memory_errors,
     }

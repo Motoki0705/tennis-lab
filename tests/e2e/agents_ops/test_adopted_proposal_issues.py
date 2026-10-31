@@ -72,6 +72,58 @@ class FakeGitHub:
         self.fail_after = ""
         self.on_write: Callable[[], None] | None = None
         self.on_get: Callable[[], None] | None = None
+        self.before_body_patch: Callable[[int], None] | None = None
+        self.edit_history: dict[int, list[dict[str, Any]]] = {}
+        self.history_error = False
+
+    def edit_body(self, n: int, body: str) -> None:
+        row = self.issues[n]
+        history = self.edit_history.setdefault(n, [])
+        if not history:
+            history.append(
+                {
+                    "id": f"{n}-created",
+                    "diff": row["body"],
+                    "editedAt": row["created_at"],
+                    "deletedAt": None,
+                }
+            )
+        history.append(
+            {
+                "id": f"{n}-edit-{len(history)}",
+                "diff": body,
+                "editedAt": "2026-10-31T00:00:01Z",
+                "deletedAt": None,
+            }
+        )
+        row["body"] = body
+
+    def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        assert "userContentEdits" in query
+        if self.history_error:
+            raise ValueError("injected edit history API failure")
+        n = variables["number"]
+        row = self.issues[n]
+        edits = list(reversed(self.edit_history.get(n, [])))
+        offset = int(variables["after"] or "0")
+        return {
+            "repository": {
+                "issue": {
+                    "number": n,
+                    "body": row["body"],
+                    "createdAt": row["created_at"],
+                    "includesCreatedEdit": bool(edits),
+                    "userContentEdits": {
+                        "totalCount": len(edits),
+                        "nodes": copy.deepcopy(edits[offset : offset + 100]),
+                        "pageInfo": {
+                            "hasNextPage": offset + 100 < len(edits),
+                            "endCursor": str(offset + 100),
+                        },
+                    },
+                }
+            }
+        }
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> Any:
         if self.on_get:
@@ -190,7 +242,13 @@ class FakeGitHub:
                 self.parents[child] = n
                 result = self.issues[child]
             else:
-                self.issues[n].update(payload)
+                if "body" in payload:
+                    if self.before_body_patch:
+                        self.before_body_patch(n)
+                    self.edit_body(n, payload["body"])
+                self.issues[n].update(
+                    {key: value for key, value in payload.items() if key != "body"}
+                )
                 result = self.issues[n]
         if self.on_write:
             self.on_write()
@@ -257,6 +315,17 @@ def plan(
         "nodes": nodes if nodes is not None else [task_node()],
         "decisions": decisions if decisions is not None else [decision()],
     }
+
+
+def checklist_parent_plan() -> dict[str, Any]:
+    return plan(
+        [
+            parent_node(),
+            task_node("first", "child", "improvements"),
+            task_node("second", "child", "improvements"),
+        ],
+        [decision(target="improvements")],
+    )
 
 
 def start_decision(
@@ -688,6 +757,122 @@ def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
     assert not h.run().errors
     assert len(h.calls()) == 1 and set(h.gh.issues) == {1, 100, 101}
     assert "#101" in h.gh.issues[1]["body"]
+
+
+@pytest.mark.parametrize("new_parent", [False, True])
+def test_checklist_recovers_rewrite_between_get_and_patch_once(
+    harness: Harness, new_parent: bool
+) -> None:
+    h = harness
+    if new_parent:
+        h.response(checklist_parent_plan())
+        parent, child = 101, 102
+    else:
+        h.gh.issues[1] = raw_issue(
+            1,
+            title="[保守性改善] 既存の親",
+            body=fmt.render_parent_body(parent_node()["sections"]),
+            labels=[{"name": "issue:parent"}],
+        )
+        h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
+            "関連親issue: 未指定", "関連親issue: #1"
+        )
+        h.response(plan([task_node(role="child", parent=1)]))
+        parent, child = 1, 101
+    patches = []
+
+    def interrupt(n: int) -> None:
+        if n != parent:
+            return
+        patches.append(n)
+        if len(patches) == 1:
+            h.gh.edit_body(
+                n,
+                policy.replace_section(
+                    h.gh.issues[n]["body"],
+                    "目的・背景",
+                    "Geminiが書き直した重要な説明。",
+                ),
+            )
+            # The rewrite workflow has also published its final label before our PATCH.
+            h.gh.issues[n]["labels"].append({"name": "rewrite:done"})
+
+    h.gh.before_body_patch = interrupt
+    result = h.run()
+    assert not result.errors, result.errors
+    assert patches == [parent, parent]
+    assert (
+        fmt.parse_sections(h.gh.issues[parent]["body"])["目的・背景"].strip()
+        == "Geminiが書き直した重要な説明。"
+    )
+    assert f"#{child}" in h.gh.issues[parent]["body"]
+    assert {"name": "rewrite:done"} in h.gh.issues[parent]["labels"]
+    assert [event["state"] for event in result.checklist_updates] == [
+        "interrupted",
+        "reapplied",
+    ]
+    assert not h.run().errors and len(h.calls()) == 1
+
+
+def test_checklist_second_interruption_stops_and_resumes_saved_body_without_duplication(
+    harness: Harness,
+) -> None:
+    h = harness
+    h.response(checklist_parent_plan())
+    patches = []
+
+    def interrupt(n: int) -> None:
+        if n == 101:
+            patches.append(n)
+            h.gh.edit_body(
+                n,
+                policy.replace_section(
+                    h.gh.issues[n]["body"],
+                    "目的・背景",
+                    f"割り込み{len(patches)}の新しい説明。",
+                ),
+            )
+
+    h.gh.before_body_patch = interrupt
+    result = h.run()
+    assert patches == [101, 101]
+    assert any("interrupted twice" in error for error in result.errors)
+    assert result.checklist_updates[-1]["state"] == "retry_exhausted"
+    journal = json.loads(h.tmp.joinpath("triage.json").read_text())
+    tx = journal["transactions"][0]
+    assert not tx["complete"]
+    assert "割り込み2の新しい説明。" in tx["checklist_recovery"]["101"]["reapply_body"]
+    h.gh.before_body_patch = None
+    resumed = h.run()
+    assert not resumed.errors, resumed.errors
+    assert "割り込み2の新しい説明。" in h.gh.issues[101]["body"]
+    assert "#102" in h.gh.issues[101]["body"]
+    assert set(h.gh.issues) == {100, 101, 102, 103} and len(h.calls()) == 1
+    assert resumed.checklist_updates[-1]["state"] == "reapplied"
+
+
+def test_checklist_history_failure_retains_checkpoint_and_reverifies_on_resume(
+    harness: Harness,
+) -> None:
+    h = harness
+    h.response(checklist_parent_plan())
+
+    def fail_after_patch(n: int) -> None:
+        if n == 101:
+            # The PATCH itself succeeds; only its following history query fails.
+            h.gh.history_error = True
+
+    h.gh.before_body_patch = fail_after_patch
+    result = h.run()
+    assert any("history API failure" in error for error in result.errors)
+    tx = json.loads(h.tmp.joinpath("triage.json").read_text())["transactions"][0]
+    assert tx["checklist_recovery"]["101"]["reapply_body"] is None
+    h.gh.history_error = False
+    h.gh.before_body_patch = None
+    resumed = h.run()
+    assert not resumed.errors, resumed.errors
+    assert resumed.checklist_updates[-1]["state"] == "verified"
+    assert set(h.gh.issues) == {100, 101, 102, 103} and len(h.calls()) == 1
 
 
 @pytest.mark.parametrize("closed", [False, True])

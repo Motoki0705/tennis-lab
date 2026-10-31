@@ -688,6 +688,58 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
     assert not any(c[:2] == ["run", "watch"] for c in p.calls()[offset:])
 
 
+@pytest.mark.parametrize(
+    "state_label", [None, "rewrite:done", "rewrite:failed", "rewrite:skipped"]
+)
+def test_sync_cannot_patch_parent_during_rewrite_even_without_agreement(
+    parent_env: ParentEnv, state_label: str | None
+) -> None:
+    p = parent_env
+    p.cli("register")
+    state = p.state()
+    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    if state_label:
+        state["issues"]["1"]["labels"].append({"name": state_label})
+    p.save(state)
+    offset = len(p.calls())
+    result = p.cli("sync", ok=state_label is not None)
+    if state_label is None:
+        assert "pending" in result.stderr and "wait-rewrite" in result.stderr
+        assert not any("PATCH" in call for call in p.calls()[offset:])
+        assert p.state()["issues"]["1"]["body"] == state["issues"]["1"]["body"]
+    else:
+        assert any("PATCH" in call for call in p.calls()[offset:])
+
+
+def test_update_body_gates_target_issue_instead_of_session_parent(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    state = p.state()
+    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["issues"]["1"]["labels"].append({"name": "rewrite:done"})
+    p.save(state)
+    store_module = importlib.import_module("parent.state")
+    github_module = importlib.import_module("parent.github")
+    session_module = importlib.import_module("parent.session")
+    policy_module = importlib.import_module("parent.policy")
+    with store_module.Store(p.root / "target-issue-state").locked() as store:
+        gh = github_module.GitHub("o/r", store=store)
+        session = session_module.ParentSession(gh, store, 1, None)
+        old = gh.issue(2)["body"]
+        with pytest.raises(ValueError, match="#2: issue rewrite is pending"):
+            session.update_body(
+                2,
+                policy_module.replace_section(
+                    old, "進捗概要", "別の対象親の本文更新。"
+                ),
+                old,
+            )
+    assert not any("PATCH" in call for call in p.calls())
+
+
 def test_parent_body_update_detects_rewrite_despite_cached_issue(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
