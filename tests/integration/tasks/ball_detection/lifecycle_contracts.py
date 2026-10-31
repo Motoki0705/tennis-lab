@@ -169,7 +169,7 @@ def exercise_mdd_resume(
             remaining = run(interrupted, resume=checkpoint)
     elif fault == "data":
         assert kind == "temporal", (
-            "only temporal heatmap has a within-stream pack cursor"
+            "only shared-pack temporal training has a within-stream pack cursor"
         )
         sampler = loops.temporal.PackSampler
 

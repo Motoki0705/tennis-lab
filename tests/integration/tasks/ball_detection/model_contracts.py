@@ -21,12 +21,13 @@ from src.tasks.ball_detection.checkpoints.hybrid_training import (
 from src.tasks.ball_detection.checkpoints.initialization import initialize_full_model
 from src.tasks.ball_detection.checkpoints.pretraining import pretraining_config
 from src.tasks.ball_detection.checkpoints.provenance import data_identity
-from src.tasks.ball_detection.model_io.mdd_heatmap import (
-    MDDHeatmapAdapter,
-    build_mdd_heatmap_detector,
-    restore_heatmap_model,
-)
+from src.tasks.ball_detection.model_io.mdd_heatmap import MDDHeatmapAdapter
 from src.tasks.ball_detection.model_io.mdd_hybrid import MDDHybridAdapter
+from src.tasks.ball_detection.model_io.mdd_temporal import (
+    build_temporal_model,
+    restore_temporal_model,
+    temporal_forward,
+)
 from src.tasks.ball_detection.model_io.predict import (
     predict_coordinates,
     predict_dpt_heatmaps,
@@ -34,7 +35,6 @@ from src.tasks.ball_detection.model_io.predict import (
 from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDDPTDetector,
-    MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
     MDDHybridConfig,
     MDDPoseConfig,
@@ -46,6 +46,7 @@ from src.tasks.ball_detection.training.coordinates.objective import coordinate_l
 from src.tasks.ball_detection.training.heatmap_objective import heatmap_objective
 from src.tasks.ball_detection.training.hybrid.objective import hybrid_objective
 from src.tasks.ball_detection.training.runtime.images import jpeg_decoder_contract
+from src.tasks.ball_detection.training.temporal.configuration import load_model_config
 from src.utils.checksum import dual_sha256
 from tests.integration.tasks.ball_detection.contract_inputs import (
     assert_window_batch,
@@ -60,7 +61,7 @@ from tests.support.model_contracts.parameters import (
     names_under,
 )
 from tests.support.model_contracts.registry import ModelFamily
-from tests.support.tasks.ball_detection.temporal_heatmap import prepare_fixture
+from tests.support.tasks.ball_detection.temporal import prepare_fixture
 
 CONFIG_DIR = Path("src/tasks/ball_detection/configs")
 SELECTORS = {
@@ -74,6 +75,7 @@ SELECTORS = {
     "mdd_hybrid": "mdd_hybrid",
     "mdd_dpt_heatmap": "mdd_dpt_heatmap",
     "mdd_heatmap_hybrid": "mdd_heatmap_hybrid",
+    "mdd_temporal_query": "mdd_temporal_query",
 }
 
 
@@ -140,41 +142,43 @@ def _build(config: DictConfig, *, kind: str) -> tuple[Any, LoopInputs]:
     root = Path(config.paths.data_root)
     model_file = write_model_config(config, root)
     if kind == "coordinate":
-        spec = MDDPoseConfig.load(model_file)
+        pose_spec = MDDPoseConfig.load(model_file)
         model: Any = (
-            MDDPoseDetector(spec) if spec.requires_pose else MDDQueryDetector(spec)
+            MDDPoseDetector(pose_spec)
+            if pose_spec.requires_pose
+            else MDDQueryDetector(pose_spec)
         )
-        manifest = write_windows(root, pose=spec.requires_pose)
+        manifest = write_windows(root, pose=pose_spec.requires_pose)
     elif kind == "pretrain":
         model = MDDDPTDetector(MDDPretrainConfig.load(model_file))
         manifest = write_windows(root, pose=False)
     elif kind == "deep_query":
-        spec = MDDPretrainConfig.load(model_file)
+        query_spec = MDDPretrainConfig.load(model_file)
         manifest = write_windows(root, pose=False)
-        parent = _query_parent(root, spec, manifest)
+        parent = _query_parent(root, query_spec, manifest)
         model, receipt = initialize_full_model(
             parent, expected_sha256=dual_sha256(parent), jpeg_decoder="opencv"
         )
         return model, LoopInputs(config, kind, manifest, model_file, parent, receipt)
     elif kind == "hybrid":
-        spec = MDDHybridConfig.load(model_file)
+        hybrid_spec = MDDHybridConfig.load(model_file)
         manifest = write_windows(root, pose=False)
-        parent = _query_parent(root, spec, manifest)
+        parent = _query_parent(root, hybrid_spec, manifest)
         model, receipt = initialize_hybrid(
             parent,
-            spec,
+            hybrid_spec,
             mode="query",
             data=data_identity(manifest),
             image_decode=jpeg_decoder_contract("opencv"),
         )
         return model, LoopInputs(config, kind, manifest, model_file, parent, receipt)
     elif kind == "temporal":
-        spec = (
-            MDDHeatmapConfig.load(model_file)
-            if config.model.name == "mdd_dpt_heatmap"
-            else MDDHeatmapHybridConfig.load(model_file)
-        )
-        model = build_mdd_heatmap_detector(spec).model
+        architecture = {
+            "mdd_dpt_heatmap": "dpt",
+            "mdd_heatmap_hybrid": "hybrid",
+            "mdd_temporal_query": "query",
+        }[config.model.name]
+        model = build_temporal_model(load_model_config(model_file, architecture))
         manifest = prepare_fixture(root / "temporal") / "train_T32.json"
     else:
         raise ValueError(kind)
@@ -206,17 +210,12 @@ def _prediction(model: Any, batch: Any, kind: str) -> Any:
         return predict_dpt_heatmaps(model, batch["rgb"])
     if kind == "hybrid":
         return model(batch["rgb"], batch["timestamps"])
-    args = (
-        (batch["rgb"], batch["timestamps"])
-        if isinstance(model.config, MDDHeatmapHybridConfig)
-        else (batch["rgb"],)
-    )
-    return model(*args)
+    return temporal_forward(model, batch["rgb"], batch["timestamps"])
 
 
 def _result(model: Any, batch: Any, kind: str) -> Any:
     output = _prediction(model, batch, kind)
-    if kind in {"coordinate", "deep_query"}:
+    if kind in {"coordinate", "deep_query"} or isinstance(model, DeepMDDQueryDetector):
         loss = coordinate_loss(output, batch["uv"], batch["position_valid"])
     elif kind == "hybrid":
         loss, _ = hybrid_objective(
@@ -239,6 +238,7 @@ def parameter_contract(model: Any, *, kind: str, frozen_phase: bool = False) -> 
     unused = (
         names_under(model, "decoder.fusion_blocks.3.skip_block")
         if kind in {"pretrain", "hybrid", "temporal"}
+        and not isinstance(model, DeepMDDQueryDetector)
         else frozenset()
     )
     groups = {"encoder": names_under(model, "encoder")}
@@ -251,7 +251,7 @@ def parameter_contract(model: Any, *, kind: str, frozen_phase: bool = False) -> 
         )
         if model.config.requires_pose:
             groups["pose"] = names_under(model, "pose")
-    elif kind == "deep_query":
+    elif isinstance(model, DeepMDDQueryDetector):
         groups.update(
             {
                 key: names_under(model, key)
@@ -320,7 +320,7 @@ def _restore(config: DictConfig, path: Path, kind: str) -> Any:
         model._contract_presence_threshold = recipe["presence_threshold"]
         return model
     if kind == "temporal":
-        return restore_heatmap_model(saved["model_artifact"])
+        return restore_temporal_model(saved["model_artifact"])
     model = MDDDPTDetector(pretraining_config(saved))
     model.load_state_dict(saved["state_dict"], strict=True)
     return model
@@ -353,7 +353,7 @@ def _public_prediction(model: Any, batch: Any, kind: str) -> Any:
             position_valid=batch["position_valid"],
             heatmap_valid=batch["heatmap_valid"],
         )
-    if kind == "temporal":
+    if kind == "temporal" and not isinstance(model, DeepMDDQueryDetector):
         return dict(raw=raw, decoded=MDDHeatmapAdapter(model.config).decode_output(raw))
     return raw
 
@@ -395,6 +395,7 @@ FAMILIES = {
             ("mdd_hybrid", "hybrid"),
             ("mdd_dpt_heatmap", "temporal"),
             ("mdd_heatmap_hybrid", "temporal"),
+            ("mdd_temporal_query", "temporal"),
         )
     },
 }
