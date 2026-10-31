@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "action": "metadata-download",
+  "remote_root": "gdrive:tennis_lab",
+  "pool": "data/court_scene_diversity_6000_v1",
+  "observed_at": "2026-10-30T21:31:56.661099+00:00",
+  "inventory_sha256": "0b97bf8bb8f41d74ef726fd111b16508c1d740507857738d73a023c629952bd2",
+  "file_count": 919,
+  "bytes": 37928809,
+  "jpeg_shards_downloaded": 0,
+  "content_verified_against_tennis_drive_inventory": true,
+  "transport": "tennis-drive RcloneBackend backend copyid --immutable (up to sixteen disjoint local I/O batches)",
+  "files_list_sha256": "6d5e3465f1ee2d3f429886a31620ee2683001e6950cd01387c93e6809927178b"
+}

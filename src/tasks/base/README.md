@@ -19,6 +19,7 @@
 ### data/
 - **`scene_dataset.py`**: `SceneDatasetBase`。シーンディレクトリ読込・window/camera選択・`build_sample()`拡張点を持つDataset基底。`meta.num_frames` は正の整数として必須で、payload長との矛盾は `SceneDataContractError` によりindex作成前に失敗する。
 - **`datamodule.py`**: `SceneDirectoryDataModule`。固定 `scene_dir`+split txt を扱うDataModule基底。
+- **`loader_state.py`**: `LoaderRNGDataModule`。train/val/testのloader・shuffle乱数をモデル乱数から分離してcheckpointへ保存する。task固有のdataset乱数は各DataModuleで別に保存する。
 - **`chunked_datamodule.py`**: `BaseChunkedDataModule`。trainのみバックグラウンド生成chunkに切替え。
 - **`chunk_manager.py`**: `ChunkManager`。chunk生成スレッドのライフサイクル管理。
 - **`dataset_writer.py`**: `BaseDatasetWriter`。npy+jsonシーン書き出しの共通実装。
@@ -26,6 +27,7 @@
 
 ### training/
 - **`lightning_module.py`**: `BaseLightningModule`。optimizer/scheduler構築、明示的なcompile target契約、qualitative/test予測保存の拡張点。
+- **`random_state.py`**: Python・NumPy・Torch・初期化済みCUDAのプロセス乱数を保存し、resumeの構築処理後、学習開始直前に戻す。taskがcheckpoint/train-start hookをoverrideするときはsuperを呼ぶ。
 - **`compilation.py`**: `compile_modules()`。primary modelやGAN discriminatorなど、名前付きtargetへidentity/state_dictを保つ`nn.Module.compile()`を適用する。重複参照はobject identityで一度だけ処理し、失敗時にeagerへfallbackしない。
 - **`runner.py`**: `BaseTrainingRunner`。configをsingle source of truthとする学習実行の共通フロー。`init_weights`読込後・`Trainer`構築前に全compile targetを処理し、local outputへ別責務の`ArtifactStore`をcompositionする。
 - **`artifact_store/`**: LightningModuleから保存責務を分離した永続化adapter。checkpoint直後のatomic publish、非checkpoint成果物の周期同期、Trainer plugin/callback組み立てを所有する。Drive配置規約は [Drive管理方針](../../../.agents/skills/tennis-drive/references/storage-policy.md) が正本。
@@ -67,6 +69,19 @@ Player Detectionは選択したvalidation batchの先頭sampleに対応する元
 BLCS standardの軌道指標は `trajectory_rmse_m`, `trajectory_mean_m`, `trajectory_p95_m`, `velocity_head_rmse_mps`, `position_difference_velocity_rmse_mps`, `position_difference_acceleration_rmse_mps2`, `reprojection_rmse_px`, `below_ground_rate`, `reprojection_evaluable_rate`, `clip_trajectory_rmse_mean_m`。val/testには `rollout_position_rmse_m` と `rollout_velocity_rmse_mps` を追加する。trainはrollout指標を計算・ログしない。BLCSのframe母集団指標は上記のtracking契約とは異なり、支持数0を未定義としてloggerではNaN、保存JSONではnullと支持数を記録し、0には置換しない。checkpoint選択の主指標は `val/trajectory_rmse_m`。
 
 PLCS standardでcanonical pose headが有効かつ有効なcanonical pose教師がある場合に限り、全stageの上記headlineへ`canonical_mpjpe_m`（関節距離の平均、低いほど良い）と`canonical_pck_0.1m`（誤差0.1 m以内の関節割合、高いほど良い）を追加する。pose教師がないbatch/epochへ0を補完しない。testの診断値には`canonical_joint_error_median_m`と、17関節それぞれの`canonical_joint_error_<name>_m`を保存する。tracking modelはpose headを持たないため対象外である。PA-MPJPEはProcrustes整列がcanonical poseの回転・scale誤差を消して世界座標再構成の品質を過大評価し得るため、headline/診断値のどちらにも出さない。旧`canonical_mpjpe`はknowledge artifactの読み込み互換だけに使い、新規出力は`canonical_mpjpe_m`へ統一する。
+
+## Training checkpoint state
+
+学習checkpointは`training_random_state`にプロセス乱数、DataModuleのstateにloader/窓抽選の乱数を保存する。
+完了epoch境界から再開する場合、optimizer/schedulerの構築後に乱数を復元する。
+`training_random_state`のない旧checkpointは推論・`run.init_weights`での初期化用とし、full-state resumeは明示的に拒否する。
+手動GANのphase・更新数も保存し、GAN移行済みのresumeでLR scheduleを初期化し直さない。
+
+基底のstep scheduleで`training.steps_per_epoch`を明示した場合、loader setup後の
+`on_train_start`で、明示値×設定epoch数とTrainerの総optimizer更新数を照合する。
+蓄積・`limit_train_batches`・`max_steps`・端数batchなどによる不一致は、初回更新前に
+`ValueError`となる。optimizer構築中にloaderを先読みしない。
+module属性`steps_per_epoch`やtaskがoverrideした総step予算はtask側の契約を維持する。
 
 ## Training model compilation
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 
+import pytest
 import torch
 
 from src.utils.geometry.court_pose import (
@@ -34,6 +35,36 @@ class TestCourtPositionToWorldTranslation:
 
 def _rotation(theta: float) -> torch.Tensor:
     return torch.tensor([math.cos(theta), math.sin(theta)])
+
+
+@pytest.mark.parametrize("inverse", [False, True], ids=["forward", "inverse"])
+def test_positive_quarter_turn_with_translation(inverse: bool) -> None:
+    # Court normalization is metres / 11.885 (half the 23.77 m court length).
+    # A +90 degree yaw sends (x, y, z) to (-y, x, z), then translates it.
+    canonical = torch.tensor(
+        [[1.0, 0.0, 2.0], [0.0, 2.0, -1.0], [-3.0, 4.0, 0.5]],
+        dtype=torch.float64,
+    )
+    position = torch.tensor([0.25, -0.5, 0.125], dtype=torch.float64)
+    rotation = torch.tensor([0.0, 1.0], dtype=torch.float64)
+    # Translation = (2.97125, -5.9425, 1.485625) m; no production helper
+    # constructs either side of this oracle, including for the inverse API.
+    world = torch.tensor(
+        [
+            [2.97125, -4.9425, 3.485625],
+            [0.97125, -5.9425, 0.485625],
+            [-1.02875, -8.9425, 1.985625],
+        ],
+        dtype=torch.float64,
+    )
+    if inverse:
+        actual = world_pose_to_canonical_pose(world, position, rotation)
+        torch.testing.assert_close(actual, canonical, atol=1e-12, rtol=0)
+    else:
+        actual = canonical_pose_to_world_pose(canonical, position, rotation)
+        torch.testing.assert_close(actual, world, atol=1e-12, rtol=0)
+        # Translation and a proper yaw preserve all pairwise joint distances.
+        torch.testing.assert_close(torch.pdist(actual), torch.pdist(canonical))
 
 
 class TestCanonicalWorldRoundTrip:

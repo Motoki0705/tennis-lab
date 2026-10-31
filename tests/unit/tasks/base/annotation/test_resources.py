@@ -879,12 +879,9 @@ pathlib.Path(root, "attached").write_text(str(os.getpid()))
 if mode == "orphan":
     subprocess.Popen([sys.executable, "-c", "import time; time.sleep(1)"])
     os._exit(0)
-if mode == "coordinated":
-    assert sys.stdin.read(1) == "f"
-    completed_at = manager._row(request)["started"] + 2.5
-    time.monotonic = lambda: completed_at
-else:
-    time.sleep(.1)
+assert sys.stdin.read(1) == "f"
+completed_at = manager._row(request)["started"] + 2.5
+time.monotonic = lambda: completed_at
 manager.finish(request, reason="fixture completed")
 if mode == "draining":
     os.close(int(fd))
@@ -898,7 +895,7 @@ if mode == "draining":
 def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
     tmp_path: Path, mode: str
 ) -> None:
-    # Synthetic logical GPU lease; the child only sleeps, and never touches CUDA.
+    # Synthetic GPU lease with pipe synchronization and an injected clock.
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     plan = make_plan(layout)
     guard = manager(layout, plan)
@@ -916,6 +913,7 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
                 str(fd),
                 mode,
             ],
+            stdin=subprocess.PIPE,
             pass_fds=(fd,),
             start_new_session=True,
         )
@@ -925,6 +923,10 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
             time.sleep(0.02)
         assert (layout.root / "attached").exists()
         assert guard.sample().active_by_stage == {"gpu": 1}
+        if mode != "orphan":
+            assert child.stdin is not None
+            child.stdin.write(b"f")
+            child.stdin.flush()
         if mode == "draining":
             deadline = time.monotonic() + 5
             while (
@@ -947,9 +949,7 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
         assert sample.active_by_stage == {}
         assert not attempt_is_protected(guard, item)
         assert item.plan in retained(guard)
-        assert 0 < sample.gpu_charged_seconds <= 5
-        if mode == "orphan":
-            assert sample.gpu_charged_seconds == 5
+        assert sample.gpu_charged_seconds == (5 if mode == "orphan" else 2.5)
         # A new campaign inherits consumed time from this same budget scope.
         next_plan = make_plan(layout, "next")
         too_much = request(layout, next_plan, "next", stage="gpu", gpu=100.0)
@@ -959,6 +959,8 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
         if child.poll() is None:
             child.send_signal(signal.SIGKILL)
         child.wait(timeout=5)
+        if child.stdin is not None:
+            child.stdin.close()
 
 
 def test_lost_dispatch_before_attach_is_terminal_and_charged_once(

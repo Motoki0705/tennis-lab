@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -212,13 +213,17 @@ def test_select_window_full_when_seq_ge_full(make_scene_dataset, make_scene) -> 
 
 def test_select_window_random_in_bounds(make_scene_dataset, make_scene) -> None:
     ds = make_scene_dataset(num_frames=12)
+    ds.config = replace(ds.config, seq_len_range=(2, 6), crop_mode="random")
     scene = make_scene(num_frames=12)
+    starts = set()
     for _ in range(20):
-        w = ds.select_window(scene, seq_len_range=(2, 6), crop_mode="random")
+        w = ds.select_window(scene)
+        starts.add(w.start)
         assert 2 <= w.seq_len <= 6
         assert w.start >= 0
         assert w.end <= 12
         assert w.end - w.start == w.seq_len
+    assert len(starts) > 1
 
 
 def test_select_window_too_short_raises(make_scene_dataset, make_scene) -> None:
@@ -249,12 +254,16 @@ def test_select_cameras_first_mode(make_scene_dataset, make_scene) -> None:
 
 def test_select_cameras_random_unique(make_scene_dataset, make_scene) -> None:
     ds = make_scene_dataset(num_cameras=5)
+    ds.config = replace(ds.config, num_views_range=(2, 4), camera_mode="random")
     scene = make_scene(num_cameras=5)
+    selections = set()
     for _ in range(15):
-        sel = ds.select_cameras(scene, num_views_range=(2, 4), camera_mode="random")
+        sel = ds.select_cameras(scene)
+        selections.add(sel.indices)
         assert 2 <= len(sel.indices) <= 4
         assert len(set(sel.indices)) == len(sel.indices)  # unique
         assert all(0 <= i < 5 for i in sel.indices)
+    assert len(selections) > 1
 
 
 def test_select_cameras_int_mode_primary_first(make_scene_dataset, make_scene) -> None:
@@ -541,23 +550,6 @@ def test_dataset_construction_rejects_missing_frame_metadata_before_indexing(
 
     with pytest.raises(SceneDataContractError, match="num_frames.*positive int"):
         make_scene_dataset(config=config, root=root, n_scenes=0)
-
-
-def test_scene_dataset_config_preserves_explicit_contract() -> None:
-    cfg = SceneDatasetConfig(
-        scene_dir=Path("/a"),
-        split_file=Path("/a/train.txt"),
-        seq_len_range=(1, 1024),
-        num_views_range=(1, 1),
-        camera_mode="random",
-        crop_mode="random",
-        min_num_frames=1,
-        min_num_cameras=1,
-    )
-    assert cfg.seq_len_range == (1, 1024)
-    assert cfg.num_views_range == (1, 1)
-    assert cfg.camera_mode == "random"
-    assert cfg.crop_mode == "random"
 
 
 def test_explicit_camera_candidates_never_sample_outside_pool() -> None:

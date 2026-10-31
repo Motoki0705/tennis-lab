@@ -11,7 +11,6 @@ import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import open_dict
 from torch.utils.data import (
-    DataLoader,
     Dataset,
     RandomSampler,
     SequentialSampler,
@@ -66,7 +65,7 @@ def _module(
     return module
 
 
-def test_validation_sequential_disabled_legacy_rng_and_ddp_guard(
+def test_validation_sequential_disabled_checkpoint_rng_and_ddp_guard(
     runtime: SLCSDataRuntimeConfig, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     module = _module(runtime, monkeypatch)
@@ -76,14 +75,19 @@ def test_validation_sequential_disabled_legacy_rng_and_ddp_guard(
     for disabled in (None, DomainSamplingConfig(False, {})):
         module = _module(replace(runtime, domain_sampling=disabled), monkeypatch)
         torch.manual_seed(91)
+        state = torch.random.get_rng_state()
         loader = module.train_dataloader()
         assert isinstance(loader.sampler, RandomSampler)
         actual = list(loader)
-        state = torch.random.get_rng_state()
-        torch.manual_seed(91)
-        legacy = list(DataLoader(_Windows(), batch_size=4, shuffle=True))
-        assert all(torch.equal(a, b) for a, b in zip(actual, legacy, strict=True))
         assert torch.equal(state, torch.random.get_rng_state())
+        assert torch.cat(actual).sort().values.tolist() == list(range(20))
+        checkpoint = module.state_dict()
+        expected = list(module.train_dataloader())
+        fresh = _module(replace(runtime, domain_sampling=disabled), monkeypatch)
+        fresh.load_state_dict(checkpoint)
+        torch.manual_seed(92)
+        resumed = list(fresh.train_dataloader())
+        assert all(torch.equal(a, b) for a, b in zip(expected, resumed, strict=True))
     module = _module(runtime, monkeypatch)
     module.trainer = cast(pl.Trainer, SimpleNamespace(world_size=2))
     with pytest.raises(RuntimeError, match="distributed"):

@@ -13,11 +13,6 @@ if _REPOSITORY_ROOT_TEXT in sys.path:
     sys.path.remove(_REPOSITORY_ROOT_TEXT)
 sys.path.insert(0, _REPOSITORY_ROOT_TEXT)
 
-from src.utils.configuration.audit import (  # noqa: E402
-    AuditOptions,
-    run_configuration_audit,
-)
-
 
 def main() -> int:
     """Run the canonical configuration audit command."""
@@ -34,6 +29,10 @@ def main() -> int:
         help="render source-discovered callable, executable, and validator bindings",
     )
     arguments = parser.parse_args()
+    # Catalog import discovers contracts across src/. Help and invalid arguments
+    # must remain available without that scan or any project dependencies.
+    from src.utils.configuration.audit import AuditOptions, run_configuration_audit
+
     return run_configuration_audit(
         cast(Path, arguments.source_root),
         AuditOptions(

@@ -22,9 +22,11 @@ from src.tasks.ball_detection.checkpoints.initialization import initialize_full_
 from src.tasks.ball_detection.checkpoints.pretraining import pretraining_config
 from src.tasks.ball_detection.checkpoints.provenance import data_identity
 from src.tasks.ball_detection.model_io.mdd_heatmap import (
+    MDDHeatmapAdapter,
     build_mdd_heatmap_detector,
     restore_heatmap_model,
 )
+from src.tasks.ball_detection.model_io.mdd_hybrid import MDDHybridAdapter
 from src.tasks.ball_detection.model_io.predict import (
     predict_coordinates,
     predict_dpt_heatmaps,
@@ -314,9 +316,11 @@ def _restore(config: DictConfig, path: Path, kind: str) -> Any:
     if kind in {"coordinate", "deep_query"}:
         return restore_coordinate_model(saved)[0]
     if kind == "hybrid":
-        return restore_hybrid_model(saved)[0]
+        model, recipe = restore_hybrid_model(saved)
+        model._contract_presence_threshold = recipe["presence_threshold"]
+        return model
     if kind == "temporal":
-        return restore_heatmap_model(saved)
+        return restore_heatmap_model(saved["model_artifact"])
     model = MDDDPTDetector(pretraining_config(saved))
     model.load_state_dict(saved["state_dict"], strict=True)
     return model
@@ -332,6 +336,28 @@ def _save(source: Path, target: Path) -> None:
     target.write_bytes(source.read_bytes())
 
 
+def _public_prediction(model: Any, batch: Any, kind: str) -> Any:
+    raw = _prediction(model, batch, kind)
+    if kind == "hybrid":
+        threshold = model._contract_presence_threshold
+        decoded = MDDHybridAdapter(
+            model.config, presence_threshold=threshold
+        ).decode_output(raw)
+        assert decoded.present.dtype == torch.bool
+        assert torch.isnan(decoded.coords[~decoded.present]).all()
+        assert not decoded.candidates.valid[~decoded.present].any()
+        return dict(
+            raw=raw,
+            decoded=decoded,
+            presence_threshold=threshold,
+            position_valid=batch["position_valid"],
+            heatmap_valid=batch["heatmap_valid"],
+        )
+    if kind == "temporal":
+        return dict(raw=raw, decoded=MDDHeatmapAdapter(model.config).decode_output(raw))
+    return raw
+
+
 def family(
     selector: str,
     kind: str,
@@ -345,7 +371,7 @@ def family(
         build=lambda config: _build(config, kind=kind),
         batch=lambda config: _batch(config, kind),
         supervised_result=lambda model, batch: _result(model, batch, kind),
-        predict=lambda model, batch: _prediction(model, batch, kind),
+        predict=lambda model, batch: _public_prediction(model, batch, kind),
         save=_save,
         restore=lambda config, path: _restore(config, path, kind),
         parameters=lambda model: parameter_contract(model, kind=kind),

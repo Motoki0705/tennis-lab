@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "phase": "preupload-inventory",
+  "initial_result": "failed-before-any-upload",
+  "return_code": 1,
+  "reason": "Initial wrapper discarded the CLI failure JSON, so the original cause is unknown. The wrapper now propagates the complete CLI failure reason and has a regression test.",
+  "recovery_observation": {
+    "cli_inventory_succeeded": true,
+    "observed_at": "2026-10-30T22:21:10.261022+00:00",
+    "preexisting_entries_compared": 3790,
+    "changed_entries": 0,
+    "new_manifest_names_already_present": 0
+  },
+  "next_action": "Retry publication with a new current inventory; immutable copy and full post-upload verification remain required."
+}
