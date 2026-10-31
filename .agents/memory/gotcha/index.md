@@ -2,6 +2,7 @@
 
 気づきにくい落とし穴、静かに失敗する挙動。1行に1エントリを書き、リンク文字列はエントリの `title` と一致させる。形式は [memory skill](../../skills/memory/SKILL.md#形式) を参照。
 
+- [Claude Code配下でローカル実行した tests/e2e/agents_ops は、変更と無関係な失敗を含む](agents-ops-local-failures-not-regressions.md) (claude)
 - [実行中のbashスクリプトをその場で書き換えると、実行中のプロセスが新しい内容を途中から実行する](bash-script-edit-while-running.md)
 - [codex-scheduled-followup の timer は、作成時の cli_heartbeat.py を絶対パスで実行し続ける](codex-followup-timer-script-path.md)
 - [.gitignore の汎用パターン（lib/, runs/, *.json）が新しいディレクトリを黙って無視する](gitignore-generic-rules-hide-new-paths.md)
