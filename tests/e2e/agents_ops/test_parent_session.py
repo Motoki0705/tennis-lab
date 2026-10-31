@@ -113,6 +113,12 @@ def paged(rows):
 if endpoint == "user":
     response({"login": "operator"})
 if path == "repos/o/r/actions/variables/issue_rewrite_enabled_since":
+    rewrite = state.pop("complete_rewrite_on_activation_read", None)
+    if rewrite:
+        row = state["issues"][str(rewrite["number"])]
+        row["body"] = rewrite["body"]
+        row["labels"].append({"name": "rewrite:done"})
+        save()
     code = state.get("rewrite_variable_status", 200 if "rewrite_enabled_since" in state else 404)
     response({"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": state.get("rewrite_enabled_since")}, code)
 if path == "repos/o/r/actions/workflows/issue-rewrite.yml/runs":
@@ -767,6 +773,48 @@ def test_parent_body_update_detects_rewrite_despite_cached_issue(
             session.update_body(1, proposed, old)
     assert p.state()["issues"]["1"]["body"] == rewritten
     assert not any("PATCH" in c for c in p.calls())
+
+
+def test_update_body_rechecks_body_with_final_rewrite_state(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = parent_env
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    state = p.state()
+    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    p.save(state)
+    store_module = importlib.import_module("parent.state")
+    github_module = importlib.import_module("parent.github")
+    session_module = importlib.import_module("parent.session")
+    policy_module = importlib.import_module("parent.policy")
+    with store_module.Store(p.root / "rewrite-race-state").locked() as store:
+        gh = github_module.GitHub("o/r", store=store)
+        session = session_module.ParentSession(gh, store, 1, None)
+        old = gh.issue(1)["body"]
+        proposed = policy_module.replace_section(
+            old, "進捗概要", "子タスクを照合した。"
+        )
+        rewritten = policy_module.replace_section(
+            old, "目的・背景", "Geminiによる読みやすい本文。"
+        )
+        state = p.state()
+        # The old implementation compares a fresh body before this activation
+        # read, then accepts done from a second issue GET without comparing it.
+        state["complete_rewrite_on_activation_read"] = {
+            "number": 1,
+            "body": rewritten,
+        }
+        p.save(state)
+        with pytest.raises(ValueError, match="#1: body changed"):
+            session.update_body(1, proposed, old)
+    final = p.state()
+    assert "complete_rewrite_on_activation_read" not in final
+    assert final["issues"]["1"]["body"] == rewritten
+    assert {label["name"] for label in final["issues"]["1"]["labels"]} >= {
+        "rewrite:done"
+    }
+    assert not any("PATCH" in call for call in p.calls())
 
 
 def peer_board_request(p: ParentEnv, body: str) -> dict[str, Any]:

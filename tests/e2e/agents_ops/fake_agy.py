@@ -18,6 +18,15 @@ with (root / "invocations.jsonl").open("a") as trace:
                 "args": args,
                 "cwd": os.getcwd(),
                 "disable_auto_update": os.environ.get("AGY_CLI_DISABLE_AUTO_UPDATE"),
+                "read_environment": {
+                    key: os.environ.get(key)
+                    for key in (
+                        "GIT_OPTIONAL_LOCKS",
+                        "GIT_PAGER",
+                        "GH_PAGER",
+                        "RIPGREP_CONFIG_PATH",
+                    )
+                },
             }
         )
         + "\n"
@@ -39,8 +48,20 @@ if scenario == "cli_error":
     )
     raise SystemExit(3)
 
+prompt = args[args.index("-p") + 1]
+probe = (
+    json.loads(prompt.splitlines()[1])
+    if prompt.startswith("AGY_PERMISSION_PROBE\n")
+    else None
+)
+if probe and probe["stage"] == "deny" and scenario == "probe_cli_error":
+    print('AGY_ERROR: {"error":"private-detail"}', file=sys.stderr)
+    raise SystemExit(3)
+
 log = Path(args[args.index("--log-file") + 1])
 label = "Gemini 3.8 Flash (High)" if scenario != "model" else "Gemini 3.8 Pro"
+if probe and probe["stage"] == "deny" and scenario == "probe_bad_model":
+    label = "Other Model"
 with log.open("a") as handle:
     if scenario != "missing_model":
         handle.write(
@@ -54,6 +75,35 @@ if scenario == "updated":
     (root / "updated").touch()
 
 payload = json.loads((root / "payload.json").read_text())
+if probe:
+    work = Path.cwd()
+    if probe["stage"] == "read":
+        payload["structured_output"] = {
+            "line": (work / "a").read_text().splitlines()[0],
+            "subject": (work / ".git/COMMIT_EDITMSG").read_text().splitlines()[0],
+        }
+        payload["denied_actions"] = []
+        if scenario == "probe_read_denied":
+            payload.pop("structured_output")
+            payload["denied_actions"] = [
+                {"action": "command", "display_name": "RunCommand"}
+            ]
+    else:
+        if scenario == "probe_workspace_write":
+            (work / "unexpected").touch()
+        elif scenario == "probe_outside_write":
+            (work.parent / "outside/unexpected").touch()
+        elif scenario == "probe_workspace_edit":
+            (work / "a").write_text("changed by fake agent")
+        payload.pop("structured_output")
+        payload["denied_actions"] = [
+            {"action": "command", "display_name": "RunCommand"}
+        ]
+        if scenario == "probe_missing_denial":
+            payload["structured_output"] = {"attempted": True}
+            payload["denied_actions"] = []
+    print(json.dumps(payload))
+    raise SystemExit(0)
 if scenario == "empty":
     raise SystemExit(0)
 if scenario == "no_structured":
