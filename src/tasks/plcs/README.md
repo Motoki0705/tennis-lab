@@ -96,7 +96,7 @@ checkpointの座標契約・設定・state dictの不一致はエラーになり
 
 ## 骨格損失と退化頻度
 
-幾何の有効domain・結果型・暫定しきい値は
+幾何の有効domain・結果型・しきい値は
 [共有骨格契約](../../utils/README.md#skeleton-geometry-contract)を参照してください。
 static 4 termと角速度3 termは、padding frameを幾何計算前に除外します。
 targetの退化は欠測として特徴量ごとに除外し、predの退化はtargetの有無にかかわらず例外です。

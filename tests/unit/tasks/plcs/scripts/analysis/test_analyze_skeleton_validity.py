@@ -102,7 +102,11 @@ def test_cli_surveys_target_prediction_exports_and_saved_scene_separately(
         == 0
     )
     result = json.loads(output.read_text())
-    assert result["thresholds_provisional"] is True
+    # The report records the adopted API domain (#1539) next to the candidates.
+    assert result["api_thresholds"] == {
+        "min_bone_length_m": 1e-6,
+        "min_plane_sine": 1e-6,
+    }
     assert set(result["sources"]) == {"target", "prediction", "target_scenes"}
     assert (
         result["sources"]["target"]["metrics"]
