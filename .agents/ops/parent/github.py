@@ -159,6 +159,30 @@ class GitHub(IssueGitHub):
             raise ValueError(f"gh {method} {endpoint} failed: {result.stderr.strip()}")
         return object_value(json.loads(result.stdout))
 
+    def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
+        """Read GraphQL without caching or holding the registry lock remotely."""
+        with self._store.unlocked_read() if self._store else nullcontext():
+            started = time.monotonic()
+            metrics.count("github_requests")
+            try:
+                result = subprocess.run(
+                    ["gh", "api", "graphql", "--input", "-"],
+                    input=json.dumps({"query": query, "variables": variables}),
+                    text=True,
+                    capture_output=True,
+                    timeout=60,
+                    check=False,
+                )
+            finally:
+                metrics.count("github_seconds", time.monotonic() - started)
+        if result.returncode:
+            raise ValueError(f"gh graphql failed: {result.stderr.strip()}")
+        response = object_value(json.loads(result.stdout))
+        if response.get("errors"):
+            raise ValueError(f"gh graphql errors: {response['errors']}")
+        data: dict[str, Any] = object_value(response.get("data"))
+        return data
+
     def issue(self, number: int) -> dict[str, Any]:
         row = object_value(self.get(f"repos/{self.repo}/issues/{number}"))
         if self.identity(row) != number:

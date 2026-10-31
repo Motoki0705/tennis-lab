@@ -62,6 +62,19 @@ def save():
 head = args[:2]
 if head == ["repo", "view"]:
     print(json.dumps({"nameWithOwner": "o/r"}))
+elif head == ["api", "graphql"]:
+    request = json.load(sys.stdin)
+    assert "userContentEdits" in request["query"]
+    variables = request["variables"]
+    number = variables["number"]
+    row = next(r for r in state["issues"] if r["number"] == number)
+    history = list(reversed(state.get("edit_history", {}).get(str(number), [])))
+    offset = int(variables.get("after") or "0")
+    print(json.dumps({"data": {"repository": {"issue": {
+        "number": number, "body": row["body"], "createdAt": row["createdAt"], "includesCreatedEdit": bool(history),
+        "userContentEdits": {"totalCount": len(history), "nodes": history[offset:offset + 100],
+            "pageInfo": {"hasNextPage": offset + 100 < len(history), "endCursor": str(offset + 100)}},
+    }}}}))
 elif args[0] == "api" and "--method" in args:
     method = opt("--method")
     endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
@@ -153,6 +166,11 @@ elif args[0] == "api" and "--method" in args:
         state.setdefault("comments", {}).setdefault(n, []).append(comment)
         api_saved(comment)
     if method == "PATCH":
+        if "body" in payload and row["body"] != payload["body"]:
+            history = state.setdefault("edit_history", {}).setdefault(n, [])
+            if not history:
+                history.append({"id": f"{n}-created", "diff": row["body"], "editedAt": row["createdAt"], "deletedAt": None})
+            history.append({"id": f"{n}-edit-{len(history)}", "diff": payload["body"], "editedAt": "2026-10-31T00:00:01Z", "deletedAt": None})
         row.update(payload)
         api_saved(api_issue(row))
     api_emit(api_issue(row))

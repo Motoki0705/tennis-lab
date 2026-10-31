@@ -68,6 +68,7 @@ class TriageResult:
     received: list[tuple[str, int]] = field(default_factory=list)
     unassigned: list[str] = field(default_factory=list)
     linked_existing: list[tuple[str, int]] = field(default_factory=list)
+    checklist_updates: list[dict[str, Any]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
 
