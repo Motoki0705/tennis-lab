@@ -16,7 +16,7 @@ jobs:
   smoke:
     if: ${{ github.actor == github.repository_owner && github.ref == 'refs/heads/main' }}
     runs-on: [self-hosted, linux, x64, tennis-lab]
-    timeout-minutes: 60
+    timeout-minutes: 75
     env:
       HOME: /var/lib/tennis-lab-actions/home
       AGY_CLI_DISABLE_AUTO_UPDATE: "true"

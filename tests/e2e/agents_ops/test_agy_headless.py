@@ -21,6 +21,9 @@ opsproc: Any = importlib.import_module("opsproc")
 
 @pytest.fixture
 def fake_agy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
+    profile_home = tmp_path / "user-home"
+    profile_home.mkdir()
+    monkeypatch.setenv("HOME", str(profile_home))
     executable = tmp_path / "agy"
     executable.write_text(
         f"#!{sys.executable}\n"
@@ -125,7 +128,12 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     assert args[args.index("-p") + 1] == fake_agy["prompt_file"].read_text()
     assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
     assert args[args.index("--mode") + 1] == "plan"
-    settings = json.loads(args[args.index("--settings") + 1])["permissions"]
+    fixed = json.loads(args[args.index("--settings") + 1])
+    assert fixed["toolPermission"] == "request-review"
+    assert fixed["agentMode"] == args[args.index("--mode") + 1] == "plan"
+    assert fixed["enableTerminalSandbox"] is False
+    assert fixed["allowNonWorkspaceAccess"] is False
+    settings = fixed["permissions"]
     assert all(
         rule.startswith("command(regex:^") and rule.endswith("$)")
         for rule in settings["allow"]
@@ -138,6 +146,147 @@ def test_success_requires_evidence_and_passes_readonly_settings(
         "mcp(*)",
     } <= set(settings["deny"])
     assert fake_agy["log_file"].stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        None,
+        {},
+        {"toolPermission": "request-review"},
+        {"toolPermission": "strict"},
+        {"agentMode": ""},
+        {"agentMode": "default"},
+        {"agentMode": "plan"},
+        {"allowNonWorkspaceAccess": False, "enableTerminalSandbox": False},
+        {
+            "permissions": {
+                "allow": [],
+                "ask": ["command(*)"],
+                "deny": ["write_file(*)"],
+            }
+        },
+        {"$schema": "https://antigravity.google/schemas/v1/settings.json"},
+    ],
+)
+def test_safe_user_settings_allow_startup_without_rewriting_the_profile(
+    fake_agy: dict[str, Path],
+    settings: dict[str, Any] | None,
+) -> None:
+    path = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    raw = None
+    if settings is not None:
+        path.parent.mkdir(parents=True)
+        raw = json.dumps(settings).encode()
+        path.write_bytes(raw)
+    result = agy.run_headless(**fake_agy, timeout=3)
+    assert result.structured_output == {"answer": "見出し"}
+    assert (fake_agy["cwd"] / "invocations.jsonl").exists()
+    assert (path.read_bytes() if path.exists() else None) == raw
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [
+        {"toolPermission": "always-proceed"},
+        {"toolPermission": "proceed-in-sandbox"},
+        {"toolPermission": "future-mode"},
+        {"toolPermission": None},
+        {"agentMode": "auto"},
+        {"agentMode": "accept-edits"},
+        {"agentMode": "future-mode"},
+        {"permissions": {"allow": ["command(*)"]}},
+        {"permissions": {"allow": None}},
+        {"permissions": {"allow": False}},
+        {"permissions": {"allow": {}}},
+        {"permissions": {"unknown": []}},
+        {"permissions": None},
+        {"permissions": {"ask": "command(*)"}},
+        {"permissions": {"deny": [False]}},
+        {"permissions": {"deny": [""]}},
+        {"enableTerminalSandbox": True},
+        {"enableTerminalSandbox": 0},
+        {"allowNonWorkspaceAccess": True},
+        {"allowNonWorkspaceAccess": 0},
+        {"unknownSetting": False},
+        {"colorScheme": "dark"},
+        {"$schema": {}},
+        [],
+        "broken",
+        '{"toolPermission":"request-review","toolPermission":"always-proceed"}',
+    ],
+)
+def test_unsafe_or_invalid_user_settings_stop_before_any_agy_process(
+    fake_agy: dict[str, Path],
+    settings: Any,
+) -> None:
+    path = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(settings if isinstance(settings, str) else json.dumps(settings))
+    with pytest.raises(agy.AgyError) as caught:
+        agy.run_headless(**fake_agy, timeout=3)
+    assert caught.value.reason == "unsafe_user_settings"
+    assert not (fake_agy["cwd"] / "invocations.jsonl").exists()
+    assert not fake_agy["log_file"].exists()
+
+
+@pytest.mark.parametrize(
+    "failure", ["unreadable", "directory", "invalid_utf8", "dangling_symlink"]
+)
+def test_unreadable_user_settings_never_start_agy(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    path = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    path.parent.mkdir(parents=True)
+    if failure == "directory":
+        path.mkdir()
+    elif failure == "dangling_symlink":
+        path.symlink_to(path.with_name("missing.json"))
+    else:
+        path.write_bytes(b"\xff" if failure == "invalid_utf8" else b"{}")
+    if failure == "unreadable":
+        original = Path.read_text
+
+        def read(target: Path, *args: Any, **kwargs: Any) -> str:
+            if target == path:
+                raise PermissionError("controlled settings read failure")
+            return original(target, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", read)
+    with pytest.raises(agy.AgyError) as caught:
+        agy.run_headless(**fake_agy, timeout=3)
+    assert caught.value.reason == "unsafe_user_settings"
+    assert not (fake_agy["cwd"] / "invocations.jsonl").exists()
+
+
+@pytest.mark.parametrize("home", ["", "relative-home"])
+def test_unresolved_user_home_never_starts_agy(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    home: str,
+) -> None:
+    monkeypatch.setenv("HOME", home)
+    with pytest.raises(agy.AgyError) as caught:
+        agy.run_headless(**fake_agy, timeout=3)
+    assert caught.value.reason == "unsafe_user_settings"
+    assert not (fake_agy["cwd"] / "invocations.jsonl").exists()
+
+
+def test_user_settings_are_rechecked_before_the_model_turn(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", "version_widens_settings")
+    with pytest.raises(agy.AgyError) as caught:
+        agy.run_headless(**fake_agy, timeout=3)
+    assert caught.value.reason == "unsafe_user_settings"
+    calls = [
+        json.loads(line)
+        for line in (fake_agy["cwd"] / "invocations.jsonl").read_text().splitlines()
+    ]
+    assert [call["args"] for call in calls] == [["--version"]]
 
 
 @pytest.mark.parametrize(
@@ -279,6 +428,7 @@ def test_smoke_publishes_only_validated_diagnostics(
     ("scenario", "failure"),
     [
         ("probe_success", None),
+        ("probe_outside_denied", None),
         ("probe_missing_denial", "missing_command_denial"),
         ("probe_workspace_write", "workspace_modified"),
         ("probe_outside_write", "outside_modified"),
@@ -327,7 +477,8 @@ def test_permission_smoke_checks_denial_reads_and_file_integrity(
     if failure is None:
         assert report["read_checks_passed"] is True
         assert report["read_commands_requested"] == 9
-        assert report["denial_commands_rejected"] == 20
+        assert report["denial_commands_rejected"] == 27
+        assert report["outside_read_denied"] is (scenario == "probe_outside_denied")
         assert all(
             case["command_denials"] > 0
             and case["workspace_unchanged"]
@@ -343,8 +494,20 @@ def test_permission_smoke_checks_denial_reads_and_file_integrity(
             for call in calls
             if "-p" in call["args"]
         ]
-        assert len(probes) == 21
-        assert len({probe["command"] for probe in probes[1:]}) == 20
-        assert any("\n" in probe["command"] for probe in probes[1:])
+        assert len(probes) == 29
+        denial_probes = [probe for probe in probes if probe["stage"] == "deny"]
+        assert len({probe["command"] for probe in denial_probes}) == 27
+        assert any("\n" in probe["command"] for probe in denial_probes)
+        assert {
+            "touch b",
+            "rm x",
+            "mkdir new-directory",
+            "cp a copied",
+            "mv a moved",
+            "python3 -c pass",
+            "sh -c true",
+        } <= {probe["command"] for probe in denial_probes}
+        observer = next(probe for probe in probes if probe["stage"] == "observe")
+        assert observer["command"].startswith("cat /")
     else:
         assert report["reason"] == failure

@@ -167,6 +167,13 @@ def test_shell_syntax_is_denied(
         "rg -g --pre=sh x",
         "head -n --output=x a",
         "gh issue view --json --web 1",
+        "touch x",
+        "rm x",
+        "mkdir x",
+        "cp a x",
+        "mv a x",
+        "python3 -c pass",
+        "sh -c true",
     ],
 )
 def test_unlisted_flags_are_denied(
@@ -177,7 +184,12 @@ def test_unlisted_flags_are_denied(
 
 
 def test_every_allow_is_anchored_and_non_command_actions_are_denied() -> None:
-    permissions = agy.readonly_settings()["permissions"]
+    settings = agy.readonly_settings()
+    assert settings["toolPermission"] == "request-review"
+    assert settings["agentMode"] == "plan"
+    assert settings["allowNonWorkspaceAccess"] is False
+    assert settings["enableTerminalSandbox"] is False
+    permissions = settings["permissions"]
     assert all(
         rule.startswith("command(regex:^") and rule.endswith("$)")
         for rule in permissions["allow"]
