@@ -133,7 +133,11 @@ const context = vm.createContext({
     requests.push(url);
     if (url === "/api/runtime")
       return response({
-        agents: [],
+        agents: [
+          { label: "codex 1", engine: "codex", state: "working", title: "t", title_status: "available" },
+          { label: "claude 1", engine: "claude", state: "idle", title: "", title_status: "redacted" },
+          { label: "codex 2", engine: "codex", state: "working", title: "u", title_status: "available" },
+        ],
         observed_at: input.local.roster_observed_at,
       });
     if (url.startsWith("/api/execution")) {
@@ -170,6 +174,8 @@ const context = vm.createContext({
     };
   },
 });
+// index.html starts the runtime card list closed.
+document.getElementById("runtime-agents").hidden = true;
 for (const name of ["execution.js", "app.js"])
   vm.runInContext(
     fs.readFileSync(path.join(process.argv[2], name), "utf8"),
@@ -381,6 +387,20 @@ async function main() {
     ["/api/runtime"],
     "Herdr overview loads once, on the first visible display",
   );
+  // The overview is one summary line until the user opens the card list.
+  assert.ok(
+    elements
+      .get("runtime-observed")
+      .textContent.startsWith("3エージェント（作業中 2 · 待機中 1）"),
+  );
+  assert.equal(elements.get("runtime-agents").children.length, 3);
+  assert.equal(elements.get("runtime-agents").hidden, true);
+  elements.get("toggle-runtime").events.click();
+  assert.equal(elements.get("runtime-agents").hidden, false);
+  assert.equal(elements.get("toggle-runtime")["aria-expanded"], "true");
+  elements.get("toggle-runtime").events.click();
+  assert.equal(elements.get("runtime-agents").hidden, true);
+  assert.equal(elements.get("toggle-runtime")["aria-expanded"], "false");
   view("timeline");
   await settle();
   assert.equal(elements.get("execution-panel").hidden, true);

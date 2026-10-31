@@ -885,10 +885,15 @@ async function refreshRuntime() {
       return card;
     });
     byId("runtime-agents").replaceChildren(...(cards.length ? cards : [element("p", "稼働中のエージェントはいません。") ]));
-    byId("runtime-observed").textContent = `${data.agents.length}エージェント · ${formatTime(data.observed_at)} 取得 · Herdr全体（掲示板への参加登録とは別）`;
+    const breakdown = ["working", "blocked", "idle", "done", "unknown"]
+      .map((name) => [name, data.agents.filter((row) => row.state === name).length])
+      .filter(([, count]) => count)
+      .map(([name, count]) => `${labels[name]} ${count}`)
+      .join(" · ");
+    byId("runtime-observed").textContent = `${data.agents.length}エージェント${breakdown ? `（${breakdown}）` : ""} · ${formatTime(data.observed_at)} 取得 · Herdr全体（掲示板への参加登録とは別）`;
     byId("runtime-error").hidden = true;
   } catch (error) {
-    byId("runtime-error").textContent = "状態を取得できませんでした。前回の表示を保持しています。「状態を更新」で再試行してください。";
+    byId("runtime-error").textContent = "取得できませんでした（前回の表示を保持）。「状態を更新」で再試行してください。";
     byId("runtime-error").hidden = false;
   } finally {
     byId("refresh-runtime").disabled = false;
@@ -958,6 +963,13 @@ const executionView = new ExecutionView();
 setupComposer("compose");
 setupComposer("reply");
 byId("refresh-runtime").addEventListener("click", refreshRuntime);
+// The card list opens on demand so the conversation keeps its height.
+byId("toggle-runtime").addEventListener("click", () => {
+  const list = byId("runtime-agents");
+  list.hidden = !list.hidden;
+  byId("toggle-runtime").setAttribute("aria-expanded", String(!list.hidden));
+  byId("toggle-runtime").textContent = list.hidden ? "一覧を表示" : "一覧を閉じる";
+});
 showRuntimeOnce();
 byId("compose-options").addEventListener("click", () => {
   const settings = byId("compose-settings");

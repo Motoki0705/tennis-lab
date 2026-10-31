@@ -74,11 +74,20 @@
         <section class="runtime-panel" aria-labelledby="runtime-heading">
           <div class="runtime-heading">
             <h2 id="runtime-heading">現在のエージェント</h2>
+            <p id="runtime-observed">Herdrの稼働状態を取得しています…</p>
+            <p id="runtime-error" role="alert" hidden></p>
+            <button
+              type="button"
+              id="toggle-runtime"
+              class="quiet"
+              aria-expanded="false"
+              aria-controls="runtime-agents"
+            >
+              一覧を表示
+            </button>
             <button type="button" id="refresh-runtime" class="quiet">状態を更新 ↻</button>
           </div>
-          <p id="runtime-observed">Herdrの稼働状態を取得しています…</p>
-          <p id="runtime-error" role="alert" hidden></p>
-          <div id="runtime-agents"></div>
+          <div id="runtime-agents" hidden></div>
         </section>
         <header class="pane-heading">
           <div>
