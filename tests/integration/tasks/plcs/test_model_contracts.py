@@ -75,8 +75,6 @@ def test_contract_detects_disconnected_canonical_head(
     error = (
         "optimizer missing=.*canonical_pose"
         if fault == "optimizer"
-        else "required group did not update: canonical"
-        if fault == "omit_loss"
         else "missing gradients.*canonical_pose"
     )
     with pytest.raises(AssertionError, match=error):

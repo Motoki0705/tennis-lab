@@ -62,13 +62,20 @@ from src.utils.geometry.rotation_conversions import (
     standardize_quaternion,
 )
 from src.utils.geometry.skeleton import (
+    MIN_BONE_LENGTH_M,
+    MIN_PLANE_SINE,
+    SkeletonValues,
     compute_bone_lengths,
     compute_joint_angles,
     compute_torsion_angles,
     compute_torso_twist,
+    skeleton_domain_metrics,
 )
 
 __all__ = [
+    "MIN_BONE_LENGTH_M",
+    "MIN_PLANE_SINE",
+    "SkeletonValues",
     "angular_error",
     "apply_plcs_transform",
     "apply_plcs_transform_batch",
@@ -98,6 +105,7 @@ __all__ = [
     "rotation_matrix_y",
     "rotation_matrix_z",
     "signed_angle_around_axis",
+    "skeleton_domain_metrics",
     "smpl_y_up_to_court_z_up",
     "standardize_quaternion",
     "to_cv2_affine",

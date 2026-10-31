@@ -323,6 +323,10 @@ _SLCS_REAL_RGB_ENTRYPOINTS = ("evaluate_run",)
 
 
 _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
+    "src.tasks.plcs.scripts.analysis.analyze_skeleton_validity": (
+        "plcs.skeleton_validity",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.utils.sample_dataset.__init__": (
         "sample_dataset.download",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -560,6 +564,11 @@ def _non_hydra_boundary(
 
 
 _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
+    _non_hydra_boundary(
+        "src.tasks.plcs.scripts.analysis.analyze_skeleton_validity", "main",
+        domain="plcs", executable_module=True,
+        optional_policy="target/prediction NPZ or target scenes; explicit nonnegative threshold candidates",
+    ),
     _non_hydra_boundary(
         "src.tasks.annotation.__main__", "main",
         domain="base", executable_module=True,

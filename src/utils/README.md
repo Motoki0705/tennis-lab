@@ -56,6 +56,31 @@ directory名や`bpy`のimportだけでは除外しません。未登録のshot�
 - **`temporal_smoothing.py`**: FPSと画像対角長に合わせた局所運動consensus、confidence重み付きの頑健な2次LOESS。実観測・除外・短い内側補間・平滑化のmaskを分離し、長い欠損と両端を埋めない。幾何には`accepted`の実観測だけを使う。
 - **[`probabilistic_triangulation/`](geometry/probabilistic_triangulation/README.md)**: source画素のGMMとamodal存在確率から、camera集合の周辺化とLaplace近似で3D混合分布を返すCPU API。空間prior・列挙予算を必須とする。
 
+#### Skeleton geometry contract
+
+`skeleton.py` の `compute_joint_angles` / `compute_torsion_angles` /
+`compute_torso_twist` / `compute_bone_lengths` は、COCO17の座標[m]から
+`SkeletonValues(values, valid)` を返します。`valid` は値と同shapeのboolです。
+joint/torsion/lengthは `(..., feature)`、twistは `(...)` です。
+無効値の0は格納用で、有効な角度0や測定された長さ0として使いません。
+paddingは呼び出し側で**計算前**に除外し、非有限座標は未使用jointも含めて入口で拒否します。
+
+有効domainのしきい値はこのmoduleの2定数だけで定義します。
+`MIN_BONE_LENGTH_M = 1e-6` [m]、`MIN_PLANE_SINE = 1e-6` [無次元] は、
+**ACCAD/AMASS教師と学習済み予測の非padding退化頻度を測定するまでの暫定値**です。
+長さ、または単位ベクトルのcrossの大きさが対応するしきい値以下なら無効です。
+jointは両骨、torsionは3骨と2面、twistはhip/shoulder/torsoの3軸と
+hip・shoulderそれぞれのtorsoに垂直な投影を定める2面、lengthは当該骨を検査します。
+非zero骨の直線内角0/π、面・軸が有効なsigned angleの±π近傍は有効です。
+直線内角の端点で一意な微分は保証しません。
+
+無効特徴はnorm・正規化・atan2の前に安全な非退化ベクトルへ置換するため、
+その特徴による入力勾配は0です。有効特徴の値・勾配は無効なsampleとの混在で変わりません。
+長さによるdomainは物理scaleに依存し、面の判定は正scaleに不変です。
+`SkeletonValues.require_valid(context)` は退化した予測を特徴index付き例外として拒否できます。
+`skeleton_domain_metrics` は同じ幾何から骨長・面のsine・torso軸の生の診断量を返します。
+PLCSでの欠測集約と頻度測定は [PLCS README](../tasks/plcs/README.md#骨格損失と退化頻度)を参照してください。
+
 ### `matching/`
 - **`multiview_clustering.py`**: `cluster_multiview()`。任意の対称 score 行列から、view 排他（同じ view の item は同一 identity にしない）と推移律を満たす最大 score の分割を MILP で厳密に解く。`with_margins=True` で各 pair の決定を反転したときの目的関数の低下（反転マージン）を返し、`ambiguous_pairs()` で次点と僅差の決定を列挙する。`decision_margins()` は解いた後で、指定した item に触れる pair だけのマージンを計算する（それ以外は `nan` で、`ambiguous_pairs()` は判定を拒む）。最適性が証明できなければ停止する。
 
