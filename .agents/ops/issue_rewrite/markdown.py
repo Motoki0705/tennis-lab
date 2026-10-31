@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Sequence
 from html.parser import HTMLParser
 from typing import Any
 
 from markdown_it import MarkdownIt
+from markdown_it.token import Token
 
 BARE_URL = re.compile(r'https?://[^\s<>\[\]`"。、，；！？「」『』（）]+')
 
@@ -35,6 +37,33 @@ def _bare_url(value: str) -> str:
     return value
 
 
+def _inline_urls(tokens: Sequence[Token], urls: Counter[str]) -> None:
+    autolinks: list[bool] = []
+    for token in tokens:
+        if token.type in {"link_open", "image"}:
+            href = token.attrGet("src" if token.type == "image" else "href")
+            if (
+                href
+                and href.startswith(("http://", "https://"))
+                and "label" not in token.meta
+            ):
+                urls[href] += 1
+            if token.type == "image":
+                _inline_urls(token.children or [], urls)
+            else:
+                autolinks.append(token.markup == "autolink")
+        elif token.type == "link_close":
+            autolinks.pop()
+        elif token.type == "text" and not any(autolinks):
+            # Explicit labels/alt text are source occurrences. Only an
+            # autolink's generated display text duplicates its destination.
+            urls.update(
+                _bare_url(match[0]) for match in BARE_URL.finditer(token.content)
+            )
+        elif token.type == "html_inline":
+            _HTMLURLs(urls).feed(token.content)
+
+
 def markdown_content(body: str) -> tuple[list[str], Counter[str]]:
     """Preserve raw quote blocks, and count URL occurrences rather than references.
 
@@ -59,33 +88,7 @@ def markdown_content(body: str) -> tuple[list[str], Counter[str]]:
             if end > quote_end:
                 quotes.append("".join(lines[start:end]))
                 quote_end = end
-        link_depth = 0
-        for child in token.children or []:
-            if child.type == "link_open":
-                href = child.attrGet("href")
-                if (
-                    href
-                    and href.startswith(("http://", "https://"))
-                    and "label" not in child.meta
-                ):
-                    urls[href] += 1
-                link_depth += 1
-            elif child.type == "link_close":
-                link_depth -= 1
-            elif child.type == "image":
-                href = child.attrGet("src")
-                if (
-                    href
-                    and href.startswith(("http://", "https://"))
-                    and "label" not in child.meta
-                ):
-                    urls[href] += 1
-            elif child.type == "text" and link_depth == 0:
-                urls.update(
-                    _bare_url(match[0]) for match in BARE_URL.finditer(child.content)
-                )
-            elif child.type == "html_inline":
-                _HTMLURLs(urls).feed(child.content)
+        _inline_urls(token.children or [], urls)
     references = [*env.get("references", {}).values(), *env.get("duplicate_refs", [])]
     for definition in references:
         href = definition["href"]

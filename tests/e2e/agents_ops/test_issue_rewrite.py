@@ -120,6 +120,17 @@ def test_rephrasing_ordered_list_renumbering_and_nonrequired_subheadings_pass(
             True,
         ),
         ("https://example.org/guide", "**https://example.org/guide**", False),
+        ("https://example.org/guide", "<https://example.org/guide>", False),
+        (
+            "[https://example.org/source](https://example.org/target)",
+            "[https://example.org/other](https://example.org/target)",
+            True,
+        ),
+        (
+            "![https://example.org/source](https://example.org/image)",
+            "![https://example.org/other](https://example.org/image)",
+            True,
+        ),
         ("https://example.org/guide", "~~https://example.org/guide~~", False),
         (
             "https://example.org/guide",
@@ -146,7 +157,7 @@ def test_rephrasing_ordered_list_renumbering_and_nonrequired_subheadings_pass(
 def test_urls_preserve_complete_destinations_and_ignore_markdown_decoration(
     original: str, before: str, after: str, changed: bool
 ) -> None:
-    source = original.replace("先行依存なし。", before)
+    source = original.replace("先行依存なし。", "関連資料: " + before)
     candidate = source.replace(before, after)
     errors = invariants.check_invariants(source, candidate)
     assert any(error["rule"] == "urls" for error in errors) is changed
