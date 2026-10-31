@@ -139,6 +139,20 @@ sudo -u tennis-actions env HOME=/var/lib/tennis-lab-actions/home \
 runner serviceと同じUnix user・HOMEでログインする。認証が切れたときも、この対話コマンドで再ログインする。
 認証の画面と保存の仕組みは[公式のCLI認証手順](https://antigravity.google/docs/install?tab=cli)を参照。
 
+### ログイン後の永続設定の確認
+
+#1599で人間が対話画面を終了してから、runner userの
+`/var/lib/tennis-lab-actions/home/.gemini/antigravity-cli/settings.json` をエディタで確認する。
+対話CLIが設定を保存し直すため、編集はagyを終了した後に行う。
+
+1. `agentMode` が `auto` / `accept-edits` なら、そのキーを削除するか `"agentMode": "plan"` にする。
+2. ログインで保存された `model` は文字列、`trustedWorkspaces` は文字列の配列なら保持できる。
+   smokeのcheckoutと使い捨て領域が、trustedなパスやその配下に入らないことを確認する。
+3. その他の拒否条件は[共通部品の永続設定検査](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)に従う。
+   `unsafe_user_settings` で止まったらrunnerの設定を確認してから疎通をやり直す。
+
+設定の検査・修正はrunner userのファイルで行う。ログイン情報はコピーせず、設定や認証情報をjob summaryへ貼らない。
+
 ### 自動更新と固定版の更新
 
 2026-10-31に[公式のself-updater説明](https://antigravity.google/docs/cli/troubleshooting/#resolve-self-updater-locks-and-failures)で、
@@ -178,6 +192,15 @@ job summaryに観測した版・モデル、usage、CLIの所要時間と版の�
 続くpermissions probe段階は、使い捨ての作業領域で読み取りの成功と、危険なコマンドの拒否・ファイル不変を確認する。
 形式と判定方法・呼び出し数・上限時間は[共通部品の読み取り権限と実機プローブ](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照する。
 両段階が成功してから実機の疎通成功とし、実行は #1599 で人間が行う。
+
+#1599では、このrepoの `.agents/` とuntrustedな使い捨て領域について、次も確認して記録する。
+
+- headlessがtrustの確認待ちで止まらず、テンプレートとpermissions probeの読み取りを完了すること。
+  trustを追加して通すことはせず、拒否やtimeoutがあればそのまま未確認として親へ返す。
+- untrustedなworkspaceからhooks・MCP・pluginsの拡張設定を読み込んでいないこと。
+  workspaceの設定場所と現状は[共通部品README](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照し、
+  privateな診断logや実行結果で確認する。読み込みの有無が判断できなければ、その点を未確認として残す。
+  現在のrepoに設定が無いことだけで、存在する場合の挙動まで検証済みとは扱わない。
 
 共通部品の関数・例外・結果の型と読み取り権限の契約は
 [ops lib README](../../.agents/ops/lib/README.md#agyの共通呼び出し部品)を正本とする。
