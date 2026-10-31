@@ -10,6 +10,7 @@ import importlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -622,8 +623,13 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
     assert result.reason == "timeout" and result.exit_code != 0
     assert result.cleanup_complete is None  # A process group alone is insufficient.
     pid = int(child.read_text())
-    status = Path(f"/proc/{pid}/status")
-    assert not status.exists() or "State:\tZ" in status.read_text()
+    # After the kill the child is gone, a zombie (Z), or briefly dead (X) while
+    # init reaps it. Reading once avoids racing a separate exists() check.
+    try:
+        status = Path(f"/proc/{pid}/status").read_text()
+    except FileNotFoundError:
+        return
+    assert re.search(r"^State:\t[ZX] ", status, re.MULTILINE), status
 
 
 def test_log_limit_kills_the_process(tmp_path: Path) -> None:
