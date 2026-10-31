@@ -308,7 +308,10 @@ def _sync(
             "the same session already labels another live pane; "
             "inspect duplicated sessions before synchronizing"
         )
-    guard.claim(allow_create=confirm_parent)
+    guard.claim(
+        allow_create=confirm_parent,
+        allow_move=session_start and identity.startswith("claude:"),
+    )
     if topic is None:
         if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
             topic = existing.get("tl_topic")

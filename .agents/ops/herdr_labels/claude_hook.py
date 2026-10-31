@@ -17,8 +17,11 @@ from herdr_labels.service import sync  # noqa: E402
 
 
 def main() -> int:
+    event = None
     try:
         payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            raise ValueError("expected a Claude hook payload object")
         event = payload.get("hook_event_name")
         if event not in {"SessionStart", "SessionEnd"}:
             raise ValueError("expected SessionStart or SessionEnd")
@@ -63,6 +66,28 @@ def main() -> int:
         TypeError,
         subprocess.SubprocessError,
     ) as exc:
+        if event == "SessionStart":
+            reason = str(exc)
+            message = (
+                f"Herdrの担当表示の同期に失敗しました: {reason}。"
+                ".agents/skills/herdr-session-label/SKILL.md の修復手順を確認してください。"
+            )
+            # SessionStart only delivers stdout JSON to Claude on exit zero.
+            # This acknowledges delivery, while the payload reports sync failure.
+            print(
+                json.dumps(
+                    {
+                        "herdr_label": {"status": "error", "reason": reason},
+                        "hookSpecificOutput": {
+                            "hookEventName": "SessionStart",
+                            "additionalContext": message,
+                        },
+                        "systemMessage": message,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            return 0
         print(f"herdr-label hook: {exc}", file=sys.stderr)
         return 1
 
