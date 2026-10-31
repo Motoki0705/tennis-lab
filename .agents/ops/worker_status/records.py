@@ -44,6 +44,10 @@ ATTACHED_OPTION_PATH = re.compile(
 )
 
 
+INNER_SPECIAL_QUOTES = re.compile(r"""\$['"]""")
+SHELL_QUOTE_REMOVAL = str.maketrans("", "", "'\"\\")
+
+
 class RecordError(ValueError):
     """A classified private-record failure with safe public evidence fields."""
 
@@ -191,9 +195,27 @@ def command_summary(value: Any, guard: Guard) -> dict[str, Any]:
     """Apply full-text guards and command-only path checks before publishing."""
     command = unwrap_shell_command(value)
     shown: dict[str, Any] = guard.text(command, first_line=True)
-    # Guard sees the original command; URL masking is only for this extra scan.
-    if isinstance(command, str) and ATTACHED_OPTION_PATH.search(
-        HTTP_URL.sub(" ", command)
+    if not isinstance(command, str) or shown["status"] != "visible":
+        return shown
+    candidates = [command]
+    unsafe_quotes = False
+    if command != value:
+        # Only a removed wrapper establishes an inner command to inspect.
+        continued = command.replace("\\\n", "")
+        # Inspection is conservative, never an executable or displayed parse.
+        inspected: dict[str, Any] = guard.text(
+            continued.translate(SHELL_QUOTE_REMOVAL), first_line=True
+        )
+        if inspected["status"] == "hidden":
+            return inspected
+        # Protect quoted URL operators before removing quotes, then apply the
+        # same URL exclusion to URLs newly joined by quote/backslash removal.
+        inspected_paths = HTTP_URL.sub(" ", continued).translate(SHELL_QUOTE_REMOVAL)
+        candidates.extend((continued, inspected_paths))
+        unsafe_quotes = INNER_SPECIAL_QUOTES.search(continued) is not None
+    if unsafe_quotes or any(
+        ATTACHED_OPTION_PATH.search(HTTP_URL.sub(" ", candidate))
+        for candidate in candidates
     ):
         return {"status": "hidden", "text": None, "truncated": False}
     return shown

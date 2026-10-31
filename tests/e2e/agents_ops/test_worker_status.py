@@ -21,6 +21,12 @@ only in command summaries. Extend the existing positive/unsupported API cases;
 add the environment-value bypass and path/URL boundaries to this same fixture.
 The bash oracle evaluates trusted literal fixtures only, never runner input.
 Keep each function below 50 cases and measure durations; bash startup is local.
+
+Second review: inner word concatenation and escapes must not hide attached paths
+from inspection. A second trusted bash argv oracle covers those literal words;
+ANSI/locale quotes fail closed. Preserve whitespace between option/value words,
+safe real command examples and URL boundaries. Extend the current path cases
+and environment redaction case; keep new local cases below 1s including setup.
 """
 
 from __future__ import annotations
@@ -29,6 +35,7 @@ import hashlib
 import importlib
 import json
 import os
+import shlex
 import subprocess
 import sys
 from copy import deepcopy
@@ -625,8 +632,81 @@ def test_shell_escaped_environment_value_stays_hidden(
             item(
                 "command_execution",
                 command="/bin/bash -lc \"printf '%s' 'alpha\\$bravo'\"",
-            )
+            ),
+            item(
+                "command_execution",
+                id="inner-joined-value",
+                command="/bin/bash -lc " + shlex.quote("printf '%s' al'pha$bra'vo"),
+            ),
         ]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert all(
+        tool["command"] == {"status": "hidden", "text": None, "truncated": False}
+        for tool in child["summary"]["tools"]
+    )
+    assert "alpha" not in json.dumps(child)
+
+
+@pytest.mark.parametrize(
+    ("script", "option"),
+    [
+        ('git -"C/srv/private-repo" status', "-C/srv/private-repo"),
+        ('git -"C/srv/x" status', "-C/srv/x"),
+        ("git -'C'/srv/x status", "-C/srv/x"),
+        ('git -C"/srv/x" status', "-C/srv/x"),
+        ('git "-C"/srv/x status', "-C/srv/x"),
+        (r"git -C\/srv/x status", "-C/srv/x"),
+        (r"git -C$'\x2fsrv' status", "-C/srv"),
+        ('git -\\\n"C/srv/x" status', "-C/srv/x"),
+        ("git -C$\\\n'\\x2fsrv' status", "-C/srv"),
+        ("git -''C/srv/x status", "-C/srv/x"),
+    ],
+)
+def test_inner_quoted_attached_paths_are_hidden(
+    fixture: Any, script: str, option: str
+) -> None:
+    # Fixed argv-only fixtures: set positional parameters, never execute git.
+    oracle = subprocess.run(
+        [
+            "/bin/bash",
+            "--noprofile",
+            "--norc",
+            "-c",
+            'eval "set -- $1"; printf "%s\\0" "$@"',
+            "_",
+            script,
+        ],
+        env={"LC_ALL": "C.UTF-8"},
+        capture_output=True,
+        check=True,
+        timeout=5,
+    )
+    assert oracle.stdout.split(b"\0") == [b"git", option.encode(), b"status", b""]
+    f = fixture
+    f.record()
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
+    )
+    child = f.child()
+    assert child["status"] == "turn_completed"
+    assert child["summary"]["tools"] == [
+        {
+            "kind": "command_execution",
+            "received_at": NOW.isoformat(),
+            "time_status": "observed",
+            "command": {"status": "hidden", "text": None, "truncated": False},
+        }
+    ]
+
+
+@pytest.mark.parametrize("script", ["printf $'ok'", 'printf $"ok"'])
+def test_inner_unsupported_quotes_are_hidden(fixture: Any, script: str) -> None:
+    f = fixture
+    f.record()
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
     )
     child = f.child()
     assert child["status"] == "turn_completed"
@@ -635,7 +715,6 @@ def test_shell_escaped_environment_value_stays_hidden(
         "text": None,
         "truncated": False,
     }
-    assert "alpha" not in json.dumps(child)
 
 
 @pytest.mark.parametrize(
@@ -659,6 +738,12 @@ def test_shell_escaped_environment_value_stays_hidden(
         ('curl "https://example.test/?q=-C/path&more=yes"', "visible"),
         ("curl https://example.test/docs;tool -C/srv/private", "hidden"),
         ("cc -Iinclude -Llib source.c", "visible"),
+        ('git commit -m "a/b"', "visible"),
+        ("git status --short --branch", "visible"),
+        ("gh pr view 1557 --json number,url,headRefName", "visible"),
+        ('curl "https://example.test/?ok=yes&-C/path"', "visible"),
+        ('curl https://example.test/-"C/public/assets"', "visible"),
+        ('curl "https://example.test/docs";git -"C/srv/x" status', "hidden"),
     ],
 )
 def test_command_summaries_hide_attached_paths_and_keep_relative_paths_and_urls(
@@ -666,7 +751,9 @@ def test_command_summaries_hide_attached_paths_and_keep_relative_paths_and_urls(
 ) -> None:
     f = fixture
     f.record()
-    f.events([item("command_execution", command=f"/bin/bash -lc '{script}'")])
+    f.events(
+        [item("command_execution", command="/bin/bash -lc " + shlex.quote(script))]
+    )
     child = f.child()
     assert child["status"] == "turn_completed"
     assert child["summary"]["tools"][0]["command"] == {
