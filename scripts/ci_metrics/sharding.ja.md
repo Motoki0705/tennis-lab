@@ -9,7 +9,7 @@ PR選別とmain/手動の全件要求は[レーン登録表と計画](README.ja.
 
 ## 分配とfixture
 
-各workerは現行sourceを通常のCPU markerと既存のcourt dataset除外で収集します。
+各workerは現行sourceを通常のCPU markerで収集し、レーン登録表で選ばれるcourt dataset統合も含めます。
 CPU markerで選んだ後、レーン選別前の全件をeventへ記録し、要求されたnodeidを分配します。未登録の新規テストも含めます。
 `cpu-file-times.json` の実測phase時間を使い、重いgroupから負荷の軽いshardへ入れます。
 同点は名前・index順で固定します。既定はfile単位で共有準備を保ち、独立したfunction
@@ -85,9 +85,9 @@ phase/JUnit reportを再構築し、source/run/plan、attemptの範囲、全work
 
 繰延べcaseが1件でもある回からはprofileを生成できません。部分成功で全CPUの重みを上書きしたり、全件baselineと表示したりしません。
 
-既定は観測した `split_files` を維持します。fixtureを確認して一覧を置き換える場合だけ `--split-file tests/path.py` を繰り返し指定します。収集時のguardが現行fixture graphに対して検証します。merge gate、board messages、parent sessionはfunction fixture単位の分割を維持します。座標学習はmodule scopeの `shared` を使うため、9件579.907秒を同じshardに保持します。テスト本体とfixture scopeは変更しません。
+既定は観測した `split_files` を維持します。fixtureを確認して一覧を置き換える場合だけ `--split-file tests/path.py` を繰り返し指定します。収集時のguardが現行fixture graphに対して検証します。merge gate、board messages、parent sessionはfunction fixture単位の分割を維持します。座標学習はmodule scopeの `shared` を使うため、同じshardに保持します。テスト本体とfixture scopeは変更しません。
 
-更新profileは[run 41043837101](https://github.com/Motoki0705/tennis-lab/actions/runs/41043837101)（#1527/#1529のfixture最適化後）の832 file、12,883件（12,787 passed / 96 skipped / 0 failed）、合計6,681.075 phase秒に基づきます。4 / 6 / 8 / 10 shardの推定最大負荷は1,670.269 / 1,113.513 / 835.135 / 668.108秒です。重複するworker phaseの和でありwall時間の予測ではありません。旧profileでの10 shardの実測負荷は156–916秒でした。テストコストを変える変更がmergeされたら再生成します。
+更新profileは、成功したmain pushの全件[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)の全10 shard、883 file、14,561件（14,470 passed / 91 skipped / 0 failed）、合計7,543.124 phase秒に基づきます。旧profileでは現行54 fileが未計測で、29件のcourt dataset統合も中央値0.077秒の推定に対して実測406.228秒でした。同じinventoryで旧profileのshard推定は676.570〜676.572秒でしたが、その割当の実測負荷は439.996〜1,101.161秒でした。更新した重みで再配分すると10 shardの推定は754.311〜754.313秒となり、未計測file・分割caseはありません。重複するworker phaseの和でありwall時間の予測ではありません。テストコストが大きく変わったら再生成します。
 
 
 依存準備は既存ffmpeg/rcloneのversionを確認し、不足binaryだけを導入して両コマンドを再確認します。aptは各180秒、network retry 2回・timeout 30秒、Actions stepは8分を上限とします。既存/不足・update/install失敗・timeout・導入後欠落・version失敗の7経路をsubprocessで検証します。
@@ -96,4 +96,4 @@ phase/JUnit reportを再構築し、source/run/plan、attemptの範囲、全work
 
 既定は10 shard・2 workerです。実測した2 worker構成のうち、既知のREADME失敗以外の失敗なく15分以内に完了した最小構成を選びます。4 workerはprocess cleanup直後の追加assert失敗が再発したため、手動比較用として残します。時間・runner費用・cache・RSSの全比較表と標本の制限は[baseline](baseline.ja.md#runner構成の比較)を正本とします。親のfixture軽量化をmerge後、profileを再生成し、6/8 shardへ減らせるか再計測してください。
 
-`test_parent_development.py`・`test_execution_basis.py`・`test_parent_completion_resume.py`もfunction fixtureであることを確認しました。file costは更新後の各shard予算内なので、実測した既定では既存3 fileの分割宣言を維持し、予定のfixture軽量化後に新しい計測で再判断します。
+既存3 fileの分割宣言を維持します。最も重い未分割fileはcourt dataset統合の406.228秒で、更新後の各shard予算754.312秒に収まります。現行fixture graphで分割可能なことを確認しましたが、`split_files` に追加しても推定最大負荷は同じ754.313秒なので、今回の全件inventoryで負荷を均す効果はありません。`test_parent_development.py`・`test_execution_basis.py`・`test_parent_completion_resume.py`も291.218 / 251.793 / 138.501秒で予算内です。テスト本体とfixture scopeは変更しません。

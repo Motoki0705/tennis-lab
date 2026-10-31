@@ -13,7 +13,7 @@ defines PR selection and full main/manual requests. Only PR runs cancel previous
 ## Assignment and fixture boundaries
 
 Every worker collects the current source using the normal `spin test` CPU marker
-expression and the existing court dataset exclusion. The shard hook runs after
+expression, including the court dataset integration selected through the lane registry. The shard hook runs after
 ordinary marker selection. It journals the CPU universe before lane selection,
 then assigns the requested nodeids, including unregistered new tests.
 
@@ -119,9 +119,9 @@ The command rebuilds phase/JUnit reports and audits source/run/plan, attempt bou
 Any deferred case rejects profile generation. A successful subset cannot overwrite
 the full CPU scheduling profile or claim a full CPU baseline.
 
-By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard; its nine cases cost 579.907 s in the reference observation. No test bodies or fixture scopes change.
+By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard. No test bodies or fixture scopes change.
 
-The refreshed profile uses [run 41043837101](https://github.com/Motoki0705/tennis-lab/actions/runs/41043837101) (after the fixture optimizations in #1527/#1529): 832 files, 12,883 cases (12,787 passed / 96 skipped / 0 failed), 6,681.075 summed phase seconds. Estimated maximum loads are 1,670.269 / 1,113.513 / 835.135 / 668.108 s for 4 / 6 / 8 / 10 shards; these are overlapping phase costs, not predicted wall times. The previous profile's measured 10-shard loads were 156–916 s. Reprofile after further test-cost changes merge.
+The refreshed profile uses the complete successful main push [run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671): all ten shards, 883 files, 14,561 cases (14,470 passed / 91 skipped / 0 failed), and 7,543.124 summed phase seconds. The old profile left 54 current files unmeasured, including the 29-case court dataset integration: its median estimate was 0.077 s versus 406.228 s measured. On this same inventory, old weights estimated 676.570–676.572 s per shard, but the measured costs of those assignments were 439.996–1,101.161 s. Reassigning with refreshed weights estimates 754.311–754.313 s across ten shards, with no unmeasured files or split cases. These are overlapping worker phase costs, not wall-time predictions. Reprofile after material test-cost changes.
 
 System preparation verifies existing ffmpeg/rclone versions, installs only missing binaries, and verifies both commands afterward. Each apt command is bounded by 180 seconds (two network retries, 30-second network timeouts); the Actions step is bounded by eight minutes. Seven subprocess scenarios cover existing/missing binaries, update/install failures, timeout, missing output and version failure.
 
@@ -129,4 +129,4 @@ System preparation verifies existing ffmpeg/rclone versions, installs only missi
 
 The default is 10 shards with two workers: the smallest measured two-worker configuration meeting the 15-minute completion target with no failures beyond the known README case. Four workers reproduced an additional process-cleanup assertion failure and remain available for manual comparisons. The complete timing/cost/cache/RSS table and sample limitations are owned by [baseline](baseline.md#runner-scheduling-observations). After the parent’s fixture changes merge, regenerate the profile and remeasure whether 6/8 shards suffice.
 
-The function fixtures in `test_parent_development.py`, `test_execution_basis.py` and `test_parent_completion_resume.py` were also reviewed. Their file costs fit the refreshed per-shard budget. Retain the three existing split-file declarations for the measured default, then reassess with new timings after the planned fixture changes.
+Retain the three existing split-file declarations. The heaviest whole file is the court dataset integration at 406.228 s, below the refreshed 754.312 s per-shard budget. Adding it to `split_files` was checked against the current fixture graph and estimates the same 754.313 s maximum load, so it adds no balancing benefit for the measured full inventory. `test_parent_development.py`, `test_execution_basis.py` and `test_parent_completion_resume.py` cost 291.218 / 251.793 / 138.501 s and also fit within that budget. No test body or fixture scope changes.
