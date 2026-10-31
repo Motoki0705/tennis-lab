@@ -5,13 +5,22 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+import sys
 import uuid
 from contextlib import suppress
 from pathlib import Path, PurePosixPath
+from time import sleep
 
 from .contracts import ArtifactStore, ArtifactStoreError
 
 _REMOTE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+_PUBLISH_MOVE_MAX_ATTEMPTS = 13
+_PUBLISH_MOVE_RETRY_DELAY_SECONDS = 5.0
+_MOVE_SOURCE_MISSING_RE = re.compile(
+    r"rclone moveto failed with exit code 1: "
+    r"(?:\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} )?"
+    r"Source doesn't exist or is a directory and destination is a file"
+)
 
 
 class RcloneArtifactStore(ArtifactStore):
@@ -103,7 +112,25 @@ class RcloneArtifactStore(ArtifactStore):
         temporary = f"{destination}.uploading-{uuid.uuid4().hex}"
         self._run("copyto", str(path), temporary)
         try:
-            self._run("moveto", temporary, destination, timeout=900)
+            for attempt in range(1, _PUBLISH_MOVE_MAX_ATTEMPTS + 1):
+                try:
+                    self._run("moveto", temporary, destination, timeout=900)
+                    return
+                except ArtifactStoreError as error:
+                    if not _MOVE_SOURCE_MISSING_RE.fullmatch(str(error)):
+                        raise
+                    if attempt == _PUBLISH_MOVE_MAX_ATTEMPTS:
+                        raise ArtifactStoreError(
+                            f"rclone moveto failed after {attempt} attempts: {error}"
+                        ) from error
+                    print(
+                        f"rclone moveto retry {attempt}/{_PUBLISH_MOVE_MAX_ATTEMPTS - 1} "
+                        f"in {_PUBLISH_MOVE_RETRY_DELAY_SECONDS:g}s "
+                        f"(source not visible: {temporary})",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    sleep(_PUBLISH_MOVE_RETRY_DELAY_SECONDS)
         except BaseException:
             with suppress(ArtifactStoreError):
                 self._run("deletefile", temporary, timeout=300)
