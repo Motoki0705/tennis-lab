@@ -41,6 +41,28 @@ def prior_bundle(condition: str) -> Path:
     return c.BUNDLE.parent / f"run-court-scene-diversity-colab-{condition}-s42"
 
 
+def legacy_final_checkpoint(condition: str) -> dict[str, Any]:
+    bundle = prior_bundle(condition)
+    final = c.read(bundle / "final-checkpoint.json")
+    if (
+        final["schema"] != "court_scene_diversity_final_checkpoint_verification_v1"
+        or type(final["global_step"]) is not int
+        or final["global_step"] != c.FINAL_STEP
+        or type(final["condition"]) is not int
+        or f"scene-{final['condition']}" != condition
+    ):
+        raise ValueError(f"Legacy final checkpoint record changed: {condition}")
+    evaluation = c.read(bundle / "evaluation.json")
+    if (
+        evaluation["checkpoint"] != (c.VM_ROOT / final["checkpoint"]).as_posix()
+        or evaluation["checkpoint_sha256"] != final["checkpoint_sha256"]
+    ):
+        raise ValueError(
+            f"Legacy final checkpoint disagrees with evaluation: {condition}"
+        )
+    return final
+
+
 def plain(config: Any) -> dict[str, Any]:
     from omegaconf import OmegaConf
 
@@ -261,9 +283,9 @@ class ColabBackend:
             gc.collect()
         # Exact immutable old checkpoint paths and bytes come from prior evidence.
         for condition in c.LEGACY:
-            completion = c.read(prior_bundle(condition) / "training-completion.json")
-            self.fetch(Path(completion["checkpoint"]))
-            self.checkpoint(condition, Path(completion["checkpoint"]))
+            final = legacy_final_checkpoint(condition)
+            self.fetch(Path(final["checkpoint"]))
+            self.checkpoint(condition, Path(final["checkpoint"]))
         result_path = self.state / "inputs.json"
         c.write(result_path, result)
         self.publish(result_path)
@@ -294,10 +316,10 @@ class ColabBackend:
         ):
             raise ValueError("Checkpoint is not a regular file in the artifact root")
         if condition in c.LEGACY:
-            completion = c.read(prior_bundle(condition) / "training-completion.json")
+            final = legacy_final_checkpoint(condition)
             if (
-                relative.as_posix() != completion["checkpoint"]
-                or c.sha(path) != completion["checkpoint_sha256"]
+                relative.as_posix() != final["checkpoint"]
+                or c.sha(path) != final["checkpoint_sha256"]
             ):
                 raise ValueError("Legacy final checkpoint path or bytes changed")
             expected_config = yaml.safe_load(
@@ -416,9 +438,7 @@ class ColabBackend:
         if stage.kind != "evaluate":
             raise ValueError("Unknown stage")
         if condition in c.LEGACY:
-            checkpoint = c.read(prior_bundle(condition) / "training-completion.json")[
-                "checkpoint"
-            ]
+            checkpoint = legacy_final_checkpoint(condition)["checkpoint"]
             checked = self.checkpoint(condition, Path(checkpoint))
         else:
             final = self.latest(condition)
