@@ -5,13 +5,52 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from typing import Any
 
 from markdown_it import MarkdownIt
+from markdown_it.rules_inline import StateInline
+from markdown_it.rules_inline.backticks import backtick
 from markdown_it.token import Token
 
 BARE_URL = re.compile(r'https?://[^\s<>\[\]`"。、，；！？「」『』（）]+')
+
+
+@dataclass
+class MarkdownContent:
+    protected: dict[str, list[str]] = field(
+        default_factory=lambda: {
+            "quotes": [],
+            "html_comments": [],
+            "fenced_code": [],
+            "indented_code": [],
+            "inline_code": [],
+        }
+    )
+    urls: Counter[str] = field(default_factory=Counter)
+
+
+def _raw_backtick(state: StateInline, silent: bool) -> bool:
+    """Attach source bytes before CommonMark normalizes code span whitespace."""
+    start, count = state.pos, len(state.tokens)
+    matched = backtick(state, silent)
+    if (
+        not silent
+        and len(state.tokens) > count
+        and state.tokens[-1].type == "code_inline"
+    ):
+        state.tokens[-1].meta["raw_code"] = state.src[start : state.pos]
+    return bool(matched)
+
+
+def _inline_code(tokens: Sequence[Token]) -> list[str]:
+    spans: list[str] = []
+    for token in tokens:
+        if token.type == "code_inline":
+            spans.append(token.meta["raw_code"])
+        spans.extend(_inline_code(token.children or []))
+    return spans
 
 
 class _HTMLURLs(HTMLParser):
@@ -64,34 +103,41 @@ def _inline_urls(tokens: Sequence[Token], urls: Counter[str]) -> None:
             _HTMLURLs(urls).feed(token.content)
 
 
-def markdown_content(body: str) -> tuple[list[str], Counter[str]]:
+def markdown_content(body: str) -> MarkdownContent:
     """Preserve raw quote blocks, and count URL occurrences rather than references.
 
-    The parser supplies complete destinations and quote line maps. Link labels
-    are stored so reference uses do not duplicate the source definition's URL.
-    Inline/fenced code and HTML comments are already protected byte for byte.
+    Block maps preserve raw quote/code lines, including containers and EOF.
+    Inline rule metadata preserves source before code whitespace normalization.
+    Link labels prevent reference uses from duplicating definition URLs.
     """
     env: dict[str, Any] = {}
     parser = MarkdownIt("commonmark", {"store_labels": True}).enable(
         ["table", "strikethrough"]
     )
+    parser.inline.ruler.at("backticks", _raw_backtick)
     tokens = parser.parse(body, env)
     lines = body.splitlines(keepends=True)
-    quotes: list[str] = []
+    content = MarkdownContent()
+    content.protected["html_comments"] = re.findall(r"<!--[\s\S]*?-->", body)
     quote_end = 0
-    urls: Counter[str] = Counter()
+    urls = content.urls
     for token in tokens:
         if token.type == "html_block":
             _HTMLURLs(urls).feed(token.content)
         if token.type == "blockquote_open" and token.map:
             start, end = token.map
             if end > quote_end:
-                quotes.append("".join(lines[start:end]))
+                content.protected["quotes"].append("".join(lines[start:end]))
                 quote_end = end
+        if token.type in {"fence", "code_block"} and token.map:
+            start, end = token.map
+            kind = "fenced_code" if token.type == "fence" else "indented_code"
+            content.protected[kind].append("".join(lines[start:end]))
+        content.protected["inline_code"].extend(_inline_code(token.children or []))
         _inline_urls(token.children or [], urls)
     references = [*env.get("references", {}).values(), *env.get("duplicate_refs", [])]
     for definition in references:
         href = definition["href"]
         if href.startswith(("http://", "https://")):
             urls[href] += 1
-    return quotes, urls
+    return content

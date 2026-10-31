@@ -7,6 +7,8 @@ import importlib
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +17,8 @@ from typing import Any
 
 import pytest
 import yaml
+
+from tests.support.agents_ops.directory_seed import DirectorySeed
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
@@ -104,6 +108,70 @@ def test_rephrasing_ordered_list_renumbering_and_nonrequired_subheadings_pass(
         .replace("先行依存なし。", "### 進め方\n\n先行依存はない。")
     )
     assert invariants.check_invariants(original, candidate) == []
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        pytest.param(
+            "- item\n\n    ~~~python\n    result = value\n    ~~~", id="list-tilde"
+        ),
+        pytest.param(
+            "- item\n\n    ```python\n    result = value\n    ```", id="list-backtick"
+        ),
+        pytest.param(
+            "- outer\n    - inner\n\n        ~~~python\n        result = value\n        ~~~",
+            id="nested-tilde",
+        ),
+        pytest.param(
+            "- outer\n    - inner\n\n        ```python\n        result = value\n        ```",
+            id="nested-backtick",
+        ),
+        pytest.param("> ~~~python\n> result = value\n> ~~~", id="quote-tilde"),
+        pytest.param("> ```python\n> result = value\n> ```", id="quote-backtick"),
+        pytest.param("    result = value", id="indented-four"),
+        pytest.param("        result = value", id="indented-eight"),
+        pytest.param("- item\n\n      result = value", id="list-indented"),
+        pytest.param(
+            "- outer\n    - inner\n\n          result = value", id="nested-indented"
+        ),
+        pytest.param(">     result = value", id="quote-indented"),
+        pytest.param(
+            "- item\n\n    ~~~python\n    result = value", id="list-unclosed-tilde"
+        ),
+        pytest.param(
+            "- item\n\n    ```python\n    result = value", id="list-unclosed-backtick"
+        ),
+        pytest.param("> ~~~python\n> result = value", id="quote-unclosed-tilde"),
+        pytest.param("> ```python\n> result = value", id="quote-unclosed-backtick"),
+    ],
+)
+def test_container_code_preserves_every_source_character(
+    original: str, code: str
+) -> None:
+    body = original.replace("インラインは", code + "\n\nインラインは")
+    assert invariants.check_invariants(body, body) == []
+    changed = body.replace("result = value", "result= value")
+    errors = invariants.check_invariants(body, changed)
+    assert any(error["rule"] in {"fenced_code", "indented_code"} for error in errors), (
+        errors
+    )
+
+
+@pytest.mark.parametrize("marker", ["~~~", "```"])
+def test_unclosed_fence_source_is_protected_through_eof(marker: str) -> None:
+    body = f"{marker}python\nresult = value\n`not inline`\n"
+    protected = invariants.protected(body)
+    assert protected["fenced_code"] == [body]
+    assert protected["inline_code"] == []
+    assert protected != invariants.protected(
+        body.replace("result = value", "result=value")
+    )
+
+
+def test_inline_code_uses_parser_spans_and_keeps_raw_whitespace() -> None:
+    body = "` outside ` and ``a\n b``.\n\n- item\n\n    ~~~\n    `inside`\n    ~~~\n"
+    assert invariants.protected(body)["inline_code"] == ["` outside `", "``a\n b``"]
 
 
 @pytest.mark.parametrize(
@@ -283,6 +351,7 @@ def test_stability_deadline_includes_time_spent_reading_github() -> None:
 @dataclass
 class RewriteEnv:
     root: Path
+    repo: Path
     original: str
     rewritten: str
     agy: Path
@@ -355,10 +424,52 @@ class RewriteEnv:
 PASS = {"verdict": "pass", "differences": []}
 
 
+def git(repo: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+@pytest.fixture(scope="module")
+def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
+    root = tmp_path_factory.mktemp("rewrite-controller")
+    repo = root / "repo"
+    package = repo / ".agents/ops/issue_rewrite"
+    shutil.copytree(
+        ROOT / ".agents/ops/issue_rewrite",
+        package,
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    (repo / ".gitignore").write_text("*.ignored\n")
+    (repo / "history.txt").write_text("previous commit\n")
+    git(repo, "init", "-q", "-b", "main")
+    git(repo, "config", "user.name", "test")
+    git(repo, "config", "user.email", "test@example.org")
+    git(repo, "remote", "add", "origin", "https://github.com/o/r.git")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "previous")
+    (repo / "history.txt").write_text("current commit\n")
+    git(repo, "add", ".")
+    git(repo, "commit", "-q", "-m", "current")
+    return DirectorySeed.capture(repo, root / "snapshot")
+
+
 @pytest.fixture
 def rewrite_env(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, original: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    original: str,
+    controller_seed: DirectorySeed,
 ) -> RewriteEnv:
+    repo = tmp_path / "repo"
+    controller_seed.restore(repo)
+    package = repo / ".agents/ops/issue_rewrite"
+    monkeypatch.setattr(pipeline, "PACKAGE", package)
+    monkeypatch.setattr(cli, "PACKAGE", package)
     for name, source in (("agy", "fake_rewrite_agy.py"), ("gh", "fake_rewrite_gh.py")):
         executable = tmp_path / name
         executable.write_text(
@@ -378,6 +489,7 @@ def rewrite_env(
     )
     env = RewriteEnv(
         tmp_path,
+        repo,
         original,
         original.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer"),
         tmp_path / "agy",
@@ -406,6 +518,96 @@ def rewrite_env(
 
 def labels(env: RewriteEnv) -> set[str]:
     return {item["name"] for item in env.state()["issue"]["labels"]}
+
+
+@pytest.mark.parametrize(
+    ("target", "turn", "exit_code", "reason"),
+    [
+        ("invariants", 0, 0, "controller_checkout_changed"),
+        ("prompt", 0, 0, "controller_checkout_changed"),
+        ("schema", 0, 0, "controller_checkout_changed"),
+        ("new", 0, 0, "controller_checkout_changed"),
+        ("ignored", 0, 0, "controller_checkout_changed"),
+        ("head", 0, 0, "controller_checkout_changed"),
+        ("staged", 0, 0, "controller_checkout_changed"),
+        ("invariants", 1, 0, "controller_checkout_changed"),
+        ("invariants", 0, 3, "controller_checkout_changed"),
+        ("rendered_prompt", 0, 0, "model_input_changed"),
+        ("rendered_schema", 0, 0, "model_input_changed"),
+    ],
+)
+def test_model_tampering_fails_before_any_body_write(
+    rewrite_env: RewriteEnv,
+    target: str,
+    turn: int,
+    exit_code: int,
+    reason: str,
+) -> None:
+    env = rewrite_env
+    (env.root / "attacks.json").write_text(
+        json.dumps([{"target": target, "turn": turn, "exit": exit_code}])
+    )
+    assert env.run("rewrite") == 1
+    bundle = env.bundle()
+    assert bundle["status"] == "failed" and bundle["body"] is None
+    assert reason in {item["rule"] for item in bundle["report"]["reasons"]}
+    assert len(env.calls("agy")) == turn + 1
+    assert env.run("fail") == 0
+    assert "rewrite:failed" in labels(env)
+    assert env.state()["issue"]["body"] == env.original
+    assert not any(call["method"] == "PATCH" for call in env.calls("gh"))
+    assert all(not Path(call["cwd"]).exists() for call in env.calls("workspace"))
+    assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+    exported = (env.root / "summary.md").read_text() + (
+        env.root / "handoff-1.json"
+    ).read_text()
+    assert str(env.root) not in exported and "private-conversation" not in exported
+
+
+@pytest.mark.parametrize("relative_paths", [False, True])
+def test_workspace_changes_are_discarded_between_turns_and_do_not_affect_results(
+    rewrite_env: RewriteEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    relative_paths: bool,
+) -> None:
+    env = rewrite_env
+    if relative_paths:
+        monkeypatch.chdir(env.root)
+        env.root = Path(".")
+    (env.root / "attacks.json").write_text(
+        json.dumps([{"target": "workspace", "turn": 0}])
+    )
+    head = git(env.repo, "rev-parse", "HEAD")
+    assert env.run("rewrite") == env.run("apply") == 0
+    assert env.state()["issue"]["body"] == env.rewritten
+    workspaces = env.calls("workspace")
+    assert len(workspaces) == 2
+    assert len({call["cwd"] for call in workspaces}) == 2
+    for call in workspaces:
+        cwd = Path(call["cwd"])
+        assert cwd != env.repo and cwd != Path.cwd()
+        assert not cwd.exists()
+        assert call["head"] == head
+        assert len(call["history"]) == 2
+        assert call["shown"] == "current commit"
+        assert call["remote"] == "https://github.com/o/r.git"
+        assert not call["dirty"] and not call["previous_turn_file"]
+        assert Path(call["log"]).is_absolute()
+        assert all(
+            not Path(call[key]).is_relative_to(cwd)
+            for key in ("schema", "prompt", "log")
+        )
+    assert not git(env.repo, "status", "--porcelain")
+    assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_uncommitted_prompt_is_rejected_before_calling_the_model(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    (env.repo / ".agents/ops/issue_rewrite/prompts/writer.md").write_text("changed\n")
+    assert env.run("rewrite") == 1
+    assert not env.calls("agy") and not env.mutations()
 
 
 def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
@@ -1122,6 +1324,13 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         )
         assert checkout["with"]["persist-credentials"] == "false"
         assert checkout["with"]["ref"] == "${{ github.sha }}"
+    for name in ("rewrite", "rewrite_retry"):
+        checkout = next(
+            step
+            for step in jobs[name]["steps"]
+            if step.get("uses", "").startswith("actions/checkout@")
+        )
+        assert checkout["with"]["fetch-depth"] == "0"
     upload = next(
         step
         for step in rewrite["steps"]

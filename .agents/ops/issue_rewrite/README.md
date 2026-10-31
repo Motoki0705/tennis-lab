@@ -31,6 +31,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 | `pipeline.prepare` / job `prepare` | GitHub-hosted runnerで手動のfailed再実行をpendingに戻してから合意を確認する |
 | `pipeline.generate` / job `rewrite`・`rewrite_retry` | self-hosted runnerで入力を保存し、安定待ち・writer・不変条件・verifierを実行する。GitHubへの変更権限は持たない |
 | `invariants.py` | 元の本文から保持すべき情報を抽出し、違反した項目と理由を列挙する |
+| `workspace.py` | 呼び出しごとの使い捨てworktreeと、検査側checkout・使用したprompt/schemaの完全性を管理する |
 | `github.py` | 既存の合意・実行根拠の解析、GitHubへの要求、編集履歴の全ページ取得と照合 |
 | `publication.py` | 公開する項目の選別、token等の検査、summaryの出力。生のagent診断は公開しない |
 | `pipeline.apply` / job `apply`・`apply_retry` | GitHub-hosted runnerでartifactを再検査し、最新入力との照合・PATCH・編集履歴の検査・確定ラベルの付与を行う |
@@ -66,9 +67,14 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 
 不変条件は、必須 `##` 節の集合と順序、`validate_body`、
 `parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、
-引用ブロック全体（`>`を省略したlazy continuationを含む）、HTMLコメント、fenced code、inline codeの原文と順序を保持する。
+引用ブロック全体（`>`を省略したlazy continuationを含む）、HTMLコメント、fenced code、字下げのcode block、inline codeの原文と順序を保持する。
 `#番号`・HTTP(S) URL・`@mention`・数値は多重集合で比較する。
-引用範囲とURLはmarkdown-it-pyのCommonMark解析を使い、括弧を含むリンク先を完全に取得する。
+引用範囲・コード・URLはmarkdown-it-pyのCommonMark解析を使う。
+`fence`・`code_block` tokenの `map` で原文の行全体を切り出し、リスト・入れ子のリスト・引用の中の
+backtick/tilde fence、4空白以上の字下げ、未閉鎖のfenceも保護する。inline codeは同じ解析の
+backtick規則で正規化前のspanを記録し、ブロック内のbacktickをinline codeとして拾わない。
+本文書式の受理は既存の `validate_body` に従い、同validatorが拒否するトップレベルの未閉鎖fenceは受理しない。
+URLは括弧を含むリンク先を完全に取得する。
 参照リンクの使用回数をURL出現数へ重複計上せず、強調や句読点をURLへ取り込まない。
 workflowの隔離Pythonにも `markdown-it-py==4.0.0` を明示する。
 数値の字面も保持するが、行頭のMarkdownの番号付きリストの番号は除く。
@@ -79,6 +85,28 @@ checkboxの数とchecked/uncheckedは節ごとに比較する。段落・箇条�
 RESTの本文PATCHは原子的なcompare-and-swapではない。PATCH後に割り込みを検出した場合は失敗を記録し、
 **他の編集を上書きする巻き戻しは行わない**。原文と各変更はGitHubの編集履歴から確認する。
 検査段階での失敗では本文を一度も書き換えない。
+
+## agyの作業領域と完全性
+
+workflowのrewrite・rewrite_retryは履歴を全取得する。呼び出し前に検査側checkoutがcleanであることを確認し、
+HEADを固定する。writer・verifier・修正の**呼び出しごと**に、run dirの隣の一時ディレクトリへ
+`git worktree add --detach` でそのcommitを展開する。履歴・remoteは元repoを参照するので
+`git log`・`git show`・`gh issue view` のための文脈を維持する。
+呼び出しごとに作り直す理由は、writerが作業領域を変更してもverifierや修正の入力へ持ち越さないため。
+作業領域内のコード・prompt・schemaは検査や合否判定に使わない。
+
+使用するpromptの雛形とschemaは固定commitから読み、検査側のファイルとの一致を確認する。
+入力JSONを加えたprompt、schemaのコピー、構造化出力、log、公開artifactは使い捨て領域の外へ置く。
+privateなrun dirも検査側checkoutの外を必須とする。
+各呼び出しの直後（agyが失敗した場合も）、検査側の追跡ファイルの内容・mode・index、未追跡ファイルの一覧
+（ignoredも含む）、HEADが呼び出し前と一致し、使用したprompt・schemaが期待した内容と一致することを検査する。
+ファイルのstat cacheだけに頼らず、内容のSHA-256も比較する。検査中にbytecodeは作らない。
+絶対パス等から検査側に変更が入った場合も結果を破棄し、静的な理由を公開して停止する。
+後続のGitHub-hostedのfailed jobが `rewrite:failed` を確定する。
+
+終了時は `finally` で自分が作ったworktreeだけを `git worktree remove --force` し、一時ディレクトリも削除する。
+構造化出力の不正、agyの異常終了、完全性の違反でも片付ける。片付けの失敗も明示的な失敗とし、
+他のworktreeの登録はpruneしない。作業領域内だけの変更は捨て、合否の理由にしない。
 
 ## 公開するデータ
 
@@ -135,10 +163,14 @@ CLIは `.agents/ops` を `PYTHONPATH` にして `python -m issue_rewrite prepare
 
 ```bash
 .venv/bin/python -m pytest tests/e2e/agents_ops/test_issue_rewrite.py \
-  tests/e2e/agents_ops/test_parent_session.py -k 'rewrite or parent_body_update' -n 2 -q
+  tests/e2e/agents_ops/test_issue_rewrite_state.py \
+  tests/e2e/agents_ops/test_issue_content_edits.py \
+  tests/e2e/agents_ops/test_agy_headless.py tests/e2e/agents_ops/test_agents_docs.py -n 2 -q
 ```
 
 偽agy・偽ghの実行ファイルと一時state、注入した時計を使う。本物のagy・Googleログイン・
 GitHubへの変更・GPUは使わず、安定待ちを実時間のsleepで検証しない。
+実行時は `HERDR_*` を環境から除く。一時的な小さなGit repoで、元checkoutへの改変・追加・HEAD移動を
+拒否し、作業領域だけの変更は許可し、正常・失敗時ともworktreeが残らないことを確認する。
 依存部品の版・モデル・schema・read-only設定は既存の `test_agy_headless.py`、
 対象状態は `test_issue_rewrite_state.py`、待機の接続は `test_parent_session.py::test_wait_rewrite_*` も使って確認する。

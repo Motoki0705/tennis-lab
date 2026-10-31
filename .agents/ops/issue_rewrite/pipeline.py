@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -29,6 +30,7 @@ from .publication import (
     publication_errors,
     write_json,
 )
+from .workspace import TrustedCheckout, WorkspaceError
 
 PACKAGE = Path(__file__).resolve().parent
 USAGE_KEYS = {
@@ -155,6 +157,7 @@ def generate(
     timeout: float = 300,
     wait: Callable[[GitHub, int], dict[str, Any]] | None = None,
 ) -> Handoff:
+    run_dir = run_dir.resolve()
     run_dir.mkdir(parents=True, mode=0o700)  # existing runs must never be reused
     bundle = bundle_for(gh.repo, number, attempt)
     report = bundle["report"]
@@ -205,6 +208,15 @@ def generate(
         }
         config = load_config()
         report["version"], report["model"] = config.version, config.model
+        checkout = TrustedCheckout(PACKAGE, run_dir)
+        assets = {
+            (role, kind): checkout.committed(f"{directory}/{role}{suffix}")
+            for role in ("writer", "verifier")
+            for kind, directory, suffix in (
+                ("prompt", "prompts", ".md"),
+                ("schema", "schemas", ".schema.json"),
+            )
+        }
         context = {
             "repo": gh.repo,
             "issue_number": number,
@@ -218,19 +230,37 @@ def generate(
         }
 
         def turn(role: str, revision: int, inputs: dict[str, Any]) -> Any:
-            prompt = (PACKAGE / "prompts" / f"{role}.md").read_text(encoding="utf-8")
+            prompt = assets[role, "prompt"].decode("utf-8")
             prompt += "\n\n入力（JSON）:\n" + json.dumps(inputs, ensure_ascii=False)
             prompt_file = run_dir / f"{role}-{revision}.md"
             prompt_file.write_text(prompt, encoding="utf-8")
             prompt_file.chmod(0o600)
-            result = run_headless(
-                agy=agy,
-                cwd=Path.cwd(),
-                prompt_file=prompt_file,
-                json_schema=PACKAGE / "schemas" / f"{role}.schema.json",
-                log_file=run_dir / f"{role}-{revision}.log",
-                timeout=timeout,
-            )
+            schema_file = run_dir / f"{role}-{revision}.schema.json"
+            schema_file.write_bytes(assets[role, "schema"])
+            schema_file.chmod(0o600)
+            # Avoid creating controller bytecode files during lazy imports.
+            previous_bytecode = sys.dont_write_bytecode
+            sys.dont_write_bytecode = True
+            try:
+                with checkout.disposable() as cwd:
+                    try:
+                        result = run_headless(
+                            agy=agy,
+                            cwd=cwd,
+                            prompt_file=prompt_file,
+                            json_schema=schema_file,
+                            log_file=run_dir / f"{role}-{revision}.log",
+                            timeout=timeout,
+                        )
+                    finally:
+                        checkout.verify(
+                            {
+                                prompt_file: prompt.encode("utf-8"),
+                                schema_file: assets[role, "schema"],
+                            }
+                        )
+            finally:
+                sys.dont_write_bytecode = previous_bytecode
             write_json(run_dir / f"{role}-{revision}.json", result.structured_output)
             report["turns"].append(
                 {
@@ -292,10 +322,19 @@ def generate(
                 "verification": verification,
             }
         return outcome(bundle, "failed", "repair_exhausted")
+    except WorkspaceError as exc:
+        write_json(run_dir / "failure.json", {"reason": exc.reason})
+        return outcome(bundle, "failed", exc.reason)
     except AgyError as exc:
         write_json(run_dir / "failure.json", {"reason": exc.reason, "detail": str(exc)})
         return outcome(bundle, "failed", f"agy_{exc.reason}")
-    except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
+    except (
+        ValueError,
+        OSError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as exc:
         write_json(run_dir / "failure.json", {"detail": str(exc)})
         reason = (
             "body_stability_timeout"

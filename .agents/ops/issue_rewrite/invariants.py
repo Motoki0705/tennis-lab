@@ -23,40 +23,7 @@ CHECKBOX = re.compile(r"(?m)^\s*(?:[-*+]|[0-9]+[.)])\s+\[([ xX])\](?=\s|$)")
 
 def protected(body: str) -> dict[str, list[str]]:
     """Keep raw bytes (including whitespace) rather than rendered Markdown."""
-    comments = list(re.finditer(r"<!--[\s\S]*?-->", body))
-    fences: list[str] = []
-    fence: str | None = None
-    start = 0
-    offset = 0
-    masked = list(body)
-    for match in comments:
-        masked[match.start() : match.end()] = " " * len(match[0])
-    for line in body.splitlines(keepends=True):
-        if fence is not None:
-            if re.fullmatch(
-                rf" {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}\s*", line
-            ):
-                end = offset + len(line)
-                fences.append(body[start:end])
-                masked[start:end] = " " * (end - start)
-                fence = None
-        elif not any(m.start() <= offset < m.end() for m in comments):
-            opening = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
-            if opening:
-                start, fence = offset, opening[1]
-        offset += len(line)
-    inline = [
-        match[0]
-        for match in re.finditer(
-            r"(?<!`)(`+)(?!`)[\s\S]*?(?<!`)\1(?!`)", "".join(masked)
-        )
-    ]
-    return {
-        "quotes": markdown_content(body)[0],
-        "html_comments": [match[0] for match in comments],
-        "fenced_code": fences,
-        "inline_code": inline,
-    }
+    return markdown_content(body).protected
 
 
 def _delta(before: Counter[str], after: Counter[str]) -> str:
@@ -100,7 +67,11 @@ def check_invariants(
                 add("managed_section", f"machine-managed section changed: {name}")
     except ValueError as exc:
         add("markdown", str(exc))
-    raw_before, raw_after = protected(original), protected(candidate)
+    content_before, content_after = (
+        markdown_content(original),
+        markdown_content(candidate),
+    )
+    raw_before, raw_after = content_before.protected, content_after.protected
     for kind in raw_before:
         if raw_before[kind] != raw_after[kind]:
             left_fragments, right_fragments = raw_before[kind], raw_after[kind]
@@ -135,10 +106,7 @@ def check_invariants(
         right_values = Counter(m[0] for m in pattern.finditer(right_text))
         if left_values != right_values:
             add(kind, f"{kind} multiset changed: {_delta(left_values, right_values)}")
-    before_urls, after_urls = (
-        markdown_content(original)[1],
-        markdown_content(candidate)[1],
-    )
+    before_urls, after_urls = content_before.urls, content_after.urls
     if before_urls != after_urls:
         add("urls", f"urls multiset changed: {_delta(before_urls, after_urls)}")
     for name in dict.fromkeys([*before, *after]):
