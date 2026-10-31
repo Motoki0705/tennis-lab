@@ -12,10 +12,211 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
+| `agy_headless.py` | issue書き直し用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
+| `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
+
+## agyの共通呼び出し部品
+
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue書き直しの writer/verifier 用の同期Python API。
+導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
+`sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
+外部参照の拒否は既存の `OutputSchema` に従う。
+
+```python
+from pathlib import Path
+from agy_headless import DEFAULT_AGY, AgyError, AgyResult, run_headless
+
+try:
+    result: AgyResult = run_headless(
+        agy=DEFAULT_AGY,
+        cwd=Path.cwd(),
+        prompt_file=Path("writer-prompt.md"),
+        json_schema=Path("writer.schema.json"),
+        log_file=Path("private-run/writer.log"),
+        timeout=300,
+    )
+except AgyError as error:
+    reason = error.reason
+    denied_actions = error.denied_actions
+else:
+    rewritten = result.structured_output
+```
+
+`run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
+log_file: Path, timeout: float, model: str | None = None,
+config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
+相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
+schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLIとローカル検証を行う。
+`timeout` は有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
+timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
+
+- `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
+  `AgyConfig` は `version: str`, `url: str`, `sha256: str`, `model: str` を持つfrozen dataclass。
+  `DEFAULT_CONFIG` はこのモジュールの隣の設定ファイル。環境変数の同名キーは読まない。
+  4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_REWRITE_AGY_MODEL`。
+  導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
+  release APIが返したSHA-256 digestを固定する。
+- `model` の省略時は `ISSUE_REWRITE_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
+  `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
+  logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
+  新しいモデルを採用するときは設定と `MODEL_LABELS` の対応を一緒に更新する。
+- `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` をJSON文字列として `--settings` へ渡す。
+  コマンドの許可形式・拒否・実機での検証は[読み取り権限と実機プローブ](#agyの読み取り権限と実機プローブ)を正本とする。
+  `--mode plan` を指定する。このpermission規則はrunnerのOS隔離を置き換えない。
+- `log_file` は呼び出しごとの未作成パスが必須。親ディレクトリがなければ0700で作成し、logは0600にする。
+  存在するファイルやsymlinkを再利用しない。writer、verifier、修正呼び出しごとに別パスを渡す。
+  毎回新しい会話を作り、自動再試行・resume・別モデルへの振替は行わない。
+
+`AgyResult` はfrozen dataclassで、フィールドは次のとおり。
+
+| フィールド | 型・意味 |
+|---|---|
+| `structured_output` | `Any`。指定schemaを通った非nullのJSON値。自由文の `response` から補完しない |
+| `usage` | `dict[str, int] \| None`。CLIが返した非負整数の使用量。欠測は `None` で、0を補わない |
+| `denied_actions` | `list[dict[str, str]]`。CLIが返した拒否一覧。フィールド省略時だけ空リスト |
+| `observed_model` | `str`。今回のlogで照合したlabel（現行は `Gemini 3.8 Flash (High)`） |
+| `observed_version` | `str`。実行前後で固定値との一致を確認した版 |
+| `duration_seconds` | `float \| None`。CLIの所要秒数。欠測は `None` |
+| `elapsed_seconds` | `float`。版の確認を含め、部品が計測した実行秒数 |
+
+`AgyError(RuntimeError)` は `reason: str` と `denied_actions: list[dict[str, str]]` を持つ。
+`reason` は `invalid_input`（設定・入力・既存log）、`version_mismatch`（版欠落・相違）、
+`cli_error`（起動失敗・非0終了）、`timeout`、`invalid_output`（不正JSON・status・構造化出力・schema・観測値）、
+`model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）。
+呼出元はこの型をcatchし、成功結果を捏造しない。既存のreasonと関数の引数・結果の型は維持する。
+例外の文字列にはstderrやpromptが含まれ得るため、そのまま公開しない。
+拒否一覧はparseできた出力から得たものだけを保持する。非0終了やparse不能時は空の場合がある。
+有効な構造化出力もある拒否は `AgyResult.denied_actions` に残し、タスクとしての合否は呼出元が判断する。
+exit 0・`status: SUCCESS` でも、構造化出力欠落やschema違反なら例外になる。
+[1.4.11の公式release notes](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.4.11)に従い、
+途中終了を示す `finished_reason` がある出力も拒否する。
+
+この部品は本文の不変条件・意味の同等性・秘密情報の検査・GitHubへの書き込みを行わない。
+writerとverifierの結果を受け取った呼出元が、これらの条件を判定してから公開する。
+
+### agyの読み取り権限と実機プローブ
+
+`readonly_settings()` は[公式のCLI設定](https://antigravity.google/docs/settings?tab=cli)に従い、
+次の値を明示する。`--mode plan` だけを権限の固定とは扱わない。
+
+| 設定 | 固定値 | 理由 |
+|---|---|---|
+| `toolPermission` | `request-review` | allowにない操作は確認を要求し、headlessでは拒否になる。永続設定の自動承認を引き継がない |
+| `agentMode` | `plan` | 同時に渡す `--mode plan` と一致させ、auto/accept-editsを有効にしない |
+| `allowNonWorkspaceAccess` | `false` | workspace外の読み取り・編集を減らす。コマンド引数への適用は実機で別途観測する |
+| `enableTerminalSandbox` | `false` | runnerでの利用可否を確認していないため、sandboxを有効化せず、利用可能性を前提にしない |
+
+`--settings` とuserの `settings.json` の置換・併合・優先関係は公式文書に無い。
+そのため、`run_headless` は `--version` を含む各agyプロセスの起動前に、実行userの
+`$HOME/.gemini/antigravity-cli/settings.json` を読み、次の場合は `unsafe_user_settings` で止める。
+ファイルが無い場合は許可する。設定ファイルを自動修正・削除したり、認証情報をコピーしたりはしない。
+
+- `toolPermission` が `request-review` / `strict` 以外。未知の値・不正な型も拒否する。
+- `agentMode` が `auto` / `accept-edits`、または未知の値・型。
+  省略・`""`・`default`・`plan` だけを許す（公式CLI referenceで `""` はdefault mode）。
+  拒否メッセージは、userの `agentMode` を削除するか `plan` に直すよう案内する。
+- `permissions.allow` が空リスト以外。`permissions` はobject、子キーは `allow` / `ask` / `deny` だけとし、
+  `ask` / `deny` は非空文字列のリストだけを許す。省略はいずれも空リストとして検査する。
+- `enableTerminalSandbox` / `allowNonWorkspaceAccess` が明示され、その値がboolean `false` と異なる。
+  省略は公式の既定値 `false` として許す。数値0や文字列はbooleanとして扱わない。
+- 読めない、通常のファイルではない、UTF-8/JSONとして不正、rootがobjectでない、重複キーがある。
+  dangling symlinkや、不明・相対・空の `HOME` も拒否する。
+- `model` が文字列以外、または `trustedWorkspaces` が文字列の配列以外。
+  ログイン後にCLIが保存するこの2キーは許す。`model` は表示名を含む任意の文字列でよい。
+  各呼び出しで `--model` を明示し、今回のlogの表示名でも固定モデルを照合するため、保存値にモデル選択を任せない。
+- 実行する `cwd` が `trustedWorkspaces` のいずれかと同じ、またはその内側にある。
+  文字列の前方一致は使わず、パスの要素で同一・祖先を判定する。`~` を展開し、相対entryは実行する `cwd` が基準。
+  `..` を正規化した絶対パスとsymlinkを解決したパスの両方で検査する。パスを解決できない場合も拒否する。
+- 上記と `permissions` 以外の未知のtop-levelキー。未検証のキーが将来権限を広げないよう拒否し、
+  表示設定なども勝手に無視しない。例外は公式にCLIが無視すると明記された文字列の `$schema` だけで、URLは取得しない。
+
+これは、併合されても権限を広げない永続設定だけを受け入れる検査である。
+userの `strict` やask/denyが優先されて読み取りまで拒否される可能性は残り、実機smokeで確認する。
+
+`trustedWorkspaces` を許すのは、#1607が呼び出しごとに新しい一時ディレクトリへ使い捨てworktreeを作り、
+この検査がその領域と祖先のtrustを拒否するためである。trustの追加や設定ファイルの書き換えは行わない。
+[公式の設定ファイル一覧](https://antigravity.google/docs/settings?tab=cli#other-configuration-files)では、workspaceの拡張設定は
+`.agents/hooks.json`、`.agents/mcp_config.json`、`.agents/plugins/` に置く。
+このrepoの `.agents/` はskills・memory・ops・READMEなどを持つが、これらの拡張設定は持たない。
+**untrustedでこれらを読み込まないこと、headlessがtrust確認待ちで止まらないことは未確認**であり、
+設定検査だけで保証しない。#1599で[手動疎通の確認事項](../../../scripts/github_actions/README.md#手動の疎通)を確かめる。
+
+コマンド名だけの前方一致は使わない。`agy_permissions.py` の形式定義を `_form` / `_option` /
+`_argument` で正規表現へ変換し、allowをすべて `command(regex:^...$)` にする。
+[公式のCLI権限仕様](https://antigravity.google/docs/permissions#supported-cli-actions-and-matching-rules)は
+正規表現の行全体照合と部分照合の詳細を確定していないため、どちらでも後続の引数を無制限に許さないよう両端を固定する。
+未知のフラグを通常の引数として受け入れず、引数先頭の `-` は引用されていても拒否する。
+
+すべての引数で、制御文字（改行・CR・tab等）、`;`・`&`・`|`・`<`・`>`・`$`・バッククォート・
+`(`・`)`・`{`・`}`・バックスラッシュを禁止する。単一/二重引用符は対になった引数全体だけで使え、
+引用中にも同じ禁止文字の制約を適用する。スペースとglobの `* ? [ ]` は引用中に限る。
+引用しない先頭 `~` とglob、引用の連結、環境変数の代入や `env` 等のラッパーも許可しない。
+禁止文字は行全体のcommand denyでも先に判定する。これはPythonの `re.search` で `$` が末尾LF直前にも
+一致し得る場合も拒否するためで、テストは `re.fullmatch` / `re.search` の両方でDeny優先の最終判定を確認する。
+lookaroundやPython固有の絶対終端anchorには依存しない。
+
+許可するプログラムとフラグは次のとおり。表にない略記・結合フラグ・オプションは拒否する。
+`N` は非負整数で、短い数値フラグは `-n10` の形も使える。長い値付きフラグは空白区切りまたは `=` を使う。
+`--` は表の該当プログラムで使えるが、その後も引数の禁止文字・先頭 `-` の検査を省略しない。
+
+| 形式 | 許可するフラグ・引数 |
+|---|---|
+| `cat FILE...` | `-n`, `--` |
+| `ls [PATH...]` | `-a`, `-l`, `-d`, `-h`, `-1`, `--` |
+| `head FILE...` / `tail FILE...` | `-n N`, `--`。`tail -f` は拒否 |
+| `wc FILE...` | `-l`, `-w`, `-m`, `--` |
+| `grep PATTERN FILE...` | `-n`, `-i`, `-l`, `-F`, `-w` |
+| `rg PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `-g ARG`, `--glob ARG`, `--hidden`, `-C/-A/-B N`, `--` |
+| `rg --files [PATH...]` | `-g ARG`, `--glob ARG`, `--hidden` |
+| `git log [REV/PATH...]` | `--oneline`, `-n N`, `--follow`, `--` |
+| `git log --no-ext-diff --no-textconv [REV/PATH...]` | 上のlogフラグに加え `-p`, `--stat` |
+| `git show --no-ext-diff --no-textconv [REV/PATH...]` | `-p`, `--stat`, `--name-only`, `--name-status`, `--` |
+| `git diff --no-ext-diff --no-textconv [REV/PATH...]` | 上のshowフラグに加え `--cached` |
+| `git grep PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `--no-textconv`, `--` |
+| `gh issue view ID` / `gh pr view ID` | `--comments`, `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO` |
+| `gh issue list` | `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO`, `--limit N`, `--state open/closed/all` |
+
+Gitの各形式では `git --no-pager ...` も使える。patchを生成する形式は、通常のユーザー設定からの
+[外部diff・textconv実行](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---no-ext-diff)も避けるため、
+`--no-ext-diff --no-textconv` をこの順でサブコマンドの直後に必須とする。
+子環境では `GIT_OPTIONAL_LOCKS=0`、`GIT_PAGER=cat`、`GH_PAGER=cat`、`RIPGREP_CONFIG_PATH=/dev/null` を固定し、
+Gitの任意index更新、pagerの実行、rgの設定経由のフラグ追加を避ける。
+
+書き込み/外部操作のdenyは `write_file(*)`, `read_url(*)`, `execute_url(*)`, `unsandboxed(*)`, `mcp(*)`。
+`edit_file` は公式CLIのactionではないため置かない。編集も `write_file` の拒否で扱う。
+workspace内の `read_file` はCLIの暗黙の読み取り許可を維持し、全ファイルへの読み取り許可は追加しない。
+`--output`, `-o`, `--pre`, `--pre-glob`, `-O`, `--open-files-in-pager`, `--ext-diff`, `--textconv`,
+`-c`, `--exec-path`, `--git-dir`, `--work-tree`, `--web`, `--jq`, `--template` は許可形式に存在しない。
+
+静的テストだけで実CLIの照合を確認したとは扱わない。#1599で人間がデスクトップから **AGY smoke** を手動実行し、
+通常のテンプレート読み取りに続いて `agy_smoke.py --permissions-probe --timeout 120` の段階を通す。
+この段階は使い捨てgit repositoryを作り、`read_file` と9個の読み取りコマンドを依頼し、
+privateな入力nonceとHEADのcommit subjectに一致する出力、拒否なし、ファイル不変を確認する。
+その後、リダイレクト・連結・実行フラグ・展開・改行と、許可外の単独コマンドを含む27形式を、
+新規会話で1形式ずつそのまま試すよう依頼する。単独コマンドは `touch b`, `rm x`, `mkdir new-directory`,
+`cp a copied`, `mv a moved`, `python3 -c pass`, `sh -c true`。特殊文字のdenyに頼らず拒否されることを確認する。
+各形式の `denied_actions` にcommandの拒否が必要。exit 0でも拒否がなければ失敗する。
+構造化出力を伴わない拒否も、版・今回のモデルlogを照合した場合だけ期待した拒否として受け取る。
+
+さらに、外側のcanaryファイルを絶対パスの `cat` で読む観測を1件行い、`outside_read_denied` をsummaryに記録する。
+commandまたはread_fileの拒否があれば `true`、正常な構造化結果が返り拒否が無ければ `false`。
+**この読み取りが通ったことだけではsmokeを失敗にしない。** コマンド引数経由の領域外読み取りは
+#1597の既知の改善候補であり、この変更で解消したとは仮定しない。実機での拒否が確認できたときだけ改善の証拠にする。
+観測でも、runtime/モデル/版の失敗やファイル変更は引き続き失敗とする。外側のパス・内容・nonceは公開しない。
+
+呼び出しごとにwork全体（`.git`を含む）と、その外側の専用canary directoryの
+ファイル一覧・種類・mode・inode・size・mtime・内容のdigestを比較し、作成・削除・変更があれば失敗する。
+外側の実行canaryはrg/git/browser経由の実行を記録する。`BROWSER` と `GH_BROWSER` はこのcanaryへ向け、
+誤って許可されても本物のbrowserは開かない。検査範囲はこの使い捨てworkと外側のcanary directoryであり、
+agy自身の認証/cache/logが保存されるHOME全体の変更を主張するものではない。
+制御用prompt/schema/logは別directoryに置き、summaryには公開しない。
+summaryに残すのは、照合した版・モデル、数値usage・時間、固定probe識別子、拒否件数、検査結果だけ。
+最大29会話（読み取り1・拒否27・領域外読み取り観測1）、各120秒、workflow全体75分。
+必須の拒否・読み取り・不変検査が1件でも失敗すればjobも失敗し、有効化の根拠にしない。
 
 ## Codex queueの共通部品
 
