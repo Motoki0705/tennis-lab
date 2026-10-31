@@ -13,8 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lib.identity import session_identity  # noqa: E402
 
-from herdr_labels.coordination import LifecycleCallerError  # noqa: E402
-from herdr_labels.service import registry, sync  # noqa: E402
+from herdr_labels.service import VerifiedSessionStartError, registry, sync  # noqa: E402
 
 
 def main() -> int:
@@ -72,7 +71,7 @@ def main() -> int:
         if (
             event == "SessionStart"
             and identity is not None
-            and not isinstance(exc, LifecycleCallerError)
+            and isinstance(exc, VerifiedSessionStartError)
         ):
             try:
                 notify_parent = any(

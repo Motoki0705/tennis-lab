@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unicodedata
 from collections.abc import Mapping
 from pathlib import Path
@@ -18,6 +19,10 @@ from .coordination import Guard, owner_token, process_stamp, state_root
 
 TOKEN_KEYS = ("tl_name", "tl_parent", "tl_topic", "tl_engine", "tl_owner")
 INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
+
+
+class VerifiedSessionStartError(ValueError):
+    """Claude display sync failed after native caller verification succeeded."""
 
 
 def board_name(env: Mapping[str, str], repo: str, parent: int) -> str | None:
@@ -178,6 +183,8 @@ def sync(
     if bind_native and (not session_start or session_end):
         raise ValueError("native binding requires a SessionStart event")
     identity = session_identity(dict(env))
+    if session_start and env.get("HERDR_ENV") != "1":
+        raise ValueError("lifecycle events require the inherited Herdr caller context")
     destination = target(env, identity)
     if destination is None:
         return {
@@ -185,27 +192,38 @@ def sync(
             "reason": "no Herdr caller context or explicit binding",
         }
     client, pane = destination
-    if (session_start or session_end) and env.get("HERDR_ENV") != "1":
+    if session_end and env.get("HERDR_ENV") != "1":
         raise ValueError("lifecycle events require the inherited Herdr caller context")
     guard = Guard(env, identity, client, pane)
     if session_start or session_end:
         guard.require_native_ancestor()
-    with guard.hold(start=session_start, end=session_end):
-        result = _sync(
-            env,
-            identity,
-            client,
-            guard.pane,
-            guard,
-            topic=topic,
-            expected_parent=expected_parent,
-            clear=clear,
-            session_start=session_start,
-            confirm_parent=confirm_parent,
-        )
-        if bind_native:
-            _bind_native(env, identity, client, guard)
-        return result
+    try:
+        with guard.hold(start=session_start, end=session_end):
+            result = _sync(
+                env,
+                identity,
+                client,
+                guard.pane,
+                guard,
+                topic=topic,
+                expected_parent=expected_parent,
+                clear=clear,
+                session_start=session_start,
+                confirm_parent=confirm_parent,
+            )
+            if bind_native:
+                _bind_native(env, identity, client, guard)
+            return result
+    except (
+        ValueError,
+        OSError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        if session_start and identity.startswith("claude:") and guard.native_verified:
+            raise VerifiedSessionStartError(str(exc)) from exc
+        raise
 
 
 def _bind_native(

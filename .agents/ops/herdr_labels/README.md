@@ -126,11 +126,16 @@ ownerのロック内で旧記録を読み直し、確認時と同じ場合だけ
 
 記録のない初回設定、通常のsync / clear / bind、parent CLIの担当操作には自動移動を適用しない。
 `clear` / `compact`とSessionEndの扱いも変えない。
-SessionStartの拒否・失敗のうち、registryでactiveな担当本人と確認できた場合だけ、
+SessionStartの拒否・失敗のうち、`require_native_ancestor()`を通過した後の失敗で、
+かつregistryでactiveな担当本人と確認できた場合だけ、
 `herdr_label.status: error`と理由をstdoutのJSONへ出し、
 会話向けの`hookSpecificOutput.additionalContext`（`hookEventName: SessionStart`）と
 人間向けの`systemMessage`で修復手順を案内する。
 会話にJSONを届けるため終了値は0とするが、通知内では表示同期の失敗と明示する。
+同期処理は子孫検査の通過後、`Guard.native_verified`を確認した失敗だけを
+`VerifiedSessionStartError`としてhookへ渡す。hookはこの型だけを通知の候補にする。
+検査前のpane・process-infoの取得失敗、`CLAUDE_ENV_FILE`への書込み失敗、Herdr環境の不足、
+子孫検査そのものの失敗はstderrと終了値1で返し、stdoutへ通知を出さない。
 identity不正・子agent・foreground agentの子孫でない呼出し・入れ子のagent・未担当sessionには
 修復案内を送らず、従来どおりstderrと終了値1で拒否する。
 registryの読取失敗などで担当を判定できない場合も、担当を推測せず、

@@ -445,6 +445,37 @@ def test_session_start_does_not_notify_when_registry_is_unverifiable(
     assert not labels.mutations()
 
 
+@pytest.mark.parametrize(
+    "failure", ["pane current", "pane process-info", "env_file", "herdr_env"]
+)
+def test_session_start_does_not_notify_before_native_verification(
+    resuming_labels: Labels, failure: str
+) -> None:
+    labels = resuming_labels
+    state = labels.read()
+    if failure == "env_file":
+        # A directory forces the env-file write to fail before sync.
+        labels.env["CLAUDE_ENV_FILE"] = str(labels.root)
+        reason = "Is a directory"
+    elif failure == "herdr_env":
+        labels.env.pop("HERDR_ENV")
+        reason = "lifecycle events require the inherited Herdr caller context"
+    else:
+        state["fail_call"] = failure
+        labels.write(state)
+        reason = f"Herdr {failure} failed"
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    # Reusing an active parent's session ID is not evidence of a native caller.
+    result = labels.hook("SessionStart", source="resume")
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert reason in result.stderr
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == state["panes"]
+    assert not labels.mutations()
+
+
 def test_named_sync_preserves_unread_and_does_not_write_board_or_registry(
     named_labels: Labels,
 ) -> None:
