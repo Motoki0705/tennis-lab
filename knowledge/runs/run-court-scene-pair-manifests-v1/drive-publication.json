@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "action": "manifest-upload",
+  "remote_root": "gdrive:tennis_lab",
+  "pool": "data/court_scene_diversity_6000_v1",
+  "observed_at": "2026-10-30T22:25:52.912498+00:00",
+  "before_observed_at": "2026-10-30T21:31:56.661099+00:00",
+  "after_observed_at": "2026-10-30T22:25:52.779792+00:00",
+  "before_inventory_sha256": "0b97bf8bb8f41d74ef726fd111b16508c1d740507857738d73a023c629952bd2",
+  "after_inventory_sha256": "aff19a38e7f578eb2458932f1f874a26f4e8a909a94ec8f98b165a7774af9bd5",
+  "preexisting_entries_checked": 3790,
+  "preexisting_files_checked": 2422,
+  "changed_preexisting_entries": [],
+  "added_entries": [
+    {
+      "path": "eval-4scene.val.subset.json",
+      "id": "1cn1M5-Zrn8uXmxJFLc4shc3eHQs8fsmW",
+      "type": "file",
+      "size_bytes": 239295,
+      "hashes": {
+        "md5": "d23b5ee608f5d214d3d500234e2c12e2"
+      },
+      "modified": "2026-10-30T22:12:05.514Z"
+    },
+    {
+      "path": "pair-b00-b02.train.subset.json",
+      "id": "1kZNlar5ze93meno4WeUXWF7CMpyedLD5",
+      "type": "file",
+      "size_bytes": 539275,
+      "hashes": {
+        "md5": "b52b56479b6ec6c6043f4f9b07541c50"
+      },
+      "modified": "2026-10-30T22:12:05.394Z"
+    },
+    {
+      "path": "pair-b00-b02.val.subset.json",
+      "id": "1TMBh4YUiRsrOQv-hm4NZDOHOFWlZdVWZ",
+      "type": "file",
+      "size_bytes": 49273,
+      "hashes": {
+        "md5": "e615616bafa258a13653012525655318"
+      },
+      "modified": "2026-10-30T22:12:05.399Z"
+    },
+    {
+      "path": "pair-b00-b03.train.subset.json",
+      "id": "1yUjJHIpHjfMIyMdhA97ZwJVdYUMQ2Y5B",
+      "type": "file",
+      "size_bytes": 539275,
+      "hashes": {
+        "md5": "4c04f72221e83e758bbe0ff423ed3662"
+      },
+      "modified": "2026-10-30T22:12:05.420Z"
+    },
+    {
+      "path": "pair-b00-b03.val.subset.json",
+      "id": "1heZUID8Xqi8NSeZgCoEI5mR_2pxv1Whi",
+      "type": "file",
+      "size_bytes": 49273,
+      "hashes": {
+        "md5": "165edba2f2636367ca71f76849e6dcd8"
+      },
+      "modified": "2026-10-30T22:12:05.424Z"
+    },
+    {
+      "path": "pair-b01-b02.train.subset.json",
+      "id": "1MvxGF7gqFuZ2MF-5nR0HK98BhxwJ7Er4",
+      "type": "file",
+      "size_bytes": 539275,
+      "hashes": {
+        "md5": "6580052ebd92ed05bfe821715f945006"
+      },
+      "modified": "2026-10-30T22:12:05.446Z"
+    },
+    {
+      "path": "pair-b01-b02.val.subset.json",
+      "id": "124mPS9Qbfe4OsibFtfda1FMU-iexZx_I",
+      "type": "file",
+      "size_bytes": 49273,
+      "hashes": {
+        "md5": "ea2f894cad39818e1b20ff6e2e0ab437"
+      },
+      "modified": "2026-10-30T22:12:05.450Z"
+    },
+    {
+      "path": "pair-b01-b03.train.subset.json",
+      "id": "1ghtCOHNe6lyna0967KSbGVuw_UsBoO0d",
+      "type": "file",
+      "size_bytes": 539275,
+      "hashes": {
+        "md5": "b85ad422b77940ba118c0df8450c359e"
+      },
+      "modified": "2026-10-30T22:12:05.467Z"
+    },
+    {
+      "path": "pair-b01-b03.val.subset.json",
+      "id": "1EJRLKvsolqixghdH588tujWThwtgxCAq",
+      "type": "file",
+      "size_bytes": 49273,
+      "hashes": {
+        "md5": "3fb3bc06267af39654ee08505c3dd9b0"
+      },
+      "modified": "2026-10-30T22:12:05.474Z"
+    },
+    {
+      "path": "pair-b02-b03.train.subset.json",
+      "id": "11MFTBuGF7ckOd-rzyc4BFkJLwShzIjFV",
+      "type": "file",
+      "size_bytes": 539275,
+      "hashes": {
+        "md5": "ee4bcfcbc3b4727b97ce74dc7de4c72a"
+      },
+      "modified": "2026-10-30T22:12:05.497Z"
+    },
+    {
+      "path": "pair-b02-b03.val.subset.json",
+      "id": "154qWTNnNF2-_i1i17GHjftwtsX79GKxd",
+      "type": "file",
+      "size_bytes": 49273,
+      "hashes": {
+        "md5": "15a2ef121849d59c78442bf3d26a5369"
+      },
+      "modified": "2026-10-30T22:12:05.502Z"
+    }
+  ],
+  "uploaded_files": 11,
+  "uploaded_bytes": 3182035,
+  "content_verified_against_tennis_drive_inventory": true,
+  "transport": "tennis-drive RcloneBackend.copy --files-from-raw --immutable --no-traverse"
+}

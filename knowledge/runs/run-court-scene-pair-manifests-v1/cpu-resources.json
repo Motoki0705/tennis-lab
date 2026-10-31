@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "CUDA_VISIBLE_DEVICES": "",
+  "phases": {
+    "p01": {
+      "max_rss_kib": 252288,
+      "exit_code": 0
+    },
+    "create": {
+      "max_rss_kib": 275128,
+      "exit_code": 0
+    },
+    "verify": {
+      "max_rss_kib": 496412,
+      "exit_code": 0
+    },
+    "verify_on_reader_base": {
+      "max_rss_kib": 496632,
+      "exit_code": 0
+    }
+  }
+}
