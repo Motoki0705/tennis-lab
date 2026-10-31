@@ -8,20 +8,31 @@ import json
 import os
 import sys
 import time
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 
-def stamp() -> str:
-    from datetime import UTC, datetime
+def ticking_clock() -> Callable[[], str]:
+    # Native starts must also fall inside the real ledger's recorded run.
+    current = datetime.now(UTC)
 
-    return datetime.now(UTC).isoformat()
+    def advance() -> str:
+        nonlocal current
+        current += timedelta(microseconds=1)
+        return current.isoformat()
+
+    return advance
 
 
 class FakeNative:
     """Emit the same record shape as the anonymized real native probe."""
 
-    def __init__(self, runtime: Path, cwd: Path) -> None:
+    def __init__(
+        self, runtime: Path, cwd: Path, *, clock: Callable[[], str] | None = None
+    ) -> None:
+        self.clock = ticking_clock() if clock is None else clock
         self.runtime = runtime
         self.runtime.mkdir(parents=True, exist_ok=True)
         self.home = Path(os.environ["CODEX_HOME"])
@@ -76,7 +87,7 @@ class FakeNative:
         self.save()
 
     def row(self, kind: str, payload: dict[str, Any]) -> dict[str, Any]:
-        return {"timestamp": stamp(), "type": kind, "payload": payload}
+        return {"timestamp": self.clock(), "type": kind, "payload": payload}
 
     def context(self, turn: str) -> dict[str, Any]:
         return {
@@ -304,7 +315,6 @@ def main() -> None:
         call("audit_start_task", id=name)
 
     def done(name: str, conclusion: str, *, failed: bool = False) -> None:
-        time.sleep(0.002)
         runtime.finish_child(name, conclusion)
         evidence = []
         if not failed:
