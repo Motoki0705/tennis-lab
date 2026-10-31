@@ -88,15 +88,25 @@ def wait_rewrite(gh: GitHub, parent: int) -> dict[str, Any]:
             f"#{parent}: no matching {WORKFLOW} run; manually start workflow_dispatch "
             f"for this issue, or ask a human to add {REWRITE_SKIPPED_LABEL}"
         )
-    result = subprocess.run(
-        ["gh", "run", "watch", str(run_id), "--repo", gh.repo],
-        stdout=sys.stderr,
-        stderr=sys.stderr,
-        check=False,
-    )
-    if result.returncode:
-        raise ValueError(f"gh run watch {run_id} failed: exit {result.returncode}")
-    state = current_state(gh, parent)
+    for followup in range(2):
+        result = subprocess.run(
+            ["gh", "run", "watch", str(run_id), "--repo", gh.repo],
+            stdout=sys.stderr,
+            stderr=sys.stderr,
+            check=False,
+        )
+        if result.returncode:
+            raise ValueError(f"gh run watch {run_id} failed: exit {result.returncode}")
+        state = current_state(gh, parent)
+        if state != "pending" or followup:
+            break
+        # attempt=2 is a distinct workflow_dispatch run. Follow it once, without
+        # polling or treating an older/deleted run as a new attempt.
+        with gh.fresh_reads():
+            newer = latest_run(gh, parent)
+        if newer is None or newer <= run_id:
+            break
+        run_id = newer
     if state == "pending":
         raise ValueError(
             f"#{parent}: run {run_id} ended but issue rewrite is still pending; "

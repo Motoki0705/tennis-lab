@@ -59,6 +59,7 @@ annotation.json
 annotations/
 *.csv
 *.json
+!/.agents/ops/issue_rewrite/schemas/*.schema.json
 !scripts/ci_metrics/package.json
 !scripts/ci_metrics/package-lock.json
 !/.claude/settings.json

@@ -1,0 +1,166 @@
+name: Issue rewrite
+run-name: 'issue-rewrite #${{ github.event.issue.number || inputs.issue_number }}'
+
+on:
+  issues:
+    types: [opened, labeled]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: Parent issue number
+        type: string
+        required: true
+      attempt:
+        description: Body conflict attempt (normally 1)
+        type: choice
+        options: ['1', '2']
+        default: '1'
+        required: true
+
+permissions: {}
+
+concurrency:
+  group: issue-rewrite-${{ github.event.issue.number || inputs.issue_number }}
+  cancel-in-progress: false
+
+env:
+  PYTHONPATH: .agents/ops
+  REWRITE_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+  REWRITE_ATTEMPT: ${{ inputs.attempt || '1' }}
+  ISSUE_REWRITE_ENABLED_SINCE: ${{ vars.ISSUE_REWRITE_ENABLED_SINCE }}
+
+jobs:
+  rewrite:
+    if: >-
+      ${{ github.actor == github.repository_owner &&
+          vars.ISSUE_REWRITE_ENABLED_SINCE != '' &&
+          github.ref == 'refs/heads/main' &&
+          (github.event_name == 'workflow_dispatch' ||
+           (github.event.action == 'opened' && contains(github.event.issue.labels.*.name, 'issue:parent')) ||
+           (github.event.action == 'labeled' && github.event.label.name == 'issue:parent')) }}
+    runs-on: [self-hosted, linux, x64, tennis-lab]
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    env:
+      HOME: /var/lib/tennis-lab-actions/home
+      AGY_CLI_DISABLE_AUTO_UPDATE: 'true'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout trusted workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+      - name: Rewrite and verify with read-only Gemini
+        shell: bash
+        run: |
+          set -euo pipefail
+          task_root="${RUNNER_TEMP}/issue-rewrite-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          manual_args=()
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            manual_args+=(--manual)
+          fi
+          uv run --isolated --no-project --with jsonschema==4.26.0 \
+            python -m issue_rewrite rewrite \
+            --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
+            --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" \
+            --attempt "$REWRITE_ATTEMPT" "${manual_args[@]}" \
+            --run-dir "$task_root/private" --bundle "$task_root/public/handoff.json"
+      - name: Upload only the validated handoff or sanitized failure report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}/public/handoff.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  apply:
+    needs: rewrite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout trusted workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+      - name: Download this run's handoff
+        uses: actions/download-artifact@v8
+        with:
+          name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue-rewrite-incoming
+      - name: Set up lightweight Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+          enable-cache: false
+      - name: Compare, patch, and check edit history
+        shell: bash
+        run: |
+          set -euo pipefail
+          manual_args=()
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            manual_args+=(--manual)
+          fi
+          uv run --isolated --no-project --with jsonschema==4.26.0 \
+            python -m issue_rewrite apply \
+            --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
+            --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" \
+            --attempt "$REWRITE_ATTEMPT" "${manual_args[@]}" \
+            --bundle "${RUNNER_TEMP}/issue-rewrite-incoming/handoff.json"
+
+  failed:
+    needs: [rewrite, apply]
+    if: >-
+      ${{ always() && github.actor == github.repository_owner &&
+          vars.ISSUE_REWRITE_ENABLED_SINCE != '' &&
+          github.ref == 'refs/heads/main' &&
+          (needs.rewrite.result == 'failure' || needs.apply.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout trusted workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+      - name: Download sanitized diagnostics when available
+        continue-on-error: true
+        uses: actions/download-artifact@v8
+        with:
+          name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/issue-rewrite-incoming
+      - name: Set up lightweight Python
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.11'
+          enable-cache: false
+      - name: Finalize the original issue after failure
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --isolated --no-project --with jsonschema==4.26.0 \
+            python -m issue_rewrite fail \
+            --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
+            --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" \
+            --attempt "$REWRITE_ATTEMPT" \
+            --bundle "${RUNNER_TEMP}/issue-rewrite-incoming/handoff.json"

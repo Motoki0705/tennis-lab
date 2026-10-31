@@ -45,10 +45,15 @@ if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
 if args[:2] == ["run", "watch"]:
     assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
+    step = state.get("watch_steps", []).pop(0) if state.get("watch_steps") else {}
+    if "rewrite_runs" in step:
+        state["rewrite_runs"] = step["rewrite_runs"]
+    if step.get("label"):
+        state["issues"]["1"]["labels"].append({"name": step["label"]})
     if state.get("watch_label"):
         state["issues"]["1"]["labels"].append({"name": state["watch_label"]})
-        save()
-    sys.exit(state.get("watch_returncode", 0))
+    save()
+    sys.exit(step.get("returncode", state.get("watch_returncode", 0)))
 if args[:2] == ["pr", "view"]:
     if os.environ.get("PARENT_FAIL_CI_VIEW"):
         fail()
@@ -686,6 +691,52 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
         "run_id": None,
     }
     assert not any(c[:2] == ["run", "watch"] for c in p.calls()[offset:])
+
+
+@pytest.mark.parametrize("followup", ["done", "pending", "older", "watch_failed"])
+def test_wait_rewrite_follows_a_new_dispatch_run_at_most_once(
+    parent_env: ParentEnv, followup: str
+) -> None:
+    p = parent_env
+
+    def run(identity: int) -> dict[str, Any]:
+        return {
+            "id": identity,
+            "display_title": "issue-rewrite #1",
+            "created_at": f"2026-10-31T0{identity - 100}:00:00Z",
+        }
+
+    state = p.state()
+    state.update(
+        rewrite_enabled_since="2026-10-30T00:00:00Z",
+        rewrite_runs=[run(101)],
+        watch_steps=[
+            {"rewrite_runs": [run(100 if followup == "older" else 102)]},
+            {"label": "rewrite:done"}
+            if followup == "done"
+            else {"returncode": 1}
+            if followup == "watch_failed"
+            else {"rewrite_runs": [run(103)]},
+        ],
+    )
+    p.save(state)
+    result = p.cli("wait-rewrite", ok=followup == "done")
+    watches = [call[2] for call in p.calls() if call[:2] == ["run", "watch"]]
+    assert watches == (["101"] if followup == "older" else ["101", "102"])
+    if followup == "done":
+        assert json.loads(result.stdout) == {
+            "parent": 1,
+            "rewrite_state": "done",
+            "run_id": 102,
+        }
+    elif followup == "watch_failed":
+        assert "watch 102 failed" in result.stderr
+    else:
+        assert "still pending" in result.stderr
+    assert not any(
+        "--method" in call and call[call.index("--method") + 1] != "GET"
+        for call in p.calls()
+    )
 
 
 def test_parent_body_update_detects_rewrite_despite_cached_issue(
