@@ -8,7 +8,7 @@ PR选择与main/手动完整请求的正本为[通道注册表与计划](README.
 
 ## 分配与 fixture
 
-每个 worker 用既有 CPU marker 和 court dataset 排除规则收集当前源码，先记录通道选择前的完整集合，再分配请求的
+每个 worker 用正常 CPU marker 收集当前源码，包括由通道注册表选中的 court dataset 集成，先记录通道选择前的完整集合，再分配请求的
 nodeid，包括未注册的新测试。`cpu-file-times.json` 保存测得的 phase 时间；按成本从大到小分配
 给当前最轻的 shard，同成本按名称/index稳定排序。默认按文件保留共享准备。
 仅将 function fixture 独立的重文件明确列入 `split_files`，使用各用例 `test_seconds` 分配。
@@ -82,12 +82,12 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 
 只要存在延后case，就拒绝生成profile。部分成功不能覆盖完整CPU权重或宣称完整baseline。
 
-默认保留观测中的 `split_files`。检查fixture后，重复传入 `--split-file tests/path.py` 可明确替换列表。收集guard会根据当前fixture graph验证声明。merge gate、board messages、parent session继续按function fixture拆分。坐标训练使用module scope的 `shared`，所以9个用例的579.907秒保留在一个shard内；不修改测试本体与fixture scope。
+默认保留观测中的 `split_files`。检查fixture后，重复传入 `--split-file tests/path.py` 可明确替换列表。收集guard会根据当前fixture graph验证声明。merge gate、board messages、parent session继续按function fixture拆分。坐标训练使用module scope的 `shared`，因此保留在一个shard内；不修改测试本体与fixture scope。
 
-新profile来自[run 41043837101](https://github.com/Motoki0705/tennis-lab/actions/runs/41043837101)（#1527/#1529 fixture优化之后）：832个文件、12,883例（12,787 passed / 96 skipped / 0 failed）、共6,681.075 phase秒。4 / 6 / 8 / 10 shard的估计最大负荷为1,670.269 / 1,113.513 / 835.135 / 668.108秒。这是并行worker phase的累计值，不是wall时间预测。旧profile下10 shard的实测负荷为156–916秒。合并改变测试成本的修改后需重新生成。
+新profile来自成功main push的完整[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)：全部10个shard、883个文件、14,561例（14,470 passed / 91 skipped / 0 failed）、共7,543.124 phase秒。旧profile有54个当前文件未测量，包括29例的court dataset集成：中位数估计为0.077秒，实测为406.228秒。在相同inventory上，旧权重估计每shard为676.570–676.572秒，但该分配的实测负荷为439.996–1,101.161秒。用新权重重新分配后，10个shard估计为754.311–754.313秒，没有未测文件或拆分用例。这是并行worker phase的累计值，不是wall时间预测。测试成本显著改变后需重新生成。
 
 ## 默认配置选择
 
 默认使用10 shard、2 worker，这是实测2 worker配置中，在15分钟内完成且没有已知README之外失败的最小配置。4 worker重复出现process cleanup后立即检查的额外assert失败，保留为手动比较选项。时间、runner成本、cache、RSS的完整表与样本限制以[baseline](baseline.zh-CN.md#runner配置比较)为准。父会话合并fixture优化后，应重新生成profile并重测6/8 shard是否足够。
 
-也检查了 `test_parent_development.py`、`test_execution_basis.py` 和 `test_parent_completion_resume.py` 的function fixture。其文件成本在更新后的每shard预算内，因此实测默认配置保留既有3个文件的拆分声明，待计划中的fixture优化后用新测量重新判断。
+保留既有3个文件的拆分声明。最重的完整文件是court dataset集成，406.228秒低于更新后的每shard预算754.312秒。已用当前fixture graph确认可以拆分，但加入 `split_files` 后最大估计负荷仍为754.313秒，因此对这次完整inventory没有均衡收益。`test_parent_development.py`、`test_execution_basis.py` 和 `test_parent_completion_resume.py` 分别为291.218 / 251.793 / 138.501秒，也在预算内。不修改测试本体或fixture scope。
