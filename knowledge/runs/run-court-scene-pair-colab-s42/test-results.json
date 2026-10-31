@@ -12,175 +12,175 @@
   "real_pool_reads": 0,
   "cases": [
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_uses_repository_records[scene-1-0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-1-0]",
       "total_seconds": 0.05
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-29844]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-29844]",
       "total_seconds": 0.014
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-33160.0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-33160.0]",
       "total_seconds": 0.011
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-4]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-4]",
       "total_seconds": 0.012
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-3]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-3]",
       "total_seconds": 0.012
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_uses_repository_records[scene-2-1]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-2-1]",
       "total_seconds": 0.056
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint-/content/tennis-lab/wrong.ckpt]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint-/content/tennis-lab/wrong.ckpt]",
       "total_seconds": 0.016
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint_sha256-changed]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint_sha256-changed]",
       "total_seconds": 0.014
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_five_configs_keep_actual_scene_two_semantics",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_five_configs_keep_actual_scene_two_semantics",
       "total_seconds": 0.324
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_uses_repository_records[scene-3-0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-3-0]",
       "total_seconds": 0.052
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_uses_repository_records[scene-4-0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-4-0]",
       "total_seconds": 0.045
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-schema-unknown_schema]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-schema-unknown_schema]",
       "total_seconds": 0.014
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys3-/other/data]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys3-/other/data]",
       "total_seconds": 0.043
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys4-True]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys4-True]",
       "total_seconds": 0.042
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys5-0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys5-0]",
       "total_seconds": 0.044
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_probe_has_only_explicit_schedule_exceptions",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_probe_has_only_explicit_schedule_exceptions",
       "total_seconds": 0.107
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys0-16]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys0-16]",
       "total_seconds": 0.042
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys1-0.0002]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys1-0.0002]",
       "total_seconds": 0.043
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_resume_rejects_foreign_temporary_and_wrong_root[path0]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path0]",
       "total_seconds": 0.042
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_unapproved_training_changes_fail[keys2-43]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys2-43]",
       "total_seconds": 0.042
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_resume_rejects_foreign_temporary_and_wrong_root[path1]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path1]",
       "total_seconds": 0.042
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_any_failed_gate_stops_before_the_next_stage[inputs]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[inputs]",
       "total_seconds": 0.007
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_any_failed_gate_stops_before_the_next_stage[train]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[train]",
       "total_seconds": 0.032
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_resume_rejects_foreign_temporary_and_wrong_root[path2]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path2]",
       "total_seconds": 0.043
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_any_failed_gate_stops_before_the_next_stage[evaluate]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[evaluate]",
       "total_seconds": 0.013
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_latest_uses_numeric_update_not_listing_order_or_last",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_latest_uses_numeric_update_not_listing_order_or_last",
       "total_seconds": 0.067
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_any_failed_gate_stops_before_the_next_stage[publish]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[publish]",
       "total_seconds": 0.014
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_corrupted_completion_is_rejected_instead_of_skipped",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_corrupted_completion_is_rejected_instead_of_skipped",
       "total_seconds": 0.054
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_vm_loss_resumes_same_pair_and_skips_verified_completed_stages",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_vm_loss_resumes_same_pair_and_skips_verified_completed_stages",
       "total_seconds": 0.079
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[valid]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[valid]",
       "total_seconds": 0.139
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[step]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[step]",
       "total_seconds": 0.054
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[config]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[config]",
       "total_seconds": 0.092
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[data]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[data]",
       "total_seconds": 0.115
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[truncated]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[truncated]",
       "total_seconds": 0.094
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[receipt]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[receipt]",
       "total_seconds": 0.148
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_inventory_uses_new_exclusive_receipt_each_time",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_inventory_uses_new_exclusive_receipt_each_time",
       "total_seconds": 0.007
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[order]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[order]",
       "total_seconds": 0.002
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[macro]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[macro]",
       "total_seconds": 0.002
     },
     {
-      "node": "tests/unit/tasks/base/training/test_artifact_store::test_checkpoint_io_publishes_after_local_serialization",
+      "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_checkpoint_io_publishes_after_local_serialization",
       "total_seconds": 0.014
     },
     {
-      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation::test_cli_rejects_conflicting_synthetic_selection",
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_conflicting_synthetic_selection",
       "total_seconds": 0.008
     },
     {
-      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation::test_cli_binds_external_manifest_and_keeps_root_overrides_separate",
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_binds_external_manifest_and_keeps_root_overrides_separate",
       "total_seconds": 0.009
     },
     {
-      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation::test_cli_rejects_missing_evaluation_manifest_before_model_loading",
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_missing_evaluation_manifest_before_model_loading",
       "total_seconds": 0.008
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign::test_cli_failure_returns_nonzero_and_never_reaches_later_training",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_cli_failure_returns_nonzero_and_never_reaches_later_training",
       "total_seconds": 0.351
     }
   ],
