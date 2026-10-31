@@ -31,6 +31,68 @@ from scripts.ci_metrics.shards import assign_groups, verify_shards, write_growth
 REPO = Path(__file__).resolve().parents[3]
 
 
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("attempt", "3"),
+        ("run_id", "456"),
+        ("source_sha", "other-head"),
+        ("attempt", None),
+        ("attempt", 1),
+        ("attempt", "invalid"),
+        ("attempt", "0"),
+        ("current_attempt", None),
+        ("current_attempt", 2),
+        ("current_attempt", "invalid"),
+        ("current_attempt", "0"),
+    ],
+)
+def test_runner_rejects_invalid_plan_context_before_launching_pytest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, field: str, value: Any
+) -> None:
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests/test_one.py").touch()
+    (tmp_path / "pyproject.toml").write_text(
+        '[tool.pytest.ini_options]\npython_files = ["test_*.py"]\n'
+    )
+    registry = tmp_path / "scripts/ci_metrics/lanes.json"
+    registry.parent.mkdir(parents=True)
+    registry.write_text(json.dumps({"schema_version": 1, "suites": []}))
+    context: dict[str, Any] = {"source_sha": "head", "run_id": "123", "attempt": "1"}
+    if field != "current_attempt":
+        context[field] = value
+    plan = make_plan(
+        {"schema_version": 1, "suites": []},
+        ["tests/test_one.py"],
+        event="push",
+        ref="refs/heads/main",
+        **context,
+    )
+    plan_path = tmp_path / "plan.json"
+    write_json(plan_path, plan)
+    weights = tmp_path / "weights.json"
+    write_json(weights, {"schema_version": 1, "file_seconds": {"tests/test_one.py": 1}})
+    metadata = {
+        "source": {"commit": "head", "status": ""},
+        "environment": {
+            "GITHUB_SHA": "head",
+            "GITHUB_RUN_ID": "123",
+            "GITHUB_RUN_ATTEMPT": value if field == "current_attempt" else "2",
+        },
+    }
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(measurement_runner, "environment_metadata", lambda *a: metadata)
+    monkeypatch.setattr(
+        measurement_runner.subprocess,
+        "Popen",
+        lambda *a, **k: pytest.fail("invalid plan launched pytest"),
+    )
+    with pytest.raises(ValueError, match="attempt|revision|run"):
+        measurement_runner.run(
+            tmp_path / "output", 1, [], None, (0, 1, weights), plan_path
+        )
+
+
 def _collection_details(nodeids: list[str]) -> list[dict[str, Any]]:
     return [
         {
@@ -404,6 +466,7 @@ def test_growth_combines_shards_without_recounting_fixture_time_or_inventory(
             lane_plan_id=plan["plan_id"],
             shard={"index": index, "count": 2, "profile_sha256": "profile"},
         )
+        metadata["environment"]["GITHUB_RUN_ATTEMPT"] = str(index + 1)
         write_json(directory / "environment.json", metadata)
         write_json(directory / "lane-plan.json", plan)
         write_json(
@@ -428,12 +491,15 @@ def test_growth_combines_shards_without_recounting_fixture_time_or_inventory(
         2,
         sha="a" * 40,
         run_id="123",
-        attempt="1",
+        attempt="2",
         needs={name: {"result": "success"} for name in ("plan", "lint", "tests")},
         lane_plan=plan,
     )
     assert audit["success"], audit
+    assert audit["plan_attempt"] == "1"
+    assert audit["shard_attempts"] == {"0": "1", "1": "2"}
     snapshot = aggregate_snapshot(scoped_observation, audit)
+    assert snapshot["attempt"] == "2"
     report = analyze(snapshot, None, baseline_reason="first full run")
     assert len(snapshot["nodeids"]) == 2
     assert sum(row["total_s"] for row in report["slow_cases"]) == pytest.approx(10.4)

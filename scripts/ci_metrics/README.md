@@ -36,8 +36,9 @@ lane. Shared infrastructure (`src/utils`, `src/tasks/base`, `tests/support`, any
 tools/registry), renames, deletions and unavailable diffs request all tests with
 explicit reasons. Invalid registries/plans fail instead of becoming a subset.
 
-The standard-library-only `plan` job produces one immutable, source/run/attempt
-specific `plan.json` for every shard and the `Python` aggregate:
+The standard-library-only `plan` job produces one fixed `plan.json` for every
+shard and the `Python` aggregate. It pins source, run and the plan's creation
+attempt; partial reruns reuse it under the [shard identity and attempt rules](sharding.md#evidence-and-failure-semantics):
 
 ```bash
 python3 -m scripts.ci_metrics.plan --output .ci-plan/plan.json
@@ -167,6 +168,7 @@ If cancellation or a launcher failure prevents the test command from starting,
 | `results.json` | Per-node passed/skipped/failed/xfail/xpass/incomplete status and phase times |
 | `junit.xml`, `pytest.log` | Independent JUnit totals/identities and standard durations output |
 | `summary.json`, `summary.md` | Completeness checks, process startup/collection times, costs by file/fixture, outcome counts |
+| Aggregate `coverage.json`, `artifacts.json` | Coverage verdict, plan/shard/aggregate attempts, and checked REST artifact IDs/names/creation times/sizes or inventory errors; see [sharding](sharding.md#evidence-and-failure-semantics) |
 | Aggregate `growth.json`, `growth-summary.json`, `growth-summary.md` | Audited requested observations and informational growth/cost comparison; see [warnings](#test-growth-and-cost-warnings) |
 
 `full_cpu_baseline` requires the complete default selection and a successful test
@@ -207,9 +209,12 @@ overhead from a startup-dominated sample.
 CI records the runner before dependency preparation. Summary, REST snapshot, and
 artifact steps use `always()`, preserving evidence after preparation/test failures.
 Hard cancellation or a lost runner may prevent upload; REST accounting still
-records that attempt as cancelled/incomplete. Artifact names include run and
-attempt. Cache hit is recorded from `setup-uv`, and unavailable values remain
-unknown rather than being assumed warm.
+records that attempt as cancelled/incomplete. Cache hit is recorded from `setup-uv`,
+and unavailable values remain unknown rather than being assumed warm.
+
+Lane plan and shard measurement artifact names omit the attempt and are overwritten
+on reruns. See [sharding](sharding.md#evidence-and-failure-semantics) for partial rerun
+conditions, validation and evidence.
 
 The in-job REST snapshot is provisional: its own job/upload/post-cache steps have
 not completed. Fetch again **after** the job ends for final all-runner/post time:
@@ -266,4 +271,4 @@ The implementation uses [pytest hooks](https://docs.pytest.org/en/stable/referen
 [Actions attempt APIs](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt),
 and [`setup-uv` cache outputs](https://github.com/astral-sh/setup-uv#outputs).
 
-Regenerate scheduling weights from complete Actions artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Failed cases remain visible; incomplete attempts are rejected.
+Regenerate scheduling weights from a run's latest complete shard artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Valid mixed attempts retain their provenance; failed cases remain visible and incomplete observations are rejected.

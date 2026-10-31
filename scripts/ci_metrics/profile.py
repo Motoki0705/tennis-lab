@@ -1,4 +1,4 @@
-"""Rebuild scheduling hints from one complete Actions attempt, including failures."""
+"""Rebuild scheduling hints from a run's latest complete shards, including failures."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from .lanes import parse_attempt
 from .shards import inspect_shards
 
 
@@ -16,7 +17,11 @@ def build_profile(root: Path, split_files: list[str] | None = None) -> dict[str,
     directories = sorted(root.glob("*/tests"))
     if not directories:
         raise ValueError("no shard observations found under root")
-    metadata = json.loads((directories[0] / "environment.json").read_text())
+    observations = [
+        json.loads((directory / "environment.json").read_text())
+        for directory in directories
+    ]
+    metadata = observations[0]
     context = metadata["environment"]
     count = metadata["shard"]["count"]
     if (
@@ -35,7 +40,12 @@ def build_profile(root: Path, split_files: list[str] | None = None) -> dict[str,
         count,
         sha=context["GITHUB_SHA"],
         run_id=context["GITHUB_RUN_ID"],
-        attempt=context["GITHUB_RUN_ATTEMPT"],
+        attempt=str(
+            max(
+                parse_attempt(row["environment"].get("GITHUB_RUN_ATTEMPT"))
+                for row in observations
+            )
+        ),
     )
     if not audit["observations_complete"]:
         raise ValueError(f"cannot profile incomplete observations: {audit['issues']}")
@@ -66,6 +76,8 @@ def build_profile(root: Path, split_files: list[str] | None = None) -> dict[str,
         "source": {
             "run_id": audit["run_id"],
             "attempt": audit["attempt"],
+            "plan_attempt": audit["plan_attempt"],
+            "shard_attempts": audit["shard_attempts"],
             "commit": audit["source_sha"],
             "shard_count": count,
             "selected_count": audit["selected_count"],
