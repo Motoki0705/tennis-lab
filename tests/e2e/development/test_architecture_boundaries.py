@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import re
 import subprocess
+import sys
 from collections import Counter, deque
-from collections.abc import Hashable, Iterable, Mapping
+from collections.abc import Hashable, Iterable, Iterator, Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TypeVar
+from types import MappingProxyType
+from typing import TypeVar, cast
+
+import pytest
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 BoundaryIdentityT = TypeVar("BoundaryIdentityT", bound=Hashable)
@@ -840,70 +846,124 @@ def _git_paths(*arguments: str) -> tuple[str, ...]:
     return tuple(path for path in completed.stdout.splitlines() if path)
 
 
-def _repository_python_files() -> tuple[Path, ...]:
-    paths = _git_paths(
-        "ls-files",
-        "--cached",
-        "--others",
-        "--exclude-standard",
-        "--",
-        "src/**/*.py",
-    )
-    return tuple(
-        REPOSITORY_ROOT / path
-        for path in paths
-        if not path.startswith("src/submodules/vendor/")
-        and (REPOSITORY_ROOT / path).is_file()
-    )
+def _file_version(path: Path) -> tuple[int, int, int, int, int]:
+    info = path.stat()
+    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
 
-def _repository_consumer_files() -> tuple[Path, ...]:
-    paths = _git_paths(
-        "ls-files",
-        "--cached",
-        "--others",
-        "--exclude-standard",
-        "--",
-        "src",
-        "scripts",
-        ".spin",
-        "experiments",
-        "tests/benchmarks",
+def _tree_fingerprints(trees: Mapping[Path, ast.Module]) -> dict[Path, bytes]:
+    return {
+        path: hashlib.sha256(ast.dump(tree, include_attributes=True).encode()).digest()
+        for path, tree in trees.items()
+    }
+
+
+@dataclass(frozen=True)
+class _RepositorySnapshot:
+    python_files: tuple[Path, ...]
+    consumer_files: tuple[Path, ...]
+    reference_python_files: tuple[Path, ...]
+    texts: Mapping[Path, str]
+    trees: Mapping[Path, ast.Module]
+    file_versions: Mapping[Path, tuple[int, int, int, int, int]]
+    tree_fingerprints: Mapping[Path, bytes]
+
+    def assert_unchanged(self) -> None:
+        changed_files = [
+            str(path)
+            for path, version in self.file_versions.items()
+            if _file_version(path) != version
+        ]
+        assert not changed_files, f"repository snapshot source changed: {changed_files}"
+        fingerprints = _tree_fingerprints(self.trees)
+        changed_trees = [
+            str(path)
+            for path, fingerprint in self.tree_fingerprints.items()
+            if fingerprints[path] != fingerprint
+        ]
+        assert not changed_trees, f"shared repository AST mutated: {changed_trees}"
+
+
+def _scan_repository() -> _RepositorySnapshot:
+    # One inventory, one read per input, and one parse per Python file. The
+    # snapshot belongs to this module invocation, never to a process-wide cache.
+    paths = tuple(
+        dict.fromkeys(
+            REPOSITORY_ROOT / relative
+            for relative in _git_paths(
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "--",
+                "src",
+                "scripts",
+                ".spin",
+                "experiments",
+                "tests",
+            )
+            if not relative.startswith("src/submodules/vendor/")
+            and (REPOSITORY_ROOT / relative).is_file()
+        )
+    )
+    reference_python_files = tuple(path for path in paths if path.suffix == ".py")
+    python_files = tuple(
+        path
+        for path in reference_python_files
+        if path.is_relative_to(REPOSITORY_ROOT / "src")
+        and path.parent != REPOSITORY_ROOT / "src"  # Preserve src/**/*.py scope.
     )
     suffixes = {".json", ".py", ".pyi", ".sh", ".toml", ".yaml", ".yml"}
-    return tuple(
-        REPOSITORY_ROOT / path
+    consumer_files = tuple(
+        path
         for path in paths
-        if not path.startswith("src/submodules/vendor/")
-        and (REPOSITORY_ROOT / path).is_file()
-        and (REPOSITORY_ROOT / path).suffix in suffixes
+        if path.suffix in suffixes
+        and (
+            not path.is_relative_to(REPOSITORY_ROOT / "tests")
+            or path.is_relative_to(REPOSITORY_ROOT / "tests/benchmarks")
+        )
     )
-
-
-def _repository_consumer_python_files() -> tuple[Path, ...]:
-    return tuple(path for path in _repository_consumer_files() if path.suffix == ".py")
-
-
-def _repository_reference_python_files() -> tuple[Path, ...]:
-    paths = _git_paths(
-        "ls-files",
-        "--cached",
-        "--others",
-        "--exclude-standard",
-        "--",
-        "src",
-        "scripts",
-        ".spin",
-        "experiments",
-        "tests",
+    inputs = tuple(dict.fromkeys((*reference_python_files, *consumer_files)))
+    versions = {path: _file_version(path) for path in inputs}
+    texts = {
+        path: path.read_text(
+            encoding="utf-8", errors="strict" if path.suffix == ".py" else "replace"
+        )
+        for path in inputs
+    }
+    trees = {
+        path: ast.parse(texts[path], filename=str(path))
+        for path in reference_python_files
+    }
+    snapshot = _RepositorySnapshot(
+        python_files,
+        consumer_files,
+        reference_python_files,
+        MappingProxyType(texts),
+        MappingProxyType(trees),
+        MappingProxyType(versions),
+        MappingProxyType(_tree_fingerprints(trees)),
     )
-    return tuple(
-        REPOSITORY_ROOT / path
-        for path in paths
-        if path.endswith(".py")
-        and not path.startswith("src/submodules/vendor/")
-        and (REPOSITORY_ROOT / path).is_file()
-    )
+    return snapshot
+
+
+@pytest.fixture(scope="module")
+def repository_snapshot() -> Iterator[_RepositorySnapshot]:
+    snapshot = _scan_repository()
+    yield snapshot
+    # AST nodes are mutable Python objects even behind MappingProxyType. Guard
+    # every real consumer, including visitors added later, against state leakage.
+    snapshot.assert_unchanged()
+
+
+ForwardFunction = tuple[Path, ast.FunctionDef | ast.AsyncFunctionDef, tuple[str, ...]]
+
+
+@pytest.fixture(scope="module")
+def transitive_forward_inventory(
+    repository_snapshot: _RepositorySnapshot,
+) -> tuple[ForwardFunction, ...]:
+    return tuple(_transitive_forward_functions(repository_snapshot))
 
 
 def _module_name_from_source_path(path: str) -> str:
@@ -1178,14 +1238,13 @@ def test_third_party_scope_contains_only_the_public_nht_gitlink() -> None:
     assert len(mode) == 1 and mode[0].startswith("160000 ")
 
 
-def test_court_line_preprocessing_size_has_one_public_surface() -> None:
+def test_court_line_preprocessing_size_has_one_public_surface(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     predictor_path = (
         REPOSITORY_ROOT / "src/tasks/court_detection/inference/predictor.py"
     )
-    predictor_tree = ast.parse(
-        predictor_path.read_text(encoding="utf-8"),
-        filename=str(predictor_path),
-    )
+    predictor_tree = repository_snapshot.trees[predictor_path]
     predictor_class = next(
         node
         for node in predictor_tree.body
@@ -1202,7 +1261,7 @@ def test_court_line_preprocessing_size_has_one_public_surface() -> None:
         stale_surface,
     ) in COURT_LINE_PREPROCESSING_CONSUMERS.items():
         path = REPOSITORY_ROOT / relative
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = repository_snapshot.trees[path]
         attribute_names = {
             _qualified_name(node)
             for node in ast.walk(tree)
@@ -1217,10 +1276,12 @@ def test_court_line_preprocessing_size_has_one_public_surface() -> None:
         )
 
 
-def test_library_main_guards_are_absent() -> None:
+def test_library_main_guards_are_absent(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     violations: list[str] = []
-    for path in _repository_python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for path in repository_snapshot.python_files:
+        tree = repository_snapshot.trees[path]
         relative = path.relative_to(REPOSITORY_ROOT)
         # Shot scripts are entrypoints for Blender's bundled Python, not repo libraries.
         allowed = (
@@ -1293,7 +1354,9 @@ def _absolute_import_module(
     return ".".join([*package_parts[:keep], *suffix])
 
 
-def _repository_function_index() -> tuple[
+def _repository_function_index(
+    repository_snapshot: _RepositorySnapshot,
+) -> tuple[
     dict[
         tuple[str, str | None, str],
         tuple[Path, ast.FunctionDef | ast.AsyncFunctionDef],
@@ -1305,9 +1368,9 @@ def _repository_function_index() -> tuple[
         tuple[Path, ast.FunctionDef | ast.AsyncFunctionDef],
     ] = {}
     imports: dict[str, dict[str, str]] = {}
-    for path in _repository_python_files():
+    for path in repository_snapshot.python_files:
         module = _source_module_name(path)
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = repository_snapshot.trees[path]
         module_imports: dict[str, str] = {}
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1372,14 +1435,10 @@ def _repository_function_target(
     return None
 
 
-def _transitive_forward_functions() -> Iterable[
-    tuple[
-        Path,
-        ast.FunctionDef | ast.AsyncFunctionDef,
-        tuple[str, ...],
-    ]
-]:
-    functions, imports = _repository_function_index()
+def _transitive_forward_functions(
+    repository_snapshot: _RepositorySnapshot,
+) -> Iterable[ForwardFunction]:
+    functions, imports = _repository_function_index(repository_snapshot)
     roots: list[tuple[str, str | None, str]] = []
     for identity, (path, _) in functions.items():
         module, class_name, function_name = identity
@@ -1531,10 +1590,12 @@ def _assert_exact_forward_validation_boundaries(
     assert not details, f"{heading}:\n" + "\n".join(details)
 
 
-def test_repository_owned_forwards_are_computation_only() -> None:
+def test_repository_owned_forwards_are_computation_only(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     violations: Counter[tuple[str, str]] = Counter()
-    for path in _repository_python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for path in repository_snapshot.python_files:
+        tree = repository_snapshot.trees[path]
         for function, identity in _reachable_forward_functions(tree):
             for node in ast.walk(function):
                 violation = _forward_violation(node)
@@ -1548,9 +1609,11 @@ def test_repository_owned_forwards_are_computation_only() -> None:
     )
 
 
-def test_transitive_repository_forward_helpers_are_computation_only() -> None:
+def test_transitive_repository_forward_helpers_are_computation_only(
+    transitive_forward_inventory: tuple[ForwardFunction, ...],
+) -> None:
     violations: Counter[tuple[tuple[str, ...], str]] = Counter()
-    for _path, function, call_path in _transitive_forward_functions():
+    for _path, function, call_path in transitive_forward_inventory:
         for node in ast.walk(function):
             violation = _forward_violation(node)
             if violation is not None:
@@ -1606,10 +1669,12 @@ def test_forward_validation_boundary_controls_freeze_paths_and_counts() -> None:
             raise AssertionError("rerouted or recounted validation was accepted")
 
 
-def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> None:
+def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct(
+    transitive_forward_inventory: tuple[ForwardFunction, ...],
+) -> None:
     shared = "src.utils.models.components.rope.apply_rotary_emb"
     roots = {
-        path[0] for _, _, path in _transitive_forward_functions() if path[-1] == shared
+        path[0] for _, _, path in transitive_forward_inventory if path[-1] == shared
     }
     assert {
         "src.utils.models.components.attention.MultiHeadSelfAttention.forward",
@@ -1617,8 +1682,10 @@ def test_transitive_forward_inventory_keeps_shared_helper_roots_distinct() -> No
     } <= roots
 
 
-def test_transitive_forward_inventory_crosses_repository_modules() -> None:
-    call_paths = {call_path for _, _, call_path in _transitive_forward_functions()}
+def test_transitive_forward_inventory_crosses_repository_modules(
+    transitive_forward_inventory: tuple[ForwardFunction, ...],
+) -> None:
+    call_paths = {call_path for _, _, call_path in transitive_forward_inventory}
     expected_cross_module_paths = {
         (
             "src.tasks.ball_detection.models.conv_next_unet.StemLayer.forward",
@@ -1633,7 +1700,9 @@ def test_transitive_forward_inventory_crosses_repository_modules() -> None:
     assert expected_cross_module_paths <= call_paths
 
 
-def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
+def test_removed_modules_have_no_forwarding_path_or_owned_reference(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     deleted = _deleted_repository_modules()
     original = frozenset(REMOVED_MODULES)
     assert original <= deleted
@@ -1658,14 +1727,24 @@ def test_removed_modules_have_no_forwarding_path_or_owned_reference() -> None:
     missing = [module for module in removed if _module_path(module) is not None]
     assert not missing, f"removed modules still exist: {missing}"
 
+    # Compiling inside the file/module Cartesian product thrashes re's bounded
+    # cache. Keep the same two spellings and token boundary, compiled once.
+    reference_patterns = {
+        module: re.compile(
+            "|".join(
+                re.escape(reference) + r"(?![A-Za-z0-9_])"
+                for reference in (module, module.replace(".", "/"))
+            )
+        )
+        for module in removed
+    }
     stale: list[str] = []
-    for path in _repository_consumer_files():
+    for path in repository_snapshot.consumer_files:
         if path.resolve() == Path(__file__).resolve():
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for module in removed:
-            references = (module, module.replace(".", "/"))
-            if any(re.search(re.escape(reference) + r"(?![A-Za-z0-9_])", text) for reference in references):
+        text = repository_snapshot.texts[path]
+        for module, pattern in reference_patterns.items():
+            if pattern.search(text):
                 stale.append(f"{path.relative_to(REPOSITORY_ROOT)}: {module}")
     assert not stale, "stale removed-module references:\n" + "\n".join(stale)
 
@@ -1682,13 +1761,15 @@ def test_task_local_generation_and_chunk_consumers_remain_supported() -> None:
     )
 
 
-def test_court_view_geometry_and_transform_authorities_are_centralized() -> None:
+def test_court_view_geometry_and_transform_authorities_are_centralized(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     definitions: dict[str, set[str]] = {
         symbol: set() for symbol in COURT_VIEW_SYMBOL_AUTHORITIES
     }
-    for path in _repository_python_files():
+    for path in repository_snapshot.python_files:
         relative_path = str(path.relative_to(REPOSITORY_ROOT))
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = repository_snapshot.trees[path]
         for node in tree.body:
             bindings: set[str] = set()
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1710,10 +1791,12 @@ def test_court_view_geometry_and_transform_authorities_are_centralized() -> None
     assert not violations, "Court-view authority violations:\n" + "\n".join(violations)
 
 
-def test_compatibility_symbols_are_not_defined_or_reexported() -> None:
+def test_compatibility_symbols_are_not_defined_or_reexported(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     violations: list[str] = []
-    for path in _repository_python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for path in repository_snapshot.python_files:
+        tree = repository_snapshot.trees[path]
         for node in tree.body:
             bindings: set[str] = set()
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -1734,15 +1817,14 @@ def test_compatibility_symbols_are_not_defined_or_reexported() -> None:
     assert not violations, "compatibility symbols:\n" + "\n".join(violations)
 
 
-def test_compatibility_declarations_and_unused_private_forwarders_are_absent() -> None:
-    reference_trees = tuple(
-        ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for path in _repository_reference_python_files()
-    )
+def test_compatibility_declarations_and_unused_private_forwarders_are_absent(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
+    reference_trees = repository_snapshot.trees.values()
     referenced_names = _referenced_member_names(reference_trees)
     violations: list[str] = []
-    for path in _repository_python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for path in repository_snapshot.python_files:
+        tree = repository_snapshot.trees[path]
         for node in ast.walk(tree):
             if isinstance(
                 node,
@@ -1820,10 +1902,12 @@ class ActiveAdapters:
     )
 
 
-def test_static_src_import_modules_exist() -> None:
+def test_static_src_import_modules_exist(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     missing: list[str] = []
-    for path in _repository_reference_python_files():
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for path in repository_snapshot.reference_python_files:
+        tree = repository_snapshot.trees[path]
         for node in ast.walk(tree):
             modules: tuple[str, ...] = ()
             if isinstance(node, ast.Import):
@@ -1838,15 +1922,17 @@ def test_static_src_import_modules_exist() -> None:
     assert not missing, "unresolved repository imports:\n" + "\n".join(missing)
 
 
-def test_repository_cli_and_dynamic_target_modules_exist() -> None:
+def test_repository_cli_and_dynamic_target_modules_exist(
+    repository_snapshot: _RepositorySnapshot,
+) -> None:
     patterns = (
         re.compile(r"\bpython(?:3)?\s+-m\s+(src(?:\.[A-Za-z_]\w*)+)"),
         re.compile(r"(?m)^\s*_target_:\s*['\"]?(src(?:\.[A-Za-z_]\w*)+)"),
     )
     discovered: list[tuple[Path, str]] = []
     missing: list[str] = []
-    for path in _repository_consumer_files():
-        text = path.read_text(encoding="utf-8", errors="replace")
+    for path in repository_snapshot.consumer_files:
+        text = repository_snapshot.texts[path]
         for pattern in patterns:
             for match in pattern.finditer(text):
                 module = match.group(1)
@@ -1856,3 +1942,77 @@ def test_repository_cli_and_dynamic_target_modules_exist() -> None:
 
     assert discovered, "consumer scan found no CLI or dynamic-target modules"
     assert not missing, "unresolved CLI/dynamic modules:\n" + "\n".join(missing)
+
+
+def test_repository_snapshot_is_fresh_and_detects_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    probe = tmp_path / "src/domain/probe.py"
+    probe.parent.mkdir(parents=True)
+    probe.write_text("before = 1\n", encoding="utf-8")
+    relatives = (
+        "src/__init__.py",
+        "src/domain/probe.py",
+        "src/submodules/vendor/probe.py",
+        "scripts/probe.py",
+        "tests/test_reference.py",
+        "tests/benchmarks/probe.py",
+        "tests/fixtures/config.yaml",
+    )
+    for relative in relatives:
+        path = tmp_path / relative
+        if path != probe:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("", encoding="utf-8")
+    scans = 0
+    parsed: list[str] = []
+    parse = ast.parse
+
+    def inventory(*_arguments: str) -> tuple[str, ...]:
+        nonlocal scans
+        scans += 1
+        return relatives
+
+    def count_parse(text: str, *, filename: str) -> ast.Module:
+        parsed.append(filename)
+        return parse(text, filename=filename)
+
+    monkeypatch.setattr(sys.modules[__name__], "REPOSITORY_ROOT", tmp_path)
+    monkeypatch.setattr(sys.modules[__name__], "_git_paths", inventory)
+    monkeypatch.setattr(ast, "parse", count_parse)
+    first = _scan_repository()
+    assert first.python_files == (probe,)
+    reference_files = tuple(
+        tmp_path / relative
+        for relative in (
+            "src/__init__.py",
+            "src/domain/probe.py",
+            "scripts/probe.py",
+            "tests/test_reference.py",
+            "tests/benchmarks/probe.py",
+        )
+    )
+    assert first.reference_python_files == reference_files
+    assert first.consumer_files == (
+        tmp_path / "src/__init__.py",
+        probe,
+        tmp_path / "scripts/probe.py",
+        tmp_path / "tests/benchmarks/probe.py",
+    )
+    first.assert_unchanged()
+    probe.write_text("after = 22\n", encoding="utf-8")
+    with pytest.raises(AssertionError, match="snapshot source changed"):
+        first.assert_unchanged()
+    second = _scan_repository()
+    assert first.texts[probe] == "before = 1\n"
+    assert second.texts[probe] == "after = 22\n"
+    assert scans == 2 and parsed == [str(path) for path in reference_files] * 2
+    with pytest.raises(TypeError):
+        cast(dict[Path, str], second.texts)[probe] = "changed"
+    with pytest.raises(TypeError):
+        cast(dict[Path, ast.Module], second.trees)[probe] = first.trees[probe]
+    second.assert_unchanged()
+    second.trees[probe].body.clear()
+    with pytest.raises(AssertionError, match="shared repository AST mutated"):
+        second.assert_unchanged()
