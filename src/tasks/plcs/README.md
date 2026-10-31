@@ -94,6 +94,60 @@ chunk生成はtrainだけを更新し、val/testは固定splitから読みます
 `training=gan_small` / `gan_base` / `gan_large`でdiscriminatorを選択できます。
 checkpointの座標契約・設定・state dictの不一致はエラーになります。
 
+## 骨格損失と退化頻度
+
+幾何の有効domain・結果型・暫定しきい値は
+[共有骨格契約](../../utils/README.md#skeleton-geometry-contract)を参照してください。
+static 4 termと角速度3 termは、padding frameを幾何計算前に除外します。
+targetの退化は欠測として特徴量ごとに除外し、predの退化はtargetの有無にかかわらず例外です。
+各frame内の有効特徴の平均を取り、観測のあるframe間で平均します。
+角速度では隣接する両端の特徴maskをANDし、paddingや欠測を跨いで差分を取りません。
+有効な特徴・遷移がterm全体に1つもなければ例外です。角速度には2 frame以上が必要です。
+全有効入力の損失数値と既存の重み・角速度の特徴別重みのscaleは維持します。
+
+weight=0のtermは計算せず、`PLCSLoss`の結果にも含めません。
+`analyze_loss_dominance`も有効termのみを報告します。raw lossを調べるtermは、
+設定・解析overrideで明示的に有効にしてください。
+`analyze_angle_velocity`は特徴ごとの有効遷移を分母に使い、joint/torsionの
+`sample_count`を特徴順の配列で保存します。観測0のchannelは統計・重みをJSONのnullにし、
+family全体が観測0なら例外にします。nullを含む重みは学習設定へそのまま転記できません。
+
+退化頻度はCPU CLIで教師・学習済み予測を別集計できます。全pathは絶対pathで指定します。
+
+```bash
+CUDA_VISIBLE_DEVICES="" OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 \
+.venv/bin/python -m src.tasks.plcs.scripts.analysis.analyze_skeleton_validity \
+  --target-scenes /absolute/data/plcs/single_object/scenes \
+  --prediction /absolute/exports/trained_predictions.npz \
+  --length-thresholds-m 0 1e-6 1e-4 --plane-thresholds 0 1e-6 1e-3 \
+  --output /absolute/reports/skeleton_validity.json
+```
+
+`--target-scenes`は保存された`human_kp_3d.npy`を再帰走査します。保存sceneには
+collatorのpaddingがないため全frameを観測とします。元ACCAD/AMASSのSMPL-H配列を直接渡さず、
+既存生成経路でCOCO17[m]へ変換した教師を使ってください。
+補間・augmentation後の実際の学習教師は`--target`でNPZを指定します。
+`--target` / `--prediction`は複数回指定でき、各NPZは次の2配列だけを持ちます。
+
+- `pose_m`: float32/64の`(T,17,3)`または`(B,T,17,3)`。教師はworld/canonicalのCOCO17[m]、
+  予測は学習済みcheckpointから得た`outputs.canonical_pose`。court正規化座標は不可。
+- `padding_mask`: bool、True=padding。poseのframe軸と同shape。
+  batchの`(B,V,T)`も受け付け、全viewがpaddingのframeを除外します。
+
+推論の各batchで、例えば
+`np.savez(path, pose_m=outputs.canonical_pose.detach().cpu().numpy(), padding_mask=batch["padding_mask"].cpu().numpy())`
+としてshardを保存します。教師は`pose_m=batch["human_kp_3d"].cpu().numpy()`です。
+checkpoint・dataset split・seed・augmentation条件をexportと一緒に記録し、CPU/GPUの
+推論環境と入力資産を準備してください。このCLI自体は推論・学習を起動しません。
+
+出力はsource別のpadding件数、非padding件数、骨/面/torso軸ごとの候補しきい値以下の
+件数・割合、少なくとも1特徴が該当するframeの件数・割合、特徴順、入力fileと処理秒数です。
+面は正規化crossで判定し、zero骨/軸から作れない面の診断値は0とします。
+したがって短い骨と無効面の理由別件数は重なり得ます。しきい値0でexact zeroも数えます。
+非paddingの非有限値や全padding入力は例外です。
+保存sceneはmmapと4096 frame単位で走査し、NPZは1 fileずつ展開するため、
+大きい予測はbatch単位のshardに分けてください。
+
 ## 閲覧・推論
 
 起動方法は[Web UIガイド](visualization/README.md)を参照してください。

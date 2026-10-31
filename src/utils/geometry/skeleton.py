@@ -1,16 +1,17 @@
-"""Skeleton / 3D pose geometry helpers (torch).
+"""Differentiable COCO-17 geometry with explicit feature validity.
 
-Joint-angle, torsion, torso-twist and bone-length computations over COCO-17
-poses. Extracted from ``plcs`` losses so analysis scripts and other tasks can
-reuse them without importing the loss module.
+Positions and length thresholds are in metres. Callers remove padding first;
+nonfinite poses are rejected. Invalid features have a zero storage value and
+zero gradient, and must only be used with their mask. See ``utils/README.md``.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 from torch import Tensor
 
-from src.utils.geometry.angles import normalize_vector, signed_angle_around_axis
 from src.utils.schema.player import (
     COCO17_BONE_LENGTH_EDGES,
     COCO17_JOINT_ANGLE_TRIPLETS,
@@ -18,142 +19,219 @@ from src.utils.schema.player import (
     COCO17_TORSO_TWIST_JOINTS,
 )
 
+# Provisional until ACCAD/AMASS targets AND trained predictions are measured.
+# Physical length [m] and dimensionless sin(angle) are separate domain tests.
+MIN_BONE_LENGTH_M: float = 1e-6
+MIN_PLANE_SINE: float = 1e-6
+
+
+@dataclass(frozen=True)
+class SkeletonValues:
+    """Values and same-shaped bool validity (twist has no feature axis).
+
+    Invalid zeroes are storage only, not observed angles/lengths. A prediction
+    must pass :meth:`require_valid` even when its target feature is missing.
+    """
+
+    values: Tensor
+    valid: Tensor
+
+    def require_valid(self, context: str) -> None:
+        """Reject degenerate predictions with sample/feature indices."""
+        if not bool(self.valid.all()):
+            indices = (~self.valid).nonzero()[:8].tolist()
+            raise ValueError(
+                f"{context}: degenerate/invalid skeleton features at indices "
+                f"{indices} (last index is feature, except for torso twist)."
+            )
+
+
+def _validate_pose(pose: Tensor) -> None:
+    if pose.ndim < 2 or pose.shape[-1] != 3 or not pose.is_floating_point():
+        raise ValueError(
+            "pose must be floating point with shape (..., J, 3) in metres."
+        )
+    if not bool(torch.isfinite(pose).all()):
+        raise ValueError(
+            "pose must contain only finite coordinates (remove padding first)."
+        )
+
+
+def _length_valid(vector: Tensor) -> Tensor:
+    # Domain decisions do not create a backward path through zero norms.
+    with torch.no_grad():
+        return torch.linalg.vector_norm(vector, dim=-1) > MIN_BONE_LENGTH_M
+
+
+def _plane_sine(first: Tensor, second: Tensor) -> Tensor:
+    """Dimensionless cross magnitude; zero-length inputs give diagnostic 0."""
+    with torch.no_grad():
+
+        def unit_or_zero(v: Tensor) -> Tensor:
+            length = torch.linalg.vector_norm(v, dim=-1, keepdim=True)
+            return v / torch.where(length > 0, length, torch.ones_like(length))
+
+        return torch.linalg.vector_norm(
+            torch.cross(unit_or_zero(first), unit_or_zero(second), dim=-1), dim=-1
+        )
+
+
+def _replace_invalid(
+    vector: Tensor, valid: Tensor, fallback: tuple[int, int, int]
+) -> Tensor:
+    # Must precede norm/normalization/atan2, not merely mask their outputs.
+    return torch.where(valid.unsqueeze(-1), vector, vector.new_tensor(fallback))
+
+
+def _unit(vector: Tensor) -> Tensor:
+    """Normalize vectors already selected/replaced into the valid domain."""
+    return vector / torch.linalg.vector_norm(vector, dim=-1, keepdim=True)
+
+
+def _result(values: Tensor, valid: Tensor) -> SkeletonValues:
+    return SkeletonValues(torch.where(valid, values, torch.zeros_like(values)), valid)
+
 
 def compute_joint_angles(
     pose: Tensor,
     triplets: tuple[tuple[int, int, int], ...] = COCO17_JOINT_ANGLE_TRIPLETS,
-) -> Tensor:
-    """Compute interior joint angles in radians.
+) -> SkeletonValues:
+    """Interior angles [rad], shape ``(..., A)``; both bones must be valid.
 
-    For each triplet ``(a, vertex, c)``, computes the angle at ``vertex``
-    between bones ``vertex -> a`` and ``vertex -> c`` using
-    ``atan2(||v1 x v2||, v1 . v2)``, which is stable near 0 and pi.
-
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        triplets: Joint index triplets.
-
-    Returns:
-        Tensor: Angles in radians, shape ``(..., len(triplets))``.
+    Nonzero collinear bones have valid interior angles 0/pi. No claim is made
+    about a unique derivative at these nonsmooth endpoints.
     """
-    a_idx = [t[0] for t in triplets]
-    b_idx = [t[1] for t in triplets]
-    c_idx = [t[2] for t in triplets]
-
-    vertex = pose[..., b_idx, :]
-    v1 = pose[..., a_idx, :] - vertex
-    v2 = pose[..., c_idx, :] - vertex
-
-    cross_norm = torch.cross(v1, v2, dim=-1).norm(dim=-1)
+    _validate_pose(pose)
+    vertex = pose[..., [t[1] for t in triplets], :]
+    v1 = pose[..., [t[0] for t in triplets], :] - vertex
+    v2 = pose[..., [t[2] for t in triplets], :] - vertex
+    valid = _length_valid(v1) & _length_valid(v2)
+    v1 = _replace_invalid(v1, valid, (1, 0, 0))
+    v2 = _replace_invalid(v2, valid, (0, 1, 0))
+    cross_norm = torch.linalg.vector_norm(torch.cross(v1, v2, dim=-1), dim=-1)
     dot = (v1 * v2).sum(dim=-1)
-    return torch.atan2(cross_norm, dot)
+    return _result(torch.atan2(cross_norm, dot), valid)
+
+
+def _torsion_bones(
+    pose: Tensor, quadruplets: tuple[tuple[int, int, int, int], ...]
+) -> tuple[Tensor, Tensor, Tensor]:
+    p0, p1, p2, p3 = (pose[..., [q[i] for q in quadruplets], :] for i in range(4))
+    return p1 - p0, p2 - p1, p3 - p2
 
 
 def compute_torsion_angles(
     pose: Tensor,
     quadruplets: tuple[tuple[int, int, int, int], ...] = COCO17_TORSION_QUADRUPLETS,
-    *,
-    eps: float = 1e-8,
-) -> Tensor:
-    """Compute signed torsion / dihedral angles in radians.
+) -> SkeletonValues:
+    """Signed dihedrals [rad], shape ``(..., A)``.
 
-    For each quadruplet ``(a, b, c, d)``, computes the signed angle between
-    plane ``(a, b, c)`` and plane ``(b, c, d)``, capturing the 3D bending
-    direction of limbs.
-
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        quadruplets: Joint index quadruplets.
-        eps: Numerical stability epsilon.
-
-    Returns:
-        Tensor: Signed torsion angles in radians, shape
-        ``(..., len(quadruplets))``.
+    All three bones and both normalized cross products must be valid. The
+    signed branch near +/-pi remains in the domain when the planes exist.
     """
-    a_idx = [q[0] for q in quadruplets]
-    b_idx = [q[1] for q in quadruplets]
-    c_idx = [q[2] for q in quadruplets]
-    d_idx = [q[3] for q in quadruplets]
-
-    p0 = pose[..., a_idx, :]
-    p1 = pose[..., b_idx, :]
-    p2 = pose[..., c_idx, :]
-    p3 = pose[..., d_idx, :]
-
-    b0 = p1 - p0
-    b1 = p2 - p1
-    b2 = p3 - p2
-
-    n1 = normalize_vector(torch.cross(b0, b1, dim=-1), eps=eps)
-    n2 = normalize_vector(torch.cross(b1, b2, dim=-1), eps=eps)
-    b1n = normalize_vector(b1, eps=eps)
-
-    # Signed dihedral angle.
-    m1 = torch.cross(n1, b1n, dim=-1)
+    _validate_pose(pose)
+    b0, b1, b2 = _torsion_bones(pose, quadruplets)
+    valid = (
+        _length_valid(b0)
+        & _length_valid(b1)
+        & _length_valid(b2)
+        & (_plane_sine(b0, b1) > MIN_PLANE_SINE)
+        & (_plane_sine(b1, b2) > MIN_PLANE_SINE)
+    )
+    b0 = _unit(_replace_invalid(b0, valid, (1, 0, 0)))
+    b1 = _unit(_replace_invalid(b1, valid, (0, 1, 0)))
+    b2 = _unit(_replace_invalid(b2, valid, (0, 0, 1)))
+    n1 = _unit(torch.cross(b0, b1, dim=-1))
+    n2 = _unit(torch.cross(b1, b2, dim=-1))
     x = (n1 * n2).sum(dim=-1)
-    y = (m1 * n2).sum(dim=-1)
-    return torch.atan2(y, x)
+    y = (torch.cross(n1, b1, dim=-1) * n2).sum(dim=-1)
+    return _result(torch.atan2(y, x), valid)
+
+
+def _torso_axes(
+    pose: Tensor, joints: tuple[int, int, int, int]
+) -> tuple[Tensor, Tensor, Tensor]:
+    ls, rs, lh, rh = (pose[..., i, :] for i in joints)
+    return rh - lh, rs - ls, 0.5 * (ls + rs) - 0.5 * (lh + rh)
 
 
 def compute_torso_twist(
     pose: Tensor,
     joints: tuple[int, int, int, int] = COCO17_TORSO_TWIST_JOINTS,
-) -> Tensor:
-    """Compute the shoulder-hip twist angle from a COCO-17 pose.
+) -> SkeletonValues:
+    """Hip-to-shoulder signed twist [rad], shape ``(...)``.
 
-    The twist is the signed angle from the hip axis to the shoulder axis around
-    the torso axis.
-
-    Args:
-        pose: Joint positions, shape ``(..., 17, 3)``.
-        joints: ``(left_shoulder, right_shoulder, left_hip, right_hip)``.
-
-    Returns:
-        Tensor: Signed torso twist angle in radians, shape ``(...)``.
+    Hip, shoulder and torso axes must have valid length; hip/shoulder axes
+    must each define a plane with the torso axis (valid transverse projection).
     """
-    left_shoulder_idx, right_shoulder_idx, left_hip_idx, right_hip_idx = joints
-
-    left_shoulder = pose[..., left_shoulder_idx, :]
-    right_shoulder = pose[..., right_shoulder_idx, :]
-    left_hip = pose[..., left_hip_idx, :]
-    right_hip = pose[..., right_hip_idx, :]
-
-    mid_shoulder = 0.5 * (left_shoulder + right_shoulder)
-    mid_hip = 0.5 * (left_hip + right_hip)
-
-    shoulder_axis = right_shoulder - left_shoulder
-    hip_axis = right_hip - left_hip
-    torso_axis = mid_shoulder - mid_hip
-
-    return signed_angle_around_axis(hip_axis, shoulder_axis, torso_axis)
+    _validate_pose(pose)
+    hip, shoulder, torso = _torso_axes(pose, joints)
+    valid = (
+        _length_valid(hip)
+        & _length_valid(shoulder)
+        & _length_valid(torso)
+        & (_plane_sine(hip, torso) > MIN_PLANE_SINE)
+        & (_plane_sine(shoulder, torso) > MIN_PLANE_SINE)
+    )
+    hip = _unit(_replace_invalid(hip, valid, (1, 0, 0)))
+    shoulder = _unit(_replace_invalid(shoulder, valid, (0, 1, 0)))
+    axis = _unit(_replace_invalid(torso, valid, (0, 0, 1)))
+    hip_proj = _unit(hip - (hip * axis).sum(dim=-1, keepdim=True) * axis)
+    shoulder_proj = _unit(shoulder - (shoulder * axis).sum(dim=-1, keepdim=True) * axis)
+    x = (hip_proj * shoulder_proj).sum(dim=-1)
+    y = (torch.cross(hip_proj, shoulder_proj, dim=-1) * axis).sum(dim=-1)
+    return _result(torch.atan2(y, x), valid)
 
 
 def compute_bone_lengths(
     pose: Tensor,
     edges: tuple[tuple[int, int], ...] = COCO17_BONE_LENGTH_EDGES,
-    *,
-    eps: float = 1e-8,
-) -> Tensor:
-    """Compute bone lengths for selected COCO body edges.
+) -> SkeletonValues:
+    """Bone lengths [m], shape ``(..., A)``; zero/short bones are missing."""
+    _validate_pose(pose)
+    bone = pose[..., [e[0] for e in edges], :] - pose[..., [e[1] for e in edges], :]
+    valid = _length_valid(bone)
+    bone = _replace_invalid(bone, valid, (1, 0, 0))
+    return _result(torch.linalg.vector_norm(bone, dim=-1), valid)
 
-    Args:
-        pose: Joint positions, shape ``(..., J, 3)``.
-        edges: Bone edges as ``(joint_a, joint_b)``.
-        eps: Numerical stability epsilon.
 
-    Returns:
-        Tensor: Bone lengths, shape ``(..., len(edges))``.
+def skeleton_domain_metrics(pose: Tensor) -> dict[str, Tensor]:
+    """Raw per-feature metrics for threshold surveys, using the API geometry.
+
+    Zero-length bones produce diagnostic plane sine 0, not a measured plane.
+    Axes are ordered hip/shoulder/torso; planes left/right limb pairs and
+    hip/shoulder transverse projections. Padding must be removed by the caller.
     """
-    a_idx = [e[0] for e in edges]
-    b_idx = [e[1] for e in edges]
-
-    bone_vec = pose[..., a_idx, :] - pose[..., b_idx, :]
-    return torch.clamp_min(torch.linalg.vector_norm(bone_vec, dim=-1), eps)
+    with torch.no_grad():
+        _validate_pose(pose)
+        b0, b1, b2 = _torsion_bones(pose, COCO17_TORSION_QUADRUPLETS)
+        hip, shoulder, torso = _torso_axes(pose, COCO17_TORSO_TWIST_JOINTS)
+        edges = COCO17_BONE_LENGTH_EDGES
+        bones = (
+            pose[..., [e[0] for e in edges], :] - pose[..., [e[1] for e in edges], :]
+        )
+        return {
+            "bone_length_m": torch.linalg.vector_norm(bones, dim=-1),
+            "torsion_plane_sine": torch.stack(
+                [_plane_sine(b0, b1), _plane_sine(b1, b2)], dim=-1
+            ),
+            "torso_axis_length_m": torch.stack(
+                [torch.linalg.vector_norm(v, dim=-1) for v in (hip, shoulder, torso)],
+                dim=-1,
+            ),
+            "torso_plane_sine": torch.stack(
+                [_plane_sine(hip, torso), _plane_sine(shoulder, torso)], dim=-1
+            ),
+        }
 
 
 __all__ = [
+    "MIN_BONE_LENGTH_M",
+    "MIN_PLANE_SINE",
+    "SkeletonValues",
     "compute_bone_lengths",
     "compute_joint_angles",
     "compute_torsion_angles",
     "compute_torso_twist",
+    "skeleton_domain_metrics",
 ]

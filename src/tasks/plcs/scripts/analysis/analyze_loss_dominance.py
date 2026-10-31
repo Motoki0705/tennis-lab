@@ -131,14 +131,16 @@ def analyze(
 
     # PLCSLoss is the single source of truth for which terms exist and their
     # weights, so the analysis automatically tracks every registered term
-    # (including the pose-naturalness losses) without hard-coded names. Loss
+    # (including enabled pose-naturalness losses) without hard-coded names. Loss
     # weights default to the checkpoint's hparams, optionally overridden to
     # preview a candidate weighting.
     loss_weights = dict(config.loss)
     if loss_overrides:
         loss_weights.update(loss_overrides)
     loss_fn = PLCSLoss(config=PLCSLossConfig.from_dict(loss_weights))
-    term_names = tuple(loss_fn.loss_terms)
+    term_names = tuple(
+        name for name in loss_fn.loss_terms if loss_fn.weight_for(name) > 0.0
+    )
 
     metrics = PLCSMetrics(
         position_threshold_m=float(config.metrics.position_threshold_m),
