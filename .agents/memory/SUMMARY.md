@@ -27,6 +27,7 @@
 - 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
+- ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
 
 ## [review](review/index.md) — マージ可否の判断基準
