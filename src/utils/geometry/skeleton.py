@@ -19,7 +19,8 @@ from src.utils.schema.player import (
     COCO17_TORSO_TWIST_JOINTS,
 )
 
-# Provisional until ACCAD/AMASS targets AND trained predictions are measured.
+# Adopted values (#1539, 2026-11-01 user decision); not tuned on measured
+# frequencies. Re-qualify with analyze_skeleton_validity before changing them.
 # Physical length [m] and dimensionless sin(angle) are separate domain tests.
 MIN_BONE_LENGTH_M: float = 1e-6
 MIN_PLANE_SINE: float = 1e-6

@@ -262,7 +262,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     results: dict[str, Any] = {
         "length_unit": "metre",
         "plane_metric": "normalized_cross_magnitude",
-        "thresholds_provisional": True,
+        "api_thresholds": {
+            "min_bone_length_m": MIN_BONE_LENGTH_M,
+            "min_plane_sine": MIN_PLANE_SINE,
+        },
         "sources": {},
     }
     for name in ("target", "prediction", "target_scenes"):

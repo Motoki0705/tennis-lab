@@ -67,7 +67,8 @@ paddingは呼び出し側で**計算前**に除外し、非有限座標は未使
 
 有効domainのしきい値はこのmoduleの2定数だけで定義します。
 `MIN_BONE_LENGTH_M = 1e-6` [m]、`MIN_PLANE_SINE = 1e-6` [無次元] は、
-**ACCAD/AMASS教師と学習済み予測の非padding退化頻度を測定するまでの暫定値**です。
+採用値です（#1539でユーザーが決定）。実データの退化頻度にもとづく調整はしていません。
+変更するときは、`analyze_skeleton_validity` で教師と学習済み予測の頻度を測ってから決めます。
 長さ、または単位ベクトルのcrossの大きさが対応するしきい値以下なら無効です。
 jointは両骨、torsionは3骨と2面、twistはhip/shoulder/torsoの3軸と
 hip・shoulderそれぞれのtorsoに垂直な投影を定める2面、lengthは当該骨を検査します。
