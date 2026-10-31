@@ -183,8 +183,6 @@ def sync(
     if bind_native and (not session_start or session_end):
         raise ValueError("native binding requires a SessionStart event")
     identity = session_identity(dict(env))
-    if session_start and env.get("HERDR_ENV") != "1":
-        raise ValueError("lifecycle events require the inherited Herdr caller context")
     destination = target(env, identity)
     if destination is None:
         return {
@@ -192,7 +190,7 @@ def sync(
             "reason": "no Herdr caller context or explicit binding",
         }
     client, pane = destination
-    if session_end and env.get("HERDR_ENV") != "1":
+    if (session_start or session_end) and env.get("HERDR_ENV") != "1":
         raise ValueError("lifecycle events require the inherited Herdr caller context")
     guard = Guard(env, identity, client, pane)
     if session_start or session_end:

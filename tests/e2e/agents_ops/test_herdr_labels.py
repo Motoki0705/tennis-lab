@@ -445,9 +445,7 @@ def test_session_start_does_not_notify_when_registry_is_unverifiable(
     assert not labels.mutations()
 
 
-@pytest.mark.parametrize(
-    "failure", ["pane current", "pane process-info", "env_file", "herdr_env"]
-)
+@pytest.mark.parametrize("failure", ["pane current", "pane process-info", "env_file"])
 def test_session_start_does_not_notify_before_native_verification(
     resuming_labels: Labels, failure: str
 ) -> None:
@@ -457,9 +455,6 @@ def test_session_start_does_not_notify_before_native_verification(
         # A directory forces the env-file write to fail before sync.
         labels.env["CLAUDE_ENV_FILE"] = str(labels.root)
         reason = "Is a directory"
-    elif failure == "herdr_env":
-        labels.env.pop("HERDR_ENV")
-        reason = "lifecycle events require the inherited Herdr caller context"
     else:
         state["fail_call"] = failure
         labels.write(state)
@@ -473,6 +468,30 @@ def test_session_start_does_not_notify_before_native_verification(
     assert reason in result.stderr
     assert owner.read_bytes() == before
     assert labels.read()["panes"] == state["panes"]
+    assert not labels.mutations()
+
+
+def test_session_start_outside_herdr_without_binding_is_not_configured(
+    resuming_labels: Labels,
+) -> None:
+    labels = resuming_labels
+    for key in list(labels.env):
+        if key.startswith("HERDR_"):
+            labels.env.pop(key)
+    root = labels.registry.parents[1] / "herdr-labels"
+    assert not list((root / "bindings").glob("*.json"))
+    owner = next((root / "owners").glob("*.json"))
+    before = owner.read_bytes()
+    state = labels.read()
+    result = labels.hook("SessionStart", source="startup")
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    data = json.loads(result.stdout)
+    assert data["herdr_label"]["status"] == "not_configured"
+    assert "hookSpecificOutput" not in data
+    assert "systemMessage" not in data
+    assert owner.read_bytes() == before
+    assert labels.read() == state  # No Herdr calls or display changes.
     assert not labels.mutations()
 
 

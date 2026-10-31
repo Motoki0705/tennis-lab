@@ -134,8 +134,9 @@ SessionStartの拒否・失敗のうち、`require_native_ancestor()`を通過�
 会話にJSONを届けるため終了値は0とするが、通知内では表示同期の失敗と明示する。
 同期処理は子孫検査の通過後、`Guard.native_verified`を確認した失敗だけを
 `VerifiedSessionStartError`としてhookへ渡す。hookはこの型だけを通知の候補にする。
-検査前のpane・process-infoの取得失敗、`CLAUDE_ENV_FILE`への書込み失敗、Herdr環境の不足、
+検査前のpane・process-infoの取得失敗、`CLAUDE_ENV_FILE`への書込み失敗、
 子孫検査そのものの失敗はstderrと終了値1で返し、stdoutへ通知を出さない。
+Herdr外でbindもないSessionStartは`not_configured`と終了値0を返し、修復案内を付けない。
 identity不正・子agent・foreground agentの子孫でない呼出し・入れ子のagent・未担当sessionには
 修復案内を送らず、従来どおりstderrと終了値1で拒否する。
 registryの読取失敗などで担当を判定できない場合も、担当を推測せず、
