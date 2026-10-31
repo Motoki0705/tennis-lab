@@ -1359,6 +1359,13 @@ def test_delegation_reconcile_and_completed_tasks_do_not_relaunch(
     p.agreed()
     p.child("a")
     p.child("b")
+
+    def titles() -> tuple[str, str]:
+        # Local task names feed read-only status views (worker_status).
+        tasks = json.loads(p.cli("status").stdout)["tasks"]
+        return tasks["10"]["title"], tasks["11"]["title"]
+
+    assert titles() == ("a", "b")
     a, b = p.worktree("a"), p.worktree("b")
     for child, name, path in ((10, "a", a), (11, "b", b)):
         response = p.cli(
@@ -1386,6 +1393,15 @@ def test_delegation_reconcile_and_completed_tasks_do_not_relaunch(
         str(a),
         ok=False,
     )
+    assert titles() == ("a", "b")
+    # A renamed child issue updates the recorded name on the next sync.
+    state = p.state()
+    assert state["issues"]["11"]["title"].endswith("] b")
+    state["issues"]["11"]["title"] += "改名"
+    p.save(state)
+    p.cli("sync")
+    assert titles() == ("a", "b改名")
+    assert "- [ ] #11 b改名" in p.state()["issues"]["1"]["body"]
     result = json.loads(p.cli("reconcile").stdout)
     assert {t["action"] for t in result["tasks"]} == {"do_not_launch"}
     state = p.state()

@@ -13,6 +13,7 @@ from typing import Any
 from dispatcher.schedule import Schedule
 from parent.state import Store, state_directory
 
+from . import task_view
 from .github import parent_snapshot
 from .records import RecordError, inspect_run, timestamp
 from .safety import Guard, StatusError
@@ -219,6 +220,13 @@ def child_status(
         )
         if task.get("delegated")
         else None,
+        "title": {**guard.text(None), "source": None},
+        "worker": {
+            "agent": None,
+            "source": None,
+            "model": {"value": None, "basis": "unavailable"},
+            "effort": {"value": None, "basis": "unavailable"},
+        },
         "run": None,
         "observed_at": now.isoformat(),
         "last_activity_at": None,
@@ -241,6 +249,7 @@ def child_status(
         for key in ("delegated", "stopped"):
             if key in task and type(task[key]) is not bool:
                 raise ValueError("invalid task flag")
+        value["title"] = task_view.title(task, guard)
         if stopped:
             notes = task.get("last_status", {})
             if not isinstance(notes, dict):
@@ -251,6 +260,9 @@ def child_status(
         deps = local_dependencies(task, row["tasks"])
         value["dependencies"] = deps
         run, availability = latest_run(task, row, child, state, dispatch_enabled)
+        value["worker"] = task_view.unstarted(
+            task, basis="unavailable" if run else "not_started"
+        )
         if run:
             details = inspect_run(
                 run["directory"],
@@ -263,6 +275,7 @@ def child_status(
                 bound=tail_bytes,
                 tool_limit=tool_limit,
             )
+            value["worker"] = details.pop("settings")
             value["run"] = {
                 k: run[k] for k in ("alias", "kind", "recorded_at", "source")
             }
@@ -347,6 +360,8 @@ def child_status(
                 )
     except (ValueError, OSError, KeyError, TypeError, OverflowError) as exc:
         value["status"] = "unknown"
+        if isinstance(exc, RecordError) and exc.settings is not None:
+            value["worker"] = exc.settings
         value["evidence"].append(
             evidence(
                 exc.source if isinstance(exc, RecordError) else "runner.records",
@@ -374,6 +389,7 @@ def child_status(
     value["label"] = LABELS[value["status"]]
     if value["status"] != "running":
         value["updates_stalled"] = None
+    task_view.prefer_local_title(value)
     return value
 
 

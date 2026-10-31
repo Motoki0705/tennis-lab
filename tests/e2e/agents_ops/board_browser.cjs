@@ -352,34 +352,74 @@ async function main() {
       true,
     );
     await page.locator('[data-view="execution"]').click();
-    await page.locator(".execution-child").first().waitFor();
+    await page.locator(".graph-child-node").first().waitFor();
     assert.equal(await page.locator("#thread-pane").isVisible(), false);
     assert.equal(await page.locator("#compose").isVisible(), false);
-    assert.ok(
-      (await page.locator("#execution-parents").textContent()).includes(
-        "親 · Herdr 待機中",
-      ),
-    );
-    assert.equal(await page.locator("#execution-parents img").count(), 0);
-    await page.locator("#refresh-execution").click();
-    await page
-      .getByText("Issue 未完了（OPEN）", { exact: true })
+    const parentNode = page.locator(".graph-parent-node").first();
+    assert.ok((await parentNode.textContent()).includes("子の進行管理"));
+    assert.equal(await page.locator("#execution-graph img").count(), 0);
+    // Tree connector: the first child's branch starts under the parent icon.
+    const icon = await parentNode.locator(".graph-icon").boundingBox();
+    const branch = await page
+      .locator(".graph-leaf")
       .first()
-      .waitFor();
+      .evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        const style = getComputedStyle(node, "::before");
+        return box.left + parseFloat(style.left);
+      });
+    assert.ok(Math.abs(branch + 1 - (icon.x + icon.width / 2)) <= 2);
+    const child = page.locator(".graph-child-node").first();
+    const drawer = page.locator("#execution-drawer");
+    // Narrow screens (still 390px here): the drawer overlays the graph and
+    // closes with Escape, without horizontal page scroll.
+    await child.click();
+    await drawer.waitFor();
+    assert.equal(
+      await drawer.evaluate((node) => getComputedStyle(node).position),
+      "absolute",
+    );
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
       true,
     );
-    if (process.env.BOARD_BROWSER_ARTIFACT_DIR) {
+    if (process.env.BOARD_BROWSER_ARTIFACT_DIR)
       await page.screenshot({
         path: path.join(
           process.env.BOARD_BROWSER_ARTIFACT_DIR,
           "board-execution-mobile.png",
         ),
       });
-      await page.setViewportSize({ width: 1440, height: 1000 });
+    await drawer.press("Escape");
+    assert.equal(await drawer.isVisible(), false);
+    // Desktop: the drawer is a side panel next to the graph.
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await child.click();
+    await drawer.waitFor();
+    const graphBox = await page.locator("#execution-graph").boundingBox();
+    const drawerBox = await drawer.boundingBox();
+    assert.ok(drawerBox.x >= graphBox.x + graphBox.width - 1);
+    assert.ok(
+      (await drawer.textContent()).includes(
+        "<img src=x onerror=alert(1)> を文字として表示",
+      ),
+    );
+    assert.equal(await drawer.locator("img").count(), 0);
+    await page.locator("#refresh-execution").click();
+    await drawer
+      .getByText("Issue 未完了（OPEN）", { exact: true })
+      .first()
+      .waitFor();
+    await page.getByText("+2 完了", { exact: true }).waitFor();
+    assert.equal(
+      await child.getAttribute("aria-pressed"),
+      "true",
+      "the selected node survives the explicit refresh",
+    );
+    if (process.env.BOARD_BROWSER_ARTIFACT_DIR) {
+      await page.locator(".graph-fold.fold-done").click();
       await page.screenshot({
         path: path.join(
           process.env.BOARD_BROWSER_ARTIFACT_DIR,
@@ -390,7 +430,7 @@ async function main() {
     assert.deepEqual(external, [], "no external assets or requests");
     assert.deepEqual(errors, [], "no JavaScript or CSP errors");
     console.log(
-      "browser interactions passed: compose, reply, reactions, read, mentions, IME, failure drafts, filters, mobile, CSP",
+      "browser interactions passed: compose, reply, reactions, read, mentions, IME, failure drafts, filters, execution graph, mobile, CSP",
     );
   } finally {
     await browser.close();

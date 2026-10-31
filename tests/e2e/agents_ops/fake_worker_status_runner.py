@@ -27,7 +27,10 @@ def main() -> int:
     directory = Path(args[args.index("--run-dir") + 1])
     path = directory / "result.json"
     record = json.loads(path.read_text())
-    record["contract"]["settings"] = {"agent": "codex"}
+    record["contract"]["settings"] = {
+        "agent": "codex",
+        "selected": {"model": "gpt-6.1-sol", "effort": "max"},
+    }
     record.update(
         run_dir=str(directory),
         session_root=str(directory),

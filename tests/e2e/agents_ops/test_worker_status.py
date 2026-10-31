@@ -117,7 +117,10 @@ def fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Any:
                     "task_id": DELEGATION,
                     "cwd": self.task["worktree"],
                     "branch": self.task["branch"],
-                    "settings": {"agent": "codex"},
+                    "settings": {
+                        "agent": "codex",
+                        "selected": {"model": "gpt-6.1-sol", "effort": "max"},
+                    },
                 },
                 "runtime": {
                     "session_id": "private-child-session",
@@ -329,6 +332,110 @@ def test_missing_result_only_uses_invocation_to_verify_contract(fixture: Any) ->
     child = f.child()
     assert child["status"] == "unknown"
     assert child["evidence"][-1]["code"] == "record_missing"
+
+
+# Display fields for the execution graph. The parent CLI's recorded task name is
+# shown as a guarded text. Worker settings prefer the CLI-reported effective
+# value, else the run contract's selected value (marked); an unverifiable result
+# still shows the verified invocation's selection. Without a run they are
+# explicitly not started, never configured defaults; an invalid value is unknown
+# and never echoed. Six local expansions (<1s each); GitHub names are covered by
+# test_github_is_explicit_get_only_and_separates_turn_from_acceptance.
+@pytest.mark.parametrize(
+    "case",
+    ["effective", "selected", "invocation", "reserved", "undelegated", "invalid"],
+)
+def test_task_title_and_worker_settings_are_explicit(fixture: Any, case: str) -> None:
+    f = fixture
+    f.task["title"] = "盤面表示の整理"
+    effective = {
+        "model": {
+            "status": "observed",
+            "value": "gpt-6.1-sol-latest",
+            "source": "/private/transcript.jsonl",
+        },
+        "effort": {"status": "unavailable", "value": None, "source": None},
+    }
+    if case in {"effective", "selected", "invocation"}:
+        f.record(
+            runtime={
+                "session_id": "private-child-session",
+                "turn_id": "private-turn",
+                **({"effective": effective} if case == "effective" else {}),
+            }
+        )
+    if case == "invocation":
+        result = f.run / "result.json"
+        (f.run / "invocation.json").write_bytes(result.read_bytes())
+        result.unlink()
+    if case == "invalid":
+        f.record()
+        record = json.loads((f.run / "result.json").read_text())
+        record["contract"]["settings"]["selected"]["model"] = "/private/model path"
+        (f.run / "result.json").write_text(json.dumps(record))
+    if case == "reserved":
+        f.task.update(
+            delegated=True, delegation_id=DELEGATION, agent="codex", worker_runs=[]
+        )
+    output = f.collect()
+    child = output["parents"][0]["children"][0]
+    assert child["title"] == {
+        "status": "visible",
+        "text": "盤面表示の整理",
+        "truncated": False,
+        "source": "parent_registry.task",
+    }
+
+    def setting(value: str | None, basis: str) -> dict[str, Any]:
+        return {"value": value, "basis": basis}
+
+    expected = {
+        "effective": (
+            "codex",
+            "runner.result",
+            setting("gpt-6.1-sol-latest", "effective"),
+            setting("max", "selected"),
+        ),
+        "selected": (
+            "codex",
+            "runner.result",
+            setting("gpt-6.1-sol", "selected"),
+            setting("max", "selected"),
+        ),
+        "invocation": (
+            "codex",
+            "runner.invocation",
+            setting("gpt-6.1-sol", "selected"),
+            setting("max", "selected"),
+        ),
+        "reserved": (
+            "codex",
+            "parent_registry.task",
+            setting(None, "not_started"),
+            setting(None, "not_started"),
+        ),
+        "undelegated": (
+            None,
+            None,
+            setting(None, "not_started"),
+            setting(None, "not_started"),
+        ),
+        "invalid": (
+            None,
+            None,
+            setting(None, "unavailable"),
+            setting(None, "unavailable"),
+        ),
+    }[case]
+    worker = child["worker"]
+    assert (worker["agent"], worker["source"], worker["model"], worker["effort"]) == (
+        expected
+    )
+    if case in {"invocation", "invalid"}:
+        assert child["status"] == "unknown"
+    text = json.dumps(output, ensure_ascii=False)
+    for private in ("/private/transcript.jsonl", "/private/model path", str(f.run)):
+        assert private not in text
 
 
 @pytest.mark.parametrize(
@@ -869,7 +976,11 @@ def test_environment_metadata_only_hides_free_text(
         return {
             11: {
                 "status": "observed",
-                "issue": {"state": "open", "state_reason": None},
+                "issue": {
+                    "state": "open",
+                    "state_reason": None,
+                    "title": guard.text("表示名"),
+                },
                 "pull_requests": [],
                 "stopped": False,
                 "stop_record": {},
@@ -893,8 +1004,7 @@ def test_environment_metadata_only_hides_free_text(
     output["parents"][0]["roster"] = {
         "name": "Test parent",
         "identifier": "Worker",
-        "state": "unknown",
-        "source": "board_names / parent_registry / Herdr",
+        "source": "board_names / parent_registry",
     }
     output["github_refresh"] = {
         "epoch": "public-epoch",
@@ -1085,6 +1195,7 @@ def test_changed_parent_is_retrieved_once_without_mixing_generations(
                 "issue": {
                     "state": "open" if row["generation"] == 2 else "closed",
                     "state_reason": None if row["generation"] == 2 else "completed",
+                    "title": guard.text(f"世代{row['generation']}の題名"),
                 },
                 "stopped": True,
                 "stop_record": {
@@ -1115,7 +1226,10 @@ def test_changed_parent_is_retrieved_once_without_mixing_generations(
         assert child["github"]["issue"] == {
             "state": "closed",
             "state_reason": "completed",
+            "title": {"status": "visible", "text": "世代3の題名", "truncated": False},
         }
+        # No local name for the new generation's task: GitHub's name is shown.
+        assert child["title"]["source"] == "github.issue"
         assert child["stop_record"]["reason"]["status"] == "hidden"
         assert child["stop_record"]["facts"]["status"] == "hidden"
         assert "private-new-owner" not in json.dumps(result)
@@ -1234,7 +1348,7 @@ def test_github_is_explicit_get_only_and_separates_turn_from_acceptance(
             **gh_state["issues"]["1"],
             "id": 10000 + n,
             "number": n,
-            "title": f"child {n}",
+            "title": f"[fixture #1] child {n}",
             "labels": [{"name": "issue:child"}],
             "body": p.formats.render_child_body(1, sections),
         }
@@ -1260,7 +1374,9 @@ def test_github_is_explicit_get_only_and_separates_turn_from_acceptance(
     monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
     f.row["tasks"] = {"10": f.task}
     f.record()
-    f.task.update(stopped=True, last_status={"reason": "古い停止理由"})
+    f.task.update(
+        stopped=True, last_status={"reason": "古い停止理由"}, title="ローカルの題名"
+    )
     f.events([item("agent_message", text="変更を提出しました")])
     f.save()
     files_before = tree_snapshot(f.state)
@@ -1273,7 +1389,19 @@ def test_github_is_explicit_get_only_and_separates_turn_from_acceptance(
     remote = f.api.collect_status(state_dir=f.state, parent=1, github=True)
     children = {c["child"]: c for c in remote["parents"][0]["children"]}
     assert children[10]["status"] == "turn_completed"
-    assert children[10]["github"]["issue"] == {"state": "open", "state_reason": None}
+    assert children[10]["github"]["issue"] == {
+        "state": "open",
+        "state_reason": None,
+        "title": {"status": "visible", "text": "child 10", "truncated": False},
+    }
+    # The parent CLI's recorded name leads; GitHub's name fills a missing one.
+    assert children[10]["title"]["text"] == "ローカルの題名"
+    assert children[11]["title"] == {
+        "status": "visible",
+        "text": "child 11",
+        "truncated": False,
+        "source": "github.issue",
+    }
     assert children[10]["github"]["pull_requests"] == [
         {
             "number": 100,

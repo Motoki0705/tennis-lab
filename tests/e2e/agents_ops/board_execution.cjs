@@ -80,7 +80,8 @@ let serial = 0,
   fail = false;
 let holdRefresh = false,
   finishRefresh = null,
-  cacheAvailable = false;
+  cacheAvailable = false,
+  herdrReads = 0;
 let serverRefresh = structuredClone(input.local.github_refresh);
 const response = (body, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -134,11 +135,29 @@ const context = vm.createContext({
     if (url === "/api/runtime")
       return response({
         agents: [
-          { label: "codex 1", engine: "codex", state: "working", title: "t", title_status: "available" },
-          { label: "claude 1", engine: "claude", state: "idle", title: "", title_status: "redacted" },
-          { label: "codex 2", engine: "codex", state: "working", title: "u", title_status: "available" },
+          {
+            label: "codex 1",
+            engine: "codex",
+            state: "working",
+            title: "t",
+            title_status: "available",
+          },
+          {
+            label: "claude 1",
+            engine: "claude",
+            state: "idle",
+            title: "",
+            title_status: "redacted",
+          },
+          {
+            label: "codex 2",
+            engine: "codex",
+            state: "working",
+            title: "u",
+            title_status: "available",
+          },
         ],
-        observed_at: input.local.roster_observed_at,
+        observed_at: input.local.observed_at,
       });
     if (url.startsWith("/api/execution")) {
       if (url.includes("refresh=true")) {
@@ -155,6 +174,7 @@ const context = vm.createContext({
           });
         return completeRefresh();
       }
+      if (url.includes("herdr=true")) herdrReads += 1;
       return response(localData(), fail ? 503 : 200);
     }
     return {
@@ -168,7 +188,7 @@ const context = vm.createContext({
           agents: [],
           human: { name: "human", unread_count: 0 },
           changed_threads: [],
-          roster_observed_at: input.local.roster_observed_at,
+          roster_observed_at: input.local.observed_at,
         };
       },
     };
@@ -191,19 +211,32 @@ const view = (name) =>
 const executionRequests = () =>
   requests.filter((url) => url.startsWith("/api/execution"));
 const runtimeRequests = () => requests.filter((url) => url === "/api/runtime");
-const tick = async () => {
-  const [id, timer] = [...timers].find(([, timer]) => timer.delay === 10000);
+const tick = async (delay = 10000) => {
+  const [id, timer] = [...timers].find(([, timer]) => timer.delay === delay);
   timers.delete(id);
   timer.callback();
   await settle();
 };
+const graph = () => elements.get("execution-graph");
+const drawer = () => elements.get("execution-drawer-content");
+const nodeButton = (key) =>
+  descendants(graph()).find(
+    (node) => node.tagName === "BUTTON" && node.dataset.node === key,
+  );
+const foldButton = (key) =>
+  descendants(graph()).find((node) => node.dataset.fold === key);
+const graphText = () => graph().textContent;
 
 async function main() {
   assert.equal(requests.length, 0, "hidden pages do not poll");
   document.visibilityState = "visible";
   view("execution");
   await settle();
-  assert.deepEqual(executionRequests(), ["/api/execution"]);
+  assert.deepEqual(
+    executionRequests(),
+    ["/api/execution?herdr=true"],
+    "the first display reads Herdr once",
+  );
   assert.deepEqual(
     [...timers.values()].map((t) => t.delay),
     [10000],
@@ -211,33 +244,94 @@ async function main() {
   assert.equal(elements.get("feed-composer").hidden, true);
   assert.equal(elements.get("execution-panel").hidden, false);
   assert.equal(tabs[3]["aria-pressed"], "true");
-  const tree = elements.get("execution-parents");
+  const parent = input.local.parents[0];
+  const parentKey = `parent:${parent.repo}#${parent.parent}`;
+  const childKey = (number) =>
+    `child:${parent.repo}#${parent.parent}/${number}`;
+  // Graph order: the parent with a running child, then unregistered sessions.
+  const rows = graph().children;
+  assert.equal(rows[0].dataset.row, parentKey);
+  assert.deepEqual(
+    rows.slice(1).map((row) => row.dataset.row.split(":")[0]),
+    input.local.sessions.map(() => "session"),
+  );
+  // Joined parent: Herdr terminal title, then the board name and number.
+  const parentText = nodeButton(parentKey).textContent;
+  assert.ok(parentText.includes("子の進行管理"), parentText);
+  assert.ok(parentText.includes(`${parent.roster.name} · #1`), parentText);
   for (const label of [
-    "親 · Herdr 待機中",
+    "#11 子11の作業",
+    "gpt-6.1-sol · max",
+    "#12 （題名未取得）",
+    "gpt-6.1-sol（指定値） · max（指定値）",
+    "未起動",
     "実行中",
     "ターン終了",
     "失敗",
     "停止中",
     "依存待ち",
     "委任予約済み・未起動",
-    "未委任",
     "状態不明",
+    "更新途絶",
+    "+1 未委任",
+    "調査メモ",
+    "CI確認",
+    "未登録セッション",
+  ])
+    assert.ok(graphText().includes(label), label);
+  // Undelegated children are folded until the badge opens them.
+  assert.ok(!graphText().includes("#17"));
+  assert.ok(!graphText().includes("undefined"));
+  const undelegated = `${parentKey}|undelegated`;
+  foldButton(undelegated).events.click();
+  assert.ok(graphText().includes("#17 子17の作業"));
+  assert.equal(foldButton(undelegated)["aria-expanded"], "true");
+  assert.equal(
+    descendants(graph()).filter((node) => node.tagName === "IMG").length,
+    0,
+  );
+  assert.equal(elements.get("execution-drawer").hidden, true);
+  // Every node opens the same drawer; previous card details live there.
+  nodeButton(childKey(11)).events.click();
+  assert.equal(elements.get("execution-drawer").hidden, false);
+  assert.equal(nodeButton(childKey(11))["aria-pressed"], "true");
+  assert.equal(
+    elements.get("execution-drawer-heading").textContent,
+    "#11 子11の作業",
+  );
+  for (const label of [
     "Issue 未取得",
+    "codex · gpt-6.1-sol · max",
     "停止とは限りません",
     "非表示（秘匿検査）",
     "runner.result",
     "identity_verified",
     "lookup · search",
     "変更 2件",
-    "親が差分を確認する",
+    "読取上限",
+    "<img src=x onerror=alert(1)> を文字として表示",
   ])
-    assert.ok(tree.textContent.includes(label), label);
-  assert.ok(!tree.textContent.includes("undefined"));
+    assert.ok(drawer().textContent.includes(label), label);
   assert.equal(
-    descendants(tree).filter((node) => node.tagName === "IMG").length,
+    descendants(drawer()).filter((node) => node.tagName === "IMG").length,
     0,
   );
-  assert.ok(tree.textContent.includes("<img src=x onerror=alert(1)>"));
+  nodeButton(childKey(14)).events.click();
+  assert.ok(drawer().textContent.includes("親が差分を確認する"));
+  nodeButton(childKey(12)).events.click();
+  assert.ok(drawer().textContent.includes("（指定値）は実行記録の選択値です"));
+  nodeButton(parentKey).events.click();
+  for (const label of [
+    "Herdrで照合済み（担当表示の確認済み対応）",
+    "子の進行管理",
+    "#17 子17の作業",
+  ])
+    assert.ok(drawer().textContent.includes(label), label);
+  const session = input.local.sessions[0];
+  nodeButton(`session:${session.key}`).events.click();
+  assert.ok(drawer().textContent.includes("未登録"));
+  elements.get("close-execution-drawer").events.click();
+  assert.equal(elements.get("execution-drawer").hidden, true);
   // Evidence remains a collector projection: new contract codes render through
   // the same text-only path, without Web-side state inference or field values.
   for (const [code, status, label] of [
@@ -245,43 +339,72 @@ async function main() {
     ["contract_missing", "unknown", "状態不明"],
     ["contract_mismatch", "unknown", "状態不明"],
   ]) {
-    context.contractParent = input.local.parents[0];
+    context.contractParent = parent;
     context.contractChild = {
-      ...structuredClone(input.local.parents[0].children[0]),
+      ...structuredClone(parent.children[0]),
       status,
       label,
       evidence: [
         { source: "runner.result", code, fields: ["contract.branch"] },
       ],
     };
-    const card = vm.runInContext(
-      "executionView.childCard(contractParent, contractChild)",
+    const nodes = vm.runInContext(
+      "executionView.childDetail({ parent: contractParent, child: contractChild })",
       context,
     );
-    assert.ok(card.textContent.includes(`${code} · contract.branch`));
-    assert.ok(card.textContent.includes(label));
-    assert.ok(!card.textContent.includes("undefined"));
+    const text = nodes.map((node) => node.textContent).join("");
+    assert.ok(text.includes(`${code} · contract.branch`));
+    assert.ok(text.includes(label));
+    assert.ok(!text.includes("undefined"));
   }
+  // Selection, opened folds and the drawer itself survive the 10s refresh.
+  // A new local timestamp alone does not rebuild the drawer.
+  nodeButton(childKey(11)).events.click();
+  const opened = drawer().children[0];
+  input.local.observed_at = "2026-10-30T12:00:10+00:00";
+  input.local.parents[0].children[0].observed_at = input.local.observed_at;
   await tick();
-  assert.equal(executionRequests().length, 2);
+  assert.deepEqual(executionRequests().slice(-1), ["/api/execution"]);
+  assert.equal(herdrReads, 1, "local polls never read Herdr");
+  assert.equal(drawer().children[0], opened);
+  assert.equal(nodeButton(childKey(11))["aria-pressed"], "true");
+  assert.ok(graphText().includes("#17 子17の作業"));
+  input.local.parents[0].children[0].summary.message.text = "新しい発言";
+  await tick();
+  assert.notEqual(drawer().children[0], opened);
+  assert.ok(drawer().textContent.includes("新しい発言"));
+  const tree = graph();
   elements.get("refresh-execution").events.click();
   await settle();
   assert.equal(
     executionRequests().filter((url) => url.includes("refresh=true")).length,
     1,
   );
-  assert.ok(tree.textContent.includes("Issue 未完了（OPEN）"));
+  assert.ok(drawer().textContent.includes("Issue 未完了（OPEN）"));
+  assert.ok(drawer().textContent.includes("PR #88"));
+  // Completion comes from GitHub only: merged PR (#12) and closed Issue (#17).
+  assert.ok(graphText().includes("+2 完了"), graphText());
+  assert.ok(!graphText().includes("未委任"));
+  assert.ok(!graphText().includes("#12"));
+  foldButton(`${parentKey}|done`).events.click();
+  assert.ok(graphText().includes("#12 GitHub上の題名12"));
+  assert.ok(graphText().includes("完了（GitHub）"));
+  nodeButton(childKey(12)).events.click();
   assert.ok(
-    tree.textContent.includes("ターン終了はIssueの受入完了を意味しません。"),
+    drawer().textContent.includes(
+      "ターン終了はIssueの受入完了を意味しません。",
+    ),
   );
-  assert.ok(tree.textContent.includes("PR #88"));
+  assert.ok(drawer().textContent.includes("（GitHub取得値）"));
   holdRefresh = true;
   elements.get("refresh-execution").events.click();
   await settle();
   assert.equal(elements.get("refresh-execution").disabled, true);
   assert.equal(elements.get("execution-refresh").hidden, false);
   assert.ok(
-    elements.get("execution-refresh").textContent.includes("GitHub取得中"),
+    elements
+      .get("execution-refresh")
+      .textContent.includes("GitHub・Herdr取得中"),
   );
   const pendingCount = executionRequests().length;
   const refreshCount = executionRequests().filter((url) =>
@@ -368,6 +491,30 @@ async function main() {
     elements.get("execution-error").hidden,
     false,
     "refresh error survives a local success",
+  );
+  elements.get("refresh-execution").events.click();
+  await settle();
+  assert.equal(elements.get("execution-error").hidden, true);
+  // A failed first Herdr read is shown, then local records load at once.
+  vm.runInContext("executionView.herdrRequested = false", context);
+  fail = true;
+  await vm.runInContext("executionView.load()", context);
+  assert.ok(
+    elements
+      .get("execution-error")
+      .textContent.includes("Herdrの取得に失敗しました"),
+  );
+  assert.ok([...timers.values()].some((t) => t.delay === 0));
+  fail = false;
+  await tick(0);
+  assert.deepEqual(executionRequests().slice(-2), [
+    "/api/execution?herdr=true",
+    "/api/execution",
+  ]);
+  assert.equal(
+    elements.get("execution-error").hidden,
+    false,
+    "the Herdr failure stays visible until an explicit refresh succeeds",
   );
   elements.get("refresh-execution").events.click();
   await settle();
@@ -469,7 +616,7 @@ async function main() {
   await settle();
   assert.equal(runtimeRequests().length, 1, "re-showing does not poll Herdr");
   console.log(
-    "execution rendering, explicit refresh, failure retention and virtual-clock polling passed",
+    "execution graph, drawer persistence, explicit refresh, failure retention and virtual-clock polling passed",
   );
 }
 main().catch((error) => {

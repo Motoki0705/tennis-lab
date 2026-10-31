@@ -55,10 +55,37 @@ def client(world: World, web: SimpleNamespace) -> Iterator[TestClient]:
 @pytest.fixture
 def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     api = importlib.import_module("board.execution_data")
+    task_view = importlib.import_module("worker_status.task_view")
     now = "2026-10-30T12:00:00+00:00"
+    # Herdr reports a status for every agent; the shared fake panes predate it.
+    # Parents 1-3 are already live (owner-confirmed) in the world fixture.
+    runtime = world.labels.read()
+    for pane, title in (("w1:p1", "調査メモ"), ("w1:p2", "CI確認")):
+        runtime["panes"][pane].update(
+            agent_status="idle", terminal_title_stripped=title
+        )
+    world.labels.write(runtime)
 
     def text(value: str | None, status: str = "visible") -> dict[str, Any]:
         return {"status": status, "text": value, "truncated": False}
+
+    def worker(number: int, status: str) -> dict[str, Any]:
+        if status in {"not_started", "not_delegated"}:
+            agent = "codex" if status == "not_started" else None
+            return {
+                "agent": agent,
+                "source": "parent_registry.task" if agent else None,
+                "model": {"value": None, "basis": "not_started"},
+                "effort": {"value": None, "basis": "not_started"},
+            }
+        # One turn-ended child has only the run's selected values.
+        basis = "selected" if number == 12 else "effective"
+        return {
+            "agent": "claude" if number == 13 else "codex",
+            "source": "runner.result",
+            "model": {"value": "gpt-6.1-sol", "basis": basis},
+            "effort": {"value": "max", "basis": basis},
+        }
 
     children = []
     for number, (status, label) in enumerate(
@@ -80,6 +107,11 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                 "status": status,
                 "label": label,
                 "delegation": "delegation-display",
+                # The turn-ended child has no local task name until GitHub.
+                "title": {**text(None, "unavailable"), "source": None}
+                if number == 12
+                else {**text(f"子{number}の作業"), "source": "parent_registry.task"},
+                "worker": worker(number, status),
                 "run": None,
                 "observed_at": now,
                 "last_activity_at": now,
@@ -162,14 +194,20 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
             result["github"] = {"status": "observed", "fetched_at": fake.fetched_at}
             for parent in result["parents"]:
                 for child in parent["children"]:
+                    # Completion is GitHub's: a merged PR (12) or a closed Issue (17).
+                    closed = child["child"] == 17
                     child["github"] = {
                         "status": "observed",
-                        "issue": {"state": "open", "state_reason": None},
+                        "issue": {
+                            "state": "closed" if closed else "open",
+                            "state_reason": "completed" if closed else None,
+                            "title": text(f"GitHub上の題名{child['child']}"),
+                        },
                         "pull_requests": [
                             {
                                 "number": 88,
-                                "state": "open",
-                                "merged": False,
+                                "state": "closed" if child["child"] == 12 else "open",
+                                "merged": child["child"] == 12,
                                 "url": "https://github.com/o/r/pull/88",
                             }
                         ],
@@ -182,6 +220,8 @@ def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
                         "stopped": False,
                         "stop_record": {},
                     }
+                    # The real collector's last step on every child.
+                    task_view.prefer_local_title(child)
         return result
 
     monkeypatch.setattr(api, "collect_status", collect)
@@ -194,26 +234,54 @@ def test_execution_explicit_refresh_cache_and_fresh_local_state(
     calls = len(world.labels.read()["calls"])
     initial = client.get("/api/execution").json()
     parent = initial["parents"][0]
-    assert parent["roster"]["name"] == world.assignments[1].name
-    assert parent["roster"]["state"] == "idle"
+    assert parent["roster"] == {
+        "name": world.assignments[1].name,
+        "identifier": None,
+        "source": "board_names / parent_registry",
+    }
+    assert parent["herdr"] == {
+        "status": "not_requested",
+        "method": None,
+        "session": None,
+    }
+    assert initial["herdr"] == {"status": "not_requested", "observed_at": None}
+    assert initial["sessions"] == []
     assert parent["children"][1]["status"] == "turn_completed"
     assert parent["children"][1]["github"] == {"status": "not_requested"}
+    assert parent["children"][1]["title"]["status"] == "unavailable"
     assert len(world.labels.read()["calls"]) == calls
     refreshed = client.get("/api/execution?refresh=true").json()
     child = refreshed["parents"][0]["children"][1]
     assert child["status"] == "turn_completed"
     assert child["github"]["issue"]["state"] == "open"
     assert child["github"]["fetched_at"] == refreshed["github"]["fetched_at"]
+    assert child["title"]["text"] == "GitHub上の題名12"
+    assert child["title"]["source"] == "github.issue"
+    assert refreshed["herdr"]["status"] == "observed"
+    assert refreshed["parents"][0]["herdr"]["status"] == "matched"
+    # Live parents 2 and 3 are absent from this worker snapshot, so their
+    # terminals are listed like any session not joined to a shown parent.
+    assert [row["title"] for row in refreshed["sessions"]] == [
+        "調査メモ",
+        "CI確認",
+        "",
+        "",
+    ]
     assert len(world.labels.read()["calls"]) > calls
     calls = len(world.labels.read()["calls"])
     execution.snapshot["parents"][0]["children"][1].update(
         status="running", label="実行中"
     )
     cached = client.get("/api/execution").json()
-    assert cached["parents"][0]["children"][1]["status"] == "running"
-    assert cached["parents"][0]["children"][1]["github"] == child["github"]
+    children = cached["parents"][0]["children"]
+    assert children[1]["status"] == "running"
+    assert children[1]["github"] == child["github"]
+    # Local polls keep the GitHub name only while no local name is recorded.
+    assert children[1]["title"] == child["title"]
+    assert children[0]["title"]["source"] == "parent_registry.task"
     assert cached["github"] == refreshed["github"]
-    assert cached["roster_observed_at"] == refreshed["roster_observed_at"]
+    assert cached["herdr"] == refreshed["herdr"]
+    assert cached["sessions"] == refreshed["sessions"]
     assert len(world.labels.read()["calls"]) == calls
     assert [call["github"] for call in execution.calls] == [False, True, False]
 
@@ -222,19 +290,18 @@ def test_execution_explicit_refresh_cache_and_fresh_local_state(
 # local GET and duplicate refresh to finish before releasing it. This exposes
 # both reader locks without sleep-based timing or real GitHub/Herdr latency.
 # Two expansions; reuse the real HTTP route, cache and SQLite projection.
-@pytest.mark.parametrize("phase", ["github", "roster"])
+@pytest.mark.parametrize("phase", ["github", "herdr"])
 def test_execution_local_reads_and_duplicate_refresh_do_not_wait_for_external_io(
     world: World,
     client: TestClient,
     execution: SimpleNamespace,
-    web: SimpleNamespace,
     monkeypatch: pytest.MonkeyPatch,
     phase: str,
 ) -> None:
     previous = client.get("/api/execution?refresh=true").json()
     entered, release = Event(), Event()
     original_collect = execution.api.collect_status
-    original_agents = web.data.agents
+    original_sessions = execution.api.runtime.sessions
 
     def pause() -> None:
         entered.set()
@@ -246,14 +313,14 @@ def test_execution_local_reads_and_duplicate_refresh_do_not_wait_for_external_io
         result: dict[str, Any] = original_collect(**kwargs)
         return result
 
-    def agents(*args: Any) -> dict[str, Any]:
-        if phase == "roster":
+    def sessions(*args: Any) -> dict[str, Any]:
+        if phase == "herdr":
             pause()
-        result: dict[str, Any] = original_agents(*args)
+        result: dict[str, Any] = original_sessions(*args)
         return result
 
     monkeypatch.setattr(execution.api, "collect_status", collect)
-    monkeypatch.setattr(web.data, "agents", agents)
+    monkeypatch.setattr(execution.api.runtime, "sessions", sessions)
     execution.snapshot["parents"][0]["children"][0]["label"] = "新しいローカル観測"
     execution.fetched_at = "2026-10-30T12:01:00+00:00"
     before = world.labels.registry.read_bytes(), world.store.path.read_bytes()
@@ -300,12 +367,15 @@ def test_execution_failures_keep_last_cache_and_never_expose_errors(
         assert "private runtime details" not in failed.text
     execution.fail = False
 
-    def no_roster(*args: Any) -> None:
-        raise web.app.BoardError("private roster details")
+    def no_herdr(*args: Any) -> None:
+        raise web.app.BoardError("private herdr details")
 
     with monkeypatch.context() as patch:
-        patch.setattr(web.data, "agents", no_roster)
-        assert client.get("/api/execution?refresh=true").status_code == 503
+        patch.setattr(execution.api.runtime, "sessions", no_herdr)
+        for url in ("/api/execution?refresh=true", "/api/execution?herdr=true"):
+            failed = client.get(url)
+            assert failed.status_code == 503
+            assert "private herdr details" not in failed.text
     cached = client.get("/api/execution").json()
     state = cached.pop("github_refresh")
     assert state["status"] == "idle" and state["result"] == "failed"
@@ -321,7 +391,12 @@ def test_execution_cached_github_children_and_handoff_do_not_reuse_old_identity(
 ) -> None:
     parent = execution.snapshot["parents"][0]
     parent["children"][-1]["delegation"] = None
-    client.get("/api/execution?refresh=true").raise_for_status()
+    world.live_parent(1, status="working")
+    observed = client.get("/api/execution?refresh=true").json()
+    matched = observed["parents"][0]["herdr"]
+    assert (matched["status"], matched["method"]) == ("matched", "owner")
+    assert matched["session"]["state"] == "working"
+    assert matched["session"]["key"] not in {row["key"] for row in observed["sessions"]}
     removed = parent["children"].pop()
     retained = client.get("/api/execution").json()["parents"][0]["children"][-1]
     assert retained["child"] == removed["child"]
@@ -336,15 +411,110 @@ def test_execution_cached_github_children_and_handoff_do_not_reuse_old_identity(
         "github"
     ] == {"status": "not_requested"}
     parent["generation"] = 2
-    fresh = client.get("/api/execution").json()["parents"][0]
-    assert fresh["roster"]["state"] == "unknown"
+    current = client.get("/api/execution").json()
+    fresh = current["parents"][0]
+    # A new assignment generation never inherits the cached terminal: the
+    # session returns to the unregistered list until Herdr is read again.
+    assert fresh["herdr"] == {"status": "not_observed", "method": None, "session": None}
+    assert matched["session"] in current["sessions"]
     assert len(fresh["children"]) == len(parent["children"])
     absent = deepcopy(parent)
     absent.update(parent=5, generation=1, assignment="handoff_pending")
     execution.snapshot["parents"].append(absent)
-    roster = client.get("/api/execution").json()["parents"][1]["roster"]
-    assert roster["name"] == world.assignments[5].name
-    assert roster["state"] == "unknown"
+    handoff = client.get("/api/execution").json()["parents"][1]
+    assert handoff["roster"]["name"] == world.assignments[5].name
+    assert handoff["herdr"]["status"] == "absent"
+
+
+# Herdr join contract: a parent becomes one graph node only through its
+# confirmed owner record or Herdr's own session reference naming exactly one
+# terminal. The same reference in two terminals or disagreeing sources stay
+# unmatched, and every terminal remains listed. A title naming the parent never
+# joins. Four expansions over the fake Herdr CLI; the first display (herdr=true)
+# reads Herdr once, read-only, and later local polls reuse that observation.
+@pytest.mark.parametrize(
+    ("case", "status", "method"),
+    [
+        ("owner", "matched", "owner"),
+        ("owner_native", "matched", "owner_native"),
+        ("native_twice", "ambiguous", None),
+        ("disagree", "ambiguous", None),
+    ],
+)
+def test_execution_herdr_joins_parents_only_by_unique_identity(
+    world: World,
+    client: TestClient,
+    execution: SimpleNamespace,
+    case: str,
+    status: str,
+    method: str | None,
+) -> None:
+    identity = json.loads(world.labels.registry.read_text())["parents"]["o/r#1"][
+        "session"
+    ]
+    engine, _, session = identity.partition(":")
+    native = {"kind": "id", "agent": engine, "value": session}
+    pane = world.live_parent(1, status="working")
+    runtime = world.labels.read()
+    if case == "native_twice":
+        # The confirmed terminal is gone; only Herdr's references remain.
+        del runtime["panes"][pane]
+    runtime["panes"]["w1:p1"]["terminal_title_stripped"] = (
+        f"{world.assignments[1].name} · #1 · 親"
+    )
+    if case == "owner_native":
+        runtime["panes"][pane]["agent_session"] = native
+    if case in {"native_twice", "disagree"}:
+        runtime["panes"]["w1:p1"]["agent_session"] = native
+    if case == "native_twice":
+        runtime["panes"]["w1:p3"] = {
+            "pane_id": "w1:p3",
+            "terminal_id": "term-c",
+            "agent": engine,
+            "agent_status": "blocked",
+            "agent_session": native,
+        }
+    world.labels.write(runtime)
+    before = (
+        world.labels.registry.read_bytes(),
+        world.store.path.read_bytes(),
+        world.labels.read()["panes"],
+    )
+    response = client.get("/api/execution?herdr=true")
+    assert response.status_code == 200
+    data = response.json()
+    joined = data["parents"][0]["herdr"]
+    assert (joined["status"], joined["method"]) == (status, method)
+    assert data["herdr"]["status"] == "observed"
+    keys = [row["key"] for row in data["sessions"]]
+    if status == "matched":
+        assert joined["session"]["state"] == "working"
+        assert joined["session"]["key"] not in keys
+        assert len(keys) == len(runtime["panes"]) - 1
+    else:
+        assert joined["session"] is None
+        assert len(keys) == len(runtime["panes"])
+    # The titled terminal is only listed: it never becomes the parent node.
+    assert f"{world.assignments[1].name} · #1 · 親" in {
+        row["title"] for row in data["sessions"]
+    }
+    for private in (session, "board-terminal-1", "term-a", "term-c", "w1:"):
+        assert private not in response.text
+    private_output_absent(response.text, world.labels.env)
+    calls = world.labels.read()["calls"]
+    assert {tuple(call) for call in calls} <= {
+        ("session", "list", "--json"),
+        ("--session", "default", "agent", "list"),
+    }
+    assert (
+        world.labels.registry.read_bytes(),
+        world.store.path.read_bytes(),
+        world.labels.read()["panes"],
+    ) == before
+    local = client.get("/api/execution").json()
+    assert local["herdr"] == data["herdr"]
+    assert local["parents"][0]["herdr"] == joined
+    assert len(world.labels.read()["calls"]) == len(calls)
 
 
 @pytest.mark.parametrize(
@@ -376,6 +546,11 @@ def test_execution_revalidates_public_response_and_keeps_safe_cache(
 def test_execution_scripts_render_and_poll_only_the_visible_tab(
     world: World, client: TestClient, execution: SimpleNamespace
 ) -> None:
+    runtime = world.labels.read()
+    runtime["panes"]["w1:board-1"]["terminal_title_stripped"] = "子の進行管理"
+    world.labels.write(runtime)
+    # Responses in page order: first display (Herdr), local polls, refresh.
+    client.get("/api/execution?herdr=true").raise_for_status()
     local = client.get("/api/execution").json()
     refreshed = client.get("/api/execution?refresh=true").json()
     result = subprocess.run(
@@ -439,9 +614,24 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
             "task_id": delegation,
             "cwd": str(worktree),
             "branch": branch,
-            "settings": {"agent": "codex"},
+            "settings": {
+                "agent": "codex",
+                "selected": {"model": "gpt-6.1-sol", "effort": "max"},
+            },
         },
-        "runtime": {"session_id": "private-child-session", "turn_id": "private-turn"},
+        "runtime": {
+            "session_id": "private-child-session",
+            "turn_id": "private-turn",
+            # Effective values are the CLI's report; private sources stay local.
+            "effective": {
+                "model": {
+                    "status": "observed",
+                    "value": "gpt-6.1-sol-latest",
+                    "source": "/private/transcript.jsonl",
+                },
+                "effort": {"status": "unavailable", "value": None, "source": None},
+            },
+        },
     }
     (run / "result.json").write_text(json.dumps(runtime))
     (run / "session.json").write_text(
@@ -527,6 +717,12 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
         assert child["status"] == expected_status
         assert expected_code in {row["code"] for row in child["evidence"]}
         if case == "matching":
+            assert child["worker"] == {
+                "agent": "codex",
+                "source": "runner.result",
+                "model": {"value": "gpt-6.1-sol-latest", "basis": "effective"},
+                "effort": {"value": "max", "basis": "selected"},
+            }
             assert child["run"]["kind"] == "registered"
             assert child["summary"]["message"]["status"] == "hidden"
             assert child["summary"]["message"]["text"] is None
@@ -540,6 +736,7 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
             "b" * 32,
             branch,
             "/private/hidden-output",
+            "/private/transcript.jsonl",
         ):
             assert private not in response.text
     assert {
@@ -614,8 +811,8 @@ def test_runtime_includes_unregistered_agents_without_changing_membership(
             if args[0] == "session":
                 return {
                     "sessions": [
-                        {"name": "main", "running": True},
-                        {"name": "other", "running": True},
+                        {"name": "main", "running": True, "socket_path": "/run/a"},
+                        {"name": "other", "running": True, "socket_path": "/run/b"},
                         {"name": "stopped", "running": False},
                     ]
                 }
@@ -1748,8 +1945,15 @@ def test_browser_human_conversation_workflow(
         timeout=15,
     )
     if available.returncode:
-        unavailable = pytest.fail if os.environ.get("CI_REQUIRE_BROWSER") == "1" else pytest.skip
+        unavailable = (
+            pytest.fail if os.environ.get("CI_REQUIRE_BROWSER") == "1" else pytest.skip
+        )
         unavailable("Install the optional Playwright package and set NODE_PATH")
+    runtime = world.labels.read()
+    runtime["panes"]["w1:board-1"].update(
+        agent_status="working", terminal_title_stripped="子の進行管理"
+    )
+    world.labels.write(runtime)
     root = world.post(
         to=["human", world.assignments[2].name],
         body='@human <img src=x onerror="alert(1)"> を文字として表示',
