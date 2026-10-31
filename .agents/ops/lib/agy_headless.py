@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import stat
 import subprocess
 import tempfile
 import time
@@ -22,6 +23,12 @@ from opsproc import CommandError, run_process_group
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 DEFAULT_AGY = Path("/var/lib/tennis-lab-actions/home/.local/bin/agy")
 MODEL_LABELS = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)"}
+_READONLY_MODE = {
+    "toolPermission": "request-review",
+    "agentMode": "plan",
+    "allowNonWorkspaceAccess": False,
+    "enableTerminalSandbox": False,
+}
 
 
 @dataclass(frozen=True)
@@ -89,6 +96,7 @@ def readonly_settings() -> dict[str, Any]:
     """Deny shell syntax, then allow only complete enumerated command forms."""
     commands = command_permissions()
     return {
+        **_READONLY_MODE,
         "permissions": {
             "allow": commands["allow"],
             "deny": [
@@ -99,8 +107,62 @@ def readonly_settings() -> dict[str, Any]:
                 "mcp(*)",
                 *commands["deny"],
             ],
-        }
+        },
     }
+
+
+def _check_user_settings() -> None:
+    """Reject widening persistent settings before even running agy --version."""
+    try:
+        home = os.environ.get("HOME", "")
+        if not home or not Path(home).is_absolute():
+            raise ValueError("HOME must be an absolute directory")
+        path = Path(home) / ".gemini/antigravity-cli/settings.json"
+        try:
+            path.lstat()
+        except FileNotFoundError:
+            return
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError("user settings must be a regular JSON file")
+        settings = parse_json(path.read_text(encoding="utf-8"))
+        if not isinstance(settings, dict):
+            raise ValueError("user settings must be a JSON object")
+        known = {*_READONLY_MODE, "permissions", "$schema"}
+        if settings.keys() - known:
+            raise ValueError("user settings contain unsupported top-level keys")
+        if settings.get("toolPermission", "request-review") not in (
+            "request-review",
+            "strict",
+        ):
+            raise ValueError("user toolPermission must be request-review or strict")
+        if settings.get("agentMode", "") not in ("", "default", "plan"):
+            raise ValueError("user agentMode must be default or plan")
+        for key in ("allowNonWorkspaceAccess", "enableTerminalSandbox"):
+            if key in settings and settings[key] is not _READONLY_MODE[key]:
+                raise ValueError("user " + key + " differs from the fixed setting")
+        if "$schema" in settings and not isinstance(settings["$schema"], str):
+            raise ValueError("user $schema must be a string")
+        permissions = settings.get("permissions", {})
+        if not isinstance(permissions, dict) or permissions.keys() - {
+            "allow",
+            "ask",
+            "deny",
+        }:
+            raise ValueError("user permissions contain unsupported keys or types")
+        if permissions.get("allow", []) != []:
+            raise ValueError("user permissions.allow must be an empty list")
+        for key in ("ask", "deny"):
+            rules = permissions.get(key, [])
+            if not isinstance(rules, list) or any(
+                not isinstance(rule, str) or not rule.strip() for rule in rules
+            ):
+                raise ValueError(
+                    "user permissions restrictions must be lists of nonempty strings"
+                )
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise AgyError(
+            "unsafe_user_settings", "user settings rejected: " + str(exc)
+        ) from exc
 
 
 def _observed_version(agy: Path, cwd: Path, timeout: float, env: dict[str, str]) -> str:
@@ -147,6 +209,7 @@ def run_headless(
         raise AgyError("invalid_input", "model differs from ISSUE_REWRITE_AGY_MODEL")
     if not math.isfinite(timeout) or timeout <= 0:
         raise AgyError("invalid_input", "timeout must be finite and positive")
+    _check_user_settings()
     try:
         agy = agy.resolve(strict=True)
         cwd = cwd.resolve(strict=True)
@@ -182,6 +245,7 @@ def run_headless(
         return seconds
 
     def check_version() -> str:
+        _check_user_settings()
         observed = _observed_version(agy, cwd, remaining(), env)
         if observed != config.version:
             raise AgyError("version_mismatch", "agy version differs from AGY_VERSION")
@@ -194,6 +258,7 @@ def run_headless(
         with tempfile.TemporaryDirectory(prefix="agy-schema-") as directory:
             pinned_schema = Path(directory) / "schema.json"
             pinned_schema.write_bytes(schema.raw)
+            _check_user_settings()
             output = run_process_group(
                 [
                     str(agy),

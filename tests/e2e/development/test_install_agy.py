@@ -131,4 +131,4 @@ def test_smoke_workflow_requires_owner_manual_main_and_read_permissions() -> Non
     assert checkout["ref"] == "main"
     assert "scripts/github_actions/agy_smoke.py" in job["steps"][1]["run"]
     assert "--permissions-probe --timeout 120" in job["steps"][2]["run"]
-    assert int(job["timeout-minutes"]) >= 60
+    assert int(job["timeout-minutes"]) >= 75
