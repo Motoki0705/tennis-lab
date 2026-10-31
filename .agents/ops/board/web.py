@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import messages, notifiers, reactions
+from . import messages, notifiers, reactions, runtime
 from .delivery import Notifiers
 from .errors import BoardError
 from .execution_data import ExecutionReader
@@ -197,6 +197,7 @@ def create_app(
     app.add_api_route("/static/{name}", static, methods=["GET"])
     app.add_api_route("/api/changes", changes, methods=["GET"])
     app.add_api_route("/api/execution", execution, methods=["GET"])
+    app.add_api_route("/api/runtime", lambda: runtime.snapshot(env), methods=["GET"])
     app.add_api_route("/api/thread/{post_id}", thread, methods=["GET"])
     app.add_api_route("/api/posts", post, methods=["POST"])
     app.add_api_route("/api/posts/{post_id}/replies", reply, methods=["POST"])

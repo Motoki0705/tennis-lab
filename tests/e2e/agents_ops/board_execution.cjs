@@ -131,6 +131,15 @@ const context = vm.createContext({
   },
   fetch: async (url) => {
     requests.push(url);
+    if (url === "/api/runtime")
+      return response({
+        agents: [
+          { label: "codex 1", engine: "codex", state: "working", title: "t", title_status: "available" },
+          { label: "claude 1", engine: "claude", state: "idle", title: "", title_status: "redacted" },
+          { label: "codex 2", engine: "codex", state: "working", title: "u", title_status: "available" },
+        ],
+        observed_at: input.local.roster_observed_at,
+      });
     if (url.startsWith("/api/execution")) {
       if (url.includes("refresh=true")) {
         if (serverRefresh.status === "running")
@@ -165,6 +174,8 @@ const context = vm.createContext({
     };
   },
 });
+// index.html starts the runtime card list closed.
+document.getElementById("runtime-agents").hidden = true;
 for (const name of ["execution.js", "app.js"])
   vm.runInContext(
     fs.readFileSync(path.join(process.argv[2], name), "utf8"),
@@ -179,6 +190,7 @@ const view = (name) =>
   tabs.find((node) => node.dataset.view === name).events.click();
 const executionRequests = () =>
   requests.filter((url) => url.startsWith("/api/execution"));
+const runtimeRequests = () => requests.filter((url) => url === "/api/runtime");
 const tick = async () => {
   const [id, timer] = [...timers].find(([, timer]) => timer.delay === 10000);
   timers.delete(id);
@@ -370,6 +382,25 @@ async function main() {
   document.events.visibilitychange();
   await settle();
   assert.equal(executionRequests().length, count + 1);
+  assert.deepEqual(
+    runtimeRequests(),
+    ["/api/runtime"],
+    "Herdr overview loads once, on the first visible display",
+  );
+  // The overview is one summary line until the user opens the card list.
+  assert.ok(
+    elements
+      .get("runtime-observed")
+      .textContent.startsWith("3エージェント（作業中 2 · 待機中 1）"),
+  );
+  assert.equal(elements.get("runtime-agents").children.length, 3);
+  assert.equal(elements.get("runtime-agents").hidden, true);
+  elements.get("toggle-runtime").events.click();
+  assert.equal(elements.get("runtime-agents").hidden, false);
+  assert.equal(elements.get("toggle-runtime")["aria-expanded"], "true");
+  elements.get("toggle-runtime").events.click();
+  assert.equal(elements.get("runtime-agents").hidden, true);
+  assert.equal(elements.get("toggle-runtime")["aria-expanded"], "false");
   view("timeline");
   await settle();
   assert.equal(elements.get("execution-panel").hidden, true);
@@ -431,6 +462,12 @@ async function main() {
   view("timeline");
   await settle();
   assert.ok(![...timers.values()].some((t) => t.delay === 10000));
+  document.visibilityState = "hidden";
+  document.events.visibilitychange();
+  document.visibilityState = "visible";
+  document.events.visibilitychange();
+  await settle();
+  assert.equal(runtimeRequests().length, 1, "re-showing does not poll Herdr");
   console.log(
     "execution rendering, explicit refresh, failure retention and virtual-clock polling passed",
   );
