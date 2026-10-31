@@ -3,6 +3,8 @@
 気づきにくい落とし穴、静かに失敗する挙動。1行に1エントリを書き、リンク文字列はエントリの `title` と一致させる。形式は [memory skill](../../skills/memory/SKILL.md#形式) を参照。
 
 - [実行中のbashスクリプトをその場で書き換えると、実行中のプロセスが新しい内容を途中から実行する](bash-script-edit-while-running.md)
+- [ColabのVMは、jobを実行せずに待たせると数時間の寿命より前に回収され、取得済みの入力も消える](colab-idle-vm-reclaimed.md)
+- [rclone設定に client_id がないと、全rclone利用者の共用OAuth clientの上限に当たり、Driveの転送が 403 rateLimitExceeded で止まる](rclone-default-client-rate-limit.md)
 - [codex-scheduled-followup の timer は、作成時の cli_heartbeat.py を絶対パスで実行し続ける](codex-followup-timer-script-path.md)
 - [.gitignore の汎用パターン（lib/, runs/, *.json）が新しいディレクトリを黙って無視する](gitignore-generic-rules-hide-new-paths.md)
 - [PRで submodule の pointer が進んでも、メインtreeの submodule の checkout は古いまま残る](main-submodule-checkout-lags-pointer.md)
