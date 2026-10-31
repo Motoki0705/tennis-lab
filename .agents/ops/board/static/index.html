@@ -130,8 +130,11 @@
         >
           <div class="execution-toolbar">
             <div>
-              <p>表示中はローカル記録を10秒ごとに更新</p>
-              <p id="execution-observed">GitHub・ローカル記録は未取得</p>
+              <p>
+                表示中はローカル記録を10秒ごとに更新 ·
+                <span id="execution-summary"></span>
+              </p>
+              <p id="execution-observed">ローカル記録・GitHub・Herdrは未取得</p>
               <p id="execution-dispatcher"></p>
               <p
                 id="execution-refresh"
@@ -141,7 +144,7 @@
               ></p>
             </div>
             <button type="button" id="refresh-execution" class="quiet">
-              更新（GitHub・名簿）
+              更新（GitHub・Herdr）
             </button>
           </div>
           <p
@@ -150,8 +153,36 @@
             role="alert"
             hidden
           ></p>
-          <div id="execution-parents">
-            <p class="empty">実行状況を読み込んでいます…</p>
+          <div id="execution-body" class="execution-body">
+            <div
+              id="execution-graph"
+              class="execution-graph"
+              aria-label="親と子workerの実行グラフ"
+            >
+              <p class="empty">実行状況を読み込んでいます…</p>
+            </div>
+            <aside
+              id="execution-drawer"
+              class="execution-drawer"
+              aria-labelledby="execution-drawer-heading"
+              hidden
+            >
+              <header class="execution-drawer-header">
+                <h2 id="execution-drawer-heading">詳細</h2>
+                <button
+                  type="button"
+                  id="close-execution-drawer"
+                  class="quiet"
+                  aria-label="詳細を閉じる"
+                >
+                  ×
+                </button>
+              </header>
+              <div
+                id="execution-drawer-content"
+                class="execution-drawer-content"
+              ></div>
+            </aside>
           </div>
         </section>
         <div class="feed-scroll" id="feed-scroll">

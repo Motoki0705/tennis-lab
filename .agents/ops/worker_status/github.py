@@ -6,10 +6,11 @@ from typing import Any
 
 from parent.github import GitHub
 from parent.policy import child_stopped, closing_issues, raw_section
-from parent.session import ParentSession
+from parent.session import ParentSession, task_title
 from parent.state import Store
 
 from .safety import Guard, StatusError
+from .task_view import remote_title
 
 
 class ReadOnlyGitHub(GitHub):
@@ -112,7 +113,11 @@ def parent_snapshot(
         ]
         result[child] = {
             "status": "observed",
-            "issue": {"state": issue.state, "state_reason": issue.state_reason},
+            "issue": {
+                "state": issue.state,
+                "state_reason": issue.state_reason,
+                "title": remote_title(task_title(issue), guard),
+            },
             "pull_requests": prs,
             "launch": {
                 "action": planned["action"],

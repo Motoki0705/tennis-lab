@@ -212,45 +212,18 @@ class BoardReader:
             ],
         }
 
-    def execution_roster(
-        self, observation: dict[str, Any], *, refresh: bool = False
-    ) -> dict[str, Any]:
-        """Join board names and cached Herdr presence, including absent parents."""
-        # External roster reads must not hold the cache lock: execution's local
-        # polling continues even while this explicit Herdr refresh is pending.
-        replacement = self._load_roster() if refresh else None
-        with self.lock:
-            parents, rows, observed_at = (
-                replacement
-                if replacement is not None
-                else (self.parents, self.roster, self.roster_observed_at)
-            )
-        roster = {(row["repo"], row["parent"]): row for row in rows}
+    def execution_names(self, observation: dict[str, Any]) -> dict[str, Any]:
+        """Join live board names without reading Herdr or refreshing the roster."""
+        parents = registry(self.env)
         with self.store.read() as connection:
             for parent in observation["parents"]:
-                repo, number = parent["repo"], parent["parent"]
-                saved = parents.get(f"{repo}#{number}")
-                current = saved is not None and (
-                    saved["generation"] == parent["generation"]
-                    and saved["status"] == parent["assignment"]
-                )
-                presence = roster.get((repo, number)) if current else None
-                assignment = for_parent(connection, repo, number)
+                assignment = for_parent(connection, parent["repo"], parent["parent"])
                 if assignment is not None and assignment.retired_at is not None:
                     assignment = None
                 parent["roster"] = {
                     "name": assignment.name if assignment else None,
                     "identifier": assignment.identifier if assignment else None,
-                    "state": presence["state"] if presence else "unknown",
-                    "source": "board_names / parent_registry / Herdr",
+                    "source": "board_names / parent_registry",
                 }
-        observation["roster_observed_at"] = observed_at
         public(observation, parents, self.env)
-        if replacement is not None:
-            with self.lock:
-                self.parents, self.roster, self.roster_observed_at = (
-                    parents,
-                    rows,
-                    observed_at,
-                )
         return observation

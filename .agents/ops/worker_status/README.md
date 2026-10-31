@@ -118,6 +118,8 @@ github.launch_plan）、`fields`（判断に使った入力フィールド名）
 | `children[].child` | 子issue番号。ローカルはregistryの子、GitHub指定時は正式な子も含む |
 | `status` / `label` / `evidence` | 上表の状態コード・日本語表示名・判定根拠 |
 | `delegation` | 表示用の別名。生delegation IDの一方向digestから作り、再委任で変わる。IDのない旧委任には子番号の別名。委任なしならnull |
+| `title` | タスク名の秘匿済みtext object（上限200字）と取得元`source`。親CLIがtaskへ記録した名前（`parent_registry.task`）を優先し、記録がなくGitHubを取得した場合だけ子`github.issue.title`（`github.issue`）を使う。どちらもなければunavailable・source null |
+| `worker` | `agent`（codex/claude、なければnull）・`source`と、`model`・`effort`の`{value,basis}`。basisは`effective`（CLIが報告した実効値）、`selected`（runの契約の選択値。実効値が未報告）、`not_started`（runなし。既定値から推測しない）、`unavailable`（runはあるが記録を検証できない）。runの記録を検証できない場合も、契約が一致したinvocationがあればその選択値を`runner.invocation`として返す。実効値の取得元パスは返さない |
 | `run` | 最新runの公開記録。未取得ならnull |
 | `run.{alias,kind,recorded_at,source}` | 表示別名、initial/resume/registered、registry記録時刻、対応の取得元。dispatcherのrecorded_atは未取得null |
 | `run.{result,turn_end_reason}` | ランナーのrunning/completed/failedと終了理由。task_successを推定しない |
@@ -134,7 +136,7 @@ github.launch_plan）、`fields`（判断に使った入力フィールド名）
 | `summary.tools[]` | 直近ツール。kind・received_at・time_status。command_executionはcommand先頭行、mcp_tool_callはserver/tool、file_changeはchange_countだけ |
 | `summary.tail_truncated` | 末尾読取り上限により省略された可能性がある |
 | `github`（子） | 未指定時は`{status:not_requested}`。指定時は下記のGitHub観測 |
-| 子`github.issue` | state・state_reason。ターン終了とは独立 |
+| 子`github.issue` | state・state_reason・title。ターン終了とは独立。titleは親・子issueでは書式から取り出した要約、それ以外は題名全体の秘匿済みtext object |
 | 子`github.pull_requests[]` | closing指示で子に対応するPRのnumber・state・merged・url。単なるRefsやbranch名では対応付けない |
 | 子`github.launch` | 既存parent launch_planのaction・state・dependencies・reasons。理由はcodeと秘匿済みmessage。起動の許可ではない |
 | 子`github.{stopped,stop_record}` | GitHubの最新停止マーカーによる停止状態と理由・再開条件・次の対応など。取得時刻はトップレベルのgithub.fetched_atを共有 |

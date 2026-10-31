@@ -56,6 +56,17 @@ TASK_MARKER = re.compile(
 )
 
 
+def task_title(issue: Issue) -> str:
+    """Public task name shown by worker status; recorded with the local task.
+
+    Parent/child issues use the summary of their validated title. A standalone
+    issue has no title convention, so its whole single-line title is the name.
+    """
+    if {PARENT_LABEL, CHILD_LABEL} & set(issue.labels):
+        return parse_title(issue.title).summary
+    return nonempty(issue.title, "issue title").strip()
+
+
 def private_run_paths(task: dict[str, Any], directory: Path) -> set[str]:
     return {
         path
@@ -492,6 +503,16 @@ class ParentSession:
             ChildTask(n, parse_title(child.title).summary, task_status(child))
             for n, child in children.items()
         ]
+        # Keep the observed names of existing local tasks for read-only status
+        # views. Formal children without a local task are not added here.
+        renamed = False
+        for task in tasks:
+            local = self.row["tasks"].get(str(task.number))
+            if local is not None and local.get("title") != task.title:
+                local["title"] = task.title
+                renamed = True
+        if renamed:
+            self.store.save()
         body = replace_section(parent.body, TASKS_HEADING, render_child_tasks(tasks))
         labels = {
             "continue": "継続",
@@ -661,6 +682,7 @@ class ParentSession:
             )
         task = self.row["tasks"].setdefault(str(n), {})
         task["dependencies"] = deps
+        task["title"] = parse_title(child["title"]).summary
         task.setdefault("creation_authorization", auth)
         self.store.save()
         states = self.sync_progress()
@@ -918,6 +940,7 @@ class ParentSession:
                 raise ValueError("each child requires a dedicated branch/worktree")
         task = {
             **previous,
+            "title": task_title(children[child]),
             "agent": agent,
             "branch": branch,
             "worktree": str(worktree.resolve()),

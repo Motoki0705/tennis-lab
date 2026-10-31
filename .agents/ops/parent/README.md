@@ -539,6 +539,10 @@ version 1/2とも既存フィールドと過去の委任のrunを保持し、新
 再開証拠等の文字列に同じrun dirが含まれる場合も、保存原文を保持してCLIでは `[private run]` へ伏せる。
 実行状況の読み取り側はこのprivate registryを参照する。CLI出力を別のrun台帳として使わない。
 
+子taskの `title` は実行状況に表示するタスク名で、`create-child` と `delegate` が記録する。
+親・子issueは題名の書式から取り出した要約、それ以外のissueは題名全体を保存する。
+`sync` は既存の子taskの名前をGitHubの現在の題名へ更新する。ローカルtaskのない正式な子へは追加しない。
+
 ### stacked branchの確認とrebase
 
 `stacked_on` の各PRはclosing指示で依存子に対応付け、branch名だけから推測しない。

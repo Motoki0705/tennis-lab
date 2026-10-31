@@ -14,6 +14,7 @@ from lib.agent_events import parse_cli_event, parse_json
 from lib.opsproc import process_identity
 
 from .safety import Guard
+from .task_view import run_settings
 
 RECEIPTS = "event-receipts.jsonl"
 END_REASONS = {
@@ -54,6 +55,8 @@ class RecordError(ValueError):
     def __init__(self, source: str, fields: list[str], code: str) -> None:
         super().__init__(code)
         self.source, self.fields, self.code = source, fields, code
+        # Verified invocation settings of a run whose result is not written yet.
+        self.settings: dict[str, Any] | None = None
 
 
 def timestamp(value: Any) -> str:
@@ -353,9 +356,12 @@ def inspect_run(
             raise
         invocation, _ = json_record(directory / "invocation.json")
         verify_contract(invocation, expected_contract, "runner.invocation")
-        # An invocation proves the binding, but contains no runtime state.
+        # An invocation proves the binding and the selected settings, but
+        # contains no runtime state.
+        exc.settings = run_settings(invocation, "runner.invocation")
         raise exc
     verify_contract(result, expected_contract, "runner.result")
+    settings = run_settings(result, "runner.result")
     if (
         result.get("run_dir") != str(directory)
         or not isinstance(result.get("session_root"), str)
@@ -430,6 +436,7 @@ def inspect_run(
         directory, guard, agent=agent, bound=bound, tool_limit=tool_limit
     )
     return {
+        "settings": settings,
         "result": status,
         "turn_end_reason": reason,
         "identity_verified": identity_verified,
