@@ -568,6 +568,9 @@ def rewrite_env(
     original: str,
     controller_seed: DirectorySeed,
 ) -> RewriteEnv:
+    profile_home = tmp_path / "user-home"
+    profile_home.mkdir()
+    monkeypatch.setenv("HOME", str(profile_home))
     repo = tmp_path / "repo"
     controller_seed.restore(repo)
     package = repo / ".agents/ops/issue_rewrite"
@@ -744,6 +747,29 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
+
+
+def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    profile_home = Path(os.environ["HOME"])
+    assert profile_home == env.root / "user-home"
+    settings = profile_home / ".gemini/antigravity-cli/settings.json"
+    settings.parent.mkdir(parents=True)
+    settings.write_text(json.dumps({"agentMode": "auto"}))
+    assert env.run("rewrite") == 1
+    bundle = env.bundle()
+    assert bundle["status"] == "failed" and bundle["body"] is None
+    assert "agy_unsafe_user_settings" in {
+        reason["rule"] for reason in bundle["report"]["reasons"]
+    }
+    assert not env.calls("agy") and not env.mutations()
+    assert env.run("fail") == 0
+    assert "rewrite:failed" in labels(env)
+    assert env.state()["issue"]["body"] == env.original
+    assert not any(call["method"] == "PATCH" for call in env.calls("gh"))
+    assert "agy_unsafe_user_settings" in (env.root / "summary.md").read_text()
 
 
 @pytest.mark.parametrize("failure", ["invariant", "verifier"])
