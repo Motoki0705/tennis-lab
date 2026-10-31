@@ -35,6 +35,7 @@ def issue(
         "body": body,
         "state": state,
         "state_reason": reason,
+        "created_at": "2026-10-31T00:00:00Z",
         "labels": [{"name": label} for label in labels],
         "assignees": [],
     }
@@ -114,6 +115,7 @@ class FakeGitHub:
         self.fail = ""
         self.on_get: Callable[[str], None] | None = None
         self.on_write: Callable[[], None] | None = None
+        self.enabled_since: str | None = None
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         self.calls.append(endpoint)
@@ -123,6 +125,12 @@ class FakeGitHub:
             raise ValueError("injected API failure: " + endpoint)
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+            if self.enabled_since is None:
+                raise importlib.import_module("issues.cli").GitHubHTTPError(
+                    endpoint, 404, "Not Found"
+                )
+            return {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": self.enabled_since}
         path, _, query = endpoint.partition("?")
         params = parse_qs(query)
         page = int(params.get("page", ["1"])[0])
@@ -308,6 +316,43 @@ class Harness:
 @pytest.fixture
 def h(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     return Harness(tmp_path, monkeypatch)
+
+
+@pytest.mark.parametrize("label", ["rewrite:done", "rewrite:failed", "rewrite:skipped"])
+def test_final_rewrite_allows_recording_with_pinned_activation(
+    h: Harness, label: str
+) -> None:
+    h.gh.enabled_since = "2026-10-30T00:00:00Z"
+    h.gh.issues[1]["labels"] = [{"name": "issue:parent"}, {"name": label}]
+    h.response(decision(1))
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "recorded", result
+    assert [c["parent"] for c in result["candidates"]] == [1]
+    assert h.snapshot()["rewrite_enabled_since"] == h.gh.enabled_since
+    assert h.snapshot()["issues"]["1"]["created_at"] == "2026-10-31T00:00:00Z"
+
+
+@pytest.mark.parametrize("change", ["activation", "labels"])
+def test_rewrite_changes_before_recording_defer_without_writes(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
+    if change == "labels":
+        h.gh.enabled_since = "2026-10-30T00:00:00Z"
+        h.gh.issues[1]["labels"].append({"name": "rewrite:done"})
+    original = h.mod.record_decision
+
+    def race(*args: Any, **kwargs: Any) -> Any:
+        h.gh.enabled_since = "2026-10-30T00:00:00Z"
+        h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(h.mod, "record_decision", race)
+    h.response(decision(1))
+    result = h.run(runner=h.fake_runner)
+    assert result["result"] == "deferred", result
+    assert result["candidates"] == [] and h.gh.writes == []
+    assert result["deferred"][0]["stage"] == "publication"
 
 
 def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
@@ -1248,6 +1293,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
+        ("rewrite_pending", "human_hold", "rewriteはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
         ("agreed", "human_hold", "phaseはagreed"),
@@ -1281,6 +1327,9 @@ def test_mechanical_guard_is_exposed_and_enforced(
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    elif blocker == "rewrite_pending":
+        h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
+        h.gh.enabled_since = "2026-10-30T00:00:00Z"
     elif blocker == "agreed":
         h.gh.comment_rows[1] = [agreement_comment(1)]
     elif blocker in {"checking", "revoked"}:

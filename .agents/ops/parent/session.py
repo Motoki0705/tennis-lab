@@ -287,6 +287,9 @@ class ParentSession:
 
     def checking(self) -> dict[str, Any]:
         self.owner()
+        from .rewrite import require_final
+
+        require_final(self.gh, self.parent)
         history = self.history()
         latest = next(
             (
@@ -352,6 +355,9 @@ class ParentSession:
         pid: str | None = None,
     ) -> dict[str, Any]:
         self.owner()
+        from .rewrite import require_final
+
+        require_final(self.gh, self.parent)
         if (report is None) != (pid is None):
             raise ValueError("proposal agreement requires both --report and --proposal")
         fields = {"purpose", "scope", "behavior", "acceptance", "human_confirmation"}
@@ -424,6 +430,7 @@ class ParentSession:
         )
         if report is not None:
             text = f"対象提案: #{report} / `{pid}`\n\n" + text
+        require_final(self.gh, self.parent)
         self.post(
             {
                 **event,
@@ -452,15 +459,12 @@ class ParentSession:
             {} if PARENT_LABEL in parent.labels else {parent.number: parent}
         )
 
-    def update_body(self, n: int, body: str, expected_body: str | None = None) -> None:
+    def update_body(self, n: int, body: str, expected_body: str) -> None:
+        from .rewrite import require_final
+
         self.public(body)
-        with self.gh.fresh_reads():
-            raw = self.gh.issue(n)
-        if (
-            expected_body is not None
-            and raw["body"] != expected_body
-            and raw["body"] != body
-        ):
+        raw = require_final(self.gh, n)
+        if raw["body"] != expected_body and raw["body"] != body:
             raise ValueError(
                 f"#{n}: body changed during the operation; reconcile before retry"
             )

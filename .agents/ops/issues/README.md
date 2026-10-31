@@ -35,7 +35,7 @@
 | 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
 | 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
 | 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
-| 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` は運用レポートの容器 | 承認を必要とする仕組み・担当者、レポート生成CLI |
+| 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` は運用レポートの容器、`rewrite:*` は[本文書き直しの確定状態](#親issueの書き直し状態) | 承認を必要とする仕組み・担当者、レポート生成CLI、書き直しworkflow（skipは人間） |
 
 issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml) のタイトル先頭prefixから
 作業種別だけを付け、本文を読まない。対象領域をタイトルからも推測しない。
@@ -56,6 +56,64 @@ issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml)
 人間・agentによる付与は残し、イベント・actorを特定できないものも理由を表示して残す。
 全対象の取得に成功してから書き込みを始め、解除直前にもissueの状態と全イベントを再確認する。
 取得失敗を空結果へ置き換えず、非ゼロで終了する。
+
+## 親issueの書き直し状態
+
+判定の正本は `issues.rewrite_state`。ローカルregistryやworkflowの終了状態から本文の確定を推測しない。
+有効化の正本はrepository variable `ISSUE_REWRITE_ENABLED_SINCE`（UTCの `YYYY-MM-DDTHH:MM:SSZ`）。
+未設定のHTTP 404だけを無効とし、403・5xx・通信失敗・不正な応答や日時は例外にする。
+設定とGitHub上のラベル作成は管理者が別途行う。
+
+有効かつ現在 `issue:parent` を持ち、GitHubの `created_at` が有効化時刻**以降**のissueだけが対象。
+それ以外は `not_target`。対象で確定ラベルがなければ `pending`、あれば以下の状態になる。
+確定ラベルが2種類以上付いていたら、非対象のissueでも例外にする。
+
+| 公開定数 | ラベル | 状態・意味 |
+|---|---|---|
+| `REWRITE_DONE_LABEL` | `rewrite:done` | `done`: 書き直し完了 |
+| `REWRITE_FAILED_LABEL` | `rewrite:failed` | `failed`: 書き直しに失敗し、原文で確定 |
+| `REWRITE_SKIPPED_LABEL` | `rewrite:skipped` | `skipped`: 人間が書き直しを省略 |
+
+### Python API（workflowとの共有契約）
+
+import rootは `.agents/ops`。workflowも次の公開名をそのまま使う。
+
+```python
+from issues.cli import GitHub
+from issues.rewrite_state import (
+    REWRITE_DONE_LABEL,
+    REWRITE_FAILED_LABEL,
+    REWRITE_SKIPPED_LABEL,
+    REWRITE_FINAL_LABELS,
+    REWRITE_ENABLED_SINCE_VARIABLE,
+    read_enabled_since,
+    rewrite_state,
+)
+
+gh = GitHub("owner/repo")
+enabled_since = read_enabled_since(gh)
+issue = gh.get("repos/owner/repo/issues/123")
+state = rewrite_state(
+    [label["name"] for label in issue["labels"]],
+    issue["created_at"],
+    enabled_since,
+)
+```
+
+- `read_enabled_since(gh) -> str | None`: `repo` と `get(endpoint) -> object` を持つ読み取りclientを受け取る。
+  共通 `issues.cli.GitHub`（`parent.github.GitHub` も可）が `gh api --include --method GET` で
+  `repos/{repo}/actions/variables/ISSUE_REWRITE_ENABLED_SINCE` を取得する。
+  `GitHubHTTPError.status == 404` のときだけ `None`、設定済みなら検証したUTC文字列を返す。
+- `rewrite_state(labels, created_at, enabled_since) -> RewriteState`: `labels` はラベル**名の文字列**のiterable。
+  RESTのラベルobjectそのものは渡さない。日時はUTC秒形式の文字列、無効の場合だけ `enabled_since=None`。
+  不正な日時・確定ラベルの競合は `ValueError`。戻り値の型 `RewriteState` は上記5状態の `Literal`。
+- `REWRITE_FINAL_LABELS` は3つの確定ラベルの `frozenset[str]`、
+  `REWRITE_ENABLED_SINCE_VARIABLE` はrepository variableの名前。
+  定数・型・`read_enabled_since` は `issues` packageからも公開する。
+  `from issues import rewrite_state` は関数ではなく同名の**module**を返す。
+
+親CLIのgateと待機は [parent README](../parent/README.md#書き直しの確定待ち)、
+自律着手の保留と再照合は [dispatcher README](../dispatcher/README.md#判断結果と保留コメント)を参照する。
 
 ## タイトル
 

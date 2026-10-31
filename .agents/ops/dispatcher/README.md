@@ -66,7 +66,10 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 `input.json` schema_version=1:
 
 - `repo`（casefoldしたowner/repo）、`publisher`（現在のgh login）、`subjects`（全open issue番号の昇順配列）。
+- `rewrite_enabled_since`（共有APIが取得・検証したrepository variableのUTC文字列、無効ならnull）。
+  記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
+  GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の書き直し判定](../issues/README.md#親issueの書き直し状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
   生session ID・ローカルworktreeは判定入力や公開コメントへ渡さない。別の担当台帳は作らない。
@@ -124,6 +127,8 @@ scriptはversion・digest・未知キー・重複・未知ID/出典・routing・
 機械的阻害条件は報告容器、正式な既存子、親関係が欠けたissue:child、needs-human/停止/既存のchecking・人間合意、
 既存担当・assignee・委任予約・関連PR、未充足依存。同時に複数ある場合は、報告容器→正式な既存子→親関係の欠落→
 人間の保留/合意→既存担当等→未充足依存の順で最初の分類を採用する。
+書き直しが `pending` の対象親も `guard` が `human_hold` にし、確定待ちの案内を根拠へ含める。
+有効化時刻・作成時刻・ラベルは対象digestに含め、コメント・実行根拠の記録前後にも照合する。
 agentがstartableを返し、機械的阻害条件がある場合はrun全体を拒否し、書込も候補生成も行わない。
 両方が非startableで分類だけが異なる場合は、記録する`disposition`を機械的阻害条件の値にする。
 `rationale`に採用した分類とagentの元の分類・理由を併記し、`facts`にはagentの確認事実を保持して機械的根拠を追記する。

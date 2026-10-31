@@ -36,7 +36,7 @@ CI = sync.LabelSpec("ci", "5319E7", "CI description", "area")
 def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
     specs = sync.load_manifest()
     names = {spec.name for spec in specs}
-    assert len(specs) == len(names) == 26
+    assert len(specs) == len(names)
     assert not names & DELETED
     assert {spec.axis for spec in specs} == set(sync.AXES)
     assert all(re.fullmatch(r"[0-9A-Fa-f]{6}", spec.color) for spec in specs)
@@ -67,7 +67,13 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "module: tennis-scene",
         "issue:parent",
         "issue:child",
+        "rewrite:done",
+        "rewrite:failed",
+        "rewrite:skipped",
     } == names
+    assert all(
+        spec.axis == "status" for spec in specs if spec.name.startswith("rewrite:")
+    )
     for name, color in (("issue:parent", "F97316"), ("issue:child", "FED7AA")):
         assert next(s.color for s in specs if s.name == name) == color
         assert sum(s.color.upper() == color for s in specs) == 1

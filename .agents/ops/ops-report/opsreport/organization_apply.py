@@ -8,6 +8,7 @@ from typing import Any
 
 from issues import (
     NO_CHILDREN,
+    REWRITE_FINAL_LABELS,
     TASKS_HEADING,
     ChildTask,
     Issue,
@@ -30,6 +31,7 @@ from parent.state import Store
 
 from . import organization as org
 from . import schedule
+from .checklist_updates import update_checklist, validate_recovery
 from .proposals import annotate_children, annotate_handoffs, parse_report
 
 
@@ -122,7 +124,14 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
             # The checklist is the only part populated after creating children.
             actual_body = replace_section(actual_body, TASKS_HEADING, NO_CHILDREN)
             expected_body = replace_section(expected_body, TASKS_HEADING, NO_CHILDREN)
-        if actual_body != expected_body:
+        allowed_bodies = {expected_body}
+        pending = tx.get("checklist_recovery", {}).get(str(n))
+        if node["role"] == "parent" and pending:
+            allowed_bodies.update(
+                replace_section(body, TASKS_HEADING, NO_CHILDREN)
+                for body in (pending["checkpoint"]["body"], pending["written_body"])
+            )
+        if actual_body not in allowed_bodies:
             raise ValueError(
                 "task content changed during publication; reconcile the existing issue"
             )
@@ -137,9 +146,13 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
             raw["body"] = baseline["issues"][str(n)]["body"]
             raw["source_reports"] = baseline["issues"][str(n)]["source_reports"]
         else:
-            if raw["comments"] or {v["name"] for v in raw["labels"]} != set(
-                draft["labels"]
-            ):
+            actual_labels = {v["name"] for v in raw["labels"]}
+            expected_labels = set(draft["labels"])
+            if node["role"] == "parent":
+                # Rewrite completion changes these machine states while triage publishes children.
+                actual_labels -= REWRITE_FINAL_LABELS
+                expected_labels -= REWRITE_FINAL_LABELS
+            if raw["comments"] or actual_labels != expected_labels:
                 raise ValueError(
                     "new task instructions/labels changed during publication"
                 )
@@ -180,6 +193,10 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
             if actual_tasks not in ({t.number: t for t in original_tasks}, allowed):
                 raise ValueError("existing parent checklist changed outside this plan")
             raw["body"] = original["body"]
+            if {label["name"] for label in raw["labels"]} - REWRITE_FINAL_LABELS == {
+                label["name"] for label in original["labels"]
+            } - REWRITE_FINAL_LABELS:
+                raw["labels"] = original["labels"]
         raw["children"] = [child for child in raw["children"] if child not in new_ids]
     normalized["subjects"] = [n for n in normalized["subjects"] if n not in new_ids]
     if org.material(normalized) != org.material(baseline):
@@ -263,20 +280,17 @@ class Journal:
             )
         issued: set[str] = set()
         for tx in self.data["transactions"]:
-            if (
-                set(tx)
-                != {
-                    "fixed",
-                    "plan",
-                    "plan_sha256",
-                    "numbers",
-                    "drafts",
-                    "attempted",
-                    "complete",
-                }
-                or type(tx["complete"]) is not bool
-            ):
+            if (set(tx) - {"checklist_recovery"}) != {
+                "fixed",
+                "plan",
+                "plan_sha256",
+                "numbers",
+                "drafts",
+                "attempted",
+                "complete",
+            } or type(tx["complete"]) is not bool:
                 raise ValueError("invalid triage transaction")
+            validate_recovery(tx)
             fixed = tx["fixed"]
             if (
                 not isinstance(fixed, dict)
@@ -387,7 +401,12 @@ class Journal:
 
 
 def _apply(
-    gh: GitHub, store: Store, root: Path, journal: Journal, tx: dict[str, Any]
+    gh: GitHub,
+    store: Store,
+    root: Path,
+    journal: Journal,
+    tx: dict[str, Any],
+    checklist_events: list[dict[str, Any]],
 ) -> dict[str, int]:
     if tx["complete"]:
         _check_sources(gh, tx)
@@ -488,11 +507,14 @@ def _apply(
                 )
                 for n in parent_issue.children
             ]
-            body = replace_section(
-                parent_issue.body, TASKS_HEADING, render_child_tasks(tasks)
+            update_checklist(
+                gh,
+                parent_issue,
+                render_child_tasks(tasks),
+                tx,
+                journal.save,
+                checklist_events,
             )
-            if body != parent_issue.body:
-                gh.write("PATCH", f"repos/{gh.repo}/issues/{p}", {"body": body})
             _guard(gh, store, root, tx)
         for n in numbers.values():
             problems = check_consistency(gh.family(n))
@@ -545,7 +567,7 @@ def run(
         try:
             if dry_run:
                 continue
-            links = _apply(gh, store, root, journal, tx)
+            links = _apply(gh, store, root, journal, tx, result.checklist_updates)
             statuses = {
                 k: f"作業issue #{n}。着手判断・親割当は次の08:00・20:00 JST予定回。"
                 for k, n in links.items()
@@ -611,7 +633,7 @@ def run(
     if dry_run:
         return
     try:
-        links = _apply(gh, store, root, journal, tx)
+        links = _apply(gh, store, root, journal, tx, result.checklist_updates)
     except ValueError as exc:
         result.errors.append(str(exc))
         _status(
