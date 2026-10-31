@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 from typing import Any
 
 from markdown_it import MarkdownIt
+from markdown_it.rules_core import StateCore
 from markdown_it.rules_inline import StateInline
 from markdown_it.rules_inline.backticks import backtick
 from markdown_it.token import Token
@@ -103,6 +104,18 @@ def _inline_urls(tokens: Sequence[Token], urls: Counter[str]) -> None:
             _HTMLURLs(urls).feed(token.content)
 
 
+def _source_lines(source: str) -> list[str]:
+    """Retain terminators; only CRLF, CR and LF advance CommonMark line maps."""
+    lines: list[str] = []
+    start = 0
+    for ending in re.finditer(r"\r\n?|\n", source):
+        lines.append(source[start : ending.end()])
+        start = ending.end()
+    if start < len(source):
+        lines.append(source[start:])
+    return lines
+
+
 def markdown_content(body: str) -> MarkdownContent:
     """Preserve raw quote blocks, and count URL occurrences rather than references.
 
@@ -114,9 +127,21 @@ def markdown_content(body: str) -> MarkdownContent:
     parser = MarkdownIt("commonmark", {"store_labels": True}).enable(
         ["table", "strikethrough"]
     )
+    lines = _source_lines(body)
+    expected_lines = [
+        line.replace("\r\n", "\n").replace("\r", "\n").replace("\0", "\ufffd")
+        for line in lines
+    ]
+
+    def check_source_lines(state: StateCore) -> None:
+        # Check the parser's actual normalized source before it computes maps.
+        # Preserve original bytes for slicing; unknown normalization must fail.
+        if _source_lines(state.src) != expected_lines:
+            raise ValueError("markdown_source_line_mapping_changed")
+
+    parser.core.ruler.after("normalize", "check_source_lines", check_source_lines)
     parser.inline.ruler.at("backticks", _raw_backtick)
     tokens = parser.parse(body, env)
-    lines = body.splitlines(keepends=True)
     content = MarkdownContent()
     content.protected["html_comments"] = re.findall(r"<!--[\s\S]*?-->", body)
     quote_end = 0

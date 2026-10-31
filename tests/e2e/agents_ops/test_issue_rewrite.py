@@ -25,6 +25,7 @@ sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
 cli: Any = importlib.import_module("issue_rewrite.cli")
 pipeline: Any = importlib.import_module("issue_rewrite.pipeline")
 invariants: Any = importlib.import_module("issue_rewrite.invariants")
+markdown: Any = importlib.import_module("issue_rewrite.markdown")
 github: Any = importlib.import_module("issue_rewrite.github")
 publication: Any = importlib.import_module("issue_rewrite.publication")
 issue_format: Any = importlib.import_module("issues.format")
@@ -172,6 +173,108 @@ def test_unclosed_fence_source_is_protected_through_eof(marker: str) -> None:
 def test_inline_code_uses_parser_spans_and_keeps_raw_whitespace() -> None:
     body = "` outside ` and ``a\n b``.\n\n- item\n\n    ~~~\n    `inside`\n    ~~~\n"
     assert invariants.protected(body)["inline_code"] == ["` outside `", "``a\n b``"]
+
+
+def test_unicode_line_separator_does_not_hide_fence_change(original: str) -> None:
+    example = "a\u2028b\u2028c\n\n~~~\nresult = value\n~~~\n"
+    body = original.replace("インラインは", example + "\nインラインは")
+    assert invariants.check_invariants(body, body) == []
+    errors = invariants.check_invariants(
+        body, body.replace("result = value", "result= value")
+    )
+    assert any(error["rule"] == "fenced_code" for error in errors), errors
+
+
+@pytest.mark.parametrize(
+    "separator",
+    [
+        pytest.param("\u2028", id="line-separator"),
+        pytest.param("\u2029", id="paragraph-separator"),
+        pytest.param("\u0085", id="next-line"),
+        pytest.param("\v", id="vertical-tab"),
+        pytest.param("\f", id="form-feed"),
+        pytest.param("\r", id="cr"),
+        pytest.param("\r\n", id="crlf"),
+        pytest.param("\n", id="lf"),
+        pytest.param("\x1c", id="file-separator"),
+        pytest.param("\x1d", id="group-separator"),
+        pytest.param("\x1e", id="record-separator"),
+        pytest.param("\0", id="nul"),
+    ],
+)
+def test_source_line_maps_preserve_code_and_quotes_in_all_containers(
+    original: str,
+    separator: str,
+) -> None:
+    newline = separator if separator in {"\r", "\r\n"} else "\n"
+    example = (
+        (
+            "a{separator}b{separator}c\n\n"
+            "~~~\nresult = value\n~~~\n\n"
+            "    plain_code = value\n\n"
+            "> a{separator}b{separator}c\n>\n"
+            "> ~~~\n> quoted_code = value\n> ~~~\n>\n"
+            ">     quoted_indent = value\n>\n> quote target\n\n"
+            "- a{separator}b{separator}c\n\n"
+            "    ~~~\n    list_code = value\n    ~~~\n\n"
+            "      list_indent = value\n\n"
+        )
+        .replace("\n", newline)
+        .format(separator=separator)
+    )
+    body = original.replace("インラインは", example + "\nインラインは")
+    assert invariants.check_invariants(body, body) == []
+    fragments = invariants.protected(body)
+    assert (
+        "~~~\nresult = value\n~~~\n".replace("\n", newline) in fragments["fenced_code"]
+    )
+    assert (
+        "    plain_code = value\n".replace("\n", newline) in fragments["indented_code"]
+    )
+    assert any(f"> a{separator}b{separator}c" in quote for quote in fragments["quotes"])
+    for text, rule in (
+        ("result = value", "fenced_code"),
+        ("plain_code = value", "indented_code"),
+        ("quoted_code = value", "fenced_code"),
+        ("quoted_indent = value", "indented_code"),
+        ("list_code = value", "fenced_code"),
+        ("list_indent = value", "indented_code"),
+        ("quote target", "quotes"),
+    ):
+        changed = body.replace(text, text.replace(" ", "", 1), 1)
+        errors = invariants.check_invariants(body, changed)
+        assert any(error["rule"] == rule for error in errors), (text, errors)
+
+
+@pytest.mark.parametrize("drift", ["added_line", "missing_line", "nul_replacement"])
+def test_normalization_drift_fails_before_source_slicing(
+    original: str,
+    monkeypatch: pytest.MonkeyPatch,
+    drift: str,
+) -> None:
+    from markdown_it.rules_core.normalize import normalize
+
+    parser_type = markdown.MarkdownIt
+
+    def parser(*args: Any, **kwargs: Any) -> Any:
+        instance = parser_type(*args, **kwargs)
+
+        def normalize_with_drift(state: Any) -> None:
+            normalize(state)
+            if drift == "added_line":
+                state.src += "\n"
+            elif drift == "missing_line":
+                state.src = state.src.replace("\n", "", 1)
+            else:
+                state.src = state.src.replace("\ufffd", "?")
+
+        instance.core.ruler.at("normalize", normalize_with_drift)
+        return instance
+
+    monkeypatch.setattr(markdown, "MarkdownIt", parser)
+    body = original.replace("インラインは", "NUL: \0\n\nインラインは")
+    with pytest.raises(ValueError, match="markdown_source_line_mapping_changed"):
+        invariants.check_invariants(body, body)
 
 
 @pytest.mark.parametrize(
