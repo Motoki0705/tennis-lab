@@ -162,13 +162,11 @@ RSS 为 pytest controller/worker 中**单进程的最大 high-water RSS**，单�
 
 CI 在依赖准备前记录 runner。summary、REST snapshot 和 artifact 步骤使用 `always()`，在
 准备或测试失败后仍尝试保存。强制取消或 runner 丢失可能阻止上传；REST 侧仍记录取消或
-不完整的 attempt。lane plan与shard测量的artifact名称包含run（测量还含shard index），重试时覆盖。
-汇总检查缺失、重复与额外shard，并用REST ID固定下载集合。
-`cpu-test-coverage-RUN-ATTEMPT` 保留汇总attempt名称，`coverage.json` 记录plan/shard attempt，
-`artifacts.json` 保存下载清单。部分重试在同一run/HEAD/plan中使用每个shard的最新attempt；
-完整重试时GitHub删除之前的artifact。失败attempt的测量可能被覆盖删除。
-标识核对与证据的正本为[重试规则](sharding.zh-CN.md#证据与失败语义)。cache hit 来自 `setup-uv` 输出；
+不完整的 attempt。cache hit 来自 `setup-uv` 输出；
 无法获得时明确标记 unknown，不假定 warm cache。
+
+lane plan与shard测量的artifact名称不含attempt，重试时会被覆盖。
+部分重试的条件、检查与证据请参阅[分片说明](sharding.zh-CN.md#证据与失败语义)。
 
 job 内 REST snapshot 是暂定值，其自身 job、上传和 post-cache 尚未结束。**job 完成后**
 重新获取，才能确定所有 runner 和后处理时间：

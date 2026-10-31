@@ -173,14 +173,11 @@ eventの直列化/flush時間とreport生成時間を記録します。write時�
 
 CIは依存準備より前にrunnerを記録します。summary・REST snapshot・artifactは `always()`
 で準備/テスト失敗後にも実行します。強制cancel・runner消失でuploadができない場合も、
-REST側ではcancel/不完全なattemptとして残ります。lane planとshard計測のartifact名は
-run（計測はshard indexも）を含み、再実行で上書きします。集約は欠落・重複・余分なshardを
-検査し、RESTのIDで取得対象を固定します。`cpu-test-coverage-RUN-ATTEMPT` は集約attemptを
-名前に残し、`coverage.json` にplan/shardのattempt、`artifacts.json` に取得一覧を保存します。
-部分再実行は同じrun/HEAD/plan内でshardごとの最新attemptを使い、全体の再実行ではGitHubが
-以前のartifactを削除します。失敗attemptの計測は上書きで失われることがあります。
-識別情報の照合と証拠の正本は[再実行の規則](sharding.ja.md#証拠と失敗)です。
+REST側ではcancel/不完全なattemptとして残ります。
 cache hitは `setup-uv` の出力から取り、取得できないものはunknownです。
+
+lane planとshard計測のartifact名はattemptを含まず、再実行で上書きされます。
+部分再実行の条件・検査・証拠は[分割の説明](sharding.ja.md#証拠と失敗)を参照してください。
 
 job内のREST snapshotは暫定値です。自身のjob、upload、post-cacheがまだ終わっていません。
 **job終了後**に再取得して全runner時間と後処理を確定します。

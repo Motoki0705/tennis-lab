@@ -209,16 +209,12 @@ overhead from a startup-dominated sample.
 CI records the runner before dependency preparation. Summary, REST snapshot, and
 artifact steps use `always()`, preserving evidence after preparation/test failures.
 Hard cancellation or a lost runner may prevent upload; REST accounting still
-records that attempt as cancelled/incomplete. Lane plan and shard measurement
-artifact names include the run (and shard index for measurements); reruns overwrite
-those artifacts. The aggregate checks missing/duplicate/extra artifacts and pins
-downloads to their REST IDs. `cpu-test-coverage-RUN-ATTEMPT` keeps the aggregate
-attempt, `coverage.json` records plan/shard attempts, and `artifacts.json` preserves
-the download inventory. Partial reruns use each shard's latest attempt within the
-same run/HEAD/plan; full reruns cause GitHub to delete earlier artifacts. Failed
-attempt measurements can be overwritten. The complete [rerun contract](sharding.md#evidence-and-failure-semantics)
-defines the identity checks and evidence. Cache hit is recorded from `setup-uv`, and unavailable values remain
-unknown rather than being assumed warm.
+records that attempt as cancelled/incomplete. Cache hit is recorded from `setup-uv`,
+and unavailable values remain unknown rather than being assumed warm.
+
+Lane plan and shard measurement artifact names omit the attempt and are overwritten
+on reruns. See [sharding](sharding.md#evidence-and-failure-semantics) for partial rerun
+conditions, validation and evidence.
 
 The in-job REST snapshot is provisional: its own job/upload/post-cache steps have
 not completed. Fetch again **after** the job ends for final all-runner/post time:
