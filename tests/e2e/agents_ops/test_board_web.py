@@ -596,6 +596,87 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
+def test_runtime_includes_unregistered_agents_without_changing_membership(
+    world: World,
+    client: TestClient,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed = []
+    secret = "f08ef56a-0296-4706-9a8c-88a9366ef922"
+
+    class RuntimeHerdr:
+        def __init__(self, env: Any, session: str | None = None) -> None:
+            self.session = session
+
+        def call(self, *args: str) -> dict[str, Any]:
+            observed.append((self.session, args))
+            if args[0] == "session":
+                return {
+                    "sessions": [
+                        {"name": "main", "running": True},
+                        {"name": "other", "running": True},
+                        {"name": "stopped", "running": False},
+                    ]
+                }
+            return {
+                "agents": [
+                    {
+                        "agent": "codex",
+                        "agent_status": "working",
+                        "terminal_title_stripped": "実験の確認"
+                        if self.session == "main"
+                        else f"/private/work {secret}",
+                        "terminal_id": "private-terminal",
+                        "pane_id": "private-pane",
+                        "agent_session": {"value": secret},
+                    }
+                ]
+            }
+
+    before = world.message_rows()
+    registry = world.labels.registry.read_bytes()
+    monkeypatch.setattr(web.app.runtime, "Herdr", RuntimeHerdr)
+    response = client.get("/api/runtime")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["observed_at"]
+    assert [row["label"] for row in data["agents"]] == ["codex 1", "codex 2"]
+    assert data["agents"][0]["title"] == "実験の確認"
+    assert data["agents"][1]["title"] == ""
+    assert data["agents"][1]["title_status"] == "redacted"
+    assert all(row["state"] == "working" for row in data["agents"])
+    assert secret not in response.text and "private-" not in response.text
+    assert not any(session == "stopped" for session, _ in observed)
+    assert world.message_rows() == before
+    assert world.labels.registry.read_bytes() == registry
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"sessions": None},
+        {"sessions": [{"running": "yes"}]},
+        {"sessions": [{"running": True, "name": "broken"}]},
+    ],
+)
+def test_runtime_source_failure_is_not_an_empty_success(
+    client: TestClient,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, Any],
+) -> None:
+    def call(self: Any, *args: str) -> dict[str, Any]:
+        if args[0] == "agent":
+            raise ValueError("private failure details")
+        return payload
+
+    monkeypatch.setattr(web.app.runtime.Herdr, "call", call)
+    response = client.get("/api/runtime")
+    assert response.status_code == 503
+    assert "private failure" not in response.text
+
+
 def test_stopped_parent_is_historical_recipient_but_not_live_roster_or_broadcast(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:

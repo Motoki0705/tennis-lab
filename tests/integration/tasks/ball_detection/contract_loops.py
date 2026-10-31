@@ -86,7 +86,15 @@ def _same_model(model: Any) -> Any:
     return factory
 
 
-def _scratch(model: Any, inputs: LoopInputs, output: Path) -> None:
+def _scratch(
+    model: Any,
+    inputs: LoopInputs,
+    output: Path,
+    *,
+    epochs: int = 1,
+    resume: Path | None = None,
+    stop: int | None = None,
+) -> None:
     argv = [
         "contract",
         "--manifest",
@@ -96,7 +104,7 @@ def _scratch(model: Any, inputs: LoopInputs, output: Path) -> None:
         "--output",
         str(output),
         "--epochs",
-        "1",
+        str(epochs),
         "--windows-per-epoch",
         "1",
         "--learning-rate",
@@ -119,6 +127,8 @@ def _scratch(model: Any, inputs: LoopInputs, output: Path) -> None:
     constructor = (
         "MDDPoseDetector" if model.config.requires_pose else "MDDQueryDetector"
     )
+    if resume is not None:
+        argv.extend(["--resume", str(resume)])
     with (
         patch.object(scratch, constructor, side_effect=_same_model(model)),
         patch.object(sys, "argv", argv),
@@ -126,16 +136,25 @@ def _scratch(model: Any, inputs: LoopInputs, output: Path) -> None:
         scratch.main()
 
 
-def _pretrain(model: Any, inputs: LoopInputs, output: Path) -> None:
+def _pretrain(
+    model: Any,
+    inputs: LoopInputs,
+    output: Path,
+    *,
+    epochs: int = 1,
+    resume: Path | None = None,
+    stop: int | None = None,
+) -> None:
     args = SimpleNamespace(
         manifest=inputs.manifest,
         model_config=inputs.model_file,
         output=output,
-        resume=None,
-        epochs=1,
+        resume=resume,
+        epochs=epochs,
         windows_per_epoch=1,
         learning_rate=0.001,
-        warmup_updates=0,
+        # Resume profiles cross a nonzero warmup without extending the run.
+        warmup_updates=min(1, epochs - 1),
         seed=42,
         device="cpu",
         precision="fp32",
@@ -153,7 +172,7 @@ def _pretrain(model: Any, inputs: LoopInputs, output: Path) -> None:
         focal_gamma=2.0,
         log_every=1,
         preview_clips=0,
-        stop_after_epoch=None,
+        stop_after_epoch=stop,
     )
     with (
         patch.object(pretrain, "arguments", return_value=args),
@@ -162,7 +181,15 @@ def _pretrain(model: Any, inputs: LoopInputs, output: Path) -> None:
         pretrain.main()
 
 
-def _deep_query(model: Any, inputs: LoopInputs, output: Path) -> None:
+def _deep_query(
+    model: Any,
+    inputs: LoopInputs,
+    output: Path,
+    *,
+    epochs: int = 2,
+    resume: Path | None = None,
+    stop: int | None = None,
+) -> None:
     augmentation = output.parent / "augmentation.yaml"
     raw = OmegaConf.load(
         Path("src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml")
@@ -172,14 +199,14 @@ def _deep_query(model: Any, inputs: LoopInputs, output: Path) -> None:
     args = SimpleNamespace(
         manifest=inputs.manifest,
         output=output,
-        resume=None,
+        resume=resume,
         augmentation_config=augmentation,
-        epochs=2,
+        epochs=epochs,
         freeze_epochs=1,
         windows_per_epoch=1,
         learning_rate=0.001,
         encoder_lr_ratio=0.1,
-        warmup_updates=0,
+        warmup_updates=1,
         seed=42,
         device="cpu",
         precision="fp32",
@@ -194,7 +221,7 @@ def _deep_query(model: Any, inputs: LoopInputs, output: Path) -> None:
         compile_mode="off",
         log_every=1,
         preview_clips=0,
-        stop_after_epoch=None,
+        stop_after_epoch=stop,
         selection_scope="common",
         stress_evaluation=False,
     )
@@ -205,7 +232,15 @@ def _deep_query(model: Any, inputs: LoopInputs, output: Path) -> None:
     )
 
 
-def _hybrid(model: Any, inputs: LoopInputs, output: Path) -> None:
+def _hybrid(
+    model: Any,
+    inputs: LoopInputs,
+    output: Path,
+    *,
+    epochs: int = 2,
+    resume: Path | None = None,
+    stop: int | None = None,
+) -> None:
     assert inputs.parent is not None
     config = hybrid_recipe(inputs.manifest, inputs.parent, output)
     config.model = dict(name="mdd_hybrid", **asdict(model.config))
@@ -215,6 +250,12 @@ def _hybrid(model: Any, inputs: LoopInputs, output: Path) -> None:
         1,
     )
     config.absence.window_weights = dict(play=1.0, absent=0.0, nonplay=0.0)
+    config.epochs, config.resume, config.stop_after_epoch = (
+        epochs,
+        (str(resume.relative_to(output.parent)) if resume is not None else None),
+        stop,
+    )
+    config.presence_threshold = 0.63
 
     def initialize(path: Path, spec: Any, **kwargs: Any) -> Any:
         assert path == inputs.parent and spec == model.config
@@ -224,7 +265,15 @@ def _hybrid(model: Any, inputs: LoopInputs, output: Path) -> None:
         hybrid.train_hybrid(config)
 
 
-def _temporal(model: Any, inputs: LoopInputs, output: Path) -> None:
+def _temporal(
+    model: Any,
+    inputs: LoopInputs,
+    output: Path,
+    *,
+    epochs: int = 1,
+    resume: Path | None = None,
+    stop: int | None = None,
+) -> None:
     architecture = {
         "mdd_dpt_heatmap": "dpt",
         "mdd_heatmap_hybrid": "hybrid",
@@ -241,12 +290,17 @@ def _temporal(model: Any, inputs: LoopInputs, output: Path) -> None:
             model_config=model.config,
             output=output,
             budget=update_budget(
-                updates=1, warmup_updates=0, weight_decay=0.0, evaluation_interval=1
+                updates=epochs,
+                warmup_updates=0,
+                weight_decay=0.0,
+                evaluation_interval=1,
             ),
             runtime=CoordinateRuntime(cpu_threads=1),
             device=torch.device("cpu"),
             augmentation=None,
             distance_px=20.0,
+            resume=resume,
+            stop_after_update=stop + 1 if stop is not None else None,
         )
 
 
@@ -269,6 +323,15 @@ def fit_loop(
     )
     with _optimizer_audit(model, inputs.kind) as audit:
         runners[inputs.kind](model, inputs, output)
+    audit.artifact = (
+        output / "checkpoint-update-00000001.pt"
+        if inputs.kind == "temporal"
+        else output
+        / f"epoch-{1 if inputs.kind in {'deep_query', 'hybrid'} else 0:03d}.pt"
+    )
+    assert audit.artifact.is_file()
+    if inputs.kind == "hybrid":
+        model._contract_presence_threshold = 0.63
     assert audit.updates == (2 if inputs.kind in {"deep_query", "hybrid"} else 1)
     assert audit.losses
     parameters.validate(model)  # staged loops must end with every group thawed

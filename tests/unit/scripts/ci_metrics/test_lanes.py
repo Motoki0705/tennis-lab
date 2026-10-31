@@ -31,6 +31,7 @@ DEPENDENCY_CHANGES = {
     "ball-learning": (
         "src/tasks/ball_detection/scripts/train.py",
         "src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml",
+        "tests/integration/tasks/ball_detection/mdd_training_contracts.py",
         "src/tennis_scene/pipeline/storage/codec.py",
         "src/submodules/models/dino/architecture.py",
         "src/synthetic_data_generation/alignment/contracts.py",

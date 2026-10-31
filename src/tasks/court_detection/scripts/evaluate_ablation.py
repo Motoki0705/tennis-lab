@@ -41,6 +41,14 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             required=False,
         ),
         BoundaryPathField(
+            "synthetic_eval_manifest",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.FILE,
+            must_exist=True,
+            required=False,
+        ),
+        BoundaryPathField(
             "artifact_root",
             PathRole.ARTIFACT,
             PathDirection.INPUT,
@@ -79,7 +87,17 @@ def main() -> None:
     parser.add_argument("--expected-step", type=int)
     parser.add_argument("--split", choices=("val", "test"))
     parser.add_argument("--series")
-    parser.add_argument("--include-synthetic-val", action="store_true")
+    synthetic = parser.add_mutually_exclusive_group()
+    synthetic.add_argument(
+        "--include-synthetic-val",
+        action="store_true",
+        help="Evaluate the synthetic validation subset saved in the checkpoint.",
+    )
+    synthetic.add_argument(
+        "--synthetic-eval-manifest",
+        type=Path,
+        help="Evaluate this val subset instead, with per-scene metrics (step-based checkpoints).",
+    )
     for name in (
         "data-root",
         "checkpoint-root",
@@ -100,6 +118,11 @@ def main() -> None:
     }
     output = args.output.expanduser().resolve()
     checkpoint = args.checkpoint.expanduser().resolve()
+    synthetic_manifest = (
+        {"synthetic_eval_manifest": args.synthetic_eval_manifest.expanduser().resolve()}
+        if args.synthetic_eval_manifest is not None
+        else {}
+    )
     binding_roots = {
         "data_root": PROJECT_ROOT,
         "artifact_root": PROJECT_ROOT,
@@ -117,7 +140,7 @@ def main() -> None:
         cache_root=PROJECT_ROOT,
     )
     paths = PATH_BOUNDARY.validate(
-        {"checkpoint": checkpoint, "output": output, **overrides},
+        {"checkpoint": checkpoint, "output": output, **overrides, **synthetic_manifest},
         resolver=PathResolver(roots),
         independent_artifact_inputs=True,
     )
@@ -130,6 +153,11 @@ def main() -> None:
         real_split=args.split,
         series=args.series,
         include_synthetic_val=args.include_synthetic_val,
+        synthetic_eval_manifest=(
+            paths.declared("synthetic_eval_manifest").path
+            if synthetic_manifest
+            else None
+        ),
         path_overrides={name: str(paths.declared(name).path) for name in overrides},
     )
     print(output / "evaluation.json")

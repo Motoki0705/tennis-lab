@@ -1,7 +1,7 @@
-<!-- knowledge-review: ea708b8aef68712f549d3f75a7161529246aee0b7a9d1bf6fa1a9b75c0d6fd17 on 2026-10-31 -->
+<!-- knowledge-review: e7647ddc43e9c60d5ee640c7ff0c3f6953c8e680e49d9e485e0ca2f9275c3f8f on 2026-10-31 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-31（ボール逐次学習の完了・終端validationを反映。2026-10-30までのCourt比較・球LOESS・公開デモの記録と、既存のモデル・checkpoint採用判断は維持）
+更新日: 2026-10-31（ボール逐次学習の完了・終端validationとCourtシーン組合せの入力manifestを反映。固定6000枚・4条件比較と#1343の完了判断、球LOESS・公開デモ、既存モデル・checkpointの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -589,6 +589,13 @@ Meijiの校正のみを使った合成512例で、AのLaplace混合がBのvoxel�
 ### Court Detection
 
 2026-10-27の[固定6000枚・シーン多様性比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、[準備run](nodes/court_detection/000050-run-court-scene-diversity-preparation-s42.md)のDINOv3-S＋幅384・33160更新、train5500/合成val500と元実画像val2211の4条件学習・最終別domain評価を完了した。4sceneが実画像集計5指標で最良だったが2sceneは悪化した。seed42単一試行・固定追加順・合成val構成差・scene2の再開制約を残す。#1343は2026-10-30にこの比較をもって完了し、画像数スケーリングの本実験と追加seedは実施しない判断になった。複数seedとscene組合せ・独立実画像testは未着手の課題である。#983とは学習domainと幅が異なるため直接比較せず、既存のモデル採用判断は維持する。
+
+2026-10-31の[シーン組合せ用manifest作成](nodes/synthetic_data_generation/000029-run-court-scene-pair-manifests-v1.md)では、
+既存poolのnested順位で新5ペアと4シーン共通評価を作り、Driveへ追加した。
+P01のsample列は既存scene-2と完全一致し、共通評価と全9 trainのsample・軌道の漏れは0だった。
+入力同一性の確認であり、ペア比較の学習・精度評価は未実施で、モデル採用判断は変えない。
+作成開始時のmainでは旧poolの方式をreaderが拒否したため、修復PR #1594を基底に再照合した。
+次は親#1581が、前回と同じColab環境で全poolの厳密な読込を確認したうえで共通評価を実行する。
 
 2026-10-23の[正式データ版manifestからのGPU接続確認](nodes/court_detection/000049-run-court-scale-manifest-training-smoke-s42.md)では、本番recipeのB00〜B03・採択298枚を生成器のvalidatorで照合し、ViT-B＋幅768・batch 1の3更新とcheckpointからの実画像val 2枚の評価まで通した。データ版・生成seed・manifest来歴は入力から記録する。これは生成器と学習側の接続確認であり、精度・収束・本番batch 8の容量や実画像全体の評価を示さない。既存の採用判断とColab試走で本番条件を固定する方針を維持する。
 

@@ -9,13 +9,16 @@ from typing import Any
 import pytorch_lightning as pl
 import torch
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.ball_refiner_3d.configuration.training import training_config
 from src.tasks.ball_refiner_3d.data.datamodule import RefinerDataModule
 from src.tasks.ball_refiner_3d.generate_dataset.generator import generate_dataset
 from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
-from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_flight_clock
+from src.tasks.ball_refiner_3d.model_io.checkpoint import (
+    checkpoint_flight_clock,
+    load_checkpoint,
+)
 from src.tasks.ball_refiner_3d.training.lightning_module import RefinerLightningModule
 from tests.support.model_contracts.lightning import fit_contract
 from tests.support.model_contracts.parameters import (
@@ -93,8 +96,12 @@ def _build(config: DictConfig) -> tuple[Any, Any]:
             ],
         )
     generate_dataset(generation)
+    return _components(config)
+
+
+def _components(config: DictConfig) -> tuple[Any, Any]:
     settings = training_config(config)
-    settings.runtime.run.output_dir.mkdir(parents=True)
+    settings.runtime.run.output_dir.mkdir(parents=True, exist_ok=True)
     data = RefinerDataModule(settings)
     module = RefinerLightningModule(settings)
     module._contract_clock = data.clock if settings.model.physics_heads else None
@@ -199,8 +206,10 @@ def _predict(module: Any, batch: Any) -> Any:
 
 
 def _restore(config: DictConfig, path: Path) -> Any:
+    saved = torch.load(path, map_location="cpu", weights_only=False)
+    settings = training_config(OmegaConf.create(saved["hyper_parameters"]["config"]))
     module = RefinerLightningModule.load_from_checkpoint(
-        path, settings=training_config(config), map_location="cpu", weights_only=False
+        path, settings=settings, strict=True, map_location="cpu", weights_only=False
     )
     module._contract_clock = (
         checkpoint_flight_clock(
@@ -212,13 +221,37 @@ def _restore(config: DictConfig, path: Path) -> Any:
     return module
 
 
+def _predict_artifact(path: Path, batch: Any) -> Any:
+    model, saved = load_checkpoint(path, torch.device("cpu"))
+    return predict_normalized(
+        model,
+        batch["coordinates"],
+        batch["missing"],
+        batch_size=2,
+        seed=42,
+        clock=checkpoint_flight_clock(saved) if model.config.physics_heads else None,
+        segment=batch["segment"] if model.config.physics_heads else None,
+    )
+
+
 REGRESSION = ModelFamily(
     name="refiner/regression",
     compose=_compose,
     build=_build,
+    rebuild=_components,
+    training_state=lambda module: dict(
+        generator_updates=module.generator_updates,
+        flow_rng=module.flow_rng.get_state(),
+        gan_weight=module.gan_weight,
+        reconstruction_weight=module.reconstruction_weight,
+        gan=module.gan_training.state_dict()
+        if module.gan_training is not None
+        else None,
+    ),
     batch=_batch,
     supervised_result=_result,
     predict=_predict,
+    predict_artifact=_predict_artifact,
     save=save_checkpoint,
     restore=_restore,
     parameters=_parameters,

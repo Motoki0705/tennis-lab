@@ -71,6 +71,14 @@ class TrainingAudit(pl.Callback):
             pl_module.activate_gan_phase(int(trainer.current_epoch))
             pl_module.set_gan_weight(0.1)
 
+    def on_train_batch_end(
+        self, trainer: pl.Trainer, pl_module: Any, outputs: Any, batch: Any, batch_idx: int
+    ) -> None:
+        # Stop the smoke after its audited updates, preserving the configured
+        # schedule horizon rather than silently truncating it with max_steps.
+        if self.updates["generator"] == (2 if self.gan else 1):
+            trainer.should_stop = True
+
     def on_before_backward(
         self, trainer: pl.Trainer, pl_module: Any, loss: Tensor
     ) -> None:
@@ -154,8 +162,7 @@ def fit_contract(
         accelerator="cpu",
         devices=1,
         precision="32-true",
-        max_steps=3 if gan else 1,
-        max_epochs=2,
+        max_epochs=int(module.hparams["config"]["training"]["trainer"]["max_epochs"]),
         limit_train_batches=1,
         limit_val_batches=validation_batches,
         reload_dataloaders_every_n_epochs=1,
