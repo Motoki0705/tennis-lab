@@ -111,7 +111,7 @@ def readonly_settings() -> dict[str, Any]:
     }
 
 
-def _check_user_settings() -> None:
+def _check_user_settings(cwd: Path) -> None:
     """Reject widening persistent settings before even running agy --version."""
     try:
         home = os.environ.get("HOME", "")
@@ -127,7 +127,13 @@ def _check_user_settings() -> None:
         settings = parse_json(path.read_text(encoding="utf-8"))
         if not isinstance(settings, dict):
             raise ValueError("user settings must be a JSON object")
-        known = {*_READONLY_MODE, "permissions", "$schema"}
+        known = {
+            *_READONLY_MODE,
+            "permissions",
+            "$schema",
+            "model",
+            "trustedWorkspaces",
+        }
         if settings.keys() - known:
             raise ValueError("user settings contain unsupported top-level keys")
         if settings.get("toolPermission", "request-review") not in (
@@ -136,12 +142,33 @@ def _check_user_settings() -> None:
         ):
             raise ValueError("user toolPermission must be request-review or strict")
         if settings.get("agentMode", "") not in ("", "default", "plan"):
-            raise ValueError("user agentMode must be default or plan")
+            raise ValueError("remove user agentMode or set it to plan")
         for key in ("allowNonWorkspaceAccess", "enableTerminalSandbox"):
             if key in settings and settings[key] is not _READONLY_MODE[key]:
                 raise ValueError("user " + key + " differs from the fixed setting")
         if "$schema" in settings and not isinstance(settings["$schema"], str):
             raise ValueError("user $schema must be a string")
+        if "model" in settings and not isinstance(settings["model"], str):
+            raise ValueError("user model must be a string")
+        trusted = settings.get("trustedWorkspaces", [])
+        if not isinstance(trusted, list) or any(
+            not isinstance(workspace, str) for workspace in trusted
+        ):
+            raise ValueError("user trustedWorkspaces must be a list of strings")
+        if trusted:
+            # Check directory boundaries, including both lexical and symlink aliases.
+            work_paths = (Path(os.path.abspath(cwd)), cwd.resolve())
+            for workspace in trusted:
+                root = cwd / Path(os.path.expanduser(workspace))
+                roots = (Path(os.path.abspath(root)), root.resolve())
+                if any(
+                    work.is_relative_to(parent)
+                    for work in work_paths
+                    for parent in roots
+                ):
+                    raise ValueError(
+                        "cwd is in user trustedWorkspaces; use an untrusted work directory"
+                    )
         permissions = settings.get("permissions", {})
         if not isinstance(permissions, dict) or permissions.keys() - {
             "allow",
@@ -159,7 +186,7 @@ def _check_user_settings() -> None:
                 raise ValueError(
                     "user permissions restrictions must be lists of nonempty strings"
                 )
-    except (OSError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError, RuntimeError) as exc:
         raise AgyError(
             "unsafe_user_settings", "user settings rejected: " + str(exc)
         ) from exc
@@ -209,7 +236,7 @@ def run_headless(
         raise AgyError("invalid_input", "model differs from ISSUE_REWRITE_AGY_MODEL")
     if not math.isfinite(timeout) or timeout <= 0:
         raise AgyError("invalid_input", "timeout must be finite and positive")
-    _check_user_settings()
+    _check_user_settings(cwd)
     try:
         agy = agy.resolve(strict=True)
         cwd = cwd.resolve(strict=True)
@@ -245,7 +272,7 @@ def run_headless(
         return seconds
 
     def check_version() -> str:
-        _check_user_settings()
+        _check_user_settings(cwd)
         observed = _observed_version(agy, cwd, remaining(), env)
         if observed != config.version:
             raise AgyError("version_mismatch", "agy version differs from AGY_VERSION")
@@ -258,7 +285,7 @@ def run_headless(
         with tempfile.TemporaryDirectory(prefix="agy-schema-") as directory:
             pinned_schema = Path(directory) / "schema.json"
             pinned_schema.write_bytes(schema.raw)
-            _check_user_settings()
+            _check_user_settings(cwd)
             output = run_process_group(
                 [
                     str(agy),

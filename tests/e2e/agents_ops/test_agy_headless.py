@@ -167,6 +167,8 @@ def test_success_requires_evidence_and_passes_readonly_settings(
             }
         },
         {"$schema": "https://antigravity.google/schemas/v1/settings.json"},
+        {"model": ""},
+        {"trustedWorkspaces": []},
     ],
 )
 def test_safe_user_settings_allow_startup_without_rewriting_the_profile(
@@ -211,6 +213,14 @@ def test_safe_user_settings_allow_startup_without_rewriting_the_profile(
         {"unknownSetting": False},
         {"colorScheme": "dark"},
         {"$schema": {}},
+        {"model": None},
+        {"model": 17},
+        {"model": []},
+        {"trustedWorkspaces": None},
+        {"trustedWorkspaces": "/other-workspace"},
+        {"trustedWorkspaces": {}},
+        {"trustedWorkspaces": [True]},
+        {"trustedWorkspaces": ["/other-workspace", 17]},
         [],
         "broken",
         '{"toolPermission":"request-review","toolPermission":"always-proceed"}',
@@ -228,6 +238,100 @@ def test_unsafe_or_invalid_user_settings_stop_before_any_agy_process(
     assert caught.value.reason == "unsafe_user_settings"
     assert not (fake_agy["cwd"] / "invocations.jsonl").exists()
     assert not fake_agy["log_file"].exists()
+
+
+@pytest.mark.parametrize("agent_mode", ["plan", "auto", "accept-edits"])
+def test_login_settings_keep_the_model_pin_and_explain_unsafe_agent_mode(
+    fake_agy: dict[str, Path], agent_mode: str
+) -> None:
+    path = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    path.parent.mkdir(parents=True)
+    raw = json.dumps(
+        {
+            "agentMode": agent_mode,
+            "model": "A different saved model label",
+            "trustedWorkspaces": [str(Path(os.environ["HOME"]) / "login-checkout")],
+        }
+    )
+    path.write_text(raw)
+    calls_path = fake_agy["cwd"] / "invocations.jsonl"
+    if agent_mode == "plan":
+        result = agy.run_headless(**fake_agy, timeout=3)
+        assert result.observed_model == "Gemini 3.8 Flash (High)"
+        calls = [json.loads(line) for line in calls_path.read_text().splitlines()]
+        args = calls[1]["args"]
+        assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
+    else:
+        with pytest.raises(agy.AgyError) as caught:
+            agy.run_headless(**fake_agy, timeout=3)
+        assert caught.value.reason == "unsafe_user_settings"
+        assert re.search(r"remove.*agentMode.*plan", str(caught.value))
+        assert not calls_path.exists()
+        assert not fake_agy["log_file"].exists()
+    assert path.read_text() == raw
+
+
+@pytest.mark.parametrize(
+    "relationship",
+    [
+        "same",
+        "ancestor",
+        "prefix_sibling",
+        "descendant",
+        "cwd_symlink",
+        "trusted_symlink",
+        "relative_ancestor",
+        "home_ancestor",
+        "normalized_ancestor",
+    ],
+)
+def test_trusted_workspace_boundaries_are_checked_before_startup(
+    fake_agy: dict[str, Path], tmp_path: Path, relationship: str
+) -> None:
+    trusted = tmp_path / "trusted"
+    trusted.mkdir()
+    work = trusted / "job"
+    roots = [str(trusted)]
+    if relationship == "same":
+        work = trusted
+    elif relationship == "prefix_sibling":
+        work = tmp_path / "trusted-unrelated"
+    elif relationship == "descendant":
+        work = trusted
+        roots = [str(trusted / "child")]
+    elif relationship in ("cwd_symlink", "trusted_symlink"):
+        alias = tmp_path / "alias"
+        alias.symlink_to(trusted, target_is_directory=True)
+        if relationship == "cwd_symlink":
+            work = alias / "job"
+        else:
+            roots = [str(alias)]
+    elif relationship == "relative_ancestor":
+        roots = [".."]
+    elif relationship == "home_ancestor":
+        work = Path(os.environ["HOME"]) / "job"
+        roots = ["~"]
+    elif relationship == "normalized_ancestor":
+        roots = [str(trusted / "extra" / "..")]
+    work.mkdir(parents=True, exist_ok=True)
+    fake_agy["cwd"] = work
+    path = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    path.parent.mkdir(parents=True)
+    raw = json.dumps({"trustedWorkspaces": roots})
+    path.write_text(raw)
+    calls_path = tmp_path / "invocations.jsonl"
+    if relationship in ("prefix_sibling", "descendant"):
+        result = agy.run_headless(**fake_agy, timeout=3)
+        assert result.structured_output == {"answer": "見出し"}
+        assert calls_path.exists()
+    else:
+        with pytest.raises(agy.AgyError) as caught:
+            agy.run_headless(**fake_agy, timeout=3)
+        assert caught.value.reason == "unsafe_user_settings"
+        assert "trustedWorkspaces" in str(caught.value)
+        assert not calls_path.exists()
+        assert not fake_agy["log_file"].exists()
+    assert path.read_text() == raw
 
 
 @pytest.mark.parametrize(
@@ -445,6 +549,17 @@ def test_permission_smoke_checks_denial_reads_and_file_integrity(
     failure: str | None,
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", scenario)
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text(
+        json.dumps(
+            {
+                "agentMode": "plan",
+                "model": "A different saved model label",
+                "trustedWorkspaces": [str(fake_agy["cwd"] / "login-checkout")],
+            }
+        )
+    )
     summary = fake_agy["cwd"] / "summary.md"
     proc = subprocess.run(
         [

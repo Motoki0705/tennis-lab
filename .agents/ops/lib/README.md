@@ -118,17 +118,32 @@ writerとverifierの結果を受け取った呼出元が、これらの条件を
 - `toolPermission` が `request-review` / `strict` 以外。未知の値・不正な型も拒否する。
 - `agentMode` が `auto` / `accept-edits`、または未知の値・型。
   省略・`""`・`default`・`plan` だけを許す（公式CLI referenceで `""` はdefault mode）。
+  拒否メッセージは、userの `agentMode` を削除するか `plan` に直すよう案内する。
 - `permissions.allow` が空リスト以外。`permissions` はobject、子キーは `allow` / `ask` / `deny` だけとし、
   `ask` / `deny` は非空文字列のリストだけを許す。省略はいずれも空リストとして検査する。
 - `enableTerminalSandbox` / `allowNonWorkspaceAccess` が明示され、その値がboolean `false` と異なる。
   省略は公式の既定値 `false` として許す。数値0や文字列はbooleanとして扱わない。
 - 読めない、通常のファイルではない、UTF-8/JSONとして不正、rootがobjectでない、重複キーがある。
   dangling symlinkや、不明・相対・空の `HOME` も拒否する。
+- `model` が文字列以外、または `trustedWorkspaces` が文字列の配列以外。
+  ログイン後にCLIが保存するこの2キーは許す。`model` は表示名を含む任意の文字列でよい。
+  各呼び出しで `--model` を明示し、今回のlogの表示名でも固定モデルを照合するため、保存値にモデル選択を任せない。
+- 実行する `cwd` が `trustedWorkspaces` のいずれかと同じ、またはその内側にある。
+  文字列の前方一致は使わず、パスの要素で同一・祖先を判定する。`~` を展開し、相対entryは実行する `cwd` が基準。
+  `..` を正規化した絶対パスとsymlinkを解決したパスの両方で検査する。パスを解決できない場合も拒否する。
 - 上記と `permissions` 以外の未知のtop-levelキー。未検証のキーが将来権限を広げないよう拒否し、
   表示設定なども勝手に無視しない。例外は公式にCLIが無視すると明記された文字列の `$schema` だけで、URLは取得しない。
 
 これは、併合されても権限を広げない永続設定だけを受け入れる検査である。
 userの `strict` やask/denyが優先されて読み取りまで拒否される可能性は残り、実機smokeで確認する。
+
+`trustedWorkspaces` を許すのは、#1607が呼び出しごとに新しい一時ディレクトリへ使い捨てworktreeを作り、
+この検査がその領域と祖先のtrustを拒否するためである。trustの追加や設定ファイルの書き換えは行わない。
+[公式の設定ファイル一覧](https://antigravity.google/docs/settings?tab=cli#other-configuration-files)では、workspaceの拡張設定は
+`.agents/hooks.json`、`.agents/mcp_config.json`、`.agents/plugins/` に置く。
+このrepoの `.agents/` はskills・memory・ops・READMEなどを持つが、これらの拡張設定は持たない。
+**untrustedでこれらを読み込まないこと、headlessがtrust確認待ちで止まらないことは未確認**であり、
+設定検査だけで保証しない。#1599で[手動疎通の確認事項](../../../scripts/github_actions/README.md#手動の疎通)を確かめる。
 
 コマンド名だけの前方一致は使わない。`agy_permissions.py` の形式定義を `_form` / `_option` /
 `_argument` で正規表現へ変換し、allowをすべて `command(regex:^...$)` にする。
