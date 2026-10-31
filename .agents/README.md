@@ -56,6 +56,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
+| [ops/issue_rewrite/](ops/issue_rewrite/README.md) | 作成直後の親issueをGeminiで書き直すworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
 | [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
