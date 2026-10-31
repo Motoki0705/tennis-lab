@@ -460,9 +460,10 @@ class ParentSession:
         )
 
     def update_body(self, n: int, body: str, expected_body: str) -> None:
+        from .rewrite import require_final
+
         self.public(body)
-        with self.gh.fresh_reads():
-            raw = self.gh.issue(n)
+        raw = require_final(self.gh, n)
         if raw["body"] != expected_body and raw["body"] != body:
             raise ValueError(
                 f"#{n}: body changed during the operation; reconcile before retry"
@@ -476,9 +477,6 @@ class ParentSession:
         if errors:
             raise ValueError(f"#{n}: invalid issue body: {errors}")
         if raw["body"] != body:
-            from .rewrite import require_final
-
-            require_final(self.gh, n)
             self.gh.write("PATCH", f"repos/{self.gh.repo}/issues/{n}", {"body": body})
 
     def sync_progress(self) -> dict[int, str]:

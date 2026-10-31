@@ -20,23 +20,32 @@ from .policy import nonempty, number, object_value
 WORKFLOW = "issue-rewrite.yml"
 
 
-def current_state(gh: GitHub, parent: int) -> RewriteState:
+def _current_issue_state(
+    gh: GitHub, parent: int
+) -> tuple[dict[str, Any], RewriteState]:
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
         raw = gh.issue(parent)
-    return rewrite_state(
+    return raw, rewrite_state(
         [label["name"] for label in raw["labels"]],
         raw["created_at"],
         enabled_since,
     )
 
 
-def require_final(gh: GitHub, parent: int) -> None:
-    if current_state(gh, parent) == "pending":
+def current_state(gh: GitHub, parent: int) -> RewriteState:
+    return _current_issue_state(gh, parent)[1]
+
+
+def require_final(gh: GitHub, parent: int) -> dict[str, Any]:
+    """Return the fresh issue checked by the gate for same-response body checks."""
+    raw, state = _current_issue_state(gh, parent)
+    if state == "pending":
         raise ValueError(
             f"#{parent}: issue rewrite is pending; run parent --parent {parent} "
             f"wait-rewrite, or ask a human to add {REWRITE_SKIPPED_LABEL} to proceed"
         )
+    return raw
 
 
 def latest_run(gh: GitHub, parent: int) -> int | None:

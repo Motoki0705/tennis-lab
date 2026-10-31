@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -20,6 +21,7 @@ from agy_headless import (  # noqa: E402 - standalone script bootstraps the ops 
     AgyError,
     run_headless,
 )
+from agy_permission_probe import ProbeFailure, run_permission_probe  # noqa: E402
 
 
 def safe_denials(actions: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -38,11 +40,20 @@ def main() -> int:
     parser.add_argument("--agy", type=Path, default=DEFAULT_AGY)
     parser.add_argument("--config-file", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--timeout", type=float, default=300)
+    parser.add_argument("--permissions-probe", action="store_true")
     args = parser.parse_args()
     report: dict[str, Any]
     try:
         with tempfile.TemporaryDirectory(prefix="agy-smoke-") as directory:
             private = Path(directory)
+            if args.permissions_probe:
+                report = run_permission_probe(
+                    private=private,
+                    agy=args.agy,
+                    config_file=args.config_file,
+                    timeout=args.timeout,
+                )
+                return publish(report)
             prompt = private / "prompt.md"
             prompt.write_text(
                 "Read .github/ISSUE_TEMPLATE/06_parent.md in this checkout. "
@@ -102,6 +113,23 @@ def main() -> int:
             "reason": exc.reason,
             "denied_actions": safe_denials(exc.denied_actions),
         }
+    except ProbeFailure as exc:
+        report = {
+            "status": "failed",
+            "stage": "permissions",
+            "reason": exc.code,
+            "failed_probe": exc.probe,
+        }
+    except (OSError, subprocess.SubprocessError):
+        report = {
+            "status": "failed",
+            "stage": "permissions",
+            "reason": "probe_setup_failed",
+        }
+    return publish(report)
+
+
+def publish(report: dict[str, Any]) -> int:
     rendered = json.dumps(report, ensure_ascii=False, indent=2)
     print(rendered)
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
