@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unicodedata
 from collections.abc import Mapping
 from pathlib import Path
@@ -18,6 +19,10 @@ from .coordination import Guard, owner_token, process_stamp, state_root
 
 TOKEN_KEYS = ("tl_name", "tl_parent", "tl_topic", "tl_engine", "tl_owner")
 INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
+
+
+class VerifiedSessionStartError(ValueError):
+    """Claude display sync failed after native caller verification succeeded."""
 
 
 def board_name(env: Mapping[str, str], repo: str, parent: int) -> str | None:
@@ -190,22 +195,33 @@ def sync(
     guard = Guard(env, identity, client, pane)
     if session_start or session_end:
         guard.require_native_ancestor()
-    with guard.hold(start=session_start, end=session_end):
-        result = _sync(
-            env,
-            identity,
-            client,
-            guard.pane,
-            guard,
-            topic=topic,
-            expected_parent=expected_parent,
-            clear=clear,
-            session_start=session_start,
-            confirm_parent=confirm_parent,
-        )
-        if bind_native:
-            _bind_native(env, identity, client, guard)
-        return result
+    try:
+        with guard.hold(start=session_start, end=session_end):
+            result = _sync(
+                env,
+                identity,
+                client,
+                guard.pane,
+                guard,
+                topic=topic,
+                expected_parent=expected_parent,
+                clear=clear,
+                session_start=session_start,
+                confirm_parent=confirm_parent,
+            )
+            if bind_native:
+                _bind_native(env, identity, client, guard)
+            return result
+    except (
+        ValueError,
+        OSError,
+        KeyError,
+        TypeError,
+        subprocess.SubprocessError,
+    ) as exc:
+        if session_start and identity.startswith("claude:") and guard.native_verified:
+            raise VerifiedSessionStartError(str(exc)) from exc
+        raise
 
 
 def _bind_native(
@@ -308,7 +324,10 @@ def _sync(
             "the same session already labels another live pane; "
             "inspect duplicated sessions before synchronizing"
         )
-    guard.claim(allow_create=confirm_parent)
+    guard.claim(
+        allow_create=confirm_parent,
+        allow_move=session_start and identity.startswith("claude:"),
+    )
     if topic is None:
         if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
             topic = existing.get("tl_topic")

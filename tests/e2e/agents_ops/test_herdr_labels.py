@@ -1,4 +1,4 @@
-"""Exercise visible labels through fake Herdr/GitHub processes, never the host UI."""
+"""Exercise visible labels through fake Herdr/GitHub, never the host UI."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ import os
 import subprocess
 import sys
 import time
+from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from io import StringIO
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +31,11 @@ args = sys.argv[1:]
 path = Path(os.environ['LABEL_FAKE_STATE'])
 state = json.loads(path.read_text())
 state['calls'].append(args)
-if args[:1] == ['--session']: args = args[2:]
+session = 'default'
+if args[:1] == ['--session']: session, args = args[1], args[2:]
+command = ' '.join(args[:2])
+if state.get('fail_call') == command:
+    path.write_text(json.dumps(state)); sys.exit(3)
 pane_id = os.environ.get('HERDR_PANE_ID', 'w1:p1')
 if args[:2] == ['pane', 'get']: pane_id = args[2]
 if args[:2] == ['pane', 'report-metadata']: pane_id = args[2]
@@ -51,11 +57,13 @@ if args[:2] == ['pane', 'report-metadata']:
 elif args[:2] == ['pane', 'process-info']:
     result = {'process_info':{'foreground_processes':[{'pid':state['pid'], 'name':pane['agent']}]}}
 elif args == ['agent', 'list']:
-    result = {'agents':list(state['panes'].values())}
+    ids = state.get('server_panes', {}).get(session, state['panes'])
+    result = {'agents':[state['panes'][key] for key in ids]}
 elif args == ['session','list','--json']:
-    result = {'sessions':[{'name':'default','default':True,'running':True,'socket_path':'/fake/herdr.sock'}]}
+    result = {'sessions':state.get('sessions', [{'name':'default','default':True,'running':True,'socket_path':'/fake/herdr.sock'}])}
 elif args[:2] not in (['pane','get'], ['pane','current']):
     raise SystemExit('unexpected Herdr command')
+result = state.get('responses', {}).get(command, result)
 path.write_text(json.dumps(state))
 if os.environ.get('LABEL_WAITING_MARKER') and args[:2] == ['pane','process-info']:
     Path(os.environ['LABEL_WAITING_MARKER']).touch()
@@ -227,6 +235,264 @@ def named_labels(labels: Labels, monkeypatch: pytest.MonkeyPatch) -> Labels:
             catalog=["Alice"],
         )
     return labels
+
+
+@pytest.fixture
+def resuming_labels(named_labels: Labels, monkeypatch: pytest.MonkeyPatch) -> Labels:
+    """A confirmed parent resumes on a second server; no display token is needed."""
+    labels = named_labels
+    # Keep the real hook payload, CLI adapters and durable state, but execute
+    # fake CLI scripts inline to keep these lifecycle cases below one second.
+    original_run = subprocess.run
+
+    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        script = {"herdr": FAKE_HERDR, "gh": FAKE_GH}.get(args[0])
+        if script is None:
+            return original_run(args, **kwargs)
+        out, err = StringIO(), StringIO()
+        code = 0
+        with monkeypatch.context() as patch, redirect_stdout(out), redirect_stderr(err):
+            patch.setattr(sys, "argv", args)
+            patch.setattr(os, "environ", dict(kwargs.get("env", os.environ)))
+            try:
+                exec(compile(script, args[0], "exec"), {"__name__": "__main__"})
+            except SystemExit as exc:
+                code = int(exc.code or 0)
+        return subprocess.CompletedProcess(args, code, out.getvalue(), err.getvalue())
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    hook_module = importlib.import_module("herdr_labels.claude_hook")
+
+    def hook(
+        event: str, identity: str = "test-owner", **fields: str
+    ) -> subprocess.CompletedProcess[str]:
+        out, err = StringIO(), StringIO()
+        payload = {"hook_event_name": event, "session_id": identity, **fields}
+        with monkeypatch.context() as patch, redirect_stdout(out), redirect_stderr(err):
+            patch.setattr(sys, "stdin", StringIO(json.dumps(payload)))
+            patch.setattr(os, "environ", labels.env)
+            code = hook_module.main()
+        return subprocess.CompletedProcess(
+            "claude_hook", code, out.getvalue(), err.getvalue()
+        )
+
+    monkeypatch.setattr(labels, "hook", hook)
+    coordination = importlib.import_module("herdr_labels.coordination")
+    state = labels.read()
+    state["sessions"] = [
+        {"name": "default", "running": True, "socket_path": "/fake/herdr.sock"},
+        {"name": "previous", "running": True, "socket_path": "/fake/old.sock"},
+    ]
+    state["panes"]["w1:p3"] = {
+        "pane_id": "w1:p3",
+        "terminal_id": "term-new",
+        "agent": "claude",
+        "agent_status": "idle",
+        "agent_session": {"kind": "id", "agent": "claude", "value": "test-owner"},
+        "tokens": {"other": "keep"},
+    }
+    state["panes"]["w1:p1"]["display_agent"] = "#42 · 親"
+    state["server_panes"] = {
+        "default": ["w1:p2", "w1:p3"],
+        "previous": ["w1:p1"],
+    }
+    labels.write(state)
+    labels.env["HERDR_PANE_ID"] = "w1:p3"
+    root = labels.registry.parents[1] / "herdr-labels"
+    scope = coordination.owner_token("/fake/old.sock")
+    owner = coordination.owner_token("claude:test-owner")
+    destination = {"version": 1, "scope": scope, "terminal_id": "term-a"}
+    (root / "owners" / f"{owner}.json").write_text(json.dumps(destination))
+    runtime = {
+        "version": 1,
+        "owner": owner,
+        "state": "active",
+        "processes": coordination.process_stamp(
+            coordination.Herdr(labels.env, "previous"), state["panes"]["w1:p1"]
+        ),
+    }
+    panes = root / "panes"
+    panes.mkdir()
+    key = coordination.owner_token(scope + ":term-a")
+    (panes / f"{key}.json").write_text(json.dumps(runtime))
+    return labels
+
+
+def assert_start_failure(result: subprocess.CompletedProcess[str], reason: str) -> None:
+    """Exit zero delivers a failure notice to Claude as well as the human."""
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["herdr_label"]["status"] == "error"
+    assert reason in data["herdr_label"]["reason"]
+    specific = data["hookSpecificOutput"]
+    assert specific["hookEventName"] == "SessionStart"
+    for message in (specific["additionalContext"], data["systemMessage"]):
+        assert reason in message
+        assert "失敗" in message
+        assert ".agents/skills/herdr-session-label/SKILL.md" in message
+
+
+@pytest.mark.parametrize("vacancy", ["missing", "replaced", "server_stopped"])
+def test_session_start_moves_only_a_vacated_confirmed_destination(
+    resuming_labels: Labels, vacancy: str
+) -> None:
+    labels = resuming_labels
+    root = labels.registry.parents[1] / "herdr-labels"
+    owner_path = next((root / "owners").glob("*.json"))
+    previous = owner_path.read_bytes()
+    state = labels.read()
+    if vacancy == "missing":
+        del state["panes"]["w1:p1"]
+        state["server_panes"]["previous"] = []
+    elif vacancy == "replaced":
+        # An old active record alone cannot keep a replaced process alive.
+        runtime_path = next((root / "panes").glob("*.json"))
+        runtime = json.loads(runtime_path.read_text())
+        runtime["processes"][0]["start"] = "previous-process-start"
+        runtime_path.write_text(json.dumps(runtime))
+        state["panes"]["w1:p1"]["agent_session"] = {
+            "kind": "id",
+            "agent": "claude",
+            "value": "replacement",
+        }
+    else:
+        state["sessions"][1]["running"] = False
+    labels.write(state)
+    registry = labels.registry.read_bytes()
+    result = labels.hook(
+        "SessionStart", source="resume" if vacancy == "replaced" else "startup"
+    )
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)["herdr_label"]["status"] == "updated", (
+        result.stdout
+    )
+    assert owner_path.read_bytes() != previous
+    owner = json.loads(owner_path.read_text())
+    assert owner["scope"] == hashlib.sha256(b"/fake/herdr.sock").hexdigest()
+    assert owner["terminal_id"] == "term-new"
+    after = labels.read()
+    assert after["panes"]["w1:p3"]["display_agent"] == "Alice · #42 · 親"
+    assert after["panes"]["w1:p3"]["tokens"]["other"] == "keep"
+    assert all(call[2] == "w1:p3" for call in labels.mutations())
+    assert labels.registry.read_bytes() == registry
+    if vacancy == "missing":
+        service = importlib.import_module("board.service")
+        roster = service.agents(labels.env)
+        assert [
+            (row["name"], row["parent"], row["state"]) for row in roster["agents"]
+        ] == [("Alice", 42, "idle")]
+    else:
+        assert after["panes"]["w1:p1"] == state["panes"]["w1:p1"]
+    old_queries = [
+        call
+        for call in after["calls"]
+        if call[:4] == ["--session", "previous", "agent", "list"]
+    ]
+    assert bool(old_queries) == (vacancy != "server_stopped")
+
+
+def test_session_start_preserves_a_live_owner_without_display_token(
+    resuming_labels: Labels,
+) -> None:
+    labels = resuming_labels
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    panes = labels.read()["panes"]
+    result = labels.hook("SessionStart", source="resume")
+    assert_start_failure(result, "another live pane")
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == panes
+    assert not labels.mutations()
+
+
+@pytest.mark.parametrize("failure", ["unavailable", "invalid"])
+def test_session_start_refuses_an_unverifiable_old_destination(
+    resuming_labels: Labels, failure: str
+) -> None:
+    labels = resuming_labels
+    state = labels.read()
+    if failure == "unavailable":
+        state["fail_call"] = "session list"
+        reason = "Herdr session list failed"
+    else:
+        state["responses"] = {"session list": {"sessions": [{"running": True}]}}
+        reason = "invalid Herdr server"
+    labels.write(state)
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    result = labels.hook("SessionStart", source="resume")
+    assert_start_failure(result, reason)
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == state["panes"]
+    assert not labels.mutations()
+
+
+def test_session_start_does_not_notify_when_registry_is_unverifiable(
+    resuming_labels: Labels,
+) -> None:
+    labels = resuming_labels
+    labels.registry.write_text('{"version": 999}')
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    panes = labels.read()["panes"]
+    result = labels.hook("SessionStart", source="resume")
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "cannot determine the active parent" in result.stderr
+    assert "original failure: invalid parent registry version" in result.stderr
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == panes
+    assert not labels.mutations()
+
+
+@pytest.mark.parametrize("failure", ["pane current", "pane process-info", "env_file"])
+def test_session_start_does_not_notify_before_native_verification(
+    resuming_labels: Labels, failure: str
+) -> None:
+    labels = resuming_labels
+    state = labels.read()
+    if failure == "env_file":
+        # A directory forces the env-file write to fail before sync.
+        labels.env["CLAUDE_ENV_FILE"] = str(labels.root)
+        reason = "Is a directory"
+    else:
+        state["fail_call"] = failure
+        labels.write(state)
+        reason = f"Herdr {failure} failed"
+    owner = next((labels.registry.parents[1] / "herdr-labels/owners").glob("*.json"))
+    before = owner.read_bytes()
+    # Reusing an active parent's session ID is not evidence of a native caller.
+    result = labels.hook("SessionStart", source="resume")
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert reason in result.stderr
+    assert owner.read_bytes() == before
+    assert labels.read()["panes"] == state["panes"]
+    assert not labels.mutations()
+
+
+def test_session_start_outside_herdr_without_binding_is_not_configured(
+    resuming_labels: Labels,
+) -> None:
+    labels = resuming_labels
+    for key in list(labels.env):
+        if key.startswith("HERDR_"):
+            labels.env.pop(key)
+    root = labels.registry.parents[1] / "herdr-labels"
+    assert not list((root / "bindings").glob("*.json"))
+    owner = next((root / "owners").glob("*.json"))
+    before = owner.read_bytes()
+    state = labels.read()
+    result = labels.hook("SessionStart", source="startup")
+    assert result.returncode == 0, result.stderr
+    assert result.stderr == ""
+    data = json.loads(result.stdout)
+    assert data["herdr_label"]["status"] == "not_configured"
+    assert "hookSpecificOutput" not in data
+    assert "systemMessage" not in data
+    assert owner.read_bytes() == before
+    assert labels.read() == state  # No Herdr calls or display changes.
+    assert not labels.mutations()
 
 
 def test_named_sync_preserves_unread_and_does_not_write_board_or_registry(
@@ -606,6 +872,8 @@ def test_duplicate_claude_session_cannot_turn_helper_into_parent(
     labels.write(state)
     if event == "sync":
         result = labels.run("sync")
+        assert result.returncode != 0
+        assert "another live pane" in result.stderr
     else:
         result = subprocess.run(
             [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
@@ -618,8 +886,7 @@ def test_duplicate_claude_session_cannot_turn_helper_into_parent(
             timeout=20,
             check=False,
         )
-    assert result.returncode != 0
-    assert "another live pane" in result.stderr
+        assert_start_failure(result, "another live pane")
     assert not labels.mutations()
     assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 関連"
 
@@ -891,7 +1158,7 @@ def test_unconfirmed_destination_requires_explicit_binding(labels: Labels) -> No
     owners = labels.registry.parents[1] / "herdr-labels/owners"
     next(owners.glob("*.json")).unlink()
     assert labels.run("sync").returncode == 2
-    assert labels.hook("SessionStart").returncode == 1
+    assert_start_failure(labels.hook("SessionStart"), "unconfirmed")
     assert not labels.mutations()
     bound = labels.run(
         "bind", "--herdr-session", "default", "--pane", "w1:p1", "--terminal", "term-a"
@@ -930,7 +1197,11 @@ def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) 
             labels.write(state)
             result = labels.hook("SessionStart")
             assert result.returncode == 1
-            assert "not a descendant" in result.stderr
+            assert result.stdout == ""
+            # A real Claude ancestor may reject this as a nested agent first.
+            assert (
+                "not a descendant" in result.stderr or "nested agent" in result.stderr
+            )
             assert not labels.mutations()
         finally:
             sibling.terminate()
@@ -957,6 +1228,7 @@ raise SystemExit(r.returncode)
         timeout=20,
     )
     assert result.returncode == 1
+    assert result.stdout == ""
     assert "nested agent" in result.stderr
     assert len(labels.mutations()) == count
     assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
