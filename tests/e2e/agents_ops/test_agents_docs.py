@@ -209,6 +209,14 @@ def test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow
     }
 
 
+def test_parent_session_skill_is_discoverable_from_agents() -> None:
+    parent_skill = ROOT / ".agents/skills/parent-session/SKILL.md"
+    assert str(parent_skill.relative_to(ROOT)) in {
+        target for _, target, _ in _links(AGENTS_MD)
+    }
+    assert parent_skill.is_file()
+
+
 def test_memory_dir_holds_only_summary_layers_and_dedicated_area() -> None:
     stray = sorted(
         p.name

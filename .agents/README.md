@@ -69,7 +69,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **issue起票**: AIは、作業中に見つけたバグ・負債・派生課題を自由に起票してよい。作業中の起票には `ai-proposed` を付けず、運用レポートの採用提案からtriageが起票するときに付ける。ラベルの軸・付与主体は [親子issue規約](ops/issues/README.md#ラベル) に従う。
 - **放置PR**: N日動きのないPRは、運用レポートに「継続 / rebaseして仕上げ / close」の選択肢付きで載せる。
 - **親子issueの書式**: タイトル・ラベル・本文・正式なsub-issue関係・進捗更新と段階移行は [親子issue規約](ops/issues/README.md) に従う。手動起票・親からの分割・レポートtriageで同じ規約を使う。
-- **親セッションの担当**: 人間が会話で親issueの番号・URLと担当意図を示したら [parent-session](skills/parent-session/SKILL.md) を使う。担当指定と要件合意を区別し、合意後に親が分割・委任を統括する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
+- **親セッションの担当**: 担当登録の規則は [AGENTS.md](../AGENTS.md#開発ルール)、手順は [parent-session](skills/parent-session/SKILL.md) を参照する。担当指定と要件合意を区別する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](ops/parent/development_workflow.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
 - **merge**: PRへのpushごとにCIを実行し、対象HEADの `Python` check runの成功、親が明示起動した統合Codexレビューと指摘解消を必須条件とする。コミットに `[skip ci]` を付けない。blocker/majorの解消は親が修正差分・回帰テストで確認し、自動再レビューを行わない。親の明示mergeコマンドで各PRのcoverage・最新head/base/merge-base/diff・CI・依存関係・競合を照合し、合格した独立PRから順次進める。merge後のmainのCIも確認する。既定はdry-run、人間の有効化判断後に呼出元環境の `AGENT_AUTO_MERGE=1` で実mergeする。変更パスによる追加承認は不要。記録・判定・停止/復旧の正本は [merge gate](ops/review/README.md#merge-gate)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
