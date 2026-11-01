@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import importlib
+import shlex
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -14,6 +17,99 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import campaign as c  # noqa: E402
 import runtime as runtime  # noqa: E402
+
+
+def test_runbook_gives_each_publisher_one_live_drive_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Parse the submitted command, without allocating a session or contacting Drive.
+    monkeypatch.syspath_prepend(str(c.REPO / ".agents/skills/tennis-colab/scripts"))
+    colab = importlib.import_module("colab")
+    script = ".agents/skills/tennis-colab/scripts/colab.py"
+    commands = [
+        shlex.split(block.split("```", 1)[0].replace("\\\n", ""))
+        for block in (c.BUNDLE / "README.md").read_text().split("```bash\n")[1:]
+    ]
+    executions = [
+        argv[argv.index(script) + 1 :]
+        for argv in commands
+        if script in argv and argv[argv.index(script) + 1] == "exec"
+    ]
+    assert len(executions) == 1
+    declared = colab.parser().parse_args(executions[0])
+    assert declared.argv == [
+        "--",
+        "bash",
+        "knowledge/runs/run-court-scene-pair-colab-s42/bootstrap.sh",
+    ]
+    owners = [Path(path) for path in declared.runner_output]
+    periodic = [Path(path) for path in declared.persist]
+
+    # Observe the actual adapter destinations, rather than repeating its allowlist.
+    published: list[Path] = []
+
+    class Store:
+        def __init__(
+            self, root: Path, *, remote: str, remote_root: str, config_path: Path
+        ) -> None:
+            assert remote == "gdrive"
+            self.remote_root = Path(remote_root).relative_to("tennis_lab")
+
+        def publish_file(self, path: Path) -> None:
+            published.append(self.remote_root)
+
+        def sync_tree(self) -> None:
+            published.append(self.remote_root)
+
+    from src.utils import artifact_store
+
+    monkeypatch.setattr(artifact_store, "RcloneArtifactStore", Store)
+    monkeypatch.setattr(c, "REPO", tmp_path)
+    backend = object.__new__(runtime.ColabBackend)
+    monkeypatch.setattr(
+        backend,
+        "drive",
+        SimpleNamespace(config_path=tmp_path / "unused"),
+        raising=False,
+    )
+    monkeypatch.setattr(backend, "verify_remote", lambda local, remote: None)
+    for relative in (
+        c.STATE / "progress.json",
+        c.STATE / "saved" / "probe.json",
+        c.STATE / "restarts" / "probe.json",
+        c.STATE / "done" / "inputs.json",
+    ):
+        c.write(tmp_path / relative, {})
+        backend.publish(tmp_path / relative)
+    for relative in (
+        c.STATE / "partial-evaluations" / "scene-1-attempt",
+        *(c.eval_root(condition) for condition in (*c.LEGACY, *c.PAIRS)),
+    ):
+        (tmp_path / relative).mkdir(parents=True)
+        backend.publish(tmp_path / relative)
+
+    # Training/probe checkpoint IO and synchronous log callbacks use these stores.
+    for condition, probe in [("P02", True), *((pair, False) for pair in c.PAIRS)]:
+        config = c.make_config(condition, probe=probe)
+        store = config["run"]["artifact_store"]
+        assert store["mode"] == "rclone" and store["remote"] == "gdrive"
+        root = Path(store["remote_root"]).relative_to("tennis_lab")
+        assert root == Path("outputs") / config["run"]["output_dir"]
+        published.append(root)
+
+    # Ancestor declarations also overlap: an umbrella --persist must fail here.
+    for index, owner in enumerate(owners):
+        assert all(
+            not owner.is_relative_to(other) and not other.is_relative_to(owner)
+            for other in owners[index + 1 :] + periodic
+        ), f"Concurrent persistence owners overlap: {owner}"
+    for root in published:
+        assert sum(root.is_relative_to(owner) for owner in owners) == 1, (
+            f"Publisher needs exactly one --runner-output: {root}"
+        )
+    assert all(
+        any(root.is_relative_to(owner) for root in published) for owner in owners
+    )
 
 
 @pytest.mark.parametrize(
