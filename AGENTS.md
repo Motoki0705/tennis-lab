@@ -50,6 +50,7 @@
 - **不明点は積極的に質問する**: 方針を人間に明確にしてもらう必要があれば質問する。あいまいなまま動くだけのコードは技術負債になる。時間をかけて品質を追求する。
 - **モジュラーに作る**: 再利用が見込めるものは `src/utils` へ切り出す。タスクドメインに閉じたモジュールは、該当タスクのディレクトリ配下に新しいフォルダを作って置いてよい。
 - **ドキュメントを二重管理しない**: 同じ事柄を2か所に書かない。置き場所は [.agents/README.md](.agents/README.md#ファイル地図情報の住み分け) で決める。
+- **サブエージェントはCodexを既定にする**: 調査・実装などをサブエージェントへ任せるときは、共通ランナー [agent_exec.sh](.agents/ops/lib/agent_exec.sh) 経由のCodexを使う。モデルとeffortは [agents.conf](.agents/ops/lib/agents.conf) の既定（現行はgpt-6.1-sol / max）のまま、`--model`・`--effort` で上書きしない。Claude Codeの組込みサブエージェント（Agent tool）とCodex CLIの直接起動は、ユーザーが明示した場合だけ使う。dshはユーザーがその案件で明示指定した場合だけ、[deepseek-harness skill](.agents/skills/deepseek-harness/SKILL.md) に従って使う。
 - **親同士の連絡**: 名前での連絡と受信への応答は [parent-board skill](.agents/skills/parent-board/SKILL.md) に従う。
 - **READMEから探索する**: 大きなディレクトリには実装を簡潔にまとめたREADMEがある。まずそれを読む。
 - **リファクタリングを優先する**: 単純な追加を続けるとコードが肥大化する。有効なリファクタリング案があれば、機能実装より先に自律的に行ってよい。
