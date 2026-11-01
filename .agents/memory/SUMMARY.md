@@ -27,6 +27,7 @@
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
 - ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
+- Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。Claudeのbackground監視は会話のプロセスと一緒に止まる。
 - メインtreeのローカル `main` は自動で pull されない。規則・memory・skillは `git fetch` 後に `origin/main` から読む。
 - Claude Code配下のローカル `tests/e2e/agents_ops` には変更と無関係な失敗がある。退行と判断する前に origin/main で同じテストを比べる。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
