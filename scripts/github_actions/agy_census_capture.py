@@ -277,3 +277,30 @@ def summarize(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         }
         for _, group in sorted(groups.items())
     ]
+
+
+def reconcile_commands(
+    capture: dict[str, Any], trajectory: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Compare both directions, including denied attempts and exact command text.
+
+    The caller reads only its own conversation records and supplies one entry
+    per command step. Results contain raw commands and remain private.
+    """
+
+    def counts(commands: list[dict[str, Any]]) -> Counter[tuple[str, int, str]]:
+        return Counter(
+            (entry["conversation_id"], entry["step"], entry["command"])
+            for entry in commands
+        )
+
+    observed, recorded = counts(capture["commands"]), counts(trajectory)
+    missing = list((recorded - observed).elements())
+    extra = list((observed - recorded).elements())
+    return {
+        "capture_count": sum(observed.values()),
+        "trajectory_count": sum(recorded.values()),
+        "missing": missing,
+        "extra": extra,
+        "matches": not missing and not extra,
+    }

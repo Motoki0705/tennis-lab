@@ -219,19 +219,26 @@ GitHubへの書き込み・公開・本番の権限変更は行わない。
 
 すべての入力・使い捨てclone・生ログ・結果は
 `~/.local/state/tennis-lab-agents/manual-runs/1566/agy-census/` に置く。
-新規run IDを使い、同じphaseでは最大25回、lockで逐次実行する。
+新規run IDを使う。pilotは最大25回、合意済みのmeasurementは別台帳で最大60回、
+共通lockで逐次実行する。
 `--agy` には `install_agy.sh --bin-dir` で私用に導入した固定版を指定する。
 調査には実モデルの利用枠を消費するため、通常のテストから呼ばない。
 
 ```bash
-private="$HOME/.local/state/tennis-lab-agents/manual-runs/1566/agy-census"
 .venv/bin/python scripts/github_actions/agy_command_census.py run \
+  --phase measurement --timeout 600 --deny-unlisted \
   --id writer-example --source "$PWD" --ref HEAD \
   --agy "$private/bin/agy" --role writer --input-json "$private/inputs/context.json"
 .venv/bin/python scripts/github_actions/agy_command_census.py summarize \
-  --captures "$private/runs/writer-example/control/capture.json" \
+  --captures "$private/measurement/runs/writer-example/control/capture.json" \
   --output "$private/forms.json"
 ```
+
+`private` は上記の非公開領域へ設定しておく。measurementは600秒・明示拒否条件を必須とし、
+旧pilotの台帳を変更しない。診断も同じmeasurement台帳へ起動前に記録し、上限へ含める。
+入力snapshot・verifier候補と実行順を開始前に固定する。quota・認証エラーでは再試行せず停止する。
+完了後、所要時間と300秒以内かを保存し、自分が開始した会話の全command stepと
+`reconcile_commands()` で双方向に突き合わせる。生の突き合わせ結果も非公開のまま扱う。
 
 本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
 `--output-format stream-json` へ変える。`agy_census_capture.py` は

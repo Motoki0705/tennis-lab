@@ -126,3 +126,27 @@ def test_grammar_uses_raw_text_and_does_not_expand_combined_flags() -> None:
     assert not census.grammar_allows("ls -la")
     assert not census.grammar_allows("cat a | head -n 1")
     assert not census.grammar_allows("cat a\n")
+
+
+@pytest.mark.parametrize("fault", ["none", "missing", "extra", "changed"])
+def test_trajectory_reconciliation_checks_both_directions(fault: str) -> None:
+    capture = census.capture_stream(
+        stream(
+            step(2, "cat a", "DONE", output="ok"),
+            step(4, "python3 -c pass", "ERROR", error={"message": "Permission denied"}),
+        )
+    )
+    trajectory = [
+        {"conversation_id": "test", "step": 4, "command": "python3 -c pass"},
+        {"conversation_id": "test", "step": 2, "command": "cat a"},
+    ]
+    if fault == "missing":
+        trajectory.append({"conversation_id": "test", "step": 6, "command": "ls"})
+    elif fault == "extra":
+        trajectory.pop()
+    elif fault == "changed":
+        trajectory[0]["command"] = "python3 -c 'pass'"
+    result = census.reconcile_commands(capture, trajectory)
+    assert result["matches"] == (fault == "none")
+    assert len(result["missing"]) == (fault in {"missing", "changed"})
+    assert len(result["extra"]) == (fault in {"extra", "changed"})

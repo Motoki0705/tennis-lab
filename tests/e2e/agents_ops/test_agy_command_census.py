@@ -66,9 +66,12 @@ def test_preflight_rejects_permission_expansion(
         census.preflight(profile / "work")
 
 
-@pytest.mark.parametrize("timeout", [False, True])
+@pytest.mark.parametrize(
+    "phase,timeout", [("pilot", False), ("pilot", True), ("measurement", False)]
+)
 def test_fake_run_is_private_pinned_and_retains_partial_stream(
     tmp_path: Path,
+    phase: str,
     timeout: bool,
 ) -> None:
     source = tmp_path / "source"
@@ -113,9 +116,23 @@ def test_fake_run_is_private_pinned_and_retains_partial_stream(
     settings.write_text('{"agentMode":"auto"}')
     private = profile / ".local/state/tennis-lab-agents/manual-runs/1566/agy-census"
     private.mkdir(parents=True)
+    old_ledger = private / "invocations.jsonl"
+    if phase == "measurement":
+        old_ledger.write_text('{"previous":"pilot"}\n' * 25)
+    phase_root = private if phase == "pilot" else private / phase
     inputs = private / "input.json"
     inputs.write_text('{"issue_number":12}')
     fake = tmp_path / "fake-agy"
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    gh_calls = tmp_path / "gh-calls.jsonl"
+    fake_gh.write_text(
+        f"#!{sys.executable}\nimport sys,json\n"
+        f"with open({str(gh_calls)!r},'a') as handle: handle.write(json.dumps(sys.argv[1:])+'\\n')\n"
+        "sys.exit(86)\n"
+    )
+    fake_gh.chmod(0o700)
     fake.write_text(f"""#!{sys.executable}
 import json,sys,signal
 from pathlib import Path
@@ -146,15 +163,22 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
             "--input-json",
             str(inputs),
             "--timeout",
-            "0.5" if timeout else "10",
+            "600" if phase == "measurement" else "0.5" if timeout else "10",
+            "--phase",
+            phase,
+            *(["--deny-unlisted"] if phase == "measurement" else []),
         ],
-        env={**os.environ, "HOME": str(profile)},
+        env={
+            **os.environ,
+            "HOME": str(profile),
+            "PATH": str(fake_bin) + os.pathsep + os.environ["PATH"],
+        },
         capture_output=True,
         text=True,
         timeout=15,
     )
     assert result.returncode == 0, result.stderr
-    capture = json.loads((private / "runs/fake/control/capture.json").read_text())
+    capture = json.loads((phase_root / "runs/fake/control/capture.json").read_text())
     assert capture["timed_out"] == timeout
     assert capture["structured_valid"] != timeout
     assert capture["commands"][0]["command"] == "cat a"
@@ -168,5 +192,41 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
     assert all(
         rule.startswith("command(regex:^") for rule in policy["permissions"]["allow"]
     )
-    assert len((private / "invocations.jsonl").read_text().splitlines()) == 1
-    assert (private / "runs/fake/control/stdout.jsonl").stat().st_mode & 0o777 == 0o600
+    assert len((phase_root / "invocations.jsonl").read_text().splitlines()) == 1
+    if phase == "measurement":
+        assert old_ledger.read_text() == '{"previous":"pilot"}\n' * 25
+    assert capture["within_300_seconds"] is True
+    assert capture["phase"] == phase
+    assert not gh_calls.exists(), (
+        "the harness must not invoke gh, including write operations"
+    )
+    assert (
+        phase_root / "runs/fake/control/stdout.jsonl"
+    ).stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("phase,limit", [("pilot", 25), ("measurement", 60)])
+def test_phase_cap_stops_before_invoking_any_cli(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, phase: str, limit: int
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    root = census.private_root()
+    phase_root = root if phase == "pilot" else root / phase
+    phase_root.mkdir(parents=True)
+    ledger = phase_root / "invocations.jsonl"
+    previous = '{"run":"already-recorded"}\n' * limit
+    ledger.write_text(previous)
+    with pytest.raises(ValueError, match=f"{limit} invocation cap"):
+        census.run_turn(
+            run_id="must-not-start",
+            source=tmp_path,
+            ref="HEAD",
+            agy=tmp_path / "nonexistent-agy",
+            inputs=tmp_path / "missing-input",
+            role="writer",
+            timeout=600,
+            deny_unlisted=True,
+            phase=phase,
+        )
+    assert ledger.read_text() == previous
+    assert not (phase_root / "runs").exists()

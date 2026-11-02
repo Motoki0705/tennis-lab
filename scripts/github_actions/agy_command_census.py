@@ -24,6 +24,7 @@ events: Any = importlib.import_module("agent_events")
 agy_api: Any = importlib.import_module("agy_headless")
 opsproc: Any = importlib.import_module("opsproc")
 jsonschema: Any = importlib.import_module("jsonschema")
+PHASE_LIMITS = {"pilot": 25, "measurement": 60}
 
 
 def private_root() -> Path:
@@ -155,20 +156,28 @@ def run_turn(
     role: str,
     timeout: float,
     deny_unlisted: bool = False,
+    phase: str = "pilot",
 ) -> dict[str, Any]:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("run id must be one plain directory name")
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be finite and positive")
+    if phase not in PHASE_LIMITS:
+        raise ValueError("unknown census phase")
+    if phase == "measurement" and (not deny_unlisted or timeout != 600):
+        raise ValueError("measurement requires deny-unlisted and a 600 second limit")
     root = private_root()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     root.chmod(0o700)
     with (root / "census.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        ledger = root / "invocations.jsonl"
-        if ledger.exists() and len(ledger.read_text().splitlines()) >= 25:
-            raise ValueError("this investigation has reached its 25 invocation cap")
-        directory = within_private(root / "runs" / run_id)
+        phase_root = root if phase == "pilot" else root / phase
+        phase_root.mkdir(exist_ok=True, mode=0o700)
+        ledger = phase_root / "invocations.jsonl"
+        limit = PHASE_LIMITS[phase]
+        if ledger.exists() and len(ledger.read_text().splitlines()) >= limit:
+            raise ValueError(f"{phase} has reached its {limit} invocation cap")
+        directory = within_private(phase_root / "runs" / run_id)
         directory.mkdir(parents=True, mode=0o700)
         work, control = directory / "work", directory / "control"
         control.mkdir(mode=0o700)
@@ -280,6 +289,8 @@ def run_turn(
                 "version": config.version,
                 "model": config.model,
                 "arm": "deny_unlisted" if deny_unlisted else "production",
+                "phase": phase,
+                "timeout_seconds": timeout,
                 "input_sha256": hashlib.sha256(inputs.read_bytes()).hexdigest(),
                 "saved_settings_sha256": before_settings,
             },
@@ -341,6 +352,9 @@ def run_turn(
             exit_code=proc.returncode,
             timed_out=timed_out,
             elapsed_seconds=elapsed,
+            within_300_seconds=elapsed <= 300,
+            timeout_seconds=timeout,
+            phase=phase,
             observed_model=observed_model,
             arm="deny_unlisted" if deny_unlisted else "production",
             schema_error=schema_error,
@@ -366,6 +380,7 @@ def main() -> None:
     run.add_argument("--input-json", type=Path, required=True)
     run.add_argument("--role", choices=("writer", "verifier"), required=True)
     run.add_argument("--timeout", type=float, default=300)
+    run.add_argument("--phase", choices=tuple(PHASE_LIMITS), default="pilot")
     run.add_argument(
         "--deny-unlisted",
         action="store_true",
@@ -385,6 +400,7 @@ def main() -> None:
             role=args.role,
             timeout=args.timeout,
             deny_unlisted=args.deny_unlisted,
+            phase=args.phase,
         )
         print(
             json.dumps(
