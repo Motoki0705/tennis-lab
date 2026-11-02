@@ -242,6 +242,9 @@ lookaroundやPython固有の絶対終端anchorには依存しない。
 `repository` は `OWNER/REPO`、issueは正の9桁以内の番号または `https://github.com/OWNER/REPO/issues/N`、
 PRは番号・同hostの `/pull/N` URL・相対branch名。`issue_fields` / `pr_fields` は
 各 `gh ... view --help` の既知のJSON field名の有限集合（カンマ区切り）。
+この表は安全な引数の許可を定め、CLI自身の組合せ制約や実行成功は保証しない。
+実機のghは `--comments` と `--json` の同時指定を拒否するため、JSONでコメントが必要なら
+`--json comments` を使う。診断の正例は両形式を分けて扱う。
 
 表示値は有限集合に限る。`porcelain?` は省略または `v1/v2`、`untracked` は `no/normal/all`、
 `ignored` は `no/traditional/matching`、`state` は `open/closed/all`、`decorate?` は省略または

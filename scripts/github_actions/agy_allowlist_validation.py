@@ -292,7 +292,7 @@ def diagnostic_commands() -> list[str]:
         "ls -lah --sort=extension --time-style=long-iso --color=never .",
         "rg -nwi --column --max-count=5 --max-depth=2 --no-config AGY_PROBE_TOKEN .",
         "grep -rni --binary-files=without-match --include=a -m5 AGY_PROBE_TOKEN .",
-        "gh issue view 1566 -c --repo Motoki0705/tennis-lab --json number,title",
+        "gh issue view 1566 --repo Motoki0705/tennis-lab --json number,title",
         "find -P . -maxdepth 2 -mindepth 1 -type f -name a -print",
         "git ls-files -cmz --deduplicate --exclude-standard -- a",
         "git diff --no-ext-diff --no-textconv -- a",
