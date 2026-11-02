@@ -49,7 +49,7 @@ plan与汇总summary列出延后suite、负责人、理由以及main最近一次
 
 `player-publication` 通道准备固定版本的 `third_party/DINO`，通过
 `prepare_dino_cpu --output .ci-dino-cpu` 在无CUDA的环境编译上游 `vision.cpp`。
-将输出目录加入 `PYTHONPATH` 后运行真实 matcher/loss；attention forward/backward
+将 `TENNIS_LAB_DINO_EXTENSION` 设为输出的 `MultiScaleDeformableAttention.so` 的绝对路径后运行真实 matcher/loss；attention forward/backward
 仍会报错，不替代模型前向计算。CI准备缺失时两项 publication loss 测试失败而非跳过。
 
 `javascript` 通道使用 `node --test` 运行现有 `*.test.mjs`，并运行不依赖外部数据的

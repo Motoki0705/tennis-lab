@@ -25,6 +25,8 @@ reference未指定時は校正可能camera IDの辞書順先頭を選びます�
 既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
 有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
 
+DINO binaryの選択は[導入案内](../../docs/installation/README.ja.md#dino-cuda-extension)に従います。
+
 ```bash
 # GPU実行は、このコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \

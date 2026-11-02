@@ -99,5 +99,5 @@ def check_assets(
         binary = extension_validator()
         checks.append(AssetCheck("dino_extension", str(binary), "ok", "CPU forward/backward dispatch validated; CUDA kernels untested"))
     except (ImportError, OSError, RuntimeError) as error:
-        checks.append(AssetCheck("dino_extension", "PYTHONPATH:MultiScaleDeformableAttention", "error", str(error)))
+        checks.append(AssetCheck("dino_extension", "TENNIS_LAB_DINO_EXTENSION", "error", str(error)))
     return tuple(checks)

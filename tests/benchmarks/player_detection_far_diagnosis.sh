@@ -12,5 +12,6 @@ report="$3"
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1
 bash "$code_root/tests/benchmarks/build_dino_extension.sh" "$asset_root" "$report/dino_extension"
 export PYTHONPATH="$code_root:$report/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$(cd "$report/dino_extension/lib" && pwd)/MultiScaleDeformableAttention.so"
 "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/player_detection_far_diagnosis.py" \
     --phase infer --repo "$asset_root" --comparison "$comparison" --report "$report"
