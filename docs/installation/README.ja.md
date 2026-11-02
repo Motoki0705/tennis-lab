@@ -86,7 +86,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
 ```
 
-共通binaryを`lib/src/`へ保存していた版から更新した場合は再ビルドしてください。
+共通binaryを`lib/src/`へ保存していた版から更新した場合は、新しい出力先へビルドし、
+その`lib`を`PYTHONPATH`に設定してください。
 この確認は拡張をimportするだけで、CUDA kernelは実行しません。
 
 <a id="required-assets"></a>

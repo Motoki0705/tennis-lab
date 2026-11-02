@@ -92,7 +92,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
 ```
 
-Rebuild after updating from a version that stored the shared binary under `lib/src/`.
+After updating from a version that stored the shared binary under `lib/src/`,
+build into a new output directory and set `PYTHONPATH` to its `lib`.
 This check imports the extension without running a CUDA kernel.
 
 <a id="required-assets"></a>

@@ -249,10 +249,44 @@ def test_compressed_extension_loader_never_substitutes_another_backend(
             loader.require_compressed_time_local_cuda_extension()
         message = str(caught.value)
         assert "scripts/build_dino_extension.sh" in message
-        assert 'export PYTHONPATH="$PWD/outputs/dino_extension/lib"' in message
+        assert "export PYTHONPATH=" in message
         assert "-m pip" not in message
     finally:
         loader.get_compressed_time_local_cuda_extension.cache_clear()
+
+
+def test_missing_extension_recovery_uses_fresh_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The build script refuses to overwrite an existing binary. Execute the
+    # message's shell snippet against that contract, without invoking a compiler.
+    old_binary = tmp_path / "outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
+    old_binary.parent.mkdir(parents=True)
+    old_binary.write_text("old")
+    script = tmp_path / "scripts/build_dino_extension.sh"
+    script.parent.mkdir()
+    script.write_text(
+        'set -eu\n'
+        'test ! -e "$2/lib/MultiScaleDeformableAttention.so"\n'
+        'mkdir -p "$2/lib"\n'
+        'printf built > "$2/lib/MultiScaleDeformableAttention.so"\n'
+    )
+    monkeypatch.setattr(loader, "get_compressed_time_local_cuda_extension", lambda: None)
+    with pytest.raises(RuntimeError, match="Compressed time-local CUDA") as caught:
+        loader.require_compressed_time_local_cuda_extension()
+    command = str(caught.value).split("`")[1]
+    completed = subprocess.run(
+        ["bash", "-c", command + ' && printf "%s\\n" "$PYTHONPATH"'],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    selected_lib = Path(completed.stdout.strip())
+    assert selected_lib.parent.parent == tmp_path / "outputs"
+    assert selected_lib.parent != old_binary.parent.parent
+    assert (selected_lib / "MultiScaleDeformableAttention.so").read_text() == "built"
+    assert old_binary.read_text() == "old"
 
 
 def test_loader_imports_out_of_tree_build_with_repository_src(tmp_path: Path) -> None:

@@ -88,7 +88,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
 ```
 
-从将共用二进制文件存放在 `lib/src/` 下的版本更新后，请重新构建。
+从将共用二进制文件存放在 `lib/src/` 下的版本更新后，请在新的输出目录中构建，
+并将 `PYTHONPATH` 设为该目录下的 `lib`。
 此检查只导入扩展，不运行 CUDA 内核。
 
 <a id="required-assets"></a>
