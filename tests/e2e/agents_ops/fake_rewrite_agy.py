@@ -92,6 +92,7 @@ for attack in attacks:
     if attack.get("exit"):
         raise SystemExit(attack["exit"])
 log.write_text(
+    "applying agent mode plan\n"
     'Propagating selected model override to backend: label="Gemini 3.8 Flash (High)"\n'
     "private-log conversation_id=private-conversation /home/private-person/token.json\n"
 )

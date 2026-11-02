@@ -98,6 +98,8 @@ label = "Gemini 3.8 Flash (High)" if scenario != "model" else "Gemini 3.8 Pro"
 if probe and probe["stage"] == "deny" and scenario == "probe_bad_model":
     label = "Other Model"
 with log.open("a") as handle:
+    if scenario != "validation_missing_mode":
+        handle.write("applying agent mode plan\n")
     if scenario != "missing_model":
         handle.write(
             f'Propagating selected model override to backend: label="{label}"\n'
@@ -164,6 +166,20 @@ if scenario.startswith("audit_"):
     if scenario == "audit_malformed":
         print("malformed stream event", flush=True)
 payload = json.loads((root / "payload.json").read_text())
+if prompt.startswith("AGY_ALLOWLIST_DIAGNOSTIC\n"):
+    spec = json.loads(prompt.splitlines()[1])
+    for command in spec["negatives"]:
+        assert fake_tools.run_command(command)["decision"] == "deny"
+    assert fake_tools.read_file(spec["outside"])["decision"] == "deny"
+    for command in spec["commands"]:
+        assert fake_tools.run_command(command)["decision"] == "allow"
+    assert fake_tools.read_file("a")["decision"] == "allow"
+    payload["structured_output"] = {
+        "line": (Path.cwd() / "a").read_text().splitlines()[0],
+        "subject": (Path.cwd() / ".git/COMMIT_EDITMSG").read_text().splitlines()[0],
+    }
+    fake_tools.emit_result(payload)
+    raise SystemExit(0)
 if probe:
     work = Path.cwd()
     if probe["stage"] == "read":

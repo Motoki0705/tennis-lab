@@ -1674,3 +1674,30 @@ def test_privileged_workflow_actions_match_verified_official_release_tags() -> N
         re.fullmatch("[0-9a-f]{40}", sha) and expected[action] == (sha, version)
         for action, sha, version in uses
     )
+
+
+def test_manual_validation_uses_production_repair_flow_without_github_writes(
+    rewrite_env: RewriteEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sys.path.insert(0, str(ROOT / "scripts/github_actions"))
+    validation = importlib.import_module("agy_allowlist_validation")
+    env = rewrite_env
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text('{"agentMode":"auto"}')
+    runner = validation.Runner(env.root, env.agy, validation.saved_digest())
+    runner.phase, runner.number = "pipeline", 1
+    env.turns(env.writer(env.rewritten.replace("#17 を", "#18 を")), env.writer(), PASS)
+    monkeypatch.setattr(pipeline, "run_headless", runner.turn)
+    with runner.policy.scope():
+        assert env.run("rewrite") == 0
+    assert env.bundle()["status"] == "ready"
+    assert len(runner.ledger.rows()) == 3
+    assert [item["role"] for item in runner.ledger.rows()] == [
+        "writer-1",
+        "writer-2",
+        "verifier-2",
+    ]
+    assert env.mutations() == []
+    with pytest.raises(validation.agy.AgyError):
+        validation.agy._check_user_settings(env.root)
