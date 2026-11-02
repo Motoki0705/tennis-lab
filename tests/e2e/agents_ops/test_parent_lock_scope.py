@@ -343,8 +343,6 @@ if sys.argv[1:3] == ["api", "graphql"]:
             state = json.loads(path.read_text())
             state["parents"]["o/r#1204"]["generation"] += 1
             path.write_text(json.dumps(state))
-    if reading:
-        time.sleep(0.02)
 """
 
 

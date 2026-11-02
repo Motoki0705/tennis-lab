@@ -183,11 +183,23 @@ def test_other_snapshot_link_changes_stop_verified_readers(
     reader = FileRangeReader()
     try:
         reader.read(shard, [(0, 1)], expected)
-        time.sleep(.02)  # Cross the timestamp granularity of the WSL filesystem.
-        if operation == "create":
-            snapshot_ball_store(source, sibling)
-        else:
-            shutil.rmtree(sibling)
+        deadline = time.monotonic() + 2
+        while True:
+            if operation == "create":
+                snapshot_ball_store(source, sibling)
+            else:
+                shutil.rmtree(sibling)
+            if file_version(shard)[4] != expected[4]:
+                break
+            assert time.monotonic() < deadline, "snapshot link change did not advance ctime"
+            # Coarse filesystems can assign the same ctime to both operations.
+            # Restore the sibling and retry the actual operation after a short poll.
+            if operation == "create":
+                shutil.rmtree(sibling)
+            else:
+                snapshot_ball_store(source, sibling)
+            time.sleep(.001)
+        assert sibling.exists() == (operation == "create")
         assert file_version(shard)[:4] == expected[:4]
         assert file_version(shard)[4] != expected[4]
         assert dual_sha256(shard) == hashes[store.clips[0].clip_id]
