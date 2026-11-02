@@ -214,7 +214,9 @@ def test_settings_larger_than_a_single_exec_argument_are_passed_by_file(
 
 
 def test_large_prompt_is_one_complete_stdin_event(fake_agy: dict[str, Path]) -> None:
-    prompt = "全文を保つ日本語\n" * 20000
+    prompt = "日本語\n" * 20000
+    assert len(prompt) < 96 * 1024
+    assert len(prompt.encode("utf-8")) > 128 * 1024
     fake_agy["prompt_file"].write_text(prompt)
     result = agy.run_headless(**fake_agy, timeout=60)
     assert result.structured_output == {"answer": "見出し"}
