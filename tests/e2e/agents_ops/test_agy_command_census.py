@@ -78,7 +78,10 @@ def test_fake_run_is_private_pinned_and_retains_partial_stream(
     assets = source / ".agents/ops/issue_rewrite"
     (assets / "prompts").mkdir(parents=True)
     (assets / "schemas").mkdir()
-    (assets / "prompts/writer.md").write_text("Production template fixture\n")
+    template = "Production template fixture\n" + (
+        "長い入力\n" * 12000 if phase == "measurement" else ""
+    )
+    (assets / "prompts/writer.md").write_text(template)
     (assets / "schemas/writer.schema.json").write_text(
         json.dumps(
             {
@@ -140,6 +143,10 @@ if '--version' in sys.argv:
     print('1.4.11');sys.exit(0)
 args=sys.argv[1:]
 Path({str(private / "argv.json")!r}).write_text(json.dumps(args))
+if '--input-format' in args:
+    payloads=[json.loads(line) for line in sys.stdin.read().splitlines()]
+    assert len(payloads)==1 and payloads[0]['event']=='user'
+    Path({str(private / "received-prompt.txt")!r}).write_text(payloads[0]['message']['content'])
 Path(args[args.index('--log-file')+1]).write_text('applying agent mode plan\\nPropagating selected model override to backend: label="Gemini 3.8 Flash (High)"\\n')
 print(json.dumps({{"event":"init","conversation_id":"test","init":{{"permission_mode":"request-review"}}}}),flush=True)
 print(json.dumps({{"event":"step_update","step_update":{{"step_index":2,"state":"ACTIVE","tool_info":{{"name":"run_command","parameters":{{"CommandLine":"cat a"}}}}}}}}),flush=True)
@@ -166,7 +173,7 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
             "600" if phase == "measurement" else "0.5" if timeout else "10",
             "--phase",
             phase,
-            *(["--deny-unlisted"] if phase == "measurement" else []),
+            *(["--deny-unlisted", "--prompt-stdin"] if phase == "measurement" else []),
         ],
         env={
             **os.environ,
@@ -195,6 +202,12 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
     assert len((phase_root / "invocations.jsonl").read_text().splitlines()) == 1
     if phase == "measurement":
         assert old_ledger.read_text() == '{"previous":"pilot"}\n' * 25
+        assert "-p" not in args
+        assert args[args.index("--input-format") + 1] == "stream-json"
+        assert (
+            private / "received-prompt.txt"
+        ).read_text() == template + '\n\n入力（JSON）:\n{"issue_number": 12}'
+        assert (private / "received-prompt.txt").stat().st_size > 128 * 1024
     assert capture["within_300_seconds"] is True
     assert capture["phase"] == phase
     assert not gh_calls.exists(), (

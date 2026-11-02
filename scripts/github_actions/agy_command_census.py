@@ -157,6 +157,7 @@ def run_turn(
     timeout: float,
     deny_unlisted: bool = False,
     phase: str = "pilot",
+    prompt_stdin: bool = False,
 ) -> dict[str, Any]:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("run id must be one plain directory name")
@@ -264,8 +265,7 @@ def run_turn(
         log_file = control / "agy.log"
         command = [
             str(agy.resolve()),
-            "-p",
-            prompt,
+            *(["--input-format", "stream-json"] if prompt_stdin else ["-p", prompt]),
             "--model",
             config.model,
             "--mode",
@@ -279,6 +279,17 @@ def run_turn(
             "--log-file",
             str(log_file),
         ]
+        stdin_file = control / "stdin.jsonl"
+        if prompt_stdin:
+            with stdin_file.open("x", encoding="utf-8") as handle:
+                stdin_file.chmod(0o600)
+                handle.write(
+                    json.dumps(
+                        {"event": "user", "message": {"content": prompt}},
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
         write_json(
             control / "metadata.json",
             {
@@ -291,6 +302,7 @@ def run_turn(
                 "arm": "deny_unlisted" if deny_unlisted else "production",
                 "phase": phase,
                 "timeout_seconds": timeout,
+                "prompt_transport": "stdin_stream" if prompt_stdin else "argv",
                 "input_sha256": hashlib.sha256(inputs.read_bytes()).hexdigest(),
                 "saved_settings_sha256": before_settings,
             },
@@ -303,7 +315,11 @@ def run_turn(
             handle.write(json.dumps({"run": "runs/" + run_id, "role": role}) + "\n")
             handle.flush()
         stdout_path, stderr_path = control / "stdout.jsonl", control / "stderr.log"
-        with stdout_path.open("x") as stdout, stderr_path.open("x") as stderr:
+        with (
+            stdout_path.open("x") as stdout,
+            stderr_path.open("x") as stderr,
+            (stdin_file if prompt_stdin else Path(os.devnull)).open("rb") as stdin,
+        ):
             stdout_path.chmod(0o600)
             stderr_path.chmod(0o600)
             proc = subprocess.Popen(
@@ -312,6 +328,7 @@ def run_turn(
                 env=env,
                 stdout=stdout,
                 stderr=stderr,
+                stdin=stdin,
                 start_new_session=True,
             )
             try:
@@ -355,6 +372,7 @@ def run_turn(
             within_300_seconds=elapsed <= 300,
             timeout_seconds=timeout,
             phase=phase,
+            prompt_transport="stdin_stream" if prompt_stdin else "argv",
             observed_model=observed_model,
             arm="deny_unlisted" if deny_unlisted else "production",
             schema_error=schema_error,
@@ -382,6 +400,11 @@ def main() -> None:
     run.add_argument("--timeout", type=float, default=300)
     run.add_argument("--phase", choices=tuple(PHASE_LIMITS), default="pilot")
     run.add_argument(
+        "--prompt-stdin",
+        action="store_true",
+        help="send exactly one unchanged prompt on stdin",
+    )
+    run.add_argument(
         "--deny-unlisted",
         action="store_true",
         help="experimental denial feedback; analyze separately",
@@ -401,6 +424,7 @@ def main() -> None:
             timeout=args.timeout,
             deny_unlisted=args.deny_unlisted,
             phase=args.phase,
+            prompt_stdin=args.prompt_stdin,
         )
         print(
             json.dumps(

@@ -226,7 +226,7 @@ GitHubへの書き込み・公開・本番の権限変更は行わない。
 
 ```bash
 .venv/bin/python scripts/github_actions/agy_command_census.py run \
-  --phase measurement --timeout 600 --deny-unlisted \
+  --phase measurement --timeout 600 --deny-unlisted --prompt-stdin \
   --id writer-example --source "$PWD" --ref HEAD \
   --agy "$private/bin/agy" --role writer --input-json "$private/inputs/context.json"
 .venv/bin/python scripts/github_actions/agy_command_census.py summarize \
@@ -239,6 +239,9 @@ GitHubへの書き込み・公開・本番の権限変更は行わない。
 入力snapshot・verifier候補と実行順を開始前に固定する。quota・認証エラーでは再試行せず停止する。
 完了後、所要時間と300秒以内かを保存し、自分が開始した会話の全command stepと
 `reconcile_commands()` で双方向に突き合わせる。生の突き合わせ結果も非公開のまま扱う。
+`--prompt-stdin` はOSの引数長上限を避け、同じprompt全文を1件の入力イベントとして渡す。
+内容の切り詰め・追加turn・会話の再利用は行わず、利用した転送方法をmetadataへ記録する。
+CLI起動前の失敗も予約済み台帳から削除せず、上限に含める。
 
 本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
 `--output-format stream-json` へ変える。`agy_census_capture.py` は
