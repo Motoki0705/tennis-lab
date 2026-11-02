@@ -5,6 +5,7 @@ from __future__ import annotations
 import functools
 import hashlib
 import importlib
+import inspect
 import json
 import os
 import re
@@ -1582,6 +1583,9 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         assert checkout["with"]["persist-credentials"] == "false"
         assert checkout["with"]["ref"] == "${{ github.sha }}"
     for name in ("rewrite", "rewrite_retry"):
+        # Four turns: writer/verifier, then at most one repair and verification.
+        # Plus the existing 10-minute stability deadline and 10 minutes setup/I/O.
+        assert int(jobs[name]["timeout-minutes"]) == 4 * 600 // 60 + 10 + 10
         checkout = next(
             step
             for step in jobs[name]["steps"]
@@ -1595,6 +1599,9 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
     )
     assert upload["with"]["path"].endswith("/public/handoff.json")
     assert "*" not in upload["with"]["path"]
+    assert inspect.signature(pipeline.generate).parameters["timeout"].default == 600
+    agy = importlib.import_module("agy_headless")
+    assert inspect.signature(agy.run_headless).parameters["timeout"].default == 600
 
 
 def test_workflow_retries_once_inside_the_original_owner_authorized_run() -> None:

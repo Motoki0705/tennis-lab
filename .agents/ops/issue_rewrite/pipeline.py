@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 from urllib.parse import quote
 
-from agy_headless import DEFAULT_AGY, AgyError, load_config, run_headless
+from agy_headless import (
+    DEFAULT_AGY,
+    DEFAULT_TIMEOUT,
+    AgyError,
+    load_config,
+    run_headless,
+)
 from issues.format import CHILD_LABEL, validate_body
 from issues.rewrite_state import (
     REWRITE_DONE_LABEL,
@@ -154,7 +160,7 @@ def generate(
     *,
     run_dir: Path,
     agy: Path = DEFAULT_AGY,
-    timeout: float = 300,
+    timeout: float = DEFAULT_TIMEOUT,
     wait: Callable[[GitHub, int], dict[str, Any]] | None = None,
 ) -> Handoff:
     run_dir = run_dir.resolve()

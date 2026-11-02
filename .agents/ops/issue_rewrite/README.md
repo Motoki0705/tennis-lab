@@ -48,7 +48,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    壊れた所有コメントは解析失敗とし、書き直さず `rewrite:failed` にする。
 3. writerとverifierは、[`agy_headless.py` の公開API](../lib/README.md#agyの共通呼び出し部品)を使う。
    版・モデルは同部品と `agents.conf` のpinだけに従う。呼び出しごとに別の会話とlogを作り、
-   repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は300秒。
+   repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は共通部品の既定値（600秒）。
    許可外のシェル形式は共通部品のPreToolUse hookが理由付きで拒否し、読み取りと構造化出力の生成を続けさせる。
    workspace外への `read_file` もsymlink解決後のパスで拒否する。
    streamのシェル・読み取り試行は同じtool・stepと、コマンド全文またはPathがhook記録と一致することを必須とし、照合できない試行や拒否後の実行形跡は
@@ -58,6 +58,8 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    `verdict=pass` かつ `differences=[]` だけが意味検査の合格。自由文やCLIの終了値から結果を補わない。
 5. 不変条件か意味検査で落ちた場合、直前の本文と具体的な理由をwriterへ渡して1回だけ修正する。
    schema不正・構造化出力なし・版/モデル/認証等の呼び出し失敗は修正を試さず失敗する。
+   rewrite / rewrite_retry のjob上限は各60分。最大4呼び出し（writer/verifierと1回の修正/再検査）の40分、
+   本文の安定待ち最大10分、checkout・依存準備・完全性検査・artifact処理の10分を確保する。
 6. applyはartifactのschema、不変条件、verifier合格を再検査し、対象状態と合意記録も再取得する。
    元本文と現在の本文、入力時と現在の編集履歴が一致したときだけ本文をPATCHする。
    不一致なら書かず、applyの `needs_retry=true` outputを受けた静的な `rewrite_retry`（self-hosted）と

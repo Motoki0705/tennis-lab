@@ -39,7 +39,7 @@ try:
         prompt_file=Path("writer-prompt.md"),
         json_schema=Path("writer.schema.json"),
         log_file=Path("/private/run/writer.log"),
-        timeout=300,
+        timeout=600,
     )
 except AgyError as error:
     reason = error.reason
@@ -49,13 +49,13 @@ else:
 ```
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
-log_file: Path, timeout: float, model: str | None = None,
+log_file: Path, timeout: float = DEFAULT_TIMEOUT, model: str | None = None,
 config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
 相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
 `cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
 controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
 schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLIとローカル検証を行う。
-`timeout` は有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
+`timeout` の既定は600秒。有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
 timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
 
 - `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
@@ -197,38 +197,77 @@ pilotでは、untrustedなworkspaceでもPreToolUse hookが動作した。
 一致し得る場合も拒否するためで、テストは `re.fullmatch` / `re.search` の両方でDeny優先の最終判定を確認する。
 lookaroundやPython固有の絶対終端anchorには依存しない。
 
-許可するプログラムとフラグは次のとおり。表にない略記・結合フラグ・オプションは拒否する。
-`N` は非負整数で、短い数値フラグは `-n10` の形も使える。長い値付きフラグは空白区切りまたは `=` を使う。
-`--` は表の該当プログラムで使えるが、その後も引数の禁止文字・先頭 `-` の検査を省略しない。
+許可する道具・フラグ・除外は次の表を正本とする。`agy_permissions.permission_table()` から生成し、
+単体テストで定義との一致を検査する（`--` とGit共通の `--no-pager` はフラグ数に含めない）。
+既知の短いswitchは `-la` / `-rn` のように結合できる。値付きの短いフラグは結合の末尾に置き、
+数値なら `-A2` / `-nm5` のような連結も使える。長い値付きフラグは空白または `=` で区切る。
+`--` はsearch・file・Gitの形式でオプションを終了し、それ以降はフラグとして再解釈しない。
 
-| 形式 | 許可するフラグ・引数 |
-|---|---|
-| `cat FILE...` | `-n`, `--` |
-| `ls [PATH...]` | `-a`, `-l`, `-d`, `-h`, `-1`, `--` |
-| `head FILE...` / `tail FILE...` | `-n N`, `--`。`tail -f` は拒否 |
-| `wc FILE...` | `-l`, `-w`, `-m`, `--` |
-| `grep PATTERN FILE...` | `-n`, `-i`, `-l`, `-F`, `-w` |
-| `rg PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `-g ARG`, `--glob ARG`, `--hidden`, `-C/-A/-B N`, `--` |
-| `rg --files [PATH...]` | `-g ARG`, `--glob ARG`, `--hidden` |
-| `git log [REV/PATH...]` | `--oneline`, `-n N`, `--follow`, `--` |
-| `git log --no-ext-diff --no-textconv [REV/PATH...]` | 上のlogフラグに加え `-p`, `--stat` |
-| `git show --no-ext-diff --no-textconv [REV/PATH...]` | `-p`, `--stat`, `--name-only`, `--name-status`, `--` |
-| `git diff --no-ext-diff --no-textconv [REV/PATH...]` | 上のshowフラグに加え `--cached` |
-| `git grep PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `--no-textconv`, `--` |
-| `gh issue view ID` / `gh pr view ID` | `--comments`, `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO` |
-| `gh issue list` | `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO`, `--limit N`, `--state open/closed/all` |
+<!-- agy-permissions:start -->
+| 道具 | フラグ数（別名を含む） | 許可するフラグと値の型 | 明示的に外すもの |
+|---|---:|---|---|
+| `git grep` | 40 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `-E`, `--extended-regexp`, `-G`, `--basic-regexp`, `-L`, `--files-without-match`, `-h`, `-H`, `-I`, `-e argument`, `--column`, `--full-name`, `--cached`, `--untracked`, `--no-color`, `--no-textconv`, `-W`, `--function-context`, `--max-depth depth` | -O/--open-files-in-pager, --textconv, --recurse-submodules |
+| `git status` | 9 | `--short`, `-s`, `--branch`, `-b`, `-z`, `--porcelain porcelain?`, `--untracked-files untracked`, `--ignored ignored`, `--ignore-submodules all` | -c/--config-env, pager, absolute/parent path |
+| `git log` | 29 | `--oneline`, `--all-match`, `--fixed-strings`, `--regexp-ignore-case`, `--reverse`, `--no-merges`, `--merges`, `--first-parent`, `--follow`, `--no-ext-diff`, `--no-textconv`, `--all`, `--full-history`, `-n count`, `--max-count count`, `--skip count`, `--since date_filter`, `--until date_filter`, `--author argument`, `--committer argument`, `--grep argument`, `--date date`, `--format format`, `--pretty format`, `--decorate decorate?`, `-p`, `--stat`, `--name-only`, `--name-status` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `ls` | 24 | `-a`, `--all`, `-A`, `--almost-all`, `-l`, `-h`, `--human-readable`, `-1`, `-d`, `--directory`, `-F`, `--classify`, `-p`, `-R`, `--recursive`, `-r`, `--reverse`, `-t`, `-S`, `-U`, `--group-directories-first`, `--sort sort`, `--time-style time_style`, `--color never` | -L/--dereference, -H/--dereference-command-line, --dereference-command-line-symlink-to-dir |
+| `rg` | 48 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `--column`, `-s`, `--case-sensitive`, `-S`, `--smart-case`, `--files-without-match`, `--count-matches`, `-o`, `--only-matching`, `--hidden`, `--files`, `--no-heading`, `--no-config`, `--stats`, `--no-ignore`, `--no-ignore-vcs`, `--context count`, `--max-depth depth`, `-g argument`, `--glob argument`, `--iglob argument`, `--type search_type`, `--type-not search_type`, `-t search_type`, `-T search_type`, `--color never`, `--max-filesize bytes` | --pre, --pre-glob, --hostname-bin, -z/--search-zip, -L/--follow, --type-add, --type-clear |
+| `grep` | 41 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `-E`, `--extended-regexp`, `-G`, `--basic-regexp`, `-L`, `--files-without-match`, `-h`, `-H`, `-I`, `-e argument`, `-o`, `--only-matching`, `-r`, `--recursive`, `--include argument`, `--exclude argument`, `--exclude-dir argument`, `--color never`, `--binary-files without_match`, `--devices skip` | -R/--dereference-recursive, -f/--file, --devices=read |
+| `gh issue view` | 5 | `--json issue_fields`, `--repo repository`, `-R repository`, `--comments`, `-c` | --web/-w, --jq/-q, --template/-t |
+| `find` | 22 | `-P`, `-empty`, `-print`, `-print0`, `-ls`, `-prune`, `-quit`, `-a`, `-and`, `-o`, `-or`, `-not`, `-maxdepth depth`, `-mindepth depth`, `-name basename`, `-iname basename`, `-path path`, `-ipath path`, `-type file_type`, `-size size`, `-mtime signed_count`, `-mmin signed_count` | -exec/-execdir/-ok/-okdir, -delete, -fprint/-fprint0/-fprintf/-fls, -files0-from, -L/-H/-follow |
+| `git ls-files` | 23 | `--cached`, `-c`, `--deleted`, `-d`, `--modified`, `-m`, `--others`, `-o`, `--ignored`, `-i`, `--stage`, `-s`, `--directory`, `--no-empty-directory`, `--unmerged`, `-u`, `--killed`, `-k`, `--exclude-standard`, `--full-name`, `--error-unmatch`, `--deduplicate`, `-z` | --exclude-from, --recurse-submodules, --format |
+| `cat` | 1 | `-n` | unknown flags, shell syntax |
+| `head` | 1 | `-n count` | unknown flags, shell syntax |
+| `tail` | 1 | `-n count` | -f/--follow, unknown flags |
+| `wc` | 3 | `-l`, `-w`, `-m` | unknown flags, shell syntax |
+| `git show` | 4 | `-p`, `--stat`, `--name-only`, `--name-status` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `git diff` | 5 | `-p`, `--stat`, `--name-only`, `--name-status`, `--cached` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `gh issue list` | 5 | `--json issue_fields`, `--repo repository`, `-R repository`, `--limit limit`, `--state state` | --web/-w, --jq/-q, --template/-t |
+| `gh pr view` | 5 | `--json pr_fields`, `--repo repository`, `-R repository`, `--comments`, `-c` | --web/-w, --jq/-q, --template/-t |
+<!-- agy-permissions:end -->
 
-Gitの各形式では `git --no-pager ...` も使える。patchを生成する形式は、通常のユーザー設定からの
-[外部diff・textconv実行](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---no-ext-diff)も避けるため、
+値の型: `count` は0〜10000、`depth` は0〜100、`bytes` は0〜10000000 byte、
+`limit` は1〜1000。符号・小数・単位suffix・先頭zeroは使わない（0そのものは可）。
+`size` は符号付きの同じbyte範囲に `c` を必須とし、`signed_count` は±10000以内。
+`file_type` は `b/c/d/f/l/p/s`、`search_type` は英数から始まる英数・`_`・`-` の64文字以内。
+`basename` はslashなしの検索名、`argument` は上の禁止文字に従う検索語・glob。
+`find -P` はpathより前だけ。pathの後はpredicateだけを置く。
+`repository` は `OWNER/REPO`、issueは正の9桁以内の番号または `https://github.com/OWNER/REPO/issues/N`、
+PRは番号・同hostの `/pull/N` URL・相対branch名。`issue_fields` / `pr_fields` は
+各 `gh ... view --help` の既知のJSON field名の有限集合（カンマ区切り）。
+
+表示値は有限集合に限る。`porcelain?` は省略または `v1/v2`、`untracked` は `no/normal/all`、
+`ignored` は `no/traditional/matching`、`state` は `open/closed/all`、`decorate?` は省略または
+`short/full/no/auto`。`sort` は `none/size/time/version/extension/width`、`time_style` は
+`full-iso/long-iso/iso/locale`。`date` は `default/relative/local/iso/iso-strict/rfc/short/raw/human/unix`。
+`date_filter` は `YYYY-MM-DD` または `N days/weeks/months/years ago`（Nは1〜9999）。
+`format` はGitの既知の標準形式と少数の署名なしplaceholderの有限集合を定義に列挙する。
+ユーザー設定のformat名・任意template・`%G*` は使わない。`?` は値の省略可、固定値の型はその値だけを許可する。
+
+path operandはworkspace相対の字句形式に限り、絶対path、colon、`..` または `-` で始まる成分を拒否する。
+`.`, `.agents`, `./src`, `src/a..b.py` は可。引用しても検査を省かず、globは引用時だけ使える。
+Gitのpathspec magicもcolonで拒否し、`REV:PATH` のPATHにも同じ検査を適用する。
+検索語とglob filterはpath operandと区別する。この字句制約はsymlink先の隔離を保証せず、
+CLIのworkspace制約やOS隔離を置き換えない。
+
+Gitの各形式では `git --no-pager ...` も使える。patchを生成するlog/show/diffは、通常設定由来の
+[外部diff・textconv実行](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---no-ext-diff)を避けるため、
 `--no-ext-diff --no-textconv` をこの順でサブコマンドの直後に必須とする。
-子環境では `GIT_OPTIONAL_LOCKS=0`、`GIT_PAGER=cat`、`GH_PAGER=cat`、`RIPGREP_CONFIG_PATH=/dev/null` を固定し、
-Gitの任意index更新、pagerの実行、rgの設定経由のフラグ追加を避ける。
+子環境は `readonly_environment(environ, cwd=workspace)` で作る。継承した `GIT_*`（設定・実行・pathの上書き）を除き、
+system/global設定を `/dev/null` に固定する。local/worktree設定は保持し、
+[`GIT_CONFIG_COUNT` のcommand scope](https://git-scm.com/docs/git-config#Documentation/git-config.txt-GIT_CONFIG_COUNT)で
+`core.fsmonitor=false`, `core.hooksPath=/dev/null`, `core.pager=cat`, `log.showSignature=false`,
+`submodule.recurse=false`, `diff.ignoreSubmodules=all` を上書きする。`-c` / `--config-env` は許可しない。
+`GIT_OPTIONAL_LOCKS=0`, `GIT_PAGER=cat`, `GIT_TERMINAL_PROMPT=0`, `GIT_ATTR_NOSYSTEM=1` も固定する。
+Gitは `GIT_PAGER=cat` の場合pagerを起動しない。`GH_PAGER=cat`, `RIPGREP_CONFIG_PATH=/dev/null` は維持する。
+`git config --null --name-only --get-regexp` でlocal/worktree設定（includeを含む）のfilter名を読み、
+各driverの `filter.*.clean/smudge/process` を空、`filter.*.required` をfalseで上書きする。
+`--no-textconv` だけでは止まらないworking treeのclean filterも抑止し、設定の取得失敗は起動前の失敗にする。
+設定ファイルは編集しない。実Gitの一時repoとhelper canaryを使うe2eで、上記の環境と必須フラグを検証する。
 
 書き込み/外部操作のdenyは `write_file(*)`, `read_url(*)`, `execute_url(*)`, `unsandboxed(*)`, `mcp(*)`。
 `edit_file` は公式CLIのactionではないため置かない。編集も `write_file` の拒否で扱う。
 workspace内の `read_file` はCLIの暗黙の読み取り許可を維持し、全ファイルへの読み取り許可は追加しない。
-`--output`, `-o`, `--pre`, `--pre-glob`, `-O`, `--open-files-in-pager`, `--ext-diff`, `--textconv`,
-`-c`, `--exec-path`, `--git-dir`, `--work-tree`, `--web`, `--jq`, `--template` は許可形式に存在しない。
+Python/pytest等のコード実行、shellのパイプ・連結・リダイレクトと書き込みは頻度にかかわらず拒否する。
 
 静的テストだけで実CLIの照合を確認したとは扱わない。#1599で人間がデスクトップから **AGY smoke** を手動実行し、
 通常のテンプレート読み取りに続いて `agy_smoke.py --permissions-probe --timeout 120` の段階を通す。

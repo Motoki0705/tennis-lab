@@ -21,11 +21,12 @@ from agent_output import OutputSchema
 from agent_settings import read_pins
 from agy_capture import capture_stream, public_command_summary, restore_hook_commands
 from agy_hook import install_command_hook
-from agy_permissions import command_permissions
+from agy_permissions import command_permissions, readonly_environment
 from opsproc import CommandError, run_process_group
 
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 DEFAULT_AGY = Path("/var/lib/tennis-lab-actions/home/.local/bin/agy")
+DEFAULT_TIMEOUT = 600
 MODEL_LABELS = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)"}
 _READONLY_MODE = {
     "toolPermission": "request-review",
@@ -308,7 +309,7 @@ def run_headless(
     prompt_file: Path,
     json_schema: Path,
     log_file: Path,
-    timeout: float,
+    timeout: float = DEFAULT_TIMEOUT,
     model: str | None = None,
     config_file: Path = DEFAULT_CONFIG,
 ) -> AgyResult:
@@ -333,6 +334,7 @@ def run_headless(
             if not prompt.strip():
                 raise ValueError("prompt must not be empty")
             schema = OutputSchema(json_schema, agent="agy")
+            env = readonly_environment(os.environ, cwd=cwd)
             log_file = log_file.absolute()
             if log_file.resolve().is_relative_to(cwd):
                 raise ValueError("private evidence must be outside the workspace")
@@ -355,14 +357,6 @@ def run_headless(
         except (OSError, ValueError, UnicodeError) as exc:
             raise AgyError("invalid_input", f"invalid agy input: {exc}") from exc
 
-        env = {
-            **os.environ,
-            "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
-            "GIT_OPTIONAL_LOCKS": "0",
-            "GIT_PAGER": "cat",
-            "GH_PAGER": "cat",
-            "RIPGREP_CONFIG_PATH": "/dev/null",
-        }
         started = time.monotonic()
         deadline = started + timeout
 
