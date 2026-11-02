@@ -198,9 +198,11 @@ def get_extensions() -> list[Any]:
         "nvcc": ["-O3", "--use_fast_math"],
     }
     extensions = []
+    # A top-level module remains importable from an out-of-tree build-lib even
+    # when the repository's regular ``src`` package is already imported.
     extensions.append(
         CUDAExtension(
-            name="src.utils.models.components.ops.compressed_time_local._C",
+            name="tennis_lab_compressed_time_local_cuda",
             sources=[
                 str(build_paths.compressed_time_local_bindings),
                 str(build_paths.compressed_time_local_kernels),
