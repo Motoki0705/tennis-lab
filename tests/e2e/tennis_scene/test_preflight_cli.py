@@ -42,7 +42,8 @@ def test_unsafe_paths_corruption_and_missing_assets_share_one_json_report(tmp_pa
     result = subprocess.run([sys.executable, "-m", "src.tennis_scene.scripts.preflight",
         f"paths.data_root={tmp_path / 'data'}", f"paths.checkpoint_root={checkpoint}",
         f"paths.external_asset_root={tmp_path / 'third_party'}", f"paths.output_root={tmp_path / 'outputs'}"],
-        cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1", "PYTHONPATH": ""},
+        cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1", "PYTHONPATH": "",
+                              "TENNIS_LAB_DINO_EXTENSION": ""},
         capture_output=True, text=True, check=False)
     assert result.returncode == 1, result.stderr
     report = json.loads(result.stdout)
