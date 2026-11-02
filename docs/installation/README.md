@@ -78,7 +78,8 @@ Adjust `CUDA_HOME` for your environment, for example to `/usr/local/cuda`. Set b
 preflight and pipeline execution, including in a new shell. `TENNIS_LAB_DINO_EXTENSION` is the absolute
 path to the exact DINO binary; `PYTHONPATH` makes the shared CUDA extension importable. A missing selection
 or an unverified already-imported DINO binary fails explicitly. If the selected file changes after loading,
-start a fresh process and validate the new binary.
+start a fresh process and validate the new binary. Start DINO in a fresh Python process and let this loader
+import the extension first; an earlier native import removed from the module registry cannot be detected.
 
 The script creates `TENNIS_LAB_DINO_OPS_BUILD_CONFIG` under the canonical path contract and builds
 DINO and the shared CUDA extension through the root `setup.py`. It writes to

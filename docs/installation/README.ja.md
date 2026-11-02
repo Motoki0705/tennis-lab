@@ -73,6 +73,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 必要です。別shellでも設定してください。`TENNIS_LAB_DINO_EXTENSION`には使用するDINO binaryの絶対path、
 `PYTHONPATH`には共通CUDA拡張のdirectoryを指定します。選択が無い場合や、検証されていないbinaryを
 import済みの場合は停止します。読み込み後に選択ファイルが変わった場合は新しいprocessで再検証してください。
+新しいPython processで開始し、このloaderが拡張を最初にimportするようにしてください。事前にimportして
+module registryから削除されたnative binaryは検知できません。
 
 スクリプトは`TENNIS_LAB_DINO_OPS_BUILD_CONFIG`を正規のpath契約で作り、ルート`setup.py`から
 DINOと共通CUDA拡張をビルドします。`outputs/dino_extension/{lib,temp,cache}`と`build.json`へ

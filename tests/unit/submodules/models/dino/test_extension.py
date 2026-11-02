@@ -134,14 +134,29 @@ def test_different_cached_binary_is_rejected(binary: ModuleType, tmp_path: Path)
         validate_dino_extension()
 
 
-def test_untracked_cached_module_at_selected_path_is_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("foreign_path", ["selected", "other"])
+def test_untracked_cached_module_cannot_be_retried_after_removal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, foreign_path: str
+) -> None:
     selected = tmp_path / "MultiScaleDeformableAttention.so"
-    selected.touch()
+    selected.write_text("marker = 'selected'\n")
     foreign = ModuleType("MultiScaleDeformableAttention")
-    foreign.__file__ = str(selected)
+    foreign.__file__ = str(selected if foreign_path == "selected" else tmp_path / "other.so")
     monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(selected))
     monkeypatch.setitem(sys.modules, "MultiScaleDeformableAttention", foreign)
-    with pytest.raises(RuntimeError, match="already loaded.*identity"):
+    original_spec = importlib.util.spec_from_file_location
+
+    def source_spec(name: str, location: Path) -> Any:
+        return original_spec(name, location, loader=importlib.machinery.SourceFileLoader(name, str(location)))
+
+    monkeypatch.setattr(module.importlib.util, "spec_from_file_location", source_spec)
+    with pytest.raises(RuntimeError, match="already loaded"):
+        module.load_dino_extension()
+    sys.modules.pop("MultiScaleDeformableAttention")
+    replacement = tmp_path / "replacement"
+    replacement.write_text("marker = 'replacement'\n")
+    replacement.replace(selected)
+    with pytest.raises(RuntimeError, match="already attempted.*fresh process"):
         module.load_dino_extension()
 
 

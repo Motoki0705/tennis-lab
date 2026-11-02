@@ -67,13 +67,17 @@ def load_dino_extension() -> ModuleType:
     with _LOAD_LOCK:
         if _MODULE in sys.modules:
             cached = sys.modules[_MODULE]
+            loaded = _LOADED.get(cached) if isinstance(cached, ModuleType) else None
+            if loaded is None:
+                # A foreign native module can remain mapped after its Python
+                # entry is removed; no later import is safe in this process.
+                _LOAD_ATTEMPTED = True
             cached_file = getattr(cached, "__file__", None)
             if not isinstance(cached, ModuleType) or cached_file is None or Path(cached_file).resolve() != path:
                 raise RuntimeError(
                     f"DINO extension already loaded from {cached_file!r}; "
                     f"{_SELECTION} selects {path}. Start a fresh process."
                 )
-            loaded = _LOADED.get(cached)
             if loaded is None:
                 raise RuntimeError(
                     f"DINO extension already loaded from {path} without a verified identity; start a fresh process"

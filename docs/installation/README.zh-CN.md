@@ -74,7 +74,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 请根据环境调整 `CUDA_HOME`，例如设为 `/usr/local/cuda`。预检和处理流程都需要这两个变量，
 换用其他 shell 时也请设置。`TENNIS_LAB_DINO_EXTENSION` 指定所用 DINO 二进制文件的绝对路径，
 `PYTHONPATH` 指定共用 CUDA 扩展目录。未指定或已导入未经验证的 DINO 二进制文件时会明确报错。
-如果加载后所选文件发生变化，请启动新进程并重新验证。
+如果加载后所选文件发生变化，请启动新进程并重新验证。请从新的 Python 进程开始，让此加载器首先导入扩展；
+先前已导入并从模块注册表中移除的原生二进制文件无法检测。
 
 脚本按照统一的路径约定生成 `TENNIS_LAB_DINO_OPS_BUILD_CONFIG`，并通过仓库根目录的 `setup.py`
 构建 DINO 和共用的 CUDA 扩展。输出写入 `outputs/dino_extension/{lib,temp,cache}` 和 `build.json`，
