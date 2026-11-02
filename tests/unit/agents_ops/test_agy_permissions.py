@@ -407,8 +407,6 @@ def test_generated_permission_table_and_regex_contract() -> None:
         for rules in policy.command_permissions().values()
         for rule in rules
     )
-    # Linux limits a single execve argument to 32 pages, independently of ARG_MAX.
-    assert len(json.dumps(agy.readonly_settings()).encode()) < 128 * 1024
 
 
 def test_every_allow_is_anchored_and_non_command_actions_are_denied() -> None:

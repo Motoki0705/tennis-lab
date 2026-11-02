@@ -50,7 +50,12 @@ with (root / "workspace-calls.jsonl").open("a") as trace:
         )
         + "\n"
     )
-assert log.with_suffix(".md").read_text() == args[args.index("-p") + 1]
+prompt = (
+    json.loads(sys.stdin.read())["message"]["content"]
+    if "--input-format" in args
+    else args[args.index("-p") + 1]
+)
+assert log.with_suffix(".md").read_text() == prompt
 attacks = (
     json.loads((root / "attacks.json").read_text())
     if (root / "attacks.json").exists()

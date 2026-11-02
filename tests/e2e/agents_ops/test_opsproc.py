@@ -51,3 +51,17 @@ def test_unexpected_proc_read_failure_is_not_hidden(
     monkeypatch.setattr(Path, "read_text", denied)
     with pytest.raises(PermissionError, match="unexpected permissions"):
         opsproc._live_group_members(555, tmp_path)
+
+
+def test_process_group_reads_caller_owned_stdin_file(tmp_path: Path) -> None:
+    payload = "日本語の入力\n" * 20000
+    source = tmp_path / "stdin.txt"
+    source.write_text(payload)
+    with source.open() as stdin:
+        output = opsproc.run_process_group(
+            [sys.executable, "-c", "import sys; sys.stdout.write(sys.stdin.read())"],
+            cwd=tmp_path,
+            timeout=10,
+            stdin_file=stdin,
+        )
+    assert output == payload

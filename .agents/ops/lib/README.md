@@ -55,6 +55,9 @@ config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契
 `cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
 controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
 schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLIとローカル検証を行う。
+promptはUTF-8で96 KiB以内なら `-p`、それを超える場合は `--input-format stream-json` の
+単一userイベントを0600の一時ファイルからstdinへ渡す。workspaceの外で扱い、内容の省略・分割はしない。
+長い固定入力・verifier入力・修正入力でもLinuxの単一引数上限へ達しないよう、byte数で経路を決める。
 `timeout` の既定は600秒。有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
 timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
 
@@ -68,7 +71,12 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
   新しいモデルを採用するときは設定と `MODEL_LABELS` の対応を一緒に更新する。
-- `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` をJSON文字列として `--settings` へ渡す。
+- `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` を
+  `<log_file>.settings.json` へ呼び出しごとに排他的に書き、`--settings` にはそのパスを渡す。
+  ファイルはworkspaceの外、mode 0600。巨大なJSONを単一のargvへ載せない。
+  終了時は成功・失敗・timeoutともSHA-256・regular file・modeを照合し、改変・削除・symlink化は
+  `invalid_output` として拒否する。照合値はprivateな `.commands.json` の
+  `session_settings_integrity` に残す。settingsファイルは他のprivate証拠と一緒に保持する。
   コマンドの許可形式・拒否・実機での検証は[読み取り権限と実機プローブ](#agyの読み取り権限と実機プローブ)を正本とする。
   `--mode plan` を指定する。このpermission規則はrunnerのOS隔離を置き換えない。
 - 許可外のシェル形式とworkspace外への `read_file` は、workspaceの `.agents/hooks.json` に一時配置したPreToolUse hookで

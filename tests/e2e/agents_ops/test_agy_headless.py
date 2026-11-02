@@ -138,7 +138,15 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
     assert args[args.index("--mode") + 1] == "plan"
     assert args[args.index("--output-format") + 1] == "stream-json"
-    fixed = json.loads(args[args.index("--settings") + 1])
+    settings_arg = args[args.index("--settings") + 1]
+    settings_file = Path(settings_arg)
+    assert settings_file == fake_agy["log_file"].with_name("turn.log.settings.json")
+    assert not settings_file.resolve().is_relative_to(fake_agy["cwd"].resolve())
+    assert settings_file.stat().st_mode & 0o777 == 0o600
+    fixed = calls[1]["session_settings"]
+    assert json.loads(settings_file.read_text()) == fixed
+    assert json.dumps(fixed) not in args
+    assert len(settings_arg.encode()) < 1024
     assert fixed["toolPermission"] == "request-review"
     assert fixed["agentMode"] == args[args.index("--mode") + 1] == "plan"
     assert fixed["enableTerminalSandbox"] is False
@@ -156,6 +164,71 @@ def test_success_requires_evidence_and_passes_readonly_settings(
         "mcp(*)",
     } <= set(settings["deny"])
     assert fake_agy["log_file"].stat().st_mode & 0o777 == 0o600
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    integrity = capture["session_settings_integrity"]
+    assert integrity["unchanged"] is True
+    assert integrity["expected_sha256"] == integrity["observed_sha256"]
+
+
+@pytest.mark.parametrize(
+    "fault", ["content", "delete", "symlink", "mode", "content_error"]
+)
+def test_session_settings_file_tampering_cannot_return_success(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", "settings_" + fault)
+    with pytest.raises(
+        agy.AgyError, match="session settings file was modified"
+    ) as caught:
+        agy.run_headless(**fake_agy, timeout=60)
+    assert caught.value.reason == "invalid_output"
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    assert capture["session_settings_integrity"]["unchanged"] is False
+    if fault.startswith("content"):
+        integrity = capture["session_settings_integrity"]
+        assert integrity["expected_sha256"] != integrity["observed_sha256"]
+    assert not (fake_agy["cwd"] / ".agents").exists()
+
+
+def test_settings_larger_than_a_single_exec_argument_are_passed_by_file(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = agy.readonly_settings()
+    settings["permissions"]["deny"].append("read_file(" + "a" * (128 * 1024) + ")")
+    monkeypatch.setattr(agy, "readonly_settings", lambda: settings)
+    assert len(json.dumps(settings).encode()) > 128 * 1024
+    result = agy.run_headless(**fake_agy, timeout=60)
+    assert result.structured_output == {"answer": "見出し"}
+    calls = [
+        json.loads(line)
+        for line in (fake_agy["agy"].parent / "invocations.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert calls[1]["session_settings"] == settings
+    assert len(json.dumps(calls[1]["args"]).encode()) < 8192
+
+
+def test_large_prompt_is_one_complete_stdin_event(fake_agy: dict[str, Path]) -> None:
+    prompt = "全文を保つ日本語\n" * 20000
+    fake_agy["prompt_file"].write_text(prompt)
+    result = agy.run_headless(**fake_agy, timeout=60)
+    assert result.structured_output == {"answer": "見出し"}
+    calls = [
+        json.loads(line)
+        for line in (fake_agy["agy"].parent / "invocations.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert "-p" not in calls[1]["args"]
+    assert calls[1]["stdin_event"] == {"event": "user", "message": {"content": prompt}}
+    assert (
+        calls[1]["args"][calls[1]["args"].index("--input-format") + 1] == "stream-json"
+    )
 
 
 @pytest.mark.parametrize(
