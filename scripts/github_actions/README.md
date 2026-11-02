@@ -246,6 +246,8 @@ CLI起動前の失敗も予約済み台帳から削除せず、上限に含め�
 本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
 `--output-format stream-json` へ変える。`agy_census_capture.py` は
 `(conversation_id, step_index)` で更新イベントをまとめ、`CommandLine` を加工せず保存する。
+streamが長い引数を末尾省略した場合は、同じstepのhook記録と省略前prefixが一致するときだけ
+全文を復元し、省略表示と採用元も保存する。任意の不一致やstreamに無いhook stepはエラーにする。
 soft denialはlogのstep番号と結合する。`DONE` だけで実行済みとは判定せず、
 出力・エラーがない場合は不明とする。構造化出力のschema合否とCLI終了は別に保存する。
 コマンドの記述用の正規化は権限判定に使わない。現行grammarの判定は原文に対して行う。

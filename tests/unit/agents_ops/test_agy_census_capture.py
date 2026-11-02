@@ -150,3 +150,40 @@ def test_trajectory_reconciliation_checks_both_directions(fault: str) -> None:
     assert result["matches"] == (fault == "none")
     assert len(result["missing"]) == (fault in {"missing", "changed"})
     assert len(result["extra"]) == (fault in {"extra", "changed"})
+
+
+def test_hook_restores_truncated_command_once_and_retains_provenance() -> None:
+    full = 'python3 -c "' + "x" * 600 + '" && cat a'
+    shown = full[:512] + "…"
+    capture = census.capture_stream(
+        stream(step(2, shown, "ERROR", error={"message": "denied by pre-tool hook"}))
+    )
+    record = json.dumps({"step": 2, "command": full, "decision": "deny"})
+    census.restore_hook_commands(capture, record + "\n" + record)
+    census.restore_hook_commands(capture, record)
+    assert len(capture["commands"]) == 1
+    command = capture["commands"][0]
+    assert command["command"] == command["parameters"]["CommandLine"] == full
+    assert command["stream_command"] == shown
+    assert command["form"] == "python3 -c <CODE> && cat <ARG>"
+    assert command["grammar_allowed"] is False
+    assert command["outcome"] == "hook_denied"
+    assert command["command_capture_source"] == "pre_tool_hook"
+    assert capture["restored_stream_commands"] == 1
+
+
+@pytest.mark.parametrize("fault", ["changed", "missing", "conflicting", "executed"])
+def test_hook_disagreement_cannot_be_hidden_as_truncation(fault: str) -> None:
+    capture = census.capture_stream(stream(step(2, "cat a", "DONE", output="ok")))
+    record = {"step": 2, "command": "cat a", "decision": "allow"}
+    if fault == "changed":
+        record["command"] = "cat b"
+    elif fault == "missing":
+        record["step"] = 4
+    elif fault == "executed":
+        record["decision"] = "deny"
+    raw = json.dumps(record)
+    if fault == "conflicting":
+        raw += "\n" + json.dumps({**record, "command": "cat b"})
+    with pytest.raises(ValueError):
+        census.restore_hook_commands(capture, raw)

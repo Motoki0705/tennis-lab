@@ -154,9 +154,13 @@ if '--input-format' in args:
     payloads=[json.loads(line) for line in sys.stdin.read().splitlines()]
     assert len(payloads)==1 and payloads[0]['event']=='user'
     Path({str(private / "received-prompt.txt")!r}).write_text(payloads[0]['message']['content'])
+command='python3 -c "'+'x'*600+'"' if {phase == "measurement"!r} else 'cat a'
+shown=command[:512]+'…' if {phase == "measurement"!r} else command
+if {phase == "measurement"!r}:
+    Path(args[args.index('--log-file')+1]).with_name('hooks.jsonl').write_text(json.dumps({{'step':2,'command':command,'decision':'deny'}})+chr(10))
 Path(args[args.index('--log-file')+1]).write_text('applying agent mode plan\\nPropagating selected model override to backend: label="Gemini 3.8 Flash (High)"\\n')
 print(json.dumps({{"event":"init","conversation_id":"test","init":{{"permission_mode":"request-review"}}}}),flush=True)
-print(json.dumps({{"event":"step_update","step_update":{{"step_index":2,"state":"ACTIVE","tool_info":{{"name":"run_command","parameters":{{"CommandLine":"cat a"}}}}}}}}),flush=True)
+print(json.dumps({{"event":"step_update","step_update":{{"step_index":2,"state":"ACTIVE","tool_info":{{"name":"run_command","parameters":{{"CommandLine":shown}}}}}}}}),flush=True)
 if {timeout!r}: signal.pause()
 if {settings_change!r}: Path({str(settings)!r}).write_text('{{"agentMode":"auto","model":"new preference"}}')
 print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_output":{{"body":"ok"}}}}}}),flush=True)
@@ -196,7 +200,12 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
     capture = json.loads((phase_root / "runs/fake/control/capture.json").read_text())
     assert capture["timed_out"] == timeout
     assert capture["structured_valid"] != timeout
-    assert capture["commands"][0]["command"] == "cat a"
+    assert capture["commands"][0]["command"] == (
+        'python3 -c "' + "x" * 600 + '"' if phase == "measurement" else "cat a"
+    )
+    if phase == "measurement":
+        assert capture["restored_stream_commands"] == 1
+        assert capture["commands"][0]["command_capture_source"] == "pre_tool_hook"
     assert capture["commands"][0]["outcome"] == "unknown"
     assert settings.read_text() == (
         '{"agentMode":"auto","model":"new preference"}'

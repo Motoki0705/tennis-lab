@@ -354,6 +354,10 @@ def run_turn(
         capture: dict[str, Any] = capture_api.capture_stream(
             stdout_path.read_text(), log
         )
+        if (control / "hooks.jsonl").exists():
+            capture_api.restore_hook_commands(
+                capture, (control / "hooks.jsonl").read_text()
+            )
         init = capture["init"] or {}
         if (
             init.get("permission_mode") != "request-review"

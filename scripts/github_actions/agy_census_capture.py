@@ -279,6 +279,64 @@ def summarize(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
+def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
+    """Recover display-truncated commands from the independent pre-tool input.
+
+    Preserve the display value and provenance. Arbitrary disagreements and hook
+    steps absent from the stream fail loudly rather than being overwritten.
+    """
+    hooks: dict[int, dict[str, Any]] = {}
+    for line in raw_hooks.splitlines():
+        record = json.loads(line)
+        index, command = record["step"], record["command"]
+        if not isinstance(index, int) or not isinstance(command, str):
+            raise ValueError("invalid hook command record")
+        if record.get("decision") not in {"allow", "deny"}:
+            raise ValueError("invalid hook decision")
+        if index in hooks and hooks[index] != record:
+            raise ValueError("conflicting hook records for one command step")
+        hooks[index] = record
+    seen: set[int] = set()
+    restored = 0
+    for entry in capture["commands"]:
+        index = entry["step"]
+        if index not in hooks:
+            entry["command_capture_source"] = "stream"
+            continue
+        if index in seen:
+            raise ValueError("hook step is ambiguous across conversations")
+        seen.add(index)
+        record = hooks[index]
+        shown, full = entry["command"], record["command"]
+        if shown != full:
+            suffix = "…" if shown.endswith("…") else "..."
+            if (
+                not shown.endswith(suffix)
+                or not full.startswith(shown[: -len(suffix)])
+                or len(full) <= len(shown)
+            ):
+                raise ValueError("stream and hook commands disagree without truncation")
+            entry["stream_command"] = shown
+            entry["command"] = full
+            entry["parameters"]["CommandLine"] = full
+            entry["form"] = command_form(full)
+            entry["grammar_allowed"] = grammar_allows(full)
+            entry["command_capture_source"] = "pre_tool_hook"
+            restored += 1
+        else:
+            if "stream_command" in entry:
+                entry["command_capture_source"] = "pre_tool_hook"
+                restored += 1
+            else:
+                entry["command_capture_source"] = "stream_and_hook"
+        entry["hook_decision"] = record["decision"]
+        if record["decision"] == "deny" and entry["outcome"] == "completed":
+            raise ValueError("a hook-denied command was observed executing")
+    if hooks.keys() - seen:
+        raise ValueError("hook command step is missing from the stream")
+    capture["restored_stream_commands"] = restored
+
+
 def reconcile_commands(
     capture: dict[str, Any], trajectory: list[dict[str, Any]]
 ) -> dict[str, Any]:
