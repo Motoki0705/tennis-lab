@@ -177,6 +177,10 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 
 预检必须返回 `status: ok` 和退出码 0。文件缺失、内容不匹配、读取失败和扩展不兼容等问题会**汇总在一起**
 以 JSON 输出；只要存在任何问题，退出码就是 1。请明确修复已获取的文件，然后重新运行。
+不安全的资产路径（包括指向声明根目录之外的符号链接）会与其他故障一起以 `invalid_path` 报告；
+不会打开其目标或计算哈希。正常处理流程仍然拒绝这些路径，并注明在修复前无法完成运行时验证。
+如果配置结构或根目录不允许安全地列出资产，JSON 会通过 `pipeline_configuration` 说明限制，
+不会将未检查的资产标记为已验证。
 检查范围包括 `enabled_model_assets()` 中的全部资产、DINO 和 DINOv3 源代码、独立的 DINOv3 权重、
 可视化所需的 SMPL-H 和回归器，以及输入视频（公开示例还包括清单文件和 LICENSE）。
 预检不会下载文件、替换模型、执行推理或使用 GPU。源代码检查仅验证必需文件是否存在。

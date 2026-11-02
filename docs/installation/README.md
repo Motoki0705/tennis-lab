@@ -190,6 +190,10 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 
 Require `status: ok` and exit code 0. Missing files, content mismatches, read failures and extension incompatibilities
 are **reported together** in JSON; any failure produces exit code 1. Explicitly fix the acquired files and rerun.
+Unsafe asset paths (including symlinks escaping a declared root) appear as `invalid_path` alongside other failures;
+their targets are not opened or hashed. The normal pipeline still rejects these paths. Full runtime validation is
+marked unavailable until they are repaired. If the configuration structure or roots prevent a safe inventory,
+JSON reports `pipeline_configuration` and explains that limitation instead of claiming the assets were checked.
 The check covers every asset from `enabled_model_assets()`, the DINO and DINOv3 sources, standalone DINOv3 weights,
 SMPL-H and the regressor for visualization, and input videos (plus the manifest and LICENSE for the published sample).
 It does not download files, substitute models, run inference or use the GPU. Source checks verify that required files exist.
