@@ -438,7 +438,7 @@ class SnapshotGitHub:
         raise ValidationStop("github_requests_forbidden")
 
 
-def run_campaign(root: Path, executable: Path) -> None:
+def run_campaign(root: Path, executable: Path, *, resume: bool = False) -> None:
     os.umask(0o077)
     sys.dont_write_bytecode = True
     plan = json.loads((root / "plan.json").read_text())
@@ -453,15 +453,55 @@ def run_campaign(root: Path, executable: Path) -> None:
     (root / "outside-canary").write_text("read-only validation canary\n")
     runner = Runner(root, executable, plan["persistent_settings"]["before_sha256"])
     status = "running"
-    summaries = []
+    previous_completion = (
+        json.loads((root / "completion.json").read_text())
+        if (root / "completion.json").exists()
+        else {}
+    )
+    summaries = list(previous_completion.get("pipelines", [])) if resume else []
     started = time.monotonic()
     try:
         with (root / "campaign.lock").open("a") as lock, runner.policy.scope():
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            if runner.ledger.rows():
+            if runner.ledger.rows() and not resume:
                 raise ValidationStop("campaign_already_started")
-            run_diagnostic(runner)
+            if resume:
+                previous_stop = (
+                    json.loads((root / "stop.json").read_text())
+                    if (root / "stop.json").exists()
+                    else {}
+                )
+                if previous_stop.get("reason") == "quota_or_authentication_stop":
+                    raise ValidationStop("quota_or_authentication_stop")
+                with (root / "resume-history.jsonl").open(
+                    "a", encoding="utf-8"
+                ) as history:
+                    history.write(
+                        json.dumps(
+                            {
+                                "completion": previous_completion,
+                                "stop": previous_stop,
+                                "source_head": head,
+                            }
+                        )
+                        + "\n"
+                    )
+            diagnostic_path = root / "diagnostic-result.json"
+            diagnostic = (
+                json.loads(diagnostic_path.read_text())
+                if diagnostic_path.exists()
+                else {}
+            )
+            if (
+                diagnostic.get("status") != "passed"
+                or diagnostic.get("source_head") != head
+            ):
+                run_diagnostic(runner)
             for item in plan["selections"]:
+                if any(
+                    previous["issue_number"] == item["number"] for previous in summaries
+                ):
+                    continue
                 if runner.ledger.remaining < 4:
                     runner.event(
                         "pipeline_omitted",
@@ -529,11 +569,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--private", type=Path, required=True)
     parser.add_argument("--agy", type=Path, default=Path.home() / ".local/bin/agy")
+    parser.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     root = args.private.resolve(strict=True)
     if root.is_relative_to(ROOT):
         parser.error("private root must be outside the repository")
-    run_campaign(root, args.agy)
+    run_campaign(root, args.agy, resume=args.resume)
 
 
 if __name__ == "__main__":

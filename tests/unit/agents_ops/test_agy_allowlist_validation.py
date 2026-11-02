@@ -110,3 +110,35 @@ def test_fourth_diagnostic_is_refused_before_cli_start(tmp_path: Path) -> None:
     with pytest.raises(harness.ValidationStop, match="diagnostic_budget_exhausted"):
         runner.turn(cwd=tmp_path)
     assert len(runner.ledger.rows()) == 3
+
+
+def test_resume_never_retries_a_quota_stop(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=harness.ROOT, text=True
+    ).strip()
+    harness.write(
+        tmp_path / "plan.json",
+        {
+            "cap": 20,
+            "manual_policy_authorized": True,
+            "source_head": head,
+            "persistent_settings": {"before_sha256": "unused"},
+            "selections": [],
+        },
+    )
+    harness.Ledger(tmp_path).reserve(phase="diagnostic")
+    harness.write(tmp_path / "stop.json", {"reason": "quota_or_authentication_stop"})
+
+    def forbidden(**kwargs: Any) -> None:
+        pytest.fail("quota resume attempted another CLI call")
+
+    monkeypatch.setattr(harness.agy, "run_headless", forbidden)
+    harness.run_campaign(tmp_path, tmp_path / "never-execute", resume=True)
+    assert len(harness.Ledger(tmp_path).rows()) == 1
+    assert (tmp_path / "stop.json").read_text().find(
+        "quota_or_authentication_stop"
+    ) >= 0
