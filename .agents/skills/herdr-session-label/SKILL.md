@@ -26,6 +26,15 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync --parent 1353 --top
 `not_configured`は表示未設定であり、成功ではない。
 
 Claudeの起動・再開・終了hookは表示の復元・解除だけを行う。担当登録・解除は親の明示操作を使う。
+別画面で再開した登録済みClaudeの担当は、旧端末が空いたと確認できれば表示先が自動で移る。
+移動・拒否・通知の条件は[READMEのSessionStart仕様](../../ops/herdr_labels/README.md#claudeのsessionstartによる表示先の移動)を参照する。
+
+SessionStartから失敗が通知されたら理由を確認する。取得失敗ならHerdrへの接続を直し、
+同じ会話が生存中なら、残る実担当と旧画面・新画面の役割を確認する。
+通常のsyncだけで移動を強行せず、手動修復が必要なら
+[READMEの明示bind手順](../../ops/herdr_labels/README.md#herdr環境変数が届かない実行基盤)で自分の表示先を確認・再設定し、syncする。
+owner記録がない場合もこの手順を使う。会話や表示先を確認できなければ推測で書き換えない。
+
 終了後に表示だけ残った場合は、自分のセッションから`python -m herdr_labels clear`を同じ環境で実行する。
 色・稼働状態の更新、プロセスの起動・停止、他のpaneの操作はこのskillの範囲外。
 

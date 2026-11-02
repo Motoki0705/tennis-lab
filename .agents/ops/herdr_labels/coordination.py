@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
@@ -66,7 +67,9 @@ class Guard:
         self, env: Mapping[str, str], identity: str, client: Herdr, pane: dict[str, Any]
     ) -> None:
         self.root = state_root(env) / "herdr-labels"
+        self.identity = identity
         self.owner = owner_token(identity)
+        self.native_verified = False
         self.client, self.pane = client, pane
         self.scope = owner_token(client.socket_path())
         self.stamp = process_stamp(client, pane)
@@ -79,9 +82,26 @@ class Guard:
         self.path = self.root / "panes" / (key + ".json")
         self.runtime: dict[str, Any] = {}
 
-    def claim(self, *, allow_create: bool = False) -> None:
+    def claim(self, *, allow_create: bool = False, allow_move: bool = False) -> None:
         """Keep the confirmed parent pane even after display clear/SessionEnd."""
         path = self.root / "owners" / (self.owner + ".json")
+        previous = read_record(path)
+        if allow_move and previous is not None and previous != self.destination:
+            if (
+                not self.native_verified
+                or self.client.env.get("HERDR_ENV") != "1"
+                or not self.identity.startswith("claude:")
+            ):
+                raise ValueError("display moves require a verified Claude SessionStart")
+            self._require_vacated(previous)
+            with locked(path.with_suffix(".lock")):
+                if read_record(path) != previous:
+                    raise ValueError(
+                        "confirmed parent display changed during move; retry"
+                    )
+                self.check()
+                Store.write_json(path, self.destination)
+            return
         with locked(path.with_suffix(".lock")):
             previous = read_record(path)
             if previous is not None and previous != self.destination:
@@ -97,6 +117,103 @@ class Guard:
                     )
                 Store.write_json(path, self.destination)
 
+    def _require_vacated(self, previous: dict[str, Any]) -> None:
+        """Absence must be verified against the recorded server, never inferred."""
+        native = self.pane.get("agent_session")
+        if native is not None and (
+            not isinstance(native, dict)
+            or native.get("kind") != "id"
+            or native.get("agent") != "claude"
+            or native.get("value") != self.identity.partition(":")[2]
+        ):
+            raise ValueError("new pane native session differs from the caller")
+        scope, terminal = previous.get("scope"), previous.get("terminal_id")
+        if (
+            not isinstance(scope, str)
+            or re.fullmatch(r"[0-9a-f]{64}", scope) is None
+            or not isinstance(terminal, str)
+            or not terminal
+        ):
+            raise ValueError("invalid confirmed parent display destination")
+        servers = self.client.call("session", "list", "--json").get("sessions")
+        if not isinstance(servers, list):
+            raise ValueError("invalid Herdr server list; cannot verify old destination")
+        matches = []
+        for server in servers:
+            if not isinstance(server, dict) or type(server.get("running")) is not bool:
+                raise ValueError(
+                    "invalid Herdr server entry; cannot verify old destination"
+                )
+            if not server["running"]:
+                continue
+            socket, name = server.get("socket_path"), server.get("name")
+            if (
+                not isinstance(socket, str)
+                or not socket
+                or not Path(socket).is_absolute()
+                or not isinstance(name, str)
+                or not name
+            ):
+                raise ValueError(
+                    "invalid Herdr server identity; cannot verify old destination"
+                )
+            if owner_token(str(Path(socket).resolve())) == scope:
+                matches.append(name)
+        if len(matches) > 1:
+            raise ValueError("ambiguous Herdr server for the old destination")
+        if not matches:
+            return  # A validated server list confirms the old server is stopped.
+        client = Herdr(self.client.env, matches[0])
+        agents = client.call("agent", "list").get("agents")
+        if not isinstance(agents, list) or not all(
+            isinstance(agent, dict)
+            and all(
+                isinstance(agent.get(key), str) and agent[key]
+                for key in ("pane_id", "terminal_id", "agent")
+            )
+            and isinstance(agent.get("tokens", {}), dict)
+            and all(
+                isinstance(key, str) and isinstance(value, str)
+                for key, value in agent.get("tokens", {}).items()
+            )
+            for agent in agents
+        ):
+            raise ValueError("invalid Herdr agent list; cannot verify old destination")
+        candidates = [agent for agent in agents if agent["terminal_id"] == terminal]
+        if len(candidates) > 1:
+            raise ValueError("ambiguous Herdr terminal for the old destination")
+        if not candidates:
+            return
+        pane = candidates[0]
+        live = pane.get("tokens", {}).get("tl_owner") == self.owner
+        key = owner_token(scope + ":" + terminal)
+        runtime = read_record(self.root / "panes" / (key + ".json"))
+        if (
+            not live
+            and runtime is not None
+            and runtime.get("owner") == self.owner
+            and runtime.get("state") == "active"
+            and pane["agent"] == "claude"
+        ):
+            stamps = runtime.get("processes")
+            if (
+                not isinstance(stamps, list)
+                or len(stamps) != 1
+                or not isinstance(stamps[0], dict)
+                or type(stamps[0].get("pid")) is not int
+                or not isinstance(stamps[0].get("start"), str)
+                or not stamps[0]["start"]
+            ):
+                raise ValueError(
+                    "invalid old pane process stamp; cannot verify destination"
+                )
+            live = process_stamp(client, pane) == runtime["processes"]
+        if live:
+            raise ValueError(
+                "the same session still occupies another live pane; "
+                "inspect duplicated sessions before synchronizing"
+            )
+
     def check(self) -> None:
         if process_stamp(self.client, self.pane) != self.stamp:
             raise ValueError("foreground agent changed during display synchronization")
@@ -109,6 +226,7 @@ class Guard:
         pid = os.getpid()
         while pid > 1:
             if pid == native:
+                self.native_verified = True
                 return
             stat = (Path("/proc") / str(pid) / "stat").read_text()
             command = stat.split("(", 1)[1].rsplit(")", 1)[0]
