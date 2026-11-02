@@ -16,34 +16,6 @@ sys.path.insert(0, str(ROOT / "scripts/github_actions"))
 census = importlib.import_module("agy_command_census")
 
 
-def test_deny_hook_never_grants_unlisted_shell_forms(tmp_path: Path) -> None:
-    work, control = tmp_path / "work", tmp_path / "control"
-    (work / ".agents").mkdir(parents=True)
-    control.mkdir()
-    policy = census.agy_api.readonly_settings()
-    (control / "settings.json").write_text(json.dumps(policy))
-    census.install_deny_hook(work, control)
-    for command, expected in [
-        ("cat a", "allow"),
-        ("python3 -c pass", "deny"),
-        ("cat a | head -n 1", "deny"),
-    ]:
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(work / ".agents/agy_census_deny.py"),
-            ],
-            input=json.dumps(
-                {"stepIdx": 2, "toolCall": {"args": {"CommandLine": command}}}
-            ),
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=5,
-        )
-        assert json.loads(result.stdout)["decision"] == expected
-
-
 @pytest.mark.parametrize(
     "settings",
     [

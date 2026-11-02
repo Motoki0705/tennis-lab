@@ -10,7 +10,6 @@ import json
 import math
 import os
 import re
-import shlex
 import subprocess
 import sys
 import time
@@ -19,8 +18,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-capture_api: Any = importlib.import_module("agy_census_capture")
+capture_api: Any = importlib.import_module("agy_capture")
 events: Any = importlib.import_module("agent_events")
+hook_api: Any = importlib.import_module("agy_hook")
 agy_api: Any = importlib.import_module("agy_headless")
 opsproc: Any = importlib.import_module("opsproc")
 jsonschema: Any = importlib.import_module("jsonschema")
@@ -102,48 +102,6 @@ def preflight(work: Path, owned_hook: dict[Path, bytes] | None = None) -> str:
         if path.is_symlink() or path.read_bytes() != content:
             raise ValueError("census hook was modified")
     return hashlib.sha256(raw).hexdigest()
-
-
-def install_deny_hook(work: Path, control: Path) -> dict[Path, bytes]:
-    """Experimental arm: turn unlisted shell forms into recoverable hard errors.
-
-    This never approves an additional form. Its changed feedback means these
-    observations must be analyzed separately from the production baseline.
-    """
-    script = work / ".agents/agy_census_deny.py"
-    settings = control / "settings.json"
-    hook_log = control / "hooks.jsonl"
-    code = (
-        "import json,re,sys\nfrom pathlib import Path\n"
-        "payload=json.load(sys.stdin)\n"
-        "command=payload['toolCall']['args']['CommandLine']\n"
-        f"rules=json.loads(Path({str(settings)!r}).read_text())['permissions']\n"
-        "def matches(rule):\n"
-        " return rule.startswith('command(regex:') and re.search(rule[14:-1],command) is not None\n"
-        "allowed=not any(matches(r) for r in rules['deny']) and any(matches(r) for r in rules['allow'])\n"
-        "decision='allow' if allowed else 'deny'\n"
-        f"with Path({str(hook_log)!r}).open('a') as handle:\n"
-        " handle.write(json.dumps({'step':payload['stepIdx'],'command':command,'decision':decision})+'\\n')\n"
-        "print(json.dumps({'decision':decision,'reason':'Use permitted read-only tools; this shell form is unavailable.'}))\n"
-    )
-    hook_file = work / ".agents/hooks.json"
-    command = shlex.join([sys.executable, str(script)])
-    config = {
-        "census-deny-unlisted": {
-            "PreToolUse": [
-                {
-                    "matcher": "run_command",
-                    "hooks": [{"type": "command", "command": command}],
-                }
-            ]
-        }
-    }
-    owned = {script: code.encode(), hook_file: json.dumps(config).encode()}
-    for path, content in owned.items():
-        with path.open("xb") as handle:
-            path.chmod(0o600)
-            handle.write(content)
-    return owned
 
 
 def run_turn(
@@ -239,7 +197,12 @@ def run_turn(
             path.chmod(0o600)
         settings = agy_api.readonly_settings()
         write_json(control / "settings.json", settings)
-        owned_hook = install_deny_hook(work, control) if deny_unlisted else None
+        owned_hook = None
+        if deny_unlisted:
+            record = control / "hooks.jsonl"
+            with record.open("x"):
+                record.chmod(0o600)
+            owned_hook = hook_api.install_command_hook(work, record)
         config = agy_api.load_config()
         env = {
             **os.environ,

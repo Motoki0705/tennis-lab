@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Finite writer/verifier turns; never executes another agent."""
 
+import importlib
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
+
+fake_tools = importlib.import_module("fake_agy_tools")
 
 root = Path(os.environ["REWRITE_FAKE_ROOT"])
 args = sys.argv[1:]
@@ -35,7 +39,9 @@ with (root / "workspace-calls.jsonl").open("a") as trace:
                 "history": git("log", "-2", "--format=%H").splitlines(),
                 "shown": git("show", "HEAD:history.txt"),
                 "remote": git("config", "--get", "remote.origin.url"),
-                "dirty": git("status", "--porcelain"),
+                "dirty": git(
+                    "status", "--porcelain", "--", ".", ":!.agents/hooks.json"
+                ),
                 "previous_turn_file": (Path.cwd() / "previous-turn.txt").exists(),
                 "schema": args[args.index("--json-schema") + 1],
                 "prompt": str(log.with_suffix(".md")),
@@ -84,15 +90,19 @@ log.write_text(
     'Propagating selected model override to backend: label="Gemini 3.8 Flash (High)"\n'
     "private-log conversation_id=private-conversation /home/private-person/token.json\n"
 )
-print(
-    json.dumps(
-        {
-            "status": "SUCCESS",
-            "conversation_id": "private-conversation",
-            "duration_seconds": 0.2,
-            "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
-            **outputs[index],
-        },
-        ensure_ascii=False,
-    )
+fake_tools.init_stream()
+for command in outputs[index].get("commands", []):
+    fake_tools.run_command(command)
+if outputs[index].get("pause"):
+    signal.pause()
+if outputs[index].get("exit_code"):
+    raise SystemExit(outputs[index]["exit_code"])
+fake_tools.emit_result(
+    {
+        "status": "SUCCESS",
+        "conversation_id": "private-conversation",
+        "duration_seconds": 0.2,
+        "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+        **outputs[index],
+    }
 )

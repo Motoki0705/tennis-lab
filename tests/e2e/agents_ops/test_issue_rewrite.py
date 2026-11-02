@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import importlib
 import json
 import os
@@ -583,6 +584,9 @@ def rewrite_env(
             + Path(__file__).with_name(source).read_text().split("\n", 1)[1]
         )
         executable.chmod(0o755)
+    (tmp_path / "fake_agy_tools.py").write_text(
+        Path(__file__).with_name("fake_agy_tools.py").read_text()
+    )
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
     monkeypatch.setenv("REWRITE_FAKE_ROOT", str(tmp_path))
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
@@ -747,6 +751,64 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
+
+
+@pytest.mark.parametrize("ending", ["success", "error", "timeout"])
+def test_hook_recovery_records_commands_and_keeps_failures_private(
+    rewrite_env: RewriteEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    ending: str,
+) -> None:
+    env = rewrite_env
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text('{"agentMode":"plan"}')
+    files = [env.repo / name for name in git(env.repo, "ls-files").splitlines()]
+    before = {
+        path: (path.stat().st_mode, hashlib.sha256(path.read_bytes()).digest())
+        for path in [*files, profile]
+    }
+    writer = {
+        "structured_output": env.writer(),
+        "commands": ["python3 -c private-command-text", "cat private-input.txt"],
+        "exit_code": 3 if ending == "error" else 0,
+        "pause": ending == "timeout",
+    }
+    (env.root / "turns.json").write_text(
+        json.dumps([writer, {"structured_output": PASS}])
+    )
+    if ending == "timeout":
+        monkeypatch.setattr(cli, "generate", functools.partial(cli.generate, timeout=1))
+    assert env.run("rewrite") == (0 if ending == "success" else 1)
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    for secret in ("private-command-text", "private-input.txt", str(env.root)):
+        assert secret not in public
+    commands = env.bundle()["report"]["turns"][0]["commands"]
+    assert commands["attempted_count"] == 2
+    assert commands["denied_count"] == commands["hook_denied_count"] == 1
+    capture = json.loads(
+        (env.root / "private-1/writer-1.log.commands.json").read_text()
+    )
+    assert [entry["command"] for entry in capture["commands"]] == writer["commands"]
+    if ending == "success":
+        assert env.run("apply") == 0
+        assert env.state()["issue"]["body"] == env.rewritten
+    else:
+        failure = json.loads((env.root / "private-1/failure.json").read_text())
+        assert failure["reason"] == ("timeout" if ending == "timeout" else "cli_error")
+        assert any(
+            action.get("command") == writer["commands"][0]
+            for action in failure["denied_actions"]
+        )
+        assert env.state()["issue"]["body"] == env.original and not env.mutations()
+    assert {
+        path: (path.stat().st_mode, hashlib.sha256(path.read_bytes()).digest())
+        for path in before
+    } == before
+    assert not (env.repo / ".agents/hooks.json").exists()
+    assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
 
 
 def test_unsafe_user_settings_keep_original_body_and_finalize_failed(

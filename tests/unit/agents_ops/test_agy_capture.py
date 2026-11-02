@@ -10,8 +10,8 @@ from typing import Any
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts/github_actions"))
-census: Any = importlib.import_module("agy_census_capture")
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/lib"))
+census: Any = importlib.import_module("agy_capture")
 
 
 def stream(*steps: dict[str, Any], result: dict[str, Any] | None = None) -> str:
@@ -126,6 +126,75 @@ def test_grammar_uses_raw_text_and_does_not_expand_combined_flags() -> None:
     assert not census.grammar_allows("ls -la")
     assert not census.grammar_allows("cat a | head -n 1")
     assert not census.grammar_allows("cat a\n")
+
+
+def test_invalid_or_truncated_stream_retains_prior_attempts_but_is_not_valid() -> None:
+    capture = census.capture_stream(
+        stream(step(2, "cat private.txt")) + '\n{"event":', strict=False
+    )
+    assert capture["result"] is None
+    assert capture["commands"][0]["command"] == "cat private.txt"
+    assert capture["errors"]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"event": "result", "result": None},
+        {
+            "event": "step_update",
+            "step_update": {"step_index": 3, "state": "ACTIVE", "tool_info": {}},
+        },
+        {
+            "event": "step_update",
+            "step_update": {
+                "step_index": [],
+                "state": "ACTIVE",
+                "tool_info": {"name": "run_command"},
+            },
+        },
+        {
+            "event": "step_update",
+            "step_update": {
+                "step_index": 3,
+                "state": "ACTIVE",
+                "tool_info": {"name": [], "parameters": {}},
+            },
+        },
+    ],
+)
+def test_bad_event_does_not_discard_captured_commands_or_become_valid(
+    bad: dict[str, Any],
+) -> None:
+    raw = stream(step(2, "cat a")) + "\n" + json.dumps(bad)
+    capture = census.capture_stream(raw, strict=False)
+    assert capture["errors"]
+    assert capture["commands"][0]["command"] == "cat a"
+    with pytest.raises(ValueError):
+        census.capture_stream(raw)
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "/home/private/person/program --private-secret",
+        "gh issue private-subcommand 1",
+        "cat --private-secret=file.txt a",
+        "gh issue view 1 --json private_field",
+        "gh issue view 1 --json=private_field",
+        "python3 -c 'private source'",
+        "cat /home/private/path",
+        "rg 'private pattern' private-file.txt",
+    ],
+)
+def test_public_forms_cannot_copy_private_executables_flags_or_operands(
+    command: str,
+) -> None:
+    result = census.public_command_summary(
+        {"commands": [{"step": 2, "command": command, "outcome": "unknown"}]}
+    )
+    assert result["attempted_count"] == 1
+    assert "private" not in json.dumps(result)
 
 
 @pytest.mark.parametrize("fault", ["none", "missing", "extra", "changed"])

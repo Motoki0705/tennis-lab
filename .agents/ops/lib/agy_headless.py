@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import math
 import os
@@ -10,13 +11,16 @@ import stat
 import subprocess
 import tempfile
 import time
-from dataclasses import dataclass
+from contextlib import ExitStack
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from agent_events import parse_json
 from agent_output import OutputSchema
 from agent_settings import read_pins
+from agy_capture import capture_stream, public_command_summary
+from agy_hook import install_command_hook
 from agy_permissions import command_permissions
 from opsproc import CommandError, run_process_group
 
@@ -48,6 +52,7 @@ class AgyResult:
     observed_version: str
     duration_seconds: float | None
     elapsed_seconds: float
+    command_summary: dict[str, Any] = field(default_factory=dict)
 
 
 class AgyError(RuntimeError):
@@ -59,10 +64,12 @@ class AgyError(RuntimeError):
         message: str,
         *,
         denied_actions: list[dict[str, str]] | None = None,
+        command_summary: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.reason = reason
         self.denied_actions = [] if denied_actions is None else denied_actions
+        self.command_summary = {} if command_summary is None else command_summary
 
 
 def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
@@ -218,6 +225,75 @@ def _observed_model(log_file: Path, model: str, denied: list[dict[str, str]]) ->
     return labels[-1]
 
 
+def _capture_evidence(log: Path, stream: Path, hooks: Path) -> dict[str, Any]:
+    decoding_errors = []
+
+    def read(path: Path) -> str:
+        raw = path.read_bytes()
+        try:
+            return raw.decode("utf-8")
+        except UnicodeError:
+            decoding_errors.append("invalid UTF-8 in private evidence")
+            return raw.decode("utf-8", errors="replace")
+
+    capture = capture_stream(
+        read(stream),
+        read(log),
+        strict=False,
+    )
+    decisions = []
+    for line in read(hooks).splitlines():
+        try:
+            entry = parse_json(line)
+            if (
+                not isinstance(entry, dict)
+                or entry.get("decision") not in ("allow", "deny")
+                or not isinstance(entry.get("reason"), str)
+                or "step" not in entry
+                or "command" not in entry
+                or type(entry["step"]) not in (int, type(None))
+                or not (entry["command"] is None or isinstance(entry["command"], str))
+            ):
+                raise ValueError("invalid command hook record")
+            decisions.append(entry)
+        except ValueError:
+            # A killed hook can leave a partial line. Retain earlier decisions
+            # and the original timeout/CLI classification; success rejects it.
+            capture["errors"].append("invalid command hook record")
+    capture["errors"].extend(decoding_errors)
+    capture["hook_decisions"] = decisions
+    return capture
+
+
+def _captured_denials(capture: dict[str, Any]) -> list[dict[str, str]]:
+    result = capture.get("result")
+    actions = result.get("denied_actions", []) if isinstance(result, dict) else []
+    denied = (
+        [
+            dict(action)
+            for action in actions
+            if isinstance(action, dict)
+            and all(
+                isinstance(k, str) and isinstance(v, str) for k, v in action.items()
+            )
+        ]
+        if isinstance(actions, list)
+        else []
+    )
+    for entry in capture.get("hook_decisions", []):
+        if entry["decision"] == "deny":
+            action = {
+                "action": "command",
+                "display_name": "RunCommand",
+                "reason": entry["reason"],
+            }
+            if isinstance(entry.get("command"), str):
+                action["command"] = entry["command"]
+            if action not in denied:
+                denied.append(action)
+    return denied
+
+
 def run_headless(
     *,
     agy: Path,
@@ -229,7 +305,7 @@ def run_headless(
     model: str | None = None,
     config_file: Path = DEFAULT_CONFIG,
 ) -> AgyResult:
-    """Run one new conversation. No retries, resume, prose fallback or model fallback."""
+    """Run one turn in a caller-owned disposable workspace, retaining private evidence."""
     config = load_config(config_file)
     selected_model = config.model if model is None else model
     if selected_model != config.model:
@@ -237,135 +313,204 @@ def run_headless(
     if not math.isfinite(timeout) or timeout <= 0:
         raise AgyError("invalid_input", "timeout must be finite and positive")
     _check_user_settings(cwd)
-    try:
-        agy = agy.resolve(strict=True)
-        cwd = cwd.resolve(strict=True)
-        if not cwd.is_dir():
-            raise ValueError("cwd must be a directory")
-        prompt = prompt_file.read_text(encoding="utf-8")
-        if not prompt.strip():
-            raise ValueError("prompt must not be empty")
-        schema = OutputSchema(json_schema, agent="agy")
-        log_file = log_file.absolute()
-        log_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        # Never accept evidence appended by a previous turn or through a symlink.
-        with log_file.open("x", encoding="utf-8"):
-            log_file.chmod(0o600)
-    except (OSError, ValueError, UnicodeError) as exc:
-        raise AgyError("invalid_input", f"invalid agy input: {exc}") from exc
-
-    env = {
-        **os.environ,
-        "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
-        "GIT_OPTIONAL_LOCKS": "0",
-        "GIT_PAGER": "cat",
-        "GH_PAGER": "cat",
-        "RIPGREP_CONFIG_PATH": "/dev/null",
-    }
-    started = time.monotonic()
-    deadline = started + timeout
-
-    def remaining() -> float:
-        seconds = deadline - time.monotonic()
-        if seconds <= 0:
-            raise AgyError("timeout", "agy turn exceeded timeout")
-        return seconds
-
-    def check_version() -> str:
-        _check_user_settings(cwd)
-        observed = _observed_version(agy, cwd, remaining(), env)
-        if observed != config.version:
-            raise AgyError("version_mismatch", "agy version differs from AGY_VERSION")
-        return observed
-
-    denied: list[dict[str, str]] = []
-    try:
-        check_version()
-        # Pin the exact schema bytes validated above, even if the input is edited.
-        with tempfile.TemporaryDirectory(prefix="agy-schema-") as directory:
-            pinned_schema = Path(directory) / "schema.json"
-            pinned_schema.write_bytes(schema.raw)
-            _check_user_settings(cwd)
-            output = run_process_group(
-                [
-                    str(agy),
-                    "-p",
-                    prompt,
-                    "--model",
-                    selected_model,
-                    "--mode",
-                    "plan",
-                    "--settings",
-                    json.dumps(readonly_settings()),
-                    "--output-format",
-                    "json",
-                    "--json-schema",
-                    str(pinned_schema),
-                    "--log-file",
-                    str(log_file),
-                ],
-                cwd=cwd,
-                timeout=remaining(),
-                env=env,
-            )
-        observed_version = check_version()
+    with ExitStack() as files:
         try:
-            payload = parse_json(output)
-            if not isinstance(payload, dict):
-                raise ValueError("agy output must be a JSON object")
-            actions = payload.get("denied_actions", [])
-            if not isinstance(actions, list) or any(
-                not isinstance(action, dict)
-                or not all(
-                    isinstance(k, str) and isinstance(v, str) for k, v in action.items()
+            agy, cwd = agy.resolve(strict=True), cwd.resolve(strict=True)
+            if not cwd.is_dir():
+                raise ValueError("cwd must be a directory")
+            if Path(__file__).resolve().is_relative_to(cwd):
+                raise ValueError(
+                    "cwd must be a disposable workspace outside the controller"
                 )
-                for action in actions
-            ):
-                raise ValueError("invalid denied_actions")
-            denied = actions
-            if payload.get("status") != "SUCCESS":
-                raise ValueError("agy status is not SUCCESS")
-            if "finished_reason" in payload:
-                raise ValueError("agy turn ended early (finished_reason is present)")
-            if (
-                "structured_output" not in payload
-                or payload["structured_output"] is None
-            ):
-                raise ValueError("agy structured_output is missing")
-            schema.validate(payload["structured_output"])
-            usage = payload.get("usage")
-            if usage is not None and (
-                not isinstance(usage, dict)
-                or any(type(value) is not int or value < 0 for value in usage.values())
-            ):
-                raise ValueError("invalid usage")
-            duration = payload.get("duration_seconds")
-            if duration is not None and (
-                type(duration) not in (int, float)
-                or not math.isfinite(duration)
-                or duration < 0
-            ):
-                raise ValueError("invalid duration_seconds")
-        except (ValueError, UnicodeError) as exc:
-            raise AgyError("invalid_output", str(exc), denied_actions=denied) from exc
-        observed_model = _observed_model(log_file, selected_model, denied)
-        return AgyResult(
-            structured_output=payload["structured_output"],
-            usage=usage,
-            denied_actions=denied,
-            observed_model=observed_model,
-            observed_version=observed_version,
-            duration_seconds=duration,
-            elapsed_seconds=time.monotonic() - started,
-        )
-    except CommandError as exc:
-        reason = (
-            "timeout"
-            if isinstance(exc.__cause__, subprocess.TimeoutExpired)
-            else "cli_error"
-        )
-        raise AgyError(reason, str(exc), denied_actions=denied) from exc
-    except (OSError, UnicodeError) as exc:
-        raise AgyError(
-            "invalid_output", f"agy evidence could not be read: {exc}"
-        ) from exc
+            prompt = prompt_file.read_text(encoding="utf-8")
+            if not prompt.strip():
+                raise ValueError("prompt must not be empty")
+            schema = OutputSchema(json_schema, agent="agy")
+            log_file = log_file.absolute()
+            if log_file.resolve().is_relative_to(cwd):
+                raise ValueError("private evidence must be outside the workspace")
+            log_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            paths = [
+                log_file,
+                *(
+                    log_file.with_name(log_file.name + suffix)
+                    for suffix in (".stream.jsonl", ".hooks.jsonl", ".commands.json")
+                ),
+            ]
+            handles = []
+            for path in paths:
+                handle = files.enter_context(path.open("x", encoding="utf-8"))
+                path.chmod(0o600)
+                handles.append(handle)
+            stream_file, hooks_file = paths[1:3]
+            agents_existed = (cwd / ".agents").exists()
+            owned_hook = install_command_hook(cwd, hooks_file)
+        except (OSError, ValueError, UnicodeError) as exc:
+            raise AgyError("invalid_input", f"invalid agy input: {exc}") from exc
+
+        env = {
+            **os.environ,
+            "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_PAGER": "cat",
+            "GH_PAGER": "cat",
+            "RIPGREP_CONFIG_PATH": "/dev/null",
+        }
+        started = time.monotonic()
+        deadline = started + timeout
+
+        def remaining() -> float:
+            seconds = deadline - time.monotonic()
+            if seconds <= 0:
+                raise AgyError("timeout", "agy turn exceeded timeout")
+            return seconds
+
+        def check_version() -> str:
+            _check_user_settings(cwd)
+            observed = _observed_version(agy, cwd, remaining(), env)
+            if observed != config.version:
+                raise AgyError(
+                    "version_mismatch", "agy version differs from AGY_VERSION"
+                )
+            return observed
+
+        denied: list[dict[str, str]] = []
+        command_summary: dict[str, Any] = {}
+        try:
+            try:
+                check_version()
+                with tempfile.TemporaryDirectory(prefix="agy-schema-") as directory:
+                    pinned_schema = Path(directory) / "schema.json"
+                    pinned_schema.write_bytes(schema.raw)
+                    _check_user_settings(cwd)
+                    run_process_group(
+                        [
+                            str(agy),
+                            "-p",
+                            prompt,
+                            "--model",
+                            selected_model,
+                            "--mode",
+                            "plan",
+                            "--settings",
+                            json.dumps(readonly_settings()),
+                            "--output-format",
+                            "stream-json",
+                            "--json-schema",
+                            str(pinned_schema),
+                            "--log-file",
+                            str(log_file),
+                        ],
+                        cwd=cwd,
+                        timeout=remaining(),
+                        env=env,
+                        stdout_file=handles[1],
+                    )
+                observed_version = check_version()
+            finally:
+                # stdout goes straight to disk, including partial output before a
+                # nonzero exit or process-group timeout. Never recover from prose.
+                try:
+                    capture = _capture_evidence(log_file, stream_file, hooks_file)
+                    denied = _captured_denials(capture)
+                    command_summary = public_command_summary(capture)
+                    json.dump(capture, handles[3], indent=2)
+                    handles[3].flush()
+                finally:
+                    changed = False
+                    for path, expected in owned_hook.items():
+                        try:
+                            changed |= (
+                                path.is_symlink()
+                                or path.read_bytes() != expected
+                                or stat.S_IMODE(path.stat().st_mode) != 0o600
+                            )
+                        finally:
+                            path.unlink(missing_ok=True)
+                    if not agents_existed:
+                        try:
+                            (cwd / ".agents").rmdir()
+                        except OSError as exc:
+                            if exc.errno != errno.ENOTEMPTY:
+                                raise
+                    if changed:
+                        raise AgyError(
+                            "invalid_output", "workspace command hook was modified"
+                        )
+
+            try:
+                if capture["errors"]:
+                    raise ValueError("invalid agy stream")
+                payload = capture["result"]
+                if not isinstance(payload, dict):
+                    raise ValueError("agy output must contain one result object")
+                actions = payload.get("denied_actions", [])
+                if not isinstance(actions, list) or any(
+                    not isinstance(action, dict)
+                    or not all(
+                        isinstance(k, str) and isinstance(v, str)
+                        for k, v in action.items()
+                    )
+                    for action in actions
+                ):
+                    raise ValueError("invalid denied_actions")
+                if payload.get("status") != "SUCCESS":
+                    raise ValueError("agy status is not SUCCESS")
+                if "finished_reason" in payload:
+                    raise ValueError(
+                        "agy turn ended early (finished_reason is present)"
+                    )
+                if (
+                    "structured_output" not in payload
+                    or payload["structured_output"] is None
+                ):
+                    raise ValueError("agy structured_output is missing")
+                schema.validate(payload["structured_output"])
+                usage = payload.get("usage")
+                if usage is not None and (
+                    not isinstance(usage, dict)
+                    or any(
+                        type(value) is not int or value < 0 for value in usage.values()
+                    )
+                ):
+                    raise ValueError("invalid usage")
+                duration = payload.get("duration_seconds")
+                if duration is not None and (
+                    type(duration) not in (int, float)
+                    or not math.isfinite(duration)
+                    or duration < 0
+                ):
+                    raise ValueError("invalid duration_seconds")
+            except (ValueError, UnicodeError) as exc:
+                raise AgyError("invalid_output", str(exc)) from exc
+            observed_model = _observed_model(log_file, selected_model, denied)
+            return AgyResult(
+                structured_output=payload["structured_output"],
+                usage=usage,
+                denied_actions=denied,
+                observed_model=observed_model,
+                observed_version=observed_version,
+                duration_seconds=duration,
+                elapsed_seconds=time.monotonic() - started,
+                command_summary=command_summary,
+            )
+        except AgyError as exc:
+            exc.denied_actions = denied
+            exc.command_summary = command_summary
+            raise
+        except CommandError as exc:
+            reason = (
+                "timeout"
+                if isinstance(exc.__cause__, subprocess.TimeoutExpired)
+                else "cli_error"
+            )
+            raise AgyError(
+                reason, str(exc), denied_actions=denied, command_summary=command_summary
+            ) from exc
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise AgyError(
+                "invalid_output",
+                f"agy evidence could not be read: {exc}",
+                denied_actions=denied,
+                command_summary=command_summary,
+            ) from exc

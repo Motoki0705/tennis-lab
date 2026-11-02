@@ -2,37 +2,26 @@
 
 from __future__ import annotations
 
-import importlib
-import json
 import re
 import shlex
-import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / ".agents/ops/lib"))
-permissions_api: Any = importlib.import_module("agy_permissions")
+from agent_events import parse_json
+from agy_permissions import command_allowed as grammar_allows
 
 
-def grammar_allows(command: str) -> bool:
-    """Evaluate the production regex grammar against the original bytes as text."""
-    rules: dict[str, list[str]] = permissions_api.command_permissions()
-
-    def matches(rule: str) -> bool:
-        return re.search(rule[len("command(regex:") : -1], command) is not None
-
-    return not any(matches(rule) for rule in rules["deny"]) and any(
-        matches(rule) for rule in rules["allow"]
-    )
-
-
-def command_form(command: str) -> str:
+def command_form(command: str, *, public: bool = False) -> str:
     """Describe argv shapes, preserving flag spelling and shell syntax.
 
     This intentionally is not a shell safety parser. Permission is evaluated on
     the original command independently; raw examples must accompany each form.
     """
+    # Unknown executables, subcommands, flags and their values can all contain
+    # private text. Only render known grammar; census descriptions stay private.
+    if public and not grammar_allows(command):
+        return "<unlisted command>"
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
@@ -49,18 +38,18 @@ def command_form(command: str) -> str:
         for word in words:
             if word in separators:
                 if clause:
-                    parts.append(_argv_form(clause))
+                    parts.append(_argv_form(clause, public=public))
                     clause = []
                 parts.append(word)
             else:
                 clause.append(word)
         if clause:
-            parts.append(_argv_form(clause))
+            parts.append(_argv_form(clause, public=public))
         return " ".join(parts)
-    return _argv_form(words)
+    return _argv_form(words, public=public)
 
 
-def _argv_form(words: list[str]) -> str:
+def _argv_form(words: list[str], *, public: bool = False) -> str:
     program = words[0]
     result = [program]
     index = 1
@@ -100,6 +89,8 @@ def _argv_form(words: list[str]) -> str:
         elif value_after:
             if value_after == "-c":
                 result.append("<CODE>")
+            elif value_after == "--json" and public:
+                result.append("<FIELDS>")
             elif value_after in {"--json", "--state", "-type"}:
                 result.append(word)
             elif value_after in {"--repo", "-R"}:
@@ -113,7 +104,13 @@ def _argv_form(words: list[str]) -> str:
             if "=" in word:
                 flag, value = word.split("=", 1)
                 result.append(
-                    flag + "=" + (value if flag in {"--json", "--state"} else "<VALUE>")
+                    flag
+                    + "="
+                    + (
+                        value
+                        if flag in {"--json", "--state"} and not public
+                        else "<VALUE>"
+                    )
                 )
             elif re.fullmatch(r"-[nABC][0-9]+", word):
                 result.append(word[:2] + "<N>")
@@ -138,50 +135,71 @@ def _argv_form(words: list[str]) -> str:
     return " ".join(result)
 
 
-def capture_stream(raw: str, log: str = "") -> dict[str, Any]:
+def capture_stream(raw: str, log: str = "", *, strict: bool = True) -> dict[str, Any]:
     """Keep a step once, including ACTIVE-only steps terminated by soft denial."""
     steps: dict[tuple[str, int], dict[str, Any]] = {}
     result: dict[str, Any] | None = None
     init: dict[str, Any] | None = None
     conversation: str | None = None
     subagent_steps: list[dict[str, Any]] = []
+    errors: list[str] = []
+    result_seen = False
     for line_number, line in enumerate(raw.splitlines(), 1):
         if not line.strip():
             continue
-        event = json.loads(line)
-        kind = event.get("event")
-        if kind == "init":
-            init = event["init"]
-            conversation = event["conversation_id"]
-        elif kind == "result":
-            if result is not None:
-                raise ValueError("multiple result events in a single-turn stream")
-            result = event["result"]
-        elif kind == "step_update":
-            step = event["step_update"]
-            if "subagent_info" in step:
-                subagent_steps.append(step)
-            info = step.get("tool_info")
-            if info is None:
-                continue
-            cid = step.get("conversation_id", conversation)
-            if not isinstance(cid, str):
-                raise ValueError(f"missing conversation at line {line_number}")
-            key = (cid, step["step_index"])
-            entry = steps.setdefault(key, {"conversation_id": cid, "step": key[1]})
-            entry.update(
-                tool=info["name"],
-                state=step["state"],
-                parameters={
-                    **entry.get("parameters", {}),
-                    **info.get("parameters", {}),
-                },
-            )
-            for field in ("error", "output"):
-                if field in info:
-                    entry[field] = info[field]
-        else:
-            raise ValueError(f"unknown stream event at line {line_number}: {kind}")
+        try:
+            event = parse_json(line)
+            kind = event.get("event")
+            if kind == "init":
+                init = event["init"]
+                conversation = event["conversation_id"]
+                if not isinstance(init, dict) or not isinstance(conversation, str):
+                    raise ValueError("invalid init event")
+            elif kind == "result":
+                if result_seen:
+                    raise ValueError("multiple result events in a single-turn stream")
+                result_seen = True
+                if not isinstance(event["result"], dict):
+                    raise ValueError("result event must contain an object")
+                result = event["result"]
+            elif kind == "step_update":
+                step = event["step_update"]
+                if "subagent_info" in step:
+                    subagent_steps.append(step)
+                info = step.get("tool_info")
+                if info is None:
+                    continue
+                cid = step.get("conversation_id", conversation)
+                if not isinstance(cid, str):
+                    raise ValueError(f"missing conversation at line {line_number}")
+                parameters = info.get("parameters", {})
+                if (
+                    type(step["step_index"]) is not int
+                    or step["step_index"] < 0
+                    or not isinstance(step["state"], str)
+                    or not isinstance(info["name"], str)
+                    or not isinstance(parameters, dict)
+                ):
+                    raise ValueError("invalid tool update")
+                key = (cid, step["step_index"])
+                entry = steps.setdefault(key, {"conversation_id": cid, "step": key[1]})
+                entry.update(
+                    tool=info["name"],
+                    state=step["state"],
+                    parameters={
+                        **entry.get("parameters", {}),
+                        **parameters,
+                    },
+                )
+                for field in ("error", "output"):
+                    if field in info:
+                        entry[field] = info[field]
+            else:
+                raise ValueError(f"unknown stream event at line {line_number}: {kind}")
+        except (ValueError, KeyError, TypeError, AttributeError) as exc:
+            if strict:
+                raise ValueError(f"invalid stream event at line {line_number}") from exc
+            errors.append(f"invalid stream event at line {line_number}")
     soft_denied = {
         int(match)
         for match in re.findall(
@@ -195,7 +213,10 @@ def capture_stream(raw: str, log: str = "") -> dict[str, Any]:
             continue
         command = entry["parameters"].get("CommandLine")
         if not isinstance(command, str):
-            raise ValueError("run_command observation lacks its full CommandLine")
+            if strict:
+                raise ValueError("run_command observation lacks its full CommandLine")
+            errors.append("run_command observation lacks its full CommandLine")
+            continue
         error = entry.get("error", {})
         if entry["step"] in soft_denied:
             outcome = "soft_denied"
@@ -205,7 +226,7 @@ def capture_stream(raw: str, log: str = "") -> dict[str, Any]:
             outcome = "denied"
         elif error:
             outcome = "tool_error"
-        elif entry["state"] == "DONE" and "output" in entry:
+        elif entry["state"] == "DONE" and isinstance(entry.get("output"), str):
             outcome = "completed"
         else:
             outcome = "unknown"
@@ -220,7 +241,8 @@ def capture_stream(raw: str, log: str = "") -> dict[str, Any]:
                     int(match.group(1))
                     if (
                         match := re.search(
-                            r"Command exited with code (-?\d+)", entry.get("output", "")
+                            r"Command exited with code (-?\d+)",
+                            str(entry.get("output", "")),
                         )
                     )
                     else None
@@ -231,6 +253,7 @@ def capture_stream(raw: str, log: str = "") -> dict[str, Any]:
         entry["step"] for entry in commands if entry["outcome"] == "soft_denied"
     }
     return {
+        "errors": errors,
         "init": init,
         "result": result,
         "commands": commands,
@@ -287,7 +310,7 @@ def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
     """
     hooks: dict[int, dict[str, Any]] = {}
     for line in raw_hooks.splitlines():
-        record = json.loads(line)
+        record = parse_json(line)
         index, command = record["step"], record["command"]
         if not isinstance(index, int) or not isinstance(command, str):
             raise ValueError("invalid hook command record")
@@ -335,6 +358,39 @@ def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
     if hooks.keys() - seen:
         raise ValueError("hook command step is missing from the stream")
     capture["restored_stream_commands"] = restored
+
+
+def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
+    """Publish counts and redacted grammar shapes, never raw examples or errors."""
+    attempts = {
+        (entry["step"], entry["command"]): entry
+        for entry in capture.get("commands", [])
+    }
+    hook_denied = set()
+    for hook in capture.get("hook_decisions", []):
+        command = hook.get("command")
+        if not isinstance(command, str):
+            continue
+        key = (hook["step"], command)
+        attempts.setdefault(key, {"command": command, "outcome": "unknown"})
+        if hook["decision"] == "deny":
+            hook_denied.add(key)
+    denied = hook_denied | {
+        key
+        for key, entry in attempts.items()
+        if entry["outcome"] in {"soft_denied", "hook_denied", "denied"}
+    }
+    forms = Counter(
+        command_form(entry["command"], public=True) for entry in attempts.values()
+    )
+    return {
+        "attempted_count": len(attempts),
+        "denied_count": len(denied),
+        "hook_denied_count": len(hook_denied),
+        "forms": [
+            {"form": form, "count": count} for form, count in sorted(forms.items())
+        ],
+    }
 
 
 def reconcile_commands(
