@@ -194,6 +194,10 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 
 `status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
 JSONへ出力し、1件でもあれば終了値1になります。入手したファイルを明示的に直し、再実行してください。
+宣言したroot外へのsymlinkを含む不正な資産パスは、他の不具合とともに`invalid_path`で報告し、
+参照先を開いたりhashを計算したりしません。通常のpipelineも引き続き拒否します。
+修復までは完全なruntime検証ができないことを示します。設定構造やrootが不正で安全に一覧を作れない場合は、
+資産を検査済みとはせず、JSONの`pipeline_configuration`にその制約を報告します。
 `enabled_model_assets()`の全資産に加え、DINOとDINOv3 source、DINOv3単体重み、可視化のSMPL-H・regressor、
 入力動画（公開サンプルならmanifest・LICENSEも）を検査します。ダウンロード・モデルの代替・推論・GPU使用は行いません。
 ソースは必要ファイルの存在を検査します。
