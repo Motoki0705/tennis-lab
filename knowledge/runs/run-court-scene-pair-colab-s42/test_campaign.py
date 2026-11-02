@@ -27,7 +27,7 @@ TRAINING_OUTPUTS = (("P02", True), *((pair, False) for pair in c.PAIRS))
 
 def _runbook_outputs(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[list[Path], list[Path]]:
+) -> tuple[list[str], list[str]]:
     # Parse the submitted command, without allocating a session or contacting Drive.
     monkeypatch.syspath_prepend(str(c.REPO / ".agents/skills/tennis-colab/scripts"))
     colab = importlib.import_module("colab")
@@ -48,16 +48,13 @@ def _runbook_outputs(
         "bash",
         "knowledge/runs/run-court-scene-pair-colab-s42/bootstrap.sh",
     ]
-    return (
-        [Path(path) for path in declared.runner_output],
-        [Path(path) for path in declared.persist],
-    )
+    return declared.runner_output, declared.persist
 
 
 def _build_training_store(
     condition: str,
     probe: bool,
-    owners: list[Path],
+    declarations: list[str],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Path:
@@ -68,10 +65,10 @@ def _build_training_store(
     config = c.make_config(condition, probe=probe)
     store_config = ArtifactStoreConfig.from_mapping(config["run"]["artifact_store"])
     assert store_config.mode == "rclone" and store_config.remote == "gdrive"
-    # Same URI list as colab_remote.run passes to the training subprocess.
+    # Preserve the declared spelling, exactly as colab_remote.run constructs URIs.
     monkeypatch.setenv(
         "TENNIS_COLAB_ARTIFACT_ROOTS",
-        json.dumps([f"gdrive:tennis_lab/{path.as_posix()}" for path in owners]),
+        json.dumps([f"gdrive:tennis_lab/{fragment}" for fragment in declarations]),
     )
     secret = tmp_path / "fake-rclone.conf"
     secret.touch(mode=0o600)
@@ -87,10 +84,12 @@ def _build_training_store(
 def test_runbook_gives_each_publisher_one_live_drive_writer(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    owners, periodic = _runbook_outputs(monkeypatch)
+    declarations, persisted = _runbook_outputs(monkeypatch)
+    owners = [Path(fragment) for fragment in declarations]
+    periodic = [Path(fragment) for fragment in persisted]
     # Runner stores require exact URI declarations, including each condition.
     training_roots = [
-        _build_training_store(condition, probe, owners, tmp_path, monkeypatch)
+        _build_training_store(condition, probe, declarations, tmp_path, monkeypatch)
         for condition, probe in TRAINING_OUTPUTS
     ]
 
@@ -167,15 +166,18 @@ def test_training_outputs_reject_inexact_declarations(
     probe: bool,
     mismatch: str,
 ) -> None:
-    owners, _ = _runbook_outputs(monkeypatch)
+    declarations, _ = _runbook_outputs(monkeypatch)
     root = c.train_root(condition, probe=probe)
     wrong = (
         root.parent
         if mismatch == "ancestor"
         else root.with_name("P03-s42" if condition == "P02" else "P02-s42")
     )
-    mutated = [wrong if owner == root else owner for owner in owners]
-    assert root not in mutated
+    mutated = [
+        wrong.as_posix() if fragment == root.as_posix() else fragment
+        for fragment in declarations
+    ]
+    assert root.as_posix() not in mutated
     with pytest.raises(RuntimeError, match="declared Drive root"):
         _build_training_store(condition, probe, mutated, tmp_path, monkeypatch)
 

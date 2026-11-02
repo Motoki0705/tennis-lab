@@ -4,28 +4,28 @@
   "new_cases": 52,
   "reused_cases": 8,
   "workers": 2,
-  "elapsed_seconds": 22.2,
-  "new_case_time_sum_seconds": 4.34,
-  "maximum_new_case_seconds": 0.521,
+  "elapsed_seconds": 16.72,
+  "new_case_time_sum_seconds": 4.436,
+  "maximum_new_case_seconds": 0.893,
   "timing": "JUnit total includes setup/call/teardown; collection and worker startup are included only in suite elapsed.",
   "gpu_runs": 0,
   "real_pool_reads": 0,
   "cases": [
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_runbook_gives_each_publisher_one_live_drive_writer",
-      "total_seconds": 0.236
+      "total_seconds": 0.351
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-probe-P02]",
-      "total_seconds": 0.062
+      "total_seconds": 0.174
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-train-P02]",
-      "total_seconds": 0.037
+      "total_seconds": 0.04
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-train-P03]",
-      "total_seconds": 0.047
+      "total_seconds": 0.038
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-train-P12]",
@@ -33,171 +33,171 @@
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-train-P13]",
-      "total_seconds": 0.037
+      "total_seconds": 0.034
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[other-condition-train-P23]",
-      "total_seconds": 0.042
+      "total_seconds": 0.033
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-probe-P02]",
-      "total_seconds": 0.05
+      "total_seconds": 0.034
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-1-0]",
-      "total_seconds": 0.138
+      "total_seconds": 0.06
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P02]",
-      "total_seconds": 0.083
+      "total_seconds": 0.034
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P03]",
-      "total_seconds": 0.063
+      "total_seconds": 0.034
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-2-1]",
-      "total_seconds": 0.103
+      "total_seconds": 0.067
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P12]",
-      "total_seconds": 0.057
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P13]",
-      "total_seconds": 0.043
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-3-0]",
-      "total_seconds": 0.076
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P23]",
-      "total_seconds": 0.038
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-4-0]",
-      "total_seconds": 0.064
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-3]",
-      "total_seconds": 0.019
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint-/content/tennis-lab/wrong.ckpt]",
-      "total_seconds": 0.029
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint_sha256-changed]",
-      "total_seconds": 0.026
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-schema-unknown_schema]",
-      "total_seconds": 0.016
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_five_configs_keep_actual_scene_two_semantics",
-      "total_seconds": 0.47
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-29844]",
-      "total_seconds": 0.017
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-33160.0]",
-      "total_seconds": 0.018
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-4]",
-      "total_seconds": 0.02
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path0]",
-      "total_seconds": 0.076
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path1]",
-      "total_seconds": 0.07
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path2]",
-      "total_seconds": 0.088
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_latest_uses_numeric_update_not_listing_order_or_last",
-      "total_seconds": 0.084
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_vm_loss_resumes_same_pair_and_skips_verified_completed_stages",
-      "total_seconds": 0.096
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys0-16]",
-      "total_seconds": 0.056
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[inputs]",
-      "total_seconds": 0.012
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[train]",
       "total_seconds": 0.035
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys1-0.0002]",
-      "total_seconds": 0.054
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P13]",
+      "total_seconds": 0.035
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[evaluate]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-3-0]",
+      "total_seconds": 0.058
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations[ancestor-train-P23]",
+      "total_seconds": 0.037
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_uses_repository_records[scene-4-0]",
+      "total_seconds": 0.081
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-3]",
       "total_seconds": 0.017
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[publish]",
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint-/content/tennis-lab/wrong.ckpt]",
+      "total_seconds": 0.017
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[evaluation.json-checkpoint_sha256-changed]",
+      "total_seconds": 0.018
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_five_configs_keep_actual_scene_two_semantics",
+      "total_seconds": 0.356
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-schema-unknown_schema]",
+      "total_seconds": 0.026
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-29844]",
       "total_seconds": 0.019
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_corrupted_completion_is_rejected_instead_of_skipped",
-      "total_seconds": 0.074
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-global_step-33160.0]",
+      "total_seconds": 0.016
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_legacy_final_checkpoint_rejects_inconsistent_records[final-checkpoint.json-condition-4]",
+      "total_seconds": 0.014
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path0]",
+      "total_seconds": 0.043
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path1]",
+      "total_seconds": 0.045
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_resume_rejects_foreign_temporary_and_wrong_root[path2]",
+      "total_seconds": 0.046
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_latest_uses_numeric_update_not_listing_order_or_last",
+      "total_seconds": 0.072
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_vm_loss_resumes_same_pair_and_skips_verified_completed_stages",
+      "total_seconds": 0.103
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys0-16]",
+      "total_seconds": 0.073
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[inputs]",
+      "total_seconds": 0.013
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[train]",
+      "total_seconds": 0.036
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys1-0.0002]",
+      "total_seconds": 0.063
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[evaluate]",
+      "total_seconds": 0.022
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_any_failed_gate_stops_before_the_next_stage[publish]",
+      "total_seconds": 0.021
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys2-43]",
-      "total_seconds": 0.069
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[valid]",
-      "total_seconds": 0.172
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys3-/other/data]",
-      "total_seconds": 0.059
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys4-True]",
-      "total_seconds": 0.059
-    },
-    {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys5-0]",
       "total_seconds": 0.064
     },
     {
-      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[step]",
-      "total_seconds": 0.088
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_corrupted_completion_is_rejected_instead_of_skipped",
+      "total_seconds": 0.11
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys3-/other/data]",
+      "total_seconds": 0.071
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[valid]",
+      "total_seconds": 0.203
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys4-True]",
+      "total_seconds": 0.055
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_unapproved_training_changes_fail[keys5-0]",
+      "total_seconds": 0.043
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_probe_has_only_explicit_schedule_exceptions",
-      "total_seconds": 0.141
+      "total_seconds": 0.12
+    },
+    {
+      "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[step]",
+      "total_seconds": 0.056
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[config]",
-      "total_seconds": 0.122
+      "total_seconds": 0.103
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[receipt]",
-      "total_seconds": 0.166
+      "total_seconds": 0.14
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[data]",
-      "total_seconds": 0.149
+      "total_seconds": 0.175
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_inventory_uses_new_exclusive_receipt_each_time",
@@ -205,23 +205,23 @@
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_cli_failure_returns_nonzero_and_never_reaches_later_training",
-      "total_seconds": 0.521
+      "total_seconds": 0.893
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_checkpoint_adapter_rejects_newest_invalid_without_fallback[truncated]",
-      "total_seconds": 0.209
+      "total_seconds": 0.183
     },
     {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[macro]",
-      "total_seconds": 0.002
+      "total_seconds": 0.009
     },
     {
       "node": "tests/unit/skills/test_tennis_colab.py::test_runner_output_has_one_live_writer_and_is_salvaged_after_exit",
-      "total_seconds": 0.119
+      "total_seconds": 0.253
     },
     {
       "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_checkpoint_io_publishes_after_local_serialization",
-      "total_seconds": 0.014
+      "total_seconds": 0.017
     },
     {
       "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_accepts_matching_rclone_store",
@@ -229,7 +229,7 @@
     },
     {
       "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_rejects_local_or_wrong_remote[local]",
-      "total_seconds": 0.016
+      "total_seconds": 0.013
     },
     {
       "node": "tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_rejects_local_or_wrong_remote[rclone]",
@@ -237,19 +237,19 @@
     },
     {
       "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_conflicting_synthetic_selection",
-      "total_seconds": 0.011
-    },
-    {
-      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_binds_external_manifest_and_keeps_root_overrides_separate",
-      "total_seconds": 0.012
-    },
-    {
-      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_missing_evaluation_manifest_before_model_loading",
       "total_seconds": 0.01
     },
     {
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_binds_external_manifest_and_keeps_root_overrides_separate",
+      "total_seconds": 0.011
+    },
+    {
+      "node": "tests/e2e/tasks/court_detection/test_evaluate_ablation.py::test_cli_rejects_missing_evaluation_manifest_before_model_loading",
+      "total_seconds": 0.008
+    },
+    {
       "node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_evaluation_adapter_checks_pinned_order_and_unweighted_mean[order]",
-      "total_seconds": 0.003
+      "total_seconds": 0.002
     }
   ],
   "configuration_rejection_mutation": {
@@ -267,7 +267,7 @@
     "foreground_bootstrap_argv_verified": true,
     "colab_jobs_submitted": 0
   },
-  "junit_suite_seconds": 22.215,
+  "junit_suite_seconds": 16.721,
   "validation_context": "PR #1636 major review fix: real factory exact URI checks for all five training runs and the probe; separate bundle containment checks, no Colab or Drive operations.",
   "legacy_final_checkpoint_increment": {
     "cases": 11,
@@ -339,7 +339,7 @@
   },
   "single_writer_review_revision": {
     "changed_node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_runbook_gives_each_publisher_one_live_drive_writer",
-    "positive_total_seconds": 0.236,
+    "positive_total_seconds": 0.351,
     "new_node": "knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py::test_training_outputs_reject_inexact_declarations",
     "new_cases": 12,
     "training_output_cases": 6,
@@ -347,8 +347,8 @@
       "ancestor",
       "other-condition"
     ],
-    "new_total_case_seconds": 0.597,
-    "new_maximum_case_seconds": 0.083,
+    "new_total_case_seconds": 0.566,
+    "new_maximum_case_seconds": 0.174,
     "collection_tests": 60,
     "collection_elapsed_seconds": 8.64,
     "workers": 2,
@@ -399,6 +399,17 @@
       "mypy": "passed",
       "scope": "Use the unchanged local hook commands with only their files filter extended in a temporary config to include this bundle test; shared config remains unchanged."
     },
-    "design_deviation": "No change to the requested behavior or common code. Twelve light factory-boundary cases cover the six runs and two mismatch classes; three existing factory cases were added to related-test reuse."
+    "design_deviation": "No change to the requested behavior or common code. Twelve light factory-boundary cases cover the six runs and two mismatch classes; three existing factory cases were added to related-test reuse.",
+    "first_related_test_run": {
+      "tests": 60,
+      "elapsed_seconds": 22.2,
+      "new_total_case_seconds": 0.597
+    },
+    "final_related_test_run": {
+      "tests": 60,
+      "elapsed_seconds": 16.72,
+      "junit_suite_seconds": 16.721
+    },
+    "declaration_uri_input": "Original CLI fragment strings, identical to the worker; Path normalization is restricted to bundle containment checks."
   }
 }
