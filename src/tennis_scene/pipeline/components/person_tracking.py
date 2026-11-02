@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from time import monotonic
 from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from tqdm import tqdm
 
 from src.submodules.models import ViTPosePose2D
 from src.tasks.person_tracking.contracts import DetectionFeatures
@@ -26,6 +29,45 @@ from src.tennis_scene.pipeline.components.tracking_identity import TrackletLink
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.video import OpenCVVideoFrameReader
+
+
+class _FrameProgress:
+    """Report completed online frames without emitting per-frame redirected logs."""
+
+    def __init__(self, camera_id: str, total: int, *, enabled: bool) -> None:
+        self.label = f"person_tracking/{camera_id}"
+        self.total = total
+        self.count = 0
+        self.enabled = enabled
+        self.stream = sys.stderr
+        self.bar: Any = None
+        self.last_reported = 0
+        self.last_update = 0.0
+        if enabled and self.stream.isatty():
+            self.bar = tqdm(total=total, desc=self.label, unit="frame", file=self.stream)
+        elif enabled:
+            self._write()
+            self.last_update = monotonic()
+
+    def _write(self) -> None:
+        print(f"{self.label}: {self.count}/{self.total} frames", file=self.stream, flush=True)
+        self.last_reported = self.count
+
+    def advance(self) -> None:
+        self.count += 1
+        if self.bar is not None:
+            self.bar.update(1)
+        elif self.enabled:
+            now = monotonic()
+            if self.count == self.total or now - self.last_update >= 30:
+                self._write()
+                self.last_update = now
+
+    def close(self) -> None:
+        if self.bar is not None:
+            self.bar.close()
+        elif self.enabled and self.count != self.last_reported:
+            self._write()
 
 
 @dataclass(frozen=True)
@@ -77,9 +119,13 @@ class PersonTrackingModule:
 
     def __init__(self, config: TrackingConfig, *, people: PeopleModelConfig | None = None,
                  encoder: Callable[[], AppearanceEncoder] | None = None,
-                 aflink_checkpoint: Path | None = None, enabled: bool = True) -> None:
+                 aflink_checkpoint: Path | None = None, enabled: bool = True,
+                 show_progress: bool = True) -> None:
         self.config, self.people, self.encoder = config, people, encoder
         self.aflink_checkpoint, self.enabled = aflink_checkpoint, enabled
+        if type(show_progress) is not bool:
+            raise TypeError('show_progress must be a bool')
+        self.show_progress = show_progress
         if enabled and (people is None or encoder is None):
             raise ValueError('Feature tracking requires explicit pose assets and CLIP encoder')
         if enabled and aflink_checkpoint is None:
@@ -103,13 +149,14 @@ class PersonTrackingModule:
         af = AFLink(self.aflink_checkpoint)
         pose = ViTPosePose2D(people.vitpose_checkpoint, device=people.runtime.device,
             flip_test=people.runtime.vitpose.flip_test, batch_size=people.runtime.vitpose.batch_size,
-            head_config=people.runtime.vitpose.head, precision='float32')
+            head_config=people.runtime.vitpose.head, precision='float32', show_progress=False)
         encoder = None
         try:
             encoder = self.encoder()
             if encoder.name != self.config.encoder:
                 raise ValueError('Tracking encoder differs from the configured CLIP profile')
             extractor = FeatureExtractor(pose, UnpromptedEncoder(encoder, dimension=1280), self.config.features)
+            progress = _FrameProgress(video.camera_id, video.num_frames, enabled=self.show_progress)
 
             def frames() -> Iterator[DetectionFeatures]:
                 assert detections.source_rows is not None
@@ -121,10 +168,14 @@ class PersonTrackingModule:
                     yield extractor.extract(packet.index, packet.frame, detections.source_rows[start:end],
                                             detections.boxes_xyxy[start:end], detections.confidence[start:end])
                     count += 1
+                    progress.advance()
                 if count != video.num_frames:
                     raise ValueError('Tracking did not decode the complete source timeline')
 
-            result = track_sequence(frames(), fps=video.fps, config=self.config, aflink=af)
+            try:
+                result = track_sequence(frames(), fps=video.fps, config=self.config, aflink=af)
+            finally:
+                progress.close()
         finally:
             pose.unload()
             del encoder
