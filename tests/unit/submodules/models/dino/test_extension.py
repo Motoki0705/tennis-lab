@@ -113,7 +113,10 @@ def test_different_cached_binary_is_rejected(binary: ModuleType, tmp_path: Path)
         validate_dino_extension()
 
 
-def test_explicit_file_loading_bypasses_cwd_shadow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("initially_cached", [False, True])
+def test_explicit_file_loading_bypasses_cwd_shadow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, initially_cached: bool
+) -> None:
     # Use the real import machinery with a source loader in place of the native
     # loader, so the portable test does not require a compiler or CUDA binary.
     selected = tmp_path / "MultiScaleDeformableAttention.so"
@@ -125,18 +128,33 @@ def test_explicit_file_loading_bypasses_cwd_shadow(tmp_path: Path, monkeypatch: 
     shadow = tmp_path / "cwd"
     shadow.mkdir()
     (shadow / "MultiScaleDeformableAttention.py").write_text("raise AssertionError('shadow must not be imported')\n")
-    monkeypatch.chdir(shadow)
-    monkeypatch.syspath_prepend(str(shadow))
-    monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(selected))
-    monkeypatch.delitem(sys.modules, "MultiScaleDeformableAttention", raising=False)
+    name = "MultiScaleDeformableAttention"
+    if initially_cached:
+        original = ModuleType(name)
+        monkeypatch.setitem(sys.modules, name, original)
+    else:
+        original = None
+        monkeypatch.delitem(sys.modules, name, raising=False)
     original_spec = importlib.util.spec_from_file_location
 
     def source_spec(name: str, location: Path) -> Any:
         return original_spec(name, location, loader=importlib.machinery.SourceFileLoader(name, str(location)))
 
-    monkeypatch.setattr(module.importlib.util, "spec_from_file_location", source_spec)
-    assert validate_dino_extension() == selected
-    assert sys.modules["MultiScaleDeformableAttention"].marker == "selected"  # type: ignore[attr-defined]
+    with monkeypatch.context() as isolated:
+        isolated.chdir(shadow)
+        isolated.syspath_prepend(str(shadow))
+        isolated.setenv("TENNIS_LAB_DINO_EXTENSION", str(selected))
+        # The loader inserts the module itself. Record an undo action even if
+        # the name was originally absent, so its fake cannot leak to later tests.
+        isolated.setitem(sys.modules, name, ModuleType(name))
+        isolated.delitem(sys.modules, name)
+        isolated.setattr(module.importlib.util, "spec_from_file_location", source_spec)
+        assert validate_dino_extension() == selected
+        assert sys.modules[name].marker == "selected"  # type: ignore[attr-defined]
+    if initially_cached:
+        assert sys.modules[name] is original
+    else:
+        assert name not in sys.modules
 
 
 def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
