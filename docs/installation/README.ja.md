@@ -78,6 +78,17 @@ DINOと共通CUDA拡張をビルドします。`outputs/dino_extension/{lib,temp
 CPU tensorでforward/backwardのdispatchを検査するもので、CUDA kernelの数値検証ではありません。
 異なるtorchへ同期し直した場合は、新しい出力先へ再ビルドし、その`lib`を明示してください。
 
+共通のcompressed time-local CUDA拡張も`outputs/dino_extension/lib`の直下にビルドされます。
+import pathがこの出力先を指すことを確認してください。
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+共通binaryを`lib/src/`へ保存していた版から更新した場合は再ビルドしてください。
+この確認は拡張をimportするだけで、CUDA kernelは実行しません。
+
 <a id="required-assets"></a>
 
 ## 必要資産

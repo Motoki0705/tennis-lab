@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import importlib
+import os
+import subprocess
 import sys
 from collections.abc import Callable, Iterator
+from pathlib import Path
 from types import ModuleType
 from typing import NoReturn
 
@@ -242,10 +245,47 @@ def test_compressed_extension_loader_never_substitutes_another_backend(
     monkeypatch.setattr(loader.importlib, "import_module", missing)
     try:
         assert loader.get_compressed_time_local_cuda_extension() is None
-        with pytest.raises(RuntimeError, match="Compressed time-local CUDA"):
+        with pytest.raises(RuntimeError, match="Compressed time-local CUDA") as caught:
             loader.require_compressed_time_local_cuda_extension()
+        message = str(caught.value)
+        assert "scripts/build_dino_extension.sh" in message
+        assert 'export PYTHONPATH="$PWD/outputs/dino_extension/lib"' in message
+        assert "-m pip" not in message
     finally:
         loader.get_compressed_time_local_cuda_extension.cache_clear()
+
+
+def test_loader_imports_out_of_tree_build_with_repository_src(tmp_path: Path) -> None:
+    # A stand-in at the build-lib root models where the compiled module lands.
+    # Its torch precondition models the real binary's libtorch dependencies.
+    build_lib = tmp_path / "lib"
+    build_lib.mkdir()
+    extension = build_lib / "tennis_lab_compressed_time_local_cuda.py"
+    extension.write_text(
+        'import sys\n'
+        'assert "torch" in sys.modules, "PyTorch libraries were not loaded"\n'
+        'marker = "out-of-tree"\n'
+    )
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(build_lib)
+    environment["CUDA_VISIBLE_DEVICES"] = ""
+    repo = Path(loader.__file__).resolve().parents[5]
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "from src.utils.models.components.ops import "
+            "require_compressed_time_local_cuda_extension; "
+            "module = require_compressed_time_local_cuda_extension(); "
+            "print(module.__file__); print(module.marker)",
+        ],
+        cwd=repo,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert completed.stdout.splitlines() == [str(extension), "out-of-tree"]
 
 
 def test_cuda_resolver_rejects_unsupported_window_before_extension_load(

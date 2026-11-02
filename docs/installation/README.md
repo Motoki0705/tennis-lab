@@ -84,6 +84,17 @@ The build sets `CUDA_VISIBLE_DEVICES=''` and does not use the GPU. `validate_din
 checks forward/backward dispatch with CPU tensors; it does not numerically validate CUDA kernels.
 If you sync to a different torch version, rebuild into a new output directory and explicitly use its `lib`.
 
+The shared compressed time-local CUDA extension is also built at the top level of
+`outputs/dino_extension/lib`. Check that its import path points to this build:
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+Rebuild after updating from a version that stored the shared binary under `lib/src/`.
+This check imports the extension without running a CUDA kernel.
+
 <a id="required-assets"></a>
 
 ## Required assets

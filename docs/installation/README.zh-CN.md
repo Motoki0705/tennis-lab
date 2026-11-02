@@ -80,6 +80,17 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 检查前向和反向运算的调用分派，不对 CUDA 内核进行数值验证。
 如果同步后 torch 版本发生变化，请在新的输出目录中重新构建，并显式使用其 `lib`。
 
+共用的 compressed time-local CUDA 扩展也会构建在 `outputs/dino_extension/lib` 的顶层。
+请确认其导入路径指向本次构建的输出：
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+从将共用二进制文件存放在 `lib/src/` 下的版本更新后，请重新构建。
+此检查只导入扩展，不运行 CUDA 内核。
+
 <a id="required-assets"></a>
 
 ## 所需资产

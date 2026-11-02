@@ -4,9 +4,7 @@ import importlib
 from functools import lru_cache
 from types import ModuleType
 
-COMPRESSED_TIME_LOCAL_EXTENSION_NAME = (
-    "src.utils.models.components.ops.compressed_time_local._C"
-)
+COMPRESSED_TIME_LOCAL_EXTENSION_NAME = "tennis_lab_compressed_time_local_cuda"
 
 
 @lru_cache(maxsize=1)
@@ -25,8 +23,12 @@ def require_compressed_time_local_cuda_extension() -> ModuleType:
     extension = get_compressed_time_local_cuda_extension()
     if extension is None:
         raise RuntimeError(
-            "Compressed time-local CUDA extension is not available. Build it with "
-            "`TENNIS_LAB_BUILD_CUDA_OPS=1 .venv/bin/python -m pip install -e . "
-            "--no-build-isolation`, or select backend='reference'."
+            "Compressed time-local CUDA extension is not available. From the "
+            "repository root, initialize third_party/DINO and set CUDA_HOME and "
+            "TORCH_CUDA_ARCH_LIST as in docs/installation/README.md#dino-cuda-extension; "
+            'then run `bash scripts/build_dino_extension.sh "$PWD" '
+            '"$PWD/outputs/dino_extension"` and '
+            '`export PYTHONPATH="$PWD/outputs/dino_extension/lib"`; restart Python and retry, '
+            "or select backend='reference'."
         )
     return extension
