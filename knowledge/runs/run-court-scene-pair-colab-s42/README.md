@@ -195,6 +195,8 @@ PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python 
   knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py \
   tests/unit/skills/test_tennis_colab.py::test_runner_output_has_one_live_writer_and_is_salvaged_after_exit \
   tests/unit/tasks/base/training/test_artifact_store.py::test_checkpoint_io_publishes_after_local_serialization \
+  tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_accepts_matching_rclone_store \
+  tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_rejects_local_or_wrong_remote \
   tests/e2e/tasks/court_detection/test_evaluate_ablation.py \
   --durations=0 --durations-min=0
 ```
@@ -205,5 +207,11 @@ PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python 
 scene-1・scene-2の`training-completion.json`とのpath・内容hashの一致を確認する。
 `test_runbook_gives_each_publisher_one_live_drive_writer`は、READMEのexecを実CLI parserで読み、
 bundleの公開adapterと学習・probeのartifact store設定の保存先を照合する。
-各公開先が1つの`--runner-output`に含まれ、重なる`--persist`がないことをCPUで検査する。
+学習5条件・probeはworkerと同形式の`TENNIS_COLAB_ARTIFACT_ROOTS`を実際の
+`build_artifact_store`へ渡し、公開先URIと宣言の完全一致を必須にする。
+状態・評価は子directoryへ公開するため、公開先を含む`--runner-output`が1つであることを検査する。
+全treeで重なる`--persist`も拒否する。
+`test_training_outputs_reject_inexact_declarations`は、学習・probeの6宣言それぞれについて、
+祖先directory・別条件pathへの変更を実factoryが拒否することを12ケースで確認する。
+storeの構築までを実行し、rcloneコマンドやDrive通信は行わない。
 実poolの全経路読込、実9モデルの評価、L4のprobe・学習は担当親の実行工程で確認する。
