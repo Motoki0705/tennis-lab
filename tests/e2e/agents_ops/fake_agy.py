@@ -82,6 +82,27 @@ if scenario == "updated":
     (root / "updated").touch()
 
 fake_tools.init_stream()
+if scenario.startswith("verification_"):
+    kind = scenario.removeprefix("verification_")
+    command = (
+        "python3 -c private-command-text"
+        if kind == "denied_execution"
+        else "cat " + "p" * 600
+    )
+    fake_tools.run_command(
+        command,
+        skip_hook=kind == "missing",
+        force_execution=kind == "denied_execution",
+        display_command=command[:100] + "…"
+        if kind == "truncated"
+        else "cat wrong"
+        if kind == "changed"
+        else None,
+        hook_step_offset=1 if kind == "step" else 0,
+    )
+if scenario == "read_recovery":
+    fake_tools.read_file(os.environ["FAKE_READ_PATH"])
+    fake_tools.read_file("inside.txt")
 if scenario.startswith("audit_"):
     assert (
         fake_tools.run_command("python3 -c private-command-text")["decision"] == "deny"
@@ -113,6 +134,8 @@ if probe:
         }
         payload["denied_actions"] = []
         assert fake_tools.run_command(probe["recovery_command"])["decision"] == "deny"
+        assert fake_tools.read_file(probe["recovery_read_path"])["decision"] == "deny"
+        assert fake_tools.read_file("a")["decision"] == "allow"
         for command in probe["commands"]:
             assert fake_tools.run_command(command)["decision"] == "allow"
         if scenario == "probe_read_denied":

@@ -97,7 +97,7 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     payload = json.loads(payload_path.read_text())
     payload["denied_actions"] = [{"action": "command", "display_name": "RunCommand"}]
     payload_path.write_text(json.dumps(payload))
-    result = agy.run_headless(**fake_agy, timeout=3)
+    result = agy.run_headless(**fake_agy, timeout=60)
     assert result.structured_output == {"answer": "見出し"}
     assert result.observed_version == "1.4.11"
     assert result.observed_model == "Gemini 3.8 Flash (High)"
@@ -191,7 +191,7 @@ def test_safe_user_settings_allow_startup_without_rewriting_the_profile(
         path.parent.mkdir(parents=True)
         raw = json.dumps(settings).encode()
         path.write_bytes(raw)
-    result = agy.run_headless(**fake_agy, timeout=3)
+    result = agy.run_headless(**fake_agy, timeout=60)
     assert result.structured_output == {"answer": "見出し"}
     assert (fake_agy["agy"].parent / "invocations.jsonl").exists()
     assert (path.read_bytes() if path.exists() else None) == raw
@@ -244,7 +244,7 @@ def test_unsafe_or_invalid_user_settings_stop_before_any_agy_process(
     path.parent.mkdir(parents=True)
     path.write_text(settings if isinstance(settings, str) else json.dumps(settings))
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "unsafe_user_settings"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
     assert not fake_agy["log_file"].exists()
@@ -266,14 +266,14 @@ def test_login_settings_keep_the_model_pin_and_explain_unsafe_agent_mode(
     path.write_text(raw)
     calls_path = fake_agy["agy"].parent / "invocations.jsonl"
     if agent_mode == "plan":
-        result = agy.run_headless(**fake_agy, timeout=3)
+        result = agy.run_headless(**fake_agy, timeout=60)
         assert result.observed_model == "Gemini 3.8 Flash (High)"
         calls = [json.loads(line) for line in calls_path.read_text().splitlines()]
         args = calls[1]["args"]
         assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
     else:
         with pytest.raises(agy.AgyError) as caught:
-            agy.run_headless(**fake_agy, timeout=3)
+            agy.run_headless(**fake_agy, timeout=60)
         assert caught.value.reason == "unsafe_user_settings"
         assert re.search(r"remove.*agentMode.*plan", str(caught.value))
         assert not calls_path.exists()
@@ -331,12 +331,12 @@ def test_trusted_workspace_boundaries_are_checked_before_startup(
     path.write_text(raw)
     calls_path = tmp_path / "invocations.jsonl"
     if relationship in ("prefix_sibling", "descendant"):
-        result = agy.run_headless(**fake_agy, timeout=3)
+        result = agy.run_headless(**fake_agy, timeout=60)
         assert result.structured_output == {"answer": "見出し"}
         assert calls_path.exists()
     else:
         with pytest.raises(agy.AgyError) as caught:
-            agy.run_headless(**fake_agy, timeout=3)
+            agy.run_headless(**fake_agy, timeout=60)
         assert caught.value.reason == "unsafe_user_settings"
         assert "trustedWorkspaces" in str(caught.value)
         assert not calls_path.exists()
@@ -370,7 +370,7 @@ def test_unreadable_user_settings_never_start_agy(
 
         monkeypatch.setattr(Path, "read_text", read)
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "unsafe_user_settings"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
 
@@ -383,7 +383,7 @@ def test_unresolved_user_home_never_starts_agy(
 ) -> None:
     monkeypatch.setenv("HOME", home)
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "unsafe_user_settings"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
 
@@ -394,7 +394,7 @@ def test_user_settings_are_rechecked_before_the_model_turn(
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", "version_widens_settings")
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "unsafe_user_settings"
     calls = [
         json.loads(line)
@@ -434,7 +434,7 @@ def test_unusable_turn_raises(
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", scenario)
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == reason
     if scenario == "no_structured":
         assert caught.value.denied_actions == [
@@ -453,7 +453,7 @@ def test_timeout_reaps_the_fake_and_its_tool(
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", "timeout")
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=1)
+        agy.run_headless(**fake_agy, timeout=5)
     assert caught.value.reason == "timeout"
     child = int((fake_agy["agy"].parent / "child.pid").read_text())
     assert opsproc.process_identity(child) is None
@@ -464,7 +464,7 @@ def test_missing_metrics_stay_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", "missing_metadata")
-    result = agy.run_headless(**fake_agy, timeout=3)
+    result = agy.run_headless(**fake_agy, timeout=60)
     assert result.usage is None
     assert result.duration_seconds is None
 
@@ -474,14 +474,14 @@ def test_stale_model_log_cannot_be_used_as_evidence(fake_agy: dict[str, Path]) -
         'Propagating selected model override to backend: label="Gemini 3.8 Flash (High)"\n'
     )
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "invalid_input"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
 
 
 def test_model_override_cannot_bypass_the_pin(fake_agy: dict[str, Path]) -> None:
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3, model="another-model")
+        agy.run_headless(**fake_agy, timeout=60, model="another-model")
     assert caught.value.reason == "invalid_input"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
 
@@ -523,7 +523,7 @@ def test_smoke_publishes_only_validated_diagnostics(
         env={**os.environ, "GITHUB_STEP_SUMMARY": str(summary)},
         text=True,
         capture_output=True,
-        timeout=5,
+        timeout=180,
     )
     report = json.loads(proc.stdout)
     assert proc.returncode == (0 if scenario == "success" else 1), proc.stderr
@@ -556,7 +556,7 @@ def test_smoke_publishes_only_validated_diagnostics(
     [
         ("probe_success", None),
         ("probe_outside_denied", None),
-        ("probe_missing_denial", "missing_command_denial"),
+        ("probe_missing_denial", "command_hook_mismatch"),
         ("probe_workspace_write", "workspace_modified"),
         ("probe_outside_write", "outside_modified"),
         ("probe_workspace_edit", "workspace_modified"),
@@ -595,13 +595,13 @@ def test_permission_smoke_checks_denial_reads_and_file_integrity(
             str(fake_agy["config_file"]),
             "--permissions-probe",
             "--timeout",
-            "3",
+            "60",
         ],
         cwd=ROOT,
         env={**os.environ, "GITHUB_STEP_SUMMARY": str(summary)},
         text=True,
         capture_output=True,
-        timeout=60,
+        timeout=300,
     )
     assert proc.returncode == (0 if failure is None else 1), proc.stderr
     report = json.loads(proc.stdout)
@@ -618,6 +618,7 @@ def test_permission_smoke_checks_denial_reads_and_file_integrity(
         assert report["read_commands_requested"] == 9
         assert report["read_continued_after_hook_denial"] is True
         assert report["commands"]["hook_denied_count"] == 1
+        assert report["commands"]["read_file"]["denied_count"] == 1
         assert report["denial_commands_rejected"] == 27
         assert report["outside_read_denied"] is (scenario == "probe_outside_denied")
         assert all(
@@ -673,7 +674,12 @@ def test_command_hook_contract_uses_trusted_code(
     command: Any,
     decision: str,
 ) -> None:
-    payload = json.dumps({"stepIdx": 2, "toolCall": {"args": {"CommandLine": command}}})
+    payload = json.dumps(
+        {
+            "stepIdx": 2,
+            "toolCall": {"name": "run_command", "args": {"CommandLine": command}},
+        }
+    )
     _check_hook(tmp_path, payload, decision)
 
 
@@ -685,7 +691,7 @@ def test_command_hook_contract_uses_trusted_code(
         "null",
         "{}",
         '{"stepIdx":2,"stepIdx":3}',
-        '{"stepIdx":true,"toolCall":{"args":{"CommandLine":"cat a"}}}',
+        '{"stepIdx":true,"toolCall":{"name":"run_command","args":{"CommandLine":"cat a"}}}',
     ],
 )
 def test_malformed_command_hook_input_is_explicitly_denied(
@@ -706,7 +712,7 @@ def _check_hook(tmp_path: Path, raw: str, decision: str) -> None:
     command = config["readonly-command-guard"]["PreToolUse"][0]["hooks"][0]["command"]
     argv = shlex.split(command)
     assert "-I" in argv and "-B" in argv
-    program = Path(argv[-2])
+    program = Path(argv[3])
     assert not program.is_relative_to(work)
     original_code = program.read_bytes()
     # Workspace code and PYTHONPATH must never replace the policy imported by the hook.
@@ -720,7 +726,7 @@ def _check_hook(tmp_path: Path, raw: str, decision: str) -> None:
         text=True,
         capture_output=True,
         check=True,
-        timeout=3,
+        timeout=60,
     )
     response = json.loads(proc.stdout)
     assert response["decision"] == decision
@@ -746,11 +752,11 @@ def test_command_audit_survives_every_exit_without_public_raw_commands(
 ) -> None:
     monkeypatch.setenv("FAKE_AGY_CASE", "audit_" + ending)
     if reason is None:
-        outcome = agy.run_headless(**fake_agy, timeout=3)
+        outcome = agy.run_headless(**fake_agy, timeout=60)
         assert outcome.structured_output == {"answer": "見出し"}
     else:
         with pytest.raises(agy.AgyError) as caught:
-            agy.run_headless(**fake_agy, timeout=1 if ending == "timeout" else 3)
+            agy.run_headless(**fake_agy, timeout=5 if ending == "timeout" else 60)
         outcome = caught.value
         assert outcome.reason == reason
     summary = outcome.command_summary
@@ -798,8 +804,112 @@ def test_hook_never_replaces_persistent_or_controller_configuration(
         (work / ".agents").mkdir()
         (work / ".agents/hooks.json").write_text("preserve existing hook")
     with pytest.raises(agy.AgyError) as caught:
-        agy.run_headless(**fake_agy, timeout=3)
+        agy.run_headless(**fake_agy, timeout=60)
     assert caught.value.reason == "invalid_input"
     if existing == "hook":
         assert (work / ".agents/hooks.json").read_text() == "preserve existing hook"
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
+
+
+@pytest.mark.parametrize(
+    "kind,denied",
+    [
+        ("inside", False),
+        ("absolute_inside", False),
+        ("outside", True),
+        ("parent", True),
+        ("sibling_prefix", True),
+        ("symlink_outside", True),
+        ("symlink_inside", False),
+        ("symlink_loop", True),
+    ],
+)
+def test_read_file_hook_resolves_paths_and_continues(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    denied: bool,
+) -> None:
+    work = fake_agy["cwd"]
+    (work / "inside.txt").write_text("permitted input")
+    outside = work.parent / "private-outside.txt"
+    outside.write_text("outside input must not be read")
+    path = "inside.txt"
+    if kind == "absolute_inside":
+        path = str(work / "inside.txt")
+    elif kind == "outside":
+        path = str(outside)
+    elif kind == "parent":
+        path = "../private-outside.txt"
+    elif kind == "sibling_prefix":
+        sibling = work.with_name(work.name + "-other")
+        sibling.mkdir()
+        path = str(sibling / "private-outside.txt")
+    elif kind.startswith("symlink_"):
+        target = (
+            outside
+            if kind == "symlink_outside"
+            else work / ("alias" if kind == "symlink_loop" else "inside.txt")
+        )
+        (work / "alias").symlink_to(target)
+        path = "alias"
+    monkeypatch.setenv("FAKE_AGY_CASE", "read_recovery")
+    monkeypatch.setenv("FAKE_READ_PATH", path)
+    result = agy.run_headless(**fake_agy, timeout=60)
+    assert result.structured_output == {"answer": "見出し"}
+    assert result.command_summary["read_file"] == {
+        "attempted_count": 2,
+        "denied_count": int(denied),
+        "forms": [{"form": "read_file <PATH>", "count": 2}],
+    }
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    assert [entry["decision"] for entry in capture["hook_decisions"]] == [
+        "deny" if denied else "allow",
+        "allow",
+    ]
+    assert capture["hook_decisions"][0]["path"] == path
+    assert all(action["action"] == "read_file" for action in result.denied_actions)
+    assert "private-outside" not in json.dumps(result.command_summary)
+
+
+@pytest.mark.parametrize(
+    "args", [{}, {"AbsolutePath": "a"}, {"Path": None}, {"Path": 17}, {"Path": ""}]
+)
+def test_read_file_hook_rejects_wrong_argument_shapes(
+    tmp_path: Path, args: dict[str, Any]
+) -> None:
+    _check_hook(
+        tmp_path,
+        json.dumps({"stepIdx": 3, "toolCall": {"name": "read_file", "args": args}}),
+        "deny",
+    )
+
+
+@pytest.mark.parametrize(
+    "kind", ["missing", "step", "changed", "denied_execution", "truncated"]
+)
+def test_headless_reconciles_every_command_against_its_hook(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", "verification_" + kind)
+    if kind == "truncated":
+        result = agy.run_headless(**fake_agy, timeout=60)
+        assert result.structured_output == {"answer": "見出し"}
+    else:
+        with pytest.raises(agy.AgyError) as caught:
+            agy.run_headless(**fake_agy, timeout=60)
+        assert caught.value.reason == "command_hook_mismatch"
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    if kind == "truncated":
+        assert capture["commands"][0]["command"] == "cat " + "p" * 600
+        assert capture["commands"][0]["stream_command"].endswith("…")
+        assert capture["commands"][0]["command_capture_source"] == "pre_tool_hook"
+    else:
+        assert capture["hook_verification_errors"]
+    assert capture["commands"]

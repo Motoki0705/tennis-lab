@@ -367,6 +367,45 @@
                         "count"
                       ]
                     }
+                  },
+                  "read_file": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "attempted_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "denied_count": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "forms": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "form": {
+                              "type": "string"
+                            },
+                            "count": {
+                              "type": "integer",
+                              "minimum": 1
+                            }
+                          },
+                          "required": [
+                            "form",
+                            "count"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "attempted_count",
+                      "denied_count",
+                      "forms"
+                    ]
                   }
                 },
                 "required": [

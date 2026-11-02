@@ -778,7 +778,7 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
         json.dumps([writer, {"structured_output": PASS}])
     )
     if ending == "timeout":
-        monkeypatch.setattr(cli, "generate", functools.partial(cli.generate, timeout=1))
+        monkeypatch.setattr(cli, "generate", functools.partial(cli.generate, timeout=5))
     assert env.run("rewrite") == (0 if ending == "success" else 1)
     public = (env.root / "handoff-1.json").read_text() + (
         env.root / "summary.md"
@@ -809,6 +809,36 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
     } == before
     assert not (env.repo / ".agents/hooks.json").exists()
     assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_missing_hook_decision_keeps_failure_and_denials_private(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    (env.root / "turns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "structured_output": env.writer(),
+                    "commands": ["python3 -c private-denied-command"],
+                    "unhooked_command": "ls -la private-path",
+                }
+            ]
+        )
+    )
+    assert env.run("rewrite") == 1
+    failure = json.loads((env.root / "private-1/failure.json").read_text())
+    assert failure["reason"] == "command_hook_mismatch"
+    assert (
+        failure["denied_actions"][0]["command"] == "python3 -c private-denied-command"
+    )
+    assert (env.root / "private-1/writer-1.log.commands.json").is_file()
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    assert "private-path" not in public and "private-denied-command" not in public
+    assert "agy_command_hook_mismatch" in public
+    assert env.state()["issue"]["body"] == env.original and not env.mutations()
 
 
 def test_unsafe_user_settings_keep_original_body_and_finalize_failed(

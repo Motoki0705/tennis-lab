@@ -256,3 +256,45 @@ def test_hook_disagreement_cannot_be_hidden_as_truncation(fault: str) -> None:
         raw += "\n" + json.dumps({**record, "command": "cat b"})
     with pytest.raises(ValueError):
         census.restore_hook_commands(capture, raw)
+
+
+def test_production_requires_a_hook_for_every_stream_command() -> None:
+    capture = census.capture_stream(stream(step(2, "ls -la", "DONE", output="listing")))
+    with pytest.raises(ValueError, match="no hook decision"):
+        census.restore_hook_commands(capture, [], require_hook=True)
+
+
+def test_read_hook_records_never_reconstruct_a_shell_command() -> None:
+    capture = census.capture_stream(stream(step(2, "cat a", "DONE", output="ok")))
+    records = [
+        {
+            "tool": "read_file",
+            "step": 1,
+            "path": "../private-file",
+            "command": None,
+            "decision": "deny",
+        },
+        {"tool": "run_command", "step": 2, "command": "cat a", "decision": "allow"},
+    ]
+    census.restore_hook_commands(capture, records, require_hook=True)
+    assert capture["commands"][0]["hook_decision"] == "allow"
+
+
+def test_a_denial_error_cannot_hide_execution_output() -> None:
+    capture = census.capture_stream(
+        stream(
+            step(
+                2,
+                "ls -la",
+                "ERROR",
+                output="Command exited with code 1",
+                error={"message": "denied by pre-tool hook"},
+            )
+        )
+    )
+    with pytest.raises(ValueError, match="observed executing"):
+        census.restore_hook_commands(
+            capture,
+            [{"step": 2, "command": "ls -la", "decision": "deny"}],
+            require_hook=True,
+        )

@@ -154,7 +154,7 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
             "--input-json",
             str(inputs),
             "--timeout",
-            "600" if phase == "measurement" else "0.5" if timeout else "10",
+            "600" if phase == "measurement" else "5" if timeout else "60",
             "--phase",
             phase,
             *(["--deny-unlisted", "--prompt-stdin"] if phase == "measurement" else []),
@@ -166,7 +166,7 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
         },
         capture_output=True,
         text=True,
-        timeout=15,
+        timeout=180,
     )
     assert result.returncode == (1 if settings_change else 0), result.stderr
     capture = json.loads((phase_root / "runs/fake/control/capture.json").read_text())

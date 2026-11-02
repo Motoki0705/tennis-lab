@@ -19,7 +19,7 @@ from typing import Any
 from agent_events import parse_json
 from agent_output import OutputSchema
 from agent_settings import read_pins
-from agy_capture import capture_stream, public_command_summary
+from agy_capture import capture_stream, public_command_summary, restore_hook_commands
 from agy_hook import install_command_hook
 from agy_permissions import command_permissions
 from opsproc import CommandError, run_process_group
@@ -262,6 +262,10 @@ def _capture_evidence(log: Path, stream: Path, hooks: Path) -> dict[str, Any]:
             capture["errors"].append("invalid command hook record")
     capture["errors"].extend(decoding_errors)
     capture["hook_decisions"] = decisions
+    try:
+        restore_hook_commands(capture, decisions, require_hook=True)
+    except ValueError as exc:
+        capture["hook_verification_errors"] = [str(exc)]
     return capture
 
 
@@ -282,13 +286,16 @@ def _captured_denials(capture: dict[str, Any]) -> list[dict[str, str]]:
     )
     for entry in capture.get("hook_decisions", []):
         if entry["decision"] == "deny":
+            reading = entry.get("tool") == "read_file"
             action = {
-                "action": "command",
-                "display_name": "RunCommand",
+                "action": "read_file" if reading else "command",
+                "display_name": "ReadFile" if reading else "RunCommand",
                 "reason": entry["reason"],
             }
             if isinstance(entry.get("command"), str):
                 action["command"] = entry["command"]
+            if reading and isinstance(entry.get("path"), str):
+                action["path"] = entry["path"]
             if action not in denied:
                 denied.append(action)
     return denied
@@ -437,6 +444,11 @@ def run_headless(
                         raise AgyError(
                             "invalid_output", "workspace command hook was modified"
                         )
+                if capture.get("hook_verification_errors"):
+                    raise AgyError(
+                        "command_hook_mismatch",
+                        "command stream and hook decisions do not reconcile",
+                    )
 
             try:
                 if capture["errors"]:

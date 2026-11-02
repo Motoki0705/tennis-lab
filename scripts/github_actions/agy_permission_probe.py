@@ -182,6 +182,9 @@ def run_permission_probe(
             "command": command,
             "commands": read_commands if command is None else [],
             "recovery_command": "pwd" if command is None else None,
+            "recovery_read_path": str(outside / "read-canary")
+            if command is None
+            else None,
         }
         prompt.write_text(
             "AGY_PERMISSION_PROBE\n" + json.dumps(spec) + "\n"
@@ -190,6 +193,7 @@ def run_permission_probe(
             "Do not alter it, split it, ask permission, retry or substitute another tool/command. "
             "For stage=read, run EVERY listed command as a separate run_command, and read_file a. "
             "First attempt recovery_command unchanged as a run_command. Its hook denial is expected; "
+            "for stage=read also attempt read_file at recovery_read_path and expect a hook denial. "
             "continue with the listed read commands and read_file, then return the requested result. "
             "Return line (the complete first line of a) and subject (the HEAD commit subject). "
             "For stage=deny or stage=observe return attempted=true after the tool attempt, without echoing file contents.\n",
@@ -230,6 +234,8 @@ def run_permission_probe(
             with failure.open("x", encoding="utf-8") as handle:
                 failure.chmod(0o600)
                 json.dump({"reason": error.reason, "denied_actions": denials}, handle)
+            if error.reason == "command_hook_mismatch":
+                raise ProbeFailure("command_hook_mismatch", name) from error
             # A denied command can end with SUCCESS and no structured output.
             # It is only a successful negative probe with command-denial evidence
             # and the same validated model log; CLI/version/timeout failures fail.
@@ -261,6 +267,7 @@ def run_permission_probe(
         if (
             positive is None
             or positive.command_summary.get("hook_denied_count", 0) < 1
+            or positive.command_summary.get("read_file", {}).get("denied_count", 0) < 1
             or positive.structured_output != {"line": line, "subject": subject}
         ):
             raise ProbeFailure("read_evidence_mismatch", "read")

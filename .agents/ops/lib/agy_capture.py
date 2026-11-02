@@ -302,17 +302,30 @@ def summarize(runs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
+def restore_hook_commands(
+    capture: dict[str, Any],
+    raw_hooks: str | list[dict[str, Any]],
+    *,
+    require_hook: bool = False,
+) -> None:
     """Recover display-truncated commands from the independent pre-tool input.
 
     Preserve the display value and provenance. Arbitrary disagreements and hook
     steps absent from the stream fail loudly rather than being overwritten.
     """
     hooks: dict[int, dict[str, Any]] = {}
-    for line in raw_hooks.splitlines():
-        record = parse_json(line)
+    records = (
+        [parse_json(line) for line in raw_hooks.splitlines()]
+        if isinstance(raw_hooks, str)
+        else raw_hooks
+    )
+    for record in records:
+        # Legacy census records contain only command/step/decision. File reads
+        # share the log but never supply a shell command for restoration.
+        if record.get("tool", "run_command") == "read_file":
+            continue
         index, command = record["step"], record["command"]
-        if not isinstance(index, int) or not isinstance(command, str):
+        if type(index) is not int or index < 0 or not isinstance(command, str):
             raise ValueError("invalid hook command record")
         if record.get("decision") not in {"allow", "deny"}:
             raise ValueError("invalid hook decision")
@@ -325,6 +338,8 @@ def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
         index = entry["step"]
         if index not in hooks:
             entry["command_capture_source"] = "stream"
+            if require_hook:
+                raise ValueError("command step has no hook decision")
             continue
         if index in seen:
             raise ValueError("hook step is ambiguous across conversations")
@@ -353,7 +368,10 @@ def restore_hook_commands(capture: dict[str, Any], raw_hooks: str) -> None:
             else:
                 entry["command_capture_source"] = "stream_and_hook"
         entry["hook_decision"] = record["decision"]
-        if record["decision"] == "deny" and entry["outcome"] == "completed":
+        if record["decision"] == "deny" and (
+            entry["outcome"] == "completed"
+            or entry.get("command_exit_code") is not None
+        ):
             raise ValueError("a hook-denied command was observed executing")
     if hooks.keys() - seen:
         raise ValueError("hook command step is missing from the stream")
@@ -383,7 +401,7 @@ def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
     forms = Counter(
         command_form(entry["command"], public=True) for entry in attempts.values()
     )
-    return {
+    result = {
         "attempted_count": len(attempts),
         "denied_count": len(denied),
         "hook_denied_count": len(hook_denied),
@@ -391,6 +409,18 @@ def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
             {"form": form, "count": count} for form, count in sorted(forms.items())
         ],
     }
+    reads = [
+        entry
+        for entry in capture.get("hook_decisions", [])
+        if entry.get("tool") == "read_file"
+    ]
+    if reads:
+        result["read_file"] = {
+            "attempted_count": len(reads),
+            "denied_count": sum(entry["decision"] == "deny" for entry in reads),
+            "forms": [{"form": "read_file <PATH>", "count": len(reads)}],
+        }
+    return result
 
 
 def reconcile_commands(

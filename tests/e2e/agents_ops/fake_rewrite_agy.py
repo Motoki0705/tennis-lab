@@ -93,6 +93,8 @@ log.write_text(
 fake_tools.init_stream()
 for command in outputs[index].get("commands", []):
     fake_tools.run_command(command)
+if outputs[index].get("unhooked_command"):
+    fake_tools.run_command(outputs[index]["unhooked_command"], skip_hook=True)
 if outputs[index].get("pause"):
     signal.pause()
 if outputs[index].get("exit_code"):

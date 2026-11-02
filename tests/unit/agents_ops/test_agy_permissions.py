@@ -190,7 +190,12 @@ def test_unlisted_flags_are_denied(
 def json_input(command: str) -> str:
     import json
 
-    return json.dumps({"stepIdx": 7, "toolCall": {"args": {"CommandLine": command}}})
+    return json.dumps(
+        {
+            "stepIdx": 7,
+            "toolCall": {"name": "run_command", "args": {"CommandLine": command}},
+        }
+    )
 
 
 def test_every_allow_is_anchored_and_non_command_actions_are_denied() -> None:

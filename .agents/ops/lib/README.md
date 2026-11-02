@@ -71,7 +71,7 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 - `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` をJSON文字列として `--settings` へ渡す。
   コマンドの許可形式・拒否・実機での検証は[読み取り権限と実機プローブ](#agyの読み取り権限と実機プローブ)を正本とする。
   `--mode plan` を指定する。このpermission規則はrunnerのOS隔離を置き換えない。
-- 許可外のシェル形式は、workspaceの `.agents/hooks.json` に一時配置したPreToolUse hookで
+- 許可外のシェル形式とworkspace外への `read_file` は、workspaceの `.agents/hooks.json` に一時配置したPreToolUse hookで
   理由付きの `decision=deny` を返す。拒否後も読み取りを続け、指定schemaの構造化出力を返すよう案内する。
   hookの `allow` はsettingsの権限を広げない。判定は `agy_permissions.command_allowed()` が
   settingsと同じ `command_permissions()` から生成し、正例・負例のコーパスで一致を検査する。
@@ -79,11 +79,17 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   import先を使わず、workspace内のコードを実行しない。既存hookと `.agents` のsymlinkは拒否する。
   終了時は成功・失敗・timeoutとも設定の内容・modeを照合して除去する。
   ユーザー設定・controller checkoutにhook設定を常設しない。
+  `read_file` は `Path` をcontrollerが渡したworkspace基準で解決し、symlinkの解決後に外側なら拒否する。
+  内側の `allow` は従来のCLIの読み取り判定へ渡す。壊れた入力や解決できないパスは拒否する。
+  [公式のPreToolUse契約](https://antigravity.google/docs/hooks?tab=cli#pretooluse)は
+  `toolCall.name`・`toolCall.args`・`stepIdx` を定義する。CLIの `read_file` 引数は同文書に記載がないため、
+  固定版1.4.11の観測で `toolCall.name="read_file"`、`args.Path`（文字列）、
+  `args.StartLine` / `args.EndLine`（整数）を確認した。IDE向け `view_file.AbsolutePath` と混同しない。
 - `log_file` は呼び出しごとの未作成パスが必須。親ディレクトリがなければ0700で作成し、logは0600にする。
   存在するファイルやsymlinkを再利用しない。writer、verifier、修正呼び出しごとに別パスを渡す。
   毎回新しい会話を作り、自動再試行・resume・別モデルへの振替は行わない。
   `stream-json` のstdoutを `<log_file>.stream.jsonl` へ直接保存し、途中の失敗やtimeoutでも残す。
-  `<log_file>.hooks.jsonl` はコマンド原文・step・hookの許可/拒否と理由、
+  `<log_file>.hooks.jsonl` はtool・コマンド原文または読み取りパス・step・hookの許可/拒否と理由、
   `<log_file>.commands.json` は `tool_info.parameters.CommandLine` の原文・stepの更新をまとめた
   観測結果・hook判定を保持する。いずれも未作成パスへ0600で作る。コマンド全文・入力・結果を含むため公開しない。
   壊れたstreamも生データと取得済みの観測を保存するが、成功結果としては受理しない。
@@ -99,19 +105,23 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 | `observed_version` | `str`。実行前後で固定値との一致を確認した版 |
 | `duration_seconds` | `float \| None`。CLIの所要秒数。欠測は `None` |
 | `elapsed_seconds` | `float`。版の確認を含め、部品が計測した実行秒数 |
-| `command_summary` | `dict[str, Any]`。`attempted_count`, `denied_count`, `hook_denied_count`, `forms`（形式と件数）の公開用集計 |
+| `command_summary` | `dict[str, Any]`。シェルの `attempted_count`, `denied_count`, `hook_denied_count`, `forms`（形式と件数）。ファイル読み取りがあれば `read_file` にその試行/拒否件数と固定形式を加える |
 
 `AgyError(RuntimeError)` は `reason: str`、`denied_actions: list[dict[str, str]]` と
 取得できた `command_summary` を持つ。
 `reason` は `invalid_input`（設定・入力・既存log）、`version_mismatch`（版欠落・相違）、
 `cli_error`（起動失敗・非0終了）、`timeout`、`invalid_output`（不正JSON・status・構造化出力・schema・観測値）、
-`model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）。
+`model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）、
+`command_hook_mismatch`（streamとhookのstep・全文・判定の不一致や記録欠落、拒否されたコマンドの実行形跡）。
 呼出元はこの型をcatchし、成功結果を捏造しない。既存のreasonと関数の引数・結果の型は維持する。
 例外の文字列にはstderrやpromptが含まれ得るため、そのまま公開しない。
 拒否一覧はparseできた結果とhook記録から得たものを保持する。非0終了・timeoutにもhookの拒否を残す。
 有効な構造化出力もある拒否は `AgyResult.denied_actions` に残し、タスクとしての合否は呼出元が判断する。
 exit 0・`status: SUCCESS` でも、構造化出力欠落やschema違反なら例外になる。
 streamの最終resultイベントを検証し、複数resultや不正なイベントを拒否する。
+本番でもハーネスと同じ `restore_hook_commands()` を使い、末尾省略のprefixと同じstepのhook全文が
+一致した場合だけ復元する。原文の表示と採用元を非公開記録へ保存する。全シェル試行にhookの判定を必須とし、
+照合違反は異常終了・timeoutの場合も上記の専用reasonで失敗する。捕捉は例外を返す前に保存する。
 公開する集計では、許可済み形式の引数・パス・検索語・JSON fieldを伏せる。
 未知のコマンド・フラグは `<unlisted command>` にする。調査用の詳細な正規化・実例は非公開のまま扱う。
 [1.4.11の公式release notes](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.4.11)に従い、
@@ -219,13 +229,14 @@ workspace内の `read_file` はCLIの暗黙の読み取り許可を維持し、�
 静的テストだけで実CLIの照合を確認したとは扱わない。#1599で人間がデスクトップから **AGY smoke** を手動実行し、
 通常のテンプレート読み取りに続いて `agy_smoke.py --permissions-probe --timeout 120` の段階を通す。
 この段階は使い捨てgit repositoryを作り、`read_file` と9個の読み取りコマンドを依頼し、
-最初に許可外の `pwd` を試すよう依頼する。hookによる拒否の記録と、その後も続行して
+最初に許可外の `pwd` と外側のcanaryへの `read_file` を試すよう依頼する。両方のhook拒否の記録と、その後も続行して
 privateな入力nonceとHEADのcommit subjectに一致する構造化出力を返したこと、ファイル不変を確認する。
 追加の許可外コマンドが拒否されたことだけでは読み取りを不合格にしない。
 その後、リダイレクト・連結・実行フラグ・展開・改行と、許可外の単独コマンドを含む27形式を、
 新規会話で1形式ずつそのまま試すよう依頼する。単独コマンドは `touch b`, `rm x`, `mkdir new-directory`,
 `cp a copied`, `mv a moved`, `python3 -c pass`, `sh -c true`。特殊文字のdenyに頼らず拒否されることを確認する。
 各形式の `denied_actions` にcommandの拒否が必要。exit 0でも拒否がなければ失敗する。
+全段階に共通部品のシェル照合を適用し、hookを通らない試行は `command_hook_mismatch` として失敗させる。
 構造化出力を伴わない拒否も、版・今回のモデルlogを照合した場合だけ期待した拒否として受け取る。
 
 さらに、外側のcanaryファイルを絶対パスの `cat` で読む観測を1件行い、`outside_read_denied` をsummaryに記録する。
