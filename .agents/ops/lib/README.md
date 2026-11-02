@@ -255,7 +255,7 @@ Gitの各形式では `git --no-pager ...` も使える。patchを生成するlo
 子環境は `readonly_environment(environ, cwd=workspace)` で作る。継承した `GIT_*`（設定・実行・pathの上書き）を除き、
 system/global設定を `/dev/null` に固定する。local/worktree設定は保持し、
 [`GIT_CONFIG_COUNT` のcommand scope](https://git-scm.com/docs/git-config#Documentation/git-config.txt-GIT_CONFIG_COUNT)で
-`core.fsmonitor=false`, `core.hooksPath=/dev/null`, `core.pager=cat`, `log.showSignature=false`,
+`core.fsmonitor=false`, `core.hooksPath=/dev/null`, `core.pager=cat`, `log.showSignature=false`, `format.pretty=medium`,
 `submodule.recurse=false`, `diff.ignoreSubmodules=all` を上書きする。`-c` / `--config-env` は許可しない。
 `GIT_OPTIONAL_LOCKS=0`, `GIT_PAGER=cat`, `GIT_TERMINAL_PROMPT=0`, `GIT_ATTR_NOSYSTEM=1` も固定する。
 Gitは `GIT_PAGER=cat` の場合pagerを起動しない。`GH_PAGER=cat`, `RIPGREP_CONFIG_PATH=/dev/null` は維持する。

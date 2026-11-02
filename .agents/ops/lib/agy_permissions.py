@@ -652,6 +652,7 @@ def readonly_environment(environ: Mapping[str, str], *, cwd: Path) -> dict[str, 
         "core.hooksPath": "/dev/null",
         "core.pager": "cat",
         "log.showSignature": "false",
+        "format.pretty": "medium",
         "submodule.recurse": "false",
         "diff.ignoreSubmodules": "all",
     }
