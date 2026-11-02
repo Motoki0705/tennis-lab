@@ -77,7 +77,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 Adjust `CUDA_HOME` for your environment, for example to `/usr/local/cuda`. Set both variables for
 preflight and pipeline execution, including in a new shell. `TENNIS_LAB_DINO_EXTENSION` is the absolute
 path to the exact DINO binary; `PYTHONPATH` makes the shared CUDA extension importable. A missing selection
-or a different already-imported DINO binary fails explicitly.
+or an unverified already-imported DINO binary fails explicitly. If the selected file changes after loading,
+start a fresh process and validate the new binary.
 
 The script creates `TENNIS_LAB_DINO_OPS_BUILD_CONFIG` under the canonical path contract and builds
 DINO and the shared CUDA extension through the root `setup.py`. It writes to

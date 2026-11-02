@@ -71,7 +71,8 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 
 環境によって`CUDA_HOME=/usr/local/cuda`などに変更します。preflightとpipeline実行には両変数が
 必要です。別shellでも設定してください。`TENNIS_LAB_DINO_EXTENSION`には使用するDINO binaryの絶対path、
-`PYTHONPATH`には共通CUDA拡張のdirectoryを指定します。選択が無い場合や別binaryをimport済みの場合は停止します。
+`PYTHONPATH`には共通CUDA拡張のdirectoryを指定します。選択が無い場合や、検証されていないbinaryを
+import済みの場合は停止します。読み込み後に選択ファイルが変わった場合は新しいprocessで再検証してください。
 
 スクリプトは`TENNIS_LAB_DINO_OPS_BUILD_CONFIG`を正規のpath契約で作り、ルート`setup.py`から
 DINOと共通CUDA拡張をビルドします。`outputs/dino_extension/{lib,temp,cache}`と`build.json`へ
