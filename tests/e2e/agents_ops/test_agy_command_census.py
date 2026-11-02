@@ -67,12 +67,19 @@ def test_preflight_rejects_permission_expansion(
 
 
 @pytest.mark.parametrize(
-    "phase,timeout", [("pilot", False), ("pilot", True), ("measurement", False)]
+    "phase,timeout,settings_change",
+    [
+        ("pilot", False, False),
+        ("pilot", True, False),
+        ("measurement", False, False),
+        ("pilot", False, True),
+    ],
 )
 def test_fake_run_is_private_pinned_and_retains_partial_stream(
     tmp_path: Path,
     phase: str,
     timeout: bool,
+    settings_change: bool,
 ) -> None:
     source = tmp_path / "source"
     assets = source / ".agents/ops/issue_rewrite"
@@ -151,6 +158,7 @@ Path(args[args.index('--log-file')+1]).write_text('applying agent mode plan\\nPr
 print(json.dumps({{"event":"init","conversation_id":"test","init":{{"permission_mode":"request-review"}}}}),flush=True)
 print(json.dumps({{"event":"step_update","step_update":{{"step_index":2,"state":"ACTIVE","tool_info":{{"name":"run_command","parameters":{{"CommandLine":"cat a"}}}}}}}}),flush=True)
 if {timeout!r}: signal.pause()
+if {settings_change!r}: Path({str(settings)!r}).write_text('{{"agentMode":"auto","model":"new preference"}}')
 print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_output":{{"body":"ok"}}}}}}),flush=True)
 """)
     fake.chmod(0o700)
@@ -184,13 +192,23 @@ print(json.dumps({{"event":"result","result":{{"status":"SUCCESS","structured_ou
         text=True,
         timeout=15,
     )
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == (1 if settings_change else 0), result.stderr
     capture = json.loads((phase_root / "runs/fake/control/capture.json").read_text())
     assert capture["timed_out"] == timeout
     assert capture["structured_valid"] != timeout
     assert capture["commands"][0]["command"] == "cat a"
     assert capture["commands"][0]["outcome"] == "unknown"
-    assert settings.read_text() == '{"agentMode":"auto"}'
+    assert settings.read_text() == (
+        '{"agentMode":"auto","model":"new preference"}'
+        if settings_change
+        else '{"agentMode":"auto"}'
+    )
+    assert capture["persistent_settings_unchanged"] != settings_change
+    assert (
+        phase_root / "runs/fake/control/saved-settings-before.json"
+    ).read_text() == '{"agentMode":"auto"}'
+    if settings_change:
+        assert "persistent agy settings changed" in result.stderr
     args = json.loads((private / "argv.json").read_text())
     policy = json.loads(args[args.index("--settings") + 1])
     assert policy["agentMode"] == args[args.index("--mode") + 1] == "plan"

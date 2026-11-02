@@ -218,6 +218,13 @@ def run_turn(
             cwd=work,
         )
         before_settings = preflight(work)
+        persistent = Path.home() / ".gemini/antigravity-cli/settings.json"
+        saved_bytes = persistent.read_bytes() if persistent.exists() else b"{}"
+        if hashlib.sha256(saved_bytes).hexdigest() != before_settings:
+            raise ValueError("persistent settings changed during preparation")
+        with (control / "saved-settings-before.json").open("xb") as saved_handle:
+            os.fchmod(saved_handle.fileno(), 0o600)
+            saved_handle.write(saved_bytes)
         context = events.parse_json(within_private(inputs).read_text())
         assets = ".agents/ops/issue_rewrite/"
         template = git("show", commit + ":" + assets + f"prompts/{role}.md")
@@ -340,8 +347,7 @@ def run_turn(
                 opsproc.terminate_descendants(5)
         elapsed = time.monotonic() - started
         version()
-        if preflight(work, owned_hook) != before_settings:
-            raise ValueError("persistent agy settings changed during the run")
+        settings_unchanged = preflight(work, owned_hook) == before_settings
         log = log_file.read_text()
         log_file.chmod(0o600)
         observed_model = agy_api._observed_model(log_file, config.model, [])
@@ -373,6 +379,7 @@ def run_turn(
             timeout_seconds=timeout,
             phase=phase,
             prompt_transport="stdin_stream" if prompt_stdin else "argv",
+            persistent_settings_unchanged=settings_unchanged,
             observed_model=observed_model,
             arm="deny_unlisted" if deny_unlisted else "production",
             schema_error=schema_error,
@@ -384,6 +391,8 @@ def run_turn(
         if (control / "hooks.jsonl").exists():
             (control / "hooks.jsonl").chmod(0o600)
         write_json(control / "capture.json", capture)
+        if not settings_unchanged:
+            raise ValueError("persistent agy settings changed during the run")
         return capture
 
 
