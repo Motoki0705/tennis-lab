@@ -165,7 +165,7 @@ jobs:
 
       - name: Set up Node
         if: contains(fromJSON(needs.plan.outputs.suites), 'javascript') || contains(fromJSON(needs.plan.outputs.suites), 'ops-scenarios')
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
