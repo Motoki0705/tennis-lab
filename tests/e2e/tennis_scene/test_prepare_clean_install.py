@@ -58,6 +58,7 @@ def test_generated_commands_quote_paths_and_use_only_fresh_venv(tmp_path: Path) 
     tokens = shlex.split(pipeline)
     assert str(repo / ".venv/bin/python") in tokens
     assert f"PYTHONPATH={build / 'lib'}" in tokens
+    assert f"TENNIS_LAB_DINO_EXTENSION={build / 'lib/MultiScaleDeformableAttention.so'}" in tokens
     assert "CUDA_VISIBLE_DEVICES=''" not in pipeline
     assert "CUDA_VISIBLE_DEVICES=''" in visualization
     assert "src.tennis_scene.scripts.run_pipeline" in tokens

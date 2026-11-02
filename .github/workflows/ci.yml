@@ -162,6 +162,7 @@ jobs:
           git submodule update --init --depth 1 third_party/DINO
           .venv/bin/python -m scripts.ci_metrics.prepare_dino_cpu --output .ci-dino-cpu
           echo "PYTHONPATH=$GITHUB_WORKSPACE/.ci-dino-cpu" >> "$GITHUB_ENV"
+          echo "TENNIS_LAB_DINO_EXTENSION=$GITHUB_WORKSPACE/.ci-dino-cpu/MultiScaleDeformableAttention.so" >> "$GITHUB_ENV"
 
       - name: Set up Node
         if: contains(fromJSON(needs.plan.outputs.suites), 'javascript') || contains(fromJSON(needs.plan.outputs.suites), 'ops-scenarios')

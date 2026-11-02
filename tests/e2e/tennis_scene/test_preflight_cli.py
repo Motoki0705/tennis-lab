@@ -13,12 +13,17 @@ def test_empty_installation_lists_every_asset_and_exits_nonzero(tmp_path: Path) 
     result = subprocess.run([sys.executable, "-m", "src.tennis_scene.scripts.preflight",
         f"paths.data_root={tmp_path / 'data'}", f"paths.checkpoint_root={tmp_path / 'ckpt'}",
         f"paths.external_asset_root={tmp_path / 'third_party'}", f"paths.output_root={tmp_path / 'outputs'}"],
-        cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1"},
+        cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1",
+                               "TENNIS_LAB_DINO_EXTENSION": str(tmp_path / "missing.so")},
         capture_output=True, text=True, check=False)
     assert result.returncode == 1, result.stderr
     report = json.loads(result.stdout)
     assert report["status"] == "failed"
     assert report["inference_executed"] is False
+    extension = next(check for check in report["checks"] if check["name"] == "dino_extension")
+    assert extension["status"] == "error"
+    assert "TENNIS_LAB_DINO_EXTENSION" in extension["detail"]
+    assert str(tmp_path / "missing.so") in extension["detail"]
     failures = {check["name"] for check in report["checks"] if check["status"] != "ok"}
     assert {"court", "ball", "detector", "vitpose", "hmr2", "gvhmr", "aflink", "tracking_encoder",
             "association_encoder", "body_model", "dinov3", "smpl_faces", "dino_models", "dinov3_hub",

@@ -67,7 +67,9 @@ def gpu_commands(repo: Path, build: Path) -> tuple[str, str]:
     """Return shell-safe, explicit commands for the sample and its visualization."""
     prefix = f"cd {shlex.quote(str(repo))} && "
     python = shlex.quote(str(repo / ".venv/bin/python"))
-    pipeline = (f"{prefix}PYTHONPATH={shlex.quote(str(build / 'lib'))} OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 "
+    pipeline = (f"{prefix}PYTHONPATH={shlex.quote(str(build / 'lib'))} "
+                f"TENNIS_LAB_DINO_EXTENSION={shlex.quote(str(build / 'lib/MultiScaleDeformableAttention.so'))} "
+                "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 "
                 f"{python} -m src.tennis_scene.scripts.run_pipeline "
                 "output_directory=tennis_scene/generate/clean_install output_name=scene "
                 "cache.directory=tennis_scene/cache/clean_install")
@@ -93,7 +95,7 @@ def prepare(args: argparse.Namespace) -> None:
            "TORCH_HOME": str(workspace / "cache/torch"), "XDG_CACHE_HOME": str(workspace / "cache"),
            "PYTHONDONTWRITEBYTECODE": "1"}
     # Do not inherit an extension or a Python environment from the caller.
-    for variable in ("PYTHONPATH", "VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONHOME"):
+    for variable in ("PYTHONPATH", "TENNIS_LAB_DINO_EXTENSION", "VIRTUAL_ENV", "UV_PROJECT_ENVIRONMENT", "PYTHONHOME"):
         env.pop(variable, None)
     report: dict[str, Any] = {"status": "running", "gpu_executed": False, "steps": [], "workspace": str(workspace)}
     started = time.monotonic()
@@ -143,6 +145,7 @@ def prepare(args: argparse.Namespace) -> None:
         run("download-models", [python, "-m", "src.utils.model_weights", "--checkpoint-root", str(repo / "ckpt")], cwd=repo)
         run("download-sample", [python, "-m", "src.utils.sample_dataset", "--data-root", str(repo / "data")], cwd=repo)
         env["PYTHONPATH"] = str(build / "lib")
+        env["TENNIS_LAB_DINO_EXTENSION"] = str(build / "lib/MultiScaleDeformableAttention.so")
         run("preflight", [python, "-m", "src.tennis_scene.scripts.preflight"], cwd=repo)
         run("git-status", ["git", "status", "--short", "--untracked-files=all"], cwd=repo)
         pipeline, visualization = gpu_commands(repo, build)

@@ -14,6 +14,7 @@ python="${code_root}/.venv/bin/python"
 export OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=4
 bash "$code_root/tests/benchmarks/build_dino_extension.sh" "$asset_root" "$report/dino_extension"
 export PYTHONPATH="$code_root:$report/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$(cd "$report/dino_extension/lib" && pwd)/MultiScaleDeformableAttention.so"
 
 # The deployed checkpoint and preprocessing have a single source: pipeline.yaml.
 mapfile -t detector < <("$python" - "$code_root" <<'PY'

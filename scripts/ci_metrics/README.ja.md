@@ -51,7 +51,7 @@ coverage artifactは90日保存し、成功indexをrepoへcommitしません。
 
 `player-publication` レーンでは固定済み `third_party/DINO` を準備し、
 `prepare_dino_cpu --output .ci-dino-cpu` で上流の `vision.cpp` をCUDAなしでビルドします。
-出力先を `PYTHONPATH` に追加し、本物の matcher/loss を読み込みます。
+`TENNIS_LAB_DINO_EXTENSION`に出力先の`MultiScaleDeformableAttention.so`の絶対pathを指定し、本物の matcher/loss を読み込みます。
 attention の forward/backward は例外のままで、model forwardの代替はしません。
 CIの準備不足は公開loss 2件のskipにせず失敗にします。
 

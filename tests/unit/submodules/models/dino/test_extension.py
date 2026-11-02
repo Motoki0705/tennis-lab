@@ -1,5 +1,9 @@
 """Importable legacy binaries must fail before loading the expensive model."""
 
+import importlib.machinery
+import importlib.util
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -8,7 +12,9 @@ import pytest
 import torch
 
 from src.submodules.models import validate_dino_extension
+from src.submodules.models.dino import architecture
 from src.submodules.models.dino import extension as module
+from src.utils.paths import PROJECT_ROOT
 
 
 @pytest.fixture
@@ -17,7 +23,8 @@ def binary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     path.touch()
     binary = ModuleType("MultiScaleDeformableAttention")
     binary.__file__ = str(path)
-    monkeypatch.setattr(module.importlib, "import_module", lambda name: binary)
+    monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(path))
+    monkeypatch.setitem(sys.modules, "MultiScaleDeformableAttention", binary)
     return binary
 
 
@@ -67,13 +74,106 @@ def test_preflight_rejects_unexpected_extension(binary: ModuleType, behavior: st
         validate_dino_extension()
 
 
-def test_preflight_preserves_import_error(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_preflight_preserves_import_error(binary: ModuleType, monkeypatch: pytest.MonkeyPatch) -> None:
     error = ImportError("missing PyTorch symbol")
 
-    def fail(name: str) -> None:
+    def fail(spec: Any) -> None:
         raise error
 
-    monkeypatch.setattr(module.importlib, "import_module", fail)
+    monkeypatch.delitem(sys.modules, "MultiScaleDeformableAttention")
+    monkeypatch.setattr(module.importlib.util, "module_from_spec", fail)
     with pytest.raises(RuntimeError, match="Cannot import") as caught:
         validate_dino_extension()
     assert caught.value.__cause__ is error
+
+
+@pytest.mark.parametrize("selection", ["unset", "relative", "missing", "not_binary"])
+def test_selection_fails_closed_with_a_cached_candidate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, selection: str
+) -> None:
+    wrong = tmp_path / "MultiScaleDeformableAttention.py"
+    wrong.write_text("raise AssertionError('shadow must not be imported')\n")
+    monkeypatch.chdir(tmp_path)
+    cached = ModuleType("MultiScaleDeformableAttention")
+    cached.__file__ = str(wrong)
+    monkeypatch.setitem(sys.modules, "MultiScaleDeformableAttention", cached)
+    if selection == "unset":
+        monkeypatch.delenv("TENNIS_LAB_DINO_EXTENSION", raising=False)
+    else:
+        paths = {"relative": "MultiScaleDeformableAttention.so",
+                 "missing": str(tmp_path / "missing.so"), "not_binary": str(wrong)}
+        monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", paths[selection])
+    with pytest.raises(RuntimeError, match="TENNIS_LAB_DINO_EXTENSION"):
+        validate_dino_extension()
+
+
+def test_different_cached_binary_is_rejected(binary: ModuleType, tmp_path: Path) -> None:
+    binary.__file__ = str(tmp_path / "old.so")
+    with pytest.raises(RuntimeError, match="already loaded from.*selects"):
+        validate_dino_extension()
+
+
+def test_explicit_file_loading_bypasses_cwd_shadow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Use the real import machinery with a source loader in place of the native
+    # loader, so the portable test does not require a compiler or CUDA binary.
+    selected = tmp_path / "MultiScaleDeformableAttention.so"
+    selected.write_text(
+        "marker = 'selected'\n"
+        "def ms_deform_attn_forward(*args): raise RuntimeError('Not implemented on the CPU')\n"
+        "def ms_deform_attn_backward(*args): raise RuntimeError('Not implemented on the CPU')\n"
+    )
+    shadow = tmp_path / "cwd"
+    shadow.mkdir()
+    (shadow / "MultiScaleDeformableAttention.py").write_text("raise AssertionError('shadow must not be imported')\n")
+    monkeypatch.chdir(shadow)
+    monkeypatch.syspath_prepend(str(shadow))
+    monkeypatch.setenv("TENNIS_LAB_DINO_EXTENSION", str(selected))
+    monkeypatch.delitem(sys.modules, "MultiScaleDeformableAttention", raising=False)
+    original_spec = importlib.util.spec_from_file_location
+
+    def source_spec(name: str, location: Path) -> Any:
+        return original_spec(name, location, loader=importlib.machinery.SourceFileLoader(name, str(location)))
+
+    monkeypatch.setattr(module.importlib.util, "spec_from_file_location", source_spec)
+    assert validate_dino_extension() == selected
+    assert sys.modules["MultiScaleDeformableAttention"].marker == "selected"  # type: ignore[attr-defined]
+
+
+def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
+    binary: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repository = tmp_path / "DINO"
+    (repository / "util").mkdir(parents=True)
+    (repository / "util/__init__.py").touch()
+    (repository / "models").mkdir()
+    (repository / "models/__init__.py").write_text(
+        "import MultiScaleDeformableAttention as selected_extension\n"
+        "def build_dino(args): return ()\n"
+    )
+    monkeypatch.setitem(sys.modules, "util", None)  # type: ignore[arg-type]
+    monkeypatch.setitem(sys.modules, architecture._DINO_MODELS_PACKAGE, None)  # type: ignore[arg-type]
+    build = architecture.load_dino_build_function(repository)
+    upstream = sys.modules[build.__module__]
+    assert upstream.selected_extension is binary  # type: ignore[attr-defined]
+    binary.__file__ = str(tmp_path / "different.so")
+    with pytest.raises(RuntimeError, match="already loaded from.*selects"):
+        architecture.load_dino_build_function(repository)
+    binary.__file__ = str(tmp_path / "MultiScaleDeformableAttention.so")
+    stale = ModuleType("functions")
+    stale.MSDA = ModuleType("old_extension")  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func", stale)
+    with pytest.raises(RuntimeError, match="functions already reference a different extension"):
+        architecture.load_dino_build_function(repository)
+
+
+def test_build_rejects_existing_binary_before_build(tmp_path: Path) -> None:
+    output = tmp_path / "output"
+    (output / "lib").mkdir(parents=True)
+    (output / "lib/MultiScaleDeformableAttention.so").touch()
+    result = subprocess.run(
+        ["bash", str(PROJECT_ROOT / "scripts/build_dino_extension.sh"), str(tmp_path), str(output)],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 1
+    assert "already exists" in result.stderr
+    assert not (output / "build.json").exists()
