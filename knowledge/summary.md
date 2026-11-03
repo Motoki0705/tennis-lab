@@ -1,4 +1,4 @@
-<!-- knowledge-review: c33f635a1f63df4cc72e5e80f5ce80811d4ffa756cbd0ce6b565aabfd2a5226f on 2026-11-04 -->
+<!-- knowledge-review: 6371fa0f68d9c3df2f1a287c8396b2db13fd4b12fd0b50da6b9a176e37128ceb on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-04（clip_000の球3D各方式の結果と追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
@@ -96,6 +96,8 @@ DINOの残存子moduleによるCIテスト間の干渉も隔離し、再現し�
 全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
 平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
 明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
+
+[全20予測条件・4参考診断の統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では、単独18条件の全72結果と既存cohortの2160分布が保存済み結果に厳密一致し、統合で数値は変わらなかった。6組合せを加えても後半LOVOとcoverageの一貫した改善はなく、baseline維持を推奨案とし、人間が採否を決める。補正なしlogitは中央値9.23pxへ小さく下がるがp90は28.23pxへ増える。BA camera×baselineは元825点を保ち8点を追加した一方、共通点は10.81/37.55pxへ悪化し、top-K→LOESSも482点への採点減少と喪失481点を伴う。全条件共通集合は空で、失敗条件を除く19予測条件の共通も後半121/1462点に限られるため、baselineとの2組の共通・追加・喪失を主に読む。2動画・入力3動画の各1010frame全decode、イベント25元行を保持したcrop、相対参照のHTML/ZIPと代表画像の目視を完了した。1clip・近似校正・推定を含む2D参照という限界を保ち、次の調整は未使用clipまたは前半だけで行い、今回の後半を再調整に使わない。既定・方式採用・mergeは変更していない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 
