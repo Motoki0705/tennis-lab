@@ -1,0 +1,48 @@
+{
+  "source_identity": {
+    "from_config_ast_equal_old_head": true,
+    "unchanged_files": {
+      "src/tennis_scene/configs/pipeline.yaml": true,
+      "src/tennis_scene/ball_association/topk.py": true,
+      "src/tennis_scene/evaluation/ball3d/topk.py": true,
+      "src/tennis_scene/pipeline/components/ball_topk.py": true,
+      "src/tennis_scene/evaluation/ball3d/scoring.py": true
+    }
+  },
+  "test_groups": {
+    "audit": {
+      "collected": 428,
+      "passed": 427,
+      "skip_nodes": [
+        "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_compact_domains_require_scene_and_camera[NOTSET]"
+      ],
+      "wrapper_seconds": 386.9341634269804,
+      "max_case_seconds": 123.86823340598494,
+      "max_setup_seconds": 0.023169176012743264,
+      "over_5s_cases": {
+        "tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit": 40.34939930296969,
+        "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]": 123.86823340598494,
+        "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]": 114.7450940569397
+      }
+    },
+    "related": {
+      "collected": 135,
+      "passed": 135,
+      "skip_nodes": [],
+      "wrapper_seconds": 110.92151858599391,
+      "max_case_seconds": 4.896591346943751,
+      "max_setup_seconds": 0.008540990995243192,
+      "over_5s_cases": {}
+    }
+  },
+  "unique_passed_nodes": 528,
+  "dino_regression_passed_locally": true,
+  "dino_patch_applied": false,
+  "dino_patch_policy": "old CI and local test did not fail; a8982a7e0 not imported",
+  "residual_rtol": 4.76837158203125e-07,
+  "residual_atol": 0,
+  "tolerance_at_20px": 9.5367431640625e-06,
+  "prediction_verification_sha256": "92646404170b1ffd98109b67bcabcc35a458c96e53f220c0492c4997bb9d0b36",
+  "old_failed_head": "87ed8239524925603f6473064937782bc24a812d",
+  "old_ci_run": 41603205543
+}

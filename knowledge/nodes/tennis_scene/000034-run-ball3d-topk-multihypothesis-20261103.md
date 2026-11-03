@@ -43,6 +43,7 @@ artifacts:
   folds: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/fold-metrics.csv
   tests: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/test-summary.json
   inventory_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/validation.json
+  ci_fix_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-summary.json
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
@@ -112,13 +113,15 @@ mask前で候補を扱う動機になる一方、cameraごとに回収可能性�
 非対称camera/frame、途中の順位逆転と長い張り付き、欠測/再捕捉、急な方向転換、
 既知の2m/0.3秒のgap速度、低scoreの保持、異なるK、設定拒否を軽いunitで検証する。
 公開config→definition→assembler→方法→実codec、LOVO隔離とmainの固定期待配列をintegrationで確認する。
-既定componentとmainの位置・mask・inliers・pixel・rejection・再投影配列を厳密比較した。
+既定componentとmainの位置・mask・inliers・pixel・rejection配列は厳密比較する。
+再投影配列だけは、後述のCI修正で検証したfloat32の丸め幅を許容する。
 全106nodeのcollect-onlyと各phaseの実測はtest-collection/test-results/test-summary、正確なコマンドはtest.sh。
 `-n 0 --collect-only` は106件/6.69秒、`--durations=0 --durations-min=0` は106 passed/29.13秒。
 全19追加caseを含む各node/stageの厳密な時間はJSONに保持し、pytest全体の時間とcase合計を区別する。
 加速度コストをゼロにする故障注入で数値assertが失敗し、元bytesへ復元後は成功した。既存nodeの削除・統合はない。
 
-基盤#1669のmain mergeを確認し、origin/mainを取り込んでテストを再実行した。実行コードからsrc差分は0。
+初回PRでは基盤#1669のmain merge後にorigin/mainを取り込み、実行コードと同じsrcでテストを再実行した。
+その後の設定adapterの宣言修正と、実データへの影響確認は以下のCI修正欄に記す。
 v1は初回run、v2は負の整数重み/bool設定の拒否を補強した後の同設定再実行で、
 全8予測結果・全診断配列と比較MP4はbitwise一致。baselineの4foldはfoundation_v2ともbitwise一致した。
 元store照合も有効856frameとmask一致、3D最大差は2µm許容内。GTや入力bundleは変更していない。
@@ -135,3 +138,47 @@ beamとpair拡張は近似探索であり、完全なjoint候補列を保証し�
 次は同一条件の他方式との統合比較を行う。改良する場合も、未使用clip又は前半だけで
 null/運動コスト、候補保持、選択後LOESSを独立に検証し、今回後半の再調整はしない。
 学習ではないためTensorBoard・seed間学習曲線は適用しない。PRは人間の採否までmergeしない。
+
+## PR #1672のCI修正と予測の再照合
+
+旧head 87ed823のCI run 41603205543では、全10 CPUレーンが設定catalogの収集で失敗した。
+`PipelineRuntimeConfig.ball_method` のPython既定値がcomposition-owned契約に違反し、
+最初の違反を直すと `ball_topk` のPython既定値も同じ違反になるため、両方を必須fieldへ直した。
+`from_config` の処理は旧headとAST一致し、YAMLも不変である。productionでは従来からstrict schemaで
+全top-K fieldを必須としてcomposition値を渡している。計算用設定型とmethodのAPI defaultを、
+runtime adapterの欠落値補完に使う変更はしていない。新しいtestは0を含むCLI overrideと全fieldの到達を検証する。
+監査が発見する他のadapter・schemaも既存のcatalog/audit/discovery/inventory全体で確認した。
+
+もう1件は、main固定配列に対するreprojection_pxの厳密一致が機械依存の1～数ULP差を拒否したもの。
+既定solverと入力組立5ファイルはmain記録とchecksumが完全一致する。
+solverはfloat64のDLT/least_squaresのfitから残差を計算し、位置と残差をそれぞれfloat32へ格納する。
+したがって、保存した位置の一致は元のfloat64 fitと残差の全bit一致を意味しない。
+小fixtureでOpenBLAS kernelをCORE2へ切り替えると、位置・valid・inliers・UV・理由コードは完全一致のまま、
+再投影7/36値だけが1 ULP（最大1.4551915228366852e-11 px）変わった。
+NumPyのAVX2/FMA3/AVX512F無効化だけでは差は出ず、今回のprobeではBLAS経路の違いで再現した。
+保存済みfloat32位置から残差を再計算すると約1.1533e-6pxの別の差になるため、その再計算へは変更しない。
+
+testはreprojection_pxだけ `rtol=4*float32.eps=4.76837158203125e-7, atol=0` に変更した。
+CIの最大相対差1.9e-7を含む丸め幅で、20pxでの許容差は9.5367431640625e-6px。
+他の配列の比較は厳密一致を維持し、ゼロ残差もatol=0で厳密に保つ。pixel単位の方式比較の差を隠す許容幅ではない。
+probeは [reprojection_probe.py](../../runs/run-ball3d-topk-multihypothesis-20261103/reprojection_probe.py)、
+実測は [ci-fix-reprojection-probe.json](../../runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-reprojection-probe.json)。
+
+修正commit 810d833で、修正後のHydra composition値とv2のfrozen configの全field一致を確認し、
+固定clip_000を基盤runnerで全view/LOVOへCPU再実行した。baselineと本方式の計8結果で、
+位置・valid・used-view mask・frame軸・全診断配列がv2とbitwise一致した。
+v2の全129ファイルのサイズとchecksumも再照合した。採点関数・camera・参照も変更しておらず、
+再計算した予測が同じなので、上の誤差・coverageおよび悪化の結論は変わらない。
+v2 directoryは不変。照合runは `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_ci_fix_v1/`、
+小さな証拠は [ci-fix-prediction-check.json](../../runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-prediction-check.json)。
+約60.6秒、最大RSS635,036KiB、GPU/再推論/動画生成/GTの方式入力への利用はない。
+
+事前設計は [ci-fix-test-plan.md](../../runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-test-plan.md)。
+設定監査全体・synthetic visualization契約・設定/結合テストは427 passed、既存の空parametrizeによる1 skip、381.33秒。
+関連suiteとDINO回帰は135 passed/107.85秒、collect-onlyは135件/96.27秒（すべて -n 0）。
+両groupの重複を除いて528成功node。phase時間はci-fix-audit-tests/ci-fix-related-tests、要約はci-fix-summaryに記録する。
+既存のcold import2caseは123.87/114.75秒、全source監査は40.35秒で5秒目安を超える。
+新しいprocessでのimport順と全source/catalogの契約を検証する既存nodeであり、mockや対象削減で代替しない。
+追加したcomposition到達テストと関連135caseはすべて5秒以内、最大setupも1秒以内だった。
+DINOの指定nodeは旧CI・ローカルとも失敗しなかったので、条件付きのa8982a7e0は取り込んでいない。
+push後の対象headの全CI結果はPR #1672へ記録し、人間の採否までmergeしない。
