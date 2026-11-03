@@ -42,7 +42,9 @@ def test_disagreement_fails_without_retry(
         monkeypatch.setattr(checksum.hashlib, "sha256", factory)
     else:
         monkeypatch.setattr(
-            checksum.importlib.import_module("_sha256"), "sha256", factory
+            checksum.importlib.import_module(checksum._INDEPENDENT_PROVIDER),
+            "sha256",
+            factory,
         )
     with pytest.raises(
         checksum.FileIntegrityError, match="providers disagree"
@@ -117,10 +119,14 @@ def test_providers_receive_same_immutable_chunk_objects(
     path = tmp_path / "data"
     path.write_bytes(b"x" * (1024 * 1024 + 7))
     primary = MagicMock(wraps=hashlib.sha256())
-    independent = MagicMock(wraps=checksum.importlib.import_module("_sha256").sha256())
+    independent = MagicMock(
+        wraps=checksum.importlib.import_module(checksum._INDEPENDENT_PROVIDER).sha256()
+    )
     monkeypatch.setattr(checksum.hashlib, "sha256", lambda: primary)
     monkeypatch.setattr(
-        checksum.importlib.import_module("_sha256"), "sha256", lambda: independent
+        checksum.importlib.import_module(checksum._INDEPENDENT_PROVIDER),
+        "sha256",
+        lambda: independent,
     )
     checksum.dual_sha256(path)
     assert [len(call.args[0]) for call in primary.update.call_args_list] == [

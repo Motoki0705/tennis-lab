@@ -20,6 +20,7 @@ from src.tasks.base.configuration import (
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
     CourtTrainingConfig,
+    SyntheticCourtDatasetSubsetSourceConfig,
     SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
@@ -95,6 +96,7 @@ class CourtMixedDataConfig:
             (
                 SyntheticCourtStoresSourceConfig,
                 SyntheticCourtDatasetVersionSourceConfig,
+                SyntheticCourtDatasetSubsetSourceConfig,
             ),
         )
         sources: dict[str, CourtSourceConfig] = {}
@@ -126,7 +128,11 @@ class CourtMixedDataConfig:
                     f"mixed.sources.{name}.kind must be {expected_kind!r}."
                 )
             source: CourtSourceConfig
-            if kind == "synthetic_court_dataset_version":
+            if kind == "synthetic_court_dataset_subset":
+                source = SyntheticCourtDatasetSubsetSourceConfig.from_mapping(
+                    raw_source, resolver=runtime.shared.resolver
+                )
+            elif kind == "synthetic_court_dataset_version":
                 source = SyntheticCourtDatasetVersionSourceConfig.from_mapping(
                     raw_source, resolver=runtime.shared.resolver
                 )

@@ -69,7 +69,8 @@ def issue(i):
             "state":"open","user":{"login":"researcher"},"labels":[{"name":"audit"}],
             "html_url":"https://github.com/o/r/issues/"+str(i),"updated_at":"2026-10-24T00:00:00Z"}
 def job(i):
-    return {"id":i,"run_id":70,"head_sha":head,"name":"unit "+str(i),"status":"completed","conclusion":"failure"}
+    return {"id":i,"run_id":70,"head_sha":head,"name":"unit "+str(i),"status":"completed","conclusion":"failure",
+            "labels":state.get("runner_labels", ["ubuntu-latest"])}
 if path == "search/issues":
     total = state.get("total", 421)
     rows = page_rows(total, issue)
@@ -111,6 +112,7 @@ elif path == "repos/o/r/actions/runs/70/attempts/2/jobs":
 elif path == "repos/o/r/actions/jobs/9":
     emit(job(9))
 elif path == "repos/o/r/actions/jobs/9/logs":
+    assert "Accept: application/vnd.github+json" in args
     if failure == "empty_log": emit("",text=True)
     else: emit("".join("line "+str(i)+" テスト\n" for i in range(1,50001)),text=True)
 else:
@@ -1022,3 +1024,17 @@ def test_real_stdio_server_processes_share_append_only_journal(
     received = {row["receipt"] for row in records if row["event"] == "received"}
     assert len(requested) == 9 and requested == received
     assert len(records) == 19
+
+
+def test_ci_jobs_and_logs_accept_runner_labels_without_changing_issue_labels(
+    scenario: Scenario,
+) -> None:
+    jobs = ok(scenario, "ci_jobs", run_id=70, per_page=1)
+    assert jobs["data"][0]["labels"] == ["ubuntu-latest"]
+    log = ok(scenario, "ci_log", job_id=9, line_count=1)
+    assert log["data"]["metadata"]["labels"] == ["ubuntu-latest"]
+    issue = ok(scenario, "github_items", kind="issue", per_page=1)
+    assert issue["data"][0]["labels"] == ["audit"]
+    scenario.fail("none", runner_labels=[{"name": "wrong API shape"}])
+    error(scenario, "ci_jobs", "INVALID_SOURCE", run_id=70, per_page=1)
+    error(scenario, "ci_log", "INVALID_SOURCE", job_id=9, line_count=1)

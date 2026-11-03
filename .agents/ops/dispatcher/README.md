@@ -66,7 +66,10 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 `input.json` schema_version=1:
 
 - `repo`（casefoldしたowner/repo）、`publisher`（現在のgh login）、`subjects`（全open issue番号の昇順配列）。
+- `rewrite_enabled_since`（共有APIが取得・検証したrepository variableのUTC文字列、無効ならnull）。
+  記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
+  GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の書き直し判定](../issues/README.md#親issueの書き直し状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
   生session ID・ローカルworktreeは判定入力や公開コメントへ渡さない。別の担当台帳は作らない。
@@ -124,6 +127,8 @@ scriptはversion・digest・未知キー・重複・未知ID/出典・routing・
 機械的阻害条件は報告容器、正式な既存子、親関係が欠けたissue:child、needs-human/停止/既存のchecking・人間合意、
 既存担当・assignee・委任予約・関連PR、未充足依存。同時に複数ある場合は、報告容器→正式な既存子→親関係の欠落→
 人間の保留/合意→既存担当等→未充足依存の順で最初の分類を採用する。
+書き直しが `pending` の対象親も `guard` が `human_hold` にし、確定待ちの案内を根拠へ含める。
+有効化時刻・作成時刻・ラベルは対象digestに含め、コメント・実行根拠の記録前後にも照合する。
 agentがstartableを返し、機械的阻害条件がある場合はrun全体を拒否し、書込も候補生成も行わない。
 両方が非startableで分類だけが異なる場合は、記録する`disposition`を機械的阻害条件の値にする。
 `rationale`に採用した分類とagentの元の分類・理由を併記し、`facts`にはagentの確認事実を保持して機械的根拠を追記する。
@@ -147,7 +152,7 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 形式の破損や通常の指示・明示分類した通常コメントの編集/削除は引き続き拒否する。
 
 startableは `execution_input()` の固定値と最新値を照合し、version付きbasisを生成して `record_autonomous()` に渡す。
-人間のconfirmationや共有基盤許可のキーは生成しない。既存の明示取消・checkingを自律判断で解除しない。
+人間のconfirmationのキーは生成しない。既存の明示取消・checkingを自律判断で解除しない。
 
 ## 割当側への候補契約
 
@@ -199,7 +204,7 @@ preview/deferred/failedから予約しない。recordedに延期が混在して�
 
 routeはstandaloneまたはparent。parentは正式な最上位親（単独なら自身）で、子を新しい親として返さない。
 basis_sha256/generationはmodelの自己申告ではなく `record_autonomous()` の戻り値。
-人間合意や共有基盤許可はこの候補に含まれない。
+人間合意はこの候補に含まれない。
 
 割当側は保存した `input.json` / `result.json` を読み、**既存Store.locked()の同じ区間内で**順に実行する:
 
@@ -226,12 +231,12 @@ triageは生成・再利用した**通常の作業issueをGitHubへ反映する�
 複数提案の対応・採用取消・復旧とparentの提案受領/合意の旧契約との接続はIssue化側の責務。
 不正・未知versionのtaskメタデータは収集エラーにし、空の出典や旧経路へ置き換えない。
 本入口から整理agent・割当判定agent・開発親を追加起動する通知経路は作らない。
-採用を人間合意や共有基盤許可に読み替えない。
+採用を人間合意に読み替えない。
 
 ## 検証と未検証範囲
 
 ```bash
-flock "$PYTEST_LOCK" .venv/bin/python -m pytest tests/e2e/agents_ops/test_dispatcher_judgement.py -n 4 -q
+.venv/bin/python -m pytest tests/e2e/agents_ops/test_dispatcher_judgement.py -n 4 -q
 ```
 
 fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既存の統合試験は本番と同じ共通ランナーを通す。
@@ -402,8 +407,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher start-child \
 起動前取消の修正予約は、保存した再開元runへ戻す。一度も起動していない取消予約は、
 全jobの起動証拠がなく既存PRもない場合だけ、同じ担当で明示的に再予約する。
 実行済みrunのsession欠落や取消記録の曖昧さを、別sessionへの振替で回避しない。
-pytestは [既存の共有lock wrapper](../parent/README.md#pytest共有lock) を使う。
-キャンペーンから `PYTEST_LOCK` が指定された場合は親・子で同じ値を継承し、別のlockを作らない。
+pytestは [並列実行の手順](../parent/README.md#pytestの並列実行) に従い、共有lockなしで親・子間の並列実行を許可する。
 GPU・Blenderの資源調停はtraining queueの既存枠を使う。
 
 親の最終文は追加キーなしのJSON:

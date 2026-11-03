@@ -154,12 +154,13 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
 - `component_pipeline.py`: 既定`pipeline.yaml`で構造化clipを1本処理する実clip qualification。変更する設定はroot path・device・`execution.ball_detection=load`だけ。
   ball・人物対応は[確認済みデータのimport](../../src/tennis_scene/pipeline/imports/README.md)で埋め、`evaluation.json`の`imported_nodes`に列挙する。
   storeは`--report`配下に作り、clipの`annotations/`へは書かない。import以外の全component実行（sideはimportしたballから`court_side`が決める）、scene export、全段load-only再開を検査する。
-  DINO拡張はrepo rootから`build_dino_extension.sh`を実行してrun directory内にbuildし、`PYTHONPATH`に加える。GPU実行は共有training queue経由:
+  DINO拡張はrepo rootから`build_dino_extension.sh`を実行してrun directory内にbuildし、`PYTHONPATH`に加え、DINO binaryを`TENNIS_LAB_DINO_EXTENSION`で選ぶ。GPU実行は共有training queue経由:
 
   ```bash
   R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/tennis_scene/evaluate/<run>
   bash tests/benchmarks/build_dino_extension.sh $R $OUT/dino_extension && \
-  PYTHONPATH=.:$OUT/dino_extension/lib .venv/bin/python tests/benchmarks/component_pipeline.py \
+  PYTHONPATH=.:$OUT/dino_extension/lib TENNIS_LAB_DINO_EXTENSION=$OUT/dino_extension/lib/MultiScaleDeformableAttention.so \
+  .venv/bin/python tests/benchmarks/component_pipeline.py \
       --repo $R --clip $R/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report $OUT
   ```
 
@@ -197,7 +198,8 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   ```bash
   R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/player_association/evaluate/meiji_clips/<run-id>
   bash tests/benchmarks/build_dino_extension.sh $R $OUT/dino_extension && \
-  PYTHONPATH=.:$OUT/dino_extension/lib .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R \
+  PYTHONPATH=.:$OUT/dino_extension/lib TENNIS_LAB_DINO_EXTENSION=$OUT/dino_extension/lib/MultiScaleDeformableAttention.so \
+  .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R \
       --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT --clip video_000/clip_000
   ```
 

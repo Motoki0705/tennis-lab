@@ -1,0 +1,2466 @@
+{
+  "schema_version": 1,
+  "scope": "#1524: updated-main comparison, agent e2e files plus README; one pytest worker, no full CPU execution",
+  "comparison": {
+    "README_control": "The translation fix is present in both serial controls; before/after refers to e2e preparation.",
+    "order": [
+      "before",
+      "after"
+    ],
+    "before": {
+      "name": "agents-ops-before-serial",
+      "source": {
+        "commit": "40d6f09c3e769584c19c4dc0b206c4ec621cac30",
+        "status": " M README.zh-CN.md\n",
+        "tracked_diff_sha256": "725877f5d38c61fd3d7063f8c4b2713d1f88760a8cf47657677f415c5b4f0ab8",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "1",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-before-serial",
+        "--junitxml=/tmp/agents-ops-before-serial/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py",
+        "tests/e2e/development/test_readme_layout.py"
+      ],
+      "workers": 1,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        1.986328125,
+        4.076171875,
+        5.79541015625
+      ],
+      "load_average_at_finish": [
+        1.3212890625,
+        1.24951171875,
+        1.86865234375
+      ],
+      "selected_count": 723,
+      "counts": {
+        "passed": 723
+      },
+      "successful_test_baseline": true,
+      "source_unchanged": true,
+      "test_command_wall_s": 2695.0619090280015,
+      "phase_elapsed_s": {
+        "call": 2265.658617948182,
+        "setup": 414.5946023200231,
+        "teardown": 0.40441117994487286
+      },
+      "files": [
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 1136.3548886961362,
+            "setup": 93.34633225498692,
+            "teardown": 0.319777577984496
+          }
+        },
+        {
+          "count": 97,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 603.1332930889766,
+            "setup": 298.8499390080033,
+            "teardown": 0.04712858795392094
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 526.1301764430391,
+            "setup": 22.280627352010924,
+            "teardown": 0.01986717699037399
+          }
+        },
+        {
+          "count": 44,
+          "file": "tests/e2e/development/test_readme_layout.py",
+          "phase_s": {
+            "call": 0.040259720030007884,
+            "setup": 0.11770370502199512,
+            "teardown": 0.017637837016081903
+          }
+        }
+      ],
+      "target_phase_sum_s": 2680.482030186082,
+      "fixture_setups": [
+        {
+          "count": 40,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.review_env [function]",
+          "setup_s": 294.78638303099433,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 538,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 87.25127056006022,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 11,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_merge_gate.gate_env [function]",
+          "setup_s": 20.453487216000212,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 121,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.parent_env [function]",
+          "setup_s": 4.543003848026274,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 538,
+        "fixture_world": 538,
+        "board_cli": 196,
+        "git": 2647,
+        "git_init": 140,
+        "git_commit": 388,
+        "fixture_parent_env": 121,
+        "parent_cli": 929,
+        "git_worktree": 232,
+        "git_worktree_add": 223,
+        "fixture_review_env": 40,
+        "review_cli": 102,
+        "fixture_d": 19,
+        "fixture_gate_env": 11,
+        "git_worktree_repair": 9,
+        "fake_github_journal_rows": 34186,
+        "fake_github": 31986,
+        "fake_herdr": 20025
+      },
+      "exitcode": 0,
+      "issues": [],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none-independent]",
+          "phase_s": {
+            "setup": 14.369999574999383,
+            "call": 54.3664399219997,
+            "teardown": 0.00038551499892491847
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body-independent]",
+          "phase_s": {
+            "setup": 0.10336052799539175,
+            "call": 51.673897756998485,
+            "teardown": 0.0004536639971775003
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr-independent]",
+          "phase_s": {
+            "setup": 0.10086289599712472,
+            "call": 51.53916035099974,
+            "teardown": 0.00039939799899002537
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason-independent]",
+          "phase_s": {
+            "setup": 0.10912907499732682,
+            "call": 50.51941849599825,
+            "teardown": 0.0004896370010101236
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[10]",
+          "phase_s": {
+            "setup": 0.04821020799863618,
+            "call": 50.00941289200273,
+            "teardown": 0.00043587799882516265
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing-independent]",
+          "phase_s": {
+            "setup": 0.09070118399540661,
+            "call": 49.75897337900096,
+            "teardown": 0.0004172260014456697
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker-independent]",
+          "phase_s": {
+            "setup": 0.10263255699828733,
+            "call": 47.768299467999896,
+            "teardown": 0.0007709749988862313
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_new_explicit_run_requires_reason_and_is_visible_as_exception",
+          "phase_s": {
+            "setup": 7.381769252002414,
+            "call": 22.350482601003023,
+            "teardown": 0.0004351940006017685
+          }
+        }
+      ],
+      "changed_group_costs": {
+        "tests/e2e/agents_ops/test_parent_session.py::test_invalid_or_uninstructed_review_never_launches": {
+          "setup": 82.58891533399583,
+          "call": 3.377920594990428,
+          "teardown": 0.00530707400321262
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_changed_or_incomplete_review_targets_fail_closed": {
+          "setup": 77.03180605499801,
+          "call": 48.78081313399889,
+          "teardown": 0.0052037239947821945
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_failed_run_is_durable_and_never_automatically_retried": {
+          "setup": 37.810989226993115,
+          "call": 42.2107347400015,
+          "teardown": 0.0028526750102173537
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_base_advance_requires_github_merge_and_complete_git_history": {
+          "setup": 0.3278511160024209,
+          "call": 126.9317216299969,
+          "teardown": 0.004125415005546529
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_large_diff_is_available_in_full_without_extra_review": {
+          "setup": 7.043928254999628,
+          "call": 9.711926333999145,
+          "teardown": 0.0005026599974371493
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success": {
+          "setup": 14.87668581498292,
+          "call": 305.62618937299703,
+          "teardown": 0.0029164149964344688
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible": {
+          "setup": 0.08600690199818928,
+          "call": 78.6881321920082,
+          "teardown": 0.0008356609978363849
+        }
+      }
+    },
+    "after": {
+      "name": "agents-ops-after-serial-quiet",
+      "source": {
+        "commit": "40d6f09c3e769584c19c4dc0b206c4ec621cac30",
+        "status": " M README.zh-CN.md\n M tests/e2e/agents_ops/test_board_messages.py\n M tests/e2e/agents_ops/test_parent_development.py\n M tests/e2e/agents_ops/test_parent_session.py\n",
+        "tracked_diff_sha256": "1d68f51b57f8b16e73c42f328881b5c4e77b05b09c3cf3d0cf443152fd035a84",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "1",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-after-serial-quiet",
+        "--junitxml=/tmp/agents-ops-after-serial-quiet/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py",
+        "tests/e2e/development/test_readme_layout.py"
+      ],
+      "workers": 1,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        0.751953125,
+        1.20849609375,
+        1.6845703125
+      ],
+      "load_average_at_finish": [
+        0.990234375,
+        1.029296875,
+        1.2841796875
+      ],
+      "selected_count": 724,
+      "counts": {
+        "passed": 724
+      },
+      "successful_test_baseline": true,
+      "source_unchanged": true,
+      "test_command_wall_s": 1024.909467259,
+      "phase_elapsed_s": {
+        "call": 908.6910710130614,
+        "setup": 108.73202527604008,
+        "teardown": 0.3085724239499541
+      },
+      "files": [
+        {
+          "count": 98,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 431.57738166900526,
+            "setup": 26.397778723003285,
+            "teardown": 0.041733545942406636
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 295.99001629700797,
+            "setup": 16.474184512007923,
+            "teardown": 0.019367031032743398
+          }
+        },
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 181.09115401600866,
+            "setup": 65.76169152502553,
+            "teardown": 0.23363044999132399
+          }
+        },
+        {
+          "count": 44,
+          "file": "tests/e2e/development/test_readme_layout.py",
+          "phase_s": {
+            "call": 0.03251903103955556,
+            "setup": 0.09837051600334235,
+            "teardown": 0.013841396983480081
+          }
+        }
+      ],
+      "target_phase_sum_s": 1017.5869377690251,
+      "fixture_setups": [
+        {
+          "count": 495,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.message_world [function]",
+          "setup_s": 56.098689653030306,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 6,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_development.completed_gate_env [function]",
+          "setup_s": 8.979633638999076,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 7,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.review_env [function]",
+          "setup_s": 7.070670658999006,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 5,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_merge_gate.gate_env [function]",
+          "setup_s": 5.79480215300282,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.pair_review_env [function]",
+          "setup_s": 5.77874770800554,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 9,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.independent_pair_review_env [function]",
+          "setup_s": 5.488975720007147,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 43,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 4.990919623000082,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 17,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.single_review_env [function]",
+          "setup_s": 4.322787025012076,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 122,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.parent_env [function]",
+          "setup_s": 4.216845434006245,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 538,
+        "fixture_world": 43,
+        "board_cli": 196,
+        "git": 1900,
+        "git_init": 141,
+        "git_commit": 203,
+        "fixture_parent_env": 122,
+        "parent_cli": 549,
+        "git_worktree": 136,
+        "git_worktree_add": 81,
+        "git_worktree_repair": 55,
+        "review_cli": 103,
+        "fixture_review_env": 7,
+        "fixture_d": 19,
+        "fixture_gate_env": 5,
+        "fake_github_journal_rows": 17485,
+        "fake_github": 17065,
+        "fake_herdr": 2400
+      },
+      "exitcode": 0,
+      "issues": [],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[10]",
+          "phase_s": {
+            "setup": 0.034508463002566714,
+            "call": 44.17061141800514,
+            "teardown": 0.0004373170013423078
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[1]",
+          "phase_s": {
+            "setup": 0.03295324800274102,
+            "call": 25.072877041995525,
+            "teardown": 0.00041847100510494784
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none]",
+          "phase_s": {
+            "setup": 8.813001036003698,
+            "call": 15.925950440003362,
+            "teardown": 0.0003610560015658848
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled",
+          "phase_s": {
+            "setup": 0.0393546100021922,
+            "call": 19.851532278997183,
+            "teardown": 0.00039297700277529657
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_new_explicit_run_requires_reason_and_is_visible_as_exception",
+          "phase_s": {
+            "setup": 0.08280964999721618,
+            "call": 19.142839709005784,
+            "teardown": 0.0004111070011276752
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr]",
+          "phase_s": {
+            "setup": 0.08931716299412074,
+            "call": 18.27004621300148,
+            "teardown": 0.00044257200352149084
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs",
+          "phase_s": {
+            "setup": 6.806796311997459,
+            "call": 8.629337545004091,
+            "teardown": 0.00039311000000452623
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker]",
+          "phase_s": {
+            "setup": 0.09490152199578006,
+            "call": 14.496344051003689,
+            "teardown": 0.00039945899334270507
+          }
+        }
+      ],
+      "changed_group_costs": {
+        "tests/e2e/agents_ops/test_parent_session.py::test_review_seed_isolates_request_environment_and_writable_state": {
+          "setup": 3.725896873002057,
+          "call": 3.8528525449946756,
+          "teardown": 0.0004149859960307367
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_invalid_or_uninstructed_review_never_launches": {
+          "setup": 0.8577966870070668,
+          "call": 2.7722156239979086,
+          "teardown": 0.004562174981401768
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_changed_or_incomplete_review_targets_fail_closed": {
+          "setup": 5.905734067004232,
+          "call": 40.33565579698916,
+          "teardown": 0.004540180001640692
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_failed_run_is_durable_and_never_automatically_retried": {
+          "setup": 0.44809618999715894,
+          "call": 30.919314898987068,
+          "teardown": 0.0024303489917656407
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_base_advance_requires_github_merge_and_complete_git_history": {
+          "setup": 5.724830721002945,
+          "call": 39.793071100990346,
+          "teardown": 0.003650376995210536
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_large_diff_is_available_in_full_without_extra_review": {
+          "setup": 0.03337345099862432,
+          "call": 7.5106803240050795,
+          "teardown": 0.000474860004032962
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success": {
+          "setup": 9.245694942997943,
+          "call": 90.41095897000923,
+          "teardown": 0.00241175099654356
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible": {
+          "setup": 0.06746171100530773,
+          "call": 69.24348846000066,
+          "teardown": 0.0008557880064472556
+        }
+      }
+    },
+    "target_reduction_fraction": 0.620371662145266,
+    "notes": "n=1 per version on shared WSL host; no cache isolation, whole-CPU median/p95 or Actions-wall claim. Both controls include upstream #1527.",
+    "goal_40_percent_met": true
+  },
+  "contract_inventory": {
+    "before_total_with_readme": 723,
+    "after_total_with_readme": 724,
+    "target_cases_before": 679,
+    "target_cases_after": 680,
+    "unchanged_nodeids": 717,
+    "removed": [
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body-independent]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing-independent]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none-independent]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr-independent]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason-independent]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker-independent]"
+    ],
+    "added": [
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker]",
+      "tests/e2e/agents_ops/test_parent_session.py::test_review_seed_isolates_request_environment_and_writable_state"
+    ],
+    "mapped_cancellation_cases": {
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason]",
+      "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker-independent]": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker]"
+    },
+    "new_isolation_case": [
+      "tests/e2e/agents_ops/test_parent_session.py::test_review_seed_isolates_request_environment_and_writable_state"
+    ]
+  },
+  "assignment_audit": {
+    "scope": "Current measured subset only, including seven changed/new IDs; full CPU collection/execution was not run under the low-memory constraint.",
+    "shard_count": 10,
+    "selected_count": 724,
+    "shard_counts": [
+      43,
+      71,
+      71,
+      114,
+      71,
+      71,
+      71,
+      71,
+      71,
+      70
+    ],
+    "missing": 0,
+    "duplicates": 0,
+    "unmeasured_cases": [
+      "tests/e2e/agents_ops/test_parent_session.py::test_review_seed_isolates_request_environment_and_writable_state"
+    ]
+  },
+  "actions_audit": {
+    "run_id": 40986313121,
+    "attempt": 1,
+    "counts": {
+      "passed": 12685,
+      "skipped": 96,
+      "failed": 1,
+      "error": 0,
+      "reruns": 0,
+      "worker_restarts": 0
+    },
+    "shards": [
+      {
+        "shard": "0",
+        "junit_cases": 2823,
+        "bad": [],
+        "nonpassing_phases": [],
+        "reruns": [],
+        "duplicate_phases": []
+      },
+      {
+        "shard": "1",
+        "junit_cases": 3108,
+        "bad": [],
+        "nonpassing_phases": [],
+        "reruns": [],
+        "duplicate_phases": []
+      },
+      {
+        "shard": "2",
+        "junit_cases": 3481,
+        "bad": [],
+        "nonpassing_phases": [],
+        "reruns": [],
+        "duplicate_phases": []
+      },
+      {
+        "shard": "3",
+        "junit_cases": 3370,
+        "bad": [
+          {
+            "node": "tests.e2e.development.test_readme_layout::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]",
+            "status": "failure",
+            "message": "AssertionError: README.zh-CN.md: overview: numeric values\nassert Counter({'3':...20261026': 1}) == Counter({'3':...20261026': 1})\n  \n  Omitting 8 identical items, use -vv to show\n  Differing items:\n  {'3': 4} != {'3': 3}\n  {'2': 2} != {'2': 1}\n  \n  Full diff:\n    Counter({\n  -     '3': 3,\n  ?          ^\n  +     '3': 4,\n  ?          ^\n  +     '2': 2,\n        '000': 2,\n        '1': 1,\n        '5': 1,\n  -     '2': 1,\n        '2026': 1,\n        '0705': 1,\n        '4.0': 1,\n        '000031': 1,\n        '20261026': 1,\n    })"
+          }
+        ],
+        "nonpassing_phases": [
+          {
+            "nodeid": "tests/e2e/development/test_readme_layout.py::test_readme_translations_preserve_section_references_and_identifiers[README.zh-CN.md]",
+            "phase": "call",
+            "outcome": "failed",
+            "duration_s": 0.0014642030000686646
+          }
+        ],
+        "reruns": [],
+        "duplicate_phases": []
+      }
+    ]
+  },
+  "mutations": {
+    "before-serial": [
+      {
+        "mutation": "code_mentions",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before-serial/code_mentions.xml",
+          "tests/e2e/agents_ops/test_board_messages.py",
+          "-k",
+          "test_container_and_fence_boundaries_preserve_prose_destinations or test_code_mentions_do_not_hide_adjacent_prose_destinations"
+        ],
+        "exitcode": 1,
+        "tests": 10,
+        "failures": 10,
+        "errors": 0,
+        "applied_calls": 11,
+        "failure_messages": [
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient"
+        ]
+      },
+      {
+        "mutation": "accept_draft",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before-serial/accept_draft.xml",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "-k",
+          "test_changed_or_incomplete_review_targets_fail_closed and draft"
+        ],
+        "exitcode": 1,
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "applied_calls": 4,
+        "failure_messages": [
+          "AssertionError: {\n    \"reused\": false,\n    \"result\": {\n      \"schema_version\": 1,\n      \"kind\": \"result\",\n      \"review_run_id\": \"parent-1-db47ca334c4b4b49a2c8f8a4ce10973d\",\n      \"request_sha256\": \"82eac2ed1506915dea33d01d30073ef10b17997fde76345d4e99bec7c8fa354f\",\n      \"request\": {\n        \"authorization\": {\n          \"execution_basis_kind\": \"human_agreement\",\n          \"execution_basis_sha256\": \"23bd80f56d665d21db259e0354a3111915145df63d2748eb645575d25408f3a6\",\n          \"generation\": 1\n        },\n        \"parent_issue\": 1,\n        \"prs\": [\n          {\n            \"base_ref\": \"main\",\n            \"base_sha\": \"10f658e489c33f9b17aaaf26a127d328c92bf884\",\n            \"branch\": \"codex/child-10\",\n            \"diff_sha256\": \"3a99db8771ecd1906a606462783f972c6a4fb1e2f0cbeb795cc7d0f388449c67\",\n            \"head_sha\": \"35334ac47b3925ea9dccb98bc1c80910371e18c8\",\n            \"merge_base_sha\": \"10f658e489c33f9b17aaaf26a127d328c92bf884\",\n            \"number\": 100\n          },\n          {\n            \"base_ref\": \"main\",\n            \"base_sha\": \"10f658e489c33f9b17aaaf26a127d328c92bf884\",\n            \"branch\": \"codex/child-11\",\n            \"diff_sha256\": \"19c5e913619e6eef11486195c1bc5a33a39688bb0809cb26755c48cc882a4619\",\n            \"head_sha\": \"5c8d5bd100749d03dd34ee6cbbdbf97cfb8c18d9\",\n            \"merge_base_sha\": \"10f658e489c33f9b17aaaf26a127d328c92bf884\",\n            \"number\": 101\n          },\n          {\n            \"base_ref\": \"main\",\n            \"base_sha\": \"10f658e489c33f9b17aaaf26a127d328c92bf884\",\n            \"branch\": \"codex/child-12\",\n            \"diff_sha256\": \"f7dfdd73cac567"
+        ]
+      },
+      {
+        "mutation": "ignore_cancellation",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before-serial/ignore_cancellation.xml",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "-k",
+          "test_completed_parent_distinguishes_confirmed_cancellation_from_success and (body or state_reason)"
+        ],
+        "exitcode": 1,
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "applied_calls": 2,
+        "failure_messages": [
+          "AssertionError: \nassert 0 == 2\n +  where 0 = CompletedProcess(args=['/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/pytho...\"全体受入を確認した。\",\\n  \"resume_condition\": \"完了。追加要件は別途判断。\",\\n  \"schema_version\": 1,\\n  \"state\": \"completed\"\\n}\\n', stderr='').returncode",
+          "AssertionError: \nassert 0 == 2\n +  where 0 = CompletedProcess(args=['/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/pytho...\"全体受入を確認した。\",\\n  \"resume_condition\": \"完了。追加要件は別途判断。\",\\n  \"schema_version\": 1,\\n  \"state\": \"completed\"\\n}\\n', stderr='').returncode"
+        ]
+      }
+    ],
+    "after-serial": [
+      {
+        "mutation": "code_mentions",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after-serial/code_mentions.xml",
+          "tests/e2e/agents_ops/test_board_messages.py",
+          "-k",
+          "test_container_and_fence_boundaries_preserve_prose_destinations or test_code_mentions_do_not_hide_adjacent_prose_destinations"
+        ],
+        "exitcode": 1,
+        "tests": 10,
+        "failures": 10,
+        "errors": 0,
+        "applied_calls": 11,
+        "failure_messages": [
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient",
+          "board.errors.BoardError: sender cannot be a recipient"
+        ]
+      },
+      {
+        "mutation": "accept_draft",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after-serial/accept_draft.xml",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "-k",
+          "test_changed_or_incomplete_review_targets_fail_closed and draft"
+        ],
+        "exitcode": 1,
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "applied_calls": 4,
+        "failure_messages": [
+          "AssertionError: {\n    \"reused\": false,\n    \"result\": {\n      \"schema_version\": 1,\n      \"kind\": \"result\",\n      \"review_run_id\": \"parent-1-9dcc4e62654745b9b0e15cfe7afe0a6c\",\n      \"request_sha256\": \"0b294d74ffd2c01033f71415df93497bddcd714a8b94cfcd06f06b45020f7b4e\",\n      \"request\": {\n        \"authorization\": {\n          \"execution_basis_kind\": \"human_agreement\",\n          \"execution_basis_sha256\": \"23bd80f56d665d21db259e0354a3111915145df63d2748eb645575d25408f3a6\",\n          \"generation\": 1\n        },\n        \"parent_issue\": 1,\n        \"prs\": [\n          {\n            \"base_ref\": \"main\",\n            \"base_sha\": \"18f1120afda0193ac81f48a4ed2d3360d40f3810\",\n            \"branch\": \"codex/child-10\",\n            \"diff_sha256\": \"3a99db8771ecd1906a606462783f972c6a4fb1e2f0cbeb795cc7d0f388449c67\",\n            \"head_sha\": \"a3db69e9faa593444fcd57a5d394240d842acb34\",\n            \"merge_base_sha\": \"18f1120afda0193ac81f48a4ed2d3360d40f3810\",\n            \"number\": 100\n          },\n          {\n            \"base_ref\": \"main\",\n            \"base_sha\": \"18f1120afda0193ac81f48a4ed2d3360d40f3810\",\n            \"branch\": \"codex/child-11\",\n            \"diff_sha256\": \"19c5e913619e6eef11486195c1bc5a33a39688bb0809cb26755c48cc882a4619\",\n            \"head_sha\": \"d04b4dc8bf0b41c798a9c320a3131b5872f31e52\",\n            \"merge_base_sha\": \"18f1120afda0193ac81f48a4ed2d3360d40f3810\",\n            \"number\": 101\n          }\n        ],\n        \"reason\": \"親が初回の対象PR群を確定\",\n        \"repo\": \"o/r\",\n        \"requirements\": {\n          \"1\": \"8022729e4ad2756d4f8e0eed54c2abf2f00b2f5737948d3461a98185d7d7439b\",\n          \"10\": \""
+        ]
+      },
+      {
+        "mutation": "ignore_cancellation",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "1",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after-serial/ignore_cancellation.xml",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "-k",
+          "test_completed_parent_distinguishes_confirmed_cancellation_from_success and (body or state_reason)"
+        ],
+        "exitcode": 1,
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "applied_calls": 2,
+        "failure_messages": [
+          "AssertionError: \nassert 0 == 2\n +  where 0 = CompletedProcess(args=['/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/pytho...\"全体受入を確認した。\",\\n  \"resume_condition\": \"完了。追加要件は別途判断。\",\\n  \"schema_version\": 1,\\n  \"state\": \"completed\"\\n}\\n', stderr='').returncode",
+          "AssertionError: \nassert 0 == 2\n +  where 0 = CompletedProcess(args=['/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/pytho...\"全体受入を確認した。\",\\n  \"resume_condition\": \"完了。追加要件は別途判断。\",\\n  \"schema_version\": 1,\\n  \"state\": \"completed\"\\n}\\n', stderr='').returncode"
+        ]
+      }
+    ]
+  },
+  "seed_checks": [
+    {
+      "junit": "agents-seed-smoke.xml",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "junit": "agents-seed-isolation.xml",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "historical_observations": [
+    {
+      "name": "agents-ops-before",
+      "source": {
+        "commit": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "2",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-before",
+        "--junitxml=/tmp/agents-ops-before/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "workers": 2,
+      "packages": {
+        "numpy": "2.5.4",
+        "pytest": "9.2.0",
+        "pytest-xdist": "3.8.0",
+        "spin": null,
+        "torch": "2.15.0+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.12.3 (main, Mar 23 2026, 19:04:32) [GCC 13.3.0]"
+      },
+      "load_average_at_start": [
+        0.25341796875,
+        0.37255859375,
+        0.27587890625
+      ],
+      "load_average_at_finish": [
+        0.25341796875,
+        0.37255859375,
+        0.27587890625
+      ],
+      "selected_count": 0,
+      "counts": {},
+      "successful_test_baseline": false,
+      "source_unchanged": true,
+      "test_command_wall_s": 0.021469605999300256,
+      "phase_elapsed_s": {
+        "call": 0,
+        "setup": 0,
+        "teardown": 0
+      },
+      "files": [],
+      "target_phase_sum_s": 0,
+      "fixture_setups": [],
+      "operations": {},
+      "exitcode": 1,
+      "issues": [
+        "missing/duplicate controller worker inventory",
+        "missing/duplicate worker process inventory",
+        "empty/missing selected inventory",
+        "missing/invalid JUnit: FileNotFoundError"
+      ],
+      "top_cases": [],
+      "changed_group_costs": {}
+    },
+    {
+      "name": "agents-ops-before-locked",
+      "source": {
+        "commit": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "2",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-before-locked",
+        "--junitxml=/tmp/agents-ops-before-locked/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        2.3681640625,
+        1.0859375,
+        0.54345703125
+      ],
+      "load_average_at_finish": [
+        26.564453125,
+        67.087890625,
+        63.5537109375
+      ],
+      "selected_count": 679,
+      "counts": {
+        "incomplete": 396,
+        "passed": 283
+      },
+      "successful_test_baseline": false,
+      "source_unchanged": true,
+      "test_command_wall_s": 1993.5538930620005,
+      "phase_elapsed_s": {
+        "call": 3292.5704513949913,
+        "setup": 574.5444606830042,
+        "teardown": 0.9627265130020533
+      },
+      "files": [
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 3292.5704513949913,
+            "setup": 574.5444606830042,
+            "teardown": 0.9627265130020533
+          }
+        },
+        {
+          "count": 97,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 0.0,
+            "setup": 0.0,
+            "teardown": 0.0
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 0.0,
+            "setup": 0.0,
+            "teardown": 0.0
+          }
+        }
+      ],
+      "target_phase_sum_s": 3868.0776385909976,
+      "fixture_setups": [
+        {
+          "count": 285,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 339.54997138200633,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 285,
+        "fixture_world": 285,
+        "board_cli": 181,
+        "fake_github": 0,
+        "fake_herdr": 9842
+      },
+      "exitcode": 1,
+      "issues": [
+        "missing/duplicate session finish: events-controller-52123.jsonl",
+        "selected tests have missing/duplicate phases",
+        "missing/invalid JUnit: FileNotFoundError"
+      ],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_container_code_mentions_do_not_change_post_or_reply_delivery[> {fence}text\\n> {mentions}\\n> {fence}-False-~~~-reply]",
+          "phase_s": {
+            "setup": 95.46007108199956,
+            "call": 1270.497025564,
+            "teardown": 0.49122863200136635
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_code_mentions_do_not_hide_adjacent_prose_destinations[reply]",
+          "phase_s": {
+            "setup": 0.6493623749993276,
+            "call": 952.0982453029992,
+            "teardown": 0.04462188400066225
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_unmatched_or_escaped_backticks_leave_mentions_in_prose[An unmatched ` @{name}.]",
+          "phase_s": {
+            "setup": 377.2653427610003,
+            "call": 30.616748099999313,
+            "teardown": 0.0035252500001661247
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_cli_broadcast_is_persisted_and_returned_in_every_post_view[body-mixed-reply]",
+          "phase_s": {
+            "setup": 0.3931812049995642,
+            "call": 14.371770252000715,
+            "teardown": 0.0008679189995746128
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery[> Example\\n*\\n2. ~~~\\n   @{other}-reply]",
+          "phase_s": {
+            "setup": 0.4989969700000074,
+            "call": 11.72385914500046,
+            "teardown": 0.0029707330013479805
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_container_code_mentions_do_not_change_post_or_reply_delivery[> {fence}text\\n> {mentions}\\n> {fence}-False-~~~-post]",
+          "phase_s": {
+            "setup": 0.4628776339995966,
+            "call": 11.231740041001103,
+            "teardown": 0.13596172500001558
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_lazy_container_paragraphs_keep_prose_mentions_in_post_and_reply_delivery[> Example\\n+\\n2. ~~~\\n   @{other}-reply]",
+          "phase_s": {
+            "setup": 0.5630314800000633,
+            "call": 11.215187233001416,
+            "teardown": 0.001265353001144831
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_board_messages.py::test_renamed_parents_keep_message_identity_state_and_reply_routes",
+          "phase_s": {
+            "setup": 0.19393446599860908,
+            "call": 11.050962192000952,
+            "teardown": 0.00044583800081454683
+          }
+        }
+      ],
+      "changed_group_costs": {}
+    },
+    {
+      "name": "agents-ops-after-1",
+      "source": {
+        "commit": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "status": " M README.zh-CN.md\n M tests/e2e/agents_ops/test_board_messages.py\n M tests/e2e/agents_ops/test_parent_development.py\n M tests/e2e/agents_ops/test_parent_session.py\n",
+        "tracked_diff_sha256": "cd8826cf2a7c72dc28ef07a9a015a098b0f2a9de874f1094a94fcb9c8cfe5ac6",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "2",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-after-1",
+        "--junitxml=/tmp/agents-ops-after-1/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        15.486328125,
+        59.8408203125,
+        61.25830078125
+      ],
+      "load_average_at_finish": [
+        4.5654296875,
+        8.03076171875,
+        25.42529296875
+      ],
+      "selected_count": 679,
+      "counts": {
+        "failed": 1,
+        "passed": 678
+      },
+      "successful_test_baseline": false,
+      "source_unchanged": true,
+      "test_command_wall_s": 975.9019044279994,
+      "phase_elapsed_s": {
+        "call": 1343.1192709730185,
+        "setup": 550.9168839230024,
+        "teardown": 0.3793275720272504
+      },
+      "files": [
+        {
+          "count": 97,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 693.5839856940074,
+            "setup": 362.6412485629917,
+            "teardown": 0.05680198000118253
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 448.4056541630034,
+            "setup": 118.5705675509962,
+            "teardown": 0.060455809008999495
+          }
+        },
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 201.12963111600766,
+            "setup": 69.70506780901451,
+            "teardown": 0.2620697830170684
+          }
+        }
+      ],
+      "target_phase_sum_s": 1894.4154824680481,
+      "fixture_setups": [
+        {
+          "count": 16,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.pair_review_env [function]",
+          "setup_s": 146.92275798199807,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.single_review_env [function]",
+          "setup_s": 142.49382562600113,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 6,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_development.completed_gate_env [function]",
+          "setup_s": 78.3005270679987,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 7,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.review_env [function]",
+          "setup_s": 67.6455534709985,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 495,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.message_world [function]",
+          "setup_s": 59.11946187901776,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 5,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_merge_gate.gate_env [function]",
+          "setup_s": 37.52657268299663,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 121,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.parent_env [function]",
+          "setup_s": 5.873731446998136,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 43,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 5.691396096999597,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 538,
+        "board_cli": 196,
+        "fixture_world": 43,
+        "git": 2386,
+        "git_init": 140,
+        "git_commit": 343,
+        "fixture_parent_env": 121,
+        "parent_cli": 916,
+        "git_worktree": 169,
+        "fixture_review_env": 7,
+        "review_cli": 111,
+        "fake_github": 23291,
+        "fake_herdr": 2400,
+        "fixture_d": 19,
+        "fixture_gate_env": 5
+      },
+      "exitcode": 1,
+      "issues": [],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[10]",
+          "phase_s": {
+            "setup": 0.04001297399918258,
+            "call": 59.21968604600079,
+            "teardown": 0.005696170999726746
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_combined_handoff_registers_results_and_instructs_subset",
+          "phase_s": {
+            "setup": 0.06683970699850761,
+            "call": 43.1294353659996,
+            "teardown": 0.0013767849995929282
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none]",
+          "phase_s": {
+            "setup": 14.629620384999726,
+            "call": 28.407785376999527,
+            "teardown": 0.0005853910006408114
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled",
+          "phase_s": {
+            "setup": 0.06178940999961924,
+            "call": 38.55436029199882,
+            "teardown": 0.0009494170008110814
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_new_explicit_run_requires_reason_and_is_visible_as_exception",
+          "phase_s": {
+            "setup": 10.315219386000535,
+            "call": 27.243926978999298,
+            "teardown": 0.0006917230002727592
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body]",
+          "phase_s": {
+            "setup": 13.72548745899985,
+            "call": 23.6122745069988,
+            "teardown": 0.0006752009994670516
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing]",
+          "phase_s": {
+            "setup": 14.3107666169999,
+            "call": 22.986994314000185,
+            "teardown": 0.0009825939996517263
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[1]",
+          "phase_s": {
+            "setup": 0.04555400599929271,
+            "call": 34.564195518001725,
+            "teardown": 0.023278970000319532
+          }
+        }
+      ],
+      "changed_group_costs": {
+        "tests/e2e/agents_ops/test_parent_session.py::test_base_advance_requires_github_merge_and_complete_git_history": {
+          "setup": 0.35982624600001145,
+          "call": 98.51509087200066,
+          "teardown": 0.004187377999187447
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_large_diff_is_available_in_full_without_extra_review": {
+          "setup": 0.0532076049985335,
+          "call": 11.610130461000153,
+          "teardown": 0.0007039560005068779
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_invalid_or_uninstructed_review_never_launches": {
+          "setup": 108.74210630700327,
+          "call": 11.557987674999822,
+          "teardown": 0.008565211997847655
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_changed_or_incomplete_review_targets_fail_closed": {
+          "setup": 105.52444435599682,
+          "call": 72.10344937600166,
+          "teardown": 0.007489717005228158
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success": {
+          "setup": 78.62969720100045,
+          "call": 136.78080917599982,
+          "teardown": 0.003935048001949326
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_failed_run_is_durable_and_never_automatically_retried": {
+          "setup": 42.346239558997695,
+          "call": 53.36362297600135,
+          "teardown": 0.003941678998671705
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible": {
+          "setup": 0.08556697999847529,
+          "call": 93.78388156400251,
+          "teardown": 0.02897514100004628
+        }
+      }
+    },
+    {
+      "name": "agents-ops-before-2",
+      "source": {
+        "commit": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "status": " M README.zh-CN.md\n",
+        "tracked_diff_sha256": "725877f5d38c61fd3d7063f8c4b2713d1f88760a8cf47657677f415c5b4f0ab8",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "2",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-before-2",
+        "--junitxml=/tmp/agents-ops-before-2/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        3.3759765625,
+        7.1748046875,
+        24.22119140625
+      ],
+      "load_average_at_finish": [
+        3.0107421875,
+        4.24755859375,
+        8.9228515625
+      ],
+      "selected_count": 679,
+      "counts": {
+        "passed": 679
+      },
+      "successful_test_baseline": true,
+      "source_unchanged": true,
+      "test_command_wall_s": 1426.5343175590006,
+      "phase_elapsed_s": {
+        "call": 2214.7482738619983,
+        "setup": 538.526630065011,
+        "teardown": 0.40243691495925304
+      },
+      "files": [
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 984.1042274759893,
+            "setup": 73.87465196899575,
+            "teardown": 0.30876209796770127
+          }
+        },
+        {
+          "count": 97,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 644.1200205640034,
+            "setup": 336.3377178040064,
+            "teardown": 0.049232641991693527
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 586.5240258220056,
+            "setup": 128.31426029200884,
+            "teardown": 0.04444217499985825
+          }
+        }
+      ],
+      "target_phase_sum_s": 2753.6773408419685,
+      "fixture_setups": [
+        {
+          "count": 40,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.review_env [function]",
+          "setup_s": 332.48598262699306,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 11,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_merge_gate.gate_env [function]",
+          "setup_s": 126.32327184100359,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 538,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 68.4024878819746,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 121,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.parent_env [function]",
+          "setup_s": 4.221592047013473,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 538,
+        "fixture_world": 538,
+        "board_cli": 196,
+        "git": 2751,
+        "git_init": 140,
+        "git_commit": 416,
+        "fixture_parent_env": 121,
+        "parent_cli": 1007,
+        "git_worktree": 242,
+        "fixture_review_env": 40,
+        "review_cli": 111,
+        "fixture_d": 19,
+        "fake_github": 34186,
+        "fake_herdr": 20025,
+        "fixture_gate_env": 11
+      },
+      "exitcode": 0,
+      "issues": [],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none-independent]",
+          "phase_s": {
+            "setup": 16.34118011999999,
+            "call": 64.97081661999982,
+            "teardown": 0.0005005900002288399
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[open_pr-independent]",
+          "phase_s": {
+            "setup": 15.477357697000116,
+            "call": 63.65660412200123,
+            "teardown": 0.00043556600030569825
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[missing-independent]",
+          "phase_s": {
+            "setup": 16.615175144001114,
+            "call": 59.72087992500019,
+            "teardown": 0.0006094460004533175
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[body-independent]",
+          "phase_s": {
+            "setup": 16.024695049,
+            "call": 59.53300932500133,
+            "teardown": 0.0004179130010015797
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[state_reason-independent]",
+          "phase_s": {
+            "setup": 15.302297755000836,
+            "call": 59.19891711499986,
+            "teardown": 0.0005075330009276513
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[worker-independent]",
+          "phase_s": {
+            "setup": 15.52996385699953,
+            "call": 49.35751834599978,
+            "teardown": 0.0005914119992667111
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[10]",
+          "phase_s": {
+            "setup": 0.0336222549995,
+            "call": 44.27809638600047,
+            "teardown": 0.011108002001492423
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_new_explicit_run_requires_reason_and_is_visible_as_exception",
+          "phase_s": {
+            "setup": 7.96245321600145,
+            "call": 22.17946923800082,
+            "teardown": 0.0005189240000618156
+          }
+        }
+      ],
+      "changed_group_costs": {
+        "tests/e2e/agents_ops/test_parent_session.py::test_invalid_or_uninstructed_review_never_launches": {
+          "setup": 100.73887705800189,
+          "call": 3.7088472539981012,
+          "teardown": 0.005291753996061743
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_changed_or_incomplete_review_targets_fail_closed": {
+          "setup": 92.42344773199693,
+          "call": 58.781754204996105,
+          "teardown": 0.005984509001791594
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success": {
+          "setup": 95.29066962200159,
+          "call": 356.4377454530022,
+          "teardown": 0.0030624600021837978
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_failed_run_is_durable_and_never_automatically_retried": {
+          "setup": 40.798720611001045,
+          "call": 45.180900166000356,
+          "teardown": 0.002560368999183993
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_base_advance_requires_github_merge_and_complete_git_history": {
+          "setup": 0.31755143900772964,
+          "call": 123.47092496799996,
+          "teardown": 0.004147402001763112
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_large_diff_is_available_in_full_without_extra_review": {
+          "setup": 6.9071951450005145,
+          "call": 8.824487059000603,
+          "teardown": 0.0004129330009163823
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible": {
+          "setup": 0.06761765999908675,
+          "call": 71.58671318400047,
+          "teardown": 0.011532969001564197
+        }
+      }
+    },
+    {
+      "name": "agents-ops-after-2",
+      "source": {
+        "commit": "660c7decc39529ba667c3219339502edd8ab19f9",
+        "status": " M README.zh-CN.md\n M tests/e2e/agents_ops/test_board_messages.py\n M tests/e2e/agents_ops/test_parent_development.py\n M tests/e2e/agents_ops/test_parent_session.py\n",
+        "tracked_diff_sha256": "cd8826cf2a7c72dc28ef07a9a015a098b0f2a9de874f1094a94fcb9c8cfe5ac6",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "2",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-after-2",
+        "--junitxml=/tmp/agents-ops-after-2/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        40.74658203125,
+        35.474609375,
+        21.12060546875
+      ],
+      "load_average_at_finish": null,
+      "selected_count": 0,
+      "counts": {},
+      "successful_test_baseline": false,
+      "source_unchanged": null,
+      "test_command_wall_s": null,
+      "phase_elapsed_s": {
+        "call": 0,
+        "setup": 0,
+        "teardown": 0
+      },
+      "files": [],
+      "target_phase_sum_s": 0,
+      "fixture_setups": [],
+      "operations": {},
+      "exitcode": null,
+      "issues": [
+        "missing/duplicate session finish: events-controller-411624.jsonl",
+        "missing runner completion",
+        "missing monotonic command timing",
+        "missing/duplicate controller worker inventory",
+        "missing/duplicate worker process inventory",
+        "empty/missing selected inventory",
+        "missing/invalid JUnit: FileNotFoundError"
+      ],
+      "top_cases": [],
+      "changed_group_costs": {}
+    },
+    {
+      "name": "agents-ops-after-serial",
+      "source": {
+        "commit": "40d6f09c3e769584c19c4dc0b206c4ec621cac30",
+        "status": " M README.zh-CN.md\n M tests/e2e/agents_ops/test_board_messages.py\n M tests/e2e/agents_ops/test_parent_development.py\n M tests/e2e/agents_ops/test_parent_session.py\n",
+        "tracked_diff_sha256": "4553fd40db4d99f87e91feeb8ebccb365f2807798a8d99e2167c5740a57d5ce8",
+        "untracked_sha256": {}
+      },
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+        "-m",
+        "spin",
+        "test",
+        "-q",
+        "--no-cov",
+        "--dist=worksteal",
+        "-n",
+        "1",
+        "--durations=50",
+        "--durations-min=1",
+        "--ignore=tests/integration/synthetic_data_generation/test_court_dataset.py",
+        "-p",
+        "scripts.ci_metrics.pytest_plugin",
+        "--ci-metrics-dir=/tmp/agents-ops-after-serial",
+        "--junitxml=/tmp/agents-ops-after-serial/junit.xml",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py",
+        "tests/e2e/development/test_readme_layout.py"
+      ],
+      "workers": 1,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.14.1+cpu"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "cache_condition": "unknown",
+      "host": {
+        "cpu_model": "AMD Ryzen 5 7430U with Radeon Graphics",
+        "cpu_count": 12,
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "memory_total_bytes": 7187775488,
+        "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+        "python": "3.11.15 (main, Jun  2 2026, 22:26:03) [Clang 22.1.3 ]"
+      },
+      "load_average_at_start": [
+        6.86279296875,
+        4.140625,
+        1.8662109375
+      ],
+      "load_average_at_finish": [
+        1.98486328125,
+        4.111328125,
+        5.81591796875
+      ],
+      "selected_count": 724,
+      "counts": {
+        "passed": 724
+      },
+      "successful_test_baseline": true,
+      "source_unchanged": true,
+      "test_command_wall_s": 2385.8125329729955,
+      "phase_elapsed_s": {
+        "call": 2081.120033520805,
+        "setup": 269.3490061820994,
+        "teardown": 0.7237790871149627
+      },
+      "files": [
+        {
+          "count": 98,
+          "file": "tests/e2e/agents_ops/test_parent_session.py",
+          "phase_s": {
+            "call": 1096.0468242589923,
+            "setup": 61.61829781499546,
+            "teardown": 0.09113786704983795
+          }
+        },
+        {
+          "count": 539,
+          "file": "tests/e2e/agents_ops/test_board_messages.py",
+          "phase_s": {
+            "call": 530.4125280538501,
+            "setup": 185.4344030900611,
+            "teardown": 0.5745036720545613
+          }
+        },
+        {
+          "count": 43,
+          "file": "tests/e2e/agents_ops/test_parent_development.py",
+          "phase_s": {
+            "call": 454.594569143017,
+            "setup": 22.165552835023846,
+            "teardown": 0.03156444700289285
+          }
+        },
+        {
+          "count": 44,
+          "file": "tests/e2e/development/test_readme_layout.py",
+          "phase_s": {
+            "call": 0.06611206494562794,
+            "setup": 0.13075244201900205,
+            "teardown": 0.02657310100767063
+          }
+        }
+      ],
+      "target_phase_sum_s": 2350.969381182047,
+      "fixture_setups": [
+        {
+          "count": 495,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.message_world [function]",
+          "setup_s": 158.1013795620529,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 7,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.review_env [function]",
+          "setup_s": 17.075709550001193,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 43,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_board_messages.world [function]",
+          "setup_s": 15.615987583980314,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.pair_review_env [function]",
+          "setup_s": 14.066955436013814,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 9,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.independent_pair_review_env [function]",
+          "setup_s": 12.697714520007139,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 6,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_development.completed_gate_env [function]",
+          "setup_s": 12.260214085006737,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 17,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.single_review_env [function]",
+          "setup_s": 10.095016792009119,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 122,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_parent_session.parent_env [function]",
+          "setup_s": 7.707900845991389,
+          "skipped": 0,
+          "xfailed": 0
+        },
+        {
+          "count": 5,
+          "errors": 0,
+          "fixture": "tests.e2e.agents_ops.test_merge_gate.gate_env [function]",
+          "setup_s": 7.183125009003561,
+          "skipped": 0,
+          "xfailed": 0
+        }
+      ],
+      "operations": {
+        "fixture_labels": 538,
+        "fixture_world": 43,
+        "board_cli": 196,
+        "git": 1900,
+        "git_init": 141,
+        "git_commit": 203,
+        "fixture_parent_env": 122,
+        "parent_cli": 549,
+        "git_worktree": 136,
+        "git_worktree_add": 81,
+        "git_worktree_repair": 55,
+        "review_cli": 103,
+        "fixture_review_env": 7,
+        "fixture_d": 19,
+        "fixture_gate_env": 5,
+        "fake_github_journal_rows": 17485,
+        "fake_github": 17065,
+        "fake_herdr": 2400
+      },
+      "exitcode": 0,
+      "issues": [],
+      "top_cases": [
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible[10]",
+          "phase_s": {
+            "setup": 0.042281854002794717,
+            "call": 55.13029408999864,
+            "teardown": 0.0004988350046915002
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_new_explicit_run_requires_reason_and_is_visible_as_exception",
+          "phase_s": {
+            "setup": 0.21097725199797424,
+            "call": 46.60364456500247,
+            "teardown": 0.0010177839940297417
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled",
+          "phase_s": {
+            "setup": 0.07882797900674632,
+            "call": 45.05876306000573,
+            "teardown": 0.0010032279969891533
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs",
+          "phase_s": {
+            "setup": 16.39983784800279,
+            "call": 21.21639727800357,
+            "teardown": 0.0007595670031150803
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_delegation_reconcile_and_completed_tasks_do_not_relaunch",
+          "phase_s": {
+            "setup": 0.0944321110000601,
+            "call": 34.38696686000185,
+            "teardown": 0.000605729001108557
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_review_snapshot_explicit_once_handoff_and_states",
+          "phase_s": {
+            "setup": 0.09227539799758233,
+            "call": 33.0050826029983,
+            "teardown": 0.0008613659956608899
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_session.py::test_resolve_after_peer_merge_keeps_explicit_fix_coverage",
+          "phase_s": {
+            "setup": 0.06716702600533608,
+            "call": 33.022481936000986,
+            "teardown": 0.0005827890054206364
+          }
+        },
+        {
+          "nodeid": "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success[none]",
+          "phase_s": {
+            "setup": 12.02431801000057,
+            "call": 20.866944258996227,
+            "teardown": 0.0005067279998911545
+          }
+        }
+      ],
+      "changed_group_costs": {
+        "tests/e2e/agents_ops/test_parent_session.py::test_review_seed_isolates_request_environment_and_writable_state": {
+          "setup": 8.774893059002352,
+          "call": 11.913331082003424,
+          "teardown": 0.0008593169986852445
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_invalid_or_uninstructed_review_never_launches": {
+          "setup": 1.8749442279950017,
+          "call": 6.863773431010486,
+          "teardown": 0.0105787210050039
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_changed_or_incomplete_review_targets_fail_closed": {
+          "setup": 14.398220851995575,
+          "call": 94.66614090499934,
+          "teardown": 0.010609026008751243
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_failed_run_is_durable_and_never_automatically_retried": {
+          "setup": 0.9279313750084839,
+          "call": 72.62950773899502,
+          "teardown": 0.004189541003142949
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_base_advance_requires_github_merge_and_complete_git_history": {
+          "setup": 13.157712817999709,
+          "call": 92.53050759299367,
+          "teardown": 0.007271649003087077
+        },
+        "tests/e2e/agents_ops/test_parent_session.py::test_large_diff_is_available_in_full_without_extra_review": {
+          "setup": 0.06867705799959367,
+          "call": 17.339784140996926,
+          "teardown": 0.0008097270037978888
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_completed_parent_distinguishes_confirmed_cancellation_from_success": {
+          "setup": 12.549674238005537,
+          "call": 119.55387958799838,
+          "teardown": 0.0033691509961499833
+        },
+        "tests/e2e/agents_ops/test_parent_development.py::test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible": {
+          "setup": 0.08098064600198995,
+          "call": 87.7170961380034,
+          "teardown": 0.0009444610041100532
+        }
+      }
+    }
+  ],
+  "historical_mutations": {
+    "before": [
+      {
+        "mutation": "code_mentions",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before/code_mentions.xml",
+          "tests/e2e/agents_ops/test_board_messages.py",
+          "-k",
+          "test_container_and_fence_boundaries_preserve_prose_destinations or test_code_mentions_do_not_hide_adjacent_prose_destinations"
+        ],
+        "exitcode": 1,
+        "tests": 10,
+        "failures": 10,
+        "errors": 0,
+        "applied_calls": 2
+      },
+      {
+        "mutation": "accept_draft",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before/accept_draft.xml",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "-k",
+          "test_changed_or_incomplete_review_targets_fail_closed and draft"
+        ],
+        "exitcode": 1,
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "applied_calls": 4
+      },
+      {
+        "mutation": "ignore_cancellation",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-before/ignore_cancellation.xml",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "-k",
+          "test_completed_parent_distinguishes_confirmed_cancellation_from_success and (body or state_reason)"
+        ],
+        "exitcode": 1,
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "applied_calls": null
+      }
+    ],
+    "after": [
+      {
+        "mutation": "code_mentions",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after/code_mentions.xml",
+          "tests/e2e/agents_ops/test_board_messages.py",
+          "-k",
+          "test_container_and_fence_boundaries_preserve_prose_destinations or test_code_mentions_do_not_hide_adjacent_prose_destinations"
+        ],
+        "exitcode": 1,
+        "tests": 10,
+        "failures": 10,
+        "errors": 0,
+        "applied_calls": 2
+      },
+      {
+        "mutation": "accept_draft",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after/accept_draft.xml",
+          "tests/e2e/agents_ops/test_parent_session.py",
+          "-k",
+          "test_changed_or_incomplete_review_targets_fail_closed and draft"
+        ],
+        "exitcode": 1,
+        "tests": 1,
+        "failures": 1,
+        "errors": 0,
+        "applied_calls": 4
+      },
+      {
+        "mutation": "ignore_cancellation",
+        "command": [
+          "/home/kamimura/projects/tennis-lab/.claude/worktrees/ci-green-readme-heavy-e2e/.venv/bin/python",
+          "-m",
+          "pytest",
+          "-n",
+          "2",
+          "--dist=worksteal",
+          "--no-cov",
+          "-q",
+          "--junitxml=/tmp/agents-mutations-after/ignore_cancellation.xml",
+          "tests/e2e/agents_ops/test_parent_development.py",
+          "-k",
+          "test_completed_parent_distinguishes_confirmed_cancellation_from_success and (body or state_reason)"
+        ],
+        "exitcode": 1,
+        "tests": 2,
+        "failures": 2,
+        "errors": 0,
+        "applied_calls": null
+      }
+    ],
+    "invalid_rows": "ignore_cancellation in each old run timed out inside merge before the injected function executed (applied_calls=null); excluded from defect-detection evidence. The code-mention and draft injections did execute, but fresh serial runs are the current proof."
+  },
+  "attempt_notes": {
+    "agents-ops-before": "No module named spin in the initially offered main-tree environment; zero cases. Built a worktree-local locked CPU environment with uv sync.",
+    "agents-ops-before-locked": "Own pytest group interrupted with SIGINT during concurrent host saturation; 283 passed, 396 incomplete.",
+    "agents-ops-after-1": "678 passed, 1 failed: existing unchanged 12-second worker-start readiness deadline. Not a successful performance baseline.",
+    "agents-ops-before-2": "679 passed on the earlier source with two workers; retained separately, not compared with one-worker measurements.",
+    "agents-ops-after-2": "External termination during WSL memory exhaustion, confirmed by the parent; no worker inventory/JUnit. Standard report recovery remains unsuccessful.",
+    "agents-ops-after-serial": "724 passed; retained as validation under concurrent host load. Start load 6.863 versus 1.986 for the before control; not used in the final performance pair. A subsequent explicit dict type annotation fixed mypy Any inference before the final quiet run.",
+    "serial_runs": "Only the three assigned files and README validation ran, with one worker, on updated main. No other local pytest suite was launched."
+  },
+  "observers": {
+    "operations": "import collections, json, os, pathlib, subprocess\nimport pytest\ncounts=collections.Counter(); roots=set(); labels=set()\n_original_popen=subprocess.Popen\n\ndef pytest_configure(config):\n    if not hasattr(config, 'workerinput'): return\n    def counted(args, *a, **kw):\n        if isinstance(args, (list, tuple)) and args:\n            parts=list(map(str,args)); exe=pathlib.Path(parts[0]).name\n            if exe=='git':\n                counts['git']+=1\n                for op in ('init','commit','worktree'):\n                    if op in parts: counts['git_'+op]+=1\n                if 'worktree' in parts:\n                    for action in ('add','repair'):\n                        if action in parts: counts['git_worktree_'+action]+=1\n            if '-m' in parts:\n                module=parts[parts.index('-m')+1]\n                if module in ('parent','board'): counts[module+'_cli']+=1\n            if any('review' in p and p.endswith('.py') for p in parts[:2]): counts['review_cli']+=1\n        return _original_popen(args,*a,**kw)\n    subprocess.Popen=counted\n\n@pytest.hookimpl(wrapper=True)\ndef pytest_fixture_setup(fixturedef, request):\n    value=yield\n    if fixturedef.argname=='parent_env':\n        roots.add(value.root)\n        dest=pathlib.Path(os.environ['AGENTS_COST_DIR']);dest.mkdir(parents=True,exist_ok=True)\n        real_calls=dest/('real-gh-'+os.environ['PYTEST_XDIST_WORKER']+'.jsonl')\n        gh=value.root/'bin/gh'\n        source=gh.read_text()\n        needle='args = sys.argv[1:]'\n        assert source.count(needle)==1\n        gh.write_text(source.replace(needle,needle+\"\\nwith open(\"+repr(str(real_calls))+\", 'a') as cost_stream: cost_stream.write(json.dumps(args)+'\\\\n')\"))\n    if fixturedef.argname=='labels': labels.add(value.state)\n    if fixturedef.argname in ('parent_env','review_env','gate_env','world','labels','d'):\n        counts['fixture_'+fixturedef.argname]+=1\n    return value\n\ndef pytest_sessionfinish(session, exitstatus):\n    if not hasattr(session.config,'workerinput'): return\n    dest=pathlib.Path(os.environ['AGENTS_COST_DIR'])\n    counts['fake_github_journal_rows']=sum(len((p/'calls.jsonl').read_text().splitlines()) for p in roots)\n    real_calls=dest/('real-gh-'+os.environ['PYTEST_XDIST_WORKER']+'.jsonl')\n    counts['fake_github']=len(real_calls.read_text().splitlines()) if real_calls.exists() else 0\n    counts['fake_herdr']=sum(len(json.loads(p.read_text())['calls']) for p in labels)\n    dest=pathlib.Path(os.environ['AGENTS_COST_DIR']); dest.mkdir(parents=True,exist_ok=True)\n    (dest/(os.environ['PYTEST_XDIST_WORKER']+'.json')).write_text(json.dumps(counts,indent=2))\n",
+    "historical_operations": "import collections, json, os, pathlib, subprocess\nimport pytest\ncounts=collections.Counter(); roots=set(); labels=set()\n_original_popen=subprocess.Popen\n\ndef pytest_configure(config):\n    if not hasattr(config, 'workerinput'): return\n    def counted(args, *a, **kw):\n        if isinstance(args, (list, tuple)) and args:\n            parts=list(map(str,args)); exe=pathlib.Path(parts[0]).name\n            if exe=='git':\n                counts['git']+=1\n                for op in ('init','commit','worktree'):\n                    if op in parts: counts['git_'+op]+=1\n            if '-m' in parts:\n                module=parts[parts.index('-m')+1]\n                if module in ('parent','board'): counts[module+'_cli']+=1\n            if any('review' in p and p.endswith('.py') for p in parts[:2]): counts['review_cli']+=1\n        return _original_popen(args,*a,**kw)\n    subprocess.Popen=counted\n\n@pytest.hookimpl(wrapper=True)\ndef pytest_fixture_setup(fixturedef, request):\n    value=yield\n    if fixturedef.argname=='parent_env': roots.add(value.root)\n    if fixturedef.argname=='labels': labels.add(value.state)\n    if fixturedef.argname in ('parent_env','review_env','gate_env','world','labels','d'):\n        counts['fixture_'+fixturedef.argname]+=1\n    return value\n\ndef pytest_sessionfinish(session, exitstatus):\n    if not hasattr(session.config,'workerinput'): return\n    counts['fake_github']=sum(len((p/'calls.jsonl').read_text().splitlines()) for p in roots)\n    counts['fake_herdr']=sum(len(json.loads(p.read_text())['calls']) for p in labels)\n    dest=pathlib.Path(os.environ['AGENTS_COST_DIR']); dest.mkdir(parents=True,exist_ok=True)\n    (dest/(os.environ['PYTEST_XDIST_WORKER']+'.json')).write_text(json.dumps(counts,indent=2))\n",
+    "mutation_pytest_plugin": "import os, pathlib, sys\nimport pytest\n\n@pytest.hookimpl(wrapper=True)\ndef pytest_fixture_setup(fixturedef, request):\n    value=yield\n    if fixturedef.argname=='parent_env' and os.environ.get('AGENTS_MUTATION') in ('accept_draft','ignore_cancellation'):\n        value.env['PYTHONPATH']='/tmp/agents-defects'+os.pathsep+value.env['PYTHONPATH']\n    return value\n\ndef pytest_collection_modifyitems(config,items):\n    if os.environ.get('AGENTS_MUTATION')=='code_mentions':\n        sys.path.insert(0,str(pathlib.Path.cwd()/'.agents/ops'))\n        import board.messages\n        def without_code(body):\n            with open(os.environ[\"AGENTS_MUTATION_LOG\"],\"a\") as stream:stream.write(\"code_mentions\\n\")\n            return body\n        board.messages.without_code=without_code\n",
+    "mutation_sitecustomize": "import os, sys\nif os.environ.get('PARENT_GH_STATE'):\n    kind=os.environ.get('AGENTS_MUTATION')\n    def applied():\n        with open(os.environ['AGENTS_MUTATION_LOG'],'a') as f: f.write(kind+'\\n')\n    if kind=='accept_draft':\n        import parent.policy\n        original=parent.policy.select_prs\n        def select(selected, prs, children, repo):\n            if any(p.get('draft') is True for p in prs): applied()\n            return original(selected,[{**p,'draft':False} for p in prs],children,repo)\n        parent.policy.select_prs=select\n    elif kind=='ignore_cancellation' and '-m' in sys.orig_argv and 'parent' in sys.orig_argv and 'workflow-report' in sys.orig_argv:\n        import parent.development\n        def ignore(*args,**kwargs): applied()\n        parent.development.verify_cancellation=ignore\n",
+    "mutation_runner": "import os,pathlib,subprocess,json,xml.etree.ElementTree as ET\nversion=os.environ['AGENTS_VERSION']\ndest=pathlib.Path('/tmp/agents-mutations-'+version);dest.mkdir(exist_ok=True)\nresults=[]\nfor kind,file,selector in [\n ('code_mentions','test_board_messages.py','test_container_and_fence_boundaries_preserve_prose_destinations or test_code_mentions_do_not_hide_adjacent_prose_destinations'),\n ('accept_draft','test_parent_session.py','test_changed_or_incomplete_review_targets_fail_closed and draft'),\n ('ignore_cancellation','test_parent_development.py','test_completed_parent_distinguishes_confirmed_cancellation_from_success and (body or state_reason)'),\n]:\n    junit=dest/(kind+'.xml'); log=dest/(kind+'.log'); applied=dest/(kind+'-applied.log')\n    command=[str(pathlib.Path('.venv/bin/python').absolute()),'-m','pytest','-n','1','--dist=worksteal','--no-cov','-q','--junitxml='+str(junit),'tests/e2e/agents_ops/'+file,'-k',selector]\n    env={**os.environ,'OMP_NUM_THREADS':'1','MKL_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1','CUDA_VISIBLE_DEVICES':'','PYTHONPATH':'/tmp:'+str(pathlib.Path.cwd()),'PYTEST_PLUGINS':'agents_defect_observer','AGENTS_MUTATION':kind,'AGENTS_MUTATION_LOG':str(applied)}\n    with log.open('w') as out: proc=subprocess.run(command,env=env,stdout=out,stderr=subprocess.STDOUT)\n    tree=ET.parse(junit);suites=tree.findall('testsuite');messages=[failure.get('message','') for failure in tree.iter('failure')];row={'mutation':kind,'command':command,'exitcode':proc.returncode,'tests':sum(int(s.get('tests')) for s in suites),'failures':sum(int(s.get('failures')) for s in suites),'errors':sum(int(s.get('errors')) for s in suites),'applied_calls':len(applied.read_text().splitlines()) if applied.exists() else 0};row['failure_messages']=[message[:1600] for message in messages];results.append(row); print(json.dumps(row),flush=True)\n    if not (row['exitcode']==1 and row['errors']==0 and row['failures']==row['tests'] and row['tests']>0 and row['applied_calls']>=row['tests']):raise RuntimeError(row)\n    if any('TimeoutExpired' in message or 'timed out' in message for message in messages):raise RuntimeError('timeout is not defect detection')\n    if kind=='code_mentions' and not all('sender cannot be a recipient' in message for message in messages):raise RuntimeError('unexpected code-mention failure')\n(dest/'summary.json').write_text(json.dumps(results,indent=2))\n"
+  },
+  "measured_file_sha256": {
+    "before": {
+      "tests/e2e/agents_ops/test_board_messages.py": "e4a988a289d62ca4b3761aa110b766cad1ebc299b1d39ac063d75880609b7a35",
+      "tests/e2e/agents_ops/test_parent_session.py": "6ea86ee7bff067708a54a05de83e02822bd77aa0b080a27e861e7f8647e769ae",
+      "tests/e2e/agents_ops/test_parent_development.py": "36ddf7a0d4889c86e72d443d84723bf6c041fdbdc4578738c6ee87d2d8fc04c5",
+      "README.zh-CN.md": "4eea1e8ad98d5509072693586bab9b9e6852a1999f592a85587cd809c9d1b733"
+    },
+    "after": {
+      "tests/e2e/agents_ops/test_board_messages.py": "d9fb575a8c47da6f9b42936055b2466a519756ccf5de582fa2c30ee83ab832da",
+      "tests/e2e/agents_ops/test_parent_session.py": "cc3f0470190fdb19e24f4b5700887a08a92b64f846af80528cdefa0d78cb90de",
+      "tests/e2e/agents_ops/test_parent_development.py": "c6b0190835fd43201b545bc6309cae133fcfbaac0abd674b0ec892d87a34ff3d",
+      "README.zh-CN.md": "4eea1e8ad98d5509072693586bab9b9e6852a1999f592a85587cd809c9d1b733"
+    }
+  },
+  "static_validation": {
+    "spin_lint": {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "spin",
+        "lint"
+      ],
+      "exitcode": 0
+    },
+    "mypy": {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "mypy",
+        "--follow-imports=skip",
+        "tests/e2e/agents_ops/test_board_messages.py",
+        "tests/e2e/agents_ops/test_parent_session.py",
+        "tests/e2e/agents_ops/test_parent_development.py"
+      ],
+      "exitcode": 0,
+      "checked_files": 3
+    },
+    "ruff_format_check": {
+      "exitcode": 0,
+      "checked_files": 3
+    },
+    "note": "Initial shadow mypy caught an Any-return inference; an explicit dict annotation fixed it before the final measured after run.",
+    "board_test_ast": {
+      "same_test_function_set": true,
+      "bodies_assertions_and_parameters_preserved": true,
+      "allowed_changes": [
+        "world/message_world fixture binding",
+        "confirm fourth parent for accidental broadcast detection"
+      ]
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "conditions": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "core_objects": {
+    "knowledge/runs/run-court-scene-diversity-colab-s42/colab_campaign.py": "8225d640f3b8e382c7d848c3ad1e3f6c97c8a45f",
+    "knowledge/runs/run-court-scene-diversity-preparation-s42": "64888459df6c28dc3a175388769f5628c140e267",
+    "pyproject.toml": "852e0907312970530ff7c71b69215ef1a676cf9d",
+    "src": "fc9a4761d9cfff3406453c89ce2987c0b6651333",
+    "uv.lock": "8d77c3e84d268d808872778ed1cdcf52738049c2"
+  },
+  "schema": "court_scene_diversity_continuation_v1",
+  "status": "completed"
+}

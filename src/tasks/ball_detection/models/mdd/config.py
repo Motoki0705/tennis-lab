@@ -168,7 +168,7 @@ class MDDHeatmapConfig(MDDPretrainConfig):
 
     @classmethod
     def load(cls, path: Path) -> MDDHeatmapConfig:
-        return cls(**_heatmap_config_fields(path, "mdd_dpt_heatmap", cls))
+        return cls(**_temporal_config_fields(path, "mdd_dpt_heatmap", cls))
 
 
 @dataclass(frozen=True)
@@ -177,15 +177,36 @@ class MDDHeatmapHybridConfig(MDDHeatmapConfig):
 
     @classmethod
     def load(cls, path: Path) -> MDDHeatmapHybridConfig:
-        return cls(**_heatmap_config_fields(path, "mdd_heatmap_hybrid", cls))
+        return cls(**_temporal_config_fields(path, "mdd_heatmap_hybrid", cls))
 
 
-def _heatmap_config_fields(path: Path, name: str, config_type: type[MDDHeatmapConfig]) -> dict[str, Any]:
+@dataclass(frozen=True, slots=True)
+class MDDTemporalQueryConfig(MDDPretrainConfig):
+    """Variable-length query-only coordinates, with an explicit saved RGB+MDD contract."""
+
+    frames: int = field()
+    frame_chunk_size: int | None = field()
+
+    def __post_init__(self) -> None:
+        MDDPretrainConfig.__post_init__(self)
+        if self.input_channels != 5 or type(self.frames) is not int or self.frames < 1:
+            raise ValueError("Temporal query requires five input channels and a positive explicit T")
+        if self.frame_chunk_size is not None and (type(self.frame_chunk_size) is not int or self.frame_chunk_size < 1):
+            raise ValueError("frame_chunk_size must be null or a positive integer")
+        if type(self.activation_checkpointing) is not bool:
+            raise ValueError("activation_checkpointing must be boolean")
+
+    @classmethod
+    def load(cls, path: Path) -> MDDTemporalQueryConfig:
+        return cls(**_temporal_config_fields(path, "mdd_temporal_query", cls))
+
+
+def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig]) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or raw.pop("name", None) != name:
         raise ValueError(f"Expected {name} model config")
     if set(raw) != set(config_type.__dataclass_fields__):
-        raise ValueError("Heatmap configuration must declare every field exactly")
+        raise ValueError("Temporal model configuration must declare every field exactly")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])
     return raw

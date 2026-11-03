@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+import pytorch_lightning as pl
 import torch
 
 from src.tasks.base.generate_dataset import (
@@ -99,9 +100,9 @@ def test_fixed_scale_is_derived_from_half_length_only() -> None:
 def test_numpy_round_trip_preserves_shape_dtype_and_values(
     shape: tuple[int, ...], quantity: str
 ) -> None:
-    values = np.linspace(-12.0, 12.0, int(np.prod(shape)), dtype=np.float32).reshape(
-        shape
-    )
+    values: np.ndarray = np.linspace(
+        -12.0, 12.0, int(np.prod(shape)), dtype=np.float32
+    ).reshape(shape)
     normalize = (
         normalize_court_position if quantity == "position" else normalize_court_velocity
     )
@@ -296,8 +297,11 @@ def test_task_lightning_save_hooks_write_the_exact_contract(
     expected: dict[str, object],
 ) -> None:
     checkpoint: dict[str, object] = {}
-    module_type.on_save_checkpoint(receiver, checkpoint)
-    assert checkpoint == expected
+    module = _hook_module(module_type, receiver)
+    module.on_save_checkpoint(checkpoint)
+    # The exact coordinate schema coexists with unrelated full training state.
+    for key, value in expected.items():
+        assert checkpoint[key] == value
 
 
 @pytest.mark.parametrize(
@@ -325,4 +329,15 @@ def test_task_lightning_load_hooks_reject_old_checkpoints(
     module_type: Any, receiver: object
 ) -> None:
     with pytest.raises(CourtCoordinateContractError, match="missing"):
-        module_type.on_load_checkpoint(receiver, {})
+        _hook_module(module_type, receiver).on_load_checkpoint({})
+
+
+def _hook_module(module_type: Any, receiver: object) -> Any:
+    # These unit tests isolate schema hooks from model construction, while using
+    # the real receiver type so its shared Lightning/GAN hook chain runs.
+    module = module_type.__new__(module_type)
+    pl.LightningModule.__init__(module)
+    module.gan_training = None
+    for name, value in vars(receiver).items():
+        setattr(module, name, value)
+    return module

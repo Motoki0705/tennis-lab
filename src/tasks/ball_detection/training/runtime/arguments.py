@@ -1,4 +1,4 @@
-"""Shared explicit runtime arguments for update-budgeted heatmap operations."""
+"""Shared explicit runtime arguments for temporal training and evaluation."""
 
 import argparse
 

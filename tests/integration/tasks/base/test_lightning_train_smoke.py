@@ -44,14 +44,15 @@ class _SmokeModule(BaseLightningModule):
         return loss
 
 
-def _loader(n: int = 8, batch: int = 4) -> DataLoader:
+def _loader(n: int = 8, batch: int = 4, *, drop_last: bool = False) -> DataLoader:
     x = torch.randn(n, 4)
     y = torch.randn(n)
-    return DataLoader(TensorDataset(x, y), batch_size=batch)
+    return DataLoader(TensorDataset(x, y), batch_size=batch, drop_last=drop_last)
 
 
 def _trainer(tmp_path) -> pl.Trainer:
     return pl.Trainer(
+        max_epochs=1,
         max_steps=1,
         limit_train_batches=1,
         limit_val_batches=1,
@@ -155,7 +156,7 @@ def test_one_step_with_step_scheduler(tmp_path) -> None:
         _config(
             tmp_path,
             max_epochs=1,
-            steps_per_epoch=2,
+            steps_per_epoch=1,
             warmup_steps=0,
             warmup_epochs=None,
         )
@@ -163,6 +164,71 @@ def test_one_step_with_step_scheduler(tmp_path) -> None:
     trainer = _trainer(tmp_path)
     trainer.fit(module, _loader(), _loader())
     assert trainer.global_step == 1
+
+
+@pytest.mark.parametrize(
+    "accumulation,limit,max_steps,drop_last,expected_steps",
+    [
+        (1, 1.0, -1, True, 12),
+        (2, 1.0, -1, True, 6),
+        (1, 2, -1, True, 6),
+        (1, 1.0, 5, True, 5),
+        (1, 1.0, -1, False, 15),
+    ],
+    ids=["matching", "accumulation", "limit", "max_steps", "partial_batch"],
+)
+def test_explicit_step_budget_matches_actual_updates_before_training(
+    tmp_path, accumulation, limit, max_steps, drop_last, expected_steps
+) -> None:
+    # 9 samples / batch 2: four batches with drop_last, five without it.
+    module = _SmokeModule(
+        _config(
+            tmp_path,
+            max_epochs=3,
+            steps_per_epoch=4,
+            warmup_steps=0,
+            warmup_epochs=None,
+        )
+    )
+    before = {key: value.clone() for key, value in module.state_dict().items()}
+    trainer = pl.Trainer(
+        max_epochs=3,
+        max_steps=max_steps,
+        accumulate_grad_batches=accumulation,
+        limit_train_batches=limit,
+        limit_val_batches=0,
+        accelerator="cpu",
+        devices=1,
+        logger=False,
+        enable_checkpointing=False,
+        enable_progress_bar=False,
+        enable_model_summary=False,
+        default_root_dir=tmp_path,
+    )
+    loader = _loader(n=9, batch=2, drop_last=drop_last)
+    if expected_steps == 12:
+        trainer.fit(module, loader)
+        assert trainer.global_step == 12
+        assert trainer.lr_scheduler_configs[0].scheduler.T_max == 12
+        return
+
+    with pytest.raises(ValueError, match="Explicit step schedule budget") as error:
+        trainer.fit(module, loader)
+    for detail in (
+        "steps_per_epoch=4",
+        "configured_total_steps=12",
+        f"expected_total_steps={expected_steps}",
+        f"num_training_batches={len(loader) if limit == 1.0 else limit}",
+        f"accumulate_grad_batches={accumulation}",
+        f"limit_train_batches={limit}",
+        f"max_steps={max_steps}",
+        "max_epochs=3",
+    ):
+        assert detail in str(error.value)
+    assert trainer.global_step == 0
+    assert not trainer.optimizers[0].state
+    for key, value in module.state_dict().items():
+        torch.testing.assert_close(value, before[key], rtol=0, atol=0)
 
 
 def test_one_step_with_epoch_warmup_scheduler(tmp_path) -> None:
@@ -188,7 +254,7 @@ def test_one_step_with_compiled_primary_model(tmp_path) -> None:
         _config(
             tmp_path,
             max_epochs=1,
-            steps_per_epoch=2,
+            steps_per_epoch=1,
             warmup_steps=0,
             warmup_epochs=None,
         )

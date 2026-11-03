@@ -486,7 +486,7 @@ def source_section(
     proposals: dict[str, Any], bound: list[dict[str, Any]], repo: str
 ) -> str:
     parts = [
-        "方向性の採用を記録する。Issue整理は人間の要件合意・共有基盤承認・自律着手根拠を生成しない。"
+        "方向性の採用を記録する。Issue整理は人間の要件合意・自律着手根拠を生成しない。"
     ]
     for binding in bound:
         source = ProposalSource(**binding["source"])

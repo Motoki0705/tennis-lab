@@ -68,7 +68,7 @@ class BoardReader:
         self.roster_revision = 0
         self.lock = Lock()
 
-    def _refresh_roster(self) -> None:
+    def _load_roster(self) -> tuple[dict[str, Any], list[dict[str, Any]], str]:
         parents = registry(self.env)
         roster = agents(self.env)["agents"]
         if registry(self.env) != parents:
@@ -76,11 +76,14 @@ class BoardReader:
         # Publish the replacement only after all source reads and validation
         # succeed. A failed refresh leaves the last successful observation intact.
         public(roster, parents, self.env)
-        self.parents = parents
-        self.roster = roster
-        self.roster_observed_at = datetime.now(UTC).isoformat()
+        return parents, roster, datetime.now(UTC).isoformat()
 
-    def _snapshot(self) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    def _refresh_roster(self) -> None:
+        self.parents, self.roster, self.roster_observed_at = self._load_roster()
+
+    def _snapshot(
+        self,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
         with self.store.read() as connection:
             posts = []
             for (post_id,) in connection.execute(
@@ -113,10 +116,22 @@ class BoardReader:
                     unread_count=state.unread_count,
                     last_activity=state.last_post_at,
                 )
+            state = activity.summary(connection, None)
+            human = {
+                "name": "human",
+                "assignment_id": None,
+                "repo": None,
+                "parent": None,
+                "unread_count": state.unread_count,
+                "awaiting_response_count": state.awaiting_response_count,
+                "last_activity": state.last_post_at,
+            }
         # Revalidate saved public text, including legacy/direct-SQL data. Never
         # serialize private source records or exception messages to the browser.
-        public({"posts": posts, "agents": roster}, self.parents, self.env)
-        return posts, roster
+        public(
+            {"posts": posts, "agents": roster, "human": human}, self.parents, self.env
+        )
+        return posts, roster, human
 
     def changes(
         self,
@@ -138,11 +153,11 @@ class BoardReader:
         with self.lock:
             if refresh_roster:
                 self._refresh_roster()
-            posts, roster = self._snapshot()
+            posts, roster, human = self._snapshot()
             # Include the complete projection, including reaction actors and
             # timestamps, so additions/removals also refresh open threads.
             hashes = {post["id"]: fingerprint(post) for post in posts}
-            roster_hash = fingerprint([roster, self.roster_observed_at])
+            roster_hash = fingerprint([roster, human, self.roster_observed_at])
             changed = [
                 post_id
                 for post_id, value in hashes.items()
@@ -168,6 +183,7 @@ class BoardReader:
                     and matches(post, name, direction)
                 ],
                 "agents": roster if reset or self.roster_revision > after else None,
+                "human": human,
                 "changed_threads": sorted(
                     {
                         post["thread_id"]
@@ -183,7 +199,7 @@ class BoardReader:
         if POST_ID.fullmatch(post_id) is None:
             raise InvalidQuery
         with self.lock:
-            posts, _ = self._snapshot()
+            posts, _, _ = self._snapshot()
         selected = next((post for post in posts if post["id"] == post_id), None)
         if selected is None:
             raise MissingPost
@@ -195,3 +211,19 @@ class BoardReader:
                 if post["thread_id"] == selected["thread_id"]
             ],
         }
+
+    def execution_names(self, observation: dict[str, Any]) -> dict[str, Any]:
+        """Join live board names without reading Herdr or refreshing the roster."""
+        parents = registry(self.env)
+        with self.store.read() as connection:
+            for parent in observation["parents"]:
+                assignment = for_parent(connection, parent["repo"], parent["parent"])
+                if assignment is not None and assignment.retired_at is not None:
+                    assignment = None
+                parent["roster"] = {
+                    "name": assignment.name if assignment else None,
+                    "identifier": assignment.identifier if assignment else None,
+                    "source": "board_names / parent_registry",
+                }
+        public(observation, parents, self.env)
+        return observation

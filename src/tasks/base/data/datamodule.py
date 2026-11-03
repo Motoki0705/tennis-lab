@@ -98,11 +98,13 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
 
     def _dataset_seed(self, scene_dir: Path, split_file: str) -> int:
         """Derive one stable dataset stream from run seed and persisted split."""
-        return derive_seed(
-            self.seed,
-            "dataset",
-            split_file,
-            scene_dir.resolve().as_posix(),
+        return int(
+            derive_seed(
+                self.seed,
+                "dataset",
+                split_file,
+                scene_dir.resolve().as_posix(),
+            )
         )
 
     # -- shared lifecycle ------------------------------------------------------
@@ -171,6 +173,34 @@ class SceneDirectoryDataModule(pl.LightningDataModule):
         if self.train_dataset is None:
             raise RuntimeError("Call setup('fit') before train_dataloader()")
         return self._build_loader(self.train_dataset, stage="train")
+
+    def state_dict(self) -> dict[str, Any]:
+        """Persist independent loader and scene-window streams at epoch boundaries."""
+        from src.tasks.base.data.scene_dataset import SceneDatasetBase
+
+        datasets = {}
+        for stage in ("train", "val", "test"):
+            dataset = getattr(self, f"{stage}_dataset")
+            if dataset is not None:
+                if not isinstance(dataset, SceneDatasetBase):
+                    raise TypeError("SceneDirectory resume requires SceneDatasetBase")
+                datasets[stage] = dataset.rng.bit_generator.state
+        return {
+            "loader_rng": {
+                stage: generator.get_state()
+                for stage, generator in self._loader_generators.items()
+            },
+            "dataset_rng": datasets,
+        }
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        for stage, state in state_dict["loader_rng"].items():
+            self._loader_generators[stage].set_state(state)
+        for stage, state in state_dict["dataset_rng"].items():
+            dataset = getattr(self, f"{stage}_dataset")
+            if dataset is None:
+                raise RuntimeError(f"Set up {stage} before restoring dataset RNG")
+            dataset.rng.bit_generator.state = state
 
     def val_dataloader(self) -> DataLoader:
         if self.val_dataset is None:

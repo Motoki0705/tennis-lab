@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
+from issues.rewrite_state import read_enabled_since, rewrite_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
 from parent.policy import closing_issues, digest, events, nonempty, number, object_value
@@ -86,6 +87,8 @@ def collect(
 ) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
     login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    with gh.fresh_reads():
+        enabled_since = read_enabled_since(gh)
     if seeds is None:
         listed = [
             r
@@ -197,6 +200,7 @@ def collect(
             "body": raw.get("body") or "",
             "state": raw["state"],
             "state_reason": raw.get("state_reason"),
+            "created_at": nonempty(raw.get("created_at"), "issue created_at"),
             "labels": sorted(
                 [
                     {"name": nonempty(object_value(x).get("name"), "label")}
@@ -213,6 +217,11 @@ def collect(
             "source_reports": sorted(source_reports),
             "comments": sorted(normalized_comments, key=lambda x: x["id"]),
         }
+        rewrite_state(
+            [label["name"] for label in issues[str(n)]["labels"]],
+            issues[str(n)]["created_at"],
+            enabled_since,
+        )
         pending.extend(
             [*children, *deps, *source_reports, *([parent] if parent else [])]
         )
@@ -246,6 +255,7 @@ def collect(
         "schema_version": 1,
         "repo": gh.repo.casefold(),
         "publisher": login,
+        "rewrite_enabled_since": enabled_since,
         "code": code_snapshot(root),
         "subjects": subjects,
         "issues": issues,
@@ -362,6 +372,7 @@ def material(
         "schema_version": 1,
         "repo": snapshot["repo"],
         "publisher": snapshot["publisher"],
+        "rewrite_enabled_since": snapshot["rewrite_enabled_since"],
         "code": snapshot["code"],
         "subjects": snapshot["subjects"] if issue is None else [issue],
         "issues": issues,

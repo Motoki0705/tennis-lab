@@ -52,6 +52,10 @@ productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で�
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
+追跡の進捗は`person_tracking/<camera ID>`ごとに、空検出を含む処理済みframe数と総数を表示する。
+端末では1本のbar、リダイレクト時は開始・最大30秒に1回の途中経過・最後の実数を出す。
+この数はframe単位の処理を表し、その後のAFLink/GSI処理の完了を意味しない。
+Pythonからの呼び出しでは`PersonTrackingModule(..., show_progress=False)`で表示を抑制できる。
 
 `person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
 公開重みをcheckpoint root内へ配置し、この設定でroot相対の場所を明示する。
@@ -119,10 +123,22 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不�
 ## ボール点と欠損
 
 `ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。
-`ball_points` schema v3は検出器の `observed` とconfidenceを保持する。
-補間点・occlusion推定点は観測扱いせず、欠損はゼロ値とfalse maskで表す。
+`ball_points` schema v4は、`ball_smoothing`設定で局所的な2次運動consensusによる外れ値除去と、
+confidence重み付きの頑健な2次LOESSをCPUで実行する。時間窓は元動画のFPS、
+距離閾値は画像の対角長に合わせる。短い急な方向転換は近傍の実測移動量で再検査する。
+`observed`は採用した**実検出だけ**で、confidenceも元検出値を保持する。
+`smoothing`には`source_observed`・`accepted`・`rejected`・`interpolated`・`smoothed`・
+`consensus_supported`・`restored_turn`を個別に保存する。補間座標はこの診断だけに保持し、
+side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、maskをfalseにする。
+長い欠損と両端は埋めず、局所支持の少ない実観測は元の座標と`smoothed=false`を明示して保持する。
 有効な観測が2view未満の時刻は3Dでも欠損のまま保持する。
-旧v1/v2 storeはload不可。executeで再生成する。2D Refinerのbundleは不要。
+旧v1/v2/v3 storeは現行pipelineへload不可。executeで再生成する。galleryは履歴v3とv4を区別して表示する。
+`ball_smoothing.enabled=false`は実観測だけを返す明示的な比較設定。2D Refinerのbundleは不要。
+
+保存済みREADME sceneの比較では、通常runnerのcode fingerprint検証を迂回して旧artifactを
+新しい実行identityへ付け替えない。カメラ・人物を固定する実験用replayを別出力として保存し、
+元storeの依存鎖・checksum、元動画の明示的なpath対応、再実行したcomponentと固定した配列を記録する。
+コマンド・定量比較・表示検証は[CPU replay記録](../../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照。
 
 
 ## 成果物

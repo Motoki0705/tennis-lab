@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from hydra import compose, initialize_config_dir
 
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
 from src.synthetic_data_generation.dataset.court.contracts import (
@@ -27,39 +26,16 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.paths import PROJECT_ROOT
+from tests.support.synthetic_data_generation.configuration import compose_scene_config
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 _NHT_ENVIRONMENT = {
     "CUDA_VISIBLE_DEVICES": "0",
 }
 
-pytestmark = pytest.mark.local_data
 
-
-def _resource_repository_root() -> Path:
-    for candidate in (PROJECT_ROOT, *PROJECT_ROOT.parents):
-        if (candidate / "data/synthetic_data_generation/raw/B00.mp4").is_file() and (
-            candidate / "third_party/nht/configs/production.yaml"
-        ).is_file():
-            return Path(candidate)
-    raise FileNotFoundError("Canonical synthetic-data local resources are unavailable.")
-
-
-def _compose(*overrides: str) -> ScenePipelineConfiguration:
-    resource_root = _resource_repository_root()
-    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-        config = compose(
-            config_name="run_scene_pipeline",
-            overrides=[
-                *overrides,
-                f"roots.data_root={(resource_root / 'data').as_posix()}",
-                f"roots.checkpoint_root={(resource_root / 'ckpt').as_posix()}",
-                (
-                    "roots.external_asset_root="
-                    f"{(resource_root / 'third_party').as_posix()}"
-                ),
-            ],
-        )
+def _compose(tmp_path: Path, *overrides: str) -> ScenePipelineConfiguration:
+    config = compose_scene_config(tmp_path, *overrides)
     return ScenePipelineConfiguration.from_config(config)
 
 
@@ -79,11 +55,12 @@ def _compose(*overrides: str) -> ScenePipelineConfiguration:
     ],
 )
 def test_court_selectors_compose_and_validate_exact_typed_versions(
+    tmp_path: Path,
     selector: str,
     version: CourtDatasetSchemaVersion,
     target_modes: set[OrbitTargetMode],
 ) -> None:
-    court = _compose(selector).court
+    court = _compose(tmp_path, selector).court
 
     assert court.schema_version is version
     assert set(court.trajectory.shapes) == {OrbitShape.CIRCLE, OrbitShape.ELLIPSE}
@@ -96,9 +73,11 @@ def test_court_selectors_compose_and_validate_exact_typed_versions(
     assert set(court.sampling.coverage_objective) == set(OrbitCoverageObjective)
 
 
-def test_default_and_compatibility_train_selectors_remain_exact_v1() -> None:
-    default = _compose().court
-    compatibility = _compose("dataset/court=train").court
+def test_default_and_compatibility_train_selectors_remain_exact_v1(
+    tmp_path: Path,
+) -> None:
+    default = _compose(tmp_path).court
+    compatibility = _compose(tmp_path, "dataset/court=train").court
 
     assert default.schema_version is CourtDatasetSchemaVersion.V1
     assert compatibility.schema_version is CourtDatasetSchemaVersion.V1
@@ -120,6 +99,7 @@ def test_default_and_compatibility_train_selectors_remain_exact_v1() -> None:
     ],
 )
 def test_version_or_version_specific_target_mismatch_fails_closed(
+    tmp_path: Path,
     override: str,
 ) -> None:
     extra = {
@@ -130,7 +110,7 @@ def test_version_or_version_specific_target_mismatch_fails_closed(
     }.get(override)
     overrides = (override,) if extra is None else (override, extra)
     with pytest.raises(SemanticConfigurationError):
-        _compose(*overrides)
+        _compose(tmp_path, *overrides)
 
 
 @pytest.mark.parametrize(
@@ -146,18 +126,24 @@ def test_version_or_version_specific_target_mismatch_fails_closed(
         "dataset.court.sampling.coverage_objective=[coverage_mode,unknown_objective]",
     ],
 )
-def test_unknown_court_modes_fail_at_configuration_boundary(override: str) -> None:
+def test_unknown_court_modes_fail_at_configuration_boundary(
+    tmp_path: Path, override: str
+) -> None:
     with pytest.raises(SemanticConfigurationError, match="unknown value"):
-        _compose(override)
+        _compose(tmp_path, override)
 
 
-def test_unknown_court_key_fails_at_configuration_boundary() -> None:
+def test_unknown_court_key_fails_at_configuration_boundary(
+    tmp_path: Path,
+) -> None:
     with pytest.raises(UnknownConfigurationKeyError, match="unknown_key"):
-        _compose("+dataset.court.trajectory.unknown_key=true")
+        _compose(tmp_path, "+dataset.court.trajectory.unknown_key=true")
 
 
-def test_public_nht_commands_and_trainer_runtime_are_explicit() -> None:
-    runtime = _compose()
+def test_public_nht_commands_and_trainer_runtime_are_explicit(
+    tmp_path: Path,
+) -> None:
+    runtime = _compose(tmp_path)
 
     assert runtime.nht.reconstruct_executable == "nht-reconstruct"
     assert runtime.nht.render_executable == "nht-render"
@@ -187,8 +173,10 @@ def test_public_nht_commands_and_trainer_runtime_are_explicit() -> None:
     assert not hasattr(runtime.nht, "reconstruction_config_path")
 
 
-def test_configured_paths_retain_their_declared_runtime_roles() -> None:
-    runtime = _compose()
+def test_configured_paths_retain_their_declared_runtime_roles(
+    tmp_path: Path,
+) -> None:
+    runtime = _compose(tmp_path)
     line_model = runtime.alignment.evidence.line_model
 
     assert (

@@ -124,8 +124,7 @@ def _setup(ops: Any, *, route: bool = True) -> dict[str, Any]:
         for prop in data["proposals"]:
             prop["related_parent"] = 1
         ops.set_agent_output(data)
-    generated = ops.run("report")
-    assert generated.returncode == 0, generated.stderr
+    ops.publish_proposal_fixture()
     return _issue(ops)
 
 
@@ -697,7 +696,10 @@ def test_old_report_version_prevents_all_mutations(ops_env: Any) -> None:
     ops.write_state(state)
     before = ops.state
     result = ops.run("triage")
-    assert result.returncode == 1 and "unsupported ops-report:v1" in result.stderr
+    assert (
+        result.returncode == 1
+        and "unsupported ops-report:v1" in result.stderr + result.stdout
+    )
     assert ops.state == before
 
 
@@ -805,7 +807,7 @@ def test_stale_local_decision_snapshot_cannot_override_github(ops_env: Any) -> N
         ],
     )
     before = ops.state
-    (ops.tmp / "agent_used.txt").unlink()
+    (ops.tmp / "agent_used.txt").unlink(missing_ok=True)
     result = ops.run(
         "report", "--now", "2026-10-15T08:00:00+09:00", "--memory-decisions", decisions
     )

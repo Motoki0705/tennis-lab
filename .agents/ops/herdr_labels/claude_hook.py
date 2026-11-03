@@ -13,23 +13,27 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lib.identity import session_identity  # noqa: E402
 
-from herdr_labels.service import sync  # noqa: E402
+from herdr_labels.service import VerifiedSessionStartError, registry, sync  # noqa: E402
 
 
 def main() -> int:
+    event = None
+    identity = None
+    env = dict(os.environ)
     try:
         payload = json.load(sys.stdin)
+        if not isinstance(payload, dict):
+            raise ValueError("expected a Claude hook payload object")
         event = payload.get("hook_event_name")
         if event not in {"SessionStart", "SessionEnd"}:
             raise ValueError("expected SessionStart or SessionEnd")
         sid = payload.get("session_id")
         if not isinstance(sid, str) or not sid:
             raise ValueError("Claude hook session_id is missing")
-        env = dict(os.environ)
         if env.get("CODEX_SESSION_ID") or payload.get("agent_id"):
             raise ValueError("do not run parent display hooks from a child agent")
         env["CLAUDE_CODE_SESSION_ID"] = sid
-        session_identity(env)
+        identity = session_identity(env)
         if event == "SessionStart" and env.get("CLAUDE_ENV_FILE"):
             with Path(env["CLAUDE_ENV_FILE"]).open("a", encoding="utf-8") as stream:
                 stream.write(f"\nexport CLAUDE_CODE_SESSION_ID={shlex.quote(sid)}\n")
@@ -63,6 +67,46 @@ def main() -> int:
         TypeError,
         subprocess.SubprocessError,
     ) as exc:
+        notify_parent = False
+        if (
+            event == "SessionStart"
+            and identity is not None
+            and isinstance(exc, VerifiedSessionStartError)
+        ):
+            try:
+                notify_parent = any(
+                    row["session"] == identity and row["status"] == "active"
+                    for row in registry(env).values()
+                )
+            except (ValueError, OSError, KeyError, TypeError) as lookup_error:
+                print(
+                    f"herdr-label hook: cannot determine the active parent ({lookup_error}); "
+                    f"original failure: {exc}",
+                    file=sys.stderr,
+                )
+                return 1
+        if notify_parent:
+            reason = str(exc)
+            message = (
+                f"Herdrの担当表示の同期に失敗しました: {reason}。"
+                ".agents/skills/herdr-session-label/SKILL.md の修復手順を確認してください。"
+            )
+            # SessionStart only delivers stdout JSON to Claude on exit zero.
+            # This acknowledges delivery, while the payload reports sync failure.
+            print(
+                json.dumps(
+                    {
+                        "herdr_label": {"status": "error", "reason": reason},
+                        "hookSpecificOutput": {
+                            "hookEventName": "SessionStart",
+                            "additionalContext": message,
+                        },
+                        "systemMessage": message,
+                    },
+                    ensure_ascii=False,
+                )
+            )
+            return 0
         print(f"herdr-label hook: {exc}", file=sys.stderr)
         return 1
 

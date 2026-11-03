@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import RUN_SCHEMA, json_bytes
+from src.tasks.ball_detection.checkpoints.temporal import RUN_SCHEMA, json_bytes
 from src.tasks.ball_detection.data.distribution.manifest import (
     DISTRIBUTION_FILE,
     distribution_files,
@@ -28,9 +28,12 @@ from src.tasks.ball_detection.data.windows.all_frames import AllFrameWindowConfi
 from src.tasks.ball_detection.data.windows.manifest import clip_semantic_digest
 from src.tasks.ball_detection.model_io.mdd_heatmap import (
     HEATMAP_MODEL_SCHEMA,
-    HeatmapModel,
     heatmap_model_kind,
 )
+from src.tasks.ball_detection.model_io.mdd_temporal import QUERY_SCHEMA, TemporalModel
+from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
+from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
+from src.tasks.ball_detection.training.runtime.images import jpeg_decoder_contract
 from src.utils.checksum import dual_sha256
 from src.utils.data.verification import SharedFileVerification, file_version
 
@@ -200,17 +203,25 @@ class SeparateTestInputs:
     test_distribution: Path
     evaluation_contract: Path
     evaluation_contract_sha256: str
-    calibration: Path
-    calibration_sha256: str
+    calibration: Path | None = None
+    calibration_sha256: str | None = None
 
 
 def validate_separate_test(
-    inputs: SeparateTestInputs, *, model: HeatmapModel, artifact_sha256: str,
-    test_manifest: dict[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    inputs: SeparateTestInputs, *, model: TemporalModel, artifact_sha256: str,
+    test_manifest: dict[str, Any], runtime: CoordinateRuntime,
+) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any]]:
     """No training payload reads, auto-discovery, missing-val rescue or test calibration."""
     contract = _pinned(inputs.evaluation_contract, inputs.evaluation_contract_sha256)
-    calibration = _pinned(inputs.calibration, inputs.calibration_sha256)
+    query = isinstance(model, DeepMDDQueryDetector)
+    if query:
+        if inputs.calibration is not None or inputs.calibration_sha256 is not None:
+            raise ValueError("Direct coordinates have no presence calibration")
+        calibration = None
+    else:
+        if inputs.calibration is None or inputs.calibration_sha256 is None:
+            raise ValueError("Heatmap test requires an explicit pinned validation calibration")
+        calibration = _pinned(inputs.calibration, inputs.calibration_sha256)
     if (contract.get("schema") != CONTRACT_SCHEMA
             or set(contract) != {"schema", "source_snapshot_hashes", "training", "test"}
             or set(contract["source_snapshot_hashes"]) != {"index.npz", "metadata.json"}):
@@ -222,15 +233,19 @@ def validate_separate_test(
     saved = torch.load(inputs.artifact, map_location="cpu", weights_only=True)
     training = saved.get("training", {})
     recipe = run["recipe"]
-    if (run.get("schema") != RUN_SCHEMA or training.get("schema") != RUN_SCHEMA or saved.get("schema") != HEATMAP_MODEL_SCHEMA
+    model_schema = QUERY_SCHEMA if query else HEATMAP_MODEL_SCHEMA
+    model_kind = "mdd_temporal_query" if query else heatmap_model_kind(model.config)
+    if (run.get("schema") != RUN_SCHEMA or training.get("schema") != RUN_SCHEMA or saved.get("schema") != model_schema
             or training.get("recipe_sha256") != digest(recipe) or training["data"] != recipe["data"]
             or training["seed"] != recipe["budget"]["seed"] or training["phase"] != recipe["phase"]
             or any(training["code"][key] != run["code"][key] for key in ("source_sha256", "torch_version"))
             or training["image_decode"] != recipe["image_decode"]
             or training["runtime"] != recipe["runtime"] or digest(asdict(model.config)) != digest(recipe["model"])
+            or training["image_decode"] != jpeg_decoder_contract(runtime.jpeg_decoder)
+            or training["runtime"]["precision"] != runtime.precision
             or digest(saved["model_config"]) != digest(recipe["model"])
             or saved["input_contract"] != model.mdd.input_contract() or saved["input_contract"] != recipe["input_contract"]
-            or saved["model_kind"] != heatmap_model_kind(model.config)):
+            or saved["model_kind"] != model_kind):
         raise ValueError("Training run record/recipe differs from the saved artifact")
     actual_state = model.state_dict()
     if (actual_state.keys() != saved["state_dict"].keys()
@@ -274,6 +289,7 @@ def validate_separate_test(
                       training_snapshot=data["snapshot"], source_snapshot_hashes=contract["source_snapshot_hashes"],
                       training_distribution_sha256=contract["training"]["distribution_sha256"],
                       test_distribution_sha256=contract["test"]["distribution_sha256"],
-                      validation_manifest_sha256=dual_sha256(inputs.validation_manifest),
-                      calibration_report_sha256=inputs.calibration_sha256)
+                      validation_manifest_sha256=dual_sha256(inputs.validation_manifest))
+    if calibration is not None:
+        provenance["calibration_report_sha256"] = inputs.calibration_sha256
     return validation, calibration, provenance

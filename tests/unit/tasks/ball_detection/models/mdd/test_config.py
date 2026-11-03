@@ -49,14 +49,16 @@ def test_hybrid_requires_explicit_input_channels(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("filename,config_type", [
     ("mdd_dpt_heatmap.yaml", "dpt"), ("mdd_heatmap_hybrid.yaml", "hybrid"),
+    ("mdd_temporal_query.yaml", "query"),
 ])
-def test_temporal_heatmap_configs_keep_widths_and_require_explicit_saved_fields(tmp_path: Path, filename: str, config_type: str) -> None:
+def test_temporal_configs_keep_widths_and_require_explicit_saved_fields(tmp_path: Path, filename: str, config_type: str) -> None:
     from src.tasks.ball_detection.models.mdd import (
         MDDHeatmapConfig,
         MDDHeatmapHybridConfig,
+        MDDTemporalQueryConfig,
     )
 
-    cls = MDDHeatmapConfig if config_type == "dpt" else MDDHeatmapHybridConfig
+    cls = {"dpt": MDDHeatmapConfig, "hybrid": MDDHeatmapHybridConfig, "query": MDDTemporalQueryConfig}[config_type]
     root = PROJECT_ROOT / "src/tasks/ball_detection/configs/model"
     config = cls.load(root / filename)
     legacy = MDDPretrainConfig.load(root / "mdd_dpt_rgb_mdd.yaml")

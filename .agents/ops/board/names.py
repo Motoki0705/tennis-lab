@@ -36,8 +36,8 @@ def validate_names(values: Sequence[str]) -> tuple[str, ...]:
     if not values or any(not re.fullmatch(r"[A-Z][a-zA-Z]*", name) for name in values):
         raise BoardError("name set requires ASCII letters and initial capitals")
     folded = [name.casefold() for name in values]
-    if "all" in folded:
-        raise BoardError("name set contains the reserved name all")
+    if {"all", "human"} & set(folded):
+        raise BoardError("name set contains a reserved name")
     if len(set(folded)) != len(folded):
         raise BoardError("name set contains a duplicate")
     if any(one_edit_apart(a, b) for i, a in enumerate(folded) for b in folded[i + 1 :]):
@@ -51,8 +51,8 @@ def load_names() -> tuple[str, ...]:
 
 def canonical_name(value: str, catalog: Sequence[str] | None = None) -> str:
     names = load_names() if catalog is None else validate_names(catalog)
-    if value.casefold() == "all":
-        raise BoardError("all is reserved, not an individual name")
+    if value.casefold() in {"all", "human"}:
+        raise BoardError("reserved participant is not a parent name")
     for name in names:
         if name.casefold() == value.casefold():
             return name

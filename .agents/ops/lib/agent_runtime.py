@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -131,6 +132,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "--json-schema", type=Path, help="JSON Schema file for the final response"
     )
+    result.add_argument(
+        "--mcp-config", type=Path, help="host-provided stdio MCP server configuration"
+    )
     result.add_argument("--mode", choices=("read-only", "write"), default="read-only")
     result.add_argument("--profile")
     result.add_argument("--model")
@@ -169,6 +173,7 @@ def capture(
         with (
             (run_dir / "prompt.md").open("rb") as prompt,
             (run_dir / "events.jsonl").open("wb") as raw,
+            (run_dir / "event-receipts.jsonl").open("w", encoding="utf-8") as receipts,
             (run_dir / "stderr.log").open("wb") as stderr,
         ):
             proc = subprocess.Popen(
@@ -180,10 +185,32 @@ def capture(
                 stderr=stderr,
                 start_new_session=True,
             )
+            result["agent_spawned"] = True
             result["process"] = process_identity(proc.pid)
             save()
             assert proc.stdout is not None
             pending = b""
+            event_offset = 0
+
+            def receive(line: bytes, end: int) -> None:
+                """Keep timing separate from the exact CLI stdout bytes."""
+                nonlocal event_offset
+                if line.strip():
+                    receipt = {
+                        "schema_version": VERSION,
+                        "event_start": event_offset,
+                        "event_end": end,
+                        "sha256": hashlib.sha256(line).hexdigest(),
+                        "received_at": datetime.now(UTC).isoformat(),
+                    }
+                    receipts.write(json.dumps(receipt, sort_keys=True) + "\n")
+                    receipts.flush()
+                    previous = events.session
+                    events.feed(line)
+                    if previous != events.session:
+                        save()
+                event_offset = end
+
             started = time.monotonic()
             with selectors.DefaultSelector() as selector:
                 selector.register(proc.stdout, selectors.EVENT_READ)
@@ -202,15 +229,11 @@ def capture(
                         pending += chunk
                         while b"\n" in pending:
                             line, pending = pending.split(b"\n", 1)
-                            if line.strip():
-                                previous = events.session
-                                events.feed(line)
-                                if previous != events.session:
-                                    save()
+                            receive(line, event_offset + len(line) + 1)
                     elif proc.poll() is not None:
                         break
                 if pending.strip():
-                    events.feed(pending)
+                    receive(pending, event_offset + len(pending))
             # EOF alone is not process completion: a CLI may close stdout early.
             while proc.poll() is None:
                 if int(stop_signal[0]):
@@ -309,6 +332,18 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
     if output_schema is not None:
         contract["json_schema_sha256"] = output_schema.sha256
+    mcp_bytes = None
+    if args.mcp_config is not None:
+        if (
+            agent != "codex"
+            or args.profile not in {"review", "ops_report"}
+            or args.mode != "read-only"
+        ):
+            raise ValueError(
+                "MCP config requires a read-only Codex review/audit profile"
+            )
+        mcp_bytes = args.mcp_config.read_bytes()
+        contract["mcp_config_sha256"] = hashlib.sha256(mcp_bytes).hexdigest()
     if branch == "(detached)":
         head = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
@@ -425,6 +460,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "cli_exit_code": None,
             "runner": process_identity(os.getpid()),
             "process": None,
+            "agent_spawned": False,
             "terminated_pids": [],
             "cleanup_complete": False,
             "started_at": time.time(),
@@ -447,6 +483,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if schema_path is not None:
             assert output_schema is not None
             schema_path.write_bytes(output_schema.raw)
+        mcp_path = run_dir / "mcp-config.json" if mcp_bytes is not None else None
+        if mcp_path is not None:
+            assert mcp_bytes is not None
+            mcp_path.write_bytes(mcp_bytes)
         save()
         env = {k: v for k, v in os.environ.items() if k not in IDENTITY_ENV}
         env.update(
@@ -467,6 +507,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 state["session_id"],
                 read_dirs,
                 schema_path,
+                mcp_path,
             )
             write_json(
                 run_dir / "invocation.json",

@@ -8,12 +8,12 @@ from functools import partial
 from types import MappingProxyType
 from typing import Any, cast
 
-import pytorch_lightning as pl
 from torch.utils.data import ConcatDataset, DataLoader, Dataset
 
 from src.tasks.base.configuration import (
     as_config_mapping,
 )
+from src.tasks.base.data.loader_state import LoaderRNGDataModule
 from src.tasks.court_detection.configuration import (
     CourtTrainingConfig,
 )
@@ -34,7 +34,7 @@ from src.tasks.court_detection.data.processing.factory import (
 from src.tasks.court_detection.data.processing.pipeline import CourtProcessingPipeline
 
 
-class CourtDetectionDataModule(pl.LightningDataModule):
+class CourtDetectionDataModule(LoaderRNGDataModule):
     """Build source-specific pipelines and mix them within every train batch."""
 
     def __init__(
@@ -43,8 +43,8 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         *,
         mixed_config: CourtMixedDataConfig | None = None,
     ) -> None:
-        super().__init__()
         runtime = CourtTrainingConfig.from_config(config)
+        super().__init__(loader_seed=runtime.shared.run.seed)
         self.data_config = runtime.data
         if mixed_config is None:
             values = as_config_mapping(config, path="configuration")
@@ -192,6 +192,7 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         return DataLoader(
             dataset,
             batch_sampler=sampler,
+            generator=self.loader_generator("train"),
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=partial(
@@ -206,11 +207,13 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         dataset: Dataset[Any] | None,
         *,
         stage: str,
+        rng_stage: str,
     ) -> DataLoader[Any]:
         return DataLoader(
             self._require_dataset(dataset, stage=stage),
             batch_size=self.batch_size,
             shuffle=False,
+            generator=self.loader_generator(rng_stage),
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             collate_fn=partial(
@@ -222,20 +225,24 @@ class CourtDetectionDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self) -> DataLoader[Any]:
-        return self._eval_loader(self.val_dataset, stage="validate")
+        return self._eval_loader(self.val_dataset, stage="validate", rng_stage="val")
 
     def source_eval_dataloader(
         self, source: str, split: CourtSourceSplit
     ) -> DataLoader[Any]:
         """Evaluate one declared source/split without manufacturing a real test set."""
         if split == "train":
-            raise ValueError("Source evaluation requires val or test, not train augmentation.")
+            raise ValueError(
+                "Source evaluation requires val or test, not train augmentation."
+            )
         if source not in self._eval_pipelines:
             raise ValueError(f"Unknown Court source: {source}")
-        dataset = self._source_dataset(split=split, pipeline=self._eval_pipelines[source])
+        dataset = self._source_dataset(
+            split=split, pipeline=self._eval_pipelines[source]
+        )
         if dataset is None:
             raise ValueError(f"Court source {source!r} has no {split!r} split.")
-        return self._eval_loader(dataset, stage=f"{source}/{split}")
+        return self._eval_loader(dataset, stage=f"{source}/{split}", rng_stage=split)
 
     def test_dataloader(self) -> DataLoader[Any]:
-        return self._eval_loader(self.test_dataset, stage="test")
+        return self._eval_loader(self.test_dataset, stage="test", rng_stage="test")

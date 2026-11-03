@@ -29,28 +29,82 @@ from src.utils.checksum import dual_sha256
 from src.utils.data.verification import file_version
 
 
-def _reusable_shard_hashes(store: BallFrameStore, manifest: Path | None) -> dict[str, str]:
-    """Only an explicitly supplied coordinate manifest of this exact snapshot is reused."""
+def _reusable_shard_hashes(
+    store: BallFrameStore, manifest: Path | None
+) -> dict[str, str]:
+    """Reuse explicitly selected hashes pinned to this exact immutable snapshot."""
     if manifest is None:
         return {}
     raw = json.loads(manifest.read_text())
-    identity = {name: dual_sha256(store.directory / name) for name in ("metadata.json", "index.npz")}
-    if (raw["schema"] != COORDINATE_MANIFEST_SCHEMA or raw["input_kind"] != "mdd_only"
-            or Path(raw["ball_store"]["directory"]).resolve() != store.directory.resolve()
-            or raw["ball_store"]["hashes"] != identity):
-        raise ValueError("RGB hash source must be an MDD-only coordinate manifest of the identical snapshot")
+    identity = {
+        name: dual_sha256(store.directory / name)
+        for name in ("metadata.json", "index.npz")
+    }
+    if raw.get("schema_version") == "ball_frame_store_distribution.v1":
+        from src.tasks.ball_detection.data.distribution.manifest import (
+            load_distribution,
+            local_file,
+        )
+
+        if manifest.resolve() != store.directory / "distribution.json":
+            raise ValueError(
+                "Distribution hash source must be this store's own manifest"
+            )
+        raw = load_distribution(store.directory)
+        files = {entry["path"]: entry for entry in raw["files"]}
+        if any(files[name]["sha256"] != digest for name, digest in identity.items()):
+            raise ValueError(
+                "Distribution index/metadata differ from the pinned hash source"
+            )
+        if {entry["clip_id"] for entry in raw["clips"]} != {
+            clip.clip_id for clip in store.clips
+        }:
+            raise ValueError(
+                "Distribution hash source must cover exactly the snapshot clips"
+            )
+        hashes = {}
+        for entry in raw["clips"]:
+            clip = store.clip_by_id(entry["clip_id"])
+            path = local_file(store.directory, entry["payload"])
+            item = files[entry["payload"]]
+            if (
+                clip.index != entry["index"]
+                or path != store.image_path(clip)
+                or path.stat().st_size != item["size_bytes"]
+            ):
+                raise ValueError(
+                    "Distribution payload mapping/size differs from the snapshot"
+                )
+            hashes[clip.clip_id] = item["sha256"]
+        return hashes
+    if (
+        raw["schema"] != COORDINATE_MANIFEST_SCHEMA
+        or raw["input_kind"] != "mdd_only"
+        or Path(raw["ball_store"]["directory"]).resolve() != store.directory.resolve()
+        or raw["ball_store"]["hashes"] != identity
+    ):
+        raise ValueError(
+            "RGB hash source must be an MDD-only coordinate manifest of the identical snapshot"
+        )
     hashes = {}
     for record in raw["clips"]:
         clip_id = record["clip"]["clip_id"]
         clip = store.clip_by_id(clip_id)
-        if clip_id in hashes or record["semantic_sha256"] != clip_semantic_digest(store, clip):
-            raise ValueError("RGB hash source contains duplicate or changed clip identities")
+        if clip_id in hashes or record["semantic_sha256"] != clip_semantic_digest(
+            store, clip
+        ):
+            raise ValueError(
+                "RGB hash source contains duplicate or changed clip identities"
+            )
         hashes[clip_id] = record["rgb_shard_sha256"]
     return hashes
 
 
 def prepare_all_frame_training(
-    ball_directory: Path, output: Path, *, configs: Sequence[AllFrameWindowConfig],
+    ball_directory: Path,
+    output: Path,
+    *,
+    configs: Sequence[AllFrameWindowConfig],
     rgb_manifest: Path | None = None,
     external_payloads: Mapping[str, Path] | None = None,
     progress: Callable[[str, int, int], None] | None = None,
@@ -60,11 +114,19 @@ def prepare_all_frame_training(
     The existing snapshot must remain immutable and available for the lifetime
     of the prepared data. Distribution to an independent store is a separate API.
     """
-    if not ball_directory.is_absolute() or not output.is_absolute() or (rgb_manifest is not None and not rgb_manifest.is_absolute()):
-        raise ValueError("All-frame snapshot, output and optional RGB manifest paths must be absolute")
+    if (
+        not ball_directory.is_absolute()
+        or not output.is_absolute()
+        or (rgb_manifest is not None and not rgb_manifest.is_absolute())
+    ):
+        raise ValueError(
+            "All-frame snapshot, output and optional RGB manifest paths must be absolute"
+        )
     ball_directory, output = ball_directory.resolve(), output.resolve()
     if output.exists():
-        raise FileExistsError(f"All-frame preparation requires a new output directory: {output}")
+        raise FileExistsError(
+            f"All-frame preparation requires a new output directory: {output}"
+        )
     if not configs:
         raise ValueError("All-frame preparation requires at least one T")
     if output.is_relative_to(ball_directory) or ball_directory.is_relative_to(output):
@@ -77,8 +139,11 @@ def prepare_all_frame_training(
         if clip.source != "chat_annotation":
             continue
         rows = store.clip_rows(clip)
-        has_empty = np.any(store.frames["annotated"][rows] & store.frames["is_target"][rows]
-                           & (store.frames["inst_count"][rows] == 0))
+        has_empty = np.any(
+            store.frames["annotated"][rows]
+            & store.frames["is_target"][rows]
+            & (store.frames["inst_count"][rows] == 0)
+        )
         if has_empty and common_intervals(annotation_states(store, clip), configs[0]):
             paths.add(store.annotation_path(clip))
     if rgb_manifest is not None:
@@ -92,10 +157,16 @@ def prepare_all_frame_training(
             progress("rgb_hashes", i + 1, len(store.clips))
     output.mkdir(parents=True, exist_ok=False)
     incomplete = output / "PREPARATION_INCOMPLETE"
-    incomplete.write_text("All-frame manifests are unavailable until experiments.json is published.\n")
+    incomplete.write_text(
+        "All-frame manifests are unavailable until experiments.json is published.\n"
+    )
     manifests = build_all_frame_manifests(
-        store, configs, shard_hashes=hashes,
-        progress=(lambda done, total: progress("annotations", done, total)) if progress is not None else None,
+        store,
+        configs,
+        shard_hashes=hashes,
+        progress=(lambda done, total: progress("annotations", done, total))
+        if progress is not None
+        else None,
     )
     datasets: dict[str, dict[str, Any]] = {}
     for length, modes in manifests.items():
@@ -103,8 +174,17 @@ def prepare_all_frame_training(
         for mode, manifest in modes.items():
             validate_all_frame_manifest(manifest, store)
             path = output / f"{mode}_T{length}.json"
-            path.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n")
-            datasets[str(length)][mode] = dict(path=str(path), sha256=dual_sha256(path), summaries=manifest["summaries"])
+            path.write_text(
+                json.dumps(
+                    manifest, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+                )
+                + "\n"
+            )
+            datasets[str(length)][mode] = dict(
+                path=str(path),
+                sha256=dual_sha256(path),
+                summaries=manifest["summaries"],
+            )
         if progress is not None:
             progress("manifests", list(manifests).index(length) + 1, len(manifests))
     for split in ("train", "val", "test"):
@@ -112,19 +192,38 @@ def prepare_all_frame_training(
         for modes in manifests.values():
             for manifest in modes.values():
                 summary = manifest["summaries"][split]
-                for name in ("common_intervals_sha256", "target_identity_sha256", "teacher_identity_sha256",
-                             "scored_frame_sha256", "training_packs_sha256"):
+                for name in (
+                    "common_intervals_sha256",
+                    "target_identity_sha256",
+                    "teacher_identity_sha256",
+                    "scored_frame_sha256",
+                    "training_packs_sha256",
+                ):
                     if summary[name] != reference[name]:
-                        raise ValueError(f"All-frame identity differs between T/modes: {split}/{name}")
+                        raise ValueError(
+                            f"All-frame identity differs between T/modes: {split}/{name}"
+                        )
     if any(file_version(path) != version for path, version in versions.items()):
         raise ValueError("Source files changed during all-frame preparation")
     if source_identity()["source_sha256"] != code["source_sha256"]:
         raise ValueError("All-frame implementation changed during preparation")
-    plan = dict(schema="ball_all_frame_preparation.v1", datasets=datasets, code=code,
-                configs=[asdict(c) for c in configs], snapshot_mode="read_only_reference; no copy or hardlinks",
-                payload_mode="external_source_view" if external_payloads is not None else "self_contained",
-                rgb_manifest=None if rgb_manifest is None else dict(path=str(rgb_manifest), sha256=dual_sha256(rgb_manifest)),
-                source_files_stat_checked=len(versions), status="prepared; no training started")
-    (output / "experiments.json").write_text(json.dumps(plan, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
+    plan = dict(
+        schema="ball_all_frame_preparation.v1",
+        datasets=datasets,
+        code=code,
+        configs=[asdict(c) for c in configs],
+        snapshot_mode="read_only_reference; no copy or hardlinks",
+        payload_mode="external_source_view"
+        if external_payloads is not None
+        else "self_contained",
+        rgb_manifest=None
+        if rgb_manifest is None
+        else dict(path=str(rgb_manifest), sha256=dual_sha256(rgb_manifest)),
+        source_files_stat_checked=len(versions),
+        status="prepared; no training started",
+    )
+    (output / "experiments.json").write_text(
+        json.dumps(plan, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    )
     incomplete.unlink()
     return plan

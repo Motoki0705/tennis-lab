@@ -39,6 +39,9 @@ model family packageは内部実装であり、同じsymbolを再exportしませ
 - `filter_detections_by_footpoint`は評価で共有する足元polygonフィルタです。標準sceneのDINO検出・StrongSORT++追跡とIO契約は[scene pipeline README](../tennis_scene/pipeline/README.md)を参照してください。
 - `Pose2DRequest` / `ImageFeatureRequest`の`frame_indices`を指定すると、明示したsource frameを逐次decodeし、全動画をRAMへ展開せずcrop batchを作る。
 - `Pose2DFrameSequenceRequest`は明示したBGR画像列とframe ID・boxを受け、動画と同じcrop/正規化/復号でViTPoseを実行する。JPEG storeやRGB増強を動画へ再圧縮せず接続できる。同一frameの複数人物を受理し、要求frameの欠落・順序不整合・画像サイズ変更は停止する。最後の要求frameまでだけを読み、全clipの入力hash/PTS検証は呼び出し側が担当する。
+- `ViTPosePose2D`のcrop batch progressは既定で表示する。呼び出し側が別途進捗を報告する場合は`show_progress=False`で抑制できる。
+
+DINOの実行前に[導入案内](../../docs/installation/README.ja.md#dino-cuda-extension)に従いbinaryを選択します。
 
 ```python
 import cv2
@@ -145,7 +148,7 @@ DINO利用時のsubmodule初期化・CUDA toolkit要件・拡張ビルドは
 [導入手順](../../docs/installation/README.ja.md#dino-cuda-extension)を正本とします。
 PyTorch互換修正は出力ディレクトリ内の生成ソースだけに適用し、submodule自体は変更しません。
 
-`validate_dino_extension()`は明示したimport pathの拡張にCPUテンソルを渡し、
+`validate_dino_extension()`は明示したbinaryにCPUテンソルを渡し、
 forward/backwardが上流のCPU非対応エラーへ到達することを確認します。import可能でも
 古いPyTorch APIで停止するバイナリは拒否します。CUDA kernelの動作・精度は別途queueで検証します。
-出力の`lib/`を`PYTHONPATH`へ明示し、共有の古いビルドへの自動切替はしません。
+指定したbinaryを実行時にも使い、共有の古いビルドへの自動切替はしません。

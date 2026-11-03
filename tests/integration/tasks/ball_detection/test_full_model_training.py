@@ -1,28 +1,31 @@
+"""Full-model initialization and fixed validation through a tiny real restart."""
+
 import json
-import os
-import subprocess
-import sys
 from pathlib import Path
 
+import pytest
 import torch
 
 from src.tasks.ball_detection.checkpoints.provenance import data_identity
+from src.tasks.ball_detection.evaluation import coordinate_cli
+from src.tasks.ball_detection.training.coordinates import full_model
 from src.utils.checksum import dual_sha256
 from src.utils.models.state import state_dict_sha256
+from tests.integration.tasks.ball_detection.mdd_training_contracts import (
+    assert_replay,
+    invoke_main,
+)
 from tests.support.tasks.ball_detection.learning import (
     full_model_arguments,
     full_model_checkpoint,
     training_manifests,
 )
 
+pytestmark = pytest.mark.integration
 
-def invoke(arguments: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-m", "src.tasks.ball_detection.scripts.train", "--stage", "coordinates",
-         "--initialize", "full_model", *arguments],
-        env=dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2"),
-        text=True, capture_output=True, timeout=180,
-    )
+
+def invoke(arguments: list[str]) -> None:
+    invoke_main(full_model.main, [*arguments, "--cpu-threads", "1"])
 
 
 def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) -> None:
@@ -31,8 +34,7 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     parent_hash, val_hash = dual_sha256(parent), dual_sha256(validation)
     initial = torch.load(parent, weights_only=True)
     output = tmp_path / "continuous"
-    result = invoke(full_model_arguments(parent, train, validation, output))
-    assert result.returncode == 0, result.stdout + result.stderr
+    invoke(full_model_arguments(parent, train, validation, output))
     first = torch.load(output / "epoch-000.pt", weights_only=True)
     last = torch.load(output / "epoch-001.pt", weights_only=True)
     assert first["epoch"] == 0 and first["global_step"] == 1
@@ -62,41 +64,32 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
 
     report_path = tmp_path / "evaluation.json"
     evaluate = [
-        sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate",
-        "--mode", "coordinates", "--checkpoint", str(output / "epoch-001.pt"),
-        "--output", str(report_path), "--artifact-root", str(tmp_path),
-        "--output-root", str(tmp_path), "--split", "val", "--device", "cpu",
+        "--checkpoint", str(output / "epoch-001.pt"), "--output", str(report_path),
+        "--artifact-root", str(tmp_path), "--output-root", str(tmp_path),
+        "--split", "val", "--device", "cpu", "--cpu-threads", "1",
     ]
-    for manifest, accepted in ((train, False), (validation, True)):
-        evaluated = subprocess.run(
-            [*evaluate, "--manifest", str(manifest)],
-            env=dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="2", MKL_NUM_THREADS="2"),
-            text=True, capture_output=True, timeout=90,
-        )
-        if not accepted:
-            assert evaluated.returncode != 0 and "frozen data/split identity" in evaluated.stderr
-            assert not report_path.exists()
-        else:
-            assert evaluated.returncode == 0, evaluated.stdout + evaluated.stderr
+    with pytest.raises(ValueError, match="frozen data/split identity"):
+        invoke_main(coordinate_cli.main, [*evaluate, "--manifest", str(train)])
+    assert not report_path.exists()
+    invoke_main(coordinate_cli.main, [*evaluate, "--manifest", str(validation)])
     report = json.loads(report_path.read_text())
     assert report["manifest_sha256"] == val_hash
     assert report["split"] == "val" and report["scopes"] == last["validation"]["scopes"]
 
     resumed = tmp_path / "resumed"
-    stopped = invoke(full_model_arguments(parent, train, validation, resumed) + ["--stop-after-epoch", "0"])
-    assert stopped.returncode == 0, stopped.stdout + stopped.stderr
+    stopped_arguments = full_model_arguments(parent, train, validation, resumed)
+    invoke([*stopped_arguments, "--stop-after-epoch", "0"])
+    checkpoint = resumed / "epoch-000.pt"
     diagnostic = json.loads((resumed / "DIAGNOSTIC_STOP.json").read_text())
-    assert diagnostic == dict(epoch=0, global_step=1, complete=False, checkpoint="epoch-000.pt",
-                              sha256=dual_sha256(resumed / "epoch-000.pt"))
+    assert diagnostic == dict(epoch=0, global_step=1, complete=False, checkpoint=checkpoint.name,
+                              sha256=dual_sha256(checkpoint))
     assert not (resumed / "epoch-001.pt").exists() and not (resumed / "COMPLETED.json").exists()
-
-    rejected_stop = invoke(full_model_arguments(parent, train, validation, resumed)
-        + ["--resume", str(resumed / "epoch-000.pt"), "--stop-after-epoch", "0"])
-    assert rejected_stop.returncode != 0 and "precedes the first resumed epoch" in rejected_stop.stderr
+    resume_arguments = [*stopped_arguments, "--resume", str(checkpoint)]
+    with pytest.raises(ValueError, match="precedes the first resumed epoch"):
+        invoke([*resume_arguments, "--stop-after-epoch", "0"])
     assert not (resumed / "epoch-001.pt").exists()
 
-    # A new train/validation snapshot or different adopted parent starts a new
-    # run. None may silently reuse the interrupted optimizer and schedule.
+    # A changed snapshot or adopted parent starts a new run, never this optimizer.
     changed_train, changed_val = tmp_path / "changed-train.json", tmp_path / "changed-val.json"
     changed_train.write_bytes(train.read_bytes() + b"\n")
     changed_val.write_bytes(validation.read_bytes() + b"\n")
@@ -104,15 +97,11 @@ def test_full_model_fresh_run_fixed_validation_and_exact_resume(tmp_path: Path) 
     other_parent.write_bytes(parent.read_bytes())
     for source, manifest, fixed in ((parent, changed_train, validation),
                                     (parent, train, changed_val), (other_parent, train, validation)):
-        args = full_model_arguments(source, manifest, fixed, resumed) + ["--resume", str(resumed / "epoch-000.pt")]
-        rejected = invoke(args)
-        assert rejected.returncode != 0 and "identical posttraining recipe" in rejected.stderr
+        args = full_model_arguments(source, manifest, fixed, resumed) + ["--resume", str(checkpoint)]
+        with pytest.raises(ValueError, match="identical posttraining recipe"):
+            invoke(args)
         assert not (resumed / "epoch-001.pt").exists()
 
-    result = invoke(full_model_arguments(parent, train, validation, resumed) + ["--resume", str(resumed / "epoch-000.pt")])
-    assert result.returncode == 0, result.stdout + result.stderr
-    replayed = torch.load(resumed / "epoch-001.pt", weights_only=True)
-    assert state_dict_sha256(replayed["state_dict"]) == state_dict_sha256(last["state_dict"])
-    assert replayed["validation"] == last["validation"]
-    assert replayed["global_step"] == last["global_step"]
+    invoke(resume_arguments)
+    assert_replay(output / "epoch-001.pt", resumed / "epoch-001.pt")
     assert json.loads((resumed / "COMPLETED.json").read_text()) == json.loads((output / "COMPLETED.json").read_text())

@@ -20,7 +20,9 @@ from src.utils.schema.court_normalization import (
 
 
 def _scene() -> tuple[SceneData, np.ndarray]:
-    translation_m = np.asarray([[-4.0, -11.0, 1.0], [4.0, 11.0, 1.2]], dtype=np.float32)
+    translation_m: np.ndarray = np.asarray(
+        [[-4.0, -11.0, 1.0], [4.0, 11.0, 1.2]], dtype=np.float32
+    )
     canonical = np.arange(2 * 17 * 3, dtype=np.float32).reshape(2, 17, 3) / 100.0
     scene = SceneData(
         meta={
@@ -47,7 +49,10 @@ def test_writer_persists_contract_and_preserves_canonical_metres(
     tmp_path: Path,
 ) -> None:
     scene, translation_m = _scene()
-    path = PLCSDatasetWriter(tmp_path, legacy_metadata_free_v1=True).save_scene(scene)
+    writer = PLCSDatasetWriter(tmp_path, legacy_metadata_free_v1=True)
+    path = writer.save_scene(scene)
+    writer.save_split_info()
+    assert (tmp_path / "train.txt").read_text().splitlines() == [path.name]
     loaded = load_scene(
         path,
         court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),

@@ -14,6 +14,7 @@ from src.tasks.base.configuration import TrainingRuntimeConfig
 from src.tasks.base.training.runner import BaseTrainingRunner
 from src.tasks.court_detection.configuration import (
     CourtTrainingConfig,
+    SyntheticCourtDatasetSubsetSourceConfig,
     SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtStoresSourceConfig,
 )
@@ -45,7 +46,11 @@ def resolve_training_config(
     runtime = CourtTrainingConfig.from_config(config)
     if isinstance(
         runtime.data.source,
-        (SyntheticCourtStoresSourceConfig, SyntheticCourtDatasetVersionSourceConfig),
+        (
+            SyntheticCourtStoresSourceConfig,
+            SyntheticCourtDatasetVersionSourceConfig,
+            SyntheticCourtDatasetSubsetSourceConfig,
+        ),
     ) != has_step_schedule(config):
         raise SemanticConfigurationError(
             "Explicit all-train sources and step_schedule must be selected together."

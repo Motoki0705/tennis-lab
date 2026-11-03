@@ -188,7 +188,7 @@ def start_worker(
         text += (
             f"\n\n親issue: #{session.parent}\n担当issue: #{child}\n"
             f"worktree: {worktree.resolve()}\nbranch: {branch}\n"
-            f"PYTEST_LOCK: {env.get('PYTEST_LOCK') or session.store.directory.parent / 'pytest.lock'}\n\n"
+            "pytestは共有lockなしで他の親・子と並列実行できる。\n\n"
             f"## 担当issueの原文\n\n{items[child].body}\n\n"
             f"## 親の具体的な指示\n\n{prompt}\n"
         )
@@ -448,7 +448,7 @@ def verify_completion(session: ParentSession) -> list[int]:
         )
         require_request_authorization(session, request, required_issues={n})
         view = merge_gate.collect(session, request)
-        _, _, state, errors, _ = merge_gate.load_evidence(session, request, view)
+        _, _, state, errors = merge_gate.load_evidence(session, request, view)
         if (
             errors
             or view.errors[pr["number"]]

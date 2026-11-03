@@ -115,9 +115,15 @@ supervisorのreturn code 1と両processの消滅を記録した。
 4ファイル・約136.3 MBがinventoryに存在するが、配布版の完成とは認めない。
 単調時計約245.5秒はsource hash・upload試行・失敗検査を含み、全量転送の速度や完了見積りに換算しない。
 
-driverは新規の`shards`を直列作成せず、最初の4 uploadを並列に開始している。
+初回実行時のdriverは新規の`shards`を直列作成せず、最初の4 uploadを並列に開始した。
 観測時刻と実装から、同時mkdirの競合が重複の原因と考えられる。
 既存資産のtrash・移動・上書きは禁止されているため、重複検知後はDrive操作を停止した。
 親が重複の修復または別pathへの配置を判断する必要がある。
 再開前に新規subdirectoryを直列で準備するdriver修正と競合回帰を行い、
 最後に全inventory・内容照合・terminal receiptを揃えることを推奨する。
+
+2026-11-03にdriverを修正し、payloadの親directoryをworker起動前に直列作成したうえで、
+inventoryの一意性と既存内容を照合するようにした。空の新規宛先への4並列転送と、
+重複検知時にuploadを始めないことを含む回帰テスト8件が成功した。
+同日の確認でも旧宛先には同名`shards`が3個残っており、元snapshotも記録されたローカルpathでは見つかっていない。
+配布版の転送・inventory照合は未完了のままである。

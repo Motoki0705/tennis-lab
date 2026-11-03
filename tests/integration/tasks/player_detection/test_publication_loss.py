@@ -43,7 +43,8 @@ def test_published_targets_upstream_dino_loss_and_optimizer_step(tmp_path, all_e
         os.environ.get("PLAYER_DINO_REPOSITORY", "third_party/DINO")
     ).resolve()
     if not (repository / "models/__init__.py").is_file():
-        pytest.skip(
+        unavailable = pytest.fail if os.environ.get("CI_REQUIRE_DINO_LOSS") == "1" else pytest.skip
+        unavailable(
             "Initialize pinned DINO or set PLAYER_DINO_REPOSITORY for CPU loss acceptance"
         )
     device = os.environ.get("PLAYER_DINO_LOSS_DEVICE", "cpu")

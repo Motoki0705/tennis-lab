@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, TypedDict
 
+from issues.rewrite_state import rewrite_state
 from parent.policy import (
     child_stopped,
     digest,
@@ -121,6 +122,14 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
         }
     history = events(raw["comments"], snapshot["publisher"], n)
     facts = []
+    if (
+        rewrite_state(labels, raw["created_at"], snapshot["rewrite_enabled_since"])
+        == "pending"
+    ):
+        facts.append(
+            f"#{n} のissue rewriteはpending。parent --parent {n} wait-rewriteで確定を待つ。"
+            "人間がrewrite:skippedを付けても進められる。"
+        )
     if "needs-human" in labels:
         facts.append(f"#{n} にneeds-humanラベルがある。")
     if child_stopped(raw["body"]):

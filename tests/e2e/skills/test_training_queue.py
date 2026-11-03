@@ -167,6 +167,34 @@ def _wait_for(predicate: Callable[[], bool], *, timeout: float = 5) -> None:
     raise AssertionError("condition was not satisfied before timeout")
 
 
+def _wait_for_slot_waiter(queue_dirs: list[Path], lock_file: Path) -> None:
+    def has_waiter() -> bool:
+        return any(
+            "state=waiting\n" in state.read_text() and "wait=slot-capacity\n" in state.read_text()
+            for queue_dir in queue_dirs for state in (queue_dir / "state").glob("*.state")
+        )
+
+    _wait_for(has_waiter)
+    # Both actual reservations must remain held while a third worker waits.
+    for slot in _lock_namespace(lock_file)[2:]:
+        with slot.open("a+") as handle, pytest.raises(BlockingIOError):
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _wait_for_external_ack_rejection(queue_dir: Path, job: str) -> None:
+    state = queue_dir / "state" / f"{job.removesuffix('.job')}.state"
+    # Two publications ensure a complete validation cycle after the ack was
+    # installed, even if the first write was already in flight.
+    def next_publication() -> None:
+        inode = state.stat().st_ino
+        _wait_for(lambda: state.stat().st_ino != inode)
+        assert "wait=external-teardown\n" in state.read_text()
+
+    for _ in range(2):
+        next_publication()
+    assert (queue_dir / "running" / job).is_file()
+
+
 def _lock_namespace(lock_file: Path) -> tuple[Path, Path, Path, Path]:
     return (
         lock_file,
@@ -845,8 +873,7 @@ def test_half_capacity_status_and_repro_metadata(tmp_path: Path) -> None:
         assert listing.count("state=running") == 2
         assert "state=waiting" in listing
         assert "wait=slot-capacity" in listing
-        time.sleep(0.15)
-        assert not third_marker.exists()
+        _wait_for_slot_waiter([queue_dir], lock_file)
     finally:
         release.touch()
         stdout, stderr = worker.communicate(timeout=10)
@@ -936,7 +963,7 @@ def test_separate_workers_share_the_two_slot_namespace(tmp_path: Path) -> None:
         _wait_for(
             lambda: len(list(tmp_path.glob("started-*"))) == 2,
         )
-        time.sleep(0.15)
+        _wait_for_slot_waiter([tmp_path / f"queue-{i}" for i in range(3)], lock_file)
         assert len(list(tmp_path.glob("started-*"))) == 2
     finally:
         release.touch()
@@ -1119,7 +1146,9 @@ def test_git_common_root_default_is_shared_by_linked_worktrees(tmp_path: Path) -
 
     try:
         _wait_for(lambda: len(list(tmp_path.glob("started-*"))) == 2, timeout=10)
-        time.sleep(0.15)
+        _wait_for_slot_waiter(
+            [tmp_path / f"queue-{i}" for i in range(3)], repository / ".training_queue/gpu.lock"
+        )
         assert len(list(tmp_path.glob("started-*"))) == 2
         assert all(
             member.is_file()
@@ -2202,12 +2231,10 @@ def test_running_cancel_waits_for_required_external_teardown_ack(
         protected = tmp_path / "protected-ack-target"
         protected.write_text(f"{active_job}\n", encoding="utf-8")
         ack.symlink_to(protected)
-        time.sleep(0.15)
-        assert (queue_dir / "running" / active_job).is_file()
+        _wait_for_external_ack_rejection(queue_dir, active_job)
         ack.unlink()
         ack.write_text("wrong-job.job\n", encoding="utf-8")
-        time.sleep(0.15)
-        assert (queue_dir / "running" / active_job).is_file()
+        _wait_for_external_ack_rejection(queue_dir, active_job)
         ack.unlink()
 
         temporary_ack = ack.parent / ".tmp.test-ack"
@@ -2221,7 +2248,8 @@ def test_running_cancel_waits_for_required_external_teardown_ack(
         assert not ack.exists()
         _assert_lock_namespace_reacquirable(lock_file)
     finally:
-        if not ack.exists() and (queue_dir / "running" / active_job).exists():
+        if (queue_dir / "running" / active_job).exists():
+            ack.unlink(missing_ok=True)
             ack.write_text(f"{active_job}\n", encoding="utf-8")
         if pgid and _process_group_exists(pgid):
             with contextlib.suppress(ProcessLookupError):
@@ -2286,7 +2314,7 @@ def test_terminating_half_never_allows_three_live_cross_queue_halves(
                 _serve(tmp_path / f"successor-{index}", lock_file, cwd=tmp_path)
             )
         _wait_for(lambda: sum(marker.exists() for marker in successor_markers) == 1)
-        time.sleep(0.15)
+        _wait_for_slot_waiter([tmp_path / f"successor-{i}" for i in range(2)], lock_file)
         assert sum(marker.exists() for marker in successor_markers) == 1
 
         active_worker.terminate()
@@ -2384,15 +2412,22 @@ def test_worker_term_after_move_fails_job_without_launch_and_releases_capacity(
         assert not (
             queue_dir / "cancel-requests" / f"{active_job[:-4]}.cancel"
         ).exists()
+        assert (queue_dir / "stop").is_file()
+        assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        assert not _process_state(wrapper_pid)
         assert not list((queue_dir / "state").glob(".launch.*"))
         _assert_lock_namespace_reacquirable(lock_file)
 
         replacement = _serve(queue_dir, lock_file, cwd=tmp_path)
-        _wait_for(successor_started.exists, timeout=0.75)
+        _wait_for(successor_started.exists)
         replacement_output = replacement.communicate(timeout=5)
         assert replacement.returncode == 0, replacement_output
+        assert (queue_dir / "done" / successor_job).is_file()
         assert not (queue_dir / "stop").exists()
         assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        _assert_lock_namespace_reacquirable(lock_file)
     finally:
         os.close(barrier_fd)
         if worker.poll() is None:
@@ -2403,7 +2438,10 @@ def test_worker_term_after_move_fails_job_without_launch_and_releases_capacity(
             replacement.communicate(timeout=5)
 
 
-def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> None:
+@pytest.mark.parametrize("stop_during_empty_scan", [False, True])
+def test_cooperative_stop_after_move_requeues_without_launch(
+    tmp_path: Path, stop_during_empty_scan: bool
+) -> None:
     queue_dir = tmp_path / "queue"
     lock_file = tmp_path / "gpu.lock"
     target_started = tmp_path / "target-started"
@@ -2411,6 +2449,34 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
     barrier = tmp_path / "post-move-barrier"
     os.mkfifo(barrier)
     barrier_fd = os.open(barrier, os.O_RDWR | os.O_NONBLOCK)
+    empty_ready = tmp_path / "empty-scan-ready"
+    empty_barrier = tmp_path / "empty-scan-barrier"
+    os.mkfifo(empty_barrier)
+    empty_fd = os.open(empty_barrier, os.O_RDWR | os.O_NONBLOCK)
+    worker_env = {
+        "TRAINING_QUEUE_TEST_POST_MOVE_READY_FILE": str(ready),
+        "TRAINING_QUEUE_TEST_POST_MOVE_BARRIER_FIFO": str(barrier),
+    }
+    if stop_during_empty_scan:
+        # Freeze an actual empty history result. The wrapper requeues and exits
+        # before the supervisor sees that stale result and counts active jobs.
+        binary = tmp_path / "bin"
+        binary.mkdir()
+        python = binary / "python3"
+        python.write_text(
+            f"#!{sys.executable}\n"
+            "import subprocess, sys\nfrom pathlib import Path\n"
+            f"result = subprocess.run([{sys.executable!r}, *sys.argv[1:]], capture_output=True)\n"
+            f"ready = Path({str(empty_ready)!r})\n"
+            "if result.returncode == 0 and 'order' in sys.argv and sys.argv[-1] == 'first' and not result.stdout.strip() and not ready.exists():\n"
+            "    ready.write_text('empty')\n"
+            f"    with open({str(empty_barrier)!r}) as barrier: barrier.readline()\n"
+            "sys.stdout.buffer.write(result.stdout)\n"
+            "sys.stderr.buffer.write(result.stderr)\n"
+            "raise SystemExit(result.returncode)\n"
+        )
+        python.chmod(0o755)
+        worker_env["PATH"] = f"{binary}:{os.environ['PATH']}"
     target_job = _add(
         queue_dir,
         lock_file,
@@ -2423,23 +2489,34 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
         queue_dir,
         lock_file,
         cwd=tmp_path,
-        extra_env={
-            "TRAINING_QUEUE_TEST_POST_MOVE_READY_FILE": str(ready),
-            "TRAINING_QUEUE_TEST_POST_MOVE_BARRIER_FIFO": str(barrier),
-        },
+        extra_env=worker_env,
     )
     replacement: subprocess.Popen[str] | None = None
     try:
         _wait_for(ready.exists)
+        wrapper_pid = int(ready.read_text(encoding="utf-8"))
         assert (queue_dir / "running" / target_job).is_file()
         assert not target_started.exists()
+        if stop_during_empty_scan:
+            _wait_for(empty_ready.exists)
 
         stop_result = _queue(queue_dir, lock_file, "stop", cwd=tmp_path)
         assert "stop requested" in stop_result.stdout
         os.write(barrier_fd, b"release\n")
+        if stop_during_empty_scan:
+
+            def wrapper_exited() -> bool:
+                state = _process_state(wrapper_pid)
+                return not state or state.startswith("Z")
+
+            _wait_for(wrapper_exited)
+            assert (queue_dir / "jobs" / target_job).is_file()
+            os.write(empty_fd, b"release\n")
         stdout, stderr = worker.communicate(timeout=5)
 
         assert worker.returncode == 0, f"stdout={stdout}\nstderr={stderr}"
+        if stop_during_empty_scan:
+            assert "queue empty for 0s; exiting." in stdout
         assert not target_started.exists()
         assert (queue_dir / "jobs" / target_job).is_file()
         assert not (queue_dir / "running" / target_job).exists()
@@ -2449,6 +2526,8 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
         ).exists()
         assert not (queue_dir / "stop").exists()
         assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        assert not _process_state(wrapper_pid)
         assert not list((queue_dir / "state").glob(".launch.*"))
         _assert_lock_namespace_reacquirable(lock_file)
 
@@ -2457,7 +2536,15 @@ def test_cooperative_stop_after_move_requeues_without_launch(tmp_path: Path) -> 
         assert replacement.returncode == 0, replacement_output
         assert target_started.is_file()
         assert (queue_dir / "done" / target_job).is_file()
+        assert not (queue_dir / "jobs" / target_job).exists()
+        assert not (queue_dir / "running" / target_job).exists()
+        assert not (queue_dir / "stop").exists()
+        assert not (queue_dir / "worker.pid").exists()
+        assert not (queue_dir / "control/worker.protocol").exists()
+        _assert_lock_namespace_reacquirable(lock_file)
     finally:
+        os.write(empty_fd, b"release\n")
+        os.close(empty_fd)
         os.close(barrier_fd)
         if worker.poll() is None:
             worker.terminate()

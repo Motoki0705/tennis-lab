@@ -63,6 +63,7 @@ dependencies = [
     "fastapi>=0.135.3",
     "requests>=2.34.2",
     "jsonschema>=4.26.0",
+    "markdown-it-py>=4.0.0",
     "lap>=0.5.12",
 ]
 

@@ -56,6 +56,42 @@ TASK_MARKER = re.compile(
 )
 
 
+def task_title(issue: Issue) -> str:
+    """Public task name shown by worker status; recorded with the local task.
+
+    Parent/child issues use the summary of their validated title. A standalone
+    issue has no title convention, so its whole single-line title is the name.
+    """
+    if {PARENT_LABEL, CHILD_LABEL} & set(issue.labels):
+        return parse_title(issue.title).summary
+    return nonempty(issue.title, "issue title").strip()
+
+
+def private_run_paths(task: dict[str, Any], directory: Path) -> set[str]:
+    return {
+        path
+        for run in task.get("worker_runs", [])
+        for path in (run["run_dir"], str((directory / run["run_dir"]).resolve()))
+    }
+
+
+def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any]:
+    """Runner locations are private registry data, including external paths."""
+    paths = sorted(private_paths, key=len, reverse=True)
+
+    def redact(value: Any) -> Any:
+        if isinstance(value, str):
+            for path in paths:
+                value = value.replace(path, "[private run]")
+        elif isinstance(value, dict):
+            return {key: redact(item) for key, item in value.items()}
+        elif isinstance(value, list):
+            return [redact(item) for item in value]
+        return value
+
+    return {key: redact(value) for key, value in task.items() if key != "worker_runs"}
+
+
 class ParentSession:
     def __init__(
         self, gh: GitHub, store: Store, parent: int, session: str | None
@@ -63,6 +99,8 @@ class ParentSession:
         self.gh, self.store, self.parent, self.session = gh, store, parent, session
         self.key = f"{gh.repo.casefold()}#{parent}"
         self.endpoint = f"repos/{gh.repo}/issues/{parent}"
+        self.gh.parent = parent
+        self.store.focus(self.key)
         self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
 
     @property
@@ -88,6 +126,14 @@ class ParentSession:
         execution.current_basis(self)
         return row
 
+    def run_paths(self) -> set[str]:
+        return {
+            path
+            for row in self.store.parents.values()
+            for task in row["tasks"].values()
+            for path in private_run_paths(task, self.store.directory)
+        }
+
     def public(self, value: Any) -> None:
         serialized = json.dumps(value, ensure_ascii=False)
         secrets = {self.session.partition(":")[2]} if self.session else set()
@@ -95,6 +141,7 @@ class ParentSession:
         for row in self.store.parents.values():
             secrets.add(row["session"].partition(":")[2])
             secrets.update(task.get("worktree", "") for task in row["tasks"].values())
+        secrets.update(self.run_paths())
         if any(secret and secret in serialized for secret in secrets):
             raise ValueError(
                 "public payload contains private session/worktree information"
@@ -144,13 +191,17 @@ class ParentSession:
     def status(self) -> dict[str, Any]:
         row = self.row
         history = self.history()
+        run_paths = self.run_paths()
         return {
             "repo": self.gh.repo,
             "parent": self.parent,
             "assignment": row.get("status", "unassigned"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
-            "tasks": row.get("tasks", {}),
+            "tasks": {
+                n: visible_task(task, run_paths)
+                for n, task in row.get("tasks", {}).items()
+            },
             "launch_plan": self.launch_plan(),
             "review": self.review_status(history),
             "proposal_receipts": proposals.receipts(history),
@@ -247,6 +298,9 @@ class ParentSession:
 
     def checking(self) -> dict[str, Any]:
         self.owner()
+        from .rewrite import require_final
+
+        require_final(self.gh, self.parent)
         history = self.history()
         latest = next(
             (
@@ -312,6 +366,9 @@ class ParentSession:
         pid: str | None = None,
     ) -> dict[str, Any]:
         self.owner()
+        from .rewrite import require_final
+
+        require_final(self.gh, self.parent)
         if (report is None) != (pid is None):
             raise ValueError("proposal agreement requires both --report and --proposal")
         fields = {"purpose", "scope", "behavior", "acceptance", "human_confirmation"}
@@ -384,6 +441,7 @@ class ParentSession:
         )
         if report is not None:
             text = f"対象提案: #{report} / `{pid}`\n\n" + text
+        require_final(self.gh, self.parent)
         self.post(
             {
                 **event,
@@ -412,14 +470,12 @@ class ParentSession:
             {} if PARENT_LABEL in parent.labels else {parent.number: parent}
         )
 
-    def update_body(self, n: int, body: str, expected_body: str | None = None) -> None:
+    def update_body(self, n: int, body: str, expected_body: str) -> None:
+        from .rewrite import require_final
+
         self.public(body)
-        raw = self.gh.issue(n)
-        if (
-            expected_body is not None
-            and raw["body"] != expected_body
-            and raw["body"] != body
-        ):
+        raw = require_final(self.gh, n)
+        if raw["body"] != expected_body and raw["body"] != body:
             raise ValueError(
                 f"#{n}: body changed during the operation; reconcile before retry"
             )
@@ -447,6 +503,16 @@ class ParentSession:
             ChildTask(n, parse_title(child.title).summary, task_status(child))
             for n, child in children.items()
         ]
+        # Keep the observed names of existing local tasks for read-only status
+        # views. Formal children without a local task are not added here.
+        renamed = False
+        for task in tasks:
+            local = self.row["tasks"].get(str(task.number))
+            if local is not None and local.get("title") != task.title:
+                local["title"] = task.title
+                renamed = True
+        if renamed:
+            self.store.save()
         body = replace_section(parent.body, TASKS_HEADING, render_child_tasks(tasks))
         labels = {
             "continue": "継続",
@@ -506,7 +572,6 @@ class ParentSession:
         ):
             raise ValueError("migrate the parent using issues before splitting")
         draft = render_spec(spec)
-        draft["labels"] = sorted(set(draft["labels"]) | {"ai-proposed"})
         deps = value.get("dependencies", dependencies(draft["body"]))
         if not isinstance(deps, list) or len(deps) != len(set(deps)):
             raise ValueError("dependencies must be unique issue numbers")
@@ -617,6 +682,7 @@ class ParentSession:
             )
         task = self.row["tasks"].setdefault(str(n), {})
         task["dependencies"] = deps
+        task["title"] = parse_title(child["title"]).summary
         task.setdefault("creation_authorization", auth)
         self.store.save()
         states = self.sync_progress()
@@ -726,6 +792,7 @@ class ParentSession:
         initial_plan = self.launch_plan()
         states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
         prs = self.gh.pulls()
+        run_paths = self.run_paths()
         from .policy import closing_issues
 
         result = []
@@ -751,7 +818,7 @@ class ParentSession:
                 {
                     "child": n,
                     "state": states[n],
-                    "assignment": task,
+                    "assignment": visible_task(task, run_paths),
                     "prs": [
                         {
                             "number": p["number"],
@@ -873,11 +940,13 @@ class ParentSession:
                 raise ValueError("each child requires a dedicated branch/worktree")
         task = {
             **previous,
+            "title": task_title(children[child]),
             "agent": agent,
             "branch": branch,
             "worktree": str(worktree.resolve()),
             "delegated": True,
             "delegation_id": uuid.uuid4().hex,
+            "worker_runs": previous.get("worker_runs", []),
             "stacked_on": planned["stacked_on"],
             "dependencies": deps if deps is not None else planned["dependencies"],
             "stopped": False,
@@ -897,17 +966,19 @@ class ParentSession:
         if restart:
             task["restart_evidence"] = restart
         task.pop("worker_ended", None)
-        if source is not None:
-            proposals.require_source(self, source)
-        check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
-        check_task_adoptions(self.gh, self.gh.issue(child)["body"])
-        if execution.authorization(self) != auth:
-            raise ValueError("execution basis changed before delegation")
-        fresh = next(
-            t
-            for t in self.launch_plan(override, child if restart else None)["tasks"]
-            if t["child"] == child
-        )
+        # The final admission check must observe edits made during local validation.
+        with self.gh.fresh_reads():
+            if source is not None:
+                proposals.require_source(self, source)
+            check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
+            check_task_adoptions(self.gh, self.gh.issue(child)["body"])
+            if execution.authorization(self) != auth:
+                raise ValueError("execution basis changed before delegation")
+            fresh = next(
+                t
+                for t in self.launch_plan(override, child if restart else None)["tasks"]
+                if t["child"] == child
+            )
         if fresh != planned:
             raise ValueError(
                 "child launch inputs changed before delegation; reconcile before retry"
@@ -932,7 +1003,7 @@ class ParentSession:
         return {
             "action": "launch",
             "child": child,
-            "assignment": task,
+            "assignment": visible_task(task, self.run_paths()),
             "parent": parent.number,
             "launch_plan": self.launch_plan(),
         }

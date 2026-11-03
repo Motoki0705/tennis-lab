@@ -82,7 +82,9 @@ def main(argv: list[str] | None = None) -> int:
         commands.add_parser(
             "receipts", help="refresh Codex queue receipt phases without sending"
         )
-        viewing = commands.add_parser("web", help="serve the local read-only board")
+        viewing = commands.add_parser(
+            "web", help="serve the local board for human participation"
+        )
         viewing.add_argument("--port", type=int, default=8790)
         args = parser.parse_args(argv)
         env = os.environ

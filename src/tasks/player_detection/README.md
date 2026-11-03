@@ -61,14 +61,33 @@ sourceとdestinationは絶対パスで指定し、destinationはsourceの外に�
   /absolute/path/to/v1-store /absolute/path/to/new-v2-store
 ```
 
+通常の学習・評価・静的プレビューは、DATA root内の`player_detection/chat-player-v2`を既定で読みます。
+生成先の既定版も`chat-player-v2`です。既にこのstoreがある場合は生成を省いて利用します。
+生成コマンドは既存storeへの上書きを拒否します。
+
 ```bash
-.venv/bin/python -m src.tasks.player_detection.scripts.generate_dataset
 .venv/bin/python -m src.tasks.player_detection.scripts.train
+.venv/bin/python -m src.tasks.player_detection.scripts.preview_dataset
 .venv/bin/python -m src.tasks.player_detection.scripts.export_checkpoint \
   export.lightning_checkpoint=<output-root 相対 .ckpt> \
   export.destination=player_detection/<name>.pth
 .venv/bin/python -m src.tasks.player_detection.scripts.evaluate \
   '+evaluate.checkpoints.player_ft=player_detection/<name>.pth'
+```
+
+新しい版を生成するときは、未使用の`dataset.version`を明示します。
+そのstoreを利用する各コマンドには、対応するdataset overrideを指定します。
+別の公開済みv2 storeを使う場合も同じoverrideで選択できます。
+
+```bash
+.venv/bin/python -m src.tasks.player_detection.scripts.generate_dataset \
+  dataset.version=<new-version>
+.venv/bin/python -m src.tasks.player_detection.scripts.train \
+  data.dataset_dir=player_detection/<new-version>
+.venv/bin/python -m src.tasks.player_detection.scripts.evaluate \
+  evaluate.dataset_dir=player_detection/<new-version>
+.venv/bin/python -m src.tasks.player_detection.scripts.preview_dataset \
+  preview.dataset_dir=player_detection/<new-version>
 ```
 
 DINO の構築と前処理は [src/submodules/models/dino/architecture.py](../../submodules/models/dino/architecture.py) を

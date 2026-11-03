@@ -1,0 +1,20 @@
+{
+  "multiview_reconstruction.gif": {
+    "path": "assets/tennis_scene/multiview_reconstruction.gif",
+    "previous_git_blob": "973d94f884e4bb7efd006e74f7437a3a81d1905d",
+    "sha256": "fdf6efbb0e704cad3357e5aec765426f2836ae03cfcbb237e385d0017b104df7",
+    "bytes": 5794518
+  },
+  "blender_reveal_meiji_cam1.gif": {
+    "path": "assets/tennis_scene/blender_reveal_meiji_cam1.gif",
+    "previous_git_blob": "ef927f94082c580f8a9aadad36478d6b40945bf9",
+    "sha256": "3c3169613ebc4f8f71905c3ab87e85fcba160dd5c79a504b754b008bdbcfaa18",
+    "bytes": 4391463
+  },
+  "rich_scene_rendering.gif": {
+    "path": "assets/tennis_scene/rich_scene_rendering.gif",
+    "previous_git_blob": "c9067e8393d313db8bb95ca1fa5cced8a6a49f2b",
+    "sha256": "4b27a21c05e7addf40f2a4ac4404d00d6b8c49c6b2212c4fdd2c6fc347d1d9ba",
+    "bytes": 391368
+  }
+}

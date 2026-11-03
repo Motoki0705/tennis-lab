@@ -30,12 +30,12 @@ from src.tasks.ball_detection.data.windows.all_frames import (
 from src.tasks.ball_detection.data.windows.manifest import clip_semantic_digest
 from src.utils.checksum import dual_sha256
 
-ALL_FRAME_MANIFEST_SCHEMA = "ball_all_frame_windows.v1"
+ALL_FRAME_MANIFEST_SCHEMA = "ball_all_frame_windows.v2"
 ALL_FRAME_SEMANTICS = dict(
     mdd="recompute_from_each_augmented_child_rgb_window", timestamps="real_seconds",
     context="all_maximal_native_target_spans_at_least_max_window_length",
     training="uniform_shared_packs_with_replacement; retain_every_child",
-    acceptance="at_least_one_known_teacher_per_pack; no_child_filter",
+    acceptance="train:at_least_one_observed_per_pack; validation/test:unchanged; no_child_filter",
     evaluation_stride="window_length//2", tail="append_last_start_once",
     owner="min(abs(2*frame-(2*start+T-1)),start)", score="owner_and_known_teacher",
     edge_distance="min(frame-interval_start,interval_stop-1-frame)", edge_bins=list(EDGE_BINS),
@@ -77,7 +77,7 @@ def manifest_summaries(records: list[dict[str, Any]], config: AllFrameWindowConf
                     counts[name] += int(count)
                 if mode == "evaluation":
                     owner_digest.update((_json([clip_id, a, b, owner_starts(a, b, config.window_length).tolist()]) + "\n").encode())
-            packs = training_packs(intervals, codes, config)
+            packs = training_packs(intervals, codes, config, require_position=split == "train")
             pack_count += len(packs)
             for pack in packs:
                 digests["training_packs"].update((_json([clip_id, pack["start"], config.pack_length]) + "\n").encode())
@@ -143,7 +143,7 @@ def build_all_frame_manifests(
                 spans = record["common_intervals"]
                 if mode == "train":
                     codes = decode_label_runs(record["label_runs"], record["clip"]["frame_count"])
-                    record["packs"] = training_packs(spans, codes, config)
+                    record["packs"] = training_packs(spans, codes, config, require_position=record["clip"]["split"] == "train")
                 else:
                     record["windows"] = evaluation_windows(spans, config.window_length)
             modes[mode] = dict(schema=ALL_FRAME_MANIFEST_SCHEMA, mode=mode, input_kind="mdd_only",
@@ -207,7 +207,7 @@ def validate_all_frame_manifest(manifest: dict[str, Any], store: BallFrameStore)
         if (clip.source == "chat_annotation" and empty.any()
                 and record["negative_evidence"].get("annotation_sha256") != clip.annotation_sha256):
             raise ValueError("Frozen Chat absence evidence lacks the verified annotation hash")
-        expected = training_packs(spans, codes, config) if manifest["mode"] == "train" else evaluation_windows(spans, config.window_length)
+        expected = training_packs(spans, codes, config, require_position=clip.split == "train") if manifest["mode"] == "train" else evaluation_windows(spans, config.window_length)
         if record[selection_key] != expected:
             raise ValueError("Frozen pack membership or evaluation ownership changed")
     if manifest["summaries"] != manifest_summaries(records, config, manifest["mode"]):

@@ -5,6 +5,89 @@ video-disjoint validation and final testing. The default mixed-source training
 and all `train_dinov3_size_ablation*` configurations retain their existing behavior.
 Output paths follow [task output conventions](../../OUTPUTS.md).
 
+## Ordered subsets and original validation
+
+`data/source=synthetic_court_dataset_subset` selects explicit `manifest` and
+`validation_manifest` paths under the DATA root. Both JSON files use
+`schema: court_dataset_subset_v1`, `source_manifest` (relative to their parent,
+without traversal), `source_manifest_sha256`, `selection_seed`, `split`
+(`train` or `val`) and ordered `samples: [{scene_id, sample_id}]` with raw IDs.
+Both files must reference the same complete scale publication and selection seed.
+The full pool is verified by the generator before selecting records. Unknown or
+duplicate IDs and train/validation trajectory overlap are errors. The original
+pool remains unchanged; selected validation records are remapped only in memory.
+Checkpoint provenance binds both selections, their order, training/validation
+counts and the complete source publication. Resume/evaluation rejects drift.
+
+To reproduce the original TennisCourtDetector validation population and order,
+use `freeze_real_evaluation --policy original-val --version NAME` with the usual
+root/output paths. Do not supply a seed or val fraction for this policy. Its
+separate `court_real_original_val_evaluation_v1` schema exposes only validation;
+it creates no test set and never includes original training images. The default
+video-disjoint policy still requires an explicit seed and is unchanged.
+
+`evaluate_ablation --expected-step N --split val --series NAME
+--include-synthetic-val` evaluates synthetic validation and real validation in
+separate passes, preserving each population's own order and metrics. Pose metrics
+are reported only for synthetic data. The normal fit-time `val/loss` remains the
+combined monitor, so it is not a domain-gap score; exact-update checkpoints and
+the separate post-fit evaluations are authoritative. The image-count scaling
+comparison command remains real-only. Experiments that vary synthetic validation
+populations must make that difference explicit in their own comparison reports.
+
+## Shared synthetic evaluation manifest
+
+Use `--synthetic-eval-manifest /absolute/data/shared.val.subset.json` to replace
+the checkpoint's synthetic validation selection for a post-training evaluation.
+It accepts the same `court_dataset_subset_v1` format described above, with
+`split: val`. The checkpoint must use the subset source with step-based training;
+`--expected-step`, `--split val`, and `--series` remain required. This option and
+`--include-synthetic-val` are mutually exclusive. With neither option, the
+existing real-only scaling evaluation is unchanged; `--include-synthetic-val`
+continues to use the validation manifest saved in the checkpoint.
+
+```bash
+.venv/bin/python -m src.tasks.court_detection.scripts.evaluate_ablation \
+  --checkpoint /absolute/outputs/selected.ckpt \
+  --output /absolute/outputs/shared-evaluation \
+  --data-root /absolute/data --artifact-root /absolute/outputs \
+  --expected-step 33160 --split val --series scene-pairs \
+  --synthetic-eval-manifest /absolute/data/shared.val.subset.json
+```
+
+The original training/validation manifests and real evaluation registry must
+still match the checkpoint's saved `data_condition`. The external selection
+must reference that same verified source publication. Unknown/duplicate sample
+IDs, overlap with a training sample, or overlap with a training trajectory in
+the same scene are errors, raised before model construction or output creation.
+An unavailable or invalid manifest never falls back to the saved validation set.
+
+The output is `<output>/evaluation.json`. External-manifest evaluations use
+`schema: court_data_scaling_evaluation_v2`; existing invocations keep their v1
+schema and format. The new output includes:
+
+- `synthetic_evaluation_manifest`: absolute `path` and file `sha256`.
+- `data_manifest_sha256["synthetic_court/evaluation_subset"]`: the file digest,
+  alongside the original training/validation manifest digests.
+- `splits["synthetic_court-val"]`: the existing aggregate metrics, ordered
+  `sample_ids`, `count`, `ordered_sample_ids_sha256`, and qualitative references.
+  It also contains `scene_order` (first occurrence in the manifest), `scenes`
+  (scene ID to `count`, `sample_ids`, `ordered_sample_ids_sha256`, and `metrics`),
+  and `scene_macro_mean` (the unweighted mean of each scene's five metrics).
+- The five scene metrics are `kp_mean_distance_px`, `kp_median_distance_px`,
+  `seg_miou`, `line_dice`, and `semantic_line_miou`. With a four-scene manifest,
+  the macro values are the simple means of those four scene values, regardless
+  of their image counts. Pose remains supplemental in the aggregate metrics.
+
+Each ID digest hashes the UTF-8 JSON array of full `scene_id:sample_id` strings,
+in evaluation order, with `json.dumps(ids, separators=(",", ":"))` and SHA-256.
+Scene metrics use the same predictions as the aggregate pass: samples retain
+manifest order, checkpoint batch size, and batch padding. SEG/semantic LINE
+accumulate per-class intersection/union over the scene; KP median uses all
+visible-point errors in the scene; LINE Dice averages per-image Dice.
+`splits["tennis_court_detector-val"]` keeps the existing evaluation path, values,
+and format. Readers must distinguish v2 before consuming its scene fields.
+
 ## Freeze real evaluation once
 
 Use the complete original TennisCourtDetector JPEG store, including its old

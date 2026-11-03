@@ -8,7 +8,7 @@ import random
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from src.tasks.court_detection.configuration import (
     TennisCourtDetectorSourceConfig,
@@ -102,6 +102,35 @@ def make_registry(
     return {**payload, "sha256": canonical_sha256(payload)}
 
 
+def make_original_val_registry(
+    source: TennisCourtDetectorInput, *, version: str
+) -> dict[str, Any]:
+    """Freeze the original validation IDs/order, without assigning a test split."""
+    if not version or version != version.strip():
+        raise ValueError("Registry version must be nonempty and trimmed.")
+    records = source.records("val")
+    if not records:
+        raise ValueError("The original validation split is empty.")
+    payload = {
+        "schema": "court_real_original_val_evaluation_v1",
+        "version": version,
+        "excluded_sample_ids": list(EXCLUDED_SAMPLE_IDS),
+        "source_sha256": {
+            name: file_sha256(source.root / name)
+            for name in ("dataset.json", "index.npz")
+        },
+        "splits": {"val": [record.sample_id for record in records]},
+        "summary": {
+            "val": {
+                "images": len(records),
+                "videos": len({video_id(record.sample_id) for record in records}),
+                "original_split_images": {"val": len(records)},
+            }
+        },
+    }
+    return {**payload, "sha256": canonical_sha256(payload)}
+
+
 class TennisCourtEvaluationInput(TennisCourtDetectorInput):
     """Expose only val/test while retaining the original JPEG and sparse labels."""
 
@@ -110,12 +139,18 @@ class TennisCourtEvaluationInput(TennisCourtDetectorInput):
         registry = json.loads(config.registry.read_text())
         if not isinstance(registry, dict):
             raise ValueError("Evaluation registry must be an object.")
-        expected = make_registry(
-            source,
-            version=registry["version"],
-            seed=registry["seed"],
-            val_fraction=registry["val_fraction"],
-        )
+        schema = registry.get("schema")
+        if schema == "court_real_video_evaluation_v1":
+            expected = make_registry(
+                source,
+                version=registry["version"],
+                seed=registry["seed"],
+                val_fraction=registry["val_fraction"],
+            )
+        elif schema == "court_real_original_val_evaluation_v1":
+            expected = make_original_val_registry(source, version=registry["version"])
+        else:
+            raise ValueError("Unsupported real evaluation registry schema.")
         if registry != expected:
             raise ValueError(
                 "Evaluation registry hash, source, split inventory or video separation changed."
@@ -136,10 +171,10 @@ class TennisCourtEvaluationInput(TennisCourtDetectorInput):
                 replace(lookup[sample_id], split=split)
                 for sample_id in registry["splits"][split]
             )
-            for split in ("val", "test")
+            for split in registry["splits"]
         }
 
     def records(self, split: CourtSourceSplit) -> tuple[CourtSampleRecord, ...]:
         if split == "train":
             raise ValueError("Real evaluation data must never be used for training.")
-        return self._records[split]
+        return cast(tuple[CourtSampleRecord, ...], super().records(split))

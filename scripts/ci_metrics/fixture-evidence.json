@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "scope": "#1402 representative preparation sample",
+  "observations": [
+    {
+      "version": "before",
+      "source": {
+        "commit": "502b2909d71b7a1d374e9f9f72701824c62b275e",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.13.0"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "selected_count": 8,
+      "counts": {
+        "passed": 8
+      },
+      "files": [
+        {
+          "count": 8,
+          "file": "tests/e2e/agents_ops/test_merge_gate.py",
+          "phase_s": {
+            "call": 16.728644632000396,
+            "setup": 78.15530151200028,
+            "teardown": 0.002984274000482401
+          }
+        }
+      ],
+      "test_command_wall_s": 58.82765501899985,
+      "operations": {
+        "git": 177,
+        "git:init": 8,
+        "git:config": 16,
+        "git:add": 40,
+        "git:commit": 40,
+        "parent_cli": 82,
+        "parent_cli:register": 8,
+        "parent_cli:checking": 8,
+        "parent_cli:agree": 8,
+        "parent_cli:create-child": 24,
+        "git:worktree": 24,
+        "git:rev-parse": 48,
+        "parent_cli:review-prepare": 9,
+        "parent_cli:review-request": 9,
+        "parent_cli:review-state": 16,
+        "fake_gh_calls": 3391,
+        "git:branch": 1
+      },
+      "complete": true
+    },
+    {
+      "version": "after",
+      "source": {
+        "commit": "9c96a4c934c6826e3db179ad7ee662e8a214bdb3",
+        "status": "",
+        "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "untracked_sha256": {}
+      },
+      "workers": 2,
+      "packages": {
+        "numpy": "2.3.5",
+        "pytest": "9.1.1",
+        "pytest-xdist": "3.8.0",
+        "spin": "0.18",
+        "torch": "2.13.0"
+      },
+      "test_environment": {
+        "CUDA_VISIBLE_DEVICES": "",
+        "MKL_NUM_THREADS": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1"
+      },
+      "selected_count": 9,
+      "counts": {
+        "passed": 9
+      },
+      "files": [
+        {
+          "count": 9,
+          "file": "tests/e2e/agents_ops/test_merge_gate.py",
+          "phase_s": {
+            "call": 9.350015650999921,
+            "setup": 26.63645224800075,
+            "teardown": 0.0027787239991994284
+          }
+        }
+      ],
+      "test_command_wall_s": 23.55771765999998,
+      "operations": {
+        "git": 59,
+        "git:init": 4,
+        "git:config": 8,
+        "git:add": 14,
+        "git:commit": 14,
+        "parent_cli": 34,
+        "parent_cli:register": 4,
+        "parent_cli:checking": 4,
+        "parent_cli:agree": 4,
+        "parent_cli:create-child": 6,
+        "git:worktree": 6,
+        "git:rev-parse": 12,
+        "parent_cli:review-prepare": 4,
+        "parent_cli:review-request": 4,
+        "parent_cli:review-state": 8,
+        "fake_gh_calls": 1255,
+        "git:branch": 1
+      },
+      "complete": true
+    }
+  ],
+  "normal_regression": {
+    "passed": 259,
+    "seconds": 1356.74,
+    "workers": 2
+  },
+  "limitations": [
+    "n=1 per version",
+    "other local validation was active",
+    "sample does not estimate whole CI wall time"
+  ],
+  "mutations": [
+    {
+      "version": "before",
+      "mutation": "invalid_auto_merge",
+      "exitcode": 1,
+      "failures": 4,
+      "errors": 0
+    },
+    {
+      "version": "before",
+      "mutation": "human_hold",
+      "exitcode": 1,
+      "failures": 3,
+      "errors": 0
+    },
+    {
+      "version": "after",
+      "mutation": "invalid_auto_merge",
+      "exitcode": 1,
+      "failures": 5,
+      "errors": 0
+    },
+    {
+      "version": "after",
+      "mutation": "human_hold",
+      "exitcode": 1,
+      "failures": 3,
+      "errors": 0
+    }
+  ]
+}

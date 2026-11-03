@@ -1,0 +1,46 @@
+{
+  "checkpoint_sha256": "4519cf00d083de3c64f0ed48995668bb08cad9c82c94a23b2db5cc10aab2a5d4",
+  "condition": 4,
+  "evaluation_sha256": "5ee6b2796685a98553e859bcb05d9be3b6edacb78a2971117de74f3e6456cdfb",
+  "global_step": 33160,
+  "schema": "court_scene_diversity_condition_result_v1",
+  "splits": {
+    "synthetic_court-val": {
+      "batch_size": 8,
+      "count": 500,
+      "metrics": {
+        "invalid_depth_rate": 0.0,
+        "kp_mean_distance_px": 2.9891910552978516,
+        "kp_median_distance_px": 1.8102253675460815,
+        "kp_pose_consistency_distance_px": 0.0,
+        "line_dice": 0.6769481301307678,
+        "pose_focal_relative_error": 0.04825366288423538,
+        "pose_reprojection_mean_distance_px": 12.66305923461914,
+        "pose_rotation_geodesic_deg": 2.110386610031128,
+        "pose_translation_l2_m": 0.5592755675315857,
+        "seg_miou": 0.962997317314148,
+        "semantic_line_miou": 0.4525994062423706,
+        "visible_point_count": 3715.0
+      },
+      "ordered_sample_ids_sha256": "47e6e83caeb2114c009de793a1920123799028b84e965a085e70a1b60971819c",
+      "pose_supervised": true,
+      "source": "synthetic_court",
+      "split": "val"
+    },
+    "tennis_court_detector-val": {
+      "batch_size": 8,
+      "count": 2211,
+      "metrics": {
+        "kp_mean_distance_px": 23.605810165405273,
+        "kp_median_distance_px": 3.4234418869018555,
+        "line_dice": 0.4775984585285187,
+        "seg_miou": 0.525092363357544,
+        "semantic_line_miou": 0.24964648485183716
+      },
+      "ordered_sample_ids_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8",
+      "pose_supervised": false,
+      "source": "tennis_court_detector",
+      "split": "val"
+    }
+  }
+}

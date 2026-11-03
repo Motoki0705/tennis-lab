@@ -43,6 +43,21 @@ def assemble_automatic_scene(
     metadata: dict[str, Any],
 ) -> SceneResult:
     views, frames = court.keypoints.shape[:2]
+    if len(camera_ids) != views or len(set(camera_ids)) != views or len(video_paths) != views:
+        raise ValueError("Scene source camera IDs and video paths must match the court camera axis")
+    if frames != info.frame_count or not np.array_equal(court.frame_indices, np.arange(frames)):
+        raise ValueError("Scene court frames must match the full source frame timeline")
+    if len(set(active_indices)) != len(active_indices) or any(i < 0 or i >= views for i in active_indices):
+        raise ValueError("Active camera indices must be unique and within the source camera axis")
+    active_camera_ids = tuple(camera_ids[i] for i in active_indices)
+    if geometry is not None and (geometry.camera_ids != active_camera_ids
+            or tuple(camera.camera_id for camera in geometry.cameras) != active_camera_ids):
+        raise ValueError("Scene geometry camera order differs from the active source cameras")
+    if grouped_people is not None and grouped_people.uv_px.shape[1:3] != (len(active_indices), frames):
+        raise ValueError("Scene person observation camera/timeline axes differ from the active source")
+    if ball is not None and (ball.uv_px.shape != (len(active_indices), frames, 2)
+            or ball.visibility.shape != (len(active_indices), frames)):
+        raise ValueError("Scene ball observation camera/timeline axes differ from the active source")
     identities = np.empty(0, np.int64) if grouped_people is None else grouped_people.identities
     count = len(identities)
     root = np.zeros((count, frames, 3), np.float32) if players is None else players.position

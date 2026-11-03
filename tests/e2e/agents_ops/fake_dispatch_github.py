@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,8 +27,14 @@ def main() -> None:
     code = 200
     if path == "user":
         result = {"login": "operator"}
+    elif path == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+        result, code = {"message": "Not Found"}, 404
     elif path == "repos/o/r/pulls":
         result = paged(state["prs"])
+    elif path.startswith("repos/o/r/pulls/"):
+        result = next(
+            pr for pr in state["prs"] if pr["number"] == int(path.rsplit("/", 1)[1])
+        )
     else:
         assert path.startswith("repos/o/r/issues/")
         n, _, tail = path.removeprefix("repos/o/r/issues/").partition("/")
@@ -55,6 +62,26 @@ def main() -> None:
             )
         elif tail == "comments":
             result = paged(state["comments"].get(n, []))
+        elif tail == "timeline":
+            result = paged(
+                [
+                    {
+                        "id": pr["number"],
+                        "event": "cross-referenced",
+                        "source": {
+                            "issue": {
+                                **pr,
+                                "repository_url": "https://api.github.com/repos/o/r",
+                                "pull_request": {
+                                    "url": f"https://api.github.com/repos/o/r/pulls/{pr['number']}"
+                                },
+                            }
+                        },
+                    }
+                    for pr in state["prs"]
+                    if re.search(r"#" + n + r"\b", pr.get("body") or "")
+                ]
+            )
         else:
             raise AssertionError(endpoint)
     if "--include" in args:

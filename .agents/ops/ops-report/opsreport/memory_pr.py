@@ -420,12 +420,25 @@ class Store:
         if not required:
             raise ValueError("memory merge requires a non-empty required_checks.txt")
         checks = normalize_rollup(pr["statusCheckRollup"] or ())
-        if any(check.state == CheckState.FAILURE for check in checks):
+        # Required CI must be an actual successful check run. Keep the existing
+        # latest-run normalization, including pessimism for unordered re-runs.
+        required_runs = normalize_rollup(
+            {**run, "conclusion": "FAILURE"}
+            if run.get("conclusion") in {"NEUTRAL", "SKIPPED"}
+            else run
+            for run in pr["statusCheckRollup"] or ()
+            if run.get("__typename") == "CheckRun" and run.get("name") in required
+        )
+        if any(
+            check.state == CheckState.FAILURE for check in (*checks, *required_runs)
+        ):
             raise ValueError("memory PR CI failed; main memory was not changed")
         return (
             pr["mergeable"] == "MERGEABLE"
-            and set(required) <= {check.name for check in checks}
-            and all(check.state == CheckState.SUCCESS for check in checks)
+            and set(required) <= {check.name for check in required_runs}
+            and all(
+                check.state == CheckState.SUCCESS for check in (*checks, *required_runs)
+            )
         )
 
     def _merge(self, slot: str, branch: str, row: dict[str, Any]) -> None:

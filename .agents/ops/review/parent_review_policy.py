@@ -373,7 +373,7 @@ def validate_resolution(value: Any) -> dict[str, Any]:
     number(data["parent_issue"])
     snapshots([data["fixed_snapshot"]])
     if data["fixed_snapshot"]["number"] != n or not re.fullmatch(
-        rf"(?:cross|pr-{n})-[1-9][0-9]*", str(data["finding"])
+        rf"(?:changes|(?:cross|pr-{n})-[1-9][0-9]*)", str(data["finding"])
     ):
         raise ValueError("invalid resolution PR/finding")
     hex_value(data["reviewed_head"], 40)
@@ -446,6 +446,7 @@ def evaluate_coverage(
     *,
     fix_diff_digests: Mapping[int, str],
     base_advances: Sequence[BaseAdvance] = (),
+    inherited_snapshots: frozenset[tuple[str, str]] = frozenset(),
 ) -> Coverage:
     """Gate boundary: no I/O or reviewer calls. Every deviation fails closed.
 
@@ -469,13 +470,17 @@ def evaluate_coverage(
         for record in resolutions
         if record.get("kind") == "resolution"
     ]
-    reasons: list[str] = []
+    reasons: list[str] = [] if current else ["no_current_targets"]
     unresolved: list[tuple[int, str]] = []
-    if result.get("status") != "succeeded":
+    if result.get("status") != "succeeded" and not any(
+        p["coverage"] == "reviewed" for p in result["prs"]
+    ):
         reasons.append("run_failed_or_incomplete")
-    if set(old) != set(now):
-        reasons.append("pr_set_changed")
+    for n in now.keys() - old.keys():
+        reasons.append(f"pr_{n}_outside_review_targets")
     for n, original in old.items():
+        if n not in now:
+            continue
         reviewed = next((p for p in result["prs"] if p["number"] == n), None)
         if reviewed is None or reviewed["coverage"] != "reviewed":
             reasons.append(f"pr_{n}_not_reviewed")
@@ -483,34 +488,50 @@ def evaluate_coverage(
         if n not in now:
             continue
         latest = now[n]
-        for key in ("base_ref", "merge_base_sha", "branch"):
-            if original[key] != latest[key]:
-                reasons.append(f"pr_{n}_{key}_changed")
-        if not base_advance_covered(original, latest, old, base_advances):
-            reasons.append(f"pr_{n}_base_sha_changed")
+        inherited = (digest(original), digest(latest)) in inherited_snapshots
         all_findings = pr_findings(result, n)
         resolved = set()
         for record in valid_resolutions:
             fixed = record["fixed_snapshot"]
+            fixed_inherited = (digest(fixed), digest(latest)) in inherited_snapshots
             if (
                 record.get("review_run_id") != result["review_run_id"]
                 or record.get("result_sha256") != digest(result)
                 or record.get("pr") != n
                 or record.get("parent_issue") != request["parent_issue"]
-                or any(fixed[k] != latest[k] for k in SNAPSHOT_KEYS - {"base_sha"})
-                or not base_advance_covered(fixed, latest, old, base_advances)
+                or (
+                    not fixed_inherited
+                    and any(fixed[k] != latest[k] for k in SNAPSHOT_KEYS - {"base_sha"})
+                )
+                or (
+                    not fixed_inherited
+                    and not base_advance_covered(fixed, latest, old, base_advances)
+                )
                 or record.get("reviewed_head") != original["head_sha"]
-                or record.get("finding") not in {f["id"] for f in all_findings}
+                or record.get("finding")
+                not in {"changes", *(f["id"] for f in all_findings)}
             ):
                 continue
-            if record.get("changed_paths") != sorted(set(changed_paths.get(n, []))):
+            if not fixed_inherited and record.get("changed_paths") != sorted(
+                set(changed_paths.get(n, []))
+            ):
                 continue
-            if record["fix_diff_sha256"] != fix_diff_digests.get(n):
+            if not fixed_inherited and record[
+                "fix_diff_sha256"
+            ] != fix_diff_digests.get(n):
                 continue
             resolved.add(record["finding"])
+        if not inherited and not resolved:
+            for key in ("base_ref", "merge_base_sha", "branch"):
+                if original[key] != latest[key]:
+                    reasons.append(f"pr_{n}_{key}_changed")
+            if not base_advance_covered(original, latest, old, base_advances):
+                reasons.append(f"pr_{n}_base_sha_changed")
         unresolved.extend((n, f["id"]) for f in all_findings if f["id"] not in resolved)
-        if not resolved and any(
-            original[k] != latest[k] for k in ("head_sha", "diff_sha256")
+        if (
+            not resolved
+            and not inherited
+            and any(original[k] != latest[k] for k in ("head_sha", "diff_sha256"))
         ):
             reasons.append(f"pr_{n}_unverified_head")
     return Coverage(not reasons, tuple(reasons), tuple(unresolved))

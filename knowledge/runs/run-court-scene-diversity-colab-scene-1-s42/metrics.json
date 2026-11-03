@@ -1,0 +1,44 @@
+{
+  "schema": "court_scene_diversity_domain_metrics_v1",
+  "global_step": 33160,
+  "kp_pixel_coordinates": "post-preprocessing model coordinates, longside=512; not original-image pixels",
+  "splits": {
+    "synthetic_court-val": {
+      "count": 500,
+      "ordered_sample_ids_sha256": "040cf3a0487a0e1691664b223c8013a6cfebd36a96857c7f6c23c2dd01478904",
+      "source": "synthetic_court",
+      "split": "val",
+      "batch_size": 8,
+      "pose_supervised": true,
+      "metrics": {
+        "kp_mean_distance_px": 1.7898799180984497,
+        "kp_median_distance_px": 1.3432934284210205,
+        "pose_reprojection_mean_distance_px": 6.81279182434082,
+        "pose_translation_l2_m": 0.5353865623474121,
+        "pose_rotation_geodesic_deg": 1.1222760677337646,
+        "pose_focal_relative_error": 0.047881729900836945,
+        "line_dice": 0.7318723201751709,
+        "seg_miou": 0.9758096933364868,
+        "semantic_line_miou": 0.5202133655548096,
+        "kp_pose_consistency_distance_px": 0.0,
+        "invalid_depth_rate": 0.0,
+        "visible_point_count": 4137.0
+      }
+    },
+    "tennis_court_detector-val": {
+      "count": 2211,
+      "ordered_sample_ids_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8",
+      "source": "tennis_court_detector",
+      "split": "val",
+      "batch_size": 8,
+      "pose_supervised": false,
+      "metrics": {
+        "kp_mean_distance_px": 53.948612213134766,
+        "kp_median_distance_px": 5.813769817352295,
+        "seg_miou": 0.241277277469635,
+        "line_dice": 0.43980756402015686,
+        "semantic_line_miou": 0.2212953418493271
+      }
+    }
+  }
+}

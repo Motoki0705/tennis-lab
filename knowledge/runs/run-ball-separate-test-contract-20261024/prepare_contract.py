@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import save_json
+from src.tasks.ball_detection.checkpoints.temporal import save_json
 from src.tasks.ball_detection.data.distribution import (
     load_distribution,
     source_payloads,

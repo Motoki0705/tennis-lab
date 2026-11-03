@@ -1,34 +1,68 @@
-from dataclasses import replace
+"""Connect each concrete predictor/configuration to the shared RGB contract."""
+
 from unittest.mock import patch
 
 import pytest
 import torch
 
-from src.tasks.ball_detection.model_io.predict import (
-    predict_coordinates,
-    predict_dpt_heatmaps,
+from src.tasks.ball_detection.model_io import mdd_coordinates, predict
+from src.tasks.ball_detection.models.mdd import (
+    DeepMDDQueryDetector,
+    MDDDPTDetector,
+    MDDPretrainConfig,
 )
-from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector, MDDDPTDetector
-from tests.unit.tasks.ball_detection.models.mdd.test_cnn import small_config
+
+
+def _prediction_config(channels: int) -> MDDPretrainConfig:
+    return MDDPretrainConfig(
+        stem_channels=(4, 8, 8, 8),
+        mixed_channels=(8, 16),
+        residual_blocks=(0, 1, 1, 1, 1, 1),
+        decoder_channels=8,
+        dim=16,
+        heads=2,
+        layers=1,
+        ffn_dim=64,
+        dropout=0.0,
+        rope_base=10_000.0,
+        activation_checkpointing=False,
+        encoder_variant="residual",
+        temporal_mixing="dense3d",
+        input_channels=channels,
+    )
 
 
 @pytest.mark.parametrize("channels", [2, 5])
-@pytest.mark.parametrize("kind", ["dpt", "query"])
-@pytest.mark.parametrize("shape,dtype", [
-    ((1, 31, 3, 8, 8), torch.uint8), ((1, 32, 3, 8, 8), torch.float32),
-    ((1, 32, 5, 8, 8), torch.uint8), ((1, 5, 32, 8, 8), torch.float32),
-    ((1, 32, 3, 7, 8), torch.uint8), ((0, 32, 3, 8, 8), torch.uint8),
-])
+@pytest.mark.parametrize(
+    "model_type", [MDDDPTDetector, DeepMDDQueryDetector], ids=["dpt", "query"]
+)
 def test_rejects_wrong_external_input_before_forward(
-    channels: int, kind: str, shape: tuple[int, ...], dtype: torch.dtype,
+    channels: int,
+    model_type: type[MDDDPTDetector] | type[DeepMDDQueryDetector],
 ) -> None:
-    config = replace(small_config(), input_channels=channels)
-    model = MDDDPTDetector(config) if kind == "dpt" else DeepMDDQueryDetector(config)
-    rgb = torch.zeros(shape, dtype=dtype)
-    with patch.object(model, "forward") as forward:
+    model = model_type(_prediction_config(channels))
+    assert model.config.input_channels == channels
+    rgb = torch.zeros(1, 32, 3, 8, 8, dtype=torch.float32)
+    # DPT imports the validator; the query timestamp validator looks it up locally.
+    validation_module = (
+        predict if isinstance(model, MDDDPTDetector) else mdd_coordinates
+    )
+    with (
+        patch.object(model, "forward") as forward,
+        patch.object(
+            validation_module,
+            "validate_rgb_input",
+            wraps=validation_module.validate_rgb_input,
+        ) as validate,
+    ):
         with pytest.raises(ValueError, match="RGB"):
             if isinstance(model, MDDDPTDetector):
-                predict_dpt_heatmaps(model, rgb)
+                predict.predict_dpt_heatmaps(model, rgb)
             else:
-                predict_coordinates(model, dict(rgb=rgb, timestamps=torch.arange(32)[None].float()), torch.device("cpu"))
+                predict.predict_coordinates(
+                    model,
+                    {"rgb": rgb, "timestamps": torch.arange(32)[None].float()},
+                    torch.device("cpu"),
+                )
+        validate.assert_called_once_with(rgb, frames=model.config.frames)
         forward.assert_not_called()

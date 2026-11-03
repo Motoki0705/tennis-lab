@@ -145,9 +145,9 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             BallDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["ball_detection"],
                      "checkpoint": file_identity(cfg.ball_detection.checkpoint)}, camera=camera)
-        add(f"ball_points/{camera}", BallPointsModule(), BallPointsInputAssembler(),
+        add(f"ball_points/{camera}", BallPointsModule(cfg.ball_smoothing), BallPointsInputAssembler(),
             {"detections": f"ball_detection/{camera}"},
-            lambda: {"point": "detector_observed_only"}, camera=camera)
+            lambda: {"point": "motion_consensus_loess_observed_only", "smoothing": cfg.ball_smoothing}, camera=camera)
     add("court_calibration", CourtCalibrationModule(ids, cfg.camera_geometry, roi_margins=cfg.person_roi_margins), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:

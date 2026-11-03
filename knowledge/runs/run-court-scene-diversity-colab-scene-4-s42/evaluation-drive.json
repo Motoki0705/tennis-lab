@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "local_path": "/content/tennis-lab/outputs/court_detection/evaluate/scene-diversity-6000-s384-colab/scene-4-s42",
+  "rclone_config": "/content/.tennis-colab/court-scene-diversity-l4-20261027-r2/secrets/rclone.conf",
+  "drive_path": "outputs/court_detection/evaluate/scene-diversity-6000-s384-colab/scene-4-s42",
+  "matches": true,
+  "local_type": "directory",
+  "drive_type": "directory",
+  "changed": [],
+  "missing_on_drive": [],
+  "extra_on_drive": [],
+  "unverifiable": []
+}

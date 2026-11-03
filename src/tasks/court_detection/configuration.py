@@ -722,8 +722,58 @@ class SyntheticCourtDatasetVersionSourceConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class SyntheticCourtDatasetSubsetSourceConfig:
+    """An ordered, hash-bound subset of one verified scale publication."""
+
+    kind: Literal["synthetic_court_dataset_subset"]
+    schema: Literal["v3"]
+    court_scope: Literal["target_court"]
+    manifest: Path
+    validation_manifest: Path
+
+    def __post_init__(self) -> None:
+        if (self.kind, self.schema, self.court_scope) != (
+            "synthetic_court_dataset_subset",
+            "v3",
+            "target_court",
+        ):
+            raise SemanticConfigurationError(
+                "Court dataset subsets require V3 target_court."
+            )
+
+    @classmethod
+    def from_mapping(
+        cls, value: object, *, resolver: PathResolver
+    ) -> SyntheticCourtDatasetSubsetSourceConfig:
+        mapping = as_config_mapping(value, path="data.source")
+        _exact(
+            mapping,
+            {"kind", "schema", "court_scope", "manifest", "validation_manifest"},
+            path="data.source",
+        )
+        return cls(
+            cast(
+                Literal["synthetic_court_dataset_subset"],
+                _string(mapping, "kind", path="data.source"),
+            ),
+            cast(Literal["v3"], _string(mapping, "schema", path="data.source")),
+            cast(
+                Literal["target_court"],
+                _string(mapping, "court_scope", path="data.source"),
+            ),
+            resolver.resolve(
+                PathRole.DATA, _string(mapping, "manifest", path="data.source")
+            ),
+            resolver.resolve(
+                PathRole.DATA,
+                _string(mapping, "validation_manifest", path="data.source"),
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TennisCourtEvaluationSourceConfig:
-    """Read the original store through an immutable, video-disjoint registry."""
+    """Read the original store through an explicit immutable evaluation registry."""
 
     kind: Literal["tennis_court_evaluation"]
     root: Path
@@ -753,6 +803,7 @@ CourtSourceConfig: TypeAlias = (
     | SyntheticCourtSourceConfig
     | SyntheticCourtStoresSourceConfig
     | SyntheticCourtDatasetVersionSourceConfig
+    | SyntheticCourtDatasetSubsetSourceConfig
     | TennisCourtEvaluationSourceConfig
 )
 
@@ -768,6 +819,10 @@ def _source_config(value: object, *, resolver: PathResolver) -> CourtSourceConfi
         return SyntheticCourtStoresSourceConfig.from_mapping(mapping, resolver=resolver)
     if kind == "synthetic_court_dataset_version":
         return SyntheticCourtDatasetVersionSourceConfig.from_mapping(
+            mapping, resolver=resolver
+        )
+    if kind == "synthetic_court_dataset_subset":
+        return SyntheticCourtDatasetSubsetSourceConfig.from_mapping(
             mapping, resolver=resolver
         )
     if kind == "tennis_court_evaluation":
@@ -1995,6 +2050,7 @@ __all__ = [
     "SyntheticCourtSourceConfig",
     "SyntheticCourtStoresSourceConfig",
     "SyntheticCourtDatasetVersionSourceConfig",
+    "SyntheticCourtDatasetSubsetSourceConfig",
     "TennisCourtEvaluationSourceConfig",
     "SyntheticCourtSchemaVersion",
     "TennisCourtDetectorSourceConfig",

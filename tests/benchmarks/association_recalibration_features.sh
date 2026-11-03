@@ -10,6 +10,7 @@ export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MAX_JOBS=2
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 bash "$code_root/tests/benchmarks/build_dino_extension.sh" "$1" "$2/dino_extension"
 export PYTHONPATH="$code_root:$2/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$(cd "$2/dino_extension/lib" && pwd)/MultiScaleDeformableAttention.so"
 "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/association_feature_guard.py" --report "$2" -- \
     "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/association_recalibration_features.py" \
     --phase extract --repo "$1" --report "$2"

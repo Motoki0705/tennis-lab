@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from .access import as_parent
 from .delivery import Notifiers, dispatch
@@ -24,7 +24,7 @@ def dispatch_post(
         if row["sender_assignment_id"] != caller.id:
             raise BoardError("only the post sender may retry its notifications")
         recipients = recipient_views(connection, post_id)
-        assignment_id = None
+        assignment_id: int | None | Literal["all"] = "all"
         if to is not None:
             matches = [r for r in recipients if r["name"].casefold() == to.casefold()]
             if len(matches) != 1:

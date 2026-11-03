@@ -2,6 +2,17 @@ name: Local GPU tests
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: CUDA acceptance or asset-dependent CPU tests
+        type: choice
+        options: [cuda, local-data]
+        default: cuda
+        required: true
+      test_file:
+        description: Required for local-data; one explicit tests/...py file
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -21,6 +32,10 @@ jobs:
     env:
       GPU_LOCK_FILE: /var/lib/tennis-lab-actions/gpu.lock
       RUNNER_ASSET_ROOT: /var/lib/tennis-lab-actions/assets
+      OMP_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      ACCEPTANCE_TEST_FILE: ${{ inputs.test_file }}
 
     steps:
       - name: Checkout trusted ref
@@ -53,11 +68,23 @@ jobs:
           done
 
       - name: Run CUDA tests under the shared GPU lock
+        if: inputs.target == 'cuda'
         shell: bash
         run: |
           set -euo pipefail
-          if ! flock --exclusive --timeout 5 "$GPU_LOCK_FILE" bash <<'BASH'
+          exec 9>"$GPU_LOCK_FILE"
+          if ! flock --exclusive --timeout 5 9; then
+            echo "The local GPU is occupied by queued training; retry after it finishes." >&2
+            exit 1
+          fi
+          bash <<'BASH'
           set -euo pipefail
+          export TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST=1
+          export TENNIS_B00_FIXTURE_REPOSITORY="$GITHUB_WORKSPACE"
+          export PLAYER_DETECTION_GPU_TEST=1
+          export PLAYER_DETECTION_ARTIFACT_ROOT="$GITHUB_WORKSPACE"
+          export TENNIS_REPRO_DIR="$GITHUB_WORKSPACE/.ci-acceptance/repro"
+          mkdir -p "$TENNIS_REPRO_DIR"
           nvidia-smi
           TENNIS_LAB_BUILD_CUDA_OPS=1 \
             uv run --locked python setup.py build_ext --inplace
@@ -71,9 +98,38 @@ jobs:
           print(f"torch={torch.__version__} cuda={torch.version.cuda}")
           print(f"gpu={torch.cuda.get_device_name(0)} smoke_value={value.item()}")
           PY
-          uv run --locked spin test --all --serial -m cuda --no-cov
+          uv run --locked spin test --all --serial -m cuda --no-cov \
+            -p scripts.ci_metrics.require_execution \
+            --junitxml=.ci-acceptance/cuda.xml
           BASH
-          then
-            echo "The local GPU is occupied by queued training; retry after it finishes." >&2
-            exit 1
-          fi
+
+      - name: Run explicit local-data CPU acceptance
+        if: inputs.target == 'local-data'
+        env:
+          CUDA_VISIBLE_DEVICES: ""
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          value = os.environ['ACCEPTANCE_TEST_FILE']
+          path = Path(value)
+          root = Path.cwd().resolve()
+          if (not value.startswith('tests/') or path.suffix != '.py'
+              or not path.is_file() or not path.resolve().is_relative_to(root / 'tests')):
+              raise SystemExit('local-data requires one existing tests/...py file')
+          PY
+          uv run --locked --no-group gpu --group cpu spin test --all --serial \
+            -m 'local_data and not cuda' --no-cov "$ACCEPTANCE_TEST_FILE" \
+            -p scripts.ci_metrics.require_execution \
+            --junitxml=.ci-acceptance/local-data.xml
+
+      - name: Upload requested acceptance results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: local-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .ci-acceptance/
+          include-hidden-files: true
+          if-no-files-found: error

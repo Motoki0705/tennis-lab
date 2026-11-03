@@ -1,8 +1,4 @@
-"""stdio MCP entrypoint for the audit's allowlisted, read-only retrieval tools.
-
-Run outside the agent sandbox: python -m opsreport.mcp_server --help.
-The caller supplies immutable identities and an external private journal directory.
-"""
+"""Audit ledger adapter using the shared retrieval MCP transport."""
 
 from __future__ import annotations
 
@@ -10,124 +6,99 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import cast
 
-from .retrieval import NOTICE, Retrieval, RetrievalError, encode, strict_json
+from lib.review_tools.mcp_server import (  # noqa: F401
+    MAX_REQUEST_BYTES,
+    dispatch,
+    serve,
+)
 
-MAX_REQUEST_BYTES = 64 * 1024
-
-
-def dispatch(retrieval: Retrieval, request: Any) -> dict[str, Any] | None:
-    request_id = request.get("id") if isinstance(request, dict) else None
-
-    def error(code: int, message: str) -> dict[str, Any]:
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "error": {"code": code, "message": message},
-        }
-
-    if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
-        return error(-32600, "Invalid JSON-RPC request")
-    method = request.get("method")
-    if "id" not in request:
-        # Notifications cannot perform retrievals or change the server configuration.
-        return None
-    params = request.get("params", {})
-    if not isinstance(params, dict):
-        return error(-32602, "params must be an object")
-    result: dict[str, Any]
-    if method == "initialize":
-        version = params.get("protocolVersion")
-        if not isinstance(version, str) or len(version) > 64:
-            return error(-32602, "protocolVersion must be a string")
-        result = {
-            "protocolVersion": version,
-            "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "ops-report-retrieval", "version": "1.0"},
-            "instructions": NOTICE,
-        }
-    elif method == "ping":
-        result = {}
-    elif method == "tools/list":
-        if set(params) - {"cursor", "_meta"} or params.get("cursor") is not None:
-            return error(-32602, "tools/list has no cursor or other parameters")
-        result = {"tools": [tool.public() for tool in retrieval.tools.values()]}
-    elif method == "tools/call":
-        if (
-            set(params) - {"name", "arguments", "_meta"}
-            or not isinstance(params.get("name"), str)
-            or len(params["name"]) > 100
-        ):
-            return error(-32602, "only a tool name and its arguments are accepted")
-        response = retrieval.call(params["name"], params.get("arguments", {}))
-        result = {
-            "content": [{"type": "text", "text": encode(response).decode()}],
-            "isError": not response["ok"],
-        }
-    else:
-        return error(-32601, "Method is not allowed")
-    return {"jsonrpc": "2.0", "id": request_id, "result": result}
+from .audit_tools import AuditTools
+from .repro_isolation import LinuxRunner, TestRunner
+from .retrieval import Retrieval, RetrievalError, strict_json
 
 
-def serve(retrieval: Retrieval, source: BinaryIO, target: BinaryIO) -> None:
-    while raw := source.readline(MAX_REQUEST_BYTES + 1):
-        if len(raw) > MAX_REQUEST_BYTES:
-            while not raw.endswith(b"\n"):
-                raw = source.readline(MAX_REQUEST_BYTES + 1)
-                if not raw:
-                    break
-            response: dict[str, Any] | None = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {"code": -32600, "message": "Request exceeds byte limit"},
-            }
-        else:
-            try:
-                request = strict_json(raw)
-            except (ValueError, UnicodeError):
-                response = {
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {
-                        "code": -32700,
-                        "message": "Invalid or duplicate-key JSON",
-                    },
-                }
-            else:
-                response = dispatch(retrieval, request)
-        if response is not None:
-            target.write(encode(response) + b"\n")
-            target.flush()
+def source(args: argparse.Namespace, *, runner: TestRunner | None = None) -> Retrieval:
+    if args.isolation_proof is not None and args.cpu_tests_file is None:
+        raise ValueError("isolation proof requires a host-approved CPU-test allowlist")
+    options = {"ops_memory_sha": args.ops_memory_sha}
+    if args.cpu_tests_file is None:
+        return Retrieval(
+            args.repo,
+            args.base_sha,
+            args.repository,
+            args.round_id,
+            args.journal_dir,
+            **options,
+        )
+    if args.ledger_path is None:
+        raise ValueError("CPU-test recording requires the pinned audit ledger")
+    raw = args.cpu_tests_file.read_bytes()
+    if len(raw) > 64 * 1024:
+        raise ValueError("CPU allowlist exceeds byte limit")
+    allowlist = strict_json(raw)
+    if (
+        not isinstance(allowlist, dict)
+        or set(allowlist) != {"base_sha", "nodeids"}
+        or allowlist["base_sha"] != args.base_sha
+    ):
+        raise ValueError("host CPU-test allowlist must match the fixed base SHA")
+    from .reproduction_server import ReproductionServer
+
+    return ReproductionServer(
+        args.repo,
+        args.base_sha,
+        args.repository,
+        args.round_id,
+        args.journal_dir,
+        args.ledger_path,
+        allowlist["nodeids"],
+        runner=runner if runner is not None else LinuxRunner(args.isolation_proof),
+        **options,
+    )
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--base-sha", required=True)
-    parser.add_argument("--repository", required=True, help="owner/name on github.com")
+    parser.add_argument("--repository", required=True)
     parser.add_argument("--round-id", required=True)
-    parser.add_argument(
-        "--journal-dir",
-        type=Path,
-        required=True,
-        help="private directory outside the agent checkout; append-only retrieval.jsonl",
-    )
-    parser.add_argument(
-        "--ops-memory-sha",
-        help="separately pinned dedicated memory commit; default is base-sha",
-    )
+    parser.add_argument("--journal-dir", type=Path, required=True)
+    parser.add_argument("--ops-memory-sha")
+    parser.add_argument("--ledger-path", type=Path)
+    parser.add_argument("--runtime-dir", type=Path)
+    parser.add_argument("--input-path", type=Path)
+    parser.add_argument("--ending-path", type=Path)
+    parser.add_argument("--max-threads", type=int)
+    parser.add_argument("--cpu-tests-file", type=Path)
+    parser.add_argument("--isolation-proof", type=Path)
     args = parser.parse_args()
     try:
-        retrieval = Retrieval(
-            args.repo,
-            args.base_sha,
-            args.repository,
-            args.round_id,
-            args.journal_dir,
-            ops_memory_sha=args.ops_memory_sha,
+        retrieval = source(args)
+        server: Retrieval | AuditTools = retrieval
+        state_args = (
+            args.ledger_path,
+            args.runtime_dir,
+            args.input_path,
+            args.ending_path,
+            args.max_threads,
         )
-        serve(retrieval, sys.stdin.buffer, sys.stdout.buffer)
+        if any(value is not None for value in state_args):
+            if any(value is None for value in state_args):
+                raise ValueError(
+                    "all ledger/runtime/input/ending/max-threads arguments are required together"
+                )
+            server = AuditTools(
+                retrieval,
+                ledger_path=args.ledger_path,
+                runtime_dir=args.runtime_dir,
+                input_path=args.input_path,
+                ending_path=args.ending_path,
+                max_threads=args.max_threads,
+            )
+        serve(cast(Retrieval, server), sys.stdin.buffer, sys.stdout.buffer)
     except (OSError, ValueError, RetrievalError) as exc:
         print(
             json.dumps(

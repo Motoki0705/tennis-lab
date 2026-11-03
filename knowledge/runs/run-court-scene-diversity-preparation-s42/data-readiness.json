@@ -1,0 +1,38 @@
+{
+  "schema": "court_scene_diversity_ready_v1",
+  "conditions": [
+    {
+      "condition": 1,
+      "subset_sha256": {
+        "train": "46f43e4e423185641f25fc8dd2332b3e4164b9eff72da11d02e26f6da0a80e69",
+        "val": "061e73f2c6fe465ce43941a7c1dcf968c6853763564ffa375b6f0879870ec2c1"
+      },
+      "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
+    },
+    {
+      "condition": 2,
+      "subset_sha256": {
+        "train": "d998608daefb2192fef531c6dbece26b4d95d53407917e6ea66a1d699576d3eb",
+        "val": "384c27304ca9268bde511a632116f544b8327d72b970a90e45950c8817ff7dab"
+      },
+      "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
+    },
+    {
+      "condition": 3,
+      "subset_sha256": {
+        "train": "a6fe696de60fb3f2be704b408fa832e8f60f33d9446e65ecb0f4908edd7125ee",
+        "val": "4346ba94fcb5f03f8edf56a202607343940314f6b54b7f5a94bb943cf13acc63"
+      },
+      "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
+    },
+    {
+      "condition": 4,
+      "subset_sha256": {
+        "train": "ff51d964889567f4ccd50f4549f634e1f1ebd5c730e7283568ce0c65c498e605",
+        "val": "204052da33708fbf70d895703136102e5d8f25ebaa5fec6ae6d1327cd4e08750"
+      },
+      "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
+    }
+  ],
+  "plan_sha256": "08b34c98a1e940843b01b8db0970a22ad77ab4177a9c1edee5f0cef664e52cad"
+}

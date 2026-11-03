@@ -207,12 +207,45 @@ def test_training_boundary_rejects_partial_reprojection_bundle() -> None:
         _standard_adapter().prepare_training_batch(batch)
 
 
-def test_training_boundary_validates_reprojection_camera_and_padding_values() -> None:
+@pytest.mark.parametrize("name", ["camera_f", "camera_w", "camera_h"])
+@pytest.mark.parametrize("invalid", [0.0, -1.0])
+def test_training_boundary_rejects_nonpositive_active_camera_values(
+    name: str, invalid: float
+) -> None:
     batch = _with_reprojection(_canonical_batch())
-    batch["camera_f"][0, 0] = 0.0
-    with pytest.raises(ModelInputContractError, match="camera_f must be positive"):
+    batch["padding_mask"][1, 1, :-1] = True
+    batch["human_vis_target"][1, 1] = False
+    batch[name][1, 1] = invalid
+    with pytest.raises(ModelInputContractError, match=f"{name} must be positive"):
         _standard_adapter().prepare_training_batch(batch)
 
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "camera_R",
+        "camera_C",
+        "camera_f",
+        "camera_cx",
+        "camera_cy",
+        "camera_w",
+        "camera_h",
+    ],
+)
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf")], ids=["nan", "inf"])
+@pytest.mark.parametrize("padded", [False, True], ids=["active", "padded"])
+def test_training_boundary_rejects_nonfinite_camera_values(
+    name: str, invalid: float, padded: bool
+) -> None:
+    batch = _with_reprojection(_canonical_batch())
+    batch["padding_mask"][1, 1] = padded
+    batch["human_vis_target"][1, 1] = False
+    batch[name][1, 1] = invalid
+    with pytest.raises(ModelInputContractError, match=f"{name}.*finite"):
+        _standard_adapter().prepare_training_batch(batch)
+
+
+def test_training_boundary_allows_padded_cameras_and_rejects_padded_targets() -> None:
     batch = _with_reprojection(_canonical_batch())
     batch["padding_mask"][:, 1] = True
     batch["human_vis_target"][:, 1] = False
@@ -221,6 +254,9 @@ def test_training_boundary_validates_reprojection_camera_and_padding_values() ->
     batch["camera_h"][:, 1] = 1.0
     prepared = _standard_adapter().prepare_training_batch(batch)
     assert prepared.reprojection_target is not None
+    assert prepared.reprojection_target.camera_f[:, 1].eq(0.0).all()
+    assert prepared.reprojection_target.camera_w[:, 1].eq(1.0).all()
+    assert prepared.reprojection_target.camera_h[:, 1].eq(1.0).all()
 
     batch["human_vis_target"][:, 1, 0, 0] = True
     with pytest.raises(ModelInputContractError, match="zero at padded"):

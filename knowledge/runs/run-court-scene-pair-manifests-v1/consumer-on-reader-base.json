@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "dependency_pr": 1594,
+  "dependency_head": "2b086d91853301d7a500f8b16d844b460f095d19",
+  "method": "saved_train_trajectories",
+  "enum_recognized": true,
+  "full_publication_consumer_run": false,
+  "reason": "Image shards are not downloaded. Parent will perform the strict full-pool check in the original Colab environment; no image placeholder, comparison relaxation, or metadata-only consumer mode is used.",
+  "parent_instruction": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6534951394"
+}

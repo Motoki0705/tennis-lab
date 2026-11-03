@@ -7,6 +7,7 @@ from typing import cast
 
 from src.tasks.court_detection.configuration import (
     CourtSourceConfig,
+    SyntheticCourtDatasetSubsetSourceConfig,
     SyntheticCourtDatasetVersionSourceConfig,
     SyntheticCourtSourceConfig,
     SyntheticCourtStoresSourceConfig,
@@ -45,6 +46,16 @@ def _build_evaluation(config: CourtSourceConfig) -> CourtInput:
     return TennisCourtEvaluationInput(cast(TennisCourtEvaluationSourceConfig, config))
 
 
+def _build_dataset_subset(config: CourtSourceConfig) -> CourtInput:
+    from src.tasks.court_detection.data.inputs.synthetic_court_dataset_subset import (
+        SyntheticCourtDatasetSubsetInput,
+    )
+
+    return SyntheticCourtDatasetSubsetInput(
+        cast(SyntheticCourtDatasetSubsetSourceConfig, config)
+    )
+
+
 def _build_dataset_version(config: CourtSourceConfig) -> CourtInput:
     return SyntheticCourtDatasetVersionInput(
         cast(SyntheticCourtDatasetVersionSourceConfig, config)
@@ -59,6 +70,7 @@ _BUILDERS: dict[
     "synthetic_court": _build_synthetic,
     "synthetic_court_stores": _build_synthetic,
     "synthetic_court_dataset_version": _build_dataset_version,
+    "synthetic_court_dataset_subset": _build_dataset_subset,
     "tennis_court_evaluation": _build_evaluation,
 }
 

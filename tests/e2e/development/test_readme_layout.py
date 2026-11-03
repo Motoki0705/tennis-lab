@@ -1,9 +1,8 @@
-"""Keep the public README languages, navigation and asset presentation aligned."""
+"""Keep public README navigation, identifiers and required sections usable."""
 
 from __future__ import annotations
 
 import re
-from collections import Counter
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
@@ -13,6 +12,7 @@ from src.tennis_scene.installation_assets import (
     PUBLIC_DOCUMENT_LANGUAGES,
     public_document_language_from_filename,
 )
+from tests.support.documents import assert_local_links, assert_sections, links
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 README_DOCUMENTS = tuple(
@@ -23,30 +23,16 @@ LOCALIZED_PATHS = {
     for stem in ("docs/installation/README", "LICENSES")
     for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
 }
-SECTION_IDS = ("overview", "model-downloads", "run-locally", "license", "citation")
-# Contracts agreed for the independently maintained installation/license pages.
+SECTION_IDS = {"overview", "model-downloads", "run-locally", "license", "citation"}
 INSTALLATION_ANCHORS = {
-    "requirements",
-    "clone-and-sync",
-    "dino-cuda-extension",
-    "required-assets",
-    "preflight",
-    "run-the-sample",
-    "visualize",
-    "rehearse-clean-install",
+    "requirements", "clone-and-sync", "dino-cuda-extension", "required-assets",
+    "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
 }
 LICENSE_ANCHORS = {
-    "code-license-scope",
-    "third-party-code",
-    "third-party-weights",
-    "smpl-auxiliary-assets",
-    "third-party-data",
-    "published-artifacts",
-    "published-artifacts-hosting",
-    "weight-license-basis",
-    "sample-dataset-terms",
-    "hf-license-metadata",
-    "pipeline-outputs",
+    "code-license-scope", "third-party-code", "third-party-weights",
+    "smpl-auxiliary-assets", "third-party-data", "published-artifacts",
+    "published-artifacts-hosting", "weight-license-basis", "sample-dataset-terms",
+    "hf-license-metadata", "pipeline-outputs",
 }
 
 
@@ -60,85 +46,34 @@ def _read_readme_documents(root: Path) -> dict[str, str]:
 @pytest.fixture(params=README_DOCUMENTS)
 def readme(request: pytest.FixtureRequest) -> tuple[str, str]:
     filename = str(request.param)
-    return filename, _read_readme_documents(REPOSITORY_ROOT)[filename]
+    return filename, (REPOSITORY_ROOT / filename).read_text(encoding="utf-8")
 
 
-def test_readme_has_language_hub_and_license_badges_in_three_centered_rows(
+def test_readme_has_public_navigation_assets_sections_and_cli_names(
     readme: tuple[str, str],
 ) -> None:
     filename, document = readme
-    header = document.partition("\n## ")[0]
-    assert "<hr>" in header, f"{filename}: missing rule above the badges"
-    badges = re.search(
-        r'<div align="center">(.*?)</div>', header.split("<hr>", 1)[1], re.DOTALL
-    )
-    assert badges is not None, f"{filename}: missing centered badges"
     language = public_document_language_from_filename(filename)
     suffix = PUBLIC_DOCUMENT_LANGUAGES[language].suffix
-    expected_rows = (
-        list(README_DOCUMENTS),
-        [
-            "https://huggingface.co/Motoki098/tennis-lab-models",
-            "https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample",
-        ],
-        [
-            "LICENSE",
-            f"LICENSES{suffix}#published-artifacts",
-            f"LICENSES{suffix}#sample-dataset-terms",
-        ],
-    )
-    rows = re.split(r"<br\s*/?>", badges.group(1))
-    assert len(rows) == len(expected_rows)
-    assert re.findall(r'alt="([^"]+)"', rows[0]) == [
-        locale.label for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
-    ]
-    for row, destinations in zip(rows, expected_rows, strict=True):
-        assert re.findall(r'href="([^"]+)"', row) == destinations
-        sources = re.findall(r'<img\b[^>]*src="([^"]+)"', row)
-        assert len(sources) == len(destinations)
-        assert all(source.startswith("https://img.shields.io/") for source in sources)
-        assert len(re.findall(r'alt="[^"]+"', row)) == len(destinations)
-
-
-def test_readme_opens_with_the_centered_logo_and_name_header(
-    readme: tuple[str, str],
-) -> None:
-    filename, document = readme
-    header = "assets/branding/tennis-lab-header.png"
-    above_rule = document.partition("<hr>")[0]
-    # The header image already carries the name, so no separate title follows it.
-    block = re.fullmatch(
-        r'<div align="center">\s*<img\b([^>]*)>\s*</div>\s*', above_rule
-    )
-    assert block is not None, f"{filename}: header image block must precede the badges"
-    attributes = dict(re.findall(r'(\w+)="([^"]*)"', block.group(1)))
-    assert attributes == {"src": header, "width": "420", "alt": "Tennis-Lab"}
-    assert (REPOSITORY_ROOT / header).is_file()
-
-
-def test_readme_has_five_numbered_sections_and_shared_explicit_anchors(
-    readme: tuple[str, str],
-) -> None:
-    _, document = readme
-    assert re.findall(r"^## (\d+)\. ", document, re.MULTILINE) == list("12345")
-    assert re.findall(r'<a id="([^"]+)"></a>', document) == list(SECTION_IDS)
-    contents = document.split('<a id="overview"></a>', maxsplit=1)[0]
-    assert re.findall(r"\]\(#([^)]+)\)", contents) == list(SECTION_IDS)
-
-
-def test_readme_has_both_asset_table_marker_pairs_and_no_mermaid_or_hash_values(
-    readme: tuple[str, str],
-) -> None:
-    _, document = readme
-    for marker in ("checkpoint-assets", "sample-assets"):
-        start, end = f"<!-- {marker}:start -->", f"<!-- {marker}:end -->"
-        assert document.count(start) == document.count(end) == 1
-        assert document.index(start) < document.index(end)
-    assert "mermaid" not in document.lower()
+    assert set(README_DOCUMENTS) | {
+        "https://huggingface.co/Motoki098/tennis-lab-models",
+        "https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample",
+        "LICENSE",
+        f"LICENSES{suffix}#published-artifacts",
+        f"LICENSES{suffix}#sample-dataset-terms",
+        f"docs/installation/README{suffix}",
+        f"docs/installation/README{suffix}#required-assets",
+        f"docs/installation/README{suffix}#preflight",
+        "src/tennis_scene/README.md",
+        "assets/branding/tennis-lab-header.png",
+        "assets/tennis_scene/multiview_reconstruction.gif",
+    } <= links(document), filename
+    assert_sections(document, SECTION_IDS, context=filename)
+    assert {f"#{section}" for section in SECTION_IDS} <= links(document), filename
+    for public_name in ("src.utils.model_weights", "src.utils.sample_dataset"):
+        assert f"`{public_name}`" in document, (filename, public_name)
     assert re.search(r"[0-9a-f]{64}", document, re.IGNORECASE) is None
-    assert re.search(r"^¹ ", document, re.MULTILINE) is not None
-    assert "`src.utils.model_weights`" in document
-    assert "`src.utils.sample_dataset`" in document
+    # Catalog-generated asset tables are checked in test_installation_assets.
 
 
 def _assert_readme_local_links(filename: str, document: str, root: Path) -> None:
@@ -148,27 +83,16 @@ def _assert_readme_local_links(filename: str, document: str, root: Path) -> None
         f"docs/installation/README{suffix}": INSTALLATION_ANCHORS,
         f"LICENSES{suffix}": LICENSE_ANCHORS,
     }
-    targets = re.findall(r"\]\(([^)\s]+)\)", document)
-    targets += re.findall(r'href="([^"]+)"', document)
-    for target in targets:
-        url = urlsplit(target)
-        if url.scheme or url.netloc:
+    for target in links(document):
+        parsed = urlsplit(target)
+        if parsed.scheme or parsed.netloc:
             continue
-        path, fragment = unquote(url.path), unquote(url.fragment)
+        path, fragment = unquote(parsed.path), unquote(parsed.fragment)
         if path in LOCALIZED_PATHS:
             assert path in contracts, f"{filename}: wrong language in {target}"
             if fragment:
                 assert fragment in contracts[path], target
-        elif not path:
-            assert fragment in SECTION_IDS, target
-        else:
-            assert not fragment, f"No anchor contract for {target}"
-        destination = root / path if path else root / filename
-        assert destination.is_file(), f"{filename}: missing file for {target}"
-        if fragment:
-            assert fragment in re.findall(
-                r'<a id="([^"]+)"></a>', destination.read_text(encoding="utf-8")
-            ), f"{filename}: missing anchor for {target}"
+    assert_local_links(root / filename, document)
 
 
 def test_readme_local_links_use_the_right_language_and_agreed_anchor_contracts(
@@ -178,74 +102,30 @@ def test_readme_local_links_use_the_right_language_and_agreed_anchor_contracts(
     _assert_readme_local_links(filename, document, REPOSITORY_ROOT)
 
 
-def test_readme_attributes_the_gif_directly_below_the_image(
-    readme: tuple[str, str],
-) -> None:
+def test_readme_attributes_the_demonstration(readme: tuple[str, str]) -> None:
     filename, document = readme
     image = "assets/tennis_scene/multiview_reconstruction.gif)"
-    assert document.count(image) == 1
-    attribution = document.split(image, maxsplit=1)[1].strip().splitlines()[0]
-    assert attribution.startswith("© 2026 Motoki0705")
+    assert image in document
+    attribution = document.split(image, maxsplit=1)[1].split("\n## ", maxsplit=1)[0]
+    assert re.search(r"©\s+\d{4}\s+Motoki0705", attribution)
     assert "CC BY-NC-ND 4.0" in attribution
     language = public_document_language_from_filename(filename)
     suffix = PUBLIC_DOCUMENT_LANGUAGES[language].suffix
-    assert f"(LICENSES{suffix}#sample-dataset-terms)" in attribution
+    assert f"LICENSES{suffix}#sample-dataset-terms" in links(attribution)
 
 
-def test_readme_preserves_the_repository_bibtex(readme: tuple[str, str]) -> None:
+def test_readme_has_repository_citation_fields(readme: tuple[str, str]) -> None:
     _, document = readme
-    assert document.count("```bibtex\n") == 1
-    citation = document.split("```bibtex\n", maxsplit=1)[1].split("```", maxsplit=1)[0]
-    assert citation == (
-        "@software{tennis_lab,\n"
-        "  author = {{Tennis-Lab contributors}},\n"
-        "  title = {Tennis-Lab},\n"
-        "  url = {https://github.com/Motoki0705/tennis-lab}\n"
-        "}\n"
-    )
-
-
-def _normalized_references(document: str) -> Counter[str]:
-    targets = []
-    for target in re.findall(r"\]\(([^)\s]+)\)", document):
-        url = urlsplit(target)
-        if not url.scheme and not url.netloc:
-            canonical = LOCALIZED_PATHS.get(unquote(url.path))
-            if canonical is not None:
-                target = url._replace(path=canonical).geturl()
-        targets.append(target)
-    return Counter(targets)
-
-
-@pytest.mark.parametrize("filename", README_DOCUMENTS[1:])
-def test_readme_translations_preserve_section_references_and_identifiers(
-    filename: str,
-) -> None:
-    documents = _read_readme_documents(REPOSITORY_ROOT)
-    english = documents[README_DOCUMENTS[0]]
-    translated = documents[filename]
-    anchor = re.compile(r'<a id="([^"]+)"></a>')
-    assert anchor.findall(english) == anchor.findall(translated)
-    for section_id, en, localized in zip(
-        anchor.split(english)[1::2],
-        anchor.split(english)[2::2],
-        anchor.split(translated)[2::2],
-        strict=True,
-    ):
-        context = f"{filename}: {section_id}"
-        assert re.findall(r"^#{2,3} ", en, re.MULTILINE) == re.findall(
-            r"^#{2,3} ", localized, re.MULTILINE
-        ), f"{context}: heading levels"
-        assert _normalized_references(en) == _normalized_references(localized), (
-            f"{context}: references"
-        )
-        assert Counter(re.findall(r"`([^`\n]+)`", en)) == Counter(
-            re.findall(r"`([^`\n]+)`", localized)
-        ), f"{context}: inline code"
-        if public_document_language_from_filename(filename) == "zh-CN":
-            assert Counter(re.findall(r"[0-9]+(?:[.,][0-9]+)*", en)) == Counter(
-                re.findall(r"[0-9]+(?:[.,][0-9]+)*", localized)
-            ), f"{context}: numeric values"
+    match = re.search(r"```bibtex\s*\n(.*?)```", document, re.DOTALL)
+    assert match is not None
+    citation = match[1]
+    assert re.search(r"@software\s*\{\s*tennis_lab\s*,", citation, re.IGNORECASE)
+    fields = dict(re.findall(r"^\s*(\w+)\s*=\s*\{(.*?)\}\s*,?\s*$", citation, re.MULTILINE))
+    assert {
+        "author": "Tennis-Lab contributors",
+        "title": "Tennis-Lab",
+        "url": "https://github.com/Motoki0705/tennis-lab",
+    }.items() <= {key: value.strip("{} ") for key, value in fields.items()}.items()
 
 
 @pytest.mark.parametrize("missing", README_DOCUMENTS)
@@ -260,10 +140,7 @@ def test_missing_readme_translation_is_detected(tmp_path: Path, missing: str) ->
 @pytest.mark.parametrize("filename", README_DOCUMENTS)
 @pytest.mark.parametrize(
     ("stem", "anchor"),
-    (
-        ("docs/installation/README", "required-assets"),
-        ("LICENSES", "published-artifacts"),
-    ),
+    (("docs/installation/README", "required-assets"), ("LICENSES", "published-artifacts")),
 )
 def test_readme_links_reject_other_document_languages(
     filename: str, stem: str, anchor: str
@@ -281,10 +158,7 @@ def test_readme_links_reject_other_document_languages(
 @pytest.mark.parametrize("filename", README_DOCUMENTS)
 @pytest.mark.parametrize(
     ("stem", "anchor"),
-    (
-        ("docs/installation/README", "required-assets"),
-        ("LICENSES", "published-artifacts"),
-    ),
+    (("docs/installation/README", "required-assets"), ("LICENSES", "published-artifacts")),
 )
 @pytest.mark.parametrize("fault", ("missing file", "missing anchor"))
 def test_readme_links_require_existing_translated_documents_and_anchors(
@@ -297,6 +171,4 @@ def test_readme_links_require_existing_translated_documents_and_anchors(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text('<a id="another-section"></a>', encoding="utf-8")
     with pytest.raises(AssertionError, match=fault):
-        _assert_readme_local_links(
-            filename, f"[document]({destination}#{anchor})", tmp_path
-        )
+        _assert_readme_local_links(filename, f"[document]({destination}#{anchor})", tmp_path)

@@ -359,7 +359,7 @@ def test_missing_detector_frames_remain_missing_through_triangulation_and_reload
         points = runner.store.load(runner.references[f"ball_points/{camera}"], ArtifactCodec(BallPointsOutput))
         assert not points.observed[8:11].any()
         assert (points.uv_px[8:11] == 0).all()
-        assert runner.references[f"ball_points/{camera}"].version == 3
+        assert runner.references[f"ball_points/{camera}"].version == 4
     pipeline.config = replace(pipeline.config, cache_source="load")
     loaded = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
     np.testing.assert_array_equal(loaded.ball_3d_valid, scene.ball_3d_valid)

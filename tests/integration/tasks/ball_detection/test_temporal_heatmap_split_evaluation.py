@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 import torch
 
-from src.tasks.ball_detection.checkpoints.temporal_heatmap import save_json
+from src.tasks.ball_detection.checkpoints.temporal import save_json
 from src.tasks.ball_detection.data.distribution import prepare_distribution
 from src.tasks.ball_detection.data.distribution.manifest import distribution_files
 from src.tasks.ball_detection.data.store import BallFrameStore
@@ -36,15 +36,15 @@ from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import (
 )
 from src.tasks.ball_detection.model_io.mdd_heatmap import restore_heatmap_model
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
-from src.tasks.ball_detection.training.temporal_heatmap.runner import (
-    train_temporal_heatmap,
+from src.tasks.ball_detection.training.temporal.runner import (
+    train_temporal_model,
 )
 from src.tasks.ball_detection.visualization.presentation.temporal_heatmap import (
     render_temporal_heatmap_comparison,
 )
 from src.utils.checksum import dual_sha256
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
-from tests.support.tasks.ball_detection.temporal_heatmap import (
+from tests.support.tasks.ball_detection.temporal import (
     prepare_fixture,
     small_model,
     update_budget,
@@ -109,7 +109,7 @@ def train_fixture(root: Path, *, architecture: str = "dpt", frames: int = 32) ->
                    evaluation_manifest=paths["training_manifests"] / "evaluation_T32.json", output=pretrain,
                    budget=update_budget(updates=1, warmup_updates=0, evaluation_interval=1), runtime=RUNTIME,
                    device=torch.device("cpu"), augmentation=None, distance_px=20.)
-    train_temporal_heatmap(**options)
+    train_temporal_model(**options)
     output = pretrain
     if frames != 32:
         parent = pretrain / "weights-update-00000001.pt"
@@ -118,7 +118,7 @@ def train_fixture(root: Path, *, architecture: str = "dpt", frames: int = 32) ->
                        manifest=paths["training_manifests"] / f"train_T{frames}.json",
                        evaluation_manifest=paths["training_manifests"] / f"evaluation_T{frames}.json", output=output,
                        initial_artifact=parent, initial_artifact_sha256=dual_sha256(parent), parent_update=1)
-        train_temporal_heatmap(**options)
+        train_temporal_model(**options)
     paths.update(artifact=output / "weights-update-00000001.pt", run=output / "run.json",
                  validation=output / "evaluation_manifest.json", calibration=output / "validation-update-00000001.json",
                  test=paths["test_manifests"] / f"evaluation_T{frames}.json")
@@ -147,15 +147,16 @@ def evaluate(paths: dict[str, Path], **kwargs: Any) -> dict[str, Any]:
     return result
 
 
-def cli(paths: dict[str, Path], output: Path, *, split: str) -> subprocess.CompletedProcess[str]:
-    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate", "--mode", "temporal_heatmap",
+def cli(paths: dict[str, Path], output: Path, *, split: str, query: bool = False) -> subprocess.CompletedProcess[str]:
+    command = [sys.executable, "-m", "src.tasks.ball_detection.scripts.evaluate", "--mode", "temporal",
                "--artifact", str(paths["artifact"]), "--manifest", str(paths["validation"] if split == "val" else paths["test"]),
                "--split", split, "--output", str(output), "--distance-px", "20", *RUNTIME_ARGS]
     if split == "test":
-        extra = dict(calibration=paths["calibration"], calibration_sha256=dual_sha256(paths["calibration"]),
-                     training_run_record=paths["run"], validation_manifest=paths["validation"],
+        extra = dict(training_run_record=paths["run"], validation_manifest=paths["validation"],
                      training_distribution=paths["training_distribution"], test_distribution=paths["test_distribution"],
                      evaluation_contract=paths["contract"], evaluation_contract_sha256=dual_sha256(paths["contract"]))
+        if not query:
+            extra.update(calibration=paths["calibration"], calibration_sha256=dual_sha256(paths["calibration"]))
         command += [item for name, value in extra.items() for item in ("--" + name.replace("_", "-"), str(value))]
     return subprocess.run(command, capture_output=True, text=True, timeout=90,
                           env=dict(os.environ, CUDA_VISIBLE_DEVICES="", OMP_NUM_THREADS="1", MKL_NUM_THREADS="1"))
@@ -201,6 +202,51 @@ def test_real_cli_uses_saved_validation_calibration_with_only_relocated_test_pay
     assert manifest["summaries"]["val"]["counts"]["frames"] == 0
     assert report["evaluation_code"]["source_sha256"]
     assert cli(paths, output, split="test").returncode != 0
+
+
+def test_query_and_heatmap_separate_test_use_the_same_observed_frames_without_query_calibration(tmp_path: Path) -> None:
+    query = train_fixture(tmp_path, architecture="query")
+    heatmap_output = tmp_path / "heatmap"
+    train_temporal_model(
+        architecture="dpt", phase="pretrain", model_config=small_model("dpt"),
+        manifest=query["training_manifests"] / "train_T32.json",
+        evaluation_manifest=query["training_manifests"] / "evaluation_T32.json",
+        output=heatmap_output, budget=update_budget(updates=1, warmup_updates=0, evaluation_interval=1),
+        runtime=RUNTIME, device=torch.device("cpu"), augmentation=None, distance_px=20.,
+    )
+    heatmap = {**query, "artifact": heatmap_output / "weights-update-00000001.pt",
+               "run": heatmap_output / "run.json", "validation": heatmap_output / "evaluation_manifest.json",
+               "calibration": heatmap_output / "validation-update-00000001.json"}
+    relocated = tmp_path / "test-vm" / "dataset"
+    relocated.parent.mkdir()
+    shutil.move(query["test_root"], relocated)
+    manifest = read(query["test"])
+    manifest["ball_store"]["directory"] = str(relocated)
+    new_manifest = tmp_path / "test-vm" / "evaluation.json"
+    save_json(new_manifest, manifest)
+    for paths in (query, heatmap):
+        paths.update(test=new_manifest, test_distribution=relocated / "distribution.json")
+    shutil.rmtree(query["source"])
+    shutil.rmtree(query["training_root"])
+
+    query_output = tmp_path / "query-test" / "result.json"
+    heatmap_test = tmp_path / "heatmap-test" / "result.json"
+    result = cli(query, query_output, split="test", query=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    result = cli(heatmap, heatmap_test, split="test")
+    assert result.returncode == 0, result.stdout + result.stderr
+    query_report, heatmap_report = read(query_output), read(heatmap_test)
+    assert query_report["schema"] == "ball_temporal_coordinates_evaluation.v2"
+    assert query_report["identities"] == heatmap_report["identities"]
+    assert query_report["metrics"]["support"] == heatmap_report["metrics"]["support"]
+    assert query_report["provenance"]["mode"] == "separate_distributions"
+    assert query_report["evaluation_code"]["source_sha256"]
+    assert "calibration" not in query_report and "calibration_report_sha256" not in query_report["provenance"]
+    query["calibration"] = heatmap["calibration"]
+    rejected = tmp_path / "query-invalid" / "result.json"
+    result = cli(query, rejected, split="test")
+    assert result.returncode != 0 and "no presence calibration" in result.stderr
+    assert not rejected.exists()
 
 
 @pytest.mark.parametrize("change", ["mapping", "missing_clip", "extra_clip", "source_snapshot", "split",
@@ -446,7 +492,7 @@ def test_evaluation_source_change_is_rejected_before_publishing_results(
 def test_evaluation_accepts_resume_with_unchanged_code_content_and_new_checkout_metadata(
     fixed: dict[str, Path], tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from src.tasks.ball_detection.training.temporal_heatmap import runner
+    from src.tasks.ball_detection.training.temporal import runner
 
     output = tmp_path / "resumed"
     options: dict[str, Any] = dict(architecture="dpt", phase="pretrain", model_config=small_model("dpt"),
@@ -454,11 +500,11 @@ def test_evaluation_accepts_resume_with_unchanged_code_content_and_new_checkout_
         evaluation_manifest=fixed["training_manifests"] / "evaluation_T32.json", output=output,
         budget=update_budget(updates=2, warmup_updates=0, evaluation_interval=2), runtime=RUNTIME,
         device=torch.device("cpu"), augmentation=None, distance_px=20.)
-    train_temporal_heatmap(**options, stop_after_update=1)
+    train_temporal_model(**options, stop_after_update=1)
     original = read(output / "run.json")
     relocated_code = {**runner.source_identity(), "base_commit": "f" * 40, "directory": "/separate-source-checkout"}
     monkeypatch.setattr(runner, "source_identity", lambda: relocated_code)
-    assert train_temporal_heatmap(**options, resume=output / "checkpoint-update-00000001.pt")["complete"]
+    assert train_temporal_model(**options, resume=output / "checkpoint-update-00000001.pt")["complete"]
     paths = {**fixed, "artifact": output / "weights-update-00000002.pt", "run": output / "run.json",
              "calibration": output / "validation-update-00000002.json", "validation": output / "evaluation_manifest.json"}
     report = evaluate(paths)

@@ -239,7 +239,9 @@ def test_delayed_first_success_covers_from_anchor_and_records_skips(
     ops_env: Any, failed_first: bool
 ) -> None:
     if failed_first:
-        assert ops_env.run("report", "--if-due", FAKE_GH_FAIL="pr list").returncode == 1
+        assert (
+            ops_env.run("report", "--if-due", FAKE_GH_FAIL="repo view").returncode == 1
+        )
     _no_prs(ops_env)
     result = ops_env.run("report", "--if-due", "--now", "2026-10-21T10:00:00+09:00")
     assert result.returncode == 0, result.stderr

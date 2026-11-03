@@ -1,0 +1,104 @@
+{
+  "schema": "court_scene_gpu_probe_v1",
+  "is_full_training_result": false,
+  "plan_sha256": "08b34c98a1e940843b01b8db0970a22ad77ab4177a9c1edee5f0cef664e52cad",
+  "ready_sha256": "4ab010d43b07212690e9c726c698899aa1319565796cd388641aa277f4f0e974",
+  "status": "completed",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "steps": [
+    {
+      "step": 1,
+      "loss": 73.9437255859375,
+      "gradient_norm": 188.4014434814453,
+      "seconds": 169.5288730209977,
+      "image_shape": [
+        8,
+        3,
+        288,
+        512
+      ],
+      "sample_ids": [
+        "B00:f15c9a1d2f5e948d9cc4eb4648a63b0aa71c3ff7154b00fbbfae766d3e2aea08",
+        "B00:ad743d02fb063bdb99af2deda78424cd94fa9f6dfa52152c07eb16ef6378ac1a",
+        "B00:794987978feb5e0588dbad8130f0be395f44f58a90aab0f07b53178863f7777e",
+        "B00:70ff2834e2f3d8f406e6a6f621cbcc9617e99a6008cc8498a186eff0dbe8a8ad",
+        "B00:b7e2401358d36a2195336cb48474958fd5fa490269fdb487c9807cedd564cee0",
+        "B00:963e5c1352738012ef7df9fb2d3b94ba845a40752dd46ce530a20e54ca8d65d9",
+        "B00:85c8d21c6a50f55b0bf2d665bfcea6b00fc12f80b0fc2cbfd49234de56819a52",
+        "B00:5c8842c32c9df111b2dac1f394a50eff4c68e2f322868984993aecc702fa326f"
+      ]
+    },
+    {
+      "step": 2,
+      "loss": 59.44164276123047,
+      "gradient_norm": 155.13247680664062,
+      "seconds": 0.395442880999326,
+      "image_shape": [
+        8,
+        3,
+        288,
+        512
+      ],
+      "sample_ids": [
+        "B00:d579135b73c54dab20544de53f640ad66913a444763471c4c4554efac7a35afb",
+        "B00:c030af67fb0d513af761435df90d5fa5517e05537cca22a95e1f1a171a9594b8",
+        "B00:311b6308864cd183afd0b8280dd87421fcef5918734adb093adc31d47ae33b0f",
+        "B00:185f7af0f497ec1e7ee1f672ae50d909baa3b237e24fa1bd41e8a89aa7e6d4f1",
+        "B00:10fa3316e29df37e1c87bf10d9ccb917b5d007753f2347dfe26b5ad6f9fac9e1",
+        "B00:b76cc93ef7281ebe151ec05be71867ac6a0d17ea2e5ca7e1b743f29a2a741e34",
+        "B00:21e9092f14927a43bfe753ca490a5b4a6e993c92e97cc32685ec138b628f1272",
+        "B00:786bc97b623c94dcdddc39a762c7217122ce870aed6934781b8862704c9235c6"
+      ]
+    },
+    {
+      "step": 3,
+      "loss": 36.83540725708008,
+      "gradient_norm": 125.71504974365234,
+      "seconds": 0.3970300180008053,
+      "image_shape": [
+        8,
+        3,
+        288,
+        512
+      ],
+      "sample_ids": [
+        "B00:257dd68a5204d0dd37743b1e1fe41ea7d7b6d2c72ec4b677156403e7ecbb8b2c",
+        "B00:e3eccbf9cfa061bd56225d4e76072001654ba1b9e405bc6e539cff7ef1031535",
+        "B00:a2fc6ce93a613926cae00be9967016fcaca8fc7eb294fe10bd8fd984921cd71a",
+        "B00:04d3f59b972a960dc06a26a9a1ba85ed1812eac58048c4e3bf820d15e093be23",
+        "B00:5303cf9c81c89a83863ae746e5614a7f96408992de025d174de703e92a98905a",
+        "B00:02eee3a011fdbf8e578f421419dfcb1a3171ff97864068a3ff0233e41b15664d",
+        "B00:e22f5b006e55a420fe91dfd93dbe42d0bdd25cb3d52b731d16181550ba8d3fba",
+        "B00:e998242bc7a4bb4af8422b15bca2765ef4f298668c867d43a7b2559b5925a675"
+      ]
+    }
+  ],
+  "parameters": {
+    "backbone": {
+      "total": 21601152,
+      "trainable": 0
+    },
+    "projection": {
+      "total": 0,
+      "trainable": 0
+    },
+    "transformer": {
+      "total": 14162304,
+      "trainable": 14162304
+    },
+    "dpt": {
+      "total": 23973888,
+      "trainable": 23973888
+    },
+    "pose_head": {
+      "total": 151690,
+      "trainable": 151690
+    },
+    "dense_heads": {
+      "total": 1085986,
+      "trainable": 1085986
+    }
+  },
+  "peak_allocated_bytes": 7230403584,
+  "peak_reserved_bytes": 7732199424
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "court_scene_diversity_parent_verification_v1",
+  "checked_at": "2026-10-27T16:31:53.929766+00:00",
+  "conditions": [
+    {
+      "condition": 1,
+      "evaluation_file": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-1-evaluation.json",
+      "evaluation_sha256": "2ed28c9cf98e95ee82b8344632e4271ace255f509526dd61afc73c6764505a8a",
+      "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+      "global_step": 33160,
+      "synthetic_count": 500,
+      "real_count": 2211,
+      "real_order_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8"
+    },
+    {
+      "condition": 2,
+      "evaluation_file": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-2-evaluation.json",
+      "evaluation_sha256": "1a8b24c37589943e00d5d8629925c924d3da135c73edc017c6b280672f29fbfb",
+      "checkpoint_sha256": "e0bb2e99f28e021a04498a5f6d15449af25c2f86f8908dea3d9eaf2f6a454e73",
+      "global_step": 33160,
+      "synthetic_count": 500,
+      "real_count": 2211,
+      "real_order_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8"
+    },
+    {
+      "condition": 3,
+      "evaluation_file": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-3-evaluation.json",
+      "evaluation_sha256": "c5a309528213634c81493d14f3df5f669648ae219f7adb896a6f308cde9f805c",
+      "checkpoint_sha256": "246e0f4ab4ac45e21d64b559db436bcf8ba73f8242d1e662a5c7d19f971410fe",
+      "global_step": 33160,
+      "synthetic_count": 500,
+      "real_count": 2211,
+      "real_order_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8"
+    },
+    {
+      "condition": 4,
+      "evaluation_file": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-4-evaluation.json",
+      "evaluation_sha256": "5ee6b2796685a98553e859bcb05d9be3b6edacb78a2971117de74f3e6456cdfb",
+      "checkpoint_sha256": "4519cf00d083de3c64f0ed48995668bb08cad9c82c94a23b2db5cc10aab2a5d4",
+      "global_step": 33160,
+      "synthetic_count": 500,
+      "real_count": 2211,
+      "real_order_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8"
+    }
+  ],
+  "checks": {
+    "full_report_result_hashes_match": true,
+    "checkpoint_and_step_match": true,
+    "unique_sample_counts_and_order_hashes_match": true,
+    "same_real_order_all_conditions": true,
+    "scene_2_only_allowed_resume_change": true,
+    "comparison_json_exact_match": true,
+    "comparison_csv_bytes_exact_match": true,
+    "comparison_figure_visually_checked": true
+  },
+  "recomputed_comparison": "outputs/court_detection/campaign/scene-diversity-6000-v1/parent-comparison-check-dfe2f597",
+  "terminal_receipt": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/continuation-operations-dfe2f597/status.json",
+  "terminal_status": "completed",
+  "returncode": 0,
+  "drive_saved_at": "2026-10-27T12:22:39.591007+00:00",
+  "gpu_release_receipt": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/completion-doctor-dfe2f597.json",
+  "active_assignments": 0,
+  "usage_rate_per_hour": 0.0,
+  "scientific_limits": [
+    "single training seed42 and fixed cumulative scene order",
+    "synthetic validation image composition changes across conditions",
+    "condition2 resumed from26528 after VM loss; exact mid-epoch data order/RNG continuation is not guaranteed"
+  ],
+  "knowledge_review": "completed: parent reviewed four nodes/group/summary/curves and checked reported values against evaluation JSON; confirmed relations schema, raw reduction, discarded622 updates and final-history curve split."
+}

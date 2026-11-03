@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "collected": {
+    "meta": {
+      "generated_at": "2026-10-12T08:00+09:00",
+      "period_start": "2026-10-09T08:00:00+09:00",
+      "period_end": "2026-10-12T08:00:00+09:00",
+      "base_ref": "main",
+      "base_sha": "REPO_BASE",
+      "base_fetched_from": null,
+      "checkout_branch": "main",
+      "checkout_sha": "REPO_BASE_SHORT",
+      "checkout_matches_base": true,
+      "checkout_modified_files": 0,
+      "checkout_diff_files": [],
+      "checkout_diff_files_total": 0
+    },
+    "previous_reports": {"reports": []},
+    "github": {"open_prs": [], "ci_runs_in_period": {"total": 0}},
+    "git": {"commits": []},
+    "workspace": {},
+    "cleanup": {},
+    "memory": {},
+    "ops_memory": {
+      "status": "not_installed",
+      "note": "専用memory未導入（origin/mainなし）",
+      "files": {},
+      "decisions": [
+        {"proposal_id": "R-20261009-01", "decision": "deferred", "reason": "次の実測まで保留", "source": "https://github.com/o/r/issues/10"}
+      ],
+      "persistence": [{"slot": "20261009", "state": "failed", "stage": "prepared", "error": "未反映"}]
+    },
+    "knowledge": {"status": "not_installed"},
+    "ai_env": {"files": [], "files_total": 0},
+    "audit_plan": "PINNED_GIT_INVENTORY",
+    "audit_input_sha256": "INPUT_DIGEST"
+  },
+  "results": {
+    "code": {
+      "id": "code",
+      "agent_id": "legacy-native-code",
+      "agent_type": "scout",
+      "base_sha": "REPO_BASE",
+      "started_at": "2026-10-12T08:01:00+09:00",
+      "finished_at": "2026-10-12T08:02:00+09:00",
+      "status": "completed",
+      "conclusion": "固定版のコード経路を確認した",
+      "evidence": ["big.py:2-4 の利用経路"],
+      "counterevidence": ["big.py:1 は対象の分岐を通らない"],
+      "unconfirmed": [],
+      "findings": [{"topic": "code-path", "position": "support", "conclusion": "設定由来の分岐を別途統合する", "evidence": "big.py:3 の設定"}]
+    },
+    "platform": {
+      "id": "platform",
+      "agent_id": "legacy-native-platform",
+      "agent_type": "scout",
+      "base_sha": "REPO_BASE",
+      "started_at": "2026-10-12T08:01:00+09:00",
+      "finished_at": "2026-10-12T08:03:00+09:00",
+      "status": "interrupted",
+      "conclusion": "取得機能が中断した",
+      "evidence": [],
+      "counterevidence": [],
+      "unconfirmed": [{"scope": "CI", "reason": "取得中断", "resume": "同じ基準版の取得を再開する"}],
+      "findings": []
+    }
+  }
+}

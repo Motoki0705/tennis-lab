@@ -48,6 +48,8 @@ from src.synthetic_data_generation.rendering.nht import NHTRenderClient
 _ENABLE_ENVIRONMENT_VARIABLE = "TENNIS_RUN_B00_RENDERED_ALIGNMENT_GPU_TEST"
 _FIXTURE_ROOT_ENVIRONMENT_VARIABLE = "TENNIS_B00_FIXTURE_REPOSITORY"
 
+pytestmark = [pytest.mark.cuda, pytest.mark.local_data]
+
 
 @pytest.mark.skipif(
     os.environ.get(_ENABLE_ENVIRONMENT_VARIABLE) != "1",

@@ -1,4 +1,4 @@
-"""Observed detector points; interpolated and occlusion estimates stay missing."""
+"""Motion-consistent, LOESS-smoothed detector points with explicit provenance."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,12 +8,21 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort
+from src.utils.geometry.temporal_smoothing import (
+    DEFAULT_TEMPORAL_SMOOTHING,
+    TemporalSmoothingConfig,
+    TemporalSmoothingResult,
+    smooth_2d_trajectory,
+)
+
+BALL_POINTS_PORT = InputPort("ball_points", 4)
 
 
 @dataclass(frozen=True)
 class BallPointsInput:
     detections: BallDetectionOutput
     source_size_wh: tuple[int, int]
+    fps: float
 
 
 @dataclass(frozen=True)
@@ -25,6 +34,7 @@ class BallPointsOutput:
     uv_px: NDArray[np.float32]
     confidence: NDArray[np.float32]
     observed: NDArray[np.bool_]
+    smoothing: TemporalSmoothingResult
 
     def __post_init__(self) -> None:
         n = len(self.frame_indices)
@@ -43,14 +53,24 @@ class BallPointsOutput:
             raise ValueError("Ball point confidence must be in [0,1]")
         if np.any(self.uv_px[~self.observed] != 0) or np.any(self.confidence[~self.observed] != 0):
             raise ValueError("Missing points must have zero coordinates/confidence")
+        if not np.array_equal(self.observed, self.smoothing.accepted):
+            raise ValueError("Ball observation mask must equal accepted source measurements")
+        if not np.array_equal(self.uv_px[self.observed], self.smoothing.coordinates[self.observed]):
+            raise ValueError("Accepted ball coordinates must match the smoothing result")
 
 
 class BallPointsModule:
     io = ComponentIO("ball_points", BallPointsInput, BallPointsOutput,
-                     {"detections": InputPort("ball_detections", 2)}, "ball_points", version=3)
+                     {"detections": InputPort("ball_detections", 2)}, BALL_POINTS_PORT.schema, version=BALL_POINTS_PORT.version)
+
+    def __init__(self, config: TemporalSmoothingConfig = DEFAULT_TEMPORAL_SMOOTHING) -> None:
+        self.config = config
 
     def process(self, inputs: BallPointsInput) -> BallPointsOutput:
         row = inputs.detections
+        smoothing = smooth_2d_trajectory(row.uv_px, row.confidence, row.observed,
+            fps=inputs.fps, image_size_wh=inputs.source_size_wh, config=self.config)
+        observed = smoothing.accepted
         return BallPointsOutput(row.camera_id, inputs.source_size_wh, row.frame_indices.copy(),
-                                np.where(row.observed[:, None], row.uv_px, 0).astype(np.float32),
-                                np.where(row.observed, row.confidence, 0).astype(np.float32), row.observed.copy())
+                                np.where(observed[:, None], smoothing.coordinates, 0).astype(np.float32),
+                                np.where(observed, row.confidence, 0).astype(np.float32), observed.copy(), smoothing)

@@ -30,6 +30,10 @@ from src.tasks.base.configuration import (
 from src.tasks.base.training.batch_transfer import (
     move_batch_to_device_preserving_frozen_metadata,
 )
+from src.tasks.base.training.random_state import (
+    capture_random_state,
+    restore_random_state,
+)
 from src.tasks.base.training.repro import resolve_queue_repro_dir
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
@@ -116,6 +120,48 @@ class BaseLightningModule(pl.LightningModule):
         self.max_epochs = optimizer.max_epochs
         self.min_lr = optimizer.min_lr
         self.optimizer_betas = optimizer.betas
+        self._resume_random_state: dict[str, Any] | None = None
+        self._explicit_total_steps: int | None = None
+
+    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        checkpoint["training_random_state"] = capture_random_state()
+
+    def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        self._resume_random_state = checkpoint.get("training_random_state")
+
+    def on_train_start(self) -> None:
+        self._validate_explicit_step_budget()
+        # Constructors, optimizer setup and validation setup can consume RNG.
+        # Restore only after those stages, immediately before the next iterator.
+        if self._resume_random_state is not None:
+            restore_random_state(self._resume_random_state)
+            self._resume_random_state = None
+        elif self.trainer.ckpt_path is not None:
+            raise ValueError(
+                "Exact training resume requires training_random_state; use init_weights for legacy checkpoints"
+            )
+
+    def _validate_explicit_step_budget(self) -> None:
+        if self._explicit_total_steps is None:
+            return
+        # The fit loop has already set up the loader and resolved its length.
+        # Reading this here cannot trigger an extra setup/iterator before resume.
+        trainer = self.trainer
+        expected = trainer.estimated_stepping_batches
+        if self._explicit_total_steps != expected:
+            raise ValueError(
+                "Explicit step schedule budget does not match Trainer optimizer updates: "
+                f"training.steps_per_epoch={self.training_config.optimizer.steps_per_epoch}, "
+                f"configured_total_steps={self._explicit_total_steps}, "
+                f"expected_total_steps={expected}, "
+                f"num_training_batches={trainer.num_training_batches} (after limit), "
+                f"accumulate_grad_batches={trainer.accumulate_grad_batches}, "
+                f"limit_train_batches={trainer.limit_train_batches}, "
+                f"max_steps={trainer.max_steps}, max_epochs={trainer.max_epochs}, "
+                f"schedule_max_epochs={self.max_epochs}. "
+                "Set training.steps_per_epoch to the optimizer updates per epoch "
+                "or explicitly use null for automatic estimation."
+            )
 
     def transfer_batch_to_device(
         self,
@@ -282,10 +328,14 @@ class BaseLightningModule(pl.LightningModule):
             if (
                 not isinstance(prediction_ids, (list, tuple))
                 or len(prediction_ids) != len(dataset)
-                or any(not isinstance(value, str) or not value for value in prediction_ids)
+                or any(
+                    not isinstance(value, str) or not value for value in prediction_ids
+                )
                 or len(set(prediction_ids)) != len(prediction_ids)
             ):
-                raise ValueError("dataset.prediction_ids must contain one unique nonempty string per sample")
+                raise ValueError(
+                    "dataset.prediction_ids must contain one unique nonempty string per sample"
+                )
             start = self._test_pred_cursor
             end = start + batch_size
             if end > len(prediction_ids):
@@ -336,7 +386,9 @@ class BaseLightningModule(pl.LightningModule):
         root = as_config_mapping(self.config, path="configuration")
         run = require_config_mapping(root, "run", path="configuration")
         output = cast(str, require_config_value(run, "output_dir", str, path="run"))
-        predictions_dir: Path = self.path_resolver.resolve(PathRole.OUTPUT, output, "predictions")
+        predictions_dir: Path = self.path_resolver.resolve(
+            PathRole.OUTPUT, output, "predictions"
+        )
         return predictions_dir
 
     def save_test_predictions(
@@ -398,6 +450,17 @@ class BaseLightningModule(pl.LightningModule):
                 raise RuntimeError("Resolved total training steps must be > 0.")
             return total_steps
 
+        # An explicit budget must not ask Trainer to construct/iterate a loader.
+        # During optimizer setup on resume Lightning has restored the data RNG,
+        # but not yet its epoch, so this would consume the next batch too early.
+        steps_per_epoch = self.training_config.optimizer.steps_per_epoch
+        if steps_per_epoch is not None:
+            total_steps = int(steps_per_epoch) * max_epochs
+            if total_steps <= 0:
+                raise RuntimeError("Resolved total training steps must be > 0.")
+            self._explicit_total_steps = total_steps
+            return total_steps
+
         estimated_steps = None
         if hasattr(self, "_trainer") and self._trainer is not None:
             estimated_steps = self._trainer.estimated_stepping_batches
@@ -407,12 +470,6 @@ class BaseLightningModule(pl.LightningModule):
                 raise RuntimeError("Resolved total training steps must be > 0.")
             return total_steps
 
-        steps_per_epoch = self.training_config.optimizer.steps_per_epoch
-        if steps_per_epoch is not None:
-            total_steps = int(steps_per_epoch) * max_epochs
-            if total_steps <= 0:
-                raise RuntimeError("Resolved total training steps must be > 0.")
-            return total_steps
         raise RuntimeError(
             "Training step count is unresolved: set training.steps_per_epoch or "
             "attach the module to a Trainer before configuring the scheduler."
@@ -451,6 +508,7 @@ class BaseLightningModule(pl.LightningModule):
         """
         optimizer = self._build_optimizer()
         scheduler: LRScheduler
+        self._explicit_total_steps = None
 
         if self.warmup_epochs is not None:
             warmup_epochs = int(self.warmup_epochs)

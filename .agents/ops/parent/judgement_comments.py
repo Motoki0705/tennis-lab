@@ -61,7 +61,7 @@ def comment_body(repo: str, issue: int, detail: Mapping[str, Any]) -> str:
                 f"再開条件: {detail['resume_condition']}",
                 f"次の対応: {detail['next_action']}",
                 "出典:\n" + "\n".join(f"- {s}" for s in detail["sources"]),
-                "この記録は着手可否の判断です。人間の要件合意・共有基盤の承認は記録しません。",
+                "この記録は着手可否の判断です。人間の要件合意は記録しません。",
             ]
         )
     )

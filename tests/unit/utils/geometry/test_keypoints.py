@@ -44,9 +44,19 @@ class TestNormalizeKeypoints:
         normalize_keypoints(kp, width=200, height=100)
         np.testing.assert_array_equal(kp, original)
 
-    def test_supports_leading_dims(self) -> None:
-        kp: np.ndarray = np.zeros((4, 7, 2), dtype=np.float32)
-        assert normalize_keypoints(kp, 10, 10).shape == (4, 7, 2)
+    def test_normalizes_values_without_mixing_leading_dims(self) -> None:
+        kp = np.array(
+            [[[20, 40], [140, 8], [90, 64]], [[50, 48], [180, 24], [120, 72]]],
+            dtype=np.float32,
+        )
+        expected = np.array(
+            [
+                [[0.1, 0.5], [0.7, 0.1], [0.45, 0.8]],
+                [[0.25, 0.6], [0.9, 0.3], [0.6, 0.9]],
+            ],
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(normalize_keypoints(kp, 200, 80), expected)
 
 
 class TestDenormalizeKeypoints:

@@ -48,3 +48,17 @@ checkpoints in their previous immutable generations. Omit `include` to publish
 the entire tree. Selection never deletes prior generations or local files and
 is recorded exactly in the marker. Publication and restoration receipts include
 elapsed time; no retention policy is inferred.
+
+## Single-file publication
+
+`RcloneArtifactStore.publish_file` uploads to a unique `.uploading-*` name, then
+uses `moveto` to publish the final name. Only exit code 1 with the exact rclone
+message `Source doesn't exist or is a directory and destination is a file`
+(optionally preceded by a rclone timestamp) is retried, to allow a newly uploaded
+source to become visible to Drive path lookup. There are at most 13 move attempts,
+with 5 seconds between attempts (60 seconds of additional waiting in total,
+excluding command execution). Each retry writes its number, delay and temporary
+path to stderr. Exhaustion raises `ArtifactStoreError` with the attempt count and
+last error; all other errors propagate immediately. Failed moves still trigger
+best-effort deletion of the temporary file. Uploads and other store operations
+are not retried by this policy.

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import json
 
-import pytorch_lightning as pl
+import torch
 from torch.utils.data import DataLoader, RandomSampler
 
+from src.tasks.base.data.loader_state import LoaderRNGDataModule
 from src.tasks.player_detection.configuration import PlayerDataConfig
 from src.tasks.player_detection.data.detection_dataset import (
     PlayerDetectionDataset,
@@ -16,7 +17,7 @@ from src.tasks.player_detection.data.detection_dataset import (
 from src.tasks.player_detection.data.store import PlayerFrameStore, Split
 
 
-class PlayerDetectionDataModule(pl.LightningDataModule):
+class PlayerDetectionDataModule(LoaderRNGDataModule):
     """Train on a fresh random frame subset per epoch; evaluate on strided frames.
 
     Consecutive video frames are nearly identical, so an "epoch" is
@@ -25,7 +26,7 @@ class PlayerDetectionDataModule(pl.LightningDataModule):
     """
 
     def __init__(self, config: PlayerDataConfig) -> None:
-        super().__init__()
+        super().__init__(loader_seed=torch.initial_seed())
         self.config = config
         self.store = PlayerFrameStore(config.dataset_dir)
         self.selection_stats: dict[str, dict[str, int]] = {}
@@ -43,9 +44,13 @@ class PlayerDetectionDataModule(pl.LightningDataModule):
                 self.store, split, self.config.selection, frame_stride=stride
             )
             if split != "train" and selection.stats["instances"] == 0:
-                raise ValueError(f"{split} requires positive target instances for COCO mAP, in addition to any negative frames")
+                raise ValueError(
+                    f"{split} requires positive target instances for COCO mAP, in addition to any negative frames"
+                )
             self.selection_stats[split] = selection.stats
-            print(f"[player_detection] {split} selection: {json.dumps(selection.stats)}")
+            print(
+                f"[player_detection] {split} selection: {json.dumps(selection.stats)}"
+            )
             dataset = PlayerDetectionDataset(
                 self.store,
                 selection,
@@ -71,6 +76,7 @@ class PlayerDetectionDataModule(pl.LightningDataModule):
             self._dataset(split),
             batch_size=self.config.eval_batch_size,
             shuffle=False,
+            generator=self.loader_generator(split),
             num_workers=self.config.num_workers,
             pin_memory=self.config.pin_memory,
             collate_fn=collate_detection,
@@ -88,12 +94,16 @@ class PlayerDetectionDataModule(pl.LightningDataModule):
             dataset,
             batch_size=self.config.batch_size,
             sampler=RandomSampler(
-                dataset, replacement=False, num_samples=self.config.train_samples_per_epoch
+                dataset,
+                replacement=False,
+                num_samples=self.config.train_samples_per_epoch,
+                generator=self.loader_generator("train"),
             ),
             num_workers=self.config.num_workers,
             pin_memory=self.config.pin_memory,
             collate_fn=collate_detection,
             drop_last=True,
+            generator=self.loader_generator("train"),
             persistent_workers=self.config.num_workers > 0,
         )
 

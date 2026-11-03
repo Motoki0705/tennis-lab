@@ -42,9 +42,28 @@ class TestRotationMatrixY:
 
 
 class TestRotationMatrixZ:
-    def test_batched_shape(self) -> None:
-        yaw: np.ndarray = np.zeros((4, 5), dtype=np.float32)
-        assert rotation_matrix_z(yaw).shape == (4, 5, 3, 3)
+    def test_batched_rotations_preserve_yaw_axes(self) -> None:
+        yaw = np.array(
+            [[0, math.pi / 2, -math.pi / 2], [math.pi, math.pi / 6, -math.pi / 3]],
+            dtype=np.float32,
+        )
+        c = math.sqrt(3) / 2
+        expected = np.array(
+            [
+                [
+                    [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    [[0, -1, 0], [1, 0, 0], [0, 0, 1]],
+                    [[0, 1, 0], [-1, 0, 0], [0, 0, 1]],
+                ],
+                [
+                    [[-1, 0, 0], [0, -1, 0], [0, 0, 1]],
+                    [[c, -0.5, 0], [0.5, c, 0], [0, 0, 1]],
+                    [[0.5, c, 0], [-c, 0.5, 0], [0, 0, 1]],
+                ],
+            ],
+            dtype=np.float32,
+        )
+        np.testing.assert_allclose(rotation_matrix_z(yaw), expected, atol=1e-7)
 
     def test_zero_yaw_is_identity(self) -> None:
         rot = rotation_matrix_z(np.zeros(2, dtype=np.float32))

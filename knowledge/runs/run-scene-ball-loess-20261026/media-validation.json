@@ -1,0 +1,43 @@
+{
+  "ball_display_masks_equal_replayed_3d": true,
+  "display_ball_filled_frames": 0,
+  "valid_ball_frames": 859,
+  "gifs": {
+    "multiview_reconstruction.gif": {
+      "size": [
+        960,
+        620
+      ],
+      "frames": 168,
+      "duration_s": 16.75,
+      "bytes": 5794518,
+      "sha256": "fdf6efbb0e704cad3357e5aec765426f2836ae03cfcbb237e385d0017b104df7",
+      "fully_decoded": true
+    },
+    "rich_scene_rendering.gif": {
+      "size": [
+        400,
+        338
+      ],
+      "frames": 168,
+      "duration_s": 16.75,
+      "bytes": 391368,
+      "sha256": "4b27a21c05e7addf40f2a4ac4404d00d6b8c49c6b2212c4fdd2c6fc347d1d9ba",
+      "fully_decoded": true
+    },
+    "blender_reveal_meiji_cam1.gif": {
+      "size": [
+        400,
+        225
+      ],
+      "frames": 135,
+      "duration_s": 16.88,
+      "bytes": 4391463,
+      "sha256": "3c3169613ebc4f8f71905c3ab87e85fcba160dd5c79a504b754b008bdbcfaa18",
+      "fully_decoded": true
+    }
+  },
+  "mp4_fully_decoded": true,
+  "blender_plate_source_frame": 96,
+  "blender_plate_psnr_db": 43.13368358272953
+}

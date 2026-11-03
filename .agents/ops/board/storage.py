@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from .errors import BoardError
+from .human_schema import upgrade as _human_schema
 
 
 def _names_schema(connection: sqlite3.Connection) -> None:
@@ -178,6 +179,7 @@ MIGRATIONS: tuple[Callable[[sqlite3.Connection], None], ...] = (
     _posts_schema,
     _renames_schema,
     _reactions_schema,
+    _human_schema,
 )
 SCHEMA_VERSION = len(MIGRATIONS)
 
@@ -230,6 +232,11 @@ def _validate(connection: sqlite3.Connection) -> None:
     }
     if not {"reactions_parent", "reactions_human"} <= reaction_indexes:
         raise BoardError("board reactions schema is incomplete")
+    for table in ("recipients", "deliveries"):
+        if f"{table}_human" not in {
+            row[1] for row in connection.execute(f"PRAGMA index_list({table})")
+        }:
+            raise BoardError("board human participant schema is incomplete")
 
 
 class Store:

@@ -1,0 +1,373 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]+/[A-Za-z0-9_.-]+$"
+    },
+    "issue_number": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "attempt": {
+      "enum": [
+        1,
+        2
+      ]
+    },
+    "status": {
+      "enum": [
+        "failed",
+        "ready",
+        "not_target",
+        "skipped"
+      ]
+    },
+    "source": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": {
+              "type": "string"
+            },
+            "body": {
+              "type": "string"
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "created_at": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            },
+            "history": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "body": {
+                  "type": "string"
+                },
+                "viewer": {
+                  "type": "string"
+                },
+                "edits": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "editedAt": {
+                        "type": "string"
+                      },
+                      "deletedAt": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "editor": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "login": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "login"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "editedAt",
+                      "deletedAt",
+                      "editor"
+                    ]
+                  }
+                },
+                "created_at": {
+                  "type": "string"
+                },
+                "author": {
+                  "type": "string"
+                },
+                "includes_created_edit": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "body",
+                "viewer",
+                "edits",
+                "created_at",
+                "author",
+                "includes_created_edit"
+              ]
+            }
+          },
+          "required": [
+            "title",
+            "body",
+            "labels",
+            "created_at",
+            "author",
+            "history"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "body": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60000
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "verification": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "verdict",
+            "differences"
+          ],
+          "properties": {
+            "verdict": {
+              "enum": [
+                "pass",
+                "fail"
+              ]
+            },
+            "differences": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "kind",
+                  "original",
+                  "rewritten",
+                  "explanation"
+                ],
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "addition",
+                      "deletion",
+                      "change"
+                    ]
+                  },
+                  "original": {
+                    "type": "string"
+                  },
+                  "rewritten": {
+                    "type": "string"
+                  },
+                  "explanation": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "issue_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "failed",
+            "ready",
+            "not_target",
+            "skipped",
+            "done",
+            "retry_required"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "rule": {
+                "type": "string"
+              },
+              "detail": {
+                "type": "string"
+              },
+              "revision": {
+                "enum": [
+                  1,
+                  2
+                ]
+              },
+              "differences": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "addition",
+                        "deletion",
+                        "change"
+                      ]
+                    },
+                    "original": {
+                      "type": "string"
+                    },
+                    "rewritten": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "original",
+                    "rewritten"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "rule"
+            ]
+          }
+        },
+        "turns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "writer",
+                  "verifier"
+                ]
+              },
+              "revision": {
+                "enum": [
+                  1,
+                  2
+                ]
+              },
+              "usage": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "duration_seconds": {
+                "anyOf": [
+                  {
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "elapsed_seconds": {
+                "type": "number",
+                "minimum": 0
+              },
+              "denied_action_count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "role",
+              "revision",
+              "usage",
+              "duration_seconds",
+              "elapsed_seconds",
+              "denied_action_count"
+            ]
+          }
+        },
+        "version": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "issue_number",
+        "status",
+        "reasons",
+        "turns"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "repo",
+    "issue_number",
+    "attempt",
+    "status",
+    "source",
+    "body",
+    "verification",
+    "report"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

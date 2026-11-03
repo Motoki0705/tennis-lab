@@ -14,7 +14,7 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from src.tasks.ball_detection.data.distribution import load_distribution
@@ -131,11 +131,21 @@ def transfer(args: argparse.Namespace) -> None:
         save(state, plan)
     payloads = [c["payload"] for c in manifest["clips"]]
     pending = [name for name in payloads if name not in complete]
+    directories = sorted(
+        {str(parent) for name in pending for parent in PurePosixPath(name).parents if str(parent) != "."},
+        key=lambda name: (len(PurePosixPath(name).parts), name),
+    )
+    for directory in directories:
+        checked(args.receipts, "mkdir-payload", ["mkdir", args.drive_path + "/" + directory])
+    if directories:
+        prepared = inventory(args.receipts, args.drive_path)
+        present = {entry["path"] for entry in prepared["entries"] if entry["type"] == "directory"}
+        if not set(directories) <= present or matching(prepared, hashes) != complete:
+            raise ValueError("Payload directories or existing contents changed before upload")
     if args.interrupt_largest:
         if not pending:
             raise ValueError("No missing payload is available for the planned interruption")
         name = max(pending, key=lambda name: expected[name]["size_bytes"])
-        checked(args.receipts, "mkdir-shards", ["mkdir", args.drive_path + "/shards"])
         receipt = call(args.receipts, "interrupted-upload", ["upload", str(files[name]), args.drive_path + "/" + name, "--verify"], timeout=20)
         after = inventory(args.receipts, args.drive_path)
         matched = matching(after, hashes)

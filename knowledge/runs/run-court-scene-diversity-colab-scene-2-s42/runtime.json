@@ -1,0 +1,38 @@
+{
+  "schema": "court_scene_diversity_run_runtime_v1",
+  "condition": 2,
+  "execution_receipt": "../run-court-scene-diversity-colab-s42/execution-receipt.json",
+  "checkpoint_sha256": "e0bb2e99f28e021a04498a5f6d15449af25c2f86f8908dea3d9eaf2f6a454e73",
+  "evaluation_sha256": "1a8b24c37589943e00d5d8629925c924d3da135c73edc017c6b280672f29fbfb",
+  "source_evaluation": "outputs/court_detection/campaign/scene-diversity-6000-v1/colab-transfer/scene-2-evaluation.json",
+  "initialization": "independent original DINOv3-S pretrained weight, seed42",
+  "training_drive": "gdrive:tennis_lab/outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-2-s42",
+  "evaluation_drive": "gdrive:tennis_lab/outputs/court_detection/evaluate/scene-diversity-6000-s384-colab/scene-2-s42",
+  "allowed_configuration_changes": [
+    "run.resume"
+  ],
+  "fit_validation": "Aggregate mixed synthetic500 + real2211; separate final domain evaluation is in evaluation.json.",
+  "attempts": [
+    {
+      "session": "court-scene-diversity-l4-20261025-v1",
+      "job": "scene-2-train-attempt-1",
+      "status": "unknown_vm_lost",
+      "returncode": null,
+      "last_saved_step": 26528,
+      "last_observed_step": 27112,
+      "observed_discarded_updates_minimum": 584,
+      "last_retained_tensorboard_update": 27150,
+      "discarded_updates_minimum_from_final_tensorboard": 622
+    },
+    {
+      "session": "court-scene-diversity-l4-20261026-r1",
+      "job": "scene-2-restore-resume-attempt-2",
+      "status": "completed",
+      "returncode": 0,
+      "drive_saved_at": "2026-10-26T13:54:01.832144+00:00",
+      "resume_global_step": 26528,
+      "final_global_step": 33160
+    }
+  ],
+  "resume_limit": "Optimizer/scheduler/loops restored at26528; non-resumable mid-epoch DataLoader means exact worker RNG/sampler order is not guaranteed. Unknown disappearance cause. Old >26528 curve tail excluded from final history."
+}

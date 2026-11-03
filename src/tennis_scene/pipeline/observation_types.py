@@ -52,6 +52,8 @@ class ObjectObservations:
         return np.where(visible[..., None], uv, 0).astype(np.float32), visible
 
     def select_views(self, indices: tuple[int, ...]) -> ObjectObservations:
+        if len(set(indices)) != len(indices) or any(i < 0 or i >= len(self.camera_ids) for i in indices):
+            raise ValueError("Source view indices must be unique and within the camera axis")
         rows = list(indices)
         return ObjectObservations(
             tuple(self.camera_ids[i] for i in rows), self.size, self.fps,

@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import random
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -137,32 +139,62 @@ class BaseDatasetWriter(ABC):
         Creates split files (train.txt, val.txt, test.txt) and split_info.json
         with metadata about the splits.
 
+        Ratios must be finite, non-negative, and sum to 1 (absolute tolerance
+        1e-8). Ratios within this tolerance are normalized to a unit total.
+        Each split receives floor(n * normalized_ratio) scenes; remaining scenes
+        go to the largest fractional remainders, with ties resolved in train,
+        val, test order. For example, 5 scenes at 0.8/0.1/0.1 become 4/1/0.
+
         Args:
             train_ratio: Fraction for training set.
             val_ratio: Fraction for validation set.
             test_ratio: Fraction for testing set.
             seed: Random seed for reproducibility.
 
+        Raises:
+            ValueError: Invalid ratios or duplicate scene IDs, before any split
+                file is written.
+
         """
-        import random
+        ratios = (train_ratio, val_ratio, test_ratio)
+        for name, ratio in zip(("train", "val", "test"), ratios, strict=True):
+            if not math.isfinite(ratio):
+                raise ValueError(f"{name}_ratio must be finite; got {ratio!r}.")
+            if ratio < 0:
+                raise ValueError(f"{name}_ratio must be non-negative; got {ratio!r}.")
+        ratio_sum = sum(ratios)
+        if not math.isclose(ratio_sum, 1.0, rel_tol=0.0, abs_tol=1e-8):
+            raise ValueError(
+                f"Split ratios must sum to 1 (within 1e-8); got {ratio_sum!r}."
+            )
 
         # Get all scene files
         scene_files = [r["file"] for r in self.scene_records]
+        seen: set[str] = set()
+        for scene_id in scene_files:
+            if scene_id in seen:
+                raise ValueError(f"Duplicate scene ID: {scene_id!r}.")
+            seen.add(scene_id)
 
-        # Shuffle with seed
-        random.seed(seed)
-        random.shuffle(scene_files)
+        # Keep the caller's global random state unchanged.
+        random.Random(seed).shuffle(scene_files)
 
-        # Calculate split sizes
+        # Largest-remainder allocation uses all three ratios and every scene.
         n_total = len(scene_files)
-        n_train = int(n_total * train_ratio)
-        n_val = int(n_total * val_ratio)
+        quotas = [n_total * (ratio / ratio_sum) for ratio in ratios]
+        sizes = [math.floor(quota) for quota in quotas]
+        remainder_order = sorted(
+            range(3), key=lambda i: quotas[i] - sizes[i], reverse=True
+        )
+        for i in remainder_order[: n_total - sum(sizes)]:
+            sizes[i] += 1
+        n_train, n_val, n_test = sizes
 
         # Create splits
         splits = {
             "train": scene_files[:n_train],
             "val": scene_files[n_train : n_train + n_val],
-            "test": scene_files[n_train + n_val :],
+            "test": scene_files[n_train + n_val : n_train + n_val + n_test],
         }
 
         # Save split files

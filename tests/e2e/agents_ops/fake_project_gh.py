@@ -128,6 +128,34 @@ def main() -> None:
         if "user" in args:
             respond({"login": "operator"})
         endpoint = next(a for a in args if a.startswith("repos/"))
+        if os.environ.get("PROGRESS_FAIL_PULLS"):
+            fail()
+        timeline = re.fullmatch(
+            r"repos/o/r/issues/(\d+)/timeline\?per_page=100&page=(\d+)", endpoint
+        )
+        pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", endpoint)
+        if timeline:
+            rows = [
+                {
+                    "event": "cross-referenced",
+                    "created_at": "2026-10-24T00:00:00Z",
+                    "source": {
+                        "issue": {
+                            "id": p["number"] + 10000,
+                            "number": p["number"],
+                            "body": p["body"],
+                            "repository_url": "https://api.github.com/repos/o/r",
+                            "pull_request": {"url": "pr"},
+                        }
+                    },
+                }
+                for p in state["pulls"]
+                if re.search(r"#" + timeline[1] + r"\b", p["body"])
+            ]
+            page = int(timeline[2])
+            respond(rows[(page - 1) * 100 : page * 100])
+        if pull:
+            respond(next(p for p in state["pulls"] if p["number"] == int(pull[1])))
         assert endpoint.startswith("repos/o/r/pulls?state=all"), endpoint
         if os.environ.get("PROGRESS_FAIL_PULLS"):
             fail()

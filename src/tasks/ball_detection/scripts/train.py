@@ -9,7 +9,7 @@ def main() -> None:
         "dpt_pretrain": "src.tasks.ball_detection.training.dpt_pretrain.runner",
         "coordinates": "src.tasks.ball_detection.training.coordinates",
         "hybrid": "src.tasks.ball_detection.training.hybrid.runner",
-        "temporal_heatmap": "src.tasks.ball_detection.training.temporal_heatmap.cli",
+        "temporal": "src.tasks.ball_detection.training.temporal.cli",
     }, description="Ball detection training; choose an explicit learning stage.")
 
 

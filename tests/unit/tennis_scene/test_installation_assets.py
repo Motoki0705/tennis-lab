@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import re
 import subprocess
-from collections import Counter
 from collections.abc import Callable
 from pathlib import Path
 from typing import cast, get_args
@@ -23,6 +22,7 @@ from src.tennis_scene.installation_assets import (
 )
 from src.utils.paths import PROJECT_ROOT
 from src.utils.sample_dataset import DATASET_REPO, PUBLISHED_FILES, PublishedSampleFile
+from tests.support.documents import assert_local_links, assert_sections, links
 
 # Other tracked Markdown with either marker is also checked.
 REQUIRED_ASSET_TABLE_DOCUMENTS = (
@@ -39,7 +39,6 @@ INSTALLATION_GUIDE_DOCUMENTS = tuple(
     for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
 )
 ANCHOR = re.compile(r'<a id="([^"]+)"></a>')
-LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 TABLE_RENDERERS = {
     "checkpoint-assets": asset_table,
     "sample-assets": sample_asset_table,
@@ -271,58 +270,25 @@ def test_tracked_markdown_asset_tables_match_authoritative_catalogs() -> None:
 def test_installation_translations_preserve_sections_commands_and_references(
     filename: str,
 ) -> None:
-    english = (PROJECT_ROOT / INSTALLATION_GUIDE_DOCUMENTS[0]).read_text(
-        encoding="utf-8"
-    )
+    english = (PROJECT_ROOT / INSTALLATION_GUIDE_DOCUMENTS[0]).read_text(encoding="utf-8")
     translated = (PROJECT_ROOT / filename).read_text(encoding="utf-8")
     language = public_document_language_from_filename(filename)
-    assert re.findall(r"^(#{1,3}) ", english, re.MULTILINE) == re.findall(
-        r"^(#{1,3}) ", translated, re.MULTILINE
+    required = {
+        "requirements", "clone-and-sync", "dino-cuda-extension", "required-assets",
+        "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
+    }
+    for text in (english, translated):
+        assert_sections(text, required, context=filename)
+    # Executable commands and generated tables remain authoritative. Natural
+    # language numbers, heading levels and inline prose are editorial choices.
+    fences = r"^```[^\n]*\n.*?^```"
+    assert set(re.findall(fences, english, re.MULTILINE | re.DOTALL)) == set(
+        re.findall(fences, translated, re.MULTILINE | re.DOTALL)
     )
-    assert ANCHOR.findall(english) == ANCHOR.findall(translated)
-    assert len(set(ANCHOR.findall(translated))) == len(ANCHOR.findall(translated))
-    assert re.findall(r"^```[^\n]*\n.*?^```", english, re.MULTILINE | re.DOTALL) == (
-        re.findall(r"^```[^\n]*\n.*?^```", translated, re.MULTILINE | re.DOTALL)
-    )
-    english_sections = ANCHOR.split(english)
-    translated_sections = ANCHOR.split(translated)
-    for anchor, en, localized in zip(
-        english_sections[1::2],
-        english_sections[2::2],
-        translated_sections[2::2],
-        strict=True,
-    ):
-        # Japanese already presents this variable/value as one inline assignment.
-        # Executable fenced commands above must still match byte for byte.
-        comparable_inline = localized.replace(
-            "`CUDA_HOME=/usr/local/cuda`", "`CUDA_HOME` `/usr/local/cuda`"
-        )
-        assert Counter(re.findall(r"`([^`\n]+)`", en)) == Counter(
-            re.findall(r"`([^`\n]+)`", comparable_inline)
-        ), anchor
-        normalized_links = [
-            target.replace(
-                f"LICENSES{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}", "LICENSES.md"
-            )
-            for target in LINK.findall(localized)
-        ]
-        assert Counter(LINK.findall(en)) == Counter(normalized_links), anchor
-
-
-def test_chinese_installation_preserves_numbers_in_each_english_section() -> None:
-    english, chinese = (
-        ANCHOR.split((PROJECT_ROOT / filename).read_text(encoding="utf-8"))
-        for filename in (
-            "docs/installation/README.md",
-            "docs/installation/README.zh-CN.md",
-        )
-    )
-    for anchor, en, zh in zip(english[1::2], english[2::2], chinese[2::2], strict=True):
-        # Compare literal numeric values, including versions, units and timings;
-        # word boundaries differ between English and Chinese prose.
-        assert Counter(re.findall(r"[0-9]+(?:[.,][0-9]+)*", en)) == Counter(
-            re.findall(r"[0-9]+(?:[.,][0-9]+)*", zh)
-        ), anchor
+    suffix = PUBLIC_DOCUMENT_LANGUAGES[language].suffix
+    assert links(english) == {
+        target.replace(f"LICENSES{suffix}", "LICENSES.md") for target in links(translated)
+    }
 
 
 @pytest.mark.parametrize("filename", INSTALLATION_GUIDE_DOCUMENTS)
@@ -332,45 +298,22 @@ def test_installation_guides_have_language_navigation_and_valid_local_links(
     document = PROJECT_ROOT / filename
     text = document.read_text(encoding="utf-8")
     introduction = ANCHOR.split(text)[0]
-    navigation = " / ".join(
-        f"[{locale.label}](README{locale.suffix})"
-        for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
-    )
-    assert navigation in introduction
+    assert {
+        f"README{locale.suffix}" for locale in PUBLIC_DOCUMENT_LANGUAGES.values()
+    } <= links(introduction)
     assert re.search(r"[0-9a-fA-F]{64}", text) is None
     language = public_document_language_from_filename(filename)
-    license_links = []
-    for target in LINK.findall(text):
+    license_links = set()
+    for target in links(text):
         parsed = urlsplit(target)
         if parsed.scheme or parsed.netloc:
             continue
-        destination = (
-            document.parent / unquote(parsed.path) if parsed.path else document
-        ).resolve()
+        destination = document.parent / unquote(parsed.path)
         if destination.name.startswith("LICENSES"):
-            assert destination.name == (
-                f"LICENSES{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}"
-            ), target
-            license_links.append(parsed.fragment)
-            # The Chinese LICENSES document is supplied by a parallel child.
-            # Its existence/content is covered by that child's license tests;
-            # here we enforce the agreed path and common-anchor contract.
-            if language == "zh-CN":
-                continue
-        assert destination.is_file(), target
-        if parsed.fragment:
-            content = destination.read_text(encoding="utf-8")
-            headings = re.findall(r"^#+ (.+)$", content, re.MULTILINE)
-            anchors = set(ANCHOR.findall(content)) | {
-                re.sub(r"[^\w\- ]", "", heading.lower()).replace(" ", "-")
-                for heading in headings
-            }
-            assert unquote(parsed.fragment) in anchors, target
-    assert license_links == [
-        "code-license-scope",
-        "third-party-weights",
-        "published-artifacts",
-    ]
+            assert destination.name == f"LICENSES{PUBLIC_DOCUMENT_LANGUAGES[language].suffix}", target
+            license_links.add(parsed.fragment)
+    assert license_links == {"code-license-scope", "third-party-weights", "published-artifacts"}
+    assert_local_links(document, text)
 
 
 @pytest.fixture

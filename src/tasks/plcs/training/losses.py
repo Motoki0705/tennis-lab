@@ -28,6 +28,7 @@ from src.utils.geometry.court_pose import (
     world_pose_to_canonical_pose,
 )
 from src.utils.geometry.skeleton import (
+    SkeletonValues,
     compute_bone_lengths,
     compute_joint_angles,
     compute_torsion_angles,
@@ -159,9 +160,7 @@ class PLCSLossConfig:
                     f"loss.{key}: expected list | tuple | None, "
                     f"got {type(value).__name__}."
                 )
-            raw_values: tuple[object, ...] = tuple(
-                cast("Sequence[object]", value)
-            )
+            raw_values: tuple[object, ...] = tuple(cast("Sequence[object]", value))
             if len(raw_values) != expected_length:
                 raise SemanticConfigurationError(
                     f"loss.{key} must contain exactly {expected_length} values."
@@ -194,17 +193,13 @@ class PLCSLossConfig:
             canonical_pose_weight=weights["canonical_pose_weight"],
             canonical_pose_smooth_l1_beta=weights["canonical_pose_smooth_l1_beta"],
             reprojection_weight=weights["reprojection_weight"],
-            reprojection_smooth_l1_beta=weights[
-                "reprojection_smooth_l1_beta"
-            ],
+            reprojection_smooth_l1_beta=weights["reprojection_smooth_l1_beta"],
             joint_angle_weight=weights["joint_angle_weight"],
             torsion_angle_weight=weights["torsion_angle_weight"],
             torso_twist_weight=weights["torso_twist_weight"],
             bone_length_weight=weights["bone_length_weight"],
             joint_angle_velocity_weight=weights["joint_angle_velocity_weight"],
-            torsion_angle_velocity_weight=weights[
-                "torsion_angle_velocity_weight"
-            ],
+            torsion_angle_velocity_weight=weights["torsion_angle_velocity_weight"],
             torso_twist_velocity_weight=weights["torso_twist_velocity_weight"],
             joint_angle_velocity_angle_weights=_opt_weights(
                 "joint_angle_velocity_angle_weights", expected_length=12
@@ -220,6 +215,42 @@ class PLCSLossConfig:
 # ---------------------------------------------------------------------------
 
 
+def _reduce_skeleton_features(
+    per_feature: Tensor, valid: Tensor, reduction: str = "mean"
+) -> Tensor:
+    """Mean of observed features within a frame, then of observed frames.
+
+    ``none`` returns per-frame means (zero storage for missing frames), while
+    ``sum`` preserves the old sum of feature errors. Empty supervision raises.
+    """
+    if not bool(valid.any()):
+        raise ValueError("No valid skeleton features/transitions in this loss term.")
+    observed = torch.where(valid, per_feature, torch.zeros_like(per_feature))
+    if reduction == "sum":
+        return observed.sum()
+    counts = valid.sum(dim=-1)
+    per_frame = observed.sum(dim=-1) / counts.clamp_min(1)
+    if reduction == "none":
+        return per_frame
+    if reduction != "mean":
+        raise ValueError(f"Unknown skeleton loss reduction: {reduction!r}.")
+    return per_frame[counts > 0].mean()
+
+
+def _skeleton_error(
+    pred: SkeletonValues, target: SkeletonValues, *, name: str, wrap: bool = False
+) -> tuple[Tensor, Tensor]:
+    pred.require_valid(f"pred {name}")
+    diff = pred.values - target.values
+    if wrap:
+        diff = torch.atan2(torch.sin(diff), torch.cos(diff))
+    return diff, pred.valid & target.valid
+
+
+def _smooth_error(diff: Tensor) -> Tensor:
+    return nn.functional.smooth_l1_loss(diff, torch.zeros_like(diff), reduction="none")
+
+
 def joint_angle_loss(
     pred_pose: Tensor,
     target_pose: Tensor,
@@ -227,37 +258,18 @@ def joint_angle_loss(
     *,
     reduction: str = "mean",
 ) -> Tensor:
-    """Compute joint-angle loss between predicted and target poses.
+    """Interior-angle smooth-L1 over observed target features; pred is strict.
 
-    This compares 12 angles by default:
-
-    - 8 articulated limb angles
-    - 4 torso quadrilateral internal angles
-
-    Args:
-        pred_pose: Predicted joints, shape ``(..., J, 3)``.
-        target_pose: Target joints, shape ``(..., J, 3)``.
-        triplets: Joint-angle triplets.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-
-    Returns:
-        Tensor: Joint-angle loss. If ``reduction='none'``, returns per-frame
-        loss with shape ``(...)``.
-
+    ``mean`` averages valid features per frame, then frames with observations.
+    ``none`` returns frame means and zero storage for missing frames. Padding
+    must already be removed. Nonfinite poses and all-missing targets raise.
     """
-    pred_angles = compute_joint_angles(pred_pose, triplets)
-    target_angles = compute_joint_angles(target_pose, triplets)
-    per_angle = nn.functional.smooth_l1_loss(
-        pred_angles,
-        target_angles,
-        reduction="none",
+    diff, valid = _skeleton_error(
+        compute_joint_angles(pred_pose, triplets),
+        compute_joint_angles(target_pose, triplets),
+        name="joint_angle",
     )
-
-    if reduction == "mean":
-        return per_angle.mean()
-    if reduction == "sum":
-        return per_angle.sum()
-    return per_angle.mean(dim=-1)
+    return _reduce_skeleton_features(_smooth_error(diff), valid, reduction)
 
 
 def torsion_angle_loss(
@@ -267,37 +279,14 @@ def torsion_angle_loss(
     *,
     reduction: str = "mean",
 ) -> Tensor:
-    """Compute signed torsion-angle loss between predicted and target poses.
-
-    This captures the 3D bending plane of arms and legs. Angle differences are
-    wrapped into ``[-pi, pi]`` before applying smooth-L1.
-
-    Args:
-        pred_pose: Predicted joints, shape ``(..., J, 3)``.
-        target_pose: Target joints, shape ``(..., J, 3)``.
-        quadruplets: Torsion quadruplets.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-
-    Returns:
-        Tensor: Torsion-angle loss. If ``reduction='none'``, returns per-frame
-        loss with shape ``(...)``.
-
-    """
-    pred_angles = compute_torsion_angles(pred_pose, quadruplets)
-    target_angles = compute_torsion_angles(target_pose, quadruplets)
-    diff = _wrapped_angle_diff(pred_angles, target_angles)
-
-    per_angle = nn.functional.smooth_l1_loss(
-        diff,
-        torch.zeros_like(diff),
-        reduction="none",
+    """Wrapped dihedral smooth-L1 with the same missingness contract as joint loss."""
+    diff, valid = _skeleton_error(
+        compute_torsion_angles(pred_pose, quadruplets),
+        compute_torsion_angles(target_pose, quadruplets),
+        name="torsion_angle",
+        wrap=True,
     )
-
-    if reduction == "mean":
-        return per_angle.mean()
-    if reduction == "sum":
-        return per_angle.sum()
-    return per_angle.mean(dim=-1)
+    return _reduce_skeleton_features(_smooth_error(diff), valid, reduction)
 
 
 def torso_twist_loss(
@@ -306,36 +295,16 @@ def torso_twist_loss(
     *,
     reduction: str = "mean",
 ) -> Tensor:
-    """Compute shoulder-hip torso twist loss.
-
-    Measures the signed angle from the hip axis to the shoulder axis around
-    the torso axis. This captures upper/lower-body twist in 3D.
-
-    Args:
-        pred_pose: Predicted joints, shape ``(..., 17, 3)``.
-        target_pose: Target joints, shape ``(..., 17, 3)``.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-
-    Returns:
-        Tensor: Torso twist loss. If ``reduction='none'``, returns per-frame
-        loss with shape ``(...)``.
-
-    """
-    pred_twist = compute_torso_twist(pred_pose)
-    target_twist = compute_torso_twist(target_pose)
-    diff = _wrapped_angle_diff(pred_twist, target_twist)
-
-    per_frame = nn.functional.smooth_l1_loss(
-        diff,
-        torch.zeros_like(diff),
-        reduction="none",
+    """Wrapped hip-to-shoulder twist loss; missing torso frames are excluded."""
+    diff, valid = _skeleton_error(
+        compute_torso_twist(pred_pose),
+        compute_torso_twist(target_pose),
+        name="torso_twist",
+        wrap=True,
     )
-
-    if reduction == "mean":
-        return per_frame.mean()
-    if reduction == "sum":
-        return per_frame.sum()
-    return per_frame
+    return _reduce_skeleton_features(
+        _smooth_error(diff).unsqueeze(-1), valid.unsqueeze(-1), reduction
+    )
 
 
 def bone_length_loss(
@@ -345,51 +314,16 @@ def bone_length_loss(
     *,
     relative: bool = True,
     reduction: str = "mean",
-    eps: float = 1e-8,
 ) -> Tensor:
-    """Compute bone-length consistency loss.
-
-    By default this uses relative bone-length error:
-
-    ``(pred_length - target_length) / target_length``
-
-    so the loss is dimensionless and does not over-emphasize long bones.
-
-    Args:
-        pred_pose: Predicted joints, shape ``(..., J, 3)``.
-        target_pose: Target joints, shape ``(..., J, 3)``.
-        edges: Bone edges.
-        relative: Whether to use relative length error.
-        reduction: ``'mean'``, ``'sum'``, or ``'none'``.
-        eps: Numerical stability epsilon.
-
-    Returns:
-        Tensor: Bone-length loss. If ``reduction='none'``, returns per-frame
-        loss with shape ``(...)``.
-
-    """
-    pred_lengths = compute_bone_lengths(pred_pose, edges, eps=eps)
-    target_lengths = compute_bone_lengths(target_pose, edges, eps=eps)
-
+    """Bone smooth-L1, relative by default, with zero/short target bones missing."""
+    pred = compute_bone_lengths(pred_pose, edges)
+    target = compute_bone_lengths(target_pose, edges)
+    diff, valid = _skeleton_error(pred, target, name="bone_length")
     if relative:
-        diff = (pred_lengths - target_lengths) / target_lengths.clamp_min(eps)
-        per_bone = nn.functional.smooth_l1_loss(
-            diff,
-            torch.zeros_like(diff),
-            reduction="none",
-        )
-    else:
-        per_bone = nn.functional.smooth_l1_loss(
-            pred_lengths,
-            target_lengths,
-            reduction="none",
-        )
-
-    if reduction == "mean":
-        return per_bone.mean()
-    if reduction == "sum":
-        return per_bone.sum()
-    return per_bone.mean(dim=-1)
+        # Replace missing denominators BEFORE division, not after it.
+        denominator = torch.where(valid, target.values, torch.ones_like(target.values))
+        diff = diff / denominator
+    return _reduce_skeleton_features(_smooth_error(diff), valid, reduction)
 
 
 # ---------------------------------------------------------------------------
@@ -597,81 +531,66 @@ def reprojection_loss_term(
     )
 
 
-def joint_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Joint-angle term on canonical joints.
+def _valid_pose_frames(pose: Tensor, frame_mask: Tensor | None) -> Tensor:
+    shape = pose.shape[:-2]
+    if frame_mask is None:
+        return torch.ones(shape, dtype=torch.bool, device=pose.device)
+    if frame_mask.shape != shape:
+        raise ValueError(
+            f"Skeleton frame mask must have shape {shape}, got {frame_mask.shape}."
+        )
+    return frame_mask > 0
 
-    Includes both articulated limb angles and torso quadrilateral angles.
-    """
+
+def _static_skeleton_loss_term(
+    inputs: PLCSLossInputs, loss_fn: Callable[[Tensor, Tensor], Tensor]
+) -> Tensor:
     if not inputs.has_canonical:
         return inputs.zero
     pred = cast(Tensor, inputs.pred_canonical_pose)
     target = cast(Tensor, inputs.target_canonical_pose)
+    mask = _valid_pose_frames(pred, inputs.frame_mask)
+    # Exclude padding before finite validation and all nonlinear geometry.
+    return loss_fn(pred[mask], target[mask])
 
-    per_frame = joint_angle_loss(
-        pred,
-        target,
-        reduction="none",
-    )
-    return _masked_frame_mean(per_frame, inputs.frame_mask)
+
+def joint_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Interior-angle loss, including articulated limbs and torso angles."""
+    return _static_skeleton_loss_term(inputs, joint_angle_loss)
 
 
 def torsion_angle_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Limb torsion term on canonical joints.
-
-    Captures whether arms/legs bend in the correct 3D plane.
-    """
-    if not inputs.has_canonical:
-        return inputs.zero
-    pred = cast(Tensor, inputs.pred_canonical_pose)
-    target = cast(Tensor, inputs.target_canonical_pose)
-
-    per_frame = torsion_angle_loss(
-        pred,
-        target,
-        reduction="none",
-    )
-    return _masked_frame_mean(per_frame, inputs.frame_mask)
+    """Limb dihedral loss with missing target planes excluded."""
+    return _static_skeleton_loss_term(inputs, torsion_angle_loss)
 
 
 def torso_twist_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Torso twist term on canonical joints.
-
-    Captures shoulder-line vs hip-line twist around the torso axis.
-    """
-    if not inputs.has_canonical:
-        return inputs.zero
-    pred = cast(Tensor, inputs.pred_canonical_pose)
-    target = cast(Tensor, inputs.target_canonical_pose)
-
-    per_frame = torso_twist_loss(
-        pred,
-        target,
-        reduction="none",
-    )
-    return _masked_frame_mean(per_frame, inputs.frame_mask)
+    """Shoulder-hip twist loss with missing target axes/planes excluded."""
+    return _static_skeleton_loss_term(inputs, torso_twist_loss)
 
 
 def bone_length_loss_term(inputs: PLCSLossInputs) -> Tensor:
-    """Bone-length consistency term on canonical joints."""
-    if not inputs.has_canonical:
-        return inputs.zero
-    pred = cast(Tensor, inputs.pred_canonical_pose)
-    target = cast(Tensor, inputs.target_canonical_pose)
-
-    per_frame = bone_length_loss(
-        pred,
-        target,
-        reduction="none",
-    )
-    return _masked_frame_mean(per_frame, inputs.frame_mask)
+    """Relative bone-length loss with missing target bones excluded."""
+    return _static_skeleton_loss_term(inputs, bone_length_loss)
 
 
 # ---------------------------------------------------------------------------
-# Angular-velocity (temporal smoothness) losses (#521)
+# Angular-velocity losses
 # ---------------------------------------------------------------------------
 
-# Type of a canonical-pose angle extractor, e.g. compute_joint_angles.
-AngleFn = Callable[[Tensor], Tensor]
+AngleFn = Callable[[Tensor], SkeletonValues]
+
+
+def _restore_frame_features(
+    result: SkeletonValues, frame_mask: Tensor
+) -> SkeletonValues:
+    values, valid = result.values, result.valid
+    if values.ndim == 1:  # Twist has no feature axis.
+        values, valid = values.unsqueeze(-1), valid.unsqueeze(-1)
+    full_values = values.new_zeros((*frame_mask.shape, values.shape[-1]))
+    full_valid = torch.zeros_like(full_values, dtype=torch.bool)
+    full_values[frame_mask], full_valid[frame_mask] = values, valid
+    return SkeletonValues(full_values, full_valid)
 
 
 def _angle_velocity_loss_term(
@@ -681,51 +600,36 @@ def _angle_velocity_loss_term(
     wrap: bool,
     angle_weights: Tensor | None = None,
 ) -> Tensor:
-    """Temporal angular-velocity loss on canonical-pose angles.
+    """Compare first differences using the AND of both endpoint feature masks.
 
-    Compares the per-angle frame-to-frame angular velocity (first temporal
-    difference) of the predicted vs. target canonical pose. This directly
-    supervises *motion* rather than static pose, addressing predictions that
-    collapse to a frozen average pose (#521). ``angle_weights`` upweights angles
-    whose GT velocity is dominant; ``wrap`` wraps the velocity difference into
-    ``[-pi, pi]`` for signed/periodic angles (torsion, twist).
+    Per-angle dominance weights retain their configured scale; observed feature
+    counts, rather than sums of weights, normalize each frame transition.
     """
     if not inputs.has_canonical:
         return inputs.zero
-    pred = inputs.pred_canonical_pose
-    target = inputs.target_canonical_pose
-    pred = cast(Tensor, pred)
-    target = cast(Tensor, target)
-    # Need a temporal axis of >= 2 frames: canonical pose is (B, T, J, 3).
+    pred = cast(Tensor, inputs.pred_canonical_pose)
+    target = cast(Tensor, inputs.target_canonical_pose)
     if pred.ndim < 4 or pred.shape[-3] < 2:
-        return inputs.zero
-
-    pred_a = compute_fn(pred)
-    target_a = compute_fn(target)
-    # twist returns (B, T) with no angle axis -> add a singleton angle axis.
-    if pred_a.ndim == pred.ndim - 2:
-        pred_a = pred_a.unsqueeze(-1)
-        target_a = target_a.unsqueeze(-1)
-
-    # Velocity along the time axis (second to last): shape (B, T-1, A).
-    pred_vel = pred_a[..., 1:, :] - pred_a[..., :-1, :]
-    target_vel = target_a[..., 1:, :] - target_a[..., :-1, :]
+        raise ValueError(
+            "No valid angular-velocity transitions: need at least two frames."
+        )
+    frame_mask = _valid_pose_frames(pred, inputs.frame_mask)
+    pred_selected = compute_fn(pred[frame_mask])
+    target_selected = compute_fn(target[frame_mask])
+    pred_selected.require_valid("pred angular_velocity")
+    pred_a = _restore_frame_features(pred_selected, frame_mask)
+    target_a = _restore_frame_features(target_selected, frame_mask)
+    observed = pred_a.valid & target_a.valid
+    valid = observed[..., 1:, :] & observed[..., :-1, :]
+    pred_vel = pred_a.values[..., 1:, :] - pred_a.values[..., :-1, :]
+    target_vel = target_a.values[..., 1:, :] - target_a.values[..., :-1, :]
     diff = pred_vel - target_vel
     if wrap:
         diff = torch.atan2(torch.sin(diff), torch.cos(diff))
-
-    per_angle = nn.functional.smooth_l1_loss(
-        diff, torch.zeros_like(diff), reduction="none"
-    )
+    per_angle = _smooth_error(diff)
     if angle_weights is not None:
         per_angle = per_angle * angle_weights.to(per_angle)
-    per_frame = per_angle.mean(dim=-1)  # (B, T-1)
-
-    frame_mask = inputs.frame_mask
-    if frame_mask is not None and frame_mask.shape == pred_a.shape[:-1]:
-        velocity_mask = (frame_mask[..., 1:] > 0) & (frame_mask[..., :-1] > 0)
-        return masked_mean(per_frame, velocity_mask, binarize=True, denom_min=1.0)
-    return per_frame.mean()
+    return _reduce_skeleton_features(per_angle, valid)
 
 
 def joint_angle_velocity_loss_term(
@@ -911,14 +815,14 @@ class PLCSLoss(nn.Module):
         frame_mask = None
         if padding_mask is not None:
             frame_mask = ~(
-                padding_mask.all(dim=1)
-                if padding_mask.ndim == 3
-                else padding_mask
+                padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
 
         canonical_required = self._requires_canonical_pose()
         reprojection_required = self._requires_reprojection()
-        if (canonical_required or reprojection_required) and pred_canonical_pose is None:
+        if (
+            canonical_required or reprojection_required
+        ) and pred_canonical_pose is None:
             raise ValueError(
                 "pred_canonical_pose is required when canonical-dependent or "
                 "reprojection loss weight is > 0."
@@ -929,20 +833,20 @@ class PLCSLoss(nn.Module):
             )
 
         target_canonical_pose: Tensor | None = None
-        if pred_canonical_pose is not None:
+        if canonical_required:
             if target_human_kp_3d is None:
-                if canonical_required:
-                    raise ValueError(
-                        "target_human_kp_3d is required when any "
-                        "canonical-dependent loss weight is > 0 and "
-                        "pred_canonical_pose is provided."
-                    )
-            else:
-                target_canonical_pose = world_pose_to_canonical_pose(
-                    target_human_kp_3d,
-                    target_position,
-                    target_rotation,
+                raise ValueError(
+                    "target_human_kp_3d is required when any "
+                    "canonical-dependent loss weight is > 0 and "
+                    "pred_canonical_pose is provided."
                 )
+            mask = _valid_pose_frames(target_human_kp_3d, frame_mask)
+            target_canonical_pose = torch.zeros_like(target_human_kp_3d)
+            target_canonical_pose[mask] = world_pose_to_canonical_pose(
+                target_human_kp_3d[mask],
+                target_position[mask],
+                target_rotation[mask],
+            )
 
         source = PLCSLossInputs(
             pred_position=pred_position,
@@ -958,6 +862,7 @@ class PLCSLoss(nn.Module):
             terms=tuple(
                 (name, term_fn(source), self.loss_weights[name])
                 for name, term_fn in self.loss_terms.items()
+                if self.loss_weights[name] > 0.0
             ),
             zero=source.zero,
         )

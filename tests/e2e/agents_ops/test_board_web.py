@@ -1,4 +1,4 @@
-"""Read-only web contracts through fixture SQLite, registry and fake routes."""
+"""Web reads and human writes through temporary state and fake notifier routes."""
 
 from __future__ import annotations
 
@@ -8,7 +8,10 @@ import sqlite3
 import subprocess
 import sys
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
 from pathlib import Path
+from threading import Event
 from types import SimpleNamespace
 from typing import Any
 
@@ -16,7 +19,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tests.e2e.agents_ops.test_board import board as board
-from tests.e2e.agents_ops.test_board import prepare_roster, private_output_absent
+from tests.e2e.agents_ops.test_board import (
+    prepare_roster,
+    private_output_absent,
+    run_board,
+)
 from tests.e2e.agents_ops.test_board_messages import World
 from tests.e2e.agents_ops.test_board_messages import world as world
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
@@ -33,9 +40,709 @@ def web(world: World) -> SimpleNamespace:
 @pytest.fixture
 def client(world: World, web: SimpleNamespace) -> Iterator[TestClient]:
     with TestClient(
-        web.app.create_app(world.env()), base_url="http://127.0.0.1"
+        web.app.create_app(world.env(), notification_routes=world.routes),
+        base_url="http://127.0.0.1",
     ) as client:
         yield client
+
+
+# Execution test design: preserve the collector's states and independent Issue
+# acceptance, explicit-only GitHub/Herdr reads, cache/failure semantics and public
+# GET boundaries. Extend the existing HTTP/read-only/security tests below, and
+# exercise the production scripts with a virtual clock (board_execution.cjs).
+# Budget: <50 expansions/function, <5s/case; measure via --durations=0. No agents,
+# GPU, live GitHub or extra browser dependencies are needed for these checks.
+@pytest.fixture
+def execution(world: World, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
+    api = importlib.import_module("board.execution_data")
+    task_view = importlib.import_module("worker_status.task_view")
+    now = "2026-10-30T12:00:00+00:00"
+    # Herdr reports a status for every agent; the shared fake panes predate it.
+    # Parents 1-3 are already live (owner-confirmed) in the world fixture.
+    runtime = world.labels.read()
+    for pane, title in (("w1:p1", "調査メモ"), ("w1:p2", "CI確認")):
+        runtime["panes"][pane].update(
+            agent_status="idle", terminal_title_stripped=title
+        )
+    world.labels.write(runtime)
+
+    def text(value: str | None, status: str = "visible") -> dict[str, Any]:
+        return {"status": status, "text": value, "truncated": False}
+
+    def worker(number: int, status: str) -> dict[str, Any]:
+        if status in {"not_started", "not_delegated"}:
+            agent = "codex" if status == "not_started" else None
+            return {
+                "agent": agent,
+                "source": "parent_registry.task" if agent else None,
+                "model": {"value": None, "basis": "not_started"},
+                "effort": {"value": None, "basis": "not_started"},
+            }
+        # One turn-ended child has only the run's selected values.
+        basis = "selected" if number == 12 else "effective"
+        return {
+            "agent": "claude" if number == 13 else "codex",
+            "source": "runner.result",
+            "model": {"value": "gpt-6.1-sol", "basis": basis},
+            "effort": {"value": "max", "basis": basis},
+        }
+
+    children = []
+    for number, (status, label) in enumerate(
+        (
+            ("running", "実行中"),
+            ("turn_completed", "ターン終了"),
+            ("failed", "失敗"),
+            ("stopped", "停止中"),
+            ("dependency_wait", "依存待ち"),
+            ("not_started", "委任予約済み・未起動"),
+            ("not_delegated", "未委任"),
+            ("unknown", "状態不明"),
+        ),
+        11,
+    ):
+        children.append(
+            {
+                "child": number,
+                "status": status,
+                "label": label,
+                "delegation": "delegation-display",
+                # The turn-ended child has no local task name until GitHub.
+                "title": {**text(None, "unavailable"), "source": None}
+                if number == 12
+                else {**text(f"子{number}の作業"), "source": "parent_registry.task"},
+                "worker": worker(number, status),
+                "run": None,
+                "observed_at": now,
+                "last_activity_at": now,
+                "activity_time_status": "observed",
+                "updates_stalled": status == "running",
+                "evidence": [
+                    {
+                        "source": "runner.result",
+                        "code": "identity_verified",
+                        "fields": ["result", "runner.start_ticks"],
+                    }
+                ],
+                "summary": {
+                    "message": {
+                        **text("<img src=x onerror=alert(1)> を文字として表示"),
+                        "received_at": now,
+                        "time_status": "observed",
+                    },
+                    "tools": [
+                        {
+                            "kind": "command_execution",
+                            "command": text(None, "hidden"),
+                            "received_at": now,
+                            "time_status": "observed",
+                        },
+                        {
+                            "kind": "mcp_tool_call",
+                            "server": text("lookup"),
+                            "tool": text("search"),
+                            "received_at": None,
+                            "time_status": "unavailable",
+                        },
+                        {
+                            "kind": "file_change",
+                            "change_count": 2,
+                            "received_at": now,
+                            "time_status": "observed",
+                        },
+                    ],
+                    "tail_truncated": True,
+                },
+                "stop_record": {
+                    "reason": text("依存PRを待っています。"),
+                    "next_action": text("親が差分を確認する。"),
+                }
+                if status == "stopped"
+                else {},
+                "dependencies": [],
+                "github": {"status": "not_requested"},
+            }
+        )
+    snapshot = {
+        "schema_version": 1,
+        "observed_at": now,
+        "stale_after_seconds": 300,
+        "dispatcher": {"status": "unused", "label": "自律dispatcher未使用"},
+        "github": {"status": "not_requested", "fetched_at": None},
+        "parents": [
+            {
+                "repo": "o/r",
+                "parent": 1,
+                "assignment": "active",
+                "generation": 1,
+                "source": "parent_registry",
+                "children": children,
+            }
+        ],
+    }
+    fake = SimpleNamespace(
+        api=api, snapshot=snapshot, calls=[], fail=False, fetched_at=now
+    )
+
+    def collect(**kwargs: Any) -> dict[str, Any]:
+        fake.calls.append(kwargs)
+        assert kwargs["state_dir"] == world.labels.registry.parent
+        if fake.fail:
+            raise ValueError("private runtime details")
+        result: dict[str, Any] = deepcopy(fake.snapshot)
+        if kwargs["github"]:
+            result["github"] = {"status": "observed", "fetched_at": fake.fetched_at}
+            for parent in result["parents"]:
+                for child in parent["children"]:
+                    # Completion is GitHub's: a merged PR (12) or a closed Issue (17).
+                    closed = child["child"] == 17
+                    child["github"] = {
+                        "status": "observed",
+                        "issue": {
+                            "state": "closed" if closed else "open",
+                            "state_reason": "completed" if closed else None,
+                            "title": text(f"GitHub上の題名{child['child']}"),
+                        },
+                        "pull_requests": [
+                            {
+                                "number": 88,
+                                "state": "closed" if child["child"] == 12 else "open",
+                                "merged": child["child"] == 12,
+                                "url": "https://github.com/o/r/pull/88",
+                            }
+                        ],
+                        "launch": {
+                            "action": "wait",
+                            "state": "waiting",
+                            "dependencies": [],
+                            "reasons": [],
+                        },
+                        "stopped": False,
+                        "stop_record": {},
+                    }
+                    # The real collector's last step on every child.
+                    task_view.prefer_local_title(child)
+        return result
+
+    monkeypatch.setattr(api, "collect_status", collect)
+    return fake
+
+
+def test_execution_explicit_refresh_cache_and_fresh_local_state(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    calls = len(world.labels.read()["calls"])
+    initial = client.get("/api/execution").json()
+    parent = initial["parents"][0]
+    assert parent["roster"] == {
+        "name": world.assignments[1].name,
+        "identifier": None,
+        "source": "board_names / parent_registry",
+    }
+    assert parent["herdr"] == {
+        "status": "not_requested",
+        "method": None,
+        "session": None,
+    }
+    assert initial["herdr"] == {"status": "not_requested", "observed_at": None}
+    assert initial["sessions"] == []
+    assert parent["children"][1]["status"] == "turn_completed"
+    assert parent["children"][1]["github"] == {"status": "not_requested"}
+    assert parent["children"][1]["title"]["status"] == "unavailable"
+    assert len(world.labels.read()["calls"]) == calls
+    refreshed = client.get("/api/execution?refresh=true").json()
+    child = refreshed["parents"][0]["children"][1]
+    assert child["status"] == "turn_completed"
+    assert child["github"]["issue"]["state"] == "open"
+    assert child["github"]["fetched_at"] == refreshed["github"]["fetched_at"]
+    assert child["title"]["text"] == "GitHub上の題名12"
+    assert child["title"]["source"] == "github.issue"
+    assert refreshed["herdr"]["status"] == "observed"
+    assert refreshed["parents"][0]["herdr"]["status"] == "matched"
+    # Live parents 2 and 3 are absent from this worker snapshot, so their
+    # terminals are listed like any session not joined to a shown parent.
+    assert [row["title"] for row in refreshed["sessions"]] == [
+        "調査メモ",
+        "CI確認",
+        "",
+        "",
+    ]
+    assert len(world.labels.read()["calls"]) > calls
+    calls = len(world.labels.read()["calls"])
+    execution.snapshot["parents"][0]["children"][1].update(
+        status="running", label="実行中"
+    )
+    cached = client.get("/api/execution").json()
+    children = cached["parents"][0]["children"]
+    assert children[1]["status"] == "running"
+    assert children[1]["github"] == child["github"]
+    # Local polls keep the GitHub name only while no local name is recorded.
+    assert children[1]["title"] == child["title"]
+    assert children[0]["title"]["source"] == "parent_registry.task"
+    assert cached["github"] == refreshed["github"]
+    assert cached["herdr"] == refreshed["herdr"]
+    assert cached["sessions"] == refreshed["sessions"]
+    assert len(world.labels.read()["calls"]) == calls
+    assert [call["github"] for call in execution.calls] == [False, True, False]
+
+
+# Concurrency contract: hold either external source on an Event, then require
+# local GET and duplicate refresh to finish before releasing it. This exposes
+# both reader locks without sleep-based timing or real GitHub/Herdr latency.
+# Two expansions; reuse the real HTTP route, cache and SQLite projection.
+@pytest.mark.parametrize("phase", ["github", "herdr"])
+def test_execution_local_reads_and_duplicate_refresh_do_not_wait_for_external_io(
+    world: World,
+    client: TestClient,
+    execution: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    entered, release = Event(), Event()
+    original_collect = execution.api.collect_status
+    original_sessions = execution.api.runtime.sessions
+
+    def pause() -> None:
+        entered.set()
+        assert release.wait(5), "test did not release the external observation"
+
+    def collect(**kwargs: Any) -> dict[str, Any]:
+        if phase == "github" and kwargs["github"]:
+            pause()
+        result: dict[str, Any] = original_collect(**kwargs)
+        return result
+
+    def sessions(*args: Any) -> dict[str, Any]:
+        if phase == "herdr":
+            pause()
+        result: dict[str, Any] = original_sessions(*args)
+        return result
+
+    monkeypatch.setattr(execution.api, "collect_status", collect)
+    monkeypatch.setattr(execution.api.runtime, "sessions", sessions)
+    execution.snapshot["parents"][0]["children"][0]["label"] = "新しいローカル観測"
+    execution.fetched_at = "2026-10-30T12:01:00+00:00"
+    before = world.labels.registry.read_bytes(), world.store.path.read_bytes()
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        refreshing = pool.submit(client.get, "/api/execution?refresh=true")
+        try:
+            assert entered.wait(2)
+            local = pool.submit(client.get, "/api/execution").result(timeout=2)
+            assert local.status_code == 200
+            data = local.json()
+            assert data["parents"][0]["children"][0]["label"] == "新しいローカル観測"
+            assert data["github"] == previous["github"]
+            assert data["github_refresh"]["status"] == "running"
+            duplicate = pool.submit(client.get, "/api/execution?refresh=true").result(
+                timeout=2
+            )
+            assert duplicate.status_code == 202
+            assert duplicate.json()["github_refresh"] == data["github_refresh"]
+            assert not refreshing.done()
+        finally:
+            release.set()
+        completed = refreshing.result(timeout=2)
+    assert completed.status_code == 200
+    finished = client.get("/api/execution").json()
+    assert finished["github"]["fetched_at"] == execution.fetched_at
+    assert finished["github_refresh"]["status"] == "idle"
+    assert finished["github_refresh"]["result"] == "succeeded"
+    assert finished["github_refresh"]["revision"] > data["github_refresh"]["revision"]
+    assert sum(call["github"] for call in execution.calls) == 2
+    assert (world.labels.registry.read_bytes(), world.store.path.read_bytes()) == before
+
+
+def test_execution_failures_keep_last_cache_and_never_expose_errors(
+    client: TestClient,
+    execution: SimpleNamespace,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    execution.fail = True
+    for url in ("/api/execution", "/api/execution?refresh=true"):
+        failed = client.get(url)
+        assert failed.status_code == 503
+        assert "private runtime details" not in failed.text
+    execution.fail = False
+
+    def no_herdr(*args: Any) -> None:
+        raise web.app.BoardError("private herdr details")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(execution.api.runtime, "sessions", no_herdr)
+        for url in ("/api/execution?refresh=true", "/api/execution?herdr=true"):
+            failed = client.get(url)
+            assert failed.status_code == 503
+            assert "private herdr details" not in failed.text
+    cached = client.get("/api/execution").json()
+    state = cached.pop("github_refresh")
+    assert state["status"] == "idle" and state["result"] == "failed"
+    assert state["revision"] > previous.pop("github_refresh")["revision"]
+    assert cached == previous
+    recovered = client.get("/api/execution?refresh=true")
+    assert recovered.status_code == 200
+    assert recovered.json()["github_refresh"]["result"] == "succeeded"
+
+
+def test_execution_cached_github_children_and_handoff_do_not_reuse_old_identity(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    parent = execution.snapshot["parents"][0]
+    parent["children"][-1]["delegation"] = None
+    world.live_parent(1, status="working")
+    observed = client.get("/api/execution?refresh=true").json()
+    matched = observed["parents"][0]["herdr"]
+    assert (matched["status"], matched["method"]) == ("matched", "owner")
+    assert matched["session"]["state"] == "working"
+    assert matched["session"]["key"] not in {row["key"] for row in observed["sessions"]}
+    removed = parent["children"].pop()
+    retained = client.get("/api/execution").json()["parents"][0]["children"][-1]
+    assert retained["child"] == removed["child"]
+    assert retained["cached_local_observation"] is True
+    assert retained["observed_at"] == removed["observed_at"]
+    # Removing a real local delegation must not leave a cached running worker.
+    running = parent["children"].pop(0)
+    children = client.get("/api/execution").json()["parents"][0]["children"]
+    assert running["child"] not in {row["child"] for row in children}
+    parent["children"][0]["delegation"] = "new-delegation"
+    assert client.get("/api/execution").json()["parents"][0]["children"][0][
+        "github"
+    ] == {"status": "not_requested"}
+    parent["generation"] = 2
+    current = client.get("/api/execution").json()
+    fresh = current["parents"][0]
+    # A new assignment generation never inherits the cached terminal: the
+    # session returns to the unregistered list until Herdr is read again.
+    assert fresh["herdr"] == {"status": "not_observed", "method": None, "session": None}
+    assert matched["session"] in current["sessions"]
+    assert len(fresh["children"]) == len(parent["children"])
+    absent = deepcopy(parent)
+    absent.update(parent=5, generation=1, assignment="handoff_pending")
+    execution.snapshot["parents"].append(absent)
+    handoff = client.get("/api/execution").json()["parents"][1]
+    assert handoff["roster"]["name"] == world.assignments[5].name
+    assert handoff["herdr"]["status"] == "absent"
+
+
+# Herdr join contract: a parent becomes one graph node only through its
+# confirmed owner record or Herdr's own session reference naming exactly one
+# terminal. The same reference in two terminals or disagreeing sources stay
+# unmatched, and every terminal remains listed. A title naming the parent never
+# joins. Four expansions over the fake Herdr CLI; the first display (herdr=true)
+# reads Herdr once, read-only, and later local polls reuse that observation.
+@pytest.mark.parametrize(
+    ("case", "status", "method"),
+    [
+        ("owner", "matched", "owner"),
+        ("owner_native", "matched", "owner_native"),
+        ("native_twice", "ambiguous", None),
+        ("disagree", "ambiguous", None),
+    ],
+)
+def test_execution_herdr_joins_parents_only_by_unique_identity(
+    world: World,
+    client: TestClient,
+    execution: SimpleNamespace,
+    case: str,
+    status: str,
+    method: str | None,
+) -> None:
+    identity = json.loads(world.labels.registry.read_text())["parents"]["o/r#1"][
+        "session"
+    ]
+    engine, _, session = identity.partition(":")
+    native = {"kind": "id", "agent": engine, "value": session}
+    pane = world.live_parent(1, status="working")
+    runtime = world.labels.read()
+    if case == "native_twice":
+        # The confirmed terminal is gone; only Herdr's references remain.
+        del runtime["panes"][pane]
+    runtime["panes"]["w1:p1"]["terminal_title_stripped"] = (
+        f"{world.assignments[1].name} · #1 · 親"
+    )
+    if case == "owner_native":
+        runtime["panes"][pane]["agent_session"] = native
+    if case in {"native_twice", "disagree"}:
+        runtime["panes"]["w1:p1"]["agent_session"] = native
+    if case == "native_twice":
+        runtime["panes"]["w1:p3"] = {
+            "pane_id": "w1:p3",
+            "terminal_id": "term-c",
+            "agent": engine,
+            "agent_status": "blocked",
+            "agent_session": native,
+        }
+    world.labels.write(runtime)
+    before = (
+        world.labels.registry.read_bytes(),
+        world.store.path.read_bytes(),
+        world.labels.read()["panes"],
+    )
+    response = client.get("/api/execution?herdr=true")
+    assert response.status_code == 200
+    data = response.json()
+    joined = data["parents"][0]["herdr"]
+    assert (joined["status"], joined["method"]) == (status, method)
+    assert data["herdr"]["status"] == "observed"
+    keys = [row["key"] for row in data["sessions"]]
+    if status == "matched":
+        assert joined["session"]["state"] == "working"
+        assert joined["session"]["key"] not in keys
+        assert len(keys) == len(runtime["panes"]) - 1
+    else:
+        assert joined["session"] is None
+        assert len(keys) == len(runtime["panes"])
+    # The titled terminal is only listed: it never becomes the parent node.
+    assert f"{world.assignments[1].name} · #1 · 親" in {
+        row["title"] for row in data["sessions"]
+    }
+    for private in (session, "board-terminal-1", "term-a", "term-c", "w1:"):
+        assert private not in response.text
+    private_output_absent(response.text, world.labels.env)
+    calls = world.labels.read()["calls"]
+    assert {tuple(call) for call in calls} <= {
+        ("session", "list", "--json"),
+        ("--session", "default", "agent", "list"),
+    }
+    assert (
+        world.labels.registry.read_bytes(),
+        world.store.path.read_bytes(),
+        world.labels.read()["panes"],
+    ) == before
+    local = client.get("/api/execution").json()
+    assert local["herdr"] == data["herdr"]
+    assert local["parents"][0]["herdr"] == joined
+    assert len(world.labels.read()["calls"]) == len(calls)
+
+
+@pytest.mark.parametrize(
+    "private",
+    [
+        "/private/run-directory",
+        "session_id=private",
+        "01234567-89ab-cdef-0123-456789abcdef",
+    ],
+)
+def test_execution_revalidates_public_response_and_keeps_safe_cache(
+    client: TestClient, execution: SimpleNamespace, private: str
+) -> None:
+    previous = client.get("/api/execution?refresh=true").json()
+    message = execution.snapshot["parents"][0]["children"][0]["summary"]["message"]
+    saved = message["text"]
+    message["text"] = private
+    for url in ("/api/execution", "/api/execution?refresh=true"):
+        response = client.get(url)
+        assert response.status_code == 503
+        assert private not in response.text
+    message["text"] = saved
+    cached = client.get("/api/execution").json()
+    assert cached.pop("github_refresh")["result"] == "failed"
+    previous.pop("github_refresh")
+    assert cached == previous
+
+
+def test_execution_scripts_render_and_poll_only_the_visible_tab(
+    world: World, client: TestClient, execution: SimpleNamespace
+) -> None:
+    runtime = world.labels.read()
+    runtime["panes"]["w1:board-1"]["terminal_title_stripped"] = "子の進行管理"
+    world.labels.write(runtime)
+    # Responses in page order: first display (Herdr), local polls, refresh.
+    client.get("/api/execution?herdr=true").raise_for_status()
+    local = client.get("/api/execution").json()
+    refreshed = client.get("/api/execution?refresh=true").json()
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("board_execution.cjs")),
+            str(Path(__file__).resolve().parents[3] / ".agents/ops/board/static"),
+        ],
+        input=json.dumps(
+            {"local": local, "refreshed": refreshed, "post": world.post()}
+        ),
+        env=world.env(),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+# Exercise the Web projection at the producer/collector boundary. Register a
+# matching run through the actual producer, then model one missing/mismatched
+# contract field or a new reservation retaining the old run. Four expansions;
+# the collector's field-by-field validation remains in its own tests.
+@pytest.mark.parametrize(
+    ("case", "expected_status", "expected_code"),
+    [
+        ("matching", "turn_completed", "contract_verified"),
+        ("missing", "unknown", "contract_missing"),
+        ("mismatch", "unknown", "contract_mismatch"),
+        ("redelegated", "not_started", "reserved"),
+    ],
+)
+def test_execution_reads_real_collector_records_without_changing_any_file(
+    world: World,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    case: str,
+    expected_status: str,
+    expected_code: str,
+) -> None:
+    state = world.labels.registry.parent
+    run = state / "private-worker-run"
+    run.mkdir()
+    worktree = state.parent / "private-worker-worktree"
+    worktree.mkdir()
+    delegation = "a" * 32
+    branch = "codex/board-contract-fixture"
+    runtime: dict[str, Any] = {
+        "schema_version": 1,
+        "run_id": "private-run-token",
+        "run_dir": str(run),
+        "session_root": str(run),
+        "result": "completed",
+        "turn_end_reason": "completed",
+        "runner": None,
+        "process": None,
+        "started_at": 1793360000,
+        "finished_at": 1793360200,
+        "contract": {
+            "task_id": delegation,
+            "cwd": str(worktree),
+            "branch": branch,
+            "settings": {
+                "agent": "codex",
+                "selected": {"model": "gpt-6.1-sol", "effort": "max"},
+            },
+        },
+        "runtime": {
+            "session_id": "private-child-session",
+            "turn_id": "private-turn",
+            # Effective values are the CLI's report; private sources stay local.
+            "effective": {
+                "model": {
+                    "status": "observed",
+                    "value": "gpt-6.1-sol-latest",
+                    "source": "/private/transcript.jsonl",
+                },
+                "effort": {"status": "unavailable", "value": None, "source": None},
+            },
+        },
+    }
+    (run / "result.json").write_text(json.dumps(runtime))
+    (run / "session.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "session_id": "private-child-session",
+                "last_turn_id": "private-turn",
+                "latest_run": str(run),
+            }
+        )
+    )
+    (run / "events.jsonl").write_text(
+        json.dumps(
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "message",
+                    "type": "agent_message",
+                    "text": "/private/hidden-output",
+                },
+            }
+        )
+        + "\n"
+    )
+    parents = json.loads(world.labels.registry.read_text())["parents"]
+    parents["o/r#1"]["tasks"]["11"] = {
+        "agent": "codex",
+        "delegated": True,
+        "delegation_id": delegation,
+        "worktree": str(worktree),
+        "branch": branch,
+        "worker_runs": [],
+    }
+    world.labels.set_registry(parents)
+
+    class FixtureGitHub:
+        repo = "o/r"
+
+        def get(self, endpoint: str) -> dict[str, str]:
+            assert endpoint == "user"  # Session construction only; no network.
+            return {"login": "fixture-user"}
+
+    parent_state = importlib.import_module("parent.state")
+    parent_session = importlib.import_module("parent.session")
+    manual = importlib.import_module("parent.manual_workers")
+    with parent_state.Store(state).locked() as registry:
+        session = parent_session.ParentSession(
+            FixtureGitHub(), registry, 1, parents["o/r#1"]["session"]
+        )
+        manual.record_worker_run(session, 11, run)
+        [record] = registry.parents["o/r#1"]["tasks"]["11"]["worker_runs"]
+        assert set(record) == {"delegation_id", "run_dir", "kind", "recorded_at"}
+    if case == "missing":
+        runtime["contract"].pop("branch")
+    elif case == "mismatch":
+        runtime["contract"]["branch"] = "codex/another-delegation"
+    elif case == "redelegated":
+        # delegate preserves prior worker_runs when reserving a new delegation.
+        with parent_state.Store(state).locked() as registry:
+            registry.parents["o/r#1"]["tasks"]["11"]["delegation_id"] = "b" * 32
+            registry.save()
+    (run / "result.json").write_text(json.dumps(runtime))
+    paths = [world.labels.registry, world.store.path, *run.iterdir()]
+    wal = Path(str(world.store.path) + "-wal")
+    if wal.exists():
+        paths.append(wal)
+    before = {
+        path: (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_mode)
+        for path in paths
+    }
+
+    def no_write(*args: Any, **kwargs: Any) -> None:
+        pytest.fail("execution attempted a board transaction")
+
+    monkeypatch.setattr(world.board.storage.Store, "transaction", no_write)
+    with TestClient(
+        web.app.create_app(world.env()), base_url="http://localhost"
+    ) as client:
+        response = client.get("/api/execution")
+        assert response.status_code == 200
+        child = response.json()["parents"][0]["children"][0]
+        assert child["status"] == expected_status
+        assert expected_code in {row["code"] for row in child["evidence"]}
+        if case == "matching":
+            assert child["worker"] == {
+                "agent": "codex",
+                "source": "runner.result",
+                "model": {"value": "gpt-6.1-sol-latest", "basis": "effective"},
+                "effort": {"value": "max", "basis": "selected"},
+            }
+            assert child["run"]["kind"] == "registered"
+            assert child["summary"]["message"]["status"] == "hidden"
+            assert child["summary"]["message"]["text"] is None
+        for private in (
+            str(run),
+            str(worktree),
+            run.name,
+            "private-child-session",
+            "private-run-token",
+            "a" * 32,
+            "b" * 32,
+            branch,
+            "/private/hidden-output",
+            "/private/transcript.jsonl",
+        ):
+            assert private not in response.text
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_mode)
+        for path in paths
+    } == before
 
 
 def test_roster_posts_threads_and_delivery_problems(
@@ -86,7 +793,88 @@ def test_roster_posts_threads_and_delivery_problems(
     assert thread["posts"][0]["recipients"][1]["response_state"] is None
 
 
-def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
+def test_runtime_includes_unregistered_agents_without_changing_membership(
+    world: World,
+    client: TestClient,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed = []
+    secret = "f08ef56a-0296-4706-9a8c-88a9366ef922"
+
+    class RuntimeHerdr:
+        def __init__(self, env: Any, session: str | None = None) -> None:
+            self.session = session
+
+        def call(self, *args: str) -> dict[str, Any]:
+            observed.append((self.session, args))
+            if args[0] == "session":
+                return {
+                    "sessions": [
+                        {"name": "main", "running": True, "socket_path": "/run/a"},
+                        {"name": "other", "running": True, "socket_path": "/run/b"},
+                        {"name": "stopped", "running": False},
+                    ]
+                }
+            return {
+                "agents": [
+                    {
+                        "agent": "codex",
+                        "agent_status": "working",
+                        "terminal_title_stripped": "実験の確認"
+                        if self.session == "main"
+                        else f"/private/work {secret}",
+                        "terminal_id": "private-terminal",
+                        "pane_id": "private-pane",
+                        "agent_session": {"value": secret},
+                    }
+                ]
+            }
+
+    before = world.message_rows()
+    registry = world.labels.registry.read_bytes()
+    monkeypatch.setattr(web.app.runtime, "Herdr", RuntimeHerdr)
+    response = client.get("/api/runtime")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["observed_at"]
+    assert [row["label"] for row in data["agents"]] == ["codex 1", "codex 2"]
+    assert data["agents"][0]["title"] == "実験の確認"
+    assert data["agents"][1]["title"] == ""
+    assert data["agents"][1]["title_status"] == "redacted"
+    assert all(row["state"] == "working" for row in data["agents"])
+    assert secret not in response.text and "private-" not in response.text
+    assert not any(session == "stopped" for session, _ in observed)
+    assert world.message_rows() == before
+    assert world.labels.registry.read_bytes() == registry
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"sessions": None},
+        {"sessions": [{"running": "yes"}]},
+        {"sessions": [{"running": True, "name": "broken"}]},
+    ],
+)
+def test_runtime_source_failure_is_not_an_empty_success(
+    client: TestClient,
+    web: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    payload: dict[str, Any],
+) -> None:
+    def call(self: Any, *args: str) -> dict[str, Any]:
+        if args[0] == "agent":
+            raise ValueError("private failure details")
+        return payload
+
+    monkeypatch.setattr(web.app.runtime.Herdr, "call", call)
+    response = client.get("/api/runtime")
+    assert response.status_code == 503
+    assert "private failure" not in response.text
+
+
+def test_stopped_parent_is_historical_recipient_but_not_live_roster_or_broadcast(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     w = world
@@ -107,8 +895,9 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
     with w.store.read() as connection:
         assignment = w.board.names.for_parent(connection, "o/r", 7)
     w.fake.fail_once_for.add(assignment.id)
-    root = w.post(to=["all"])
-    assert {row["parent"] for row in root["recipients"]} == {2, 3, 7}
+    broadcast = w.post(to=["all"])
+    assert {row["parent"] for row in broadcast["recipients"]} == {2, 3}
+    root = w.post(to=[assignment.name])
     status = w.own_state(root["id"])
     with TestClient(web.app.create_app(w.env()), base_url="http://127.0.0.1") as client:
         changes = client.get("/api/changes")
@@ -116,9 +905,7 @@ def test_broadcast_to_newly_named_stopped_parent_exposes_unavailable_route(
         data = changes.json()
         thread = client.get(f"/api/thread/{root['id']}")
         assert thread.status_code == 200
-    roster = next(row for row in data["agents"] if row["parent"] == 7)
-    assert roster["name"] == assignment.name
-    assert roster["name_status"] == "assigned" and roster["unread_count"] == 1
+    assert {row["parent"] for row in data["agents"]} == {1, 2, 3}
     for view in (status, data["posts"][0], thread.json()["posts"][0]):
         failed = next(row for row in view["recipients"] if row["parent"] == 7)
         assert failed["name"] == assignment.name
@@ -189,6 +976,7 @@ def test_unassigned_roster_is_preserved(world: World, web: SimpleNamespace) -> N
     parents = json.loads(world.labels.registry.read_text())["parents"]
     parents["o/r#7"] = world.labels.owner(identity="codex:unassigned-owner")
     world.labels.set_registry(parents)
+    world.live_parent(7)
     with TestClient(
         web.app.create_app(world.env()), base_url="http://localhost"
     ) as client:
@@ -341,7 +1129,7 @@ def test_reaction_changes_refresh_threads_outside_the_name_filter(
     assert thread["posts"][0]["reactions"][0]["reactors"][0]["parent"] == 2
 
 
-def test_db_read_mode_and_all_gets_leave_bytes_and_unread_unchanged(
+def test_gets_and_disallowed_methods_leave_bytes_and_unread_unchanged(
     world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     post = world.post()
@@ -368,14 +1156,22 @@ def test_db_read_mode_and_all_gets_leave_bytes_and_unread_unchanged(
         for url in (
             "/",
             "/static/app.js",
+            "/static/execution.js",
             "/static/style.css",
             "/api/changes",
             "/api/changes?refresh_roster=true",
+            "/api/execution",
             f"/api/thread/{post['id']}",
         ):
             assert client.get(url).status_code == 200
         for method in ("POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS", "TRACE"):
-            for url in ("/api/changes", f"/api/thread/{post['id']}", "/"):
+            for url in (
+                "/api/changes",
+                "/api/execution",
+                "/api/execution?refresh=true",
+                f"/api/thread/{post['id']}",
+                "/",
+            ):
                 response = client.request(method, url)
                 assert response.status_code == 405
                 assert response.headers["allow"] == "GET"
@@ -400,6 +1196,7 @@ def test_security_headers_hosts_assets_and_html_text(
     for url in (
         "/",
         "/api/changes",
+        "/api/execution",
         f"/api/thread/{root['id']}",
         "/missing",
         "/static/missing.js",
@@ -427,6 +1224,43 @@ def test_security_headers_hosts_assets_and_html_text(
         "/openapi.json",
     ):
         assert client.get(url).status_code == 404
+
+
+@pytest.mark.parametrize("human_sender", [False, True])
+def test_human_posts_render_in_timeline_and_thread(
+    world: World, client: TestClient, human_sender: bool
+) -> None:
+    if human_sender:
+        response = client.post(
+            "/api/posts",
+            headers=write_headers(client),
+            json={
+                "kind": "question",
+                "subject": "Human question",
+                "body": f"@{world.assignments[2].name} Please check this post.",
+            },
+        )
+        assert response.status_code == 200
+    else:
+        world.post(to=["human"], body="@human Please check this post.")
+    posts = client.get("/api/changes").json()["posts"]
+    assert len(posts) == 1
+    result = subprocess.run(
+        [
+            "node",
+            str(Path(__file__).with_name("board_rendering.cjs")),
+            str(
+                Path(__file__).resolve().parents[3] / ".agents/ops/board/static/app.js"
+            ),
+        ],
+        input=json.dumps(posts[0]),
+        env=world.env(),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_no_external_source_polling_without_explicit_roster_refresh(
@@ -493,9 +1327,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
             (row["parent"], row["engine"], row["state"]) for row in refreshed["agents"]
         ] == [
             (43, "codex", "blocked"),
-            (44, "claude", "unknown"),
         ]
-        assert refreshed["agents"][1]["name_status"] == "unassigned"
         assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
         assert len(world.labels.read()["calls"]) > len(runtime["calls"])
         # A repeated page load still observes current sources, even with no row changes.
@@ -517,7 +1349,7 @@ def test_explicit_roster_refresh_updates_registry_and_runtime_read_only(
         private_output_absent(json.dumps(reloaded), world.labels.env)
 
 
-def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
+def test_herdr_outage_is_explicit_and_keeps_last_observed_roster(
     world: World, web: SimpleNamespace
 ) -> None:
     prepare_roster(world.board, world.labels)
@@ -531,10 +1363,10 @@ def test_explicit_roster_refresh_shows_unknown_when_herdr_is_unavailable(
         )
         before = world.labels.registry.read_bytes()
         response = client.get("/api/changes", params={"refresh_roster": "true"})
-        assert response.status_code == 200
-        refreshed = response.json()
-        assert [row["state"] for row in refreshed["agents"]] == ["unknown", "unknown"]
-        assert refreshed["roster_observed_at"] > initial["roster_observed_at"]
+        assert response.status_code == 503
+        cached = client.get("/api/changes").json()
+        assert cached["agents"] == initial["agents"]
+        assert cached["roster_observed_at"] == initial["roster_observed_at"]
         assert "private runtime details" not in response.text
         assert world.labels.registry.read_bytes() == before
 
@@ -632,3 +1464,545 @@ runpy.run_module('board', run_name='__main__')
     assert cli.main(["web", "--port", "0"]) == 2
     assert cli.main(["web", "--port", "65536"]) == 2
     assert cli.main(["web", "--host", "0.0.0.0"]) == 2
+
+
+def write_headers(client: TestClient) -> dict[str, str]:
+    page = client.get("/")
+    token = page.headers["x-csrf-token"]
+    assert f'<meta name="board-csrf-token" content="{token}">' in page.text
+    return {"Origin": str(client.base_url).rstrip("/"), "X-CSRF-Token": token}
+
+
+def saved_rows(world: World) -> dict[str, list[tuple[Any, ...]]]:
+    with world.store.read() as connection:
+        return {
+            name: connection.execute(f"SELECT * FROM {name}").fetchall()
+            for name in (
+                "posts",
+                "recipients",
+                "deliveries",
+                "reactions",
+                "name_assignments",
+            )
+        }
+
+
+def test_human_posts_and_replies_reach_parent_inbox_and_fake_bells(
+    world: World, client: TestClient
+) -> None:
+    w = world
+    headers = write_headers(client)
+    registry_before = w.labels.registry.read_bytes()
+    response = client.post(
+        "/api/posts",
+        headers=headers,
+        json={
+            "subject": "人間からの質問",
+            "body": f"宛先は@{w.assignments[2].name.lower()}です。`@{w.assignments[4].name}`は例です。",
+            "kind": "question",
+            "to": [w.assignments[3].name, w.assignments[2].name.upper()],
+        },
+    )
+    assert response.status_code == 200, response.text
+    root = response.json()["post"]
+    assert root["sender"] == {
+        "assignment_id": None,
+        "name": "human",
+        "repo": None,
+        "parent": None,
+    }
+    w.assert_delivered(root, [2, 3])
+    assert all(
+        bell.sender_name == "human" and "None" not in bell.bell for bell in w.fake.calls
+    )
+    assert all(
+        root["body"] not in bell.bell and root["subject"] not in bell.bell
+        for bell in w.fake.calls
+    )
+    assert w.board.messages.inbox(w.env(2), unread=True)["posts"][0]["id"] == root["id"]
+    answer = w.board.messages.reply(
+        w.env(2), post_id=root["id"], body="回答します。", notifiers=w.routes
+    )["post"]
+    assert [row["name"] for row in answer["recipients"]] == ["human"]
+    assert answer["recipients"][0]["delivery_state"] == "available"
+    followup = client.post(
+        f"/api/posts/{answer['id']}/replies",
+        headers=headers,
+        json={"body": f"@{w.assignments[3].name}も確認してください。"},
+    )
+    assert followup.status_code == 200, followup.text
+    reply = followup.json()["post"]
+    w.assert_delivered(reply, [2, 3])
+    assert reply["sender"]["name"] == "human"
+    assert reply["thread_id"] == root["id"] and reply["in_reply_to"] == answer["id"]
+    assert client.get("/api/changes").json()["human"]["unread_count"] == 0
+    thread = client.get(f"/api/thread/{root['id']}").json()["posts"]
+    assert [row["id"] for row in thread] == [root["id"], answer["id"], reply["id"]]
+    assert thread[1]["recipients"][0]["response_state"] == "answered"
+    assert w.labels.registry.read_bytes() == registry_before
+    with w.store.read() as connection:
+        assert (
+            connection.execute(
+                "SELECT 1 FROM name_assignments WHERE lower(name)='human'"
+            ).fetchall()
+            == []
+        )
+
+
+@pytest.mark.parametrize(
+    "body,to", [("@HuMaN 確認してください。", []), ("確認してください。", ["HUMAN"])]
+)
+def test_cli_human_recipient_unread_response_counts_and_read_api(
+    world: World, client: TestClient, tmp_path: Path, body: str, to: list[str]
+) -> None:
+    body_file = tmp_path / "message.md"
+    body_file.write_text(body, encoding="utf-8")
+    initial = client.get("/api/changes").json()
+    args = [
+        "post",
+        "--kind",
+        "question",
+        "--subject",
+        "人間への質問",
+        "--body-file",
+        str(body_file),
+    ]
+    for name in to:
+        args.extend(["--to", name])
+    result = run_board(world.env(), *args)
+    assert result.returncode == 0, result.stderr
+    post = json.loads(result.stdout)["post"]
+    assert len(post["recipients"]) == 1
+    recipient = post["recipients"][0]
+    assert recipient["name"] == "human" and recipient["assignment_id"] is None
+    assert recipient["repo"] is None and recipient["parent"] is None
+    assert recipient["delivery_state"] == "available" and recipient["attempts"] == 0
+    changed = client.get("/api/changes", params={"cursor": initial["cursor"]}).json()
+    assert changed["human"]["unread_count"] == 1
+    assert changed["human"]["awaiting_response_count"] == 1
+    assert changed["cursor"] != initial["cursor"]
+    assert [row["id"] for row in changed["posts"]] == [post["id"]]
+    assert (
+        client.get(
+            "/api/changes", params={"name": "human", "direction": "received"}
+        ).json()["posts"][0]["id"]
+        == post["id"]
+    )
+    headers = write_headers(client)
+    before = saved_rows(world)
+    assert client.get(f"/api/thread/{post['id']}").status_code == 200
+    assert saved_rows(world) == before  # Viewing a thread still never marks it read.
+    read = client.post(f"/api/posts/{post['id']}/read", headers=headers)
+    assert read.status_code == 200, read.text
+    receipt = read.json()["post"]["recipients"][0]
+    assert receipt["read_at"] is not None and receipt["response_state"] is None
+    assert receipt["delivery_state"] == "available"
+    repeated = client.post(f"/api/posts/{post['id']}/read", headers=headers).json()
+    assert repeated["post"]["recipients"][0]["read_at"] == receipt["read_at"]
+    updated = client.get("/api/changes", params={"cursor": changed["cursor"]}).json()
+    assert updated["human"]["unread_count"] == 0
+    assert updated["human"]["awaiting_response_count"] == 1
+    answered = client.post(
+        f"/api/posts/{post['id']}/replies",
+        headers=headers,
+        json={"body": "確認しました。"},
+    )
+    assert answered.status_code == 200, answered.text
+    counts = client.get("/api/changes").json()["human"]
+    assert counts["unread_count"] == counts["awaiting_response_count"] == 0
+    assert len(world.fake.calls) == 1 and world.fake.calls[0].parent == 1
+
+
+def test_human_can_join_visible_parent_thread_and_react_without_reading_it(
+    world: World, client: TestClient
+) -> None:
+    root = world.post()
+    world.board.reactions.react(world.env(1), post_id=root["id"], emoji="+1")
+    headers = write_headers(client)
+    before = world.message_rows()
+    bell_count = len(world.fake.calls)
+    initial = client.get("/api/changes").json()
+    url = f"/api/posts/{root['id']}/reactions/+1"
+    added = client.put(url, headers=headers)
+    assert added.status_code == 200, added.text
+    reactors = added.json()["post"]["reactions"][0]["reactors"]
+    assert len(reactors) == 2
+    human = next(row for row in reactors if row["type"] == "human")
+    assert human["assignment_id"] is None and human["name"] == "human"
+    assert human["repo"] is human["parent"] is None
+    assert (
+        client.put(url, headers=headers).json()["post"]["reactions"][0]["reactors"]
+        == reactors
+    )
+    changed = client.get("/api/changes", params={"cursor": initial["cursor"]}).json()
+    assert changed["changed_threads"] == [root["id"]]
+    assert changed["posts"][0]["reactions"][0]["reactors"] == reactors
+    removed = client.delete(url, headers=headers)
+    assert removed.status_code == 200
+    assert [
+        row["type"] for row in removed.json()["post"]["reactions"][0]["reactors"]
+    ] == ["parent"]
+    assert client.delete(url, headers=headers).json() == removed.json()
+    assert world.message_rows() == before and len(world.fake.calls) == bell_count
+    reply = client.post(
+        f"/api/posts/{root['id']}/replies",
+        headers=headers,
+        json={"body": "人間から補足します。"},
+    )
+    assert reply.status_code == 200, reply.text
+    assert [row["parent"] for row in reply.json()["post"]["recipients"]] == [1]
+
+
+@pytest.mark.parametrize(
+    "method,suffix",
+    [
+        ("POST", ""),
+        ("POST", "/replies"),
+        ("POST", "/read"),
+        ("PUT", "/reactions/eyes"),
+        ("DELETE", "/reactions/eyes"),
+    ],
+)
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "no_token",
+        "wrong_token",
+        "no_origin",
+        "other_origin",
+        "other_port",
+        "null_origin",
+        "bad_host",
+        "duplicate_origin",
+        "duplicate_token",
+    ],
+)
+def test_rejected_web_writes_preserve_all_rows(
+    world: World, client: TestClient, method: str, suffix: str, failure: str
+) -> None:
+    root = world.post()
+    url = "/api/posts" + (f"/{root['id']}" + suffix if suffix else "")
+    headers = write_headers(client)
+    if failure == "no_token":
+        del headers["X-CSRF-Token"]
+    elif failure == "wrong_token":
+        headers["X-CSRF-Token"] = "invalid"
+    elif failure == "no_origin":
+        del headers["Origin"]
+    elif failure == "other_origin":
+        headers["Origin"] = "http://evil.example"
+    elif failure == "other_port":
+        headers["Origin"] += ":8791"
+    elif failure == "null_origin":
+        headers["Origin"] = "null"
+    elif failure == "bad_host":
+        headers.update(Host="evil.example", Origin="http://evil.example")
+    request_headers = list(headers.items())
+    if failure == "duplicate_origin":
+        request_headers.append(("Origin", headers["Origin"]))
+    elif failure == "duplicate_token":
+        request_headers.append(("X-CSRF-Token", headers["X-CSRF-Token"]))
+    before = saved_rows(world)
+    registry_before = world.labels.registry.read_bytes()
+    calls = len(world.fake.calls)
+    response = client.request(
+        method,
+        url,
+        headers=request_headers,
+        json={
+            "kind": "info",
+            "subject": "hello",
+            "body": f"@{world.assignments[2].name} hello",
+        },
+    )
+    assert response.status_code == (400 if failure == "bad_host" else 403)
+    assert saved_rows(world) == before
+    assert world.labels.registry.read_bytes() == registry_before
+    assert len(world.fake.calls) == calls
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "/private/file",
+        "~/secrets",
+        r"C:\private\file",
+        "session_id=private",
+        "board-owner-2",
+        "12345678-1234-1234-1234-123456789abc",
+        "control\x01",
+    ],
+)
+@pytest.mark.parametrize("field", ["subject", "body"])
+def test_private_human_input_is_rejected_before_any_save(
+    world: World, client: TestClient, value: str, field: str
+) -> None:
+    headers = write_headers(client)
+    payload = {
+        "kind": "info",
+        "subject": "安全な件名",
+        "body": f"@{world.assignments[2].name} 確認します。",
+    }
+    payload[field] = value
+    before = saved_rows(world)
+    response = client.post("/api/posts", headers=headers, json=payload)
+    assert response.status_code == 503
+    assert value not in response.text
+    assert saved_rows(world) == before and world.fake.calls == []
+
+
+def test_process_token_and_human_identity_do_not_depend_on_parent_environment(
+    world: World, web: SimpleNamespace, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+
+    def configured(env: dict[str, str]) -> dict[str, Any]:
+        calls.append(env)
+        return dict(world.routes)
+
+    monkeypatch.setattr(web.app.notifiers, "configured", configured)
+    env = {
+        **world.labels.env,
+        "CLAUDE_CODE_SESSION_ID": "unregistered-web-process",
+        "CODEX_SESSION_ID": "ambiguous-process",
+    }
+    with (
+        TestClient(web.app.create_app(env), base_url="http://localhost:8791") as one,
+        TestClient(web.app.create_app(env), base_url="http://localhost:8791") as two,
+    ):
+        headers = write_headers(one)
+        assert write_headers(one) == headers
+        other = write_headers(two)
+        assert other["X-CSRF-Token"] != headers["X-CSRF-Token"]
+        payload = {
+            "kind": "info",
+            "subject": "Webから",
+            "body": f"@{world.assignments[2].name} 確認してください。",
+        }
+        before = saved_rows(world)
+        assert two.post("/api/posts", headers=headers, json=payload).status_code == 403
+        assert saved_rows(world) == before
+        response = one.post("/api/posts", headers=headers, json=payload)
+        assert response.status_code == 200, response.text
+        assert response.json()["post"]["sender"]["name"] == "human"
+        assert len(world.fake.calls) == 1 and world.fake.calls[0].parent == 2
+    assert calls == [env, env]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"subject": "hello", "body": "hello"},
+        {"kind": "info", "subject": "hello", "body": 42},
+        {"kind": "info", "subject": "hello", "body": "hello", "sender": "human"},
+        {"kind": "info", "subject": "hello", "body": "hello", "to": "all"},
+    ],
+)
+def test_write_payload_validation_never_echoes_or_saves_input(
+    world: World, client: TestClient, payload: dict[str, Any]
+) -> None:
+    before = saved_rows(world)
+    response = client.post("/api/posts", headers=write_headers(client), json=payload)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Invalid board query."}
+    assert saved_rows(world) == before
+
+
+def test_human_broadcast_uses_all_active_parents_without_a_sender_session(
+    world: World, client: TestClient
+) -> None:
+    response = client.post(
+        "/api/posts",
+        headers=write_headers(client),
+        json={
+            "kind": "info",
+            "subject": "全員への連絡",
+            "body": "@all 確認してください。",
+        },
+    )
+    assert response.status_code == 200, response.text
+    post = response.json()["post"]
+    assert post["broadcast"] is True
+    world.assert_delivered(post, [1, 2, 3])
+    assert all(row["name"] != "human" for row in post["recipients"])
+
+
+def test_human_receipts_reactions_and_counts_are_separate_from_parent_receipts(
+    world: World, client: TestClient
+) -> None:
+    post = world.post(
+        to=["human", world.assignments[2].name], body="@HuMaN 確認してください。"
+    )
+    assert [row["name"] for row in post["recipients"]] == [
+        "human",
+        world.assignments[2].name,
+    ]
+    assert [bell.parent for bell in world.fake.calls] == [2]
+    headers = write_headers(client)
+    before = world.message_rows()
+    assert (
+        client.put(
+            f"/api/posts/{post['id']}/reactions/eyes", headers=headers
+        ).status_code
+        == 200
+    )
+    assert world.message_rows() == before
+    human = client.get("/api/changes").json()["human"]
+    assert human["unread_count"] == human["awaiting_response_count"] == 1
+    read = client.post(f"/api/posts/{post['id']}/read", headers=headers).json()["post"]
+    assert read["recipients"][0]["read_at"] is not None
+    assert read["recipients"][1]["read_at"] is None
+    world.board.messages.read(world.env(2), post["id"])
+    human = client.get("/api/changes").json()["human"]
+    assert human["unread_count"] == 0 and human["awaiting_response_count"] == 1
+    assert len(world.fake.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "body",
+    ["@human @all 自分宛て", "`@all` の例だけ", "@Adam 未割当の名前", "/private/file"],
+)
+def test_invalid_human_post_or_reply_cannot_save_or_mark_the_original_read(
+    world: World, client: TestClient, body: str
+) -> None:
+    root = world.post(to=["human"])
+    headers = write_headers(client)
+    before = saved_rows(world)
+    for url, payload in (
+        ("/api/posts", {"subject": "不正入力", "kind": "info", "body": body}),
+        (f"/api/posts/{root['id']}/replies", {"body": body}),
+    ):
+        # A reply automatically has its original author as a recipient, so a
+        # code-only mention is allowed there. Root posts still need a recipient.
+        if "/replies" in url and body.startswith("`"):
+            continue
+        response = client.post(url, headers=headers, json=payload)
+        assert response.status_code == 503
+        assert saved_rows(world) == before
+    assert world.fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "suffix,allowed",
+    [
+        ("", "POST"),
+        ("/replies", "POST"),
+        ("/read", "POST"),
+        ("/reactions/eyes", "DELETE, PUT"),
+    ],
+)
+def test_write_paths_only_accept_their_declared_methods(
+    world: World, client: TestClient, suffix: str, allowed: str
+) -> None:
+    root = world.post()
+    url = "/api/posts" + (f"/{root['id']}" + suffix if suffix else "")
+    headers = write_headers(client)
+    before = saved_rows(world)
+    for method in ("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "TRACE"):
+        if method in allowed.split(", "):
+            continue
+        response = client.request(method, url, headers=headers)
+        assert response.status_code == 405
+        assert response.headers["allow"] == allowed
+    assert saved_rows(world) == before
+
+
+def test_web_writes_do_not_initialize_or_migrate_a_database(
+    world: World, client: TestClient
+) -> None:
+    headers = write_headers(client)
+    payload = {
+        "subject": "hello",
+        "kind": "info",
+        "body": f"@{world.assignments[2].name} hello",
+    }
+    with world.store.transaction() as connection:
+        connection.execute("PRAGMA user_version=4")
+    assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
+    with sqlite3.connect(world.store.path) as connection:
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+        assert connection.execute("SELECT COUNT(*) FROM posts").fetchone()[0] == 0
+    world.store.path.unlink()
+    assert client.post("/api/posts", headers=headers, json=payload).status_code == 503
+    assert not world.store.path.exists() and world.fake.calls == []
+
+
+def test_browser_human_conversation_workflow(
+    world: World, web: SimpleNamespace, tmp_path: Path, execution: SimpleNamespace
+) -> None:
+    """Optional real Chromium check; enable with Playwright on NODE_PATH."""
+    import os
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+
+    available = subprocess.run(
+        ["node", "-e", "require.resolve('playwright')"],
+        capture_output=True,
+        check=False,
+        timeout=15,
+    )
+    if available.returncode:
+        unavailable = (
+            pytest.fail if os.environ.get("CI_REQUIRE_BROWSER") == "1" else pytest.skip
+        )
+        unavailable("Install the optional Playwright package and set NODE_PATH")
+    runtime = world.labels.read()
+    runtime["panes"]["w1:board-1"].update(
+        agent_status="working", terminal_title_stripped="子の進行管理"
+    )
+    world.labels.write(runtime)
+    root = world.post(
+        to=["human", world.assignments[2].name],
+        body='@human <img src=x onerror="alert(1)"> を文字として表示',
+    )
+    world.board.messages.reply(
+        world.env(2),
+        post_id=root["id"],
+        body="元の質問を確認しました。",
+        notifiers=world.routes,
+    )
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(
+        uvicorn.Config(
+            web.app.create_app(world.env(), notification_routes=world.routes),
+            log_level="error",
+            access_log=False,
+        )
+    )
+    worker = threading.Thread(
+        target=server.run, kwargs={"sockets": [sock]}, daemon=True
+    )
+    worker.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started and worker.is_alive() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        assert server.started
+        result = subprocess.run(
+            ["node", str(Path(__file__).with_name("board_browser.cjs"))],
+            input=json.dumps(
+                {
+                    "url": f"http://127.0.0.1:{port}",
+                    "rootId": root["id"],
+                    "body": root["body"],
+                    "sender": world.assignments[1].name,
+                    "recipient": world.assignments[2].name,
+                }
+            ),
+            env={**os.environ, "XDG_STATE_HOME": str(tmp_path / "browser-state")},
+            text=True,
+            capture_output=True,
+            timeout=120,
+            check=False,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+    finally:
+        server.should_exit = True
+        worker.join(timeout=10)
+        sock.close()
+        assert not worker.is_alive()

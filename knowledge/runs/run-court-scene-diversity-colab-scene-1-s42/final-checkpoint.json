@@ -1,0 +1,26 @@
+{
+  "schema": "court_scene_diversity_final_checkpoint_verification_v1",
+  "status": "passed",
+  "verified_at": "2026-10-25T22:16:58.262194+00:00",
+  "condition": 1,
+  "global_step": 33160,
+  "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+  "saved_config_matches_checkpoint": true,
+  "saved_data_condition_matches_checkpoint": true,
+  "synthetic_train_images": 5500,
+  "synthetic_val_images": 500,
+  "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c",
+  "pretrained_sha256": "08c60483bc63c04f533611e34bf70b120eedb7240f469bc16e9e20bf344b941d",
+  "registry_sha256": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+  "dataset_subset": {
+    "schema": "court_dataset_subset_v1",
+    "manifest_sha256": {
+      "train": "46f43e4e423185641f25fc8dd2332b3e4164b9eff72da11d02e26f6da0a80e69",
+      "val": "061e73f2c6fe465ce43941a7c1dcf968c6853763564ffa375b6f0879870ec2c1"
+    },
+    "source_data_version": "3bd19ead3bd384467afe6aeb3b453d5d5677368f19f4480d7dab1e712ad90487",
+    "selection_seed": 42
+  },
+  "portable_plan_sha256": "42c175c5a8604fc62dea720a2460f0c6810b2c2dfa0bb812b041ad7205d71029"
+}

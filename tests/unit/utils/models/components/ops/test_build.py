@@ -201,7 +201,7 @@ def test_compressed_time_local_target_builds_only_selected_extension(
 
     assert extensions == captured
     assert [extension["name"] for extension in captured] == [
-        "src.utils.models.components.ops.compressed_time_local._C"
+        "tennis_lab_compressed_time_local_cuda"
     ]
 
 

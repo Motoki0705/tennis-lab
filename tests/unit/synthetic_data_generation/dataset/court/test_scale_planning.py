@@ -64,7 +64,10 @@ def inputs(method, captured_cameras, multi_court_layout, preset="sfm_bounded"):
     )
 
 
-@pytest.mark.parametrize("method", list(TrajectoryMethod))
+@pytest.mark.parametrize(
+    "method",
+    [m for m in TrajectoryMethod if m is not TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES],
+)
 def test_every_method_retains_common_camera_target_and_projection(
     method, captured_cameras, multi_court_layout
 ):
@@ -182,6 +185,12 @@ def test_method_requires_explicit_selection_and_no_fallback(
     with pytest.raises(ValueError, match="explicit"):
         build_candidate_plan(
             **{**kwargs, "method": "unknown"}, trajectory_count=1, density_level=0
+        )
+    with pytest.raises(ValueError, match="reading/validation only"):
+        build_candidate_plan(
+            **{**kwargs, "method": TrajectoryMethod.SAVED_TRAIN_TRAJECTORIES},
+            trajectory_count=1,
+            density_level=0,
         )
     with pytest.raises(ValueError, match="exactly"):
         build_candidate_plan(

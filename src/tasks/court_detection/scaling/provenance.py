@@ -7,6 +7,9 @@ from typing import Any
 
 from src.tasks.court_detection.configuration import SyntheticCourtStoresSourceConfig
 from src.tasks.court_detection.data.datamodule import CourtDetectionDataModule
+from src.tasks.court_detection.data.inputs.synthetic_court_dataset_subset import (
+    SyntheticCourtDatasetSubsetInput,
+)
 from src.tasks.court_detection.data.inputs.synthetic_court_dataset_version import (
     SyntheticCourtDatasetVersionInput,
 )
@@ -22,7 +25,10 @@ def data_condition(dm: CourtDetectionDataModule) -> dict[str, Any]:
     pipeline = dm._train_pipelines["synthetic_court"]
     input_layer = pipeline.input_layer
     identity: dict[str, Any]
-    if isinstance(input_layer, SyntheticCourtDatasetVersionInput):
+    if isinstance(
+        input_layer,
+        (SyntheticCourtDatasetVersionInput, SyntheticCourtDatasetSubsetInput),
+    ):
         version = input_layer.dataset_version
         roots = input_layer.store_roots
         identity = {
@@ -42,6 +48,28 @@ def data_condition(dm: CourtDetectionDataModule) -> dict[str, Any]:
                 },
             },
         }
+        if isinstance(input_layer, SyntheticCourtDatasetSubsetInput):
+            identity["data_version"] = input_layer.subset_version
+            identity["dataset_subset"] = {
+                "schema": input_layer.subsets["train"]["schema"],
+                "manifest_sha256": input_layer.subset_manifest_sha256,
+                "source_data_version": version["dataset_version"],
+                "selection_seed": input_layer.subsets["train"]["selection_seed"],
+            }
+            validation = input_layer.records("val")
+            identity["synthetic_validation"] = {
+                "images": len(validation),
+                "scene_images": dict(
+                    sorted(
+                        Counter(
+                            str(record.payload["scene_id"]) for record in validation
+                        ).items()
+                    )
+                ),
+                "ordered_ids_sha256": canonical_sha256(
+                    [record.sample_id for record in validation]
+                ),
+            }
     elif isinstance(source, SyntheticCourtStoresSourceConfig):
         roots = source.store_roots
         identity = {

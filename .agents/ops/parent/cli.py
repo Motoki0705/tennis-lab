@@ -14,6 +14,7 @@ from typing import Any
 
 from lib.identity import session_identity
 
+from . import metrics
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
@@ -45,7 +46,15 @@ def parser() -> argparse.ArgumentParser:
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
-    for command in ("register", "status", "checking", "reconcile", "sync"):
+    for command in (
+        "register",
+        "status",
+        "checking",
+        "wait-rewrite",
+        "reconcile",
+        "sync",
+        "state-migrate",
+    ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
     from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
@@ -130,6 +139,14 @@ def parser() -> argparse.ArgumentParser:
     ended.add_argument("--child", type=int, required=True)
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
+    manual = commands.add_parser("run-worker")
+    manual.add_argument("--child", type=int, required=True)
+    manual.add_argument("--prompt-file", type=Path, required=True)
+    manual.add_argument("--resume", action="store_true")
+    manual.add_argument("--restart-evidence-file")
+    run_record = commands.add_parser("record-worker-run")
+    run_record.add_argument("--child", type=int, required=True)
+    run_record.add_argument("--run-dir", type=Path, required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -138,7 +155,11 @@ def parser() -> argparse.ArgumentParser:
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
     request = commands.add_parser("review-request")
-    request.add_argument("--run-id", required=True)
+    selection = request.add_mutually_exclusive_group(required=True)
+    selection.add_argument("--run-id")
+    selection.add_argument("--prs", type=int, nargs="+")
+    request.add_argument("--evidence-file")
+    request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
     state = commands.add_parser("review-state")
     state.add_argument("--run-id", required=True)
@@ -151,15 +172,28 @@ def parser() -> argparse.ArgumentParser:
     return root
 
 
-def main(argv: list[str] | None = None) -> int:
+def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.command == "state-migrate":
+            with Store(args.state_dir or state_directory()).locked() as migration_store:
+                migration_store.migrate()
+                print(
+                    json.dumps(
+                        {
+                            "version": migration_store.data["version"],
+                            "parents": len(migration_store.parents),
+                        }
+                    )
+                )
+                return 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.
         identity = (
             None
-            if args.command in {"status", "basis-input", "basis-record", "basis-check"}
+            if args.command
+            in {"status", "basis-input", "basis-record", "basis-check", "wait-rewrite"}
             else session_identity(dict(os.environ))
         )
         args.state_dir = (args.state_dir or state_directory()).resolve()
@@ -171,8 +205,35 @@ def main(argv: list[str] | None = None) -> int:
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
         else:
             store = Store(args.state_dir)
-        gh = GitHub(args.repo, store=store)
+        gh = GitHub(args.repo, store=None if args.command == "wait-rewrite" else store)
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "wait-rewrite":
+            from .rewrite import wait_rewrite
+
+            # Waiting does not need ownership, a registry transaction or an operation lock.
+            print(
+                json.dumps(wait_rewrite(gh, parent), ensure_ascii=False, sort_keys=True)
+            )
+            return 0
+        if args.command == "run-worker":
+            from .manual_workers import run_worker
+
+            code, worker_result = run_worker(
+                gh,
+                store,
+                parent,
+                nonempty(identity, "parent identity"),
+                child=number(args.child),
+                prompt=args.prompt_file,
+                resume=args.resume,
+                restart_evidence=read_text(args.restart_evidence_file)
+                if args.restart_evidence_file
+                else None,
+            )
+            print(
+                json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
+            )
+            return code
         operation = (
             nullcontext()
             if args.command
@@ -308,6 +369,10 @@ def main(argv: list[str] | None = None) -> int:
                     args.delegation_id,
                     read_text(args.evidence_file),
                 )
+            elif command == "record-worker-run":
+                from .manual_workers import record_worker_run
+
+                result = record_worker_run(session, number(args.child), args.run_dir)
             elif command == "delegate":
                 result = session.delegate(
                     number(args.child),
@@ -336,9 +401,27 @@ def main(argv: list[str] | None = None) -> int:
                     read_text(args.reason_file) if args.reason_file else None,
                 )
             elif command == "review-request":
-                result = transition(
-                    session, args.run_id, "instructed", read_text(args.instruction_file)
-                )
+                if args.prs:
+                    from .review_handoff import request as handoff_review
+
+                    if not args.evidence_file:
+                        raise ValueError(
+                            "--prs requires --evidence-file with verified results"
+                        )
+                    result = handoff_review(
+                        session,
+                        args.prs,
+                        read_text(args.instruction_file),
+                        read_text(args.evidence_file),
+                        read_text(args.reason_file) if args.reason_file else None,
+                    )
+                else:
+                    result = transition(
+                        session,
+                        args.run_id,
+                        "instructed",
+                        read_text(args.instruction_file),
+                    )
             else:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
@@ -419,6 +502,17 @@ def main(argv: list[str] | None = None) -> int:
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    destination = os.environ.get("PARENT_METRICS_FILE")
+    with metrics.command(
+        args.command, Path(destination) if destination else None
+    ) as row:
+        result = _main(argv)
+        row["exit_code"] = result
+        return result
 
 
 if __name__ == "__main__":

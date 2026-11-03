@@ -22,6 +22,7 @@ class TrajectoryMethod(StrEnum):
     SOBOL = "sobol"
     CAPTURE_LOCAL = "capture_local"
     OPEN_BEZIER = "open_bezier"
+    SAVED_TRAIN_TRAJECTORIES = "saved_train_trajectories"
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -46,7 +47,7 @@ def stable_id(namespace: str, *parts: Any) -> str:
 def field_rng(seed: int, identity: Any, field: str) -> np.random.Generator:
     """Adding another field never consumes this field's random stream."""
     require_integer(seed, "generation_seed", minimum=0)
-    entropy = np.frombuffer(
+    entropy: list[int] = np.frombuffer(
         bytes.fromhex(stable_id("rng", seed, identity, field)), dtype="<u4"
     ).tolist()
     return np.random.Generator(np.random.PCG64(np.random.SeedSequence(entropy)))

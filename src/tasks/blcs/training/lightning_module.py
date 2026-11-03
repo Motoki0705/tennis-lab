@@ -136,6 +136,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Persist the exact normalization and CourtKP contracts."""
+        super().on_save_checkpoint(checkpoint)
         add_court_coordinate_normalization(checkpoint, artifact="BLCS checkpoint")
         write_model_artifact_court_keypoint_contract(
             checkpoint,
@@ -145,6 +146,7 @@ class BLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
         """Reject normalization or CourtKP mismatches before weights."""
+        super().on_load_checkpoint(checkpoint)
         validate_neural_court_observation_order(
             checkpoint, self.court_keypoint_contract
         )

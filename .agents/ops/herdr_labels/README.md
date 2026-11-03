@@ -21,7 +21,9 @@ source `tennis-parent`で`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `t
 boardの名前同期→担当表示→担当復帰時の未読表示の順で同期する。
 名前同期と担当表示は、一方が失敗しても他方を試みる。
 register・handoffの受領時に、担当sessionと確認済みterminalの対応をprivate stateへ保存する。
-この対応は表示トークンを消しても終了hook後も保持する。未確認の表示先をsyncや起動hookだけで推測しない。
+この対応は表示トークンを消しても終了hook後も保持する。
+owner記録がない場合、通常のsyncや起動hookは表示先を確認せず、明示bindを求める。
+確認済み記録だけは、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)で条件付きで移せる。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
 `display_sync.status: error`を返す。担当操作を取り消さず、表示CLIで修復する。
 Herdr環境・bindのないheadless実行は`not_configured`を明示し、担当操作自体は成功を返す。
@@ -107,6 +109,40 @@ foreground PID・開始時刻・paneの現在sessionを更新前後に確認し�
 準備中に表示名や管理対象トークンが変わった場合も拒否する。
 トークンにはTTLを付けず、終了・再開のイベントで解除する。定期ポーリングは作らない。
 
+## ClaudeのSessionStartによる表示先の移動
+
+Claudeの`startup` / `resume`で、registryのactiveな担当本人が別の端末へ戻った場合に限り、
+確認済みowner記録を新しい端末へ移してから表示を同期する。
+`HERDR_ENV=1`、実payloadのsession ID、継承したpaneのforeground agentの子孫検査が必要。
+新paneにnative参照`agent_session`がある場合は、呼出し元のClaude sessionとの一致も必須。
+フォーカス・題名・作業ディレクトリから移動先を選ばない。
+
+旧記録のscopeと`session list`の稼働サーバーを照合し、そのサーバーのagent一覧から旧terminalを探す。
+旧terminalがない、別の会話・プロセスへ置換済み、旧サーバー停止の場合だけ、空いたと判断する。
+旧terminalに呼出し元のactiveなpanes記録がありforegroundプロセスのstampが一致する場合、
+または旧terminalの`tl_owner`が呼出し元のtokenの場合は、生存中として拒否する。
+Herdrの取得失敗・不正応答・曖昧な対応も確認不能として拒否し、空きとはみなさない。
+ownerのロック内で旧記録を読み直し、確認時と同じ場合だけ置き換える。同時に別の開始が移動した場合は拒否する。
+
+記録のない初回設定、通常のsync / clear / bind、parent CLIの担当操作には自動移動を適用しない。
+`clear` / `compact`とSessionEndの扱いも変えない。
+SessionStartの拒否・失敗のうち、`require_native_ancestor()`を通過した後の失敗で、
+かつregistryでactiveな担当本人と確認できた場合だけ、
+`herdr_label.status: error`と理由をstdoutのJSONへ出し、
+会話向けの`hookSpecificOutput.additionalContext`（`hookEventName: SessionStart`）と
+人間向けの`systemMessage`で修復手順を案内する。
+会話にJSONを届けるため終了値は0とするが、通知内では表示同期の失敗と明示する。
+同期処理は子孫検査の通過後、`Guard.native_verified`を確認した失敗だけを
+`VerifiedSessionStartError`としてhookへ渡す。hookはこの型だけを通知の候補にする。
+検査前のpane・process-infoの取得失敗、`CLAUDE_ENV_FILE`への書込み失敗、
+子孫検査そのものの失敗はstderrと終了値1で返し、stdoutへ通知を出さない。
+Herdr外でbindもないSessionStartは`not_configured`と終了値0を返し、修復案内を付けない。
+identity不正・子agent・foreground agentの子孫でない呼出し・入れ子のagent・未担当sessionには
+修復案内を送らず、従来どおりstderrと終了値1で拒否する。
+registryの読取失敗などで担当を判定できない場合も、担当を推測せず、
+判定不能と元の失敗理由をstderrへ出して終了値1で返す。
+SessionEndの失敗は従来どおりstderrと終了値1で返す。
+
 ## Herdrの表示設定
 
 人間がユーザーのHerdr設定で、既存項目を残してAgent行を次にする。コードは設定ファイルを書き換えない。
@@ -144,19 +180,18 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 識別子の入力・上書きは不要で、bind対象は実行中の自分のsessionだけ。
 bindは表示先のローカル記録であり、担当を割り当てない。
 以後はterminal ID、agent種別、foreground PIDと開始時刻を照合する。
-agentが終了・置換されたら拒否し、別paneへ黙って追従しない。
+通常のsyncはagentが終了・置換されたら拒否し、別paneへ黙って追従しない。
 保存先は`${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/herdr-labels/`。
 `bindings/`がheadless実行の接続先、`owners/`が担当sessionとterminalの対応、`panes/`が表示同期の現在session。
-表示先を変える場合は、旧画面の終了・実担当・新しい会話を確認し、該当するbindとowner記録を
+手動で表示先を変える場合は、旧画面の終了・実担当・新しい会話を確認し、該当するbindとowner記録を
 退避してからbindを明示実行する。SessionEndによる終了後はSessionStartか確認済みbindで再開する。
 
 今回だけの全セッション移行は通常のself-service CLIと分け、親が確認済みpaneへ表示用APIを使う。
 確認済みの親画面のowner対応も初回移行で保存する。関連画面には親の対応を登録しない。
 共有session IDで複数画面が開かれている場合、IDの一致だけで全画面を親扱いにしない。
 会話で役割を確認し、関連作業は`関連`、担当未登録は`親未登録`と表示する。
-自動同期は永続したowner対応を必須とし、別paneの`tl_owner`も補助的に照合する。
-同一Claude sessionを複数画面で再開した場合も、関連作業の画面を親へ自動昇格させない。
-表示済みの親画面が終了した後に再開する場合は、残る実担当と表示先を確認して同期する。
+自動同期は永続したowner対応を必須とする。別画面での再開は上記のSessionStartの条件で照合し、
+生存中の担当と同じsession IDを持つだけの関連画面を親へ自動昇格させない。
 
 ## 検証
 

@@ -148,6 +148,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
         self._matrix_active_gradient_branches = self._active_gradient_branches()
 
     def on_load_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+        super().on_load_checkpoint(checkpoint)
         from src.tasks.court_detection.scaling.schedule import has_step_schedule
 
         if has_step_schedule(self.config):
@@ -177,7 +178,7 @@ class CourtDetectionLightningModule(BaseLightningModule):
         )
 
         if has_step_schedule(self.config):
-            return StepSchedule.from_config(self.config).max_steps
+            return int(StepSchedule.from_config(self.config).max_steps)
         return int(super()._estimate_total_steps())
 
     def forward(
@@ -943,7 +944,9 @@ class CourtDetectionLightningModule(BaseLightningModule):
                     self.model(*call.model_call.model_args),
                 )
             model_io.validate_logits(output, call.model_call)
-            logits = output.dense_logits if isinstance(output, CourtModelOutput) else output
+            logits = (
+                output.dense_logits if isinstance(output, CourtModelOutput) else output
+            )
             for kind in self.target_bundle.kinds:
                 frames_rgb = self.qualitative_renderers[kind].render(
                     batch=batch,

@@ -5,25 +5,31 @@
 ## [workflow](workflow/index.md) — 作業のコツ
 
 - 新しいworktreeには `.venv` が無いので、メインtreeの `.venv` へsymlinkを張る。
+- 親たちへの一斉指示では、全員の応答がそろうのを待つ条件を作らず、届いた親から進める。止まった担当と人間の操作が要る手順は、人間にまとめて伝える。
 
 ## [decision](decision/index.md) — ユーザーの判断
 
 - 判断を仰ぐときは、既に答えが出ている事項を聞き直さない。選択肢には、コードを読まずに判断できる説明を付ける。品質確認は動画で見せる。
-- 長時間ジョブは定期的に起きて確かめず、完了・失敗だけを監視して待つ。
+- Colabの複数条件の学習は、1セッションで逐次に実行し、約12時間で消えるVMから再開できるようにする。
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
 - 公開向けの文書は英語版を既定にし、日本語版を `.ja.md`、簡体字中国語版を `.zh-CN.md` に分け、3言語を維持する。文書にハッシュ値を書かない。
-- merge前にCIを起動しない（子のコミット件名に `[skip ci]`）。CIをmergeの条件にせず、レビュー後に正規のmerge gateを使い、merge後のmainのCIを確認する。
+- CI短縮を受け、PRへのpushごとにCIを実行し、対象HEADの `Python` 成功をmergeの必須条件とする。コミットに `[skip ci]` を付けない。
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 
 - `src` はカレントディレクトリから import される。worktreeのコードは、worktreeで実行・enqueueしないと使われない。
+- 共有 `.venv` は依存追加に追従しない。不足分はlockの版を `uv pip install` で足す（`uv sync` しない）。
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
+- ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
+- Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。`running` 後の `transport_alive: false` は提出clientの不在だけで、異常ではない。Claudeのbackground監視は会話のプロセスと一緒に止まる。
+- メインtreeのローカル `main` は自動で pull されない。規則・memory・skillは `git fetch` 後に `origin/main` から読む。
+- Claude Code配下のローカル `tests/e2e/agents_ops` には変更と無関係な失敗がある。退行と判断する前に origin/main で同じテストを比べる。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
 
 ## [review](review/index.md) — マージ可否の判断基準

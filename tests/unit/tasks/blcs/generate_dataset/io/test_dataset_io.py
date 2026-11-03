@@ -81,7 +81,10 @@ def _scene() -> BLCSSceneData:
 
 def test_writer_persists_contract_and_normalized_velocity(tmp_path: Path) -> None:
     scene = _scene()
-    path = BLCSDatasetWriter(tmp_path).save_scene(scene)
+    writer = BLCSDatasetWriter(tmp_path)
+    path = writer.save_scene(scene)
+    writer.save_split_info()
+    assert (tmp_path / "train.txt").read_text().splitlines() == [path.name]
     loaded = load_scene(path)
 
     assert loaded["court_keypoint_contract"] == resolve_court_keypoint_contract(

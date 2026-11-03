@@ -26,13 +26,14 @@ issueと関連コードから合理的に定められるなら通常の実装上
 結果を左右する人間の未決事項や不足素材は推測で補わずinformation_neededとし、不足する選択・情報を列挙します。
 明示された停止・見送り・対象外、needs-human、checking/basis_revoked、子の停止記録を尊重してください。
 過去の自分の判断コメントを、新たな依頼・人間の合意・停止解除の根拠にしません。
-新しい人間合意や共有基盤の承認、資源予算を生成しません。着手とmerge承認は区別します。
+新しい人間合意、資源予算を生成しません。着手とmerge承認は区別します。
 
 subjectsの全issueについて1件ずつ結果を返してください。ops-reportラベルまたはops-report:v*本文の報告容器はout_of_scopeです。
 採用提案から生成・再利用された作業issueは通常の作業issueとして読み、採用チェックを実装詳細への合意に読み替えません。
 正式parent/childrenが正本です。既存の子はexisting_parentとして最上位の既存親へ戻し、子を新しい親候補にしません。
 単独issueは自分の番号をtarget_parentにし、不要な階層を作りません。親候補は既存子の停止・依存と独立作業を区別してください。
 issue:childラベルだけがあって正式親がない場合はhuman_holdとして整合確認へ戻します。
+共有判定で本文の書き直しがpendingの親もhuman_holdです。mechanical_guardに従い、parentのwait-rewriteで確定を待つよう案内します。
 既存の担当、GitHub assignee、委任予約、関連PR（未mergeのclosedを含む）があればexisting_ownerとして照合・再開へ戻します。
 担当親の乗っ取り・新しい親の重複起動は行いません。人間合意のある既存経路は自律根拠で上書きせずhuman_holdとして引き継ぎます。
 dependenciesは正式blocked_byと「依存関係」節の和集合です。同repoの別親の依存も確認してください。

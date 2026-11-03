@@ -10,15 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-def resolve(
-    config: Path,
-    agent: str,
-    profile: str | None,
-    model: str | None,
-    effort: str | None,
-    mode: str,
-) -> dict[str, Any]:
-    raw = config.read_bytes()
+def _parse_pins(raw: bytes) -> dict[str, str]:
     pins: dict[str, str] = {}
     for line in raw.decode().splitlines():
         fields = shlex.split(line, comments=True)
@@ -30,6 +22,24 @@ def resolve(
         if key in pins or not value.strip():
             raise ValueError("agents.conf contains duplicate/empty pins")
         pins[key] = value
+    return pins
+
+
+def read_pins(config: Path) -> dict[str, str]:
+    """Read literal pins for all runtimes without evaluating shell or environment."""
+    return _parse_pins(config.read_bytes())
+
+
+def resolve(
+    config: Path,
+    agent: str,
+    profile: str | None,
+    model: str | None,
+    effort: str | None,
+    mode: str,
+) -> dict[str, Any]:
+    raw = config.read_bytes()
+    pins = _parse_pins(raw)
     if profile is not None:
         if not re.fullmatch(r"[a-z][a-z0-9_]*", profile):
             raise ValueError("invalid --profile")
@@ -106,6 +116,7 @@ def command(
     session: str | None,
     read_dirs: list[str],
     json_schema: Path | None = None,
+    mcp_config: Path | None = None,
 ) -> list[str]:
     selected = settings["selected"]
     if settings["agent"] == "claude":
@@ -160,6 +171,43 @@ def command(
         cmd += ["--dangerously-bypass-approvals-and-sandbox"]
     if json_schema is not None:
         cmd += ["--output-schema", str(json_schema)]
+    if mcp_config is not None:
+        if settings["profile"] not in {"review", "ops_report"} or mode != "read-only":
+            raise ValueError("MCP connection requires a read-only review/audit profile")
+        servers = json.loads(mcp_config.read_text(encoding="utf-8"))
+        if not isinstance(servers, dict) or not servers:
+            raise ValueError("MCP config must name at least one host-provided server")
+        for name, server in servers.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_]*", name) or not isinstance(
+                server, dict
+            ):
+                raise ValueError("invalid MCP server name/configuration")
+            if set(server) - {
+                "command",
+                "args",
+                "env",
+                "tool_timeout_sec",
+                "startup_timeout_sec",
+            }:
+                raise ValueError("unsupported MCP server setting")
+            for key, value in server.items():
+                if key == "env":
+                    if not isinstance(value, dict) or any(
+                        not re.fullmatch(r"[A-Z_][A-Z0-9_]*", k)
+                        or not isinstance(v, str)
+                        for k, v in value.items()
+                    ):
+                        raise ValueError("invalid MCP environment")
+                    for env_key, env_value in value.items():
+                        cmd += [
+                            "-c",
+                            f"mcp_servers.{name}.env.{env_key}="
+                            + json.dumps(env_value),
+                        ]
+                else:
+                    cmd += ["-c", f"mcp_servers.{name}.{key}=" + json.dumps(value)]
+    if settings["profile"] == "review":
+        cmd += ["--disable", "multi_agent"]
     if settings["profile"] == "ops_report":
         cmd += [
             "--enable",

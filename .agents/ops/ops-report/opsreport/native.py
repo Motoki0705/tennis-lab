@@ -48,12 +48,19 @@ class RejectedSpawn:
 
 
 @dataclass(frozen=True)
+class UnpairedSpawn:
+    task_name: str
+    spawn_call_id: str
+
+
+@dataclass(frozen=True)
 class NativeRun:
     parent_session_id: str
     parent_turn_id: str
     transcript: Transcript
     agents: tuple[NativeAgent, ...]
     rejections: tuple[RejectedSpawn, ...]
+    unpaired_spawns: tuple[UnpairedSpawn, ...] = ()
 
 
 def _object(value: Any) -> dict[str, Any]:
@@ -136,7 +143,11 @@ def _context(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 def _launches(
     rows: list[dict[str, Any]],
-) -> tuple[dict[str, dict[str, Any]], tuple[RejectedSpawn, ...]]:
+    *,
+    allow_interrupted_spawn: bool = False,
+) -> tuple[
+    dict[str, dict[str, Any]], tuple[RejectedSpawn, ...], dict[str, dict[str, Any]]
+]:
     calls: dict[str, dict[str, Any]] = {}
     outputs: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -153,6 +164,7 @@ def _launches(
         raise NativeEvidenceError("tool output has no matching call")
     launches: dict[str, dict[str, Any]] = {}
     rejected = []
+    unpaired: dict[str, dict[str, Any]] = {}
     for call_id, row in calls.items():
         call = row["payload"]
         if call.get("name") == "followup_task":
@@ -161,12 +173,20 @@ def _launches(
             )
         if call.get("name") != "spawn_agent":
             continue
-        if call.get("namespace") != "collaboration" or call_id not in outputs:
+        if call.get("namespace") != "collaboration":
             raise NativeEvidenceError("unsupported or unpaired native spawn")
         args = _object(parse_json(call["arguments"]))
         requested = _text(args["task_name"])
         if args.get("fork_turns") != "none":
             raise NativeEvidenceError("native evidence requires fork_turns=none")
+        if call_id not in outputs:
+            if not allow_interrupted_spawn:
+                raise NativeEvidenceError("unsupported or unpaired native spawn")
+            name = f"/root/{requested}"
+            if name in launches or name in unpaired:
+                raise NativeEvidenceError("mismatched or duplicate native task name")
+            unpaired[name] = {"call_id": call_id, "call": row}
+            continue
         response = outputs[call_id]
         if _timestamp(response) < _timestamp(row):
             raise NativeEvidenceError("spawn output precedes its call")
@@ -176,10 +196,10 @@ def _launches(
             rejected.append(RejectedSpawn(requested, call_id, output))
             continue
         name = _text(_object(parse_json(output))["task_name"])
-        if name != f"/root/{requested}" or name in launches:
+        if name != f"/root/{requested}" or name in launches or name in unpaired:
             raise NativeEvidenceError("mismatched or duplicate native task name")
         launches[name] = {"call_id": call_id, "call": row, "response": response}
-    return launches, tuple(rejected)
+    return launches, tuple(rejected), unpaired
 
 
 def _child_paths(home: Path, parent: str) -> list[tuple[Path, dict[str, Any]]]:
@@ -304,7 +324,7 @@ def _child(
     )
 
 
-def inspect_run(run_dir: Path) -> NativeRun:
+def inspect_run(run_dir: Path, *, allow_interrupted_spawn: bool = False) -> NativeRun:
     """Read one agent-runtime directory; incomplete children stay explicit.
 
     The recorded CODEX_HOME is authoritative. No CLI, default home, agent final
@@ -316,6 +336,17 @@ def inspect_run(run_dir: Path) -> NativeRun:
             raise NativeEvidenceError("unsupported runner result version")
         if result["result"] not in {"running", "completed", "failed"}:
             raise NativeEvidenceError("invalid runner result state")
+        if allow_interrupted_spawn and (
+            result["result"] != "failed"
+            or result.get("turn_end_reason") != "stopped"
+            or result.get("cleanup_complete") is not True
+            or type(result.get("exit_code")) is not int
+            or result.get("exit_code") not in {130, 143}
+            or type(result.get("cli_exit_code")) is not int
+        ):
+            raise NativeEvidenceError(
+                "unpaired spawns require a terminated, cleaned interruption"
+            )
         contract = _object(result["contract"])
         if contract["settings"]["agent"] != "codex" or contract["mode"] != "read-only":
             raise NativeEvidenceError("native evidence requires read-only Codex")
@@ -354,10 +385,19 @@ def inspect_run(run_dir: Path) -> NativeRun:
             if _text(context.get(key)) != _text(contract["settings"]["selected"][key]):
                 raise NativeEvidenceError(f"parent effective {key} mismatch")
         _text(context["approval_policy"])
-        launches, rejected = _launches(selected)
+        launches, rejected, unpaired = _launches(
+            selected, allow_interrupted_spawn=allow_interrupted_spawn
+        )
         agents: dict[str, NativeAgent] = {}
         for child_path, child_meta in _child_paths(home, parent):
-            agent = _child(child_path, child_meta, parent, turn_id, context, launches)
+            agent = _child(
+                child_path,
+                child_meta,
+                parent,
+                turn_id,
+                context,
+                {**launches, **unpaired},
+            )
             if agent is None:
                 continue
             name = agent.task_name
@@ -366,7 +406,7 @@ def inspect_run(run_dir: Path) -> NativeRun:
             ):
                 raise NativeEvidenceError("ambiguous child transcript/name/ID")
             agents[name] = agent
-        if launches.keys() != agents.keys():
+        if launches.keys() != agents.keys() - unpaired.keys():
             raise NativeEvidenceError(
                 "spawned child transcript missing or parent turn mismatch"
             )
@@ -376,6 +416,10 @@ def inspect_run(run_dir: Path) -> NativeRun:
             reference,
             tuple(agents[name] for name in launches),
             rejected,
+            tuple(
+                UnpairedSpawn(name.removeprefix("/root/"), row["call_id"])
+                for name, row in unpaired.items()
+            ),
         )
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise NativeEvidenceError(f"native execution evidence: {exc}") from exc

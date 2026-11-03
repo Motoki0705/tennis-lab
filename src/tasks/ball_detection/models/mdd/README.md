@@ -141,3 +141,11 @@ query→hybridでDPTを新規初期化する処理とは別の初期化modeで�
 ファイル配置の整理でstate_dictの登録名・forwardの計算順は変更しない。
 既存のscene用ConvNeXtは`../conv_next_unet.py`のnative heatmap・候補・patch契約を維持する。
 座標出力からheatmapを捏造せず、scene/refinerへの座標モデル接続は別の契約として扱う。
+
+## 可変長の直接座標モデル
+
+`MDDTemporalQueryConfig` / `configs/model/mdd_temporal_query.yaml`は5chのquery-onlyモデルを
+明示的なT=32/64/128で保存する。幅256・4層・8 heads・FFN704で、出力は`(B,T,2)`。
+DPT・heatmap head・presence headは持たない。`model_io/mdd_temporal.py`が保存種別を厳密に分け、
+`mdd_temporal_coordinates.v1`を元のTで復元する。段階間のCNN／全重みとAdamW状態の転送は
+[学習手順](../../training/README.md)で管理し、設定のTを書き換えて再開することは拒否する。

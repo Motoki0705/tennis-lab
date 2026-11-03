@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from herdr_labels.coordination import locked
 from lib.identity import session_identity
@@ -28,16 +28,18 @@ class Notification:
     engine: str
     idempotency_key: str
     sender_name: str
-    sender_repo: str
-    sender_parent: int
+    sender_repo: str | None
+    sender_parent: int | None
     kind: str
 
     @property
     def bell(self) -> str:
-        return (
-            f"[board:{self.post_id}] {self.sender_name} ({self.sender_repo}#{self.sender_parent}) "
-            f"{self.kind}: board read {self.post_id}"
+        sender = (
+            "human"
+            if self.sender_parent is None
+            else f"{self.sender_name} ({self.sender_repo}#{self.sender_parent})"
         )
+        return f"[board:{self.post_id}] {sender} {self.kind}: board read {self.post_id}"
 
 
 @dataclass(frozen=True)
@@ -116,7 +118,7 @@ def dispatch(
     notifiers: Notifiers,
     *,
     post_id: str | None = None,
-    assignment_id: int | None = None,
+    assignment_id: int | None | Literal["all"] = "all",
     held_only: bool = False,
     retry_only: bool = False,
 ) -> list[dict[str, Any]]:
@@ -127,7 +129,8 @@ def dispatch(
     duplicate sends. Only a certified unsent failure may be retried. Never hold
     a SQLite transaction while calling a notifier. With retry_only, recheck the
     active sender under each parent lock, leave held rows alone and report
-    attempts/skips from inside the notification lock.
+    attempts/skips from inside the notification lock. Omitting assignment_id
+    selects all recipients; explicit None selects only the reserved human.
     """
     if set(notifiers) - {"claude", "codex"}:
         raise BoardError("unknown board notification engine")
@@ -137,14 +140,14 @@ def dispatch(
     if post_id is not None:
         filters.append("post_id=?")
         params.append(post_id)
-    if assignment_id is not None:
-        filters.append("assignment_id=?")
+    if assignment_id != "all":
+        filters.append("assignment_id IS ?")
         params.append(assignment_id)
     if held_only:
         filters.append("state='held'")
     where = " WHERE " + " AND ".join(filters) if filters else ""
     with locked(store.directory / "notifications.lock"):
-        reports: dict[tuple[str, int], dict[str, Any]] = {}
+        reports: dict[tuple[str, int | None], dict[str, Any]] = {}
         with store.read() as connection:
             items = connection.execute(
                 "SELECT post_id, assignment_id FROM deliveries"
@@ -155,6 +158,10 @@ def dispatch(
         for target_post, target_id in items:
             report = {"attempted": False, "outcome": "skipped", "skip_reason": None}
             reports[target_post, target_id] = report
+            if target_id is None:
+                # The human receives posts through Web polling, without a bell.
+                report["skip_reason"] = "human_recipient"
+                continue
             with parent_state(env) as parents:
                 with store.transaction() as connection:
                     if retry_only:

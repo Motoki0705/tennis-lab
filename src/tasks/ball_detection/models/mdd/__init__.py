@@ -4,6 +4,7 @@ from .config import (
     MDDHybridConfig,
     MDDPoseConfig,
     MDDPretrainConfig,
+    MDDTemporalQueryConfig,
 )
 from .detectors import (
     DeepMDDQueryDetector,
@@ -15,4 +16,4 @@ from .hybrid import DeepMDDHeatmapHybridDetector, DeepMDDHybridDetector, MDDHybr
 
 __all__ = ["MDDPoseConfig", "MDDPretrainConfig", "MDDPoseDetector", "MDDQueryDetector", "MDDDPTDetector", "DeepMDDQueryDetector",
            "MDDHybridConfig", "MDDHybridOutput", "DeepMDDHybridDetector",
-           "MDDHeatmapConfig", "MDDHeatmapHybridConfig", "DeepMDDHeatmapHybridDetector"]
+           "MDDHeatmapConfig", "MDDHeatmapHybridConfig", "DeepMDDHeatmapHybridDetector", "MDDTemporalQueryConfig"]

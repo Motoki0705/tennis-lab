@@ -1,0 +1,31 @@
+{
+  "audit": {
+    "32": {
+      "accepted_packs": 30478,
+      "edge_only_packs": 32,
+      "excluded_packs": 2031,
+      "previous_packs": 32509,
+      "unique_training_coverage": {
+        "masked": 43772,
+        "observed": 491380,
+        "out_of_frame": 14755,
+        "reviewed_empty": 80919
+      },
+      "zero_coordinate_child_occurrences": 10383
+    },
+    "64": {
+      "accepted_packs": 30478,
+      "edge_only_packs": 32,
+      "excluded_packs": 2031,
+      "previous_packs": 32509,
+      "unique_training_coverage": {
+        "masked": 43772,
+        "observed": 491380,
+        "out_of_frame": 14755,
+        "reviewed_empty": 80919
+      },
+      "zero_coordinate_child_occurrences": 2780
+    }
+  },
+  "preparation_seconds": 100.62863211599961
+}

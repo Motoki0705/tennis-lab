@@ -53,6 +53,7 @@ def publish(
             return str(judgement.publish_decision(session, d, snapshot))
 
 
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_judgement_publication_preserves_human_delegate_review_and_merge(
     gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -167,6 +168,7 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
         "repo",
     ],
 )
+@pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
 def test_forged_judgement_and_human_instructions_still_stop_work(
     gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:

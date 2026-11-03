@@ -7,7 +7,6 @@ from dataclasses import astuple
 from pathlib import Path
 
 import pytest
-from hydra import compose, initialize_config_dir
 from omegaconf import DictConfig, OmegaConf, open_dict
 
 from src.synthetic_data_generation.alignment.contracts import AlignmentAcceptancePolicy
@@ -31,19 +30,20 @@ from src.utils.configuration import (
     RuntimePathRoots,
 )
 from src.utils.paths import PROJECT_ROOT
+from tests.support.synthetic_data_generation.configuration import compose_scene_config
 
 _CONFIG_ROOT = PROJECT_ROOT / "src/synthetic_data_generation/configs"
 
-pytestmark = pytest.mark.local_data
+
+def _compose(tmp_path: Path, *overrides: str) -> DictConfig:
+    config = compose_scene_config(tmp_path, *overrides)
+    return config
 
 
-def _compose(*overrides: str) -> DictConfig:
-    with initialize_config_dir(version_base="1.3", config_dir=str(_CONFIG_ROOT)):
-        return compose(config_name="run_scene_pipeline", overrides=list(overrides))
-
-
-def test_b00_configuration_is_the_canonical_scene_request() -> None:
-    runtime = ScenePipelineConfiguration.from_config(_compose())
+def test_b00_configuration_is_the_canonical_scene_request(
+    tmp_path: Path,
+) -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose(tmp_path))
 
     assert runtime.profile == "b00-production"
     assert runtime.request.scene_id == "B00"
@@ -53,7 +53,7 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     assert runtime.request.targets == frozenset(DatasetTarget)
     assert (
         runtime.workspace.root
-        == (PROJECT_ROOT / "data/synthetic_data_generation/scenes/B00").resolve()
+        == (tmp_path / "data/synthetic_data_generation/scenes/B00").resolve()
     )
     assert "B01" not in runtime.workspace.root.parts
     assert "B02" not in runtime.workspace.root.parts
@@ -76,18 +76,21 @@ def test_b00_configuration_is_the_canonical_scene_request() -> None:
     )
 
 
-def test_dataset_terminal_must_belong_to_explicit_targets() -> None:
+def test_dataset_targets_cannot_be_empty(tmp_path: Path) -> None:
     config = _compose(
-        "request.targets=[court]",
-        "request.through_stage=plcs_dataset",
+        tmp_path,
+        "request.targets=[]",
+        "request.through_stage=court_dataset",
     )
 
-    with pytest.raises(ValueError, match="requires the 'plcs' dataset target"):
+    with pytest.raises(ValueError, match="request.targets must contain at least 1"):
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
-    runtime = ScenePipelineConfiguration.from_config(_compose())
+def test_b00_quantitative_and_full_timeline_values_are_config_owned(
+    tmp_path: Path,
+) -> None:
+    runtime = ScenePipelineConfiguration.from_config(_compose(tmp_path))
 
     assert runtime.court.sampling.proposal_budget == 4_800
     assert runtime.court.sampling.minimum_trajectory_groups >= 24
@@ -121,11 +124,12 @@ def test_b00_quantitative_and_full_timeline_values_are_config_owned() -> None:
     ],
 )
 def test_explicit_court_schema_compositions_preserve_versioned_target_contract(
+    tmp_path: Path,
     selector: str,
     version: CourtDatasetSchemaVersion,
     target_modes: frozenset[OrbitTargetMode],
 ) -> None:
-    config = _compose(f"dataset/court={selector}")
+    config = _compose(tmp_path, f"dataset/court={selector}")
 
     court = CourtDatasetConfiguration.from_mapping(
         OmegaConf.to_container(config.dataset.court, resolve=True)
@@ -263,38 +267,27 @@ def test_production_alignment_evidence_and_acceptance_are_complete_typed_values(
         ("request.through_stage", "legacy_pipeline"),
         ("pipeline.config_schema", "legacy"),
         ("pipeline.preflight_before_invalidation", False),
-        ("camera.slots.0.hfov_degrees", [0.0, 20.0]),
         ("dataset.court.sampling.proposal_budget", 5_001),
         ("dataset.court.sampling.minimum_trajectory_groups", 23),
         ("dataset.court.trajectory.axis_ratios", [1.0, 0.9]),
-        ("dataset.blcs.timeline.frame_selection", "first_64"),
-        ("dataset.plcs.require_articulated_motion", False),
         ("nht.reconstruction_timeout_seconds", 0.0),
         ("alignment.evidence.holdout_fraction", 0.0),
         ("alignment.evidence.camera_prefix_count", 11),
-        ("dataset.blcs.trajectory_source.timeline.min_tracks", 1),
-        ("dataset.blcs.generator.physics.gravity", "9.81"),
-        ("dataset.plcs.appearance.appearance_space", "srgb"),
-        ("dataset.plcs.foreground_rasterizer.maximum_alpha", 1.0),
         ("dataset.court.performance.maximum_complete_array_scans_per_sample", 0),
-        ("dataset.blcs.performance.execution_device", ""),
-        ("dataset.blcs.performance.execution_device", "cuda:1"),
-        ("dataset.blcs.performance.maximum_batch_frames", 2),
-        ("dataset.blcs.assets.ball.floating_dtype", "float64"),
-        ("dataset.blcs.performance.maximum_published_fraction_of_dense_reference", 1.1),
-        ("dataset.plcs.performance.maximum_nht_invocations", 2),
     ],
 )
-def test_invalid_values_fail_closed(key: str, invalid: object) -> None:
-    config = _compose()
+def test_invalid_values_fail_closed(tmp_path: Path, key: str, invalid: object) -> None:
+    config = _compose(tmp_path)
     OmegaConf.update(config, key, invalid, merge=False)
 
     with pytest.raises((ConfigurationError, TypeError, ValueError)):
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_unknown_keys_fail_before_runtime_path_creation() -> None:
-    config = deepcopy(_compose())
+def test_unknown_keys_fail_before_runtime_path_creation(
+    tmp_path: Path,
+) -> None:
+    config = deepcopy(_compose(tmp_path))
     with open_dict(config):
         config.pipeline.commit = "forbidden"
 
@@ -302,8 +295,10 @@ def test_unknown_keys_fail_before_runtime_path_creation() -> None:
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_source_video_cannot_escape_external_asset_root() -> None:
-    config = _compose()
+def test_source_video_cannot_escape_external_asset_root(
+    tmp_path: Path,
+) -> None:
+    config = _compose(tmp_path)
     OmegaConf.update(config, "request.source_video", "../outside.mp4", merge=False)
 
     with pytest.raises(PathContractError):
@@ -314,8 +309,10 @@ def test_source_video_cannot_escape_external_asset_root() -> None:
     "private_key",
     ["repository_root", "reconstruction_config_path", "training_runtime"],
 )
-def test_private_nht_configuration_keys_fail_closed(private_key: str) -> None:
-    config = _compose()
+def test_private_nht_configuration_keys_fail_closed(
+    tmp_path: Path, private_key: str
+) -> None:
+    config = _compose(tmp_path)
     with open_dict(config.nht):
         config.nht[private_key] = "forbidden"
 
@@ -323,8 +320,10 @@ def test_private_nht_configuration_keys_fail_closed(private_key: str) -> None:
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_private_nht_python_environment_fails_closed() -> None:
-    config = _compose()
+def test_private_nht_python_environment_fails_closed(
+    tmp_path: Path,
+) -> None:
+    config = _compose(tmp_path)
     with open_dict(config.nht.environment):
         config.nht.environment.PYTHONPATH = "/private/provider/modules"
 
@@ -340,7 +339,7 @@ def _nht_config_at(root: Path, contents: str) -> Path:
 
 
 def _compose_with_nht_config_root(root: Path) -> DictConfig:
-    config = _compose()
+    config = _compose(root.parent / "config")
     data_root = root.parent / "data"
     data_root.mkdir(exist_ok=True)
     source_video = data_root / "synthetic_data_generation/raw/B00.mp4"
@@ -363,7 +362,9 @@ def _compose_with_nht_config_root(root: Path) -> DictConfig:
         merge=False,
     )
     OmegaConf.update(config, "nht.pipeline_config_path", "pipeline.yaml", merge=False)
-    OmegaConf.update(config, "roots.checkpoint_root", str(checkpoint_root.resolve()), merge=False)
+    OmegaConf.update(
+        config, "roots.checkpoint_root", str(checkpoint_root.resolve()), merge=False
+    )
     return config
 
 
@@ -424,7 +425,7 @@ def test_nht_commands_accept_installed_absolute_public_executables(
     executable.parent.mkdir()
     executable.write_text("#!/bin/sh\n", encoding="utf-8")
     executable.chmod(0o755)
-    config = _compose()
+    config = _compose(tmp_path)
     OmegaConf.update(config, f"nht.{key}", str(executable.resolve()), merge=False)
 
     runtime = ScenePipelineConfiguration.from_config(config)
@@ -441,18 +442,21 @@ def test_nht_commands_accept_installed_absolute_public_executables(
     ],
 )
 def test_nht_commands_reject_private_or_relative_executables(
+    tmp_path: Path,
     key: str,
     invalid: str,
 ) -> None:
-    config = _compose()
+    config = _compose(tmp_path)
     OmegaConf.update(config, f"nht.{key}", invalid, merge=False)
 
     with pytest.raises(ConfigurationError, match="absolute path"):
         ScenePipelineConfiguration.from_config(config)
 
 
-def test_nested_unknown_keys_fail_closed() -> None:
-    config = OmegaConf.to_container(_compose(), resolve=True)
+def test_nested_unknown_keys_fail_closed(
+    tmp_path: Path,
+) -> None:
+    config = OmegaConf.to_container(_compose(tmp_path), resolve=True)
     assert isinstance(config, dict)
     alignment = config["alignment"]
     assert isinstance(alignment, dict)

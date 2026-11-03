@@ -9,7 +9,7 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 2. 全画面の人物検出にpose・外観特徴を付けて追跡し、コート座標で選手を選別する。各camera/frameの検出点と観測maskを保存する。
 3. court side（`court_side`）をballだけの幾何的な仮説検定で決め、そのsideで人物trackをcamera間で対応付ける（`player_association`）。
 4. 決まったsideを人物・ballで幾何検証し、近似カメラ校正をreference座標へ変換。
-5. 人物の同一ID観測と、各カメラの有効なボール観測を三角測量。
+5. ボールの動きの外れ値を除去し、頑健な2次LOESSで平滑化。人物の同一ID観測と、各カメラの採用した実ボール観測を三角測量。
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
@@ -24,6 +24,8 @@ reference未指定時は校正可能camera IDの辞書順先頭を選びます�
 設定の正本は[configs/pipeline.yaml](configs/pipeline.yaml)、人物経路の既定と契約は[pipeline README](pipeline/README.md)を参照してください。
 既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
 有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
+
+DINO binaryの選択は[導入案内](../../docs/installation/README.ja.md#dino-cuda-extension)に従います。
 
 ```bash
 # GPU実行は、このコマンドを共有training queueへ登録する。
@@ -56,7 +58,7 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の観測maskを保持して三角測量します。2view未満の時刻は3Dでも欠損です。
+無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の実観測から外れ値を除いたmaskで三角測量します。診断用の補間点は観測に数えず、2view未満の時刻は3Dでも欠損です。
 
 sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
 決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する
@@ -94,7 +96,7 @@ SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid`
 camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS・frame数が異なる場合は拒否します。
 同期推定や欠測の補間は行わず、SceneResult v2の有効性maskを既存rendererへそのまま渡します。
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
-[生成記録](../../knowledge/nodes/tennis_scene/000029-run-multiview-readme-gif-20261021.md)を参照してください。
+[LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
 
 ## Blenderアニメーション
 
@@ -104,6 +106,7 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 ## 他の入口
 
+- [ground_truth](ground_truth/README.md): 人間提供の評価用正解の厳格な reader（再構成入力への接続なし）。
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
 - [clip_studio](clip_studio/README.md): 同期・ラリーclip切り出し。
 - [motion_alignment](motion_alignment/README.md): COCO17への身体配置。

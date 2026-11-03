@@ -189,6 +189,16 @@ class Bells:
 
 @pytest.fixture
 def bells(world: World, tmp_path: Path) -> Bells:
+    # These tests bind notification routes separately from Herdr display owners.
+    # Start with unconfigured displays; confirm_parent_display opts in explicitly.
+    owners = world.labels.registry.parent.parent / "herdr-labels/owners"
+    parents = json.loads(world.labels.registry.read_text())["parents"]
+    runtime = world.labels.read()
+    for parent in (1, 2, 3):
+        identity = parents[f"o/r#{parent}"]["session"]
+        (owners / f"{world.board.service.owner_token(identity)}.json").unlink()
+        del runtime["panes"][f"w1:board-{parent}"]
+    world.labels.write(runtime)
     modules = SimpleNamespace(
         **{
             name: importlib.import_module("board." + name)

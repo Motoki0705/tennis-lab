@@ -18,7 +18,7 @@ Notes:
       ``src/tasks/plcs/configs/analyze_angle_velocity.yaml`` via Hydra.
     - The script must be run CPU-only (prefix with ``CUDA_VISIBLE_DEVICES=""``).
     - Only valid frame-to-frame transitions are counted: both adjacent frames
-      must not be padded according to ``padding_mask``.
+      must not be padded and the feature must be valid at both endpoints.
     - Torsion angles and torso twist are periodic; their velocity differences are
       wrapped into [-pi, pi] before aggregation.
     - The JSON output contains per-angle std, mean-abs velocity, and normalized
@@ -37,12 +37,12 @@ from torch import Tensor
 
 from src.tasks.plcs.configuration import PLCSAnalysisRuntimeConfig
 from src.tasks.plcs.data.dataset import SceneDataset, collate_plcs_batch
-from src.tasks.plcs.training.losses import (
+from src.utils.geometry.court_pose import world_pose_to_canonical_pose
+from src.utils.geometry.skeleton import (
     compute_joint_angles,
     compute_torsion_angles,
     compute_torso_twist,
 )
-from src.utils.geometry.court_pose import world_pose_to_canonical_pose
 from src.utils.hydra import hydra_main
 from src.utils.io import save_json
 from src.utils.schema.player import COCO17_JOINT_ANGLE_TRIPLETS as JOINT_ANGLE_TRIPLETS
@@ -63,7 +63,7 @@ class ChannelStats:
         self._m2: np.ndarray = np.zeros(n_channels, dtype=np.float64)
         self._sum_abs: np.ndarray = np.zeros(n_channels, dtype=np.float64)
 
-    def update(self, values: np.ndarray) -> None:
+    def update(self, values: np.ndarray, valid: np.ndarray | None = None) -> None:
         """Update running stats with a 2-D array of shape (N, C).
 
         Args:
@@ -75,29 +75,38 @@ class ChannelStats:
             raise ValueError(
                 f"Expected shape (N, {self.n_channels}), got {values.shape}"
             )
-        if values.shape[0] == 0:
-            return
-        n_new = values.shape[0]
-        batch_mean = values.mean(axis=0)
-        batch_var = values.var(axis=0, ddof=0)
-        batch_m2 = batch_var * n_new
-        batch_sum_abs = np.abs(values).sum(axis=0)
+        if valid is None:
+            valid = np.ones(values.shape, dtype=bool)
+        if valid.shape != values.shape or valid.dtype != np.bool_:
+            raise ValueError(
+                "Channel validity must be bool with the same shape as values."
+            )
+        for channel in range(self.n_channels):
+            observed = values[valid[:, channel], channel]
+            if not np.isfinite(observed).all():
+                raise ValueError("Observed angular velocities must be finite.")
+            n_new = len(observed)
+            if n_new == 0:
+                continue
+            delta = observed.mean() - self._mean[channel]
+            n_total = float(self._count[channel]) + n_new
+            self._mean[channel] += delta * n_new / n_total
+            self._m2[channel] += (
+                observed.var() * n_new
+                + delta * delta * self._count[channel] * n_new / n_total
+            )
+            self._count[channel] = n_total
+            self._sum_abs[channel] += np.abs(observed).sum()
 
-        delta = batch_mean - self._mean
-        n_total = self._count + n_new
-        # Guard against division by zero on the very first update.
-        safe_n_total = np.where(n_total > 0, n_total, 1.0)
-        self._mean = self._mean + delta * n_new / safe_n_total
-        self._m2 = (
-            self._m2 + batch_m2 + (delta * delta) * self._count * n_new / safe_n_total
-        )
-        self._count = n_total
-        self._sum_abs += batch_sum_abs
+    def _require_observations(self) -> None:
+        if not np.any(self._count > 0):
+            raise ValueError("No valid angular-velocity observations in this family.")
 
     def std(self) -> np.ndarray:
         """Return per-channel standard deviation."""
+        self._require_observations()
         var = np.asarray(
-            np.where(self._count > 0, self._m2 / np.maximum(self._count, 1.0), 0.0),
+            np.where(self._count > 0, self._m2 / np.maximum(self._count, 1.0), np.nan),
             dtype=np.float64,
         )
         result: np.ndarray = np.sqrt(np.maximum(var, 0.0))
@@ -105,11 +114,12 @@ class ChannelStats:
 
     def mean_abs(self) -> np.ndarray:
         """Return per-channel mean absolute value."""
+        self._require_observations()
         result: np.ndarray = np.asarray(
             np.where(
                 self._count > 0,
                 self._sum_abs / np.maximum(self._count, 1.0),
-                0.0,
+                np.nan,
             ),
             dtype=np.float64,
         )
@@ -125,20 +135,16 @@ class ChannelStats:
 # ---------------------------------------------------------------------------
 
 
-def _wrap_diff(diff: np.ndarray) -> np.ndarray:
-    """Wrap angular differences into [-pi, pi]."""
-    result: np.ndarray = np.asarray(
-        np.arctan2(np.sin(diff), np.cos(diff)), dtype=np.float64
-    )
-    return result
-
-
-def _normalize_weights(stds: np.ndarray) -> list[float]:
+def _normalize_weights(stds: np.ndarray) -> list[float | None]:
     """Normalize std vector to mean=1.0 (dominance weights)."""
-    mean_std = float(stds.mean())
-    if mean_std < 1e-12:
-        return [1.0] * len(stds)
-    return [float(v / mean_std) for v in stds]
+    observed = np.isfinite(stds)
+    if not observed.any():
+        raise ValueError("No valid angular-velocity standard deviations.")
+    mean_std = float(stds[observed].mean())
+    return [
+        (float(v / mean_std) if mean_std >= 1e-12 else 1.0) if ok else None
+        for v, ok in zip(stds, observed, strict=True)
+    ]
 
 
 def _angles_to_numpy(t: Tensor) -> np.ndarray:
@@ -152,7 +158,7 @@ def _angles_to_numpy(t: Tensor) -> np.ndarray:
 
 
 def analyze_angle_velocity(
-    dataset: SceneDataset,
+    dataset: torch.utils.data.Dataset[dict[str, Any]],
     split: str,
     batch_size: int,
     num_workers: int,
@@ -172,14 +178,16 @@ def analyze_angle_velocity(
     """
     # Build the dataset directly without the collate adapter so that we always
     # have human_kp_3d, position, rotation, and padding_mask in the batch.
-    loader: torch.utils.data.DataLoader[dict[str, Tensor]] = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=False,
-        drop_last=False,
-        collate_fn=collate_plcs_batch,
+    loader: torch.utils.data.DataLoader[dict[str, Tensor]] = (
+        torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=False,
+            drop_last=False,
+            collate_fn=collate_plcs_batch,
+        )
     )
 
     n_joint = len(JOINT_ANGLE_TRIPLETS)  # 12
@@ -199,21 +207,19 @@ def analyze_angle_velocity(
         human_kp_3d: Tensor | None = cast("Tensor | None", batch.get("human_kp_3d"))
         position: Tensor | None = cast("Tensor | None", batch.get("position"))
         rotation: Tensor | None = cast("Tensor | None", batch.get("rotation"))
-        padding_mask: Tensor | None = cast(
-            "Tensor | None", batch.get("padding_mask")
-        )
+        padding_mask: Tensor | None = cast("Tensor | None", batch.get("padding_mask"))
 
         if human_kp_3d is None or position is None or rotation is None:
-            batches_processed += 1
-            continue
+            raise ValueError(
+                "Angular-velocity analysis requires 3D pose, position and rotation."
+            )
 
         # human_kp_3d: (B, T, 17, 3)
         # position   : (B, T, 3)
         # rotation   : (B, T, 2)
         # padding_mask: (B,N,T), True=padding.
         if human_kp_3d.ndim != 4:
-            batches_processed += 1
-            continue
+            raise ValueError("Expected human_kp_3d with shape (B, T, 17, 3).")
 
         b, t, _j, _ = human_kp_3d.shape
 
@@ -229,52 +235,37 @@ def analyze_angle_velocity(
             elif padding_mask.ndim == 2:
                 mask_bt = ~padding_mask
             else:
-                mask_bt = torch.ones(b, t, dtype=torch.bool)
+                raise ValueError("padding_mask must have shape (B, V, T) or (B, T).")
         else:
             mask_bt = torch.ones(b, t, dtype=torch.bool)
 
+        # Select adjacent frames before canonicalization/geometry: no padding
+        # and no transition across a gap, with feature masks ANDed below.
+        trans_mask = mask_bt[:, 1:] & mask_bt[:, :-1]
         with torch.no_grad():
-            canon = world_pose_to_canonical_pose(
-                human_kp_3d, position, rotation
-            )  # (B, T, 17, 3)
-
-            # --- joint angles (B, T, 12), non-periodic ---
-            joint_a = compute_joint_angles(canon)  # (B, T, 12)
-            joint_vel = joint_a[:, 1:, :] - joint_a[:, :-1, :]  # (B, T-1, 12)
-
-            # --- torsion angles (B, T, 4), periodic ---
-            torsion_a = compute_torsion_angles(canon)  # (B, T, 4)
-            torsion_diff = torsion_a[:, 1:, :] - torsion_a[:, :-1, :]
-            torsion_vel = torch.atan2(
-                torch.sin(torsion_diff), torch.cos(torsion_diff)
-            )  # (B, T-1, 4)
-
-            # --- torso twist (B, T), periodic ---
-            twist_a = compute_torso_twist(canon)  # (B, T)
-            twist_diff = twist_a[:, 1:] - twist_a[:, :-1]
-            twist_vel = torch.atan2(
-                torch.sin(twist_diff), torch.cos(twist_diff)
-            ).unsqueeze(-1)  # (B, T-1, 1)
-
-        # Validity mask for transitions: both frame t and t+1 must be valid
-        trans_mask = mask_bt[:, 1:] & mask_bt[:, :-1]  # (B, T-1) bool
-
-        # Gather valid transitions into numpy arrays (N_valid, C)
-        joint_np = _angles_to_numpy(joint_vel)  # (B, T-1, 12)
-        torsion_np = _angles_to_numpy(torsion_vel)  # (B, T-1, 4)
-        twist_np = _angles_to_numpy(twist_vel)  # (B, T-1, 1)
-        trans_np = trans_mask.cpu().numpy()  # (B, T-1) bool
-
-        # Flatten batch x time and filter by mask
-        flat_mask = trans_np.reshape(-1)  # (B*(T-1),)
-        joint_flat = joint_np.reshape(-1, n_joint)[flat_mask]
-        torsion_flat = torsion_np.reshape(-1, n_torsion)[flat_mask]
-        twist_flat = twist_np.reshape(-1, n_twist)[flat_mask]
-
-        if joint_flat.shape[0] > 0:
-            joint_stats.update(joint_flat)
-            torsion_stats.update(torsion_flat)
-            twist_stats.update(twist_flat)
+            first = world_pose_to_canonical_pose(
+                human_kp_3d[:, :-1][trans_mask],
+                position[:, :-1][trans_mask],
+                rotation[:, :-1][trans_mask],
+            )
+            second = world_pose_to_canonical_pose(
+                human_kp_3d[:, 1:][trans_mask],
+                position[:, 1:][trans_mask],
+                rotation[:, 1:][trans_mask],
+            )
+            for stats, compute_fn, periodic in (
+                (joint_stats, compute_joint_angles, False),
+                (torsion_stats, compute_torsion_angles, True),
+                (twist_stats, compute_torso_twist, True),
+            ):
+                left, right = compute_fn(first), compute_fn(second)
+                velocity = right.values - left.values
+                valid = left.valid & right.valid
+                if periodic:
+                    velocity = torch.atan2(torch.sin(velocity), torch.cos(velocity))
+                if velocity.ndim == 1:
+                    velocity, valid = velocity.unsqueeze(-1), valid.unsqueeze(-1)
+                stats.update(_angles_to_numpy(velocity), valid.cpu().numpy())
 
         batches_processed += 1
 
@@ -314,14 +305,14 @@ def analyze_angle_velocity(
             "std": joint_std.tolist(),
             "mean_abs": joint_mean_abs.tolist(),
             "dominance_weights": joint_weights,
-            "sample_count": int(joint_stats.count()[0]),
+            "sample_count": joint_stats.count().astype(np.int64).tolist(),
         },
         "torsion_angles": {
             "labels": torsion_labels,
             "std": torsion_std.tolist(),
             "mean_abs": torsion_mean_abs.tolist(),
             "dominance_weights": torsion_weights,
-            "sample_count": int(torsion_stats.count()[0]),
+            "sample_count": torsion_stats.count().astype(np.int64).tolist(),
         },
         "torso_twist": {
             "std": float(twist_std[0]),
@@ -352,7 +343,8 @@ def _print_report(result: dict[str, Any]) -> None:
     for label, std, mabs, w in zip(
         ja["labels"], ja["std"], ja["mean_abs"], ja["dominance_weights"], strict=True
     ):
-        print(f"{label:<22}{std:>10.5f}{mabs:>12.5f}{w:>10.4f}")
+        weight = "missing" if w is None else f"{w:.4f}"
+        print(f"{label:<22}{std:>10.5f}{mabs:>12.5f}{weight:>10}")
     print(f"  sample_count : {ja['sample_count']}")
 
     print()
@@ -363,7 +355,8 @@ def _print_report(result: dict[str, Any]) -> None:
     for label, std, mabs, w in zip(
         ta["labels"], ta["std"], ta["mean_abs"], ta["dominance_weights"], strict=True
     ):
-        print(f"{label:<22}{std:>10.5f}{mabs:>12.5f}{w:>10.4f}")
+        weight = "missing" if w is None else f"{w:.4f}"
+        print(f"{label:<22}{std:>10.5f}{mabs:>12.5f}{weight:>10}")
     print(f"  sample_count : {ta['sample_count']}")
 
     print()
@@ -378,7 +371,9 @@ def _print_report(result: dict[str, Any]) -> None:
     all_stds = list(zip(ja["labels"], ja["std"], ["joint"] * 12, strict=True))
     all_stds += list(zip(ta["labels"], ta["std"], ["torsion"] * 4, strict=True))
     all_stds += [("torso_twist", tt["std"], "twist")]
-    dominant = max(all_stds, key=lambda x: x[1])
+    dominant = max(
+        (item for item in all_stds if math.isfinite(item[1])), key=lambda x: x[1]
+    )
     print(
         f"Most dynamic channel: {dominant[0]} ({dominant[2]}) "
         f"std={dominant[1]:.5f} rad/frame"

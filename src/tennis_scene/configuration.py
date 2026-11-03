@@ -58,6 +58,7 @@ from src.utils.configuration import (
     SemanticConfigurationError,
     StrictConfigSchema,
 )
+from src.utils.geometry.temporal_smoothing import TemporalSmoothingConfig
 from src.utils.paths import PROJECT_ROOT
 from src.utils.rendering.camera_view import CameraController
 
@@ -214,6 +215,10 @@ _BALL_SCHEMA = StrictConfigSchema(
     },
 )
 _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
+_BALL_SMOOTHING_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_smoothing", fields={
+    field.name: ConfigField.of(type(getattr(TemporalSmoothingConfig(), field.name)))
+    for field in fields(TemporalSmoothingConfig)
+})
 _PERSON_OBSERVATION_SCHEMA = StrictConfigSchema(name="tennis_scene.person_observations", fields={
     "enabled": ConfigField.of(bool), "visibility_threshold": ConfigField.of(float, int),
     "sideline_margin_m": ConfigField.of(float, int), "baseline_margin_m": ConfigField.of(float, int),
@@ -256,11 +261,25 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
+    "ball_smoothing": ConfigField.mapping(_BALL_SMOOTHING_SCHEMA),
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
 })
+
+
+def pipeline_asset_configuration(
+    cfg: DictConfig,
+) -> tuple[Mapping[str, object], RuntimePathRoots, PathResolver]:
+    """Validate structure and root authorities without resolving asset children.
+
+    Installation diagnostics must be able to reject each child independently.
+    This does not construct an executable runtime configuration.
+    """
+    value = _PIPELINE_SCHEMA.validate(_plain(cfg))
+    roots, resolver = _roots(value["paths"])
+    return value, roots, resolver
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,11 +319,11 @@ class PipelineRuntimeConfig:
     tracking_encoder_weights: Path
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
+    ball_smoothing: TemporalSmoothingConfig
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
-        value = _PIPELINE_SCHEMA.validate(_plain(cfg))
-        roots, resolver = _roots(value["paths"])
+        value, roots, resolver = pipeline_asset_configuration(cfg)
         raw_videos = _sequence(value["video_paths"], name="video_paths") if bind_inputs else ()
         raw_cameras = _sequence(value["camera_ids"], name="camera_ids") if bind_inputs else ()
         if bind_inputs and (not 3 <= len(raw_videos) <= 5 or len(raw_videos) != len(raw_cameras)):
@@ -354,6 +373,7 @@ class PipelineRuntimeConfig:
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
         ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
+        ball_smoothing = TemporalSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
         geometry = CameraGeometryConfig(**cast(dict[str, Any], dict(_mapping(value["camera_geometry"], name="camera_geometry"))))
@@ -397,7 +417,7 @@ class PipelineRuntimeConfig:
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']))
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

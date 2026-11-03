@@ -6,6 +6,7 @@ import inspect
 from collections.abc import Callable
 from dataclasses import fields, replace
 from typing import Literal, cast
+from unittest.mock import patch
 
 import pytest
 import torch
@@ -334,8 +335,6 @@ def test_dense_runtime_requires_attn_mask_and_prohibits_state_valid(
         )
 
 
-@pytest.mark.parametrize(("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)])
-@pytest.mark.parametrize("invocation", ["module", "direct", "update"])
 @pytest.mark.parametrize(
     ("case", "message"),
     [
@@ -346,21 +345,47 @@ def test_dense_runtime_requires_attn_mask_and_prohibits_state_valid(
         ("wrong_device", "same device as x"),
     ],
 )
-def test_dense_boundary_rejects_noncanonical_full_masks(
-    attention_type: DenseAttentionType,
-    n_kv_heads: int | None,
-    invocation: DenseInvocation,
+def test_dense_validator_rejects_noncanonical_full_masks(
     case: InvalidDenseMask,
     message: str,
 ) -> None:
-    block = TransformerBlock(
-        _block_config(attention_type, n_kv_heads=n_kv_heads)
-    ).eval()
-    x, freqs_cis, _ = _dense_inputs()
+    x = torch.randn(2, 5, 8)
     attn_mask = _invalid_dense_mask(case, x)
 
     with pytest.raises(ValueError, match=message):
-        _invoke_dense_block(block, invocation, x, freqs_cis, attn_mask)
+        TransformerBlock._validate_dense_attention_arguments(
+            x=x,
+            attn_mask=attn_mask,
+            state_valid=None,
+        )
+
+
+@pytest.mark.parametrize(("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)])
+@pytest.mark.parametrize("invocation", ["module", "direct", "update"])
+def test_dense_boundary_validates_before_computation(
+    attention_type: DenseAttentionType,
+    n_kv_heads: int | None,
+    invocation: DenseInvocation,
+) -> None:
+    x, freqs_cis, _ = _dense_inputs()
+    attn_mask = _invalid_dense_mask("float", x)
+    # Patch before construction so an entry binding a different validator fails.
+    with patch.object(
+        TransformerBlock,
+        "_validate_dense_attention_arguments",
+        wraps=TransformerBlock._validate_dense_attention_arguments,
+    ) as validate:
+        block = TransformerBlock(
+            _block_config(attention_type, n_kv_heads=n_kv_heads)
+        ).eval()
+        with (
+            patch.object(block, "_forward_update_computation") as computation,
+            pytest.raises(ValueError, match="dtype torch.bool"),
+        ):
+            _invoke_dense_block(block, invocation, x, freqs_cis, attn_mask)
+
+        validate.assert_called_once_with(x=x, attn_mask=attn_mask, state_valid=None)
+        computation.assert_not_called()
 
 
 @pytest.mark.parametrize(("attention_type", "n_kv_heads"), [("mha", None), ("gqa", 1)])
@@ -449,27 +474,13 @@ def test_direct_forward_matches_module_call_for_every_invalid_mask_combination(
     assert str(direct_error.value) == str(module_error.value)
 
 
-@pytest.mark.parametrize(
-    ("attention_type", "n_kv_heads"),
-    [("mha", None), ("gqa", 1), ("cswa", None)],
-)
-def test_direct_forward_matches_module_call_for_valid_arguments(
-    attention_type: AttentionType,
-    n_kv_heads: int | None,
-) -> None:
-    cswa = _cswa_config() if attention_type == "cswa" else None
-    block = TransformerBlock(
-        _block_config(attention_type, n_kv_heads=n_kv_heads, cswa=cswa)
-    ).eval()
-    x, freqs_cis, attn_mask = _dense_inputs()
+def test_cswa_direct_forward_matches_module_call_for_all_valid_states() -> None:
+    block = TransformerBlock(_block_config("cswa", cswa=_cswa_config())).eval()
+    x, freqs_cis, _ = _dense_inputs()
+    state_valid = torch.ones(2, 5, dtype=torch.bool)
 
-    if attention_type == "cswa":
-        state_valid = torch.ones(2, 5, dtype=torch.bool)
-        expected = block(x, freqs_cis=freqs_cis, state_valid=state_valid)
-        actual = block.forward(x, freqs_cis=freqs_cis, state_valid=state_valid)
-    else:
-        expected = block(x, freqs_cis=freqs_cis, attn_mask=attn_mask)
-        actual = block.forward(x, freqs_cis=freqs_cis, attn_mask=attn_mask)
+    expected = block(x, freqs_cis=freqs_cis, state_valid=state_valid)
+    actual = block.forward(x, freqs_cis=freqs_cis, state_valid=state_valid)
 
     torch.testing.assert_close(actual, expected, atol=0, rtol=0)
 

@@ -68,10 +68,21 @@ class TestAngularError:
         assert err.item() == pytest.approx(0.2, abs=1e-5)
         assert err.item() >= 0.0
 
-    def test_batched_shape(self) -> None:
-        pred = torch.randn(4, 5, 2)
-        target = torch.randn(4, 5, 2)
-        assert angular_error(pred, target).shape == (4, 5)
+    def test_batched_errors_preserve_leading_axes(self) -> None:
+        c = math.sqrt(0.5)
+        pred = torch.tensor(
+            [[[1, 0], [0, 1], [c, c]], [[0, -1], [-c, -c], [0.5, math.sqrt(3) / 2]]],
+            dtype=torch.float64,
+        )
+        target = torch.tensor(
+            [[[1, 0], [1, 0], [0, 1]], [[0, 1], [1, 0], [math.sqrt(3) / 2, 0.5]]],
+            dtype=torch.float64,
+        )
+        expected = torch.tensor(
+            [[0, math.pi / 2, math.pi / 4], [math.pi, 3 * math.pi / 4, math.pi / 6]],
+            dtype=torch.float64,
+        )
+        torch.testing.assert_close(angular_error(pred, target), expected)
 
 
 class TestSignedAngleAroundAxis:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.tennis_scene.pipeline.components.ball_points import BALL_POINTS_PORT
 from src.tennis_scene.pipeline.components.camera_geometry import (
     CameraGeometryConfig,
     CameraGeometryResult,
@@ -40,7 +41,7 @@ class CameraAlignmentOutput:
 def observation_ports(camera_ids: tuple[str, ...]) -> dict[str, InputPort]:
     return {"calibration": InputPort("local_court_calibration"), "identities": IDENTITIES_PORT,
         **{f"pose_{c}": InputPort("person_poses") for c in camera_ids},
-        **{f"ball_{c}": InputPort("ball_points", version=3) for c in camera_ids}}
+        **{f"ball_{c}": BALL_POINTS_PORT for c in camera_ids}}
 
 
 class CameraAlignmentModule:

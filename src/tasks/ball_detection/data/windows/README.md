@@ -5,11 +5,12 @@
 `all_frames.py`は、clip内のreference-only frameと大きいPTS gapを境界として、
 最大T以上の連続区間をすべて採る。プレイ密度・位置教師率では絞らない。
 `AllFrameWindowConfig`がパラメータの正本で、実行値を新schema
-`ball_all_frame_windows.v1`の`config`へ保存する。既定は最大T=pack長128、
+`ball_all_frame_windows.v2`の`config`へ保存する。既定は最大T=pack長128、
 pack開始stride16、frame_step=1、gap factor=2.5。Tはpack長を割り切る2以上の偶数とする。
 
 - 学習は区間内のpack長の列をstrideで置き、未登録の末尾開始位置を1回足す。
-  observedまたは確認済み不在が1枚以上あるpackだけを採用し、T枚ずつに分割する。
+  trainは単一observedが1枚以上あるpackだけを採用し、T枚ずつに分割する。
+  不在だけ・不在と未知だけのpackは学習候補から除外する。validation/testの共通区間・採点集合はこの条件で削らない。
   128枚なら32×4・64×2・128×1で同じframe出現列になる。全maskの子窓も残す。
 - 評価は学習packと独立に、共通区間の全frameをstride T/2＋末尾補完の窓で覆う。
   `(abs(2*frame-(2*start+T-1)), start)`が最小の窓がframeを所有する。
