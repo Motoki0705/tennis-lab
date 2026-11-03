@@ -180,5 +180,10 @@ v2 directoryは不変。照合runは `outputs/tennis_scene/evaluate/ball3d_compa
 既存のcold import2caseは123.87/114.75秒、全source監査は40.35秒で5秒目安を超える。
 新しいprocessでのimport順と全source/catalogの契約を検証する既存nodeであり、mockや対象削減で代替しない。
 追加したcomposition到達テストと関連135caseはすべて5秒以内、最大setupも1秒以内だった。
-DINOの指定nodeは旧CI・ローカルとも失敗しなかったので、条件付きのa8982a7e0は取り込んでいない。
+DINOの指定nodeは旧CI・ローカルでは成功したが、修正head 5c3627c3dのCI run 41654669072・CPUレーン9で
+`DINO functions already reference a different extension` が発生した。親の事前指示に従い、
+a8982a7e0の `tests/unit/submodules/models/dino/test_extension.py` の変更だけを同内容で取り込んだ。
+fake packageとともに先にimportされた子moduleのMSDA参照も退避・復元するテスト分離修正で、
+productionコードの変更はない。既存cacheなし/ありを含む同ファイルを再実行し、そのreceiptをci-fix-dino-testsへ保存した。
+実データを再照合したcommitからの追加変更はこのtestと記録だけで、v2不変の結論を維持する。
 push後の対象headの全CI結果はPR #1672へ記録し、人間の採否までmergeしない。

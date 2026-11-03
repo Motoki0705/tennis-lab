@@ -37,12 +37,23 @@
   },
   "unique_passed_nodes": 528,
   "dino_regression_passed_locally": true,
-  "dino_patch_applied": false,
-  "dino_patch_policy": "old CI and local test did not fail; a8982a7e0 not imported",
+  "dino_patch_applied": true,
+  "dino_patch_policy": "Applied exactly the specified file after run 41654669072 lane 9 exposed cached child-module state; no production changes.",
   "residual_rtol": 4.76837158203125e-07,
   "residual_atol": 0,
   "tolerance_at_20px": 9.5367431640625e-06,
   "prediction_verification_sha256": "92646404170b1ffd98109b67bcabcc35a458c96e53f220c0492c4997bb9d0b36",
   "old_failed_head": "87ed8239524925603f6473064937782bc24a812d",
-  "old_ci_run": 41603205543
+  "old_ci_run": 41603205543,
+  "dino_patch_commit": "a8982a7e07b803d1c954a81dea54ddded1f0d701",
+  "intermediate_ci_failure": {
+    "head": "5c3627c3dbd67c2ae7ebab21d429efd4d7d16607",
+    "run_id": 41654669072,
+    "job_id": 125981895996,
+    "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+    "message": "DINO functions already reference a different extension; start a fresh process"
+  },
+  "dino_patch_test_count": 28,
+  "dino_patch_test_wrapper_seconds": 11.485179459967185,
+  "dino_patch_test_exit_code": 0
 }
