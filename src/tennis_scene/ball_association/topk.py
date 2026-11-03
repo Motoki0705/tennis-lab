@@ -42,7 +42,9 @@ class TopKConfig:
                 raise ValueError(f"{name} must be an integer in [{lower},{upper}]")
         for name in self.__dataclass_fields__:
             value = getattr(self, name)
-            if type(value) is not int and (not math.isfinite(value) or value < 0):
+            if name in {"top_k", "max_hypotheses", "beam_width", "max_missing_frames"}:
+                continue
+            if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be finite and nonnegative")
         for name in ("reprojection_px", "reprojection_sigma_px", "max_speed_mps",
                      "speed_scale_mps", "acceleration_scale_mps2"):

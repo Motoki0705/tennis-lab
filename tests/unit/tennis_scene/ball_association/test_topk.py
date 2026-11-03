@@ -91,7 +91,8 @@ def test_zero_score_is_not_a_candidate_threshold():
 
 
 @pytest.mark.parametrize("field,value", [("top_k", 9), ("beam_width", 0), ("max_missing_frames", -1),
-    ("reprojection_px", 0.), ("score_weight", float("nan")), ("top_k", True)])
+    ("reprojection_px", 0.), ("score_weight", float("nan")), ("top_k", True),
+    ("score_weight", -1), ("acceleration_weight", True)])
 def test_invalid_configuration_or_axes_fail(field, value):
     with pytest.raises(ValueError, match=field):
         replace(TopKConfig(), **{field: value})
