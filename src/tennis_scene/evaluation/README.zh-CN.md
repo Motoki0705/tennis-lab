@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-`ball3d/` 使用相同的历史component，在CPU上重放各方法，并用独立的2D观测评分。
+`ball3d/` 使用相同的历史component，在CPU上重放各方法，并用用户提供的2D参考评分。
 它不改变标准pipeline的默认行为，也不执行检测器推理。
 
 | 模块 | 契约 |
@@ -11,7 +11,7 @@
 | `contracts.py` | 仅含选定视角的方法输入与带mask的3D结果 |
 | `baseline.py` | 从保存的检测观测重放consensus、LOESS、三角测量，并单独核对原始热图解码 |
 | `runner.py` | 全视角及三个双视角LOVO折，带类型和checksum的保存/加载 |
-| `annotations.py` | 仅供评分的原视频像素标签、复核状态和来源 |
+| `annotations.py` | 将公共reader选择结果转换为评分专用数组 |
 | `scoring.py` | 分段重投影、覆盖率、运动/事件诊断及标注几何参考 |
 | [比较可视化](../visualization/ball3d/) | N种方法的RGB叠加、俯视/侧视轨迹、图表、裁剪图和可携带HTML |
 
@@ -51,35 +51,41 @@ baseline从保存的解码/gate后观测重新计算production consensus、LOESS
 
 ## 评分标签
 
-`load_annotations` 读取 `tennis_lab_ball2d_annotations.v1` JSON：
+`annotations.py` 是严格的 [user-reference reader](../ground_truth/README.md) 的轻量数组适配层。
+`load_annotations(path, bundle, expected_sha256=...)` 从已验证的bundle和视频哈希构造
+`ReferenceIdentity`，调用 `load_user_reference`，并通过 `UserReference.select` 明确选择camera/frame轴。
+不维护第二套JSON schema或来源验证。原始CSV必须与参考JSON一起保留。
 
-- `clip_id`、有序 `camera_ids`、`num_frames`、`fps`、`source_size_wh`、按camera索引的
-  `video_sha256`，以及含 `kind: direct_video_review`、`model`、`effort` 的 `provenance`。
-- `observations` 包含 `camera_id`、`frame_index`、`status` 和可选 `uv_px`、`reviewed`、`evidence`。
-  状态为 `observed`、`occluded`、`out_of_frame`、`unknown`、`unreviewed`。
-  已复核状态需要证据；只有observed有坐标，未列出的记录保持unreviewed。
-- 可选 `events` 含 `frame_index`、`kind`（`bounce`/`hit`）和 `evidence`。
+评分仅使用 `valid_for_scoring`。用户批准的 `estimated` 点参与评分，并保留其类别，
+不得改名为 `observed`。缺失和排除的坐标保持NaN，不做插值。
+每个fold和时间段均报告 `all`、`observed`、`estimated` 的分布、可评分/已评分数量和覆盖率。
+保留按camera记录的全部事件原行、注释和估计区间。
 
-拒绝重复、错误source/轴、未复核观测、图像外坐标及检测器/测试fixture来源。
-schema记录复核证据，但本身不能证明声称的图像复核确实发生。单元fixture不能充当实际评估标签。
+默认时间段为调参 `[0,505)`、主要评估 `[505,1010)` 和补充的全片段。
+LOVO只评估被排除camera，汇总每个残差，而不平均各fold的中位数。
+指标包括中位数/p90、严格大于20px的比例、全视角误差、有效3D比例、粗大重投影frame比例、
+相邻位移/加速度及异常比例、事件窗口误差和完整运行CPU时间。
+粗大frame比例的分母是可评分frame，分子是至少一个残差大于20px的frame；没有独立的3D真值。
+运动计算不跨缺失frame或时间段边界。默认诊断阈值65m/s、500m/s²、事件半径3frame被记录，未在后半段调参。
 
-默认前半 `[0,505)` 用于调整，后半 `[505,1010)` 为主要评估，全片仅作参考。
-只评分可见observed标签；LOVO仅评分被排除视角。合并每个残差，不平均各折中位数。
-输出中位数/p90、严格超过20px的比例、observed/已评分数量与覆盖率、全视角重投影、有效3D率、
-逐frame粗大重投影率、相邻位移/加速度、事件附近误差及完整运行时间。
-运动stencil不跨越缺失或分段边界。默认诊断阈值为65m/s、500m/s²和事件半径3frame，
-会被记录，未在评估后半段调整。
+事件指标使用每种事件的原camera行窗口的并集，即使同一事件的记录相差1frame，也只计一次残差。
+`source_row_count` 不表示物理事件数量；`physical_event_count` 保持null，不推测事件对应关系。
 
-`annotation_oracle` 是明确的评分专用路径，每折仅使用保留视角的标签三角测量。
-近似标定和标签噪声使它只能作为几何参考，不能保证数学误差下界。
-缺少标签/事件时返回不可用与覆盖率，不制造零值；没有独立3D真值就不能测量独立3D精度。
+`annotation_oracle` 仅供评分，在同一固定camera下对保留camera的可评分参考（含估计）做三角测量，
+不会调用预测方法。近似标定和参考噪声使它成为几何参考，而不是数学上保证的误差下限。
+
+可视化支持N种方法：绿色十字表示直接观测，白色菱形表示批准的估计，彩色圆表示预测重投影。
+裁剪图按LOVO误差选择，并用彩色斜十字显示LOVO预测。轨迹不跨缺失frame连接。
+HTML嵌入视频、图、表和指标，支持单文件查看；相邻文件仅用于可选下载。
+复用通用视频reader和frame选择。`MultiviewSceneRenderer` 要求SMPL/SceneResult，
+因此仅比较ball时单独组合俯视/侧视面板，不生成虚构的人体mesh。
 
 ## 复现与测试
 
 clip专用入口、测试设计和实际证据位于
 [`knowledge/runs/run-ball3d-evaluation-foundation-20261103`](../../../knowledge/runs/run-ball3d-evaluation-foundation-20261103/)。
 把repo加入 `PYTHONPATH` 后运行 `run.py --help`。`bundle` 和 `compare` 要求显式本地输入与新输出目录。
-仅在独立直接复核标签到达后添加 `--annotations`。实际资产、全片解码与重放验证独立于轻量CI fixture。
+compare需要可信记录中的 `--bundle-sha256`、`--annotations` 和 `--annotations-sha256`，以及核对历史权重的 `--checkpoints`。实际资产、全片解码与重放验证独立于轻量CI fixture。
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 0 \

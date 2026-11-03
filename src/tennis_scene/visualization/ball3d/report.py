@@ -30,8 +30,14 @@ from src.utils.video.reader import RandomAccessVideoReader
 from .rendering import method_colors
 
 
-def plot_comparison(runs: Mapping[str, Sequence[MethodRun]], inputs: MethodInput, output: Path,
-                    annotations: Ball2DAnnotations | None = None, *, split_frame: int = 505) -> None:
+def plot_comparison(
+    runs: Mapping[str, Sequence[MethodRun]],
+    inputs: MethodInput,
+    output: Path,
+    annotations: Ball2DAnnotations | None = None,
+    *,
+    split_frame: int = 505,
+) -> None:
     figure = Figure(figsize=(12, 11), dpi=120)
     FigureCanvasAgg(figure)
     axes = figure.subplots(3, 2)
@@ -46,64 +52,200 @@ def plot_comparison(runs: Mapping[str, Sequence[MethodRun]], inputs: MethodInput
         motion = motion_samples(result, inputs.fps)
         step = np.full(inputs.num_frames, np.nan)
         step[motion["step_frames"]] = motion["step_m"]
-        axes[1, 0].plot(inputs.frame_indices, step, label=name, color=color, linewidth=.7)
-        axes[2, 0].hist(motion["step_m"], bins=35, histtype="step", label=name, color=color)
+        axes[1, 0].plot(
+            inputs.frame_indices, step, label=name, color=color, linewidth=0.7
+        )
+        axes[2, 0].hist(
+            motion["step_m"], bins=35, histtype="step", label=name, color=color
+        )
         if annotations is not None:
             errors = []
             for fold in method_runs:
                 if fold.held_out_camera is not None:
                     samples = error_samples(fold, inputs, annotations)
-                    axes[1, 1].scatter(samples["frame_index"], samples["error_px"], s=3, alpha=.5, color=color)
+                    axes[1, 1].scatter(
+                        samples["frame_index"],
+                        samples["error_px"],
+                        s=3,
+                        alpha=0.5,
+                        color=color,
+                    )
                     errors.extend(samples["error_px"].tolist())
             axes[2, 1].hist(errors, bins=35, histtype="step", label=name, color=color)
         else:
             acceleration = np.full(inputs.num_frames, np.nan)
             acceleration[motion["acceleration_frames"]] = motion["acceleration_mps2"]
-            axes[2, 1].plot(inputs.frame_indices, acceleration, label=name, color=color, linewidth=.7)
-    axes[0, 0].set(xlabel="Court X (m)", ylabel="Court Y (m)", title="Top view: explicit 3D gaps")
-    axes[0, 1].set(xlabel="Court Y (m)", ylabel="Court Z (m)", title="Side view: explicit 3D gaps")
-    axes[1, 0].set(xlabel="Source frame", ylabel="Adjacent step (m)", title="Motion diagnostic (not accuracy)")
-    axes[1, 0].axvline(split_frame, linestyle="--", color="gray", linewidth=.7)
+            axes[2, 1].plot(
+                inputs.frame_indices,
+                acceleration,
+                label=name,
+                color=color,
+                linewidth=0.7,
+            )
+    axes[0, 0].set(
+        xlabel="Court X (m)", ylabel="Court Y (m)", title="Top view: explicit 3D gaps"
+    )
+    axes[0, 1].set(
+        xlabel="Court Y (m)", ylabel="Court Z (m)", title="Side view: explicit 3D gaps"
+    )
+    axes[1, 0].set(
+        xlabel="Source frame",
+        ylabel="Adjacent step (m)",
+        title="Motion diagnostic (not accuracy)",
+    )
+    axes[1, 0].axvline(split_frame, linestyle="--", color="gray", linewidth=0.7)
     if annotations is not None:
-        axes[1, 1].set(xlabel="Source frame", ylabel="Held-out error (px)", title="LOVO: directly observed labels only")
-        axes[2, 1].set(xlabel="Held-out error (px)", ylabel="Count", title="LOVO residual distribution")
+        axes[1, 1].set(
+            xlabel="Source frame",
+            ylabel="Held-out error (px)",
+            title="LOVO: observed + approved estimated references",
+        )
+        axes[1, 1].axvline(split_frame, linestyle="--", color="gray", linewidth=0.7)
+        axes[2, 1].set(
+            xlabel="Held-out error (px)",
+            ylabel="Count",
+            title="LOVO residual distribution",
+        )
     else:
-        axes[1, 1].text(.5, .5, "GT unavailable\nLOVO accuracy / events / oracle not measured",
-                        ha="center", va="center", transform=axes[1, 1].transAxes)
+        axes[1, 1].text(
+            0.5,
+            0.5,
+            "GT unavailable\nLOVO accuracy / events / oracle not measured",
+            ha="center",
+            va="center",
+            transform=axes[1, 1].transAxes,
+        )
         axes[1, 1].set_axis_off()
-        axes[2, 1].set(xlabel="Source frame", ylabel="Acceleration (m/s²)", title="Motion diagnostic (not accuracy)")
-    axes[2, 0].set(xlabel="Adjacent step (m)", ylabel="Count", title="Motion distribution (not accuracy)")
+        axes[2, 1].set(
+            xlabel="Source frame",
+            ylabel="Acceleration (m/s²)",
+            title="Motion diagnostic (not accuracy)",
+        )
+    axes[2, 0].set(
+        xlabel="Adjacent step (m)",
+        ylabel="Count",
+        title="Motion distribution (not accuracy)",
+    )
     for axis in axes.flat:
-        axis.grid(alpha=.2)
+        axis.grid(alpha=0.2)
     axes[0, 0].legend(fontsize=8)
     figure.tight_layout()
     figure.savefig(output)
     figure.clear()
 
 
-def render_extremes(runs: Mapping[str, Sequence[MethodRun]], inputs: MethodInput,
-                    videos: Mapping[str, Path], output: Path, annotations: Ball2DAnnotations | None = None,
-                    *, count: int = 6) -> dict[str, Any]:
-    full = {name: next(r for r in values if r.held_out_camera is None) for name, values in runs.items()}
+def plot_metrics_table(scores: dict[str, Any], output: Path) -> None:
+    """Export the same split-wise comparison as a standalone figure for N methods."""
+    rows = []
+    for name, method in scores["methods"].items():
+        for segment in ("tuning", "evaluation", "all"):
+            full = method["folds"]["all_views"][segment]
+            lovo = method["lovo_reprojection_px"][segment]
+            reproj = full["reprojection_px"]
+            values = [
+                name,
+                segment,
+                None if lovo is None else lovo["median"],
+                None if lovo is None else lovo["p90"],
+                None if lovo is None else lovo["above_threshold_rate"],
+                full["valid_3d_rate"],
+                None if reproj is None else reproj["median"],
+                full["gross_reprojection_frame_rate"],
+                full["speed_mps"]["above_threshold_rate"],
+                full["acceleration_mps2"]["above_threshold_rate"],
+            ]
+            rows.append(
+                [
+                    "n/a"
+                    if x is None
+                    else f"{x:.4g}"
+                    if isinstance(x, (float, int))
+                    else x
+                    for x in values
+                ]
+            )
+    figure = Figure(figsize=(16, 1.5 + 0.35 * len(rows)), dpi=110)
+    FigureCanvasAgg(figure)
+    axis = figure.subplots()
+    axis.set_axis_off()
+    table = axis.table(
+        cellText=rows,
+        colLabels=[
+            "Method",
+            "Segment",
+            "LOVO median\npx",
+            "LOVO p90\npx",
+            f"LOVO >{scores['config']['gross_reprojection_px']:g}px\nrate",
+            "3D valid\nrate",
+            "All median\npx",
+            "Gross frame\nrate",
+            "Speed outlier\nrate",
+            "Accel outlier\nrate",
+        ],
+        loc="center",
+        cellLoc="center",
+    )
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 1.7)
+    table.auto_set_column_width([0, 1])
+    axis.set_title(
+        "Split-wise reference errors and motion diagnostics (rates in [0,1])", pad=16
+    )
+    figure.tight_layout()
+    figure.savefig(output)
+    figure.clear()
+
+
+def render_extremes(
+    runs: Mapping[str, Sequence[MethodRun]],
+    inputs: MethodInput,
+    videos: Mapping[str, Path],
+    output: Path,
+    annotations: Ball2DAnnotations | None = None,
+    *,
+    count: int = 6,
+) -> dict[str, Any]:
+    full = {
+        name: next(r for r in values if r.held_out_camera is None)
+        for name, values in runs.items()
+    }
     ranking: dict[int, float] = {}
     basis = "largest adjacent 3D movement; not accuracy errors"
     if annotations is not None:
-        basis = "largest observed-label reprojection error in full-view results"
-        for run in full.values():
-            samples = error_samples(run, inputs, annotations)
-            for frame, value in zip(samples["frame_index"], samples["error_px"], strict=True):
-                ranking[int(frame)] = max(ranking.get(int(frame), 0.), float(value))
+        basis = "largest held-out user-reference reprojection error across LOVO folds"
+        for method_runs in runs.values():
+            for run in method_runs:
+                if run.held_out_camera is None:
+                    continue
+                samples = error_samples(run, inputs, annotations)
+                for frame, value in zip(
+                    samples["frame_index"], samples["error_px"], strict=True
+                ):
+                    ranking[int(frame)] = max(
+                        ranking.get(int(frame), 0.0), float(value)
+                    )
     else:
         for run in full.values():
             motion = motion_samples(run.result, inputs.fps)
-            for frame, value in zip(motion["step_frames"], motion["step_m"], strict=True):
-                ranking[int(frame)] = max(ranking.get(int(frame), 0.), float(value))
+            for frame, value in zip(
+                motion["step_frames"], motion["step_m"], strict=True
+            ):
+                ranking[int(frame)] = max(ranking.get(int(frame), 0.0), float(value))
     selected = sorted(ranking, key=lambda frame: (-ranking[frame], frame))[:count]
     if not selected:
-        return {"selection_basis": basis, "frames": [], "status": "no_valid_samples_for_crops"}
+        return {
+            "selection_basis": basis,
+            "frames": [],
+            "status": "no_valid_samples_for_crops",
+        }
     readers = {camera: RandomAccessVideoReader(path) for camera, path in videos.items()}
     colors = method_colors(tuple(full))
-    projections = {(name, c): project_result(inputs, run.result, c) for name, run in full.items() for c in inputs.camera_ids}
+    projections = {
+        (name, c): project_result(inputs, run.result, c)
+        for name, run in full.items()
+        for c in inputs.camera_ids
+    }
     canvas: NDArray[np.uint8] = np.full((len(selected) * 240, 3 * 320, 3), 23, np.uint8)
     records = []
     try:
@@ -116,25 +258,91 @@ def render_extremes(runs: Mapping[str, Sequence[MethodRun]], inputs: MethodInput
                     uv, valid = projections[name, camera]
                     if valid[frame]:
                         center, center_source = uv[frame], "method_projection"
-                        cv2.circle(image, tuple(np.rint(center).astype(int)), 5, colors[name], 2, cv2.LINE_AA)
-                if annotations is not None and annotations.observed[i, frame]:
-                    center, center_source = annotations.uv_px[i, frame], "observed_annotation"
-                    cv2.drawMarker(image, tuple(np.rint(center).astype(int)), (60, 255, 60), cv2.MARKER_CROSS, 14, 2)
+                        cv2.circle(
+                            image,
+                            tuple(np.rint(center).astype(int)),
+                            5,
+                            colors[name],
+                            2,
+                            cv2.LINE_AA,
+                        )
+                if annotations is not None and annotations.valid_for_scoring[i, frame]:
+                    observed = annotations.observed[i, frame]
+                    center, center_source = (
+                        annotations.uv_px[i, frame],
+                        str(annotations.reference_kind[i, frame]) + "_reference",
+                    )
+                    cv2.drawMarker(
+                        image,
+                        tuple(np.rint(center).astype(int)),
+                        (60, 255, 60) if observed else (255, 255, 255),
+                        cv2.MARKER_CROSS if observed else cv2.MARKER_DIAMOND,
+                        14,
+                        2,
+                    )
+                for name, method_runs in runs.items():
+                    fold = next(
+                        run for run in method_runs if run.held_out_camera == camera
+                    )
+                    uv, valid = project_result(inputs, fold.result, camera)
+                    if valid[frame]:
+                        cv2.drawMarker(
+                            image,
+                            tuple(np.rint(uv[frame]).astype(int)),
+                            colors[name],
+                            cv2.MARKER_TILTED_CROSS,
+                            12,
+                            2,
+                        )
                 width, height = min(160, image.shape[1]), min(120, image.shape[0])
-                x = int(np.clip(round(float(center[0])) - width // 2, 0, image.shape[1] - width))
-                y = int(np.clip(round(float(center[1])) - height // 2, 0, image.shape[0] - height))
-                crop = cv2.resize(image[y:y + height, x:x + width], (320, 240), interpolation=cv2.INTER_NEAREST)
-                cv2.putText(crop, f"{camera} / frame {frame}", (8, 22), cv2.FONT_HERSHEY_SIMPLEX, .55,
-                            (255, 255, 255), 1, cv2.LINE_AA)
-                canvas[row * 240:(row + 1) * 240, i * 320:(i + 1) * 320] = crop
-                records.append({"camera_id": camera, "frame_index": frame, "crop_xywh": [x, y, width, height],
-                                "center_source": center_source, "ranking_value": ranking[frame]})
+                x = int(
+                    np.clip(
+                        round(float(center[0])) - width // 2, 0, image.shape[1] - width
+                    )
+                )
+                y = int(
+                    np.clip(
+                        round(float(center[1])) - height // 2,
+                        0,
+                        image.shape[0] - height,
+                    )
+                )
+                crop = cv2.resize(
+                    image[y : y + height, x : x + width],
+                    (320, 240),
+                    interpolation=cv2.INTER_NEAREST,
+                )
+                cv2.putText(
+                    crop,
+                    f"{camera} / f{frame} | max {ranking[frame]:.1f}{'px' if annotations is not None else 'm'}",
+                    (8, 22),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.45,
+                    (255, 255, 255),
+                    1,
+                    cv2.LINE_AA,
+                )
+                canvas[row * 240 : (row + 1) * 240, i * 320 : (i + 1) * 320] = crop
+                records.append(
+                    {
+                        "camera_id": camera,
+                        "frame_index": frame,
+                        "crop_xywh": [x, y, width, height],
+                        "center_source": center_source,
+                        "ranking_value": ranking[frame],
+                    }
+                )
     finally:
         for reader in readers.values():
             reader.close()
     if not cv2.imwrite(str(output), canvas):
         raise RuntimeError("Failed to save extreme-frame crops")
-    return {"selection_basis": basis, "frames": selected, "crops": records, "status": "generated"}
+    return {
+        "selection_basis": basis,
+        "frames": selected,
+        "crops": records,
+        "status": "generated",
+    }
 
 
 class _References(HTMLParser):
@@ -144,7 +352,11 @@ class _References(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         for key, value in attrs:
-            if key in {"src", "href"} and value is not None and not value.startswith(("data:", "#")):
+            if (
+                key in {"src", "href"}
+                and value is not None
+                and not value.startswith(("data:", "#"))
+            ):
                 self.paths.append(value)
 
 
@@ -154,44 +366,106 @@ def broken_html_references(path: Path) -> list[str]:
     return [ref for ref in references.paths if not (path.parent / ref).is_file()]
 
 
-def write_report(directory: Path, scores: dict[str, Any], *, video: Path, figure: Path,
-                  crops: Path | None, verification: dict[str, Any]) -> Path:
+def write_report(
+    directory: Path,
+    scores: dict[str, Any],
+    *,
+    video: Path,
+    figure: Path,
+    crops: Path | None,
+    verification: dict[str, Any],
+    table_figure: Path | None = None,
+) -> Path:
     """Embed media and CSS; only optional download links refer to sibling files."""
+
     def embed(path: Path, mime: str) -> str:
-        return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:{mime};base64," + base64.b64encode(path.read_bytes()).decode(
+            "ascii"
+        )
 
     def number(value: Any) -> str:
         return "unavailable" if value is None else f"{value:.4g}"
 
-    rows = []
+    rows, breakdown_rows = [], []
     for name, method in scores["methods"].items():
         for segment in ("tuning", "evaluation", "all"):
             main = method["lovo_reprojection_px"][segment]
             validity = method["folds"]["all_views"][segment]["valid_3d_rate"]
-            values = [html.escape(name), segment, number(None if main is None else main["median"]),
-                      number(None if main is None else main["p90"]),
-                      number(None if main is None else main["above_threshold_rate"]), number(validity)]
-            rows.append("<tr>" + "".join(f"<td>{value}</td>" for value in values) + "</tr>")
-    status = "Direct-video labels supplied; see provenance and coverage below." if scores["annotations"] else (
-        "GT unavailable. Accuracy, observed-label LOVO, events and annotation oracle have not been measured. "
-        "The projections and motion diagnostics below are predictions, not ground truth.")
+            values = [
+                html.escape(name),
+                segment,
+                number(None if main is None else main["median"]),
+                number(None if main is None else main["p90"]),
+                number(None if main is None else main["above_threshold_rate"]),
+                number(validity),
+            ]
+            rows.append(
+                "<tr>" + "".join(f"<td>{value}</td>" for value in values) + "</tr>"
+            )
+            for kind in ("observed", "estimated"):
+                summaries = method["lovo_reprojection_by_reference_kind"][segment]
+                summary = None if summaries is None else summaries[kind]
+                values = [
+                    html.escape(name),
+                    segment,
+                    kind,
+                    number(None if summary is None else summary["median"]),
+                    number(None if summary is None else summary["p90"]),
+                    number(
+                        None if summary is None else summary["above_threshold_rate"]
+                    ),
+                    number(None if summary is None else summary["count"]),
+                    number(None if summary is None else summary["label_count"]),
+                    number(
+                        None if summary is None else summary["scored_label_coverage"]
+                    ),
+                ]
+                breakdown_rows.append(
+                    "<tr>" + "".join(f"<td>{value}</td>" for value in values) + "</tr>"
+                )
+    status = (
+        "User reference supplied: directly observed and user-approved estimated coordinates are both scored; see separate breakdowns."
+        if scores["annotations"]
+        else (
+            "GT unavailable. Accuracy, observed-label LOVO, events and annotation oracle have not been measured. "
+            "The projections and motion diagnostics below are predictions, not ground truth."
+        )
+    )
     split = scores["config"]["split_frame"]
-    stop = next(iter(scores["methods"].values()))["folds"]["all_views"]["all"]["frames"][1]
+    stop = next(iter(scores["methods"].values()))["folds"]["all_views"]["all"][
+        "frames"
+    ][1]
     threshold = scores["config"]["gross_reprojection_px"]
-    crop_html = "" if crops is None else f'<h2>Selected source crops</h2><img alt="Source crops" src="{embed(crops, "image/png")}">'
+    crop_html = (
+        ""
+        if crops is None
+        else f'<h2>Selected source crops</h2><img alt="Source crops" src="{embed(crops, "image/png")}">'
+    )
+    table_html = (
+        ""
+        if table_figure is None
+        else f'<h2>Split-wise metric table</h2><img alt="Metric table" src="{embed(table_figure, "image/png")}">'
+    )
     report = f'''<!doctype html><html lang="en"><meta charset="utf-8"><title>Ball 3D comparison</title>
 <style>body{{font:16px system-ui;max-width:1250px;margin:2em auto;padding:0 1em;background:#111820;color:#e8edf1}}
 img,video{{width:100%;height:auto}}table{{border-collapse:collapse;width:100%}}td,th{{padding:.5em;border:1px solid #536170}}
 pre{{white-space:pre-wrap;overflow-wrap:anywhere}}a{{color:#95d0ff}}.status{{padding:1em;background:#293846}}</style>
 <h1>Ball 3D: fixed-input CPU comparison</h1><p class="status">{html.escape(status)}</p>
 <p>Tuning: [0,{split}). Primary evaluation: [{split},{stop}). Whole clip is supplementary. Missing labels/3D are never filled for scoring.
-Green crosses are reviewed 2D labels; coloured circles and court traces are method predictions. Each LOVO run sees only two cameras.</p>
+Green crosses are directly observed references; white diamonds are approved estimates. Coloured circles and court traces are method predictions.
+In crops, coloured crosses are LOVO predictions and rings are all-view predictions. Each LOVO run sees only two cameras.
+Camera-specific event rows retain their notes and one-frame differences. Event errors use the union of windows; rows are not counted as physical events.
+The annotation oracle uses the same approximate cameras and is a geometric reference, not a guaranteed mathematical lower bound.</p>
 <table><thead><tr><th>Method</th><th>Segment</th><th>LOVO median px</th><th>LOVO p90 px</th><th>LOVO &gt;{threshold:g}px rate</th><th>Valid 3D rate</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table>
-<h2>Comparison video</h2><video controls preload="metadata" src="{embed(video, 'video/mp4')}"></video>
-<h2>Trajectories and diagnostics</h2><img alt="Comparison plots" src="{embed(figure, 'image/png')}">{crop_html}
+<tbody>{"".join(rows)}</tbody></table>
+<details><summary>LOVO reference-kind breakdown and coverage</summary><table><thead><tr><th>Method</th><th>Segment</th><th>Reference kind</th>
+<th>Median px</th><th>p90 px</th><th>&gt;{threshold:g}px rate</th><th>Scored</th><th>Eligible</th><th>Coverage</th></tr></thead>
+<tbody>{"".join(breakdown_rows)}</tbody></table></details>{table_html}
+<h2>Comparison video</h2><video controls preload="metadata" src="{embed(video, "video/mp4")}"></video>
+<h2>Trajectories and diagnostics</h2><img alt="Comparison plots" src="{embed(figure, "image/png")}">{crop_html}
 <h2>Provenance and verification</h2><pre>{html.escape(json.dumps(verification, ensure_ascii=False, indent=2))}</pre>
 <details><summary>Complete metrics, thresholds and label coverage</summary><pre>{html.escape(json.dumps(scores, ensure_ascii=False, indent=2))}</pre></details>
+<p>Metrics are embedded above; sibling files provide optional downloads.</p>
 <p><a href="scores.json">Metrics JSON</a> · <a href="comparison.mp4">Video download</a></p></html>'''
     write_json_atomic(directory / "scores.json", scores)
     path = directory / "index.html"

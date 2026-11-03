@@ -3,7 +3,7 @@
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 `ball3d/` compares reconstruction methods on the same historical component
-artifacts. It performs CPU replay and independent 2D scoring. It does not change
+artifacts. It performs CPU replay and user-reference 2D scoring. It does not change
 the standard pipeline or execute detector inference.
 
 | Module | Contract |
@@ -12,7 +12,7 @@ the standard pipeline or execute detector inference.
 | `contracts.py` | Selected-view method inputs and masked 3D results |
 | `baseline.py` | Replay pinned detector observations through production consensus, LOESS and triangulation; independently check native-map decoding |
 | `runner.py` | Run all three views and each of the three two-view LOVO folds; save/load typed, checksummed results |
-| `annotations.py` | Load scoring-only native-pixel labels, explicit review states and provenance |
+| `annotations.py` | Adapt strict user-reference selections into scoring-only arrays |
 | `scoring.py` | Split-aware reprojection, coverage, motion/event diagnostics and the annotation-only geometric reference |
 | [Comparison visualization](../visualization/ball3d/) | N-method RGB overlays, top/side trajectories, figures, crops and portable HTML |
 
@@ -67,47 +67,56 @@ numerical tolerances and bitwise equality separately. `without_loess` retains th
 same consensus mask and raw accepted detector coordinates, isolating LOESS rather
 than changing which observations are accepted.
 
-## Scoring labels
+## Scoring reference
 
-`load_annotations` accepts `tennis_lab_ball2d_annotations.v1` JSON with:
+`annotations.py` is a thin adapter over the strict [user-reference reader](../ground_truth/README.md).
+`load_annotations(path, bundle, expected_sha256=...)` builds `ReferenceIdentity` from
+verified bundle inputs and video hashes, calls `load_user_reference`, and selects
+explicit camera/frame axes through `UserReference.select`. There is no second JSON
+schema or provenance validator. Source CSVs must remain beside the reference JSON.
 
-- `clip_id`, ordered `camera_ids`, `num_frames`, `fps`, `source_size_wh`,
-  `video_sha256` keyed by camera, and `provenance` containing
-  `kind: direct_video_review`, `model` and `effort`.
-- `observations`: records with `camera_id`, `frame_index`, `status`, optional
-  `uv_px`, `reviewed` and `evidence`. States are `observed`, `occluded`,
-  `out_of_frame`, `unknown`, `unreviewed`. Reviewed states require evidence;
-  only observed points have coordinates. Missing records remain unreviewed.
-- Optional `events`: `frame_index`, `kind` (`bounce`/`hit`), `evidence`.
-
-Duplicate records, wrong sources/axes, unreviewed observed points, outside-image
-coordinates and detector/test-fixture provenance are rejected. This schema records
-review evidence; it cannot establish the truth of a claimed image review by itself.
-Unit-test fixtures are not real evaluation labels.
+Only `valid_for_scoring` controls scoring. Approved `estimated` points are included
+and retain their kind; they are never renamed `observed`. Missing/excluded coordinates
+remain NaN and are never interpolated. Every fold and segment reports `all`, `observed`
+and `estimated` distributions, eligible/scored counts and coverage. Original camera
+specific event rows, notes and estimation segments remain in the scoring report.
 
 The default split is tuning `[0,505)`, primary evaluation `[505,1010)`, and a
-supplementary whole-clip result. Only observed 2D labels are scored. LOVO scores the
-excluded view and pools individual residuals across folds; it never averages fold
-medians. Outputs include median/p90, fraction strictly above 20 px, observed/scored
-counts and coverage, all-view residuals, valid-3D rate, frame gross reprojection
-rate, adjacent motion/acceleration, event windows and full-run runtime. Motion
-stencils cannot cross missing frames or split boundaries. Default diagnostic
-thresholds are 65 m/s, 500 m/s² and event radius 3 frames; these are recorded and
-have not been tuned on the evaluation half.
+supplementary whole-clip result. LOVO scores only the excluded camera, pooling
+individual residuals across folds rather than averaging medians. Metrics include
+median/p90, fraction strictly above 20 px, all-view errors, valid-3D rate, gross
+reprojection frame rate, adjacent motion/acceleration and their outlier rates,
+event-window errors and full-run CPU time. Gross frame rate means any scored
+reprojection above 20 px divided by frames with a scored projection; independent
+3D truth is unavailable. Motion stencils never cross missing frames or split boundaries.
+Diagnostic defaults are 65 m/s, 500 m/s² and event radius 3 frames, recorded without
+tuning on the evaluation half.
 
-`annotation_oracle` is an explicit scoring-only path: each fold triangulates only
-retained-view labels. Approximate calibration and noisy labels mean it is a
-geometric reference, not a guaranteed mathematical error lower bound. Missing
-labels/events produce unavailable values and coverage, never manufactured zeros.
-Independent 3D accuracy is unavailable without independent 3D truth.
+Event metrics use the union of the original camera-row windows for each kind.
+A residual contributes once, including when two rows describe the same event
+with a one-frame difference. `source_row_count` is not a physical event count;
+`physical_event_count` is deliberately unavailable. Source notes remain intact.
+
+`annotation_oracle` is scoring only: each fold triangulates the scoreable labels
+of its retained cameras, including approved estimates, with the same fixed cameras.
+It never calls a prediction method. Approximate calibration and noisy references
+make it a geometric reference, not a guaranteed mathematical lower bound.
+
+Visualization supports N methods. Source overlays use green crosses for observed
+references and white diamonds for approved estimates; predictions use coloured rings.
+Crops rank held-out errors and also show LOVO crosses. Trajectories never connect
+across missing frames. The HTML embeds media, figures, tables and metrics for portable
+viewing; sibling downloads are optional. Shared video readers/frame selection are
+reused. `MultiviewSceneRenderer` requires SMPL/SceneResult, so the ball-only comparison
+composes its own top/side panels without inventing player meshes.
 
 ## Reproduction and tests
 
 The clip-specific entrypoint, test design and actual evidence live in
 [`knowledge/runs/run-ball3d-evaluation-foundation-20261103`](../../../knowledge/runs/run-ball3d-evaluation-foundation-20261103/).
 Run `run.py --help` with the repository on `PYTHONPATH`; `bundle` and `compare`
-require explicit local inputs and new output directories. Add `--annotations`
-only when independently reviewed labels are available. Real assets, full video
+require explicit local inputs and new output directories. The compare command requires `--bundle-sha256`, `--annotations` and
+`--annotations-sha256` from the trusted input record, plus `--checkpoints` for the historical checkpoint audit. Real assets, full video
 decode and replay checks are separate from lightweight CI fixtures.
 
 ```bash

@@ -1,56 +1,65 @@
-import copy
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
-from src.tennis_scene.pipeline.artifacts import write_json_atomic
-from tests.support.ball3d_evaluation import make_inputs
+from src.tennis_scene.ground_truth import sha256_file
+
+FIXTURE = Path(__file__).parents[2] / "ground_truth/fixtures/reference.json"
 
 
-def _document():
-    inputs = make_inputs()
-    source = SimpleNamespace(videos=tuple(SimpleNamespace(camera_id=c, sha256=str(i) * 64)
-                                          for i, c in enumerate(inputs.camera_ids)))
-    bundle = SimpleNamespace(inputs=inputs, source=source)
-    doc = {"schema": "tennis_lab_ball2d_annotations.v1", "clip_id": inputs.clip_id,
-           "camera_ids": list(inputs.camera_ids), "num_frames": 4, "fps": 10., "source_size_wh": [320, 240],
-           "video_sha256": {v.camera_id: v.sha256 for v in source.videos},
-           "provenance": {"kind": "direct_video_review", "model": "synthetic_worker_for_contract_test", "effort": "max"},
-           "observations": [{"camera_id": "near", "frame_index": 0, "status": "observed", "uv_px": [123, 45],
-                             "reviewed": True, "evidence": "synthetic-frame-0.png"},
-                            {"camera_id": "far", "frame_index": 2, "status": "occluded", "uv_px": None,
-                             "reviewed": True, "evidence": "synthetic-frame-2.png"}]}
-    return bundle, doc
+def _bundle():
+    # Trusted input identity specified independently of the JSON under test.
+    inputs = SimpleNamespace(
+        clip_id="synthetic/asymmetric",
+        camera_ids=("right", "left"),
+        num_frames=3,
+        fps=29.97,
+        source_size_wh=(80, 40),
+        frame_indices=np.arange(3),
+    )
+    source = SimpleNamespace(
+        videos=(
+            SimpleNamespace(camera_id="right", sha256="a" * 64),
+            SimpleNamespace(camera_id="left", sha256="b" * 64),
+        )
+    )
+    return SimpleNamespace(inputs=inputs, source=source)
 
 
-def test_sparse_native_pixel_labels_preserve_camera_frame_and_unreviewed_gaps(tmp_path):
-    bundle, doc = _document()
-    path = tmp_path / "labels.json"
-    write_json_atomic(path, doc)
-    result = load_annotations(path, bundle)
-    assert np.argwhere(result.observed).tolist() == [[1, 0]]
-    np.testing.assert_array_equal(result.uv_px[1, 0], [123, 45])
-    assert result.state_counts()["near"] == {"unreviewed": 3, "observed": 1, "occluded": 0, "out_of_frame": 0, "unknown": 0}
-    assert result.states[2, 2] == 2
+def test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows():
+    bundle = _bundle()
+    labels = load_annotations(FIXTURE, bundle, expected_sha256=sha256_file(FIXTURE))
+    labels.validate_for_inputs(bundle.inputs)
+    assert np.argwhere(labels.valid_for_scoring).tolist() == [[0, 0], [0, 1], [1, 0]]
+    assert np.argwhere(labels.observed).tolist() == [[0, 0], [1, 0]]
+    assert np.argwhere(labels.estimated).tolist() == [[0, 1]]
+    np.testing.assert_array_equal(labels.uv_px[0, 1], [17.25, 8.5])
+    assert np.isnan(labels.uv_px[0, 2]).all()
+    assert labels.reference_kind.tolist() == [
+        ["observed", "estimated", "excluded_extrapolation"],
+        ["observed", "unknown", "occluded"],
+    ]
+    assert labels.reference.events[1]["frame_index"] == 1
+    assert labels.reference.events[0]["note"] == "Contact uncertain by one frame."
+    assert labels.reference.estimation_segments[0]["quality"] == "lower"
+    assert labels.reference.position("right", 1).source_status == "unknown"
+    assert not labels.uv_px.flags.writeable
 
 
-@pytest.mark.parametrize("mutation", ["video", "duplicate", "unreviewed", "outside", "prediction"])
-def test_annotation_source_and_review_contract_rejects_untrusted_points(tmp_path, mutation):
-    bundle, original = _document()
-    doc = copy.deepcopy(original)
-    if mutation == "video":
-        doc["video_sha256"]["near"] = "f" * 64
-    elif mutation == "duplicate":
-        doc["observations"].append(doc["observations"][0])
-    elif mutation == "unreviewed":
-        doc["observations"][0]["reviewed"] = False
-    elif mutation == "outside":
-        doc["observations"][0]["uv_px"] = [320, 10]
+@pytest.mark.parametrize("axis", ["camera", "frame"])
+def test_reader_adapter_rejects_scoring_camera_or_frame_mismatch(axis):
+    bundle = _bundle()
+    labels = load_annotations(FIXTURE, bundle, expected_sha256=sha256_file(FIXTURE))
+    if axis == "camera":
+        bundle.inputs.camera_ids = ("left", "right")
     else:
-        doc["provenance"]["kind"] = "detector_prediction"
-    path = tmp_path / "labels.json"
-    write_json_atomic(path, doc)
-    with pytest.raises(ValueError):
-        load_annotations(path, bundle)
+        bundle.inputs.frame_indices = np.array([0, 2, 1])
+    with pytest.raises(ValueError, match="axes"):
+        labels.validate_for_inputs(bundle.inputs)
+    # The public loader independently binds the identity to input camera order.
+    if axis == "camera":
+        with pytest.raises(ValueError, match="camera"):
+            load_annotations(FIXTURE, bundle, expected_sha256=sha256_file(FIXTURE))

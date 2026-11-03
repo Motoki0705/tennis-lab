@@ -32,7 +32,9 @@ def read_json(path: Path) -> dict[str, Any]:
     def invalid(value: str) -> None:
         raise ValueError(f"Nonfinite JSON value: {value}")
 
-    value = json.loads(path.read_text(), object_pairs_hook=pairs, parse_constant=invalid)
+    value = json.loads(
+        path.read_text(), object_pairs_hook=pairs, parse_constant=invalid
+    )
     if not isinstance(value, dict):
         raise ValueError("Expected a JSON object")
     return value
@@ -42,13 +44,22 @@ def save_typed(directory: Path, value: T, output_type: type[T], *, schema: str) 
     """Publish to a new directory; an interrupted publication has no valid manifest."""
     directory.mkdir(parents=True, exist_ok=False)
     payload, arrays = ArtifactCodec(output_type).dump(value, directory)
-    write_json_atomic(directory / "result.json", {"schema": schema, "payload": payload, "arrays": arrays})
+    write_json_atomic(
+        directory / "result.json",
+        {"schema": schema, "payload": payload, "arrays": arrays},
+    )
     digest = cast(str, dual_sha256(directory / "result.json"))
     (directory / "result.sha256").write_text(digest + "\n")
     return digest
 
 
-def load_typed(directory: Path, output_type: type[T], *, schema: str, expected_sha256: str | None = None) -> T:
+def load_typed(
+    directory: Path,
+    output_type: type[T],
+    *,
+    schema: str,
+    expected_sha256: str | None = None,
+) -> T:
     digest = dual_sha256(directory / "result.json")
     pinned = (directory / "result.sha256").read_text().strip()
     if digest != pinned or (expected_sha256 is not None and digest != expected_sha256):
@@ -56,4 +67,6 @@ def load_typed(directory: Path, output_type: type[T], *, schema: str, expected_s
     document = read_json(directory / "result.json")
     if set(document) != {"schema", "payload", "arrays"} or document["schema"] != schema:
         raise ValueError("Unsupported result schema")
-    return ArtifactCodec(output_type).load(document["payload"], directory, document["arrays"])
+    return ArtifactCodec(output_type).load(
+        document["payload"], directory, document["arrays"]
+    )

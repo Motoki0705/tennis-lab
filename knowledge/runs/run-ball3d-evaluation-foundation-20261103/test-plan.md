@@ -12,5 +12,12 @@
 | 表示が欠測を跨がずN方式を扱う | 非対称な欠測を持つ軌跡の線分、全view/LOVOの軸、HTMLのlocal参照を確認。実動画は全frame decodeと代表画像の目視 | 純粋な線分・集計はunit、小動画への出力だけintegration | 最小動画、setup1秒を目標。実clipの動画検査は別計測 |
 
 既存テストの期待値や実装の式をコピーして正解を作らない。合成fixtureは契約検査専用で、
-実clipの正解ではない。実注釈未到着なら精度・イベント・oracleの実採点を未実施とし、
-detector予測をGTへ流用しない。削除・統合する既存nodeはない。
+実clipの正解ではない。detector予測をGTへ流用しない。
+
+2026-11-03 再開時の追加設計（親の合意 revision 6）:
+
+- 正解JSONの検証は #1668 のreaderへ一本化し、`UserReference.select` の採点maskとkindを変換する層だけを残す。旧 `test_annotations.py::test_sparse_native_pixel_labels_preserve_camera_frame_and_unreviewed_gaps` と `test_annotation_source_and_review_contract_rejects_untrusted_points`（5 case）はGPT専用schemaの廃止に伴い置換する。source/schema/hashの拒否は `tests/unit/tennis_scene/ground_truth/test_reader.py` に移管済みの契約を再利用する。追加するadapterテストは同readerの非対称fixtureで座標・推定・除外・kind・元イベント/区間の保持を確認する。
+- 採点の手計算fixtureを拡張し、同じ5/13/25 pxのうち推定点を13 pxに固定する。全点と直接観測・推定の分布、分母と欠測coverage、oracleの推定利用をunitで確認する。カメラ/frame不一致をadapter境界で拒否し、runnerの入力からreferenceと採点maskが隔離されることを既存spyテストで確認する。
+- イベントは物理イベント数を推定せず、camera別の元25行を保存する。kindごとに元行の±3frame窓の和集合で残差を1回だけ採点し、行数を物理イベント数と表示しない。同kindの0/1frame差と窓の重複を手書きfixtureで検査する。
+- 動画・図は直接観測と推定に別の印を使う。小動画のintegrationを2方式で実行し、区間別表・分布・時系列・欠測・HTML埋め込みを検査する。全viewとLOVOの結果は実clipで保存・再読込し、全動画frameを逐次decodeする。
+- 新規/変更分は合計40 case以内を目標とし、既存reader50 caseと指定の再利用2 nodeを含め `-n 0`（最大2）でcollectと全durationを記録する。codec・描画は初回importを含む実測を分け、メモリの重い処理は並列にしない。

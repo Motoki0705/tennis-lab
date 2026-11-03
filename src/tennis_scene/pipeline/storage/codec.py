@@ -43,10 +43,17 @@ def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
         name = f"array_{len(arrays):04d}.npy"
         path = directory / name
         np.save(path, value, allow_pickle=False)
-        arrays[name] = {"shape": list(value.shape), "dtype": str(value.dtype), "sha256": dual_sha256(path)}
+        arrays[name] = {
+            "shape": list(value.shape),
+            "dtype": str(value.dtype),
+            "sha256": dual_sha256(path),
+        }
         return {"array": name}
     if is_dataclass(value) and not isinstance(value, type):
-        return {f.name: encode_value(getattr(value, f.name), directory, arrays) for f in fields(value)}
+        return {
+            f.name: encode_value(getattr(value, f.name), directory, arrays)
+            for f in fields(value)
+        }
     if isinstance(value, Path):
         return str(value)
     if isinstance(value, np.generic):
@@ -68,14 +75,21 @@ def unpack_value(value: Any, directory: Path, arrays: Mapping[str, Any]) -> Any:
     if isinstance(value, dict):
         if set(value) == {"array"}:
             name = value["array"]
-            if not isinstance(name, str) or Path(name).name != name or name not in arrays:
+            if (
+                not isinstance(name, str)
+                or Path(name).name != name
+                or name not in arrays
+            ):
                 raise ValueError("Invalid artifact array reference")
             path = directory / name
             declaration = arrays[name]
             if not path.is_file() or dual_sha256(path) != declaration["sha256"]:
                 raise ValueError(f"Artifact array checksum mismatch: {path}")
             array = np.load(path, allow_pickle=False, mmap_mode="r")
-            if list(array.shape) != declaration["shape"] or str(array.dtype) != declaration["dtype"]:
+            if (
+                list(array.shape) != declaration["shape"]
+                or str(array.dtype) != declaration["dtype"]
+            ):
                 raise ValueError("Artifact array schema mismatch")
             return array
         if set(value) == {"tensor"}:
@@ -95,7 +109,9 @@ def restore_type(value: Any, annotation: Any) -> Any:
     # NumPy 2.5 spells NDArray as a PEP 695 generic alias. Its origin is
     # the alias rather than np.ndarray; retain the same array-only contract.
     alias_type = annotation if isinstance(annotation, TypeAliasType) else origin
-    alias_value: Any = alias_type.__value__ if isinstance(alias_type, TypeAliasType) else None
+    alias_value: Any = (
+        alias_type.__value__ if isinstance(alias_type, TypeAliasType) else None
+    )
     if alias_value is not None and get_origin(alias_value) is np.ndarray:
         origin = np.ndarray
     if origin is Literal:
@@ -110,10 +126,19 @@ def restore_type(value: Any, annotation: Any) -> Any:
             raise TypeError("Artifact schemas require unambiguous union members")
         return restore_type(value, candidates[0])
     if isinstance(annotation, type) and is_dataclass(annotation):
-        if not isinstance(value, dict) or set(value) != {f.name for f in fields(annotation)}:
-            raise ValueError(f"Fields disagree with artifact schema {annotation.__name__}")
-        hints = get_type_hints(annotation, globalns={**vars(sys.modules[annotation.__module__]), "NDArray": NDArray})
-        return annotation(**{name: restore_type(v, hints[name]) for name, v in value.items()})
+        if not isinstance(value, dict) or set(value) != {
+            f.name for f in fields(annotation)
+        }:
+            raise ValueError(
+                f"Fields disagree with artifact schema {annotation.__name__}"
+            )
+        hints = get_type_hints(
+            annotation,
+            globalns={**vars(sys.modules[annotation.__module__]), "NDArray": NDArray},
+        )
+        return annotation(
+            **{name: restore_type(v, hints[name]) for name, v in value.items()}
+        )
     if origin is tuple:
         if not isinstance(value, list):
             raise TypeError("Expected artifact sequence")
@@ -130,7 +155,9 @@ def restore_type(value: Any, annotation: Any) -> Any:
         return Path(value)
     if annotation in (str, int, bool, float):
         if type(value) is not annotation:
-            raise TypeError(f"Artifact requires {annotation.__name__}, got {type(value).__name__}")
+            raise TypeError(
+                f"Artifact requires {annotation.__name__}, got {type(value).__name__}"
+            )
         return value
     if origin is np.ndarray or annotation is np.ndarray:
         if not isinstance(value, np.ndarray):
@@ -158,4 +185,7 @@ class ArtifactCodec(Generic[ValueT]):
         return encode_value(value, directory, arrays), arrays
 
     def load(self, payload: Any, directory: Path, arrays: Mapping[str, Any]) -> ValueT:
-        return cast(ValueT, restore_type(unpack_value(payload, directory, arrays), self.output_type))
+        return cast(
+            ValueT,
+            restore_type(unpack_value(payload, directory, arrays), self.output_type),
+        )

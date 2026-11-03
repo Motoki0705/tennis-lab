@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-`ball3d/` は同じ履歴componentから各方式をCPU replayし、独立な2D観測で採点する。
+`ball3d/` は同じ履歴componentから各方式をCPU replayし、人間提供の2D参照で採点する。
 標準pipelineの既定を変更せず、検出器の推論を実行しない。
 
 | モジュール | 契約 |
@@ -11,7 +11,7 @@
 | `contracts.py` | 選択viewだけの方式入力とmask付き3D結果 |
 | `baseline.py` | 保存済み検出観測からconsensus・LOESS・三角測量をreplayし、native mapの復号を別途照合 |
 | `runner.py` | 全viewと3通りの2view LOVO、型付きchecksum保存読込 |
-| `annotations.py` | 採点専用のnative画素ラベル、確認状態と出自 |
+| `annotations.py` | 共通readerの選択結果を採点専用配列へ変換 |
 | `scoring.py` | 区間別の再投影・coverage・運動・イベント診断、注釈のみの幾何参照 |
 | [比較可視化](../visualization/ball3d/) | N方式のRGB重畳、俯瞰・側面軌道、図・crop・持ち運べるHTML |
 
@@ -55,29 +55,38 @@ baselineは保存済み復号/gate後観測からproductionのconsensus・LOESS�
 
 ## 採点ラベル
 
-`load_annotations` は `tennis_lab_ball2d_annotations.v1` JSONを読む。
+`annotations.py` は厳格な [user-reference reader](../ground_truth/README.md) の薄い変換層。
+`load_annotations(path, bundle, expected_sha256=...)` は検証済みbundleと動画hashから
+`ReferenceIdentity` を構築し、`load_user_reference` と `UserReference.select` で
+camera/frame軸を明示的に選ぶ。独自JSON schemaや出自検証を二重管理しない。
+参照JSONとともに元CSVを保存しておく。
 
-- `clip_id`、順序付き `camera_ids`、`num_frames`、`fps`、`source_size_wh`、camera別
-  `video_sha256`、`kind: direct_video_review`・`model`・`effort` を含む `provenance`。
-- `observations` は `camera_id`、`frame_index`、`status`、任意の `uv_px`、`reviewed`、`evidence`。
-  状態は `observed` / `occluded` / `out_of_frame` / `unknown` / `unreviewed`。
-  確認済み状態には証拠が必要で、座標を持つのはobservedだけ。未記載はunreviewed。
-- 任意の `events` は `frame_index`、`kind`（`bounce` / `hit`）、`evidence`。
+採点可否は `valid_for_scoring` のみで決める。人間承認の `estimated` も採点し、
+`observed` へ偽装しない。除外・欠測座標はNaNのまま補間しない。
+全fold・全区間で `all`・`observed`・`estimated` の分布、対象数・採点数・coverageを出す。
+camera別イベントの元行・注記・推定区間を採点reportへ保持する。
 
-重複、source/軸の不一致、未確認の観測化、画像外座標、detector/test fixture由来を拒否する。
-schemaは確認証拠を記録するが、画像を見たという主張の真実性を単独で証明しない。
-unit fixtureを実評価ラベルに使わない。
+既定区間は調整 `[0,505)`、主評価 `[505,1010)`、参考の全区間。
+LOVOは除外cameraのみ採点し、foldの中央値を平均せず個別残差をpoolする。
+中央値/p90、厳密に20pxを超える率、全view誤差、有効3D率、粗大再投影frame率、
+隣接移動量・加速度とその外れ率、イベント付近の誤差、全runのCPU時間を出す。
+粗大frame率は、採点できたframeのうち1つでも20pxを超えたframeの割合であり、
+独立した3D正解に対する粗大誤差率ではない。運動のstencilは欠測や区間境界を跨がない。
+診断の既定閾値65m/s、500m/s²、イベント半径3frameは保存し、後半では調整していない。
 
-既定は前半 `[0,505)` が調整、後半 `[505,1010)` が主評価、全区間は参考。
-可視observedだけを採点し、LOVOでは除外viewだけを採点する。foldの中央値を平均せず、個々の残差をpoolする。
-中央値/p90・20pxを厳密に超える率、observed/採点件数とcoverage、全view再投影、有効3D率、
-frame粗大再投影率、隣接移動/加速度、イベント近傍と全run計算時間を出す。
-運動のstencilは欠測・区間境界を跨がない。既定の診断閾値は65m/s、500m/s²、イベント半径3frameで、
-記録に残し、評価後半で調整していない。
+イベントの採点窓はkindごとの元camera行の窓の和集合とする。同じ事象を1frameずらして
+記録した行があっても、1残差は1回だけ数える。`source_row_count` を物理イベント数と
+解釈せず、`physical_event_count` は未確定としてnullを出す。元の注記は削除しない。
 
-`annotation_oracle` は採点側に限り、各foldで保持viewの注釈だけを三角測量する。
-近似校正・注釈誤差があるため、数学的に保証された誤差下限ではなく幾何参照として扱う。
-注釈・イベントがなければ未計測とcoverageを返し、0で埋めない。独立3D GTなしに3D精度は測れない。
+`annotation_oracle` は採点専用で、foldの保持cameraの採点可能な参照（推定を含む）を
+同じ固定cameraで三角測量する。予測方式は呼ばない。近似校正と参照の誤差があるため、
+数学的に保証された下限ではなく幾何参照である。
+
+可視化はN方式を扱う。直接観測は緑の十字、承認済み推定は白い菱形、方式の再投影は色付き円。
+cropはLOVO誤差で選び、除外cameraへの予測を色付き斜め十字でも表示する。軌跡は欠測を跨がない。
+HTMLへ動画・図・表・指標を埋め込み、単独で閲覧できる。隣のファイルは任意のdownload用。
+共通の動画readerとframe選択を再利用する。`MultiviewSceneRenderer` はSMPL/SceneResultを
+要求するため、ball専用の比較では人物meshを生成せず俯瞰・側面パネルを構成する。
 
 ## 再現とテスト
 
@@ -85,7 +94,7 @@ clip固有の入口、テスト設計と実証は
 [`knowledge/runs/run-ball3d-evaluation-foundation-20261103`](../../../knowledge/runs/run-ball3d-evaluation-foundation-20261103/)
 に置く。repoを `PYTHONPATH` に入れて `run.py --help` を実行する。
 `bundle` / `compare` は明示的なローカル入力と新規出力先を要求する。
-独立な直接確認ラベルが届いてから `--annotations` を加える。実資産・全動画decode・replay検証は軽量CI fixtureと分ける。
+compareには信頼済み記録の `--bundle-sha256`・`--annotations`・`--annotations-sha256` と履歴重み照合用の `--checkpoints` を指定する。実資産・全動画decode・replay検証は軽量CI fixtureと分ける。
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 0 \
