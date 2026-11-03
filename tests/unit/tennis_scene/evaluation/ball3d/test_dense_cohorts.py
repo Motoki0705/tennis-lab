@@ -1,7 +1,7 @@
 """Camera/frame cohort membership and errors, independently hand-calculated."""
 
-import importlib.util
-import sys
+import runpy
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -9,11 +9,8 @@ import pytest
 from src.utils.paths import PROJECT_ROOT
 
 _PATH = PROJECT_ROOT / "knowledge/runs/run-ball3d-dense-likelihood-20261103/cohorts.py"
-_SPEC = importlib.util.spec_from_file_location("dense_likelihood_cohorts", _PATH)
-assert _SPEC is not None and _SPEC.loader is not None
-cohorts = importlib.util.module_from_spec(_SPEC)
-sys.modules[_SPEC.name] = cohorts
-_SPEC.loader.exec_module(cohorts)
+# Execute the trusted analysis source without publishing bytecode into knowledge.
+cohorts = SimpleNamespace(**runpy.run_path(str(_PATH)))
 
 
 def asymmetric_samples():

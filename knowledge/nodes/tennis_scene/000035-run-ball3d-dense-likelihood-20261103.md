@@ -71,6 +71,12 @@ metrics:
   ci_fix_tests_passed: 544
   ci_fix_tests_skipped: 1
   ci_fix_pytest_wall_seconds: 353.14
+  primary_added_count: 633
+  primary_added_median_px: 29.065646366665575
+  primary_added_p90_px: 313.3853052119986
+  primary_added_over20_count: 382
+  primary_lost_count: 0
+  cohort_tests_passed: 36
 artifacts:
   run_dir: knowledge/runs/run-ball3d-dense-likelihood-20261103
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2
@@ -81,6 +87,10 @@ artifacts:
   test_results: knowledge/runs/run-ball3d-dense-likelihood-20261103/test-results.json
   ci_fix_test_results: knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-tests.json
   ci_fix_prediction_check: knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-invariance.json
+  cohort_receipt: knowledge/runs/run-ball3d-dense-likelihood-20261103/cohort-receipt.json
+  cohort_metrics: knowledge/runs/run-ball3d-dense-likelihood-20261103/cohorts.csv
+  cohort_tests: knowledge/runs/run-ball3d-dense-likelihood-20261103/cohort-tests.json
+  cohort_memory_tests: knowledge/runs/run-ball3d-dense-likelihood-20261103/cohort-memory-tests.json
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
@@ -266,3 +276,80 @@ knowledge validator（`--check-summary --base-ref origin/main`）は0 error、�
 最終確認で、候補payloadを全無効にしてもcoarseが既知位置を復元し、候補版は欠測にするunitを1件追加した。
 この追加の前にtest-planへ検出したいfallback不具合・層・1caseのコスト上限を追記した。
 初回121件の記録はtest-results-first.json / test-summary-first.jsonに残す。推定src・設定・実データの再計算は変更していない。
+
+## 2026-11-04: cross-1 共通・追加・喪失点の品質
+
+親の明示レビュー `parent-1554-5647a023173b48feac926b069d0a207c` のcross-1を受け、
+HEAD `32bac92aca62aa2dd59d0240b3f239f2530e0993` が比較した固定予測の採点集合を分解した。
+この追補では予測・oracleの再実行やscorer変更をしていない。設定の再調整もない。
+
+比較元は同じ `dense_likelihood_v2/results/pipeline_baseline/`。保存済みの報告8条件の
+24 LOVO runを基盤の`load_run`で逐次読み、`error_samples(run, bundle, annotations)`だけから残差を得た。
+oracleの3 foldは元の`dense_likelihood_v2/scoring_oracle/`に保存されているものを読む。
+固定bundleと正解はそれぞれ`load_bundle(..., expected_sha256=)`、
+`load_annotations(..., expected_sha256=)`で照合した。
+元のartifact manifest・scoresも既知SHAに固定し、各result manifestの期待SHAを`load_run`へ渡す。
+独自の再投影・採点器は作らず、統計も基盤の`distribution`を使った。
+
+キーは除外camera IDと元frameの組で、共通・方式のみ・baselineのみを排他的に分ける。
+主評価/前半/全区間の3区間×poolと3camera×全参照とobserved/estimatedを交差した
+288集計すべてで、共通＋追加＝方式全点、共通＋喪失＝baseline全点を検算した。
+camera別・参照kind別・前後半の和も一致し、8条件の元の全点件数・中央値・p90・最大値・>20px率は
+保存済みscoresに完全一致した。重複key・camera違い・参照kind不一致は停止する。
+20pxちょうどは超過に含めず、空集合の誤差と率はnullとする。
+
+主評価 [505,1010)。各cellは 件数; 中央値px; p90px; >20px率。
+共通の両列は同じcamera/frame集合。0件の誤差と率は未測定。
+
+| 条件 | 共通:方式 | 共通:baseline | 追加:方式のみ | 喪失:baselineのみ |
+|---|---:|---:|---:|---:|
+| pipeline_baseline | 825; 9.340; 27.078; 16.36% | 825; 9.340; 27.078; 16.36% | 0; —; —; — | 0; —; —; — |
+| without_loess | 790; 9.794; 29.846; 17.97% | 790; 9.186; 26.988; 16.08% | 3; 11.487; 13.248; 0.00% | 35; 12.775; 32.273; 22.86% |
+| dense_selected | 825; 12.676; 36.828; 28.00% | 825; 9.340; 27.078; 16.36% | 633; 29.066; 313.385; 60.35% | 0; —; —; — |
+| dense_temporal | 823; 12.666; 36.839; 28.07% | 823; 9.356; 27.092; 16.40% | 629; 29.736; 313.999; 60.73% | 2; 6.623; 7.544; 0.00% |
+| dense_quadratic_logit | 747; 11.401; 131.155; 31.86% | 747; 9.333; 26.561; 15.93% | 573; 30.854; 339.573; 59.86% | 78; 9.420; 30.075; 20.51% |
+| dense_quadratic_log | 747; 12.249; 179.016; 36.28% | 747; 9.333; 27.064; 16.33% | 585; 36.459; 383.641; 63.76% | 78; 9.935; 27.302; 16.67% |
+| dense_coarse | 821; 15.666; 92.648; 38.49% | 821; 9.361; 27.105; 16.44% | 637; 30.471; 274.314; 62.95% | 4; 2.293; 6.056; 0.00% |
+| annotation_oracle | 801; 7.391; 19.319; 8.99% | 801; 9.169; 25.752; 15.36% | 544; 8.413; 26.213; 14.34% | 24; 18.125; 74.014; 50.00% |
+
+選定方式の追加633点は全1458点の43.42%で、共通825点より誤差が大きい。
+共通点の>20pxは231点、追加点は382点、合計613/1458=42.04%。
+全点の中央値16.468px・p90 106.914pxは、共通点12.676/36.828pxと追加点29.066/313.385pxを含む
+混合分布の値である。中央値やp90を加重平均したものではない。
+追加点の62.69%が20pxを超える直接観測参照587点と、30.43%が超える承認推定参照46点からなり、
+追加粗大誤差382点のうち368点が直接観測参照に対応する。
+直接観測の追加点は31.992/316.669px、承認推定は14.538/109.163pxだった。
+選定方式はbaselineの825点を喪失せず、共通点でもbaselineより悪化しているため、
+coverage増加だけから精度改善を主張できず、採用非推奨の結論は維持する。
+
+時間版は629点追加と2点喪失（純増627）。失った2点のbaseline誤差は6.623/7.544px・>20px率0%。
+coarseは637点追加と4点喪失（純増633）で、失った4点は2.293/6.056px・>20px率0%だった。
+二次logit/logは各78点を喪失する。追加点の品質と、もともと小誤差だった点の喪失は分けて読む必要がある。
+ここでの共通集合は条件ごとに異なり、全方式共通cohortとは別である。
+単一clip・2D参照での診断で、誤推定/欠測の原因を因果的に特定していない。
+oracleは保存済みGT由来の幾何参照で、実運用の推定方式や数学的下限ではない。
+
+成果物は
+`/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_cohort_v1/`。
+全区間・camera・参照種類の分布はJSON/CSV、全camera-frameの所属と両側の残差は`samples.csv`へ保存した。
+元の`dense_likelihood_v2/`は変更していない。小さい全区間CSVと主表だけをknowledgeへ保持し、
+完全JSONと点ごとのCSVはoutputsへ残す。
+
+| ファイル | SHA-256 |
+|---|---|
+| checksums.json | `1ceee645fcefb9f7f9f54ca790667302533b664cbd7a90c2ac41512915f551e2` |
+| cohorts.json | `c6da1d4261fa944a6acac158b4e697b1e477477fcb1c129c0d282a4fec119e97` |
+| cohorts.csv | `92593dc37c869c24c06d416be2384e529ed5118cff978d76ad6e2b583bf726e8` |
+
+全4成果物のsize/SHAを照合し、`cohort-receipt.json`へ記録した。
+実行codeは`4058bb2dd`、全process 8.20秒・最大RSS642044KiB・swap0。
+再現は`bash knowledge/runs/run-ball3d-dense-likelihood-20261103/cohort-repro.sh BUNDLE GROUND_TRUTH_JSON DENSE_V2 NEW_OUTPUT`。
+比較scriptは`cohorts.py`だけで、srcのscorer・runner・pipelineには変更がない。
+
+テストは実装前の設計に沿い、新規5caseで非対称なcamera/frame join・505境界・両側の残差・
+空集合・20px・重複/取り違えを検証した。既存のscoring/annotation/loader契約31caseを再利用した。
+-n 0で収集36件3.80秒、実行36成功4.91秒（`--durations=0 --durations-min=0`）。
+新規case最大0.014秒。全node・phase・コマンドは`cohort-tests.json`。
+今回の横断レビュー判断は共有memoryのreviewにも一般化して記録した。
+memoryの形式・リンク・容量・個人情報検査は92成功0.31秒、収集92件0.08秒（15件は対象外）で、
+`cohort-memory-tests.json`に保存した。ruff/mypyも成功した。
