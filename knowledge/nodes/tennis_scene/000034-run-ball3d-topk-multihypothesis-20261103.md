@@ -310,10 +310,12 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=. .venv/bi
 全node/phaseはcohort-test-results、要約はcohort-test-summary。最大case0.088秒、最大setup0.0092秒で基準内。
 共通点の方式誤差をbaseline誤差へ取り違える故障注入は、期待中央値14.5に対する8.5の不一致で失敗し、
 元bytesへ復元すると同nodeが成功した（cohort-mutation）。ruff/mypyは変更Python2ファイルで成功。
-複数PRに共通したレビュー判断はmemoryへ一般化して別commitにし、その文書契約107caseも0.40秒で成功した。
-初回head f1375663eのCI run 41694724236では、このmemoryの日付をJSTの11月4日で記録したため、
-UTCで11月3日のrunnerが未来日として拒否した。実時刻をUTCで確認し、created/last_verifiedを11月3日へ修正した。
-既存の文書テストを`TZ=UTC`で再実行し、107 passed/0.32秒。テストのassertや集計コード・保存結果は変更していない。
+共有memoryへの追加は親の指示で取り消し、指定3ファイルをreviewed head 0055da23fと同じ状態へ戻した。
+cross-1はreviewer agentの指摘を親が差し戻したもので、ユーザーの判断として記録した出典は誤りだった。
+`cohort-memory-doc-*.json`とcohort-test-summaryのmemory関連欄は、取り消した変更に対する過去の実測記録として残す。
+各記録の`shared_memory_change_status`に取消済み・過去記録であることを明示した。
+取消理由と復元確認は[cohort-memory-retraction.json](../../runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json)。
+cohortの集計コード・テスト・数値・成果物は変更していない。
 knowledge validatorは`--check-summary --base-ref origin/main`で0 errors（既存219 warnings）、
 repro path検査は0 missing（既存28 unverifiable）。
 最終headのCI結果はPR #1672へ記録し、統合比較の採否までmergeしない。

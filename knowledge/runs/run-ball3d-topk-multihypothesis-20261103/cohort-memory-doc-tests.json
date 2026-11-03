@@ -2051,5 +2051,11 @@
       "outcome": "passed",
       "seconds": 0.00015517504652962089
     }
-  ]
+  ],
+  "shared_memory_change_status": {
+    "status": "retracted_at_parent_request",
+    "historical_only": true,
+    "reason": "memory変更は親の指示で取り消した。cross-1の出典はreviewer agentと親であり、ユーザー判断ではない。",
+    "record": "knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json"
+  }
 }

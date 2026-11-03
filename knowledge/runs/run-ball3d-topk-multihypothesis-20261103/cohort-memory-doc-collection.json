@@ -124,5 +124,11 @@
     "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/one-off-experiment-code-not-in-src.md]",
     "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/semantic-implementation-names.md]"
   ],
-  "reports": []
+  "reports": [],
+  "shared_memory_change_status": {
+    "status": "retracted_at_parent_request",
+    "historical_only": true,
+    "reason": "memory変更は親の指示で取り消した。cross-1の出典はreviewer agentと親であり、ユーザー判断ではない。",
+    "record": "knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json"
+  }
 }

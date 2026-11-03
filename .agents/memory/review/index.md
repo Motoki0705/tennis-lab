@@ -5,4 +5,3 @@ PRをマージしてよいかを判断するときの観点。レビュアーは
 - [独立した目的の変更は別PRに分ける](focused-pull-requests.md)
 - [特定の実験だけを進めるためのscript・controllerは、常設のsrcに残さない](one-off-experiment-code-not-in-src.md)
 - [機能や方式が伝わる命名を優先し、Issue番号は追跡情報に使う](semantic-implementation-names.md)
-- [coverageが異なる比較は共通・追加・喪失点の品質を分けて確認する](coverage-cohort-quality.md)

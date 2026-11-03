@@ -1,0 +1,92 @@
+{
+  "schema": "tennis_lab_shared_memory_retraction.v1",
+  "status": "retracted_at_parent_request",
+  "reviewed_head": "0055da23ff41ac0242735f28af0e0075e26ba80d",
+  "accepted_cohort_head": "e9d834cc628321f66060034af10f7f6d1a6abff3",
+  "instruction_source": "parent request in #1560 / PR #1672",
+  "reason": "cross-1 was a reviewer-agent finding returned by the parent, not a user judgment; shared-memory policy changes are outside the method PR",
+  "paths_to_restore": [
+    ".agents/memory/SUMMARY.md",
+    ".agents/memory/review/index.md",
+    ".agents/memory/review/coverage-cohort-quality.md"
+  ],
+  "historical_records": {
+    "cohort-memory-doc-collection.json": {
+      "original_sha256": "54aa35b2b89d6661863f96ebdb2bc86ad915de07fbce616b28a0ee17c499a9ec",
+      "original_snapshot": "e9d834cc628321f66060034af10f7f6d1a6abff3",
+      "interpretation": "historical verification of the withdrawn memory change, not current shared-memory policy"
+    },
+    "cohort-memory-doc-tests.json": {
+      "original_sha256": "819e949a11ffd62d020e7f6dba089b86f9a01a49fb1c31b7999d75c29854a989",
+      "original_snapshot": "e9d834cc628321f66060034af10f7f6d1a6abff3",
+      "interpretation": "historical verification of the withdrawn memory change, not current shared-memory policy"
+    },
+    "cohort-memory-doc-utc-tests.json": {
+      "original_sha256": "d4461d802afb69bff43ad7869f0fc63904dd128aea1eaceba719aa933b29f43d",
+      "original_snapshot": "e9d834cc628321f66060034af10f7f6d1a6abff3",
+      "interpretation": "historical verification of the withdrawn memory change, not current shared-memory policy"
+    },
+    "cohort-test-summary.json": {
+      "original_sha256": "00b890291f530762d2b56ba3cba45b2b095f5cbad556c280326f1d3ae4e4b809",
+      "original_snapshot": "e9d834cc628321f66060034af10f7f6d1a6abff3",
+      "interpretation": "historical verification of the withdrawn memory change, not current shared-memory policy"
+    }
+  },
+  "verification_plan": {
+    "contract": "the three memory paths equal reviewed head; cohort code, tests and numeric artifacts remain unchanged",
+    "bugs_to_detect": "residual memory entry/index link or changed cohort results",
+    "layer": "Git blob equality and existing agents-documentation tests",
+    "reused_tests": "tests/e2e/agents_ops/test_agents_docs.py; no new test case is needed for the snapshot restoration",
+    "cost": "pytest -n 0; lightweight documentation checks, no model or scoring rerun"
+  },
+  "restoration_checks": {
+    ".agents/memory/SUMMARY.md": {
+      "equals_reviewed_head": true,
+      "sha256": "5a5e135225d28bc7aa7fd4b29d070fd27102002949b69f6650482656f1c45f2d"
+    },
+    ".agents/memory/review/index.md": {
+      "equals_reviewed_head": true,
+      "sha256": "2f5c10786680a16c5c4bf7033e97725aea329a5a1058bb0680556dab1c51d892"
+    },
+    ".agents/memory/review/coverage-cohort-quality.md": {
+      "absent_as_in_reviewed_head": true
+    }
+  },
+  "preservation_checks": {
+    "run_files_bitwise_unchanged": 61,
+    "historical_record_payloads_unchanged": 4,
+    "cohort_test_file_unchanged": true,
+    "cohort_output_files_verified": 5,
+    "cohort_output_manifest_sha256": "d2026ae2c33079dfc0ad07930a80fa19303987e4e910d76f53336046bfd2cbe6",
+    "src_and_test_trees_unchanged": true
+  },
+  "verification": {
+    "documentation_tests": {
+      "path": "tests/e2e/agents_ops/test_agents_docs.py",
+      "timezone": "UTC",
+      "workers": 0,
+      "collected_count": 105,
+      "collection_pytest_seconds": 0.06,
+      "collection_wrapper_seconds": 1.9568140379851684,
+      "passed_count": 105,
+      "execution_pytest_seconds": 0.31,
+      "execution_wrapper_seconds": 2.128614639979787,
+      "pytest_arguments": [
+        "--verbose",
+        "--import-mode=importlib",
+        "-n",
+        "auto",
+        "--strict-markers",
+        "--disable-warnings",
+        "-n",
+        "0",
+        "--durations=0",
+        "--durations-min=0",
+        "tests/e2e/agents_ops/test_agents_docs.py"
+      ]
+    },
+    "ruff": "passed for unchanged cohort_report.py and test_topk_cohorts.py",
+    "new_tests_added": false,
+    "scientific_conclusions_reviewed": "unchanged; only shared-memory retraction and provenance notes were corrected"
+  }
+}

@@ -71,5 +71,11 @@
     "corrected_created_and_last_verified": "2026-11-03",
     "clock_verification": "2026-11-03 18:50:05 UTC",
     "scoring_script_and_artifacts_unchanged": true
+  },
+  "shared_memory_change_status": {
+    "status": "retracted_at_parent_request",
+    "historical_only": true,
+    "reason": "memory変更は親の指示で取り消した。cross-1の出典はreviewer agentと親であり、ユーザー判断ではない。",
+    "record": "knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json"
   }
 }
