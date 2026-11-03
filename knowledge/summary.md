@@ -1,4 +1,4 @@
-<!-- knowledge-review: df0662472696b9afa78940b9bb5ccb8fae1c2ac1936a26f7153ec739fb9cb0aa on 2026-11-03 -->
+<!-- knowledge-review: be22edabb98fb1e72b8c0c721f84abc560ff6ef8ea8a0db2a0c545264ee4de04 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -32,6 +32,7 @@
 合成でdrag・時刻・bounceを復元できても、このclipの実観測では分割・同期が安定せず、
 小さいODE残差は精度の根拠にならなかった。設定を後半で調整せず、既定と方式採用は変更しない。
 次はイベント支持、区間連続性、map目的関数の収束と校正biasの交絡を独立に検証する必要がある。
+CI修正で設定をcompositionへ集約し、solverのcamera順を正規化した。固定入力の全12実行と実行時間を除く採点は元結果と完全一致し、上記の負の結論は変わらない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

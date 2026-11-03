@@ -1,0 +1,9 @@
+{
+  "replay_comparison_sha256": "ca6b959c2e9ff0b8b1ad19658d6ef277dffcba5c598cb60283a560aecd9298fe",
+  "v3_manifest_sha256": "74dc43a3eb71598e3e95bd9ee4ec1effa8c1a97e739a0eb6b4732c922884d61e",
+  "replay_code_commit": "345edc98dcbda2469f3c0f4abfcf324a8b6221ba",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_ci_checks_v1",
+  "array_predictions_changed": false,
+  "accuracy_metrics_changed": false,
+  "v4_required": false
+}

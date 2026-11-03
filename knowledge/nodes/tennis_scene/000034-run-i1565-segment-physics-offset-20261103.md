@@ -40,6 +40,13 @@ metrics:
   all_method_common_cohort_count: 0
   paired_evaluation_common_count: 756
   output_files_verified: 211
+  ci_repair_collected: 495
+  ci_repair_passed: 494
+  ci_repair_skipped: 1
+  ci_repair_pytest_seconds: 279.81
+  ci_repair_collection_seconds: 69.16
+  ci_replay_prediction_fields_equal: true
+  ci_replay_accuracy_fields_equal: true
 repro:
   commit: 345ae65f7beb7ceb593e9b16a5e426eb50f65bc1
   command: bash knowledge/runs/run-i1565-segment-physics-offset-20261103/reproduce.sh
@@ -55,12 +62,17 @@ artifacts:
   verification: knowledge/runs/run-i1565-segment-physics-offset-20261103/artifact-verification.json
   visual_review: knowledge/runs/run-i1565-segment-physics-offset-20261103/visual-review.json
   execution_history: knowledge/runs/run-i1565-segment-physics-offset-20261103/execution-history.json
+  ci_test_summary: knowledge/runs/run-i1565-segment-physics-offset-20261103/ci-test-summary.json
+  ci_order_probe: knowledge/runs/run-i1565-segment-physics-offset-20261103/ci-order-after.json
+  ci_replay_check: knowledge/runs/run-i1565-segment-physics-offset-20261103/ci-replay-comparison.json
+  ci_checks_dir: outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_ci_checks_v1
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
 papers: []
 tags: []
 ---
+
 
 
 ## 主結果: 悪化と未収束
@@ -201,7 +213,7 @@ v2は後処理のcommit前起動により最終出自として採用しなかっ
 v3はcommit済み後処理からv1の全207ファイルをhash照合し、型付き16結果を再読込・再採点して
 元の全採点fieldの一致を確認した。baseline/候補点の共通cohort図表と失敗表示だけを追加した。
 全211ファイルをサイズ・SHA-256で再照合し、188個の予測関連ファイル・動画・元scoresはv1と同じbytes。
-実行後のsrc差分は0、既定baselineの4foldも `foundation_v2` と配列単位で一致した。
+v3作成時点（後処理head 345ae65f7）のsrc差分は予測headに対して0、既定baselineの4foldも `foundation_v2` と配列単位で一致した。
 
 動画は1200×1128・59.94006fps・1010frameをv1で全decodeしたbytesを再利用した。
 代表0/252/505/757/1009、粗大誤差109/108/107/105/104/103の3camera crop、指標図と物理診断を目視した。
@@ -215,3 +227,37 @@ checksum・全test node・実測時間・目視・資源・履歴の原値をrun
 
 実装・テスト・実データ比較と可視化は完成した。heatmapの未収束、候補点方式の悪化は未解決の研究上の制限。
 残る手続きは親の統合レビュー、人間の採否判断であり、mergeは実行しない。
+
+## CI契約違反・camera順序依存の修正
+
+初回HEAD e067580d6のCI run 41622391931は、設定監査の収集とcamera順序テストで失敗した。
+初回の99件は設定監査を含まず、新規Configの契約違反を見逃していた。
+
+`SegmentPhysicsConfig` の16fieldからPython既定値を取り除き、compositionの値を必須引数として受ける。
+評価adapterのsettings/baselineの暗黙生成と、積分helperのgravity/steps既定値も取り除いた。
+production YAMLの値は一切変更せず、replayとfixtureもHydra compositionから明示的に渡す。
+既存configuration監査389件を含め、495件収集・494passed・1skip、pytest279.81秒、collect69.16秒。
+skipは既存visualizationの空parametrizeによるNOTSETで、成功件数には含めない。
+最大75.09秒は既存のcold import順序検証、最大setup0.099秒。新方式integrationは15.15秒で、
+実solverと全foldを通す既存の理由により残す。全node/phaseは重複node IDをまとめたJSONへ損失なく保存した。
+元の大きなstdout/JSONはci_checks directoryへ保存し、runの容量制限を守る。
+
+順序依存は同一初期3Dで初期値・boundsが完全一致し、残差/Jの行だけが並び替わる場合にも発生した。
+修正前は両方11評価・ftol終了ながら、局所optimality0.01404/0.01517、offset差8.684e-6秒
+（CIでは1.7e-5秒）だった。LSMRの丸めと相対cost終了の経路差であり、anchorの取り違えではなかった。
+solverの残差行・自由clock列をcamera ID順へ固定し、offset・使用view・共分散・診断を呼出元の軸へ戻す。
+終了閾値・許容誤差は広げていない。むしろ既存testを非対称maskと、offset/位置/共分散の厳密一致へ強化した。
+修正後のprobeは両順序の初期値・残差行・疎行列・cost・評価回数が同一で、offset差0秒、位置/共分散もbitwise一致。
+`ci_inspect_order.py --revision <commit> --output <new.json>` で旧/新両方を再現できる。
+
+修正source head 345edc98dで、固定bundleからbaseline/候補点/heatmapの全12実行をCPU再実行した。
+全viewと全LOVOは元からcamera IDが辞書順で、composed設定もv3と完全一致する。
+3D/mask/offset/共分散に加え、イベント・残差・収束診断を含むBall3DResultの全fieldがv3とbitwise一致した。
+既存の採点専用oracle4結果を束縛し直し、実行時間2fieldを除く採点全項目も一致した。
+正規化scoresのdigestは旧・新とも `ci-replay-comparison.json` の同じ値である。
+
+v3の全211ファイルを事前照合し、v3は上書きしていない。予測・誤差・coverageは不変のためv4は作らない。
+既知の候補点方式の悪化とheatmap未収束も不変である。照合は新規 `segment_physics_offset_ci_checks_v1/replay/`。
+元v3 manifestと照合receiptのchecksumは `ci-proof.json`、再現scriptは `ci_replay_check.py`。
+GNU time wall237.48秒、最大RSS649,596KiB、swap0。動画再生成・GPU・検出器再推論は行っていない。
+PRの最新HEADで、push後の全CI jobとPython集計の成功を確認する。
