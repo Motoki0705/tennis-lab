@@ -17,7 +17,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
     issue(number: $number) {
       body
       createdAt
-      author { login }
+      author { __typename login }
       includesCreatedEdit
       userContentEdits(first: 100, after: $after) {
         nodes { id editedAt deletedAt editor { __typename login } }
@@ -48,18 +48,21 @@ def has_execution_record(
     return False
 
 
+def actor_login(value: Any) -> str:
+    """Normalize a typed GraphQL actor to the REST/viewer login format."""
+    actor = object_value(value)
+    kind = nonempty(actor.get("__typename"), "actor type")
+    login = nonempty(actor.get("login"), "actor login")
+    if kind == "Bot":
+        return login + "[bot]"
+    if kind == "User":
+        return login
+    raise ValueError("unsupported_edit_history_actor_type")
+
+
 def editor_matches_login(editor: Any, login: str) -> bool:
     """Match an edit actor to a viewer/author login using its GraphQL type."""
-    if editor is None:
-        return False
-    actor = object_value(editor)
-    kind = nonempty(actor.get("__typename"), "editor type")
-    editor_login = nonempty(actor.get("login"), "editor login")
-    if kind == "Bot":
-        return editor_login + "[bot]" == login
-    if kind == "User":
-        return editor_login == login
-    raise ValueError("unsupported_edit_history_editor_type")
+    return editor is not None and actor_login(editor) == login
 
 
 class GitHub(ParentGitHub):
@@ -112,7 +115,7 @@ class GitHub(ParentGitHub):
             issue = object_value(object_value(data["repository"])["issue"])
             body = issue["body"]
             created_at = nonempty(issue["createdAt"], "issue creation time")
-            author = nonempty(object_value(issue["author"])["login"], "issue author")
+            author = actor_login(issue.get("author"))
             includes_created = issue["includesCreatedEdit"]
             connection = object_value(issue["userContentEdits"])
             total = connection["totalCount"]

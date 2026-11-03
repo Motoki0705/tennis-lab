@@ -1546,6 +1546,71 @@ def test_first_edit_creation_record_is_identified_strictly(broken: str) -> None:
     assert not github.uninterrupted(before, after, "candidate")
 
 
+@pytest.mark.parametrize(
+    ("author", "expected_login"),
+    [
+        pytest.param({"__typename": "User", "login": "owner"}, "owner", id="user"),
+        pytest.param(
+            {"__typename": "Bot", "login": "some-app"}, "some-app[bot]", id="bot"
+        ),
+        pytest.param(
+            {"__typename": "Organization", "login": "some-app"}, None, id="unknown"
+        ),
+    ],
+)
+def test_history_normalizes_author_for_first_edit(
+    monkeypatch: pytest.MonkeyPatch,
+    author: dict[str, str],
+    expected_login: str | None,
+) -> None:
+    client = github.GitHub("o/r", enabled_since=None)
+    connection: dict[str, Any] = {
+        "nodes": [],
+        "totalCount": 0,
+        "pageInfo": {"hasNextPage": False, "endCursor": None},
+    }
+    issue = {
+        "body": "original",
+        "createdAt": "2026-10-31T00:00:00Z",
+        "author": author,
+        "includesCreatedEdit": False,
+        "userContentEdits": connection,
+    }
+    response = {
+        "data": {
+            "viewer": {"login": "github-actions[bot]"},
+            "repository": {"issue": issue},
+        }
+    }
+    monkeypatch.setattr(client, "request", lambda *_: response)
+    if expected_login is None:
+        with pytest.raises(ValueError):
+            client.history(1)
+        return
+    before = client.history(1)
+    issue.update(body="candidate", includesCreatedEdit=True)
+    connection.update(
+        nodes=[
+            {
+                "id": "created",
+                "editedAt": "2026-10-31T00:00:00Z",
+                "deletedAt": None,
+                "editor": author,
+            },
+            {
+                "id": "ours",
+                "editedAt": "2026-10-31T00:01:00Z",
+                "deletedAt": None,
+                "editor": {"__typename": "Bot", "login": "github-actions"},
+            },
+        ],
+        totalCount=2,
+    )
+    after = client.history(1)
+    assert github.uninterrupted(before, after, "candidate")
+    assert before["author"] == after["author"] == expected_login
+
+
 def test_apply_revalidates_the_artifact_instead_of_trusting_its_ready_status(
     rewrite_env: RewriteEnv,
 ) -> None:
