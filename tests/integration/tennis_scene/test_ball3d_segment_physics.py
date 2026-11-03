@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.tennis_scene.evaluation.ball3d.baseline import PipelineBaseline
 from src.tennis_scene.evaluation.ball3d.runner import load_run, run_method, save_run
 from src.tennis_scene.evaluation.ball3d.segment_physics import SegmentPhysicsMethod
 from src.tennis_scene.pipeline.components.ball_segment_physics import (
@@ -112,7 +113,7 @@ def test_opt_in_pipeline_codec_and_lovo_use_same_solver_without_heldout_evidence
         restored.fit.diagnostics["offset_covariance_seconds2"],
         output.fit.diagnostics["offset_covariance_seconds2"],
     )
-    method = SegmentPhysicsMethod(cfg.ball_segment_physics)
+    method = SegmentPhysicsMethod(cfg.ball_segment_physics, PipelineBaseline())
     runs = run_method(
         method,
         inputs,

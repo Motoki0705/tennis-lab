@@ -11,8 +11,8 @@ def flight_states(
     times: NDArray[np.float64],
     drag_per_m: float,
     *,
-    gravity_mps2: float = 9.81,
-    steps: int = 48,
+    gravity_mps2: float,
+    steps: int,
 ) -> NDArray[np.float64]:
     """One six-component initial state per time, including small negative times.
 

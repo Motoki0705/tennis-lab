@@ -10,6 +10,11 @@ CPUの任意方式。courtのmetre座標で `dX/dt=V`、`dV/dt=(0,0,-g)-k|V|V` �
 任意componentは採用済み `ball_points` とgate前の `ball_detections` v2に依存し、
 model evidenceを要求する。注釈importは拒否し、初期値・side・alignmentは標準pipelineを使う。
 
+
+Pythonの設定には既定値を持たせず、評価adapterの初期化方式も含め、呼び出し側がHydra compositionの値を明示する。
+初期3Dを固定した場合、solver内部の残差行と自由clock列はcamera ID順に統一し、camera依存の
+出力・共分散・診断は呼び出し側のview順へ戻す。終了閾値を変えず、浮動小数の順序依存を除く。
+
 `segments.py` はbaseline 3Dの各点の左右で独立な2次式をfitし、速度変化の閾値とNMSで
 イベント候補を選ぶ。低い位置で下向きから上向きになればbounce、他はhit候補とする。
 正解イベントとは保証しない。長い欠測は分割し、最大区間長による切断はイベントに数えない。

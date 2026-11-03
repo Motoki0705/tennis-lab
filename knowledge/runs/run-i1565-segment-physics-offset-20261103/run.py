@@ -15,6 +15,8 @@ import numpy as np
 import scipy
 import torch
 from diagnostics import diagnostic_summary, export_tables, plot_diagnostics
+from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 
 from src.tennis_scene.ball_trajectory.config import SegmentPhysicsConfig
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
@@ -42,6 +44,7 @@ from src.tennis_scene.visualization.ball3d.report import (
     write_report,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.paths import PROJECT_ROOT
 
 
 def main():
@@ -95,7 +98,16 @@ def main():
     fingerprint = document_digest(
         {str(p): dual_sha256(p) for p in sorted(Path("src").rglob("*.py"))}
     )
-    settings = SegmentPhysicsConfig()
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"
+    ):
+        composed = compose(config_name="pipeline")
+    settings_values = OmegaConf.to_container(
+        composed.ball_reconstruction.segment_physics, resolve=True
+    )
+    if not isinstance(settings_values, dict):
+        raise ValueError("Composed physics configuration must be a mapping")
+    settings = SegmentPhysicsConfig(**settings_values)
     baseline = baseline_from_bundle(bundle)
     methods = {
         method.name: method

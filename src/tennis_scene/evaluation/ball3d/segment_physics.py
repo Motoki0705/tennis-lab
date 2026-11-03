@@ -16,8 +16,8 @@ from .contracts import Ball3DResult, MethodInput
 
 @dataclass(frozen=True)
 class SegmentPhysicsMethod:
-    settings: SegmentPhysicsConfig = SegmentPhysicsConfig()
-    baseline: PipelineBaseline = PipelineBaseline()
+    settings: SegmentPhysicsConfig
+    baseline: PipelineBaseline
 
     @property
     def name(self) -> str:

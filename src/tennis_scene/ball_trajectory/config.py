@@ -8,21 +8,21 @@ from dataclasses import dataclass, fields
 
 @dataclass(frozen=True)
 class SegmentPhysicsConfig:
-    observation: str = "candidates"
-    gravity_mps2: float = 9.81
-    initial_drag_per_m: float = 0.015
-    max_drag_per_m: float = 0.1
-    offset_bound_frames: float = 0.99
-    sigma_px: float = 6.0
-    robust_scale: float = 2.0
-    event_velocity_change_mps: float = 8.0
-    bounce_height_m: float = 1.0
-    event_window_frames: int = 4
-    min_segment_frames: int = 8
-    max_segment_frames: int = 100
-    max_gap_frames: int = 3
-    integration_steps: int = 48
-    max_nfev: int = 100
+    observation: str
+    gravity_mps2: float
+    initial_drag_per_m: float
+    max_drag_per_m: float
+    offset_bound_frames: float
+    sigma_px: float
+    robust_scale: float
+    event_velocity_change_mps: float
+    bounce_height_m: float
+    event_window_frames: int
+    min_segment_frames: int
+    max_segment_frames: int
+    max_gap_frames: int
+    integration_steps: int
+    max_nfev: int
 
     def __post_init__(self) -> None:
         if self.observation not in {"candidates", "heatmap"}:

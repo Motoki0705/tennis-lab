@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -111,6 +111,71 @@ def fit_trajectory(
         min(e.source_size_wh) < 2 or min(e.heatmaps.shape[-2:]) < 2 for e in evidence
     ):
         raise ValueError("Physics requires at least a two-cell grid and image axes")
+    order = tuple(sorted(range(v), key=ids.__getitem__))
+    rows = list(order)
+    canonical = _fit_canonical(
+        tuple(cameras[i] for i in order),
+        tuple(evidence[i] for i in order),
+        initial
+        if order == tuple(range(v))
+        else replace(
+            initial,
+            inliers=initial.inliers[rows],
+            reprojection_px=initial.reprojection_px[rows],
+        ),
+        fps=fps,
+        config=config,
+    )
+    if order == tuple(range(v)):
+        return canonical
+    inverse = np.argsort(order)
+    diagnostics = dict(canonical.diagnostics)
+    diagnostics["camera_ids"] = list(ids)
+    for key in ("time_offsets_frames", "offset_standard_error_seconds"):
+        if key in diagnostics and diagnostics[key] is not None:
+            diagnostics[key] = diagnostics[key][inverse]
+    if diagnostics["offset_covariance_seconds2"] is not None:
+        diagnostics["offset_covariance_seconds2"] = diagnostics[
+            "offset_covariance_seconds2"
+        ][np.ix_(inverse, inverse)]
+    if "sample_camera_indices" in diagnostics:
+        diagnostics["sample_camera_indices"] = np.asarray(order, np.int64)[
+            diagnostics["sample_camera_indices"]
+        ]
+    if "active_bounds" in diagnostics:
+        # States/drag precede free clocks, whose public diagnostic order follows
+        # the caller's cameras with the anchor removed.
+        free_ids = tuple(name for name in ids if name != min(ids))
+        canonical_free_ids = tuple(sorted(free_ids))
+        clock_columns = [canonical_free_ids.index(name) for name in free_ids]
+        active = diagnostics["active_bounds"].copy()
+        active[-len(free_ids) :] = active[-len(free_ids) :][clock_columns]
+        diagnostics["active_bounds"] = active
+    return SegmentPhysicsResult(
+        canonical.positions,
+        canonical.valid,
+        canonical.used_views[inverse],
+        canonical.time_offsets_seconds[inverse],
+        diagnostics,
+    )
+
+
+def _fit_canonical(
+    cameras: tuple[PinholeCamera, ...],
+    evidence: tuple[BallHeatmapEvidence, ...],
+    initial: TriangulatedPoints,
+    *,
+    fps: float,
+    config: SegmentPhysicsConfig,
+) -> SegmentPhysicsResult:
+    """Run the same numerical problem in camera-ID order.
+
+    Residual row order and free-clock column order affect floating-point LSMR
+    steps and relative-cost termination. Canonicalization keeps both identical
+    when a caller permutes its view axis; solver tolerances remain unchanged.
+    """
+    v, t = len(cameras), len(initial.valid)
+    ids = tuple(c.camera_id for c in cameras)
     segments, events = detect_segments(initial.positions, initial.valid, fps, config)
     frame_segment: NDArray[np.int64] = np.full(t, -1, np.int64)
     states = []

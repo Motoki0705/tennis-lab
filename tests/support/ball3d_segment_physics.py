@@ -3,17 +3,34 @@
 from dataclasses import replace
 
 import numpy as np
+from hydra import compose, initialize_config_dir
 from numpy.typing import NDArray
+from omegaconf import OmegaConf
 from scipy.integrate import solve_ivp
 
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tennis_scene.ball_trajectory.config import SegmentPhysicsConfig
 from src.tennis_scene.pipeline.components.ball_evidence import BallHeatmapEvidence
 from src.tennis_scene.pipeline.components.ball_points import (
     BallPointsInput,
     BallPointsModule,
 )
 from src.utils.geometry.triangulation import PinholeCamera, TriangulatedPoints
+from src.utils.paths import PROJECT_ROOT
 from tests.support.ball3d_evaluation import make_court, make_inputs
+
+
+def segment_physics_config(**overrides):
+    """Use production composition; test-specific changes remain explicit."""
+    with initialize_config_dir(
+        config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"
+    ):
+        composed = compose(config_name="pipeline")
+    values = OmegaConf.to_container(
+        composed.ball_reconstruction.segment_physics, resolve=True
+    )
+    assert isinstance(values, dict)
+    return replace(SegmentPhysicsConfig(**values), **overrides)
 
 
 def synthetic_flights():

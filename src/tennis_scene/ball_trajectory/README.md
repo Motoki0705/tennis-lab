@@ -14,6 +14,14 @@ both accepted `ball_points` and pre-gate `ball_detections` v2. Model evidence is
 required; annotation imports are rejected. Initialization, side and alignment
 retain the standard pipeline. All settings live in `configs/pipeline.yaml`.
 
+
+Python settings have no runtime defaults: callers must supply the values from
+Hydra composition, including the evaluation adapter's initialization method.
+With a fixed initial 3D trajectory, residual rows and free-clock columns are
+canonicalized by camera ID before optimization. Camera-dependent outputs and
+diagnostics are mapped back to the caller's view order. This removes numerical
+order dependence without changing solver termination tolerances.
+
 `segments.py` detects velocity changes from independent quadratic fits on each
 side of each baseline 3D frame. Nonmaximum suppression selects changes above
 the configured velocity threshold. A low event with downward then upward
