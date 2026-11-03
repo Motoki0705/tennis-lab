@@ -151,6 +151,75 @@ def distribution(
     }
 
 
+def paired_error_summary(
+    reference: Sequence[MethodRun],
+    candidate: Sequence[MethodRun],
+    inputs: MethodInput,
+    annotations: Ball2DAnnotations,
+    *,
+    start: int,
+    stop: int,
+    held_out_camera: str | None = None,
+    threshold: float = 20.0,
+) -> dict[str, Any]:
+    """Compare the intersection of camera/frame residuals, preserving coverage.
+
+    ``held_out_camera=None`` pools the three LOVO folds, as in score_comparison.
+    A reduction is reference error minus candidate error, so positive is better.
+    This is a paired diagnostic, not an additive attribution of 3D error.
+    """
+    if not 0 <= start < stop <= inputs.num_frames:
+        raise ValueError("Invalid paired scoring interval")
+    if held_out_camera is not None and held_out_camera not in inputs.camera_ids:
+        raise ValueError("Unknown held-out camera")
+
+    def samples(runs: Sequence[MethodRun]) -> dict[tuple[int, int], float]:
+        expected = (
+            set(inputs.camera_ids) if held_out_camera is None else {held_out_camera}
+        )
+        selected = [r for r in runs if r.held_out_camera in expected]
+        if (
+            len(selected) != len(expected)
+            or {r.held_out_camera for r in selected} != expected
+        ):
+            raise ValueError("Paired comparison requires each selected LOVO fold once")
+        values = {}
+        for run in selected:
+            if run.source_camera_ids != inputs.camera_ids:
+                raise ValueError("Paired comparison camera axes disagree")
+            row = error_samples(run, inputs, annotations)
+            for camera, frame, error in zip(
+                row["camera_index"], row["frame_index"], row["error_px"], strict=True
+            ):
+                if start <= frame < stop:
+                    values[int(camera), int(frame)] = float(error)
+        return values
+
+    left, right = samples(reference), samples(candidate)
+    common = sorted(left.keys() & right.keys())
+    a = np.array([left[key] for key in common], np.float64)
+    b = np.array([right[key] for key in common], np.float64)
+    return {
+        "reference_scored_count": len(left),
+        "candidate_scored_count": len(right),
+        "common_scored_count": len(common),
+        "reference_on_common_px": distribution(a, threshold=threshold),
+        "candidate_on_common_px": distribution(b, threshold=threshold),
+        "paired_reduction_px": distribution(a - b),
+        "mean_reduction_px": float(np.mean(a - b)) if len(a) else None,
+        "improved_rate": float(np.mean(b < a)) if len(a) else None,
+        "median_reduction_px": float(np.median(a) - np.median(b)) if len(a) else None,
+        "p90_reduction_px": float(np.percentile(a, 90) - np.percentile(b, 90))
+        if len(a)
+        else None,
+        "above_threshold_rate_reduction": float(
+            np.mean(a > threshold) - np.mean(b > threshold)
+        )
+        if len(a)
+        else None,
+    }
+
+
 def motion_samples(result: Ball3DResult, fps: float) -> dict[str, NDArray[Any]]:
     xyz = result.positions.astype(np.float64)
     pairs = result.valid[:-1] & result.valid[1:]

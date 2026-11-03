@@ -92,6 +92,11 @@ LOVOは除外cameraのみ採点し、foldの中央値を平均せず個別残差
 記録した行があっても、1残差は1回だけ数える。`source_row_count` を物理イベント数と
 解釈せず、`physical_event_count` は未確定としてnullを出す。元の注記は削除しない。
 
+`paired_error_summary` は2組のLOVOのcamera/frame残差の共通集合を、全foldまたは
+除外camera別に比べる。各組の採点数と参照−比較の差を残す。coverageが異なる場合の
+非加算的な診断であり、clip固有の誤差分解は
+[`knowledge/runs/run-ball3d-error-decomposition-20261103`](../../../knowledge/runs/run-ball3d-error-decomposition-20261103/) に置く。
+
 `annotation_oracle` は採点専用で、foldの保持cameraの採点可能な参照（推定を含む）を
 同じ固定cameraで三角測量する。予測方式は呼ばない。近似校正と参照の誤差があるため、
 数学的に保証された下限ではなく幾何参照である。

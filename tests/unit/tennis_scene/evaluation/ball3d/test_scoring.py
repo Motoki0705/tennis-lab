@@ -11,6 +11,7 @@ from src.tennis_scene.evaluation.ball3d.scoring import (
     annotation_oracle,
     error_samples,
     motion_samples,
+    paired_error_summary,
     project_result,
     score_comparison,
 )
@@ -19,6 +20,52 @@ from tests.support.ball3d_evaluation import (
     make_inputs,
     make_scoring_bundle,
 )
+
+
+def test_paired_scoring_matches_camera_frame_intersection_with_different_coverage():
+    inputs = make_inputs()
+    first = run_method(
+        FixedPointMethod(),
+        inputs,
+        bundle_sha256="x",
+        code_commit="y",
+        code_fingerprint="z",
+    )
+    # Different coverage by camera and frame; reverse fold order deliberately.
+    second = []
+    for run in reversed(first):
+        valid = run.result.valid.copy()
+        if run.held_out_camera == "right":
+            valid[0] = False
+        xyz = run.result.positions.copy()
+        if run.held_out_camera == "right":
+            xyz[2, 0] += 0.35  # 120 * .35 / 7 = 6 extra pixels of error.
+        xyz[~valid] = 0
+        result = replace(
+            run.result,
+            positions=xyz,
+            valid=valid,
+            used_views=run.result.used_views & valid,
+        )
+        second.append(replace(run, method="candidate", result=result))
+    row = paired_error_summary(first, second, inputs, _labels(inputs), start=0, stop=4)
+    assert row["reference_scored_count"] == 5
+    assert row["candidate_scored_count"] == 4
+    assert row["common_scored_count"] == 4
+    # Remove right/f0 (5px), leaving near/f0=13, far/f0=25, right/f2=0, near/f2=5.
+    assert row["reference_on_common_px"]["median"] == pytest.approx(9)
+    assert row["candidate_on_common_px"]["median"] == pytest.approx(9.5)
+    assert row["mean_reduction_px"] == pytest.approx(-1.5)
+    assert row["improved_rate"] == 0
+    empty = paired_error_summary(
+        first, second, inputs, _labels(inputs), start=2, stop=4, held_out_camera="far"
+    )
+    assert empty["common_scored_count"] == 0
+    assert empty["mean_reduction_px"] is None
+    with pytest.raises(ValueError, match="once"):
+        paired_error_summary(
+            first, second + second, inputs, _labels(inputs), start=0, stop=4
+        )
 
 
 class FixedPointMethod:
