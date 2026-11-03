@@ -30,6 +30,7 @@ from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
 )
 from src.tasks.player_association.association.config import load_association_config
+from src.tennis_scene.ball_trajectory.config import SegmentPhysicsConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -248,6 +249,11 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
 })
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
+    "method": ConfigField.of(str),
+    "segment_physics": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.ball_reconstruction.segment_physics", fields={
+        name: ConfigField.of(str) if name == "observation" else ConfigField.of(int) if name in {"event_window_frames", "min_segment_frames", "max_segment_frames", "max_gap_frames", "integration_steps", "max_nfev"} else ConfigField.of(float, int)
+        for name in SegmentPhysicsConfig.__dataclass_fields__
+    })),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -320,6 +326,8 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
+    ball_method: str
+    ball_segment_physics: SegmentPhysicsConfig
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -392,6 +400,10 @@ class PipelineRuntimeConfig:
         person = _mapping(value["person_observations"], name="person_observations")
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
+        ball_method = str(ball["method"])
+        if ball_method not in {"triangulation", "segment_physics"}:
+            raise SemanticConfigurationError("Unknown ball reconstruction method")
+        ball_physics = SegmentPhysicsConfig(**cast(dict[str, Any], dict(_mapping(ball["segment_physics"], name="ball_reconstruction.segment_physics"))))
         visibility = float(cast(float, person["visibility_threshold"]))
         _unit_interval(visibility, name="person visibility")
         margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
@@ -417,7 +429,7 @@ class PipelineRuntimeConfig:
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing, ball_method, ball_physics)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

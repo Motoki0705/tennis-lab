@@ -15,6 +15,8 @@
 | `scoring.py` | 分段重投影、覆盖率、运动/事件诊断及标注几何参考 |
 | [比较可视化](../visualization/ball3d/) | N种方法的RGB叠加、俯视/侧视轨迹、图表、裁剪图和可携带HTML |
 
+`segment_physics.py` 使用保留视角的初始轨迹运行可选的 [分段物理与相对时钟solver](../ball_trajectory/README.zh-CN.md)，并输出相同结果格式。
+
 ## 固定输入与来源
 
 `create_bundle` 复制原 `scene.json`、选定component的descriptor和数组，以及传递依赖的全部descriptor。

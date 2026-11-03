@@ -12,6 +12,9 @@ from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
 from src.tennis_scene.pipeline.components.ball_points import BallPointsModule
+from src.tennis_scene.pipeline.components.ball_segment_physics import (
+    SegmentPhysicsModule,
+)
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
@@ -38,6 +41,9 @@ from src.tennis_scene.pipeline.components.triangulation import (
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ClipSource
 from src.tennis_scene.pipeline.input_assembly.ball_points import (
     BallPointsInputAssembler,
+)
+from src.tennis_scene.pipeline.input_assembly.ball_segment_physics import (
+    SegmentPhysicsInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.body import (
     BodyPlacementInputAssembler,
@@ -194,10 +200,17 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("player_triangulation", PlayerTriangulationModule(ids, reprojection_px=cfg.player_reprojection_px,
         joint_confidence=cfg.joint_confidence, enabled=cfg.enabled["player_reconstruction"]),
         PlayerTriangulationInputAssembler(cfg.human_vis_threshold), reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
-    add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
-        min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
-        BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
-        lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
+    if cfg.ball_method == "triangulation":
+        add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
+            min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
+            BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
+            lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
+    else:
+        add("ball_triangulation", SegmentPhysicsModule(ids, cfg.ball_segment_physics, reprojection_px=cfg.ball_reprojection_px,
+            min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
+            SegmentPhysicsInputAssembler(), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls,
+                **{f"detections_{c}": f"ball_detection/{c}" for c in ids}},
+            lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
         BodyViewSelectionInputAssembler(cfg.human_vis_threshold), reconstructed,
         lambda: {"policy": "coverage_confidence_camera_id", "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "enabled": body_enabled})

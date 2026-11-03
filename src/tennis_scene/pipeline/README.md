@@ -141,6 +141,12 @@ side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、m
 コマンド・定量比較・表示検証は[CPU replay記録](../../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照。
 
 
+## 任意の区間物理軌道
+
+`ball_reconstruction.method=segment_physics` では、採用済みball_pointsとgate前のball_detections v2を使って
+区間軌道・drag・相対時刻を同時推定します。既定の三角測量は変更しません。
+入力・式・mask・時刻基準・保存診断と制限は [ball_trajectory](../ball_trajectory/README.ja.md) を参照してください。
+
 ## 成果物
 
 構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。

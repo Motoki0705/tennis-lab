@@ -1,0 +1,7 @@
+{
+  "node": "tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_joint_fit_recovers_signed_offsets_drag_bounce_and_camera_reordering",
+  "mutation": "reverse camera offset sign in image objective",
+  "mutated_exit_code": 1,
+  "restored_exit_code": 0,
+  "bytes_restored": true
+}

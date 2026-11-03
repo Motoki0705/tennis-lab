@@ -15,6 +15,8 @@
 | `scoring.py` | 区間別の再投影・coverage・運動・イベント診断、注釈のみの幾何参照 |
 | [比較可視化](../visualization/ball3d/) | N方式のRGB重畳、俯瞰・側面軌道、図・crop・持ち運べるHTML |
 
+`segment_physics.py` は任意の [区間物理軌道・相対時刻solver](../ball_trajectory/README.ja.md) を選択viewだけの初期値で実行し、共通の結果形式へ渡します。
+
 ## 固定入力と出自
 
 `create_bundle` は元の `scene.json`、選択componentのdescriptorと配列、および推移的な

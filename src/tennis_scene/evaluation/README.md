@@ -16,6 +16,8 @@ the standard pipeline or execute detector inference.
 | `scoring.py` | Split-aware reprojection, coverage, motion/event diagnostics and the annotation-only geometric reference |
 | [Comparison visualization](../visualization/ball3d/) | N-method RGB overlays, top/side trajectories, figures, crops and portable HTML |
 
+`segment_physics.py` replays the optional [segment physics / relative clock solver](../ball_trajectory/README.md) with selected-view initialization and the same result contract.
+
 ## Fixed inputs and provenance
 
 `create_bundle` copies the source `scene.json`, the selected component descriptors
