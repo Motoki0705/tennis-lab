@@ -1,0 +1,38 @@
+{
+  "collected_count": 18,
+  "collection_pytest_seconds": 4.84,
+  "collection_wrapper_seconds": 7.537904365977738,
+  "passed_count": 18,
+  "execution_pytest_seconds": 10.14,
+  "execution_wrapper_seconds": 15.720402840990573,
+  "new_cases": [
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_camera_frame_join_and_strata_preserve_reordered_asymmetric_points",
+      "seconds": 0.041052219981793314,
+      "setup_seconds": 0.009108068014029413
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_duplicate_camera_frame_is_rejected",
+      "seconds": 0.004122873011510819,
+      "setup_seconds": 0.0027344240224920213
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_common_reference_kind_mismatch_is_rejected_before_stratification",
+      "seconds": 0.004447267972864211,
+      "setup_seconds": 0.0024881159770302474
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals0]",
+      "seconds": 0.0041289060027338564,
+      "setup_seconds": 0.0028606810374185443
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals1]",
+      "seconds": 0.003986672032624483,
+      "setup_seconds": 0.0028833100222982466
+    }
+  ],
+  "max_case_seconds": 0.0876085830386728,
+  "max_setup_seconds": 0.009108068014029413,
+  "workers": 0
+}
