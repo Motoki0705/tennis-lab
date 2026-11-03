@@ -37,6 +37,17 @@ def step(
     }
 
 
+def read_step(
+    index: int, path: Any, state: str = "ACTIVE", **info: Any
+) -> dict[str, Any]:
+    return {
+        "conversation_id": "test",
+        "step_index": index,
+        "state": state,
+        "tool_info": {"name": "read_file", "parameters": {"Path": path}, **info},
+    }
+
+
 def test_soft_denial_survives_done_without_error_or_output() -> None:
     raw = stream(
         step(2, "python3 -c pass"),
@@ -265,7 +276,20 @@ def test_production_requires_a_hook_for_every_stream_command() -> None:
 
 
 def test_read_hook_records_never_reconstruct_a_shell_command() -> None:
-    capture = census.capture_stream(stream(step(2, "cat a", "DONE", output="ok")))
+    capture = census.capture_stream(
+        stream(
+            read_step(
+                1,
+                "../private-file",
+                "ERROR",
+                error={
+                    "type": "synthetic_denial",
+                    "message": "Denied by pre-tool hook",
+                },
+            ),
+            step(2, "cat a", "DONE", output="ok"),
+        )
+    )
     records = [
         {
             "tool": "read_file",
@@ -278,6 +302,7 @@ def test_read_hook_records_never_reconstruct_a_shell_command() -> None:
     ]
     census.restore_hook_commands(capture, records, require_hook=True)
     assert capture["commands"][0]["hook_decision"] == "allow"
+    assert capture["reads"][0]["hook_decision"] == "deny"
 
 
 def test_a_denial_error_cannot_hide_execution_output() -> None:
@@ -298,3 +323,94 @@ def test_a_denial_error_cannot_hide_execution_output() -> None:
             [{"step": 2, "command": "ls -la", "decision": "deny"}],
             require_hook=True,
         )
+
+
+def test_read_observations_preserve_shapes_and_deduplicate_updates() -> None:
+    capture = census.capture_stream(
+        stream(
+            read_step(2, "../not-available.txt"),
+            read_step(
+                2,
+                "../not-available.txt",
+                "ERROR",
+                error={
+                    "type": "synthetic_denial",
+                    "message": "Denied by pre-tool hook",
+                },
+            ),
+            read_step(
+                4,
+                "inside.txt",
+                parameters={"Path": "inside.txt", "StartLine": 2, "EndLine": 5},
+            ),
+            read_step(4, "inside.txt", "DONE", output="synthetic content"),
+        )
+    )
+    assert not capture["commands"]
+    assert [(entry["state"], entry["outcome"]) for entry in capture["reads"]] == [
+        ("ERROR", "hook_denied"),
+        ("DONE", "completed"),
+    ]
+    assert capture["reads"][1]["parameters"] == {
+        "Path": "inside.txt",
+        "StartLine": 2,
+        "EndLine": 5,
+    }
+    summary = census.public_command_summary(capture)
+    assert summary["read_file"]["attempted_count"] == 2
+    assert "inside.txt" not in json.dumps(
+        summary
+    ) and "not-available.txt" not in json.dumps(summary)
+
+
+@pytest.mark.parametrize(
+    "fault", ["orphan", "conflict", "wrong_tool", "ambiguous", "hidden_done"]
+)
+def test_read_reconciliation_rejects_ambiguous_or_contradictory_evidence(
+    fault: str,
+) -> None:
+    steps = [read_step(2, "inside.txt", "DONE", output="synthetic content")]
+    records = [
+        {"tool": "read_file", "step": 2, "path": "inside.txt", "decision": "allow"}
+    ]
+    if fault == "orphan":
+        records[0]["step"] = 4
+    elif fault == "conflict":
+        records.append({**records[0], "decision": "deny"})
+    elif fault == "wrong_tool":
+        records = [
+            {
+                "tool": "run_command",
+                "step": 2,
+                "command": "cat inside.txt",
+                "decision": "allow",
+            }
+        ]
+    elif fault == "ambiguous":
+        steps.append({**steps[0], "conversation_id": "another-conversation"})
+    else:
+        records[0]["decision"] = "deny"
+        steps.append(
+            read_step(
+                2,
+                "inside.txt",
+                "ERROR",
+                output="",
+                error={
+                    "type": "synthetic_denial",
+                    "message": "Denied by pre-tool hook",
+                },
+            )
+        )
+    capture = census.capture_stream(stream(*steps))
+    with pytest.raises(ValueError):
+        census.restore_hook_commands(capture, records, require_hook=True)
+
+
+@pytest.mark.parametrize("path", [None, 17])
+def test_invalid_read_target_never_becomes_a_valid_capture(path: Any) -> None:
+    raw = stream(read_step(2, path))
+    capture = census.capture_stream(raw, strict=False)
+    assert capture["errors"]
+    with pytest.raises(ValueError):
+        census.capture_stream(raw)

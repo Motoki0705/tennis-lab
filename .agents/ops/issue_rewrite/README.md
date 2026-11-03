@@ -51,7 +51,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は300秒。
    許可外のシェル形式は共通部品のPreToolUse hookが理由付きで拒否し、読み取りと構造化出力の生成を続けさせる。
    workspace外への `read_file` もsymlink解決後のパスで拒否する。
-   streamのシェル試行は同じstepのhook記録との一致が必須で、照合できない試行や拒否後の実行形跡は
+   streamのシェル・読み取り試行は同じtool・stepと、コマンド全文またはPathがhook記録と一致することを必須とし、照合できない試行や拒否後の実行形跡は
    `command_hook_mismatch` として失敗する。末尾省略の復元はハーネスと同じ共通部品を使う。
    拒否があっても、以下のschema・不変条件・意味検査・照合付き書き込みの合格条件は変えない。
 4. writerの構造化出力をschemaで検査してから不変条件を調べる。通った本文だけを別会話のverifierへ渡す。

@@ -841,6 +841,42 @@ def test_missing_hook_decision_keeps_failure_and_denials_private(
     assert env.state()["issue"]["body"] == env.original and not env.mutations()
 
 
+@pytest.mark.parametrize("fault", ["missing", "denied_execution", "step", "path"])
+def test_unverified_read_never_applies_a_body_or_publishes_its_path(
+    rewrite_env: RewriteEnv,
+    fault: str,
+) -> None:
+    env = rewrite_env
+    (env.root / "turns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "structured_output": env.writer(),
+                    "read_fault": fault,
+                }
+            ]
+        )
+    )
+    assert env.run("rewrite") == 1
+    failure = json.loads((env.root / "private-1/failure.json").read_text())
+    assert failure["reason"] == "command_hook_mismatch"
+    capture = json.loads(
+        (env.root / "private-1/writer-1.log.commands.json").read_text()
+    )
+    assert len(capture["reads"]) == 1
+    assert capture["hook_verification_errors"]
+    if fault != "missing":
+        assert failure["denied_actions"][0]["action"] == "read_file"
+        assert failure["denied_actions"][0]["path"] == "../private-read-input.txt"
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    assert "private-read-input.txt" not in public and "private-other.txt" not in public
+    assert "agy_command_hook_mismatch" in public
+    assert env.run("apply") == 1
+    assert env.state()["issue"]["body"] == env.original and not env.mutations()
+
+
 def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
     rewrite_env: RewriteEnv,
 ) -> None:

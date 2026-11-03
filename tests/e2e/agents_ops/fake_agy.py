@@ -82,6 +82,17 @@ if scenario == "updated":
     (root / "updated").touch()
 
 fake_tools.init_stream()
+if scenario.startswith("read_verification_"):
+    kind = scenario.removeprefix("read_verification_")
+    fake_tools.read_file(
+        "inside.txt"
+        if kind in {"inside", "step", "path"}
+        else "../private-read-input.txt",
+        skip_hook=kind == "missing",
+        force_execution=kind == "denied_execution",
+        hook_step_offset=1 if kind == "step" else 0,
+        display_path="other.txt" if kind == "path" else None,
+    )
 if scenario.startswith("verification_"):
     kind = scenario.removeprefix("verification_")
     command = (
@@ -134,7 +145,11 @@ if probe:
         }
         payload["denied_actions"] = []
         assert fake_tools.run_command(probe["recovery_command"])["decision"] == "deny"
-        assert fake_tools.read_file(probe["recovery_read_path"])["decision"] == "deny"
+        read_decision = fake_tools.read_file(
+            probe["recovery_read_path"], skip_hook=scenario == "probe_read_missing_hook"
+        )
+        if scenario != "probe_read_missing_hook":
+            assert read_decision["decision"] == "deny"
         assert fake_tools.read_file("a")["decision"] == "allow"
         for command in probe["commands"]:
             assert fake_tools.run_command(command)["decision"] == "allow"

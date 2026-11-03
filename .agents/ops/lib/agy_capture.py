@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import shlex
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -194,6 +195,13 @@ def capture_stream(raw: str, log: str = "", *, strict: bool = True) -> dict[str,
                 for field in ("error", "output"):
                     if field in info:
                         entry[field] = info[field]
+                if (
+                    entry["tool"] in {"run_command", "read_file"}
+                    and entry["state"] == "DONE"
+                    and isinstance(entry.get("output"), str)
+                ):
+                    # Later updates must not hide a completed execution.
+                    entry["execution_observed"] = True
             else:
                 raise ValueError(f"unknown stream event at line {line_number}: {kind}")
         except (ValueError, KeyError, TypeError, AttributeError) as exc:
@@ -207,18 +215,21 @@ def capture_stream(raw: str, log: str = "", *, strict: bool = True) -> dict[str,
             log,
         )
     }
-    commands = []
+    commands: list[dict[str, Any]] = []
+    reads: list[dict[str, Any]] = []
     for entry in steps.values():
-        if entry["tool"] != "run_command":
+        if entry["tool"] not in {"run_command", "read_file"}:
             continue
-        command = entry["parameters"].get("CommandLine")
-        if not isinstance(command, str):
+        reading = entry["tool"] == "read_file"
+        parameter = "Path" if reading else "CommandLine"
+        target = entry["parameters"].get(parameter)
+        if not isinstance(target, str):
             if strict:
-                raise ValueError("run_command observation lacks its full CommandLine")
-            errors.append("run_command observation lacks its full CommandLine")
+                raise ValueError("tool observation lacks its target")
+            errors.append("tool observation lacks its target")
             continue
         error = entry.get("error", {})
-        if entry["step"] in soft_denied:
+        if not reading and entry["step"] in soft_denied:
             outcome = "soft_denied"
         elif "denied by pre-tool hook" in str(error).lower():
             outcome = "hook_denied"
@@ -230,22 +241,29 @@ def capture_stream(raw: str, log: str = "", *, strict: bool = True) -> dict[str,
             outcome = "completed"
         else:
             outcome = "unknown"
-        commands.append(
+        observations = reads if reading else commands
+        observations.append(
             {
                 **entry,
-                "command": command,
-                "form": command_form(command),
-                "grammar_allowed": grammar_allows(command),
                 "outcome": outcome,
-                "command_exit_code": (
-                    int(match.group(1))
-                    if (
-                        match := re.search(
-                            r"Command exited with code (-?\d+)",
-                            str(entry.get("output", "")),
-                        )
-                    )
-                    else None
+                **(
+                    {"path": target, "form": "read_file <PATH>"}
+                    if reading
+                    else {
+                        "command": target,
+                        "form": command_form(target),
+                        "grammar_allowed": grammar_allows(target),
+                        "command_exit_code": (
+                            int(match.group(1))
+                            if (
+                                match := re.search(
+                                    r"Command exited with code (-?\d+)",
+                                    str(entry.get("output", "")),
+                                )
+                            )
+                            else None
+                        ),
+                    }
                 ),
             }
         )
@@ -257,6 +275,7 @@ def capture_stream(raw: str, log: str = "", *, strict: bool = True) -> dict[str,
         "init": init,
         "result": result,
         "commands": commands,
+        "reads": reads,
         "tool_counts": dict(Counter(entry["tool"] for entry in steps.values())),
         "subagent_steps": subagent_steps,
         "uncaptured_soft_denial_steps": sorted(soft_denied - seen_denials),
@@ -308,45 +327,57 @@ def restore_hook_commands(
     *,
     require_hook: bool = False,
 ) -> None:
-    """Recover display-truncated commands from the independent pre-tool input.
+    """Reconcile command/read observations with the independent pre-tool input.
 
     Preserve the display value and provenance. Arbitrary disagreements and hook
     steps absent from the stream fail loudly rather than being overwritten.
     """
-    hooks: dict[int, dict[str, Any]] = {}
+    fields = {"run_command": "command", "read_file": "path"}
+    hooks: dict[tuple[str, int], dict[str, Any]] = {}
     records = (
         [parse_json(line) for line in raw_hooks.splitlines()]
         if isinstance(raw_hooks, str)
         else raw_hooks
     )
     for record in records:
-        # Legacy census records contain only command/step/decision. File reads
-        # share the log but never supply a shell command for restoration.
-        if record.get("tool", "run_command") == "read_file":
-            continue
-        index, command = record["step"], record["command"]
-        if type(index) is not int or index < 0 or not isinstance(command, str):
-            raise ValueError("invalid hook command record")
+        if not isinstance(record, dict):
+            raise ValueError("invalid hook tool record")
+        # Only legacy census command records omit the tool name.
+        tool = record.get("tool", "run_command")
+        index = record.get("step")
+        if (
+            not isinstance(tool, str)
+            or tool not in fields
+            or type(index) is not int
+            or index < 0
+            or not isinstance(record.get(fields[tool]), str)
+        ):
+            raise ValueError("invalid hook tool record")
         if record.get("decision") not in {"allow", "deny"}:
             raise ValueError("invalid hook decision")
-        if index in hooks and hooks[index] != record:
-            raise ValueError("conflicting hook records for one command step")
-        hooks[index] = record
-    seen: set[int] = set()
+        key = (tool, index)
+        if key in hooks and hooks[key] != record:
+            raise ValueError("conflicting hook records for one tool step")
+        hooks[key] = record
+    seen: set[tuple[str, int]] = set()
     restored = 0
-    for entry in capture["commands"]:
-        index = entry["step"]
-        if index not in hooks:
-            entry["command_capture_source"] = "stream"
+    for entry in [*capture["commands"], *capture.get("reads", [])]:
+        key = (entry["tool"], entry["step"])
+        field = fields[entry["tool"]]
+        source = field + "_capture_source"
+        if key not in hooks:
+            entry[source] = "stream"
             if require_hook:
-                raise ValueError("command step has no hook decision")
+                raise ValueError("tool step has no hook decision")
             continue
-        if index in seen:
+        if key in seen:
             raise ValueError("hook step is ambiguous across conversations")
-        seen.add(index)
-        record = hooks[index]
-        shown, full = entry["command"], record["command"]
+        seen.add(key)
+        record = hooks[key]
+        shown, full = entry[field], record[field]
         if shown != full:
+            if field == "path":
+                raise ValueError("stream and hook paths disagree")
             suffix = "…" if shown.endswith("…") else "..."
             if (
                 not shown.endswith(suffix)
@@ -359,38 +390,40 @@ def restore_hook_commands(
             entry["parameters"]["CommandLine"] = full
             entry["form"] = command_form(full)
             entry["grammar_allowed"] = grammar_allows(full)
-            entry["command_capture_source"] = "pre_tool_hook"
+            entry[source] = "pre_tool_hook"
             restored += 1
         else:
             if "stream_command" in entry:
-                entry["command_capture_source"] = "pre_tool_hook"
+                entry[source] = "pre_tool_hook"
                 restored += 1
             else:
-                entry["command_capture_source"] = "stream_and_hook"
+                entry[source] = "stream_and_hook"
         entry["hook_decision"] = record["decision"]
         if record["decision"] == "deny" and (
             entry["outcome"] == "completed"
+            or entry.get("execution_observed") is True
             or entry.get("command_exit_code") is not None
         ):
-            raise ValueError("a hook-denied command was observed executing")
+            raise ValueError("a hook-denied tool was observed executing")
     if hooks.keys() - seen:
-        raise ValueError("hook command step is missing from the stream")
+        raise ValueError("hook tool step is missing from the stream")
     capture["restored_stream_commands"] = restored
 
 
-def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
-    """Publish counts and redacted grammar shapes, never raw examples or errors."""
-    attempts = {
-        (entry["step"], entry["command"]): entry
-        for entry in capture.get("commands", [])
-    }
+def _public_tool_summary(
+    observations: list[dict[str, Any]],
+    hooks: list[dict[str, Any]],
+    field: str,
+    form: Callable[[str], str],
+) -> dict[str, Any]:
+    attempts = {(entry["step"], entry[field]): entry for entry in observations}
     hook_denied = set()
-    for hook in capture.get("hook_decisions", []):
-        command = hook.get("command")
-        if not isinstance(command, str):
+    for hook in hooks:
+        target = hook.get(field)
+        if not isinstance(target, str):
             continue
-        key = (hook["step"], command)
-        attempts.setdefault(key, {"command": command, "outcome": "unknown"})
+        key = (hook["step"], target)
+        attempts.setdefault(key, {field: target, "outcome": "unknown"})
         if hook["decision"] == "deny":
             hook_denied.add(key)
     denied = hook_denied | {
@@ -398,27 +431,33 @@ def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
         for key, entry in attempts.items()
         if entry["outcome"] in {"soft_denied", "hook_denied", "denied"}
     }
-    forms = Counter(
-        command_form(entry["command"], public=True) for entry in attempts.values()
-    )
-    result = {
+    forms = Counter(form(entry[field]) for entry in attempts.values())
+    return {
         "attempted_count": len(attempts),
         "denied_count": len(denied),
         "hook_denied_count": len(hook_denied),
         "forms": [
-            {"form": form, "count": count} for form, count in sorted(forms.items())
+            {"form": shape, "count": count} for shape, count in sorted(forms.items())
         ],
     }
-    reads = [
-        entry
-        for entry in capture.get("hook_decisions", [])
-        if entry.get("tool") == "read_file"
-    ]
-    if reads:
+
+
+def public_command_summary(capture: dict[str, Any]) -> dict[str, Any]:
+    """Publish counts and redacted grammar shapes, never raw examples or errors."""
+    hooks = capture.get("hook_decisions", [])
+    result = _public_tool_summary(
+        capture.get("commands", []),
+        [entry for entry in hooks if entry.get("tool", "run_command") == "run_command"],
+        "command",
+        lambda command: command_form(command, public=True),
+    )
+    read_hooks = [entry for entry in hooks if entry.get("tool") == "read_file"]
+    if capture.get("reads") or read_hooks:
+        reads = _public_tool_summary(
+            capture.get("reads", []), read_hooks, "path", lambda _: "read_file <PATH>"
+        )
         result["read_file"] = {
-            "attempted_count": len(reads),
-            "denied_count": sum(entry["decision"] == "deny" for entry in reads),
-            "forms": [{"form": "read_file <PATH>", "count": len(reads)}],
+            key: value for key, value in reads.items() if key != "hook_denied_count"
         }
     return result
 

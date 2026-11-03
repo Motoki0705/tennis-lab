@@ -46,8 +46,22 @@ def run_command(
     )
 
 
-def read_file(path: str) -> dict[str, str]:
-    return tool_attempt("read_file", {"Path": path, "StartLine": 1, "EndLine": 1})
+def read_file(
+    path: str,
+    *,
+    skip_hook: bool = False,
+    force_execution: bool = False,
+    hook_step_offset: int = 0,
+    display_path: str | None = None,
+) -> dict[str, str]:
+    return tool_attempt(
+        "read_file",
+        {"Path": path, "StartLine": 1, "EndLine": 1},
+        skip_hook=skip_hook,
+        force_execution=force_execution,
+        hook_step_offset=hook_step_offset,
+        displayed={"Path": display_path} if display_path is not None else None,
+    )
 
 
 def tool_attempt(
@@ -88,11 +102,18 @@ def tool_attempt(
         )
         decision = json.loads(proc.stdout)
     if decision["decision"] == "deny" and not force_execution:
-        info["error"] = {"message": "Denied by pre-tool hook: " + decision["reason"]}
+        info["error"] = {
+            "type": "synthetic_denial",
+            "message": "Denied by pre-tool hook: " + decision["reason"],
+        }
         step["state"] = "ERROR"
     else:
         # Commands are deliberately never executed by the fake.
-        info["output"] = "Command exited with code 0"
+        info["output"] = (
+            "synthetic file contents"
+            if tool == "read_file"
+            else "Command exited with code 0"
+        )
         step["state"] = "DONE"
     event("step_update", {"step_update": step})
     return decision

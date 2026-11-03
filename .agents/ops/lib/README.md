@@ -90,8 +90,9 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   毎回新しい会話を作り、自動再試行・resume・別モデルへの振替は行わない。
   `stream-json` のstdoutを `<log_file>.stream.jsonl` へ直接保存し、途中の失敗やtimeoutでも残す。
   `<log_file>.hooks.jsonl` はtool・コマンド原文または読み取りパス・step・hookの許可/拒否と理由、
-  `<log_file>.commands.json` は `tool_info.parameters.CommandLine` の原文・stepの更新をまとめた
-  観測結果・hook判定を保持する。いずれも未作成パスへ0600で作る。コマンド全文・入力・結果を含むため公開しない。
+  `<log_file>.commands.json` は `tool_info.parameters.CommandLine` と `Path` の原文・stepの更新をまとめた
+  `commands` / `reads` の観測結果・hook判定を保持する。いずれも未作成パスへ0600で作る。
+  コマンド全文・読み取りパス・入力・結果を含むため公開しない。
   壊れたstreamも生データと取得済みの観測を保存するが、成功結果としては受理しない。
 
 `AgyResult` はfrozen dataclassで、フィールドは次のとおり。
@@ -112,7 +113,7 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 `reason` は `invalid_input`（設定・入力・既存log）、`version_mismatch`（版欠落・相違）、
 `cli_error`（起動失敗・非0終了）、`timeout`、`invalid_output`（不正JSON・status・構造化出力・schema・観測値）、
 `model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）、
-`command_hook_mismatch`（streamとhookのstep・全文・判定の不一致や記録欠落、拒否されたコマンドの実行形跡）。
+`command_hook_mismatch`（シェル・read_fileのstreamとhookのstep・対象・判定の不一致や記録欠落、拒否後の実行形跡）。
 呼出元はこの型をcatchし、成功結果を捏造しない。既存のreasonと関数の引数・結果の型は維持する。
 例外の文字列にはstderrやpromptが含まれ得るため、そのまま公開しない。
 拒否一覧はparseできた結果とhook記録から得たものを保持する。非0終了・timeoutにもhookの拒否を残す。
@@ -120,8 +121,11 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 exit 0・`status: SUCCESS` でも、構造化出力欠落やschema違反なら例外になる。
 streamの最終resultイベントを検証し、複数resultや不正なイベントを拒否する。
 本番でもハーネスと同じ `restore_hook_commands()` を使い、末尾省略のprefixと同じstepのhook全文が
-一致した場合だけ復元する。原文の表示と採用元を非公開記録へ保存する。全シェル試行にhookの判定を必須とし、
-照合違反は異常終了・timeoutの場合も上記の専用reasonで失敗する。捕捉は例外を返す前に保存する。
+一致した場合だけ復元する。原文の表示と採用元を非公開記録へ保存する。
+同じ関数で `read_file` もtool・step・`Path`・判定を照合し、全シェル試行と読み取り試行にhookの判定を必須とする。
+読み取りは `ACTIVE` → `ERROR`（拒否、出力なし）と、`ACTIVE` → `DONE`（出力あり）を区別する。
+deny後にDONEと出力が観測された場合は、後続の更新がERRORでも失敗にする。
+照合違反は異常終了・timeoutの場合も上記の共通reasonで失敗する。捕捉は例外を返す前に保存する。
 公開する集計では、許可済み形式の引数・パス・検索語・JSON fieldを伏せる。
 未知のコマンド・フラグは `<unlisted command>` にする。調査用の詳細な正規化・実例は非公開のまま扱う。
 [1.4.11の公式release notes](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.4.11)に従い、
@@ -236,7 +240,7 @@ privateな入力nonceとHEADのcommit subjectに一致する構造化出力を�
 新規会話で1形式ずつそのまま試すよう依頼する。単独コマンドは `touch b`, `rm x`, `mkdir new-directory`,
 `cp a copied`, `mv a moved`, `python3 -c pass`, `sh -c true`。特殊文字のdenyに頼らず拒否されることを確認する。
 各形式の `denied_actions` にcommandの拒否が必要。exit 0でも拒否がなければ失敗する。
-全段階に共通部品のシェル照合を適用し、hookを通らない試行は `command_hook_mismatch` として失敗させる。
+全段階に共通部品のシェル・read_file照合を適用し、hookを通らない試行は `command_hook_mismatch` として失敗させる。
 構造化出力を伴わない拒否も、版・今回のモデルlogを照合した場合だけ期待した拒否として受け取る。
 
 さらに、外側のcanaryファイルを絶対パスの `cat` で読む観測を1件行い、`outside_read_denied` をsummaryに記録する。

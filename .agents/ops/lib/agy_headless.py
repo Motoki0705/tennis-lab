@@ -447,7 +447,7 @@ def run_headless(
                 if capture.get("hook_verification_errors"):
                     raise AgyError(
                         "command_hook_mismatch",
-                        "command stream and hook decisions do not reconcile",
+                        "tool stream and hook decisions do not reconcile",
                     )
 
             try:

@@ -557,6 +557,7 @@ def test_smoke_publishes_only_validated_diagnostics(
         ("probe_success", None),
         ("probe_outside_denied", None),
         ("probe_missing_denial", "command_hook_mismatch"),
+        ("probe_read_missing_hook", "command_hook_mismatch"),
         ("probe_workspace_write", "workspace_modified"),
         ("probe_outside_write", "outside_modified"),
         ("probe_workspace_edit", "workspace_modified"),
@@ -870,6 +871,11 @@ def test_read_file_hook_resolves_paths_and_continues(
         "allow",
     ]
     assert capture["hook_decisions"][0]["path"] == path
+    assert len(capture["reads"]) == 2
+    assert [entry["hook_decision"] for entry in capture["reads"]] == [
+        "deny" if denied else "allow",
+        "allow",
+    ]
     assert all(action["action"] == "read_file" for action in result.denied_actions)
     assert "private-outside" not in json.dumps(result.command_summary)
 
@@ -913,3 +919,35 @@ def test_headless_reconciles_every_command_against_its_hook(
     else:
         assert capture["hook_verification_errors"]
     assert capture["commands"]
+
+
+@pytest.mark.parametrize(
+    "kind", ["missing", "denied_execution", "step", "path", "inside", "denied"]
+)
+def test_headless_reconciles_every_read_against_its_hook(
+    fake_agy: dict[str, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", "read_verification_" + kind)
+    if kind in {"inside", "denied"}:
+        result = agy.run_headless(**fake_agy, timeout=60)
+        assert result.structured_output == {"answer": "見出し"}
+    else:
+        with pytest.raises(agy.AgyError) as caught:
+            agy.run_headless(**fake_agy, timeout=60)
+        assert caught.value.reason == "command_hook_mismatch"
+        assert caught.value.command_summary["read_file"]["attempted_count"] >= 1
+        assert "private-read-input.txt" not in json.dumps(caught.value.command_summary)
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    assert len(capture["reads"]) == 1
+    assert capture["reads"][0]["parameters"]["Path"]
+    if kind in {"inside", "denied"}:
+        assert capture["reads"][0]["hook_decision"] == (
+            "allow" if kind == "inside" else "deny"
+        )
+        assert capture["reads"][0]["state"] == ("DONE" if kind == "inside" else "ERROR")
+    else:
+        assert capture["hook_verification_errors"]

@@ -95,6 +95,15 @@ for command in outputs[index].get("commands", []):
     fake_tools.run_command(command)
 if outputs[index].get("unhooked_command"):
     fake_tools.run_command(outputs[index]["unhooked_command"], skip_hook=True)
+if outputs[index].get("read_fault"):
+    fault = outputs[index]["read_fault"]
+    fake_tools.read_file(
+        "../private-read-input.txt",
+        skip_hook=fault == "missing",
+        force_execution=fault == "denied_execution",
+        hook_step_offset=1 if fault == "step" else 0,
+        display_path="../private-other.txt" if fault == "path" else None,
+    )
 if outputs[index].get("pause"):
     signal.pause()
 if outputs[index].get("exit_code"):
