@@ -37,7 +37,10 @@ TARGETS = [
     "tests/integration/tennis_scene/test_ball3d_segment_physics.py",
     "tests/integration/tennis_scene/test_ball3d_topk.py",
     "tests/integration/tennis_scene/test_court_ball_ba.py",
-    "tests/e2e/knowledge_control",
+    "tests/e2e/skills/test_knowledge_control.py",
+    "tests/e2e/skills/test_knowledge_library.py",
+    "tests/e2e/skills/test_knowledge_artifacts.py",
+    "tests/e2e/skills/test_knowledge_skill_workflow.py",
 ]
 
 
