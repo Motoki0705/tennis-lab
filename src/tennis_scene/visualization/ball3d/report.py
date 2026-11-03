@@ -348,6 +348,7 @@ def write_report(
     crops: Path | None,
     verification: dict[str, Any],
     table_figure: Path | None = None,
+    supplementary_figures: Mapping[str, Path] | None = None,
 ) -> Path:
     """Embed media and CSS; only optional download links refer to sibling files."""
 
@@ -360,6 +361,10 @@ def write_report(
         return "unavailable" if value is None else f"{value:.4g}"
 
     tables = comparison_tables(scores)
+    supplementary = "".join(
+        f'<h2>{html.escape(title)}</h2><img alt="{html.escape(title)}" src="{embed(path, "image/png")}">'
+        for title, path in (supplementary_figures or {}).items()
+    )
     breakdown_rows = []
     for name, method in scores["methods"].items():
         for segment in ("tuning", "evaluation", "all"):
@@ -436,7 +441,7 @@ The annotation oracle uses the same approximate cameras and is a geometric refer
 <tbody>{"".join(breakdown_rows)}</tbody></table></details>{table_html}
 <h2>Comparison video</h2><video controls preload="metadata" src="{embed(video, "video/mp4")}"></video>
 <h2>Trajectories and diagnostics</h2><img alt="Comparison plots" src="{embed(figure, "image/png")}">{crop_html}
-<h2>Provenance and verification</h2><pre>{html.escape(json.dumps(verification, ensure_ascii=False, indent=2))}</pre>
+{supplementary}<h2>Provenance and verification</h2><pre>{html.escape(json.dumps(verification, ensure_ascii=False, indent=2))}</pre>
 <details><summary>Complete metrics, thresholds and label coverage</summary><pre>{html.escape(json.dumps(scores, ensure_ascii=False, indent=2))}</pre></details>
 <p>Metrics are embedded above; sibling files provide optional downloads.</p>
 <p><a href="scores.json">Metrics JSON</a> · <a href="comparison.mp4">Video download</a></p></html>'''

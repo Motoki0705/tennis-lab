@@ -40,3 +40,28 @@ def test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks():
     np.testing.assert_array_equal(panel[37, 47], [23, 71, 239])
     assert panel[15:22, 8:15].any()
     assert not panel[:3, :3].any()
+
+
+def test_broad_covariance_ellipse_stays_inside_its_trajectory_panel():
+    from dataclasses import replace
+
+    from src.tennis_scene.evaluation.ball3d.runner import run_method
+    from src.tennis_scene.visualization.ball3d.rendering import BallComparisonRenderer
+    from tests.support.ball3d_evaluation import make_inputs
+    from tests.unit.tennis_scene.evaluation.ball3d.test_scoring import FixedPointMethod
+
+    inputs = make_inputs()
+    run = run_method(FixedPointMethod(), inputs, bundle_sha256="fixture", code_commit="fixture", code_fingerprint="fixture")[0]
+    covariance = np.tile(np.eye(3)*100, (4, 1, 1))
+    covariance[~run.result.valid] = 0
+    run = replace(run, result=replace(run.result, covariance=covariance))
+    # No reader/video initialization: this tests only the pure court-panel layer.
+    renderer = object.__new__(BallComparisonRenderer)
+    renderer.inputs, renderer.runs = inputs, {"fixture": run}
+    renderer.colors = {"fixture": (255, 0, 0)}
+    renderer.lower, renderer.upper = np.array([-7., -13, -1]), np.array([7., 13, 5])
+    canvas: NDArray[np.uint8] = np.zeros((400, 640, 3), np.uint8)
+    renderer._trajectory(canvas, 0, (0, 1), (320, 0, 320, 200), "Covariance")
+    assert canvas[:200, 320:].any()
+    assert not canvas[:, :320].any()  # RGB panels must be untouched.
+    assert not canvas[200:].any()  # Side panel must be untouched.

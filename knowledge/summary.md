@@ -1,6 +1,7 @@
 <!-- knowledge-review: 68de9b2fc6f4fa98e8ff13dd8b65d6a3b5ca7d8cff83c628df7398426dce8e48 on 2026-11-03 -->
 <!-- knowledge-review: 484ee8621480813982964e5fee514dd2153ca74cd85443a981e4fe1a1f5efa1b on 2026-11-04 -->
 <!-- knowledge-review: 01de480bfc7055551b1f7d5b859a3bf05a0351c04f764eec8fd5f0e040c6db0c on 2026-11-04 -->
+<!-- knowledge-review: 7ff15d11fdaae7c5de8aa41c8375c2d2602e308f37f965699462135fd1040bb6 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -54,6 +55,16 @@ gate前候補のpair仮説と二次運動beam DPを標準pipelineの任意の方
 対象symbol自体の宣言探索・catalog登録を直接検証した。一般の探索漏れは監査本体の変更を伴う別課題である。
 追加修正後も固定bundleの8予測・全診断がv2と完全一致し、元129成果物を変更していない。
 数値や採否の判断は変更せず、証拠と検証範囲を同ノードで確認する。
+[候補GMMと方式A](nodes/tennis_scene/000036-run-ball3d-candidate-gmm-20261103.md)は、
+前半だけで較正したMAP/meanと各RTS版を比較し、いずれも後半LOVOが悪化した。
+MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63.41%に増えた一方、
+全view有効3Dは420/505→62/505へ減った。共通514点でも悪化し、今回方式の採用は勧めない。
+背面modeによるframe全体棄却と、95%楕円の被覆不足（MAP 57.4%、MAP-RTS 17.1%）を記録した。
+局所Gaussian/支持確率の代理・近似校正の寄与は未分離であり、独立存在確率の較正を示していない。
+候補の回収余地や運動の滑らかさを精度改善と扱わず、次の方式比較でも欠測と不確かさを併記する。
+設定の既定値をcompositionへ集約し、残差診断の機械依存の丸め差を検証したCI修正でも、
+設定値・数値kernel・実データのGaussian配列は不変で、上の採用判断は変わらない。
+次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

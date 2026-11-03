@@ -42,6 +42,10 @@ paths are present in `MethodInput`.
 The optional [`TopKMultiHypothesis`](ball3d/topk.py) adapter calls the production
 [top-K association](../ball_association/README.md) without extra loading or scoring logic.
 
+The optional [candidate GMM method](../ball_gmm/README.md) uses production Method A.
+`ball3d/uncertainty.py` propagates its covariance and measures ellipse coverage on
+the same scored camera/frame cohort; nonzero time offsets require a temporal posterior and are rejected.
+
 Implement `BallMethod.name`, `config`, explicit bool `requires_court_lines`, and `__call__(inputs) -> Ball3DResult`, then
 call `run_method` or `run_comparison` with bundle/code digests. No annotation
 argument exists on this runner. LOVO passes only its two retained `ViewInput`s;

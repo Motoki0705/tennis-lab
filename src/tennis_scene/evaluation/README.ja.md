@@ -36,6 +36,10 @@ evidenceの窓の出自、side・校正・観測maskを検証する。注釈impo
 任意の [`TopKMultiHypothesis`](ball3d/topk.py) adapterはproductionの
 [top-K対応付け](../ball_association/README.ja.md)を呼び、loaderや採点を追加しません。
 
+任意選択の[候補GMM方式](../ball_gmm/README.ja.md)はproductionの方式Aを使います。
+`ball3d/uncertainty.py` は同じ採点camera/frame集合で投影共分散と楕円被覆率を評価します。
+非ゼロ時刻offsetには時間方向の同時事後分布が必要なため、明示拒否します。
+
 `BallMethod.name`、`config`、boolの `requires_court_lines`、`__call__(inputs) -> Ball3DResult` を実装し、bundle/codeの
 digestとともに `run_method` / `run_comparison` へ渡す。runnerに注釈引数はない。
 LOVOでは保持する2つの `ViewInput` だけを渡し、除外cameraのheatmapや観測は渡さない。

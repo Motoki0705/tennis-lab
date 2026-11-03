@@ -1,0 +1,25 @@
+{
+  "output_dir": "outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_v2",
+  "reviewed_images": [
+    "metrics-table.png",
+    "uncertainty.png",
+    "ellipsoids.png",
+    "preview-0252.png",
+    "preview-0757.png",
+    "preview-1009.png",
+    "uncertainty-example.png",
+    "extremes.png",
+    "preview-0505.png"
+  ],
+  "observations": [
+    "LOVO count/coverage and all-view validity have separate columns",
+    "ellipse colours distinguish MAP/mean and RTS variants",
+    "frame504 projected ellipses appear in all three camera panels and top/side panels",
+    "broad world ellipses remain inside their panels",
+    "missing trajectories are disconnected; large jumps remain visible",
+    "cam1 unknown at frame757 and cam0 excluded extrapolation at1009 have no reference marker",
+    "3D ellipsoid frames127/387/614/886 selected from prediction availability only"
+  ],
+  "portable_html_broken_references": [],
+  "video_full_decode_frames": 1010
+}

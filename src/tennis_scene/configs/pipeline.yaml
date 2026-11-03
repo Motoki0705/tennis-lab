@@ -219,6 +219,23 @@ ball_reconstruction:
     acceleration_scale_mps2: 250.0
     acceleration_weight: 1.0
     turn_cost_cap: 3.0
+  candidate_gmm:
+    top_k: 3
+    covariance_scale: 1.0
+    presence_slope: 1.0
+    presence_bias: 0.0
+    min_multiview_mass: 0.05
+    min_variance_cells2: 0.04
+    max_variance_cells2: 25.0
+    log_floor: 1.0e-7
+    prior_mean_m: [0.0, 0.0, 2.0]
+    prior_std_m: [8.0, 16.0, 6.0]
+    max_components: 1024
+    max_nfev: 150
+    estimator: map
+    temporal: none
+    acceleration_std_mps2: 150.0
+    initial_velocity_std_mps: 40.0
 gvhmr:
   enabled: true
 cache:

@@ -1,0 +1,28 @@
+{
+  "prediction_records_exact": [
+    "results/candidate_gmm_map_none/all_views",
+    "results/candidate_gmm_map_none/without_cam0",
+    "results/candidate_gmm_map_none/without_cam1",
+    "results/candidate_gmm_map_none/without_cam2",
+    "results/candidate_gmm_map_rts/all_views",
+    "results/candidate_gmm_map_rts/without_cam0",
+    "results/candidate_gmm_map_rts/without_cam1",
+    "results/candidate_gmm_map_rts/without_cam2",
+    "results/candidate_gmm_mean_none/all_views",
+    "results/candidate_gmm_mean_none/without_cam0",
+    "results/candidate_gmm_mean_none/without_cam1",
+    "results/candidate_gmm_mean_none/without_cam2",
+    "results/candidate_gmm_mean_rts/all_views",
+    "results/candidate_gmm_mean_rts/without_cam0",
+    "results/candidate_gmm_mean_rts/without_cam1",
+    "results/candidate_gmm_mean_rts/without_cam2",
+    "results/pipeline_baseline/all_views",
+    "results/pipeline_baseline/without_cam0",
+    "results/pipeline_baseline/without_cam1",
+    "results/pipeline_baseline/without_cam2"
+  ],
+  "non_runtime_scores_exact": true,
+  "calibration_exact": true,
+  "uncertainty_exact": true,
+  "presentation_only_changes": "panel clipping, distinct ellipsoid colours, representative frames selected by availability"
+}
