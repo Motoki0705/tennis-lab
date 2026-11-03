@@ -51,6 +51,7 @@ artifacts:
   output_dir: outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/foundation_v1
   reproduction: knowledge/runs/run-ball3d-evaluation-foundation-20261103/repro.sh
   executed_reproduction: knowledge/runs/run-ball3d-evaluation-foundation-20261103/executed-repro.sh
+  inputs: knowledge/runs/run-ball3d-evaluation-foundation-20261103/inputs.json
   inventory: knowledge/runs/run-ball3d-evaluation-foundation-20261103/artifacts.json
   qualification: knowledge/runs/run-ball3d-evaluation-foundation-20261103/verification.json
   measurements: knowledge/runs/run-ball3d-evaluation-foundation-20261103/test-results.json
