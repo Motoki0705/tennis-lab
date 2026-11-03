@@ -99,6 +99,22 @@ def test_objective_gradient_in_metres_and_camera_keyed_temperature():
     np.testing.assert_allclose(a.positions, b.positions, atol=1e-6)
 
 
+def test_coarse_search_needs_no_candidate_seed_and_candidate_mode_has_no_fallback():
+    inputs, xyz, _ = dense_inputs()
+    views = []
+    for view in inputs.views:
+        evidence = view.detections.evidence
+        empty = {key: np.zeros_like(getattr(evidence, key)) for key in (
+            "candidate_uv_px", "candidate_scores", "candidate_valid", "candidate_cells", "patches", "patch_valid")}
+        views.append(replace(view, detections=replace(view.detections, evidence=replace(evidence, **empty))))
+    inputs = replace(inputs, views=tuple(views))
+    coarse = DenseHeatmapMethod(config(initialization="coarse"))(inputs)
+    assert coarse.valid.all()
+    np.testing.assert_allclose(coarse.positions, xyz, atol=.01)
+    seeded = DenseHeatmapMethod(config(initialization="candidates"))(inputs)
+    assert not seeded.valid.any() and not seeded.positions.any()
+
+
 def test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries():
     time = np.arange(9)
     true = np.column_stack((.3 + time * .04, .2 - time * .025, 1.3 + time * .015))

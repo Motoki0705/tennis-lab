@@ -66,8 +66,8 @@ metrics:
   paired_primary_count: 825
   paired_dense_primary_median_px: 12.67629619324541
   paired_dense_primary_p90_px: 36.828141314239524
-  tests_passed: 121
-  pytest_wall_seconds: 26.1
+  tests_passed: 122
+  pytest_wall_seconds: 34.74
 artifacts:
   run_dir: knowledge/runs/run-ball3d-dense-likelihood-20261103
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2
@@ -153,10 +153,10 @@ GPU・検出器再推論・新しい入力取得は行わず、基盤 #1669 のl
 [実装前のテスト設計](../../runs/run-ball3d-dense-likelihood-20261103/test-plan.md) に
 契約・故障・層・既存node・コストを記録した。非対称camera/frame、独立pinhole式の既知投影、
 交差項を持つ山、双線形の格子吸着、欠測とdistractor、m単位の勾配、急変とgapを検証する。
-新規24case（unit20・integration4）。mainの計算ファイルと同じbytesから得た固定期待配列を、
+新規25case（unit21・integration4）。mainの計算ファイルと同じbytesから得た固定期待配列を、
 既定config→definition→assembler→componentの出力と厳密比較する。
-既存97caseを再利用し、全121case成功、収集6.43秒・実行26.10秒（-n 0）。
-最大caseは実codec/動画/HTMLのintegrationで2.689秒、全setupは1秒未満だった。
+既存97caseを再利用し、全122case成功、収集6.22秒・実行34.74秒（-n 0）。
+最大caseは実codec/動画/HTMLのintegrationで4.919秒、全setupは1秒未満だった。
 全nodeと各phaseは [test-results.json](../../runs/run-ball3d-dense-likelihood-20261103/test-results.json)。
 
 16frameのCPU試走は候補1.215秒・coarse1.158秒、両方16/16有効、プロセス最大RSS629928KiB。
@@ -209,3 +209,7 @@ ruff/mypy成功。これらの検証はGPUを使わず、pytestは-n 0だった�
 全入力/成果物のchecksumと正確な実行履歴はchecksums.json、verification.json、execution-history.json。
 新規出力への全CPU replayはrepro.sh（5引数）、保存済み予測の比較媒体再生成はexecution-v2.logとresource-usage.txtのコマンドを参照する。
 人間の採否・#1568の統合比較・親のレビュー・mergeは後続の判断であり、この子はmergeしない。
+
+最終確認で、候補payloadを全無効にしてもcoarseが既知位置を復元し、候補版は欠測にするunitを1件追加した。
+この追加の前にtest-planへ検出したいfallback不具合・層・1caseのコスト上限を追記した。
+初回121件の記録はtest-results-first.json / test-summary-first.jsonに残す。推定src・設定・実データの再計算は変更していない。
