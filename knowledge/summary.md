@@ -1,7 +1,7 @@
-<!-- knowledge-review: d1b1665b34856262328c75ba563554a0e84e2216cbedd5054f0759b987f1d7b3 on 2026-11-03 -->
+<!-- knowledge-review: 0d3fa4bb38d27150909454bbd22c1da72d5f9c56064bd1b015a1b70ce792083b on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
+更新日: 2026-11-03（clip_000の球3D共通評価とボール別test版の評価契約・転送停止を反映。既存モデル・checkpointの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -409,6 +409,13 @@ Driveへの全量uploadと、異なる2台のL4 VMでの全ファイルSHA-256�
 ローカルの未配置stageは元payloadを明示する読み取り専用の照合経路を使い、通常読込のshard不足は引き続き失敗する。
 PR前の設定監査対応と記録pathの修正を確認し、配布物・測定値に変更がないため、この実験の結論を維持した。
 精度や長系列の実行可能性はこの内容照合から判断せず、後続のColab試走と学習で確認する。
+
+[別test版の評価契約](nodes/ball_detection/000069-run-ball-separate-test-contract-20261024.md)では、
+学習runと明示したvalidationの較正元を固定し、testだけのstoreを受け入れる経路を追加した。
+実testの全T manifestはprotocolのclip対応・共通frame/教師・ownerと一致し、既存snapshotの不変も確認した。
+初回Drive転送は同名`shards`の重複で停止し、4 payloadの部分配置に留まった。2026-11-03時点でもtest版は利用可能ではない。
+重複の扱いと全inventory照合が残る。実test精度やモデル採用の判断は更新していない。
+当時の通常検証628件は成功し、prefetch付きhybrid resume回帰は子環境で停止したが、親環境の同じheadでは通過した。
 
 続く[保存再開の事前検査](nodes/ball_detection/000066-run-ball-colab-persistence-preflight-20261023.md)では、
 実配布storeの原注釈がresolverで取得・hash照合できる一方、窓準備と空frame証拠の消費側が

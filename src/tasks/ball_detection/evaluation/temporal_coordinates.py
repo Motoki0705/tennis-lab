@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from dataclasses import asdict
@@ -10,9 +11,14 @@ from typing import Any
 
 import torch
 
+from src.tasks.ball_detection.checkpoints.provenance import source_identity
 from src.tasks.ball_detection.checkpoints.temporal import json_bytes, save_json
 from src.tasks.ball_detection.data.windows.all_frames import EDGE_BINS, LABEL_KINDS
 from src.tasks.ball_detection.data.windows.dataset import FrozenBallWindowDataset
+from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import (
+    SeparateTestInputs,
+    validate_separate_test,
+)
 from src.tasks.ball_detection.evaluation.temporal_metrics import (
     location_metrics,
     prediction_identities,
@@ -34,6 +40,7 @@ from src.tasks.ball_detection.training.runtime.images import (
 from src.utils.checksum import dual_sha256
 
 EVALUATION_SCHEMA = "ball_temporal_coordinates_evaluation.v1"
+SEPARATE_EVALUATION_SCHEMA = "ball_temporal_coordinates_evaluation.v2"
 
 
 def evaluate_temporal_coordinates(
@@ -47,6 +54,7 @@ def evaluate_temporal_coordinates(
     distance_px: float,
     calibration_report: dict[str, Any] | None = None,
     output: Path | None = None,
+    separate_test_inputs: SeparateTestInputs | None = None,
 ) -> dict[str, Any]:
     if type(model.config) is not MDDTemporalQueryConfig or split not in {"val", "test"}:
         raise ValueError(
@@ -59,6 +67,23 @@ def evaluate_temporal_coordinates(
     ):
         raise ValueError("Direct coordinates have no presence threshold or calibration")
     started = time.perf_counter()
+    provenance = None
+    evaluation_code = None
+    if separate_test_inputs is not None:
+        if split != "test":
+            raise ValueError("Separate-test inputs require the test split")
+        if output is not None and (output.exists() or output.with_suffix(".frames.jsonl").exists()):
+            raise ValueError("Separate-test evaluation requires new output files")
+        evaluation_code = source_identity()
+        _, calibration, provenance = validate_separate_test(
+            separate_test_inputs,
+            model=model,
+            artifact_sha256=artifact_sha256,
+            test_manifest=json.loads(manifest.read_text()),
+            runtime=runtime,
+        )
+        if calibration is not None:
+            raise ValueError("Direct coordinates have no presence calibration")
     dataset = FrozenBallWindowDataset(
         manifest, split=split, requires_pose=False, jpeg_decoder=runtime.jpeg_decoder
     )
@@ -167,7 +192,7 @@ def evaluate_temporal_coordinates(
         for i, name in enumerate(EDGE_BINS)
     }
     report = dict(
-        schema=EVALUATION_SCHEMA,
+        schema=SEPARATE_EVALUATION_SCHEMA if provenance is not None else EVALUATION_SCHEMA,
         split=split,
         artifact_sha256=artifact_sha256,
         manifest_sha256=dual_sha256(manifest),
@@ -184,7 +209,18 @@ def evaluate_temporal_coordinates(
         ),
         seconds=time.perf_counter() - started,
     )
+    if provenance is not None:
+        final_code = source_identity()
+        assert evaluation_code is not None
+        if any(final_code[key] != evaluation_code[key] for key in ("source_sha256", "torch_version")):
+            raise ValueError("Evaluation code or torch version changed during evaluation")
+        report["provenance"] = provenance
+        report["evaluation_code"] = evaluation_code
+        report["rgb_shards_sha256"] = {
+            row["clip"]["clip_id"]: row["rgb_shard_sha256"] for row in dataset.manifest["clips"]
+        }
     if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
         predictions = output.with_suffix(".frames.jsonl")
         temporary = predictions.with_suffix(".tmp")
         with temporary.open("wb") as stream:

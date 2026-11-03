@@ -14,6 +14,9 @@ from src.tasks.ball_detection.evaluation.temporal_coordinates import (
 from src.tasks.ball_detection.evaluation.temporal_heatmap import (
     evaluate_temporal_heatmap,
 )
+from src.tasks.ball_detection.evaluation.temporal_heatmap_contract import (
+    SeparateTestInputs,
+)
 from src.tasks.ball_detection.model_io.mdd_temporal import restore_temporal_model
 from src.tasks.ball_detection.models.mdd import DeepMDDQueryDetector
 from src.tasks.ball_detection.training.runtime.arguments import (
@@ -63,6 +66,26 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             required=False,
         ),
         BoundaryPathField(
+            "training_run_record", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "validation_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "training_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "test_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "evaluation_contract", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
             "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
         ),
     ),
@@ -81,9 +104,21 @@ def main() -> None:
         type=Path,
         help="Validation report for this exact heatmap artifact; required for heatmap test",
     )
+    separate_paths = (
+        "training_run_record", "validation_manifest", "training_distribution",
+        "test_distribution", "evaluation_contract",
+    )
+    for name in separate_paths:
+        parser.add_argument("--" + name.replace("_", "-"), type=Path)
+    parser.add_argument("--evaluation-contract-sha256")
+    parser.add_argument("--calibration-sha256")
     parser.add_argument("--distance-px", type=float, required=True)
     add_runtime_arguments(parser)
     args = parser.parse_args()
+    separate_names = (*separate_paths, "evaluation_contract_sha256")
+    separate = any(getattr(args, name) is not None for name in (*separate_names, "calibration_sha256"))
+    if separate and (args.split != "test" or any(getattr(args, name) is None for name in separate_names)):
+        parser.error("Separate test requires every contract/run/validation/distribution input and the contract hash")
     declared = {
         field.name: getattr(args, field.name)
         for field in PATH_BOUNDARY.fields
@@ -126,6 +161,10 @@ def main() -> None:
         )
     if isinstance(model, DeepMDDQueryDetector) and args.calibration is not None:
         parser.error("Direct coordinates have no presence calibration")
+    if isinstance(model, DeepMDDQueryDetector) and args.calibration_sha256 is not None:
+        parser.error("Direct coordinates have no presence calibration")
+    if separate and not isinstance(model, DeepMDDQueryDetector) and args.calibration_sha256 is None:
+        parser.error("Separate heatmap test requires the validation calibration hash")
     training = saved.get("training")
     if (
         training is None
@@ -136,7 +175,7 @@ def main() -> None:
             "Evaluation must use the training artifact's saved JPEG decoder/version and precision"
         )
     manifest = json.loads(args.manifest.read_text())
-    if (
+    if not separate and (
         manifest["ball_store"] != training["data"]["snapshot"]
         or {r["clip"]["clip_id"]: r["rgb_shard_sha256"] for r in manifest["clips"]}
         != training["data"]["rgb_shards_sha256"]
@@ -154,7 +193,14 @@ def main() -> None:
         mode=runtime.compile_mode,
         recompile_limit=runtime.compile_recompile_limit,
     )
-    calibration = json.loads(args.calibration.read_text()) if args.calibration else None
+    calibration = json.loads(args.calibration.read_text()) if args.calibration and not separate else None
+    separate_inputs = SeparateTestInputs(
+        artifact=args.artifact,
+        calibration=args.calibration,
+        calibration_sha256=args.calibration_sha256,
+        evaluation_contract_sha256=args.evaluation_contract_sha256,
+        **{name: getattr(args, name) for name in separate_paths},
+    ) if separate else None
     evaluator = (
         evaluate_temporal_coordinates
         if isinstance(model, DeepMDDQueryDetector)
@@ -170,4 +216,5 @@ def main() -> None:
         distance_px=args.distance_px,
         calibration_report=calibration,
         output=args.output,
+        separate_test_inputs=separate_inputs,
     )
