@@ -1,16 +1,7 @@
-<!-- knowledge-review: 68de9b2fc6f4fa98e8ff13dd8b65d6a3b5ca7d8cff83c628df7398426dce8e48 on 2026-11-03 -->
-<!-- knowledge-review: 484ee8621480813982964e5fee514dd2153ca74cd85443a981e4fe1a1f5efa1b on 2026-11-04 -->
-<!-- knowledge-review: 01de480bfc7055551b1f7d5b859a3bf05a0351c04f764eec8fd5f0e040c6db0c on 2026-11-04 -->
-<!-- knowledge-review: 7ff15d11fdaae7c5de8aa41c8375c2d2602e308f37f965699462135fd1040bb6 on 2026-11-03 -->
-<!-- knowledge-review: 74d01246b7de09d16c84fdb1ea616a57682ed4cdb8e7c47662d1969fdaeaff69 on 2026-11-04 -->
-<!-- knowledge-review: 133f58588cd60f82d171c92d522c11d06811784a5d59f173de6f09055283fc1c on 2026-11-03 -->
-<!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
-<!-- knowledge-review: 76c72394b46c58454f31591362ec64bc6ff0f6dbd6a18ad509481f2199d9f3d8 on 2026-11-04 -->
-<!-- knowledge-review: 2632293584fad56a1065da16abeb3e7729b43c4daab53220a03f1ada5ce7b2af on 2026-11-03 -->
-<!-- knowledge-review: 6f76edf22a32c20f16425ff68045938c57fd04cfa364e8ae1975d7f480192790 on 2026-11-04 -->
+<!-- knowledge-review: c33f635a1f63df4cc72e5e80f5ce80811d4ffa756cbd0ce6b565aabfd2a5226f on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-04（clip_000の追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
+更新日: 2026-11-04（clip_000の球3D各方式の結果と追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -39,7 +30,7 @@
 mainへの積み直し後の24保存結果の再採点で、既存数値は全一致した。全6診断結果共通の後半750点ではbaseline 8.74/24.71pxで、基盤3結果の共通768点とは集合が異なる。
 次は同じ部品で6方式を比較し、候補を捨てる段階・方向転換付近・coverageを確認する。調整には前半だけを使い、既定pipelineと方式採用は変更しない。
 
-[単一点heatmap復号・座標補正の比較](nodes/tennis_scene/000034-run-i1559-heatmap-decoding-20261103.md)は、
+[単一点heatmap復号・座標補正の比較](nodes/tennis_scene/000037-run-i1559-heatmap-decoding-20261103.md)は、
 32予測条件とoracleを同じ基盤で実行した。前半で選んだ3×3 logit曲面＋affine補正は、
 後半LOVOの中央値/p90がbaseline 9.34/27.08pxから9.49/29.63px、20px超率も16.36%から18.60%へ悪化した。
 共通823点でも悪化し、全view誤差や全区間中央値の改善だけでは採用を支えない。
@@ -49,7 +40,7 @@ mainへの積み直し後の24保存結果の再採点で、既存数値は全�
 設定レビュー後にPython既定値をcompositionへ集約し、両設定型の監査対象への復帰を確認した。
 設定15条件・数値演算・固定入力の同一性から予測変更なしと判断し、全clipの再計算は行っていない。
 
-[top-K多仮説のCPU replay](nodes/tennis_scene/000034-run-ball3d-topk-multihypothesis-20261103.md)では、
+[top-K多仮説のCPU replay](nodes/tennis_scene/000038-run-ball3d-topk-multihypothesis-20261103.md)では、
 gate前候補のpair仮説と二次運動beam DPを標準pipelineの任意の方式として実装したが、
 主評価のLOVO p90は27.08→103.60px、coverageは56.43→36.46%と悪化した。
 2方式共通353点でも中央値・p90が悪化しており、運動外れの減少を精度改善と扱わない。
@@ -65,6 +56,7 @@ cross-1の追加分析では、主評価の採点数-292点を追加180・喪失
 20px以内の390点も失っている。共通353点でも悪化しており、追加点の長い誤差分布を含めて負の結果と解釈する。
 保存予測を基盤scorerで読み直した記述統計で、方式・設定・scoring・採否は変更していない。
 数値や採否の判断は変更せず、証拠と検証範囲を同ノードで確認する。
+
 [候補GMMと方式A](nodes/tennis_scene/000036-run-ball3d-candidate-gmm-20261103.md)は、
 前半だけで較正したMAP/meanと各RTS版を比較し、いずれも後半LOVOが悪化した。
 MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63.41%に増えた一方、
@@ -74,16 +66,9 @@ MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63
 候補の回収余地や運動の滑らかさを精度改善と扱わず、次の方式比較でも欠測と不確かさを併記する。
 設定の既定値をcompositionへ集約し、残差診断の機械依存の丸め差を検証したCI修正でも、
 設定値・数値kernel・実データのGaussian配列は不変で、上の採用判断は変わらない。
-[KPとballによるbundle adjustment](nodes/tennis_scene/000034-run-court-ball-ba-20261103.md)では、
-主点/歪み固定の7変数を5/7/8個の採用KPとball対応からfitし、残る9/7/6点を確認した。
-後半LOVOは9.34/27.08→10.95/35.51px、coverageは56.43→54.58%へ悪化し、2方式共通791点でも悪化した。
-全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
-平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
-明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
 保存済み予測の再集計で、MAPの採点純増102点は402点追加・300点喪失の差と確認した。
 追加点は中央値38.46/p90 363.65px・20px超65.92%、喪失点のbaseline誤差は9.12/17.01px・7.00%。
 4条件とも共通点でも悪化し、追加点の大きな誤差と良いbaseline点の喪失をcoverageの改善と混同しない。
-次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 [dense heatmap尤度の直接3D推定](nodes/tennis_scene/000035-run-ball3d-dense-likelihood-20261103.md)は、
 前半だけで温度・背景混合率・補間を選択したが、後半LOVOは16.47/106.91pxへ悪化した。
@@ -92,7 +77,10 @@ coverageは56.43%→99.73%に増えた一方、baselineと共通の825点でも1
 出力増加と精度を区別し、今回の方式の採用は勧めない。既定は維持し、次は共通基盤による他方式との統合比較を行う。
 11月4日のCI修正では既定値をcompositionへ集約し、残差だけのfloat32 ULP比較を修正した。
 選定方式1010frameの全view再実行は保存済み配列に完全一致し、精度・coverage・採用に関する結論は変わらない。
-[区間物理軌道・相対時刻の比較](nodes/tennis_scene/000034-run-i1565-segment-physics-offset-20261103.md)では、
+横断レビュー後の固定予測の分解では、後半の追加633点は29.07/313.39px・>20px率60.35%、喪失0点だった。
+追加点の品質と共通点での悪化を併せて記録し、採用非推奨を維持する。camera/参照種類別と他条件の追加・喪失も同ノードから参照できる。
+
+[区間物理軌道・相対時刻の比較](nodes/tennis_scene/000039-run-i1565-segment-physics-offset-20261103.md)では、
 候補点方式の後半LOVOが13.64/58.20pxへ悪化し、coverageも56.43%から51.71%へ低下した。
 同じ756点でもbaseline 9.07/26.25pxに対して悪化した。dense heatmap方式は全foldで未収束・採点0。
 全方式共通集合は空のため、baseline/候補点だけの共通集合も別途保存した。
@@ -101,8 +89,13 @@ coverageは56.43%→99.73%に増えた一方、baselineと共通の825点でも1
 次はイベント支持、区間連続性、map目的関数の収束と校正biasの交絡を独立に検証する必要がある。
 CI修正で設定をcompositionへ集約し、solverのcamera順を正規化した。固定入力の全12実行と実行時間を除く採点は元結果と完全一致し、上記の負の結論は変わらない。
 DINOの残存子moduleによるCIテスト間の干渉も隔離し、再現した失敗の解消を確認した。production sourceと研究上の結論は追加で変えていない。
-横断レビュー後の固定予測の分解では、後半の追加633点は29.07/313.39px・>20px率60.35%、喪失0点だった。
-追加点の品質と共通点での悪化を併せて記録し、採用非推奨を維持する。camera/参照種類別と他条件の追加・喪失も同ノードから参照できる。
+
+[KPとballによるbundle adjustment](nodes/tennis_scene/000040-run-court-ball-ba-20261103.md)では、
+主点/歪み固定の7変数を5/7/8個の採用KPとball対応からfitし、残る9/7/6点を確認した。
+後半LOVOは9.34/27.08→10.95/35.51px、coverageは56.43→54.58%へ悪化し、2方式共通791点でも悪化した。
+全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
+平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
+明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

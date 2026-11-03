@@ -2,7 +2,7 @@
 id: run-ball3d-topk-multihypothesis-20261103
 type: run
 task: tennis_scene
-sequence: 34
+sequence: 38
 recorded_at: '2026-11-03'
 title: clip_000でtop-K多仮説対応付けをCPU replayしLOVO悪化とcoverage低下を確認
 issue: 1560

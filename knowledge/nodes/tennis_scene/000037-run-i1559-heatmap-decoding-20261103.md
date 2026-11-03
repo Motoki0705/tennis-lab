@@ -2,7 +2,7 @@
 id: run-i1559-heatmap-decoding-20261103
 type: run
 task: tennis_scene
-sequence: 34
+sequence: 37
 recorded_at: '2026-11-03'
 title: clip_000のnative heatmap復号と座標補正のCPU比較
 issue: 1559

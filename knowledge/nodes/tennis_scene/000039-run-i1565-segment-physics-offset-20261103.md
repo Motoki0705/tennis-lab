@@ -2,7 +2,7 @@
 id: run-i1565-segment-physics-offset-20261103
 type: run
 task: tennis_scene
-sequence: 34
+sequence: 39
 recorded_at: '2026-11-03'
 title: clip_000の区間物理軌道・二次抵抗・camera相対時刻の同時推定
 issue: 1565
