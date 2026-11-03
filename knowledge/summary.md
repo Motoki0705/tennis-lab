@@ -1,4 +1,4 @@
-<!-- knowledge-review: 89356c8c292f8437f753684c848e12c49bd7d12750ff03adedc862630cee5bbd on 2026-11-03 -->
+<!-- knowledge-review: d1b1665b34856262328c75ba563554a0e84e2216cbedd5054f0759b987f1d7b3 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -19,6 +19,10 @@
 欠測を除いた別集合の比較なので、対になった精度改善や独立3D精度を主張しない。推定は別kindで集計し、末尾外挿28点・座標なし43点は除外した。
 基準3Dの有効/使用view maskは完全一致、座標差は2µm許容内。動画全decode・代表画像・HTML参照切れ0を確認した。
 近似cameraによるoracleは幾何参照で、数学的下限ではない。先行run31の自己再投影とは指標が異なる。
+[レビュー修正](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)でraw courtのcamera別入力と採点時のbundle/正解identity照合を追加し、
+主表にLOVO採点数・対象数・coverageを表示した。全3方式共通の主評価768点ではbaseline 8.97/25.40px、LOESSなし9.70/28.02px。
+8予測結果はv1と完全一致し、入力を変えて誤差を下げた比較ではない。共通点も全対象の52.53%に限られ、可用性を条件とする。
+元LINE観測は保存されておらず、必要とする方式は明示停止する。LINEによる校正の入力取得は未実施である。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
