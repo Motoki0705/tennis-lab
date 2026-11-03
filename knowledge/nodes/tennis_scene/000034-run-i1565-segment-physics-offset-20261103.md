@@ -260,4 +260,13 @@ v3の全211ファイルを事前照合し、v3は上書きしていない。予�
 既知の候補点方式の悪化とheatmap未収束も不変である。照合は新規 `segment_physics_offset_ci_checks_v1/replay/`。
 元v3 manifestと照合receiptのchecksumは `ci-proof.json`、再現scriptは `ci_replay_check.py`。
 GNU time wall237.48秒、最大RSS649,596KiB、swap0。動画再生成・GPU・検出器再推論は行っていない。
+再pushのCI run 41641759130では設定収集とcamera順序を含むCPU 9レーンが成功したが、
+レーン9の既存DINO importテストが失敗した。偽の親packageを隔離しても、実DINOのlossテスト等が
+読み込んだ子moduleのMSDA参照が残るため、productionの異なるbinary拒否契約に到達した。
+子module未読込/読込済みの2ケースへ既存unit testを拡張し、後者だけが同じ例外で失敗することを再現した。
+子moduleもmonkeypatchで隔離・復元する修正後、選択binaryを使い、stale参照を明示的に拒否する両方の検証が成功した。
+追加1ケースは実モデル・GPUを使わず、DINO関連33件はcollect5.21秒・実行5.62秒、33passed。
+全node/時間と修正前の失敗は `ci-dino-{collection,durations}.txt`、`ci-dino-isolation-before.txt`、
+照合は `ci-dino-isolation.json` に保存した。ruff/mypyも成功した。
+追加差分はtestと記録だけで、345edc98dからsrc差分0を確認したため、上記12実行の予測不変の照合を引き続き適用する。
 PRの最新HEADで、push後の全CI jobとPython集計の成功を確認する。

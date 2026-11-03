@@ -1,4 +1,4 @@
-<!-- knowledge-review: be22edabb98fb1e72b8c0c721f84abc560ff6ef8ea8a0db2a0c545264ee4de04 on 2026-11-03 -->
+<!-- knowledge-review: 4e77dd5a10eb8dee40809c7427d52d9ac07b392187a9dad6262ab73d5282a25f on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -33,6 +33,7 @@
 小さいODE残差は精度の根拠にならなかった。設定を後半で調整せず、既定と方式採用は変更しない。
 次はイベント支持、区間連続性、map目的関数の収束と校正biasの交絡を独立に検証する必要がある。
 CI修正で設定をcompositionへ集約し、solverのcamera順を正規化した。固定入力の全12実行と実行時間を除く採点は元結果と完全一致し、上記の負の結論は変わらない。
+DINOの残存子moduleによるCIテスト間の干渉も隔離し、再現した失敗の解消を確認した。production sourceと研究上の結論は追加で変えていない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 
